@@ -1,0 +1,316 @@
+{
+  "calc_name" : "LLog",
+
+  "calc_structure" : {
+    "Atprop" : {
+      "Atprop" : {
+        "type":"string",
+        "ascii" : "_"
+      },
+      "Atprop_Freevar" : {
+        "type" : "string",
+        "isabelle" : "?\\<^sub>A _",
+        "isabelle_se" : "_",
+        "ascii" : "A? _",
+        "latex" : "? _",
+        "precedence": [320, 320],
+        "shallow" : false
+      }
+    },
+
+    "Formula" : {
+      "Formula_Atprop" : {
+        "type": "Atprop",
+        "isabelle" : "_ \\<^sub>A",
+        "isabelle_se" : "_ \\<^sub>A",
+        "precedence": [320, 330]
+      },
+      "Formula_Freevar" : {
+        "type" : "string",
+        "isabelle" : "?\\<^sub>F _",
+        "isabelle_se" : "_",
+        "ascii" : "F? _",
+        "latex" : "?_F _",
+        "latex_brackets": false,
+        "precedence": [340, 330],
+        "shallow" : false
+      },
+
+      "Formula_Bin" : {
+        "type" : ["Formula", "Formula_Bin_Op", "Formula"],
+        "isabelle" : "B\\<^sub>F _",
+        "isabelle_se" : "_",
+        "shallow": false,
+        "precedence": [330,330,330, 331]
+      }
+    },
+
+    "Formula_Bin_Op" : {
+      "Formula_Tensor" : {
+        "isabelle" : "xx\\<^sub>F",
+        "ascii" : "xx",
+        "latex" : "\\otimes"
+      },
+      "Formula_Loli" : {
+        "isabelle" : "-o\\<^sub>F",
+        "ascii" : "-o",
+        "latex" : "\\multimap"
+      }
+    },
+
+    "Structure" : {
+      "Structure_Formula" : {
+        "type": "Formula",
+        "isabelle" : "_ \\<^sub>S",
+        "precedence": [330, 340]
+      },
+
+      "Structure_Freevar" : {
+        "type" : "string",
+        "isabelle" : "?\\<^sub>S _",
+        "isabelle_se" : "_",
+        "ascii" : "? _",
+        "latex" : "? _",
+        "latex_brackets": false,
+        "precedence": [340, 340],
+        "shallow" : false
+      },
+
+      "Structure_Zer" : {
+        "type" : "Structure_Zer_Op",
+        "isabelle" : "Z\\<^sub>S",
+        "isabelle_se" : "_",
+        "latex_brackets": false,
+        "shallow": false,
+        "precedence": [340, 340]
+      },
+
+      "Structure_Bin" : {
+        "type" : ["Structure", "Structure_Bin_Op", "Structure"],
+        "isabelle" : "B\\<^sub>S _",
+        "isabelle_se" : "_",
+        "shallow": false,
+        "precedence": [340,340,340, 341]
+      }
+    },
+
+    "Structure_Zer_Op" : {
+      "Structure_Neutral" : {
+        "isabelle" : "I\\<^sub>S",
+        "ascii" : "I",
+        "latex" : "\\cdot"
+      }
+    },
+
+    "Structure_Bin_Op" : {
+      "Structure_Comma" : {
+        "isabelle" : ",\\<^sub>S",
+        "ascii" : ",",
+        "latex" : ","
+      }
+    },
+
+    "Sequent" : {
+      "Sequent_Structure" : {
+        "type": "Structure"
+      },
+
+      "Sequent": {
+        "type" : ["Structure", "Structure"],
+        "isabelle" : "_ \\<turnstile>\\<^sub>S _",
+        "ascii" : "_ |- _",
+        "latex" : "_ \\vdash _",
+        "latex_brackets": false,
+        "precedence": [311, 311, 310]
+      }
+    }
+  },
+
+  "calc_structure_rules" : {
+    "RuleZer" : {
+      "Id" : {
+        "ascii" : "Id",
+        "latex" : "Id"
+      },
+      "Prem" : {
+        "ascii" : "Prem",
+        "latex" : "Prem",
+        "condition" : "(\\<lambda>x. seq = x)",
+        "locale" : "Premise seq"
+      },
+      "Partial" : {
+        "ascii" : "Partial",
+        "latex" : "Partial",
+        "condition" : "(\\<lambda>x. (case x of Sequent lhs rhs => struct = lhs \\<or> struct = rhs ))",
+        "locale" : "Part struct"
+      }
+    },
+
+    "RuleCut" : {
+      "SingleCut" : {
+        "ascii" : "Cut",
+        "latex" : "Cut",
+        "locale" : "CutFormula f",
+        "premise" : "(\\<lambda>x. Some [((?\\<^sub>S ''X'') \\<turnstile>\\<^sub>S f \\<^sub>S),(f \\<^sub>S \\<turnstile>\\<^sub>S (?\\<^sub>S ''Y''))])"
+      }
+    },
+
+    "RuleStruct" : {
+      "P_L"  : {
+        "ascii" : "P_L",
+        "latex" : "PL"
+      },
+      "P_R"  : {
+        "ascii" : "P_R",
+        "latex" : "PR"
+      },
+      "A_R"  : {
+        "ascii" : "A_R",
+        "latex" : "AR"
+      },
+      "A_R2"  : {
+        "ascii" : "A_R2",
+        "latex" : "AR"
+      },
+      "A_L"  : {
+        "ascii" : "A_L",
+        "latex" : "AL"
+      },
+      "A_L2"  : {
+        "ascii" : "A_L2",
+        "latex" : "AL"
+      },
+      "I_L_L"  : {
+        "ascii" : "I_L_L",
+        "latex" : "IL_L"
+      },
+      "I_L_L2"  : {
+        "ascii" : "I_L_L2",
+        "latex" : "IL_L"
+      },
+      "I_L_R"  : {
+        "ascii" : "I_L_R",
+        "latex" : "IL_R"
+      },
+      "I_L_R2"  : {
+        "ascii" : "I_L_R2",
+        "latex" : "IL_R"
+      },
+      "I_R_L"  : {
+        "ascii" : "I_R_L",
+        "latex" : "IR_L"
+      },
+      "I_R_L2"  : {
+        "ascii" : "I_R_L2",
+        "latex" : "IR_L"
+      },
+      "I_R_R"  : {
+        "ascii" : "I_R_R",
+        "latex" : "IR_R"
+      },
+      "I_R_R2"  : {
+        "ascii" : "I_R_R2",
+        "latex" : "IR_R"
+      }
+    },
+
+    "RuleU" : {
+      "Tensor_L" : {
+        "ascii" : "xx_L",
+        "latex" : "\\otimes_L"
+      },
+      "Loli_R" : {
+        "ascii" : "-o_R",
+        "latex" : "\\multimap_R"
+      }
+    },
+
+    "RuleBin" : {
+      "Tensor_R" : {
+        "ascii" : "xx_R",
+        "latex" : "\\otimes_R"
+      },
+      "Loli_L" : {
+        "ascii" : "-o_L",
+        "latex" : "\\multimap_L"
+      }
+    }
+  },
+
+  "rules" : {
+    "RuleZer" : {
+      "Id" : ["A?A |- A?A",    ""],
+      "Prem" : ["?X |- ?Y", ""],
+      "Partial" : ["?X |- ?Y", ""]
+    },
+    "RuleCut" : {
+      "SingleCut" : ["?X, ?Z |- ?Y", "?X |- F?A",  "?Z, F?A |- ?Y"]
+    },
+    "RuleStruct": {
+      "P_L" :    [
+        "(?X1, ?X2), (?Y1, ?Y2) |- ?Z",
+        "(?X1, ?Y1), (?X2, ?Y2) |- ?Z"
+      ],
+      "P_R" :    [
+        "?Z |- (?Y1, ?Y2), (?X1, ?X2)",
+        "?Z |- (?Y1, ?X1), (?Y2, ?X2)"
+      ],
+      "A_R" :    [
+        "?X |- ?Y1 , (?Y2 , ?Y3)",
+        "?X |- (?Y1 , ?Y2) , ?Y3"
+      ],
+      "A_R2" :    [
+        "?X |- (?Y1 , ?Y2) , ?Y3",
+        "?X |- ?Y1 , (?Y2 , ?Y3)"
+      ],
+      "A_L" :    [
+        "?Y1 , (?Y2 , ?Y3) |- ?X",
+        "(?Y1 , ?Y2) , ?Y3 |- ?X"
+      ],
+      "A_L2" :    [
+        "(?Y1 , ?Y2) , ?Y3 |- ?X",
+        "?Y1 , (?Y2 , ?Y3) |- ?X"
+      ],
+      "I_L_L" :   [
+        "?X |- ?Y",
+        "I, ?X |- ?Y"
+      ],
+      "I_L_L2" :   [
+        "I, ?X |- ?Y",
+        "?X |- ?Y"
+      ],
+      "I_L_R" :   [
+        "?X |- ?Y",
+        "?X, I |- ?Y"
+      ],
+      "I_L_R2" :   [
+        "?X, I |- ?Y",
+        "?X |- ?Y"
+      ],
+      "I_R_L" :   [
+        "?X |- ?Y",
+        "?X |- I, ?Y"
+      ],
+      "I_R_L2" :   [
+        "?X |- I, ?Y",
+        "?X |- ?Y"
+      ],
+      "I_R_R" :   [
+        "?X |- ?Y",
+        "?X |- ?Y, I"
+      ],
+      "I_R_R2" :   [
+        "?X |- ?Y, I",
+        "?X |- ?Y"
+      ]
+    },
+    "RuleU" : {
+      "Tensor_L" :    ["?X, F?A xx F?B |- F?C",    "?X, (F?A, F?B) |- F?C"],
+      "Loli_R" :   ["?X |- F?A -o F?B",    "?X, F?A |- F?B"]
+    },
+    "RuleBin" : {
+      "Tensor_R" :   ["?X, ?Y |- F?A xx F?B", "?X |- F?A", "?Y |- F?B"],
+      "Loli_L": ["(?X, ?Y), F?A -o F?B |- F?C", "?X |- F?A", "?Y, F?B |- F?C"]
+    }
+  }
+}
