@@ -18,6 +18,61 @@
       }
     },
 
+    "Atterm" : {
+      "Atterm": {
+        "type": "string",
+        "ascii": "_"
+      },
+      "Atterm_Freevar" : {
+        "type": "string",
+        "isabelle": "?\\<^sub>A\\<^sub>T _",
+        "isabelle_se": "_",
+        "ascii": "AT? _",
+        "latex": "?_{AT} _",
+        "precedence": [320, 320],
+        "sallow": false
+      }
+    },
+
+    "Term" : {
+      "Term_Atterm" : {
+        "type": "Atterm",
+        "isabelle" : "_ \\<^sub>A",
+        "isabelle_se" : "_ \\<^sub>A",
+        "precedence": [320, 330]
+      },
+      "Term_Freevar": {
+        "type" : "string",
+        "isabelle" : "?\\<^sub>T _",
+        "isabelle_se" : "_",
+        "ascii" : "T? _",
+        "latex" : "?_T _",
+        "latex_brackets": false,
+        "precedence": [340, 330],
+        "shallow" : false
+      },
+      "Term_Bin": {
+        "type" : ["Term", "Term_Bin_Op", "Term"],
+        "isabelle" : "B\\<^sub>T _",
+        "isabelle_se" : "_",
+        "shallow": false,
+        "precedence": [330,330,330, 331]
+      }
+    },
+
+    "Term_Bin_Op": {
+      "Term_Pair" : {
+        "isabelle" : "++\\<^sub>T",
+        "ascii" : "++",
+        "latex" : "++"
+      },
+      "Term_Lambda": {
+        "isabelle" : "ll\\<^sub>T",
+        "ascii" : "ll",
+        "latex" : "ll"
+      }
+    },
+
     "Formula" : {
       "Formula_Atprop" : {
         "type": "Atprop",
@@ -60,8 +115,10 @@
 
     "Structure" : {
       "Structure_Formula" : {
-        "type": "Formula",
-        "isabelle" : "_ \\<^sub>S",
+        "type": ["Term", "Formula"],
+        "ascii": "_ : _",
+        "latex": "_ : _",
+        "isabelle" : "_ : _ \\<^sub>S",
         "precedence": [330, 340]
       },
 

@@ -4,4 +4,4 @@ calculus parser
 
 ## Usage
 
-Use it with `node index.js`
+Use it with `make`
