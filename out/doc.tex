@@ -1,0 +1,112 @@
+% Article template for Mathematics Magazine
+% Revised 7/2002  Thanks for Greg St. George
+\documentclass[12pt]{article}
+\usepackage{amssymb}
+\usepackage[ngerman]{babel}
+\usepackage[utf8]{inputenc}
+\usepackage{prftree}
+\usepackage{amsmath}
+\usepackage{stmaryrd}
+\usepackage{pf2}
+\usepackage{graphicx}
+\usepackage{tikz}
+\usepackage{dot2texi}
+\usepackage{tabularx, array}
+\usetikzlibrary{shapes,arrows}
+\renewcommand{\baselinestretch}{1.2}
+%This is the command that spaces the manuscript for easy reading
+%todo
+\usepackage[colorinlistoftodos,prependcaption,textsize=tiny]{todonotes}
+\usepackage{xargs}                      % Use more than one optional parameter in a new commands
+\newcommandx{\QUESTION}[2][1=]{\todo[linecolor=none,backgroundcolor=blue!15,bordercolor=none,#1]{\textbf{QUESTION: }#2}}
+
+\pflongnumbers
+
+\newcolumntype{C}{>{\centering\arraybackslash$}X<{$}}
+\newcommand{\parr}{\rotatebox[origin=c]{180}{$\&$}}
+
+\begin{document}
+
+
+
+
+\subsubsection*{RuleZer}
+
+\begin{tabularx}{\linewidth}{CCC}
+  \prftree[r]{$Id$}{}{  * :  ? A     \vdash  * :  ? A     }
+&
+  \prftree[r]{$Prem$}{}{ \Gamma  \vdash \Delta  }
+&
+  \prftree[r]{$Partial$}{}{ \Gamma  \vdash \Delta  }
+\end{tabularx}
+
+
+\subsubsection*{RuleCut}
+
+\begin{tabularx}{\linewidth}{CCC}
+  \prftree[r]{$Cut$}{  \Theta    ,  * : A     \vdash \Delta  }{ \Gamma  \vdash  * : A   }{  \Gamma    , \Theta    \vdash \Delta  }
+\end{tabularx}
+
+
+\subsubsection*{RuleStruct}
+
+\begin{tabularx}{\linewidth}{CCC}
+  \prftree[r]{$PL$}{ (  \Gamma_1    , \Delta_1    )  ,  \Gamma_2    , \Delta_2      \vdash \Theta  }{ (  \Gamma_1    , \Gamma_2    )  ,  \Delta_1    , \Delta_2      \vdash \Theta  }
+&
+  \prftree[r]{$PR$}{ \Theta  \vdash (  \Delta_1    , \Gamma_1    )  ,  \Delta_2    , \Gamma_2      }{ \Theta  \vdash (  \Delta_1    , \Delta_2    )  ,  \Gamma_1    , \Gamma_2      }
+&
+  \prftree[r]{$AR$}{ \Gamma  \vdash (  \Delta_1    , \Delta_2    )  , \Delta_3    }{ \Gamma  \vdash  \Delta_1    ,  \Delta_2    , \Delta_3      }
+\\\\
+  \prftree[r]{$AR$}{ \Gamma  \vdash  \Delta_1    ,  \Delta_2    , \Delta_3      }{ \Gamma  \vdash (  \Delta_1    , \Delta_2    )  , \Delta_3    }
+&
+  \prftree[r]{$AL$}{ (  \Delta_1    , \Delta_2    )  , \Delta_3    \vdash \Gamma  }{  \Delta_1    ,  \Delta_2    , \Delta_3      \vdash \Gamma  }
+&
+  \prftree[r]{$AL$}{  \Delta_1    ,  \Delta_2    , \Delta_3      \vdash \Gamma  }{ (  \Delta_1    , \Delta_2    )  , \Delta_3    \vdash \Gamma  }
+\\\\
+  \prftree[r]{$IL_L$}{    \cdot    , \Gamma    \vdash \Delta  }{ \Gamma  \vdash \Delta  }
+&
+  \prftree[r]{$IL_L$}{ \Gamma  \vdash \Delta  }{    \cdot    , \Gamma    \vdash \Delta  }
+&
+  \prftree[r]{$IL_R$}{  \Gamma    ,   \cdot    \vdash \Delta  }{ \Gamma  \vdash \Delta  }
+\\\\
+  \prftree[r]{$IL_R$}{ \Gamma  \vdash \Delta  }{  \Gamma    ,   \cdot    \vdash \Delta  }
+&
+  \prftree[r]{$IR_L$}{ \Gamma  \vdash    \cdot    , \Delta    }{ \Gamma  \vdash \Delta  }
+&
+  \prftree[r]{$IR_L$}{ \Gamma  \vdash \Delta  }{ \Gamma  \vdash    \cdot    , \Delta    }
+\\\\
+  \prftree[r]{$IR_R$}{ \Gamma  \vdash  \Delta    ,   \cdot    }{ \Gamma  \vdash \Delta  }
+&
+  \prftree[r]{$IR_R$}{ \Gamma  \vdash \Delta  }{ \Gamma  \vdash  \Delta    ,   \cdot    }
+\end{tabularx}
+
+
+\subsubsection*{RuleU}
+
+\begin{tabularx}{\linewidth}{CCC}
+  \prftree[r]{$\otimes_L$}{  \Gamma    ,   * : A     ,  * : B       \vdash  * : C   }{  \Gamma    ,  * :  A    \otimes B       \vdash  * : C   }
+&
+  \prftree[r]{$\multimap_R$}{  \Gamma    ,  * : A     \vdash  * : B   }{ \Gamma  \vdash  * :  A    \multimap B     }
+\end{tabularx}
+
+
+\subsubsection*{RuleBin}
+
+\begin{tabularx}{\linewidth}{CCC}
+  \prftree[r]{$\otimes_R$}{ \Delta  \vdash  * : B   }{ \Gamma  \vdash  * : A   }{  \Gamma    , \Delta    \vdash  * :  A    \otimes B     }
+&
+  \prftree[r]{$\multimap_L$}{  \Delta    ,  * : B     \vdash  * : C   }{ \Gamma  \vdash  * : A   }{  \Gamma    ,  \Delta    ,  * :  A    \multimap B         \vdash  * : C   }
+\end{tabularx}
+
+
+\subsubsection*{RuleNat}
+
+\begin{tabularx}{\linewidth}{CCC}
+  \prftree[r]{$nat_0$}{}{ \Gamma  \vdash    0     :   Nat      }
+&
+  \prftree[r]{$nat_s$}{  \Gamma    ,  n  :   Nat        \vdash     S n   :   Nat      }
+\end{tabularx}
+
+
+
+\end{document}

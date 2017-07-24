@@ -1,0 +1,43 @@
+#!/usr/bin/env node
+
+const calc = require('../ll.json');
+const clc = require('cli-color');
+
+const calcParser = require("../lib/parser.js");
+const Parser = calcParser(calc);
+const calc_ = Parser.calc;
+
+
+var db = [];
+Object.keys(calc_.calc_structure).forEach(ctxName => {
+  Object.keys(calc_.calc_structure[ctxName]).forEach(ruleName => {
+    let rule = calc_.calc_structure[ctxName][ruleName];
+    let precedence = "precedence" in rule && rule.precedence.slice(-1)[0] || 0;
+
+    let ascii = rule.ascii || "";
+
+    db.push({
+      ctxName,
+      ruleName,
+      precedence,
+      ascii
+    });
+  })
+})
+
+
+let str = db
+  .sort((a,b) => a.precedence < b.precedence)
+  .map(obj => `${obj.precedence}  ${obj.ctxName}.${obj.ruleName}`)
+  .join("\n");
+console.log(str)
+
+
+
+// Object.keys(calc.calc_structure)
+// .forEach(ctxName => {console.log("\n");Object.keys(calc.calc_structure[ctxName]).forEach(ruleName => {
+//   let ctx = calc.calc_structure[ctxName];
+//   let rule = ctx[ruleName];
+//
+//   console.log(`${ctxName.slice(0,5)} ${ruleName.slice(0,3)}..${ruleName.slice(-3)} - ${"ascii" in rule && rule.ascii.slice(0,2) || clc.red("x")}`);
+// })})

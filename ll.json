@@ -3,9 +3,16 @@
 
   "calc_structure" : {
     "Atprop" : {
+      "Atprop_Parametric" : {
+        "type": ["string", "TermList"],
+        "ascii" : "_ ( _ )",
+        "latex" : "_ ( _ )",
+        "precedence": [320, 320]
+      },
       "Atprop" : {
-        "type":"string",
-        "ascii" : "_"
+        "type": "string",
+        "ascii" : "_",
+        "precedence": [320, 320]
       },
       "Atprop_Freevar" : {
         "type" : "string",
@@ -21,7 +28,8 @@
     "Atterm" : {
       "Atterm": {
         "type": "string",
-        "ascii": "_"
+        "ascii": "TT? _",
+        "precedence": [320, 320]
       },
       "Atterm_Freevar" : {
         "type": "string",
@@ -31,6 +39,19 @@
         "latex": "?_{AT} _",
         "precedence": [320, 320],
         "sallow": false
+      }
+    },
+
+    "TermList" : {
+      "Term_Atterm": {
+        "type": "Term",
+        "precedence": [310, 311]
+      },
+      "Term_Bin_Op": {
+        "type": ["Term", "Term"],
+        "ascii": "_ , _",
+        "latex": "_ , _",
+        "precedence": [310,310, 311]
       }
     },
 
@@ -51,12 +72,30 @@
         "precedence": [340, 330],
         "shallow" : false
       },
-      "Term_Bin": {
-        "type" : ["Term", "Term_Bin_Op", "Term"],
-        "isabelle" : "B\\<^sub>T _",
-        "isabelle_se" : "_",
+      "Term_Any" : {
+        "isabelle" : "I\\<^sub>T",
+        "ascii" : "*",
+        "latex" : "*"
+      },
+      "Term_Concatenate": {
+        "type" : ["Term", "Term"],
+        "isabelle" : "_ . _",
+        "isabelle_se" : "_ . _",
+        "latex": "_ _",
+        "ascii": "_ . _ ",
+        "latex_brackets": false,
         "shallow": false,
-        "precedence": [330,330,330, 331]
+        "precedence": [330,330, 331]
+      },
+      "Term_Pair": {
+        "type" : ["Term", "Term"],
+        "isabelle" : "< _ , _ >",
+        "isabelle_se" : "< _ , _ >",
+        "latex": "< _ , _ >",
+        "ascii": "< _ , _ >",
+        "latex_brackets": false,
+        "shallow": false,
+        "precedence": [330,330, 331]
       }
     },
 
@@ -114,11 +153,19 @@
     },
 
     "Structure" : {
-      "Structure_Formula" : {
+      "Structure_Term_Formula" : {
         "type": ["Term", "Formula"],
         "ascii": "_ : _",
         "latex": "_ : _",
         "isabelle" : "_ : _ \\<^sub>S",
+        "precedence": [310, 320]
+      },
+
+      "Structure_Formula" : {
+        "type": ["Formula"],
+        "ascii": "_",
+        "latex": "_",
+        "isabelle" : "_ \\<^sub>S",
         "precedence": [330, 340]
       },
 
@@ -129,7 +176,7 @@
         "ascii" : "? _",
         "latex" : "? _",
         "latex_brackets": false,
-        "precedence": [340, 340],
+        "precedence": [310, 310],
         "shallow" : false
       },
 
@@ -139,7 +186,7 @@
         "isabelle_se" : "_",
         "latex_brackets": false,
         "shallow": false,
-        "precedence": [340, 340]
+        "precedence": [310, 310]
       },
 
       "Structure_Bin" : {
@@ -147,7 +194,7 @@
         "isabelle" : "B\\<^sub>S _",
         "isabelle_se" : "_",
         "shallow": false,
-        "precedence": [340,340,340, 341]
+        "precedence": [310,310,310, 311]
       }
     },
 
@@ -178,7 +225,7 @@
         "ascii" : "_ |- _",
         "latex" : "_ \\vdash _",
         "latex_brackets": false,
-        "precedence": [311, 311, 310]
+        "precedence": [306, 306, 305]
       }
     }
   },
@@ -291,17 +338,28 @@
         "ascii" : "-o_L",
         "latex" : "\\multimap_L"
       }
+    },
+
+    "RuleNat" : {
+      "Nat_Zero" : {
+        "ascii" : "nat_0",
+        "latex" : "nat_0"
+      },
+      "Nat_Suc" : {
+        "ascii" : "nat_s",
+        "latex" : "nat_s"
+      }
     }
   },
 
   "rules" : {
     "RuleZer" : {
-      "Id" : ["A?A |- A?A",    ""],
+      "Id" : ["* : A?A |- * : A?A",    ""],
       "Prem" : ["?X |- ?Y", ""],
       "Partial" : ["?X |- ?Y", ""]
     },
     "RuleCut" : {
-      "SingleCut" : ["?X, ?Z |- ?Y", "?X |- F?A",  "?Z, F?A |- ?Y"]
+      "SingleCut" : ["?X, ?Z |- ?Y", "?X |- * : F?A",  "?Z, * : F?A |- ?Y"]
     },
     "RuleStruct": {
       "P_L" :    [
@@ -362,12 +420,20 @@
       ]
     },
     "RuleU" : {
-      "Tensor_L" :    ["?X, F?A xx F?B |- F?C",    "?X, (F?A, F?B) |- F?C"],
-      "Loli_R" :   ["?X |- F?A -o F?B",    "?X, F?A |- F?B"]
+      "Tensor_L" :    ["?X, * : F?A xx F?B |- * : F?C",    "?X, (* : F?A, * : F?B) |- * : F?C"],
+      "Loli_R" :   ["?X |- * : F?A -o F?B",    "?X, * : F?A |- * : F?B"]
     },
     "RuleBin" : {
-      "Tensor_R" :   ["?X, ?Y |- F?A xx F?B", "?X |- F?A", "?Y |- F?B"],
-      "Loli_L": ["(?X, ?Y), F?A -o F?B |- F?C", "?X |- F?A", "?Y, F?B |- F?C"]
+      "Tensor_R" :   ["?X, ?Y |- * : F?A xx F?B", "?X |- * : F?A", "?Y |- * : F?B"],
+      "Loli_L": ["?X, ?Y, * : F?A -o F?B |- * : F?C", "?X |- * : F?A", "?Y, * : F?B |- * : F?C"]
+    },
+    "RuleNat" : {
+      "Nat_Zero": [
+        "?X |- TT? 0 : Nat", ""
+      ],
+      "Nat_Suc": [
+        "?X, T? n : Nat |- TT? S. T? n: Nat"
+      ]
     }
   }
 }
