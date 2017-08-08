@@ -1,5 +1,7 @@
 #!/usr/bin/env node
 
+// Generates a latex documentation file
+
 
 // TODO - come up with a notation standard for latex
 //        I have to discuss this with jack

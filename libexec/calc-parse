@@ -1,6 +1,8 @@
 #!/usr/bin/env node
 // TODO - to get rid of shift-reduce conflicts for "e bin_op e" expressions, I cannot have non-terminal bin_op rules, therefore they should be propagated up to generate multiple "e '+' e" rules.
 
+const ncp = require("copy-paste");
+
 const DEBUG = !!process.env["DEBUG"];
 const args = process.argv.slice(2);
 let formulaStr = "(?X, ?X), ?Y |- < AT? B , AT? C > : F?A xx F?B";
@@ -12,11 +14,11 @@ const parser = calcParser(calc).parser;
 
 let node = parser.parse(formula)
 let tree_str = node.formatTree([ "location", "ownprecedence" ]);
-console.log(tree_str);
+// console.log(tree_str);
 
 
-let latex_str = node.toString({style: "latex_se", brackets: true});
+let latex_str = node.toString({style: "isabelle_se", brackets: true});
 
-console.log(latex_str);
+ncp.copy("("+latex_str+")")
 
-
+console.log("String copied to clipboard:\n"+latex_str);

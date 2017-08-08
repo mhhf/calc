@@ -1,5 +1,5 @@
 # Fdb version 3
-["pdflatex"] 1500568455 "doc.tex" "doc.pdf" "doc" 1500568455
+["pdflatex"] 1500991065 "doc.tex" "doc.pdf" "doc" 1500991065
   "/usr/local/texlive/2015basic/texmf-dist/fonts/tfm/public/amsfonts/cmextra/cmex7.tfm" 1246382020 1004 54797486969f23fa377b128694d548df ""
   "/usr/local/texlive/2015basic/texmf-dist/fonts/tfm/public/amsfonts/cmextra/cmex8.tfm" 1246382020 988 bdf658c3bfc2d96d3c8b02cfc1c94c20 ""
   "/usr/local/texlive/2015basic/texmf-dist/fonts/tfm/public/amsfonts/symbols/msam10.tfm" 1246382020 916 f87d7c45f9c908e672703b83b72241a3 ""
@@ -165,10 +165,10 @@
   "/usr/local/texlive/2015basic/texmf-var/fonts/map/pdftex/updmap/pdftex.map" 1485619065 410670 035a2f7d615015eac789fd10296310d6 ""
   "/usr/local/texlive/2015basic/texmf-var/web2c/pdftex/pdflatex.fmt" 1434548785 2499808 094ae36c4f42b6b16b28aadbfa403b60 ""
   "/usr/local/texlive/2015basic/texmf.cnf" 1432478332 628 096f87b1123b576e7bac81e7554a490e ""
-  "doc.aux" 1500568455 186 452dc42dbedc01d349cc718f4b8fc1cf ""
-  "doc.tex" 1500568455 4160 fe33f2516e874e20d3f67a0c0f2511bb ""
+  "doc.aux" 1500991065 186 452dc42dbedc01d349cc718f4b8fc1cf ""
+  "doc.tex" 1500991064 3583 0cd90d0d19fb6523ad1057067da790fa ""
   "doc.w18" 0 -1 0 ""
   (generated)
-  "doc.log"
   "doc.pdf"
+  "doc.log"
   "doc.aux"

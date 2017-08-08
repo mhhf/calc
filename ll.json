@@ -7,11 +7,14 @@
         "type": ["string", "TermList"],
         "ascii" : "_ ( _ )",
         "latex" : "_ ( _ )",
-        "precedence": [320, 320]
+        "isabelle" : "_ \\<lparr> _ \\<rparr>",
+        "precedence": [320, 320, 320]
       },
       "Atprop" : {
         "type": "string",
         "ascii" : "_",
+        "isabelle": "_ \\<^sub>F",
+        "isabelle_se": "_ \\<^sub>F",
         "precedence": [320, 320]
       },
       "Atprop_Freevar" : {
@@ -29,6 +32,8 @@
       "Atterm": {
         "type": "string",
         "ascii": "TT? _",
+        "isabelle": "_ \\<^sub>T",
+        "isabelle_se": "_ \\<^sub>T",
         "precedence": [320, 320]
       },
       "Atterm_Freevar" : {
@@ -38,7 +43,7 @@
         "ascii": "AT? _",
         "latex": "?_{AT} _",
         "precedence": [320, 320],
-        "sallow": false
+        "shallow": false
       }
     },
 
@@ -51,6 +56,8 @@
         "type": ["Term", "Term"],
         "ascii": "_ , _",
         "latex": "_ , _",
+        "isabelle": "_ ,\\<^sub>T _",
+        "isabelle_se": "_ ,\\<^sub>T _",
         "precedence": [310,310, 311]
       }
     },
@@ -58,8 +65,8 @@
     "Term" : {
       "Term_Atterm" : {
         "type": "Atterm",
-        "isabelle" : "_ \\<^sub>A",
-        "isabelle_se" : "_ \\<^sub>A",
+        "isabelle" : "_ \\<^sub>A\\<^sub>T",
+        "isabelle_se" : "_ \\<^sub>A\\<^sub>T",
         "precedence": [320, 330]
       },
       "Term_Freevar": {
@@ -79,12 +86,11 @@
       },
       "Term_Concatenate": {
         "type" : ["Term", "Term"],
-        "isabelle" : "_ . _",
-        "isabelle_se" : "_ . _",
+        "isabelle" : "_ \\<cdot>\\<^sub>T _",
+        "isabelle_se" : "_ \\<cdot>\\<^sub>T _",
         "latex": "_ _",
         "ascii": "_ . _ ",
         "latex_brackets": false,
-        "shallow": false,
         "precedence": [330,330, 331]
       },
       "Term_Pair": {
@@ -115,8 +121,8 @@
     "Formula" : {
       "Formula_Atprop" : {
         "type": "Atprop",
-        "isabelle" : "_ \\<^sub>A",
-        "isabelle_se" : "_ \\<^sub>A",
+        "isabelle" : "_ \\<^sub>A\\<^sub>F",
+        "isabelle_se" : "_ \\<^sub>A\\<^sub>F",
         "precedence": [320, 330]
       },
       "Formula_Freevar" : {
@@ -133,7 +139,6 @@
       "Formula_Bin" : {
         "type" : ["Formula", "Formula_Bin_Op", "Formula"],
         "isabelle" : "B\\<^sub>F _",
-        "isabelle_se" : "_",
         "shallow": false,
         "precedence": [330,330,330, 331]
       }
@@ -157,8 +162,8 @@
         "type": ["Term", "Formula"],
         "ascii": "_ : _",
         "latex": "_ : _",
-        "isabelle" : "_ : _ \\<^sub>S",
-        "precedence": [310, 320]
+        "isabelle" : "_ :\\<^sub>T\\<^sub>F _",
+        "precedence": [310, 310, 320]
       },
 
       "Structure_Formula" : {
@@ -183,7 +188,6 @@
       "Structure_Zer" : {
         "type" : "Structure_Zer_Op",
         "isabelle" : "Z\\<^sub>S",
-        "isabelle_se" : "_",
         "latex_brackets": false,
         "shallow": false,
         "precedence": [310, 310]
@@ -192,7 +196,6 @@
       "Structure_Bin" : {
         "type" : ["Structure", "Structure_Bin_Op", "Structure"],
         "isabelle" : "B\\<^sub>S _",
-        "isabelle_se" : "_",
         "shallow": false,
         "precedence": [310,310,310, 311]
       }
@@ -235,18 +238,6 @@
       "Id" : {
         "ascii" : "Id",
         "latex" : "Id"
-      },
-      "Prem" : {
-        "ascii" : "Prem",
-        "latex" : "Prem",
-        "condition" : "(\\<lambda>x. seq = x)",
-        "locale" : "Premise seq"
-      },
-      "Partial" : {
-        "ascii" : "Partial",
-        "latex" : "Partial",
-        "condition" : "(\\<lambda>x. (case x of Sequent lhs rhs => struct = lhs \\<or> struct = rhs ))",
-        "locale" : "Part struct"
       }
     },
 
@@ -324,7 +315,7 @@
         "latex" : "\\otimes_L"
       },
       "Loli_R" : {
-        "ascii" : "-o_R",
+        "ascii" : "lolli_R",
         "latex" : "\\multimap_R"
       }
     },
@@ -335,7 +326,7 @@
         "latex" : "\\otimes_R"
       },
       "Loli_L" : {
-        "ascii" : "-o_L",
+        "ascii" : "lolli_L",
         "latex" : "\\multimap_L"
       }
     },
@@ -354,9 +345,7 @@
 
   "rules" : {
     "RuleZer" : {
-      "Id" : ["* : A?A |- * : A?A",    ""],
-      "Prem" : ["?X |- ?Y", ""],
-      "Partial" : ["?X |- ?Y", ""]
+      "Id" : ["* : A?A |- * : A?A",    ""]
     },
     "RuleCut" : {
       "SingleCut" : ["?X, ?Z |- ?Y", "?X |- * : F?A",  "?Z, * : F?A |- ?Y"]
@@ -429,10 +418,10 @@
     },
     "RuleNat" : {
       "Nat_Zero": [
-        "?X |- TT? 0 : Nat", ""
+        "?X |- TT? Z : NNat", ""
       ],
       "Nat_Suc": [
-        "?X, T? n : Nat |- TT? S. T? n: Nat"
+        "?X |- TT? S. T? n: NNat", "?X |- T? n: NNat"
       ]
     }
   }

@@ -1,6 +1,6 @@
 THIS IS EXPERIMENTAL STUFF WHICH IS NOT DOCUMENTED
 
-calculus parser
+Inspired by [calculus toolbox](https://goodlyrottenapple.github.io/calculus-toolbox/doc/introduction.html)
 
 ## Install
 

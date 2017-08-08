@@ -48,9 +48,90 @@ const drawPrecedence = function () {
 
 }
 
+const drawGrammar = function () {
+  let grammar = Parser.grammar;
+  Object.keys(grammar.bnf).forEach(k => {
+    let rules = grammar.bnf[k].map(r => r[0].trim())
+    console.log(`${k} = \n    ${rules.join("\n  | ")}\n`);
+  })
+}
+
+const drawDepGraph = function () {
+  let calc = Parser.calc.calc_structure;
+  let depGraph = {};
+  let keys = Object.keys(calc)
+    .forEach(ctxName => {
+    let ctx = calc[ctxName];
+    let deps = {};
+      Object.keys(ctx)
+      .forEach(ruleName => {
+      let rule = ctx[ruleName];
+      if("type" in rule) (Array.isArray(rule.type) ? rule.type : [])
+          .forEach(t => deps[t] = true)
+    })
+    depGraph[ctxName] = Object.keys(deps);
+  });
+  let depGraphStr = JSON.stringify(depGraph, false, 2);
+  let depOrder = [];
+  let got = true;
+  let rmKey = key => Object.keys(depGraph)
+    .forEach(k => {
+      let i = depGraph[k].indexOf(key);
+      if(i > -1) {
+        depGraph[k].splice(i, 1);
+      }
+    })
+  // rm mutual
+  Object.keys(depGraph)
+  .forEach(key => {
+    let i = depGraph[key].indexOf(key);
+    if(i > -1) {
+      depGraph[key].splice(i, 1)
+    }
+  })
+  rmKey("string");
+  while (got) {
+    got = false;
+    let rmEl = Object.keys(depGraph)
+    .find(e => depGraph[e].length == 0)
+    if(rmEl) {
+      got = true;
+      depOrder.push(rmEl);
+      delete depGraph[rmEl];
+      rmKey(rmEl);
+    }
+  }
+  if(Object.keys(depGraph).length == 0) {
+    console.log(`${clc.green("Termination order found:")}\n  ${depOrder.join("\n  ")}`);
+  } else {
+    console.log(clc.red("Graph contains non-trivial cycles!"), depGraphStr);
+  }
+}
+
+
+if(args.length === 0) {
+console.log(`
+  CALC DEBUGGER
+
+  Usage:
+    calc debug precedence  - precedence list
+    calc debug grammar     - EBNF grammar of the calculus structure
+    calc debug depgraph    - nonterminal dependencies
+
+`);
+}
+
 
 if(args.indexOf("precedence") > -1) {
   drawPrecedence();
+}
+
+if(args.indexOf("grammar") > -1) {
+  drawGrammar();
+}
+
+if(args.indexOf("depgraph") > -1) {
+  drawDepGraph();
 }
 
 
