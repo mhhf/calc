@@ -1,0 +1,46 @@
+#!/usr/bin/env node
+
+const calc = require('../ll.json');
+const clc = require('cli-color');
+const helper = require('../lib/helper.js');
+
+const calcParser = require("../lib/parser.js");
+const Parser = calcParser(calc);
+const calc_ = Parser.calc;
+
+
+let args = process.argv.slice(2);
+
+var db = [];
+Object.keys(calc_.calc_structure).forEach(ctxName => {
+  Object.keys(calc_.calc_structure[ctxName]).forEach(ruleName => {
+    let rule = calc_.calc_structure[ctxName][ruleName];
+    let types = Array.isArray(rule.type) ? rule.type : (rule.type ? [rule.type] : [] );
+    let precedence = "precedence" in rule && rule.precedence.slice(-1)[0] || 0;
+
+    let tmp = rule.ascii || "";
+
+    let i=0;
+    while((tmp.match(/\s+(_)|(_)\s+|^(_)$/) || []).length > 0) {
+      tmp = tmp.replace(/\s+(_)|(_)\s+|^(_)$/, " "+types[i++]+ " " );
+    }
+    let ascii = tmp.trim().replace(/\s+/g," ");
+
+
+    db.push({
+      ctxName,
+      ruleName,
+      precedence,
+      ascii
+    });
+  })
+})
+
+db = db.sort((a, b) => b.precedence - a.precedence);
+
+let attrs = ["precedence", "ascii", "ctxName", "ruleName"];
+
+let formattedTable = helper.formatDb(db, attrs);
+
+console.log(formattedTable)
+

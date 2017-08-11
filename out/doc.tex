@@ -34,10 +34,6 @@
 
 \begin{tabularx}{\linewidth}{CCC}
   \prftree[r]{$Id$}{}{* : ? A \vdash * : ? A}
-&
-  \prftree[r]{$Prem$}{}{\Gamma \vdash \Delta}
-&
-  \prftree[r]{$Partial$}{}{\Gamma \vdash \Delta}
 \end{tabularx}
 
 
@@ -102,9 +98,9 @@
 \subsubsection*{RuleNat}
 
 \begin{tabularx}{\linewidth}{CCC}
-  \prftree[r]{$nat_0$}{}{\Gamma \vdash 0 : Nat}
+  \prftree[r]{$nat_0$}{}{\Gamma \vdash Z : Nat}
 &
-  \prftree[r]{$nat_s$}{\Gamma , n : Nat \vdash S n : Nat}
+  \prftree[r]{$nat_s$}{\Gamma \vdash n : Nat}{\Gamma \vdash ( S ) n : Nat}
 \end{tabularx}
 
 

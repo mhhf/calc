@@ -1,0 +1,32 @@
+#!/usr/bin/env node
+
+const calc = require('../ll.json');
+const helper = require("../lib/helper.js");
+const SHA3 = require("sha3");
+const sha3 = str => {
+  var d = new SHA3.SHA3Hash(224);
+  d.update(str);
+  return d.digest('hex');
+}
+
+const calcParser = require("../lib/parser.js");
+const Parser = calcParser(calc);
+const parser = Parser.parser;
+
+let args = process.argv.slice(2);
+
+let formulaStr = "(?X, ?X), ?Y |- < AT? B , AT? C > : F?A xx F?B";
+const formula = args && args[0] || formulaStr;
+
+let node = parser.parse(formula)
+let tree_str = node.formatTree([ "location", "ascii", "ownprecedence" ]);
+
+console.log(tree_str);
+
+let latexTree = node.toTree("", true, ["ascii", "constr"])
+console.log(helper.tree2dot(latexTree, ["ascii", "constr"]));
+
+
+let str = node.toString({style: "ascii", brackets: true});
+
+console.log("\n\n", str);

@@ -1,0 +1,9 @@
+echo "CALC DEBUGGER
+
+  Usage:
+    calc debug precedence            - precedence list
+    calc debug grammar               - EBNF grammar of the calculus structure
+    calc debug depgraph              - nonterminal dependencies
+    calc debug formula <str>         - debug
+"
+

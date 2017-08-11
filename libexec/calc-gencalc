@@ -78,6 +78,9 @@ writeFileSync(path.join(out_path, "calculus_core_se.thy"), calc_core_thy);
 
 let calculus = [];
 Object.keys(calc.rules).forEach(ctx => {
+  let metaCtx = calc.calc_structure_rules_meta.Contexts[ctx];
+  let isSimp = "simp" in metaCtx && metaCtx.simp;
+  let simp = isSimp ? "[simp]" : "";
   Object.keys(calc.rules[ctx]).forEach((ruleName, i) => {
     let ruleDef = calc.rules[ctx][ruleName];
     let asciiRuleName = calc.calc_structure_rules[ctx][ruleName].ascii;
@@ -91,15 +94,17 @@ Object.keys(calc.rules).forEach(ctx => {
         brackets: true
       }))
     .map(r => "derivable (" + r + ")")
-    .join(" \\<Longrightarrow> ")
+    .join("\n  \\<Longrightarrow> ")
 
-    calculus.push(`${asciiRuleName}: "${isabelle_rule}"`);
+
+
+    calculus.push(`${asciiRuleName}${simp}:\n     "${isabelle_rule}"`);
 
   })
 })
 
 let ccc = calculus
-.join("\n| ")
+.join("\n\n| ")
 
 obj.ccc = ccc;
 

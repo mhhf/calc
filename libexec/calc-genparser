@@ -5,20 +5,13 @@ const ncp = require("copy-paste");
 
 const DEBUG = !!process.env["DEBUG"];
 const args = process.argv.slice(2);
-let formulaStr = "(?X, ?X), ?Y |- < AT? B , AT? C > : F?A xx F?B";
-const formula = args && args[0] || formulaStr;
+const fs = require("fs");
+const path = require("path");
 
 const calc = require('../ll.json');
 const calcParser = require("../lib/parser.js");
 const parser = calcParser(calc).parser;
 
-
-let node = parser.parse(formula)
-let tree_str = node.formatTree([ "location", "ownprecedence" ]);
-
-
-let latex_str = node.toString({style: "isabelle_se", brackets: true});
-
-ncp.copy("(" + latex_str + ")")
-
-console.log("String copied to clipboard:\n" + latex_str);
+const parserCode = parser.generate({moduleMain: "{}"});
+fs.writeFileSync(path.join(__dirname, "../out/parser.js"), parserCode)
+fs.writeFileSync(path.join(__dirname, "../out/calc.json"), JSON.stringify(calc, false, 2))

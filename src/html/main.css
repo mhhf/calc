@@ -1,0 +1,41 @@
+code {
+  white-space: pre;
+}
+
+
+.inferenceRule {
+  position: relative;
+  display: inline-block;
+}
+
+.premisses, .conclusion {
+  display: block;
+}
+
+.rules {
+  display: inline-block;
+}
+
+.name {
+  padding-left: 8px;
+  display: inline-block;
+  bottom: 12px;
+  position: absolute;
+  padding-left: 8px;
+}
+
+.formula {
+  padding: 2px 12px;
+}
+
+.formula:hover {
+  background: #ddd;
+}
+
+.conclusion {
+  text-align: center;
+}
+
+.premisses > span {
+  border-bottom: 1px solid #000;
+}

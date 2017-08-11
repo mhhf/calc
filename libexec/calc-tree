@@ -1,0 +1,6 @@
+#!/usr/bin/env bash
+rm out/graph.dot
+rm out/graph.png
+PATH=${0%/*/*}/libexec:$PATH calc treee "${1}" >> out/graph.dot
+dot -Tpng out/graph.dot -o ./out/graph.png
+open out/graph.png

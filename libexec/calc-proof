@@ -1,0 +1,88 @@
+#!/usr/bin/env node
+// TODO - to get rid of shift-reduce conflicts for "e bin_op e" expressions, I cannot have non-terminal bin_op rules, therefore they should be propagated up to generate multiple "e '+' e" rules.
+
+var clc = require('cli-color');
+const compare = require("../lib/compare.js");
+const sub = require("../lib/substitute.js");
+
+const prompt = require('readline-sync');
+
+const DEBUG = !!process.env["DEBUG"];
+const args = process.argv.slice(2);
+let formulaStr = "I |- TT? S. TT? S. TT? Z : NNat";
+let formulaStr2 = "I |- TT? S. T? n: Nat";
+
+const f1 = args && args[0] || formulaStr;
+const f2 = args && args[1] || formulaStr2;
+
+const calc = require('../ll.json');
+const calcParser = require("../lib/parser.js");
+const parser = calcParser(calc).parser;
+
+// todo - better meme
+const testApply = target => {
+  var options = [];
+  Object.keys(calc.rules).forEach(ctxName => {
+    let ctx = calc.rules[ctxName];
+    Object.keys(ctx).forEach(ruleName => {
+      let rule = ctx[ruleName];
+      let asciiName = calc.calc_structure_rules[ctxName][ruleName].ascii;
+      let conclusion = rule[0];
+      // todo - better meme
+      let n2 = parser.parse(conclusion)
+      let unifier = compare(target, n2);
+      if(!!unifier) {
+        let remaining = rule.slice(1)
+        .filter(r => r !== "")
+        .map(r => parser.parse(r))
+        .map(r => unifier.reduceRight((rule, u) => sub(rule, u[0], u[1]), r))
+        options.push({
+          rulePath: `${ctxName}.${ruleName}`,
+          newTasks: remaining,
+          unifier: unifier,
+          asciiName: asciiName
+        });
+        // console.log(`${ctxName}.${ruleName}\n  ${remaining}\n`);
+        // console.log("    "+ unifier.map(u => u.map(r => r.toString()).join(" = ")).join("\n    "));
+      }
+    })
+  })
+  return options;
+}
+
+const stateOutput = () => {
+  let out = state
+  .map(rule => rule.toString())
+  .map((rule, i) => ` ${i === currentTask ? ">" : " "} ${i}.   ${rule}`)
+  .join("\n")
+  console.log(`\n\nState: \n\n${out}\n`);
+}
+
+var currentTask = 0;
+var state = [parser.parse(f1)];
+var task;
+var options = []
+var isabellePf = `lemma "derivable (${state[0].toString({style: "isabelle_se"})})"`
+var proof = [];
+
+do {
+  if(typeof task === "string" && (task = parseInt(task))) {
+    state.splice(currentTask, 1);
+    state = state.concat(options[task].newTasks);
+    proof.push(`apply (rule ${options[task].asciiName})`)
+    if(state.length === 0) {
+      console.log(clc.green("QED"));
+      break;
+    }
+  }
+  stateOutput();
+
+  options = testApply(state[currentTask]);
+  let draw = options.map((o, i) => ` ${i}.  ${o.rulePath}\n  ${o.newTasks.map(t => t.toString()).join("\n  ")}\n`)
+  console.log(`Proceed with: \n${draw.join("\n")}`);
+} while((task = prompt.question('task [0] > ') || 0) !== "q")
+
+console.log(`proof:\n\n${isabellePf}\n  ${ proof.join("\n  ") }\n done`);
+
+
+

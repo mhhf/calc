@@ -32,6 +32,7 @@
       "Atterm": {
         "type": "string",
         "ascii": "TT? _",
+        "latex": "_",
         "isabelle": "_ \\<^sub>T",
         "isabelle_se": "_ \\<^sub>T",
         "precedence": [320, 320]
@@ -88,7 +89,7 @@
         "type" : ["Term", "Term"],
         "isabelle" : "_ \\<cdot>\\<^sub>T _",
         "isabelle_se" : "_ \\<cdot>\\<^sub>T _",
-        "latex": "_ _",
+        "latex": " _   _ ",
         "ascii": "_ . _ ",
         "latex_brackets": false,
         "precedence": [330,330, 331]
@@ -130,7 +131,7 @@
         "isabelle" : "?\\<^sub>F _",
         "isabelle_se" : "_",
         "ascii" : "F? _",
-        "latex" : "?_F _",
+        "latex" : " _",
         "latex_brackets": false,
         "precedence": [340, 330],
         "shallow" : false
@@ -229,6 +230,33 @@
         "latex" : "_ \\vdash _",
         "latex_brackets": false,
         "precedence": [306, 306, 305]
+      }
+    }
+  },
+
+  "calc_structure_rules_meta" : {
+    "Contexts" : {
+      "RuleZer": {
+        "label": "Axioms",
+        "simp": true
+      },
+      "RuleCut": {
+        "label": "Cut rule"
+      },
+      "RuleStruct": {
+        "label": "Structural rules"
+      },
+      "RuleU": {
+        "label": "Unary Rules",
+        "simp": true
+      },
+      "RuleBin": {
+        "label": "Binary Rules",
+        "simp": true
+      },
+      "RuleNat": {
+        "label": "Natural numbers",
+        "simp": true
       }
     }
   },
@@ -409,19 +437,32 @@
       ]
     },
     "RuleU" : {
-      "Tensor_L" :    ["?X, * : F?A xx F?B |- * : F?C",    "?X, (* : F?A, * : F?B) |- * : F?C"],
-      "Loli_R" :   ["?X |- * : F?A -o F?B",    "?X, * : F?A |- * : F?B"]
+      "Tensor_L" :    [
+        "?X, * : F?A xx F?B |- * : F?C",
+        "?X, (* : F?A, * : F?B) |- * : F?C"
+      ],
+      "Loli_R" :   [
+        "?X |- * : F?A -o F?B",
+        "?X, * : F?A |- * : F?B"
+      ]
     },
     "RuleBin" : {
-      "Tensor_R" :   ["?X, ?Y |- * : F?A xx F?B", "?X |- * : F?A", "?Y |- * : F?B"],
-      "Loli_L": ["?X, ?Y, * : F?A -o F?B |- * : F?C", "?X |- * : F?A", "?Y, * : F?B |- * : F?C"]
+      "Tensor_R" :   [
+        "?X, ?Y |- * : F?A xx F?B",
+        "?X |- * : F?A", "?Y |- * : F?B"
+      ],
+      "Loli_L": [
+        "?X, ?Y, * : F?A -o F?B |- * : F?C",
+        "?X |- * : F?A", "?Y, * : F?B |- * : F?C"
+      ]
     },
     "RuleNat" : {
       "Nat_Zero": [
-        "?X |- TT? Z : NNat", ""
+        "?X |- TT? Z : Nat", ""
       ],
       "Nat_Suc": [
-        "?X |- TT? S. T? n: NNat", "?X |- T? n: NNat"
+        "?X |- TT? S. T? n: Nat",
+        "?X |- T? n: Nat"
       ]
     }
   }
