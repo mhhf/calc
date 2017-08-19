@@ -19,7 +19,7 @@ let formulaStr = "(?X, ?X), ?Y |- < AT? B , AT? C > : F?A xx F?B";
 const formula = args && args[0] || formulaStr;
 
 let node = parser.parse(formula)
-let tree_str = node.formatTree([ "location", "ascii", "ownprecedence" ]);
+let tree_str = node.formatTree([ "name", "ascii", "ownprecedence" ]);
 
 console.log(tree_str);
 
