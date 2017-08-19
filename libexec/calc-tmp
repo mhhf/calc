@@ -1,43 +1,51 @@
 #!/usr/bin/env node
 
 const calc = require('../ll.json');
-const clc = require('cli-color');
+const helper = require("../lib/helper.js");
+const Sequent = require("../lib/sequent.js");
+const PT = require("../lib/pt.js");
 
 const calcParser = require("../lib/parser.js");
 const Parser = calcParser(calc);
-const calc_ = Parser.calc;
+const parser = Parser.parser;
+
+let args = process.argv.slice(2);
+
+let formulaStr = "* : F? P, * : F? P -o F? Q |- * : F?Q";
+const formula = args && args[0] || formulaStr;
+
+let node = parser.parse(formula)
+let seq = Sequent.fromTree(node);
+
+let ll = [
+"?X, ?Y, * : F?A -o F?B |- * : F?C",
+  "?X |- * : F?A", "?Y, * : F?B |- * : F?C"
+]
+
+ll = ll
+  .map(f => parser.parse(f))
+  .map(f => Sequent.fromTree(f))
 
 
-var db = [];
-Object.keys(calc_.calc_structure).forEach(ctxName => {
-  Object.keys(calc_.calc_structure[ctxName]).forEach(ruleName => {
-    let rule = calc_.calc_structure[ctxName][ruleName];
-    let precedence = "precedence" in rule && rule.precedence.slice(-1)[0] || 0;
+let foc = seq.getFocusingCandidates();
+seq.ffocus(foc[0])
 
-    let ascii = rule.ascii || "";
+let pt = new PT({
+  conclusion: seq
+});
 
-    db.push({
-      ctxName,
-      ruleName,
-      precedence,
-      ascii
-    });
-  })
-})
+pt.apply(ll, "Loli_L")
+
+console.log(pt.toString());
 
 
-let str = db
-  .sort((a,b) => a.precedence < b.precedence)
-  .map(obj => `${obj.precedence}  ${obj.ctxName}.${obj.ruleName}`)
-  .join("\n");
-console.log(str)
-
-
-
-// Object.keys(calc.calc_structure)
-// .forEach(ctxName => {console.log("\n");Object.keys(calc.calc_structure[ctxName]).forEach(ruleName => {
-//   let ctx = calc.calc_structure[ctxName];
-//   let rule = ctx[ruleName];
-//
-//   console.log(`${ctxName.slice(0,5)} ${ruleName.slice(0,3)}..${ruleName.slice(-3)} - ${"ascii" in rule && rule.ascii.slice(0,2) || clc.red("x")}`);
-// })})
+// Object.keys(calc.rules).forEach(ctxName => {
+//   if(ctxName === "RuleStruct") return null;
+//   let ctx = calc.rules[ctxName];
+//   Object.keys(ctx).forEach(ruleName => {
+//     let rule = ctx[ruleName];
+//     let ruleNode = parser.parse(rule[0])
+//     let potSeq = Sequent.fromTree(ruleNode)
+//     let res = Sequent.compare(potSeq, seq);
+//   })
+// })

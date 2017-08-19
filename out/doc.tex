@@ -40,7 +40,7 @@
 \subsubsection*{RuleCut}
 
 \begin{tabularx}{\linewidth}{CCC}
-  \prftree[r]{$Cut$}{\Theta , * : A \vdash \Delta}{\Gamma \vdash * : A}{\Gamma , \Theta \vdash \Delta}
+  \prftree[r]{$Cut$}{\Theta , * : F A \vdash \Delta}{\Gamma \vdash * : F A}{\Gamma , \Theta \vdash \Delta}
 \end{tabularx}
 
 
@@ -80,27 +80,31 @@
 \subsubsection*{RuleU}
 
 \begin{tabularx}{\linewidth}{CCC}
-  \prftree[r]{$\otimes_L$}{\Gamma , * : A , * : B \vdash * : C}{\Gamma , * : A \otimes B \vdash * : C}
+  \prftree[r]{$\otimes_L$}{\Gamma , * : F A , * : F B \vdash * : F C}{\Gamma , * : F A \otimes F B \vdash * : F C}
 &
-  \prftree[r]{$\multimap_R$}{\Gamma , * : A \vdash * : B}{\Gamma \vdash * : A \multimap B}
+  \prftree[r]{$\multimap_R$}{\Gamma , * : F A \vdash * : F B}{\Gamma \vdash * : F A \multimap F B}
 \end{tabularx}
 
 
 \subsubsection*{RuleBin}
 
 \begin{tabularx}{\linewidth}{CCC}
-  \prftree[r]{$\otimes_R$}{\Delta \vdash * : B}{\Gamma \vdash * : A}{\Gamma , \Delta \vdash * : A \otimes B}
+  \prftree[r]{$\otimes_R$}{\Delta \vdash * : F B}{\Gamma \vdash * : F A}{\Gamma , \Delta \vdash * : F A \otimes F B}
 &
-  \prftree[r]{$\multimap_L$}{\Delta , * : B \vdash * : C}{\Gamma \vdash * : A}{\Gamma , \Delta , * : A \multimap B \vdash * : C}
+  \prftree[r]{$\multimap_L$}{\Delta , * : F B \vdash * : F C}{\Gamma \vdash * : F A}{\Gamma , \Delta , * : F A \multimap F B \vdash * : F C}
 \end{tabularx}
 
 
 \subsubsection*{RuleNat}
 
 \begin{tabularx}{\linewidth}{CCC}
-  \prftree[r]{$nat_0$}{}{\Gamma \vdash Z : Nat}
+  \prftree[r]{$nat_0$}{}{\cdot \vdash Z : Nat}
 &
-  \prftree[r]{$nat_s$}{\Gamma \vdash n : Nat}{\Gamma \vdash ( S ) n : Nat}
+  \prftree[r]{$nat_s$}{\cdot \vdash n : Nat}{\cdot \vdash ( S ) n : Nat}
+&
+  \prftree[r]{$even_b$}{\cdot \vdash Z : Nat}{\cdot \vdash * : even ( Z )}
+\\\\
+  \prftree[r]{$even_s$}{\cdot \vdash * : even ( n )}{\cdot \vdash * : even ( ( S ) ( S ) n )}
 \end{tabularx}
 
 

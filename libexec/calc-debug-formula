@@ -23,10 +23,6 @@ let tree_str = node.formatTree([ "location", "ascii", "ownprecedence" ]);
 
 console.log(tree_str);
 
-let latexTree = node.toTree("", true, ["ascii", "constr"])
-console.log(helper.tree2dot(latexTree, ["ascii", "constr"]));
-
-
 let str = node.toString({style: "ascii", brackets: true});
 
 console.log("\n\n", str);

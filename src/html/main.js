@@ -1,10 +1,12 @@
 import {run} from '@cycle/run'
 import xs from 'xstream';
 import sampleCombine from 'xstream/extra/sampleCombine'
+import katex from 'katex';
 import {h, div, span, label, input, hr, button, h1, makeDOMDriver} from '@cycle/dom'
 
 const parser = require("../../out/parser.js");
 const calcNode = require("../../lib/node.js");
+const PT = require("../../lib/pt.js");
 const calc = require("../../out/calc.json");
 const helper = require("../../lib/helper.js");
 const Node = calcNode(calc);
@@ -49,6 +51,11 @@ function main(sources) {
     let B = katex.renderToString("B\\vdash C");
     let C = katex.renderToString("C\\vdash D");
 
+    let ll = [
+      "?X, ?Y, * : F?A -o F?B |- * : F?C",
+      "?X |- * : F?A", "?Y, * : F?B |- * : F?C"
+    ];
+    let ll_pt = PT.fromNodeArray(ll.map(f => parser.parse(f)));
 
 
     return div([
@@ -58,20 +65,21 @@ function main(sources) {
       hr(),
       h("div", {props:{innerHTML: katexFormula}}),
       h("center", {props:{innerHTML: graphSVG}}),
-      span(".inferenceRule", [
-        span(".rules", [
-          span(".premisses", [
-            span(".formula", {props: {innerHTML: A}}),
-            span(".formula", {props: {innerHTML: B}})
-          ]),
-          span(".conclusion", [
-            span(".formula", {props: {innerHTML: C}})
-          ])
-        ]),
-        span(".name", [
-          span({props: {innerHTML: name}})
-        ])
-      ])
+      div({props: {innerHTML: ll_pt.toString({style: "html"})}})
+      // span(".inferenceRule", [
+      //   span(".rules", [
+      //     span(".premisses", [
+      //       span(".formula", {props: {innerHTML: A}}),
+      //       span(".formula", {props: {innerHTML: B}})
+      //     ]),
+      //     span(".conclusion", [
+      //       span(".formula", {props: {innerHTML: C}})
+      //     ])
+      //   ]),
+      //   span(".name", [
+      //     span({props: {innerHTML: name}})
+      //   ])
+      // ])
     ])
   })
 

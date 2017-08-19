@@ -1,0 +1,20 @@
+#!/usr/bin/env node
+
+const calc = require('../ll.json');
+const clc = require('cli-color');
+const helper = require('../lib/helper.js');
+
+const calcParser = require("../lib/parser.js");
+const Parser = calcParser(calc);
+
+console.log();
+
+const calc_ = Parser.calc;
+
+var db = [];
+
+const bnf = Parser.grammar.bnf;
+Object.keys(bnf).forEach(NTName => {
+  let rules = bnf[NTName].map(rhs => rhs[0].trim())
+  console.log(`${NTName} :=\n  | ${rules.join("\n  | ")}\n`);
+})

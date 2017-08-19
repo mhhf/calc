@@ -51,6 +51,8 @@
     "TermList" : {
       "Term_Atterm": {
         "type": "Term",
+        "isabelle": "_ \\<^sub>T\\<^sub>S",
+        "isabelle_se": "_ \\<^sub>T\\<^sub>S",
         "precedence": [310, 311]
       },
       "Term_Bin_Op": {
@@ -131,7 +133,7 @@
         "isabelle" : "?\\<^sub>F _",
         "isabelle_se" : "_",
         "ascii" : "F? _",
-        "latex" : " _",
+        "latex" : "_",
         "latex_brackets": false,
         "precedence": [340, 330],
         "shallow" : false
@@ -235,6 +237,10 @@
   },
 
   "calc_structure_rules_meta" : {
+    "polarity": {
+      "Formula_Tensor": "positive",
+      "Formula_Loli": "negative"
+    },
     "Contexts" : {
       "RuleZer": {
         "label": "Axioms",
@@ -367,6 +373,14 @@
       "Nat_Suc" : {
         "ascii" : "nat_s",
         "latex" : "nat_s"
+      },
+      "Even_Base" : {
+        "ascii" : "even_b",
+        "latex" : "even_b"
+      },
+      "Even_Suc": {
+        "ascii" : "even_s",
+        "latex" : "even_s"
       }
     }
   },
@@ -458,11 +472,19 @@
     },
     "RuleNat" : {
       "Nat_Zero": [
-        "?X |- TT? Z : Nat", ""
+        "I |- TT? Z : Nat", ""
       ],
       "Nat_Suc": [
-        "?X |- TT? S. T? n: Nat",
-        "?X |- T? n: Nat"
+        "I |- TT? S. T? n: Nat",
+        "I |- T? n: Nat"
+      ],
+      "Even_Base": [
+        "I |- * : Even(TT? Z)",
+        "I |- TT? Z : Nat"
+      ],
+      "Even_Suc": [
+        "I |- * : Even(TT? S. TT? S. T? n)",
+        "I |- * : Even(T? n)"
       ]
     }
   }

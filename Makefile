@@ -18,4 +18,5 @@ html:
 	cp src/html/*.css out/html/
 	./node_modules/webpack/bin/webpack.js src/html/main.js out/html/bundle.js
 
-
+test:
+	./node_modules/mocha/bin/mocha tests
