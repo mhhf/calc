@@ -21,12 +21,17 @@ let seq = Sequent.fromTree(node);
 // let foc = seq.getFocusingCandidates();
 // seq.ffocus(foc[0])
 
-let ps = new Proofstate(seq);
+let ps = new Proofstate();
+
 
 let pt = new PT({
   conclusion: seq
 })
 
-let pt_ = ps.auto(pt);
+let atoms = Proofstate.getAtoms(seq);
 
-console.log(pt_.toString());
+let pt_ = Proofstate.auto(pt, {
+  negative: atoms
+});
+
+console.log(pt.toString());
