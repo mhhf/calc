@@ -4,6 +4,7 @@ const calc = require('../ll.json');
 const helper = require("../lib/helper.js");
 const Sequent = require("../lib/sequent.js");
 const PT = require("../lib/pt.js");
+const Proofstate = require("../lib/proofstate.js");
 
 const calcParser = require("../lib/parser.js");
 const Parser = calcParser(calc);
@@ -11,41 +12,17 @@ const parser = Parser.parser;
 
 let args = process.argv.slice(2);
 
-let formulaStr = "* : F? P, * : F? P -o F? Q |- * : F?Q";
+let formulaStr = "* : F? P, * : [ F? P -o F? Q ] |- * : F?Q";
 const formula = args && args[0] || formulaStr;
 
 let node = parser.parse(formula)
 let seq = Sequent.fromTree(node);
 
-let ll = [
-"?X, ?Y, * : F?A -o F?B |- * : F?C",
-  "?X |- * : F?A", "?Y, * : F?B |- * : F?C"
-]
+// let foc = seq.getFocusingCandidates();
+// seq.ffocus(foc[0])
 
-ll = ll
-  .map(f => parser.parse(f))
-  .map(f => Sequent.fromTree(f))
+let ps = new Proofstate(seq);
 
+ps.auto()
 
-let foc = seq.getFocusingCandidates();
-seq.ffocus(foc[0])
-
-let pt = new PT({
-  conclusion: seq
-});
-
-pt.apply(ll, "Loli_L")
-
-console.log(pt.toString());
-
-
-// Object.keys(calc.rules).forEach(ctxName => {
-//   if(ctxName === "RuleStruct") return null;
-//   let ctx = calc.rules[ctxName];
-//   Object.keys(ctx).forEach(ruleName => {
-//     let rule = ctx[ruleName];
-//     let ruleNode = parser.parse(rule[0])
-//     let potSeq = Sequent.fromTree(ruleNode)
-//     let res = Sequent.compare(potSeq, seq);
-//   })
-// })
+console.log(ps.toString());

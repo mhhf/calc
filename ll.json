@@ -160,7 +160,25 @@
       }
     },
 
+    "FFormula" : {
+      "Focused_Formula": {
+        "type": "Formula",
+        "ascii": "[ _ ]",
+        "latex": "[ _ ]",
+        "isabelle" : "[ _ ]",
+        "precedence": [310, 320]
+      }
+    },
+
     "Structure" : {
+      "Structure_Focused_Term_Formula" : {
+        "type": ["Term", "FFormula"],
+        "ascii": "_ : _",
+        "latex": "_ : _",
+        "isabelle" : "_ :\\<^sub>T\\<^sub>F _",
+        "precedence": [310, 310, 320]
+      },
+
       "Structure_Term_Formula" : {
         "type": ["Term", "Formula"],
         "ascii": "_ : _",
@@ -466,8 +484,8 @@
         "?X |- * : F?A", "?Y |- * : F?B"
       ],
       "Loli_L": [
-        "?X, ?Y, * : F?A -o F?B |- * : F?C",
-        "?X |- * : F?A", "?Y, * : F?B |- * : F?C"
+        "?X, ?Y, * : [ F?A -o F?B ] |- * : F?C",
+        "?X |- * : [ F?A ]", "?Y, * : [ F?B ] |- * : F?C"
       ]
     },
     "RuleNat" : {
