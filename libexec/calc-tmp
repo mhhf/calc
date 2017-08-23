@@ -23,6 +23,10 @@ let seq = Sequent.fromTree(node);
 
 let ps = new Proofstate(seq);
 
-ps.auto()
+let pt = new PT({
+  conclusion: seq
+})
 
-console.log(ps.toString());
+let pt_ = ps.auto(pt);
+
+console.log(pt_.toString());
