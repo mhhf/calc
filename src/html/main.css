@@ -22,14 +22,17 @@ code {
   bottom: 12px;
   position: absolute;
   padding-left: 8px;
+  font-size: 0.8em;
 }
 
 .formula {
-  padding: 2px 12px;
   cursor: default;
 }
+.formula + .formula {
+  padding-left: 85px;
+}
 
-.formula:hover {
+.conclusion>.formula:hover {
   background: #e9e1ff;
   border-radius: 3px;
 }

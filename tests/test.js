@@ -9,7 +9,7 @@ describe("Sequent", function () {
     let formula = "(?X, ?X), ?Y |- < AT? B , AT? C > : F?A xx F?B";
     let node = parser.parse(formula)
     let seq = Sequent.fromTree(node);
-    seq.toString().should.equal("(? X)* 2, (? Y)* 1 |- <( AT? B ) , AT? C > : F? A xx F? B");
+    seq.toString().should.equal("(? X)* 2, ? Y |- <( AT? B ) , AT? C > : F? A xx F? B");
   });
 
   it("should compare two sequents", function () {
@@ -30,4 +30,9 @@ describe("Sequent", function () {
     .length
     .should.equal(6);
   })
+
+  it("should focusL", function () {
+
+  });
+
 })

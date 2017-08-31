@@ -157,6 +157,11 @@
         "isabelle" : "-o\\<^sub>F",
         "ascii" : "-o",
         "latex" : "\\multimap"
+      },
+      "Formula_With" : {
+        "isabelle" : "&&\\<^sub>F",
+        "ascii" : "&&",
+        "latex" : "\\&"
       }
     },
 
@@ -257,7 +262,8 @@
   "calc_structure_rules_meta" : {
     "polarity": {
       "Formula_Tensor": "positive",
-      "Formula_Loli": "negative"
+      "Formula_Loli": "negative",
+      "Formula_With": "negative"
     },
     "Contexts" : {
       "RuleZer": {
@@ -369,6 +375,14 @@
       "Loli_R" : {
         "ascii" : "lolli_R",
         "latex" : "\\multimap_R"
+      },
+      "With_L" : {
+        "ascii" : "with_L1",
+        "latex" : "\\&_{L1}"
+      },
+      "With_L2" : {
+        "ascii" : "with_L2",
+        "latex" : "\\&_{L2}"
       }
     },
 
@@ -380,6 +394,10 @@
       "Loli_L" : {
         "ascii" : "lolli_L",
         "latex" : "\\multimap_L"
+      },
+      "With_R" : {
+        "ascii" : "with_R",
+        "latex" : "\\&_R"
       }
     },
 
@@ -476,16 +494,31 @@
       "Loli_R" :   [
         "?X |- * : F?A -o F?B",
         "?X, * : F?A |- * : F?B"
+      ],
+      "With_L" : [
+        "?X, * : [ F?A && F?B ] |- * : F?C",
+        "?X, * : [ F?A ] |- * : F?C"
+      ],
+      "With_L2" : [
+        "?X, * : [ F?A && F?B ] |- * : F?C",
+        "?X, * : [ F?B ] |- * : F?C"
       ]
     },
     "RuleBin" : {
       "Tensor_R" :   [
-        "?X, ?Y |- * : F?A xx F?B",
-        "?X |- * : F?A", "?Y |- * : F?B"
+        "?X, ?Y |- * : [ F?A xx F?B ]",
+        "?X |- * : [ F?A ]",
+        "?Y |- * : [ F?B ]"
       ],
       "Loli_L": [
         "?X, ?Y, * : [ F?A -o F?B ] |- * : F?C",
-        "?X |- * : [ F?A ]", "?Y, * : [ F?B ] |- * : F?C"
+        "?X |- * : [ F?A ]",
+        "?Y, * : [ F?B ] |- * : F?C"
+      ],
+      "With_R": [
+        "?X |- * : F?A && F?B",
+        "?X |- * : F?A",
+        "?X |- * : F?B"
       ]
     },
     "RuleNat" : {
