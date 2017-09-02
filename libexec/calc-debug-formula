@@ -11,13 +11,25 @@ const sha3 = str => {
 
 const calcParser = require("../lib/parser.js");
 const Parser = calcParser(calc);
+const grammar = Parser.grammar;
 const parser = Parser.parser;
+
+console.log(JSON.stringify(grammar, false, 2));
+var JisonLex = require('jison-lex');
+var lexer = new JisonLex(grammar.lex);
 
 let args = process.argv.slice(2);
 
 let formulaStr = "(?X, ?X), ?Y |- < AT? B , AT? C > : F?A xx F?B";
 const formula = args && args[0] || formulaStr;
 
+console.log(formula);
+
+// console.log(lexer.setInput(formula));
+// // console.log(parser.lexer.begin());
+// while (!lexer.done) {
+//   console.log(lexer.lex(), lexer.yytext);
+// }
 let node = parser.parse(formula)
 let tree_str = node.formatTree([ "name", "ascii", "ownprecedence" ]);
 

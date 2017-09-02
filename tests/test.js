@@ -31,8 +31,27 @@ describe("Sequent", function () {
     .should.equal(6);
   })
 
-  it("should focusL", function () {
-
+  it("should return all free variables of a sequent", function () {
+    let f1 = "?X, ?Y,* : F?A, * : X, * : F?A -o F?B |- * : F?C";
+    let n1 = parser.parse(f1)
+    let s1 = Sequent.fromTree(n1);
+    let vars = Sequent.getFreeVariables(s1);
+    vars.map(v => v.toString()).join(", ")
+    .should.eq("F? C, F? B, F? A")
   });
 
+
+  it("should rename all free variables to unique ones", function () {
+    let f1 = "?X, ?Y, * : F?A, * : X, * : F?A -o F?B |- * : F?C";
+    let n1 = parser.parse(f1)
+    let s1 = Sequent.fromTree(n1);
+    let seq = Sequent.renameUnique(s1);
+    seq.toString()
+    .should.eq("? X, ? Y, * : F? V_2, * : X, * : F? V_2 -o F? V_1 |- * : F? V_0")
+    Sequent.varIndex.should.eq(3)
+  });
+
+
 })
+
+
