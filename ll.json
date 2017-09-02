@@ -144,6 +144,14 @@
         "isabelle" : "B\\<^sub>F _",
         "shallow": false,
         "precedence": [330,330,330, 331]
+      },
+
+      "Formula_Forall" : {
+        "type" : ["Atterm", "Atprop", "Formula"],
+        "isabelle" : "forall _ : _ . _",
+        "ascii" : "forall _ : _ . _",
+        "latex" : "\\forall _ : _ . _",
+        "precedence": [330, 330, 330, 331]
       }
     },
 

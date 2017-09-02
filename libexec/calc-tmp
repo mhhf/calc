@@ -15,9 +15,9 @@ const parser = Parser.parser;
 let args = process.argv.slice(2);
 
 // let formulaStr = "* : F? P, * : F? P -o F? Q |- * : F?Q";
-// let formulaStr = "* : F? P xx F? Q |- * : F? P xx F?Q";
+let formulaStr = "* : ( F? P xx F? Q ) -o  F? X |- * : ( F? P xx F?Q ) -o F? X";
 // let formulaStr = "* : F?P xx (F?R && F?Q) |- * : (F?P xx F?R) && (F?P xx F?Q)"
-let formulaStr = "* : F?P -o (F?R && F?Q) |- * : (F?P -o F?Q) && (F?P -o F?Q)";
+// let formulaStr = "* : F?P -o (F?R && F?Q) |- * : (F?P -o F?Q) && (F?P -o F?Q)";
 const formula = args && args[0] || formulaStr;
 
 let node = parser.parse(formula)
