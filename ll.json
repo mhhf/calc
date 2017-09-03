@@ -32,6 +32,7 @@
       "Atterm": {
         "type": "string",
         "ascii": "TT? _",
+        "ascii_se": " _ ",
         "latex": "_",
         "isabelle": "_ \\<^sub>T",
         "isabelle_se": "_ \\<^sub>T",
@@ -77,6 +78,7 @@
         "isabelle" : "?\\<^sub>T _",
         "isabelle_se" : "_",
         "ascii" : "T? _",
+        "ascii_se" : " _ ",
         "latex" : "?_T _",
         "latex_brackets": false,
         "precedence": [340, 330],
@@ -84,8 +86,9 @@
       },
       "Term_Any" : {
         "isabelle" : "I\\<^sub>T",
-        "ascii" : "*",
-        "latex" : "*"
+        "ascii" : "--",
+        "ascii_se" : " ",
+        "latex" : "--"
       },
       "Term_Concatenate": {
         "type" : ["Term", "Term"],
@@ -126,7 +129,7 @@
         "type": "Atprop",
         "isabelle" : "_ \\<^sub>A\\<^sub>F",
         "isabelle_se" : "_ \\<^sub>A\\<^sub>F",
-        "precedence": [320, 330]
+        "precedence": [320, 340]
       },
       "Formula_Freevar" : {
         "type" : "string",
@@ -157,8 +160,8 @@
 
     "Formula_Bin_Op" : {
       "Formula_Tensor" : {
-        "isabelle" : "xx\\<^sub>F",
-        "ascii" : "xx",
+        "isabelle" : "*\\<^sub>F",
+        "ascii" : "*",
         "latex" : "\\otimes"
       },
       "Formula_Loli" : {
@@ -187,6 +190,7 @@
       "Structure_Focused_Term_Formula" : {
         "type": ["Term", "FFormula"],
         "ascii": "_ : _",
+        "ascii_se": " _  _ ",
         "latex": "_ : _",
         "isabelle" : "_ :\\<^sub>T\\<^sub>F _",
         "precedence": [310, 310, 320]
@@ -195,6 +199,7 @@
       "Structure_Term_Formula" : {
         "type": ["Term", "Formula"],
         "ascii": "_ : _",
+        "ascii_se": " _  _ ",
         "latex": "_ : _",
         "isabelle" : "_ :\\<^sub>T\\<^sub>F _",
         "precedence": [310, 310, 320]
@@ -377,7 +382,7 @@
 
     "RuleU" : {
       "Tensor_L" : {
-        "ascii" : "xx_L",
+        "ascii" : "*_L",
         "latex" : "\\otimes_L"
       },
       "Loli_R" : {
@@ -396,7 +401,7 @@
 
     "RuleBin" : {
       "Tensor_R" : {
-        "ascii" : "xx_R",
+        "ascii" : "*_R",
         "latex" : "\\otimes_R"
       },
       "Loli_L" : {
@@ -431,10 +436,10 @@
 
   "rules" : {
     "RuleZer" : {
-      "Id" : ["* : A?A |- * : A?A",    ""]
+      "Id" : ["-- : A?A |- -- : A?A",    ""]
     },
     "RuleCut" : {
-      "SingleCut" : ["?X, ?Z |- ?Y", "?X |- * : F?A",  "?Z, * : F?A |- ?Y"]
+      "SingleCut" : ["?X, ?Z |- ?Y", "?X |- -- : F?A",  "?Z, -- : F?A |- ?Y"]
     },
     "RuleStruct": {
       "P_L" :    [
@@ -496,37 +501,37 @@
     },
     "RuleU" : {
       "Tensor_L" :    [
-        "?X, * : F?A xx F?B |- * : F?C",
-        "?X, (* : F?A, * : F?B) |- * : F?C"
+        "?X, -- : F?A * F?B |- -- : F?C",
+        "?X, (-- : F?A, -- : F?B) |- -- : F?C"
       ],
       "Loli_R" :   [
-        "?X |- * : F?A -o F?B",
-        "?X, * : F?A |- * : F?B"
+        "?X |- -- : F?A -o F?B",
+        "?X, -- : F?A |- -- : F?B"
       ],
       "With_L" : [
-        "?X, * : [ F?A && F?B ] |- * : F?C",
-        "?X, * : [ F?A ] |- * : F?C"
+        "?X, -- : [ F?A && F?B ] |- -- : F?C",
+        "?X, -- : [ F?A ] |- -- : F?C"
       ],
       "With_L2" : [
-        "?X, * : [ F?A && F?B ] |- * : F?C",
-        "?X, * : [ F?B ] |- * : F?C"
+        "?X, -- : [ F?A && F?B ] |- -- : F?C",
+        "?X, -- : [ F?B ] |- -- : F?C"
       ]
     },
     "RuleBin" : {
       "Tensor_R" :   [
-        "?X, ?Y |- * : [ F?A xx F?B ]",
-        "?X |- * : [ F?A ]",
-        "?Y |- * : [ F?B ]"
+        "?X, ?Y |- -- : [ F?A * F?B ]",
+        "?X |- -- : [ F?A ]",
+        "?Y |- -- : [ F?B ]"
       ],
       "Loli_L": [
-        "?X, ?Y, * : [ F?A -o F?B ] |- * : F?C",
-        "?X |- * : [ F?A ]",
-        "?Y, * : [ F?B ] |- * : F?C"
+        "?X, ?Y, -- : [ F?A -o F?B ] |- -- : F?C",
+        "?X |- -- : [ F?A ]",
+        "?Y, -- : [ F?B ] |- -- : F?C"
       ],
       "With_R": [
-        "?X |- * : F?A && F?B",
-        "?X |- * : F?A",
-        "?X |- * : F?B"
+        "?X |- -- : F?A && F?B",
+        "?X |- -- : F?A",
+        "?X |- -- : F?B"
       ]
     },
     "RuleNat" : {
@@ -538,12 +543,12 @@
         "I |- T? n: Nat"
       ],
       "Even_Base": [
-        "I |- * : Even(TT? Z)",
+        "I |- -- : Even(TT? Z)",
         "I |- TT? Z : Nat"
       ],
       "Even_Suc": [
-        "I |- * : Even(TT? S. TT? S. T? n)",
-        "I |- * : Even(T? n)"
+        "I |- -- : Even(TT? S. TT? S. T? n)",
+        "I |- -- : Even(T? n)"
       ]
     }
   }
