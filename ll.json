@@ -149,6 +149,22 @@
         "precedence": [330,330,330, 331]
       },
 
+      "Formula_Monad" : {
+        "type" : ["Formula"],
+        "isabelle" : "{ _ }",
+        "ascii" : "{ _ }",
+        "latex" : "{ _ }",
+        "precedence": [330, 331]
+      },
+
+      "Formula_Lax" : {
+        "type" : ["Formula"],
+        "isabelle" : "_ lax",
+        "ascii" : "_ lax",
+        "latex" : "_ lax",
+        "precedence": [330, 331]
+      },
+
       "Formula_Forall" : {
         "type" : ["Atterm", "Atprop", "Formula"],
         "isabelle" : "forall _ : _ . _",
@@ -170,8 +186,8 @@
         "latex" : "\\multimap"
       },
       "Formula_With" : {
-        "isabelle" : "&&\\<^sub>F",
-        "ascii" : "&&",
+        "isabelle" : "&\\<^sub>F",
+        "ascii" : "&",
         "latex" : "\\&"
       }
     },
@@ -276,7 +292,8 @@
     "polarity": {
       "Formula_Tensor": "positive",
       "Formula_Loli": "negative",
-      "Formula_With": "negative"
+      "Formula_With": "negative",
+      "Formula_Lax": "positive"
     },
     "Contexts" : {
       "RuleZer": {
@@ -396,6 +413,10 @@
       "With_L2" : {
         "ascii" : "with_L2",
         "latex" : "\\&_{L2}"
+      },
+      "Monad_R" : {
+        "ascii" : "{}_R",
+        "latex" : "\\{\\}_{R}"
       }
     },
 
@@ -509,12 +530,16 @@
         "?X, -- : F?A |- -- : F?B"
       ],
       "With_L" : [
-        "?X, -- : [ F?A && F?B ] |- -- : F?C",
+        "?X, -- : [ F?A & F?B ] |- -- : F?C",
         "?X, -- : [ F?A ] |- -- : F?C"
       ],
       "With_L2" : [
-        "?X, -- : [ F?A && F?B ] |- -- : F?C",
+        "?X, -- : [ F?A & F?B ] |- -- : F?C",
         "?X, -- : [ F?B ] |- -- : F?C"
+      ],
+      "Monad_R" : [
+        "?X |- -- : { F?A }",
+        "?X |- -- : F?A lax"
       ]
     },
     "RuleBin" : {
@@ -529,26 +554,28 @@
         "?Y, -- : [ F?B ] |- -- : F?C"
       ],
       "With_R": [
-        "?X |- -- : F?A && F?B",
+        "?X |- -- : F?A & F?B",
         "?X |- -- : F?A",
         "?X |- -- : F?B"
       ]
     },
     "RuleNat" : {
       "Nat_Zero": [
-        "I |- TT? Z : Nat", ""
+        "I |- TT? z : Nat", ""
       ],
       "Nat_Suc": [
-        "I |- TT? S. T? n: Nat",
-        "I |- T? n: Nat"
+        "I |- TT? s. T? N: Nat",
+        "I |- T? N: Nat"
       ],
       "Even_Base": [
-        "I |- -- : Even(TT? Z)",
-        "I |- TT? Z : Nat"
+        "I |- -- : even(TT? z)"
       ],
       "Even_Suc": [
-        "I |- -- : Even(TT? S. TT? S. T? n)",
-        "I |- -- : Even(T? n)"
+        "I |- -- : even(TT? s. TT? s. T? N)",
+        "I |- -- : even(T? N)"
+      ],
+      "Inc_Base": [
+        "I |- -- : inc(T? X, TT? s. T? X)"
       ]
     }
   }
