@@ -40,7 +40,10 @@ let isProovable = Proofstate.auto(pt, {
 });
 
 console.log(`\nDEBUG:`);
-let str = helper.foldCleanPreorder(isProovable.debug, "technique")
+let table = helper.foldCleanPreorder(isProovable.debug, "technique")
+let max = table
+  .reduceRight((a, row) => (row[0].length > a) ? row[0].length : a, 0);
+let str = table.map(row => row[0] + ((1 in row) && ("  " + ".".repeat(max - row[0].length - 7) + "  " + row[1]) || "")).join("\n")
 console.log(str);
 
 
