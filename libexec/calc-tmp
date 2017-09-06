@@ -30,11 +30,14 @@ let pt = new PT({
   conclusion: seq
 })
 
+let negative = ["inc", "even"];
+
 let atoms = Sequent.getAtoms(seq);
-// console.log(atoms);
+atoms = atoms.filter(atom => negative.indexOf(atom) === 0)
 
 let isProovable = Proofstate.auto(pt, {
   positive: atoms,
+  negative,
   debug: true
   // , mode: "proof"
 });
@@ -44,7 +47,7 @@ console.log(`\nDEBUG:`);
 let table = helper.foldCleanPreorder(isProovable.debug, "technique")
 let max = table
   .reduceRight((a, row) => (row[0].length > a) ? row[0].length : a, 0);
-let str = table.map(row => row[0] + ((1 in row) && ("  " + ".".repeat(max - row[0].length - 7) + "  " + row[1]) || "")).join("\n")
+let str = table.map(row => row[0] + ((1 in row) && ("  " + ".".repeat(Math.max(0, max - row[0].length - 6)) + "  " + row[1]) || "")).join("\n")
 console.log(str);
 
 
