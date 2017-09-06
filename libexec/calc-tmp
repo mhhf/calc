@@ -36,10 +36,11 @@ let atoms = Sequent.getAtoms(seq);
 let isProovable = Proofstate.auto(pt, {
   positive: atoms,
   debug: true
-  , mode: "proof"
+  // , mode: "proof"
 });
 
 console.log(`\nDEBUG:`);
+// TODO - export this to helper
 let table = helper.foldCleanPreorder(isProovable.debug, "technique")
 let max = table
   .reduceRight((a, row) => (row[0].length > a) ? row[0].length : a, 0);
