@@ -17,7 +17,7 @@ let args = process.argv.slice(2);
 // let formulaStr = "* : F? P, * : F? P -o F? Q |- * : F?Q";
 // let formulaStr = "* : ( F? P xx F? Q ) -o  F? X |- * : ( F? P xx F?Q ) -o F? X";
 // let formulaStr = "* : F?P xx (F?R && F?Q) |- * : (F?P xx F?R) && (F?P xx F?Q)"
-let formulaStr = "-- : P -o (R & Q) |- -- : (P -o Q) & (P -o Q)";
+let formulaStr = "-- : P -o (R & Q) |- -- : (P -o Q) & (P -o R)";
 const formula = args && args[0] || formulaStr;
 
 let node = parser.parse(formula)
@@ -35,11 +35,18 @@ let atoms = Sequent.getAtoms(seq);
 
 let isProovable = Proofstate.auto(pt, {
   positive: atoms,
-  debug: false,
-  mode: "proof"
+  debug: true
+  , mode: "proof"
 });
 
-console.log(`\nRESULTS:\n`);
+console.log(`\nDEBUG:`);
+let str = helper.foldCleanPreorder(isProovable.debug, "technique")
+console.log(str);
+
+
+// console.log(JSON.stringify(isProovable.debug, false, 2));
+
+console.log(`\n\nRESULTS:\n`);
 if(isProovable.success) {
   let str = pt.toString({});
   // str = str.replace(/\-\-\ \:\ /g, "     ");
