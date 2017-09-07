@@ -1,0 +1,59 @@
+#!/usr/bin/env node
+
+const calc = require('../ll.json');
+const helper = require("../lib/helper.js");
+const Sequent = require("../lib/sequent.js");
+const PT = require("../lib/pt.js");
+const Proofstate = require("../lib/proofstate.js");
+const clc = require('cli-color');
+
+
+const calcParser = require("../lib/parser.js");
+const Parser = calcParser(calc);
+const parser = Parser.parser;
+
+let args = process.argv.slice(2);
+
+// let formulaStr = "* : F? P, * : F? P -o F? Q |- * : F?Q";
+// let formulaStr = "* : ( F? P xx F? Q ) -o  F? X |- * : ( F? P xx F?Q ) -o F? X";
+// let formulaStr = "* : F?P xx (F?R && F?Q) |- * : (F?P xx F?R) && (F?P xx F?Q)"
+let formulaStr = "-- : P -o (R & Q) |- -- : (P -o Q) & (P -o R)";
+const formula = args && args[0] || formulaStr;
+
+let node = parser.parse(formula)
+let seq = Sequent.fromTree(node);
+
+let ps = new Proofstate();
+
+
+let pt = new PT({
+  conclusion: seq
+})
+
+let negative = ["inc", "even"];
+
+let atoms = Sequent.getAtoms(seq);
+atoms = atoms.filter(atom => negative.indexOf(atom) === -1)
+
+let isProovable = Proofstate.auto(pt, {
+  positive: atoms,
+  negative,
+  debug: true
+  // , mode: "proof"
+});
+
+console.log(`\nDEBUG:`);
+let str = helper.formatCleanTree(isProovable.debug, "technique")
+console.log(str);
+
+
+
+console.log(`\n\nRESULTS:\n`);
+if(isProovable.success) {
+  let str = pt.toString({});
+  // str = str.replace(/\-\-\ \:\ /g, "     ");
+  console.log(`${clc.green("✔")} found proof for: ${seq}\n\n${str}`);
+} else {
+  console.log(`${clc.red("✗")} can't proof ${seq}`);
+  console.log(`${pt}`);
+}

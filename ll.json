@@ -142,6 +142,15 @@
         "shallow" : false
       },
 
+      "Formula_Bang" : {
+        "type" : ["Formula"],
+        "isabelle" : "! _ ",
+        "ascii" : "! _ ",
+        "latex" : "! _ ",
+        "shallow": true,
+        "precedence": [330, 331]
+      },
+
       "Formula_Bin" : {
         "type" : ["Formula", "Formula_Bin_Op", "Formula"],
         "isabelle" : "B\\<^sub>F _",
@@ -293,7 +302,9 @@
       "Formula_Tensor": "positive",
       "Formula_Loli": "negative",
       "Formula_With": "negative",
-      "Formula_Lax": "positive"
+      "Formula_Lax": "positive",
+      "Formula_Bang": "positive",
+      "Formula_Forall": "negative"
     },
     "Contexts" : {
       "RuleZer": {
@@ -417,6 +428,22 @@
       "Monad_R" : {
         "ascii" : "{}_R",
         "latex" : "\\{\\}_{R}"
+      },
+      "Bang_R" : {
+        "ascii" : "!_R",
+        "latex" : "!_R"
+      },
+      "Bang_L" : {
+        "ascii" : "!_R",
+        "latex" : "!_R"
+      },
+      "Forall_L": {
+        "ascii" : "forall_L",
+        "latex" : "\\forall_L"
+      },
+      "Forall_R": {
+        "ascii" : "forall_R",
+        "latex" : "\\forall_R"
       }
     },
 
@@ -540,6 +567,22 @@
       "Monad_R" : [
         "?X |- -- : { F?A }",
         "?X |- -- : F?A lax"
+      ],
+      "Bang_R" : [
+        "I |- -- : [! F?A]",
+        "I |- -- : F?A"
+      ],
+      "Bang_L" : [
+        "?X, -- : ! F?A |- -- : F?B",
+        "?X |- -- : F?B"
+      ],
+      "Forall_L" : [
+        "?X, -- : [ forall AT?A : A?B. F?C ] |- -- : F?D",
+        "?X, -- : [ F?C ] |- -- : F?D"
+      ],
+      "Forall_R" : [
+        "?X  |- -- : forall AT?A : A?B. F?C",
+        "?X  |- -- : F?C"
       ]
     },
     "RuleBin" : {

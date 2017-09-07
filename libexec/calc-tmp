@@ -33,32 +33,68 @@ let pt = new PT({
 let negative = ["inc", "even"];
 
 let atoms = Sequent.getAtoms(seq);
-atoms = atoms.filter(atom => negative.indexOf(atom) === 0)
-
-let isProovable = Proofstate.auto(pt, {
-  positive: atoms,
-  negative,
-  debug: true
-  // , mode: "proof"
-});
-
-console.log(`\nDEBUG:`);
-// TODO - export this to helper
-let table = helper.foldCleanPreorder(isProovable.debug, "technique")
-let max = table
-  .reduceRight((a, row) => (row[0].length > a) ? row[0].length : a, 0);
-let str = table.map(row => row[0] + ((1 in row) && ("  " + ".".repeat(Math.max(0, max - row[0].length - 6)) + "  " + row[1]) || "")).join("\n")
-console.log(str);
+// console.log("ASDASDSD");
+// console.log(atoms.map(e => e.toString()).join(", "));
+atoms = atoms.filter(atom => negative.indexOf(atom) === -1)
 
 
-// console.log(JSON.stringify(isProovable.debug, false, 2));
 
-console.log(`\n\nRESULTS:\n`);
-if(isProovable.success) {
-  let str = pt.toString({});
-  // str = str.replace(/\-\-\ \:\ /g, "     ");
-  console.log(`${clc.green("✔")} found proof for: ${seq}\n\n${str}`);
-} else {
-  console.log(`${clc.red("✗")} can't proof ${seq}`);
-  console.log(`${pt}`);
+
+const exec = function (seq) {
+  // console.log(`exec: ${seq}`);
+  let pt = new PT({
+    conclusion: seq
+  })
+
+  let isProovable = Proofstate.auto(pt, {
+    positive: atoms,
+    negative,
+    debug: true
+    // , mode: "proof"
+  });
+
+  let str = helper.formatCleanTree(isProovable.debug, "technique")
+  // console.log(`DEBUG:\n${str}`);
+
+  const chain = function (pt) {
+    // if the end is reached, maybe i have to check wether focus is blurred, otherwise fail
+    if(pt.premisses.length === 0) return pt.conclusion;
+    let isReducable = pt.premisses.reduceRight((a,c) => a + (c.proven ? 0 : 1), 0) === 1;
+    if(!isReducable) return false;
+    return chain(pt.premisses.find(ptp => !ptp.proven));
+  }
+
+  return chain(pt);
 }
+
+let time = +(new Date());
+let seq_ = exec(seq);
+
+let focusingSteps = 0;
+let success = true;
+while(success) {
+  success = false;
+  focusingSteps ++;
+
+  for(var i = 0; i < Object.keys(seq_.persistent_ctx).length; i++) {
+    let id = Object.keys(seq_.persistent_ctx)[i];
+    seq__ = Sequent.copy(seq_);
+    seq__.linear_ctx[id] = {val: seq_.persistent_ctx[id], num: 1};
+    seq__ = exec(seq__)
+    if(seq__) {
+      // console.log(`res : ${seq__}`);
+      seq_ = seq__;
+      success = true;
+      break;
+    }
+  }
+}
+time = +(new Date()) - time;
+
+const right = function (str) {
+return "-".repeat(process.stdout.columns - str.length - 4 ) + "  " + str
+}
+
+let stats = `time: ${time}ms\nfocusing!: ${focusingSteps}\n`;
+console.log(`\n\n${right("RESULT")}\n${stats}${seq_.toString({style: "ascii_extensive"})}`);
+
