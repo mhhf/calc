@@ -57,7 +57,7 @@
         "precedence": [310, 311]
       },
       "Term_Bin_Op": {
-        "type": ["Term", "Term"],
+        "type": ["Term", "TermList"],
         "ascii": "_ , _",
         "latex": "_ , _",
         "isabelle": "_ ,\\<^sub>T _",
