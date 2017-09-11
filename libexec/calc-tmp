@@ -30,6 +30,8 @@ let llt_program = fs.readFileSync(llt_path, {filetype: "utf8"}).toString();
 let ast = parser.parse(llt_program);
 let add_rules = parser.yy.LLT.db.bwd
 
+// console.log(add_rules);
+
 let node = seq_parser.parse(formula)
 let seq = Sequent.fromTree(node);
 

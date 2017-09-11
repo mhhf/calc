@@ -15,7 +15,7 @@ const toPT = function (str) {
 
 describe("Proofstate", function () {
 
-  it.only("should blurR", function () {
+  it("should blurR", function () {
     let pt = toPT("F? P |- * : [ F?Q ]");
     Proofstate.blurR(pt);
     Object.keys(pt.delta_in).length.should.eq(1);

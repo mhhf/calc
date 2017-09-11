@@ -24,6 +24,7 @@
 
 program
     : statements EOF
+      { return yy.LLT.db; }
     ;
 
 statements

@@ -5,12 +5,15 @@ const helper = require("../lib/helper.js");
 const Sequent = require("../lib/sequent.js");
 const PT = require("../lib/pt.js");
 const Proofstate = require("../lib/proofstate.js");
+const Ruleset = require("../lib/ruleset.js");
 const clc = require('cli-color');
+
+const {rules, bwd} = Ruleset.init();
 
 
 const calcParser = require("../lib/parser.js");
 const Parser = calcParser(calc);
-const parser = Parser.parser;
+const seq_parser = Parser.parser;
 
 let args = process.argv.slice(2);
 
@@ -20,7 +23,7 @@ let args = process.argv.slice(2);
 let formulaStr = "-- : P -o (R & Q) |- -- : (P -o Q) & (P -o R)";
 const formula = args && args[0] || formulaStr;
 
-let node = parser.parse(formula)
+let node = seq_parser.parse(formula)
 let seq = Sequent.fromTree(node);
 
 let ps = new Proofstate();
@@ -30,7 +33,7 @@ let pt = new PT({
   conclusion: seq
 })
 
-let negative = ["inc", "even"];
+let negative = ["inc", "even", "plus"];
 
 let atoms = Sequent.getAtoms(seq);
 atoms = atoms.filter(atom => negative.indexOf(atom) === -1)
@@ -38,7 +41,9 @@ atoms = atoms.filter(atom => negative.indexOf(atom) === -1)
 let isProovable = Proofstate.auto(pt, {
   positive: atoms,
   negative,
-  debug: true
+  debug: true,
+  rules,
+  bwd
   // , mode: "proof"
 });
 

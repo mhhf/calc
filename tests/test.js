@@ -3,6 +3,7 @@ const calc = require('../ll.json');
 const calcParser = require("../lib/parser.js");
 const Sequent = require("../lib/sequent.js");
 const parser = calcParser(calc).parser;
+const mgu = require("../lib/mgu.js");
 
 describe("Sequent", function () {
   it("should parse a tree correctly", function () {
@@ -49,6 +50,15 @@ describe("Sequent", function () {
     seq.toString()
     .should.eq("? X, ? Y, * : F? V_2, * : X, * : F? V_2 -o F? V_1 |- * : F? V_0")
     Sequent.varIndex.should.eq(3)
+  });
+
+  it.only("should compute the correct mgu", function () {
+    let f1 = "I |- -- : plus(TT? z, TT? s. TT? z, T? X)";
+    let f2 = "I |- -- : plus(TT? z, T? N, T? N)";
+    let n1 = parser.parse(f1)
+    let n2 = parser.parse(f2)
+    let theta = mgu([[n1, n2]]);
+    theta.should.be.ok;
   });
 
 
