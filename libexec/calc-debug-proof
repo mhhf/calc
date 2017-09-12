@@ -8,7 +8,7 @@ const Proofstate = require("../lib/proofstate.js");
 const Ruleset = require("../lib/ruleset.js");
 const clc = require('cli-color');
 
-const {rules, bwd} = Ruleset.init();
+const {rules, bwd, getRule} = Ruleset.init();
 
 
 const calcParser = require("../lib/parser.js");
@@ -43,7 +43,8 @@ let isProovable = Proofstate.auto(pt, {
   negative,
   debug: true,
   rules,
-  bwd
+  bwd,
+  getRule
   // , mode: "proof"
 });
 

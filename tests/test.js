@@ -33,26 +33,26 @@ describe("Sequent", function () {
   })
 
   it("should return all free variables of a sequent", function () {
-    let f1 = "?X, ?Y,* : F?A, * : X, * : F?A -o F?B |- * : F?C";
+    let f1 = "?X, ?Y, -- : F?A, -- : X, -- : F?A -o F?B |- -- : bla( T? C)";
     let n1 = parser.parse(f1)
     let s1 = Sequent.fromTree(n1);
     let vars = Sequent.getFreeVariables(s1);
     vars.map(v => v.toString()).join(", ")
-    .should.eq("F? C, F? B, F? A")
+    .should.eq("C, F? B, F? A")
   });
 
 
   it("should rename all free variables to unique ones", function () {
-    let f1 = "?X, ?Y, * : F?A, * : X, * : F?A -o F?B |- * : F?C";
+    let f1 = "?X, ?Y, -- : F?A, -- : X, -- : F?A -o F?B |- -- : bla( T? C )";
     let n1 = parser.parse(f1)
     let s1 = Sequent.fromTree(n1);
     let seq = Sequent.renameUnique(s1);
-    seq.toString()
-    .should.eq("? X, ? Y, * : F? V_2, * : X, * : F? V_2 -o F? V_1 |- * : F? V_0")
+    seq.seq.toString()
+    .should.eq(" ? X, ? Y, F? V_2, X, F? V_2 -o F? V_1 |- bla ( V_0 )")
     Sequent.varIndex.should.eq(3)
   });
 
-  it.only("should compute the correct mgu", function () {
+  it("should compute the correct mgu", function () {
     let f1 = "I |- -- : plus(TT? z, TT? s. TT? z, T? X)";
     let f2 = "I |- -- : plus(TT? z, T? N, T? N)";
     let n1 = parser.parse(f1)

@@ -8,13 +8,16 @@ const Proofstate = require("../lib/proofstate.js");
 const clc = require('cli-color');
 const { saturate } = require('../lib/runner.js');
 
+const Ruleset = require("../lib/ruleset.js");
+const {rules, bwd, getRule} = Ruleset.init();
+
 
 const calcParser = require("../lib/parser.js");
 const Parser = calcParser(calc);
 const seq_parser = Parser.parser;
 
-const {parser, lexer} = require("../lib/llt_compiler.js");
-const fs = require("fs");
+// const {parser, lexer} = require("../lib/llt_compiler.js");
+// const fs = require("fs");
 
 let args = process.argv.slice(2);
 
@@ -22,13 +25,13 @@ let args = process.argv.slice(2);
 // let formulaStr = "* : ( F? P xx F? Q ) -o  F? X |- * : ( F? P xx F?Q ) -o F? X";
 // let formulaStr = "* : F?P xx (F?R && F?Q) |- * : (F?P xx F?R) && (F?P xx F?Q)"
 // let formulaStr = "-- : P -o (R & Q) |- -- : (P -o Q) & (P -o R)";
-const formula = args[1];
-let llt_path = args[0];
+const formula = args[0];
+// let llt_path = args[0];
 
-let llt_program = fs.readFileSync(llt_path, {filetype: "utf8"}).toString();
+// let llt_program = fs.readFileSync(llt_path, {filetype: "utf8"}).toString();
 
-let ast = parser.parse(llt_program);
-let add_rules = parser.yy.LLT.db.bwd
+// let ast = parser.parse(llt_program);
+// let add_rules = parser.yy.LLT.db.bwd
 
 // console.log(add_rules);
 
@@ -49,7 +52,7 @@ atoms = atoms.filter(atom => negative.indexOf(atom) === -1)
 
 
 let time = +(new Date());
-let seq_ = saturate({seq, atoms, negative, rules: add_rules});
+let seq_ = saturate({seq, atoms, negative, rules, bwd, getRule});
 time = +(new Date()) - time;
 
 const right = function (str) {
