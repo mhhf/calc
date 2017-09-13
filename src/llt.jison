@@ -6,11 +6,18 @@
 %%
 "%".*                                       /* skip comment    */
 \s+                                         /* skip whitespace */
+"-o"                                        return '-o';
+"*"                                         return '*';
 ":"                                         return ':';
 "."                                         return '.';
 "("                                         return '(';
 ")"                                         return ')';
+"{"                                         return '{';
+"}"                                         return '}';
+","                                         return ',';
+"="                                         return '=';
 "<-"                                        return '<-';
+"context"                                   return 'context';
 [\w\/]+                                     return 'WORD';
 <<EOF>>                                     return 'EOF';
 
@@ -55,9 +62,35 @@ bwd_def
       { $$ = [$1] }
     ;
 
+fwd_def
+    : words "-o" fwd_def
+      { $$ = ["-o", $1].concat([$3]) }
+    | words "*" fwd_def
+      { $$ = ["*", $1].concat([$3]) }
+    | words "-o" words
+      { $$ = ["-p", $1].concat([$3]) }
+    | words "*" words
+      { $$ = ["*", $1].concat([$3]) }
+    ;
+
+context_def
+    : "context" WORD "=" "{" ctx_ressources_def "}"
+      { $$ = yy.LLT.ctx_def($2, $5) }
+    ;
+
+ctx_ressources_def
+    : words "," ctx_ressources_def
+      { $$ = [$1].concat($3) }
+    | words
+      { $$ = [$1] }
+    ;
+
 statement
-    : typing_statement     //                        typing def
+    : typing_statement     //                          typing def
       { yy.LLT.type($1) }
-    | bwd_def              //                    bwd definition
+    | bwd_def              //                  bwd definition
       { yy.LLT.bwd_def($1) }
+    | fwd_def
+      { yy.LLT.fwd_def($1) }
+    | context_def
     ;

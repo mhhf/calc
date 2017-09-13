@@ -33,12 +33,12 @@ describe("Sequent", function () {
   })
 
   it("should return all free variables of a sequent", function () {
-    let f1 = "?X, ?Y, -- : F?A, -- : X, -- : F?A -o F?B |- -- : bla( T? C)";
+    let f1 = "?X, ?Y, -- : F?A, -- : X, -- : F?A -o F?B |- -- : bla( T? C) * F?A";
     let n1 = parser.parse(f1)
     let s1 = Sequent.fromTree(n1);
     let vars = Sequent.getFreeVariables(s1);
-    vars.map(v => v.toString()).join(", ")
-    .should.eq("C, F? B, F? A")
+    vars.map(v => v.toString()).sort().join(", ")
+    .should.eq("C, F? A, F? B")
   });
 
 

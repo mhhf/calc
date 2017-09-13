@@ -38,6 +38,12 @@ const formula = args[0];
 let node = seq_parser.parse(formula)
 let seq = Sequent.fromTree(node);
 
+
+Object.keys(rules)
+.forEach(ruleName => {
+  let rule = rules[ruleName];
+  console.log(`${ruleName}:\n${rule.map(r => `  ${r}`).join("\n")}\n`);
+})
 // let ps = new Proofstate();
 
 

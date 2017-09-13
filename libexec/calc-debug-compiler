@@ -45,4 +45,4 @@ let rules_str = parser.yy.LLT.db.bwd
   .join('\n\n')
 console.log(rules_str);
 
-console.log(ast);
+// console.log(ast);
