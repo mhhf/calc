@@ -34,7 +34,8 @@ let atoms = Proofstate.getAtoms(seq);
 
 let isProovable = Proofstate.auto(pt, {
   negative: atoms,
-  debug: false
+  debug: false,
+  calc
 });
 
 if(isProovable) {

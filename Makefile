@@ -10,6 +10,9 @@ link: uninstall dirs; for x in $(files); do \
 	ln -s `pwd`/$$x $(prefix)/$$x; done
 uninstall:; rm -rf $(addprefix $(prefix)/,$(files))
 
+clean:
+	rm -fdR out/*
+
 html:
 	calc genparser
 	rm -fdR out/html

@@ -38,7 +38,7 @@ atoms = atoms.filter(atom => negative.indexOf(atom) === -1)
 
 
 let time = +(new Date());
-let seq_ = saturate({seq, atoms, negative});
+let seq_ = saturate({seq, atoms, negative, calc});
 time = +(new Date()) - time;
 
 const right = function (str) {

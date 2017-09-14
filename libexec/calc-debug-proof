@@ -50,7 +50,8 @@ let isProovable = Proofstate.auto(pt, {
   debug: true,
   rules,
   bwd,
-  getRule
+  getRule,
+  calc
   // , mode: "proof"
 });
 

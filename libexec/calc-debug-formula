@@ -8,6 +8,8 @@ const sha3 = str => {
   d.update(str);
   return d.digest('hex');
 }
+const grammarNode = require("../lib/node.js");
+const Node = grammarNode(calc);
 
 const calcParser = require("../lib/parser.js");
 const Parser = calcParser(calc);
@@ -31,7 +33,11 @@ console.log(formula);
 //   console.log(lexer.lex(), lexer.yytext);
 // }
 let node = parser.parse(formula)
-let tree_str = node.formatTree([ "name", "ascii", "ownprecedence" ]);
+let tree_str = Node.formatTree({
+  calc,
+  node,
+  attrs: [ "name", "ascii", "ownprecedence" ]
+});
 
 console.log(tree_str);
 

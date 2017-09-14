@@ -8,13 +8,20 @@ const args = process.argv.slice(2);
 let formulaStr = "(?X, ?X), ?Y |- < AT? B , AT? C > : F?A xx F?B";
 const formula = args && args[0] || formulaStr;
 
+const grammarNode = require("../lib/node.js");
+const Node = grammarNode(calc);
+
 const calc = require('../ll.json');
 const calcParser = require("../lib/parser.js");
 const parser = calcParser(calc).parser;
 
 
 let node = parser.parse(formula)
-let tree_str = node.formatTree([ "location", "ownprecedence" ]);
+let tree_str = Node.formatTree({
+  calc,
+  node,
+  attrs: [ "location", "ownprecedence" ]
+});
 
 
 let latex_str = node.toString({style: "isabelle_se", brackets: true});

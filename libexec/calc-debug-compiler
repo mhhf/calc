@@ -37,12 +37,20 @@ console.log("\n"+right("RESULT")+"\n");
 
 let ast = parser.parse(llt_program);
 
-let rules_str = parser.yy.LLT.db.bwd
+let bwd_rules_str = parser.yy.LLT.db.bwd
   .map(rule =>
     `bwd_def:\n`+rule
       .map(s => `  ${s}`)
       .join("\n"))
   .join('\n\n')
-console.log(rules_str);
+console.log(bwd_rules_str);
+
+let fwd_rules_str = parser.yy.LLT.db.fwd
+  .map(rule =>
+    `fwd_def:\n`+rule
+      .map(s => `  ${s}`)
+      .join("\n"))
+  .join('\n\n')
+console.log(fwd_rules_str);
 
 // console.log(ast);
