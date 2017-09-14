@@ -324,10 +324,6 @@
       "RuleBin": {
         "label": "Binary Rules",
         "simp": true
-      },
-      "RuleNat": {
-        "label": "Natural numbers",
-        "simp": true
       }
     }
   },
@@ -600,25 +596,6 @@
         "?X |- -- : F?A & F?B",
         "?X |- -- : F?A",
         "?X |- -- : F?B"
-      ]
-    },
-    "RuleNat" : {
-      "Nat_Zero": [
-        "I |- TT? z : Nat", ""
-      ],
-      "Nat_Suc": [
-        "I |- TT? s. T? N: Nat",
-        "I |- T? N: Nat"
-      ],
-      "Even_Base": [
-        "I |- -- : even(TT? z)"
-      ],
-      "Even_Suc": [
-        "I |- -- : even(TT? s. TT? s. T? N)",
-        "I |- -- : even(T? N)"
-      ],
-      "Inc_Base": [
-        "I |- -- : inc(T? X, TT? s. T? X)"
       ]
     }
   }
