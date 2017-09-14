@@ -5,11 +5,11 @@ import katex from 'katex';
 import {h, div, span, label, input, hr, button, h1, makeDOMDriver} from '@cycle/dom'
 
 const parser = require("../../out/parser.js");
-const calcNode = require("../../lib/node.js");
+const Node = require("../../lib/node.js");
 const PT = require("../../lib/pt.js");
 const calc = require("../../out/calc.json");
 const helper = require("../../lib/helper.js");
-const Node = calcNode(calc);
+// const Node = calcNode(calc);
 const Viz = require("viz.js");
 parser.parser.yy.Node = Node;
 

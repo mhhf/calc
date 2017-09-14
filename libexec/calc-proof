@@ -10,6 +10,7 @@ const clc = require('cli-color');
 
 const calcParser = require("../lib/parser.js");
 const Parser = calcParser(calc);
+const Calc = Parser.Calc;
 const parser = Parser.parser;
 
 let args = process.argv.slice(2);
@@ -30,7 +31,7 @@ let pt = new PT({
   conclusion: seq
 })
 
-let atoms = Proofstate.getAtoms(seq);
+let atoms = Proofstate.getAtoms(seq, {rules: Calc.db.rules});
 
 let isProovable = Proofstate.auto(pt, {
   negative: atoms,

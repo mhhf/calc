@@ -13,6 +13,7 @@ const {rules, bwd, getRule} = Ruleset.init();
 
 const calcParser = require("../lib/parser.js");
 const Parser = calcParser(calc);
+const Calc = Parser.Calc;
 const seq_parser = Parser.parser;
 
 let args = process.argv.slice(2);
@@ -35,7 +36,7 @@ let pt = new PT({
 
 let negative = ["inc", "even", "plus"];
 
-let atoms = Sequent.getAtoms(seq);
+let atoms = Sequent.getAtoms(seq, {rules: Calc.db.rules});
 atoms = atoms.filter(atom => negative.indexOf(atom) === -1)
 
 Object.keys(rules)

@@ -14,6 +14,7 @@ const {rules, bwd, getRule} = Ruleset.init();
 
 const calcParser = require("../lib/parser.js");
 const Parser = calcParser(calc);
+const Calc = Parser.Calc;
 const seq_parser = Parser.parser;
 
 // const {parser, lexer} = require("../lib/llt_compiler.js");
@@ -53,7 +54,7 @@ Object.keys(rules)
 
 let negative = ["inc", "even", "plus"];
 
-let atoms = Sequent.getAtoms(seq);
+let atoms = Sequent.getAtoms(seq, {rules: Calc.db.rules});
 atoms = atoms.filter(atom => negative.indexOf(atom) === -1)
 
 

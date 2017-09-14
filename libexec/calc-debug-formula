@@ -8,15 +8,15 @@ const sha3 = str => {
   d.update(str);
   return d.digest('hex');
 }
-const grammarNode = require("../lib/node.js");
-const Node = grammarNode(calc);
+const Node = require("../lib/node.js");
+// const Node = grammarNode(calc);
 
 const calcParser = require("../lib/parser.js");
 const Parser = calcParser(calc);
 const grammar = Parser.grammar;
 const parser = Parser.parser;
+const Calc = Parser.Calc;
 
-console.log(JSON.stringify(grammar, false, 2));
 var JisonLex = require('jison-lex');
 var lexer = new JisonLex(grammar.lex);
 
@@ -34,13 +34,17 @@ console.log(formula);
 // }
 let node = parser.parse(formula)
 let tree_str = Node.formatTree({
-  calc,
+  rules: Calc.db.rules,
   node,
   attrs: [ "name", "ascii", "ownprecedence" ]
 });
 
 console.log(tree_str);
 
-let str = node.toString({style: "ascii", brackets: true});
+let str = Node.toString(node, {
+  style: "ascii",
+  brackets: true,
+  rules: Calc.db.rules
+});
 
 console.log("\n\n", str);

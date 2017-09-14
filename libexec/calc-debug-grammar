@@ -7,14 +7,26 @@ const helper = require('../lib/helper.js');
 const calcParser = require("../lib/parser.js");
 const Parser = calcParser(calc);
 
-console.log();
+const args = process.argv.slice(2);
+
+const showIds = args.indexOf("--ids") > -1;
+const showCode = args.indexOf("--code") > -1;
+
 
 const calc_ = Parser.calc;
+const Calc = Parser.Calc;
 
-var db = [];
+if(showIds) {
+  Object.keys(Calc.db.rules).forEach(id => {
+    let rule = Calc.db.rules[id];
+    console.log(`${id}. ${rule.ctxName}.${rule.ruleName}`);
+  })
+  console.log(`\n`);
+}
+
 
 const bnf = Parser.grammar.bnf;
 Object.keys(bnf).forEach(NTName => {
-  let rules = bnf[NTName].map(rhs => rhs[0].trim())
+  let rules = bnf[NTName].map(rhs => rhs[0].trim() + (showCode && (1 in rhs) && (`\n     { ${rhs[1]} }`) || ""))
   console.log(`${NTName} :=\n  | ${rules.join("\n  | ")}\n`);
 })

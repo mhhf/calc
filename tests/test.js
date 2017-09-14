@@ -52,7 +52,7 @@ describe("Sequent", function () {
     Sequent.varIndex.should.eq(3)
   });
 
-  it("should compute the correct mgu", function () {
+  it.only("should compute the correct mgu", function () {
     let f1 = "I |- -- : plus(TT? z, TT? s. TT? z, T? X)";
     let f2 = "I |- -- : plus(TT? z, T? N, T? N)";
     let n1 = parser.parse(f1)
