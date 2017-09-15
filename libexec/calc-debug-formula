@@ -11,11 +11,12 @@ const sha3 = str => {
 const Node = require("../lib/node.js");
 // const Node = grammarNode(calc);
 
+const Calc = require("../lib/calc.js");
+Calc.init(calc);
 const calcParser = require("../lib/parser.js");
-const Parser = calcParser(calc);
+const Parser = calcParser();
 const grammar = Parser.grammar;
 const parser = Parser.parser;
-const Calc = Parser.Calc;
 
 var JisonLex = require('jison-lex');
 var lexer = new JisonLex(grammar.lex);

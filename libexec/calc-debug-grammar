@@ -3,9 +3,11 @@
 const calc = require('../ll.json');
 const clc = require('cli-color');
 const helper = require('../lib/helper.js');
+const Calc = require("../lib/calc.js");
 
 const calcParser = require("../lib/parser.js");
-const Parser = calcParser(calc);
+Calc.init(calc);
+const Parser = calcParser();
 
 const args = process.argv.slice(2);
 
@@ -14,7 +16,6 @@ const showCode = args.indexOf("--code") > -1;
 
 
 const calc_ = Parser.calc;
-const Calc = Parser.Calc;
 
 if(showIds) {
   Object.keys(Calc.db.rules).forEach(id => {
