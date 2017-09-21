@@ -137,6 +137,7 @@
         "isabelle_se" : "_",
         "ascii" : "F? _",
         "latex" : "_",
+        "skip_end_user_syntax": true,
         "latex_brackets": false,
         "precedence": [340, 330],
         "shallow" : false
@@ -163,6 +164,7 @@
         "isabelle" : "{ _ }",
         "ascii" : "{ _ }",
         "latex" : "{ _ }",
+        "skip_end_user_syntax": true,
         "precedence": [330, 331]
       },
 
@@ -171,6 +173,7 @@
         "isabelle" : "_ lax",
         "ascii" : "_ lax",
         "latex" : "_ lax",
+        "skip_end_user_syntax": true,
         "precedence": [330, 331]
       },
 
@@ -179,6 +182,7 @@
         "isabelle" : "forall _ : _ . _",
         "ascii" : "forall _ : _ . _",
         "latex" : "\\forall _ : _ . _",
+        "skip_end_user_syntax": true,
         "precedence": [330, 330, 330, 331]
       }
     },

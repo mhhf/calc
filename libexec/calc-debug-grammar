@@ -27,6 +27,7 @@ if(showIds) {
 
 
 const bnf = Parser.grammar.bnf;
+
 Object.keys(bnf).forEach(NTName => {
   let rules = bnf[NTName].map(rhs => rhs[0].trim() + (showCode && (1 in rhs) && (`\n     { ${rhs[1]} }`) || ""))
   console.log(`${NTName} :=\n  | ${rules.join("\n  | ")}\n`);

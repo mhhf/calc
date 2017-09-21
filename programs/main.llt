@@ -4,6 +4,8 @@ e : bin.
 1 bin : bin.
 0 bin : bin.
 
+gas bin: pred.
+
 plus bin bin bin: bwd.
 
 inc bin bin: bwd.
@@ -41,10 +43,12 @@ plus (1 M) (1 N) (0 R)
   .
 
 
-gas X
--o
-plus (1 1 e) X Y * gas Y
-.
+stage test = {
+  gas X
+  -o
+  plus (1 1 e) X Y * gas Y
+  .
+}
 
 % this should be compiled down to:
 % gas (T? X) -o ( plus(TT? 1 . TT? 1 . TT? e, T? X, T? Y) * gas(T? Y) )
@@ -53,7 +57,6 @@ plus (1 1 e) X Y * gas Y
 context init = {
   gas (1 1 e)
 }.
-
 
 % plus z N N.
 

@@ -10,6 +10,7 @@ const fs = require("fs");
 
 
 
+
 // TODO - export to helper
 const right = function (str) {
   return "-".repeat(process.stdout.columns - str.length - 4 ) + "  " + str
@@ -17,20 +18,23 @@ const right = function (str) {
 
 
 let args = process.argv.slice(2);
+const showLex = args.indexOf("--lex") > -1;
 let llt_path = args[0];
 
 let llt_program = fs.readFileSync(llt_path, {filetype: "utf8"}).toString();
 
-lexer.setInput(llt_program);
-lexer.begin()
-let next;
+if(showLex) {
+  lexer.setInput(llt_program);
+  lexer.begin()
+  let next;
 
-console.log(right("LEXING")+"\n");
+  console.log(right("LEXING")+"\n");
 
-while(!lexer.done) {
-  next = lexer.lex();
-  let str = next === lexer.yytext ? next : next + " " + lexer.yytext;
-  console.log(str);
+  while(!lexer.done) {
+    next = lexer.lex();
+    let str = next === lexer.yytext ? next : next + " " + lexer.yytext;
+    console.log(str);
+  }
 }
 
 console.log("\n"+right("RESULT")+"\n");
@@ -43,13 +47,10 @@ let bwd_rules_str = parser.yy.LLT.db.bwd
       .map(s => `  ${s}`)
       .join("\n"))
   .join('\n\n')
-console.log(bwd_rules_str);
+console.log(bwd_rules_str+"\n");
 
 let fwd_rules_str = parser.yy.LLT.db.fwd
-  .map(rule =>
-    `fwd_def:\n`+rule
-      .map(s => `  ${s}`)
-      .join("\n"))
+  .map(rule =>`fwd_def:\n  ${rule}`)
   .join('\n\n')
 console.log(fwd_rules_str);
 
