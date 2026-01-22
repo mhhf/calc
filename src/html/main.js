@@ -9,8 +9,11 @@ const Node = require("../../lib/node.js");
 const PT = require("../../lib/pt.js");
 const calc = require("../../out/calc.json");
 const helper = require("../../lib/helper.js");
-// const Node = calcNode(calc);
+const Calc = require("../../lib/calc.js");
 const Viz = require("viz.js");
+
+// Initialize the calculus database (required for Node.toString to work)
+Calc.init(calc);
 parser.parser.yy.Node = Node;
 
 
@@ -25,25 +28,27 @@ function main(sources) {
     .map(e => e[1])
     .map((formula, _) => {
 
-    var katexFormula;
+    var katexFormula = "";
     var graphSVG = "";
-    try {
-      let node = parser.parse(formula)
-      let latexFormula = node.toString({style: "latex_se"});
-      let tableargs = ["constr", "ascii", "formula"];
-      let graphObject = node.toTree("", true, tableargs)
-      let graph = helper.tree2dot(graphObject, tableargs)
+    if (formula && formula.trim()) {
       try {
-        katexFormula = katex.renderToString(latexFormula, {
-          displayMode: true
-        });
-        graphSVG = Viz(graph, {format: "svg"});
+        let node = parser.parse(formula)
+        let latexFormula = node.toString({style: "latex_se"});
+        let tableargs = ["constr", "ascii", "formula"];
+        let graphObject = Node.toTree({node, rules: Calc.db.rules, attrs: tableargs})
+        let graph = helper.tree2dot(graphObject, tableargs)
+        try {
+          katexFormula = katex.renderToString(latexFormula, {
+            displayMode: true
+          });
+          graphSVG = Viz(graph, {format: "svg"});
+        } catch (e) {
+          katexFormula = e.toString();
+        }
       } catch (e) {
-        katexFormula = e.toString();
+        console.log(e);
+        katexFormula = `<code>${e.message.replace(/\n/g, "<br />")}</code>`;
       }
-    } catch (e) {
-      console.log(e);
-      katexFormula = `<code>${e.message.replace(/\n/g, "<br />")}</code>`;
     }
 
     let name = katex.renderToString("\\multimap_R");
@@ -51,11 +56,18 @@ function main(sources) {
     let B = katex.renderToString("B\\vdash C");
     let C = katex.renderToString("C\\vdash D");
 
+    // Example proof tree using current syntax (-- for any-term, * for tensor)
     let ll = [
-      "?X, ?Y, * : F?A -o F?B |- * : F?C",
-      "?X |- * : F?A", "?Y, * : F?B |- * : F?C"
+      "?X, ?Y, -- : F?A -o F?B |- -- : F?C",
+      "?X |- -- : F?A", "?Y, -- : F?B |- -- : F?C"
     ];
-    let ll_pt = PT.fromNodeArray(ll.map(f => parser.parse(f)));
+    let ll_pt;
+    try {
+      ll_pt = PT.fromNodeArray(ll.map(f => parser.parse(f)));
+    } catch (e) {
+      console.log("Error parsing example proof tree:", e);
+      ll_pt = null;
+    }
 
 
     return div([
@@ -65,7 +77,7 @@ function main(sources) {
       hr(),
       h("div", {props:{innerHTML: katexFormula}}),
       h("center", {props:{innerHTML: graphSVG}}),
-      div({props: {innerHTML: ll_pt.toString({style: "html"})}})
+      ll_pt ? div({props: {innerHTML: ll_pt.toString({style: "html"})}}) : div("(proof tree parse error)")
       // span(".inferenceRule", [
       //   span(".rules", [
       //     span(".premisses", [
