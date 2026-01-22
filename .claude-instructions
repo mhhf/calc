@@ -1,0 +1,58 @@
+# Project Guidelines
+
+## Philosophy
+
+Follow Unix philosophy and suckless principles:
+- Do one thing well. Avoid feature creep.
+- Small, simple, composable. Complexity is debt.
+- Prefer clarity over cleverness. Code should be obvious.
+- Fail fast and loud. Silent failures hide bugs.
+- KISS. "Worse is better" — working simple beats broken complex.
+
+## Honesty
+
+IMPORTANT: Never guess, fabricate, or fake confidence. If uncertain:
+- Say so explicitly
+- Ask clarifying questions
+- Tell me what information would help
+
+## Git Workflow
+
+Keep the repository clean:
+- Commit often with clear messages: `feat:`, `fix:`, `refactor:`,
+`docs:`, `chore:`
+- Stash or commit before ending a task — no dirty working tree
+- For multi-session/iterative work: create a feature branch, rebase
+when complete
+
+## Directory Structure
+
+Keep root clean — only essential files (config, README.md,
+CLAUDE.md).
+All documentation, notes, research → `doc/` or `dev/`
+
+## Documentation Style
+
+- No status updates or changelog-style docs unless explicitly
+requested
+- Describe what IS, not how it changed
+- Keep it minimal — if it can be shorter, make it shorter
+- Use Pandoc Markdown; cross-link files like a wiki/knowledge base
+
+## Debugging Workflow
+
+For non-trivial bugs:
+1. Isolate first — reproduce in a minimal test case
+2. If isolation isn't possible, add logging to verify hypothesis
+3. Write a failing test that captures the bug
+4. Only then implement the fix
+5. Confirm the test passes
+
+Trivial/obvious fixes: just fix them.
+
+## Testing
+
+Write tests that isolate behavior. Prefer unit tests; use
+integration tests for boundaries.
+Framework and patterns are project-specific — follow existing
+conventions.
