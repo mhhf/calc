@@ -1,15 +1,12 @@
 #!/usr/bin/env node
 // TODO - to get rid of shift-reduce conflicts for "e bin_op e" expressions, I cannot have non-terminal bin_op rules, therefore they should be propagated up to generate multiple "e '+' e" rules.
 
-const ncp = require("copy-paste");
-
 const DEBUG = !!process.env["DEBUG"];
 const args = process.argv.slice(2);
-let formulaStr = "(?X, ?X), ?Y |- < AT? B , AT? C > : F?A xx F?B";
+let formulaStr = "-- : A -o B |- -- : C";
 const formula = args && args[0] || formulaStr;
 
 const Node = require("../lib/node.js");
-// const Node = grammarNode(calc);
 
 const calc = require('../ll.json');
 const calcParser = require("../lib/parser.js");
@@ -17,17 +14,26 @@ const Parser = calcParser(calc);
 const parser = Parser.parser;
 const Calc = Parser.Calc;
 
-
 let node = parser.parse(formula)
-let tree_str = Node.formatTree({
-  rules: Calc.db.rules,
-  node,
-  attrs: [ "location", "ownprecedence" ]
-});
 
+// Show ASCII representation
+let ascii_str = node.toString({style: "ascii"});
+console.log("ASCII:");
+console.log(ascii_str);
 
-let latex_str = node.toString({style: "isabelle_se", brackets: true});
+// Show Isabelle representation
+let isabelle_str = node.toString({style: "isabelle_se", brackets: true});
+console.log("\nIsabelle:");
+console.log(isabelle_str);
 
-ncp.copy("(" + latex_str + ")")
-
-console.log("String copied to clipboard:\n" + latex_str);
+// Try to copy to clipboard (optional)
+try {
+  const ncp = require("copy-paste");
+  ncp.copy("(" + isabelle_str + ")", function(err) {
+    if (!err) {
+      console.log("\n(Copied to clipboard)");
+    }
+  });
+} catch (e) {
+  // Clipboard not available, ignore
+}

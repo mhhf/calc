@@ -51,8 +51,8 @@ let isProovable = Proofstate.auto(pt, {
   rules,
   bwd,
   getRule,
-  calc
-  // , mode: "proof"
+  calc,
+  mode: "proof"  // Enable forward chaining for identity proofs
 });
 
 console.log(`\nDEBUG:`);
