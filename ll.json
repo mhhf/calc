@@ -302,6 +302,10 @@
   },
 
   "calc_structure_rules_meta" : {
+    "_notes": {
+      "RuleStruct_status": "UNUSED BY PROOF SEARCH - The structural rules (P_L, P_R, A_L, A_R, I_*) are display postulates from calculus-toolbox. They are NOT used by proofstate.js which uses focused proof search with multiset manipulation instead. Kept for: (1) potential PDF/HTML display for completeness, (2) Isabelle export, (3) possible future use if we want pure display calculus proof search.",
+      "architecture": "This is a HYBRID system: display calculus rule definitions + focused sequent calculus proof search. See dev/research/display-calculus.md for analysis."
+    },
     "polarity": {
       "Formula_Tensor": "positive",
       "Formula_Loli": "negative",
@@ -319,7 +323,8 @@
         "label": "Cut rule"
       },
       "RuleStruct": {
-        "label": "Structural rules"
+        "label": "Structural rules",
+        "_unused_by_proofstate": true
       },
       "RuleU": {
         "label": "Unary Rules",

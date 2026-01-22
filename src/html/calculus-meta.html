@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>LLog - Framework Schema</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/katex.min.css">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/katex.min.js"></script>
+  <style>
+    :root {
+      --bg: #fff;
+      --fg: #222;
+      --accent: #4a5568;
+      --border: #e2e8f0;
+      --positive: #38a169;
+      --negative: #e53e3e;
+      --note-bg: #faf5e4;
+    }
+
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg: #1a202c;
+        --fg: #e2e8f0;
+        --accent: #a0aec0;
+        --border: #4a5568;
+        --positive: #68d391;
+        --negative: #fc8181;
+        --note-bg: #2d3748;
+      }
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      max-width: 900px;
+      margin: 0 auto;
+      padding: 2rem;
+      background: var(--bg);
+      color: var(--fg);
+      line-height: 1.6;
+    }
+
+    h1 { border-bottom: 2px solid var(--border); padding-bottom: 0.5rem; }
+    h2 { color: var(--accent); margin-top: 2.5rem; }
+    h3 { color: var(--accent); font-size: 1rem; margin: 1rem 0 0.5rem; }
+
+    code {
+      background: var(--border);
+      padding: 0.1em 0.3em;
+      border-radius: 3px;
+      font-size: 0.9em;
+    }
+
+    table {
+      border-collapse: collapse;
+      width: 100%;
+      margin: 1rem 0;
+    }
+
+    th, td {
+      border: 1px solid var(--border);
+      padding: 0.5rem 1rem;
+      text-align: left;
+    }
+
+    th { background: var(--border); }
+
+    .subtitle { color: var(--accent); margin-top: -1rem; }
+    .intro { color: var(--accent); font-style: italic; margin-bottom: 1rem; }
+    .note { font-size: 0.9em; color: var(--accent); margin-top: 0.5rem; }
+
+    .sort-group { margin-bottom: 1.5rem; }
+    .sort-def {
+      display: flex;
+      gap: 1rem;
+      padding: 0.3rem 0;
+      border-bottom: 1px dashed var(--border);
+    }
+    .sort-name {
+      font-weight: bold;
+      min-width: 120px;
+      color: var(--accent);
+    }
+    .sort-constructors { font-family: monospace; }
+
+    .polarity-positive { color: var(--positive); font-weight: bold; }
+    .polarity-negative { color: var(--negative); font-weight: bold; }
+
+    .unused { opacity: 0.6; }
+    .unused td { font-style: italic; }
+
+    .methodology-item {
+      background: var(--note-bg);
+      padding: 1rem;
+      margin: 1rem 0;
+      border-radius: 4px;
+      border-left: 3px solid var(--accent);
+    }
+    .methodology-item h3 { margin-top: 0; }
+    .methodology-item ul { margin: 0.5rem 0; padding-left: 1.5rem; }
+
+    @media print {
+      body { max-width: none; }
+      section { break-inside: avoid; }
+    }
+  </style>
+</head>
+<body>
+  <h1>LLog</h1>
+  <p class="subtitle">Framework Schema</p>
+
+  <section id="types">
+<h2>Sort Hierarchy</h2>
+<p class="intro">The calculus is built from these fundamental sorts, each with constructors that build terms of that sort.</p>
+<div class="sort-group">
+<h3>Atomic</h3>
+<div class="sort-def">
+<span class="sort-name">Atprop</span>
+<span class="sort-constructors"><code>_ ( _ )</code> | <code>_</code> | <code>A? _</code></span>
+</div>
+<div class="sort-def">
+<span class="sort-name">Atterm</span>
+<span class="sort-constructors"><code>TT? _</code> | <code>AT? _</code></span>
+</div>
+</div>
+<div class="sort-group">
+<h3>Formulas</h3>
+<div class="sort-def">
+<span class="sort-name">Formula</span>
+<span class="sort-constructors"><code>Formula_Atprop</code> | <code>F? _</code> | <code>! _ </code> | <code>_ * _</code> | <code>_ -o _</code> | <code>_ & _</code> | <code>{ _ }</code> | <code>_ lax</code> | <code>forall _ : _ . _</code></span>
+</div>
+<div class="sort-def">
+<span class="sort-name">FFormula</span>
+<span class="sort-constructors"><code>[ _ ]</code></span>
+</div>
+</div>
+<div class="sort-group">
+<h3>Structures</h3>
+<div class="sort-def">
+<span class="sort-name">Structure</span>
+<span class="sort-constructors"><code>_ : _</code> | <code>_ : _</code> | <code>_</code> | <code>? _</code> | <code>I</code> | <code>_ , _</code></span>
+</div>
+</div>
+<div class="sort-group">
+<h3>Judgments</h3>
+<div class="sort-def">
+<span class="sort-name">Sequent</span>
+<span class="sort-constructors"><code>Sequent_Structure</code> | <code>_ |- _</code></span>
+</div>
+</div>
+</section>
+
+  <section id="connectives-schema">
+<h2>Connective Schema</h2>
+<p class="intro">Each connective has a polarity determining its proof-theoretic behavior: positive connectives are invertible on the right, negative on the left.</p>
+<table class="schema-table">
+<tr><th>Connective</th><th>Arity</th><th>ASCII</th><th>LaTeX</th><th>Polarity</th></tr>
+<tr><td><code>Tensor</code></td><td>binary</td><td><code>_ * _</code></td><td class="latex-cell" data-latex="_ \otimes _"></td><td class="polarity-positive">positive</td></tr>
+<tr><td><code>Loli</code></td><td>binary</td><td><code>_ -o _</code></td><td class="latex-cell" data-latex="_ \multimap _"></td><td class="polarity-negative">negative</td></tr>
+<tr><td><code>With</code></td><td>binary</td><td><code>_ & _</code></td><td class="latex-cell" data-latex="_ \& _"></td><td class="polarity-negative">negative</td></tr>
+<tr><td><code>Bang</code></td><td>unary</td><td><code>! _</code></td><td class="latex-cell" data-latex="! _ "></td><td class="polarity-positive">positive</td></tr>
+<tr><td><code>Monad</code></td><td>unary</td><td><code>{ _ }</code></td><td class="latex-cell" data-latex="{ _ }"></td><td class="polarity--">-</td></tr>
+<tr><td><code>Lax</code></td><td>unary</td><td><code>_ lax</code></td><td class="latex-cell" data-latex="_ lax"></td><td class="polarity-positive">positive</td></tr>
+<tr><td><code>Forall</code></td><td>unary</td><td><code>forall _ : _ . _</code></td><td class="latex-cell" data-latex="\forall _ : _ . _"></td><td class="polarity-negative">negative</td></tr>
+</table>
+</section>
+
+  <section id="rule-schema">
+<h2>Rule Schema</h2>
+<p class="intro">Inference rules are organized by context. Each rule is an array: <code>[conclusion, premise₁, premise₂, ...]</code></p>
+<table class="schema-table">
+<tr><th>Context</th><th>Label</th><th>Rule Count</th><th>Description</th></tr>
+<tr><td><code>RuleZer</code></td><td>Axioms</td><td>1</td><td>Axioms (no premises)</td></tr>
+<tr><td><code>RuleCut</code></td><td>Cut rule</td><td>1</td><td>Cut rule for composition</td></tr>
+<tr class="unused"><td><code>RuleStruct</code></td><td>Structural rules</td><td>14</td><td>Display postulates (structural)</td></tr>
+<tr><td><code>RuleU</code></td><td>Unary Rules</td><td>9</td><td>Single-premise logical rules</td></tr>
+<tr><td><code>RuleBin</code></td><td>Binary Rules</td><td>3</td><td>Two-premise logical rules</td></tr>
+</table>
+<p class="note">Rows marked as unused are display postulates not used by focused proof search.</p>
+</section>
+
+  <section id="metavars">
+<h2>Metavariable Conventions</h2>
+<p class="intro">Rules use metavariables to range over terms of each sort. The ASCII syntax uses prefixes to distinguish sorts.</p>
+<table class="schema-table">
+<tr><th>Sort</th><th>ASCII Pattern</th><th>Math Notation</th><th>Example</th></tr>
+<tr><td><code>Structure</code></td><td><code>?X, ?Y, ?Z</code></td><td class="latex-cell" data-latex="Γ, Δ, Σ"></td><td>Contexts/antecedents</td></tr>
+<tr><td><code>Formula</code></td><td><code>F?A, F?B, F?C</code></td><td class="latex-cell" data-latex="A, B, C"></td><td>Formulas in rules</td></tr>
+<tr><td><code>Atprop</code></td><td><code>A?A, A?B</code></td><td class="latex-cell" data-latex="p, q"></td><td>Atomic propositions</td></tr>
+<tr><td><code>Atterm</code></td><td><code>AT?A, AT?B</code></td><td class="latex-cell" data-latex="x, y"></td><td>Term variables</td></tr>
+<tr><td><code>Term</code></td><td><code>T?A</code></td><td class="latex-cell" data-latex="t, u"></td><td>Term expressions</td></tr>
+<tr><td><code>(Anonymous)</code></td><td><code>--</code></td><td class="latex-cell" data-latex="·"></td><td>Placeholder term</td></tr></table>
+</section>
+
+  <section id="methodology">
+<h2>Display Calculus Methodology</h2>
+<div class="methodology-item">
+<h3>Display Property</h3>
+<p>Any substructure occurrence in a sequent can be "displayed" as the entire
+antecedent or succedent via structural rules. This enables modular proof of cut elimination.</p>
+</div>
+
+<div class="methodology-item">
+<h3>Focused Proof Search</h3>
+<p>The proof search implementation uses focused sequent calculus rather than pure display calculus.
+Contexts are multisets; structural rules are implicit. Focusing alternates between:</p>
+<ul>
+<li><strong>Inversion phase:</strong> Apply invertible rules eagerly (negative-right, positive-left)</li>
+<li><strong>Focus phase:</strong> Choose a formula and apply non-invertible rules</li>
+</ul>
+</div>
+
+<div class="methodology-item">
+<h3>Polarity</h3>
+<p>Connective polarity determines invertibility:</p>
+<ul>
+<li><strong>Positive:</strong> Right rules non-invertible, left rules invertible</li>
+<li><strong>Negative:</strong> Right rules invertible, left rules non-invertible</li>
+</ul>
+</div></section>
+
+
+  <script>
+    document.querySelectorAll('[data-latex]').forEach(el => {
+      try {
+        katex.render(el.dataset.latex, el, { displayMode: false, throwOnError: false });
+      } catch (e) {
+        el.textContent = el.dataset.latex;
+      }
+    });
+    document.querySelectorAll('.latex-cell').forEach(el => {
+      try {
+        katex.render(el.dataset.latex, el, { displayMode: false, throwOnError: false });
+      } catch (e) {
+        el.textContent = el.dataset.latex;
+      }
+    });
+  </script>
+</body>
+</html>
