@@ -39,12 +39,22 @@ const proveFormula = function (formulaStr) {
 
 describe("Proofstate", function () {
 
-  it("should blur", function () {
-    let pt = toPT("F? P |- -- : [ F?Q ]");
-    Proofstate.blur(pt, "R");
-    Object.keys(pt.delta_in).length.should.eq(1);
-    pt.premisses.length.should.eq(1);
-    Object.keys(pt.premisses[0].conclusion.linear_ctx).length.should.eq(0)
+  // Focus is now tracked externally (via ProofSearchState), not in sequent syntax
+  // The old blur test used focus bracket syntax which is removed
+  it("should track focus state externally", function () {
+    const { ProofSearchState } = require('../lib/prover.js');
+    let state = new ProofSearchState();
+
+    state.isFocused().should.equal(false);
+    state.phase.should.equal('inversion');
+
+    state.focus('R', null);
+    state.isFocused().should.equal(true);
+    state.focusPosition.should.equal('R');
+
+    state.blur();
+    state.isFocused().should.equal(false);
+    state.phase.should.equal('inversion');
   });
 
   // Proof search tests - these verify that focusing and polarity work correctly

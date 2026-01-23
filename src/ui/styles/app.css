@@ -1,0 +1,112 @@
+@import "tailwindcss";
+
+@layer base {
+  html {
+    font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto,
+      'Helvetica Neue', Arial, sans-serif;
+  }
+
+  body {
+    @apply text-gray-900 dark:text-gray-100;
+  }
+}
+
+@layer components {
+  /* Inference Rule Styling */
+  .inference-rule {
+    @apply relative inline-block text-center;
+  }
+
+  .inference-rule .rules {
+    @apply inline-block;
+  }
+
+  .inference-rule .premisses {
+    @apply block border-b border-gray-800 dark:border-gray-200 pb-1 mb-1;
+  }
+
+  .inference-rule .conclusion {
+    @apply block pt-1;
+  }
+
+  .inference-rule .formula {
+    @apply inline-block px-2;
+  }
+
+  .inference-rule .formula:hover {
+    @apply bg-purple-100 dark:bg-purple-900 rounded;
+  }
+
+  .inference-rule .name {
+    @apply absolute right-0 bottom-0 text-xs text-gray-500 dark:text-gray-400 pl-2;
+    transform: translateX(100%);
+  }
+
+  /* Rule Card */
+  .rule-card {
+    @apply bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-4;
+  }
+
+  .rule-card:hover {
+    @apply shadow-md border-blue-300 dark:border-blue-600;
+  }
+
+  /* Polarity indicators */
+  .polarity-positive {
+    @apply text-green-600 dark:text-green-400;
+  }
+
+  .polarity-negative {
+    @apply text-red-600 dark:text-red-400;
+  }
+
+  /* Tab navigation */
+  .tab-link {
+    @apply px-4 py-2 text-sm font-medium rounded-t-lg transition-colors;
+  }
+
+  .tab-link.active {
+    @apply bg-white dark:bg-gray-800 text-blue-600 dark:text-blue-400 border-b-2 border-blue-600 dark:border-blue-400;
+  }
+
+  .tab-link:not(.active) {
+    @apply text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700;
+  }
+
+  /* Input styling */
+  .formula-input {
+    @apply w-full px-4 py-3 font-mono text-lg border-2 rounded-lg;
+    @apply border-gray-300 dark:border-gray-600;
+    @apply bg-white dark:bg-gray-800;
+    @apply focus:border-blue-500 dark:focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20;
+  }
+
+  .formula-input.error {
+    @apply border-red-500 dark:border-red-400;
+  }
+}
+
+@layer utilities {
+  /* KaTeX display mode centering */
+  .katex-display {
+    @apply overflow-x-auto py-2;
+  }
+
+  /* Better scrollbar for dark mode */
+  .dark ::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+
+  .dark ::-webkit-scrollbar-track {
+    @apply bg-gray-800;
+  }
+
+  .dark ::-webkit-scrollbar-thumb {
+    @apply bg-gray-600 rounded;
+  }
+
+  .dark ::-webkit-scrollbar-thumb:hover {
+    @apply bg-gray-500;
+  }
+}

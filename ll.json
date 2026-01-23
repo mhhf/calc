@@ -205,26 +205,7 @@
       }
     },
 
-    "FFormula" : {
-      "Focused_Formula": {
-        "type": "Formula",
-        "ascii": "[ _ ]",
-        "latex": "[ _ ]",
-        "isabelle" : "[ _ ]",
-        "precedence": [310, 320]
-      }
-    },
-
     "Structure" : {
-      "Structure_Focused_Term_Formula" : {
-        "type": ["Term", "FFormula"],
-        "ascii": "_ : _",
-        "ascii_se": " _  _ ",
-        "latex": "_ : _",
-        "isabelle" : "_ :\\<^sub>T\\<^sub>F _",
-        "precedence": [310, 310, 320]
-      },
-
       "Structure_Term_Formula" : {
         "type": ["Term", "Formula"],
         "ascii": "_ : _",
@@ -304,15 +285,7 @@
   "calc_structure_rules_meta" : {
     "_notes": {
       "RuleStruct_status": "UNUSED BY PROOF SEARCH - The structural rules (P_L, P_R, A_L, A_R, I_*) are display postulates from calculus-toolbox. They are NOT used by proofstate.js which uses focused proof search with multiset manipulation instead. Kept for: (1) potential PDF/HTML display for completeness, (2) Isabelle export, (3) possible future use if we want pure display calculus proof search.",
-      "architecture": "This is a HYBRID system: display calculus rule definitions + focused sequent calculus proof search. See dev/research/display-calculus.md for analysis."
-    },
-    "polarity": {
-      "Formula_Tensor": "positive",
-      "Formula_Loli": "negative",
-      "Formula_With": "negative",
-      "Formula_Lax": "positive",
-      "Formula_Bang": "positive",
-      "Formula_Forall": "negative"
+      "architecture": "Three-layer architecture: Framework (generic) + Object Logic (ll.json) + Prover (focusing strategy). Polarity is inferred from rule structure at load time by lib/polarity.js."
     },
     "Contexts" : {
       "RuleZer": {
@@ -562,19 +535,19 @@
         "?X, -- : F?A |- -- : F?B"
       ],
       "With_L" : [
-        "?X, -- : [ F?A & F?B ] |- -- : F?C",
-        "?X, -- : [ F?A ] |- -- : F?C"
+        "?X, -- : F?A & F?B |- -- : F?C",
+        "?X, -- : F?A |- -- : F?C"
       ],
       "With_L2" : [
-        "?X, -- : [ F?A & F?B ] |- -- : F?C",
-        "?X, -- : [ F?B ] |- -- : F?C"
+        "?X, -- : F?A & F?B |- -- : F?C",
+        "?X, -- : F?B |- -- : F?C"
       ],
       "Monad_R" : [
         "?X |- -- : { F?A }",
         "?X |- -- : F?A lax"
       ],
       "Bang_R" : [
-        "I |- -- : [! F?A]",
+        "I |- -- : ! F?A",
         "I |- -- : F?A"
       ],
       "Bang_L" : [
@@ -582,24 +555,24 @@
         "?X |- -- : F?B"
       ],
       "Forall_L" : [
-        "?X, -- : [ forall AT?A : A?B. F?C ] |- -- : F?D",
-        "?X, -- : [ F?C ] |- -- : F?D"
+        "?X, -- : forall AT?A : A?B. F?C |- -- : F?D",
+        "?X, -- : F?C |- -- : F?D"
       ],
       "Forall_R" : [
-        "?X  |- -- : forall AT?A : A?B. F?C",
-        "?X  |- -- : F?C"
+        "?X |- -- : forall AT?A : A?B. F?C",
+        "?X |- -- : F?C"
       ]
     },
     "RuleBin" : {
       "Tensor_R" :   [
-        "?X, ?Y |- -- : [ F?A * F?B ]",
-        "?X |- -- : [ F?A ]",
-        "?Y |- -- : [ F?B ]"
+        "?X, ?Y |- -- : F?A * F?B",
+        "?X |- -- : F?A",
+        "?Y |- -- : F?B"
       ],
       "Loli_L": [
-        "?X, ?Y, -- : [ F?A -o F?B ] |- -- : F?C",
-        "?X |- -- : [ F?A ]",
-        "?Y, -- : [ F?B ] |- -- : F?C"
+        "?X, ?Y, -- : F?A -o F?B |- -- : F?C",
+        "?X |- -- : F?A",
+        "?Y, -- : F?B |- -- : F?C"
       ],
       "With_R": [
         "?X |- -- : F?A & F?B",

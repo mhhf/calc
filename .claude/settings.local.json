@@ -65,7 +65,8 @@
       "WebFetch(domain:tla.msr-inria.inria.fr)",
       "WebFetch(domain:sriramsami.com)",
       "WebFetch(domain:www.lix.polytechnique.fr)",
-      "Bash(./node_modules/mocha/bin/mocha:*)"
+      "Bash(./node_modules/mocha/bin/mocha:*)",
+      "Bash(find:*)"
     ],
     "deny": [],
     "ask": []
