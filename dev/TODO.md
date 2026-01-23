@@ -173,6 +173,7 @@ Final state:
 - [ ] Read Pfenning's 15-836 notes (first 50 pages)
 - [ ] Study Granule ICFP 2019 paper
 - [ ] Research Nomos language (blockchain + linear types)
+- [ ] Research and think about ffi (foreign function interface) for logics - e.g. fixed point arithmetic or something similar
 
 ### Extensions
 - [ ] Design semiring-parameterized quantities

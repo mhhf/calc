@@ -12,6 +12,34 @@ const calc = require('../ll.json');
 const calcParser = require("../lib/parser.js");
 const parser = calcParser(calc).parser;
 
-const parserCode = parser.generate({moduleMain: "{}"});
+// Generate parser with CommonJS exports
+let parserCode = parser.generate({moduleMain: "{}"});
+
+// Make it browser-compatible by using UMD pattern instead of raw require checks
+// Replace the problematic require.main check that fails in browsers
+parserCode = parserCode.replace(
+  /if \(typeof require !== 'undefined' && typeof exports !== 'undefined'\) \{[\s\S]*?\n\}\n\}/,
+  `// UMD export pattern (browser + Node.js compatible)
+(function(root, factory) {
+  var exports = factory();
+  if (typeof module === 'object' && module.exports) {
+    // Node.js/CommonJS
+    module.exports = exports;
+  } else if (typeof define === 'function' && define.amd) {
+    // AMD
+    define(function() { return exports; });
+  } else {
+    // Browser global
+    root.parserModule = exports;
+  }
+}(typeof self !== 'undefined' ? self : this, function() {
+  return {
+    parser: parser,
+    Parser: parser.Parser,
+    parse: function() { return parser.parse.apply(parser, arguments); }
+  };
+}));`
+);
+
 fs.writeFileSync(path.join(__dirname, "../out/parser.js"), parserCode)
 fs.writeFileSync(path.join(__dirname, "../out/calc.json"), JSON.stringify(calc, false, 2))

@@ -13,7 +13,17 @@ uninstall:; rm -rf $(addprefix $(prefix)/,$(files))
 clean:
 	rm -fdR out/*
 
-html:
+# New SolidJS UI build
+ui:
+	npm run build:parser
+	npx vite build --config src/ui/vite.config.ts
+
+# Development server for new UI
+dev:
+	npm run dev
+
+# Legacy CycleJS build (kept for backwards compatibility)
+html-legacy:
 	calc genparser
 	rm -fdR out/html
 	mkdir out/html

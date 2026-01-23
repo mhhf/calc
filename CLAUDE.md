@@ -9,8 +9,6 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - Don't write 'status update' documents or other verbose documents unless its told expricitly. Keep all documents descriptive of what IS not how it changed. Keep it VERY short and concise
 - rather then simply recognizing an error and fixing it - think always how to isolate it and test it in isolation - e.g. via unit and integration tests. If its not possible then how to encapsule it (e.g. via logs), then either testing the failed state via unit tests or testing your hypothesis via verifying the logs. only after you verified the fail and isolated the error, you should think about fixing it
 
-## Directory Structure
-
 ## ANKI
 
 I want to create an anki deck where I learn potential concepts. Whenever I tell you or once we have research results (with my approval) - write new discoveries as flashcards of the style Q:A to doc/ANKI.md. They should have the style of mdanki
@@ -28,17 +26,50 @@ CALC is an experimental proof calculus system for linear logic, inspired by the 
 ## Build & Development Commands
 
 ```bash
-make              # Install symlinks to /usr/local (default)
-make test         # Run Mocha tests
-make html         # Build web UI bundle (runs genparser + webpack)
-make clean        # Clean output directory
-make uninstall    # Remove installed symlinks
+# New SolidJS UI
+npm run dev           # Development server (http://localhost:3000)
+npm run build:ui      # Production build to out/ui/
+
+# Core
+npm run build:parser  # Regenerate parser from ll.json
+npm test              # Run Mocha tests
+make                  # Install CLI symlinks
+
+# Legacy CycleJS UI (deprecated)
+npm run ui:legacy     # Build and serve old UI
 ```
 
-Run tests directly:
-```bash
-./node_modules/mocha/bin/mocha tests           # All tests
-./node_modules/mocha/bin/mocha tests/node.js   # Single test file
+## Directory Structure
+
+```
+lib/                  # Core library (used by CLI and UI)
+├── types/            # TypeScript type definitions
+├── calc.js           # Calculus database
+├── node.js           # AST representation
+├── parser.js         # Jison grammar generation
+├── sequent.js        # Logical sequents
+├── proofstate.js     # Proof search engine
+├── pt.js             # Proof trees
+└── ...
+
+src/ui/               # SolidJS frontend
+├── components/       # Reusable components
+│   ├── layout/       # Shell, TabNav
+│   ├── math/         # KaTeX, FormulaInput, InferenceRule
+│   ├── graph/        # ASTView, ProofTree
+│   └── common/       # ErrorBoundary, Loading
+├── pages/            # Route pages
+│   ├── Sandbox.tsx   # Formula sandbox
+│   ├── CalculusOverview.tsx
+│   └── MetaOverview.tsx
+├── state/            # UI-only state
+└── styles/           # Tailwind CSS
+
+libexec/              # CLI entry points
+out/                  # Generated outputs
+├── parser.js         # Generated Jison parser
+├── calc.json         # Calculus data for browser
+└── ui/               # Built SolidJS app
 ```
 
 ## CLI Usage
@@ -46,12 +77,9 @@ Run tests directly:
 All commands are invoked via `calc <cmd> <options>`:
 - `calc parse <str>` - Parse formula, output tree and LaTeX
 - `calc proof` - Interactive/automated proof generation
-- `calc gendoc` - Generate documentation from src/* to doc/
 - `calc genparser` - Regenerate parser from ll.json
-- `calc saturate` - Apply rule saturation
-- `calc compare` - Compare formulas
-- `calc gencalc` - Generate Isabelle theories
-- `calc debug-*` - Various debugging utilities (grammar, precedence, rules, proof, etc.)
+- `calc gendoc` - Generate documentation
+- `calc debug-*` - Various debugging utilities
 
 ## Architecture
 
@@ -61,18 +89,20 @@ Formula Input → Parser (jison) → Node/AST → Sequent → Proofstate → Pro
 ```
 
 **Key Components:**
-- `ll.json` - Master calculus definition containing grammar rules, operator precedence, and multi-format output specs (ASCII, LaTeX, Isabelle)
+- `ll.json` - Master calculus definition (grammar, precedence, output formats)
 - `lib/parser.js` - Dynamically generates Jison grammar from ll.json
-- `lib/node.js` - AST node representation with format-polymorphic rendering
-- `lib/sequent.js` - Logical sequent structure (persistent_ctx, linear_ctx, succedent)
-- `lib/proofstate.js` - Proof search engine with auto-prover, inversion, forward/backward chaining
-- `lib/llt_compiler.js` - Compiles custom rule definitions from .llt files
-- `libexec/calc-*` - CLI command entry points
+- `lib/node.js` - AST with format-polymorphic rendering (ASCII, LaTeX, Isabelle)
+- `lib/sequent.js` - Logical sequent structure
+- `lib/proofstate.js` - Proof search with inversion and focusing
+- `lib/types/` - TypeScript definitions for all lib modules
+
+**Web UI (SolidJS):**
+- Tech: SolidJS + TypeScript + Tailwind CSS + Vite
+- Source: `src/ui/`
+- Build: `out/ui/`
+- Three tabs: Sandbox, Calculus Overview, Meta Overview
+- Imports `lib/` directly (CommonJS modules)
 
 **Custom Rule Language (LLT):**
-- Grammar defined in `src/llt.jison` and `lib/llt.jison`
-- Rule programs in `programs/*.llt`
-
-**Web UI:**
-- Built with Cycle.js, KaTeX (math rendering), and Viz.js (graph visualization)
-- Source in `src/html/`, output to `out/html/`
+- Grammar: `src/llt.jison`
+- Programs: `programs/*.llt`
