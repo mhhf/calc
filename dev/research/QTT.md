@@ -432,6 +432,14 @@ For our purposes, **Granule's approach** (graded modalities in linear logic) is 
 2. It generalizes naturally to real numbers
 3. It connects cleanly to proof theory
 
+## Cross-References
+
+See also in this knowledge base:
+- [[exponential-display-problem]] — Why ! needs special treatment
+- [[residuation]] — Galois connections and residuation
+- [[logics-overview]] — Which logics can be displayed
+- [[ANKI]] — Flashcards on graded modal types
+
 ---
 
-*Last updated: 2026-01-22*
+*Last updated: 2026-01-27*
