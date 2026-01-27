@@ -12,34 +12,26 @@
 }
 
 @layer components {
-  /* Inference Rule Styling */
+  /* Inference Rule Styling - minimal like traditional proof theory */
   .inference-rule {
-    @apply relative inline-block text-center;
-  }
-
-  .inference-rule .rules {
-    @apply inline-block;
+    @apply inline-block text-center;
   }
 
   .inference-rule .premisses {
-    @apply block border-b border-gray-800 dark:border-gray-200 pb-1 mb-1;
+    @apply block;
   }
 
   .inference-rule .conclusion {
-    @apply block pt-1;
+    @apply block;
   }
 
   .inference-rule .formula {
-    @apply inline-block px-2;
+    @apply inline-block px-1;
   }
 
-  .inference-rule .formula:hover {
-    @apply bg-purple-100 dark:bg-purple-900 rounded;
-  }
-
-  .inference-rule .name {
-    @apply absolute right-0 bottom-0 text-xs text-gray-500 dark:text-gray-400 pl-2;
-    transform: translateX(100%);
+  /* Only highlight clickable sequents on hover, not the whole subtree */
+  .inference-rule .clickable-sequent:hover {
+    @apply bg-purple-100 dark:bg-purple-900/30 rounded;
   }
 
   /* Rule Card */

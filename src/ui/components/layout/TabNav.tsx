@@ -4,6 +4,7 @@ const tabs = [
   { path: '/', label: 'Sandbox' },
   { path: '/prove', label: 'Prove' },
   { path: '/calculus', label: 'Calculus' },
+  { path: '/health', label: 'Health' },
   { path: '/meta', label: 'Meta' },
 ];
 

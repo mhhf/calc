@@ -1,11 +1,12 @@
 import { For, Show, createSignal } from 'solid-js';
 import KaTeX from '../math/KaTeX';
-import { StructuredStep } from '../../lib/proofLogic';
+import { StructuredStep, ProofTreeNode } from '../../lib/proofLogic';
 
 interface StructuredProofViewProps {
   rootStep: StructuredStep;
   selectedPath: number[] | null;
   onNodeSelect: (path: number[]) => void;
+  onRuleClick?: (step: StructuredStep) => void;
 }
 
 /**
@@ -26,6 +27,7 @@ export default function StructuredProofView(props: StructuredProofViewProps) {
         step={props.rootStep}
         selectedPath={props.selectedPath}
         onNodeSelect={props.onNodeSelect}
+        onRuleClick={props.onRuleClick}
       />
     </div>
   );
@@ -35,6 +37,7 @@ interface StepRowProps {
   step: StructuredStep;
   selectedPath: number[] | null;
   onNodeSelect: (path: number[]) => void;
+  onRuleClick?: (step: StructuredStep) => void;
 }
 
 function StepRow(props: StepRowProps) {
@@ -121,7 +124,15 @@ function StepRow(props: StepRowProps) {
               </span>
             }
           >
-            BY {props.step.ruleName}
+            <span
+              class="cursor-pointer hover:text-blue-600 dark:hover:text-blue-400"
+              onClick={(e) => {
+                e.stopPropagation();
+                props.onRuleClick?.(props.step);
+              }}
+            >
+              BY {props.step.ruleName}
+            </span>
             <Show when={props.step.isProven}>
               <span class="ml-1 text-green-500">✓</span>
             </Show>
@@ -137,6 +148,7 @@ function StepRow(props: StepRowProps) {
               step={child}
               selectedPath={props.selectedPath}
               onNodeSelect={props.onNodeSelect}
+              onRuleClick={props.onRuleClick}
             />
           )}
         </For>

@@ -1,26 +1,23 @@
 import { For, Show, createMemo } from 'solid-js';
-import ProofNode from './ProofNode';
-import InferenceLine from './InferenceLine';
-import { sequentToLatex, sequentToAscii, isProofComplete, FocusInfo } from '../../lib/proofLogic';
-
-interface ProofTreeNode {
-  conclusion: any;
-  premisses: ProofTreeNode[];
-  type: string;
-  proven: boolean;
-  proverState?: { focusPosition: 'L' | 'R' | null; focusId: string | null } | null;
-}
+import KaTeX from '../math/KaTeX';
+import { sequentToLatex, sequentToAscii, isProofComplete, FocusInfo, ProofTreeNode } from '../../lib/proofLogic';
 
 interface ClassicalProofTreeProps {
   pt: ProofTreeNode;
   selectedPath: number[] | null;
   onNodeSelect: (path: number[]) => void;
+  onRuleClick?: (node: ProofTreeNode) => void;
   currentPath?: number[];
 }
 
 /**
  * Classical bottom-up proof tree visualization.
- * Conclusion at bottom, premises above, connected by inference lines.
+ * Minimal design inspired by traditional proof theory notation.
+ *
+ * Structure:
+ *     premise₁    premise₂
+ *   ─────────────────────────── RuleName
+ *          conclusion
  */
 export default function ClassicalProofTree(props: ClassicalProofTreeProps) {
   const currentPath = () => props.currentPath || [];
@@ -54,53 +51,69 @@ export default function ClassicalProofTree(props: ClassicalProofTreeProps) {
     }
   });
 
-  const sequentAscii = createMemo(() => {
-    try {
-      return sequentToAscii(props.pt.conclusion);
-    } catch {
-      return props.pt.conclusion?.toString() || '?';
-    }
-  });
-
   const handleClick = () => {
-    // Only allow clicking on unproven leaf nodes
     if (isUnproven()) {
       props.onNodeSelect(currentPath());
     }
   };
 
+  // Axioms and proven rules get a line, unproven leaves (???) don't
+  const showInferenceLine = () => props.pt.type !== '???';
+
   return (
-    <div class="flex flex-col items-center">
-      {/* Premises (rendered above) */}
-      <Show when={props.pt.premisses.length > 0}>
-        <div class="flex gap-6 items-end mb-1">
+    <div class="inference-rule">
+      {/* Premises (above the line) - also shown empty for axioms */}
+      <Show when={showInferenceLine()}>
+        <div class="premisses">
           <For each={props.pt.premisses}>
             {(premise, index) => (
-              <ClassicalProofTree
-                pt={premise}
-                selectedPath={props.selectedPath}
-                onNodeSelect={props.onNodeSelect}
-                currentPath={[...currentPath(), index()]}
-              />
+              <span
+                class="formula"
+                classList={{ 'pl-20': index() > 0 }}
+              >
+                <ClassicalProofTree
+                  pt={premise}
+                  selectedPath={props.selectedPath}
+                  onNodeSelect={props.onNodeSelect}
+                  onRuleClick={props.onRuleClick}
+                  currentPath={[...currentPath(), index()]}
+                />
+              </span>
             )}
           </For>
         </div>
-
-        {/* Inference line */}
-        <InferenceLine ruleName={props.pt.type} />
       </Show>
 
-      {/* Conclusion (this node) */}
-      <ProofNode
-        sequentLatex={sequentLatex()}
-        sequentAscii={sequentAscii()}
-        ruleName={props.pt.type}
-        isLeaf={isLeaf()}
-        isProven={isNodeProven()}
-        isSelected={isSelected()}
-        isClickable={isUnproven()}
-        onClick={handleClick}
-      />
+      {/* Inference line with rule name to the right */}
+      <Show when={showInferenceLine()}>
+        <div class="relative">
+          <div class="border-b border-current" />
+          <span
+            class="absolute left-full top-1/2 -translate-y-1/2 pl-1 text-[0.7em] whitespace-nowrap text-gray-500 dark:text-gray-400 cursor-pointer hover:text-blue-600 dark:hover:text-blue-400"
+            onClick={(e) => {
+              e.stopPropagation();
+              props.onRuleClick?.(props.pt);
+            }}
+          >
+            <KaTeX latex={props.pt.type.replace(/_/g, '\\_')} />
+          </span>
+        </div>
+      </Show>
+
+      {/* Conclusion (below the line) */}
+      <div class="conclusion text-center">
+        <span
+          class="formula rounded"
+          classList={{
+            'cursor-pointer clickable-sequent': isUnproven(),
+            'bg-blue-100 dark:bg-blue-900/40': isSelected(),
+            'opacity-50': isUnproven() && isLeaf(),
+          }}
+          onClick={handleClick}
+        >
+          <KaTeX latex={sequentLatex()} />
+        </span>
+      </div>
     </div>
   );
 }

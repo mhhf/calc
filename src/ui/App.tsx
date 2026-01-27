@@ -6,6 +6,7 @@ import Loading from './components/common/Loading';
 // Lazy load pages for code splitting
 const Sandbox = lazy(() => import('./pages/Sandbox'));
 const CalculusOverview = lazy(() => import('./pages/CalculusOverview'));
+const CalculusHealth = lazy(() => import('./pages/CalculusHealth'));
 const MetaOverview = lazy(() => import('./pages/MetaOverview'));
 const ManualProof = lazy(() => import('./pages/ManualProof'));
 
@@ -28,5 +29,6 @@ export const routes = [
   { path: '/', component: Sandbox },
   { path: '/prove', component: ManualProof },
   { path: '/calculus', component: CalculusOverview },
+  { path: '/health', component: CalculusHealth },
   { path: '/meta', component: MetaOverview },
 ];

@@ -688,6 +688,7 @@ function getFocusedRules(seq: any, focusState: { position: string | null; id: st
   } else if (connective) {
     // Rule for this connective
     const side = position === 'R' ? 'R' : 'L';
+    const focusSide = side as 'L' | 'R';
     const ruleName = connective + '_' + side;
     const rule = ruleset.getRule(ruleName);
 
@@ -696,11 +697,10 @@ function getFocusedRules(seq: any, focusState: { position: string | null; id: st
       const result = Proofstate.apply(testPt, ruleName, position, rule);
       if (result?.success) {
         // Use focused rule strings with brackets in focused mode
-        const focusSide = position === 'R' ? 'R' : 'L';
         applicable.push({
           name: ruleName,
           category: getRuleCategory(ruleName),
-          ruleStrings: getFocusedRuleStrings(ruleName, focusSide as 'L' | 'R'),
+          ruleStrings: getFocusedRuleStrings(ruleName, focusSide),
           premises: testPt.premisses.map((p: any) => p.conclusion),
           position,
           principalFormula: principal?.ascii,
@@ -710,7 +710,7 @@ function getFocusedRules(seq: any, focusState: { position: string | null; id: st
       }
     }
 
-    // Check for alternative rules
+    // Check for alternative rules (e.g., With_L2, Plus_R2)
     const ruleName2 = connective + '_' + side + '2';
     if (ruleset.rules[ruleName2]) {
       const rule2 = ruleset.getRule(ruleName2);
@@ -722,7 +722,7 @@ function getFocusedRules(seq: any, focusState: { position: string | null; id: st
           applicable.push({
             name: ruleName2,
             category: getRuleCategory(ruleName2),
-            ruleStrings: getFocusedRuleStrings(ruleName2, focusSide as 'L' | 'R'),
+            ruleStrings: getFocusedRuleStrings(ruleName2, focusSide),
             premises: testPt2.premisses.map((p: any) => p.conclusion),
             position,
             principalFormula: principal?.ascii,
@@ -1371,6 +1371,14 @@ function simplifyLatex(latex: string): string {
     .replace(/F\?\s*([A-Z])/g, '$1')
     // Structure metavariables
     .replace(/S\?\s*([A-Z])/g, '$1')
+    // Internal unique variables (V_N or V_N^M) - hide these implementation details
+    // Replace with generic variable names based on index
+    .replace(/V_(\d+)(?:\^(\d+))?/g, (_, n) => {
+      const idx = parseInt(n, 10);
+      // Use Greek letters for variety: α, β, γ, δ, ε, ζ, η, θ
+      const greekLetters = ['\\alpha', '\\beta', '\\gamma', '\\delta', '\\varepsilon', '\\zeta', '\\eta', '\\theta'];
+      return greekLetters[idx % greekLetters.length] + (idx >= greekLetters.length ? `_{${Math.floor(idx / greekLetters.length)}}` : '');
+    })
     // Term placeholder
     .replace(/\\cdot\s*:/g, '')
     .replace(/--\s*:/g, '')
@@ -1846,4 +1854,224 @@ export function serializeProofTree(
  */
 export function proofToJsonString(proof: SerializedProof, indent = 2): string {
   return JSON.stringify(proof, null, indent);
+}
+
+// ============================================================================
+// Rule Application Details (for inspection dialogs)
+// ============================================================================
+
+/**
+ * A single substitution entry (variable -> value)
+ */
+export interface SubstitutionEntry {
+  variable: string;
+  variableLatex: string;
+  value: string;
+  valueLatex: string;
+}
+
+/**
+ * Details about a rule application at a proof tree node
+ */
+export interface RuleApplicationDetails {
+  ruleName: string;
+  category: string;
+
+  // The abstract rule (from ll.json)
+  abstractConclusion: string;
+  abstractConclusionLatex: string;
+  abstractPremises: string[];
+  abstractPremisesLatex: string[];
+
+  // The actual sequent at this node
+  actualConclusion: string;
+  actualConclusionLatex: string;
+
+  // The substitution found via unification
+  substitution: SubstitutionEntry[];
+
+  // The premises after applying the substitution
+  instantiatedPremises: string[];
+  instantiatedPremisesLatex: string[];
+}
+
+/**
+ * Get details about a rule application at a proof tree node.
+ * This computes the MGU between the abstract rule and the actual sequent,
+ * showing how the rule was instantiated.
+ */
+export function getRuleApplicationDetails(pt: ProofTreeNode): RuleApplicationDetails | null {
+  const ruleName = pt.type;
+
+  // Skip unproven nodes
+  if (ruleName === '???') return null;
+
+  // Get the abstract rule
+  const ruleStrings = getRuleStrings(ruleName);
+  if (ruleStrings.length === 0) {
+    // Special rules like Focus_L, Focus_R, Id+, Id-
+    return {
+      ruleName,
+      category: getRuleCategory(ruleName),
+      abstractConclusion: ruleName,
+      abstractConclusionLatex: ruleName.replace(/_/g, '\\_'),
+      abstractPremises: [],
+      abstractPremisesLatex: [],
+      actualConclusion: pt.conclusion.toString?.() || String(pt.conclusion),
+      actualConclusionLatex: simplifyLatex(pt.conclusion.toString?.({ style: 'latex' }) || String(pt.conclusion)),
+      substitution: [],
+      instantiatedPremises: pt.premisses.map(p => p.conclusion.toString?.() || String(p.conclusion)),
+      instantiatedPremisesLatex: pt.premisses.map(p => simplifyLatex(p.conclusion.toString?.({ style: 'latex' }) || String(p.conclusion))),
+    };
+  }
+
+  const [conclusionStr, ...premiseStrs] = ruleStrings;
+
+  // Parse the abstract rule
+  const parser = parserModule.parser;
+  let abstractConclusion: any;
+  let abstractPremises: any[] = [];
+
+  try {
+    abstractConclusion = Sequent.fromTree(parser.parse(conclusionStr));
+    abstractPremises = premiseStrs
+      .filter(s => s !== '')
+      .map(s => Sequent.fromTree(parser.parse(s)));
+  } catch (e) {
+    console.error('Failed to parse abstract rule:', e);
+    return null;
+  }
+
+  // Compute the MGU between abstract conclusion and actual conclusion
+  // Use the parsed abstractConclusion (with original variable names like A, B, Γ, Δ)
+  // not the uniquified version from getRule (which has V_0, V_1, etc.)
+  let substitution: SubstitutionEntry[] = [];
+  try {
+    // Build pairs for unification - start with succedent
+    const unificationPairs: [any, any][] = [[abstractConclusion.succedent, pt.conclusion.succedent]];
+
+    // Get Calc.db.rules for checking variable types
+    const rules = Calc.db?.rules || {};
+
+    // Separate abstract context into structural variables and regular formulas
+    const abstractCtxEntries = Object.values(abstractConclusion.linear_ctx || {}) as any[];
+    const actualCtxEntries = Object.values(pt.conclusion.linear_ctx || {}) as any[];
+
+    const structuralVars: any[] = [];
+    const regularFormulas: any[] = [];
+
+    for (const entry of abstractCtxEntries) {
+      const ruleType = rules[entry.val?.id]?.ruleName;
+      if (ruleType === 'Structure_Freevar') {
+        structuralVars.push(entry.val);
+      } else {
+        regularFormulas.push(entry.val);
+      }
+    }
+
+    // Match regular formulas (like the principal formula A ⊗ B)
+    // We need to match by the actual connective, not the wrapper type
+    const matchedActualIds = new Set<string>();
+
+    for (const abstractVal of regularFormulas) {
+      // Extract the actual formula from the term wrapper (-- : F?A -o F?B -> F?A -o F?B)
+      const abstractFormula = extractFormula(abstractVal);
+      const abstractConnective = getConnectiveName(abstractFormula);
+
+      for (const actualEntry of actualCtxEntries) {
+        const actualId = actualEntry.val?.toString?.() || '';
+        if (!matchedActualIds.has(actualId)) {
+          // Extract actual formula and get its connective
+          const actualFormula = extractFormula(actualEntry.val);
+          const actualConnective = getConnectiveName(actualFormula);
+
+          // Match if they have the same connective (e.g., both are Lolli)
+          if (abstractConnective && abstractConnective === actualConnective) {
+            unificationPairs.push([abstractFormula, actualFormula]);
+            matchedActualIds.add(actualId);
+            break;
+          }
+        }
+      }
+    }
+
+    // Compute MGU for formula substitutions
+    const theta = mgu(unificationPairs);
+
+    if (theta && Array.isArray(theta)) {
+      substitution = theta.map((entry: any) => {
+        const [variable, value] = entry;
+        return {
+          variable: variable?.toString?.() || String(variable),
+          variableLatex: simplifyLatex(variable?.toString?.({ style: 'latex' }) || String(variable)),
+          value: value?.toString?.() || String(value),
+          valueLatex: simplifyLatex(value?.toString?.({ style: 'latex' }) || String(value)),
+        };
+      });
+    }
+
+    // Add structural variable substitutions (Γ, Δ → actual remaining context)
+    // These map to the context formulas NOT matched by the principal formula
+    if (structuralVars.length > 0) {
+      const unmatchedActual = actualCtxEntries
+        .filter(e => !matchedActualIds.has(e.val?.toString?.() || ''))
+        .map(e => e.val);
+
+      // Format the remaining context value
+      let valueStr: string;
+      let valueLatex: string;
+      if (unmatchedActual.length === 0) {
+        valueStr = '·';
+        valueLatex = '\\cdot';
+      } else {
+        valueStr = unmatchedActual.map((v: any) => v?.toString?.() || '').join(', ');
+        valueLatex = unmatchedActual
+          .map((v: any) => simplifyLatex(v?.toString?.({ style: 'latex' }) || ''))
+          .join(', ');
+      }
+
+      // Show each structural variable separately
+      // For splitting rules (multiple vars), the actual distribution is determined by proof search
+      for (const structVar of structuralVars) {
+        const varName = structVar?.toString?.() || '';
+        const varLatex = simplifyLatex(structVar?.toString?.({ style: 'latex' }) || varName);
+
+        if (structuralVars.length === 1) {
+          // Single var gets all remaining context
+          substitution.push({
+            variable: varName,
+            variableLatex: varLatex,
+            value: valueStr,
+            valueLatex: valueLatex,
+          });
+        } else {
+          // Multiple vars - show as subset of remaining context
+          // The exact split is determined during proof search
+          substitution.push({
+            variable: varName,
+            variableLatex: varLatex,
+            value: unmatchedActual.length === 0 ? '·' : `⊆ {${valueStr}}`,
+            valueLatex: unmatchedActual.length === 0 ? '\\cdot' : `\\subseteq \\{${valueLatex}\\}`,
+          });
+        }
+      }
+    }
+  } catch (e) {
+    // MGU computation failed, continue without substitution
+    console.warn('MGU computation failed:', e);
+  }
+
+  return {
+    ruleName,
+    category: getRuleCategory(ruleName),
+    abstractConclusion: conclusionStr,
+    abstractConclusionLatex: simplifyLatex(abstractConclusion.toString?.({ style: 'latex' }) || conclusionStr),
+    abstractPremises: premiseStrs.filter(s => s !== ''),
+    abstractPremisesLatex: abstractPremises.map(p => simplifyLatex(p.toString?.({ style: 'latex' }) || String(p))),
+    actualConclusion: pt.conclusion.toString?.() || String(pt.conclusion),
+    actualConclusionLatex: simplifyLatex(pt.conclusion.toString?.({ style: 'latex' }) || String(pt.conclusion)),
+    substitution,
+    instantiatedPremises: pt.premisses.map(p => p.conclusion.toString?.() || String(p.conclusion)),
+    instantiatedPremisesLatex: pt.premisses.map(p => simplifyLatex(p.conclusion.toString?.({ style: 'latex' }) || String(p.conclusion))),
+  };
 }

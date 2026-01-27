@@ -9,6 +9,7 @@ import AsciiProofTree from '../components/proof/AsciiProofTree';
 import RuleSelector from '../components/proof/RuleSelector';
 import ProofControls from '../components/proof/ProofControls';
 import ContextSplitDialog from '../components/proof/ContextSplitDialog';
+import RuleDetailDialog from '../components/proof/RuleDetailDialog';
 import {
   parseSequent,
   createProofTree,
@@ -32,6 +33,8 @@ import {
   ProofTreeNode,
   ApplicableRule,
   ContextEntry,
+  getRuleApplicationDetails,
+  RuleApplicationDetails,
 } from '../lib/proofLogic';
 
 type ViewMode = 'tree' | 'structured' | 'ascii' | 'json';
@@ -62,6 +65,9 @@ export default function ManualProof() {
   const [splitDialogPosition, setSplitDialogPosition] = createSignal<string | null>(null);
   // Also save the path at the time the dialog was opened
   const [splitDialogPath, setSplitDialogPath] = createSignal<number[] | null>(null);
+
+  // Rule detail dialog state
+  const [ruleDetailDialogData, setRuleDetailDialogData] = createSignal<RuleApplicationDetails | null>(null);
 
   // Computed values
   const isComplete = createMemo(() =>
@@ -319,6 +325,22 @@ export default function ManualProof() {
     setSplitDialogRule(null);
     setSplitDialogPosition(null);
     setSplitDialogPath(null);
+  }
+
+  // Handle rule label click - show details dialog
+  function handleRuleClick(node: ProofTreeNode) {
+    const details = getRuleApplicationDetails(node);
+    setRuleDetailDialogData(details);
+  }
+
+  // Handle rule click from structured view (uses path to find node)
+  function handleStructuredRuleClick(step: { path: number[] }) {
+    const pt = proofTree();
+    if (!pt) return;
+    const node = getNodeAtPath(pt, step.path);
+    if (node) {
+      handleRuleClick(node);
+    }
   }
 
   // Auto-complete selected node or entire tree
@@ -585,6 +607,7 @@ export default function ManualProof() {
                   pt={proofTree()!}
                   selectedPath={selectedPath()}
                   onNodeSelect={setSelectedPath}
+                  onRuleClick={handleRuleClick}
                 />
               </div>
             </Show>
@@ -593,6 +616,7 @@ export default function ManualProof() {
                 rootStep={structuredProof()!}
                 selectedPath={selectedPath()}
                 onNodeSelect={setSelectedPath}
+                onRuleClick={handleStructuredRuleClick}
               />
             </Show>
             <Show when={viewMode() === 'ascii' && serializedProof()}>
@@ -656,6 +680,12 @@ export default function ManualProof() {
             onAutoSplit={handleAutoSplit}
           />
         </Show>
+
+        {/* Rule detail dialog */}
+        <RuleDetailDialog
+          details={ruleDetailDialogData()}
+          onClose={() => setRuleDetailDialogData(null)}
+        />
       </div>
     </ErrorBoundary>
   );
