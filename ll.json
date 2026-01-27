@@ -1,6 +1,19 @@
 {
   "calc_name" : "LLog",
 
+  "_documentation": {
+    "description": "Intuitionistic Linear Logic (ILL) calculus specification",
+    "connectives": {
+      "CORE_ILL": ["⊗ (tensor)", "⊸ (loli)", "& (with)", "! (bang)", "I (unit)"],
+      "NOT_INCLUDED": ["⅋ (par)", "⊕ (plus)", "? (why-not) - decided to stay with ILL fragment"]
+    },
+    "rule_usage": {
+      "USED_BY_PROVER": ["RuleZer (Id)", "RuleU (logical unary)", "RuleBin (logical binary)"],
+      "UNUSED_DISPLAY_POSTULATES": "RuleStruct - kept for Isabelle export and documentation only",
+      "EXPERIMENTAL": ["RuleNat - natural number rules, not integrated", "Monad/Lax/Forall - skipped in parser"]
+    }
+  },
+
   "calc_structure" : {
     "Atprop" : {
       "Atprop_Parametric" : {
@@ -160,6 +173,7 @@
       },
 
       "Formula_Monad" : {
+        "_status": "EXPERIMENTAL - not in parser",
         "type" : ["Formula"],
         "isabelle" : "{ _ }",
         "ascii" : "{ _ }",
@@ -169,6 +183,7 @@
       },
 
       "Formula_Lax" : {
+        "_status": "EXPERIMENTAL - not in parser",
         "type" : ["Formula"],
         "isabelle" : "_ lax",
         "ascii" : "_ lax",
@@ -178,6 +193,7 @@
       },
 
       "Formula_Forall" : {
+        "_status": "EXPERIMENTAL - not in parser",
         "type" : ["Atterm", "Atprop", "Formula"],
         "isabelle" : "forall _ : _ . _",
         "ascii" : "forall _ : _ . _",
@@ -283,29 +299,38 @@
   },
 
   "calc_structure_rules_meta" : {
-    "_notes": {
-      "RuleStruct_status": "UNUSED BY PROOF SEARCH - The structural rules (P_L, P_R, A_L, A_R, I_*) are display postulates from calculus-toolbox. They are NOT used by proofstate.js which uses focused proof search with multiset manipulation instead. Kept for: (1) potential PDF/HTML display for completeness, (2) Isabelle export, (3) possible future use if we want pure display calculus proof search.",
-      "architecture": "Three-layer architecture: Framework (generic) + Object Logic (ll.json) + Prover (focusing strategy). Polarity is inferred from rule structure at load time by lib/polarity.js."
+    "_architecture": {
+      "layers": "Framework (generic Gentzen machinery) + Object Logic (this file) + Prover (focusing)",
+      "polarity": "Inferred from rule structure at load time by lib/polarity.js",
+      "proof_search": "Focused proof search with multiset manipulation (NOT display postulate rewriting)"
     },
     "Contexts" : {
       "RuleZer": {
         "label": "Axioms",
-        "simp": true
+        "simp": true,
+        "_status": "ACTIVE - Identity axiom"
       },
       "RuleCut": {
-        "label": "Cut rule"
+        "label": "Cut rule",
+        "_status": "ACTIVE - Used in proof search"
       },
       "RuleStruct": {
-        "label": "Structural rules",
-        "_unused_by_proofstate": true
+        "label": "Structural rules (display postulates)",
+        "_status": "UNUSED - Kept for Isabelle export and documentation. Prover uses multiset ops instead."
       },
       "RuleU": {
-        "label": "Unary Rules",
-        "simp": true
+        "label": "Unary logical rules",
+        "simp": true,
+        "_status": "ACTIVE - Core ILL rules"
       },
       "RuleBin": {
-        "label": "Binary Rules",
-        "simp": true
+        "label": "Binary logical rules",
+        "simp": true,
+        "_status": "ACTIVE - Core ILL rules"
+      },
+      "RuleNat": {
+        "label": "Natural number rules",
+        "_status": "EXPERIMENTAL - Not integrated with main prover"
       }
     }
   },

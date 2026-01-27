@@ -31,6 +31,9 @@ Keep root clean — only essential files (config, README.md,
 CLAUDE.md).
 All documentation, notes, research → `doc/` or `dev/`
 
+- When answering my questions add them to the dev/QnA.md document at the end.
+- When tracking todo's - do that in dev/TODO.md
+
 ## Documentation Style
 
 - No status updates or changelog-style docs unless explicitly

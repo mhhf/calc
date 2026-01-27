@@ -66,7 +66,16 @@
       "WebFetch(domain:sriramsami.com)",
       "WebFetch(domain:www.lix.polytechnique.fr)",
       "Bash(./node_modules/mocha/bin/mocha:*)",
-      "Bash(find:*)"
+      "Bash(find:*)",
+      "WebFetch(domain:consequently.org)",
+      "WebFetch(domain:users.cecs.anu.edu.au)",
+      "WebFetch(domain:arxiv.org)",
+      "WebFetch(domain:dl.acm.org)",
+      "WebFetch(domain:link.springer.com)",
+      "WebFetch(domain:homepages.inf.ed.ac.uk)",
+      "WebFetch(domain:www.cs.kent.ac.uk)",
+      "WebFetch(domain:blog.hde.design)",
+      "WebFetch(domain:agda.readthedocs.io)"
     ],
     "deny": [],
     "ask": []
