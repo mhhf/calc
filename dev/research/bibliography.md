@@ -580,4 +580,205 @@ Calculus Toolbox, Granule, Idris 2, Nomos, Twelf, Celf, Ceptre
 
 ---
 
-*Last updated: 2026-01-27*
+## Interactive Proving & Prover Orchestration
+
+### Milner — LCF Theorem Prover
+**Citation:** Milner, R., et al. (1970s). Edinburgh LCF.
+
+**Summary:** Introduced the LCF architecture: theorems as abstract data type, only constructible through inference rules in trusted kernel. ML type system enforces soundness.
+
+**Tags:** `LCF` `trusted-kernel` `foundational`
+
+**Referenced in:** [[interactive_proving]]
+
+---
+
+### Gordon (2000) — From LCF to HOL: a short history
+**Citation:** Gordon, M. (2000). From LCF to HOL: a short history. In *The History of Programming Languages*.
+
+**URL:** https://www.cl.cam.ac.uk/archive/mjcg/papers/HolHistory.pdf
+
+**Summary:** Historical account of the evolution from LCF to HOL theorem provers, documenting design decisions and their rationale.
+
+**Tags:** `LCF` `HOL` `history`
+
+**Referenced in:** [[interactive_proving]]
+
+---
+
+### Harrison — HOL Light
+**Citation:** Harrison, J. HOL Light Theorem Prover.
+
+**URL:** https://github.com/jrh13/hol-light
+
+**Summary:** Minimalist LCF-style prover with ~400 lines of trusted kernel, 3 axioms, 10 inference rules.
+
+**Tags:** `HOL-Light` `LCF` `trusted-kernel` `implementation`
+
+**Referenced in:** [[interactive_proving]]
+
+---
+
+### Abrahamsson et al. (2022) — Candle: A Verified Implementation of HOL Light
+**Citation:** Abrahamsson, O., et al. (2022). Candle: A Verified Implementation of HOL Light. In *ITP 2022*.
+
+**URL:** https://cakeml.org/itp22-candle.pdf
+
+**Summary:** Fully verified clone of HOL Light compiled to machine code via CakeML. Provides end-to-end correctness theorem.
+
+**Tags:** `HOL-Light` `verified` `CakeML` `trusted-kernel`
+
+**Referenced in:** [[interactive_proving]]
+
+---
+
+### Paulson (2022) — The de Bruijn Criterion vs the LCF Architecture
+**Citation:** Paulson, L.C. (2022). The de Bruijn Criterion vs the LCF Architecture. Blog post.
+
+**URL:** https://lawrencecpaulson.github.io/2022/01/05/LCF.html
+
+**Summary:** Comparison of two fundamental approaches to proof assistant correctness: LCF (abstract types) vs de Bruijn (proof certificates).
+
+**Tags:** `LCF` `de-Bruijn` `trusted-kernel` `comparison`
+
+**Referenced in:** [[interactive_proving]]
+
+---
+
+### Paulson — Three Years of Experience with Sledgehammer
+**Citation:** Paulson, L.C., & Blanchette, J.C. (2010). Three Years of Experience with Sledgehammer, a Practical Link between Automatic and Interactive Theorem Provers.
+
+**URL:** https://www.cl.cam.ac.uk/~lp15/papers/Automation/paar.pdf
+
+**Summary:** Empirical evaluation of Sledgehammer. Key finding: "Running E, SPASS, and Vampire in parallel for five seconds solves as many problems as running a single theorem prover for two minutes."
+
+**Tags:** `sledgehammer` `parallel-provers` `empirical` `isabelle`
+
+**Referenced in:** [[interactive_proving]]
+
+---
+
+### Paulson (2022) — Sledgehammer: Some History, Some Tips
+**Citation:** Paulson, L.C. (2022). Sledgehammer: Some History, Some Tips. Blog post.
+
+**URL:** https://lawrencecpaulson.github.io/2022/04/13/Sledgehammer.html
+
+**Summary:** Practical guide to Sledgehammer with historical context. Documents the evolution from 2003 Metis integration to modern parallel prover architecture.
+
+**Tags:** `sledgehammer` `isabelle` `practical`
+
+**Referenced in:** [[interactive_proving]]
+
+---
+
+### Isabelle Team — Sledgehammer User's Guide
+**Citation:** Isabelle Development Team. Sledgehammer User's Guide.
+
+**URL:** https://isabelle.in.tum.de/dist/doc/sledgehammer.pdf
+
+**Summary:** Official documentation covering parallel prover execution, relevance filters (MePo, MaSh), proof reconstruction, and configuration.
+
+**Tags:** `sledgehammer` `isabelle` `documentation`
+
+**Referenced in:** [[interactive_proving]]
+
+---
+
+### Lean Community — Metaprogramming in Lean 4
+**Citation:** Lean Community. Metaprogramming in Lean 4.
+
+**URL:** https://leanprover-community.github.io/lean4-metaprogramming-book/
+
+**Summary:** Comprehensive guide to Lean4 metaprogramming covering the monad hierarchy (CoreM → MetaM → TermElabM → TacticM), custom tactic implementation, and quotations.
+
+**Tags:** `lean4` `metaprogramming` `TacticM` `tutorial`
+
+**Referenced in:** [[interactive_proving]]
+
+---
+
+### Pédrot (2019) — Ltac2: Tactical Warfare
+**Citation:** Pédrot, P.-M. (2019). Ltac2: Tactical Warfare. In *CoqPL 2019*.
+
+**URL:** https://www.xn--pdrot-bsa.fr/articles/coqpl2019.pdf
+
+**Summary:** Design document for Ltac2, explaining the move from dynamically-typed Ltac1 to a statically-typed ML-style language with explicit effects.
+
+**Tags:** `coq` `ltac2` `tactic-language` `design`
+
+**Referenced in:** [[interactive_proving]]
+
+---
+
+### Rocq Team — Ltac2 Documentation
+**Citation:** Rocq Prover Documentation. Ltac2.
+
+**URL:** https://rocq-prover.org/doc/V8.19.0/refman/proof-engine/ltac2.html
+
+**Summary:** Official Ltac2 documentation covering type system, effects model, quotations, and FFI with Ltac1.
+
+**Tags:** `coq` `ltac2` `documentation`
+
+**Referenced in:** [[interactive_proving]]
+
+---
+
+### Czajka & Kaliszyk (2018) — Hammer for Coq
+**Citation:** Czajka, Ł., & Kaliszyk, C. (2018). Hammer for Coq: Automation for Dependent Type Theory. *Journal of Automated Reasoning*, 61, 423-453.
+
+**URL:** https://link.springer.com/article/10.1007/s10817-018-9458-4
+
+**Summary:** CoqHammer architecture: translation to FOL, external ATP invocation, proof reconstruction. Achieves 39.1% success rate on Coq libraries with 87-97% reconstruction success.
+
+**Tags:** `coqhammer` `coq` `ATP-integration` `proof-reconstruction`
+
+**Referenced in:** [[interactive_proving]]
+
+---
+
+### Twelf Wiki — Theorem Prover
+**Citation:** Twelf Project. Theorem Prover.
+
+**URL:** https://twelf.org/wiki/theorem-prover/
+
+**Summary:** Documentation on Twelf's theorem prover for ∀∃-statements, including %theorem, %prove, and relation to totality checking.
+
+**Tags:** `twelf` `theorem-prover` `totality`
+
+**Referenced in:** [[interactive_proving]]
+
+---
+
+### Twelf Wiki — Coverage Checking
+**Citation:** Twelf Project. Coverage Checking.
+
+**URL:** https://twelf.org/wiki/coverage-checking/
+
+**Summary:** Explains input/output coverage in Twelf's totality checking: input coverage (exhaustiveness), output coverage (generality).
+
+**Tags:** `twelf` `coverage` `totality`
+
+**Referenced in:** [[interactive_proving]]
+
+---
+
+## Index by Tag (Extended)
+
+### `LCF` / `trusted-kernel`
+Milner (LCF), Gordon (2000), Harrison (HOL Light), Abrahamsson (Candle), Paulson (de Bruijn vs LCF)
+
+### `sledgehammer` / `parallel-provers`
+Paulson (Three Years), Paulson (Sledgehammer Tips), Isabelle Sledgehammer Guide
+
+### `lean4` / `metaprogramming`
+Lean Community (Metaprogramming Book)
+
+### `coq` / `tactic-language`
+Pédrot (Ltac2 Tactical Warfare), Rocq Team (Ltac2 Documentation), Czajka & Kaliszyk (CoqHammer)
+
+### `twelf` / `totality`
+Twelf Wiki (Theorem Prover, Coverage Checking), Pfenning & Schürmann (1999)
+
+---
+
+*Last updated: 2026-01-28*

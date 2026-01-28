@@ -6,39 +6,6 @@ Outstanding tasks for the CALC project.
 
 ## Active Tasks
 
-### Research: Interactive Proving & Prover Orchestration
-**Priority:** HIGH
-
-Deep research into how mature theorem provers handle interactive proving, tactics, and prover orchestration.
-Create `dev/research/interactive_proving.md`.
-
-- [ ] **Lean4 Tactics**
-  - [ ] How are tactics implemented?
-  - [ ] What is the trusted kernel vs tactic layer?
-  - [ ] How do custom tactics work?
-
-- [ ] **Isabelle/HOL**
-  - [ ] What are tacticals (combinators for tactics)?
-  - [ ] How does sledgehammer work? (Multi-prover orchestration)
-  - [ ] How is interactive mode implemented?
-  - [ ] Isar structured proofs vs tactic scripts
-
-- [ ] **Coq**
-  - [ ] Ltac and Ltac2 - how do tactics work?
-  - [ ] CoqHammer - how is it implemented?
-  - [ ] Proof by reflection
-
-- [ ] **Twelf**
-  - [ ] How does interactive proving work in Twelf?
-  - [ ] Mode checking as trusted computation
-
-- [ ] **General Questions**
-  - [ ] What is the LCF architecture? (Trusted kernel + untrusted tactics)
-  - [ ] How do provers verify tactic-produced proofs?
-  - [ ] How is sledgehammer implemented? Parallel prover calls?
-
----
-
 ### Research: Multi-Type Display Calculus in CALC
 **Priority:** HIGH
 
@@ -54,6 +21,7 @@ Need to understand this properly and see if "special rules" (Bang_L) can be norm
   - [ ] Is there a "superstructural" layer for multi-type rules?
   - [ ] Can bridge rules be specified in ll.json instead of hardcoded?
   - [ ] Research: how does Greco & Palmigiano handle this?
+  - [ ] how is calculus-toolbox2 handling that?
 
 - [ ] **Alternative: Keep It Simple**
   - [ ] Maybe persistent/linear is good enough for ILL
@@ -156,6 +124,19 @@ Understand what's logic-specific vs generic in current code.
 - [x] Exponential display problem (dev/research/exponential-display-problem.md)
 - [x] QTT overview (dev/research/QTT.md)
 - [x] DSL approaches comparison (dev/research/DSL-approaches.md)
+- [x] Interactive proving & prover orchestration (dev/research/interactive_proving.md)
+
+### Interactive Proving Research ✅
+- [x] LCF architecture (trusted kernel + untrusted tactics)
+- [x] de Bruijn criterion vs LCF architecture comparison
+- [x] Isabelle tacticals (THEN, ORELSE, REPEAT, etc.)
+- [x] Isabelle Sledgehammer (parallel provers, relevance filtering, proof reconstruction)
+- [x] Lean4 TacticM monad hierarchy (CoreM → MetaM → TermElabM → TacticM)
+- [x] Coq Ltac2 (Hindley-Milner types, effects model, backtracking)
+- [x] CoqHammer (ATP integration, proof reconstruction)
+- [x] Twelf logic programming (mode checking, totality checking, coverage)
+- [x] Prover orchestration patterns (parallel race, tacticals, translation+reconstruction)
+- [x] Relation to CALC: FocusedProver ≈ untrusted tactics, mgu.js ≈ MetaM, Sequent ≈ LNL
 
 ### Key Papers Studied ✅
 - [x] Pfenning's 15-836 Substructural Logics course notes

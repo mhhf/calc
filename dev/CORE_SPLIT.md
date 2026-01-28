@@ -289,6 +289,8 @@ lib/
     │  export { Calc } from './core/calc'
 ```
 
+> why do we need a config.ts to begin with? can't we put it all into ill/prover.ts ?
+
 ### Where Do Interpretations Go?
 
 **Interpretations (ascii, latex, isabelle) stay in ll.json.**
@@ -401,8 +403,6 @@ Possibilities:
 1. **Multi-type rules in ll.json**: Mark rules as "bridge rules" with source/target types
 2. **Superstructural layer**: Rules that operate on the context structure itself
 3. **Keep it simple**: Bang_L is the only bridge rule in ILL, hardcode is fine
-
-**Decision**: YAGNI. Keep hardcoded until we add another logic with different bridge rules.
 
 ---
 

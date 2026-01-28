@@ -329,4 +329,74 @@ Standard sequent < Hypersequent < Nested sequent < Display calculus ≈ Labelled
 
 ---
 
-*Last updated: 2026-01-27*
+## Interactive Proving & Prover Orchestration
+
+**LCF architecture**
+→ Milner's approach: theorems are an abstract data type. Only the trusted kernel can construct `thm` values. ML type system enforces soundness. Tactics are untrusted code that can only produce theorems via kernel primitives.
+
+**de Bruijn criterion**
+→ Alternative to LCF: proof assistant generates proof certificates that can be checked by an independent program. Sceptics can write their own checker. Trade-off: requires storing full proof objects.
+
+**LCF vs de Bruijn trade-off**
+→ LCF: low memory (no proof storage), trust the kernel. de Bruijn: high memory (proof objects), independent verification possible. Modern systems often use both.
+
+**HOL Light trusted kernel**
+→ Extreme LCF minimalism: ~400 lines of OCaml, 3 axioms, 10 inference rules. Everything else built on top. Verified implementation (Candle) compiled to machine code.
+
+**Sledgehammer architecture**
+→ Isabelle's ATP integration: (1) relevance filter selects lemmas, (2) translate to TPTP, (3) run provers in parallel, (4) first success wins, (5) reconstruct proof in Metis.
+
+**Sledgehammer relevance filters**
+→ MePo (Meng-Paulson): symbol-based iterative selection. MaSh: machine learning (naive Bayes, k-NN). MeSh: hybrid. Key insight: unusual constants discriminate better.
+
+**Sledgehammer proof reconstruction**
+→ Don't translate ATP proofs directly. Use ATP as "lemma finder": extract which facts were used, re-prove locally with Metis using those facts. ~5% reconstruction failure rate.
+
+**Sledgehammer parallel provers**
+→ "Running E, SPASS, and Vampire in parallel for five seconds solves as many problems as running a single theorem prover for two minutes." First success wins, others terminated.
+
+**Isabelle tacticals**
+→ Tactic combinators: THEN (sequence), ORELSE (choice), TRY (try or skip), REPEAT (iterate), EVERY (sequence list), FIRST (first success). ALLGOALS, SOMEGOAL, FIRSTGOAL address specific goals.
+
+**Lean4 monad hierarchy**
+→ CoreM (environment) → MetaM (metavariables) → TermElabM (elaboration) → TacticM (goals). Each extends the ones below via transformer stacking. Monads support backtracking via saveState/restoreState.
+
+**Lean4 TacticM**
+→ Monad for tactic implementation. Key operations: getMainGoal, getGoals, setGoals, closeMainGoal, replaceMainGoal. Access hypotheses via withMainContext + getLCtx.
+
+**Lean4 MetaM metavariables**
+→ Metavariables are dual: holes in expressions AND proof goals. Three kinds: Natural (freely assignable), Synthetic (assignment-avoiding), Synthetic Opaque (never assignable).
+
+**Coq Ltac2**
+→ Redesign of Ltac1 following ML tradition. Static Hindley-Milner types, call-by-value evaluation, explicit quotations for meta/object distinction, first-class backtracking via plus/zero/case.
+
+**Ltac2 effects model**
+→ Three effect categories: (1) non-backtracking IO (mutation, printing), (2) fatal errors (throw), (3) backtracking (plus, zero). Operates in tactic monad, not standard IO.
+
+**Ltac2 quotations**
+→ Explicit meta/object separation: '[term] (open terms), constr:(expr) (closed terms), pat:(pattern) (patterns), @ident (identifiers).
+
+**CoqHammer**
+→ ATP integration for Coq: sauto tactic (CIC inhabitation), ATP translation, proof reconstruction. 39.1% success rate, 87-97% reconstruction. Limitations: no induction, poor on HOF/dependent types.
+
+**Twelf totality checking**
+→ Alternative to proof search: encode proofs as logic programs, verify totality via program analysis. Three components: input coverage (exhaustiveness), output coverage (generality), termination (structurally smaller).
+
+**Twelf mode checking**
+→ Mode declarations specify information flow: + (input, must be ground), - (output, will be ground), * (unrestricted). Ensures well-defined information flow in logic programs.
+
+**Twelf coverage checking**
+→ Verifies logic program handles all possible inputs. Input coverage: every ground input matches some case. Output coverage: outputs sufficiently general (no spurious pattern matching).
+
+**Prover orchestration: parallel race**
+→ Run multiple provers in parallel, first success wins. Promise.race semantics. Cancel others on success. Used by Sledgehammer, CoqHammer.
+
+**Prover orchestration: slicing**
+→ Run same prover with different heuristic configurations. Different configurations excel on different problems. Parallel slices improve coverage.
+
+**Prover orchestration: translation + reconstruction**
+→ Translate goal to external format (TPTP), call ATP, reconstruct proof natively. Key insight: use ATP as lemma finder, not proof generator.
+
+---
+
+*Last updated: 2026-01-28*
