@@ -399,4 +399,42 @@ Standard sequent < Hypersequent < Nested sequent < Display calculus ≈ Labelled
 
 ---
 
+## CALC's Multi-Type Implementation
+
+**CALC's persistent_ctx**
+→ The Cartesian/Intuitionistic type in CALC's LNL implementation. A **set** of formulas that can be used any number of times (contraction/weakening allowed). Corresponds to the C category in Benton's LNL model.
+
+**CALC's linear_ctx**
+→ The Linear type in CALC's LNL implementation. A **multiset** tracking exact resource counts. Corresponds to the M category in Benton's LNL model.
+
+**CALC's Bang_L rule behavior**
+→ The F functor implementation in CALC. Takes `!A` from linear_ctx, unwraps to `A`, places in persistent_ctx. This promotes a linear formula to the Cartesian world.
+
+**CALC's implicit dereliction**
+→ The G functor implementation in CALC. Everything in persistent_ctx is automatically available in all rule premises. Corresponds to the dereliction rule `!A ⊢ A`.
+
+**Why CALC hardcodes Bang_L**
+→ The "special case" for Bang_L in prover.js IS the F functor bridging Linear → Cartesian types. It's not a hack—it's the correct implementation of Benton's LNL adjunction.
+
+**CALC already has multi-type DC**
+→ The persistent_ctx + linear_ctx separation IS multi-type display calculus via Benton's LNL model. The "special rules" are the bridge functors F and G.
+
+---
+
+## Multi-Type Display Calculus Details
+
+**Type-uniform sequent**
+→ A sequent where antecedent and succedent have the same type. Required in multi-type display calculus. CALC handles this by operating primarily in Linear type with Cartesian as background.
+
+**Multi-type display property**
+→ Any formula can be displayed (isolated) on one side, potentially via crossing type boundaries. Bridge connectives (F, G) enable movement between types.
+
+**Properness (Greco & Palmigiano)**
+→ Closure under uniform substitution of ALL parametric parts in rules. Enables the smoothest proof of cut elimination and modular extensions.
+
+**Adjoint logic (Pfenning)**
+→ Generalization of LNL to arbitrary preorders of modes with adjunctions between them. Each mode is a category; mode morphisms are adjunctions.
+
+---
+
 *Last updated: 2026-01-28*

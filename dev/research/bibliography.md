@@ -102,7 +102,81 @@ Comprehensive bibliography of all literature referenced in the CALC research doc
 
 **Tags:** `multi-type` `display-calculus` `epistemic-logic` `modal-logic`
 
-**Referenced in:** [[display-calculus]], [[logics-overview]]
+**Referenced in:** [[display-calculus]], [[logics-overview]], [[multi-type-display-calculus]]
+
+---
+
+### Frittella et al. (2014) — Multi-type Sequent Calculi
+**Citation:** Frittella, S., Greco, G., Kurz, A., & Palmigiano, A. (2014). Multi-type sequent calculi. In *Trends in Logic XIII*, pp. 81–93. Łódź University Press.
+
+**Summary:** Foundational paper on multi-type sequent calculi methodology, establishing the framework for handling logics with multiple sorts of formulas.
+
+**Tags:** `multi-type` `sequent-calculus` `methodology`
+
+**Referenced in:** [[multi-type-display-calculus]]
+
+---
+
+### nLab — !-modality
+**Citation:** nLab authors. !-modality.
+
+**URL:** https://ncatlab.org/nlab/show/!-modality
+
+**Summary:** Comprehensive categorical treatment of the bang modality as a comonad. Explains linear-nonlinear adjunction and how ! = F ∘ G.
+
+**Tags:** `exponentials` `comonad` `categorical-semantics` `LNL`
+
+**Referenced in:** [[multi-type-display-calculus]], [[exponential-display-problem]]
+
+---
+
+### Blog: A Simplification to LNL Models
+**Citation:** Blog post. (2020). A Simplification to LNL Models.
+
+**URL:** https://blog.hde.design/published/2020-04-02-A-Simplification-to-LNL-Models.html
+
+**Summary:** Presents a simplified definition of LNL models, removing the requirement that the adjunction be monoidal while preserving expressive power.
+
+**Tags:** `LNL` `categorical-semantics` `exponentials`
+
+**Referenced in:** [[multi-type-display-calculus]]
+
+---
+
+### Calculus-Toolbox-2
+**Citation:** goodlyrottenapple. Calculus-Toolbox-2.
+
+**URL:** https://github.com/goodlyrottenapple/calculus-toolbox-2
+
+**Summary:** Updated display calculus tool supporting multi-type calculi at runtime. Uses DSL for specification with explicit type parameters.
+
+**Tags:** `tool` `display-calculus` `multi-type` `implementation`
+
+**Referenced in:** [[multi-type-display-calculus]], [[DSL-approaches]]
+
+---
+
+### Pfenning — Adjoint SAX Lecture Notes
+**Citation:** Pfenning, F. Adjoint SAX Lecture Notes. CMU 15-836.
+
+**URL:** https://www.cs.cmu.edu/~fp/courses/15836-f23/lectures/15-adjsax.pdf
+
+**Summary:** Lecture notes on adjoint logic, generalizing LNL to arbitrary preorders of modes with adjunctions between them.
+
+**Tags:** `adjoint-logic` `LNL` `sequent-calculus` `CMU`
+
+**Referenced in:** [[multi-type-display-calculus]]
+
+---
+
+### Pruiksma & Pfenning (2020) — A Message-Passing Interpretation of Adjoint Logic
+**Citation:** Pruiksma, K., & Pfenning, F. (2020). A Message-Passing Interpretation of Adjoint Logic. *Journal of Logical and Algebraic Methods in Programming*.
+
+**Summary:** Gives operational semantics for adjoint logic via message passing, connecting multi-modal type systems with concurrent computation.
+
+**Tags:** `adjoint-logic` `session-types` `concurrency`
+
+**Referenced in:** [[multi-type-display-calculus]]
 
 ---
 

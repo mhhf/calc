@@ -6,27 +6,31 @@ Outstanding tasks for the CALC project.
 
 ## Active Tasks
 
-### Research: Multi-Type Display Calculus in CALC
-**Priority:** HIGH
+### Research: Multi-Type Display Calculus in CALC ✅
+**Priority:** HIGH — COMPLETE
 
 Our `persistent_ctx` + `linear_ctx` IS multi-type display calculus (Benton's LNL).
-Need to understand this properly and see if "special rules" (Bang_L) can be normalized.
+Research confirmed this and analyzed generalization options.
 
-- [ ] **Confirm LNL Structure**
-  - [ ] Verify: persistent_ctx = Cartesian type, linear_ctx = Linear type
-  - [ ] Verify: Bang_L is the bridge rule (F: Lin → Cart)
-  - [ ] What is the inverse bridge? (G: Cart → Lin = dereliction?)
+- [x] **Confirm LNL Structure** (See: dev/research/multi-type-display-calculus.md)
+  - [x] Verified: persistent_ctx = Cartesian type (set, contraction/weakening OK)
+  - [x] Verified: linear_ctx = Linear type (multiset, exact resource tracking)
+  - [x] Verified: Bang_L is the F functor (prover.js:308-316)
+  - [x] Verified: G functor is implicit (persistent_ctx propagated to all premises)
 
-- [ ] **Can Special Rules Be Generalized?**
-  - [ ] Is there a "superstructural" layer for multi-type rules?
-  - [ ] Can bridge rules be specified in ll.json instead of hardcoded?
-  - [ ] Research: how does Greco & Palmigiano handle this?
-  - [ ] how is calculus-toolbox2 handling that?
+- [x] **Can Special Rules Be Generalized?**
+  - [x] Researched calculus-toolbox-2: uses DSL with explicit type parameters
+  - [x] Researched Greco & Palmigiano: properness + multi-type methodology
+  - [x] Researched Pfenning's adjoint logic: generalizes to preorder of modes
+  - [x] **Conclusion: Three options identified** (see research doc)
 
-- [ ] **Alternative: Keep It Simple**
-  - [ ] Maybe persistent/linear is good enough for ILL
-  - [ ] Generalization only when we add more types
-  - [ ] YAGNI applies here
+- [x] **Recommendation: Keep It Simple (YAGNI)**
+  - [x] Current implementation is CORRECT—not a hack
+  - [x] Bang_L special case IS the F functor properly implemented
+  - [x] Generalize only when we need a second calculus
+  - [x] Even mature tools (calculus-toolbox-2) have type-specific handling
+
+**Key Finding:** CALC already implements multi-type DC correctly!
 
 ---
 
@@ -85,6 +89,14 @@ Understand what's logic-specific vs generic in current code.
 ---
 
 ## Completed
+
+### Multi-Type Display Calculus Research ✅
+- [x] Confirmed CALC implements Benton's LNL (persistent_ctx + linear_ctx)
+- [x] Bang_L is the F functor (Lin → Cart bridge)
+- [x] G functor implicit via persistent_ctx propagation
+- [x] Researched Greco & Palmigiano, calculus-toolbox-2, Pfenning's adjoint logic
+- [x] Recommendation: Keep current implementation (YAGNI)
+- [x] Created: dev/research/multi-type-display-calculus.md
 
 ### Display Calculus Verification ✅
 - [x] Implement C1-C8 checker in JavaScript (via /health UI)
