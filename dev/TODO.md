@@ -6,9 +6,112 @@ Outstanding tasks for the CALC project.
 
 ## Active Tasks
 
-### Clean Up & Polish
+### Research: Interactive Proving & Prover Orchestration
 **Priority:** HIGH
 
+Deep research into how mature theorem provers handle interactive proving, tactics, and prover orchestration.
+Create `dev/research/interactive_proving.md`.
+
+- [ ] **Lean4 Tactics**
+  - [ ] How are tactics implemented?
+  - [ ] What is the trusted kernel vs tactic layer?
+  - [ ] How do custom tactics work?
+
+- [ ] **Isabelle/HOL**
+  - [ ] What are tacticals (combinators for tactics)?
+  - [ ] How does sledgehammer work? (Multi-prover orchestration)
+  - [ ] How is interactive mode implemented?
+  - [ ] Isar structured proofs vs tactic scripts
+
+- [ ] **Coq**
+  - [ ] Ltac and Ltac2 - how do tactics work?
+  - [ ] CoqHammer - how is it implemented?
+  - [ ] Proof by reflection
+
+- [ ] **Twelf**
+  - [ ] How does interactive proving work in Twelf?
+  - [ ] Mode checking as trusted computation
+
+- [ ] **General Questions**
+  - [ ] What is the LCF architecture? (Trusted kernel + untrusted tactics)
+  - [ ] How do provers verify tactic-produced proofs?
+  - [ ] How is sledgehammer implemented? Parallel prover calls?
+
+---
+
+### Research: Multi-Type Display Calculus in CALC
+**Priority:** HIGH
+
+Our `persistent_ctx` + `linear_ctx` IS multi-type display calculus (Benton's LNL).
+Need to understand this properly and see if "special rules" (Bang_L) can be normalized.
+
+- [ ] **Confirm LNL Structure**
+  - [ ] Verify: persistent_ctx = Cartesian type, linear_ctx = Linear type
+  - [ ] Verify: Bang_L is the bridge rule (F: Lin → Cart)
+  - [ ] What is the inverse bridge? (G: Cart → Lin = dereliction?)
+
+- [ ] **Can Special Rules Be Generalized?**
+  - [ ] Is there a "superstructural" layer for multi-type rules?
+  - [ ] Can bridge rules be specified in ll.json instead of hardcoded?
+  - [ ] Research: how does Greco & Palmigiano handle this?
+
+- [ ] **Alternative: Keep It Simple**
+  - [ ] Maybe persistent/linear is good enough for ILL
+  - [ ] Generalization only when we add more types
+  - [ ] YAGNI applies here
+
+---
+
+### Core/Calculus Separation (Revised)
+**Priority:** MEDIUM
+
+Two completely separate provers, minimal interaction for now.
+
+**GenericProver** (lib/core/prover.js):
+- Just tries all rules (including structural rules)
+- NO explicit split enumeration (structural rules handle it implicitly)
+- Supports ordered logic, linear logic, etc. - no assumptions
+- Loop detection needed (A,B => B,A => A,B)
+- Can verify proof trees from specialized provers
+
+**ILLProver** (lib/provers/ill/):
+- Current focused prover, unchanged
+- Produces proof trees that GenericProver can verify
+- No oracle/FFI for now - just two separate implementations
+
+- [ ] Implement GenericProver (dumb rule enumeration)
+- [ ] Add loop detection / visited state tracking
+- [ ] Keep ILLProver as-is
+- [ ] Add `verify(proofTree)` method to GenericProver
+
+---
+
+### Code Investigation
+**Priority:** MEDIUM
+
+Understand what's logic-specific vs generic in current code.
+
+- [ ] **substitute.js:10 - Formula_Forall check**
+  - Purpose: Avoid substituting bound variables in ∀
+  - Is this strictly necessary? Where is it used?
+  - Can it be made generic (any "binder" rule)?
+
+- [ ] **calc.js:214 - Structure_Term_Formula check**
+  - Purpose: Marks nodes as "term type" for rendering
+  - Can be generalized: look for rules with Formula child type?
+
+- [ ] **compare.js:23-27 - Commented references**
+  - Were Structure_Term_Formula / Structure_Focused_Term_Formula comparisons
+  - Investigate git history - why were they added/removed?
+  - Probably debug/experimental code
+
+- [ ] **sequent.js - hardcoded structure names**
+  - Why config is better: allows different calculi with different structure names
+  - But maybe YAGNI - keep hardcoded until we have second calculus
+
+---
+
+### Clean Up & Polish (completed)
 - [x] Clean up ll.json - mark what's used vs unused clearly
 
 ---
