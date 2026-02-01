@@ -461,6 +461,34 @@ Research confirmed this and analyzed generalization options.
 
 ## Implementation — Complete
 
+### Content-Addressed Formulas & Proof Infrastructure ✅
+
+Implemented content-addressed hashing for O(1) equality and structural sharing.
+
+**Core Infrastructure:**
+- [x] `lib/hash.js` — FNV-1a 64-bit hashing (fast, non-cryptographic)
+- [x] `lib/intern.js` — Global interning store for hash-consing
+- [x] `lib/store.js` — Singleton store pattern (like `Calc.db`)
+- [x] `lib/profiler.js` — Operation counting and timing infrastructure
+
+**Integration:**
+- [x] `mgu.js` — O(1) term equality via `internNode(t).hash` comparison
+- [x] `substitute.js` — O(1) node matching via content-addressed hashes
+- [x] `sequent.js` — Content-addressed context entries, sequent hashing
+
+**Benchmarking:**
+- [x] `benchmarks/` directory with micro-benchmarks
+- [x] `CALC_PROFILE=1` environment flag for profiling
+- [x] `npm run bench` and `npm run bench:save` scripts
+
+**Cleanup:**
+- [x] Removed `lib/compare.js` (obsolete O(n) comparison)
+- [x] Removed SHA3/keccak dependencies (replaced with FNV-1a)
+
+**Deferred Optimizations:** See `dev/optimization_strategies.md`
+
+---
+
 ### Multi-Type Display Calculus Research ✅
 - [x] Confirmed CALC implements Benton's LNL (persistent_ctx + linear_ctx)
 - [x] Bang_L is the F functor (Lin → Cart bridge)
@@ -655,4 +683,4 @@ Research confirmed this and analyzed generalization options.
 
 ---
 
-*Last updated: 2026-01-29*
+*Last updated: 2026-02-01*

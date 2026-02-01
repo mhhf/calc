@@ -6,85 +6,6 @@ Outstanding tasks for the CALC project.
 
 ## HIGH Priority Research
 
-### Content-Addressed Formulas, Terms, and Sequents
-**Priority:** HIGH
-
-Design a content-addressing scheme where identical logical objects have identical addresses, enabling efficient equality, caching, and deduplication.
-
-**Goals:**
-- Same formula/term/sequent → same address (structural identity)
-- Efficient to compute (ideally O(1) for equality after initial hash)
-- Support for alpha-equivalence (identical up to bound variable renaming)
-- Enable proof sharing, memoization, and deduplication
-
-**Approaches to research:**
-
-1. **Hash Consing** — Classic technique from functional programming / SAT solvers
-   - Structurally equal terms share the same memory cell
-   - Equality becomes pointer equality (O(1))
-   - Used in: BDDs, SAT/SMT solvers, some theorem provers
-   - Key paper: Filliatre & Conchon, "Type-Safe Modular Hash-Consing"
-
-2. **Merkle-style Hashing** — Content-addressable trees
-   - Each node's hash = hash(constructor, child_hashes)
-   - Roots identify entire subtrees
-   - Used in: Git, IPFS, Unison language
-   - Benefit: Incremental updates, proof of structure
-
-3. **De Bruijn Indices** — For alpha-equivalence
-   - Replace variable names with binding depth
-   - `λx.λy.x` becomes `λ.λ.1` (index 1 = one binder up)
-   - Ensures alpha-equivalent terms are syntactically identical
-   - Then apply hash consing on de Bruijn form
-
-4. **Locally Nameless Representation** — Hybrid approach
-   - Bound variables: de Bruijn indices
-   - Free variables: names
-   - Good for substitution and alpha-equivalence
-
-**Implementation considerations:**
-- [ ] Where to address: AST nodes? Sequents? Proof trees?
-- [ ] Incremental addressing for edits
-- [ ] Weak references for garbage collection of unused structures
-- [ ] Thread-safety for concurrent proof search
-
-**CRITICAL: Performance requirement**
-- Tree construction and comparison happens constantly during proof search
-- Must be **O(1)** for equality checking after initial construction
-- **Cryptographic hashing is too slow** — computing hash at every node is expensive
-- Consider alternatives:
-  - **Interning with integer IDs**: Each unique structure gets a unique integer. Equality = integer comparison (O(1))
-  - **Hash consing with weak hash tables**: Hash once on construction, then pointer equality
-  - **Structural sharing**: Reuse subtrees, compare by reference
-  - **Lazy hashing**: Only compute hash when needed (serialization, dedup), not for equality
-- The key insight: we need **identity**, not necessarily **content hash**
-  - For equality: pointer/ID comparison suffices
-  - For serialization/dedup: can compute hash lazily
-
-**Zig export compatibility**
-- Future goal: Export provers to Zig for large proof search performance
-- JavaScript is too slow for exhaustive search on complex proofs
-- Design decisions now must consider Zig portability:
-  - Data structures should map cleanly to Zig (arena allocators, slices)
-  - Avoid JS-specific patterns (closures as data, prototype chains)
-  - Integer IDs for interning work well in Zig (simple array indexing)
-  - Consider: define core data structures in a language-agnostic way
-  - Potential path: JS prototype → Zig rewrite of hot paths → FFI or full port
-
-**Potential benefits for CALC:**
-- Fast sequent comparison in proof search (memoization)
-- Proof sharing across similar goals
-- Caching of completed subproofs
-- Efficient serialization (refer by hash)
-
-**References:**
-- Filliatre & Conchon, "Type-Safe Modular Hash-Consing" (ML Workshop 2006)
-- Unison language: content-addressed code
-- IPFS: content-addressed file systems
-- Nominal techniques: Pitts, "Nominal Sets"
-
----
-
 ### Extended Celf DSL
 **Priority:** HIGH
 **Status:** DESIGN COMPLETE — Ready for implementation
@@ -255,74 +176,19 @@ Apply MPST methodology to CALC:
 
 ## MEDIUM Priority
 
-### Benchmarking & Profiling Infrastructure
+### Advanced Optimizations
 **Priority:** MEDIUM
-**Status:** Design complete in dev/research/benchmarking.md — implement with content-addressed refactor
+**Status:** Content-addressing complete, profiling infrastructure in place
 
-**Goal:** Comprehensive, always-available profiling to identify bottlenecks from day 1.
+Deferred optimizations documented in **dev/optimization_strategies.md**.
 
-**Core components:**
-1. **Operation counters** — Track mgu calls, substitutions, copies, hash lookups
-2. **Micro-benchmarks** — Individual operation timing (node.copy, mgu, substitute)
-3. **Proof benchmarks** — Full proof search with timing and operation counts
-4. **GC tracking** — Allocation rates, garbage generated, GC pauses
-
-**Implementation:**
-- [ ] Create `lib/profiler.js` — Global counters, timing, stats collection
-- [ ] Add `CALC_PROFILE=1` env flag to enable profiling
-- [ ] Create `benchmarks/` directory with suite structure
-- [ ] Add `npm run bench` script
-- [ ] Collect baseline measurements before optimizations
-
-**Usage (target API):**
-```javascript
-// Enable profiling
-const profiler = require('./lib/profiler');
-profiler.enable();
-
-// Run proof search
-const result = proveFormula(formula);
-
-// Get detailed stats
-profiler.report();
-// Output:
-//   mgu calls: 45 (avg 0.12ms)
-//   substitutions: 123 (avg 0.03ms)
-//   hash lookups: 89 (hits: 67, misses: 22)
-//   proof depth: 6
-//   backtrack count: 3
-```
-
-**See:** dev/research/benchmarking.md (comprehensive design)
-
----
-
-### Advanced Optimizations (Post Content-Addressing)
-**Priority:** MEDIUM
-**Status:** Research complete — implement after content-addressed refactor + benchmarks
-
-**Defer until:**
-1. Content-addressed refactoring is complete
-2. Benchmarking infrastructure is in place
-3. Real workload profiling shows where bottlenecks are
-
-**Optimizations to test (with benchmarks):**
-
-| Optimization | Expected Speedup | Effort | Research Doc |
-|--------------|------------------|--------|--------------|
-| **Polynomial Memoization** | O(b^d) → O(n²) | MEDIUM | polynomial-memoization.md |
-| **Constructor Index** | O(m) → O(1) identity | LOW | constructor-indexing.md |
-| **Near-Linear Unification** | O(k²) → O(k·α(k)) | MEDIUM | near-linear-unification.md |
-| **Persistent Data Structures** | O(m·n) → O(log m) copy | LOW | persistent-data-structures.md |
-| **ScopedStore** | GC → O(1) discard | LOW | arena-allocation.md |
-| **Explicit Substitutions** | Defer O(m·k·n) | HIGH | explicit-substitutions.md |
-
-**Decision criteria (after benchmarking):**
-- Only implement if profiling shows > 10% time in that operation
-- Start with lowest effort / highest impact (constructor index)
-- Test polynomial memoization early — could be transformative
-
-**See:** dev/research/*.md for detailed analysis of each optimization
+Use `CALC_PROFILE=1` to identify bottlenecks before implementing:
+- Constructor Index (O(1) identity lookup)
+- Proof Memoization (polynomial complexity)
+- Near-Linear Unification (Martelli-Montanari)
+- Explicit Substitutions (lazy evaluation)
+- Persistent Data Structures
+- Arena Allocation (for Zig port)
 
 ---
 

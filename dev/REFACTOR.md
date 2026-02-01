@@ -148,7 +148,7 @@ lib/
 │  ruleset.js       │ Rule management                        │
 │  llt_compiler.js  │ LLT rule language compiler             │
 │  helper.js        │ Tree-to-DOT, formatting utilities      │
-│  compare.js       │ Node comparison                        │
+│  intern.js        │ Content-addressed interning             │
 │  ressource.js     │ Resource handling                      │
 │  runner.js        │ Rule execution                         │
 └─────────────────────────────────────────────────────────────┘
@@ -205,8 +205,8 @@ lib/
 - `Sequent.remove_from_antecedent(seq, delta)` - Remove from context
 
 **Issues:**
-- Uses SHA3/keccak for hashing (heavyweight)
-- `id` generation via hash - potential collisions
+- ~~Uses SHA3/keccak for hashing (heavyweight)~~ → FIXED: Now uses FNV-1a via intern.js
+- ~~`id` generation via hash - potential collisions~~ → FIXED: Content-addressed hashing with BigInt
 - Mixes concerns (data + formatting)
 - Global mutable `varIndex`
 
@@ -493,13 +493,14 @@ See [Performance Optimization](#performance-optimization) section.
    - Jison generates parser at runtime
    - Fix: Pre-generate or use Chevrotain
 
-2. **Hash Computation**
-   - SHA3/Keccak for every sequent ID
-   - Fix: Structural hashing, interning
+2. ~~**Hash Computation**~~ **FIXED**
+   - ~~SHA3/Keccak for every sequent ID~~ → Now uses FNV-1a (fast, non-crypto)
+   - Content-addressed interning via `lib/intern.js` and `lib/hash.js`
+   - O(1) equality via hash comparison
 
-3. **Deep Copying**
-   - `Sequent.copy()` called frequently
-   - Fix: Immutable data structures, structural sharing
+3. ~~**Deep Copying**~~ **IMPROVED**
+   - ~~`Sequent.copy()` called frequently~~ → Structural sharing via interning
+   - Further optimizations available: see `dev/optimization_strategies.md`
 
 4. **String Operations**
    - `toString()` called repeatedly
