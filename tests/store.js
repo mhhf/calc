@@ -1,5 +1,6 @@
+const { describe, it, beforeEach } = require('node:test');
+const assert = require('node:assert');
 const { Store, ScopedStore, NodeType } = require('../lib/store');
-const should = require('chai').should();
 
 describe('Store', () => {
   let store;
@@ -11,45 +12,45 @@ describe('Store', () => {
   describe('string interning', () => {
     it('should intern and retrieve strings', () => {
       const hash = store.internString('hello');
-      store.getString(hash).should.equal('hello');
+      assert.strictEqual(store.getString(hash), 'hello');
     });
 
     it('should return same hash for same string', () => {
       const h1 = store.internString('test');
       const h2 = store.internString('test');
-      h1.should.equal(h2);
+      assert.strictEqual(h1, h2);
     });
 
     it('should return different hash for different strings', () => {
       const h1 = store.internString('foo');
       const h2 = store.internString('bar');
-      h1.should.not.equal(h2);
+      assert.notStrictEqual(h1, h2);
     });
 
     it('should mark string type correctly', () => {
       const hash = store.internString('test');
-      store.isString(hash).should.be.true;
-      store.isBigInt(hash).should.be.false;
-      store.isStruct(hash).should.be.false;
+      assert.strictEqual(store.isString(hash), true);
+      assert.strictEqual(store.isBigInt(hash), false);
+      assert.strictEqual(store.isStruct(hash), false);
     });
   });
 
   describe('bigint interning', () => {
     it('should intern and retrieve bigints', () => {
       const hash = store.internBigInt(42n);
-      store.getBigInt(hash).should.equal(42n);
+      assert.strictEqual(store.getBigInt(hash), 42n);
     });
 
     it('should return same hash for same bigint', () => {
       const h1 = store.internBigInt(12345n);
       const h2 = store.internBigInt(12345n);
-      h1.should.equal(h2);
+      assert.strictEqual(h1, h2);
     });
 
     it('should mark bigint type correctly', () => {
       const hash = store.internBigInt(99n);
-      store.isBigInt(hash).should.be.true;
-      store.isString(hash).should.be.false;
+      assert.strictEqual(store.isBigInt(hash), true);
+      assert.strictEqual(store.isString(hash), false);
     });
   });
 
@@ -59,22 +60,22 @@ describe('Store', () => {
       const hash = store.internStruct(7, [childHash]);
 
       const struct = store.getStruct(hash);
-      struct.constructorId.should.equal(7);
-      struct.children[0].should.equal(childHash);
+      assert.strictEqual(struct.constructorId, 7);
+      assert.strictEqual(struct.children[0], childHash);
     });
 
     it('should return same hash for same struct', () => {
       const child = store.internString('x');
       const h1 = store.internStruct(5, [child]);
       const h2 = store.internStruct(5, [child]);
-      h1.should.equal(h2);
+      assert.strictEqual(h1, h2);
     });
 
     it('should return different hash for different constructor', () => {
       const child = store.internString('x');
       const h1 = store.internStruct(1, [child]);
       const h2 = store.internStruct(2, [child]);
-      h1.should.not.equal(h2);
+      assert.notStrictEqual(h1, h2);
     });
 
     it('should return different hash for different children', () => {
@@ -82,13 +83,13 @@ describe('Store', () => {
       const c2 = store.internString('b');
       const h1 = store.internStruct(1, [c1]);
       const h2 = store.internStruct(1, [c2]);
-      h1.should.not.equal(h2);
+      assert.notStrictEqual(h1, h2);
     });
 
     it('should mark struct type correctly', () => {
       const hash = store.internStruct(1, []);
-      store.isStruct(hash).should.be.true;
-      store.isString(hash).should.be.false;
+      assert.strictEqual(store.isStruct(hash), true);
+      assert.strictEqual(store.isString(hash), false);
     });
 
     it('should handle nested structs', () => {
@@ -96,9 +97,9 @@ describe('Store', () => {
       const inner = store.internStruct(1, [leaf]);
       const outer = store.internStruct(2, [inner]);
 
-      store.isStruct(outer).should.be.true;
+      assert.strictEqual(store.isStruct(outer), true);
       const outerStruct = store.getStruct(outer);
-      outerStruct.children[0].should.equal(inner);
+      assert.strictEqual(outerStruct.children[0], inner);
     });
   });
 
@@ -106,36 +107,36 @@ describe('Store', () => {
     it('should use O(1) hash comparison', () => {
       const h1 = store.internString('test');
       const h2 = store.internString('test');
-      store.equal(h1, h2).should.be.true;
+      assert.strictEqual(store.equal(h1, h2), true);
     });
 
     it('should detect inequality', () => {
       const h1 = store.internString('a');
       const h2 = store.internString('b');
-      store.equal(h1, h2).should.be.false;
+      assert.strictEqual(store.equal(h1, h2), false);
     });
   });
 
   describe('has', () => {
     it('should return true for interned values', () => {
       const hash = store.internString('exists');
-      store.has(hash).should.be.true;
+      assert.strictEqual(store.has(hash), true);
     });
 
     it('should return false for unknown hashes', () => {
-      store.has(99999n).should.be.false;
+      assert.strictEqual(store.has(99999n), false);
     });
   });
 
   describe('getConstructorId', () => {
     it('should return constructor ID for struct', () => {
       const hash = store.internStruct(42, []);
-      store.getConstructorId(hash).should.equal(42);
+      assert.strictEqual(store.getConstructorId(hash), 42);
     });
 
     it('should return undefined for non-struct', () => {
       const hash = store.internString('not-struct');
-      should.not.exist(store.getConstructorId(hash));
+      assert.strictEqual(store.getConstructorId(hash), undefined);
     });
   });
 
@@ -146,14 +147,14 @@ describe('Store', () => {
       const hash = store.internStruct(1, [c1, c2]);
 
       const children = store.getChildren(hash);
-      children.should.have.length(2);
-      children[0].should.equal(c1);
-      children[1].should.equal(c2);
+      assert.strictEqual(children.length, 2);
+      assert.strictEqual(children[0], c1);
+      assert.strictEqual(children[1], c2);
     });
 
     it('should return empty array for non-struct', () => {
       const hash = store.internString('leaf');
-      store.getChildren(hash).should.deep.equal([]);
+      assert.deepStrictEqual(store.getChildren(hash), []);
     });
   });
 
@@ -165,10 +166,10 @@ describe('Store', () => {
       store.internStruct(1, []);
 
       const stats = store.stats();
-      stats.strings.should.equal(2);
-      stats.bigints.should.equal(1);
-      stats.structs.should.equal(1);
-      stats.total.should.equal(4);
+      assert.strictEqual(stats.strings, 2);
+      assert.strictEqual(stats.bigints, 1);
+      assert.strictEqual(stats.structs, 1);
+      assert.strictEqual(stats.total, 4);
     });
 
     it('should not double-count duplicates', () => {
@@ -176,7 +177,7 @@ describe('Store', () => {
       store.internString('same');
       store.internString('same');
 
-      store.stats().strings.should.equal(1);
+      assert.strictEqual(store.stats().strings, 1);
     });
   });
 });
@@ -193,74 +194,74 @@ describe('ScopedStore', () => {
   describe('inheritance', () => {
     it('should see parent values', () => {
       const hash = root.internString('parent');
-      scoped.getString(hash).should.equal('parent');
+      assert.strictEqual(scoped.getString(hash), 'parent');
     });
 
     it('should see local values', () => {
       const hash = scoped.internString('local');
-      scoped.getString(hash).should.equal('local');
+      assert.strictEqual(scoped.getString(hash), 'local');
     });
 
     it('should not add to parent when interning locally', () => {
       scoped.internString('local-only');
-      root.stats().strings.should.equal(0);
+      assert.strictEqual(root.stats().strings, 0);
     });
 
     it('should reuse parent hash if exists', () => {
       const parentHash = root.internString('shared');
       const scopedHash = scoped.internString('shared');
-      parentHash.should.equal(scopedHash);
-      scoped.local.stats().strings.should.equal(0);
+      assert.strictEqual(parentHash, scopedHash);
+      assert.strictEqual(scoped.local.stats().strings, 0);
     });
   });
 
   describe('fork', () => {
     it('should create nested scope', () => {
       const child = scoped.fork();
-      child.should.be.instanceOf(ScopedStore);
-      child.parent.should.equal(scoped);
+      assert.ok(child instanceof ScopedStore);
+      assert.strictEqual(child.parent, scoped);
     });
 
     it('should see grandparent values', () => {
       const hash = root.internString('grandparent');
       const child = scoped.fork();
-      child.getString(hash).should.equal('grandparent');
+      assert.strictEqual(child.getString(hash), 'grandparent');
     });
   });
 
   describe('commit', () => {
     it('should merge local to parent', () => {
       const hash = scoped.internString('will-commit');
-      root.has(hash).should.be.false;
+      assert.strictEqual(root.has(hash), false);
 
       scoped.commit();
-      root.has(hash).should.be.true;
-      root.getString(hash).should.equal('will-commit');
+      assert.strictEqual(root.has(hash), true);
+      assert.strictEqual(root.getString(hash), 'will-commit');
     });
 
     it('should merge nested commits', () => {
       const child = scoped.fork();
       const hash = child.internString('deep');
 
-      root.has(hash).should.be.false;
-      scoped.has(hash).should.be.false;
+      assert.strictEqual(root.has(hash), false);
+      assert.strictEqual(scoped.has(hash), false);
 
       child.commit();
-      scoped.has(hash).should.be.true;
+      assert.strictEqual(scoped.has(hash), true);
 
       scoped.commit();
-      root.has(hash).should.be.true;
+      assert.strictEqual(root.has(hash), true);
     });
   });
 
   describe('discard', () => {
     it('should clear local values', () => {
       const hash = scoped.internString('will-discard');
-      scoped.has(hash).should.be.true;
+      assert.strictEqual(scoped.has(hash), true);
 
       scoped.discard();
       // Hash computed from string, so scoped.has checks local (now empty) and parent
-      scoped.local.has(hash).should.be.false;
+      assert.strictEqual(scoped.local.has(hash), false);
     });
 
     it('should not affect parent', () => {
@@ -268,7 +269,7 @@ describe('ScopedStore', () => {
       scoped.internString('local-discard');
 
       scoped.discard();
-      root.getString(parentHash).should.equal('parent-safe');
+      assert.strictEqual(root.getString(parentHash), 'parent-safe');
     });
   });
 
@@ -277,9 +278,9 @@ describe('ScopedStore', () => {
       const parentHash = root.internString('in-parent');
       const localHash = scoped.internString('in-local');
 
-      scoped.has(parentHash).should.be.true;
-      scoped.has(localHash).should.be.true;
-      scoped.has(99999n).should.be.false;
+      assert.strictEqual(scoped.has(parentHash), true);
+      assert.strictEqual(scoped.has(localHash), true);
+      assert.strictEqual(scoped.has(99999n), false);
     });
   });
 
@@ -288,16 +289,16 @@ describe('ScopedStore', () => {
       const child = scoped.internString('x');
       const hash = scoped.internStruct(1, [child]);
 
-      scoped.isStruct(hash).should.be.true;
-      scoped.getConstructorId(hash).should.equal(1);
+      assert.strictEqual(scoped.isStruct(hash), true);
+      assert.strictEqual(scoped.getConstructorId(hash), 1);
     });
 
     it('should see parent structs', () => {
       const child = root.internString('x');
       const hash = root.internStruct(1, [child]);
 
-      scoped.isStruct(hash).should.be.true;
-      scoped.getChildren(hash).should.deep.equal([child]);
+      assert.strictEqual(scoped.isStruct(hash), true);
+      assert.deepStrictEqual(scoped.getChildren(hash), [child]);
     });
   });
 });

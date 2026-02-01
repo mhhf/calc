@@ -1,3 +1,5 @@
+const { describe, it, beforeEach } = require('node:test');
+const assert = require('node:assert');
 const { resetStore } = require('../lib/store');
 const { Term } = require('../lib/term');
 const {
@@ -7,7 +9,6 @@ const {
   getSubterms,
   countNodes,
 } = require('../lib/intern');
-const should = require('chai').should();
 
 // Setup parser
 const calc = require('../ll.json');
@@ -24,16 +25,16 @@ describe('Intern', () => {
   describe('internNode', () => {
     it('should intern string nodes', () => {
       const term = internNode('hello');
-      term.isString().should.be.true;
-      term.getString().should.equal('hello');
+      assert.strictEqual(term.isString(), true);
+      assert.strictEqual(term.getString(), 'hello');
     });
 
     it('should intern simple parsed formula', () => {
       const node = parser.parse('-- : A |- -- : A');
       const term = internNode(node);
 
-      term.isStruct().should.be.true;
-      term.constructorId().should.equal(node.id);
+      assert.strictEqual(term.isStruct(), true);
+      assert.strictEqual(term.constructorId(), node.id);
     });
 
     it('should deduplicate identical subtrees', () => {
@@ -43,7 +44,7 @@ describe('Intern', () => {
 
       // The formula "A" should appear only once in the store
       // (the hash for "A" is the same regardless of where it appears)
-      term.isStruct().should.be.true;
+      assert.strictEqual(term.isStruct(), true);
     });
 
     it('should produce same hash for same formula', () => {
@@ -53,7 +54,7 @@ describe('Intern', () => {
       const term1 = internNode(node1);
       const term2 = internNode(node2);
 
-      term1.hash.should.equal(term2.hash);
+      assert.strictEqual(term1.hash, term2.hash);
     });
 
     it('should produce different hash for different formulas', () => {
@@ -63,14 +64,14 @@ describe('Intern', () => {
       const term1 = internNode(node1);
       const term2 = internNode(node2);
 
-      term1.hash.should.not.equal(term2.hash);
+      assert.notStrictEqual(term1.hash, term2.hash);
     });
 
     it('should preserve node.id as constructor ID', () => {
       const node = parser.parse('-- : A |- -- : A');
       const term = internNode(node);
 
-      term.constructorId().should.equal(node.id);
+      assert.strictEqual(term.constructorId(), node.id);
     });
   });
 
@@ -78,7 +79,7 @@ describe('Intern', () => {
     it('should reconstruct string', () => {
       const term = internNode('test');
       const result = externNode(term, Node);
-      result.should.equal('test');
+      assert.strictEqual(result, 'test');
     });
 
     it('should reconstruct simple formula', () => {
@@ -86,7 +87,7 @@ describe('Intern', () => {
       const term = internNode(original);
       const reconstructed = externNode(term, Node);
 
-      reconstructed.toString().should.equal(original.toString());
+      assert.strictEqual(reconstructed.toString(), original.toString());
     });
 
     it('should reconstruct complex formula', () => {
@@ -94,7 +95,7 @@ describe('Intern', () => {
       const term = internNode(original);
       const reconstructed = externNode(term, Node);
 
-      reconstructed.toString().should.equal(original.toString());
+      assert.strictEqual(reconstructed.toString(), original.toString());
     });
 
     it('should work with hash instead of Term', () => {
@@ -102,7 +103,7 @@ describe('Intern', () => {
       const term = internNode(original);
       const reconstructed = externNode(term.hash, Node);
 
-      reconstructed.toString().should.equal(original.toString());
+      assert.strictEqual(reconstructed.toString(), original.toString());
     });
 
     it('should roundtrip formulas with variables', () => {
@@ -110,7 +111,7 @@ describe('Intern', () => {
       const term = internNode(original);
       const reconstructed = externNode(term, Node);
 
-      reconstructed.toString().should.equal(original.toString());
+      assert.strictEqual(reconstructed.toString(), original.toString());
     });
   });
 
@@ -119,19 +120,19 @@ describe('Intern', () => {
       const node1 = parser.parse('-- : A * B |- -- : C');
       const node2 = parser.parse('-- : A * B |- -- : C');
 
-      nodesEqual(node1, node2).should.be.true;
+      assert.strictEqual(nodesEqual(node1, node2), true);
     });
 
     it('should return false for different formulas', () => {
       const node1 = parser.parse('-- : A |- -- : B');
       const node2 = parser.parse('-- : B |- -- : A');
 
-      nodesEqual(node1, node2).should.be.false;
+      assert.strictEqual(nodesEqual(node1, node2), false);
     });
 
     it('should work with string nodes', () => {
-      nodesEqual('x', 'x').should.be.true;
-      nodesEqual('x', 'y').should.be.false;
+      assert.strictEqual(nodesEqual('x', 'x'), true);
+      assert.strictEqual(nodesEqual('x', 'y'), false);
     });
   });
 
@@ -141,7 +142,7 @@ describe('Intern', () => {
       const subterms = getSubterms(node);
 
       // Should include the root and all descendants
-      subterms.size.should.be.greaterThan(1);
+      assert.ok(subterms.size > 1);
     });
 
     it('should deduplicate repeated subterms', () => {
@@ -152,7 +153,7 @@ describe('Intern', () => {
       // (because we're using hash as key)
       const term = internNode(node);
       // Just verify it's a set with reasonable size
-      subterms.should.be.instanceOf(Set);
+      assert.ok(subterms instanceof Set);
     });
   });
 
@@ -163,7 +164,7 @@ describe('Intern', () => {
       const count = countNodes(simpleNode);
 
       // Should have multiple nodes (sequent, structures, formulas, atom names)
-      count.should.be.greaterThan(1);
+      assert.ok(count > 1);
     });
 
     it('should count more nodes in complex formula', () => {
@@ -173,7 +174,7 @@ describe('Intern', () => {
       const simpleCount = countNodes(simple);
       const complexCount = countNodes(complex);
 
-      complexCount.should.be.greaterThan(simpleCount);
+      assert.ok(complexCount > simpleCount);
     });
   });
 
@@ -195,7 +196,7 @@ describe('Intern', () => {
 
       // Second intern should add fewer nodes (A * B is shared)
       // Just verify total grew less than double
-      statsAfter.should.be.lessThan(statsBefore * 2);
+      assert.ok(statsAfter < statsBefore * 2);
     });
   });
 });

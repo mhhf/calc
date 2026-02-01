@@ -1,4 +1,5 @@
-const should = require('chai').should()
+const { describe, it } = require('node:test');
+const assert = require('node:assert');
 const calc = require('../ll.json');
 const calcParser = require("../lib/parser.js");
 const Sequent = require("../lib/sequent.js");
@@ -11,7 +12,7 @@ describe("Sequent", function () {
     let node = parser.parse(formula)
     let seq = Sequent.fromTree(node);
     // Output format has extra parens around first pair element
-    seq.toString().should.equal("(? X)* 2, ? Y |- <( AT? B ) , AT? C > F? A * F? B");
+    assert.strictEqual(seq.toString(), "(? X)* 2, ? Y |- <( AT? B ) , AT? C > F? A * F? B");
   });
 
   it.skip("should compare two sequents (Sequent.compare removed)", function () {
@@ -23,13 +24,14 @@ describe("Sequent", function () {
     let s1 = Sequent.fromTree(n1);
     let s2 = Sequent.fromTree(n2);
     // let l = Sequent.compare(s1, s2, {});
-    // l.should.be.ok;
+    // assert.ok(l);
   });
 
   it("should construct the right compare permutation", function () {
-    Sequent.constructCompareOptions([0, 1, 2], [1,2,4])
-    .length
-    .should.equal(6);
+    assert.strictEqual(
+      Sequent.constructCompareOptions([0, 1, 2], [1,2,4]).length,
+      6
+    );
   })
 
   it("should return all free variables of a sequent", function () {
@@ -37,8 +39,10 @@ describe("Sequent", function () {
     let n1 = parser.parse(f1)
     let s1 = Sequent.fromTree(n1);
     let vars = Sequent.getFreeVariables(s1);
-    vars.map(v => v.toString()).sort().join(", ")
-    .should.eq("C, F? A, F? B")
+    assert.strictEqual(
+      vars.map(v => v.toString()).sort().join(", "),
+      "C, F? A, F? B"
+    );
   });
 
 
@@ -50,9 +54,9 @@ describe("Sequent", function () {
     let seq = Sequent.renameUnique(s1);
     let result = seq.seq.toString();
     // Check that variables were renamed to V_N pattern
-    result.should.match(/V_\d+/);
+    assert.match(result, /V_\d+/);
     // Should have introduced 3 new unique variables
-    (Sequent.varIndex - initialVarIndex).should.eq(3);
+    assert.strictEqual(Sequent.varIndex - initialVarIndex, 3);
   });
 
   it("should compute the correct mgu", function () {
@@ -61,10 +65,7 @@ describe("Sequent", function () {
     let n1 = parser.parse(f1)
     let n2 = parser.parse(f2)
     let theta = mgu([[n1, n2]]);
-    theta.should.be.ok;
+    assert.ok(theta);
   });
 
-
 })
-
-

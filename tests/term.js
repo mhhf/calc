@@ -1,6 +1,7 @@
+const { describe, it, beforeEach } = require('node:test');
+const assert = require('node:assert');
 const { Store } = require('../lib/store');
 const { Term } = require('../lib/term');
-const should = require('chai').should();
 
 describe('Term', () => {
   let store;
@@ -13,19 +14,19 @@ describe('Term', () => {
     it('should create from hash', () => {
       const hash = store.internString('test');
       const term = Term.fromHash(store, hash);
-      term.hash.should.equal(hash);
+      assert.strictEqual(term.hash, hash);
     });
 
     it('should create from string', () => {
       const term = Term.fromString(store, 'hello');
-      term.isString().should.be.true;
-      term.getString().should.equal('hello');
+      assert.strictEqual(term.isString(), true);
+      assert.strictEqual(term.getString(), 'hello');
     });
 
     it('should create from bigint', () => {
       const term = Term.fromBigInt(store, 42n);
-      term.isBigInt().should.be.true;
-      term.getBigInt().should.equal(42n);
+      assert.strictEqual(term.isBigInt(), true);
+      assert.strictEqual(term.getBigInt(), 42n);
     });
 
     it('should create struct from Terms', () => {
@@ -33,9 +34,9 @@ describe('Term', () => {
       const b = Term.fromString(store, 'b');
       const term = Term.struct(store, 1, [a, b]);
 
-      term.isStruct().should.be.true;
-      term.constructorId().should.equal(1);
-      term.arity().should.equal(2);
+      assert.strictEqual(term.isStruct(), true);
+      assert.strictEqual(term.constructorId(), 1);
+      assert.strictEqual(term.arity(), 2);
     });
 
     it('should create struct from hashes', () => {
@@ -43,31 +44,31 @@ describe('Term', () => {
       const bHash = store.internString('b');
       const term = Term.struct(store, 1, [aHash, bHash]);
 
-      term.isStruct().should.be.true;
-      term.childHashes().should.deep.equal([aHash, bHash]);
+      assert.strictEqual(term.isStruct(), true);
+      assert.deepStrictEqual(term.childHashes(), [aHash, bHash]);
     });
   });
 
   describe('type checking', () => {
     it('should identify strings', () => {
       const term = Term.fromString(store, 'x');
-      term.isString().should.be.true;
-      term.isBigInt().should.be.false;
-      term.isStruct().should.be.false;
+      assert.strictEqual(term.isString(), true);
+      assert.strictEqual(term.isBigInt(), false);
+      assert.strictEqual(term.isStruct(), false);
     });
 
     it('should identify bigints', () => {
       const term = Term.fromBigInt(store, 123n);
-      term.isBigInt().should.be.true;
-      term.isString().should.be.false;
-      term.isStruct().should.be.false;
+      assert.strictEqual(term.isBigInt(), true);
+      assert.strictEqual(term.isString(), false);
+      assert.strictEqual(term.isStruct(), false);
     });
 
     it('should identify structs', () => {
       const term = Term.struct(store, 1, []);
-      term.isStruct().should.be.true;
-      term.isString().should.be.false;
-      term.isBigInt().should.be.false;
+      assert.strictEqual(term.isStruct(), true);
+      assert.strictEqual(term.isString(), false);
+      assert.strictEqual(term.isBigInt(), false);
     });
   });
 
@@ -75,26 +76,26 @@ describe('Term', () => {
     it('should be equal for same content', () => {
       const t1 = Term.fromString(store, 'same');
       const t2 = Term.fromString(store, 'same');
-      t1.equals(t2).should.be.true;
+      assert.strictEqual(t1.equals(t2), true);
     });
 
     it('should not be equal for different content', () => {
       const t1 = Term.fromString(store, 'a');
       const t2 = Term.fromString(store, 'b');
-      t1.equals(t2).should.be.false;
+      assert.strictEqual(t1.equals(t2), false);
     });
 
     it('should be equal for structurally identical trees', () => {
       const a = Term.fromString(store, 'leaf');
       const t1 = Term.struct(store, 1, [a]);
       const t2 = Term.struct(store, 1, [a]);
-      t1.equals(t2).should.be.true;
+      assert.strictEqual(t1.equals(t2), true);
     });
 
     it('should return false for non-Term', () => {
       const term = Term.fromString(store, 'x');
-      term.equals('x').should.be.false;
-      term.equals(null).should.be.false;
+      assert.strictEqual(term.equals('x'), false);
+      assert.strictEqual(term.equals(null), false);
     });
   });
 
@@ -105,15 +106,15 @@ describe('Term', () => {
       const parent = Term.struct(store, 1, [a, b]);
 
       const children = parent.children();
-      children.should.have.length(2);
-      children[0].should.be.instanceOf(Term);
-      children[0].equals(a).should.be.true;
-      children[1].equals(b).should.be.true;
+      assert.strictEqual(children.length, 2);
+      assert.ok(children[0] instanceof Term);
+      assert.strictEqual(children[0].equals(a), true);
+      assert.strictEqual(children[1].equals(b), true);
     });
 
     it('should return empty array for non-struct', () => {
       const term = Term.fromString(store, 'leaf');
-      term.children().should.deep.equal([]);
+      assert.deepStrictEqual(term.children(), []);
     });
 
     it('should return correct arity', () => {
@@ -122,7 +123,7 @@ describe('Term', () => {
         Term.fromString(store, 'b'),
         Term.fromString(store, 'c'),
       ]);
-      term.arity().should.equal(3);
+      assert.strictEqual(term.arity(), 3);
     });
   });
 
@@ -135,7 +136,7 @@ describe('Term', () => {
         }
         return t;
       });
-      mapped.getString().should.equal('X');
+      assert.strictEqual(mapped.getString(), 'X');
     });
 
     it('should transform tree nodes', () => {
@@ -150,9 +151,9 @@ describe('Term', () => {
         return t;
       });
 
-      mapped.isStruct().should.be.true;
-      mapped.children()[0].getString().should.equal('A');
-      mapped.children()[1].getString().should.equal('B');
+      assert.strictEqual(mapped.isStruct(), true);
+      assert.strictEqual(mapped.children()[0].getString(), 'A');
+      assert.strictEqual(mapped.children()[1].getString(), 'B');
     });
 
     it('should preserve structure when nothing changes', () => {
@@ -160,7 +161,7 @@ describe('Term', () => {
       const tree = Term.struct(store, 1, [a]);
 
       const mapped = tree.map(t => t);
-      mapped.hash.should.equal(tree.hash);
+      assert.strictEqual(mapped.hash, tree.hash);
     });
   });
 
@@ -168,7 +169,7 @@ describe('Term', () => {
     it('should accumulate over leaves', () => {
       const term = Term.fromString(store, 'x');
       const result = term.fold((acc, t) => acc + 1, 0);
-      result.should.equal(1);
+      assert.strictEqual(result, 1);
     });
 
     it('should accumulate over tree', () => {
@@ -178,7 +179,7 @@ describe('Term', () => {
 
       // Count all nodes
       const count = tree.fold((acc, t) => acc + 1, 0);
-      count.should.equal(3); // a, b, and the struct
+      assert.strictEqual(count, 3); // a, b, and the struct
     });
 
     it('should collect strings', () => {
@@ -191,54 +192,54 @@ describe('Term', () => {
         return acc;
       }, []);
 
-      strings.should.deep.equal(['a', 'b']);
+      assert.deepStrictEqual(strings, ['a', 'b']);
     });
   });
 
   describe('contains', () => {
     it('should find itself', () => {
       const term = Term.fromString(store, 'x');
-      term.contains(term.hash).should.be.true;
+      assert.strictEqual(term.contains(term.hash), true);
     });
 
     it('should find child', () => {
       const child = Term.fromString(store, 'child');
       const parent = Term.struct(store, 1, [child]);
-      parent.contains(child.hash).should.be.true;
+      assert.strictEqual(parent.contains(child.hash), true);
     });
 
     it('should find deep child', () => {
       const leaf = Term.fromString(store, 'leaf');
       const inner = Term.struct(store, 1, [leaf]);
       const outer = Term.struct(store, 2, [inner]);
-      outer.contains(leaf.hash).should.be.true;
+      assert.strictEqual(outer.contains(leaf.hash), true);
     });
 
     it('should return false for non-existent', () => {
       const term = Term.fromString(store, 'x');
       const other = Term.fromString(store, 'y');
-      term.contains(other.hash).should.be.false;
+      assert.strictEqual(term.contains(other.hash), false);
     });
   });
 
   describe('toString', () => {
     it('should format string', () => {
       const term = Term.fromString(store, 'hello');
-      term.toString().should.include('String');
-      term.toString().should.include('hello');
+      assert.ok(term.toString().includes('String'));
+      assert.ok(term.toString().includes('hello'));
     });
 
     it('should format bigint', () => {
       const term = Term.fromBigInt(store, 42n);
-      term.toString().should.include('BigInt');
-      term.toString().should.include('42');
+      assert.ok(term.toString().includes('BigInt'));
+      assert.ok(term.toString().includes('42'));
     });
 
     it('should format struct', () => {
       const a = Term.fromString(store, 'a');
       const term = Term.struct(store, 7, [a]);
-      term.toString().should.include('Struct');
-      term.toString().should.include('7');
+      assert.ok(term.toString().includes('Struct'));
+      assert.ok(term.toString().includes('7'));
     });
   });
 });

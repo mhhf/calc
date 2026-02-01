@@ -1,5 +1,6 @@
+const { describe, it, beforeEach } = require('node:test');
+const assert = require('node:assert');
 const { Profiler, profiler } = require('../lib/profiler');
-const should = require('chai').should();
 
 describe('Profiler', () => {
   let p;
@@ -13,31 +14,29 @@ describe('Profiler', () => {
       p.count('mgu');
       p.count('mgu');
       p.count('substitute');
-      p.stats().counters.mgu.should.equal(2);
-      p.stats().counters.substitute.should.equal(1);
+      assert.strictEqual(p.stats().counters.mgu, 2);
+      assert.strictEqual(p.stats().counters.substitute, 1);
     });
 
     it('should support custom amounts', () => {
       p.count('nodes', 5);
       p.count('nodes', 3);
-      p.stats().counters.nodes.should.equal(8);
+      assert.strictEqual(p.stats().counters.nodes, 8);
     });
 
     it('should return 0 for uncounted operations', () => {
-      p.getCount('nonexistent').should.equal(0);
+      assert.strictEqual(p.getCount('nonexistent'), 0);
     });
   });
 
   describe('timers', () => {
-    it('should time operations', (done) => {
+    it('should time operations', async () => {
       const end = p.time('mgu');
-      setTimeout(() => {
-        end();
-        const timer = p.stats().timers.mgu;
-        timer.count.should.equal(1);
-        timer.total.should.be.greaterThan(0);
-        done();
-      }, 10);
+      await new Promise(resolve => setTimeout(resolve, 10));
+      end();
+      const timer = p.stats().timers.mgu;
+      assert.strictEqual(timer.count, 1);
+      assert.ok(timer.total > 0);
     });
 
     it('should track multiple calls', () => {
@@ -46,7 +45,7 @@ describe('Profiler', () => {
         end();
       }
       const timer = p.stats().timers.fast_op;
-      timer.count.should.equal(5);
+      assert.strictEqual(timer.count, 5);
     });
 
     it('should track min/max/avg', () => {
@@ -56,9 +55,9 @@ describe('Profiler', () => {
       end2();
 
       const timer = p.stats().timers.op;
-      timer.count.should.equal(2);
-      timer.min.should.be.at.most(timer.max);
-      timer.avg.should.equal(timer.total / timer.count);
+      assert.strictEqual(timer.count, 2);
+      assert.ok(timer.min <= timer.max);
+      assert.strictEqual(timer.avg, timer.total / timer.count);
     });
 
     it('should support timeSync for synchronous functions', () => {
@@ -67,8 +66,8 @@ describe('Profiler', () => {
         for (let i = 0; i < 1000; i++) sum += i;
         return sum;
       });
-      result.should.equal(499500);
-      p.stats().timers.compute.count.should.equal(1);
+      assert.strictEqual(result, 499500);
+      assert.strictEqual(p.stats().timers.compute.count, 1);
     });
   });
 
@@ -82,8 +81,8 @@ describe('Profiler', () => {
       p.count('mgu');
       p.pop();
 
-      p.stats().counters['branch1.mgu'].should.equal(1);
-      p.stats().counters['branch2.mgu'].should.equal(1);
+      assert.strictEqual(p.stats().counters['branch1.mgu'], 1);
+      assert.strictEqual(p.stats().counters['branch2.mgu'], 1);
     });
 
     it('should support deep nesting', () => {
@@ -93,7 +92,7 @@ describe('Profiler', () => {
       p.pop();
       p.pop();
 
-      p.stats().counters['a/b.op'].should.equal(1);
+      assert.strictEqual(p.stats().counters['a/b.op'], 1);
     });
 
     it('should support scope() helper', () => {
@@ -101,8 +100,8 @@ describe('Profiler', () => {
         p.count('inner');
         return 42;
       });
-      result.should.equal(42);
-      p.stats().counters['myScope.inner'].should.equal(1);
+      assert.strictEqual(result, 42);
+      assert.strictEqual(p.stats().counters['myScope.inner'], 1);
     });
   });
 
@@ -110,7 +109,7 @@ describe('Profiler', () => {
     it('should be disabled by default (without env var)', () => {
       const disabled = new Profiler({ enabled: false });
       disabled.count('mgu');
-      disabled.stats().counters.should.deep.equal({});
+      assert.deepStrictEqual(disabled.stats().counters, {});
     });
 
     it('should do nothing when disabled', () => {
@@ -118,8 +117,8 @@ describe('Profiler', () => {
       disabled.count('mgu');
       const end = disabled.time('op');
       end();
-      disabled.stats().counters.should.deep.equal({});
-      disabled.stats().timers.should.deep.equal({});
+      assert.deepStrictEqual(disabled.stats().counters, {});
+      assert.deepStrictEqual(disabled.stats().timers, {});
     });
 
     it('should enable on demand', () => {
@@ -127,8 +126,8 @@ describe('Profiler', () => {
       p2.count('before');
       p2.enable();
       p2.count('after');
-      p2.stats().counters.should.not.have.property('before');
-      p2.stats().counters.after.should.equal(1);
+      assert.strictEqual(p2.stats().counters.before, undefined);
+      assert.strictEqual(p2.stats().counters.after, 1);
     });
   });
 
@@ -138,8 +137,8 @@ describe('Profiler', () => {
       const end = p.time('op');
       end();
       p.reset();
-      p.stats().counters.should.deep.equal({});
-      p.stats().timers.should.deep.equal({});
+      assert.deepStrictEqual(p.stats().counters, {});
+      assert.deepStrictEqual(p.stats().timers, {});
     });
   });
 
@@ -151,21 +150,21 @@ describe('Profiler', () => {
       end();
 
       const report = p.report();
-      report.should.include('CALC Profiler Report');
-      report.should.include('mgu: 10');
-      report.should.include('substitute: 5');
-      report.should.include('proof:');
+      assert.ok(report.includes('CALC Profiler Report'));
+      assert.ok(report.includes('mgu: 10'));
+      assert.ok(report.includes('substitute: 5'));
+      assert.ok(report.includes('proof:'));
     });
 
     it('should indicate when disabled', () => {
       const disabled = new Profiler({ enabled: false });
-      disabled.report().should.include('disabled');
+      assert.ok(disabled.report().includes('disabled'));
     });
   });
 
   describe('global profiler', () => {
     it('should export a singleton instance', () => {
-      profiler.should.be.instanceOf(Profiler);
+      assert.ok(profiler instanceof Profiler);
     });
   });
 });

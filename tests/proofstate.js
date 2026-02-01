@@ -1,4 +1,5 @@
-const should = require('chai').should()
+const { describe, it } = require('node:test');
+const assert = require('node:assert');
 const calc = require('../ll.json');
 const calcParser = require("../lib/parser.js");
 const Sequent = require("../lib/sequent.js");
@@ -45,16 +46,16 @@ describe("Proofstate", function () {
     const { ProofSearchState } = require('../lib/prover.js');
     let state = new ProofSearchState();
 
-    state.isFocused().should.equal(false);
-    state.phase.should.equal('inversion');
+    assert.strictEqual(state.isFocused(), false);
+    assert.strictEqual(state.phase, 'inversion');
 
     state.focus('R', null);
-    state.isFocused().should.equal(true);
-    state.focusPosition.should.equal('R');
+    assert.strictEqual(state.isFocused(), true);
+    assert.strictEqual(state.focusPosition, 'R');
 
     state.blur();
-    state.isFocused().should.equal(false);
-    state.phase.should.equal('inversion');
+    assert.strictEqual(state.isFocused(), false);
+    assert.strictEqual(state.phase, 'inversion');
   });
 
   // Proof search tests - these verify that focusing and polarity work correctly
@@ -67,52 +68,52 @@ describe("Proofstate", function () {
 
     it("should prove identity: Q |- Q", function () {
       let { result } = proveFormula("-- : Q |- -- : Q");
-      result.success.should.equal(true);
+      assert.strictEqual(result.success, true);
     });
 
     it("should prove modus ponens: P, P -o Q |- Q", function () {
       let { result } = proveFormula("-- : P, -- : P -o Q |- -- : Q");
-      result.success.should.equal(true);
+      assert.strictEqual(result.success, true);
     });
 
     it("should prove tensor identity: P * Q |- P * Q", function () {
       let { result } = proveFormula("-- : P * Q |- -- : P * Q");
-      result.success.should.equal(true);
+      assert.strictEqual(result.success, true);
     });
 
     it("should prove tensor commutativity: P * Q |- Q * P", function () {
       let { result } = proveFormula("-- : P * Q |- -- : Q * P");
-      result.success.should.equal(true);
+      assert.strictEqual(result.success, true);
     });
 
     it("should prove with elimination (left): A & B |- A", function () {
       let { result } = proveFormula("-- : A & B |- -- : A");
-      result.success.should.equal(true);
+      assert.strictEqual(result.success, true);
     });
 
     it("should prove with elimination (right): A & B |- B", function () {
       let { result } = proveFormula("-- : A & B |- -- : B");
-      result.success.should.equal(true);
+      assert.strictEqual(result.success, true);
     });
 
     it("should prove with introduction: A |- A & A", function () {
       let { result } = proveFormula("-- : A |- -- : A & A");
-      result.success.should.equal(true);
+      assert.strictEqual(result.success, true);
     });
 
     it("should prove distribution: P -o (R & Q) |- (P -o Q) & (P -o R)", function () {
       let { result } = proveFormula("-- : P -o (R & Q) |- -- : (P -o Q) & (P -o R)");
-      result.success.should.equal(true);
+      assert.strictEqual(result.success, true);
     });
 
     it("should prove currying: (A * B) -o C |- A -o (B -o C)", function () {
       let { result } = proveFormula("-- : (A * B) -o C |- -- : A -o (B -o C)");
-      result.success.should.equal(true);
+      assert.strictEqual(result.success, true);
     });
 
     it("should prove uncurrying: A -o (B -o C) |- (A * B) -o C", function () {
       let { result } = proveFormula("-- : A -o (B -o C) |- -- : (A * B) -o C");
-      result.success.should.equal(true);
+      assert.strictEqual(result.success, true);
     });
 
   });
