@@ -4,33 +4,316 @@ Outstanding tasks for the CALC project.
 
 ---
 
-## Active Tasks
+## HIGH Priority Research
 
-### Research: Multi-Type Display Calculus in CALC ✅
-**Priority:** HIGH — COMPLETE
+### Content-Addressed Formulas, Terms, and Sequents
+**Priority:** HIGH
 
-Our `persistent_ctx` + `linear_ctx` IS multi-type display calculus (Benton's LNL).
-Research confirmed this and analyzed generalization options.
+Design a content-addressing scheme where identical logical objects have identical addresses, enabling efficient equality, caching, and deduplication.
 
-- [x] **Confirm LNL Structure** (See: dev/research/multi-type-display-calculus.md)
-  - [x] Verified: persistent_ctx = Cartesian type (set, contraction/weakening OK)
-  - [x] Verified: linear_ctx = Linear type (multiset, exact resource tracking)
-  - [x] Verified: Bang_L is the F functor (prover.js:308-316)
-  - [x] Verified: G functor is implicit (persistent_ctx propagated to all premises)
+**Goals:**
+- Same formula/term/sequent → same address (structural identity)
+- Efficient to compute (ideally O(1) for equality after initial hash)
+- Support for alpha-equivalence (identical up to bound variable renaming)
+- Enable proof sharing, memoization, and deduplication
 
-- [x] **Can Special Rules Be Generalized?**
-  - [x] Researched calculus-toolbox-2: uses DSL with explicit type parameters
-  - [x] Researched Greco & Palmigiano: properness + multi-type methodology
-  - [x] Researched Pfenning's adjoint logic: generalizes to preorder of modes
-  - [x] **Conclusion: Three options identified** (see research doc)
+**Approaches to research:**
 
-- [x] **Recommendation: Keep It Simple (YAGNI)**
-  - [x] Current implementation is CORRECT—not a hack
-  - [x] Bang_L special case IS the F functor properly implemented
-  - [x] Generalize only when we need a second calculus
-  - [x] Even mature tools (calculus-toolbox-2) have type-specific handling
+1. **Hash Consing** — Classic technique from functional programming / SAT solvers
+   - Structurally equal terms share the same memory cell
+   - Equality becomes pointer equality (O(1))
+   - Used in: BDDs, SAT/SMT solvers, some theorem provers
+   - Key paper: Filliatre & Conchon, "Type-Safe Modular Hash-Consing"
 
-**Key Finding:** CALC already implements multi-type DC correctly!
+2. **Merkle-style Hashing** — Content-addressable trees
+   - Each node's hash = hash(constructor, child_hashes)
+   - Roots identify entire subtrees
+   - Used in: Git, IPFS, Unison language
+   - Benefit: Incremental updates, proof of structure
+
+3. **De Bruijn Indices** — For alpha-equivalence
+   - Replace variable names with binding depth
+   - `λx.λy.x` becomes `λ.λ.1` (index 1 = one binder up)
+   - Ensures alpha-equivalent terms are syntactically identical
+   - Then apply hash consing on de Bruijn form
+
+4. **Locally Nameless Representation** — Hybrid approach
+   - Bound variables: de Bruijn indices
+   - Free variables: names
+   - Good for substitution and alpha-equivalence
+
+**Implementation considerations:**
+- [ ] Where to address: AST nodes? Sequents? Proof trees?
+- [ ] Incremental addressing for edits
+- [ ] Weak references for garbage collection of unused structures
+- [ ] Thread-safety for concurrent proof search
+
+**CRITICAL: Performance requirement**
+- Tree construction and comparison happens constantly during proof search
+- Must be **O(1)** for equality checking after initial construction
+- **Cryptographic hashing is too slow** — computing hash at every node is expensive
+- Consider alternatives:
+  - **Interning with integer IDs**: Each unique structure gets a unique integer. Equality = integer comparison (O(1))
+  - **Hash consing with weak hash tables**: Hash once on construction, then pointer equality
+  - **Structural sharing**: Reuse subtrees, compare by reference
+  - **Lazy hashing**: Only compute hash when needed (serialization, dedup), not for equality
+- The key insight: we need **identity**, not necessarily **content hash**
+  - For equality: pointer/ID comparison suffices
+  - For serialization/dedup: can compute hash lazily
+
+**Zig export compatibility**
+- Future goal: Export provers to Zig for large proof search performance
+- JavaScript is too slow for exhaustive search on complex proofs
+- Design decisions now must consider Zig portability:
+  - Data structures should map cleanly to Zig (arena allocators, slices)
+  - Avoid JS-specific patterns (closures as data, prototype chains)
+  - Integer IDs for interning work well in Zig (simple array indexing)
+  - Consider: define core data structures in a language-agnostic way
+  - Potential path: JS prototype → Zig rewrite of hot paths → FFI or full port
+
+**Potential benefits for CALC:**
+- Fast sequent comparison in proof search (memoization)
+- Proof sharing across similar goals
+- Caching of completed subproofs
+- Efficient serialization (refer by hash)
+
+**References:**
+- Filliatre & Conchon, "Type-Safe Modular Hash-Consing" (ML Workshop 2006)
+- Unison language: content-addressed code
+- IPFS: content-addressed file systems
+- Nominal techniques: Pitts, "Nominal Sets"
+
+---
+
+### Extended Celf DSL
+**Priority:** HIGH
+**Status:** DESIGN COMPLETE — Ready for implementation
+
+Use **Extended Celf syntax** as the specification language, adding `@annotations` for metadata.
+
+**Decision: Three-file architecture**
+
+| File | Syntax | Purpose |
+|------|--------|---------|
+| `.calc` | Extended Celf + `@annotations` | Connectives + metadata (polarity, latex, dual) |
+| `.rules` | Celf + `@pretty` | Inference rules (proof search hints) |
+| `.mde` | **Pure Celf** (unchanged) | Stdlib + programs (optimism-mde compatible) |
+
+**Key insight**: Only `.calc` needs extensions. Stdlib and programs are pure Celf.
+
+**Example `.calc` syntax:**
+```celf
+tensor : formula -> formula -> formula
+  @ascii "_ * _"
+  @latex "#1 \\otimes #2"
+  @prec 60 left
+  @polarity positive
+  @category multiplicative
+  @dual par
+  @interp "Simultaneous availability: both A and B".
+```
+
+**Example `.rules` syntax (Celf with @pretty):**
+```celf
+tensor_l : deriv (seq (comma G (struct (tensor A B))) C)
+        <- deriv (seq (comma (comma G (struct A)) (struct B)) C)
+  @pretty "*L"
+  @invertible true.
+```
+
+**Critical extensions:**
+
+1. **Literal syntax** — Types can define literal patterns:
+   ```celf
+   bin : type
+     @literal decimal "[0-9]+"       % 42 → i(o(i(o(i(e)))))
+     @literal hex "0x[0-9a-f]+"      % 0xff → ...
+     @desugar decimal bin_from_decimal.
+   ```
+
+2. **FFI predicates** — Escape proof search for computation:
+   ```celf
+   plus : bin -> bin -> bin -> type
+     @ffi arithmetic.plus            % JS function
+     @mode + + -                     % input input output
+     @verify true                    % check result
+     @fallback axioms.               % if mode doesn't match
+   ```
+
+**Implementation tasks:**
+- [ ] Implement Celf parser with Ohm (types, constructors, rules)
+- [ ] Add `@literal` and `@desugar` for syntax sugar
+- [ ] Add `@ffi` and `@mode` for FFI predicates
+- [ ] Implement FFI dispatch in proof search
+- [ ] Port optimism-mde/lib to verify pure Celf works
+- [ ] Generate ll.json from .calc for backwards compatibility
+
+**FFI considerations:**
+- Mode checking: `+` = ground input, `-` = computed output
+- Verification: optionally check FFI results
+- Fallback: use axioms when FFI mode doesn't match
+- See: dev/research/ffi-logics.md (detailed design)
+
+**Deferred research questions (for later):**
+- [ ] Dependent types for rule typing (LF-style)
+- [ ] Cut elimination via adequacy
+- [ ] Twelf/Celf export for metatheory verification
+
+**See:** dev/research/typed-dsl-logical-framework.md (comprehensive design)
+
+**Parser Framework Research**
+
+Need a modern, maintainable parser framework for:
+1. Parsing ASCII syntax of the calculus (formulas, sequents, rules)
+2. Parsing the .mde DSL to compile to internal calculus representation
+3. Potentially generating parsers from ll.json grammar specs
+
+**Requirements:**
+- Modern JavaScript/TypeScript with good DX (error messages, debugging)
+- Methodology portable to Zig (similar parsing approach)
+- Easy to iterate on grammar during research phase
+- Good error recovery and reporting for user-facing parsing
+
+**Frameworks to evaluate:**
+
+1. **Chevrotain** (JS)
+   - Parser combinator style, no code generation
+   - Pure JS, good error messages, fast
+   - Grammar defined in code (not separate file)
+   - Downside: grammar-in-code harder to port directly
+
+**Decision: Ohm for prototyping, tree-sitter for production**
+
+2. **Ohm** (JS) ← PRIMARY for prototyping
+   - PEG-based, separate grammar file
+   - Excellent visualization/debugging tools
+   - Clean separation: grammar vs semantics
+   - Good for prototyping and iteration
+
+3. **tree-sitter** (C with bindings) ← FUTURE for editor support
+   - Industrial-strength incremental parsing
+   - Used by editors (VSCode, Neovim)
+   - Zig bindings exist for future port
+
+**Migration path:**
+```
+Jison (current) → Ohm (prototype) → tree-sitter (production/editors)
+                                  → Zig hand-written RD (performance)
+```
+
+**See:** dev/research/typed-dsl-logical-framework.md for full comparison
+
+---
+
+### Pacioli Grading Semiring
+**Priority:** HIGH
+
+Can the Pacioli group P be a well-behaved grading semiring for graded linear logic?
+
+- [ ] Define multiplication: [a//b] · [c//d] = ???
+- [ ] Verify semiring laws
+- [ ] Define □_{[x//y]} A in the logic
+- [ ] What does grade polymorphism mean for T-accounts?
+
+---
+
+### Fibration Semantics for Ownership
+**Priority:** HIGH
+
+What is the precise fibration structure for ownership?
+
+- [ ] Base category: Principals with speaks-for morphisms?
+- [ ] Fibers: SMC of resources? Linear categories?
+- [ ] Transfer as reindexing: what properties?
+- [ ] Connection to dependent linear types?
+
+---
+
+### Debt as Session Protocol
+**Priority:** HIGH
+
+Define debt relationships as session types:
+
+- [ ] debt_type = &{ pay: ..., renegotiate: ..., default: ... }
+- [ ] Settlement as channel closure
+- [ ] Default handling via exception types?
+- [ ] Multi-party debt (syndicated loans)?
+
+---
+
+### MPST-Based Authorization Design
+**Priority:** HIGH
+
+Apply MPST methodology to CALC:
+
+- [ ] Define atomic swap as global type
+- [ ] Implement projection algorithm
+- [ ] Prove deadlock freedom for swap
+- [ ] Generate local rules automatically
+
+---
+
+## MEDIUM Priority
+
+### Conditional execution
+**Priority:** MEDIUM
+
+research BDI framework and logic - behaviour desire intention and how it might fit into our system, create a research document for bdi
+
+### Conditional execution
+**Priority:** MEDIUM
+
+if a condition is reached (time is up, price is hit, etc) we need to triger a transition. how to model it?
+
+see financial-primitives
+
+### Price Oracles
+**Priority:** MEDIUM
+
+- internal price oracles
+- external price oracles
+
+see financial-primitives
+
+### Explicit time
+**Priority:** MEDIUM
+Some things - like future or option contracts need explicit time - since they are expiering. We need to research how to model that well with calc
+
+see financial-primitives.md
+
+### Generalize Multi-Type Display Calculus
+**Priority:** MEDIUM
+
+CALC implements Benton's LNL via persistent_ctx + linear_ctx. For multimodalities, graded types, and agents, we need a generic multi-type framework.
+
+**Current State:**
+- LNL hardcoded (persistent_ctx, linear_ctx, Bang_L special handling)
+- Works correctly for ILL — this is our case study
+
+**Goal:**
+- Generalize to support arbitrary types and bridge rules
+- Keep LNL as instantiation proving the framework works
+- Enable: ownership modalities, consensus algorithms, graded types
+
+**Consensus modalities to support (not just simple ownership):**
+- Single authority: `[Alice] A`
+- Multi-signature: `[Alice ∧ Bob] A`
+- k-of-n threshold: `[2-of-{A,B,C}] A`
+- Weighted voting: `[Alice:0.3, Bob:0.7] A`
+- Proof of Work: `[PoW(nonce, difficulty)] A`
+- Proof of Stake: `[Stake(Alice, amount)] A`
+
+**Options evaluated (see research doc):**
+1. **Multi-type DC** (Greco & Palmigiano) — PRIMARY CHOICE
+2. **Labelled sequents** — backup if MTDC insufficient
+3. **Pfenning's adjoint logic** — good fit, modes as partial order
+
+**Advanced systems evaluated:**
+- Deep Inference: LOW relevance (structural flexibility, not our need)
+- Cyclic Proofs: MEDIUM-HIGH for future (if we need recursive contracts/fixpoints)
+- Proof Nets: LOW (bad for multimodal logics)
+
+See: dev/research/multi-type-display-calculus.md (revised)
 
 ---
 
@@ -83,79 +366,11 @@ Understand what's logic-specific vs generic in current code.
 
 ---
 
-### Clean Up & Polish (completed)
-- [x] Clean up ll.json - mark what's used vs unused clearly
+### Partial Settlement with Arithmetic FFI
+**Priority:** MEDIUM
 
----
-
-## Completed
-
-### Multi-Type Display Calculus Research ✅
-- [x] Confirmed CALC implements Benton's LNL (persistent_ctx + linear_ctx)
-- [x] Bang_L is the F functor (Lin → Cart bridge)
-- [x] G functor implicit via persistent_ctx propagation
-- [x] Researched Greco & Palmigiano, calculus-toolbox-2, Pfenning's adjoint logic
-- [x] Recommendation: Keep current implementation (YAGNI)
-- [x] Created: dev/research/multi-type-display-calculus.md
-
-### Display Calculus Verification ✅
-- [x] Implement C1-C8 checker in JavaScript (via /health UI)
-- [x] Document the hybrid architecture (display rules + focused search)
-- [x] Document which conditions pass/fail for ll.json
-- [x] Decide: stay with ILL fragment (no ⅋, +, ?)
-
-### UI Revival ✅
-- [x] Get basic rendering working (SolidJS + Vite)
-- [x] Add interactive rule application
-- [x] Classical proof tree view
-- [x] Structured (Lamport-style) proof view
-- [x] ASCII proof tree view
-- [x] JSON export view
-- [x] Clickable rule labels with detail dialog
-- [x] Show abstract rule, substitution (MGU), instantiated premises
-
-### Interactive Proof Enhancements ✅
-- [x] Show rule premises when selecting a rule
-- [x] Display abstract rule pattern
-- [x] Show sigma (substitution) applied by rule
-- [x] Context split dialog for Tensor_R etc.
-
-### Calculus Health Check UI ✅
-- [x] Create /health route with educational C1-C8 explanation
-- [x] Show overall cut elimination status
-- [x] Expandable condition cards with full explanations
-- [x] Architecture section explaining hybrid (display + focused)
-
-### Research Documentation ✅
-- [x] Logics overview: which logics can be displayed (dev/research/logics-overview.md)
-- [x] Proof calculi foundations (dev/research/proof-calculi-foundations.md)
-- [x] Display calculus deep research (dev/research/display-calculus.md)
-- [x] Q&A on proof theory (dev/research/QnA.md)
-- [x] Logic engineering guide (dev/research/logic_engineering.md)
-- [x] Residuation knowledge base (dev/research/residuation.md)
-- [x] Exponential display problem (dev/research/exponential-display-problem.md)
-- [x] QTT overview (dev/research/QTT.md)
-- [x] DSL approaches comparison (dev/research/DSL-approaches.md)
-- [x] Interactive proving & prover orchestration (dev/research/interactive_proving.md)
-
-### Interactive Proving Research ✅
-- [x] LCF architecture (trusted kernel + untrusted tactics)
-- [x] de Bruijn criterion vs LCF architecture comparison
-- [x] Isabelle tacticals (THEN, ORELSE, REPEAT, etc.)
-- [x] Isabelle Sledgehammer (parallel provers, relevance filtering, proof reconstruction)
-- [x] Lean4 TacticM monad hierarchy (CoreM → MetaM → TermElabM → TacticM)
-- [x] Coq Ltac2 (Hindley-Milner types, effects model, backtracking)
-- [x] CoqHammer (ATP integration, proof reconstruction)
-- [x] Twelf logic programming (mode checking, totality checking, coverage)
-- [x] Prover orchestration patterns (parallel race, tacticals, translation+reconstruction)
-- [x] Relation to CALC: FocusedProver ≈ untrusted tactics, mgu.js ≈ MetaM, Sequent ≈ LNL
-
-### Key Papers Studied ✅
-- [x] Pfenning's 15-836 Substructural Logics course notes
-- [x] Wadler's "Propositions as Types" (Curry-Howard)
-- [x] Granule ICFP 2019 (Graded Modal Types)
-- [x] Benton's LNL (Linear/Non-Linear) Logic
-- [x] Greco & Palmigiano's "Linear Logic Properly Displayed"
+From linear-negation-debt research:
+- [ ] Partial settlement with arithmetic FFI
 
 ---
 
@@ -193,119 +408,15 @@ Decision: Stay with intuitionistic linear logic (ILL) fragment. Full classical l
 - [ ] Evaluate Chevrotain migration
 - [ ] Benchmark parser performance
 
-### Research
-**Priority:** MEDIUM — DONE
+### Cyclic Proofs for Fixpoints
+**Priority:** LOW
 
-- [x] Read Pfenning's 15-836 notes - DONE (see ANKI.md)
-- [x] Study Granule ICFP 2019 paper - DONE (see QTT.md)
-- [x] Research Nomos language (blockchain + linear types) - DONE (see nomos.md)
-- [x] Research FFI for logics (mode-checked trusted computation) - DONE (see ffi-logics.md)
+- [ ] Cyclic proofs for fixpoints — deeper study needed
 
-### Logic Engineering (How to Design Sequent Calculi)
-**Priority:** HIGH — DONE
+### Coalgebras over Comonads
+**Priority:** LOW
 
-This is a main research goal — understanding how to come up with correct and good sequent calculi.
-
-- [x] **Syntax vs Semantics: Which comes first?**
-  - [x] Study proof-theoretic semantics (meaning from rules)
-  - [x] Study model-theoretic semantics (meaning from truth)
-  - [x] Understand the iteration between syntax and semantics
-  - See: logic_engineering.md
-- [x] **Checklist for a "good" sequent calculus**
-  - [x] Cut elimination (must have)
-  - [x] Subformula property (should have)
-  - [x] No global side conditions (nice to have)
-  - [x] Modularity (adding connectives doesn't break things)
-  - See: logic_engineering.md, QnA.md
-
-### Foundational Understanding
-**Priority:** HIGH — MOSTLY DONE
-
-- [x] **Study Curry-Howard correspondence in depth**
-  - [x] Read Wadler's "Propositions as Types" paper
-  - [x] Understand the three levels: syntax, structure, dynamics
-  - [x] Work through Curry-Howard-Lambek (category theory connection)
-  - [x] Understand why classical logic → continuations/control operators
-  - See: proof-calculi-foundations.md, ANKI.md
-- [x] **Understand proof calculi hierarchy**
-  - [x] Natural deduction vs sequent calculus trade-offs
-  - [x] Why sequent calculus is good for proof search
-  - [x] Display calculus requirements (residuation, 8 conditions)
-  - [x] When logics lack sequent calculi (fixpoints, context-sensitivity)
-  - See: QnA.md, proof-calculi-foundations.md
-- [x] **Study cut elimination deeply**
-  - [x] Why cut elimination = consistency
-  - [x] Why subformula property enables proof search
-  - [x] Proof size explosion (Boolos's example)
-  - See: QnA.md
-
-### Residuation & Exponentials (for !_r display calculus)
-**Priority:** HIGH — MOSTLY DONE
-
-- [x] **Study residuation in depth**
-  - [x] Work through examples in residuated lattices
-  - [x] Understand Galois connections as requirement for residuation
-  - [x] Why ! is a comonad, not residuated
-  - [x] Examples of non-residuated connectives and why
-  - See: residuation.md, exponential-display-problem.md
-- [x] **Study adjoint decomposition for exponentials**
-  - [x] Read Benton's LNL (Linear/Non-Linear) paper
-  - [x] Understand multi-type display calculus approach
-  - [x] How ! = F ∘ G (composition of adjoints)
-  - [x] Study Greco & Palmigiano's "Linear Logic Properly Displayed"
-  - See: exponential-display-problem.md, ANKI.md
-- [x] **Study left/right decomposition patterns**
-  - [x] What makes a "good" sequent rule?
-  - [x] When do you need hypersequents/labels?
-  - [x] Understand "local" vs "global" conditions in rules
-  - [x] Which connectives fail decomposition (modalities, fixpoints)
-  - See: QnA.md, proof-calculi-foundations.md
-- [x] **Study non-determinism and confluence**
-  - [x] Why classical cut-elimination is non-deterministic
-  - [x] How polarization/focusing restores determinism
-  - [ ] Cyclic proofs for fixpoints — TODO: deeper study
-  - See: QnA.md
-
-### Categorical & Algebraic Foundations
-**Priority:** MEDIUM — PARTIALLY DONE
-
-Concepts needed to understand display calculus deeply.
-
-- [x] **Comonads** (in the sense of "! is a comonad")
-  - [x] Definition: counit and comultiplication
-  - [x] Why comonads are different from residuated operations
-  - [ ] Coalgebras over comonads — deeper study needed
-  - See: exponential-display-problem.md, QnA.md
-- [x] **Adjoint decomposition** (! = F ∘ G)
-  - [x] Adjunctions vs residuations
-  - [x] How adjoints between TYPES give well-behaved rules
-  - [x] Benton's LNL logic as canonical example
-  - See: ANKI.md, exponential-display-problem.md
-- [x] **Multi-type display calculus**
-  - [x] Multiple types of formulas/structures
-  - [x] Bridge connectives between types
-  - [x] How this solves the exponential problem
-  - See: exponential-display-problem.md, logics-overview.md
-- [x] **Galois connections**
-  - [x] Formal definition (f ⊣ g)
-  - [x] Relationship to residuation
-  - [x] Why they're required for display postulates
-  - See: residuation.md, QnA.md
-- [x] **Labelled sequents**
-  - [x] How labels solve context-sensitivity
-  - [x] Labels as explicit worlds (Kripke-style)
-  - [x] Relationship to display calculus
-  - See: QnA.md, proof-calculi-foundations.md
-- [x] **Hypersequents**
-  - [x] Definition: multiset of sequents
-  - [x] How they solve S5 modal logic
-  - [x] Comparison with display calculus
-  - See: QnA.md, ANKI.md
-- [x] **Global side conditions**
-  - [x] What they're used for (modal logic, exponentials, eigenvariables)
-  - [x] Why they're problematic for cut elimination
-  - [x] Alternative formulations that avoid them
-  - See: QnA.md
+- [ ] Coalgebras over comonads — deeper study needed
 
 ### Extensions
 **Priority:** LOW (future)

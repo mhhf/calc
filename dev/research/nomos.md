@@ -1,278 +1,320 @@
-# Nomos: Blockchain Smart Contracts with Linear Types
-
-A comprehensive research document on Nomos, a programming language for digital contracts based on resource-aware session types.
-
----
-
-## Table of Contents
-
-1. [Overview](#overview)
-2. [Theoretical Foundations](#theoretical-foundations)
-3. [Key Features](#key-features)
-4. [Type System](#type-system)
-5. [Resource Analysis](#resource-analysis)
-6. [Relationship to Linear Logic](#relationship-to-linear-logic)
-7. [Implementation](#implementation)
-8. [Relevance to CALC](#relevance-to-calc)
-9. [Sources](#sources)
-
----
+# Nomos: Session Types + Linear Types for Smart Contracts
 
 ## Overview
 
-**Nomos** is a domain-specific programming language for implementing smart contracts, developed at Carnegie Mellon University by Ankush Das, Stephanie Balzer, Jan Hoffmann, and Frank Pfenning.
+**Nomos** is a domain-specific language for smart contracts developed at CMU by Ankush Das, Stephanie Balzer, Jan Hoffmann, and Frank Pfenning. It combines:
+- **Session types** (communication protocols)
+- **Linear types** (resource safety)
+- **Automatic amortized resource analysis** (gas bounds)
 
-### The Problem It Solves
+Key paper: Das et al., "Resource-Aware Session Types for Digital Contracts" (CSF 2021)
 
-Smart contracts face three critical challenges:
+## Core Problems Nomos Solves
 
-| Challenge | Description | Nomos Solution |
-|-----------|-------------|----------------|
-| **Protocol Enforcement** | Contracts must follow interaction protocols | Session types |
-| **Resource Control** | Gas costs must be bounded | Resource-aware types |
-| **Asset Safety** | Assets cannot be duplicated/deleted | Linear types |
-
-### Key Insight
-
-Nomos combines three type-theoretic techniques:
-1. **Session types** — prescribe bidirectional communication protocols
-2. **Linear types** — prevent asset duplication/deletion
-3. **Automatic amortized resource analysis** — statically bound gas consumption
+| Problem | Nomos Solution |
+|---------|----------------|
+| Protocol violations | Session types enforce interaction order |
+| Re-entrancy attacks | Acquire-release discipline |
+| Asset duplication/loss | Linear type system |
+| Out-of-gas exceptions | Automatic resource bounds |
 
 ---
 
-## Theoretical Foundations
+## The Propositions-as-Sessions Correspondence
 
-### Session Types and Curry-Howard
+Nomos builds on the **Curry-Howard correspondence for concurrency** discovered by Caires & Pfenning (2010):
 
-Session types are in **Curry-Howard correspondence with linear logic**:
+| Linear Logic | Session Types | Process Operation |
+|--------------|---------------|-------------------|
+| A ⊗ B | tensor | Send channel of type A, continue as B |
+| A ⊸ B | lolli | Receive channel of type A, continue as B |
+| A & B | external choice | Offer choice to client |
+| A ⊕ B | internal choice | Make choice as provider |
+| 1 | unit | Close channel (termination) |
+| !A | exponential | Replicated/persistent service |
 
-```
-Linear Logic          Session Types
-─────────────         ─────────────
-A ⊗ B                 Send A, then behave as B
-A ⊸ B                 Receive A, then behave as B
-A & B                 External choice (client chooses)
-A ⊕ B                 Internal choice (server chooses)
-!A                    Shared/reusable channel
-```
+**Key insight**: Cut elimination in sequent calculus = Process communication in π-calculus
 
-Under this correspondence:
-- **Propositions** = session types (protocols)
-- **Proofs** = processes (implementations)
-- **Cut elimination** = communication
-
-### Linear Logic as Resource Logic
-
-Linear logic's key property: propositions are **resources** that must be used exactly once.
-
-In Nomos:
-- A linear asset cannot be copied (no contraction)
-- A linear asset cannot be discarded (no weakening)
-- This prevents the "double spending" problem in blockchain
+### Foundational Papers
+- Caires & Pfenning, "Session Types as Intuitionistic Linear Propositions" (CONCUR 2010) — 441+ citations
+- Wadler, "Propositions as Sessions" (ICFP 2012) — Classical version
 
 ---
 
-## Key Features
-
-### 1. Protocol Enforcement via Session Types
-
-Session types describe communication protocols. A channel has a type describing what messages can be sent/received.
+## Session Type Syntax
 
 ```
-type wallet = &{ deposit : money -o wallet,
-                 withdraw : money * wallet,
-                 balance : int ^ wallet }
+A ::= +{l₁: A₁, ..., lₙ: Aₙ}     -- internal choice (provider sends label)
+    | &{l₁: A₁, ..., lₙ: Aₙ}     -- external choice (provider receives label)
+    | A * B                       -- tensor: send channel
+    | A -o B                      -- lolli: receive channel
+    | 1                           -- termination
+    | |{q}> A                     -- send q potential units
+    | <{q}| A                     -- receive q potential units
+    | /\ A                        -- up-shift: linear → shared
+    | \/ A                        -- down-shift: shared → linear
+    | t ^ A                       -- send functional value
+    | t -> A                      -- receive functional value
 ```
 
-This says a wallet:
-- Can receive a `deposit` (takes money, continues as wallet)
-- Can be asked to `withdraw` (sends money and continues)
-- Can report `balance` (sends int and continues)
-
-### 2. Linear Asset Tracking
-
-Assets are tracked linearly:
-
-```
-type money = { amount : int }
-
--- This would be a TYPE ERROR:
-proc bad_double(m : money) : money * money =
-  (m, m)  -- ERROR: can't use m twice!
-```
-
-### 3. Shared vs Linear Channels
-
-Nomos distinguishes:
-- **Linear channels** (`$c`) — must be used exactly once
-- **Shared channels** (`#c`) — can be used multiple times (like `!A`)
-
-Mode shifts move between them:
-- `↑` (up) — acquire shared channel for linear use
-- `↓` (down) — release linear channel back to shared
-
-### 4. Process Modes
-
-Processes have modes indicating their role:
-
-| Mode | Description |
-|------|-------------|
-| `R` (asset) | Purely linear processes for assets/private data |
-| `S` (shared) | Shareable contracts in shared phase |
-| `L` (linear) | Shareable contracts in linear phase |
-| `T` (transaction) | Transaction processes issued by users |
+### Channel Types
+- `$c` = Linear channel (must be used exactly once)
+- `#c` = Shared channel (acquire-release discipline)
 
 ---
 
-## Type System
-
-### Session Type Operators
+## Process Definition Syntax
 
 ```
-Type        Meaning
-────        ───────
-+{l : A}    Internal choice: send label l, continue as A
-&{l : A}    External choice: receive label l, continue as A
-A ⊗ B       Send channel of type A, continue as B
-A ⊸ B       Receive channel of type A, continue as B
-↑A          Acquire (shift from shared to linear)
-↓A          Release (shift from linear to shared)
-1           Terminate (unit)
+proc <mode> name : (x₁: t₁), ..., ($c₁: A₁), ... |{q}- ($c: A) = P
 ```
 
-### Example: Auction Contract
+Where:
+- `mode` ∈ {`asset`, `contract`, `transaction`}
+- `|{q}-` denotes q units of stored potential
+- `$c: A` is the offered channel of type A
+
+### Process Operations
 
 ```
-type auction = &{ bid : money -o auction,
-                  close : +{ winner : money * 1,
-                             no_bids : 1 } }
+P ::= $c <- f <- args ; P        -- spawn process f
+    | send $c₁ $c₂ ; P           -- send channel c₂ on c₁
+    | $c₂ <- recv $c₁ ; P        -- receive channel on c₁
+    | $c.label ; P               -- send label on c
+    | case $c (l₁ => P₁ | ...)   -- case on received label
+    | close $c                    -- close channel
+    | wait $c ; P                 -- wait for close
+    | work {q} ; P               -- consume q gas
+    | pay $c {q} ; P             -- transfer potential
+    | get $c {q} ; P             -- receive potential
 ```
-
-An auction:
-1. Accepts bids (external choice `&`)
-2. When closed, either declares winner (sends prize) or reports no bids
-
-### Type Checking
-
-Nomos features **linear-time type checking** — the type checker runs in O(n) where n is program size.
 
 ---
 
-## Resource Analysis
+## Re-entrancy Prevention: Acquire-Release Discipline
 
-### The Gas Problem
+### The DAO Hack (2016)
 
-In Ethereum and similar blockchains:
+The infamous DAO attack exploited **re-entrancy**: a malicious contract called back into a withdrawal function before state was updated, draining $60M worth of ETH. This led to the Ethereum hard fork.
+
+The pattern:
+1. Attacker calls `withdraw()`
+2. Contract sends ETH to attacker
+3. Attacker's fallback function calls `withdraw()` again
+4. Contract still thinks attacker has balance (state not updated)
+5. Repeat until drained
+
+### How Nomos Prevents Re-entrancy
+
+**Shared session types** impose an **acquire-release discipline**:
+
+1. Client must **acquire** shared process before interaction
+2. Interaction happens on a **private linear channel**
+3. Client must **release** process back to shared state
+4. **Equi-synchronizing constraint**: Release type must match acquire type
+
+```
+-- Example: Auction contract type
+type auction = /\ &{ bid: int -> auction,    -- during bidding
+                     close: winner * 1 }      -- end auction
+
+-- A bidder CANNOT:
+-- 1. Acquire auction twice without releasing
+-- 2. Release in the middle of bidding
+-- 3. Re-enter during another client's session
+```
+
+### Why Acquire-Release Works
+
+| Property | Mechanism |
+|----------|-----------|
+| Mutual exclusion | Only one client holds the linear channel at a time |
+| State consistency | Must return to same type at release |
+| No partial states | Either you have full access or none |
+| Type-checked | Violations are compile errors, not runtime errors |
+
+### Equi-synchronizing vs Subsynchronizing
+
+The **equi-synchronizing constraint** requires releasing at exactly the same type as acquired. Later work by Sano, Balzer & Pfenning relaxes this to **subsynchronizing**, allowing phased protocols where types can evolve.
+
+---
+
+## Asset Tracking with Linear Types
+
+Linear types ensure:
+- Assets **cannot be duplicated** (no double-spending)
+- Assets **cannot be discarded** (no accidental loss)
+- Assets can only be **moved** (hence the name of Move language)
+
+### Example: Token Type
+
+```
+type token = /\ +{ transfer: address ^ token,
+                   burn: 1 }
+
+proc asset tok : |{0}- ($t: token) = {
+  $t.transfer ;          -- choose to transfer
+  send $t destination ;  -- send destination address
+  ...                    -- token moved, cannot use again
+}
+```
+
+### Comparison with Move Language
+
+| Feature | Nomos | Move |
+|---------|-------|------|
+| Linear types | Yes | Yes (resources) |
+| Session types | Yes | No |
+| Re-entrancy prevention | Acquire-release | No dynamic dispatch |
+| Protocol enforcement | In types | In bytecode |
+| Gas analysis | Automatic | Manual |
+| Concurrency model | π-calculus | Sequential |
+
+**Nomos advantage**: Protocols are in the type, not just resource safety
+**Move advantage**: Simpler model, wider adoption (Sui, Aptos)
+
+---
+
+## Resource-Aware Types: Automatic Gas Analysis
+
+### The Problem
+
+In Ethereum:
 - Every operation costs **gas**
 - Users must pay gas upfront
-- If gas runs out mid-execution, transaction fails and fee is lost
+- If gas runs out mid-execution → transaction fails, fee lost
+- Estimating gas is difficult
 
-### Automatic Amortized Resource Analysis (AARA)
+### Nomos Solution: AARA
 
-Nomos uses AARA to **statically compute gas bounds**:
+**Automatic Amortized Resource Analysis** (AARA) statically computes gas bounds:
 
-1. Each process is assigned an initial **potential** (budget)
-2. Operations consume potential according to a cost model
-3. Potential can be transferred between processes
+1. Each process has **potential** (resource budget)
+2. Operations consume potential according to cost model
+3. Potential can be transferred via channels
 4. Type system ensures potential is never negative
 
-```
-|{q}> A     -- Send with potential q
-<{q}| A     -- Receive with potential q
-```
-
-### Example: Resource-Annotated Type
+### Potential Annotations
 
 ```
-type wallet = &{ deposit : |{2}> money -o wallet,
-                 withdraw : <{5}| money * wallet }
+type list{q} = +{ nil: 1,
+                  cons: int ^ |{q}> list{q} }
 ```
 
-- Depositing costs 2 gas units (sender provides)
-- Withdrawing provides 5 gas units (to receiver)
+The `|{q}>` annotation means: "send q potential units with this message"
 
-### Inference
+### Automatic Inference
 
-Unknown potentials marked with `*` are **automatically inferred** by the compiler using an LP solver.
+Unknown potentials are **automatically inferred** by the compiler using linear programming (Coin-Or LP solver).
+
+```
+type wallet = &{ deposit : |{*}> money -o wallet,    -- * = infer
+                 withdraw : <{*}| money * wallet }   -- * = infer
+```
 
 ---
 
-## Relationship to Linear Logic
+## Deadlock Freedom
 
-### The Curry-Howard Correspondence
+### The Problem with Shared Channels
 
-| Linear Logic | Session Types | Process Calculus |
-|--------------|---------------|------------------|
-| A ⊗ B | A ⊗ B | send c (channel of A); continue as B |
-| A ⊸ B | A ⊸ B | receive c (channel of A); continue as B |
-| A & B | &{...} | offer choice to client |
-| A ⊕ B | +{...} | make choice |
-| !A | shared channel | reusable/contractible |
-| 1 | close | terminate |
+Acquire-release creates potential for **deadlocks**:
+- Process A acquires channel X, waits for Y
+- Process B acquires channel Y, waits for X
+- Circular dependency → deadlock
 
-### Cut = Communication
+### Solution: Manifest Deadlock-Freedom
 
-In Nomos, **cut elimination corresponds to message passing**:
-
-```
-Cut rule:    Γ ⊢ A    A, Δ ⊢ C
-             ─────────────────
-                 Γ, Δ ⊢ C
-
-Process:     P provides A    Q uses A
-             ─────────────────────────
-             P || Q  (parallel composition)
-```
-
-When P sends on A and Q receives on A, this is cut reduction.
-
-### Linearity Ensures Safety
-
-Because the type system is based on linear logic:
-- **No duplication** — assets can't be copied (no contraction)
-- **No deletion** — assets can't vanish (no weakening)
-- **Protocol compliance** — communication follows session types
+Balzer et al. (ESOP 2019) add **world ordering** to types:
+- Each process resides at a "world" (abstract location)
+- Worlds form a partial order
+- Processes must acquire resources in ascending order
+- This prevents cyclic dependencies
 
 ---
 
-## Implementation
+## Connection to Authorization Logic
 
-### Architecture
+Both Nomos and authorization logic come from the **same CMU/Pfenning research group**.
 
-Nomos is implemented in **OCaml** (~43% of codebase).
+### Parallel Concepts
+
+| Authorization Logic | Nomos Session Types |
+|---------------------|---------------------|
+| `A says φ` (principal affirmation) | Process A offers channel of type φ |
+| Linear credentials (use once) | Linear channels `$c` |
+| Exponential credentials (!A) | Shared channels `#c` |
+| `speaks for` delegation | Channel passing |
+| `controls` trust | Type-based access control |
+
+### Key Difference
+
+- **Authorization logic**: WHO can make assertions
+- **Nomos session types**: WHAT protocol must be followed
+
+### Potential Unification
+
+Could a system combine both?
+- Principals as process identities
+- `A says φ` as "A offers a channel of type φ"
+- `speaks for` as channel delegation
+- Linear/exponential for credential consumption
+- Session types for interaction protocols
+
+This is an **open research direction**.
+
+---
+
+## Adjoint Logic Foundation
+
+The `/\` (up) and `\/` (down) modalities in Nomos come from **adjoint logic**:
+
+### Background
+
+- **Benton (1994)**: Mixed linear/non-linear calculus with adjunction F ⊣ U
+- **Reed (2009)**: Generalized to preorder of modes
+- **Licata & Shulman (2015)**: 2-category of modes
+
+### The Adjunction
 
 ```
-nomos/           -- Core language implementation
-├── type/        -- Type checking
-├── resource/    -- Resource analysis (AARA)
-├── exec/        -- Execution engine
-└── solver/      -- LP solver interface for inference
+       F
+Linear ⟵ ⟶ Non-linear
+       U
 
-rast/            -- Related system (arithmetic refinements)
-nomos-tests/     -- Test suite (wallet examples)
+F: non-linear → linear (forget structure)
+U: linear → non-linear (add exponential)
 ```
 
-### Build System
+The `!A` modality decomposes as: `!A = F(U(A))`
 
-```bash
-# Dependencies
-opam install dune menhir ...
+### Connection to Multi-Type Display Calculus
 
-# Build
-dune build
+CALC's multi-type display calculus also uses adjunctions! The structural rules come from the counit/unit of adjunctions between modes.
 
-# Run
-_build/default/nomos-bin/nomos.exe <file>
+This suggests a **deeper connection** between:
+- Authorization modalities (`[A] φ`)
+- Session type modalities (`/\`, `\/`)
+- Display calculus structural rules
+
+---
+
+## Rast: Resource-Aware Session Types
+
+**Rast** (Das & Pfenning) extends Nomos with:
+
+### Arithmetic Refinements
+Session types can include arithmetic constraints:
+```
+type sorted_list[n] = +{ nil: {n = 0} 1,
+                         cons: {n > 0} int ^ sorted_list[n-1] }
 ```
 
-### Example: Wallet System
+### Complexity Analysis
+- **Ergometric types**: Track sequential complexity (work)
+- **Temporal types**: Track parallel complexity (span)
 
-The test suite demonstrates:
-1. Account creation with gas management
-2. Multi-wallet initialization
-3. Fund transfers
-4. Balance queries with automatic gas deduction
+This enables **automatic complexity bounds** on concurrent programs.
 
 ---
 
@@ -280,71 +322,121 @@ The test suite demonstrates:
 
 ### What CALC Can Learn from Nomos
 
-| Nomos Feature | CALC Application |
-|---------------|------------------|
-| Session types from linear logic | Our proof search is already LL-based |
-| Resource analysis | Could track quantities (not just linearity) |
-| Shared/linear distinction | Like ! modality decomposition |
-| Process modes | Structural vs logical connectives? |
+1. **Session types for proof protocols**
+   - Proof search as communication protocol
+   - Type = proof state transitions allowed
 
-### Key Differences
+2. **Acquire-release for shared proofs**
+   - Multiple agents working on same proof
+   - Mutual exclusion for consistency
 
-| Aspect | Nomos | CALC |
-|--------|-------|------|
-| **Purpose** | Type programs | Search for proofs |
-| **Focus** | Runtime resource bounds | Proof construction |
-| **Approach** | Type checking | Proof search (backchaining) |
-| **Implementation** | Session-typed processes | Sequent calculus |
+3. **Resource tracking for proof complexity**
+   - Potential annotations for proof length bounds
+   - Automatic complexity analysis
 
-### Potential Integration
+4. **Adjoint logic connection**
+   - Nomos uses `/\` and `\/` for modality shifts
+   - CALC's multi-type display calculus uses adjunctions
+   - **Same mathematical structure!**
 
-1. **Nomos as target**: Generate Nomos programs from CALC proofs?
-2. **Resource annotations**: Add AARA-style potential to our sequents?
-3. **Shared/linear**: Our ! handling could inform Nomos-style modes
+### Concrete Integration Ideas
 
-### The Bigger Picture
+1. **Proof channels**: A proof state could be a session type
+   ```
+   type proof_state = &{ apply_rule: rule -> proof_state,
+                         backtrack: proof_state,
+                         complete: proof_tree * 1 }
+   ```
 
-Both Nomos and CALC are exploring the same Curry-Howard space:
+2. **Authorization + session types**: Combine principals with protocols
+   ```
+   [Alice] (A says φ) ≈ Alice offers channel of type φ
+   ```
 
-```
-        Logic                    Computation
-        ─────                    ───────────
-CALC:   Linear logic proofs  →   ???
-Nomos:  Linear logic types   →   Session-typed processes
-```
+3. **Resource-aware proofs**: Track proof search cost
+   ```
+   type search{q} = |{q}> +{ found: proof, timeout: 1 }
+   ```
 
-CALC focuses on the **proof search** side; Nomos focuses on the **program execution** side. They could potentially meet in the middle.
+### Open Questions for CALC
+
+1. **Can ownership modalities be expressed as session types?**
+   - `[Alice] A` ≈ "Alice offers a linear channel providing A"?
+
+2. **How do consensus modalities fit?**
+   - `[Alice ∧ Bob] A` ≈ Multi-party session types?
+
+3. **What's the right level of integration?**
+   - Full session types in CALC?
+   - Just borrow concepts (acquire-release, linearity)?
+   - Parallel implementation for smart contracts?
+
+4. **Adjoint logic as unifying framework?**
+   - Authorization modalities
+   - Session type modalities
+   - Display calculus structural rules
+   - All instances of adjunctions!
 
 ---
 
-## Sources
+## Implementation
 
-### Primary Papers
+- **Language**: OCaml
+- **Repository**: https://github.com/ankushdas/Nomos
+- **Website**: https://nomos-lang.org
+- **Type checker**: Linear-time
+- **Resource inference**: LP solver (Coin-Or)
 
-- **Das et al. (2019)**: [Resource-Aware Session Types for Digital Contracts](https://arxiv.org/abs/1902.06056) — CSF 2021
-- **Das et al. (2021)**: [Nomos: A Protocol-Enforcing, Asset-Tracking, and Gas-Aware Smart Contract Language](https://www.cs.cmu.edu/~janh/assets/pdf/DasHP21.pdf)
-- **Das & Pfenning (2020)**: [Session Types with Arithmetic Refinements](https://arxiv.org/abs/2001.04439)
+### Build
+```bash
+opam switch create 4.10.0
+opam pin add -y nomos .
+make
+```
 
-### Related Work
+### Usage
+```bash
+# Type check
+nomos.exe -tc contract.nom
 
-- **Caires & Pfenning (2010)**: Session types from intuitionistic linear logic
-- **Wadler (2012)**: [Propositions as Sessions](https://homepages.inf.ed.ac.uk/wadler/papers/propositions-as-sessions/propositions-as-sessions.pdf) — Classical linear logic version
-- **Toninho et al. (2013)**: [Linear Logic Propositions as Session Types](https://www.cs.cmu.edu/~fp/papers/mscs13.pdf)
+# Execute with gas tracking
+nomos.exe -w send -ts sender -i input.conf -o output.conf contract.nom
+```
 
-### Implementation
+---
 
-- **GitHub**: https://github.com/ankushdas/Nomos
-- **Ankush Das Homepage**: https://ankushdas.github.io/
-- **Jan Hoffmann's Nomos Page**: https://www.cs.cmu.edu/~janh/projects/02_nomos/
+## Key Papers
+
+1. **Das et al. (2021)**: "Resource-Aware Session Types for Digital Contracts" — CSF 2021
+2. **Caires & Pfenning (2010)**: "Session Types as Intuitionistic Linear Propositions" — CONCUR 2010
+3. **Wadler (2012)**: "Propositions as Sessions" — ICFP 2012
+4. **Balzer & Pfenning (2017)**: "Manifest Sharing with Session Types" — OOPSLA 2017
+5. **Balzer et al. (2019)**: "Manifest Deadlock-Freedom for Shared Session Types" — ESOP 2019
+6. **Das & Pfenning (2022)**: "Rast: A Language for Resource-Aware Session Types" — LMCS 2022
+7. **Sano et al. (2021)**: "Manifestly Phased Communication via Shared Session Types" — FoSSaCS 2021
+
+---
+
+## Summary
+
+Nomos demonstrates that:
+
+1. **Linear logic → session types** is a productive Curry-Howard correspondence
+2. **Re-entrancy can be prevented by types**, not just runtime checks
+3. **Resource bounds can be inferred automatically**
+4. **Adjoint modalities unify linear/shared** (relevant for CALC!)
+
+The deep connection to adjoint logic and authorization logic makes Nomos highly relevant to CALC's goals of modeling ownership, consensus, and multi-principal authorization.
+
+---
 
 ## Cross-References
 
-See also in this knowledge base:
-- [[QTT]] — Quantitative type theory (different approach to resource tracking)
-- [[residuation]] — Why session types work (residuation in linear logic)
-- [[exponential-display-problem]] — Shared channels relate to ! decomposition
+- [[authorization-logic]] — "says" modality, principals
+- [[multi-type-display-calculus]] — Adjunctions between modes
+- [[proof-calculi-foundations]] — Sequent calculus, cut elimination
 - [[bibliography]] — Full citations
 
 ---
 
-*Last updated: 2026-01-27*
+*Last updated: 2026-01-28*

@@ -22,12 +22,12 @@ Deep research on how CALC implements multi-type display calculus and whether spe
 
 **Key Finding:** CALC already implements multi-type display calculus via Benton's LNL (Linear/Non-Linear) model.
 
-| Component | CALC Implementation | LNL Equivalent |
-|-----------|---------------------|----------------|
-| `persistent_ctx` | Set of reusable formulas | Cartesian type (C) |
-| `linear_ctx` | Multiset of linear resources | Linear type (M) |
-| `Bang_L` hardcoded handling | Moves `!A` from linear to `A` in persistent | F functor: C → M |
-| Implicit dereliction | `persistent_ctx` available in all premises | G functor: M → C |
+ | Component                   | CALC Implementation                         | LNL Equivalent     |
+ | -----------                 | ---------------------                       | ----------------   |
+ | `persistent_ctx`            | Set of reusable formulas                    | Cartesian type (C) |
+ | `linear_ctx`                | Multiset of linear resources                | Linear type (M)    |
+ | `Bang_L` hardcoded handling | Moves `!A` from linear to `A` in persistent | F functor: C → M   |
+ | Implicit dereliction        | `persistent_ctx` available in all premises  | G functor: M → C   |
 
 **Conclusion:** The "special rules" (Bang_L) ARE the multi-type bridge rules. They are not a hack—they're the correct implementation of the F ⊣ G adjunction.
 
@@ -115,7 +115,7 @@ Benton (1994) showed the exponential `!` decomposes into an adjunction:
          F
     C ─────→ M
     ↑       ↑
-    │  ⊣   │
+    │   ⊣   │
     │       │
     └───────┘
          G
@@ -244,12 +244,12 @@ box : formula{agent} -> formula{atprop} -> formula
 
 ### Comparison with CALC
 
-| Aspect | Calculus-Toolbox-2 | CALC |
-|--------|-------------------|------|
-| Type specification | Explicit in DSL | Implicit (persistent vs linear) |
-| Bridge rules | Via type parameters | Hardcoded Bang_L handling |
-| Generality | Supports any multi-type | Specialized for LNL |
-| Complexity | Higher | Lower |
+| Aspect             | Calculus-Toolbox-2      | CALC                            |
+| --------           | -------------------     | ------                          |
+| Type specification | Explicit in DSL         | Implicit (persistent vs linear) |
+| Bridge rules       | Via type parameters     | Hardcoded Bang_L handling       |
+| Generality         | Supports any multi-type | Specialized for LNL             |
+| Complexity         | Higher                  | Lower                           |
 
 ---
 
@@ -330,28 +330,21 @@ Keep the current implementation:
 
 ## Recommendation
 
-**Keep the current implementation (Option 3) for now.**
+**Generalize multi-type DC to support multimodalities, graded types, and agents.**
 
 ### Rationale
 
-1. **We already have multi-type DC**: The `persistent_ctx` / `linear_ctx` split IS Benton's LNL
+1. **LNL is correct and serves as case study**: The current implementation validates that multi-type DC works in practice
 
-2. **Bang_L is correct, not a hack**: The special handling implements exactly what the F functor should do
+2. **Project goals require generalization**: We aim to extend with:
+   - Ownership modalities (`[Alice] A`, `[Bob] A`)
+   - Multi-signature (`[Alice ∧ Bob] A`)
+   - Graded types (semiring quantities)
+   - Agent-based reasoning
 
-3. **YAGNI applies**: Until we need a second calculus with different multi-type structure, generalization adds complexity without benefit
+3. **LNL is just one adjunction**: The pattern generalizes to any adjunction between types
 
-4. **Even mature tools hardcode**: Calculus-Toolbox-2 has type-specific handling built into the system
-
-### When to Generalize
-
-Consider generalization if:
-- We add a second calculus with different exponential structure
-- We want to support user-defined bridge rules
-- We're building a calculus editor/generator
-
-### What We Learned
-
-The "special rules" investigation revealed that CALC's design is **correct and well-founded**:
+### Current Architecture (LNL case study)
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
@@ -368,6 +361,222 @@ The "special rules" investigation revealed that CALC's design is **correct and w
 └─────────────────────────────────────────────────────────────┘
 ```
 
+### Generalization Path
+
+The key insight: **adjunctions between types** are the general pattern. Modes form a **partial order** (poset), not necessarily a total order — incomparable modes like `alice ⊥ bob` are natural.
+
+**For authorization modalities (our primary goal):**
+
+The goal is to generalize beyond simple ownership to **arbitrary consensus algorithms**:
+
+| Consensus Type | Modality Pattern | Example |
+|----------------|------------------|---------|
+| Single authority | `[Alice] A` | Alice controls A |
+| Multi-signature | `[Alice ∧ Bob] A` | Both must agree |
+| k-of-n threshold | `[2-of-{A,B,C}] A` | Any 2 of 3 |
+| Weighted voting | `[Alice:0.3, Bob:0.7] A` | Weighted threshold |
+| Proof of Work | `[PoW(nonce, difficulty)] A` | Computational proof |
+| Proof of Stake | `[Stake(Alice, 100 ETH)] A` | Staked collateral |
+
+```
+Types: {linear, alice, bob, shared, staked, ...}
+Partial order:
+  - shared ≥ alice, shared ≥ bob (consensus dominates individuals)
+  - alice ⊥ bob (incomparable — neither controls the other)
+  - staked ≥ linear (staked resources have extra structure)
+
+Adjunctions:
+  - alice_ctx ←→ linear_ctx (Alice's ownership bridge)
+  - bob_ctx ←→ linear_ctx (Bob's ownership bridge)
+  - shared_ctx ←→ alice_ctx, bob_ctx (consensus formation)
+```
+
+**Key paper to study:** [Garg et al.: A Linear Logic of Authorization and Knowledge (ESORICS 2006)](https://link.springer.com/chapter/10.1007/11863908_19)
+
+This paper combines linear logic with authorization modalities (`A says φ`) for:
+- Consumable authorizations (linear affirmations)
+- Reusable credentials (exponential affirmations)
+- Knowledge modalities for information flow
+- Cut elimination for the combined logic
+
+**For graded types:**
+```
+Types: {0, 1, 2, ..., ω} or semiring R
+Adjunctions: grading ↔ linear via semiring operations
+```
+
+**Combining both:** The ultimate goal is a framework supporting:
+- Multiple agent modes (Alice, Bob, ...)
+- Consensus modes (multi-sig, voting, PoW/PoS)
+- Graded quantities (semiring-indexed resources)
+- All with proper cut elimination
+
+---
+
+## Alternatives for Generalization
+
+Three main approaches exist (see also [[proof-calculi-foundations]], [[QnA]]):
+
+### 1. Multi-Type Display Calculus (MTDC)
+
+**What:** Multiple formula types with bridge connectives and adjunctions.
+
+**Key papers:** Greco & Palmigiano (2023), Frittella et al. (2014), calculus-toolbox-2
+
+**Pros:**
+- Automatic cut elimination via Belnap's conditions
+- Natural for LNL-style decompositions
+- CALC already uses this pattern
+
+**Cons:**
+- Requires extending ll.json significantly
+- Proof search with display postulates can be expensive
+
+**Implementation sketch:**
+```json
+"types": {
+  "linear": {"structural": []},
+  "cartesian": {"structural": ["contraction", "weakening"]},
+  "alice": {"structural": ["contraction", "weakening"]}
+},
+"adjunctions": {
+  "bang": {"left": "cartesian", "right": "linear", "counit": "dereliction"},
+  "alice_has": {"left": "alice", "right": "linear", "counit": "use"}
+}
+```
+
+### 2. Labelled Sequent Calculus
+
+**What:** Explicit labels (worlds/modes) and accessibility relations.
+
+**Key papers:** Negri (2005), Poggiolesi (2011)
+
+```
+x:A, y:B, xRy ⊢ z:C
+```
+
+**Pros:**
+- Most general — any Kripke semantics
+- Global conditions become local label checks
+- Well-understood proof theory
+
+**Cons:**
+- Proliferation of labels in complex proofs
+- Less "pure" — labels are semantic artifacts
+- Harder to extract computational content
+
+**Use case:** When types have complex accessibility relations (e.g., distributed systems, temporal logic).
+
+### 3. Pfenning's Adjoint Logic
+
+**What:** Modes form a partial order (poset), adjunctions as mode-crossing connectives.
+
+**Key papers:** Pfenning (2023 SAX notes), Pruiksma & Pfenning (2020)
+
+```
+Modes: {U (unrestricted), L (linear), A (affine), alice, bob, shared, ...}
+Partial order examples:
+  - U ≥ A ≥ L (substructural hierarchy)
+  - shared ≥ alice, shared ≥ bob (ownership lattice)
+  - alice ⊥ bob (incomparable — no ordering)
+Adjunctions: ↑ᵐ (shift up), ↓ᵐ (shift down)
+```
+
+**Pros:**
+- Elegant algebraic structure
+- Generalizes LNL, affine, relevant in one framework
+- Session types connection
+- Partial order handles incomparable modes (alice ⊥ bob)
+
+**Cons:**
+- Requires poset structure on modes
+- Not all multi-type calculi fit this pattern
+
+### Comparison
+
+| Aspect | Multi-Type DC | Labelled | Adjoint Logic |
+|--------|---------------|----------|---------------|
+| **Expressiveness** | High | Highest | Medium-High |
+| **Cut elimination** | Generic (Belnap) | Per-logic | Generic |
+| **Proof search** | Display postulates | Label management | Mode-directed |
+| **Semantic purity** | High | Lower | High |
+| **CALC fit** | Natural extension | Significant change | Good fit |
+
+### Recommendation for CALC
+
+**Start with Multi-Type DC (Option 1):**
+- CALC already has the pattern (LNL)
+- Extend ll.json to declare types and adjunctions
+- Use LNL as validation case study
+
+**Consider Adjoint Logic for modes:**
+- If ownership modalities form a preorder (likely!)
+- E.g., `admin ≥ user ≥ guest`
+
+**Reserve Labelled for complex scenarios:**
+- Distributed systems with arbitrary topology
+- When other approaches prove insufficient
+
+---
+
+## Evaluation: Do We Need Systems Beyond MTDC?
+
+Beyond Display/Labelled, there are three more powerful proof systems. Are any relevant for our goals?
+
+### The Extended Hierarchy
+
+```
+Standard sequent < Hypersequent < Nested < Display ≈ Labelled < Deep Inference / Cyclic / Proof Nets
+```
+
+### Deep Inference
+
+**What:** Rules apply anywhere inside formulas, not just at the root.
+
+**Relevance for us:** LOW
+
+Deep inference provides structural flexibility and symmetry (cut ↔ identity duality), but doesn't add expressiveness we specifically need. The multimodal authorization work (like Garg et al.) uses standard sequent/display approaches.
+
+### Cyclic Proofs
+
+**What:** Non-wellfounded proofs as finite graphs. Essential for fixpoints (μ-calculus) and inductive definitions.
+
+**Relevance for us:** MEDIUM-HIGH (for future phases)
+
+We'd need cyclic proofs if we model:
+- Recursive smart contracts
+- Transaction histories as inductive structures
+- "Valid blockchain state" as least fixpoint
+- Temporal properties ("eventually consistent")
+
+**Current phase:** Not needed. Our authorization modalities don't require fixpoints yet.
+
+**Future phase:** Likely needed when modeling stateful contracts.
+
+**Interesting work:** [Looping for Good: Cyclic Proofs for Security Protocols](https://zenodo.org/records/16992323) — uses cyclic proofs in Tamarin Prover for protocol verification.
+
+### Proof Nets
+
+**What:** Geometric/graph representation eliminating proof bureaucracy.
+
+**Relevance for us:** LOW
+
+> "Proof nets are hard for multimodalities."
+
+Proof nets work well for pure linear logic but extending them to modal/multimodal logics is problematic. We need multimodal logics for ownership/authorization — proof nets are not the right tool.
+
+### Summary
+
+| System | Adds | Our Need | Recommendation |
+|--------|------|----------|----------------|
+| **Deep Inference** | Structural flexibility | Not specific | Skip |
+| **Cyclic Proofs** | Fixpoints, induction | Future (contracts) | Keep on radar |
+| **Proof Nets** | Proof identity | Multimodal ✗ | Skip |
+| **Multi-Type DC** | Type-indexed modalities | Authorization ✓ | **Primary approach** |
+| **Labelled Sequents** | Arbitrary accessibility | Backup | If MTDC insufficient |
+
+**Conclusion:** Stick with Multi-Type Display Calculus. Study Garg et al.'s authorization paper as our model for combining linear logic with agent modalities. Consider cyclic proofs later if we need recursive/inductive definitions for smart contracts.
+
 ---
 
 ## Sources
@@ -377,6 +586,7 @@ The "special rules" investigation revealed that CALC's design is **correct and w
 - [Benton (1995): A Mixed Linear and Non-Linear Logic](https://link.springer.com/chapter/10.1007/BFb0022251) — Original LNL paper
 - [Greco & Palmigiano (2023): Linear Logic Properly Displayed](https://dl.acm.org/doi/10.1145/3570919) — State-of-the-art multi-type DC
 - [nLab: !-modality](https://ncatlab.org/nlab/show/!-modality) — Comonad structure of bang
+- [Garg et al. (2006): A Linear Logic of Authorization and Knowledge](https://link.springer.com/chapter/10.1007/11863908_19) — **Key paper** for combining linear logic with authorization modalities (`A says`), consumable credentials, cut elimination
 
 ### Supporting Materials
 

@@ -457,6 +457,8 @@ Hypersequent calculus
 Nested sequent calculus
       ↓ (display property)
 Display calculus ≈ Labelled sequent calculus
+      ↓ (beyond tree-structured proofs)
+Deep Inference / Cyclic Proofs / Proof Nets
 ```
 
 ### What Each Level Adds
@@ -470,6 +472,9 @@ Display calculus ≈ Labelled sequent calculus
 | **Nested sequent** | Sequents inside sequents | Modal logics, tense logics |
 | **Display** | Structural connectives, display property | Modal logics, substructural logics |
 | **Labelled** | Explicit worlds/labels | Most general, any Kripke semantics |
+| **Deep inference** | Rules apply anywhere in formula | Symmetry, fine-grained analysis |
+| **Cyclic proofs** | Non-wellfounded graphs | μ-calculus, induction, fixpoints |
+| **Proof nets** | Geometric/graph representation | Linear logic, proof identity |
 
 ### Trade-offs
 
@@ -480,8 +485,129 @@ Display calculus ≈ Labelled sequent calculus
 | Sequent | Good | Yes (per-logic) | Medium | Medium |
 | Hypersequent | Good | Yes | High | High |
 | Display | Medium* | Generic! | Very High | High |
+| Deep inference | Hard** | Yes (dual to identity) | Very High | High |
+| Cyclic proofs | Specialized | Global trace condition | Highest (fixpoints) | Very High |
+| Proof nets | N/A*** | Local rewrites | High | Medium |
 
 *Display calculus proof search can be inefficient due to display postulates.
+**Deep inference: rules can apply anywhere, making search space larger.
+***Proof nets are representations, not proof search systems.
+
+---
+
+## Beyond Display/Labelled: Advanced Proof Systems
+
+The top of the hierarchy contains three orthogonal approaches that solve different problems:
+
+### Deep Inference
+
+**What it is:** Rules apply at any depth inside a formula, not just at the root.
+
+**Key insight:** In sequent calculus, rules only apply to the "main connective" of a formula. Deep inference removes this restriction.
+
+```
+Standard sequent:     A ⊗ B ⊢ C   (can only decompose ⊗ at top level)
+Deep inference:       ... (A ⊗ B) ... ⊢ ... (can apply inside any context)
+```
+
+**Why it's more expressive:**
+- Cut and identity become perfectly dual (symmetric)
+- Some logics easier to express (certain modal logics)
+- Finer-grained proof analysis
+
+**Challenges:**
+- Proof search harder to control (rules apply everywhere)
+- Cut elimination proofs more involved
+- Less mature tooling
+
+**Relevance for CALC:** LOW-MEDIUM. Deep inference doesn't add expressiveness we specifically need for authorization/ownership modalities. The multimodal work we care about uses other approaches.
+
+**Sources:**
+- [Guglielmi: Deep Inference](http://alessio.guglielmi.name/res/cos/)
+- [Proof Theory Blog: Non-sequent systems](https://prooftheory.blog/2021/08/23/new-results-about-logics-using-proof-systems-other-than-sequent-calculus/)
+
+---
+
+### Cyclic Proofs
+
+**What it is:** Non-wellfounded proofs represented as finite graphs instead of trees.
+
+**Key insight:** Standard proofs are trees (finite, well-founded). Cyclic proofs allow "back-edges" that create cycles, with a **global trace condition** ensuring soundness.
+
+```
+Tree proof:           Linear structure, finite depth
+Cyclic proof:         Graph structure, may have cycles (but finite nodes)
+```
+
+**Why it's more expressive:**
+- Essential for **fixpoints** and **inductive definitions**
+- μ-calculus (least/greatest fixpoints) requires cyclic proofs
+- Berardi & Tatsuta proved: cyclic and inductive proof systems **do not prove the same theorems** — cyclic can prove more
+
+**What needs cyclic proofs:**
+- μ-calculus (modal logic with fixpoints)
+- Inductive predicates in verification
+- Recursive data types
+- "Valid blockchain state" as inductive definition
+
+**Relevance for CALC:** MEDIUM-HIGH (for future). If we model:
+- Recursive smart contracts
+- Transaction histories as inductive structures
+- "Eventually consistent" properties
+Then cyclic proofs become relevant.
+
+For our **current goals** (ownership modalities, authorization), cyclic proofs are not needed. Keep on radar for Phase 2.
+
+**Sources:**
+- [Cyclic Proofs for First-Order μ-Calculus](https://academic.oup.com/jigpal/article/32/1/1/6653082)
+- [Looping for Good: Cyclic Proofs for Security Protocols](https://zenodo.org/records/16992323) — Tamarin Prover integration
+- [Cyclic Proofs for Arithmetical Inductive Definitions](https://drops.dagstuhl.de/entities/document/10.4230/LIPIcs.FSCD.2023.27)
+
+---
+
+### Proof Nets
+
+**What it is:** Geometric/graph representation of proofs that eliminates "bureaucracy" — irrelevant syntactical differences between equivalent proofs.
+
+**Key insight:** Two sequent proofs differing only in rule order become the **same** proof net. Proof nets capture **proof identity**.
+
+```
+Sequent proof 1:      Apply ∧R then ⊗L     ]
+                                           ] Same proof net
+Sequent proof 2:      Apply ⊗L then ∧R     ]
+```
+
+**Connection to Geometry of Interaction:**
+Proof nets lead to Girard's "Geometry of Interaction" — a dynamic semantics where proof normalization becomes token-passing in graphs. This connects to optimal λ-calculus reduction.
+
+**The multimodal problem:**
+> "Proof nets are hard for multimodalities."
+
+Proof nets work beautifully for **pure linear logic** (MALL, MELL), but extending them to modal/multimodal logics is problematic:
+- Correctness criteria become complex
+- Multiple modalities require additional structure
+- No consensus on "right" approach
+
+**Relevance for CALC:** LOW. We need multimodal logics for ownership/authorization. Proof nets are not the right tool.
+
+**Sources:**
+- [nLab: proof net](https://ncatlab.org/nlab/show/proof+net)
+- [Wikipedia: Proof net](https://en.wikipedia.org/wiki/Proof_net)
+- [Wikipedia: Geometry of interaction](https://en.wikipedia.org/wiki/Geometry_of_interaction)
+
+---
+
+### Summary: Which Advanced System for CALC?
+
+| System | Our Need | Relevance | When to Use |
+|--------|----------|-----------|-------------|
+| **Deep Inference** | Structural flexibility | LOW | Not needed for our goals |
+| **Cyclic Proofs** | Fixpoints, recursion | MEDIUM (future) | If modeling recursive contracts |
+| **Proof Nets** | Proof identity | LOW | Bad for multimodal logics |
+| **Multi-Type DC** | Ownership, authorization | HIGH | Primary approach |
+| **Labelled Sequents** | Complex mode relations | MEDIUM | Backup if MTDC insufficient |
+
+**Recommendation:** Stick with Multi-Type Display Calculus for multimodal authorization logic. Consider cyclic proofs later if we need inductive definitions.
 
 ---
 

@@ -433,8 +433,935 @@ Standard sequent < Hypersequent < Nested sequent < Display calculus ≈ Labelled
 → Closure under uniform substitution of ALL parametric parts in rules. Enables the smoothest proof of cut elimination and modular extensions.
 
 **Adjoint logic (Pfenning)**
-→ Generalization of LNL to arbitrary preorders of modes with adjunctions between them. Each mode is a category; mode morphisms are adjunctions.
+→ Generalization of LNL to arbitrary partial orders of modes with adjunctions between them. Each mode is a category; mode morphisms are adjunctions. Note: modes form a POSET (partial order), not preorder — incomparable modes (alice ⊥ bob) are natural.
 
 ---
 
-*Last updated: 2026-01-28*
+## Advanced Proof Systems (Beyond Display/Labelled)
+
+**Hierarchy extension**
+→ Standard sequent < Hypersequent < Nested < Display ≈ Labelled < Deep Inference / Cyclic Proofs / Proof Nets. The top three solve different problems (structural flexibility, fixpoints, proof identity).
+
+**Deep inference**
+→ Proof formalism where rules apply anywhere inside structures, not just at the root. Provides symmetry (cut ↔ identity duality) and finer-grained analysis. Challenge: proof search harder to control.
+
+**Cyclic proofs**
+→ Non-wellfounded proofs as finite graphs (not trees). Essential for fixpoints (μ-calculus) and inductive definitions. Soundness via global trace condition. Berardi & Tatsuta: cyclic systems prove MORE than inductive systems.
+
+**Global trace condition**
+→ Soundness criterion for cyclic proofs. Requires that every infinite path through the proof graph passes through a "progress point" infinitely often, ensuring the proof isn't circular nonsense.
+
+**Proof nets**
+→ Geometric/graph representation of proofs eliminating "bureaucracy" — two sequent proofs differing only in rule order become the SAME proof net. Great for linear logic; BAD for multimodal logics.
+
+**Why proof nets don't work for multimodal logic**
+→ Correctness criteria become complex with modalities. No consensus on handling multiple modalities. For ownership/authorization, use Multi-Type DC or Labelled sequents instead.
+
+**When to use cyclic proofs**
+→ When modeling fixpoints, recursive definitions, inductive predicates. Relevant for: smart contracts with loops, transaction histories, "valid blockchain state" as least fixpoint. NOT needed for basic authorization modalities.
+
+---
+
+## Authorization Logic
+
+**"A says φ" modality**
+→ Principal A affirms/supports proposition φ. Core construct in authorization logics (ABLP, Garg et al.). "A says φ" means A believes φ is true or authorizes actions based on φ.
+
+**Linear affirmation vs exponential affirmation**
+→ Linear: consumable credential (use once, then gone). Exponential (!): reusable credential (can verify multiple times). Key innovation of Garg et al.'s linear authorization logic.
+
+**Garg et al. (2006) — Linear Logic of Authorization**
+→ Key paper combining linear logic with authorization modalities. Has: `A says φ`, consumable/reusable credentials, knowledge modalities, cut elimination. Model for CALC's ownership goals.
+
+**Consensus modalities (generalization)**
+→ Beyond simple ownership `[Alice] A`:
+- Multi-sig: `[Alice ∧ Bob] A`
+- k-of-n: `[2-of-{A,B,C}] A`
+- Weighted: `[Alice:0.3, Bob:0.7] A`
+- PoW: `[PoW(nonce, diff)] A`
+- PoS: `[Stake(A, 100)] A`
+
+**Mode partial order for authorization**
+→ Modes form a POSET, not total order:
+- shared ≥ alice, shared ≥ bob (consensus dominates)
+- alice ⊥ bob (incomparable, neither controls other)
+- staked ≥ linear (extra structure)
+
+---
+
+## Authorization Logic Deep Dive
+
+**ABLP Logic (1993)**
+→ Foundational authorization logic by Abadi, Burrows, Lampson, Plotkin. Introduced `A says φ` (principal affirmation) and `A speaks for B` (delegation). Used in Taos authentication system.
+
+**"A says φ" — semantics**
+→ Principal A affirms/supports proposition φ. It's subjective — different principals can disagree. Behaves like `□_A φ` (necessity indexed by A). Introduction: if φ is universally true, any A says it.
+
+**"A speaks for B" — delegation**
+→ If A says φ, then B says φ. Means A can act on B's behalf. Like power of attorney: anything A says counts as if B said it.
+
+**"speaks for" examples**
+→ (1) `ssh_key speaks for Alice` — key authentication counts as Alice authenticating. (2) `CEO speaks for Company` — CEO's signature = Company's signature. (3) `proxy_contract speaks for wallet` — proxy can act as the wallet. Transitive but NOT symmetric.
+
+**"A controls φ"**
+→ Abbreviation for `(A says φ) → φ`. Means A is authoritative/trusted about φ. If A controls φ and A says φ, then φ is objectively true.
+
+**BL0 (core authorization logic)**
+→ Sorted first-order intuitionistic logic + `k says s`. No state, no time. Judgment form: `K · ⊢ A` where K is the "view" (which principal's perspective).
+
+**BL1 (with state)**
+→ BL0 + interpreted predicates for system state (file permissions, time, ACLs). State can change non-deterministically between derivation steps.
+
+**BL (full, with time)**
+→ BL1 + temporal connective `s @ [u1, u2]` meaning s holds during interval. Enables credential expiration, time-limited permissions, audit trails.
+
+**BLL (linear extension)**
+→ BL + linear logic for consumable resources. Linear credentials (one-time use) vs exponential credentials (reusable). Most relevant variant for CALC.
+
+**Kripke semantics for authorization logic**
+→ Possible worlds W, accessibility R_k per principal k, views θ(w) = principals who see world w. Truth: `w ⊩ k says φ` iff `∀v. wR_k v → v ⊩ φ`.
+
+**Composite principals**
+→ Combining principals: `A ∧ B` (both), `A ∨ B` (either), `A │ B` (A quoting B), `A as R` (A in role R). Enables multi-sig and threshold.
+
+**Threshold structure (k-of-n)**
+→ Any k of n principals suffices: `threshold(k, {A,B,C})`. Without native support, requires exponential delegations: `2-of-{A,B,C} = (A∧B) ∨ (A∧C) ∨ (B∧C)` = C(n,k) cases.
+
+**Modal deconstruction (Garg & Abadi 2008)**
+→ Authorization logic translates to modal S4: `A says φ` → `□_A φ`. Sound and complete translation. Extends to composite principals and speaks-for. Proves decidability.
+
+**Nomos language**
+→ CMU language for smart contracts with session types + linear types. Assets as linear channels (can't duplicate). Acquire-release discipline prevents re-entrancy. Same research group as authorization logic.
+
+---
+
+## Session Types Deep Dive
+
+**Propositions-as-Sessions (Caires & Pfenning 2010)**
+→ Curry-Howard correspondence for concurrency: linear logic propositions = session types, proofs = processes, cut elimination = communication. Foundation for Nomos.
+
+**Session type correspondence table**
+→ A ⊗ B = send channel of type A, continue as B
+→ A ⊸ B = receive channel of type A, continue as B
+→ A & B = external choice (client picks)
+→ A ⊕ B = internal choice (server picks)
+→ 1 = close channel
+→ !A = shared/replicable service
+
+**Re-entrancy attack**
+→ Smart contract vulnerability where malicious contract calls back into victim before state update. DAO hack 2016: $60M drained. Pattern: withdraw → send ETH → attacker calls withdraw again → balance not yet updated.
+
+**Acquire-release discipline (Nomos)**
+→ Prevents re-entrancy: client acquires shared process, gets private linear channel, must release back to shared state. Only one client has access at a time. Violations are compile errors, not runtime errors.
+
+**Equi-synchronizing constraint**
+→ In shared session types, must release at exactly the same type as acquired. Ensures state consistency. Relaxed to "subsynchronizing" in later work (Sano et al. 2021).
+
+**Linear channel ($c) vs Shared channel (#c)**
+→ Linear: must be used exactly once (like linear types). Shared: reusable, follows acquire-release. Mode shifts `/\` (up) and `\/` (down) convert between them.
+
+**Automatic Amortized Resource Analysis (AARA)**
+→ Type-based technique for statically bounding gas consumption. Each process has "potential" (budget). Operations consume potential. Type system ensures non-negative. Inference via LP solver.
+
+**Potential annotations in Nomos**
+→ `|{q}> A` = send q potential units along with channel. `<{q}| A` = receive q potential units. `*` = infer automatically. Enables gas bound inference.
+
+**Process modes in Nomos**
+→ asset: purely linear, for assets/private data. contract: shareable, in shared phase. transaction: issued by users. Mode determines structural rules available.
+
+**Manifest deadlock-freedom (Balzer et al. 2019)**
+→ Solves deadlock in shared session types using "worlds" (abstract locations) with partial order. Processes must acquire in ascending world order, preventing cycles.
+
+---
+
+## Adjoint Logic & Multi-Type Connections
+
+**Nomos's /\ and \/ modalities**
+→ `/\ A` = acquire (linear → shared), `\/ A` = release (shared → linear). These are the up-shift and down-shift from adjoint logic, same math as multi-type display calculus!
+
+**Adjoint logic (Benton, Reed, Pfenning)**
+→ Generalization of LNL to preorder of modes with adjunctions. Each mode is a category. Mode morphisms are adjunctions. !A decomposes as F(U(A)) where F ⊣ U.
+
+**Shared session types from adjoint logic**
+→ The shared/linear distinction in Nomos comes from adjoint logic's mode separation. `/\` and `\/` are the counit/unit of the adjunction. Same structure as CALC's persistent_ctx/linear_ctx!
+
+**Rast (Das & Pfenning)**
+→ Extends Nomos with arithmetic refinements. Ergometric types track work (sequential complexity). Temporal types track span (parallel complexity). Enables automatic complexity bounds.
+
+---
+
+## Session Types + Authorization
+
+**Session types vs Authorization logic**
+→ Session types: WHAT protocol must be followed (communication order). Authorization logic: WHO can make assertions (principals). Different concerns, same research group, potential unification.
+
+**Potential unification of session types and authorization**
+→ Principals as process identities. `A says φ` as "A offers channel of type φ". `speaks for` as channel delegation. Both have linear/exponential distinction. Open research direction!
+
+**Move language vs Nomos**
+→ Move: linear types only, no session types, no dynamic dispatch (prevents re-entrancy), manual gas, sequential. Nomos: session types + linear, acquire-release for re-entrancy, automatic gas, concurrent. Move simpler, Nomos more expressive.
+
+**CALC's opportunity from Nomos**
+→ (1) Proof channels: proof state as session type. (2) Authorization + protocols: principals + communication. (3) Adjoint logic unifies: authorization modalities, session modalities, display calculus rules. All instances of adjunctions!
+
+---
+
+**CALC's opportunity in authorization logic**
+→ No existing work combines: (1) graded/weighted authorization, (2) consensus as modality (PoW/PoS), (3) multi-type DC for principals. This is our potential contribution!
+
+---
+
+## Plain Text Accounting
+
+**Plain Text Accounting (PTA)**
+→ Bookkeeping methodology using human-readable text files and CLI tools (Ledger, hledger, Beancount). Data is user-owned, tools are read-only, version-controllable.
+
+**The fundamental accounting invariant**
+→ The sum of all postings in a transaction must equal zero. Value cannot be created or destroyed, only transferred. This is the "conservation law" of accounting.
+
+**Accounting equation**
+→ Assets = Liabilities + Equity. Equivalently: A + L + E + I + X = 0 (with sign conventions). Every transaction maintains this equation.
+
+**T-account**
+→ Two-column accounting format: debits on left, credits on right. Mathematically: ordered pair [debit // credit]. The Pacioli group formalizes these as [x // y] with x, y ≥ 0.
+
+**Pacioli Group (Ellerman)**
+→ Algebraic structure underlying double-entry bookkeeping. T-accounts as ordered pairs [x // y] of non-negative numbers, with addition [a//b] + [c//d] = [a+c // b+d] and equality via cross-sums: [a//b] = [c//d] iff a+d = b+c. Isomorphic to ℤ (or ℝ).
+
+**Why ordered pairs instead of signed numbers?**
+→ (1) Historical: bookkeepers used unsigned numbers. (2) Provenance: separate debit/credit trails. (3) Auditing: verify debits and credits independently. (4) Error detection: cross-sum equality is a checksum.
+
+**Group of differences**
+→ Mathematical construction (Hamilton, 19th c.) that creates a group from a monoid by using ordered pairs. The Pacioli group IS the group of differences for non-negative numbers.
+
+**Position (Beancount)**
+→ Units of a commodity with optional acquisition info: amount, commodity, cost basis, acquisition date, label. Example: 25 AAPL {$150, 2024-01-15, "lot1"}.
+
+**Inventory (Beancount)**
+→ Collection of positions. Map from (Commodity × CostBasis) → Quantity. Augmentation creates new positions; reduction matches existing positions.
+
+**Inventory booking methods**
+→ STRICT (exact lot match required), FIFO (first-in-first-out), LIFO (last-in-first-out), NONE (no matching). Determines which lots are reduced when selling.
+
+**Balance assertion**
+→ A directive that asserts expected account balance at a specific date. Validation: if assertion fails, error. Used for reconciliation with external statements.
+
+**Pad directive (Beancount)**
+→ Automatically inserts balancing transaction to satisfy subsequent balance assertion. Typically pads from Equity:Opening. Useful for starting balances.
+
+**Ledger vs hledger vs Beancount philosophy**
+→ Ledger: optimistic, trusts user. hledger: Ledger-compatible, stricter. Beancount: pessimistic, maximum validation, assumes user makes mistakes.
+
+**Beancount's five account types**
+→ Assets, Liabilities, Equity, Income, Expenses. Enforced by Beancount for specialized reporting. Ledger/hledger allow arbitrary hierarchies.
+
+**Virtual postings (Ledger/hledger)**
+→ Postings in (parentheses) excluded from real balance; [brackets] ensure virtual subset balances. Not supported by Beancount (too lax).
+
+**Conservation in PTA vs Linear Logic**
+→ PTA: transaction sums to zero. LL: no weakening (can't discard) + no contraction (can't copy). Both enforce resource conservation.
+
+**Liabilities as linear negation**
+→ In PTA, liabilities are "negative assets" — what you owe. This maps to linear negation A⊥ = obligation to provide A. Settlement: A ⊗ A⊥ ⊢ 1.
+
+**Transaction as linear implication**
+→ Transfer $100 from A to B: `[A] coin($,100) ⊸ [B] coin($,100)`. The transaction is a proof of this implication.
+
+**PTA's "500 years of applied linear logic"**
+→ Double-entry bookkeeping (Pacioli, 1494) implements resource-sensitive accounting. Linear logic (Girard, 1987) formalizes the same ideas. Same math, discovered independently!
+
+---
+
+## Algebraic Accounting
+
+**Grothendieck Group**
+→ Universal construction that turns a commutative monoid into an abelian group. For monoid (M, +, 0), form pairs (a, b) representing "a - b", with equivalence (a,b) ~ (c,d) iff a+d = b+c. The integers ℤ are the Grothendieck group of natural numbers ℕ.
+
+**Pacioli Group = Grothendieck Group of ℝ≥0**
+→ The Pacioli group (T-accounts [x // y]) is exactly the Grothendieck group construction applied to non-negative reals. This is why accountants could "invent" negative numbers without using negative numbers!
+
+**Accounting as graph theory (Kleppmann)**
+→ Accounts = nodes, transactions = directed edges with amounts. Balance = Σ(incoming) - Σ(outgoing). Zero-sum property: total of all balances = 0, because every edge appears twice (once positive, once negative).
+
+**Partition property**
+→ For any partition of accounts into sets S₁ and S₂: Σ(balances in S₁) = -Σ(balances in S₂). This is why Assets = Liabilities + Equity works!
+
+**Incidence matrix representation**
+→ Rows = accounts, columns = transactions. Entry +1 = debit, -1 = credit. The vector [1,1,1,...] is in the left null space, meaning: for every transaction, debits = credits.
+
+**Linear logic IS the logic of accounting**
+→ Conservation = resource-sensitivity. T-accounts = formulas with negation. Transactions = linear implications. Liabilities = linear negation. The parallel is exact!
+
+---
+
+## Girard's Post-Linear-Logic Work
+
+**Geometry of Interaction (GoI)**
+→ Semantics for linear logic where proofs are endomorphisms (operators), not morphisms. Cut elimination = operator composition + trace. Setting: traced monoidal categories or C*-algebras.
+
+**GoI and quantum operations**
+→ GoI structures overlap with quantum channels (completely positive maps). Subcategories of Int(C) = superoperators on density matrices. Deep connection between proof theory and quantum information.
+
+**Ludics (Girard 2001)**
+→ Framework where proofs are interactive strategies in a game between Player (prover) and Opponent (challenger). Meaning arises from interaction, not pre-existing semantics. "From the rules of logic to the logic of rules."
+
+**Designs (in Ludics)**
+→ Generalized proofs as sequences of alternating positive/negative actions. Prefix-closed, coherent, terminate positively. Like "focalized proofs without formulas."
+
+**Orthogonality (in Ludics)**
+→ Two designs are orthogonal (D ⊥ E) if their interaction converges (reaches daimon †). Validity = having an orthogonal partner. Meaning = interaction patterns.
+
+**Behaviours (in Ludics)**
+→ Sets of designs closed under bi-orthogonality: B = B⊥⊥. These are the "formulas" of Ludics — they emerge from interaction patterns, not defined a priori.
+
+**Transcendental Syntax (2011+)**
+→ Girard's most radical program: derive logic from computation, not vice versa. "What are the conditions of possibility for logic?" Uses constellations (multisets of clauses) interacting via resolution.
+
+**Four levels of semantics (Girard)**
+→ Alethic (truth/models), Functional (functions/categories), Interactive (games), Deontic (normativity/formatting). Each descends deeper into meaning.
+
+**Ludics inverts the usual order**
+→ Traditional: Formulas → Proofs → Semantics. Ludics: Interaction → Designs → Behaviours (=formulas). Meaning from use (Wittgenstein).
+
+**Orthogonality as consensus?**
+→ Potential CALC insight: D ⊥ E could model "D and E agree" or "parties D and E can interact successfully." Relates to our atomic swap requirement.
+
+---
+
+## Linear Negation as Debt
+
+**Linear negation (A⊥)**
+→ In classical linear logic, every formula A has a dual A⊥. Unlike classical ¬A, linear negation is involutive: (A⊥)⊥ = A. Interpreted as: A = having resource, A⊥ = owing resource (debt/obligation).
+
+**Involution of linear negation**
+→ (A⊥)⊥ = A. Interpretation: "owing a debt = having an asset." If I owe you an obligation to give you something, that's equivalent (after settlement) to you having it. Matches financial intuition!
+
+**Girard's male/female plug analogy**
+→ Negation = complementarity between male and female plugs. A = male plug (provides), A⊥ = female plug (receives). A proof is "equipment" connecting compatible interfaces. Axiom ⊢ A, A⊥ is like an extension cord.
+
+**Linear negation as action/reaction**
+→ Girard: "action of type A = reaction of type A⊥". Other dualities: output/input, answer/question, supply/demand, production/consumption.
+
+**De Morgan duality in linear logic**
+→ Negation distributes: (A⊗B)⊥ = A⊥⅋B⊥, (A&B)⊥ = A⊥⊕B⊥, (!A)⊥ = ?A⊥. Every connective has a dual. This is why CLL has "perfect" duality unlike intuitionistic logic.
+
+**Linear implication via negation**
+→ A ⊸ B = A⊥ ⅋ B. "Consuming A to produce B" is definable from negation and par. The contrapositive A ⊸ B = B⊥ ⊸ A⊥ also holds (transforming demand for B into demand for A).
+
+**Settlement rule: A ⊗ A⊥ ⊢ 1**
+→ Having A and owing A cancel out. In accounting: asset + liability = zero net. In linear logic: follows from the axiom/identity rule ⊢ A, A⊥. This IS debt settlement!
+
+**Game-semantic interpretation of A⊥**
+→ A = game where Proponent wins. A⊥ = same game with Player/Opponent roles swapped. Debt = being in Opponent role (the one who must respond/provide).
+
+**Session types and linear negation**
+→ If channel c has type A on one endpoint, it has type A⊥ on the other. Negation = switching from send to receive perspective. Dual endpoints have dual types.
+
+**Ownership and negation don't commute**
+→ [Alice] (A⊥) ≠ ([Alice] A)⊥. The first = "Alice controls an obligation." The second = "Negation of Alice controlling A." For debt, use [Alice] (coin(C,q)⊥) = "Alice's debt."
+
+**Classical vs intuitionistic linear logic on negation**
+→ CLL: negation primitive, involutive, full duality. ILL: negation defined as A ⊸ 0, not involutive. CLL better for debt semantics because (A⊥)⊥ = A makes sense for "debt of debt = asset."
+
+**Borrowing as creating debt**
+→ borrow(q,C) ⊢ coin(C,q) ⊗ coin(C,q)⊥. Creates both asset (borrowed coins) and liability (debt). Net value: zero. Exactly how accounting works!
+
+---
+
+## Ownership Modalities and Session Types
+
+**Propositions-as-sessions (Caires-Pfenning)**
+→ Linear logic corresponds to session-typed π-calculus. A ⊗ B = send then continue. A ⊸ B = receive then continue. A & B = offer choice. A ⊕ B = make choice. Cut elimination = communication.
+
+**Session type correspondence table**
+→ Linear Logic ↔ Session Type: (A ⊗ B) ↔ Output, (A ⊸ B) ↔ Input, (A & B) ↔ External choice, (A ⊕ B) ↔ Internal choice, 1 ↔ Close, !A ↔ Server/replicable service.
+
+**Can [Alice] A be expressed as session types?**
+→ Partially. Session types capture linearity (ownership exists) but not principal identity (WHO owns). No syntax for "channel owned by Alice". Session types track THAT something is owned, not BY WHOM.
+
+**What overlaps between ownership and session types**
+→ Linear resources, ownership transfer (delegation = channel passing), one-time vs reusable (linear vs !A), acquire-release discipline.
+
+**What session types lack for ownership**
+→ Principal identity (WHO owns), multi-sig / consensus modalities ([A ∧ B]), authorization reasoning (says, controls, speaks for).
+
+**Delegation in session types**
+→ Sending a channel transfers ownership: `send c d` gives d to the receiver. This is like [Alice] A ⊸ [Bob] A. But session types don't track that it was Alice → Bob.
+
+**Acquire-release discipline (Nomos)**
+→ Shared channels require acquire before use, release after. Client gets private linear channel during use. Prevents re-entrancy. Like temporary ownership.
+
+**Adjoint logic and modes**
+→ Pfenning's adjoint logic has modes (linear, affine, shared) with adjunctions between them. Potential extension: principals as modes. [Alice] A = A at mode M_Alice.
+
+**Multiparty session types (MPST)**
+→ Global type specifies full protocol. Projection gives each participant (role) a local type. Roles are like principals but determined by protocol, not ownership modalities.
+
+**Recommendation: keep ownership and session types complementary**
+→ Don't reduce one to the other. Session types for protocol/communication. Ownership modalities for principals/authorization. Adjoint logic as potential unifying framework.
+
+---
+
+## Consensus Modalities and Multiparty Session Types
+
+**Composite principals (A ∧ B)**
+→ Both principals must agree. `(A ∧ B) says S` = `(A says S) ∧ (B says S)`. Used for multi-sig: both Alice and Bob must consent.
+
+**Composite principal disjunction (A ∨ B)**
+→ Either principal suffices. `(A ∨ B) says S` = `(A says S) ∨ (B says S)`. Any-of consent.
+
+**Multiparty Session Types (MPST)**
+→ Session types with multiple participants. Global type describes full protocol; projection gives each role a local type. Roles are named but no native "consent" construct.
+
+**MPST global type**
+→ Bird's-eye view of protocol: `G = Alice → Bob : transfer { ok: Bob → Alice : ack.end, fail: end }`. Specifies all messages, choices, termination.
+
+**MPST projection**
+→ Extracting a participant's local type from global type. G↾Alice gives what Alice sends/receives. Enables type-safe distributed implementation.
+
+**Knowledge of choice problem**
+→ In MPST branching, all relevant participants must know which branch was taken. If Alice chooses, Bob learns via message, but Carol may not. Challenge for consensus.
+
+**Choreographic programming**
+→ Write protocols as global programs, compile to distributed implementations. Explicit `sync` constructs for coordination. Endpoint projection ensures correctness.
+
+**Consensus as protocol pattern**
+→ Encode `[Alice ∧ Bob]` as: Alice proposes → Bob confirms → then proceed. Not a primitive, but expressible. Verbose but works.
+
+**Threshold (k-of-n) in linear logic**
+→ `2-of-{A,B,C}` requires exponential encoding: (A∧B) ∨ (A∧C) ∨ (B∧C). Additive connectives don't compactly express "any k of n."
+
+**Ludics orthogonality for consensus**
+→ D ⊥ E means designs interact successfully. Potential model: parties agree iff their strategies are orthogonal. Multi-party: D₁ ⊥ D₂ ⊥ ... ⊥ Dₙ.
+
+**MPST lacks authorization reasoning**
+→ MPST has roles (WHO participates) but not "says", "speaks for", "controls". Session types describe WHAT protocol, not WHO is authorized.
+
+**Composite principal as primitive**
+→ Add `[A ∧ B]` as first-class modality. Rules: `[A] φ ⊗ [B] φ ⊢ [A ∧ B] φ` (introduction), `[A ∧ B] φ ⊢ [A] φ` (elimination).
+
+**Implicit consensus in atomic swap**
+→ `[Alice] BTC ⊗ [Bob] ETH ⊸ [Bob] BTC ⊗ [Alice] ETH`. Both must provide their assets. Consensus implicit in tensor structure, not explicit.
+
+**Making consensus explicit**
+→ `(Alice says swap) ⊗ (Bob says swap) ⊗ [Alice] BTC ⊗ [Bob] ETH ⊸ ...`. Or: `(Alice ∧ Bob) says swap ⊗ ...`.
+
+**Adjoint logic with principal modes**
+→ Extend mode hierarchy: M_Alice, M_Bob, M_AliceAndBob. Mode morphisms as adjunctions. `M_Alice ⊗ M_Bob → M_AliceAndBob`.
+
+**Deadlock freedom = consensus achievability?**
+→ MPST's deadlock freedom: well-typed processes progress. Hypothesis: for consensus modalities, this means protocol design guarantees agreement is reachable.
+
+**Additive choice with multiple principals: who chooses?**
+→ In `[P] (A & B)`, owner P has internal choice (P decides). In `[P] (A ⊕ B)`, owner P has external choice (counterparty decides). The & and ⊕ are duals: if Alice has &, her counterparty has ⊕. For explicit attribution, use session-type polarity or MPST global types that specify chooser at each branch.
+
+**Options as additive choice**
+→ A call option is `[Alice] ((cash ⊸ underlying) & 1)` — Alice owns it, Alice chooses (exercise or let expire). The & gives holder the choice, matching financial semantics.
+
+**Explicit consent via says**
+→ For multi-party choice, use explicit authorization: `Alice says offer(A ⊕ B)` (Alice offers, external choice) combined with `Bob says choose(X)` (Bob selects). Or `(Alice says X) ⊗ (Bob says X)` for joint consent.
+
+---
+
+## Adjoint Logic
+
+**Adjoint logic**
+→ A formal logic parametrized by a preorder (or 2-category) of modes, where adjoint modalities bridge between modes with different structural properties. Provides generic cut elimination for many substructural and modal logics.
+
+**Mode in adjoint logic**
+→ A "kind of truth" with specific structural properties. Each mode m has σ(m) ⊆ {W, C} specifying which structural rules apply. Examples: linear ({}), affine ({W}), relevant ({C}), cartesian ({W,C}).
+
+**Mode preorder**
+→ A partial order m ≥ k on modes meaning "a proof at mode k may depend on assumptions at mode m." Must satisfy monotonicity: if m ≥ k then σ(m) ⊇ σ(k).
+
+**Upshift modality (↑ᵏₘ A)**
+→ "Lift" A from mode k to mode m (where m ≥ k). The U (right adjoint) in the F ⊣ U adjunction between modes.
+
+**Downshift modality (↓ᵐₖ A)**
+→ "Project" A from mode m to mode k (where m ≥ k). The F (left adjoint) in the F ⊣ U adjunction between modes.
+
+**LNL as adjoint logic**
+→ Two modes {U, L} with U > L. F = ↓ᵁₗ (Lin), G = ↑ₗᵁ (Mny). The ! modality decomposes as !A = F(G(A)) = ↓ᵁₗ ↑ₗᵁ A. CALC's persistent_ctx/linear_ctx IS this!
+
+**Comonad from adjunction**
+→ ↓ᵐₖ ↑ᵏₘ A forms a comonad (like □ or !). Apply downshift then upshift to get back to original mode with comonadic structure.
+
+**Monad from adjunction**
+→ ↑ᵏₘ ↓ᵐₖ A forms a monad (like ○ or Moggi's computational monad). Apply upshift then downshift.
+
+**S4 in adjoint logic**
+→ Two modes {V, U} with V > U (V = valid, U = true). □A = ↓ᵁᵥ ↑ᵁᵥ Aᵤ. Models Pfenning-Davies judgmental S4.
+
+**Lax logic in adjoint logic**
+→ Two modes {U, X} with U > X. ○A = ↑ˣᵤ ↓ˣᵤ Aᵤ. The monad captures computational effects.
+
+**Subexponentials as modes**
+→ Subexponentials !ₐA are modes in a preorder. a ≤ b means !ᵦA ⊢ !ₐA. Different modes can have different structural rules.
+
+**Nomos mode shifts**
+→ /\\ A = ↑ˢₗ A (acquire: shared → linear), \\/ A = ↓ˢₗ A (release: linear → shared). The acquire-release discipline IS adjoint logic!
+
+**Fibrational framework (Licata-Shulman-Riley)**
+→ General framework abstracting substructural/modal logics. Context descriptors as terms from mode theory. Cut admissibility proven once for entire framework.
+
+**What fibrational framework covers**
+→ Non-associative, ordered, linear, affine, relevant, cartesian products/implications; bunched logic; n-linear variables; □ and ! and subexponentials; monadic ♦ and ○; adjoint F and G.
+
+**Graded adjoint logic (Eades-Orchard)**
+→ Combines adjoint logic with graded modalities □ᵣA where r is from a semiring. Enables tracking quantities, sensitivity, security levels.
+
+**Structural rules per mode**
+→ Each mode m has σ(m) ⊆ {W, C}. Weakening (W): assumption need not be used. Contraction (C): assumption can be used multiple times. Linear mode has neither.
+
+**CALC's Bang_L is the F modality**
+→ The "special case" for !A in prover.js IS the ↓ᵁₗ modality crossing from Linear to Cartesian. It's the correct adjoint logic implementation!
+
+**Cut elimination in adjoint logic**
+→ Follows by induction on (Aₘ, D, E) where D, E are premise proofs. The mode structure ensures structural compatibility. Generic for all modes.
+
+**Principal modes (speculative)**
+→ Could principals be modes? M_Alice, M_Bob with shared ≥ alice, shared ≥ bob, alice ⊥ bob. Mode morphisms = delegation. Research direction.
+
+**What adjoint logic doesn't handle**
+→ Principal identity (WHO owns), composite principals (A ∧ B — no mode products), authorization (says, speaks for — different judgment), threshold (k-of-n).
+
+**Layered approach for CALC**
+→ Layer 1: Adjoint logic (structural) — already have. Layer 2: Principal modes (extension). Layer 3: Authorization logic (orthogonal). Layer 4: Consensus (protocol encoding).
+
+---
+
+## Adjunctions (Categorical and Proof-Theoretic)
+
+**Adjunction (categorical)**
+→ A pair of functors F : C → D (left adjoint) and G : D → C (right adjoint) with natural bijection Hom_D(F(X), Y) ≅ Hom_C(X, G(Y)). Written F ⊣ G.
+
+**Unit of an adjunction (η)**
+→ Natural transformation η : Id_C → G ∘ F. Embeds X into G(F(X)). "Canonical map from X into the image of the round-trip."
+
+**Counit of an adjunction (ε)**
+→ Natural transformation ε : F ∘ G → Id_D. Projects F(G(Y)) back to Y. "Canonical map collapsing the round-trip."
+
+**Triangle identities (zig-zag)**
+→ (ε_F) ∘ (F η) = Id_F and (G ε) ∘ (η_G) = Id_G. In string diagrams: "pull the zig-zag straight."
+
+**Free ⊣ Forgetful adjunction**
+→ Paradigmatic example. Free(X) is left adjoint to Forgetful(M). "To define homomorphism from free object, just say where generators go."
+
+**Product ⊣ Diagonal ⊣ Coproduct**
+→ + ⊣ Δ ⊣ ×. Coproduct is left adjoint to diagonal; product is right adjoint. Limits are right adjoints; colimits are left adjoints.
+
+**Exponential adjunction (currying)**
+→ (−) × A ⊣ (−)^A. "Morphisms X × A → B correspond to morphisms X → B^A." Counit is evaluation; gives curry/uncurry isomorphism.
+
+**RAPL (Right Adjoints Preserve Limits)**
+→ If G is a right adjoint, G preserves all limits. Dually: left adjoints preserve colimits (LAPC). "Right adjoints are continuous."
+
+**Adjoint functor theorem**
+→ Converse of RAPL: a functor preserving limits that satisfies solution set condition has a left adjoint. Crucial for constructing adjoints.
+
+**Every adjunction induces monad and comonad**
+→ Given F ⊣ G: monad T = G∘F with unit η, multiplication Gε F. Comonad D = F∘G with counit ε, comultiplication Fη G.
+
+**Kleisli category**
+→ For monad T: objects same as C, morphisms X → T(Y). The "free T-algebra" adjunction. Initial among all adjunctions inducing T.
+
+**Eilenberg-Moore category**
+→ For monad T: objects are T-algebras (X, α : T(X) → X), morphisms are algebra homomorphisms. Terminal among all adjunctions inducing T.
+
+**Galois connection**
+→ Adjunction for posets. Monotone f : P → Q and g : Q → P with f(x) ≤ y iff x ≤ g(y). Same math as adjunction, simpler setting.
+
+**Residuation**
+→ In algebra: a · b ≤ c iff a ≤ c/b iff b ≤ a\\c. Right and left residuals are adjoints to multiplication. Foundation of substructural logics.
+
+**Deduction theorem as adjunction**
+→ Γ, A ⊢ B iff Γ ⊢ A → B. This IS the adjunction (−) ⊗ A ⊣ A → (−). Implication is right adjoint to conjunction/tensor.
+
+**Display postulates as adjunctions**
+→ X ; Y ⊢ Z iff X ⊢ Y > Z. Structural connectives ; and > are adjoint. Belnap's display calculus encodes residuation.
+
+**! = F ∘ G (LNL decomposition)**
+→ F : Cart → Lin embeds cartesian into linear. G : Lin → Cart extracts cartesian. Comonad F∘G IS the ! modality.
+
+**Curry-Howard-Lambek**
+→ Three-way correspondence: Logic ↔ Type Theory ↔ Category Theory. Every fundamental datatype (products, sums, functions) arises from an adjunction.
+
+**State monad from adjunction**
+→ State S A = S → (A, S). Arises from (−) × S ⊣ (−)^S. Product with S and exponential with S are adjoint.
+
+**String diagrams for adjunctions**
+→ Draw L going up, R going down. Unit η is a cup (∪), counit ε is a cap (∩). Triangle identities = straightening zig-zags.
+
+**Adjunction checklist for CALC modalities**
+→ When designing new modality: Is there residuation? What are unit/counit semantically? Do triangle identities hold? What monad/comonad does it induce?
+
+---
+
+## Ludics and Orthogonality
+
+**Ludics (Girard 2001)**
+→ Framework where logic emerges from interaction. Objects (designs) interact via normalization; types (behaviours) emerge from orthogonality. "From the rules of logic to the logic of rules."
+
+**Design (in Ludics)**
+→ Abstraction of a proof retaining only interaction-relevant info. Alternating tree of positive/negative actions at addresses (loci), possibly ending in daimon (†). Like a strategy in a game.
+
+**Positive action (in Ludics)**
+→ Player makes a move: chooses a locus ξ and ramification I (set of subaddresses). Active, non-deterministic phase. E.g., making a choice or sending a message.
+
+**Negative action (in Ludics)**
+→ Player awaits Opponent's move: passive, deterministic. Records what was received and plans response.
+
+**Daimon (†)**
+→ Terminal signal in Ludics indicating successful interaction/acceptance. Like "I accept" or "I give up." Convergence = reaching daimon.
+
+**Polarity in Ludics**
+→ Designs strictly alternate positive/negative phases (focalization). Positive = active (⊗, ⊕, ∃), negative = passive (⅋, &, ∀). Determines turn order.
+
+**Orthogonality in Ludics**
+→ D ⊥ E iff [[D, E]] = † (interaction converges to daimon). Means D and E "fit together" — compatible strategies. Foundational relation.
+
+**[[D, E]] = interaction result**
+→ Normalization (cut elimination) between designs D and E. Alternates moves until: daimon (success), or no matching move (divergence/deadlock).
+
+**Orthogonal set A⊥**
+→ A⊥ = { E | ∀D ∈ A. D ⊥ E }. All designs that successfully interact with every element of A. The "set of tests" for A.
+
+**Behaviour (in Ludics)**
+→ A set of designs G that is bi-orthogonally closed: G = G⊥⊥. These ARE the types/formulas of Ludics — they emerge from interaction patterns.
+
+**Internal completeness (Ludics)**
+→ For well-behaved constructions: (A ⊗ B)⊥⊥ = A ⊗ B. No need for bi-orthogonal closure — the construction is already complete. Key property of Ludics.
+
+**Convergence vs divergence**
+→ Convergence: interaction reaches †, parties "agree." Divergence: interaction fails (no matching move), parties "disagree" or deadlock.
+
+**Designs as dialogue**
+→ D and E are dialogue strategies. D ⊥ E means they can complete a dialogue (one eventually accepts via †). Lecomte-Quatrini: "speakers go together towards agreement."
+
+**L-nets (Faggian-Maurel)**
+→ Extension of Ludics for concurrent interaction. Designs become graphs (not trees), interactions produce partial orders allowing parallelism. Model for MALL.
+
+**Ludics and π-calculus (Faggian-Piccolo)**
+→ Ludics is a model for finitary linear π-calculus. Addresses ≈ channels. Ludics discipline on names ≈ internal π-calculus. Full completeness and full abstraction.
+
+**Orthogonality as consensus**
+→ Hypothesis: [A ∧ B] φ can be modeled as D_Alice ⊥ D_φ ∧ D_Bob ⊥ D_φ. Both parties have compatible strategies for φ. Consensus = mutual orthogonality.
+
+**Atomic swap as orthogonality**
+→ Alice: "give BTC if receive ETH". Bob: "give ETH if receive BTC". These strategies are ORTHOGONAL — they fit together. D_Alice ⊥ D_Bob iff swap succeeds.
+
+**Gap: n-ary orthogonality**
+→ Standard Ludics orthogonality is binary (D ⊥ E). Consensus needs n-party: D₁ ⊥ D₂ ⊥ ... ⊥ Dₙ. Not naturally defined — pairwise ≠ global.
+
+**Coherence generalizes duality (Carbone et al.)**
+→ MCP introduces n-ary compatibility: coherent(T₁,...,Tₙ) means types can jointly participate. Generalizes binary duality from CLL. MCut rule for composition.
+
+**MCut rule**
+→ Generalized cut for multiparty: compose n processes with coherent types. `Γ₁ ⊢ T₁ ... Γₙ ⊢ Tₙ coherent(T₁,...,Tₙ) / Γ₁,...,Γₙ ⊢ ·`. Ensures deadlock freedom.
+
+**Krivine realizability**
+→ Related orthogonality framework. t ⊥ π iff t ⋆ π ∈ ⊥⊥ (pole). Truth value |A| = {t | ∀π ∈ ‖A‖. t ⊥ π}. Pole is parameter controlling "success."
+
+**Pole (in realizability)**
+→ Parameter ⊥⊥ of realizability model — set of "good" processes closed under anti-evaluation. Different poles = different notions of success/agreement.
+
+**Behaviours as authorization policies**
+→ Open question: Can authorization policies be behaviours? policy_P = {D | D realizes P's authorization}. If policy_P = policy_P⊥⊥, it's "closed under tests."
+
+**Transcendental Syntax**
+→ Girard's later program: derive logic from computation. Uses "stellar resolution" (logic-free). Constellations = multisets of clauses. Too foundational for immediate CALC use.
+
+---
+
+## Principal-Indexed Modes and Authorization
+
+**Agent-indexed adjoint pairs (Sadrzadeh-Dyckhoff)**
+→ Algebraic semantics using lattices with agent-indexed families of adjoint pairs. Left adjoints express agents' uncertainties, right adjoints express beliefs. Applied to multi-agent epistemic reasoning.
+
+**IIK (Indexed Intuitionistic K)**
+→ Intuitionistic propositional logic + "K says ·" modality for each principal K. Foundation for authorization logics. Satisfies necessitation and K axiom.
+
+**DTL₀ authorization logic**
+→ Relativizes reasoning to principal beliefs. Includes "conceited" axiom: principals believe they believe. Translates to modal S4: `A says φ` → `□_A φ`. Sound and complete for Kripke semantics.
+
+**Composite principal (conjunction): (A ∧ B) says φ**
+→ Equivalent to (A says φ) ∧ (B says φ). Both must affirm. Intersection semantics: belief in group's worldview iff in intersection of all members' worldviews.
+
+**Composite principal (disjunction): (A ∨ B) says φ**
+→ Equivalent to (A says φ) ∨ (B says φ). Either suffices. BUT: "or-groups are not sound with respect to IMP-E" — requires special proof rules.
+
+**Local reasoning property in authorization logic**
+→ From "A says false" can derive "A says G" for any G, BUT cannot derive "B says G" for different B. Inconsistency is contained within principal's worldview.
+
+**Two parallel structures: Adjoint Logic vs Authorization Logic**
+→ Modes vs Principals, Mode preorder vs Principal hierarchy (speaks for), Structural properties vs Epistemic properties, Adjoint modalities (↑/↓) vs Says modality (□_A). These are orthogonal — they combine multiplicatively.
+
+**Why mode products are hard**
+→ Adjoint logic modes form a preorder, not monoidal category. Tensor product m ⊗ n would need: morphisms from m and n, associativity, compatibility with existing morphisms. Major extension required.
+
+**Two-layer architecture for CALC**
+→ Layer 1: Adjoint logic (structural: modes U/L/S with ↑/↓). Layer 2: Principal index (epistemic: [Alice], [Bob], says). Combine: [Alice] (↓ᵁₗ A) = Alice controls linear resource lifted from cartesian.
+
+**Formula-level vs mode-level composite principals**
+→ Formula-level: [Alice ∧ Bob] A (supported). Mode-level: A at mode (Alice ⊗ Bob) (not supported in current theory). Workaround: keep composites at formula level.
+
+---
+
+## Pacioli Group and Linear Logic
+
+**Pacioli group is NOT related to linear logic additives**
+→ Additives (⊕, &) are about CHOICE between alternatives. Pacioli group [x // y] tracks BOTH debit AND credit simultaneously — this is MULTIPLICATIVE structure: [x // y] ≈ x ⊗ y⊥.
+
+**Pacioli group corresponds to tensor with negation**
+→ [x // y] ≈ x ⊗ y⊥ where x = asset/debit (positive resource), y⊥ = liability/credit (obligation). The inverse -[x // y] = [y // x] ≈ y ⊗ x⊥ flips which side is the obligation.
+
+**Grothendieck group vs linear negation**
+→ Conceptually similar (both "add inverses") but structurally different. Grothendieck: element-level, monoid → group (left adjoint construction). Linear negation: formula-level, A → A⊥ (built-in involution in star-autonomous categories).
+
+**Pacioli group as grading ring**
+→ Key insight: Pacioli group should be a GRADING structure for graded linear logic, not formula structure. □_{[x//y]} A = "have x of A, owe y of A". Connects Ellerman's accounting to Granule-style graded types.
+
+**Why T-accounts aren't additive connectives**
+→ [x // y] + [a // b] = [x+a // y+b] — both sides accumulate in parallel. A ⊕ B means "choose x OR y" (external choice). A & B means "offer choice" (internal choice). T-accounts track both simultaneously, not either/or.
+
+---
+
+## Multi-Party Debt and CLL Extension
+
+**Multi-party debt: creditor specification problem**
+→ `[Alice] coin(BTC, q)⊥` = "Alice owes q BTC" but doesn't specify TO WHOM. Solutions: (A) explicit predicate `debt(Alice, Bob, BTC, q)`, (B) directed ownership `[Alice → Bob]`, (C) channel endpoints from session types, (D) composite principal `[Alice ⊸ Bob]`.
+
+**Session types dual endpoints for debt**
+→ In session types, channel c has type A on one endpoint, A⊥ on the other. The channel itself specifies the bilateral relationship between parties. Duality ensures endpoints have matching actions.
+
+**Recommended CALC debt syntax**
+→ Use explicit predicate: `debt(debtor, creditor, commodity, quantity)`. Simple, clear, requires no new logic. Settlement: `[Alice] coin(BTC, q) ⊗ debt(Alice, Bob, BTC, q) ⊸ [Bob] coin(BTC, q)`.
+
+**CLL vs ILL for CALC: tradeoffs**
+→ CLL: clean debt semantics via involutive negation, full De Morgan duality, richer protocols. BUT: harder proof search, non-deterministic cut-elimination, more complex. Recommendation: stay ILL short-term, add negation only if needed.
+
+**Channel passing in session types**
+→ Session types support delegation by sending channels: `send c d` transfers ownership of d. This is like ownership transfer `[Alice] A ⊸ [Bob] A`. Connection to "speaks for": passing a channel grants the recipient authority to act on that channel.
+
+**Channel delegation vs speaks-for**
+→ Channel delegation: transfers ownership of specific communication endpoint (linear, dynamic). Speaks-for: transfers general authority as principal (can be persistent). Related but not identical — channel passing is "speaks for" in a specific, linear context.
+
+**Threshold modalities: no compact representation**
+→ [k-of-{A,B,C,...}] φ expands combinatorially: [2-of-{A,B,C}] = ([A∧B] ∨ [A∧C] ∨ [B∧C]). C(n,k) terms — exponential. No compact modal representation found. Use predicate: `threshold(k, principals, φ)`.
+
+**Global types as authorization policies**
+→ MPST global types specify "who sends what to whom" = authorization policy. Projection → local types = local permissions. Deadlock freedom = consensus achievable. Strong parallel but different focus: MPST = protocol correctness, Auth = access control.
+
+**Ownership transfer is NOT an adjunction**
+→ Transfer `[Alice] A ⊸ [Bob] A` is a linear implication (morphism), not an adjunction-derived operation. Ownership `[P]` is an index over principals, not a mode. Better model: fibration over principals, with transfer as reindexing.
+
+**Fibration model for ownership**
+→ Base category: Principals. Fiber over P: Resources owned by P. Transfer: Reindexing along principal morphisms. This is indexed category / fibration structure, not adjoint logic modes.
+
+---
+
+## Fibrations
+
+**Grothendieck fibration**
+→ Functor p: E → B where fibers E_b depend pseudofunctorially on b ∈ B. Key property: cartesian morphisms exist — these are "universal lifts" that capture how fibers change along base morphisms.
+
+**Cartesian morphism**
+→ A morphism in E that is the "best" lift of a base morphism f: a → b. Universal property: any other lift factors through it uniquely. Captures reindexing/pullback structure.
+
+**Fibration ↔ Indexed Category equivalence**
+→ Fib(B) ≃ [B^op, Cat]. Fibrations over B correspond to contravariant pseudofunctors B → Cat. The Grothendieck construction converts between views.
+
+**Why fibrations for ownership**
+→ `[Alice] A` is not "A at mode Alice" but "A in fiber over Alice." Transfer `[Alice] A ⊸ [Bob] A` = reindexing along authority morphism. Fibrations give proper categorical semantics.
+
+**Fibrations ≈ Dependent Types (Lawvere)**
+→ Base category ≈ context of type variables. Fiber over b ≈ types depending on b. Cartesian morphisms ≈ substitution. This is the Lawvere correspondence.
+
+---
+
+## Resource Term Semantics
+
+**Proof-relevant vs proof-irrelevant types**
+→ Proof-irrelevant: only care THAT something is provable. Proof-relevant: distinct proofs are tracked and meaningful. For accounting, we want proof-relevant — proofs carry provenance.
+
+**Terms as audit trails**
+→ Term t : [Alice] coin(BTC, 0.5) could encode: how Alice got this coin, from whom, when, what authorizations. The Calculus of Audited Units (CAU) formalizes this: "expressions carrying a trail of past computation history."
+
+**Realizability semantics**
+→ "The meaning of a proposition is given by what counts as evidence for it." A realizer of A is computational evidence that A holds. For ownership: realizer = transaction hash, merkle path, or signature chain.
+
+**Phase semantics vs proof semantics in linear logic**
+→ Phase semantics: formula ↦ set of contexts that prove it. Proof semantics: meaning given to proofs directly. For CALC we want proof semantics — the proof itself carries information.
+
+---
+
+## Financial Primitives in Linear Logic
+
+**Options map to additive conjunction (&)**
+→ call_option : (cash(strike) ⊸ underlying) & 1. The & means holder CHOOSES: exercise or let expire. Additive connectives model choice.
+
+**Futures need temporal modality**
+→ Future is OBLIGATION at specific time: A ⊸_{at_expiry} B. CALC needs temporal extension: □_{until}, ◇_{after}, ⊸_{at}.
+
+**Swaps are iterated atomic swaps**
+→ Already have atomic swap. Multi-period swap = sequence of atomic swaps linked by schedule. Fits naturally.
+
+**Leverage involves debt**
+→ position ⊗ debt(borrower, lender, amount). Liquidation when collateral insufficient. Needs debt type + external price oracle.
+
+**Order book as collection of offers**
+→ Bids: cash ⊸ asset. Asks: asset ⊸ cash. Matching finds compatible offers. Order book = (bid₁ & bid₂ & ...) ⊗ (ask₁ & ask₂ & ...).
+
+**Peyton-Jones contract combinators**
+→ ~10 combinators: zero, one(k), give, and, or, cond, scale, when, anytime, until. Many map to CALC: and = ⊗, or = & or ⊕. But scale, when, cond need oracles/temporal.
+
+---
+
+## Logical Frameworks and Typed DSLs
+
+**LF (Edinburgh Logical Framework)**
+→ Dependently typed lambda calculus for representing deductive systems. Key methodology: judgments as types, derivations as terms. `of : tm -> tp -> type` declares typing as a type family.
+
+**CLF (Concurrent Linear Framework)**
+→ Extension of LF with linear types and monadic encapsulation `{A}`. Supports both backward chaining (Prolog-style) and forward chaining (multiset rewriting). Celf is the implementation.
+
+**Celf syntax elements**
+→ `A -> B` (persistent function), `A -o B` (linear implication), `A * B` (tensor), `{A}` (monadic suspension), `!A` (persistent), `<-` (backward premise). Rules: `name : head <- premise1 <- premise2.`
+
+**Adequacy in LF**
+→ Correctness criterion: LF representation is adequate iff bijection between object-language entities and LF terms of corresponding type. Ensures encoding is faithful.
+
+**Higher-Order Abstract Syntax (HOAS)**
+→ Represent object-language binding using LF function types: `lam : tp -> (tm -> tm) -> tm`. Substitution is inherited from LF—no explicit substitution needed.
+
+**Twelf metatheory checker**
+→ Twelf can verify metatheorems about encodings: type preservation, progress, etc. Uses coverage checking and termination analysis.
+
+**Ohm parser**
+→ PEG-based JS parser with separate grammar/semantics. Key features: left recursion support, online visualizer, excellent error messages. Syntax: `Rule = "pattern"` in `.ohm` file.
+
+**tree-sitter**
+→ Incremental parsing library with grammar → C parser. Official Zig bindings exist. Used by editors (VSCode, Neovim). Best for production + editor integration.
+
+**Chevrotain**
+→ Fast JS parser combinator DSL. No code generation—grammar in JS classes. Best performance but verbose. Maintained by SAP.
+
+**Shallow vs deep embedding**
+→ Shallow: DSL constructs map directly to host language (TypeScript types). Deep: DSL has its own AST, type checker, interpreter. Deep = more control, more work.
+
+**Lean4 syntax categories**
+→ `declare_syntax_cat name` creates new category. `syntax pattern : category` adds rules. Precedence via numbers. Macros process syntax via pattern matching.
+
+---
+
+## Content-Addressing and Hash Consing
+
+**Hash consing**
+→ Technique ensuring structurally identical terms share memory. Each unique (constructor, child_ids...) tuple gets a unique integer ID. Equality becomes O(1) integer comparison. Used in: BDDs, SAT/SMT solvers, functional compilers. Key paper: Filliâtre & Conchon 2006.
+
+**Unique table (BDD)**
+→ Hash table mapping (variable, low_child_id, high_child_id) to unique node ID. Ensures canonical representation: two BDD nodes with same structure are the same node. Makes equivalence check O(1).
+
+**Computed table (BDD)**
+→ Cache mapping (operation, arg_ids...) to result_id. Avoids redundant computation of operations on previously-seen arguments. Memoization for BDD operations.
+
+**Content-addressed storage**
+→ Data identified by hash of content, not by location/name. Same content → same address. Used by: Git (commits), IPFS (files), Unison (code definitions). Enables deduplication and immutable references.
+
+**De Bruijn indices**
+→ Variable representation using depth to binder, not names. `λx.λy.x` → `λ.λ.1` (index 1 = skip 1 binder). Eliminates alpha-equivalence problem: α-equivalent terms become syntactically identical.
+
+**Shift operation (de Bruijn)**
+→ Increment indices above a threshold when going under a binder. Required for substitution: when substituting into a lambda body, shift free variables in the substituted term.
+
+**Locally nameless representation**
+→ Hybrid: bound variables as de Bruijn indices, free variables as names. `λx. x y` → `λ. 0 y`. Combines α-equivalence benefits (indices) with readability (named free vars).
+
+**Opening (locally nameless)**
+→ Operation replacing outermost bound variable (index 0) with a name or term. "Open" a binder to work with its body.
+
+**E-graph (equality graph)**
+→ Data structure representing equivalence classes of terms. E-class = set of equivalent e-nodes. E-node = operator with e-class children. Union-find tracks equivalences. Used in equality saturation (egg).
+
+**Equality saturation**
+→ Optimization technique: apply ALL rewrites to an e-graph until fixpoint, then extract best equivalent term. Avoids phase-ordering problem. Framework: egg.
+
+**Structural sharing**
+→ Immutable data structures share unchanged subtrees. Update creates new path to root but reuses siblings. O(log n) update with O(1) unchanged subtrees. Used by: Immutable.js, Clojure.
+
+**O(1) equality via interning**
+→ Assign unique integer ID to each unique structure. Two structures equal iff same ID. ID assignment via hash table lookup on construction. No need to compare structures recursively.
+
+**Weak reference for hash consing**
+→ WeakRef allows GC of unreferenced interned nodes. Without weak refs, interned nodes live forever. In JS: WeakRef + FinalizationRegistry. Caveat: GC timing is non-deterministic.
+
+**Content hash vs identity hash**
+→ Content hash: cryptographic hash of structure (SHA3, etc). Identity hash: cheap integer ID via interning. Use identity for runtime equality (O(1)), content hash for serialization/dedup (O(n) but cacheable).
+
+**CALC current bottleneck: toString() equality**
+→ `mgu.js:23`: `t0.toString() === t1.toString()` is O(n). Called frequently during proof search. Fix: use interned node IDs for O(1) equality.
+
+**CALC current bottleneck: sha3 for context**
+→ `sequent.js:255`: `sha3(ast.toString())` called on every context insertion. O(n) per formula. Fix: use interned node ID as context key directly.
+
+**Arena allocator**
+→ Memory allocator that frees all allocations at once. Fast allocation (bump pointer), no individual frees, batch deallocation. Ideal for proof search: allocate during search, free entire arena when done. Zig: `std.heap.ArenaAllocator`.
+
+---
+
+## Benchmarking and Performance
+
+**Micro-benchmarking**
+→ Measuring performance of small, isolated code units (single functions, operations). Requires careful methodology: warmup for JIT, statistical sampling, isolation from system noise. Pitfall: results may not reflect real-world performance in context.
+
+**Macro-benchmarking**
+→ Measuring performance of larger system components or complete operations. More realistic but harder to isolate bottlenecks. For CALC: full proof search benchmarks are macro, individual operation benchmarks are micro.
+
+**Benchmark.js**
+→ Popular JavaScript benchmarking library. Provides statistical analysis (ops/sec, margin of error), handles warmup automatically, supports async operations. Usage: `suite.add('name', fn).run()`.
+
+**Node.js perf_hooks**
+→ Native performance measurement API. `performance.now()` for high-resolution timestamps (μs). `performance.mark()/measure()` for timing spans. Monotonic clock, unaffected by system time changes.
+
+**process.hrtime (Node.js)**
+→ Nanosecond-precision timing. Returns [seconds, nanoseconds] tuple. Use `hrtime.bigint()` for simpler BigInt nanoseconds. Best for micro-benchmarks requiring maximum precision.
+
+**JIT warmup**
+→ Run code 10-100 times before measurement to allow V8 to optimize (Ignition → Sparkplug → Maglev → TurboFan). Cold code runs slower due to interpretation and compilation overhead.
+
+**V8 optimization tiers**
+→ Ignition (interpreter) → Sparkplug (fast baseline) → Maglev (mid-tier JIT) → TurboFan (optimizing JIT). Each tier is faster but takes longer to compile. Hot paths get promoted through tiers.
+
+**Monomorphic vs polymorphic call sites**
+→ Monomorphic: always same object shape, fastest (inline caching works). Polymorphic: few shapes, slower (megamorphic IC). Megamorphic: many shapes, slowest (generic lookup). Keep benchmarked code monomorphic.
+
+**Hidden classes (V8)**
+→ V8's internal structure describing object shape (property names, order, types). Objects with same hidden class share optimized code. Adding properties in different order creates different hidden classes → deoptimization.
+
+**Dead code elimination**
+→ Compiler removes code whose results are unused. In benchmarks, must ensure results are used (return, store to variable) or computation may be eliminated, making benchmark meaningless.
+
+**GC interference in benchmarks**
+→ Garbage collection pauses can skew timing. Mitigation: run with `--expose-gc`, call `global.gc()` between runs, use many samples, report median not just mean.
+
+**Statistical significance in benchmarking**
+→ Single timing meaningless due to variance. Need: multiple samples, mean/median/stddev, confidence intervals, p95/p99 percentiles. Benchmark.js provides ops/sec ±error%.
+
+**Amortized complexity**
+→ Average cost per operation over many operations. Relevant when some operations are expensive but rare (e.g., array resize). For hash tables: O(1) amortized despite occasional O(n) rehash.
+
+**CALC proof search complexity**
+→ O(b^d · n²) where b = branching factor, d = proof depth, n = formula size. The n² comes from unification. With interning: O(b^d · n).
+
+**Hot path**
+→ Code executed frequently during normal operation. Optimize hot paths first — Amdahl's law. For CALC: mgu(), substitute(), context operations are hot paths.
+
+**Profiling vs benchmarking**
+→ Profiling: find WHERE time is spent (flame graphs, CPU sampling). Benchmarking: measure HOW FAST specific code runs. Profile first to find hotspots, then benchmark alternatives.
+
+**Flame graph**
+→ Visualization of profiling data. X-axis = time or samples, Y-axis = call stack depth. Wide bars = hot functions. Node.js: `0x` tool, `--prof` flag, or Chrome DevTools.
+
+---
+
+*Last updated: 2026-01-30*

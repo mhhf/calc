@@ -22,6 +22,27 @@ This document provides a concise overview of the CALC revival project - goals, r
 
 ---
 
+## Key Insight: The Three-Level Structure
+
+**CALC's modalities operate at THREE ORTHOGONAL LEVELS:**
+
+1. **Structural** (adjoint modes): Linear vs Cartesian — can you copy/discard?
+2. **Epistemic** (principal index): `[Alice]`, `[Bob]` — WHO controls?
+3. **Quantitative** (grades): How much? T-account structure?
+
+These COMBINE MULTIPLICATIVELY:
+
+```
+□_{[x//y]}^{L} [Alice] coin(BTC)
+   │           │       └── base type
+   │           └── principal index (epistemic)
+   └── structural mode + grade (Pacioli T-account)
+```
+
+**This three-level structure may be CALC's distinctive contribution** — no existing system combines all three with this specific interpretation. See `research/insights.md` for details.
+
+---
+
 ## Research Directions
 
 ### Core Topics

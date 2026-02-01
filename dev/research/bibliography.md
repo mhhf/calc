@@ -324,11 +324,196 @@ Comprehensive bibliography of all literature referenced in the CALC research doc
 
 **URL:** http://alessio.guglielmi.name/res/cos/
 
-**Summary:** Proof formalism where rules apply anywhere inside structures. Eliminates need for display postulates.
+**Summary:** Proof formalism where rules apply anywhere inside structures. Eliminates need for display postulates. More symmetric than sequent calculus (cut ↔ identity duality).
 
 **Tags:** `deep-inference` `proof-theory`
 
-**Referenced in:** [[display-calculus]]
+**Referenced in:** [[display-calculus]], [[proof-calculi-foundations]]
+
+---
+
+## Cyclic Proofs
+
+### Sprenger & Dam (2003) — Cyclic Proofs for μ-Calculus
+**Citation:** Sprenger, C. & Dam, M. (2003). On the Structure of Inductive Reasoning. In *CONCUR 2003*, LNCS.
+
+**Summary:** Non-wellfounded proofs as finite graphs for μ-calculus. Essential for fixpoints and inductive definitions. Uses global trace condition for soundness.
+
+**Tags:** `cyclic-proofs` `mu-calculus` `fixpoints`
+
+**Referenced in:** [[proof-calculi-foundations]]
+
+---
+
+### Stirling (2014) — Cyclic Proofs for First-Order μ-Calculus
+**Citation:** Stirling, C. (2014). Cyclic proofs for the first-order μ-calculus. *Logic Journal of the IGPL*.
+
+**URL:** https://academic.oup.com/jigpal/article/32/1/1/6653082
+
+**Summary:** First-order μ-calculus with cyclic proofs. Shows cyclic systems can prove more than inductive systems (Berardi & Tatsuta result).
+
+**Tags:** `cyclic-proofs` `mu-calculus` `first-order`
+
+**Referenced in:** [[proof-calculi-foundations]]
+
+---
+
+### Das et al. — Looping for Good: Cyclic Proofs for Security Protocols
+**Citation:** Das, A. et al. Looping for Good: Cyclic Proofs for Security Protocols.
+
+**URL:** https://zenodo.org/records/16992323
+
+**Summary:** Cyclic proofs in Tamarin Prover for security protocol verification. Relevant for blockchain/authorization.
+
+**Tags:** `cyclic-proofs` `security` `tamarin`
+
+**Referenced in:** [[proof-calculi-foundations]], [[multi-type-display-calculus]]
+
+---
+
+## Authorization Logic & Security
+
+### Garg et al. (2006) — A Linear Logic of Authorization and Knowledge
+**Citation:** Garg, D., Bauer, L., Bowers, K.D., Pfenning, F., & Reiter, M.K. (2006). A Linear Logic of Authorization and Knowledge. In *ESORICS 2006*, LNCS 4189, pp. 297-312.
+
+**URL:** https://link.springer.com/chapter/10.1007/11863908_19 | https://people.mpi-sws.org/~dg/papers/aff-know-full.pdf
+
+**Summary:** **Key paper** for multimodal linear logic + authorization. Combines:
+- `A says φ` modality for principal affirmations
+- Linear affirmations for consumable credentials
+- Exponential affirmations for reusable credentials
+- Knowledge modalities for information flow
+- Cut elimination for the combined logic
+
+**Why important:** Shows how to combine linear logic with agent/authorization modalities. Direct model for CALC's ownership/consensus goals.
+
+**Tags:** `authorization` `linear-logic` `multimodal` `security` `says-modality` `KEY-PAPER`
+
+**Referenced in:** [[multi-type-display-calculus]], [[RESEARCH]]
+
+---
+
+### Abadi et al. (1993) — ABLP Logic (Speaks For, Says)
+**Citation:** Abadi, M., Burrows, M., Lampson, B., Plotkin, G. (1993). A Calculus for Access Control in Distributed Systems. *ACM TOPLAS*.
+
+**URL:** https://www.researchgate.net/publication/220404387_A_Calculus_for_Access_Control_in_Distributed_Systems
+
+**Summary:** Foundational access control logic with `A says φ` and `A speaks for B` constructs. Origin of authorization logic.
+
+**Tags:** `authorization` `access-control` `says-modality` `foundational`
+
+**Referenced in:** [[authorization-logic]], [[multi-type-display-calculus]]
+
+---
+
+### Garg (2009) — Proof Theory for Authorization Logic (PhD Thesis)
+**Citation:** Garg, D. (2009). Proof Theory for Authorization Logic and Its Application to a Practical File System. PhD Thesis, Carnegie Mellon University. CMU-CS-09-168.
+
+**URL:** https://www.cs.cmu.edu/~rwh/students/garg.pdf | https://people.mpi-sws.org/~dg/papers/thesis-a4.pdf
+
+**Summary:** Comprehensive treatment of BL family of authorization logics:
+- BL0: Core logic with `k says s`
+- BL1: Adds state predicates
+- BL: Adds explicit time
+- BLL: Linear extension for consumable resources
+Includes natural deduction, sequent calculus, Kripke semantics, cut elimination.
+
+**Tags:** `authorization` `proof-theory` `sequent-calculus` `thesis` `KEY-PAPER`
+
+**Referenced in:** [[authorization-logic]]
+
+---
+
+### Garg & Pfenning (2011) — Stateful Authorization Logic
+**Citation:** Garg, D. & Pfenning, F. (2011). Stateful Authorization Logic. *Journal of Computer Security*, 20(4), 353-391.
+
+**URL:** https://people.mpi-sws.org/~dg/papers/jcs12.pdf
+
+**Summary:** Extends BL with system state predicates. Authorization depends on interpreted predicates (file permissions, time, ACLs). Case study: US intelligence community information sharing.
+
+**Tags:** `authorization` `stateful` `proof-theory`
+
+**Referenced in:** [[authorization-logic]]
+
+---
+
+### Garg & Abadi (2008) — Modal Deconstruction of Access Control Logics
+**Citation:** Garg, D. & Abadi, M. (2008). A Modal Deconstruction of Access Control Logics. In *FoSSaCS 2008*, LNCS 4962.
+
+**URL:** https://link.springer.com/chapter/10.1007/978-3-540-78499-9_16
+
+**Summary:** Translation from authorization logic (`A says`) to modal S4. Sound and complete. Extends to boolean combinations of principals and `speaks for`. Derives decidability results.
+
+**Tags:** `authorization` `modal-logic` `S4` `translation`
+
+**Referenced in:** [[authorization-logic]]
+
+---
+
+### Bowers et al. (2007) — Consumable Credentials in Logic-Based Access Control
+**Citation:** Bowers, K.D., Bauer, L., Garg, D., Pfenning, F., & Reiter, M.K. (2007). Consumable Credentials in Logic-Based Access-Control Systems. In *NDSS 2007*, pp. 143-157.
+
+**URL:** http://users.ece.cmu.edu/~lbauer/papers/2007/ndss2007-consumable.pdf
+
+**Summary:** Linear logic for one-time-use credentials. Credentials consumed after fixed number of uses. Implementation-independent abstraction.
+
+**Tags:** `authorization` `linear-logic` `consumable` `credentials`
+
+**Referenced in:** [[authorization-logic]]
+
+---
+
+### Li et al. (2003) — Delegation Logic
+**Citation:** Li, N. (2003). Delegation Logic: A Logic-based Approach to Distributed Authorization. PhD Thesis, New York University.
+
+**URL:** http://cs-www.cs.yale.edu/homes/jf/Ninghui-thesis.pdf
+
+**Summary:** D1LP extends Datalog with delegation constructs including **k-of-n threshold** principals. First system with threshold structures.
+
+**Tags:** `authorization` `delegation` `threshold` `logic-programming`
+
+**Referenced in:** [[authorization-logic]]
+
+---
+
+### Schneider et al. — NAL: Nexus Authorization Logic
+**Citation:** Schneider, F.B., Walsh, K., & Sirer, E.G. Nexus Authorization Logic (NAL): Design Rationale and Applications.
+
+**URL:** https://www.cs.cornell.edu/fbs/publications/NexusNalRationale.pdf
+
+**Summary:** Authorization logic with dynamic principals, groups, restricted delegation. `controls(A, p)` = A is trusted for p. `A → B` = A speaks for B.
+
+**Tags:** `authorization` `delegation` `principals`
+
+**Referenced in:** [[authorization-logic]]
+
+---
+
+### Das et al. (2021) — Nomos: Resource-Aware Session Types for Digital Contracts
+**Citation:** Das, A., Balzer, S., Hoffmann, J., Pfenning, F., & Santurkar, I. (2021). Resource-Aware Session Types for Digital Contracts. In *IEEE CSF 2021*.
+
+**URL:** https://www.cs.cmu.edu/~balzers/publications/nomos.pdf | https://arxiv.org/abs/1902.06056
+
+**Summary:** Language for smart contracts with session types + linear types. Assets as linear channels. Prevents re-entrancy via acquire-release. Automatic resource analysis.
+
+**Why important:** Practical implementation of linear types for blockchain, from same research group as authorization logic work.
+
+**Tags:** `linear-types` `session-types` `blockchain` `smart-contracts` `resource-analysis`
+
+**Referenced in:** [[authorization-logic]], [[nomos]]
+
+---
+
+### Abadi — Logic in Access Control (Tutorial)
+**Citation:** Abadi, M. Logic in Access Control (Tutorial Notes).
+
+**URL:** https://users.soe.ucsc.edu/~abadi/Papers/fosad-acllogic.pdf
+
+**Summary:** Tutorial overview of authorization logics: principals, says modality, speaks for, controls. Good introduction to the field.
+
+**Tags:** `authorization` `tutorial`
+
+**Referenced in:** [[authorization-logic]]
 
 ---
 
@@ -461,6 +646,58 @@ Comprehensive bibliography of all literature referenced in the CALC research doc
 **Summary:** Extended session types with higher-order features. Shows tight correspondence between linear logic and process calculus.
 
 **Tags:** `session-types` `linear-logic` `higher-order`
+
+**Referenced in:** [[nomos]]
+
+---
+
+### Balzer & Pfenning (2017) — Manifest Sharing with Session Types
+**Citation:** Balzer, S. & Pfenning, F. (2017). Manifest Sharing with Session Types. In *OOPSLA 2017*.
+
+**URL:** https://dl.acm.org/doi/10.1145/3110281
+
+**Summary:** Introduces sharing into session-typed language via stratification into linear and shared layers with modal operators. The acquire-release discipline provides mutual exclusion but can introduce deadlocks.
+
+**Tags:** `session-types` `shared-channels` `acquire-release`
+
+**Referenced in:** [[nomos]]
+
+---
+
+### Balzer et al. (2019) — Manifest Deadlock-Freedom for Shared Session Types
+**Citation:** Balzer, S., Toninho, B., & Pfenning, F. (2019). Manifest Deadlock-Freedom for Shared Session Types. In *ESOP 2019*, LNCS 11423.
+
+**URL:** https://www.cs.cmu.edu/~fp/papers/esop19.pdf
+
+**Summary:** Solves deadlock problem in shared session types using "worlds" (abstract locations) with partial order. Processes must acquire resources in ascending order, preventing cyclic dependencies.
+
+**Tags:** `session-types` `deadlock-freedom` `world-ordering`
+
+**Referenced in:** [[nomos]]
+
+---
+
+### Sano et al. (2021) — Manifestly Phased Communication via Shared Session Types
+**Citation:** Sano, C., Balzer, S., & Pfenning, F. (2021). Manifestly Phased Communication via Shared Session Types. In *FoSSaCS 2021*.
+
+**URL:** https://inria.hal.science/hal-03387824v1/file/509400_1_En_2_Chapter.pdf
+
+**Summary:** Relaxes equi-synchronizing constraint to subsynchronizing, allowing phased protocols where types can evolve across acquire-release cycles.
+
+**Tags:** `session-types` `phased-communication` `subsynchronizing`
+
+**Referenced in:** [[nomos]]
+
+---
+
+### Das & Pfenning (2022) — Rast: Resource-Aware Session Types
+**Citation:** Das, A. & Pfenning, F. (2022). Rast: A Language for Resource-Aware Session Types. *Logical Methods in Computer Science*, 18(1).
+
+**URL:** https://arxiv.org/abs/2012.13129
+
+**Summary:** Extends session types with arithmetic refinements for complexity analysis. Ergometric types track work (sequential complexity), temporal types track span (parallel complexity).
+
+**Tags:** `session-types` `resource-analysis` `complexity` `rast`
 
 **Referenced in:** [[nomos]]
 
@@ -638,7 +875,7 @@ Greco & Palmigiano (2023), Frittella et al. (2016)
 Belnap (1982), Gentzen (1935), Girard (1987), Howard (1980)
 
 ### `session-types`
-Caires & Pfenning (2010), Wadler (2012), Das et al. (2021), Toninho et al. (2013)
+Caires & Pfenning (2010), Wadler (2012), Das et al. (2021), Toninho et al. (2013), Balzer & Pfenning (2017), Balzer et al. (2019), Sano et al. (2021), Das & Pfenning (2022)
 
 ### `blockchain` / `smart-contracts`
 Das et al. (2021) — Nomos
