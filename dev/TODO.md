@@ -255,6 +255,77 @@ Apply MPST methodology to CALC:
 
 ## MEDIUM Priority
 
+### Benchmarking & Profiling Infrastructure
+**Priority:** MEDIUM
+**Status:** Design complete in dev/research/benchmarking.md — implement with content-addressed refactor
+
+**Goal:** Comprehensive, always-available profiling to identify bottlenecks from day 1.
+
+**Core components:**
+1. **Operation counters** — Track mgu calls, substitutions, copies, hash lookups
+2. **Micro-benchmarks** — Individual operation timing (node.copy, mgu, substitute)
+3. **Proof benchmarks** — Full proof search with timing and operation counts
+4. **GC tracking** — Allocation rates, garbage generated, GC pauses
+
+**Implementation:**
+- [ ] Create `lib/profiler.js` — Global counters, timing, stats collection
+- [ ] Add `CALC_PROFILE=1` env flag to enable profiling
+- [ ] Create `benchmarks/` directory with suite structure
+- [ ] Add `npm run bench` script
+- [ ] Collect baseline measurements before optimizations
+
+**Usage (target API):**
+```javascript
+// Enable profiling
+const profiler = require('./lib/profiler');
+profiler.enable();
+
+// Run proof search
+const result = proveFormula(formula);
+
+// Get detailed stats
+profiler.report();
+// Output:
+//   mgu calls: 45 (avg 0.12ms)
+//   substitutions: 123 (avg 0.03ms)
+//   hash lookups: 89 (hits: 67, misses: 22)
+//   proof depth: 6
+//   backtrack count: 3
+```
+
+**See:** dev/research/benchmarking.md (comprehensive design)
+
+---
+
+### Advanced Optimizations (Post Content-Addressing)
+**Priority:** MEDIUM
+**Status:** Research complete — implement after content-addressed refactor + benchmarks
+
+**Defer until:**
+1. Content-addressed refactoring is complete
+2. Benchmarking infrastructure is in place
+3. Real workload profiling shows where bottlenecks are
+
+**Optimizations to test (with benchmarks):**
+
+| Optimization | Expected Speedup | Effort | Research Doc |
+|--------------|------------------|--------|--------------|
+| **Polynomial Memoization** | O(b^d) → O(n²) | MEDIUM | polynomial-memoization.md |
+| **Constructor Index** | O(m) → O(1) identity | LOW | constructor-indexing.md |
+| **Near-Linear Unification** | O(k²) → O(k·α(k)) | MEDIUM | near-linear-unification.md |
+| **Persistent Data Structures** | O(m·n) → O(log m) copy | LOW | persistent-data-structures.md |
+| **ScopedStore** | GC → O(1) discard | LOW | arena-allocation.md |
+| **Explicit Substitutions** | Defer O(m·k·n) | HIGH | explicit-substitutions.md |
+
+**Decision criteria (after benchmarking):**
+- Only implement if profiling shows > 10% time in that operation
+- Start with lowest effort / highest impact (constructor index)
+- Test polynomial memoization early — could be transformative
+
+**See:** dev/research/*.md for detailed analysis of each optimization
+
+---
+
 ### Conditional execution
 **Priority:** MEDIUM
 

@@ -108,7 +108,11 @@
       "WebFetch(domain:usr.lmf.cnrs.fr)",
       "WebFetch(domain:chargueraud.org)",
       "WebFetch(domain:egraphs-good.github.io)",
-      "WebFetch(domain:www.cs.princeton.edu)"
+      "WebFetch(domain:www.cs.princeton.edu)",
+      "WebFetch(domain:www.cs.man.ac.uk)",
+      "WebFetch(domain:www.cmi.ac.in)",
+      "WebFetch(domain:hypirion.com)",
+      "WebFetch(domain:blog.mattbierner.com)"
     ],
     "deny": [],
     "ask": []
