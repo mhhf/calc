@@ -112,7 +112,9 @@
       "WebFetch(domain:www.cs.man.ac.uk)",
       "WebFetch(domain:www.cmi.ac.in)",
       "WebFetch(domain:hypirion.com)",
-      "WebFetch(domain:blog.mattbierner.com)"
+      "WebFetch(domain:blog.mattbierner.com)",
+      "Bash(CALC_PROFILE=1 node:*)",
+      "Bash(npm run bench:save:*)"
     ],
     "deny": [],
     "ask": []

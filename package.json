@@ -17,7 +17,13 @@
     "export:full": "./libexec/calc-export --full > src/html/calculus-full.html",
     "export:meta": "./libexec/calc-export --meta > src/html/calculus-meta.html",
     "serve:legacy": "python3 -m http.server 8080 --directory src/html",
-    "ui:legacy": "npm run build:legacy && npm run serve:legacy"
+    "ui:legacy": "npm run build:legacy && npm run serve:legacy",
+    "bench": "node --expose-gc benchmarks/run.js",
+    "bench:proof": "node --expose-gc benchmarks/run.js --category=proof",
+    "bench:micro": "node --expose-gc benchmarks/run.js --category=micro",
+    "bench:save": "node --expose-gc benchmarks/run.js --save",
+    "bench:compare": "node --expose-gc benchmarks/run.js --compare",
+    "profile": "CALC_PROFILE=1 node"
   },
   "author": "",
   "license": "ISC",

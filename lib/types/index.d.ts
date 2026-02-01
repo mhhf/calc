@@ -12,6 +12,12 @@ export * from './pt';
 export * from './parser';
 export * from './proofstate';
 
+// Content-addressed storage
+export * from './hash';
+export * from './store';
+export * from './term';
+export * from './intern';
+
 // Utilities
 export * from './helper';
 export * from './mgu';
@@ -19,6 +25,7 @@ export * from './substitute';
 export * from './compare';
 export * from './ressource';
 export * from './runner';
+export * from './profiler';
 
 // Default exports as named
 export { default as Calc } from './calc';
