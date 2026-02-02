@@ -1,196 +1,342 @@
-# Architecture: Pipelines and ll.json Migration
+# Architecture: Clean Parallel Implementation
 
-## Current Data Flow
+## Philosophy
+
+Instead of backwards-compatible migration, build a **new minimal implementation** alongside the old:
+
+1. **Suckless/Unix**: Small, focused modules with explicit dependencies
+2. **No globals**: Pass calculus explicitly, no `Calc.db` singleton
+3. **Trusted kernel**: Minimal core that just applies rules
+4. **Pluggable strategies**: Proof search algorithms are separate
+5. **Test against old**: Cross-check new vs old at each step
+6. **Delete old when done**: Once new passes all tests, remove legacy
+
+---
+
+## Current Architecture (Legacy)
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────┐
-│                        NEW DSL PIPELINE (incomplete)                     │
+│                              LEGACY PIPELINE                            │
 │                                                                         │
-│  lnl.family ─┐                                                          │
-│              │   ┌─────────────┐   ┌───────────────┐                    │
-│  ill.calc ───┼──►│  ts-parser  │──►│   generator   │──► calc_db        │
-│              │   │ (tree-sit.) │   │ (lib/celf/)   │   (in memory)     │
-│  ill.rules ──┘   └─────────────┘   └───────────────┘       │           │
-│                                                             ▼           │
-│                                              ┌─────────────────────────┐│
-│                                              │ tests/ll-generation.js  ││
-│                                              │ tests/family-generation ││
-│                                              └─────────────────────────┘│
+│   ll.json ──► Calc.init() ──► Calc.db (global singleton)               │
+│                                    │                                    │
+│              ┌─────────────────────┼─────────────────────┐              │
+│              ▼                     ▼                     ▼              │
+│        ┌──────────┐         ┌───────────┐         ┌──────────┐         │
+│        │parser.js │         │ prover.js │         │ node.js  │         │
+│        │ (Jison)  │         │proofstate │         │ (render) │         │
+│        └──────────┘         └───────────┘         └──────────┘         │
+│              │                     │                     │              │
+│              └─────────────────────┴─────────────────────┘              │
+│                          All use Calc.db.rules[id]                      │
 └─────────────────────────────────────────────────────────────────────────┘
+```
 
+### Problems with Legacy
+1. **Global state**: `Calc.db` is a singleton, can't have multiple calculi
+2. **Integer IDs**: `node.id` is meaningless number, requires lookup
+3. **Mixed concerns**: `Node` has rendering methods calling global `Calc.db`
+4. **Jison unmaintained**: Poor errors, no tree-sitter benefits
+5. **ll.json monolith**: 600 lines mixing grammar, rules, metadata
+
+---
+
+## New Architecture (lib/v2/)
+
+```
 ┌─────────────────────────────────────────────────────────────────────────┐
-│                      CURRENT ll.json PIPELINE (live)                    │
+│                              NEW PIPELINE (v2)                          │
 │                                                                         │
-│                ┌─────────────┐   ┌─────────────┐   ┌───────────────┐   │
-│   ll.json ────►│  Calc.init  │──►│  Calc.db    │──►│  everything   │   │
-│                └─────────────┘   └─────────────┘   └───────────────┘   │
-│                                        │                                │
-│                    ┌───────────────────┼───────────────────┐            │
-│                    ▼                   ▼                   ▼            │
-│             ┌──────────┐        ┌──────────┐        ┌──────────┐       │
-│             │ parser.js│        │ prover   │        │ renderer │       │
-│             │ (Jison)  │        │proofstate│        │ node.js  │       │
-│             └──────────┘        └──────────┘        └──────────┘       │
+│  .family/.calc/.rules ──► Calculus (explicit object, passed around)     │
+│                                │                                        │
+│         ┌──────────────────────┼──────────────────────┐                 │
+│         ▼                      ▼                      ▼                 │
+│   ┌───────────┐         ┌───────────┐         ┌───────────┐            │
+│   │  parser   │         │  kernel   │         │  render   │            │
+│   │(tree-sit.)│         │  (pure)   │         │  (pure)   │            │
+│   └───────────┘         └───────────┘         └───────────┘            │
+│         │                      │                      │                 │
+│         │               ┌──────┴──────┐               │                 │
+│         │               ▼             ▼               │                 │
+│         │        ┌──────────┐  ┌───────────┐          │                 │
+│         │        │ sequent  │  │strategies │          │                 │
+│         │        │  (pure)  │  │ (focused) │          │                 │
+│         │        └──────────┘  └───────────┘          │                 │
+│         └──────────────────────┴──────────────────────┘                 │
+│                    No globals, explicit dependencies                    │
 └─────────────────────────────────────────────────────────────────────────┘
 ```
 
-## File Dependencies on ll.json
+### Directory Structure
 
-### Core Library (lib/)
-| File | Uses | What For |
-|------|------|----------|
-| `sequent.js:31` | `require('../ll.json')` | Sequent parsing/construction |
-| `calc.js` | `Calc.init(calc)` | Initializes Calc.db from ll.json-format object |
-| `parser.js` | `Calc.calc.calc_structure` | Generates Jison grammar |
-| `node.js` | `Calc.db.rules[id]` | Node rendering (ascii/latex/isabelle) |
-| `proofstate.js` | `Calc.db.rules[id]` | Rule lookup, polarity checking |
-| `prover.js` | `calculus.rules` | Rule patterns for proof search |
-| `substitute.js` | `Calc.db.rules[node.id]` | Formula_Forall check |
-| `mgu.js` | `Calc.db.rules` | Unification |
-| `llt_compiler.js` | `Calc.calc.calc_structure["Formula"]` | LLT compilation |
-
-### CLI Tools (libexec/)
-All CLI tools directly `require('../ll.json')`:
-- calc-parse, calc-proof, calc-genparser, calc-export, calc-gendoc
-- calc-debug-*, calc-saturate, calc-tmp, calc-compare
-
-### Tests
-Most tests directly `require('../ll.json')`:
-- parser-baseline, calc-db-baseline, proofstate, node, test, intern, rendering-baseline
-- polarity-inference, sequent-lnl
-
-### Benchmarks
-- `benchmarks/proof/proofs.bench.js`, `benchmarks/micro/mgu.bench.js`
-
-## New DSL Pipeline (lib/celf/)
-
-### Files
 ```
-lib/celf/
-├── ts-parser.js    # Tree-sitter parser for .family/.calc/.rules
-├── generator.js    # Converts parsed AST to ll.json format
-└── loader.js       # Runtime loader (async/sync APIs)
+lib/v2/
+├── spec/                     # Calculus specification layer
+│   ├── parser.js             # Tree-sitter parser for .family/.calc/.rules
+│   └── calculus.js           # Calculus object {connectives, rules, meta}
+│
+├── syntax/                   # Formula/sequent syntax
+│   ├── parser.js             # Tree-sitter formula parser (generated from spec)
+│   ├── ast.js                # Pure AST: {tag, children} (no methods!)
+│   └── render.js             # render(ast, format, calculus) → string
+│
+├── kernel/                   # Trusted kernel (minimal!)
+│   ├── sequent.js            # Sequent: {contexts, succedent}
+│   ├── unify.js              # MGU (pure function)
+│   ├── substitute.js         # Substitution (pure function)
+│   └── apply.js              # applyRule(sequent, rule, position) → premises
+│
+├── strategies/               # Pluggable proof search
+│   ├── focused.js            # Andreoli's focusing (ILL)
+│   └── generic.js            # Dumb exhaustive search (for verification)
+│
+└── index.js                  # Main API
 ```
 
-### What it does
-1. `ts-parser.js` parses Extended Celf syntax using tree-sitter
-2. `generator.js` extracts declarations, rules, and generates ll.json-compatible structure
-3. `loader.js` provides `loadILL()` / `loadILLSync()` for runtime loading
+### Key Design Principles
 
-### Current limitation
-The generated `calc_structure` has **different shape** than ll.json:
-- **ll.json**: 2-arg sequent `X |- Y`, uses `Formula_Bin_Op` factoring
-- **DSL output**: 3-arg sequent `G ; D |- C`, direct constructors like `Formula_Tensor`
+**1. AST is pure data (no methods)**
+```javascript
+// OLD: Node class with methods calling globals
+class Node {
+  toString() { return Calc.db.rules[this.id]... }
+}
 
-This means the **Jison parser expects different structure** than what DSL generates.
+// NEW: Pure data + separate render function
+const ast = { tag: 'tensor', children: [a, b] };
+const str = render(ast, 'ascii', calculus);
+```
 
-## Key Structural Differences
+**2. No global state**
+```javascript
+// OLD: Global singleton
+Calc.init(json);
+const type = Calc.db.rules[node.id];
 
-### ll.json structure (current)
-```json
-{
-  "calc_structure": {
-    "Formula": {
-      "Formula_Freevar": { "type": "string", "ascii": "F? _" },
-      "Formula_Atprop": { "type": "Atprop" }
-    },
-    "Formula_Bin_Op": {
-      "Formula_Tensor": { "ascii": "_ * _", "type": ["Formula", "Formula"] },
-      "Formula_Loli": { "ascii": "_ -o _", "type": ["Formula", "Formula"] }
-    },
-    "Sequent": {
-      "Sequent": { "type": ["Structure", "Structure"], "ascii": "_ |- _" }
-    }
-  }
+// NEW: Explicit parameter
+const calculus = loadCalculus('./calculus/ill.calc', './calculus/ill.rules');
+const type = calculus.getType(ast.tag);
+```
+
+**3. Kernel is minimal**
+```javascript
+// kernel/apply.js - just applies rules, no search strategy
+function applyRule(sequent, rule, position, calculus) {
+  const theta = unify(rule.conclusion, sequent, position);
+  if (!theta) return null;
+  const premises = rule.premises.map(p => substitute(p, theta));
+  return { premises, theta };
 }
 ```
 
-### DSL-generated structure (new)
-```json
-{
-  "calc_structure": {
-    "Formula": {
-      "Formula_Freevar": { "type": "string", "ascii": "F? _" },
-      "Formula_Tensor": { "ascii": "_ * _", "type": ["Formula", "Formula"] },
-      "Formula_Loli": { "ascii": "_ -o _", "type": ["Formula", "Formula"] }
-    },
-    "Sequent": {
-      "Sequent_Seq": { "type": ["Structure", "Structure", "Structure"], "ascii": "_ ; _ |- _" }
-    }
-  }
+**4. Strategies are pluggable**
+```javascript
+// strategies/focused.js
+class FocusedProver {
+  constructor(calculus) { this.calculus = calculus; }
+  prove(sequent) { /* Andreoli focusing */ }
+}
+
+// strategies/generic.js
+class GenericProver {
+  constructor(calculus) { this.calculus = calculus; }
+  prove(sequent) { /* Dumb exhaustive search */ }
 }
 ```
 
-Key differences:
-1. **No `Formula_Bin_Op` factoring** - connectives directly in `Formula`
-2. **3-arg sequent** vs 2-arg sequent
-3. **Different constructor names** (`Formula_Tensor` vs `Sequent_Seq`)
+---
 
-## Migration Plan
+## Implementation Phases
 
-### Phase 1: Parallel Structures (CURRENT)
-**Status**: Complete ✓
+### Phase 1: Formula Parser (tree-sitter)
+**Goal**: Parse formulas/sequents using tree-sitter, output clean AST.
 
-- [x] Create new DSL files (lnl.family, ill.calc, ill.rules)
-- [x] Implement tree-sitter parser
-- [x] Implement generator producing ll.json format
-- [x] Tests verify generation works
-
-**Blocking issue**: Generated format differs from ll.json, parser incompatible.
-
-### Phase 2: Parser Abstraction Layer
-**Goal**: Make parser work with both structures.
-
-**Option A: Generate ll.json-compatible output**
-- Modify generator to produce Formula_Bin_Op factoring
-- Modify generator to produce 2-arg sequents
-- Pros: No changes to parser/prover
-- Cons: Loses the cleaner 3-arg design
-
-**Option B: Abstract parser over structure shape**
-- Create parser configuration layer
-- Parser reads config to determine sequent arity, factoring
-- Pros: Supports both old and new designs
-- Cons: More complex
-
-**Option C: Rewrite parser for new structure**
-- Update Jison grammar generation for 3-arg sequents
-- Remove Formula_Bin_Op dependency
-- Pros: Clean slate, matches DSL design
-- Cons: Breaking change, needs full migration
-
-**Recommended: Option A first, then C**
-- First make generator produce ll.json-compatible output
-- This lets us remove ll.json immediately
-- Then later refactor to cleaner structure
-
-### Phase 3: Generator produces ll.json-compatible format
 **Tasks**:
-- [ ] Add Formula_Bin_Op grouping logic to generator
-- [ ] Convert 3-arg seq() to 2-arg Sequent
-- [ ] Match freevar naming conventions
-- [ ] Update rule pattern generation
+- [ ] Create formula grammar from calculus spec (not Jison!)
+- [ ] Parser outputs `{tag, children}` AST (pure data)
+- [ ] Test: parse old test cases, compare structure
 
-### Phase 4: Replace ll.json with generated output
+**Cross-check**: Parse same strings with old parser, compare AST shape.
+
+**Files**:
+```
+lib/v2/syntax/parser.js      # Tree-sitter formula parser
+lib/v2/syntax/ast.js         # AST type definitions
+tests/v2/parser.test.js      # Parser tests + cross-check
+```
+
+### Phase 2: Renderer
+**Goal**: Render AST to ascii/latex without calling globals.
+
 **Tasks**:
-- [ ] Update sequent.js to use loader instead of require
-- [ ] Update all CLI tools to use loader
-- [ ] Update all tests to use loader
-- [ ] Delete ll.json file
-- [ ] Make generation part of build step (or lazy load)
+- [ ] `render(ast, format, calculus)` pure function
+- [ ] Support ascii, latex, isabelle
+- [ ] Handle precedence/brackets correctly
 
-### Phase 5: (Optional) Migrate to new structure
+**Cross-check**: Render same formulas, compare output strings.
+
+**Files**:
+```
+lib/v2/syntax/render.js      # Pure render function
+tests/v2/render.test.js      # Render tests + cross-check
+```
+
+### Phase 3: Sequent
+**Goal**: Clean sequent representation (no global Calc).
+
 **Tasks**:
-- [ ] Update parser.js for 3-arg sequents
-- [ ] Update prover for direct Formula constructors
-- [ ] Simplify generator to output clean structure
-- [ ] Update all tests
+- [ ] Sequent class with explicit contexts
+- [ ] Content-addressed hashing (keep optimization)
+- [ ] No dependency on global state
 
-## Immediate Next Steps
+**Cross-check**: Create same sequents, compare structure.
 
-1. **Understand ll.json structure deeply** - compare exact shape expected by parser.js
-2. **Modify generator.js** to produce ll.json-compatible output
-3. **Test**: `Calc.init(generatedOutput)` should work with existing parser
-4. **Create loader facade** that generators and returns calc_db
-5. **Replace require('../ll.json')** with loader call
-6. **Delete ll.json**
+**Files**:
+```
+lib/v2/kernel/sequent.js     # Sequent class
+tests/v2/sequent.test.js     # Tests + cross-check
+```
+
+### Phase 4: Kernel (Rule Application)
+**Goal**: Minimal trusted kernel - just applies rules.
+
+**Tasks**:
+- [ ] `unify(pattern, term)` - MGU
+- [ ] `substitute(term, theta)` - apply substitution
+- [ ] `applyRule(sequent, rule, position)` - single rule application
+- [ ] Load rules from .rules files
+
+**Cross-check**: Apply same rules to same sequents, compare results.
+
+**Files**:
+```
+lib/v2/kernel/unify.js       # MGU
+lib/v2/kernel/substitute.js  # Substitution
+lib/v2/kernel/apply.js       # Rule application
+tests/v2/kernel.test.js      # Tests + cross-check
+```
+
+### Phase 5: Focused Prover (Strategy)
+**Goal**: Port focused proof search as pluggable strategy.
+
+**Tasks**:
+- [ ] `FocusedProver` class implementing Andreoli focusing
+- [ ] Polarity inference from rule structure
+- [ ] Inversion phase, focus phase, identity rules
+
+**Cross-check**: Prove same theorems, compare proof trees.
+
+**Files**:
+```
+lib/v2/strategies/focused.js  # Focused prover
+tests/v2/prover.test.js       # Theorem tests + cross-check
+```
+
+### Phase 6: Generic Prover (Verification)
+**Goal**: Dumb exhaustive prover for verifying focused prover.
+
+**Tasks**:
+- [ ] `GenericProver` - tries all rules exhaustively
+- [ ] Loop detection (visited states)
+- [ ] Can verify proof trees from focused prover
+
+**Cross-check**: Both provers find proofs for same theorems.
+
+**Files**:
+```
+lib/v2/strategies/generic.js  # Generic prover
+tests/v2/verify.test.js       # Cross-verification tests
+```
+
+### Phase 7: Integration
+**Goal**: Wire up CLI tools to new implementation.
+
+**Tasks**:
+- [ ] Create `lib/v2/index.js` unified API
+- [ ] Update CLI tools with `--v2` flag
+- [ ] Run full test suite with both implementations
+- [ ] Compare all outputs
+
+**Files**:
+```
+lib/v2/index.js              # Main API
+libexec/calc-parse           # Add --v2 flag
+libexec/calc-proof           # Add --v2 flag
+```
+
+### Phase 8: Cleanup
+**Goal**: Remove legacy code once new is proven correct.
+
+**Tasks**:
+- [ ] Verify 100% test coverage with v2
+- [ ] Remove ll.json
+- [ ] Remove lib/calc.js, lib/parser.js (old Jison)
+- [ ] Move lib/v2/* to lib/*
+- [ ] Update all imports
+
+---
+
+## Cross-Check Strategy
+
+At each phase, run parallel tests:
+
+```javascript
+// tests/v2/parser.test.js
+describe('parser cross-check', () => {
+  const testCases = ['A * B', 'A -o B', '!A', ...];
+
+  for (const input of testCases) {
+    it(`parses "${input}" same as legacy`, () => {
+      const legacyAst = legacyParser.parse(input);
+      const newAst = newParser.parse(input);
+
+      // Compare structure (may need normalization)
+      expect(normalizeAst(newAst)).toEqual(normalizeAst(legacyAst));
+    });
+  }
+});
+```
+
+---
+
+## Calculus Object (v2)
+
+```javascript
+// lib/v2/spec/calculus.js
+class Calculus {
+  constructor(spec) {
+    this.connectives = spec.connectives;  // {tensor: {arity: 2, ascii: '_ * _', ...}}
+    this.rules = spec.rules;              // {Tensor_L: {conclusion, premises}, ...}
+    this.meta = spec.meta;                // {polarity, precedence, ...}
+  }
+
+  // Load from DSL files
+  static async load(calcPath, rulesPath) {
+    const parser = require('./parser');
+    const calcAst = await parser.parseFile(calcPath);
+    const rulesAst = await parser.parseFile(rulesPath);
+    return new Calculus(extractSpec(calcAst, rulesAst));
+  }
+
+  getConnective(tag) { return this.connectives[tag]; }
+  getRule(name) { return this.rules[name]; }
+  getPolarity(tag) { return this.meta.polarity[tag]; }
+}
+```
+
+---
+
+## Summary
+
+| Aspect | Legacy | v2 |
+|--------|--------|-----|
+| State | Global `Calc.db` | Explicit `Calculus` object |
+| AST | `Node` class with methods | Pure data `{tag, children}` |
+| Render | `node.toString()` | `render(ast, format, calc)` |
+| Parser | Jison (unmaintained) | tree-sitter |
+| Kernel | Mixed with strategy | Minimal `applyRule` |
+| Strategy | Hardcoded in prover | Pluggable classes |
+| Rules | Integer IDs | String tags |
+
+The old code stays working throughout. Only delete it after v2 passes 100% of tests.
