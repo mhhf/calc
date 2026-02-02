@@ -1,0 +1,14 @@
+% Test file for tree-sitter MDE parser
+
+bin: type.
+e: bin.
+i: bin -> bin.
+o: bin -> bin.
+
+plus: bin -> bin -> bin -> type.
+plus/z1: plus e e e.
+plus/s1: plus (o M) (o N) (o R) <- plus M N R.
+
+% Forward rule
+step: foo X * bar Y -o { baz Z }.
+rule: !foo X * bar Y -o { baz Z }.

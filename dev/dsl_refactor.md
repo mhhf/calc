@@ -2,6 +2,37 @@
 
 This document outlines the implementation plan for replacing ll.json with an Extended Celf DSL.
 
+## Progress (2026-02-02)
+
+**Phase 1 Status:** COMPLETE
+**Phase 2 Status:** COMPLETE
+
+**Phase 1 Completed:**
+- [x] Decided on tree-sitter (over Chevrotain/Ohm) — handles 1000+ nesting without stack overflow
+- [x] Grammar promoted from `prototypes/` to `lib/tree-sitter-mde/grammar.js`
+- [x] Nix flake with gcc, tree-sitter 0.25.10, emscripten: `flake.nix`
+- [x] Verified deep nesting works (1000 levels, tree-sitter handles it)
+- [x] Parse real optimism-mde files (`bin.mde`, `evm.mde`, `helper.mde`)
+- [x] Added `&` (with) connective and uppercase declaration names
+- [x] WASM build for browser use: `tree-sitter-mde.wasm`
+- [x] Node.js bindings: `lib/celf/ts-parser.js` (async API, WASM-based)
+- [x] Test suite: `tests/tree-sitter.js` (19 tests passing)
+
+**Phase 2 Completed:**
+- [x] Extended grammar with @annotation support
+- [x] Annotation value types: string, identifier, boolean, precedence+associativity
+- [x] AST types: `Annotation`, `StringValue`, `PrecValue`, `BoolValue`, `IdentValue`
+- [x] TypeDecl and ClauseDecl now include `annotations: []` field
+- [x] Test suite extended: `tests/tree-sitter.js` (30 tests passing)
+- [x] Sample files: `calculus/linear-logic.calc`, `calculus/linear-logic.rules`
+
+**Next (Phase 3):**
+- [ ] ll.json generation from .calc/.rules files
+- [ ] Compare generated ll.json with existing ll.json
+- [ ] Verify Calc.init() works with generated ll.json
+
+---
+
 ## Current State
 
 ### Architecture
@@ -122,84 +153,91 @@ tests/calc-db-snapshot.js   # Calc.db structure tests
 tests/rendering-snapshot.js # toString() output tests
 ```
 
-### Phase 1: Ohm Parser for Pure Celf
+### Phase 1: Tree-sitter Parser for Pure Celf
 **Goal:** Parse optimism-mde style .mde files.
+**Status:** COMPLETE
 
-**Grammar Elements:**
-```ohm
-Celf {
-  Program = Declaration*
+**Grammar:** `lib/tree-sitter-mde/grammar.js`
 
-  Declaration = TypeDecl | ConstDecl | ClauseDecl
+Supports:
+- Type declarations: `name: type.`
+- Arrow types: `foo: a -> b -> c.`
+- Linear implication: `foo: a -o b.`
+- Forward rules: `rule: a -o { b }.`
+- Tensor: `foo: a * b * c.`
+- With (additive conjunction): `foo: a & b.`
+- Bang: `foo: !a.`
+- Application: `foo: f x y.`
+- Backward chaining: `rule: head <- premise1 <- premise2.`
+- Comments: `% comment`
 
-  TypeDecl = ident ":" "type" "."
-
-  ConstDecl = ident ":" Type "."
-
-  ClauseDecl = clauseName ":" Term ("." | BackChain)
-
-  BackChain = "<-" Term BackChain
-            | "."
-
-  Type = Type "->" Type      -- arrow
-       | Type "-o" Type      -- loli
-       | ident               -- atom
-       | "(" Type ")"        -- paren
-
-  Term = Term "*" Term       -- tensor
-       | Term "-o" "{" Term "}" -- forward
-       | "!" Term            -- bang
-       | Application
-
-  Application = Application Atom
-              | Atom
-
-  Atom = ident
-       | "(" Term ")"
-       | var
-
-  ident = lower (alnum | "_")*
-  var = upper (alnum | "_")*
-  clauseName = ident ("/" ident)?
-
-  comment = "%" (~"\n" any)*
-}
-```
-
-**Tests:**
-- [ ] Parse optimism-mde/lib/bin.mde successfully
-- [ ] Parse optimism-mde/main.mde successfully
-- [ ] AST structure matches expected form
-- [ ] Variables correctly identified (uppercase)
+**Tests:** All passing
+- [x] Parse deeply nested expressions (1000+ levels)
+- [x] Parse optimism-mde/lib/bin.mde
+- [x] Parse optimism-mde/lib/evm.mde
+- [x] Parse optimism-mde/lib/helper.mde
+- [x] AST conversion to Ohm-compatible format
 
 **Files:**
 ```
-lib/celf/grammar.ohm        # Ohm grammar
-lib/celf/parser.js          # Ohm semantics → AST
-tests/celf-parser.js        # Parser tests
+lib/tree-sitter-mde/
+├── grammar.js              # Tree-sitter grammar (source)
+├── tree-sitter.json        # Tree-sitter config
+├── tree-sitter-mde.wasm    # WASM parser (generated, gitignored)
+├── mde.so                  # Native parser (generated, gitignored)
+├── src/                    # Generated C code (gitignored)
+└── test/
+    ├── test.mde            # Basic test cases
+    └── deep-test.mde       # Deep nesting test
+
+lib/celf/
+├── parser.js               # Ohm-based parser (original)
+├── ts-parser.js            # Tree-sitter parser (new, async API)
+└── grammar.ohm             # Ohm grammar (original)
+```
+
+**npm scripts:**
+```bash
+npm run build:ts       # Generate + build native parser
+npm run build:ts:wasm  # Build WASM parser
+npm run test:ts        # Run tree-sitter tests
 ```
 
 ### Phase 2: Extended Celf (@annotations)
 **Goal:** Parse .calc files with annotations.
+**Status:** COMPLETE
 
-**Grammar Extension:**
-```ohm
-CelfExtended <: Celf {
-  ConstDecl := ident ":" Type AnnotationBlock? "."
-  ClauseDecl := clauseName ":" Term BackChain AnnotationBlock?
+**Grammar Extension (tree-sitter):**
+```javascript
+// In lib/tree-sitter-mde/grammar.js
+annotation_block: $ => repeat1($.annotation),
 
-  AnnotationBlock = Annotation+
+annotation: $ => seq(
+  '@',
+  field('key', $.identifier),
+  field('value', optional($.annotation_value))
+),
 
-  Annotation = "@" annotKey annotValue?
+annotation_value: $ => choice(
+  $.string_literal,
+  $.prec_value,      // number with optional associativity
+  $.identifier,
+  $.bool_literal,
+),
 
-  annotKey = ident
-  annotValue = string
-             | number assoc?
-             | ident
+prec_value: $ => seq($.number, optional($.associativity)),
+associativity: $ => choice('left', 'right', 'none'),
+string_literal: $ => seq('"', /[^"]*/, '"'),
+bool_literal: $ => choice('true', 'false'),
+```
 
-  assoc = "left" | "right" | "none"
-  string = "\"" (~"\"" any)* "\""
-}
+**AST Node Types:**
+```javascript
+AST.Annotation(key, value)        // { type: 'Annotation', key, value }
+AST.StringValue(value)            // { type: 'StringValue', value }
+AST.PrecValue(precedence, assoc)  // { type: 'PrecValue', precedence, associativity }
+AST.BoolValue(value)              // { type: 'BoolValue', value: true/false }
+AST.IdentValue(name)              // { type: 'IdentValue', name }
 ```
 
 **Annotation Schema:**
@@ -219,10 +257,17 @@ CelfExtended <: Celf {
 | `@ffi` | ident | .calc |
 | `@mode` | mode-spec | .calc |
 
-**Tests:**
-- [ ] Parse annotation blocks
-- [ ] Extract annotations into structured metadata
-- [ ] Handle missing annotations gracefully
+**Tests:** ✓ All passing (30 tests in tests/tree-sitter.js)
+- [x] Parse annotation blocks
+- [x] Extract annotations into structured metadata
+- [x] Handle missing annotations gracefully (annotations: [])
+- [x] Parse .calc-style connective definitions
+- [x] Parse .rules-style rule definitions
+- [x] Backwards compatible with pure Celf (.mde files)
+
+**Sample Files:**
+- `calculus/linear-logic.calc` - Connective definitions with annotations
+- `calculus/linear-logic.rules` - Inference rules with annotations
 
 ### Phase 3: ll.json Generation
 **Goal:** Generate ll.json from .calc + .rules for backwards compatibility.
@@ -328,42 +373,74 @@ lib/celf/stdlib/
 
 ---
 
-## File Structure After Refactor
+## Current File Structure
 
 ```
 /home/mhhf/src/calc/
-├── calc/                      # NEW: Calculus definitions
-│   ├── linear-logic.calc      # Connectives with annotations
-│   ├── linear-logic.rules     # Inference rules
+├── lib/
+│   ├── tree-sitter-mde/       # Tree-sitter grammar (Phases 1+2 - COMPLETE)
+│   │   ├── grammar.js         # Source grammar (with @annotations)
+│   │   ├── tree-sitter.json   # Config
+│   │   ├── tree-sitter-mde.wasm  # WASM (gitignored)
+│   │   ├── mde.so             # Native (gitignored)
+│   │   ├── src/               # Generated C (gitignored)
+│   │   └── test/              # Test files
+│   │
+│   ├── celf/                  # Celf parsers
+│   │   ├── grammar.ohm        # Ohm grammar (original)
+│   │   ├── parser.js          # Ohm parser (sync, stack overflow on deep)
+│   │   └── ts-parser.js       # Tree-sitter parser (async, handles deep, annotations)
+│   │
+│   ├── calc.js                # Calculus database
+│   ├── parser.js              # Jison generation from ll.json
+│   ├── node.js                # AST nodes
+│   └── ...
+│
+├── calculus/                  # Extended Celf definitions (Phase 2)
+│   ├── linear-logic.calc      # Connectives with @annotations
+│   └── linear-logic.rules     # Inference rules with @annotations
+│
+├── tests/
+│   ├── tree-sitter.js         # Tree-sitter parser tests (30 tests)
+│   ├── celf-parser.js         # Ohm parser tests
+│   └── ...
+│
+├── flake.nix                  # Nix devshell (tree-sitter, gcc, emscripten)
+├── .envrc                     # direnv integration
+└── ll.json                    # Current calculus definition
+```
+
+## Target File Structure (After Full Refactor)
+
+```
+/home/mhhf/src/calc/
+├── calculus/                  # Calculus definitions (note: 'calc' is taken by CLI)
+│   ├── linear-logic.calc      # Connectives with @annotations ✓
+│   ├── linear-logic.rules     # Inference rules ✓
 │   └── stdlib/
 │       ├── base.mde           # nat, bin, bool
 │       └── arithmetic.mde     # plus, mul, etc.
 │
 ├── lib/
-│   ├── celf/                  # NEW: Celf parser
-│   │   ├── grammar.ohm
-│   │   ├── parser.js
-│   │   ├── generator.js       # → ll.json
-│   │   └── mode-check.js
+│   ├── tree-sitter-mde/       # Unified grammar (pure Celf + @annotations) ✓
 │   │
-│   ├── ffi/                   # NEW: FFI support
+│   ├── celf/
+│   │   ├── ts-parser.js       # Tree-sitter parser (with annotations) ✓
+│   │   └── generator.js       # .calc → ll.json (Phase 3)
+│   │
+│   ├── ffi/                   # FFI support (Phase 5)
 │   │   ├── registry.js
 │   │   └── arithmetic.js
 │   │
-│   ├── calculus.js            # NEW: Unified calculus API
-│   │
-│   ├── calc.js                # MODIFIED: use calculus.js
-│   ├── parser.js              # DEPRECATED: Jison generation
-│   ├── node.js                # UNCHANGED
-│   ├── prover.js              # MODIFIED: FFI support
+│   ├── calculus.js            # Unified API (Phase 4)
 │   └── ...
 │
-├── ll.json                    # GENERATED from .calc/.rules
+├── ll.json                    # GENERATED from .calc/.rules (Phase 3)
 │
 └── tests/
-    ├── celf-parser.js         # NEW
-    ├── ll-generation.js       # NEW
-    └── ffi.js                 # NEW
+    ├── tree-sitter.js         # Parser tests ✓
+    ├── ll-generation.js       # Phase 3
+    └── ffi.js                 # Phase 5
 ```
 
 ---
@@ -383,20 +460,25 @@ lib/celf/stdlib/
 
 ## Dependencies
 
-**Required:**
-- [ ] Install Ohm: `npm install ohm-js`
+**Nix devshell (flake.nix):**
+- tree-sitter CLI 0.25.10
+- gcc (for native parser compilation)
+- emscripten (for WASM builds)
+- Node.js 22
 
-**Optional:**
-- [ ] tree-sitter (future, for editor support)
+**npm packages:**
+- `web-tree-sitter@0.25.10` - WASM runtime for Node.js and browser
+- `ohm-js` - Alternative parser (original, has stack overflow on deep nesting)
 
 ---
 
 ## Success Criteria
 
-1. **Phase 1 Complete:** Can parse optimism-mde files
-2. **Phase 3 Complete:** Can generate ll.json from .calc/.rules
-3. **Phase 4 Complete:** Proof search works without ll.json
-4. **Phase 5 Complete:** `plus(2,3,X)` computes X=5 via FFI
+1. **Phase 1 Complete:** ✓ Can parse optimism-mde files (bin.mde, evm.mde, helper.mde)
+2. **Phase 2 Complete:** ✓ Can parse .calc files with @annotations
+3. **Phase 3:** Can generate ll.json from .calc/.rules
+4. **Phase 4:** Proof search works without ll.json
+5. **Phase 5:** `plus(2,3,X)` computes X=5 via FFI
 
 ---
 
@@ -408,4 +490,37 @@ lib/celf/stdlib/
 
 3. **Stdlib Location:** Should stdlib live in this repo or separate (optimism-mde style)?
 
-4. **Parser Target:** Stick with Ohm, or evaluate tree-sitter for editor integration?
+---
+
+## Parser Decision: Tree-sitter
+
+**Decision Date:** 2026-02-01
+
+**Chosen:** Tree-sitter over Ohm/Chevrotain
+
+**Rationale:**
+- **No stack overflow**: GLR algorithm uses explicit parse stack, not call stack
+- **Tested**: 1000-level nesting in 0.002s without issues
+- **Zig bindings**: Official `tree-sitter-zig` bindings for future porting
+- **Unified**: Same parser technology for meta (`.calc`/`.rules`) and object (`.ll`) languages
+- **Editor support**: Bonus syntax highlighting, code folding, incremental parsing
+
+**Prototype:** `prototypes/tree-sitter-mde/`
+
+**Development environment:** `flake.nix` provides all build tools. Use `direnv allow` to auto-load.
+
+**Two-Layer Architecture:**
+```
+┌─────────────────────────────────────────────────────────┐
+│  Bootstrap Parser (tree-sitter grammar for .calc/.rules)│
+│  - Parses calculus definitions                          │
+│  - Hardcoded, checked into repo                         │
+└─────────────────────────────────────────────────────────┘
+                        │
+                        ▼ generates
+┌─────────────────────────────────────────────────────────┐
+│  Object Parser (tree-sitter grammar for .ll files)      │
+│  - Generated from calculus definitions                  │
+│  - Different .calc/.rules → different object grammars   │
+└─────────────────────────────────────────────────────────┘
+```

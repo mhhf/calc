@@ -1,0 +1,14 @@
+{
+  "metadata": {
+    "version": "0.1.0",
+    "license": "MIT"
+  },
+  "grammars": [
+    {
+      "name": "mde",
+      "scope": "source.mde",
+      "file-types": ["mde", "ll"],
+      "injection-regex": "mde"
+    }
+  ]
+}
