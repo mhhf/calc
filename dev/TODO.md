@@ -257,14 +257,50 @@ Some things - like future or option contracts need explicit time - since they ar
 
 see financial-primitives.md
 
+### Proper Multi-Type Display Calculus for ILL
+**Priority:** HIGH (after DSL refactor)
+
+**Problem discovered (2026-02-02):**
+The current `lnl.family` implements Benton's LNL model, which is valid for ILL but is NOT a "proper" multi-type display calculus (Greco & Palmigiano style). Key issues:
+
+1. **Sequents not type-uniform**: `Γ_cart ; Δ_lin ⊢ C_lin` mixes types
+2. **No residuation**: Cannot fully "display" formulas within each mode
+3. **Cut elimination**: Proven for LNL specifically, NOT via Belnap's generic metatheorem
+
+**Why this matters:**
+- Generic cut elimination would allow extending with multimodalities
+- Proper MTDC has modular cut-elim: add connectives without re-proving
+- Current design requires per-logic cut-elim proofs for extensions
+
+**Goal:**
+Create a NEW calculus (e.g., `lnl-proper.family`) that IS a proper MTDC:
+- Type-uniform sequents: `X ⊢_Lin Y` and `X ⊢_Cart Y` separately
+- Residuation display postulates within each mode
+- Bridge connectives (F, G) crossing types
+- Verify Belnap's adapted C1-C8 conditions hold
+- Generic cut elimination via metatheorem
+
+**Constraint:** Minimal intrusion to core implementation — new calculus file, not rewrite.
+
+**Research needed:**
+- [ ] Study Greco & Palmigiano "Linear Logic Properly Displayed" in detail
+- [ ] Understand adapted Belnap conditions for multi-type
+- [ ] Design type-uniform sequent structure
+- [ ] Verify generic cut-elim applies
+
+**See:** dev/research/multi-type-display-calculus.md, dev/research/display-calculus.md
+
+---
+
 ### Generalize Multi-Type Display Calculus
-**Priority:** MEDIUM
+**Priority:** MEDIUM (after proper MTDC)
 
 CALC implements Benton's LNL via persistent_ctx + linear_ctx. For multimodalities, graded types, and agents, we need a generic multi-type framework.
 
 **Current State:**
 - LNL hardcoded (persistent_ctx, linear_ctx, Bang_L special handling)
 - Works correctly for ILL — this is our case study
+- NOT proper MTDC — see above task
 
 **Goal:**
 - Generalize to support arbitrary types and bridge rules
