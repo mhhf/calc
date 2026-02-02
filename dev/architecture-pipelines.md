@@ -87,9 +87,12 @@ lib/v2/
 │   ├── substitute.js         # Substitution (pure function)
 │   └── apply.js              # applyRule(sequent, rule, position) → premises
 │
-├── strategies/               # Pluggable proof search
-│   ├── focused.js            # Andreoli's focusing (ILL)
-│   └── generic.js            # Dumb exhaustive search (for verification)
+├── provers/                  # Proof search strategies
+│   ├── generic.js            # Generic prover (any calculus, slow)
+│   └── focused.js            # ILL-specific (focusing, lazy splitting)
+│
+├── ffi/                      # Foreign Function Interface
+│   └── registry.js           # FFI for computational predicates
 │
 └── index.js                  # Main API
 ```
@@ -327,47 +330,103 @@ class Calculus {
 
 ---
 
-## Proof Oracle / LCF-Style Verification
+## Prover Architecture
 
-From `dev/research/proof-search-oracles.md`: The ILL focused prover is an "oracle" that produces proofs fast. The generic prover is the "kernel" that verifies.
-
-### Trust Levels
-```javascript
-class GenericProver {
-  constructor(calculus, options = {}) {
-    this.trustLevel = options.trustLevel || 'verify';  // 'full' | 'verify' | 'none'
-    this.oracle = options.oracle;                      // FocusedProver instance
-  }
-
-  prove(goal) {
-    if (this.oracle && this.trustLevel !== 'none') {
-      const result = this.oracle.prove(goal);
-      if (result.success) {
-        if (this.trustLevel === 'full') return result;    // Trust completely
-        if (this.verifyProofTree(result.proofTree)) {
-          return result;                                   // Verified
-        }
-        // Fall through to enumeration
-      }
-    }
-    return this.enumerativeProve(goal);  // Slow but trusted
-  }
-}
+### Two Provers, Always Available
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                         PROVERS                                  │
+│                                                                 │
+│  ┌─────────────────────┐     ┌─────────────────────┐           │
+│  │   GenericProver     │     │   FocusedProver     │           │
+│  │   (always works)    │     │   (ILL-optimized)   │           │
+│  ├─────────────────────┤     ├─────────────────────┤           │
+│  │ • Tries all rules   │     │ • Polarity/focusing │           │
+│  │ • Supports ordered  │     │ • Lazy splitting    │           │
+│  │ • Loop detection    │     │ • delta_in/out      │           │
+│  │ • Slow but generic  │     │ • Fast for ILL      │           │
+│  └─────────────────────┘     └─────────────────────┘           │
+│            ↑                           ↑                        │
+│            │                           │                        │
+│            └───────── User chooses ────┘                        │
+└─────────────────────────────────────────────────────────────────┘
 ```
 
-### What Oracle Returns
-```javascript
-{
-  success: boolean,
-  proofTree: PT,                    // Full proof tree
-  delta_out: { id: {num, val} },    // Resources NOT consumed
-  theta: [[var, term], ...],        // Substitutions discovered
-}
-```
+**GenericProver**: Always available, works with any calculus (ILL, ordered logic, etc.)
+**FocusedProver**: ILL-specific optimization, uses lazy resource management
+
+User can:
+- Use generic only (slow, but supports any logic)
+- Use focused only (fast, ILL-specific)
+- Use focused with generic verification (trust but verify)
+
+### Lazy Resource Management (ILL-Specific)
+
+The `delta_in/delta_out` pattern is **ILL-specific** and lives in `FocusedProver`, not the generic kernel. The generic prover enumerates splits explicitly.
 
 ---
 
-## Lazy Resource Management (Hodas-Miller)
+## FFI Architecture (Computational Predicates)
+
+From `dev/TODO.md`: FFI escapes proof search for computation.
+
+```celf
+plus : bin -> bin -> bin -> type
+  @ffi arithmetic.plus    % JS function
+  @mode + + -             % input input output
+  @verify true            % check result
+  @fallback axioms.       % if mode doesn't match
+```
+
+### FFI in v2
+```javascript
+// lib/v2/ffi/registry.js
+class FFIRegistry {
+  constructor() {
+    this.functions = new Map();  // predicate → JS function
+  }
+
+  register(predicate, fn, options) {
+    this.functions.set(predicate, {
+      fn,
+      mode: options.mode,      // ['+', '+', '-'] = inputs, output
+      verify: options.verify,
+      fallback: options.fallback
+    });
+  }
+
+  call(predicate, args) {
+    const ffi = this.functions.get(predicate);
+    if (!ffi) return null;
+
+    // Check mode: are inputs ground?
+    const inputs = args.filter((_, i) => ffi.mode[i] === '+');
+    if (!inputs.every(isGround)) {
+      return ffi.fallback ? 'use_fallback' : null;
+    }
+
+    // Call JS function
+    const result = ffi.fn(...inputs);
+
+    // Optionally verify
+    if (ffi.verify) {
+      // Check result matches expected output
+    }
+
+    return result;
+  }
+}
+```
+
+### FFI Phase (add to Phase 4.5)
+- [ ] FFI registry for computational predicates
+- [ ] Mode checking (+/- for input/output)
+- [ ] Integration with proof search
+- [ ] Fallback to axioms when mode doesn't match
+
+---
+
+## Lazy Resource Management (FocusedProver Only)
 
 From `dev/research/proof-search-oracles.md`: Context splitting is **discovered during proof**, not guessed upfront.
 
@@ -595,11 +654,8 @@ The old code stays working throughout. Only delete it after v2 passes 100% of te
 
 ## Open Questions / Decisions Needed
 
-### 1. Pure vs Mutable Kernel
-**Current**: Legacy prover mutates `pt` (proof tree) in place.
-**Option A**: Pure kernel - returns new state, old state unchanged (easier reasoning, Zig-friendly)
-**Option B**: Mutable kernel - modifies in place (faster, matches existing code)
-**Recommendation**: Start pure, optimize later if needed.
+### 1. Mutable Proof Trees (like v1)
+Keep mutable style from v1 - it works and we understand it. ScopedStore handles backtracking for the store; proof tree mutation is fine.
 
 ### 2. AST Representation
 **Option A**: Object-based `{tag, children: [child, child]}` - easy to use in JS
@@ -618,12 +674,13 @@ The old code stays working throughout. Only delete it after v2 passes 100% of te
 **Recommendation**: Use return values in kernel (portable), exceptions at API boundary.
 
 ### 5. When to Implement Optimizations
-| Optimization | Immediate | After basic v2 | If needed |
-|--------------|-----------|----------------|-----------|
+| Optimization | Immediate | After basic v2 | When real-world testing |
+|--------------|-----------|----------------|-------------------------|
 | Content-addressing | ✓ | | |
 | ScopedStore | ✓ | | |
-| delta_in/out | ✓ | | |
-| Proof memoization | | ✓ | |
+| delta_in/out (FocusedProver) | ✓ | | |
+| FFI for computation | ✓ | | |
+| Proof memoization | | | ✓ |
 | Constructor index | | | ✓ |
 | Explicit substitutions | | | ✓ |
 
