@@ -327,16 +327,107 @@ class Calculus {
 
 ---
 
+## Content-Addressed Store (MUST KEEP)
+
+The existing `lib/store.js`, `lib/hash.js`, `lib/intern.js` are well-designed. v2 MUST use them:
+
+### What We Have (lib/store.js)
+```javascript
+class Store {
+  internString(str)                    // hash → store
+  internStruct(constructorId, children) // hash → store
+  equal(hash1, hash2)                  // O(1) equality
+}
+
+class ScopedStore {
+  fork()     // Create child scope for proof branch
+  commit()   // Merge local to parent (proof succeeded)
+  discard()  // Drop local allocations (backtrack)
+}
+```
+
+### v2 Changes
+1. **Pass store explicitly** (not `getStore()` global singleton)
+2. **String tags → integer IDs** internally for efficiency, but API uses strings
+3. **Keep scoped stores** for backtracking in proof search
+
+```javascript
+// v2 usage
+const store = new Store();
+const calculus = await Calculus.load(calcPath, rulesPath, store);
+const prover = new FocusedProver(calculus, store);
+
+// Proof search uses scoped stores
+const branchStore = store.fork();
+const result = prover.prove(sequent, branchStore);
+if (result.success) branchStore.commit();
+else branchStore.discard();
+```
+
+---
+
+## Zig Portability (DESIGN CONSTRAINT)
+
+v2 is designed for eventual Zig port. All core data structures must be Zig-portable:
+
+### Portable Patterns
+| Pattern | JS | Zig |
+|---------|----|----|
+| Integer IDs | `number` | `u32` |
+| Hash | `BigInt` (64-bit) | `u64` |
+| Array of children | `[]` | `[]u32` |
+| String interning | `Map<hash, string>` | `HashMap(u64, []const u8)` |
+| Arena allocation | `ScopedStore` | `std.heap.ArenaAllocator` |
+
+### Non-Portable (avoid in kernel)
+- `WeakRef` / `FinalizationRegistry`
+- Complex object graphs
+- Closures capturing state
+- `Map` with object keys
+
+### AST Representation (Zig-friendly)
+```javascript
+// v2 AST - flat, index-based (like lib/term.js)
+{
+  tag: 'tensor',           // String for API
+  tagId: 7,                // Integer for storage (maps to Zig enum)
+  children: [hash1, hash2] // Hashes, not object refs
+}
+
+// In Zig:
+const Node = struct {
+    tag: u16,              // Enum index
+    arity: u8,
+    children: [4]u64,      // Child hashes (max 4)
+};
+```
+
+### Hash Function (FNV-1a, already portable)
+```javascript
+// lib/hash.js - already Zig-portable
+const FNV_PRIME = 0x100000001b3n;
+const FNV_OFFSET = 0xcbf29ce484222325n;
+
+// Same algorithm in Zig:
+// const fnv_prime: u64 = 0x100000001b3;
+// const fnv_offset: u64 = 0xcbf29ce484222325;
+```
+
+---
+
 ## Summary
 
 | Aspect | Legacy | v2 |
 |--------|--------|-----|
-| State | Global `Calc.db` | Explicit `Calculus` object |
-| AST | `Node` class with methods | Pure data `{tag, children}` |
+| State | Global `Calc.db` | Explicit `Calculus` + `Store` |
+| AST | `Node` class with methods | Pure data `{tag, tagId, children}` |
 | Render | `node.toString()` | `render(ast, format, calc)` |
-| Parser | Jison (unmaintained) | tree-sitter |
+| Parser | Jison (unmaintained) | tree-sitter (Zig bindings) |
 | Kernel | Mixed with strategy | Minimal `applyRule` |
 | Strategy | Hardcoded in prover | Pluggable classes |
-| Rules | Integer IDs | String tags |
+| IDs | Integer only | String API, integer storage |
+| Store | Global singleton | Explicit, passed as param |
+| Backtrack | Manual cleanup | `ScopedStore.fork/commit/discard` |
+| Zig-ready | No | Yes (portable patterns) |
 
 The old code stays working throughout. Only delete it after v2 passes 100% of tests.
