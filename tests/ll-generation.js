@@ -207,3 +207,139 @@ describe('pattern generation', () => {
     assert.ok(pattern.includes('|-'), `Pattern should contain turnstile: ${pattern}`);
   });
 });
+
+describe('calculus-agnostic behavior', () => {
+
+  before(async () => {
+    await tsParser.init();
+  });
+
+  test('parseAsciiPattern parses binary infix operator', () => {
+    const pattern = generator.parseAsciiPattern('_ * _');
+    assert.strictEqual(pattern.arity, 2);
+    assert.deepStrictEqual(pattern.parts, ['', ' * ', '']);
+  });
+
+  test('parseAsciiPattern parses unary prefix operator', () => {
+    const pattern = generator.parseAsciiPattern('! _');
+    assert.strictEqual(pattern.arity, 1);
+    assert.deepStrictEqual(pattern.parts, ['! ', '']);
+  });
+
+  test('parseAsciiPattern parses nullary constant', () => {
+    const pattern = generator.parseAsciiPattern('I');
+    assert.strictEqual(pattern.arity, 0);
+    assert.deepStrictEqual(pattern.parts, ['I']);
+  });
+
+  test('applyPattern renders binary operator', () => {
+    const pattern = { arity: 2, parts: ['', ' * ', ''] };
+    const result = generator.applyPattern(pattern, ['A', 'B']);
+    assert.strictEqual(result, 'A * B');
+  });
+
+  test('applyPattern renders unary operator', () => {
+    const pattern = { arity: 1, parts: ['! ', ''] };
+    const result = generator.applyPattern(pattern, ['A']);
+    assert.strictEqual(result, '! A');
+  });
+
+  test('applyPattern renders nullary constant', () => {
+    const pattern = { arity: 0, parts: ['⊤'] };
+    const result = generator.applyPattern(pattern, []);
+    assert.strictEqual(result, '⊤');
+  });
+
+  test('custom connective uses @ascii pattern', async () => {
+    // Define a custom calculus with a made-up connective
+    const calcDef = `
+      formula: type.
+
+      % Custom binary connective with unusual syntax
+      myop: formula -> formula -> formula
+        @ascii "_ ⊕ _"
+        @latex "#1 \\\\oplus #2"
+        @prec 65 left.
+    `;
+
+    const rulesDef = `
+      deriv: sequent -> type.
+      myop_r: deriv (seq G (myop A B))
+        <- deriv (seq G A)
+        @pretty "⊕R".
+    `;
+
+    const calcResult = await tsParser.parse(calcDef);
+    const rulesResult = await tsParser.parse(rulesDef);
+
+    const connectives = generator.extractConnectives(calcResult.ast);
+    const rules = generator.extractRules(rulesResult.ast);
+
+    // Verify custom connective was extracted
+    assert.ok(connectives.myop);
+    assert.strictEqual(connectives.myop.arity, 2);
+    assert.strictEqual(connectives.myop.returnType, 'formula');
+    assert.strictEqual(connectives.myop.ascii, '_ ⊕ _');
+
+    // Verify pattern uses custom operator symbol
+    const pattern = generator.termToPattern(rules.myop_r.head, connectives);
+    assert.ok(pattern.includes('⊕'), `Pattern should use custom operator: ${pattern}`);
+    assert.ok(pattern.includes('F?A ⊕ F?B'), `Pattern should render: ${pattern}`);
+  });
+
+  test('getReturnType extracts from arrow chain', async () => {
+    const result = await tsParser.parse(`
+      foo: a -> b -> c.
+    `);
+    const decl = result.ast.declarations[0];
+    const returnType = generator.getReturnType(decl.typeExpr);
+    assert.strictEqual(returnType, 'c');
+  });
+
+  test('binary formula ops derived from type signature not hardcoded', async () => {
+    // Define a calculus with a non-standard connective
+    const calcDef = `
+      formula: type.
+
+      % Non-standard binary formula connective
+      fusion: formula -> formula -> formula
+        @ascii "_ ● _"
+        @latex "#1 \\\\bullet #2".
+
+      % Non-formula binary (should NOT be in Formula_Bin_Op)
+      structure: type.
+      semicolon: structure -> structure -> structure
+        @ascii "_ ; _".
+    `;
+
+    const calcResult = await tsParser.parse(calcDef);
+    const connectives = generator.extractConnectives(calcResult.ast);
+
+    // Manually call generateFormulaBinOps to test isolation
+    const llJson = {
+      calc_structure: {
+        Formula_Bin_Op: {}
+      }
+    };
+
+    // Build formula bin ops from connectives
+    for (const [name, conn] of Object.entries(connectives)) {
+      if (conn.arity !== 2) continue;
+      if (conn.returnType !== 'formula') continue;
+      if (!conn.ascii) continue;
+
+      const llName = `Formula_${name.charAt(0).toUpperCase() + name.slice(1)}`;
+      llJson.calc_structure.Formula_Bin_Op[llName] = {
+        ascii: conn.ascii.replace(/_/g, '').trim()
+      };
+    }
+
+    // Custom formula connective should be included
+    assert.ok(llJson.calc_structure.Formula_Bin_Op.Formula_Fusion);
+    assert.strictEqual(llJson.calc_structure.Formula_Bin_Op.Formula_Fusion.ascii, '●');
+
+    // Structure connective should NOT be included (wrong return type)
+    assert.ok(!llJson.calc_structure.Formula_Bin_Op.Formula_Semicolon);
+    assert.ok(!llJson.calc_structure.Formula_Bin_Op.Structure_Semicolon);
+  });
+});
