@@ -8,7 +8,18 @@ Outstanding tasks for the CALC project.
 
 ### Extended Celf DSL
 **Priority:** HIGH
-**Status:** DESIGN COMPLETE — Ready for implementation
+**Status:** PHASE 1 IN PROGRESS — Tree-sitter prototype working
+
+**Current State (2026-02-01):**
+- Tree-sitter chosen over Chevrotain/Ohm (handles 1000+ nesting, has Zig bindings)
+- Prototype grammar at `prototypes/tree-sitter-mde/grammar.js`
+- Nix flake created with gcc, tree-sitter, emscripten
+- Deep nesting test passed (1000 levels in 0.002s)
+
+**Next Steps:**
+1. Parse real optimism-mde files (`/home/mhhf/src/optimism-mde/lib/bin.mde`, `evm.mde`)
+2. Refine grammar for full Celf compatibility
+3. Test WASM build for browser
 
 Use **Extended Celf syntax** as the specification language, adding `@annotations` for metadata.
 
@@ -62,7 +73,9 @@ tensor_l : deriv (seq (comma G (struct (tensor A B))) C)
    ```
 
 **Implementation tasks:**
-- [ ] Implement Celf parser with Ohm (types, constructors, rules)
+- [x] Prototype tree-sitter parser for .mde files (`prototypes/tree-sitter-mde/`)
+- [x] Verify deep nesting works (1000+ levels, 0.002s)
+- [ ] Implement full Celf grammar in tree-sitter
 - [ ] Add `@literal` and `@desugar` for syntax sugar
 - [ ] Add `@ffi` and `@mode` for FFI predicates
 - [ ] Implement FFI dispatch in proof search
@@ -103,28 +116,54 @@ Need a modern, maintainable parser framework for:
    - Grammar defined in code (not separate file)
    - Downside: grammar-in-code harder to port directly
 
-**Decision: Ohm for prototyping, tree-sitter for production**
+**Decision: tree-sitter for both meta and object language**
 
-2. **Ohm** (JS) ← PRIMARY for prototyping
-   - PEG-based, separate grammar file
-   - Excellent visualization/debugging tools
-   - Clean separation: grammar vs semantics
-   - Good for prototyping and iteration
+Tree-sitter is the clear winner after prototyping both tree-sitter and Chevrotain:
 
-3. **tree-sitter** (C with bindings) ← FUTURE for editor support
-   - Industrial-strength incremental parsing
-   - Used by editors (VSCode, Neovim)
-   - Zig bindings exist for future port
+| Criteria | Tree-sitter | Chevrotain | Ohm |
+|----------|-------------|------------|-----|
+| Deep nesting (1000+) | ✅ 0.002s | ❌ Stack overflow | ❌ Stack overflow |
+| Algorithm | GLR (explicit stack) | LL(k) (call stack) | PEG (call stack) |
+| Zig porting | Official bindings | Manual rewrite | Manual rewrite |
+| Build step | Required (C) | None | None |
+| Editor support | Native | None | None |
 
-**Migration path:**
-```
-Jison (current) → Ohm (prototype) → tree-sitter (production/editors)
-                                  → Zig hand-written RD (performance)
-```
+**Why tree-sitter:**
+- **No stack overflow**: GLR uses explicit parse stack, handles 1000+ nesting levels
+- **Zig bindings**: Official `tree-sitter-zig` bindings exist
+- **Unified architecture**: Same parser tech for meta (`.calc`/`.rules`) and object (`.ll`) languages
+- **Editor integration**: Bonus syntax highlighting, code folding, etc.
+
+**Prototype location:** `prototypes/tree-sitter-mde/`
+
+**Development environment:** `flake.nix` provides gcc, tree-sitter CLI, emscripten for WASM builds. Use `direnv allow` to auto-load.
 
 **See:** dev/research/typed-dsl-logical-framework.md for full comparison
 
 ---
+
+### Higher Order Linear Types:
+Priority: HIGH
+
+I'm curious about linear types that can wrap linear types.
+Right now we only have the posibility of doing:
+
+```
+bla: type.
+omg: bla.
+omg2: bla.
+
+foo: bla -> ltype.
+```
+
+but i'd like something like:
+
+```
+bar: ltype -> ltype
+```
+
+We would need to research that in depth if its possible and how easy and 'far away' it is from the constructive LL we already implemented.
+
 
 ### Pacioli Grading Semiring
 **Priority:** HIGH

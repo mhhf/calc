@@ -1,0 +1,170 @@
+% =============================================================================
+% Intuitionistic Linear Logic - Inference Rules
+% =============================================================================
+%
+% Rules for ILL using the minimal LNL sequent: Γ ; Δ ⊢ C
+%   Γ = cartesian context (position 1, contraction/weakening OK)
+%   Δ = linear context (position 2, used exactly once)
+%   C = succedent (position 3, the conclusion)
+%
+% All positions use the same structure type. Mode is by position.
+%
+% Convention:
+%   Γ, Ω     = cartesian structures
+%   Δ, Δ'    = linear structures
+%   A, B, C  = formulas
+%   t, p, q  = terms
+%
+% Notation:
+%   hyp(t, A) = hypothesis "t : A" (or just "A" when t is --)
+%   comma(X, Y) = context concatenation
+%   empty = empty context (I)
+
+@extends lnl.
+
+% =============================================================================
+% Identity and Cut
+% =============================================================================
+
+%    ─────────────
+%     I ; A |- A
+id: deriv (seq empty (hyp any A) (hyp any A))
+  @pretty "Id"
+  @invertible true.
+
+% =============================================================================
+% Tensor Rules (Multiplicative Conjunction)
+% =============================================================================
+
+%     Γ ; Δ |- A      Γ ; Δ' |- B
+%    ─────────────────────────────
+%         Γ ; Δ, Δ' |- A ⊗ B
+tensor_r: deriv (seq G (comma D D') (hyp any (tensor A B)))
+  <- deriv (seq G D (hyp any A))
+  <- deriv (seq G D' (hyp any B))
+  @pretty "⊗R"
+  @invertible false.
+
+%      Γ ; Δ, A, B |- C
+%    ────────────────────
+%     Γ ; Δ, A ⊗ B |- C
+tensor_l: deriv (seq G (comma D (hyp any (tensor A B))) C)
+  <- deriv (seq G (comma (comma D (hyp any A)) (hyp any B)) C)
+  @pretty "⊗L"
+  @invertible true.
+
+% =============================================================================
+% Linear Implication Rules (Lollipop)
+% =============================================================================
+
+%      Γ ; Δ, A |- B
+%    ─────────────────
+%     Γ ; Δ |- A ⊸ B
+loli_r: deriv (seq G D (hyp any (loli A B)))
+  <- deriv (seq G (comma D (hyp any A)) (hyp any B))
+  @pretty "⊸R"
+  @invertible true.
+
+%     Γ ; Δ |- A      Γ ; Δ', B |- C
+%    ────────────────────────────────
+%        Γ ; Δ, Δ', A ⊸ B |- C
+loli_l: deriv (seq G (comma (comma D (hyp any (loli A B))) D') C)
+  <- deriv (seq G D (hyp any A))
+  <- deriv (seq G (comma D' (hyp any B)) C)
+  @pretty "⊸L"
+  @invertible false.
+
+% =============================================================================
+% With Rules (Additive Conjunction)
+% =============================================================================
+
+%     Γ ; Δ |- A      Γ ; Δ |- B
+%    ────────────────────────────
+%          Γ ; Δ |- A & B
+with_r: deriv (seq G D (hyp any (with A B)))
+  <- deriv (seq G D (hyp any A))
+  <- deriv (seq G D (hyp any B))
+  @pretty "&R"
+  @invertible false.
+
+%      Γ ; Δ, A |- C
+%    ─────────────────
+%     Γ ; Δ, A & B |- C
+with_l1: deriv (seq G (comma D (hyp any (with A B))) C)
+  <- deriv (seq G (comma D (hyp any A)) C)
+  @pretty "&L₁"
+  @invertible true.
+
+%      Γ ; Δ, B |- C
+%    ─────────────────
+%     Γ ; Δ, A & B |- C
+with_l2: deriv (seq G (comma D (hyp any (with A B))) C)
+  <- deriv (seq G (comma D (hyp any B)) C)
+  @pretty "&L₂"
+  @invertible true.
+
+% =============================================================================
+% Unit Rules (Multiplicative Unit)
+% =============================================================================
+
+%    ─────────────
+%     Γ ; I |- 1
+one_r: deriv (seq G empty (hyp any one))
+  @pretty "1R"
+  @invertible false.
+
+%      Γ ; Δ |- C
+%    ──────────────
+%     Γ ; Δ, 1 |- C
+one_l: deriv (seq G (comma D (hyp any one)) C)
+  <- deriv (seq G D C)
+  @pretty "1L"
+  @invertible true.
+
+% =============================================================================
+% Bang Rules (Exponential - Bridge to Cartesian)
+% =============================================================================
+%
+% The bang ! is the key bridge between linear and cartesian modes.
+% !A means "A is available for unlimited use" (move to cartesian context).
+
+%      Γ ; I |- A
+%    ──────────────
+%     Γ ; I |- !A
+promotion: deriv (seq G empty (hyp any (bang A)))
+  <- deriv (seq G empty (hyp any A))
+  @pretty "!R"
+  @invertible false
+  @bridge linear_to_cartesian.
+
+%      Γ ; Δ, A |- C
+%    ────────────────
+%     Γ ; Δ, !A |- C
+dereliction: deriv (seq G (comma D (hyp any (bang A))) C)
+  <- deriv (seq G (comma D (hyp any A)) C)
+  @pretty "!D"
+  @invertible true.
+
+%     Γ, A ; Δ |- C
+%    ────────────────
+%     Γ ; Δ, !A |- C
+absorption: deriv (seq G (comma D (hyp any (bang A))) C)
+  <- deriv (seq (comma G (hyp any A)) D C)
+  @pretty "!L"
+  @invertible true
+  @bridge linear_to_cartesian.
+
+% =============================================================================
+% Cartesian Context Rules
+% =============================================================================
+
+%     Γ, A ; Δ, A |- C
+%    ──────────────────
+%       Γ, A ; Δ |- C
+copy: deriv (seq (comma G (hyp any A)) D C)
+  <- deriv (seq (comma G (hyp any A)) (comma D (hyp any A)) C)
+  @pretty "Copy"
+  @invertible true
+  @structural true.
+
+% Note: Cartesian weakening (discard) is in lnl.family as cart_weakening

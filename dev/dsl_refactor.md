@@ -39,6 +39,14 @@ This document outlines the implementation plan for replacing ll.json with an Ext
 - [x] Verified Calc.init() works with generated ll.json
 - [x] Verified parser (genParser) works with generated ll.json
 
+**Phase 3.5 Completed (Family Abstraction):**
+- [x] Family file format: `families/display_calculus.family`
+- [x] `@extends` directive in .calc for auto-resolving family
+- [x] `@role` annotations for infrastructure roles (judgment, sequent, context_concat, formula_lift, unit, variable, wildcard)
+- [x] Role-based pattern generation in generator.js
+- [x] Removed 37 lines of hardcoded fallbacks (deriv, seq, comma, struct, empty)
+- [x] Test suite: `tests/family-generation.js` (6 tests passing)
+
 **Next (Phase 4):**
 - [ ] Create unified Calculus API (`lib/calculus.js`)
 - [ ] Support loading from ll.json OR .calc/.rules
@@ -573,3 +581,139 @@ lib/celf/stdlib/
 │  - Different .calc/.rules → different object grammars   │
 └─────────────────────────────────────────────────────────┘
 ```
+
+---
+
+## Phase 3.5: Family Abstraction & Multi-Type DC (2026-02-02)
+
+### Files Created
+
+```
+families/
+├── display_calculus.family   # Base family with labeled connective
+└── lnl.family                # LNL extension with F ⊣ G adjunction
+
+calculus/
+├── linear-logic-minimal.calc # Simple ILL using display_calculus
+└── lnl-linear-logic.calc     # ILL using LNL family (multi-type)
+```
+
+### Multi-Type DC Design
+
+**Mode System:**
+Types can be annotated with `@mode` to indicate structural properties:
+- `@mode linear` - No contraction, no weakening (default)
+- `@mode cartesian` - Contraction + weakening allowed
+
+**Bridge Connectives:**
+The F ⊣ G adjunction connects modes:
+```celf
+functor_g: formula -> formula
+  @role bridge
+  @adjoint functor_f
+  @from_mode linear
+  @to_mode cartesian.
+
+functor_f: formula -> formula
+  @role bridge
+  @adjoint functor_g
+  @from_mode cartesian
+  @to_mode linear.
+```
+
+**LNL Sequent:**
+```celf
+lnl_seq: cart_structure -> structure -> formula -> lnl_sequent
+  @ascii "_ ; _ |- -- : _"
+  @shape lnl.
+```
+
+### Labeled vs Anonymous Proof Terms
+
+Two ways to put formulas in context:
+```celf
+% Anonymous (wildcard proof term)
+struct: formula -> structure
+  @ascii "-- : _"
+  @role formula_lift.
+
+% Labeled (tracks proof term variable)
+labeled: term -> formula -> structure
+  @ascii "_ : _"
+  @role labeled_formula.
+```
+
+---
+
+## Family Abstraction Analysis (2026-02-02)
+
+### Q1: Can we tell from display-calculus.family that something IS a display calculus?
+
+**Answer: NO, not fully.**
+
+The family file provides *structural infrastructure* but does NOT encode:
+- Display postulates (structural permutation rules)
+- Belnap's C1-C8 conditions for cut elimination
+- Structure visibility (which connective "displays" which)
+
+To verify something is a display calculus, we'd need to:
+1. Check the .rules file has proper display postulates
+2. Verify C1-C8 conditions hold (complex meta-property)
+
+**What the family DOES indicate:**
+- Presence of @role annotations suggests display-style architecture
+- `@role sequent` with `@shape one_sided` indicates one-sided sequent form
+- But a purely syntactic one-sided sequent calculus isn't necessarily a display calculus
+
+### Q2: Is display_calculus.family general enough for multi-type display calculi?
+
+**Answer: NO, current family has limitations:**
+
+| Feature | Current | Multi-Type DC Needs |
+|---------|---------|---------------------|
+| Structure types | 1 (`structure`) | Multiple (linear_ctx, persistent_ctx) |
+| Formula types | 1 (`formula`) | Multiple (linear_formula, intuitionistic_formula) |
+| Bridge connectives | None | F ⊣ G adjunction (`!` decomposes into two) |
+| Mode annotations | None | Types parameterized by mode preorder |
+
+**For LNL (Linear/Non-Linear) Logic:**
+Current family would need extension:
+```celf
+% Additional types for LNL
+intuitionistic_formula: type @layer formula @mode persistent.
+linear_formula: type @layer formula @mode linear.
+
+% Bridge adjunction
+F_functor: intuitionistic_formula -> linear_formula  % Left adjoint
+G_functor: linear_formula -> intuitionistic_formula  % Right adjoint (!)
+```
+
+### Q3: Proof term support (named vs anonymous)?
+
+**Answer: Currently ANONYMOUS only.**
+
+```celf
+% Current: struct takes only formula
+struct: formula -> structure
+  @role formula_lift.
+
+% For named proof terms, would need:
+labeled: term -> formula -> structure
+  @role labeled_formula.
+```
+
+The `var: string -> term` and `any: term` exist, but `struct` only lifts formulas, not labeled formulas.
+
+**To support named proof terms:**
+1. Add `labeled: term -> formula -> structure` connective
+2. Modify proof search to track variable assignments
+3. Proof trees would output actual proof terms, not just `--`
+
+### Roadmap for Multi-Type Support
+
+1. **Phase A**: Add `@mode` annotation to types
+2. **Phase B**: Allow multiple types per layer (`@layer formula @mode linear`)
+3. **Phase C**: Add bridge connective support in generator
+4. **Phase D**: Verify LNL as test case
+
+See: dev/research/multi-type-display-calculus.md for detailed research

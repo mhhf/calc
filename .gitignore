@@ -1,3 +1,13 @@
 out/
 *.*~
 node_modules/
+
+# Nix/direnv
+.direnv/
+result
+
+# Tree-sitter generated files
+lib/tree-sitter-mde/src/
+lib/tree-sitter-mde/*.so
+lib/tree-sitter-mde/*.wasm
+lib/tree-sitter-mde/bindings/

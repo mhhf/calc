@@ -4,11 +4,14 @@
   "description": "Linear logic proof calculus sandbox",
   "main": "index.js",
   "scripts": {
-    "test": "node --test tests/test.js tests/node.js tests/proofstate.js tests/hash.js tests/store.js tests/term.js tests/intern.js tests/profiler.js tests/parser-baseline.js tests/calc-db-baseline.js tests/rendering-baseline.js && node tests/polarity-inference.js",
+    "test": "node --test tests/test.js tests/node.js tests/proofstate.js tests/hash.js tests/store.js tests/term.js tests/intern.js tests/profiler.js tests/parser-baseline.js tests/calc-db-baseline.js tests/rendering-baseline.js tests/sequent-lnl.js tests/sequent-tree.js tests/display-prover.js && node tests/polarity-inference.js",
     "test:celf": "node --stack-size=4096 --test tests/celf-parser.js",
+    "test:ts": "node --test tests/tree-sitter.js",
     "test:e2e": "node tests/e2e-solidjs.js",
-    "test:all": "npm test && npm run test:e2e",
+    "test:all": "npm test && npm run test:ts && npm run test:e2e",
     "build:parser": "./libexec/calc-genparser",
+    "build:ts": "cd lib/tree-sitter-mde && tree-sitter generate && tree-sitter build --output mde.so",
+    "build:ts:wasm": "cd lib/tree-sitter-mde && tree-sitter build --wasm",
     "dev": "npm run build:parser && vite --config src/ui/vite.config.ts",
     "build:ui": "npm run build:parser && vite build --config src/ui/vite.config.ts",
     "preview": "vite preview --config src/ui/vite.config.ts",
@@ -31,7 +34,8 @@
     "jison-lex": "^0.3.4",
     "ohm-js": "^17.3.0",
     "readline-sync": "^1.4.7",
-    "shelljs": "^0.7.8"
+    "shelljs": "^0.7.8",
+    "web-tree-sitter": "^0.25.10"
   },
   "devDependencies": {
     "@rollup/plugin-commonjs": "^29.0.0",

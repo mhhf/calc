@@ -1,0 +1,86 @@
+% =============================================================================
+% Intuitionistic Linear Logic - Connectives
+% =============================================================================
+%
+% ILL connectives with polarity and category annotations.
+%
+% Multiplicatives: ⊗ (tensor), ⊸ (loli), 1 (one)
+% Additives: & (with)
+% Exponentials: ! (bang) - derived from F ∘ G adjunction
+
+@extends lnl.
+
+% =============================================================================
+% Base Type
+% =============================================================================
+
+formula: type.
+
+% =============================================================================
+% Multiplicatives
+% =============================================================================
+
+% Tensor (multiplicative conjunction): A ⊗ B
+% "I have both A and B simultaneously"
+tensor: formula -> formula -> formula
+  @ascii "_ * _"
+  @latex "#1 \\otimes #2"
+  @prec 60 left
+  @polarity positive
+  @category multiplicative.
+
+% Linear implication (lollipop): A ⊸ B
+% "Consume A to produce B"
+loli: formula -> formula -> formula
+  @ascii "_ -o _"
+  @latex "#1 \\multimap #2"
+  @prec 50 right
+  @polarity negative
+  @category multiplicative.
+
+% Multiplicative unit: 1
+% "I have nothing (but that's a resource too)"
+one: formula
+  @ascii "I"
+  @latex "\\mathbf{1}"
+  @polarity positive
+  @category multiplicative.
+
+% =============================================================================
+% Additives
+% =============================================================================
+
+% With (additive conjunction): A & B
+% "I can choose to use this as A or as B (but not both)"
+with: formula -> formula -> formula
+  @ascii "_ & _"
+  @latex "#1 \\& #2"
+  @prec 70 left
+  @polarity negative
+  @category additive.
+
+% =============================================================================
+% Exponentials
+% =============================================================================
+
+% Bang (of-course): !A
+% "A is available for unlimited use"
+%
+% Semantically: !A = F(G(A)) where F ⊣ G is the LNL adjunction
+% - G extracts reusable content (moves to cartesian)
+% - F embeds back into linear world
+bang: formula -> formula
+  @ascii "! _"
+  @latex "!#1"
+  @prec 80
+  @polarity positive
+  @category exponential.
+
+% =============================================================================
+% Atoms
+% =============================================================================
+
+atom: string -> formula
+  @ascii "_"
+  @latex "#1"
+  @prec 100.

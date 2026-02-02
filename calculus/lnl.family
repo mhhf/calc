@@ -1,0 +1,255 @@
+% =============================================================================
+% LNL (Linear/Non-Linear) Family Infrastructure
+% =============================================================================
+%
+% Minimal, theory-compliant design for multi-type display calculus.
+%
+% Key design principles:
+%   - Single structure type (mode determined by sequent position)
+%   - Single hypothesis constructor (hyp: term -> formula -> structure)
+%   - Wildcard term (--) renders without prefix when used
+%   - Sequent: structure -> structure -> structure (fully uniform)
+%
+% Modes:
+%   - Position 1 (Γ): cartesian (contraction + weakening allowed)
+%   - Position 2 (Δ): linear (no contraction, no weakening)
+%   - Position 3 (A): succedent (single formula)
+%
+% The F ⊣ G adjunction connects the modes. For ILL, this gives ! = G ∘ F.
+
+@family lnl.
+
+% =============================================================================
+% Terms (proof witnesses / proof terms)
+% =============================================================================
+
+term: type
+  @layer term.
+
+% Named variable (for tracking proof terms in Curry-Howard)
+var: string -> term
+  @ascii "_".
+
+% Wildcard/anonymous term (when we don't care about the proof term)
+any: term
+  @ascii "--".
+
+% =============================================================================
+% Structures (contexts and hypotheses)
+% =============================================================================
+%
+% A structure is either:
+%   - A hypothesis: term : formula (a typing judgment)
+%   - A combination: X , Y (comma/tensor of structures)
+%   - Empty: I (unit for comma)
+
+structure: type
+  @layer structure.
+
+% Hypothesis: pairs a proof term with a formula
+% When term is 'any' (--), renders as just the formula
+% Examples: x : A  or  -- : A (renders as A)
+hyp: term -> formula -> structure
+  @ascii "_ : _"
+  @ascii_when_any "_"
+  @role hypothesis.
+
+% Context concatenation (comma / tensor of structures)
+comma: structure -> structure -> structure
+  @ascii "_ , _"
+  @prec 30 left
+  @role context_concat.
+
+% Empty context (unit for comma)
+empty: structure
+  @ascii "I"
+  @role unit.
+
+% =============================================================================
+% Sequent (Γ ; Δ ⊢ C)
+% =============================================================================
+%
+% Fully uniform: all three positions are structures.
+%   - Position 1 (Γ): cartesian context
+%   - Position 2 (Δ): linear context
+%   - Position 3 (C): succedent (conclusion)
+%
+% Mode is determined by POSITION, not type.
+% Structural rules specify which position they target.
+
+sequent: type
+  @layer sequent.
+
+seq: structure -> structure -> structure -> sequent
+  @ascii "_ ; _ |- _"
+  @latex "#1 ; #2 \\vdash #3"
+  @prec 10
+  @role sequent
+  @position_modes "cartesian linear linear".
+
+% =============================================================================
+% Derivability Judgment
+% =============================================================================
+
+deriv: sequent -> type
+  @role judgment.
+
+% =============================================================================
+% Metavariable Conventions
+% =============================================================================
+
+@metavar formula prefix="F?" examples="A B C".
+@metavar structure prefix="?" examples="X Y Z D".
+@metavar term prefix="T?" examples="t s u".
+@metavar atom prefix="A?" examples="p q r".
+
+% =============================================================================
+% Display Postulates - Linear Mode (Position 2)
+% =============================================================================
+%
+% These structural rules define the linear mode:
+%   - Exchange: Δ, Ω ⊣⊢ Ω, Δ
+%   - Associativity: (Δ, Ω), Σ ⊣⊢ Δ, (Ω, Σ)
+%   - Unit laws: I, Δ ⊣⊢ Δ ⊣⊢ Δ, I
+%
+% Linear mode has NO contraction and NO weakening.
+%
+% Convention: Γ = cartesian context, Δ/Ω/Σ = linear structures, A/B/C = formulas
+
+%      Γ ; Ω, Δ |- A
+%    ─────────────────
+%      Γ ; Δ, Ω |- A
+lin_exchange: deriv (seq G (comma X Y) C)
+  <- deriv (seq G (comma Y X) C)
+  @pretty "XL"
+  @structural exchange
+  @invertible true
+  @position 2.
+
+%     Γ ; Δ, (Ω, Σ) |- A
+%    ─────────────────────
+%     Γ ; (Δ, Ω), Σ |- A
+lin_assoc_l: deriv (seq G (comma (comma X Y) Z) C)
+  <- deriv (seq G (comma X (comma Y Z)) C)
+  @pretty "AL→"
+  @structural associativity
+  @invertible true
+  @position 2.
+
+%     Γ ; (Δ, Ω), Σ |- A
+%    ─────────────────────
+%     Γ ; Δ, (Ω, Σ) |- A
+lin_assoc_r: deriv (seq G (comma X (comma Y Z)) C)
+  <- deriv (seq G (comma (comma X Y) Z) C)
+  @pretty "AL←"
+  @structural associativity
+  @invertible true
+  @position 2.
+
+%       Γ ; Δ |- A
+%    ───────────────
+%     Γ ; I, Δ |- A
+lin_unit_l: deriv (seq G (comma empty X) C)
+  <- deriv (seq G X C)
+  @pretty "UL"
+  @structural unit
+  @invertible true
+  @position 2.
+
+%       Γ ; Δ |- A
+%    ───────────────
+%     Γ ; Δ, I |- A
+lin_unit_r: deriv (seq G (comma X empty) C)
+  <- deriv (seq G X C)
+  @pretty "UR"
+  @structural unit
+  @invertible true
+  @position 2.
+
+% =============================================================================
+% Display Postulates - Cartesian Mode (Position 1)
+% =============================================================================
+%
+% Cartesian mode has ALL linear structural rules PLUS:
+%   - Contraction: Γ, Ω, Ω → Γ, Ω (use hypothesis multiple times)
+%   - Weakening: Γ → Γ, Ω (discard unused hypothesis)
+%
+% Convention: Γ/Ω/Σ = cartesian structures, Δ = linear context, A/B/C = formulas
+
+%      Ω, Γ ; Δ |- A
+%    ─────────────────
+%      Γ, Ω ; Δ |- A
+cart_exchange: deriv (seq (comma G H) D C)
+  <- deriv (seq (comma H G) D C)
+  @pretty "XC"
+  @structural exchange
+  @invertible true
+  @position 1.
+
+%     Γ, (Ω, Σ) ; Δ |- A
+%    ─────────────────────
+%     (Γ, Ω), Σ ; Δ |- A
+cart_assoc_l: deriv (seq (comma (comma G H) J) D C)
+  <- deriv (seq (comma G (comma H J)) D C)
+  @pretty "AC→"
+  @structural associativity
+  @invertible true
+  @position 1.
+
+%     (Γ, Ω), Σ ; Δ |- A
+%    ─────────────────────
+%     Γ, (Ω, Σ) ; Δ |- A
+cart_assoc_r: deriv (seq (comma G (comma H J)) D C)
+  <- deriv (seq (comma (comma G H) J) D C)
+  @pretty "AC←"
+  @structural associativity
+  @invertible true
+  @position 1.
+
+%       Γ ; Δ |- A
+%    ────────────────
+%     I, Γ ; Δ |- A
+cart_unit_l: deriv (seq (comma empty G) D C)
+  <- deriv (seq G D C)
+  @pretty "UCL"
+  @structural unit
+  @invertible true
+  @position 1.
+
+%       Γ ; Δ |- A
+%    ────────────────
+%     Γ, I ; Δ |- A
+cart_unit_r: deriv (seq (comma G empty) D C)
+  <- deriv (seq G D C)
+  @pretty "UCR"
+  @structural unit
+  @invertible true
+  @position 1.
+
+%     (Γ, Ω), Ω ; Δ |- A
+%    ─────────────────────
+%       Γ, Ω ; Δ |- A
+cart_contraction: deriv (seq (comma G X) D C)
+  <- deriv (seq (comma (comma G X) X) D C)
+  @pretty "CC"
+  @structural contraction
+  @invertible false
+  @position 1.
+
+%       Γ ; Δ |- A
+%    ────────────────
+%     Γ, Ω ; Δ |- A
+cart_weakening: deriv (seq (comma G X) D C)
+  <- deriv (seq G D C)
+  @pretty "WC"
+  @structural weakening
+  @invertible false
+  @position 1.
+
+% =============================================================================
+% Schema Directives
+% =============================================================================
+
+@schema bin_factorization formula structure.
+@schema freevar_entries formula structure sequent term.
+@schema atom_type Atprop.
