@@ -28,11 +28,14 @@ This document outlines the implementation plan for replacing ll.json with an Ext
 
 **Phase 3 Completed:**
 - [x] ll.json generator: `lib/celf/generator.js`
+- [x] **Calculus-agnostic**: No hardcoded connectives (tensor/loli/with)
+- [x] Connective identification via type signatures (returnType + arity)
+- [x] Dynamic pattern rendering via @ascii parsing
 - [x] Extract connectives from .calc (binary operators, precedence, rendering)
 - [x] Extract rules from .rules (premises, annotations)
 - [x] Generate calc_structure (Formula, Structure, Sequent, etc.)
 - [x] Generate rules section with correct string patterns
-- [x] Test suite: `tests/ll-generation.js` (12 tests passing)
+- [x] Test suite: `tests/ll-generation.js` (21 tests passing)
 - [x] Verified Calc.init() works with generated ll.json
 - [x] Verified parser (genParser) works with generated ll.json
 
@@ -283,11 +286,17 @@ AST.IdentValue(name)              // { type: 'IdentValue', name }
 **Goal:** Generate ll.json from .calc + .rules for backwards compatibility.
 **Status:** COMPLETE
 
+**Key Property:** The generator is **calculus-agnostic**. It derives all connective information from:
+- Type signatures (e.g., `formula -> formula -> formula` indicates binary formula connective)
+- `@ascii` patterns (e.g., `"_ * _"` specifies how to render the connective)
+
+No hardcoded logic for specific connectives (tensor, loli, with, etc.). Any calculus definable in the Extended Celf format can be processed.
+
 **Transformation:**
 ```
-.calc types/connectives  →  calc_structure
-.calc @annotations       →  ascii/latex/precedence fields
-.rules definitions       →  rules section
+.calc types/connectives  →  calc_structure (via type signature analysis)
+.calc @annotations       →  ascii/latex/precedence fields (via @ascii patterns)
+.rules definitions       →  rules section (via connective registry lookup)
 Inferred from structure  →  calc_structure_rules_meta
 ```
 
@@ -306,23 +315,28 @@ const llJson = await generator.generate(
 await generator.generateToFile(calcPath, rulesPath, outputPath);
 
 // Helpers
-generator.extractConnectives(calcAst)  // Get connective metadata
+generator.extractConnectives(calcAst)  // Get connective metadata with returnType
 generator.extractRules(rulesAst)       // Get rule metadata
-generator.termToPattern(term)          // Convert Celf term to ll.json pattern
+generator.termToPattern(term, conn)    // Convert Celf term using connective registry
+generator.parseAsciiPattern(ascii)     // Parse "_ * _" into {arity, parts}
+generator.applyPattern(pattern, args)  // Apply pattern to arguments
+generator.getReturnType(typeExpr)      // Get return type from arrow chain
 ```
 
-**Tests:** ✓ All passing (12 tests in tests/ll-generation.js)
+**Tests:** ✓ All passing (21 tests in tests/ll-generation.js)
 - [x] Generate ll.json from linear-logic.calc + linear-logic.rules
-- [x] Extract binary operators (tensor, loli, with)
+- [x] Extract binary operators from type signatures (not hardcoded)
 - [x] Generate rule categories (RuleZer, RuleU, RuleBin)
 - [x] Generate sequent patterns (e.g., "?X, -- : F?A * F?B |- -- : F?C")
 - [x] Verify Calc.init() works with generated ll.json
 - [x] Verify genParser() works with generated ll.json
+- [x] Custom connectives use their @ascii patterns dynamically
+- [x] Formula vs structure connectives distinguished by return type
 
 **Files:**
 ```
-lib/celf/generator.js       # .calc → ll.json generator
-tests/ll-generation.js      # Generation tests (12 tests)
+lib/celf/generator.js       # .calc → ll.json generator (calculus-agnostic)
+tests/ll-generation.js      # Generation tests (21 tests)
 ```
 
 ### Phase 4: Direct AST Consumers
