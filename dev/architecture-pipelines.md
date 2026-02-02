@@ -88,6 +88,8 @@ lib/v2/
 │   └── apply.js              # applyRule(sequent, rule, position) → premises
 │
 ├── provers/                  # Proof search strategies
+│   ├── registry.js           # Prover registry (list, select provers)
+│   ├── prover.js             # Base Prover interface
 │   ├── generic.js            # Generic prover (any calculus, slow)
 │   └── focused.js            # ILL-specific (focusing, lazy splitting)
 │
@@ -332,33 +334,89 @@ class Calculus {
 
 ## Prover Architecture
 
-### Two Provers, Always Available
+### Pluggable Provers per Calculus
 ```
 ┌─────────────────────────────────────────────────────────────────┐
-│                         PROVERS                                  │
+│                    PROVER REGISTRY                               │
 │                                                                 │
-│  ┌─────────────────────┐     ┌─────────────────────┐           │
-│  │   GenericProver     │     │   FocusedProver     │           │
-│  │   (always works)    │     │   (ILL-optimized)   │           │
-│  ├─────────────────────┤     ├─────────────────────┤           │
-│  │ • Tries all rules   │     │ • Polarity/focusing │           │
-│  │ • Supports ordered  │     │ • Lazy splitting    │           │
-│  │ • Loop detection    │     │ • delta_in/out      │           │
-│  │ • Slow but generic  │     │ • Fast for ILL      │           │
-│  └─────────────────────┘     └─────────────────────┘           │
-│            ↑                           ↑                        │
-│            │                           │                        │
-│            └───────── User chooses ────┘                        │
+│  For a given calculus (e.g. ILL), multiple provers available:   │
+│                                                                 │
+│  ┌─────────────┐ ┌─────────────┐ ┌─────────────┐ ┌─────────┐   │
+│  │   generic   │ │   focused   │ │   tableaux  │ │  future │   │
+│  │  (default)  │ │ (ILL-opt)   │ │  (future)   │ │   ...   │   │
+│  └─────────────┘ └─────────────┘ └─────────────┘ └─────────┘   │
+│        ↑               ↑               ↑              ↑         │
+│        └───────────────┴───────────────┴──────────────┘         │
+│                     User/CLI chooses                            │
 └─────────────────────────────────────────────────────────────────┘
 ```
 
-**GenericProver**: Always available, works with any calculus (ILL, ordered logic, etc.)
-**FocusedProver**: ILL-specific optimization, uses lazy resource management
+### Prover Interface
+```javascript
+// All provers implement this interface
+class Prover {
+  constructor(calculus, store, options) { }
 
-User can:
-- Use generic only (slow, but supports any logic)
-- Use focused only (fast, ILL-specific)
-- Use focused with generic verification (trust but verify)
+  // Returns { success, proofTree, theta, ... }
+  prove(sequent) { throw new Error('implement me'); }
+
+  // Metadata
+  static get name() { return 'generic'; }
+  static get description() { return 'Exhaustive search'; }
+  static supports(calculus) { return true; }  // Which calculi this prover works with
+}
+```
+
+### Prover Registry
+```javascript
+// lib/v2/provers/registry.js
+class ProverRegistry {
+  constructor() {
+    this.provers = new Map();  // name → ProverClass
+  }
+
+  register(ProverClass) {
+    this.provers.set(ProverClass.name, ProverClass);
+  }
+
+  get(name) {
+    return this.provers.get(name);
+  }
+
+  listFor(calculus) {
+    // Return all provers that support this calculus
+    return [...this.provers.values()]
+      .filter(P => P.supports(calculus));
+  }
+}
+
+// Default registry
+const registry = new ProverRegistry();
+registry.register(GenericProver);
+registry.register(FocusedProver);
+// Future: registry.register(TableauxProver);
+// Future: registry.register(ResolutionProver);
+```
+
+### CLI Usage
+```bash
+calc proof "A -o A" --prover=generic    # Use generic (slow)
+calc proof "A -o A" --prover=focused    # Use focused (fast, ILL)
+calc proof "A -o A"                     # Use default for calculus
+```
+
+### Built-in Provers
+| Prover | Supports | Strategy |
+|--------|----------|----------|
+| `generic` | Any calculus | Exhaustive rule enumeration, loop detection |
+| `focused` | ILL | Andreoli focusing, lazy splitting (delta_in/out) |
+
+### Future Provers (examples)
+| Prover | Supports | Strategy |
+|--------|----------|----------|
+| `tableaux` | Classical, ILL | Tableau method |
+| `resolution` | Classical | Resolution refutation |
+| `inverse` | ILL | Inverse method (bottom-up) |
 
 ### Lazy Resource Management (ILL-Specific)
 
