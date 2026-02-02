@@ -64,12 +64,6 @@ atom: string -> formula
   @latex "#1"
   @prec 100.
 
-% Parametric atom: p(t1, t2, ...)
-atom_param: string -> term_list -> formula
-  @ascii "_ ( _ )"
-  @latex "#1 ( #2 )"
-  @prec 100.
-
 % =============================================================================
 % Terms (for proof terms / witnesses)
 % =============================================================================
