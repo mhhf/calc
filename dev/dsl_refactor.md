@@ -26,10 +26,20 @@ This document outlines the implementation plan for replacing ll.json with an Ext
 - [x] Test suite extended: `tests/tree-sitter.js` (30 tests passing)
 - [x] Sample files: `calculus/linear-logic.calc`, `calculus/linear-logic.rules`
 
-**Next (Phase 3):**
-- [ ] ll.json generation from .calc/.rules files
-- [ ] Compare generated ll.json with existing ll.json
-- [ ] Verify Calc.init() works with generated ll.json
+**Phase 3 Completed:**
+- [x] ll.json generator: `lib/celf/generator.js`
+- [x] Extract connectives from .calc (binary operators, precedence, rendering)
+- [x] Extract rules from .rules (premises, annotations)
+- [x] Generate calc_structure (Formula, Structure, Sequent, etc.)
+- [x] Generate rules section with correct string patterns
+- [x] Test suite: `tests/ll-generation.js` (12 tests passing)
+- [x] Verified Calc.init() works with generated ll.json
+- [x] Verified parser (genParser) works with generated ll.json
+
+**Next (Phase 4):**
+- [ ] Create unified Calculus API (`lib/calculus.js`)
+- [ ] Support loading from ll.json OR .calc/.rules
+- [ ] Refactor lib/ consumers to use Calculus API
 
 ---
 
@@ -271,6 +281,7 @@ AST.IdentValue(name)              // { type: 'IdentValue', name }
 
 ### Phase 3: ll.json Generation
 **Goal:** Generate ll.json from .calc + .rules for backwards compatibility.
+**Status:** COMPLETE
 
 **Transformation:**
 ```
@@ -280,16 +291,38 @@ AST.IdentValue(name)              // { type: 'IdentValue', name }
 Inferred from structure  →  calc_structure_rules_meta
 ```
 
-**Tests:**
-- [ ] Generate ll.json from linear-logic.calc + linear-logic.rules
-- [ ] Compare with existing ll.json (structure, not exact match)
-- [ ] Verify generated ll.json works with current parser.js
-- [ ] Verify Calc.init() produces equivalent Calc.db
+**API:**
+```javascript
+const generator = require('./lib/celf/generator');
+
+// Generate ll.json programmatically
+const llJson = await generator.generate(
+  './calculus/linear-logic.calc',
+  './calculus/linear-logic.rules',
+  { calcName: 'LinearLogic' }
+);
+
+// Or generate and write to file
+await generator.generateToFile(calcPath, rulesPath, outputPath);
+
+// Helpers
+generator.extractConnectives(calcAst)  // Get connective metadata
+generator.extractRules(rulesAst)       // Get rule metadata
+generator.termToPattern(term)          // Convert Celf term to ll.json pattern
+```
+
+**Tests:** ✓ All passing (12 tests in tests/ll-generation.js)
+- [x] Generate ll.json from linear-logic.calc + linear-logic.rules
+- [x] Extract binary operators (tensor, loli, with)
+- [x] Generate rule categories (RuleZer, RuleU, RuleBin)
+- [x] Generate sequent patterns (e.g., "?X, -- : F?A * F?B |- -- : F?C")
+- [x] Verify Calc.init() works with generated ll.json
+- [x] Verify genParser() works with generated ll.json
 
 **Files:**
 ```
-lib/celf/generator.js       # .calc → ll.json
-tests/ll-generation.js      # Generation tests
+lib/celf/generator.js       # .calc → ll.json generator
+tests/ll-generation.js      # Generation tests (12 tests)
 ```
 
 ### Phase 4: Direct AST Consumers
@@ -386,10 +419,11 @@ lib/celf/stdlib/
 │   │   ├── src/               # Generated C (gitignored)
 │   │   └── test/              # Test files
 │   │
-│   ├── celf/                  # Celf parsers
+│   ├── celf/                  # Celf parsers and tools
 │   │   ├── grammar.ohm        # Ohm grammar (original)
 │   │   ├── parser.js          # Ohm parser (sync, stack overflow on deep)
-│   │   └── ts-parser.js       # Tree-sitter parser (async, handles deep, annotations)
+│   │   ├── ts-parser.js       # Tree-sitter parser (async, handles deep, annotations)
+│   │   └── generator.js       # ll.json generator from .calc/.rules (Phase 3)
 │   │
 │   ├── calc.js                # Calculus database
 │   ├── parser.js              # Jison generation from ll.json
@@ -402,6 +436,7 @@ lib/celf/stdlib/
 │
 ├── tests/
 │   ├── tree-sitter.js         # Tree-sitter parser tests (30 tests)
+│   ├── ll-generation.js       # ll.json generation tests (12 tests) (Phase 3)
 │   ├── celf-parser.js         # Ohm parser tests
 │   └── ...
 │
@@ -476,7 +511,7 @@ lib/celf/stdlib/
 
 1. **Phase 1 Complete:** ✓ Can parse optimism-mde files (bin.mde, evm.mde, helper.mde)
 2. **Phase 2 Complete:** ✓ Can parse .calc files with @annotations
-3. **Phase 3:** Can generate ll.json from .calc/.rules
+3. **Phase 3 Complete:** ✓ Can generate ll.json from .calc/.rules
 4. **Phase 4:** Proof search works without ll.json
 5. **Phase 5:** `plus(2,3,X)` computes X=5 via FFI
 
