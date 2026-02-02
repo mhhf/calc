@@ -327,6 +327,165 @@ class Calculus {
 
 ---
 
+## Proof Oracle / LCF-Style Verification
+
+From `dev/research/proof-search-oracles.md`: The ILL focused prover is an "oracle" that produces proofs fast. The generic prover is the "kernel" that verifies.
+
+### Trust Levels
+```javascript
+class GenericProver {
+  constructor(calculus, options = {}) {
+    this.trustLevel = options.trustLevel || 'verify';  // 'full' | 'verify' | 'none'
+    this.oracle = options.oracle;                      // FocusedProver instance
+  }
+
+  prove(goal) {
+    if (this.oracle && this.trustLevel !== 'none') {
+      const result = this.oracle.prove(goal);
+      if (result.success) {
+        if (this.trustLevel === 'full') return result;    // Trust completely
+        if (this.verifyProofTree(result.proofTree)) {
+          return result;                                   // Verified
+        }
+        // Fall through to enumeration
+      }
+    }
+    return this.enumerativeProve(goal);  // Slow but trusted
+  }
+}
+```
+
+### What Oracle Returns
+```javascript
+{
+  success: boolean,
+  proofTree: PT,                    // Full proof tree
+  delta_out: { id: {num, val} },    // Resources NOT consumed
+  theta: [[var, term], ...],        // Substitutions discovered
+}
+```
+
+---
+
+## Lazy Resource Management (Hodas-Miller)
+
+From `dev/research/proof-search-oracles.md`: Context splitting is **discovered during proof**, not guessed upfront.
+
+### delta_in / delta_out Pattern
+```javascript
+// Instead of 2^n context splits:
+// delta_in = all available resources
+// Prove first premise with ALL resources
+// delta_out = leftover resources
+// delta_out becomes delta_in for next premise
+
+function proveMultiplicative(premises, delta_in, store) {
+  let delta = delta_in;
+
+  for (const premise of premises) {
+    const result = prove(premise, delta, store);
+    if (!result.success) return { success: false };
+    delta = result.delta_out;  // Leftover becomes input for next
+  }
+
+  return { success: true, delta_out: delta };
+}
+```
+
+### Split vs Copy (propagate flag)
+| Connective | Mode | Behavior |
+|------------|------|----------|
+| `Tensor_R` | split | First premise gets all, leftover to second |
+| `Loli_L` | split | Same |
+| `With_R` | copy | Both premises get full context (additive) |
+
+---
+
+## Profiling Infrastructure
+
+Use `CALC_PROFILE=1` to identify bottlenecks before optimizing.
+
+### v2 Profiling Hooks
+```javascript
+const { profiler } = require('./profiler');
+
+function unify(a, b, store) {
+  profiler.count('unify.calls');
+  profiler.time('unify.time', () => {
+    // ... actual unification
+  });
+}
+```
+
+### Hot Path (from dev/research/benchmarking.md)
+| Rank | Operation | Frequency | Per-call Cost |
+|------|-----------|-----------|---------------|
+| 1 | `mgu()` | Every rule application | O(n²) → O(n) with interning |
+| 2 | `toString()` | Every equality check | O(n) → O(1) with hashing |
+| 3 | `substitute()` | k times per mgu | O(n) |
+| 4 | `sha3(toString())` | Every context add | O(n) → O(1) with interning |
+
+---
+
+## Deferred Optimizations (from dev/optimization_strategies.md)
+
+| Optimization | When to Implement | Trigger |
+|--------------|-------------------|---------|
+| Constructor Index | If identity lookup is bottleneck | CALC_PROFILE shows tryIdPos hot |
+| Proof Memoization | If proof search repeats subgoals | Large proofs with sharing |
+| Near-Linear Unification | If unification is bottleneck | Martelli-Montanari |
+| Explicit Substitutions | If many unused substitutions | Lazy evaluation |
+
+### Proof Memoization (Subformula Property)
+```javascript
+class ProofMemo {
+  constructor() {
+    this.cache = new Map();  // sequentHash → ProofResult
+  }
+
+  key(seq) {
+    // Canonical key: sorted context hashes + succedent hash
+    return hashCombine(...sortedContextHashes, succedentHash);
+  }
+
+  lookup(seq) {
+    return this.cache.get(this.key(seq));
+  }
+
+  store(seq, result) {
+    this.cache.set(this.key(seq), result);
+  }
+}
+```
+
+**Why it works**: Cut-free proofs have subformula property. If input has n subformulas, at most O(n²) unique sequents. With memoization: O(n²) instead of O(b^d).
+
+---
+
+## Existing lib/* Files to Reuse
+
+These files are well-designed and should be reused in v2 with minimal changes:
+
+| File | Purpose | v2 Change |
+|------|---------|-----------|
+| `lib/store.js` | Content-addressed store | Pass explicitly, not `getStore()` |
+| `lib/term.js` | Term wrapper around hash | Keep as-is |
+| `lib/hash.js` | FNV-1a 64-bit hashing | Keep as-is (Zig-portable) |
+| `lib/intern.js` | Node ↔ Term conversion | Update for new AST format |
+| `lib/profiler.js` | CALC_PROFILE support | Keep as-is |
+
+### Files to Replace
+| File | Legacy | v2 Replacement |
+|------|--------|----------------|
+| `lib/parser.js` | Jison generator | Tree-sitter |
+| `lib/node.js` | Class with methods | Pure data + render() |
+| `lib/calc.js` | Global Calc.db | Explicit Calculus object |
+| `lib/sequent.js` | Uses ll.json | Uses Calculus |
+| `lib/proofstate.js` | Monolithic | Split: kernel + strategies |
+| `lib/prover.js` | Mixed concerns | strategies/focused.js |
+
+---
+
 ## Content-Addressed Store (MUST KEEP)
 
 The existing `lib/store.js`, `lib/hash.js`, `lib/intern.js` are well-designed. v2 MUST use them:
@@ -431,3 +590,50 @@ const FNV_OFFSET = 0xcbf29ce484222325n;
 | Zig-ready | No | Yes (portable patterns) |
 
 The old code stays working throughout. Only delete it after v2 passes 100% of tests.
+
+---
+
+## Open Questions / Decisions Needed
+
+### 1. Pure vs Mutable Kernel
+**Current**: Legacy prover mutates `pt` (proof tree) in place.
+**Option A**: Pure kernel - returns new state, old state unchanged (easier reasoning, Zig-friendly)
+**Option B**: Mutable kernel - modifies in place (faster, matches existing code)
+**Recommendation**: Start pure, optimize later if needed.
+
+### 2. AST Representation
+**Option A**: Object-based `{tag, children: [child, child]}` - easy to use in JS
+**Option B**: Hash-based `{tag, tagId, childHashes: [hash, hash]}` - flat, Zig-portable
+**Recommendation**: Use object-based for API, hash-based for storage. Convert at boundary.
+
+### 3. Rule Loading
+**Option A**: Load at startup (like ll.json) - simple
+**Option B**: Lazy load on demand - faster startup
+**Option C**: Build step generates optimized format - best performance
+**Recommendation**: Start with (A), optimize later.
+
+### 4. Error Handling
+**Option A**: Return `{success: false, error}` - functional style
+**Option B**: Throw exceptions - JS-idiomatic
+**Recommendation**: Use return values in kernel (portable), exceptions at API boundary.
+
+### 5. When to Implement Optimizations
+| Optimization | Immediate | After basic v2 | If needed |
+|--------------|-----------|----------------|-----------|
+| Content-addressing | ✓ | | |
+| ScopedStore | ✓ | | |
+| delta_in/out | ✓ | | |
+| Proof memoization | | ✓ | |
+| Constructor index | | | ✓ |
+| Explicit substitutions | | | ✓ |
+
+---
+
+## References
+
+- `dev/research/proof-search-oracles.md` - Oracle architecture, trust levels
+- `dev/research/content-addressed-formulas.md` - Hash consing, Merkle-DAG
+- `dev/research/benchmarking.md` - Hot path analysis, complexity
+- `dev/optimization_strategies.md` - Deferred optimizations
+- `dev/REFACTOR.md` - Legacy code analysis
+- `dev/research/typed-dsl-logical-framework.md` - DSL design
