@@ -1,5 +1,5 @@
 import { createMemo, Show } from 'solid-js';
-import { SerializedProof } from '../../lib/proofLogic';
+import { type SerializedProof } from '../../lib/proofLogicV2';
 
 interface JsonProofViewProps {
   proof: SerializedProof;

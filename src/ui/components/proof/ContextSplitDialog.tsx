@@ -1,6 +1,6 @@
 import { For, Show, createSignal, createMemo } from 'solid-js';
 import KaTeX from '../math/KaTeX';
-import { ApplicableRule, sequentToLatex, previewSplitSubgoals } from '../../lib/proofLogic';
+import { type ApplicableRule, sequentToLatex, previewSplitSubgoals } from '../../lib/proofLogicV2';
 
 interface ContextEntry {
   id: string;

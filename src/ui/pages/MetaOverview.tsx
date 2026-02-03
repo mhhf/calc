@@ -2,10 +2,13 @@ import { createMemo, For, Show, createSignal } from 'solid-js';
 import KaTeX from '../components/math/KaTeX';
 import ErrorBoundary from '../components/common/ErrorBoundary';
 
-// @ts-ignore - CommonJS module
-import * as CalcModule from '../../../lib/calc.js';
-
-const Calc = (CalcModule as any).default || CalcModule;
+// v2 API
+import {
+  getCalculusName,
+  getSortNames,
+  getMetavarConventions,
+  getFormulaConnectives
+} from '../lib/calcV2';
 
 /**
  * Code block component for JSON/code examples
@@ -21,24 +24,11 @@ function CodeBlock(props: { code: string; language?: string }) {
 export default function MetaOverview() {
   const [expandedSection, setExpandedSection] = createSignal<string | null>(null);
 
-  const calcData = createMemo(() => Calc.calc || {});
-  const calcName = createMemo(() => calcData().calc_name || 'Calculus');
-
-  // Extract sort names from calc_structure
-  const sortNames = createMemo(() => {
-    const structure = calcData().calc_structure;
-    if (!structure) return [];
-    return Object.keys(structure).filter(name => !name.includes('_Op'));
-  });
-
-  // Metavariable conventions (framework-level, not object-level)
-  const metavars = [
-    { pattern: '?X, ?Y, ?Z', meaning: 'Structure metavariable', example: '?X |- ?Y' },
-    { pattern: 'F?A, F?B', meaning: 'Formula metavariable', example: 'F?A * F?B' },
-    { pattern: 'S?A, S?B', meaning: 'Structure-in-formula metavariable', example: 'S?A, S?B' },
-    { pattern: 'A?a, A?b', meaning: 'Atomic proposition variable', example: 'A?a -o A?a' },
-    { pattern: '--', meaning: 'Neutral/wildcard term', example: '-- : F?A' },
-  ];
+  // Get calculus data from v2 API
+  const calcName = createMemo(() => getCalculusName());
+  const sortNames = createMemo(() => getSortNames());
+  const metavars = createMemo(() => getMetavarConventions());
+  const connectives = createMemo(() => getFormulaConnectives());
 
   return (
     <ErrorBoundary>
@@ -49,7 +39,7 @@ export default function MetaOverview() {
             Framework Documentation
           </h2>
           <p class="text-gray-600 dark:text-gray-400">
-            How to read, write, and extend calculus specifications in the display calculus framework.
+            How to read, write, and extend calculus specifications in the v2 DSL framework.
           </p>
         </div>
 
@@ -57,105 +47,105 @@ export default function MetaOverview() {
         <section class="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
           <div class="px-4 py-3 bg-gray-50 dark:bg-gray-700/50 border-b border-gray-200 dark:border-gray-700">
             <h3 class="font-semibold text-gray-900 dark:text-white">
-              1. What is a Display Calculus?
+              1. What is Linear Logic?
             </h3>
           </div>
           <div class="p-4 prose dark:prose-invert max-w-none text-sm">
             <p>
-              A <strong>display calculus</strong> (Belnap 1982) is a generalization of Gentzen's sequent calculus
-              that uses <em>structural connectives</em> alongside logical connectives. Key features:
+              <strong>Linear logic</strong> (Girard 1987) is a resource-sensitive logic where
+              hypotheses must be used exactly once. Key features:
             </p>
             <ul>
               <li>
-                <strong>Display Property</strong>: Any subformula can be "displayed" (isolated) on one side
-                of the turnstile using structural rules alone.
+                <strong>Resource Sensitivity</strong>: Unlike classical logic, you can't duplicate
+                or discard hypotheses freely. Each formula is a "resource" that must be consumed.
               </li>
               <li>
-                <strong>Eight Conditions</strong>: Syntactic conditions that guarantee cut elimination.
+                <strong>Exponentials</strong>: The <KaTeX latex="!" /> modality allows controlled
+                reuse - <KaTeX latex="!A" /> can be used any number of times.
               </li>
               <li>
-                <strong>Modularity</strong>: New connectives can be added without breaking metatheory.
+                <strong>Focusing</strong>: Andreoli's focusing discipline (1992) organizes proof
+                search into phases, making it efficient and complete.
               </li>
             </ul>
             <p>
-              This framework implements display calculi as declarative JSON specifications, with automatic
-              parser generation and multi-format output.
+              This framework implements linear logic as declarative specifications (.calc/.rules files),
+              with automatic parser generation and focused proof search.
             </p>
           </div>
         </section>
 
-        {/* Section 2: The ll.json Specification Format */}
+        {/* Section 2: The .calc/.rules Specification Format */}
         <section class="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
           <div class="px-4 py-3 bg-gray-50 dark:bg-gray-700/50 border-b border-gray-200 dark:border-gray-700">
             <h3 class="font-semibold text-gray-900 dark:text-white">
-              2. The ll.json Specification Format
+              2. The .calc/.rules Specification Format
             </h3>
           </div>
           <div class="p-4 space-y-6">
             <div class="prose dark:prose-invert max-w-none text-sm">
-              <p>A calculus is defined in a JSON file with the following structure:</p>
+              <p>A calculus is defined in two files:</p>
+              <ul>
+                <li><code>.calc</code> — Syntax definitions (types, constructors)</li>
+                <li><code>.rules</code> — Inference rules</li>
+              </ul>
             </div>
 
-            <CodeBlock code={`{
-  "calc_name": "LLog",
-  "calc_structure": { ... },           // Syntax (sorts & constructors)
-  "calc_structure_rules_meta": { ... }, // Metadata (polarity, labels)
-  "calc_structure_rules": { ... },      // Rule names/categories
-  "rules": { ... }                      // Inference rules
-}`} />
-
-            {/* 2.1 calc_structure */}
+            {/* 2.1 .calc file */}
             <div class="space-y-3">
               <h4 class="font-semibold text-gray-800 dark:text-gray-200">
-                2.1 Defining Sorts (<code class="text-sm">calc_structure</code>)
+                2.1 Defining Types (<code class="text-sm">.calc</code>)
               </h4>
               <p class="text-sm text-gray-600 dark:text-gray-400">
-                Each sort is a syntactic category. Constructors define how terms of that sort are built:
+                Types define syntactic categories. Constructors define how terms are built:
               </p>
-              <CodeBlock code={`"Formula": {
-  "Formula_Tensor": {
-    "type": ["Formula", "Formula"],  // Two Formula children
-    "ascii": "_ * _",                // Display format
-    "latex": "_ \\\\otimes _",
-    "isabelle": "_ \\<otimes> _",
-    "precedence": [320, 320, 321]    // Binding strength
-  },
-  "Formula_Atprop": {
-    "type": "string"                 // Terminal (atomic prop)
-  }
-}`} />
+              <CodeBlock code={`// Base types
+type formula
+type structure
+type sequent
+
+// Constructors with annotations
+constructor tensor : formula -> formula -> formula
+  @ascii "_ * _"
+  @latex "#1 \\\\otimes #2"
+  @prec 60 left
+  @category multiplicative
+
+constructor loli : formula -> formula -> formula
+  @ascii "_ -o _"
+  @latex "#1 \\\\multimap #2"
+  @prec 50 right
+  @category multiplicative
+
+constructor bang : formula -> formula
+  @ascii "! _"
+  @latex "!#1"
+  @prec 80`} />
               <div class="overflow-x-auto">
                 <table class="w-full text-sm">
                   <thead>
                     <tr class="bg-gray-50 dark:bg-gray-700/30">
-                      <th class="px-3 py-2 text-left font-medium text-gray-600 dark:text-gray-400">Field</th>
+                      <th class="px-3 py-2 text-left font-medium text-gray-600 dark:text-gray-400">Annotation</th>
                       <th class="px-3 py-2 text-left font-medium text-gray-600 dark:text-gray-400">Purpose</th>
                     </tr>
                   </thead>
                   <tbody class="divide-y divide-gray-200 dark:divide-gray-700">
                     <tr>
-                      <td class="px-3 py-2 font-mono text-gray-900 dark:text-white">type</td>
-                      <td class="px-3 py-2 text-gray-600 dark:text-gray-400">Child sorts (array) or "string" for terminals</td>
+                      <td class="px-3 py-2 font-mono text-gray-900 dark:text-white">@ascii</td>
+                      <td class="px-3 py-2 text-gray-600 dark:text-gray-400">ASCII rendering (<code>_</code> = child)</td>
                     </tr>
                     <tr>
-                      <td class="px-3 py-2 font-mono text-gray-900 dark:text-white">ascii</td>
-                      <td class="px-3 py-2 text-gray-600 dark:text-gray-400">ASCII rendering template (<code>_</code> = child)</td>
+                      <td class="px-3 py-2 font-mono text-gray-900 dark:text-white">@latex</td>
+                      <td class="px-3 py-2 text-gray-600 dark:text-gray-400">LaTeX rendering (<code>#1</code>, <code>#2</code> = children)</td>
                     </tr>
                     <tr>
-                      <td class="px-3 py-2 font-mono text-gray-900 dark:text-white">latex</td>
-                      <td class="px-3 py-2 text-gray-600 dark:text-gray-400">LaTeX rendering template</td>
+                      <td class="px-3 py-2 font-mono text-gray-900 dark:text-white">@prec</td>
+                      <td class="px-3 py-2 text-gray-600 dark:text-gray-400">Precedence and associativity</td>
                     </tr>
                     <tr>
-                      <td class="px-3 py-2 font-mono text-gray-900 dark:text-white">isabelle</td>
-                      <td class="px-3 py-2 text-gray-600 dark:text-gray-400">Isabelle/HOL export format</td>
-                    </tr>
-                    <tr>
-                      <td class="px-3 py-2 font-mono text-gray-900 dark:text-white">precedence</td>
-                      <td class="px-3 py-2 text-gray-600 dark:text-gray-400">Operator binding [left, right, result] (higher = tighter)</td>
-                    </tr>
-                    <tr>
-                      <td class="px-3 py-2 font-mono text-gray-900 dark:text-white">shallow</td>
-                      <td class="px-3 py-2 text-gray-600 dark:text-gray-400">If true, inline this constructor in parent</td>
+                      <td class="px-3 py-2 font-mono text-gray-900 dark:text-white">@category</td>
+                      <td class="px-3 py-2 text-gray-600 dark:text-gray-400">Connective category (multiplicative, additive, exponential)</td>
                     </tr>
                   </tbody>
                 </table>
@@ -180,7 +170,7 @@ export default function MetaOverview() {
                     </tr>
                   </thead>
                   <tbody class="divide-y divide-gray-200 dark:divide-gray-700">
-                    <For each={metavars}>
+                    <For each={metavars()}>
                       {(mv) => (
                         <tr>
                           <td class="px-3 py-2 font-mono text-gray-900 dark:text-white">{mv.pattern}</td>
@@ -197,46 +187,32 @@ export default function MetaOverview() {
             {/* 2.3 Defining Rules */}
             <div class="space-y-3">
               <h4 class="font-semibold text-gray-800 dark:text-gray-200">
-                2.3 Defining Inference Rules
+                2.3 Defining Inference Rules (<code class="text-sm">.rules</code>)
               </h4>
               <p class="text-sm text-gray-600 dark:text-gray-400">
-                Rules are arrays: <code>[conclusion, premise1, premise2, ...]</code>
+                Rules are written with premises above and conclusion below:
               </p>
-              <CodeBlock code={`"rules": {
-  "RuleBin": {
-    "Tensor_L": [
-      "?X, -- : F?A * F?B |- ?Y",    // Conclusion
-      "?X, -- : F?A, -- : F?B |- ?Y" // Premise
-    ],
-    "Tensor_R": [
-      "?X, ?Y |- -- : [ F?A * F?B ]", // Conclusion
-      "?X |- -- : [ F?A ]",           // Premise 1
-      "?Y |- -- : [ F?B ]"            // Premise 2
-    ]
-  }
-}`} />
-              <p class="text-sm text-gray-600 dark:text-gray-400">
-                The <code>[A]</code> notation marks a <strong>focused formula</strong> — the principal formula
-                being decomposed during proof search.
-              </p>
-            </div>
+              <CodeBlock code={`// Identity axiom
+rule id
+  -----------------
+  deriv (seq empty (hyp any A) (hyp any A))
 
-            {/* 2.4 Metadata */}
-            <div class="space-y-3">
-              <h4 class="font-semibold text-gray-800 dark:text-gray-200">
-                2.4 Metadata (<code class="text-sm">calc_structure_rules_meta</code>)
-              </h4>
-              <CodeBlock code={`"calc_structure_rules_meta": {
-  "polarity": {
-    "Formula_Tensor": "positive",
-    "Formula_Loli": "negative"
-  },
-  "Contexts": {
-    "RuleZer": { "label": "Axioms", "simp": true },
-    "RuleBin": { "label": "Logical rules (binary)" },
-    "RuleStruct": { "label": "Structural rules" }
-  }
-}`} />
+// Tensor right (context splitting)
+rule tensor_r
+  deriv (seq G D (hyp any A))
+  deriv (seq G D' (hyp any B))
+  -----------------
+  deriv (seq G (comma D D') (hyp any (tensor A B)))
+
+// Loli right (implication introduction)
+rule loli_r
+  deriv (seq G (comma D (hyp any A)) (hyp any B))
+  -----------------
+  deriv (seq G D (hyp any (loli A B)))`} />
+              <p class="text-sm text-gray-600 dark:text-gray-400">
+                The <code>deriv</code> wrapper indicates a derivable judgment.
+                Context variables (D, D', G) are split among premises for multiplicative rules.
+              </p>
             </div>
           </div>
         </section>
@@ -257,12 +233,13 @@ export default function MetaOverview() {
               <div class="flex gap-3">
                 <span class="flex-shrink-0 w-6 h-6 rounded-full bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 flex items-center justify-center text-sm font-medium">1</span>
                 <div>
-                  <p class="font-medium text-gray-900 dark:text-white">Add the operator</p>
-                  <p class="text-sm text-gray-600 dark:text-gray-400">In <code>calc_structure.Formula_Bin_Op</code>:</p>
-                  <CodeBlock code={`"Formula_Plus": {
-  "ascii": "+",
-  "latex": "\\\\oplus"
-}`} />
+                  <p class="font-medium text-gray-900 dark:text-white">Add the constructor</p>
+                  <p class="text-sm text-gray-600 dark:text-gray-400">In the <code>.calc</code> file:</p>
+                  <CodeBlock code={`constructor plus : formula -> formula -> formula
+  @ascii "_ + _"
+  @latex "#1 \\\\oplus #2"
+  @prec 65 left
+  @category additive`} />
                 </div>
               </div>
 
@@ -270,8 +247,8 @@ export default function MetaOverview() {
                 <span class="flex-shrink-0 w-6 h-6 rounded-full bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 flex items-center justify-center text-sm font-medium">2</span>
                 <div>
                   <p class="font-medium text-gray-900 dark:text-white">Set polarity</p>
-                  <p class="text-sm text-gray-600 dark:text-gray-400">In <code>calc_structure_rules_meta.polarity</code>:</p>
-                  <CodeBlock code={`"Formula_Plus": "positive"`} />
+                  <p class="text-sm text-gray-600 dark:text-gray-400">In the <code>.rules</code> file:</p>
+                  <CodeBlock code={`polarity plus positive`} />
                 </div>
               </div>
 
@@ -279,28 +256,33 @@ export default function MetaOverview() {
                 <span class="flex-shrink-0 w-6 h-6 rounded-full bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 flex items-center justify-center text-sm font-medium">3</span>
                 <div>
                   <p class="font-medium text-gray-900 dark:text-white">Define inference rules</p>
-                  <p class="text-sm text-gray-600 dark:text-gray-400">In <code>rules.RuleBin</code>:</p>
-                  <CodeBlock code={`"Plus_L": [
-  "?X, -- : F?A + F?B |- ?Y",
-  "?X, -- : F?A |- ?Y",
-  "?X, -- : F?B |- ?Y"
-],
-"Plus_R1": [
-  "?X |- -- : [ F?A + F?B ]",
-  "?X |- -- : [ F?A ]"
-],
-"Plus_R2": [
-  "?X |- -- : [ F?A + F?B ]",
-  "?X |- -- : [ F?B ]"
-]`} />
+                  <p class="text-sm text-gray-600 dark:text-gray-400">In the <code>.rules</code> file:</p>
+                  <CodeBlock code={`// Plus left (additive - context preserved)
+rule plus_l
+  deriv (seq G (comma D (hyp any A)) C)
+  deriv (seq G (comma D (hyp any B)) C)
+  -----------------
+  deriv (seq G (comma D (hyp any (plus A B))) C)
+
+// Plus right 1
+rule plus_r1
+  deriv (seq G D (hyp any A))
+  -----------------
+  deriv (seq G D (hyp any (plus A B)))
+
+// Plus right 2
+rule plus_r2
+  deriv (seq G D (hyp any B))
+  -----------------
+  deriv (seq G D (hyp any (plus A B)))`} />
                 </div>
               </div>
 
               <div class="flex gap-3">
                 <span class="flex-shrink-0 w-6 h-6 rounded-full bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 flex items-center justify-center text-sm font-medium">4</span>
                 <div>
-                  <p class="font-medium text-gray-900 dark:text-white">Regenerate the parser</p>
-                  <p class="text-sm text-gray-600 dark:text-gray-400">Run: <code>npm run build:parser</code></p>
+                  <p class="font-medium text-gray-900 dark:text-white">Regenerate the bundle</p>
+                  <p class="text-sm text-gray-600 dark:text-gray-400">Run: <code>npm run build:v2-bundle</code></p>
                 </div>
               </div>
             </div>
@@ -316,29 +298,31 @@ export default function MetaOverview() {
           </div>
           <div class="p-4 space-y-4">
             <div class="flex items-center justify-center gap-2 text-sm font-mono flex-wrap">
-              <span class="px-3 py-1 bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-300 rounded">ll.json</span>
+              <span class="px-3 py-1 bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-300 rounded">.calc</span>
+              <span class="text-gray-400">+</span>
+              <span class="px-3 py-1 bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-300 rounded">.rules</span>
               <span class="text-gray-400">→</span>
-              <span class="px-3 py-1 bg-purple-100 dark:bg-purple-900/30 text-purple-800 dark:text-purple-300 rounded">calc-genparser</span>
+              <span class="px-3 py-1 bg-purple-100 dark:bg-purple-900/30 text-purple-800 dark:text-purple-300 rounded">Tree-sitter</span>
               <span class="text-gray-400">→</span>
-              <span class="px-3 py-1 bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300 rounded">Jison grammar</span>
+              <span class="px-3 py-1 bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300 rounded">ill-v2.json</span>
               <span class="text-gray-400">→</span>
-              <span class="px-3 py-1 bg-orange-100 dark:bg-orange-900/30 text-orange-800 dark:text-orange-300 rounded">parser.js</span>
+              <span class="px-3 py-1 bg-orange-100 dark:bg-orange-900/30 text-orange-800 dark:text-orange-300 rounded">Runtime Parser</span>
               <span class="text-gray-400">→</span>
               <span class="px-3 py-1 bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-300 rounded">AST</span>
             </div>
 
             <div class="prose dark:prose-invert max-w-none text-sm">
               <ul>
-                <li><strong>ll.json</strong> defines the grammar declaratively</li>
-                <li><strong>calc-genparser</strong> generates a Jison grammar file</li>
-                <li><strong>Jison</strong> compiles this to a JavaScript parser</li>
-                <li><strong>parser.js</strong> parses input strings into AST nodes</li>
-                <li><strong>Node.toString()</strong> renders the AST in different formats (ascii, latex, isabelle)</li>
+                <li><strong>.calc + .rules</strong> define the calculus declaratively</li>
+                <li><strong>Tree-sitter</strong> parses these into an AST representation</li>
+                <li><strong>ill-v2.json</strong> bundles the calculus for browser use</li>
+                <li><strong>Runtime Parser</strong> is built from @ascii/@prec annotations</li>
+                <li><strong>AST</strong> nodes are rendered in different formats (ascii, latex)</li>
               </ul>
               <p>
-                The <code>precedence</code> field controls parsing ambiguity resolution:
-                higher values bind tighter. The format is <code>[left, right, result]</code>
-                where left/right are the binding strength on each side.
+                The <code>@prec</code> annotation controls parsing ambiguity resolution:
+                higher values bind tighter. Associativity (<code>left</code>/<code>right</code>)
+                determines how same-precedence operators are grouped.
               </p>
             </div>
           </div>
@@ -355,20 +339,6 @@ export default function MetaOverview() {
             <div class="grid md:grid-cols-2 gap-4">
               <div class="p-4 bg-gray-50 dark:bg-gray-700/30 rounded-lg">
                 <h4 class="font-semibold text-gray-900 dark:text-white mb-2">
-                  Structural Rules
-                </h4>
-                <p class="text-sm text-gray-600 dark:text-gray-400">
-                  Manipulate structure without touching formulas. Enable the display property
-                  by allowing any substructure to be isolated. Examples: associativity,
-                  commutativity, unit laws.
-                </p>
-                <p class="text-sm text-gray-500 dark:text-gray-500 mt-2">
-                  Category: <code>RuleStruct</code>
-                </p>
-              </div>
-
-              <div class="p-4 bg-gray-50 dark:bg-gray-700/30 rounded-lg">
-                <h4 class="font-semibold text-gray-900 dark:text-white mb-2">
                   Logical Rules
                 </h4>
                 <p class="text-sm text-gray-600 dark:text-gray-400">
@@ -376,33 +346,45 @@ export default function MetaOverview() {
                   in the conclusion that is being decomposed.
                 </p>
                 <p class="text-sm text-gray-500 dark:text-gray-500 mt-2">
-                  Categories: <code>RuleU</code> (unary), <code>RuleBin</code> (binary)
+                  Examples: <code>tensor_r</code>, <code>loli_l</code>, <code>with_r</code>
                 </p>
               </div>
 
               <div class="p-4 bg-gray-50 dark:bg-gray-700/30 rounded-lg">
                 <h4 class="font-semibold text-gray-900 dark:text-white mb-2">
-                  Identity Rules
+                  Structural Rules
                 </h4>
                 <p class="text-sm text-gray-600 dark:text-gray-400">
-                  Axioms that close proof branches. Match atomic propositions or handle
-                  unit elements.
+                  Manipulate the structure without touching formulas. In focused proof
+                  search, these are implicit in context management.
                 </p>
                 <p class="text-sm text-gray-500 dark:text-gray-500 mt-2">
-                  Category: <code>RuleZer</code>
+                  Examples: <code>copy</code> (for cartesian context)
                 </p>
               </div>
 
               <div class="p-4 bg-gray-50 dark:bg-gray-700/30 rounded-lg">
                 <h4 class="font-semibold text-gray-900 dark:text-white mb-2">
-                  Cut Rule
+                  Identity Axioms
                 </h4>
                 <p class="text-sm text-gray-600 dark:text-gray-400">
-                  Allows composing proofs. Cut elimination is a key metatheoretic property
-                  ensuring proof normalization.
+                  Close proof branches when the goal matches a hypothesis.
                 </p>
                 <p class="text-sm text-gray-500 dark:text-gray-500 mt-2">
-                  Category: <code>RuleCut</code>
+                  Example: <code>id</code> (A ⊢ A)
+                </p>
+              </div>
+
+              <div class="p-4 bg-gray-50 dark:bg-gray-700/30 rounded-lg">
+                <h4 class="font-semibold text-gray-900 dark:text-white mb-2">
+                  Exponential Rules
+                </h4>
+                <p class="text-sm text-gray-600 dark:text-gray-400">
+                  Handle the ! modality for controlled reuse. Includes promotion,
+                  dereliction, and absorption.
+                </p>
+                <p class="text-sm text-gray-500 dark:text-gray-500 mt-2">
+                  Examples: <code>promotion</code>, <code>dereliction</code>, <code>absorption</code>
                 </p>
               </div>
             </div>
@@ -439,9 +421,9 @@ export default function MetaOverview() {
         <section class="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-4">
           <h4 class="font-semibold text-blue-900 dark:text-blue-200 mb-2">References</h4>
           <ul class="text-sm text-blue-800 dark:text-blue-300 space-y-1">
-            <li>Belnap, N.D. (1982). "Display logic". Journal of Philosophical Logic.</li>
             <li>Girard, J.Y. (1987). "Linear logic". Theoretical Computer Science.</li>
             <li>Andreoli, J.M. (1992). "Logic programming with focusing proofs in linear logic".</li>
+            <li>Belnap, N.D. (1982). "Display logic". Journal of Philosophical Logic.</li>
           </ul>
         </section>
       </div>

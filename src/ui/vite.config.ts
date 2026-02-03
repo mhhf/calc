@@ -10,7 +10,7 @@ export default defineConfig({
     commonjs({
       filter(id) {
         // Transform our lib files and the generated parser
-        return id.includes('/lib/') || id.includes('/out/parser.js');
+        return id.includes('/lib/') || id.includes('/out/parser.js') || id.includes('/out/ill-v2.json');
       }
     }),
     solid(),
@@ -22,7 +22,7 @@ export default defineConfig({
     outDir: '../../out/ui',
     emptyOutDir: true,
     commonjsOptions: {
-      include: [/lib\/.*\.js$/, /out\/parser\.js$/, /node_modules/],
+      include: [/lib\/.*\.js$/, /out\/parser\.js$/, /out\/ill-v2\.json$/, /node_modules/],
       transformMixedEsModules: true,
     },
   },

@@ -1,6 +1,6 @@
 import { For, Show, createMemo } from 'solid-js';
 import KaTeX from '../math/KaTeX';
-import { sequentToLatex, sequentToAscii, isProofComplete, FocusInfo, ProofTreeNode } from '../../lib/proofLogic';
+import { sequentToLatex, sequentToAscii, isProofComplete, type FocusInfo, type ProofTreeNode } from '../../lib/proofLogicV2';
 
 interface ClassicalProofTreeProps {
   pt: ProofTreeNode;

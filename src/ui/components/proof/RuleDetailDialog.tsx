@@ -1,6 +1,6 @@
 import { Show, For } from 'solid-js';
 import KaTeX from '../math/KaTeX';
-import { RuleApplicationDetails } from '../../lib/proofLogic';
+import { type RuleApplicationDetails } from '../../lib/proofLogicV2';
 
 interface RuleDetailDialogProps {
   details: RuleApplicationDetails | null;

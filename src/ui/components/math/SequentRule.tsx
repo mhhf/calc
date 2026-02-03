@@ -1,20 +1,6 @@
 import { createMemo, Show, For } from 'solid-js';
 import KaTeX from './KaTeX';
 
-// @ts-ignore - CommonJS module
-import * as CalcModule from '../../../../lib/calc.js';
-// @ts-ignore - CommonJS module
-import * as NodeModule from '../../../../lib/node.js';
-// @ts-ignore - Generated parser
-import * as parserMod from '../../../../out/parser.js';
-
-const Calc = (CalcModule as any).default || CalcModule;
-const Node = (NodeModule as any).default || NodeModule;
-const parserModule = (parserMod as any).default || parserMod;
-
-// Set up parser
-parserModule.parser.yy.Node = Node;
-
 interface SequentRuleProps {
   name: string;
   ruleStrings: string[]; // [conclusion, premise1, premise2, ...]
@@ -58,9 +44,8 @@ function isLatexFormatted(str: string): boolean {
 }
 
 /**
- * Parse a sequent string and convert to LaTeX.
- * Handles focus brackets [formula] by extracting them, parsing the content,
- * and re-wrapping with brackets in the output.
+ * Convert a sequent string to LaTeX notation.
+ * Simple ASCII to LaTeX conversion without using the v1 parser.
  */
 function sequentToLatex(sequentStr: string): string {
   // If already LaTeX formatted, return as-is
@@ -68,56 +53,16 @@ function sequentToLatex(sequentStr: string): string {
     return sequentStr;
   }
 
-  // Check for focus brackets and extract them
-  // Pattern: [-- : formula] or [formula] in the sequent
-  const bracketPattern = /\[([^\]]+)\]/g;
-  const brackets: { placeholder: string; content: string; latex?: string }[] = [];
-  let processedStr = sequentStr;
-
-  // Replace brackets with placeholders before parsing
-  let matchIndex = 0;
-  processedStr = sequentStr.replace(bracketPattern, (match, content) => {
-    const placeholder = `__FOCUS_${matchIndex}__`;
-    brackets.push({ placeholder, content: content.trim() });
-    matchIndex++;
-    return placeholder;
-  });
-
-  try {
-    // Parse the sequent without brackets
-    const parsed = parserModule.parser.parse(processedStr);
-    let latex = parsed.toString({ style: 'latex_se' });
-
-    // Convert bracket contents to LaTeX and wrap with focus notation
-    for (const b of brackets) {
-      try {
-        // Try to parse the bracket content as a formula/term
-        const contentParsed = parserModule.parser.parse(`I |- ${b.content}`);
-        // Extract just the succedent part
-        const contentLatex = contentParsed.vals[1].toString({ style: 'latex' });
-        b.latex = `[${contentLatex}]`;
-      } catch {
-        // Fallback: just wrap the content
-        b.latex = `[${b.content}]`;
-      }
-      // Replace placeholder with bracketed LaTeX
-      latex = latex.replace(b.placeholder, b.latex);
-    }
-
-    return latex;
-  } catch {
-    // Fallback: basic ASCII to LaTeX conversion
-    let result = sequentStr
-      .replace(/\|-/g, '\\vdash')
-      .replace(/-o/g, '\\multimap')
-      .replace(/\*/g, '\\otimes')
-      .replace(/&/g, '\\&')
-      .replace(/!/g, '!')
-      .replace(/,/g, ', ');
-
-    // Keep the brackets in fallback mode
-    return result;
-  }
+  // Basic ASCII to LaTeX conversion
+  return sequentStr
+    .replace(/\|-/g, '\\vdash')
+    .replace(/-o/g, '\\multimap')
+    .replace(/\*/g, '\\otimes')
+    .replace(/&/g, '\\&')
+    .replace(/\+/g, '\\oplus')
+    .replace(/!/g, '!')
+    .replace(/;/g, ';')
+    .replace(/,/g, ', ');
 }
 
 /**

@@ -4,25 +4,14 @@ import FormulaInput from '../components/math/FormulaInput';
 import ASTView from '../components/graph/ASTView';
 import ErrorBoundary from '../components/common/ErrorBoundary';
 
-// @ts-ignore - CommonJS module
-import * as CalcModule from '../../../lib/calc.js';
-// @ts-ignore - CommonJS module
-import * as NodeModule from '../../../lib/node.js';
-// @ts-ignore - Generated parser
-import * as parserMod from '../../../out/parser.js';
-
-const Calc = (CalcModule as any).default || CalcModule;
-const Node = (NodeModule as any).default || NodeModule;
-const parserModule = (parserMod as any).default || parserMod;
-
-// Set up parser yy reference
-parserModule.parser.yy.Node = Node;
+// v2 API
+import { parseFormula, renderFormula, buildASTTree, type Formula } from '../lib/calcV2';
 
 export default function Sandbox() {
   const [input, setInput] = createSignal('');
   const [error, setError] = createSignal<string | null>(null);
 
-  const parsed = createMemo(() => {
+  const parsed = createMemo((): Formula | null => {
     const formula = input().trim();
     if (!formula) {
       setError(null);
@@ -30,7 +19,7 @@ export default function Sandbox() {
     }
 
     try {
-      const node = parserModule.parser.parse(formula);
+      const node = parseFormula(formula);
       setError(null);
       return node;
     } catch (e: any) {
@@ -43,7 +32,7 @@ export default function Sandbox() {
     const node = parsed();
     if (!node) return '';
     try {
-      return node.toString({ style: 'latex_se' });
+      return renderFormula(node, 'latex');
     } catch {
       return '';
     }
@@ -53,7 +42,7 @@ export default function Sandbox() {
     const node = parsed();
     if (!node) return '';
     try {
-      return node.toString({ style: 'ascii' });
+      return renderFormula(node, 'ascii');
     } catch {
       return '';
     }
@@ -63,11 +52,7 @@ export default function Sandbox() {
     const node = parsed();
     if (!node) return null;
     try {
-      return Node.toTree({
-        node,
-        rules: Calc.db.rules,
-        attrs: ['constr', 'ascii', 'formula'],
-      });
+      return buildASTTree(node);
     } catch {
       return null;
     }

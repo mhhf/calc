@@ -1,6 +1,6 @@
 import { For, Show, createSignal } from 'solid-js';
 import KaTeX from '../math/KaTeX';
-import { StructuredStep, ProofTreeNode } from '../../lib/proofLogic';
+import { type StructuredStep, type ProofTreeNode } from '../../lib/proofLogicV2';
 
 interface StructuredProofViewProps {
   rootStep: StructuredStep;

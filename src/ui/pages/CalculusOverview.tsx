@@ -1,117 +1,101 @@
 import { createSignal, createMemo, For, Show } from 'solid-js';
 import KaTeX from '../components/math/KaTeX';
-import SequentRule from '../components/math/SequentRule';
-import BNFGrammar, { extractBNFFromCalc } from '../components/math/BNFGrammar';
 import ErrorBoundary from '../components/common/ErrorBoundary';
 
-// @ts-ignore - CommonJS module
-import * as CalcModule from '../../../lib/calc.js';
+// v2 API
+import {
+  getCalculusName,
+  getFormulaConnectives,
+  getRulesGrouped,
+  getBNFGrammar,
+  getPolarityInfo,
+  type ConnectiveInfo,
+  type RuleInfo,
+  type BNFProduction
+} from '../lib/calcV2';
 
-const Calc = (CalcModule as any).default || CalcModule;
+/**
+ * Simple BNF grammar display component
+ */
+function BNFGrammarView(props: { productions: BNFProduction[] }) {
+  return (
+    <div class="font-mono text-sm space-y-2">
+      <For each={props.productions}>
+        {(prod) => (
+          <div class="flex gap-2">
+            <span class="text-blue-600 dark:text-blue-400 font-semibold min-w-[80px]">
+              {prod.lhs}
+            </span>
+            <span class="text-gray-500">::=</span>
+            <span class="text-gray-700 dark:text-gray-300">
+              {prod.alternatives.join(' | ')}
+            </span>
+          </div>
+        )}
+      </For>
+    </div>
+  );
+}
+
+/**
+ * Rule card component
+ */
+function RuleCard(props: { rule: RuleInfo }) {
+  const rule = () => props.rule;
+
+  return (
+    <div class="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-4 border border-gray-200 dark:border-gray-600">
+      <div class="flex items-center justify-between mb-2">
+        <span class="font-mono font-bold text-gray-900 dark:text-white">
+          {rule().pretty}
+        </span>
+        <div class="flex gap-1">
+          <Show when={rule().invertible === true}>
+            <span class="px-2 py-0.5 text-xs bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 rounded">
+              invertible
+            </span>
+          </Show>
+          <Show when={rule().invertible === false}>
+            <span class="px-2 py-0.5 text-xs bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-400 rounded">
+              synchronous
+            </span>
+          </Show>
+          <Show when={rule().structural}>
+            <span class="px-2 py-0.5 text-xs bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-400 rounded">
+              structural
+            </span>
+          </Show>
+        </div>
+      </div>
+      <div class="text-sm text-gray-600 dark:text-gray-400">
+        {rule().numPremises === 0 ? 'Axiom (no premises)' :
+         rule().numPremises === 1 ? '1 premise' :
+         `${rule().numPremises} premises`}
+      </div>
+    </div>
+  );
+}
 
 export default function CalculusOverview() {
-  const [simplified, setSimplified] = createSignal(true);
   const [showAscii, setShowAscii] = createSignal(false);
-  const [activeSection, setActiveSection] = createSignal<string | null>(null);
 
-  // Get calculus data
-  const calcData = createMemo(() => Calc.calc || {});
-  const calcName = createMemo(() => calcData().calc_name || 'Calculus');
+  // Get calculus data from v2 API
+  const calcName = createMemo(() => getCalculusName());
+  const connectives = createMemo(() => getFormulaConnectives());
+  const ruleGroups = createMemo(() => getRulesGrouped());
+  const bnfProductions = createMemo(() => getBNFGrammar());
+  const polarityInfo = createMemo(() => getPolarityInfo());
 
-  // Extract BNF grammar
-  const bnfProductions = createMemo(() => {
-    const structure = calcData().calc_structure;
-    if (!structure) return [];
-    return extractBNFFromCalc(structure);
-  });
-
-  // Extract connectives from Formula_Bin_Op
-  const connectives = createMemo(() => {
-    const structure = calcData().calc_structure;
-    const meta = calcData().calc_structure_rules_meta;
-    if (!structure?.Formula_Bin_Op) return [];
-
-    const polarities = meta?.polarity || {};
-
-    return Object.entries(structure.Formula_Bin_Op).map(([name, data]: [string, any]) => ({
-      name: name.replace('Formula_', ''),
-      fullName: name,
-      ascii: data.ascii || '',
-      latex: data.latex || '',
-      polarity: polarities[name] || 'unknown',
-    }));
-  });
-
-  // Extract unary formula constructors (like Bang)
-  const unaryConnectives = createMemo(() => {
-    const structure = calcData().calc_structure;
-    const meta = calcData().calc_structure_rules_meta;
-    if (!structure?.Formula) return [];
-
-    const polarities = meta?.polarity || {};
-
-    return Object.entries(structure.Formula)
-      .filter(([name, data]: [string, any]) => {
-        // Only unary formula constructors (not Atprop, Freevar, Bin)
-        return !name.includes('Atprop') &&
-               !name.includes('Freevar') &&
-               !name.includes('Bin') &&
-               Array.isArray(data.type) &&
-               data.type.length === 1 &&
-               data.type[0] === 'Formula';
-      })
-      .map(([name, data]: [string, any]) => ({
-        name: name.replace('Formula_', ''),
-        fullName: name,
-        ascii: data.ascii?.replace(/_/g, '').trim() || '',
-        latex: data.latex?.replace(/_/g, '').trim() || '',
-        polarity: polarities[name] || 'unknown',
-      }));
-  });
-
-  // Extract inference rules grouped by category
-  const ruleGroups = createMemo(() => {
-    const rules = calcData().rules || {};
-    const meta = calcData().calc_structure_rules_meta?.Contexts || {};
-
-    const groups: { name: string; label: string; rules: { name: string; ruleStrings: string[] }[] }[] = [];
-
-    for (const [ctxName, ctxRules] of Object.entries(rules)) {
-      const ctxMeta = meta[ctxName] || {};
-      const group = {
-        name: ctxName,
-        label: ctxMeta.label || ctxName,
-        rules: Object.entries(ctxRules as Record<string, string[]>).map(([ruleName, ruleStrings]) => ({
-          name: ruleName,
-          ruleStrings: ruleStrings,
-        })),
-      };
-      groups.push(group);
-    }
-
-    // Sort: Axioms first, then Cut, then Structural, then Logical
-    const order = ['RuleZer', 'RuleCut', 'RuleStruct', 'RuleU', 'RuleBin'];
-    groups.sort((a, b) => {
-      const aIdx = order.indexOf(a.name);
-      const bIdx = order.indexOf(b.name);
-      if (aIdx === -1 && bIdx === -1) return a.name.localeCompare(b.name);
-      if (aIdx === -1) return 1;
-      if (bIdx === -1) return -1;
-      return aIdx - bIdx;
-    });
-
-    return groups;
-  });
-
-  // Polarity explanation
-  const polarityInfo = createMemo(() => {
-    const meta = calcData().calc_structure_rules_meta;
-    if (!meta?.polarity) return [];
-    return Object.entries(meta.polarity).map(([name, pol]) => ({
-      name: name.replace('Formula_', ''),
-      polarity: pol as string,
-    }));
-  });
+  // Separate binary and unary connectives
+  const binaryConnectives = createMemo(() =>
+    connectives().filter(c => c.arity === 2)
+  );
+  const unaryConnectives = createMemo(() =>
+    connectives().filter(c => c.arity === 1)
+  );
+  const nullaryConnectives = createMemo(() =>
+    connectives().filter(c => c.arity === 0)
+  );
 
   return (
     <ErrorBoundary>
@@ -128,17 +112,6 @@ export default function CalculusOverview() {
 
         {/* Display options */}
         <div class="flex flex-wrap items-center gap-4 p-4 bg-gray-100 dark:bg-gray-800 rounded-lg">
-          <label class="flex items-center gap-2 cursor-pointer">
-            <input
-              type="checkbox"
-              checked={simplified()}
-              onChange={(e) => setSimplified(e.currentTarget.checked)}
-              class="w-4 h-4 text-blue-600 rounded focus:ring-blue-500"
-            />
-            <span class="text-sm text-gray-700 dark:text-gray-300">
-              Simplified notation (Γ, A, B)
-            </span>
-          </label>
           <label class="flex items-center gap-2 cursor-pointer">
             <input
               type="checkbox"
@@ -159,11 +132,11 @@ export default function CalculusOverview() {
               1. Syntax
             </h3>
             <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">
-              BNF grammar for formulas, structures, and sequents
+              BNF grammar for formulas and sequents
             </p>
           </div>
           <div class="p-4 overflow-x-auto">
-            <BNFGrammar productions={bnfProductions()} useLatex={true} />
+            <BNFGrammarView productions={bnfProductions()} />
           </div>
         </section>
 
@@ -184,11 +157,12 @@ export default function CalculusOverview() {
                   <th class="px-4 py-2 text-left text-sm font-medium text-gray-600 dark:text-gray-400">Name</th>
                   <th class="px-4 py-2 text-left text-sm font-medium text-gray-600 dark:text-gray-400">ASCII</th>
                   <th class="px-4 py-2 text-left text-sm font-medium text-gray-600 dark:text-gray-400">Symbol</th>
+                  <th class="px-4 py-2 text-left text-sm font-medium text-gray-600 dark:text-gray-400">Category</th>
                   <th class="px-4 py-2 text-left text-sm font-medium text-gray-600 dark:text-gray-400">Polarity</th>
                 </tr>
               </thead>
               <tbody class="divide-y divide-gray-200 dark:divide-gray-700">
-                <For each={[...connectives(), ...unaryConnectives()]}>
+                <For each={[...binaryConnectives(), ...unaryConnectives(), ...nullaryConnectives()]}>
                   {(conn) => (
                     <tr class="hover:bg-gray-50 dark:hover:bg-gray-700/30">
                       <td class="px-4 py-2 text-gray-900 dark:text-white font-medium">
@@ -199,8 +173,11 @@ export default function CalculusOverview() {
                       </td>
                       <td class="px-4 py-2">
                         <Show when={conn.latex} fallback={<span class="text-gray-400">—</span>}>
-                          <KaTeX latex={conn.latex} />
+                          <KaTeX latex={conn.latex.replace(/#\d/g, '\\square')} />
                         </Show>
+                      </td>
+                      <td class="px-4 py-2 text-sm text-gray-600 dark:text-gray-400">
+                        {conn.category || '—'}
                       </td>
                       <td class="px-4 py-2">
                         <span
@@ -229,7 +206,7 @@ export default function CalculusOverview() {
             <p class="text-sm text-blue-800 dark:text-blue-300">
               <strong>Polarity</strong> determines the proof search phase:
               <span class="text-green-700 dark:text-green-400"> positive</span> connectives are decomposed eagerly (synchronous),
-              <span class="text-red-700 dark:text-red-400"> negative</span> connectives are decomposed lazily (asynchronous).
+              <span class="text-red-700 dark:text-red-400"> negative</span> connectives are decomposed lazily (asynchronous/invertible).
             </p>
           </div>
         </section>
@@ -244,26 +221,19 @@ export default function CalculusOverview() {
           <div class="p-4 prose dark:prose-invert max-w-none text-sm">
             <p>A <strong>sequent</strong> has the form:</p>
             <div class="text-center my-4">
-              <KaTeX latex="\\Gamma \\vdash \\Delta" display={true} />
+              <KaTeX latex="\\Gamma ; \\Delta \\vdash A" display={true} />
             </div>
             <p>where:</p>
             <ul>
-              <li><KaTeX latex="\\Gamma" /> (antecedent) — resources available / assumptions</li>
-              <li><KaTeX latex="\\Delta" /> (succedent) — goal to prove / conclusion</li>
+              <li><KaTeX latex="\\Gamma" /> — cartesian (persistent/unrestricted) context</li>
+              <li><KaTeX latex="\\Delta" /> — linear context (resources available exactly once)</li>
+              <li><KaTeX latex="A" /> — succedent (goal formula)</li>
               <li><KaTeX latex="\\vdash" /> (turnstile) — entailment relation</li>
             </ul>
-            <Show when={simplified()}>
-              <p class="mt-4">
-                <strong>Simplified notation:</strong> We use <KaTeX latex="\\Gamma, \\Delta, \\Sigma" /> for contexts,
-                and <KaTeX latex="A, B, C" /> for formulas.
-              </p>
-            </Show>
-            <Show when={!simplified()}>
-              <p class="mt-4">
-                <strong>Full notation:</strong> Metavariables like <code>?X</code>, <code>F?A</code> show the exact
-                matching patterns used by the proof engine.
-              </p>
-            </Show>
+            <p class="mt-4">
+              <strong>Linear logic</strong> is resource-sensitive: each linear hypothesis must be used exactly once.
+              The <KaTeX latex="!" /> (bang) modality allows formulas to be used multiple times.
+            </p>
           </div>
         </section>
 
@@ -274,29 +244,22 @@ export default function CalculusOverview() {
               4. Inference Rules
             </h3>
             <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">
-              Rules are written in fraction notation: premises above, conclusion below
+              Rules are organized by connective category
             </p>
           </div>
           <div class="p-4 space-y-8">
-            <For each={ruleGroups()}>
-              {(group) => (
+            <For each={Object.entries(ruleGroups())}>
+              {([groupName, rules]) => (
                 <div>
                   <h4 class="text-lg font-semibold text-gray-800 dark:text-gray-200 mb-4 pb-2 border-b border-gray-200 dark:border-gray-700">
-                    {group.label}
+                    {groupName}
                     <span class="ml-2 text-sm font-normal text-gray-500">
-                      ({group.rules.length} rule{group.rules.length !== 1 ? 's' : ''})
+                      ({rules.length} rule{rules.length !== 1 ? 's' : ''})
                     </span>
                   </h4>
                   <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                    <For each={group.rules}>
-                      {(rule) => (
-                        <SequentRule
-                          name={rule.name}
-                          ruleStrings={rule.ruleStrings}
-                          simplified={simplified()}
-                          showAscii={showAscii()}
-                        />
-                      )}
+                    <For each={rules}>
+                      {(rule) => <RuleCard rule={rule} />}
                     </For>
                   </div>
                 </div>
@@ -328,10 +291,40 @@ export default function CalculusOverview() {
                   Decompose negative connectives — these rules are invertible and can be applied in any order.
                 </li>
               </ul>
-              <p>
-                The <code>[A]</code> notation indicates a <strong>focused formula</strong> — the current
-                focus of decomposition during the positive phase.
-              </p>
+              <div class="overflow-x-auto mt-4">
+                <table class="text-sm">
+                  <thead>
+                    <tr>
+                      <th class="px-3 py-2 text-left">Connective</th>
+                      <th class="px-3 py-2 text-left">Polarity</th>
+                      <th class="px-3 py-2 text-left">Phase</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <For each={polarityInfo()}>
+                      {(info) => (
+                        <tr>
+                          <td class="px-3 py-2 font-mono">{info.name}</td>
+                          <td class="px-3 py-2">
+                            <span
+                              class="px-2 py-0.5 text-xs rounded"
+                              classList={{
+                                'bg-green-100 text-green-800': info.polarity === 'positive',
+                                'bg-red-100 text-red-800': info.polarity === 'negative',
+                              }}
+                            >
+                              {info.polarity}
+                            </span>
+                          </td>
+                          <td class="px-3 py-2">
+                            {info.polarity === 'positive' ? 'Synchronous (eager)' : 'Asynchronous (lazy)'}
+                          </td>
+                        </tr>
+                      )}
+                    </For>
+                  </tbody>
+                </table>
+              </div>
             </div>
           </section>
         </Show>

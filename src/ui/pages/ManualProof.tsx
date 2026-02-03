@@ -30,12 +30,12 @@ import {
   serializeProofTree,
   initBrowserRuleset,
   getContextEntries,
-  ProofTreeNode,
-  ApplicableRule,
-  ContextEntry,
+  type ProofTreeNode,
+  type ApplicableRule,
+  type ContextEntry,
   getRuleApplicationDetails,
-  RuleApplicationDetails,
-} from '../lib/proofLogic';
+  type RuleApplicationDetails,
+} from '../lib/proofLogicV2';
 
 type ViewMode = 'tree' | 'structured' | 'ascii' | 'json';
 type ProofMode = 'unfocused' | 'focused';
@@ -209,12 +209,16 @@ export default function ManualProof() {
     const node = getNodeAtPath(pt, path);
     if (!node) return;
 
-    // Verify position exists for left rules
-    if (position !== 'R' && !node.conclusion.linear_ctx?.[position]) {
-      console.error('applyRuleAtPath: position not found:', position);
-      console.error('Available ids:', Object.keys(node.conclusion.linear_ctx || {}));
-      setError('The selected formula is no longer available. Please try again.');
-      return;
+    // Verify position exists for left rules (v2 uses index-based positions)
+    if (position !== 'R') {
+      const idx = parseInt(position, 10);
+      const linear = node.conclusion.linear || [];
+      if (isNaN(idx) || idx < 0 || idx >= linear.length) {
+        console.error('applyRuleAtPath: position not found:', position);
+        console.error('Available indices:', linear.length);
+        setError('The selected formula is no longer available. Please try again.');
+        return;
+      }
     }
 
     try {
@@ -270,15 +274,19 @@ export default function ManualProof() {
     const node = getNodeAtPath(pt, path);
     if (!node) return;
 
-    // Verify the position still exists in this node's linear_ctx
-    if (position !== 'R' && !node.conclusion.linear_ctx?.[position]) {
-      console.error('Position no longer valid in node:', position);
-      console.error('Available ids:', Object.keys(node.conclusion.linear_ctx || {}));
-      setError('The selected formula is no longer available. Please try again.');
-      setSplitDialogRule(null);
-      setSplitDialogPosition(null);
-      setSplitDialogPath(null);
-      return;
+    // Verify the position still exists in this node's linear context (v2 uses indices)
+    if (position !== 'R') {
+      const idx = parseInt(position, 10);
+      const linear = node.conclusion.linear || [];
+      if (isNaN(idx) || idx < 0 || idx >= linear.length) {
+        console.error('Position no longer valid in node:', position);
+        console.error('Available indices:', linear.length);
+        setError('The selected formula is no longer available. Please try again.');
+        setSplitDialogRule(null);
+        setSplitDialogPosition(null);
+        setSplitDialogPath(null);
+        return;
+      }
     }
 
     try {

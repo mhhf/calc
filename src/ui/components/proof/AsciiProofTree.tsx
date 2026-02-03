@@ -1,5 +1,5 @@
 import { createMemo, Show } from 'solid-js';
-import { SerializedProof, SerializedProofNode } from '../../lib/proofLogic';
+import { type SerializedProof, type SerializedProofNode } from '../../lib/proofLogicV2';
 
 interface AsciiProofTreeProps {
   proof: SerializedProof;

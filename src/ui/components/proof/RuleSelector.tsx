@@ -1,7 +1,7 @@
 import { For, Show, createSignal } from 'solid-js';
 import KaTeX from '../math/KaTeX';
 import SequentRule from '../math/SequentRule';
-import { ApplicableRule, sequentToLatex } from '../../lib/proofLogic';
+import { type ApplicableRule, sequentToLatex } from '../../lib/proofLogicV2';
 
 interface RuleSelectorProps {
   sequentLatex: string;

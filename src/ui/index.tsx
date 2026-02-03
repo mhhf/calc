@@ -3,17 +3,8 @@ import { Router } from '@solidjs/router';
 import { RootLayout, routes } from './App';
 import './styles/app.css';
 
-// Import and initialize the calculus library
-// @ts-ignore - CommonJS module
-import * as CalcModule from '../../lib/calc.js';
-// @ts-ignore - JSON import
-import calcData from '../../out/calc.json';
-
-// Handle CommonJS default export
-const Calc = (CalcModule as any).default || CalcModule;
-
-// Initialize the calculus database (must happen before any parsing)
-Calc.init(calcData);
+// v2 API is lazily initialized via calcV2.ts when needed
+// No global initialization required
 
 // Mount the app
 const root = document.getElementById('root');

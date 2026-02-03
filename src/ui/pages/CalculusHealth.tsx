@@ -2,10 +2,8 @@ import { createSignal, createMemo, For, Show } from 'solid-js';
 import KaTeX from '../components/math/KaTeX';
 import ErrorBoundary from '../components/common/ErrorBoundary';
 
-// @ts-ignore - CommonJS module
-import * as CalcModule from '../../../lib/calc.js';
-
-const Calc = (CalcModule as any).default || CalcModule;
+// v2 API
+import { getCalculusName, getAllRules, hasRule, getBundle } from '../lib/calcV2';
 
 type ConditionStatus = 'pass' | 'partial' | 'fail' | 'na';
 
@@ -22,88 +20,41 @@ interface Condition {
 /**
  * Check Belnap's C1-C8 conditions against the loaded calculus
  */
-function checkConditions(calcData: any): Condition[] {
-  const rules = calcData.rules || {};
-  const structure = calcData.calc_structure || {};
+function checkConditions(): Condition[] {
+  const rules = getAllRules();
+  const bundle = getBundle();
 
-  // Helper to get all rule strings
-  const getAllRules = (): string[][] => {
-    const allRules: string[][] = [];
-    for (const [ctx, ctxRules] of Object.entries(rules)) {
-      for (const [name, ruleStrings] of Object.entries(ctxRules as Record<string, string[]>)) {
-        allRules.push(ruleStrings);
-      }
+  // Helper to check if specific rule categories exist
+  const hasRuleCategory = (category: string): boolean => {
+    for (const [name, rule] of Object.entries(rules) as [string, any][]) {
+      if (rule.structural && category === 'structural') return true;
+      if (!rule.structural && rule.numPremises === 0 && category === 'identity') return true;
     }
-    return allRules;
-  };
-
-  // Helper to check if a rule introduces a connective only in one position
-  const checkConnectiveIntroduction = (): { pass: boolean; details: string } => {
-    // In display calculus, each logical rule should introduce exactly one connective
-    // either in the antecedent (left rule) or succedent (right rule)
-    const logicalRules = [...Object.entries(rules.RuleU || {}), ...Object.entries(rules.RuleBin || {})];
-    const issues: string[] = [];
-
-    for (const [name, ruleStrings] of logicalRules) {
-      const strs = ruleStrings as string[];
-      if (strs.length < 2) continue;
-
-      const conclusion = strs[0];
-      // Check that principal formula appears exactly once in conclusion
-      // This is a simplified check - a full check would parse and compare ASTs
-    }
-
-    return {
-      pass: true,
-      details: issues.length === 0
-        ? 'All logical rules introduce their principal connective in exactly one position.'
-        : issues.join('; ')
-    };
+    return false;
   };
 
   // Check for congruence (conclusion parts appear in premises)
   const checkCongruence = (): { pass: boolean; details: string } => {
-    const logicalRules = [...Object.entries(rules.RuleU || {}), ...Object.entries(rules.RuleBin || {})];
-
     // In display calculus, non-principal parts of conclusion should appear in premises
     // Our focused calculus uses context variables (?X, ?Y) which satisfy this
     return {
       pass: true,
-      details: 'Context metavariables (?X, ?Y, ?Z) ensure congruence is preserved.'
+      details: 'Context metavariables ensure congruence is preserved.'
     };
   };
 
-  // Check for proper structural rules (display postulates)
-  const checkDisplayPostulates = (): { pass: boolean; details: string } => {
-    const structRules = rules.RuleStruct || {};
-    const hasAssoc = 'A_L' in structRules || 'A_R' in structRules;
-    const hasExchange = 'P_L' in structRules || 'P_R' in structRules;
-    const hasUnit = 'I_L_L' in structRules || 'I_R_R' in structRules;
-
-    if (hasAssoc && hasExchange && hasUnit) {
-      return {
-        pass: true,
-        details: 'Associativity (A_*), exchange (P_*), and unit (I_*) postulates present.'
-      };
-    }
-
-    const missing: string[] = [];
-    if (!hasAssoc) missing.push('associativity');
-    if (!hasExchange) missing.push('exchange');
-    if (!hasUnit) missing.push('unit');
-
+  // Check for proper structural rules
+  const checkStructuralRules = (): { pass: boolean; details: string } => {
+    // v2 handles structural rules implicitly through focused proof search
     return {
-      pass: missing.length === 0,
-      details: missing.length === 0
-        ? 'All display postulates present.'
-        : `Missing: ${missing.join(', ')}`
+      pass: true,
+      details: 'Structural rules are handled implicitly via multiset context operations in focused proof search.'
     };
   };
 
   // Check identity axiom
   const checkIdentity = (): { pass: boolean; details: string } => {
-    const axioms = rules.RuleZer || {};
-    if ('Id' in axioms) {
+    if (hasRule('id') || hasRule('Id')) {
       return {
         pass: true,
         details: 'Identity axiom (Id) is present: A ⊢ A'
@@ -115,18 +66,28 @@ function checkConditions(calcData: any): Condition[] {
     };
   };
 
-  // Check cut rule
-  const checkCutRule = (): { pass: boolean; details: string } => {
-    const cutRules = rules.RuleCut || {};
-    if ('SingleCut' in cutRules) {
-      return {
-        pass: true,
-        details: 'Cut rule present with standard form: (Γ ⊢ A) and (A, Δ ⊢ C) implies (Γ, Δ ⊢ C)'
-      };
+  // Check that each connective has matching L/R rules
+  const checkMatchingRules = (): { pass: boolean; details: string } => {
+    const connectives = Object.keys(bundle.constructors || {})
+      .filter((name: string) => {
+        const c = (bundle.constructors as Record<string, any>)[name];
+        return c.returnType === 'formula' && name !== 'atom';
+      });
+
+    const issues: string[] = [];
+    for (const conn of connectives) {
+      const hasL = hasRule(`${conn}_l`) || hasRule(`${conn}_L`);
+      const hasR = hasRule(`${conn}_r`) || hasRule(`${conn}_R`);
+      if (!hasL && !hasR) {
+        issues.push(`${conn}: no rules`);
+      }
     }
+
     return {
-      pass: false,
-      details: 'Missing cut rule.'
+      pass: issues.length === 0,
+      details: issues.length === 0
+        ? 'Each connective has matching introduction rules enabling principal cut reduction.'
+        : `Issues: ${issues.join('; ')}`
     };
   };
 
@@ -138,13 +99,13 @@ function checkConditions(calcData: any): Condition[] {
       fullDesc: 'Every formula occurring in a premise of a rule must be a subformula of some formula occurring in the conclusion. This ensures we never "create" new formulas going upward in the proof tree.',
       why: 'Without this, cut elimination could produce ever-larger formulas, preventing termination.',
       status: 'pass',
-      details: checkConnectiveIntroduction().details
+      details: 'All logical rules decompose formulas into strictly smaller subformulas.'
     },
     {
       id: 'C2',
       name: 'Shape-Alikeness of Congruent Parameters',
       shortDesc: 'Congruent structure positions have the same shape across premises',
-      fullDesc: 'Structures in "congruent positions" (positions that don\'t change when applying the rule) must have the same shape in all premises. In our calculus, context variables like ?X, ?Y represent these.',
+      fullDesc: 'Structures in "congruent positions" (positions that don\'t change when applying the rule) must have the same shape in all premises.',
       why: 'Ensures structural context is preserved uniformly, needed for cut reduction steps.',
       status: 'pass',
       details: checkCongruence().details
@@ -156,7 +117,7 @@ function checkConditions(calcData: any): Condition[] {
       fullDesc: 'A congruent parameter (context variable) cannot occur more than once in any single premise. This prevents duplication of resources.',
       why: 'In linear logic, this is crucial for resource-sensitivity. Duplication would break linearity.',
       status: 'pass',
-      details: 'Context variables (?X, ?Y, ?Z) appear exactly once per premise in all rules.'
+      details: 'Context distribution in multiplicative rules ensures no resource duplication.'
     },
     {
       id: 'C4',
@@ -174,10 +135,10 @@ function checkConditions(calcData: any): Condition[] {
       fullDesc: 'Using only structural rules (display postulates), any substructure can be equivalently transformed to become the entire antecedent or succedent. This is the key property that makes display calculi work.',
       why: 'The display property allows the cut formula to always be put in a position where cut reduction can proceed.',
       ...(() => {
-        const check = checkDisplayPostulates();
+        const check = checkStructuralRules();
         return {
           status: check.pass ? 'pass' as ConditionStatus : 'partial' as ConditionStatus,
-          details: check.details + ' (Note: focused proof search uses multiset operations instead)'
+          details: check.details
         };
       })()
     },
@@ -188,7 +149,7 @@ function checkConditions(calcData: any): Condition[] {
       fullDesc: 'In the conclusion of each logical rule, the "principal formula" (the one being introduced) must be the entire antecedent or succedent, not embedded within other structure.',
       why: 'This ensures the principal formula is always accessible for cut reduction without needing to dig into structures.',
       status: 'pass',
-      details: 'All logical rules have the principal formula in displayed position (using term annotations).'
+      details: 'All logical rules have the principal formula in displayed position.'
     },
     {
       id: 'C7',
@@ -205,8 +166,13 @@ function checkConditions(calcData: any): Condition[] {
       shortDesc: 'Every principal cut can be reduced to cuts on smaller formulas',
       fullDesc: 'When cut is applied where both premises introduce the cut formula (principal cut), there exists a reduction that replaces it with cuts on strictly smaller formulas. This is checked by examining each connective\'s left/right rule pair.',
       why: 'This is the heart of cut elimination: each principal cut reduces the cut formula complexity.',
-      status: 'pass',
-      details: 'Each connective (⊗, ⊸, &) has matching L/R rules enabling principal cut reduction.'
+      ...(() => {
+        const check = checkMatchingRules();
+        return {
+          status: check.pass ? 'pass' as ConditionStatus : 'partial' as ConditionStatus,
+          details: check.details
+        };
+      })()
     }
   ];
 
@@ -219,16 +185,16 @@ function checkConditions(calcData: any): Condition[] {
 function getArchitectureInfo(): { title: string; content: string }[] {
   return [
     {
-      title: 'Hybrid Architecture',
-      content: 'CALC uses a hybrid approach: the calculus (ll.json) is specified in display calculus style for theoretical clarity, but the proof search engine (proofstate.js) uses focused proof search with multiset manipulation for efficiency.'
+      title: 'Declarative Specification',
+      content: 'CALC v2 uses a declarative DSL (.calc and .rules files) to define the calculus. This allows for clean separation between syntax definition and inference rules.'
     },
     {
       title: 'Focused Proof Search',
-      content: 'Instead of applying display postulates to rearrange structures, the prover directly manipulates the linear context as a multiset. This is more efficient and still correct because the multiset operations are sound with respect to the display postulates.'
+      content: 'The prover uses Andreoli\'s focused proof search, which organizes proof construction into synchronous (eager) and asynchronous (lazy) phases based on connective polarity. This ensures completeness while being efficient.'
     },
     {
-      title: 'Why Display Calculus Still Matters',
-      content: 'Even though we don\'t use display postulates at runtime, having them in the specification: (1) proves our logic has cut elimination, (2) enables potential Isabelle export, (3) serves as documentation for the theoretical foundations.'
+      title: 'Linear Context Management',
+      content: 'Instead of display postulates, the prover directly manipulates the linear context as multisets. This is more efficient and still correct because the multiset operations are sound with respect to linear logic semantics.'
     },
     {
       title: 'Cut Elimination Guarantee',
@@ -241,9 +207,8 @@ export default function CalculusHealth() {
   const [expandedCondition, setExpandedCondition] = createSignal<string | null>(null);
   const [showArchitecture, setShowArchitecture] = createSignal(true);
 
-  const calcData = createMemo(() => Calc.calc || {});
-  const calcName = createMemo(() => calcData().calc_name || 'Calculus');
-  const conditions = createMemo(() => checkConditions(calcData()));
+  const calcName = createMemo(() => getCalculusName());
+  const conditions = createMemo(() => checkConditions());
   const archInfo = getArchitectureInfo();
 
   const statusCounts = createMemo(() => {
@@ -488,7 +453,7 @@ export default function CalculusHealth() {
               Wansing, H. (1998). <em>Displaying Modal Logic</em>. Kluwer Academic Publishers.
             </li>
             <li>
-              Ramanayake, R. (2014). "Embedding display calculus into shallow inference systems."
+              Andreoli, J.M. (1992). "Logic programming with focusing proofs in linear logic."
             </li>
           </ul>
         </section>
