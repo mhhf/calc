@@ -22,28 +22,28 @@ formula: type.
 
 % Tensor (multiplicative conjunction): A ⊗ B
 % "I have both A and B simultaneously"
+% Polarity: positive (inferred from context-splitting right rule)
 tensor: formula -> formula -> formula
   @ascii "_ * _"
   @latex "#1 \\otimes #2"
   @prec 60 left
-  @polarity positive
   @category multiplicative.
 
 % Linear implication (lollipop): A ⊸ B
 % "Consume A to produce B"
+% Polarity: negative (inferred from context-preserving right rule)
 loli: formula -> formula -> formula
   @ascii "_ -o _"
   @latex "#1 \\multimap #2"
   @prec 50 right
-  @polarity negative
   @category multiplicative.
 
 % Multiplicative unit: 1
 % "I have nothing (but that's a resource too)"
+% Polarity: positive (inferred from empty-context right rule)
 one: formula
   @ascii "I"
   @latex "\\mathbf{1}"
-  @polarity positive
   @category multiplicative.
 
 % =============================================================================
@@ -52,11 +52,12 @@ one: formula
 
 % With (additive conjunction): A & B
 % "I can choose to use this as A or as B (but not both)"
+% Polarity: negative (inferred from context-copying right rule)
+% Note: &R invertibility is special - kept explicit in rules
 with: formula -> formula -> formula
   @ascii "_ & _"
   @latex "#1 \\& #2"
   @prec 70 left
-  @polarity negative
   @category additive.
 
 % =============================================================================
@@ -69,11 +70,11 @@ with: formula -> formula -> formula
 % Semantically: !A = F(G(A)) where F ⊣ G is the LNL adjunction
 % - G extracts reusable content (moves to cartesian)
 % - F embeds back into linear world
+% Polarity: positive (inferred from empty-context right rule)
 bang: formula -> formula
   @ascii "! _"
   @latex "!#1"
   @prec 80
-  @polarity positive
   @category exponential.
 
 % =============================================================================

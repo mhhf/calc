@@ -19,6 +19,10 @@
 %   hyp(t, A) = hypothesis "t : A" (or just "A" when t is --)
 %   comma(X, Y) = context concatenation
 %   empty = empty context (I)
+%
+% Invertibility: inferred from polarity when not specified
+%   - Positive connective: left rules invertible, right rules not
+%   - Negative connective: right rules invertible, left rules not
 
 @extends lnl.
 
@@ -35,6 +39,7 @@ id: deriv (seq empty (hyp any A) (hyp any A))
 % =============================================================================
 % Tensor Rules (Multiplicative Conjunction)
 % =============================================================================
+% Polarity: positive → tensor_r not invertible, tensor_l invertible (inferred)
 
 %     Γ ; Δ |- A      Γ ; Δ' |- B
 %    ─────────────────────────────
@@ -42,28 +47,26 @@ id: deriv (seq empty (hyp any A) (hyp any A))
 tensor_r: deriv (seq G (comma D D') (hyp any (tensor A B)))
   <- deriv (seq G D (hyp any A))
   <- deriv (seq G D' (hyp any B))
-  @pretty "⊗R"
-  @invertible false.
+  @pretty "⊗R".
 
 %      Γ ; Δ, A, B |- C
 %    ────────────────────
 %     Γ ; Δ, A ⊗ B |- C
 tensor_l: deriv (seq G (comma D (hyp any (tensor A B))) C)
   <- deriv (seq G (comma (comma D (hyp any A)) (hyp any B)) C)
-  @pretty "⊗L"
-  @invertible true.
+  @pretty "⊗L".
 
 % =============================================================================
 % Linear Implication Rules (Lollipop)
 % =============================================================================
+% Polarity: negative → loli_r invertible, loli_l not invertible (inferred)
 
 %      Γ ; Δ, A |- B
 %    ─────────────────
 %     Γ ; Δ |- A ⊸ B
 loli_r: deriv (seq G D (hyp any (loli A B)))
   <- deriv (seq G (comma D (hyp any A)) (hyp any B))
-  @pretty "⊸R"
-  @invertible true.
+  @pretty "⊸R".
 
 %     Γ ; Δ |- A      Γ ; Δ', B |- C
 %    ────────────────────────────────
@@ -71,12 +74,15 @@ loli_r: deriv (seq G D (hyp any (loli A B)))
 loli_l: deriv (seq G (comma (comma D (hyp any (loli A B))) D') C)
   <- deriv (seq G D (hyp any A))
   <- deriv (seq G (comma D' (hyp any B)) C)
-  @pretty "⊸L"
-  @invertible false.
+  @pretty "⊸L".
 
 % =============================================================================
 % With Rules (Additive Conjunction)
 % =============================================================================
+% Polarity: negative, but invertibility is SPECIAL for additives
+% &R is NOT invertible (must prove both with same resources - a choice)
+% &L1/&L2 ARE invertible (just project to one side)
+% These don't follow the standard pattern, so explicit @invertible is needed
 
 %     Γ ; Δ |- A      Γ ; Δ |- B
 %    ────────────────────────────
@@ -106,20 +112,19 @@ with_l2: deriv (seq G (comma D (hyp any (with A B))) C)
 % =============================================================================
 % Unit Rules (Multiplicative Unit)
 % =============================================================================
+% Polarity: positive → one_r not invertible, one_l invertible (inferred)
 
 %    ─────────────
 %     Γ ; I |- 1
 one_r: deriv (seq G empty (hyp any one))
-  @pretty "1R"
-  @invertible false.
+  @pretty "1R".
 
 %      Γ ; Δ |- C
 %    ──────────────
 %     Γ ; Δ, 1 |- C
 one_l: deriv (seq G (comma D (hyp any one)) C)
   <- deriv (seq G D C)
-  @pretty "1L"
-  @invertible true.
+  @pretty "1L".
 
 % =============================================================================
 % Bang Rules (Exponential - Bridge to Cartesian)
@@ -127,6 +132,8 @@ one_l: deriv (seq G (comma D (hyp any one)) C)
 %
 % The bang ! is the key bridge between linear and cartesian modes.
 % !A means "A is available for unlimited use" (move to cartesian context).
+%
+% Bang rules don't follow standard naming (_r/_l), so explicit @invertible needed
 
 %      Γ ; I |- A
 %    ──────────────
@@ -164,7 +171,6 @@ absorption: deriv (seq G (comma D (hyp any (bang A))) C)
 copy: deriv (seq (comma G (hyp any A)) D C)
   <- deriv (seq (comma G (hyp any A)) (comma D (hyp any A)) C)
   @pretty "Copy"
-  @invertible true
   @structural true.
 
 % Note: Cartesian weakening (discard) is in lnl.family as cart_weakening

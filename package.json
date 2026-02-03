@@ -4,7 +4,8 @@
   "description": "Linear logic proof calculus sandbox",
   "main": "index.js",
   "scripts": {
-    "test": "node --test tests/test.js tests/node.js tests/proofstate.js tests/hash.js tests/store.js tests/term.js tests/intern.js tests/profiler.js tests/parser-baseline.js tests/calc-db-baseline.js tests/rendering-baseline.js tests/sequent-lnl.js tests/sequent-tree.js tests/display-prover.js && node tests/polarity-inference.js",
+    "test": "node --test tests/test.js tests/node.js tests/proofstate.js tests/hash.js tests/store.js tests/term.js tests/intern.js tests/profiler.js tests/parser-baseline.js tests/calc-db-baseline.js tests/rendering-baseline.js tests/sequent-lnl.js tests/sequent-tree.js tests/display-prover.js tests/v2/calculus.test.js tests/v2/sequent.test.js tests/v2/kernel.test.js && node tests/polarity-inference.js",
+    "test:v2": "node --test tests/v2/calculus.test.js tests/v2/sequent.test.js tests/v2/kernel.test.js tests/v2/focusing.test.js tests/v2/sequent-ext.test.js tests/v2/focused-prover.test.js tests/v2/api.test.js",
     "test:celf": "node --stack-size=4096 --test tests/celf-parser.js",
     "test:ts": "node --test tests/tree-sitter.js",
     "test:e2e": "node tests/e2e-solidjs.js",
@@ -23,6 +24,9 @@
     "bench:micro": "node --expose-gc benchmarks/run.js --category=micro",
     "bench:save": "node --expose-gc benchmarks/run.js --save",
     "bench:compare": "node --expose-gc benchmarks/run.js --compare",
+    "bench:v2": "node --expose-gc benchmarks/proof/proofs-v2.bench.js",
+    "bench:compare:all": "node --expose-gc benchmarks/compare-all.js",
+    "bench:compare:all:save": "node --expose-gc benchmarks/compare-all.js --save",
     "profile": "CALC_PROFILE=1 node"
   },
   "author": "",
