@@ -8,7 +8,7 @@ const OUTPUT_LOCATION = "../out";
 
 
 const calc = require('../ll.json');
-const calcParser = require("../lib/parser.js");
+const calcParser = require("../lib/v1/parser.js");
 const Parser = calcParser(calc);
 const parser = Parser.parser;
 

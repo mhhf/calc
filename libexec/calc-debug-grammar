@@ -2,10 +2,10 @@
 
 const calc = require('../ll.json');
 const clc = require('cli-color');
-const helper = require('../lib/helper.js');
-const Calc = require("../lib/calc.js");
+const helper = require('../lib/v1/helper.js');
+const Calc = require("../lib/v1/calc.js");
 
-const calcParser = require("../lib/parser.js");
+const calcParser = require("../lib/v1/parser.js");
 Calc.init(calc);
 const Parser = calcParser();
 

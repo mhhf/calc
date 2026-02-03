@@ -9,7 +9,7 @@ const fs = require("fs");
 const path = require("path");
 
 const calc = require('../ll.json');
-const calcParser = require("../lib/parser.js");
+const calcParser = require("../lib/v1/parser.js");
 const parser = calcParser(calc).parser;
 
 // Generate parser with CommonJS exports

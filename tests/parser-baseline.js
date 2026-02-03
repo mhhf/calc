@@ -8,8 +8,8 @@
 const { describe, it } = require('node:test');
 const assert = require('node:assert');
 const calc = require('../ll.json');
-const calcParser = require('../lib/parser.js');
-const Calc = require('../lib/calc.js');
+const calcParser = require('../lib/v1/parser.js');
+const Calc = require('../lib/v1/calc.js');
 
 const { parser } = calcParser(calc);
 

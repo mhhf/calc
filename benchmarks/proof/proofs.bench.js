@@ -11,12 +11,12 @@ const { Store } = require('../../lib/store');
 
 // Setup
 const calc = require('../../ll.json');
-const calcParser = require('../../lib/parser.js');
-const Sequent = require('../../lib/sequent.js');
-const Proofstate = require('../../lib/proofstate.js');
+const calcParser = require('../../lib/v1/parser.js');
+const Sequent = require('../../lib/v1/sequent.js');
+const Proofstate = require('../../lib/v1/proofstate.js');
 const Ruleset = require('../../lib/ruleset.js');
-const PT = require('../../lib/pt.js');
-const Calc = require('../../lib/calc.js');
+const PT = require('../../lib/v1/pt.js');
+const Calc = require('../../lib/v1/calc.js');
 
 const parser = calcParser(calc).parser;
 const { rules, bwd, getRule } = Ruleset.init();

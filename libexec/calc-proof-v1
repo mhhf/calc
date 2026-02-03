@@ -5,19 +5,19 @@
  */
 
 const calc = require('../ll.json');
-const Calc = require("../lib/calc.js");
-const Sequent = require("../lib/sequent.js");
-const PT = require("../lib/pt.js");
-const Proofstate = require("../lib/proofstate.js");
-const Ruleset = require("../lib/ruleset.js");
+const Calc = require("../lib/v1/calc.js");
+const Sequent = require("../lib/v1/sequent.js");
+const PT = require("../lib/v1/pt.js");
+const Proofstate = require("../lib/v1/proofstate.js");
+const Ruleset = require("../lib/v1/ruleset.js");
 const clc = require('cli-color');
-const { profiler } = require("../lib/profiler.js");
+const { profiler } = require("../lib/v1/profiler.js");
 
 // Initialize calculus
 Calc.init(calc);
 const {rules, bwd, getRule} = Ruleset.init();
 
-const calcParser = require("../lib/parser.js");
+const calcParser = require("../lib/v1/parser.js");
 const Parser = calcParser();
 const parser = Parser.parser;
 

@@ -1,11 +1,11 @@
 const { describe, it } = require('node:test');
 const assert = require('node:assert');
 const calc = require('../ll.json');
-const calcParser = require("../lib/parser.js");
-const Sequent = require("../lib/sequent.js");
-const Proofstate = require("../lib/proofstate.js");
-const Ruleset = require("../lib/ruleset.js");
-const PT = require("../lib/pt.js");
+const calcParser = require("../lib/v1/parser.js");
+const Sequent = require("../lib/v1/sequent.js");
+const Proofstate = require("../lib/v1/proofstate.js");
+const Ruleset = require("../lib/v1/ruleset.js");
+const PT = require("../lib/v1/pt.js");
 const parser = calcParser(calc).parser;
 const {rules, bwd, getRule} = Ruleset.init();
 
@@ -18,7 +18,7 @@ const toPT = function (str) {
 
 // Helper to run proof search on a formula string
 const proveFormula = function (formulaStr) {
-  const Calc = require("../lib/calc.js");
+  const Calc = require("../lib/v1/calc.js");
   let node = parser.parse(formulaStr);
   let seq = Sequent.fromTree(node);
   let pt = new PT({ conclusion: seq });
@@ -43,7 +43,7 @@ describe("Proofstate", function () {
   // Focus is now tracked externally (via ProofSearchState), not in sequent syntax
   // The old blur test used focus bracket syntax which is removed
   it("should track focus state externally", function () {
-    const { ProofSearchState } = require('../lib/prover.js');
+    const { ProofSearchState } = require('../lib/v1/prover.js');
     let state = new ProofSearchState();
 
     assert.strictEqual(state.isFocused(), false);

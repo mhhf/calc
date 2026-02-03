@@ -11,8 +11,8 @@ const assert = require('node:assert');
 // Reset Calc state for clean tests
 function resetCalcModule() {
   // Clear require cache
-  delete require.cache[require.resolve('../lib/calc.js')];
-  const Calc = require('../lib/calc.js');
+  delete require.cache[require.resolve('../lib/v1/calc.js')];
+  const Calc = require('../lib/v1/calc.js');
   Calc.initialized = false;
   Calc.rule_index = 0;
   Calc.db = { rules: {}, toIds: {} };

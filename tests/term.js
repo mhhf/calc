@@ -1,7 +1,7 @@
 const { describe, it, beforeEach } = require('node:test');
 const assert = require('node:assert');
-const { Store } = require('../lib/store');
-const { Term } = require('../lib/term');
+const { Store } = require('../lib/v1/store');
+const { Term } = require('../lib/v1/term');
 
 describe('Term', () => {
   let store;

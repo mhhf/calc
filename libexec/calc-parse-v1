@@ -10,10 +10,10 @@ const args = process.argv.slice(2);
 let formulaStr = "-- : A -o B |- -- : C";
 const formula = args && args[0] || formulaStr;
 
-const Node = require("../lib/node.js");
+const Node = require("../lib/v1/node.js");
 
 const calc = require('../ll.json');
-const calcParser = require("../lib/parser.js");
+const calcParser = require("../lib/v1/parser.js");
 const Parser = calcParser(calc);
 const parser = Parser.parser;
 const Calc = Parser.Calc;

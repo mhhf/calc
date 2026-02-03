@@ -6,8 +6,8 @@ const { BenchmarkRunner } = require('../lib/runner');
 
 // Setup
 const calc = require('../../ll.json');
-const calcParser = require('../../lib/parser.js');
-const mgu = require('../../lib/mgu.js');
+const calcParser = require('../../lib/v1/parser.js');
+const mgu = require('../../lib/v1/mgu.js');
 
 const parser = calcParser(calc).parser;
 

@@ -7,9 +7,9 @@
 const { test, describe, before } = require('node:test');
 const assert = require('node:assert');
 
-const Sequent = require('../lib/sequent.js');
-const Calc = require('../lib/calc.js');
-const Node = require('../lib/node.js');
+const Sequent = require('../lib/v1/sequent.js');
+const Calc = require('../lib/v1/calc.js');
+const Node = require('../lib/v1/node.js');
 
 describe('Multi-context Sequent', () => {
 

@@ -7,8 +7,8 @@
 const { test, describe } = require('node:test');
 const assert = require('node:assert');
 
-const { DisplayProver, LNLDisplayProver, ProofStep, SearchStrategy } = require('../lib/display-prover.js');
-const { TreeSequent, LNLTreeSequent } = require('../lib/sequent-tree.js');
+const { DisplayProver, LNLDisplayProver, ProofStep, SearchStrategy } = require('../lib/v1/display-prover.js');
+const { TreeSequent, LNLTreeSequent } = require('../lib/v1/sequent-tree.js');
 
 // Mock node for testing
 function mockNode(id, vals = [], str = null) {

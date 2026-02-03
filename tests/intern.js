@@ -1,19 +1,19 @@
 const { describe, it, beforeEach } = require('node:test');
 const assert = require('node:assert');
-const { resetStore } = require('../lib/store');
-const { Term } = require('../lib/term');
+const { resetStore } = require('../lib/v1/store');
+const { Term } = require('../lib/v1/term');
 const {
   internNode,
   externNode,
   nodesEqual,
   getSubterms,
   countNodes,
-} = require('../lib/intern');
+} = require('../lib/v1/intern');
 
 // Setup parser
 const calc = require('../ll.json');
-const calcParser = require('../lib/parser.js');
-const Node = require('../lib/node.js');
+const calcParser = require('../lib/v1/parser.js');
+const Node = require('../lib/v1/node.js');
 const parser = calcParser(calc).parser;
 
 describe('Intern', () => {
@@ -180,7 +180,7 @@ describe('Intern', () => {
 
   describe('structural sharing', () => {
     it('should share identical subformulas', () => {
-      const { getStore } = require('../lib/store');
+      const { getStore } = require('../lib/v1/store');
       const store = getStore();
 
       // Parse two formulas that share subformulas

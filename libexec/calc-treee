@@ -2,13 +2,13 @@
 // TODO - to get rid of shift-reduce conflicts for "e bin_op e" expressions, I cannot have non-terminal bin_op rules, therefore they should be propagated up to generate multiple "e '+' e" rules.
 
 const DEBUG = !!process.env["DEBUG"];
-const helper = require("../lib/helper.js");
+const helper = require("../lib/v1/helper.js");
 const args = process.argv.slice(2);
 let formulaStr = "(?Z, ?X), ?Y |- < AT? B , AT? C > : F?A xx F?B";
 const formula = args && args[0] || formulaStr;
 
 const calc = require('../ll.json');
-const calcParser = require("../lib/parser.js");
+const calcParser = require("../lib/v1/parser.js");
 const parser = calcParser(calc).parser;
 
 let node = parser.parse(formula)

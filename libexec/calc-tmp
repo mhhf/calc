@@ -1,24 +1,24 @@
 #!/usr/bin/env node
 
 const calc = require('../ll.json');
-const helper = require("../lib/helper.js");
-const Sequent = require("../lib/sequent.js");
-// const PT = require("../lib/pt.js");
-const Proofstate = require("../lib/proofstate.js");
+const helper = require("../lib/v1/helper.js");
+const Sequent = require("../lib/v1/sequent.js");
+// const PT = require("../lib/v1/pt.js");
+const Proofstate = require("../lib/v1/proofstate.js");
 const clc = require('cli-color');
-const { saturate } = require('../lib/runner.js');
+const { saturate } = require('../lib/v1/runner.js');
 
-const Calc = require("../lib/calc.js");
+const Calc = require("../lib/v1/calc.js");
 Calc.init(calc);
-const Ruleset = require("../lib/ruleset.js");
+const Ruleset = require("../lib/v1/ruleset.js");
 const {rules, bwd, getRule} = Ruleset.init();
 
 
-const calcParser = require("../lib/parser.js");
+const calcParser = require("../lib/v1/parser.js");
 const Parser = calcParser();
 const seq_parser = Parser.parser;
 
-// const {parser, lexer} = require("../lib/llt_compiler.js");
+// const {parser, lexer} = require("../lib/v1/llt_compiler.js");
 // const fs = require("fs");
 
 let args = process.argv.slice(2);

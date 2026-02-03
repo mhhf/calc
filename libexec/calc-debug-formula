@@ -1,19 +1,19 @@
 #!/usr/bin/env node
 
 const calc = require('../ll.json');
-const helper = require("../lib/helper.js");
+const helper = require("../lib/v1/helper.js");
 const SHA3 = require("sha3");
 const sha3 = str => {
   var d = new SHA3.SHA3Hash(224);
   d.update(str);
   return d.digest('hex');
 }
-const Node = require("../lib/node.js");
+const Node = require("../lib/v1/node.js");
 // const Node = grammarNode(calc);
 
-const Calc = require("../lib/calc.js");
+const Calc = require("../lib/v1/calc.js");
 Calc.init(calc);
-const calcParser = require("../lib/parser.js");
+const calcParser = require("../lib/v1/parser.js");
 const Parser = calcParser();
 const grammar = Parser.grammar;
 const parser = Parser.parser;

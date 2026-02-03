@@ -1,15 +1,15 @@
 #!/usr/bin/env node
 
 const calc = require('../ll.json');
-const helper = require("../lib/helper.js");
-const Sequent = require("../lib/sequent.js");
-// const PT = require("../lib/pt.js");
-const Proofstate = require("../lib/proofstate.js");
+const helper = require("../lib/v1/helper.js");
+const Sequent = require("../lib/v1/sequent.js");
+// const PT = require("../lib/v1/pt.js");
+const Proofstate = require("../lib/v1/proofstate.js");
 const clc = require('cli-color');
-const { saturate } = require('../lib/runner.js');
+const { saturate } = require('../lib/v1/runner.js');
 
 
-const calcParser = require("../lib/parser.js");
+const calcParser = require("../lib/v1/parser.js");
 const Parser = calcParser(calc);
 const Calc = Parser.Calc;
 const parser = Parser.parser;

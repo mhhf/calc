@@ -1,6 +1,6 @@
 const { describe, it, beforeEach } = require('node:test');
 const assert = require('node:assert');
-const { Store, ScopedStore, NodeType } = require('../lib/store');
+const { Store, ScopedStore, NodeType } = require('../lib/v1/store');
 
 describe('Store', () => {
   let store;

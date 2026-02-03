@@ -1,6 +1,6 @@
 const { describe, it, beforeEach } = require('node:test');
 const assert = require('node:assert');
-const { Profiler, profiler } = require('../lib/profiler');
+const { Profiler, profiler } = require('../lib/v1/profiler');
 
 describe('Profiler', () => {
   let p;

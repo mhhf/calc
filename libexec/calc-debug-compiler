@@ -4,8 +4,8 @@
 // const clc = require('cli-color');
 // const helper = require('../lib/helper.js');
 //
-// const calcParser = require("../lib/parser.js");
-const {parser, lexer} = require("../lib/llt_compiler.js");
+// const calcParser = require("../lib/v1/parser.js");
+const {parser, lexer} = require("../lib/v1/llt_compiler.js");
 const fs = require("fs");
 
 

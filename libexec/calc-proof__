@@ -2,9 +2,9 @@
 // TODO - to get rid of shift-reduce conflicts for "e bin_op e" expressions, I cannot have non-terminal bin_op rules, therefore they should be propagated up to generate multiple "e '+' e" rules.
 
 var clc = require('cli-color');
-const mgu = require("../lib/mgu.js");
+const mgu = require("../lib/v1/mgu.js");
 // const compare = require("../lib/compare.js");
-const sub = require("../lib/substitute.js");
+const sub = require("../lib/v1/substitute.js");
 
 const prompt = require('readline-sync');
 
@@ -17,7 +17,7 @@ const f1 = args && args[0] || formulaStr;
 const f2 = args && args[1] || formulaStr2;
 
 const calc = require('../ll.json');
-const calcParser = require("../lib/parser.js");
+const calcParser = require("../lib/v1/parser.js");
 const parser = calcParser(calc).parser;
 
 // todo - better meme

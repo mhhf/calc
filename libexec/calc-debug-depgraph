@@ -2,9 +2,9 @@
 
 const calc_ = require('../ll.json');
 const clc = require('cli-color');
-const helper = require('../lib/helper.js');
+const helper = require('../lib/v1/helper.js');
 
-const calcParser = require("../lib/parser.js");
+const calcParser = require("../lib/v1/parser.js");
 const Parser = calcParser(calc_);
 
 

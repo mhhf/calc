@@ -13,7 +13,7 @@ const {
   inferAllPolarities,
   inferAllContextModes,
   CONNECTIVE_TO_RIGHT_RULE,
-} = require('../lib/polarity');
+} = require('../lib/v1/polarity');
 
 // Load ll.json
 const llPath = path.join(__dirname, '..', 'll.json');

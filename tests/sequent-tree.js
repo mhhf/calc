@@ -7,7 +7,7 @@
 const { test, describe } = require('node:test');
 const assert = require('node:assert');
 
-const { TreeSequent, LNLTreeSequent, computeHash } = require('../lib/sequent-tree.js');
+const { TreeSequent, LNLTreeSequent, computeHash } = require('../lib/v1/sequent-tree.js');
 
 // Mock node for testing
 function mockNode(id, vals = [], str = null) {
