@@ -8,6 +8,7 @@ const assert = require('node:assert');
 const Seq = require('../../lib/v2/kernel/sequent');
 const Context = require('../../lib/v2/prover/focused/context');
 const calculus = require('../../lib/v2/calculus');
+const Store = require('../../lib/v2/kernel/store');
 
 describe('v2 Sequent (generic arrays)', () => {
   let AST;
@@ -41,7 +42,8 @@ describe('v2 Sequent (generic arrays)', () => {
       const s2 = Seq.addToContext(s, 'linear', AST.freevar('A'));
       const ctx = Seq.getContext(s2, 'linear');
       assert.strictEqual(ctx.length, 1);
-      assert.strictEqual(ctx[0].tag, 'freevar');
+      // Formulas are now hashes - use Store.tag to inspect
+      assert.strictEqual(Store.tag(ctx[0]), 'freevar');
     });
 
     it('should append duplicates', () => {
@@ -70,7 +72,8 @@ describe('v2 Sequent (generic arrays)', () => {
       );
       const s2 = Seq.removeAtIndex(s, 'linear', 0);
       assert.strictEqual(Seq.getContext(s2, 'linear').length, 1);
-      assert.strictEqual(Seq.getContext(s2, 'linear')[0].children[0], 'B');
+      // Formulas are now hashes - use Store.child to access children
+      assert.strictEqual(Store.child(Seq.getContext(s2, 'linear')[0], 0), 'B');
     });
 
     it('should return null for invalid index', () => {
@@ -99,7 +102,8 @@ describe('v2 Sequent (generic arrays)', () => {
       const theta = [[AST.freevar('A'), AST.freevar('X')]];
       const s2 = Seq.substitute(s, theta);
       const ctx = Seq.getContext(s2, 'linear');
-      assert.strictEqual(ctx[0].children[0], 'X');
+      // Formulas are now hashes - use Store.child to access children
+      assert.strictEqual(Store.child(ctx[0], 0), 'X');
     });
   });
 
@@ -146,7 +150,8 @@ describe('v2 focused/context (multiset)', () => {
       const ms = Context.fromArray([f, f, f]);
       const entries = Context.entries(ms);
       assert.strictEqual(entries.length, 1);
-      assert.strictEqual(entries[0].count, 3);
+      // entries returns [hash, count] arrays
+      assert.strictEqual(entries[0][1], 3);
     });
   });
 
@@ -173,7 +178,8 @@ describe('v2 focused/context (multiset)', () => {
       ms = Context.add(ms, f);
       const entries = Context.entries(ms);
       assert.strictEqual(entries.length, 1);
-      assert.strictEqual(entries[0].count, 2);
+      // entries returns [hash, count] arrays
+      assert.strictEqual(entries[0][1], 2);
     });
 
     it('should be immutable', () => {
@@ -188,32 +194,33 @@ describe('v2 focused/context (multiset)', () => {
     it('should remove formula from multiset', () => {
       const f = AST.freevar('A');
       const ms = Context.fromArray([f]);
-      const h = Seq.hashAST(f);
-      const ms2 = Context.remove(ms, h);
+      // f IS the hash now (content-addressed)
+      const ms2 = Context.remove(ms, f);
       assert.strictEqual(Context.size(ms2), 0);
     });
 
     it('should decrement count', () => {
       const f = AST.freevar('A');
       const ms = Context.fromArray([f, f, f]);
-      const h = Seq.hashAST(f);
-      const ms2 = Context.remove(ms, h, 2);
+      // f IS the hash now (content-addressed)
+      const ms2 = Context.remove(ms, f, 2);
       const entries = Context.entries(ms2);
-      assert.strictEqual(entries[0].count, 1);
+      // entries returns [hash, count] arrays
+      assert.strictEqual(entries[0][1], 1);
     });
 
     it('should return null if not enough', () => {
       const f = AST.freevar('A');
       const ms = Context.fromArray([f]);
-      const h = Seq.hashAST(f);
-      const ms2 = Context.remove(ms, h, 2);
+      // f IS the hash now (content-addressed)
+      const ms2 = Context.remove(ms, f, 2);
       assert.strictEqual(ms2, null);
     });
 
     it('should return null if not found', () => {
       const ms = Context.fromArray([AST.freevar('A')]);
-      const h = Seq.hashAST(AST.freevar('X'));
-      const ms2 = Context.remove(ms, h);
+      // Formulas ARE hashes now - AST.freevar('X') IS the hash
+      const ms2 = Context.remove(ms, AST.freevar('X'));
       assert.strictEqual(ms2, null);
     });
   });
@@ -245,7 +252,8 @@ describe('v2 focused/context (multiset)', () => {
       const ms2 = Context.fromArray([f]);
       const merged = Context.merge(ms1, ms2);
       const entries = Context.entries(merged);
-      assert.strictEqual(entries[0].count, 3);
+      // entries returns [hash, count] arrays
+      assert.strictEqual(entries[0][1], 3);
     });
   });
 
@@ -306,7 +314,8 @@ describe('v2 focused/context (multiset)', () => {
         AST.freevar('A'),
         AST.tensor(AST.freevar('B'), AST.freevar('C'))
       ]);
-      const filtered = Context.filter(ms, f => f.tag === 'freevar');
+      // Formulas are hashes - use Store.tag to inspect
+      const filtered = Context.filter(ms, h => Store.tag(h) === 'freevar');
       assert.strictEqual(Context.size(filtered), 1);
     });
   });
@@ -317,15 +326,17 @@ describe('v2 focused/context (multiset)', () => {
         AST.freevar('A'),
         AST.tensor(AST.freevar('B'), AST.freevar('C'))
       ]);
-      const entry = Context.find(ms, f => f.tag === 'tensor');
-      assert.ok(entry !== null);
-      assert.strictEqual(entry.formula.tag, 'tensor');
+      // Formulas are hashes - use Store.tag to inspect
+      // find() returns the hash directly or null
+      const found = Context.find(ms, h => Store.tag(h) === 'tensor');
+      assert.ok(found !== null);
+      assert.strictEqual(Store.tag(found), 'tensor');
     });
 
     it('should return null if not found', () => {
       const ms = Context.fromArray([AST.freevar('A')]);
-      const entry = Context.find(ms, f => f.tag === 'tensor');
-      assert.strictEqual(entry, null);
+      const found = Context.find(ms, h => Store.tag(h) === 'tensor');
+      assert.strictEqual(found, null);
     });
   });
 
@@ -334,6 +345,7 @@ describe('v2 focused/context (multiset)', () => {
       const ms = Context.fromArray([AST.freevar('A'), AST.freevar('B')]);
       const theta = [[AST.freevar('A'), AST.freevar('X')]];
       const ms2 = Context.substitute(ms, theta);
+      // Formulas ARE hashes now - direct comparison works
       assert.strictEqual(Context.has(ms2, AST.freevar('X')), true);
       assert.strictEqual(Context.has(ms2, AST.freevar('A')), false);
     });
@@ -347,7 +359,8 @@ describe('v2 focused/context (multiset)', () => {
       const ms2 = Context.substitute(ms, theta);
       const entries = Context.entries(ms2);
       assert.strictEqual(entries.length, 1);
-      assert.strictEqual(entries[0].count, 2);
+      // entries returns [hash, count] arrays
+      assert.strictEqual(entries[0][1], 2);
     });
   });
 });

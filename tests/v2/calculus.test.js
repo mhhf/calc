@@ -51,21 +51,21 @@ describe('v2 Calculus (generated from spec)', () => {
       const A = ill.AST.freevar('A');
       const B = ill.AST.freevar('B');
       const t = ill.AST.tensor(A, B);
-      assert.strictEqual(t.tag, 'tensor');
-      assert.strictEqual(t.children.length, 2);
+      assert.strictEqual(ill.AST.tag(t), 'tensor');
+      assert.strictEqual(ill.AST.children(t).length, 2);
     });
 
     it('should generate nullary constructors', () => {
       const one = ill.AST.one();
-      assert.strictEqual(one.tag, 'one');
-      assert.strictEqual(one.children.length, 0);
+      assert.strictEqual(ill.AST.tag(one), 'one');
+      assert.strictEqual(ill.AST.children(one).length, 0);
     });
 
     it('should generate unary constructors', () => {
       const A = ill.AST.freevar('A');
       const bangA = ill.AST.bang(A);
-      assert.strictEqual(bangA.tag, 'bang');
-      assert.strictEqual(bangA.children.length, 1);
+      assert.strictEqual(ill.AST.tag(bangA), 'bang');
+      assert.strictEqual(ill.AST.children(bangA).length, 1);
     });
 
     it('should generate sequent constructor from family', () => {
@@ -73,68 +73,68 @@ describe('v2 Calculus (generated from spec)', () => {
       const D = ill.AST.freevar('D');
       const C = ill.AST.freevar('C');
       const s = ill.AST.seq(G, D, C);
-      assert.strictEqual(s.tag, 'seq');
-      assert.strictEqual(s.children.length, 3);
+      assert.strictEqual(ill.AST.tag(s), 'seq');
+      assert.strictEqual(ill.AST.children(s).length, 3);
     });
   });
 
   describe('parser (generated)', () => {
     it('should parse atoms', () => {
       const ast = ill.parse('p');
-      assert.strictEqual(ast.tag, 'atom');
-      assert.strictEqual(ast.children[0], 'p');
+      assert.strictEqual(ill.AST.tag(ast), 'atom');
+      assert.strictEqual(ill.AST.child(ast, 0), 'p');
     });
 
     it('should parse freevars', () => {
       const ast = ill.parse('A');
-      assert.strictEqual(ast.tag, 'freevar');
-      assert.strictEqual(ast.children[0], 'A');
+      assert.strictEqual(ill.AST.tag(ast), 'freevar');
+      assert.strictEqual(ill.AST.child(ast, 0), 'A');
     });
 
     it('should parse tensor from @ascii "_ * _"', () => {
       const ast = ill.parse('A * B');
-      assert.strictEqual(ast.tag, 'tensor');
+      assert.strictEqual(ill.AST.tag(ast), 'tensor');
     });
 
     it('should parse loli from @ascii "_ -o _"', () => {
       const ast = ill.parse('A -o B');
-      assert.strictEqual(ast.tag, 'loli');
+      assert.strictEqual(ill.AST.tag(ast), 'loli');
     });
 
     it('should parse with from @ascii "_ & _"', () => {
       const ast = ill.parse('A & B');
-      assert.strictEqual(ast.tag, 'with');
+      assert.strictEqual(ill.AST.tag(ast), 'with');
     });
 
     it('should parse bang from @ascii "! _"', () => {
       const ast = ill.parse('!A');
-      assert.strictEqual(ast.tag, 'bang');
+      assert.strictEqual(ill.AST.tag(ast), 'bang');
     });
 
     it('should parse one from @ascii "I"', () => {
       const ast = ill.parse('I');
-      assert.strictEqual(ast.tag, 'one');
+      assert.strictEqual(ill.AST.tag(ast), 'one');
     });
 
     it('should respect precedence from @prec', () => {
       // tensor (60) binds tighter than loli (50)
       // "A * B -o C" should be "(A * B) -o C"
       const ast = ill.parse('A * B -o C');
-      assert.strictEqual(ast.tag, 'loli');
-      assert.strictEqual(ast.children[0].tag, 'tensor');
+      assert.strictEqual(ill.AST.tag(ast), 'loli');
+      assert.strictEqual(ill.AST.tag(ill.AST.child(ast, 0)), 'tensor');
     });
 
     it('should handle parentheses', () => {
       const ast = ill.parse('A * (B -o C)');
-      assert.strictEqual(ast.tag, 'tensor');
-      assert.strictEqual(ast.children[1].tag, 'loli');
+      assert.strictEqual(ill.AST.tag(ast), 'tensor');
+      assert.strictEqual(ill.AST.tag(ill.AST.child(ast, 1)), 'loli');
     });
 
     it('should handle complex formulas', () => {
       const ast = ill.parse('!A * B -o C & D');
       // Precedence: ! (80) > * (60) > -o (50) > & (70)
       // Actually & is 70 > -o 50, so it's (!A * B) -o (C & D)
-      assert.strictEqual(ast.tag, 'loli');
+      assert.strictEqual(ill.AST.tag(ast), 'loli');
     });
   });
 
@@ -165,13 +165,14 @@ describe('v2 Calculus (generated from spec)', () => {
   describe('roundtrip', () => {
     it('should parse and render to same AST', () => {
       // Test that parse(render(ast)) === ast
+      // With content-addressed ASTs, same structure = same hash
       const formulas = ['A', 'A * B', 'A -o B', '!A', 'I'];
       for (const formula of formulas) {
         const ast1 = ill.parse(formula);
         const rendered = ill.render(ast1, 'ascii');
         const ast2 = ill.parse(rendered);
-        // Compare AST structure (normalized)
-        assert.strictEqual(JSON.stringify(ast1), JSON.stringify(ast2),
+        // Content-addressed: equal structure = equal hash
+        assert.strictEqual(ast1, ast2,
           `Roundtrip failed for: ${formula} -> ${rendered}`);
       }
     });

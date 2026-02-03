@@ -84,7 +84,8 @@ describe('v2 API', () => {
 
       const s = calc.Seq.fromArrays([A], [], B);
       assert.strictEqual(calc.Seq.getContext(s, 'linear').length, 1);
-      assert.strictEqual(s.succedent.tag, 'freevar');
+      // Succedent is now a hash - use AST.tag to inspect
+      assert.strictEqual(ill.AST.tag(s.succedent), 'freevar');
     });
   });
 });

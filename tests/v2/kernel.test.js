@@ -6,6 +6,7 @@ const { describe, it, before } = require('node:test');
 const assert = require('node:assert');
 
 const calculus = require('../../lib/v2/calculus');
+const Store = require('../../lib/v2/kernel/store');
 const { sub, apply, eq, copy, occurs } = require('../../lib/v2/kernel/substitute');
 const { unify, match, isVar } = require('../../lib/v2/kernel/unify');
 
@@ -20,28 +21,32 @@ describe('v2 Kernel', () => {
   describe('sub', () => {
     it('should substitute variable', () => {
       const result = sub(AST.freevar('A'), AST.freevar('A'), AST.atom('p'));
-      assert.strictEqual(result.tag, 'atom');
+      // ASTs are now hashes - use Store.tag to inspect
+      assert.strictEqual(Store.tag(result), 'atom');
     });
 
     it('should not mutate original', () => {
       const ast = AST.freevar('A');
       sub(ast, AST.freevar('A'), AST.atom('p'));
-      assert.strictEqual(ast.tag, 'freevar');
+      // Original hash unchanged (immutable by nature)
+      assert.strictEqual(Store.tag(ast), 'freevar');
     });
 
     it('should substitute in nested AST', () => {
       const ast = AST.tensor(AST.freevar('A'), AST.freevar('B'));
       const result = sub(ast, AST.freevar('A'), AST.atom('p'));
-      assert.strictEqual(result.children[0].tag, 'atom');
-      assert.strictEqual(result.children[1].tag, 'freevar');
+      // Children are also hashes - use Store to inspect
+      assert.strictEqual(Store.tag(Store.child(result, 0)), 'atom');
+      assert.strictEqual(Store.tag(Store.child(result, 1)), 'freevar');
     });
 
     it('should handle multiple via apply', () => {
       const ast = AST.tensor(AST.freevar('A'), AST.freevar('B'));
       const theta = [[AST.freevar('A'), AST.atom('p')], [AST.freevar('B'), AST.atom('q')]];
       const result = apply(ast, theta);
-      assert.strictEqual(result.children[0].children[0], 'p');
-      assert.strictEqual(result.children[1].children[0], 'q');
+      // Nested access via Store
+      assert.strictEqual(Store.child(Store.child(result, 0), 0), 'p');
+      assert.strictEqual(Store.child(Store.child(result, 1), 0), 'q');
     });
   });
 
