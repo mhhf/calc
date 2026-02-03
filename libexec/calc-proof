@@ -1,4 +1,8 @@
 #!/usr/bin/env node
+/**
+ * @deprecated Use calc-proof-v2 instead for the new v2 prover (5-8x faster)
+ *   calc proof-v2 "P, P -o Q |- Q"
+ */
 
 const calc = require('../ll.json');
 const Calc = require("../lib/calc.js");
