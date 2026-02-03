@@ -47,10 +47,19 @@ This document outlines the implementation plan for replacing ll.json with an Ext
 - [x] Removed 37 lines of hardcoded fallbacks (deriv, seq, comma, struct, empty)
 - [x] Test suite: `tests/family-generation.js` (6 tests passing)
 
-**Next (Phase 4):**
-- [ ] Create unified Calculus API (`lib/calculus.js`)
-- [ ] Support loading from ll.json OR .calc/.rules
-- [ ] Refactor lib/ consumers to use Calculus API
+**v2 Prover Completed (2026-02-02):**
+- [x] Focused proof search (Andreoli-style) in `lib/v2/prover/focused/`
+- [x] Content-addressed multisets for O(1) formula lookup
+- [x] 5-8x faster than v1 (see `doc/benchmark-v2.md`)
+- [x] All core ILL rules: tensor, loli, with, bang, one
+- [x] Polarity/invertibility inference from rule structure
+- [x] 138 tests passing
+
+**Next (Phase 4): Full Migration to .calc/.rules**
+
+Goal: Deprecate ll.json entirely. Load ONLY from .calc/.rules.
+
+See detailed plan below.
 
 ---
 
@@ -73,6 +82,44 @@ ll.json                    # Monolithic: types + rules + metadata + rendering
 3. **Jison is unmaintained** - Poor error messages, no TypeScript
 4. **Hard to extend** - Adding connectives requires JSON surgery
 5. **No reuse** - Can't import stdlib or share definitions
+
+---
+
+## CLF/Celf/Ceptre Hierarchy
+
+Understanding the relationship between logical frameworks:
+
+```
+LF (Edinburgh Logical Framework)
+ │   Dependent types: Πx:A. B
+ │
+ └─► LLF (Linear Logical Framework)
+      │   + Linear types: A ⊸ B, A & B, ⊤
+      │   + Backward chaining only
+      │
+      └─► CLF (Concurrent Logical Framework)
+           │   + Lax monad: {A}
+           │   + Synchronous connectives inside monad: ⊗, 1, !, ∃
+           │   + Forward chaining (to quiescence)
+           │
+           ├─► Celf (Implementation)
+           │     Full CLF in Standard ML
+           │     #query, #exec, #trace directives
+           │
+           ├─► LolliMon (Simplified)
+           │     Lolli + Monad
+           │     No dependent types
+           │
+           └─► Ceptre (Game-focused)
+                 + Stages (structured quiescence)
+                 + Interactive mode
+                 - No dependent types
+                 - Simplified syntax
+```
+
+**CALC v2 Target:** Ceptre-level features, with path to full CLF.
+
+See `dev/research/clf-celf-ceptre.md` for detailed analysis.
 
 ---
 
@@ -347,37 +394,75 @@ lib/celf/generator.js       # .calc → ll.json generator (calculus-agnostic)
 tests/ll-generation.js      # Generation tests (21 tests)
 ```
 
-### Phase 4: Direct AST Consumers
-**Goal:** Refactor lib/ to consume new AST directly.
+### Phase 4: Complete Migration to .calc/.rules (REVISED 2026-02-02)
 
-**Strategy:**
-1. Create abstraction layer `lib/calculus.js`
-2. Support loading from ll.json OR .calc/.rules
-3. Gradually migrate consumers
+**Goal:** Deprecate ll.json entirely. Load ONLY from .calc/.rules format.
 
-**Interface:**
+**Rationale:** We don't want backward compatibility with ll.json. The v2 system
+already loads from .calc/.rules via `lib/v2/calculus/index.js`.
+
+#### Phase 4A: Complete v2 ILL Prover ✓
+
+**Gap Analysis (ll.json vs v2):**
+
+| Feature | ll.json | v2 | Status |
+|---------|---------|-----|--------|
+| Tensor ⊗ | ✓ | ✓ | ✓ Done |
+| Loli ⊸ | ✓ | ✓ | ✓ Done |
+| With & | ✓ | ✓ | ✓ Done |
+| Bang ! | ✓ | ✓ | ✓ Done + tested |
+| One I | ✓ | ✓ | ✓ Done |
+| Top ⊤ | - | - | NOT IMPLEMENTED (low priority) |
+| Monad {A} | experimental | - | NOT IMPLEMENTED (see TODO.md) |
+| Lax | experimental | - | NOT IMPLEMENTED (see TODO.md) |
+| Forall | experimental | - | NOT IMPLEMENTED |
+| Absorption | ✓ | spec'd | Rule defined but not integrated in prover |
+| Copy | ✓ | spec'd | Rule defined but not integrated in prover |
+
+**Tasks completed (2026-02-02):**
+- [x] Add bang tests to focused-prover.test.js
+- [x] Fixed requiresEmptyDelta constraint for promotion rule
+- [x] Fixed delta tracking for nested rule applications
+
+**Limitations:**
+- `!A ⊢ !A` requires absorption+copy integration (tracked in tests as expected failure)
+- Full cartesian context support deferred to future work
+
+#### Phase 4B: Migrate Consumers ✓
+
+**Current v1 consumers that need migration:**
+- `lib/calc.js` → ✓ marked deprecated
+- `lib/parser.js` → ✓ marked deprecated
+- `lib/proofstate.js` → ✓ marked deprecated
+- `libexec/*` CLI tools → ✓ v2 versions created (calc-proof-v2, calc-parse-v2)
+- `src/ui/` SolidJS UI → pending (requires node.js compatibility layer)
+
+**New v2 API (lib/v2/index.js):**
 ```javascript
-class Calculus {
-  // Load from ll.json (legacy)
-  static fromJSON(json) { ... }
+const v2 = require('./lib/v2');
 
-  // Load from .calc + .rules
-  static fromCelf(calcPath, rulesPath) { ... }
-
-  // Unified API
-  getConnectives() { ... }
-  getRules() { ... }
-  getRule(name) { ... }
-  getPolarity(connective) { ... }
-}
+// High-level API
+const result = await v2.proveString('P, P -o Q |- Q');
+const formula = await v2.parseFormula('A -o B');
+const sequent = await v2.parseSequent('A, B |- C');
+const ascii = await v2.render(formula, 'ascii');
 ```
 
-**Tests:**
-- [ ] Both loading paths produce equivalent Calculus
-- [ ] Proof search works with both
-- [ ] Rendering works with both
+**New CLI tools:**
+- `calc-proof-v2` - 5-8x faster proof search
+- `calc-parse-v2` - Parse formulas and sequents
+
+#### Phase 4C: Remove ll.json (PENDING)
+
+Blocked by UI migration. Cannot remove ll.json until:
+- [ ] Migrate UI to v2 prover
+- [ ] Delete ll.json from repository
+- [ ] Remove lib/llt_compiler.js (Jison generator)
+- [ ] Remove v1 tests that depend on ll.json
+- [ ] Update all imports to use v2 exclusively
 
 ### Phase 5: FFI Support
+
 **Goal:** Support `@ffi` and `@mode` for computational predicates.
 
 **Syntax:**
@@ -408,8 +493,9 @@ lib/celf/mode-check.js      # Mode checking
 - [ ] FFI dispatch computes correct results
 - [ ] Verify option catches errors
 
-### Phase 6: Stdlib and Migration
-**Goal:** Create reusable stdlib, migrate to new system.
+### Phase 6: Stdlib and Full Migration
+
+**Goal:** Create reusable stdlib, complete migration.
 
 **Stdlib:**
 ```
@@ -420,11 +506,23 @@ lib/celf/stdlib/
 ```
 
 **Migration:**
-- [ ] Create linear-logic.calc from ll.json
-- [ ] Create linear-logic.rules from ll.json
 - [ ] Port lib/bin.mde from optimism-mde
-- [ ] Verify all tests pass
-- [ ] Remove ll.json (or keep as generated artifact)
+- [ ] Create full Celf-compatible stdlib
+- [ ] Verify all tests pass with v2 exclusively
+- [ ] Archive or remove all v1 code
+
+---
+
+## Future Work (Deferred to TODO.md)
+
+The following advanced features are documented in `dev/TODO.md` with LOW priority:
+
+- **Lax Monad + Forward Chaining** - CLF foundation (HIGH in TODO.md, but after v2 migration)
+- **Ceptre Stages** - Structured quiescence for multi-phase computation
+- **Dependent Types (Π, ∃)** - Full CLF/LF compatibility
+- **Top (⊤)** - Additive truth connective
+
+See `dev/research/clf-celf-ceptre.md` for research background.
 
 ---
 

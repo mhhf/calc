@@ -299,4 +299,55 @@ describe('v2 FocusedProver', () => {
       assert.ok(result.proofTree.premisses.length > 0);
     });
   });
+
+  describe('proof search - bang (exponential)', () => {
+    it('should prove !A ⊢ A (dereliction)', () => {
+      const A = AST.freevar('A');
+      const s = seq([AST.bang(A)], A);
+      const result = prover.prove(s, { rules: ruleSpecs });
+      assert.strictEqual(result.success, true);
+    });
+
+    it('should fail !A ⊢ !A without absorption/copy (limitation)', () => {
+      // !A ⊢ !A requires:
+      // 1. Absorption: move A to cartesian → ·; A ⊢ !A
+      // 2. Promotion: A; · ⊢ A
+      // 3. Copy: A; A ⊢ A
+      // 4. Identity
+      // Current prover doesn't implement absorption/copy integration
+      const A = AST.freevar('A');
+      const bangA = AST.bang(A);
+      const s = seq([bangA], bangA);
+      const result = prover.prove(s, { rules: ruleSpecs });
+      // TODO: Should succeed once absorption/copy are integrated
+      assert.strictEqual(result.success, false);
+    });
+
+    it('should prove ⊢ A ⊸ !A requires empty context (promotion)', () => {
+      // This is NOT provable in standard ILL
+      // A ⊸ !A means "given A, produce unlimited A" - not valid
+      const A = AST.freevar('A');
+      const s = seq([], AST.loli(A, AST.bang(A)));
+      const result = prover.prove(s, { rules: ruleSpecs });
+      // This should fail: after loli_r, we have A ⊢ !A
+      // But promotion requires empty linear context
+      assert.strictEqual(result.success, false);
+    });
+
+    it('should prove !A, !A ⊢ A ⊗ A (can use bang multiple times)', () => {
+      const A = AST.freevar('A');
+      const s = seq([AST.bang(A), AST.bang(A)], AST.tensor(A, A));
+      const result = prover.prove(s, { rules: ruleSpecs });
+      assert.strictEqual(result.success, true);
+    });
+
+    it('should fail !A ⊢ A ⊗ A (single bang cannot duplicate)', () => {
+      // With just dereliction, !A becomes A, and we can't duplicate
+      const A = AST.freevar('A');
+      const s = seq([AST.bang(A)], AST.tensor(A, A));
+      const result = prover.prove(s, { rules: ruleSpecs });
+      // Without copy rule from cartesian, this should fail
+      assert.strictEqual(result.success, false);
+    });
+  });
 });

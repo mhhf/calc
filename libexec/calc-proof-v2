@@ -1,0 +1,70 @@
+#!/usr/bin/env node
+/**
+ * calc-proof-v2 - Proof search using v2 focused prover
+ *
+ * Usage:
+ *   calc proof-v2 "P, P -o Q |- Q"
+ *   calc proof-v2 "A * B |- B * A"
+ *   calc proof-v2 --profile "complex formula"
+ */
+
+const v2 = require('../lib/v2');
+const clc = require('cli-color');
+
+async function main() {
+  let args = process.argv.slice(2);
+
+  // Parse flags
+  const showProfile = args.includes('--profile');
+  const showTree = args.includes('--tree');
+  args = args.filter(a => !a.startsWith('--'));
+
+  // Default formula
+  const defaultFormula = "-- : P -o (R & Q) |- -- : (P -o Q) & (P -o R)";
+  const formulaStr = args[0] || defaultFormula;
+
+  console.log(`Proving: ${formulaStr}\n`);
+
+  const startTime = performance.now();
+
+  try {
+    const result = await v2.proveString(formulaStr);
+    const elapsed = (performance.now() - startTime).toFixed(2);
+
+    if (result.success) {
+      console.log(`${clc.green("✔")} Proof found in ${elapsed}ms\n`);
+
+      if (showTree && result.proofTree) {
+        console.log("Proof tree:");
+        printProofTree(result.proofTree, 0);
+      }
+    } else {
+      console.log(`${clc.red("✗")} Cannot prove this sequent`);
+      console.log(`  Time: ${elapsed}ms`);
+    }
+
+    if (showProfile) {
+      console.log("\n--- Profile ---");
+      console.log(`Total time: ${elapsed}ms`);
+    }
+  } catch (e) {
+    console.log(`${clc.red("✗")} Error: ${e.message}`);
+    if (e.stack) console.log(e.stack);
+    process.exit(1);
+  }
+}
+
+/**
+ * Print proof tree recursively
+ */
+function printProofTree(pt, depth) {
+  const indent = '  '.repeat(depth);
+  const rule = pt.rule || 'unknown';
+  console.log(`${indent}${rule}`);
+
+  for (const premise of (pt.premisses || [])) {
+    printProofTree(premise, depth + 1);
+  }
+}
+
+main();
