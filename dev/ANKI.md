@@ -1364,4 +1364,61 @@ Standard sequent < Hypersequent < Nested sequent < Display calculus ≈ Labelled
 
 ---
 
-*Last updated: 2026-01-30*
+---
+
+## CLF/Celf/Ceptre
+
+**CLF (Concurrent Logical Framework)**
+→ Dependent type theory extending LLF with synchronous connectives (⊗, 1, !, ∃) inside a lax monad {A}. Supports both backward and forward chaining. Type theory notation: λΠ⊸&⊤{∃⊗1!}.
+
+**Lax monad {A} in CLF**
+→ Monadic type separating computation modes. Outside: backward chaining (Prolog-style). Inside: forward chaining (multiset rewriting). The monad contains synchronous connectives and runs until quiescence.
+
+**Quiescence**
+→ Termination criterion for forward chaining: no more rules can fire. Dual concept: saturation (no NEW facts can be derived, avoids infinite loops with persistent facts).
+
+**Synchronous connectives**
+→ ⊗, 1, !, ∃. Require let-style elimination (commuting conversions). Positive polarity. Confined inside the lax monad in CLF. Forward chaining uses committed choice (no backtracking).
+
+**Asynchronous connectives**
+→ ⊸, &, ⊤. Direct elimination forms. Negative polarity. Outside the monad, use backward chaining with backtracking (Prolog-style).
+
+**Celf**
+→ Reference implementation of CLF in Standard ML. Proof search: backward chaining outside monad, forward chaining inside. Directives: #query (backward), #exec/#trace (forward).
+
+**Celf #exec directive**
+→ `#exec * {initial_state}` runs forward chaining until quiescence. `#exec 100 {state}` runs max 100 steps. #trace also shows intermediate states.
+
+**LolliMon**
+→ Lolli + Monad. Extends Lolli (asynchronous fragment) with CLF's monadic encapsulation. Shows how to combine forward and backward chaining cleanly.
+
+**Ceptre**
+→ Simplified CLF for game mechanics and interactive narratives. Forward chaining only. Adds stages for structured quiescence. No dependent types. Created by Chris Martens (CMU).
+
+**Ceptre stages**
+→ Named program components with local rules. Each stage runs until quiescence, then stage transitions fire. Enables multi-phase computation: `stage combat = { ... }`, `stage exploration = { ... }`.
+
+**Ceptre syntax**
+→ `a * b * c -o d * e` = if a, b, c present, replace with d, e. Capital letters are variables. `#trace _ stage {initial_state}` executes.
+
+**#interactive mode (Ceptre)**
+→ Human chooses among applicable rules instead of random selection. Enables turn-based games and debugging.
+
+**Focusing in CLF**
+→ Same Andreoli focusing as ILL, but spans both backward and forward phases. Inversion phase applies invertible rules eagerly. Focus phase makes non-deterministic choices.
+
+**Committed choice (forward chaining)**
+→ No backtracking on rule application inside the monad. Once a rule fires, its effects are permanent. Contrasts with backward chaining which backtracks on failure.
+
+**Multiset rewriting**
+→ Operational model for forward chaining. State is a multiset of facts. Rules consume and produce facts atomically. Multiple rules may be applicable; one is chosen non-deterministically.
+
+**CLF hierarchy**
+→ LF (dependent types) → LLF (+ linear ⊸, &, ⊤) → CLF (+ monad {⊗, 1, !, ∃}) → Celf (implementation) → Ceptre (simplified + stages).
+
+**deriv_lax judgment**
+→ Hypothetical judgment for forward-chaining mode in CLF. `monad_r` rule switches from `deriv` to `deriv_lax`. The lax judgment enables synchronous connective decomposition.
+
+---
+
+*Last updated: 2026-02-02*

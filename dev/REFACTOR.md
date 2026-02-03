@@ -674,23 +674,23 @@ pub fn prove(goal: JsValue) -> JsValue { ... }
 
 ### Test Migration (Vitest)
 
-- [ ] Install Vitest
-- [ ] Migrate existing Mocha tests
-- [ ] Add tests for proofstate.js
-- [ ] Add tests for sequent.js
-- [ ] Add tests for node.js
-- [ ] Add tests for parser
-- [ ] Add integration tests
+- [ ] Install Vitest (currently using Node's built-in test runner)
+- [x] ~~Migrate existing Mocha tests~~ → Using Node test runner
+- [x] ~~Add tests for proofstate.js~~ → v2 tests in tests/v2/
+- [x] ~~Add tests for sequent.js~~ → tests/v2/sequent.test.js
+- [x] ~~Add tests for node.js~~ → tests/v2/ast.test.js
+- [x] ~~Add tests for parser~~ → tests/v2/calculus.test.js
+- [x] ~~Add integration tests~~ → tests/e2e-solidjs.js (15 tests)
 - [ ] Setup coverage reporting
 
 ### Frontend Migration (HTMX/SolidJS)
 
-- [ ] Evaluate HTMX for simple UI
-- [ ] Prototype with HTMX + server
-- [ ] If needed, evaluate SolidJS
-- [ ] Remove Cycle.js dependency
-- [ ] Update webpack/bundling
-- [ ] Update KaTeX to latest
+- [x] ~~Evaluate HTMX for simple UI~~ → Chose SolidJS for reactivity
+- [x] ~~Prototype with HTMX + server~~ → N/A
+- [x] ~~If needed, evaluate SolidJS~~ → SolidJS chosen and implemented
+- [x] ~~Remove Cycle.js dependency~~ → Legacy UI deprecated, new SolidJS UI active
+- [x] ~~Update webpack/bundling~~ → Now using Vite
+- [x] ~~Update KaTeX to latest~~ → Using katex@0.16 via npm
 
 ---
 
@@ -698,38 +698,89 @@ pub fn prove(goal: JsValue) -> JsValue { ... }
 
 ### Immediate (This Week)
 
-- [ ] Fix `npm test` to actually run tests
+- [x] ~~Fix `npm test` to actually run tests~~ → Tests now run with `npm test`
 - [ ] Add basic ESLint configuration
 - [ ] Document ll.json schema
-- [ ] Remove dead/commented code
+- [x] ~~Remove dead/commented code~~ → Removed v1 UI code
 - [ ] Fix obvious bugs marked with TODO
 
 ### Short-term (This Month)
 
-- [ ] Add TypeScript with allowJs
-- [ ] Migrate to Vitest
+- [x] ~~Add TypeScript with allowJs~~ → UI is TypeScript, lib stays JS
+- [ ] Migrate to Vitest (still using Node test runner)
 - [ ] Add basic CI with GitHub Actions
-- [ ] Refactor global state in Calc.db
+- [x] ~~Refactor global state in Calc.db~~ → v2 uses functional approach
 - [ ] Add proper error types
 
 ### Medium-term (This Quarter)
 
-- [ ] Complete TypeScript migration
-- [ ] Replace Jison with Chevrotain
-- [ ] Optimize hash computation
-- [ ] Add comprehensive test suite
-- [ ] Implement benchmarks
+- [ ] Complete TypeScript migration (v2 lib modules)
+- [ ] Replace Jison with Chevrotain/tree-sitter
+- [x] ~~Optimize hash computation~~ → FNV-1a via intern.js/hash.js
+- [x] ~~Add comprehensive test suite~~ → 146 v2 tests, 15 e2e tests
+- [x] ~~Implement benchmarks~~ → `npm run bench:compare:all`
 
 ### Long-term (This Year)
 
 - [ ] Prototype Rust core
 - [ ] WASM integration
-- [ ] New frontend (HTMX or SolidJS)
+- [x] ~~New frontend (HTMX or SolidJS)~~ → SolidJS UI complete
 - [ ] Documentation site
 
 ---
 
 ## Notes & Discoveries
+
+### 2026-02-03: v1→v2 Migration Complete
+
+**Major milestone achieved:** The v2 rewrite is now the primary codebase.
+
+**What was done:**
+
+1. **UI fully migrated to v2:**
+   - All pages (Sandbox, ManualProof, CalculusOverview, CalculusHealth, MetaOverview) use v2
+   - `src/ui/lib/calcV2.ts` - browser wrapper for v2
+   - `src/ui/lib/proofLogicV2.ts` - interactive prover using v2
+   - Deleted `proofLogic.ts` (67KB of v1 code)
+   - Removed v1 initialization from `index.tsx`
+   - Bundle size reduced from 57KB to 43KB for main chunk
+
+2. **CLI tools switched to v2:**
+   - `calc parse` now uses v2 (was `calc-parse-v2`)
+   - `calc proof` now uses v2 (was `calc-proof-v2`)
+   - v1 tools renamed to `calc parse-v1`, `calc proof-v1` for benchmarking
+
+3. **v2 architecture:**
+   ```
+   lib/v2/
+   ├── calculus/index.js   # Load .calc/.rules files
+   ├── kernel/             # Core data structures
+   │   ├── ast.js          # AST operations
+   │   ├── ast-hash.js     # Content-addressed hashing
+   │   ├── sequent.js      # Sequent type
+   │   ├── substitute.js   # Substitution
+   │   └── unify.js        # Unification
+   ├── prover/             # Proof search
+   │   ├── focused/        # Focused prover
+   │   │   ├── prover.js   # Main prover
+   │   │   ├── state.js    # Proof state
+   │   │   └── context.js  # Context splitting
+   │   └── pt.js           # Proof trees
+   ├── meta/focusing.js    # Polarity inference
+   ├── browser.js          # Browser-compatible API
+   └── index.js            # Main entry point
+   ```
+
+4. **What's kept as v1 (for benchmarks/comparison):**
+   - `lib/*.js` files (marked @deprecated)
+   - `tests/proofstate.js`, `tests/node.js`, etc.
+   - `benchmarks/proof/proofs.bench.js`
+   - `calc-genparser` (generates v1 parser, still used by some tests)
+
+**Performance comparison (v1 vs v2):**
+- v2 focused prover: 5-8x faster than v1 (see `npm run bench:compare:all`)
+- v2 uses content-addressed hashing with FNV-1a (fast, non-crypto)
+- v2 has proper structural sharing via hash-consing
 
 ### 2026-01-21: Initial Code Analysis
 

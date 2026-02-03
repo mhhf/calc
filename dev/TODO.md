@@ -4,7 +4,105 @@ Outstanding tasks for the CALC project.
 
 ---
 
-## HIGH Priority Research
+## COMPLETED
+
+### v1→v2 Migration
+**Status:** ✅ COMPLETE (2026-02-03)
+
+The v2 rewrite is now the primary codebase:
+
+**UI (100% migrated):**
+- All pages use v2 API via `calcV2.ts` and `proofLogicV2.ts`
+- Deleted `proofLogic.ts` (v1) - no longer needed
+- Removed v1 `Calc.init()` from `index.tsx`
+- Bundle size reduced ~25% by removing v1 dependencies
+
+**CLI (v2 is now default):**
+- `calc parse` → uses v2 (focused parser)
+- `calc proof` → uses v2 (focused prover)
+- v1 tools renamed to `calc parse-v1` and `calc proof-v1` for benchmarking
+
+**What remains as v1 (intentionally kept for benchmarks/tests):**
+- `lib/*.js` - v1 library code (marked @deprecated)
+- `tests/proofstate.js`, `tests/node.js`, etc. - v1 unit tests
+- `benchmarks/proof/proofs.bench.js` - v1 benchmarks
+- `libexec/calc-genparser` - generates v1 parser (still used by build)
+- `libexec/calc-export` - HTML export (low priority to migrate)
+
+---
+
+## HIGH Priority
+
+### CLF Foundation: Lax Monad, Forward Chaining, Quiescence
+**Priority:** HIGH
+**Status:** Research complete, implementation pending
+**Prerequisite:** ~~Complete v1→v2 migration first~~ ✅ DONE
+
+**Goal:** Enable Celf/Ceptre-style forward chaining in CALC.
+
+**Why this matters:**
+- Full Celf compatibility requires both backward AND forward chaining
+- Forward chaining enables multiset rewriting (state transitions)
+- Quiescence enables "run until no rules apply" semantics
+- This is the foundation for game mechanics, concurrent systems, etc.
+
+**The Lax Monad `{A}`:**
+
+The lax monad separates computation modes:
+- **Outside `{}`:** Backward chaining (current v2 prover)
+- **Inside `{}`:** Forward chaining (to implement)
+
+**How to extend .calc/.rules:**
+
+```celf
+% In ill.calc - add monad connective
+monad : formula -> formula
+  @ascii "{ _ }"
+  @latex "\\{#1\\}"
+  @polarity positive
+  @category monadic.
+```
+
+```celf
+% In lnl.family - add forward-chaining judgment
+deriv_lax : sequent -> type
+  @role judgment_lax.
+
+% In ill.rules - mode switch rule
+monad_r : deriv (seq G D (hyp any (monad A)))
+       <- deriv_lax (seq G D (hyp any A))
+  @pretty "{}R"
+  @mode_switch forward.
+```
+
+**Implementation tasks:**
+- [ ] Add `monad` connective to `calculus/ill.calc`
+- [ ] Add `deriv_lax` judgment to `calculus/lnl.family`
+- [ ] Add `monad_r` rule to `calculus/ill.rules`
+- [ ] Implement forward chaining engine (`lib/v2/prover/forward/engine.js`)
+- [ ] Implement quiescence detection
+- [ ] Integrate mode switching in focused prover
+- [ ] Add `#exec` and `#trace` query directives
+
+**Forward chaining engine design:**
+```javascript
+class ForwardEngine {
+  run(state, maxSteps = Infinity) {
+    while (this.hasApplicableRules(state) && steps < maxSteps) {
+      const rule = this.chooseRule(state);  // Non-deterministic
+      state = this.applyRule(rule, state);  // Committed choice (no backtrack)
+      steps++;
+    }
+    return { state, quiescent: !this.hasApplicableRules(state) };
+  }
+}
+```
+
+**Quiescence:** Forward chaining terminates when no rules can fire.
+
+**See:** dev/research/clf-celf-ceptre.md for full background
+
+---
 
 ### Extended Celf DSL
 **Priority:** HIGH
@@ -419,6 +517,80 @@ Decision: Stay with intuitionistic linear logic (ILL) fragment. Full classical l
 - [ ] Document current Jison grammar
 - [ ] Evaluate Chevrotain migration
 - [ ] Benchmark parser performance
+
+### Ceptre Stages (Structured Quiescence)
+**Priority:** LOW
+**Prerequisite:** Lax monad and forward chaining
+
+Stages are Ceptre's mechanism for structured multi-phase computation.
+
+**Concept:**
+```ceptre
+stage combat = {
+  attack : enemy * weapon -o damaged_enemy.
+  defeat : damaged_enemy -o victory.
+}
+
+stage exploration = {
+  move : at Player Room -o at Player Room2.
+}
+
+% Stage transitions
+combat * victory -o exploration.
+```
+
+**Semantics:**
+- Each stage runs until quiescence (no rules apply)
+- Stage transitions fire when quiescence reached
+- Enables turn-based games, multi-phase protocols
+
+**Research needed:**
+- [ ] Study Ceptre stage semantics in detail
+- [ ] Design stage syntax for .calc/.rules
+- [ ] Implement stage engine with transitions
+- [ ] Add `#interactive` mode (human chooses rules)
+
+**See:** dev/research/clf-celf-ceptre.md, Chris Martens' thesis
+
+---
+
+### CLF Dependent Types (Π, ∃)
+**Priority:** LOW
+**Prerequisite:** Lax monad and forward chaining
+
+For full LF/LLF/CLF compatibility, need dependent types.
+
+**Connectives needed:**
+- Dependent function `Π x:A. B` (types depending on terms)
+- Existential `∃ x:A. B` (witness-providing)
+- Top `⊤` (additive truth, trivially provable)
+
+**How to extend:**
+```celf
+% In ill.calc
+pi : (A : type) -> (A -> formula) -> formula
+  @ascii "Pi _ : _ . _"
+  @latex "\\Pi #1 : #2. #3".
+
+exists : (A : type) -> (A -> formula) -> formula
+  @ascii "exists _ : _ . _"
+  @latex "\\exists #1 : #2. #3"
+  @polarity positive.
+
+top : formula
+  @ascii "T"
+  @latex "\\top"
+  @polarity negative.
+```
+
+**Why this is hard:**
+- Requires type-checking terms, not just formulas
+- Substitution becomes capture-avoiding
+- Need kind system (type : kind)
+
+**See:** dev/research/clf-celf-ceptre.md, CLF paper (Watkins et al.)
+
+---
 
 ### Cyclic Proofs for Fixpoints
 **Priority:** LOW
