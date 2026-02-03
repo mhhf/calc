@@ -42,7 +42,8 @@ describe('v2 Sequent', () => {
     it('should compute hash', () => {
       const s = seq({ gamma: [AST.freevar('A')] }, AST.freevar('B'));
       const h = hash(s);
-      assert.ok(typeof h === 'bigint');
+      // 32-bit FNV-1a returns Number, not BigInt
+      assert.ok(typeof h === 'number');
     });
 
     it('should cache hash', () => {

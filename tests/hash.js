@@ -22,12 +22,12 @@ describe('Hash', () => {
 
     it('should handle empty string', () => {
       const h = hashString('');
-      assert.strictEqual(typeof h, 'bigint');
+      assert.strictEqual(typeof h, 'number');
     });
 
     it('should handle unicode', () => {
       const h = hashString('hello 世界 🎉');
-      assert.strictEqual(typeof h, 'bigint');
+      assert.strictEqual(typeof h, 'number');
     });
   });
 
@@ -42,7 +42,7 @@ describe('Hash', () => {
 
     it('should handle zero', () => {
       const h = hashBigInt(0n);
-      assert.strictEqual(typeof h, 'bigint');
+      assert.strictEqual(typeof h, 'number');
     });
 
     it('should handle negative numbers', () => {
@@ -52,7 +52,7 @@ describe('Hash', () => {
     it('should handle large numbers', () => {
       const large = (1n << 256n) - 1n;
       const h = hashBigInt(large);
-      assert.strictEqual(typeof h, 'bigint');
+      assert.strictEqual(typeof h, 'number');
     });
   });
 
@@ -80,7 +80,7 @@ describe('Hash', () => {
 
     it('should handle empty buffer', () => {
       const h = hashBytes(new Uint8Array(0));
-      assert.strictEqual(typeof h, 'bigint');
+      assert.strictEqual(typeof h, 'number');
     });
   });
 
@@ -89,7 +89,7 @@ describe('Hash', () => {
       const h1 = hashString('a');
       const h2 = hashString('b');
       const combined = hashCombine(h1, h2);
-      assert.strictEqual(typeof combined, 'bigint');
+      assert.strictEqual(typeof combined, 'number');
     });
 
     it('should be order-sensitive', () => {
@@ -101,36 +101,36 @@ describe('Hash', () => {
     it('should handle single hash', () => {
       const h = hashString('test');
       const combined = hashCombine(h);
-      assert.strictEqual(typeof combined, 'bigint');
+      assert.strictEqual(typeof combined, 'number');
     });
   });
 
   describe('structHash', () => {
     it('should include constructor ID', () => {
-      const h1 = structHash(1, [0x123n]);
-      const h2 = structHash(2, [0x123n]);
+      const h1 = structHash(1, [0x123]);
+      const h2 = structHash(2, [0x123]);
       assert.notStrictEqual(h1, h2);
     });
 
     it('should include children', () => {
-      const h1 = structHash(1, [0x123n]);
-      const h2 = structHash(1, [0x456n]);
+      const h1 = structHash(1, [0x123]);
+      const h2 = structHash(1, [0x456]);
       assert.notStrictEqual(h1, h2);
     });
 
     it('should include arity', () => {
-      const h1 = structHash(1, [0x123n]);
-      const h2 = structHash(1, [0x123n, 0x123n]);
+      const h1 = structHash(1, [0x123]);
+      const h2 = structHash(1, [0x123, 0x123]);
       assert.notStrictEqual(h1, h2);
     });
 
     it('should handle empty children', () => {
       const h = structHash(5, []);
-      assert.strictEqual(typeof h, 'bigint');
+      assert.strictEqual(typeof h, 'number');
     });
 
     it('should be consistent', () => {
-      assert.strictEqual(structHash(1, [0xABCn, 0xDEFn]), structHash(1, [0xABCn, 0xDEFn]));
+      assert.strictEqual(structHash(1, [0xABC, 0xDEF]), structHash(1, [0xABC, 0xDEF]));
     });
   });
 
@@ -154,7 +154,7 @@ describe('Hash', () => {
 
     it('should handle arrays by hashing elements', () => {
       const h = hash64(['a', 'b', 'c']);
-      assert.strictEqual(typeof h, 'bigint');
+      assert.strictEqual(typeof h, 'number');
     });
 
     it('should throw for unsupported types', () => {

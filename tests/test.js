@@ -12,7 +12,8 @@ describe("Sequent", function () {
     let node = parser.parse(formula)
     let seq = Sequent.fromTree(node);
     // Output format has extra parens around first pair element
-    assert.strictEqual(seq.toString(), "(? X)* 2, ? Y |- <( AT? B ) , AT? C > F? A * F? B");
+    // Note: Context element order depends on hash values (32-bit FNV-1a)
+    assert.strictEqual(seq.toString(), "? Y, (? X)* 2 |- <( AT? B ) , AT? C > F? A * F? B");
   });
 
   it.skip("should compare two sequents (Sequent.compare removed)", function () {
