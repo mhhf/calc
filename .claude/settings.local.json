@@ -131,7 +131,21 @@
       "Bash(npm run test:ts:*)",
       "Bash(npm run build:ts:wasm:*)",
       "Bash(npm view:*)",
-      "Bash(git checkout:*)"
+      "Bash(git checkout:*)",
+      "WebFetch(domain:iccl.inf.tu-dresden.de)",
+      "WebFetch(domain:www.logic.at)",
+      "Bash(npm run test:v2:*)",
+      "Bash(__NEW_LINE__ echo \"\")",
+      "Bash(/home/mhhf/src/calc/libexec/calc-proof-v2:*)",
+      "Bash(/home/mhhf/src/calc/libexec/calc-parse-v2:*)",
+      "Bash(curl:*)",
+      "Bash(timeout 8 npm run dev)",
+      "Bash(PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=/etc/profiles/per-user/mhhf/bin/chromium node:*)",
+      "Bash(/home/mhhf/src/calc/libexec/calc-parse:*)",
+      "Bash(/home/mhhf/src/calc/libexec/calc-proof:*)",
+      "Bash(/home/mhhf/src/calc/libexec/calc-parse-v1:*)",
+      "Bash(/home/mhhf/src/calc/libexec/calc-proof-v1:*)",
+      "Bash(./libexec/calc-parse-v1:*)"
     ],
     "deny": [],
     "ask": []
