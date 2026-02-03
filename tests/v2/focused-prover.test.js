@@ -346,4 +346,43 @@ describe('v2 FocusedProver', () => {
       assert.strictEqual(result.success, false);
     });
   });
+
+  describe('proof search - cartesian context (absorption/copy)', () => {
+    // Helper to create sequent with cartesian context
+    const seqWithCart = (linear, cart, succ) => {
+      const linearFormulas = linear.map(f =>
+        typeof f === 'string' ? calc.parse(f) : f
+      );
+      const cartFormulas = cart.map(f =>
+        typeof f === 'string' ? calc.parse(f) : f
+      );
+      const succFormula = typeof succ === 'string' ? calc.parse(succ) : succ;
+      return Seq.fromArrays(linearFormulas, cartFormulas, succFormula);
+    };
+
+    it('should prove ·; A ⊢ A (copy from cartesian)', () => {
+      const A = AST.freevar('A');
+      const s = seqWithCart([], [A], A);
+      const result = prover.prove(s, { rules: ruleSpecs });
+      assert.strictEqual(result.success, true);
+      assert.strictEqual(result.proofTree.rule, 'copy');
+    });
+
+    it('should prove ·; A ⊢ !A (promotion with cartesian)', () => {
+      // Empty linear + A in cartesian = can promote!
+      const A = AST.freevar('A');
+      const s = seqWithCart([], [A], AST.bang(A));
+      const result = prover.prove(s, { rules: ruleSpecs });
+      assert.strictEqual(result.success, true);
+      assert.strictEqual(result.proofTree.rule, 'bang_r');
+    });
+
+    it('should prove ·; A ⊢ A ⊗ A (copy twice)', () => {
+      // Can use cartesian formula multiple times via copy
+      const A = AST.freevar('A');
+      const s = seqWithCart([], [A], AST.tensor(A, A));
+      const result = prover.prove(s, { rules: ruleSpecs });
+      assert.strictEqual(result.success, true);
+    });
+  });
 });
