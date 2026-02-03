@@ -308,19 +308,15 @@ describe('v2 FocusedProver', () => {
       assert.strictEqual(result.success, true);
     });
 
-    it('should fail !A ⊢ !A without absorption/copy (limitation)', () => {
-      // !A ⊢ !A requires:
-      // 1. Absorption: move A to cartesian → ·; A ⊢ !A
-      // 2. Promotion: A; · ⊢ A
-      // 3. Copy: A; A ⊢ A
-      // 4. Identity
-      // Current prover doesn't implement absorption/copy integration
+    it('should prove !A ⊢ !A via identity', () => {
+      // !A ⊢ !A works via identity on matching formulas
+      // Identity is tried BEFORE inversion, so !A = !A matches directly
       const A = AST.freevar('A');
       const bangA = AST.bang(A);
       const s = seq([bangA], bangA);
       const result = prover.prove(s, { rules: ruleSpecs });
-      // TODO: Should succeed once absorption/copy are integrated
-      assert.strictEqual(result.success, false);
+      assert.strictEqual(result.success, true);
+      assert.strictEqual(result.proofTree.rule, 'id');
     });
 
     it('should prove ⊢ A ⊸ !A requires empty context (promotion)', () => {
