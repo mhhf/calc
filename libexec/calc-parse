@@ -1,43 +1,65 @@
 #!/usr/bin/env node
 /**
- * @deprecated Use calc-parse-v2 instead for the new v2 parser
- *   calc parse-v2 "A -o B"
+ * calc-parse - Parse formulas/sequents using v2 parser
+ *
+ * Usage:
+ *   calc parse "A -o B"        # Parse formula
+ *   calc parse "A, B |- C"     # Parse sequent
+ *   calc parse --latex "A * B" # Output LaTeX
+ *
+ * For v1 parser, use: calc parse-v1
  */
-// TODO - to get rid of shift-reduce conflicts for "e bin_op e" expressions, I cannot have non-terminal bin_op rules, therefore they should be propagated up to generate multiple "e '+' e" rules.
 
-const DEBUG = !!process.env["DEBUG"];
-const args = process.argv.slice(2);
-let formulaStr = "-- : A -o B |- -- : C";
-const formula = args && args[0] || formulaStr;
+const v2 = require('../lib/v2');
 
-const Node = require("../lib/node.js");
+async function main() {
+  let args = process.argv.slice(2);
 
-const calc = require('../ll.json');
-const calcParser = require("../lib/parser.js");
-const Parser = calcParser(calc);
-const parser = Parser.parser;
-const Calc = Parser.Calc;
+  // Parse flags
+  const showLatex = args.includes('--latex');
+  const showJson = args.includes('--json');
+  args = args.filter(a => !a.startsWith('--'));
 
-let node = parser.parse(formula)
+  const defaultInput = "-- : A -o B |- -- : C";
+  const input = args[0] || defaultInput;
 
-// Show ASCII representation
-let ascii_str = node.toString({style: "ascii"});
-console.log("ASCII:");
-console.log(ascii_str);
+  try {
+    // Detect if it's a sequent (has |-) or just a formula
+    const isSequent = input.includes('|-');
 
-// Show Isabelle representation
-let isabelle_str = node.toString({style: "isabelle_se", brackets: true});
-console.log("\nIsabelle:");
-console.log(isabelle_str);
-
-// Try to copy to clipboard (optional)
-try {
-  const ncp = require("copy-paste");
-  ncp.copy("(" + isabelle_str + ")", function(err) {
-    if (!err) {
-      console.log("\n(Copied to clipboard)");
+    let ast;
+    if (isSequent) {
+      ast = await v2.parseSequent(input);
+    } else {
+      ast = await v2.parseFormula(input);
     }
-  });
-} catch (e) {
-  // Clipboard not available, ignore
+
+    // Show parsed structure
+    console.log("Input:", input);
+    console.log("Type:", isSequent ? "sequent" : "formula");
+    console.log();
+
+    // ASCII output
+    const ascii = await v2.render(ast, 'ascii');
+    console.log("ASCII:");
+    console.log("  " + ascii);
+
+    // LaTeX output
+    if (showLatex || !showJson) {
+      const latex = await v2.render(ast, 'latex');
+      console.log("\nLaTeX:");
+      console.log("  " + latex);
+    }
+
+    // JSON output
+    if (showJson) {
+      console.log("\nJSON:");
+      console.log(JSON.stringify(ast, null, 2));
+    }
+  } catch (e) {
+    console.error("Parse error:", e.message);
+    process.exit(1);
+  }
 }
+
+main();

@@ -1,0 +1,43 @@
+#!/usr/bin/env node
+/**
+ * @deprecated Use calc-parse-v2 instead for the new v2 parser
+ *   calc parse-v2 "A -o B"
+ */
+// TODO - to get rid of shift-reduce conflicts for "e bin_op e" expressions, I cannot have non-terminal bin_op rules, therefore they should be propagated up to generate multiple "e '+' e" rules.
+
+const DEBUG = !!process.env["DEBUG"];
+const args = process.argv.slice(2);
+let formulaStr = "-- : A -o B |- -- : C";
+const formula = args && args[0] || formulaStr;
+
+const Node = require("../lib/node.js");
+
+const calc = require('../ll.json');
+const calcParser = require("../lib/parser.js");
+const Parser = calcParser(calc);
+const parser = Parser.parser;
+const Calc = Parser.Calc;
+
+let node = parser.parse(formula)
+
+// Show ASCII representation
+let ascii_str = node.toString({style: "ascii"});
+console.log("ASCII:");
+console.log(ascii_str);
+
+// Show Isabelle representation
+let isabelle_str = node.toString({style: "isabelle_se", brackets: true});
+console.log("\nIsabelle:");
+console.log(isabelle_str);
+
+// Try to copy to clipboard (optional)
+try {
+  const ncp = require("copy-paste");
+  ncp.copy("(" + isabelle_str + ")", function(err) {
+    if (!err) {
+      console.log("\n(Copied to clipboard)");
+    }
+  });
+} catch (e) {
+  // Clipboard not available, ignore
+}

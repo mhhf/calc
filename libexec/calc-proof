@@ -1,71 +1,72 @@
 #!/usr/bin/env node
 /**
- * @deprecated Use calc-proof-v2 instead for the new v2 prover (5-8x faster)
- *   calc proof-v2 "P, P -o Q |- Q"
+ * calc-proof - Proof search using v2 focused prover
+ *
+ * Usage:
+ *   calc proof "P, P -o Q |- Q"
+ *   calc proof "A * B |- B * A"
+ *   calc proof --profile "complex formula"
+ *
+ * For v1 prover, use: calc proof-v1
  */
 
-const calc = require('../ll.json');
-const Calc = require("../lib/calc.js");
-const Sequent = require("../lib/sequent.js");
-const PT = require("../lib/pt.js");
-const Proofstate = require("../lib/proofstate.js");
-const Ruleset = require("../lib/ruleset.js");
+const v2 = require('../lib/v2');
 const clc = require('cli-color');
-const { profiler } = require("../lib/profiler.js");
 
-// Initialize calculus
-Calc.init(calc);
-const {rules, bwd, getRule} = Ruleset.init();
+async function main() {
+  let args = process.argv.slice(2);
 
-const calcParser = require("../lib/parser.js");
-const Parser = calcParser();
-const parser = Parser.parser;
+  // Parse flags
+  const showProfile = args.includes('--profile');
+  const showTree = args.includes('--tree');
+  args = args.filter(a => !a.startsWith('--'));
 
-let args = process.argv.slice(2);
+  // Default formula
+  const defaultFormula = "-- : P -o (R & Q) |- -- : (P -o Q) & (P -o R)";
+  const formulaStr = args[0] || defaultFormula;
 
-// Parse flags
-let showProfile = args.includes('--profile');
-args = args.filter(a => a !== '--profile');
+  console.log(`Proving: ${formulaStr}\n`);
 
-// Examples (using -- for "any term", * for tensor, & for with, -o for lolli)
-// let formulaStr = "-- : P, -- : P -o Q |- -- : Q";  // modus ponens
-// let formulaStr = "-- : P * Q |- -- : P * Q";       // identity for tensor
-let formulaStr = "-- : P -o (R & Q) |- -- : (P -o Q) & (P -o R)";  // distribution
-const formula = args && args[0] || formulaStr;
+  const startTime = performance.now();
 
-// Enable profiling if requested
-if (showProfile) {
-  profiler.enable();
+  try {
+    const result = await v2.proveString(formulaStr);
+    const elapsed = (performance.now() - startTime).toFixed(2);
+
+    if (result.success) {
+      console.log(`${clc.green("✔")} Proof found in ${elapsed}ms\n`);
+
+      if (showTree && result.proofTree) {
+        console.log("Proof tree:");
+        printProofTree(result.proofTree, 0);
+      }
+    } else {
+      console.log(`${clc.red("✗")} Cannot prove this sequent`);
+      console.log(`  Time: ${elapsed}ms`);
+    }
+
+    if (showProfile) {
+      console.log("\n--- Profile ---");
+      console.log(`Total time: ${elapsed}ms`);
+    }
+  } catch (e) {
+    console.log(`${clc.red("✗")} Error: ${e.message}`);
+    if (e.stack) console.log(e.stack);
+    process.exit(1);
+  }
 }
 
-let node = parser.parse(formula)
-let seq = Sequent.fromTree(node);
+/**
+ * Print proof tree recursively
+ */
+function printProofTree(pt, depth) {
+  const indent = '  '.repeat(depth);
+  const rule = pt.rule || 'unknown';
+  console.log(`${indent}${rule}`);
 
-let pt = new PT({
-  conclusion: seq
-})
-
-let atoms = Sequent.getAtoms(seq, {rules: Calc.db.rules});
-
-let result = Proofstate.auto(pt, {
-  positive: atoms,
-  negative: [],
-  debug: false,
-  mode: 'proof',  // Enable forward chaining for identity proofs
-  rules,
-  bwd,
-  getRule,
-  calc
-});
-
-if(result && result.success) {
-  console.log(`${clc.green("✔")} found proof for: ${seq}\n\n${pt.toString({})}`);
-} else {
-  console.log(`${clc.red("✗")} can't prove ${seq}`);
-  console.log(`${pt}`);
+  for (const premise of (pt.premisses || [])) {
+    printProofTree(premise, depth + 1);
+  }
 }
 
-// Show profiling results if enabled
-if (showProfile) {
-  console.log("\n" + profiler.report());
-}
+main();
