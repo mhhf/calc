@@ -1,14 +1,12 @@
 /**
  * End-to-end tests for MDE loading and execution
  */
-
-const assert = require('assert');
+const { describe, it, before } = require('node:test');
+const assert = require('node:assert');
 const mde = require('../../lib/mde');
 const Store = mde.Store;
 
-describe('MDE End-to-End', function() {
-  this.timeout(10000);
-
+describe('MDE End-to-End', { timeout: 10000 }, () => {
   describe('bin.mde', () => {
     let calc;
 
@@ -59,8 +57,6 @@ describe('MDE End-to-End', function() {
       // Initial state: pc at 0, code[0] = STOP (N_00)
       const pc = await mde.parseExpr('pc e'); // e = binary 0
       const code = await mde.parseExpr('code e N_00'); // N_00 = STOP opcode
-
-      // Need inc predicate for PC increment
       const inc = await mde.parseExpr('inc e (i e)'); // inc(0, 1)
 
       const state = mde.createState(
@@ -73,7 +69,6 @@ describe('MDE End-to-End', function() {
       assert(result.quiescent, 'Should reach quiescence');
       assert.strictEqual(result.steps, 1, 'Should take 1 step');
       assert(result.trace[0].includes('evm/stop'), 'Should fire evm/stop rule');
-      // code should remain (it's kept in the rule)
       assert(result.state.linear[code], 'Should still have code');
     });
   });
@@ -87,8 +82,6 @@ describe('MDE End-to-End', function() {
       const binType = bin.types.get('bin');
       const binFromEvm = await mde.parseExpr('bin');
 
-      // Same hash because content-addressed
-      // (might not be exactly same if parsed differently, but should be compatible)
       assert(Store.get(binType), 'bin from bin.mde should be in store');
       assert(Store.get(binFromEvm), 'bin from parse should be in store');
     });

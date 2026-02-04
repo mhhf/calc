@@ -6,10 +6,11 @@
   "scripts": {
     "test": "node --test tests/test.js tests/node.js tests/proofstate.js tests/hash.js tests/store.js tests/term.js tests/intern.js tests/profiler.js tests/parser-baseline.js tests/calc-db-baseline.js tests/rendering-baseline.js tests/sequent-lnl.js tests/sequent-tree.js tests/display-prover.js tests/v2/calculus.test.js tests/v2/sequent.test.js tests/v2/kernel.test.js && node tests/polarity-inference.js",
     "test:v2": "node --test tests/v2/calculus.test.js tests/v2/sequent.test.js tests/v2/kernel.test.js tests/v2/focusing.test.js tests/v2/sequent-ext.test.js tests/v2/focused-prover.test.js tests/v2/api.test.js",
+    "test:mde": "node --test tests/mde/convert.test.js tests/mde/forward.test.js tests/mde/e2e.test.js",
     "test:celf": "node --stack-size=4096 --test tests/celf-parser.js",
     "test:ts": "node --test tests/tree-sitter.js",
     "test:e2e": "node tests/e2e-solidjs.js",
-    "test:all": "npm test && npm run test:ts && npm run test:e2e",
+    "test:all": "npm test && npm run test:v2 && npm run test:mde && npm run test:ts",
     "build:parser": "./libexec/calc-genparser",
     "build:ts": "cd lib/tree-sitter-mde && tree-sitter generate && tree-sitter build --output mde.so",
     "build:ts:wasm": "cd lib/tree-sitter-mde && tree-sitter build --wasm",
@@ -28,7 +29,12 @@
     "bench:v2": "node --expose-gc benchmarks/proof/proofs-v2.bench.js",
     "bench:compare:all": "node --expose-gc benchmarks/compare-all.js",
     "bench:compare:all:save": "node --expose-gc benchmarks/compare-all.js --save",
-    "profile": "CALC_PROFILE=1 node"
+    "bench:mde": "node --expose-gc benchmarks/mde/run.js",
+    "bench:mde:save": "node --expose-gc benchmarks/mde/run.js --save",
+    "bench:mde:compare": "node --expose-gc benchmarks/mde/run.js --compare",
+    "bench:mde:stress": "node --expose-gc benchmarks/mde/run.js --stress",
+    "profile": "CALC_PROFILE=1 node",
+    "profile:mde": "node --expose-gc benchmarks/mde/run.js --profile"
   },
   "author": "",
   "license": "ISC",

@@ -1,14 +1,12 @@
 /**
  * Tests for MDE → Hash conversion
  */
-
-const assert = require('assert');
+const { describe, it, before } = require('node:test');
+const assert = require('node:assert');
 const mde = require('../../lib/mde');
 const Store = require('../../lib/v2/kernel/store');
 
-describe('MDE Convert', function() {
-  this.timeout(10000); // WASM loading can be slow
-
+describe('MDE Convert', { timeout: 10000 }, () => {
   describe('parseExpr', () => {
     it('converts atom', async () => {
       const h = await mde.parseExpr('foo');

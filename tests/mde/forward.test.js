@@ -1,15 +1,13 @@
 /**
  * Tests for Forward Chaining Engine
  */
-
-const assert = require('assert');
+const { describe, it, before } = require('node:test');
+const assert = require('node:assert');
 const forward = require('../../lib/v2/prover/forward');
 const mde = require('../../lib/mde');
 const Store = require('../../lib/v2/kernel/store');
 
-describe('Forward Chaining', function() {
-  this.timeout(10000);
-
+describe('Forward Chaining', { timeout: 10000 }, () => {
   describe('flattenTensor', () => {
     it('flattens simple tensor', async () => {
       const h = await mde.parseExpr('A * B * C');
