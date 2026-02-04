@@ -146,7 +146,11 @@
       "Bash(/home/mhhf/src/calc/libexec/calc-parse-v1:*)",
       "Bash(/home/mhhf/src/calc/libexec/calc-proof-v1:*)",
       "Bash(./libexec/calc-parse-v1:*)",
-      "Bash(git tag:*)"
+      "Bash(git tag:*)",
+      "Bash(npm ls:*)",
+      "Bash(npx mocha:*)",
+      "Bash(./libexec/calc-mde-parse:*)",
+      "Bash(./libexec/calc-mde-exec:*)"
     ],
     "deny": [],
     "ask": []

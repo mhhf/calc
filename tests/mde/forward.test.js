@@ -1,0 +1,165 @@
+/**
+ * Tests for Forward Chaining Engine
+ */
+
+const assert = require('assert');
+const forward = require('../../lib/v2/prover/forward');
+const mde = require('../../lib/mde');
+const Store = require('../../lib/v2/kernel/store');
+
+describe('Forward Chaining', function() {
+  this.timeout(10000);
+
+  describe('flattenTensor', () => {
+    it('flattens simple tensor', async () => {
+      const h = await mde.parseExpr('A * B * C');
+      const { linear, persistent } = forward.flattenTensor(h);
+
+      assert.strictEqual(linear.length, 3, 'Should have 3 linear');
+      assert.strictEqual(persistent.length, 0, 'Should have no persistent');
+    });
+
+    it('extracts bang as persistent', async () => {
+      const h = await mde.parseExpr('A * !B * C');
+      const { linear, persistent } = forward.flattenTensor(h);
+
+      assert.strictEqual(linear.length, 2, 'Should have 2 linear');
+      assert.strictEqual(persistent.length, 1, 'Should have 1 persistent');
+    });
+  });
+
+  describe('compileRule', () => {
+    it('compiles forward rule', async () => {
+      const h = await mde.parseExpr('A * !B -o { C * D }');
+      const rule = {
+        name: 'test',
+        hash: h,
+        antecedent: Store.children(h)[0],
+        consequent: Store.children(h)[1]
+      };
+
+      const compiled = forward.compileRule(rule);
+
+      assert.strictEqual(compiled.antecedent.linear.length, 1, 'Should have 1 linear ante');
+      assert.strictEqual(compiled.antecedent.persistent.length, 1, 'Should have 1 persistent ante');
+      assert.strictEqual(compiled.consequent.linear.length, 2, 'Should have 2 linear conseq');
+    });
+  });
+
+  describe('run', () => {
+    it('runs single step rule', async () => {
+      // Rule: foo -o { bar } (lowercase = atoms, not metavars)
+      const ruleH = await mde.parseExpr('foo -o { bar }');
+      const [ante, conseq] = Store.children(ruleH);
+      const rule = forward.compileRule({
+        name: 'foo_to_bar',
+        hash: ruleH,
+        antecedent: ante,
+        consequent: conseq
+      });
+
+      // State: foo
+      const foo = await mde.parseExpr('foo');
+      const bar = await mde.parseExpr('bar');
+      const state = forward.createState({ [foo]: 1 }, {});
+
+      const result = forward.run(state, [rule]);
+
+      assert(result.quiescent, 'Should reach quiescence');
+      assert.strictEqual(result.steps, 1, 'Should take 1 step');
+      assert.strictEqual(result.state.linear[bar], 1, 'Should have bar');
+      assert(!result.state.linear[foo], 'Should not have foo');
+    });
+
+    it('stops when no rules match', async () => {
+      // Rule: foo -o { bar }
+      const ruleH = await mde.parseExpr('foo -o { bar }');
+      const [ante, conseq] = Store.children(ruleH);
+      const rule = forward.compileRule({
+        name: 'foo_to_bar',
+        hash: ruleH,
+        antecedent: ante,
+        consequent: conseq
+      });
+
+      // State: baz (not foo)
+      const baz = await mde.parseExpr('baz');
+      const state = forward.createState({ [baz]: 1 }, {});
+
+      const result = forward.run(state, [rule]);
+
+      assert(result.quiescent, 'Should reach quiescence');
+      assert.strictEqual(result.steps, 0, 'Should take 0 steps');
+      assert.strictEqual(result.state.linear[baz], 1, 'Should still have baz');
+    });
+
+    it('uses persistent facts without consuming', async () => {
+      // Rule: foo * !guard -o { bar }
+      const ruleH = await mde.parseExpr('foo * !guard -o { bar }');
+      const [ante, conseq] = Store.children(ruleH);
+      const rule = forward.compileRule({
+        name: 'test',
+        hash: ruleH,
+        antecedent: ante,
+        consequent: conseq
+      });
+
+      const foo = await mde.parseExpr('foo');
+      const guard = await mde.parseExpr('guard');
+      const bar = await mde.parseExpr('bar');
+
+      // State: foo, foo, !guard
+      const state = forward.createState(
+        { [foo]: 2 },
+        { [guard]: true }
+      );
+
+      const result = forward.run(state, [rule]);
+
+      assert(result.quiescent, 'Should reach quiescence');
+      assert.strictEqual(result.steps, 2, 'Should take 2 steps (both foos)');
+      assert.strictEqual(result.state.linear[bar], 2, 'Should have 2 bars');
+      assert(result.state.persistent[guard], 'Should still have persistent guard');
+    });
+
+    it('limits steps with maxSteps', async () => {
+      // Infinite loop rule: foo -o { foo * bar }
+      const ruleH = await mde.parseExpr('foo -o { foo * bar }');
+      const [ante, conseq] = Store.children(ruleH);
+      const rule = forward.compileRule({
+        name: 'infinite',
+        hash: ruleH,
+        antecedent: ante,
+        consequent: conseq
+      });
+
+      const foo = await mde.parseExpr('foo');
+      const state = forward.createState({ [foo]: 1 }, {});
+
+      const result = forward.run(state, [rule], { maxSteps: 5 });
+
+      assert(!result.quiescent, 'Should not reach quiescence');
+      assert.strictEqual(result.steps, 5, 'Should stop at 5 steps');
+    });
+
+    it('provides trace when requested', async () => {
+      const ruleH = await mde.parseExpr('foo -o { bar }');
+      const [ante, conseq] = Store.children(ruleH);
+      const rule = forward.compileRule({
+        name: 'foo_to_bar',
+        hash: ruleH,
+        antecedent: ante,
+        consequent: conseq
+      });
+
+      const foo = await mde.parseExpr('foo');
+      const state = forward.createState({ [foo]: 1 }, {});
+
+      const result = forward.run(state, [rule], { trace: true });
+
+      assert(result.trace, 'Should have trace');
+      assert.strictEqual(result.trace.length, 1, 'Should have 1 trace entry');
+      assert(result.trace[0].includes('foo_to_bar'), 'Trace should include rule name');
+    });
+  });
+});

@@ -1,0 +1,19 @@
+{
+  "name": "tree-sitter-mde",
+  "version": "0.1.0",
+  "description": "Tree-sitter grammar for MDE/Celf syntax",
+  "main": "bindings/node/index.js",
+  "tree-sitter": [
+    {
+      "scope": "source.mde",
+      "file-types": [
+        "mde",
+        "ll"
+      ],
+      "injection-regex": "mde"
+    }
+  ],
+  "dependencies": {
+    "web-tree-sitter": "^0.26.5"
+  }
+}

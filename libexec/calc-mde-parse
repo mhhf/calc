@@ -1,0 +1,28 @@
+#!/usr/bin/env node
+/**
+ * Parse MDE file, output summary as JSON
+ *
+ * Usage: calc-mde-parse <file.mde>
+ */
+
+const mde = require('../lib/mde');
+
+const file = process.argv[2];
+if (!file) {
+  console.error('Usage: calc-mde-parse <file.mde>');
+  process.exit(1);
+}
+
+mde.load(file).then(calc => {
+  console.log(JSON.stringify({
+    types: calc.types.size,
+    clauses: calc.clauses.size,
+    forwardRules: calc.forwardRules.length,
+    typeNames: [...calc.types.keys()].slice(0, 20),
+    clauseNames: [...calc.clauses.keys()].slice(0, 20),
+    ruleNames: calc.forwardRules.slice(0, 20).map(r => r.name)
+  }, null, 2));
+}).catch(err => {
+  console.error('Error:', err.message);
+  process.exit(1);
+});

@@ -1,0 +1,76 @@
+#!/usr/bin/env node
+/**
+ * Execute forward chaining on MDE file
+ *
+ * Usage: calc-mde-exec <file.mde> [--state <state.json>] [--max-steps N] [--trace]
+ *
+ * State JSON format: { "linear": { "<expr>": count }, "persistent": { "<expr>": true } }
+ * Expressions are MDE syntax strings that get parsed.
+ */
+
+const fs = require('fs');
+const mde = require('../lib/mde');
+
+async function main() {
+  const args = process.argv.slice(2);
+
+  let file = null;
+  let stateFile = null;
+  let maxSteps = 1000;
+  let trace = false;
+
+  for (let i = 0; i < args.length; i++) {
+    if (args[i] === '--state' && args[i + 1]) {
+      stateFile = args[++i];
+    } else if (args[i] === '--max-steps' && args[i + 1]) {
+      maxSteps = parseInt(args[++i], 10);
+    } else if (args[i] === '--trace') {
+      trace = true;
+    } else if (!file) {
+      file = args[i];
+    }
+  }
+
+  if (!file) {
+    console.error('Usage: calc-mde-exec <file.mde> [--state <state.json>] [--max-steps N] [--trace]');
+    process.exit(1);
+  }
+
+  const calc = await mde.load(file);
+
+  // Parse state file or use empty state
+  let state = mde.createState();
+  if (stateFile) {
+    const stateJson = JSON.parse(fs.readFileSync(stateFile, 'utf8'));
+
+    // Convert string expressions to hashes
+    const linear = {};
+    for (const [expr, count] of Object.entries(stateJson.linear || {})) {
+      const h = await mde.parseExpr(expr);
+      linear[h] = count;
+    }
+
+    const persistent = {};
+    for (const [expr, val] of Object.entries(stateJson.persistent || {})) {
+      const h = await mde.parseExpr(expr);
+      persistent[h] = !!val;
+    }
+
+    state = mde.createState(linear, persistent);
+  }
+
+  const result = calc.exec(state, { maxSteps, trace });
+
+  console.log(JSON.stringify({
+    quiescent: result.quiescent,
+    steps: result.steps,
+    trace: result.trace || undefined,
+    linearCount: Object.keys(result.state.linear).length,
+    persistentCount: Object.keys(result.state.persistent).length
+  }, null, 2));
+}
+
+main().catch(err => {
+  console.error('Error:', err.message);
+  process.exit(1);
+});
