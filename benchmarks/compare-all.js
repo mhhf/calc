@@ -1,6 +1,11 @@
 #!/usr/bin/env node
 /**
- * Compare v1 (base), v1 (with store), and v2 provers
+ * Compare v1 (base), v1 (with store), and v2.1 provers
+ *
+ * Versions:
+ *   v1-base:  Original v1 prover
+ *   v1-store: v1 with content-addressed store
+ *   v2.1:     Focused prover with content-addressed AST + optimized conversions
  *
  * Usage:
  *   node --expose-gc benchmarks/compare-all.js
@@ -22,15 +27,15 @@ const shouldSave = args.includes('--save');
 
 async function main() {
   console.log('='.repeat(70));
-  console.log('CALC Prover Comparison: v1 (base) vs v1 (store) vs v2 (focused)');
+  console.log('CALC Prover Comparison: v1 (base) vs v1 (store) vs v2.1 (focused)');
   console.log('='.repeat(70));
   console.log(`Category: ${category}`);
   console.log(`Iterations: ${iterations}`);
   console.log(`GC available: ${!!global.gc}`);
   console.log('');
 
-  // Initialize v2 prover before benchmarks (one-time cost)
-  console.log('Initializing v2 prover...');
+  // Initialize v2.1 prover before benchmarks (one-time cost)
+  console.log('Initializing v2.1 prover...');
   await getProver();
   console.log('');
 
@@ -49,8 +54,8 @@ async function main() {
   runProofBenchmarksWithStore(runnerV1Store, category);
   console.log('');
 
-  // Run v2
-  console.log('--- v2 (focused prover) ---');
+  // Run v2.1
+  console.log('--- v2.1 (focused prover) ---');
   await runV2ProofBenchmarks(runnerV2, category);
   console.log('');
 
@@ -76,9 +81,9 @@ async function main() {
     'Test'.padEnd(maxName),
     'v1-base'.padStart(10),
     'v1-store'.padStart(10),
-    'v2-focus'.padStart(10),
-    'v2/v1-base'.padStart(12),
-    'v2/v1-store'.padStart(12),
+    'v2.1'.padStart(10),
+    'v2.1/v1-base'.padStart(13),
+    'v2.1/v1-store'.padStart(14),
   ].join('  ');
   console.log(header);
   console.log('-'.repeat(header.length));
@@ -132,8 +137,8 @@ async function main() {
 
   console.log('');
   console.log('Summary:');
-  console.log(`  v2 vs v1-base:  geometric mean ${geoMeanVsBase.toFixed(3)}x (${geoMeanVsBase < 1 ? 'faster' : 'slower'})`);
-  console.log(`  v2 vs v1-store: geometric mean ${geoMeanVsStore.toFixed(3)}x (${geoMeanVsStore < 1 ? 'faster' : 'slower'})`);
+  console.log(`  v2.1 vs v1-base:  geometric mean ${geoMeanVsBase.toFixed(3)}x (${geoMeanVsBase < 1 ? 'faster' : 'slower'})`);
+  console.log(`  v2.1 vs v1-store: geometric mean ${geoMeanVsStore.toFixed(3)}x (${geoMeanVsStore < 1 ? 'faster' : 'slower'})`);
   console.log('');
 
   // Detailed stats
@@ -147,13 +152,13 @@ async function main() {
   console.log('--- v1 (store) ---');
   console.log(runnerV1Store.report());
   console.log('');
-  console.log('--- v2 (focused) ---');
+  console.log('--- v2.1 (focused) ---');
   console.log(runnerV2.report());
 
-  // v2 proof tree stats
+  // v2.1 proof tree stats
   console.log('');
   console.log('='.repeat(70));
-  console.log('v2 PROOF TREE STATS');
+  console.log('v2.1 PROOF TREE STATS');
   console.log('='.repeat(70));
   const v2Stats = await runV2WithProfiling(category);
   console.log('');

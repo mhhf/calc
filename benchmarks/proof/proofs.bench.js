@@ -6,15 +6,15 @@
 
 const { BenchmarkRunner } = require('../lib/runner');
 const fixtures = require('../lib/fixtures');
-const { profiler } = require('../../lib/profiler');
-const { Store } = require('../../lib/store');
+const { profiler } = require('../../lib/v1/profiler');
+const { Store } = require('../../lib/v1/store');
 
 // Setup
 const calc = require('../../ll.json');
 const calcParser = require('../../lib/v1/parser.js');
 const Sequent = require('../../lib/v1/sequent.js');
 const Proofstate = require('../../lib/v1/proofstate.js');
-const Ruleset = require('../../lib/ruleset.js');
+const Ruleset = require('../../lib/v1/ruleset.js');
 const PT = require('../../lib/v1/pt.js');
 const Calc = require('../../lib/v1/calc.js');
 
