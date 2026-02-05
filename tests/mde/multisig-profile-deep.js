@@ -69,14 +69,20 @@ async function main() {
   const opcodeIndex = forward.buildOpcodeIndex(calc.forwardRules);
   const indexedRules = { rules: calc.forwardRules, opcodeIndex };
 
+  // Build backward prover index once
+  const { buildIndex: buildBackwardIndex } = require('../../lib/mde/prove');
+  const backwardIndex = buildBackwardIndex(calc.clauses, calc.types);
+  const calcWithIndex = {
+    clauses: calc.clauses,
+    types: calc.types,
+    backwardIndex
+  };
+
   for (let step = 0; step < 10; step++) {
     forward.resetProfile();
 
     const t0 = performance.now();
-    const match = forward.findMatch(currentState, indexedRules, {
-      clauses: calc.clauses,
-      types: calc.types
-    });
+    const match = forward.findMatch(currentState, indexedRules, calcWithIndex);
     const findTime = performance.now() - t0;
 
     const prof = forward.getProfile();
