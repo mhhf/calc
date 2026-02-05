@@ -1,40 +1,45 @@
-# MDE Forward Chaining - Complete
+# MDE Forward Chaining - Performance Optimizations
 
-## Performance Summary
+## Final Performance (after all optimizations)
 
-**5 EVM steps to EQ instruction:**
-- Total time: ~35ms (including warmup)
-- Per-step: ~7ms average
-- Throughput: 0.14 steps/ms (~140 steps/sec)
+**5 EVM steps (JUMPDEST → PUSH1 → PUSH20 → CALLER → EQ):**
+- Total time: ~10ms
+- Per-step: ~2ms average
+- Match calls: 24 total (5/step)
+- Throughput: 0.5 steps/ms (~500 steps/sec)
 
-**Profiling breakdown (CALC_PROFILE=1):**
+## Optimization History
+
+| Optimization | Match Calls | Time | Improvement |
+|--------------|-------------|------|-------------|
+| Baseline (no indexing) | 35,310 | ~50ms | - |
+| State indexing | 22,145 | ~35ms | 37% fewer calls |
+| Rule predicate filtering | 7,704 | ~28ms | 65% fewer calls |
+| **EVM strategy + codeByPC** | **24** | **~10ms** | **321x fewer calls** |
+
+## Current Profiling Breakdown
+
 ```
-findMatch:    97.4% of execution
-  unify.match:  57.9% (35,310 calls, 812ns/call)
-  prove:         9.5% (12 calls, 392µs/call)
-  substitute:    2.1%
-  overhead:     30.5%
-applyMatch:    2.6%
+findMatch breakdown:
+  unify.match:    3.8% (24 calls, 5/step)
+  prove:         62.8% (12 calls, ~400µs/call)
+  substitute:    24.1%
+  overhead:      12.9%
 ```
 
-**Bottleneck: Pattern matching**
-- 178 state facts × 44 rules = 7,832 potential matches/step
-- ~7,000 unify calls per step
-- Each unify call: 812 nanoseconds
+**Bottleneck shifted from pattern matching to backward proving.**
 
-## Execution Trace
-```
-[0] evm/jumpdest (23ms) - 10,681 match calls
-[1] evm/push1    (10ms) - 10,815 match calls
-[2] evm/push20   (9ms)  -  6,952 match calls
-[3] evm/caller   (6ms)  -  4,857 match calls
-[4] evm/eq       (2ms)  -  2,005 match calls
-```
+## Key Optimizations
+
+1. **State indexing by predicate**: `{pc: [...], code: [...], gas: [...]}`
+2. **Rule filtering**: Only try rules where ALL trigger predicates exist in state
+3. **EVM strategy**: PC→code→opcode for O(1) rule selection
+4. **codeByPC index**: O(1) lookup for `code PC OPCODE` patterns
 
 ## Run Benchmarks
 ```bash
-npm run bench:multisig     # Timing benchmark
-npm run profile:multisig   # Detailed profiling
+npm run bench:multisig         # Timing benchmark
+npm run profile:multisig       # Detailed profiling (requires CALC_PROFILE=1)
 ```
 
 ## Limitations
