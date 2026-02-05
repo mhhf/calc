@@ -65,11 +65,15 @@ async function main() {
   let currentState = state;
   const stepStats = [];
 
+  // Build indices once (like run() does)
+  const opcodeIndex = forward.buildOpcodeIndex(calc.forwardRules);
+  const indexedRules = { rules: calc.forwardRules, opcodeIndex };
+
   for (let step = 0; step < 10; step++) {
     forward.resetProfile();
 
     const t0 = performance.now();
-    const match = forward.findMatch(currentState, calc.forwardRules, {
+    const match = forward.findMatch(currentState, indexedRules, {
       clauses: calc.clauses,
       types: calc.types
     });
