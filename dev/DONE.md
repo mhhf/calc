@@ -4,28 +4,56 @@ Completed tasks and research for the CALC project.
 
 ---
 
-## FFI for Arithmetic Operations ✅
+## v1→v2 Migration ✅
+**Date:** 2026-02-03
+
+The v2 rewrite is now the primary codebase.
+
+**UI (100% migrated):**
+- All pages use v2 API via `calcV2.ts` and `proofLogicV2.ts`
+- Bundle size reduced ~25% by removing v1 dependencies
+
+**CLI (v2 is default):**
+- `calc parse` → uses v2 (focused parser)
+- `calc proof` → uses v2 (focused prover)
+- v1 tools renamed to `calc parse-v1` and `calc proof-v1` for benchmarking
+
+---
+
+## MDE/Celf Implementation ✅
 **Date:** 2026-02-05
 
-Implemented Foreign Function Interface for computational predicates in the backward prover.
+Full MDE (Celf-compatible) implementation with forward/backward chaining and FFI.
 
-**Files Created:**
-- `lib/mde/ffi/index.js` — FFI registry and default metadata
-- `lib/mde/ffi/convert.js` — bin ↔ BigInt conversion
-- `lib/mde/ffi/mode.js` — Mode checking (+ = ground, - = output)
-- `lib/mde/ffi/arithmetic.js` — plus, inc, mul, sub, div, mod, lt, le, eq
+### Tree-sitter Parser
+- `lib/tree-sitter-mde/` — Full Celf grammar, WASM build for browser
+- Handles 1000+ nesting levels (GLR algorithm)
+- Deep nesting test: 0.002s
 
-**Modified:**
-- `lib/mde/prove.js` — Integrated FFI dispatch before clause search
+### MDE Module (`lib/mde/`)
+- `convert.js` — Tree-sitter AST → content-addressed hashes
+- `prove.js` — Backward chaining with indexing and FFI
+- `index.js` — Unified API: load, parseExpr, prove, exec
+- `hex.js` — N_XX hex notation expansion
 
-**Performance Results:**
-| Operation | No FFI | With FFI | Speedup |
-|-----------|--------|----------|---------|
-| plus 15 1 | 0.07ms | 0.008ms | ~10x |
-| plus 255 1 | 0.19ms | 0.012ms | ~16x |
-| plus 1023 1 | 0.15ms | 0.009ms | ~17x |
+### Forward Chaining Engine (`lib/v2/prover/forward.js`)
+- Multiset rewriting with committed choice
+- Quiescence detection (runs until no rules fire)
+- Predicate indexing for O(1) rule matching
+- Backward proving integration for side conditions
 
-**See:** dev/FFI-IMPLEMENTATION-PLAN.md
+### FFI (`lib/mde/ffi/`)
+- `convert.js` — bin ↔ BigInt conversion
+- `mode.js` — Mode checking (+ = ground, - = output)
+- `arithmetic.js` — plus, inc, mul, sub, div, mod, lt, le, eq
+- ~15-20x speedup for arithmetic operations
+
+**Remaining:**
+- [ ] `@ffi` and `@mode` annotation parsing in MDE source files
+- [ ] `@literal` and `@desugar` for syntax sugar
+- [ ] Generate ll.json from .calc for backwards compatibility
+
+**See:** dev/FFI-IMPLEMENTATION-PLAN.md, dev/research/clf-celf-ceptre.md
 
 ---
 
