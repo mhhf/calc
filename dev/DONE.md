@@ -4,6 +4,31 @@ Completed tasks and research for the CALC project.
 
 ---
 
+## FFI for Arithmetic Operations ✅
+**Date:** 2026-02-05
+
+Implemented Foreign Function Interface for computational predicates in the backward prover.
+
+**Files Created:**
+- `lib/mde/ffi/index.js` — FFI registry and default metadata
+- `lib/mde/ffi/convert.js` — bin ↔ BigInt conversion
+- `lib/mde/ffi/mode.js` — Mode checking (+ = ground, - = output)
+- `lib/mde/ffi/arithmetic.js` — plus, inc, mul, sub, div, mod, lt, le, eq
+
+**Modified:**
+- `lib/mde/prove.js` — Integrated FFI dispatch before clause search
+
+**Performance Results:**
+| Operation | No FFI | With FFI | Speedup |
+|-----------|--------|----------|---------|
+| plus 15 1 | 0.07ms | 0.008ms | ~10x |
+| plus 255 1 | 0.19ms | 0.012ms | ~16x |
+| plus 1023 1 | 0.15ms | 0.009ms | ~17x |
+
+**See:** dev/FFI-IMPLEMENTATION-PLAN.md
+
+---
+
 ## Research Insights ✅
 
 **See:** dev/research/insights.md

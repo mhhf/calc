@@ -173,18 +173,18 @@ tensor_l : deriv (seq (comma G (struct (tensor A B))) C)
 **Implementation tasks:**
 - [x] Prototype tree-sitter parser for .mde files (`prototypes/tree-sitter-mde/`)
 - [x] Verify deep nesting works (1000+ levels, 0.002s)
-- [ ] Implement full Celf grammar in tree-sitter
+- [x] Implement full Celf grammar in tree-sitter (`lib/tree-sitter-mde/`)
+- [x] Implement FFI dispatch in proof search (`lib/mde/ffi/`)
 - [ ] Add `@literal` and `@desugar` for syntax sugar
-- [ ] Add `@ffi` and `@mode` for FFI predicates
-- [ ] Implement FFI dispatch in proof search
+- [ ] Add `@ffi` and `@mode` annotation parsing in MDE files
 - [ ] Port optimism-mde/lib to verify pure Celf works
 - [ ] Generate ll.json from .calc for backwards compatibility
 
-**FFI considerations:**
-- Mode checking: `+` = ground input, `-` = computed output
-- Verification: optionally check FFI results
-- Fallback: use axioms when FFI mode doesn't match
-- See: dev/research/ffi-logics.md (detailed design)
+**FFI:** ✅ IMPLEMENTED (2026-02-05)
+- `lib/mde/ffi/` - Core FFI infrastructure
+- Mode checking, arithmetic operations (plus, inc, mul, sub, div, mod, lt, le, eq)
+- ~15-20x speedup for arithmetic operations
+- See: dev/FFI-IMPLEMENTATION-PLAN.md
 
 **Deferred research questions (for later):**
 - [ ] Dependent types for rule typing (LF-style)
