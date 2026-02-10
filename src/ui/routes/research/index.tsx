@@ -1,75 +1,125 @@
 import { createAsync, cache } from "@solidjs/router";
-import { A } from "@solidjs/router";
 import { Title } from "@solidjs/meta";
-import { Show, Suspense, For } from "solid-js";
+import { Show, Suspense } from "solid-js";
 import fs from "fs";
 import path from "path";
 
 const RESEARCH_DIR = path.resolve(process.cwd(), "doc/research");
 
-interface ResearchDoc {
-  slug: string;
-  title: string;
-  description: string;
-  tags: string[];
+// Simple markdown to HTML conversion (same as in [slug].tsx)
+function markdownToHtml(markdown: string): string {
+  let html = markdown;
+
+  // Convert wiki-style links [[doc]] to HTML links
+  html = html.replace(/\[\[([^\]]+)\]\]/g, (_, doc) => {
+    return `<a href="/research/${doc}">${doc}</a>`;
+  });
+
+  // Escape HTML in code blocks first (preserve them)
+  const codeBlocks: string[] = [];
+  html = html.replace(/```(\w+)?\n([\s\S]*?)```/g, (_, lang, code) => {
+    const idx = codeBlocks.length;
+    const escaped = code
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;");
+    codeBlocks.push(`<pre><code class="language-${lang || ""}">${escaped}</code></pre>`);
+    return `__CODE_BLOCK_${idx}__`;
+  });
+
+  // Inline code
+  html = html.replace(/`([^`]+)`/g, "<code>$1</code>");
+
+  // Headers
+  html = html.replace(/^#### (.+)$/gm, "<h4>$1</h4>");
+  html = html.replace(/^### (.+)$/gm, "<h3>$1</h3>");
+  html = html.replace(/^## (.+)$/gm, "<h2>$1</h2>");
+  html = html.replace(/^# (.+)$/gm, "<h1>$1</h1>");
+
+  // Bold and italic
+  html = html.replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>");
+  html = html.replace(/\*([^*]+)\*/g, "<em>$1</em>");
+
+  // Links [text](url)
+  html = html.replace(/\[([^\]]+)\]\(([^)]+)\)/g, (_, text, url) => {
+    if (url.endsWith(".md")) {
+      url = "/research/" + url.replace(".md", "");
+    }
+    if (url.startsWith("#")) {
+      return `<a href="${url}">${text}</a>`;
+    }
+    return `<a href="${url}" target="_blank" rel="noopener">${text}</a>`;
+  });
+
+  // Blockquotes
+  html = html.replace(/^> (.+)$/gm, "<blockquote>$1</blockquote>");
+  html = html.replace(/<\/blockquote>\n<blockquote>/g, "\n");
+
+  // Horizontal rules
+  html = html.replace(/^---+$/gm, "<hr>");
+
+  // Tables
+  const tableRegex = /\|(.+)\|\n\|[-| ]+\|\n((?:\|.+\|\n?)+)/g;
+  html = html.replace(tableRegex, (_, header, body) => {
+    const headers = header.split("|").filter((h: string) => h.trim());
+    const rows = body.trim().split("\n").map((row: string) =>
+      row.split("|").filter((c: string) => c.trim())
+    );
+
+    let table = "<table><thead><tr>";
+    headers.forEach((h: string) => {
+      table += `<th>${h.trim()}</th>`;
+    });
+    table += "</tr></thead><tbody>";
+    rows.forEach((row: string[]) => {
+      table += "<tr>";
+      row.forEach((cell: string) => {
+        table += `<td>${cell.trim()}</td>`;
+      });
+      table += "</tr>";
+    });
+    table += "</tbody></table>";
+    return table;
+  });
+
+  // Unordered lists
+  html = html.replace(/^- (.+)$/gm, "<li>$1</li>");
+  html = html.replace(/(<li>.*<\/li>\n?)+/g, (match) => `<ul>${match}</ul>`);
+
+  // Ordered lists
+  html = html.replace(/^\d+\. (.+)$/gm, "<li>$1</li>");
+
+  // Paragraphs
+  html = html.replace(/^(?!<[a-z]|__CODE_BLOCK)(.+)$/gm, (_, content) => {
+    if (content.trim()) {
+      return `<p>${content}</p>`;
+    }
+    return content;
+  });
+
+  // Restore code blocks
+  codeBlocks.forEach((block, idx) => {
+    html = html.replace(`__CODE_BLOCK_${idx}__`, block);
+  });
+
+  html = html.replace(/\n{3,}/g, "\n\n");
+
+  return html;
 }
 
-// Parse metadata from markdown file
-function parseMetadata(content: string, filename: string): ResearchDoc {
-  const lines = content.split("\n");
-  const slug = filename.replace(".md", "");
-
-  // Extract title from first # heading
-  const titleLine = lines.find(l => l.startsWith("# "));
-  const title = titleLine ? titleLine.replace("# ", "") : slug;
-
-  // Extract description from first paragraph after title
-  let description = "";
-  let inDescription = false;
-  for (const line of lines) {
-    if (line.startsWith("# ")) {
-      inDescription = true;
-      continue;
-    }
-    if (inDescription && line.trim() && !line.startsWith("#") && !line.startsWith(">") && !line.startsWith("-")) {
-      description = line.trim().slice(0, 200);
-      break;
-    }
-  }
-
-  // Extract tags from **Tags:** line
-  const tagsLine = lines.find(l => l.startsWith("**Tags:**"));
-  const tags: string[] = [];
-  if (tagsLine) {
-    const tagMatches = tagsLine.match(/`([^`]+)`/g);
-    if (tagMatches) {
-      tags.push(...tagMatches.map(t => t.replace(/`/g, "")));
-    }
-  }
-
-  return { slug, title, description, tags: tags.slice(0, 5) };
-}
-
-// Server-side data loading with caching
+// Load INDEX.md
 const getResearchIndex = cache(async () => {
   "use server";
 
-  const files = fs.readdirSync(RESEARCH_DIR).filter(f => f.endsWith(".md"));
+  const filePath = path.join(RESEARCH_DIR, "INDEX.md");
+  const content = fs.readFileSync(filePath, "utf-8");
 
-  const docs: ResearchDoc[] = [];
-  for (const file of files) {
-    const content = fs.readFileSync(path.join(RESEARCH_DIR, file), "utf-8");
-    docs.push(parseMetadata(content, file));
-  }
+  const titleMatch = content.match(/^# (.+)$/m);
+  const title = titleMatch ? titleMatch[1] : "Research Index";
 
-  // Sort: INDEX first, then alphabetically
-  docs.sort((a, b) => {
-    if (a.slug === "INDEX") return -1;
-    if (b.slug === "INDEX") return 1;
-    return a.slug.localeCompare(b.slug);
-  });
+  const html = markdownToHtml(content);
 
-  return docs;
+  return { title, html };
 }, "research-index");
 
 export const route = {
@@ -77,52 +127,18 @@ export const route = {
 };
 
 export default function ResearchIndex() {
-  const docs = createAsync(() => getResearchIndex());
+  const doc = createAsync(() => getResearchIndex());
 
   return (
-    <>
-      <Title>Research Index - CALC</Title>
-
-      <div class="prose-research">
-        <h1>Research Documents</h1>
-        <p class="text-gray-600 text-lg mb-8">
-          Cross-reference and summary of research documents on linear logic,
-          display calculus, ownership semantics, and proof theory.
-        </p>
-
-        <Suspense fallback={<div class="text-gray-500">Loading research index...</div>}>
-          <Show when={docs()}>
-            <div class="space-y-3">
-              <For each={docs()}>
-                {(doc) => (
-                  <div class="border border-gray-200 rounded-md p-4 hover:border-blue-300 hover:bg-blue-50/30 transition-colors">
-                    <A
-                      href={`/research/${doc.slug}`}
-                      class="text-lg font-semibold text-blue-600 hover:underline"
-                    >
-                      {doc.title}
-                    </A>
-                    <Show when={doc.description}>
-                      <p class="text-gray-600 text-sm mt-1">{doc.description}</p>
-                    </Show>
-                    <Show when={doc.tags.length > 0}>
-                      <div class="mt-2 flex flex-wrap gap-1">
-                        <For each={doc.tags}>
-                          {(tag) => (
-                            <span class="inline-block bg-blue-100 text-blue-800 text-xs px-2 py-0.5 rounded">
-                              {tag}
-                            </span>
-                          )}
-                        </For>
-                      </div>
-                    </Show>
-                  </div>
-                )}
-              </For>
-            </div>
-          </Show>
-        </Suspense>
-      </div>
-    </>
+    <Suspense fallback={<div class="text-gray-500">Loading research index...</div>}>
+      <Show when={doc()}>
+        {(data) => (
+          <>
+            <Title>{data().title} - CALC</Title>
+            <article class="prose-research" innerHTML={data().html} />
+          </>
+        )}
+      </Show>
+    </Suspense>
   );
 }
