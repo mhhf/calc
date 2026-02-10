@@ -50,11 +50,17 @@ Implement primitive types with lazy storage and FFI. These are prerequisites for
 - [ ] Lexer produces `binlit` nodes for `/[0-9]+/`
 - [ ] Render: compact by default, option for expanded
 
-**See:**
-- `dev/lazy-primitive-storage.md` — Store extension, ephemeral expansion
-- `dev/syntactic-sugar.md` — @literal and @sugar annotations
-- `dev/import-mechanism.md` — @import system, primitives module
-- `dev/research/graded-modalities.md` — Theory of object-level quantities
+**Context docs (read before implementing):**
+- `doc/dev/lazy-primitive-storage.md` — Store extension, ephemeral expansion design
+- `doc/dev/import-mechanism.md` — @import system specification
+- `doc/dev/syntactic-sugar.md` — @literal and @sugar annotations
+- `doc/research/graded-resource-tracking.md` — Theory of object-level quantities (why this design)
+- `doc/research/ffi-logics.md` — FFI patterns, mode checking
+
+**Implementation files to understand:**
+- `lib/store.js` — Current Store structure (where binlit goes)
+- `lib/parser.js` — Parser generation (where @import hooks in)
+- `lib/calc.js` — Calculus loader (file loading mechanism)
 
 ---
 

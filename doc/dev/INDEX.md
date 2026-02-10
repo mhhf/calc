@@ -7,7 +7,6 @@ Development notes, architecture decisions, implementation plans, and project man
 ## Overview
 
 - [[README]] - Project vision, quick start, file structure
-- [[RESEARCH]] - Research goals, knowledge base (→ see also doc/research/)
 - [[REFACTOR]] - Code analysis, technical debt, modernization
 
 ---

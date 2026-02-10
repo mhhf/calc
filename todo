@@ -1,7 +1,0 @@
-"Quantifier" : {
-  "Forall_R": ["?X |- forall T? x : Nat . F? A", "?X |- F? A [ T? A / T? B ]"]
-}
-
-
-Debug output
- - help the user with conventions - predicates are written lowercase etc

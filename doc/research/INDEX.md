@@ -94,6 +94,11 @@
 
 **Tags:** `proof-calculi` `sequent-calculus` `display-calculus` `Curry-Howard` `cut-elimination` `deep-inference`
 
+### [[linear-logic-connectives]]
+**Par, Why Not, and Polarity.** Deep understanding of the "mysterious" linear logic connectives. Par (⅋) as multiplicative disjunction, Why Not (?) as exponential dual. Resource intuitions, game semantics, session type interpretations.
+
+**Tags:** `linear-logic` `par` `why-not` `polarity` `game-semantics` `session-types` `semantics`
+
 ### [[display-calculus]]
 **Belnap's Framework.** The C1-C8 conditions that guarantee cut elimination. Structural connectives and residuation. Why exponentials (!) break the display property.
 

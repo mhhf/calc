@@ -27,6 +27,50 @@ This document addresses fundamental questions about proof calculi, the Curry-How
 
 ---
 
+## Meta-Goal: Why Do Gentzen-Style Sequent Calculi Feel Significant?
+
+**The question:** Beyond linear logic specifically, why does the Gentzen-style sequent calculus itself feel like "hidden knowledge"? What is it about this formalism that seems so fundamental?
+
+**Possible reasons to investigate:**
+
+1. **Symmetry and Duality**
+   - Sequents make duality explicit: `Γ ⊢ Δ` shows both sides
+   - Classical logic's symmetry becomes visible
+   - Cut elimination reveals computational content on both sides
+
+2. **Composition and Modularity**
+   - Cut rule = composition of proofs
+   - Proofs become first-class objects that can be combined
+   - This is essentially the "API" of logical reasoning
+
+3. **Resource Awareness Built-In**
+   - The context management (what's on left/right) naturally tracks usage
+   - Substructural logics fall out by restricting structural rules
+   - This might be why it maps so well to computation and economics
+
+4. **Proof Search = Computation**
+   - Bottom-up proof search is a form of goal-directed computation
+   - Focusing disciplines this into deterministic phases
+   - This connects logic to programming in a deep way
+
+5. **Universal Interface**
+   - Many different logics can be expressed as sequent calculi
+   - The "shape" of sequents is invariant; only rules change
+   - Suggests sequents capture something fundamental about inference itself
+
+**Questions to explore:**
+- Is there a category-theoretic explanation for why sequents are "right"?
+- How do sequent calculi relate to game semantics?
+- Why did it take until Gentzen (1935) to discover this representation?
+- What would a "more fundamental" representation look like, if one exists?
+
+**Reading to pursue:**
+- Girard's "Proofs and Types" — philosophical perspective
+- Wadler's "Propositions as Sessions" — sequents and concurrency
+- Game semantics literature — sequents as dialogue games
+
+---
+
 ## Logic vs Type Theory: What's the Difference?
 
 You're absolutely right that via Curry-Howard, "propositions as types, proofs as terms" means they're dual views of the same thing. So why do we distinguish them?
