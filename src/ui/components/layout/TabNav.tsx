@@ -6,6 +6,7 @@ const tabs = [
   { path: '/calculus', label: 'Calculus' },
   { path: '/health', label: 'Health' },
   { path: '/meta', label: 'Meta' },
+  { path: '/research', label: 'Research' },
 ];
 
 export default function TabNav() {

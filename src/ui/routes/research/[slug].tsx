@@ -6,7 +6,7 @@ import fs from "fs";
 import path from "path";
 
 // Get research docs directory (relative to project root)
-const RESEARCH_DIR = path.resolve(process.cwd(), "dev/research");
+const RESEARCH_DIR = path.resolve(process.cwd(), "doc/research");
 
 // Simple markdown to HTML conversion (same as in API)
 function markdownToHtml(markdown: string, currentSlug: string): string {
@@ -145,17 +145,17 @@ export default function ResearchDocument() {
 
   return (
     <ErrorBoundary fallback={(err) => (
-      <div class="prose">
+      <div class="prose-research">
         <h1>Document Not Found</h1>
-        <p class="text-red-400">{err.message}</p>
+        <p class="text-red-600">{err.message}</p>
       </div>
     )}>
-      <Suspense fallback={<div class="prose text-gray-500">Loading document...</div>}>
+      <Suspense fallback={<div class="text-gray-500">Loading document...</div>}>
         <Show when={doc()}>
           {(data) => (
             <>
               <Title>{data().title} - CALC Research</Title>
-              <article class="prose" innerHTML={data().html} />
+              <article class="prose-research" innerHTML={data().html} />
             </>
           )}
         </Show>

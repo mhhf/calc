@@ -103,80 +103,85 @@
   }
 }
 
-/* Research document prose styling */
-.prose {
-  @apply text-gray-200 leading-relaxed max-w-none;
+/* Research document prose styling - GitHub README style (light theme) */
+.prose-research {
+  @apply text-gray-900 leading-relaxed max-w-none;
+  font-size: 16px;
+  line-height: 1.6;
 }
 
-.prose h1 {
-  @apply text-3xl font-bold text-gray-100 mt-8 mb-4 pb-2 border-b border-gray-700;
+.prose-research h1 {
+  @apply text-3xl font-semibold text-gray-900 mt-6 mb-4 pb-2 border-b border-gray-200;
 }
 
-.prose h2 {
-  @apply text-2xl font-semibold text-gray-100 mt-6 mb-3;
+.prose-research h2 {
+  @apply text-2xl font-semibold text-gray-900 mt-6 mb-3 pb-1 border-b border-gray-200;
 }
 
-.prose h3 {
-  @apply text-xl font-medium text-gray-100 mt-5 mb-2;
+.prose-research h3 {
+  @apply text-xl font-semibold text-gray-900 mt-5 mb-2;
 }
 
-.prose h4 {
-  @apply text-lg font-medium text-gray-200 mt-4 mb-2;
+.prose-research h4 {
+  @apply text-lg font-semibold text-gray-900 mt-4 mb-2;
 }
 
-.prose p {
-  @apply mb-4;
+.prose-research p {
+  @apply mb-4 text-gray-800;
 }
 
-.prose a {
-  @apply text-blue-400 hover:text-blue-300 hover:underline;
+.prose-research a {
+  @apply text-blue-600 hover:underline;
 }
 
-.prose code {
-  @apply bg-gray-800 px-1.5 py-0.5 rounded text-sm font-mono text-gray-200;
+.prose-research code {
+  @apply bg-gray-100 px-1.5 py-0.5 rounded text-sm font-mono text-gray-800 border border-gray-200;
 }
 
-.prose pre {
-  @apply bg-gray-900 border border-gray-700 rounded-lg p-4 overflow-x-auto mb-4;
+.prose-research pre {
+  @apply bg-gray-50 border border-gray-200 rounded-md p-4 overflow-x-auto mb-4;
 }
 
-.prose pre code {
-  @apply bg-transparent p-0;
+.prose-research pre code {
+  @apply bg-transparent p-0 border-0;
 }
 
-.prose blockquote {
-  @apply border-l-4 border-green-600 pl-4 py-2 bg-gray-900/50 my-4 italic;
+.prose-research blockquote {
+  @apply border-l-4 border-gray-300 pl-4 py-1 text-gray-600 my-4;
 }
 
-.prose ul {
-  @apply list-disc list-inside mb-4 space-y-1;
+.prose-research ul {
+  @apply list-disc ml-6 mb-4 space-y-1;
 }
 
-.prose ol {
-  @apply list-decimal list-inside mb-4 space-y-1;
+.prose-research ol {
+  @apply list-decimal ml-6 mb-4 space-y-1;
 }
 
-.prose li {
-  @apply text-gray-300;
+.prose-research li {
+  @apply text-gray-800;
 }
 
-.prose table {
+.prose-research table {
   @apply w-full border-collapse mb-4;
 }
 
-.prose th {
-  @apply bg-gray-800 border border-gray-700 px-4 py-2 text-left font-medium;
+.prose-research th {
+  @apply bg-gray-50 border border-gray-200 px-4 py-2 text-left font-semibold text-gray-900;
 }
 
-.prose td {
-  @apply border border-gray-700 px-4 py-2;
+.prose-research td {
+  @apply border border-gray-200 px-4 py-2 text-gray-800;
 }
 
-.prose hr {
-  @apply border-gray-700 my-8;
+.prose-research hr {
+  @apply border-gray-200 my-6;
 }
 
-/* Tag styling for research docs */
-.tag {
-  @apply inline-block bg-green-700 text-white text-xs px-2 py-0.5 rounded mr-1 mb-1;
+.prose-research strong {
+  @apply font-semibold text-gray-900;
+}
+
+.prose-research em {
+  @apply italic;
 }

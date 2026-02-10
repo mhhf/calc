@@ -159,7 +159,10 @@
       "Bash(test:*)",
       "Bash(xargs:*)",
       "Bash(npm run build:*)",
-      "Bash(nix log:*)"
+      "Bash(nix log:*)",
+      "Bash(git reset:*)",
+      "Bash(pgrep:*)",
+      "Bash(git mv:*)"
     ],
     "deny": [],
     "ask": []
