@@ -436,7 +436,35 @@ top : formula
 - [ ] Design ownership modalities
 - [ ] Prototype real-number arithmetic
 
-### Documentation
+### Documentation System (Executable Markdown)
+**Priority:** MEDIUM
+**Status:** Research complete — see [[claude-meta]]
+
+Implement executable code blocks in markdown for research docs.
+
+**Hybrid rendering approach:**
+- Server-side: graphviz, katex, calc (static output)
+- Client-side: mermaid, proof trees (interactive)
+
+**Phase 1: Markdown Processor**
+- [ ] Extract markdown processing to `src/ui/lib/markdown.ts`
+- [ ] Add YAML frontmatter parsing
+- [ ] Add server-side processors for graphviz, katex
+
+**Phase 2: Client Hydration**
+- [ ] Add client-side mermaid rendering
+- [ ] Add interactive proof tree viewer
+
+**Phase 3: Metadata & Interlinking**
+- [ ] Add unified frontmatter schema to existing docs
+- [ ] Generate backlinks from wiki-links
+- [ ] Add tags-based filtering
+
+**See:** [[claude-meta]] for full design
+
+---
+
+### Documentation (Legacy)
 **Priority:** LOW
 
 - [ ] Write significance hypothesis document (dev/HYPOTHESIS.md)
