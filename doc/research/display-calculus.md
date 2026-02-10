@@ -1,3 +1,11 @@
+---
+title: "Display Calculus: Deep Research"
+created: 2026-02-10
+modified: 2026-02-10
+summary: Evaluation of Belnap's display calculus versus alternatives including focused sequent calculus and proof nets for CALC's multimodal linear logic goals.
+tags: [display-calculus, sequent-calculus, proof-theory, Belnap, architecture]
+---
+
 # Display Calculus: Deep Research
 
 This document investigates whether display calculus is the right choice for this project, compares it with alternatives, and provides recommendations for the architecture going forward.

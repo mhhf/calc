@@ -1,3 +1,11 @@
+---
+title: "Multimodal Linear Logic for CALC"
+created: 2026-02-10
+modified: 2026-02-10
+summary: Design for combining ownership, location, and graded modalities in linear logic with interaction semantics, composition rules, and negation handling.
+tags: [multimodal, ownership, graded-types, location, modalities]
+---
+
 # Multimodal Linear Logic for CALC
 
 This document addresses the design of a multimodal linear logic system for CALC, supporting ownership, location, and graded modalities that can interact, combine, and be negated in a theoretically sound manner.

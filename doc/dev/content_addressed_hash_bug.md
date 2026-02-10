@@ -1,3 +1,11 @@
+---
+title: Content-Addressed Hash Bug Analysis
+created: 2026-02-10
+modified: 2026-02-10
+summary: Analysis of v2 architecture bug where embedded object trees cause 5,876x redundant hashing instead of using proper content addressing
+tags: [bug, v2, optimization, hashing, architecture]
+---
+
 # Content-Addressed Architecture Bug
 
 ## Summary

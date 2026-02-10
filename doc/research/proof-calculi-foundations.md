@@ -1,3 +1,11 @@
+---
+title: "Proof Calculi Foundations: Deep Research"
+created: 2026-02-10
+modified: 2026-02-10
+summary: Fundamental questions about proof calculi, Curry-Howard correspondence, hierarchy of proof systems from natural deduction to deep inference and cyclic proofs.
+tags: [proof-theory, Curry-Howard, foundations, sequent-calculus, proof-systems]
+---
+
 # Proof Calculi Foundations: Deep Research
 
 This document addresses fundamental questions about proof calculi, the Curry-Howard correspondence, and why certain proof formalisms work better for certain logics.

@@ -1,3 +1,11 @@
+---
+title: "Graded Resource Tracking: QTT and Graded Modalities"
+created: 2026-02-10
+modified: 2026-02-10
+summary: Quantitative Type Theory and graded modalities using semiring annotations for tracking variable usage counts and resource quantities in dependent type systems.
+tags: [QTT, graded-types, semiring, Granule, resource-tracking]
+---
+
 # Graded Resource Tracking: QTT and Graded Modalities
 
 Comprehensive research on Quantitative Type Theory (QTT), graded modal types, and their application to CALC's resource tracking goals.

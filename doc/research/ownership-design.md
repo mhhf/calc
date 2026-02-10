@@ -1,3 +1,11 @@
+---
+title: "Ownership Design: User-Centric Linear Logic for Digital Assets"
+created: 2026-02-10
+modified: 2026-02-10
+summary: Comprehensive design for representing coin ownership, transfers, and atomic swaps using ownership modalities and linear logic with user-centric rather than contract-centric approach.
+tags: [ownership, design, digital-assets, transfers, atomic-swaps]
+---
+
 # Ownership Design: User-Centric Linear Logic for Digital Assets
 
 Comprehensive design document for representing ownership, transfers, and exchanges in CALC's linear logic framework. Explores design space, formalizes rules, and provides worked examples.

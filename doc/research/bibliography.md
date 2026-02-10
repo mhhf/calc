@@ -1,3 +1,11 @@
+---
+title: "Bibliography"
+created: 2026-02-10
+modified: 2026-02-10
+summary: Comprehensive bibliography of research literature on linear logic, display calculus, type theory, session types, authorization logic, and proof systems relevant to CALC.
+tags: [bibliography, references, literature, research]
+---
+
 # Bibliography
 
 Comprehensive bibliography of all literature referenced in the CALC research documents.

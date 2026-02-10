@@ -1,3 +1,11 @@
+---
+title: "Explicit Substitutions: Lazy Evaluation for Proof Search"
+created: 2026-02-10
+modified: 2026-02-10
+summary: Lambda-sigma calculus approach to deferring expensive substitution operations using closures for lazy evaluation in proof search optimization.
+tags: [explicit-substitutions, lazy-evaluation, optimization, lambda-calculus, closures]
+---
+
 # Explicit Substitutions: Lazy Evaluation for Proof Search
 
 Deep dive into deferring substitution operations until actually needed.

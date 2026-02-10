@@ -1,3 +1,11 @@
+---
+title: "Near-Linear Unification: Martelli-Montanari with Union-Find"
+created: 2026-02-10
+modified: 2026-02-10
+summary: Optimization from O(n²) Robinson unification to O(n·α(n)) using Martelli-Montanari algorithm with union-find for near-linear performance.
+tags: [unification, optimization, union-find, algorithms, Martelli-Montanari]
+---
+
 # Near-Linear Unification: Martelli-Montanari with Union-Find
 
 Deep dive into upgrading from O(n²) Robinson unification to O(n·α(n)) Martelli-Montanari.

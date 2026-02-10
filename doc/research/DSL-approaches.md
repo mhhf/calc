@@ -1,3 +1,11 @@
+---
+title: "DSL Approaches for Linear Logic Calculus Specification"
+created: 2026-02-10
+modified: 2026-02-10
+summary: Comparison of specification languages for linear logic calculi including ll.json, Calculus-Toolbox, Isabelle, Lean, Twelf, and domain-specific approaches.
+tags: [DSL, specification, calculus-design, tooling, meta-theory]
+---
+
 # DSL Approaches for Linear Logic Calculus Specification
 
 Research document comparing different approaches for specifying our linear logic calculus.

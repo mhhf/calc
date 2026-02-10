@@ -4,114 +4,10 @@ import { Title } from "@solidjs/meta";
 import { Show, Suspense, ErrorBoundary } from "solid-js";
 import fs from "fs";
 import path from "path";
+import { processDocument, clientHydrationScript, type Frontmatter } from "../../lib/markdown";
 
 // Get research docs directory (relative to project root)
 const RESEARCH_DIR = path.resolve(process.cwd(), "doc/research");
-
-// Simple markdown to HTML conversion (same as in API)
-function markdownToHtml(markdown: string, currentSlug: string): string {
-  let html = markdown;
-
-  // Convert wiki-style links [[doc]] to HTML links
-  html = html.replace(/\[\[([^\]]+)\]\]/g, (_, doc) => {
-    return `<a href="/research/${doc}">${doc}</a>`;
-  });
-
-  // Escape HTML in code blocks first (preserve them)
-  const codeBlocks: string[] = [];
-  html = html.replace(/```(\w+)?\n([\s\S]*?)```/g, (_, lang, code) => {
-    const idx = codeBlocks.length;
-    const escaped = code
-      .replace(/&/g, "&amp;")
-      .replace(/</g, "&lt;")
-      .replace(/>/g, "&gt;");
-    codeBlocks.push(`<pre><code class="language-${lang || ""}">${escaped}</code></pre>`);
-    return `__CODE_BLOCK_${idx}__`;
-  });
-
-  // Inline code
-  html = html.replace(/`([^`]+)`/g, "<code>$1</code>");
-
-  // Headers
-  html = html.replace(/^#### (.+)$/gm, "<h4>$1</h4>");
-  html = html.replace(/^### (.+)$/gm, "<h3>$1</h3>");
-  html = html.replace(/^## (.+)$/gm, "<h2>$1</h2>");
-  html = html.replace(/^# (.+)$/gm, "<h1>$1</h1>");
-
-  // Bold and italic
-  html = html.replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>");
-  html = html.replace(/\*([^*]+)\*/g, "<em>$1</em>");
-
-  // Links [text](url)
-  html = html.replace(/\[([^\]]+)\]\(([^)]+)\)/g, (_, text, url) => {
-    // Convert internal .md links to routes
-    if (url.endsWith(".md")) {
-      url = "/research/" + url.replace(".md", "");
-    }
-    // Handle anchor links
-    if (url.startsWith("#")) {
-      return `<a href="${url}">${text}</a>`;
-    }
-    return `<a href="${url}" target="_blank" rel="noopener">${text}</a>`;
-  });
-
-  // Blockquotes
-  html = html.replace(/^> (.+)$/gm, "<blockquote>$1</blockquote>");
-  // Merge consecutive blockquotes
-  html = html.replace(/<\/blockquote>\n<blockquote>/g, "\n");
-
-  // Horizontal rules
-  html = html.replace(/^---+$/gm, "<hr>");
-
-  // Tables (basic support)
-  const tableRegex = /\|(.+)\|\n\|[-| ]+\|\n((?:\|.+\|\n?)+)/g;
-  html = html.replace(tableRegex, (_, header, body) => {
-    const headers = header.split("|").filter((h: string) => h.trim());
-    const rows = body.trim().split("\n").map((row: string) =>
-      row.split("|").filter((c: string) => c.trim())
-    );
-
-    let table = "<table><thead><tr>";
-    headers.forEach((h: string) => {
-      table += `<th>${h.trim()}</th>`;
-    });
-    table += "</tr></thead><tbody>";
-    rows.forEach((row: string[]) => {
-      table += "<tr>";
-      row.forEach((cell: string) => {
-        table += `<td>${cell.trim()}</td>`;
-      });
-      table += "</tr>";
-    });
-    table += "</tbody></table>";
-    return table;
-  });
-
-  // Unordered lists
-  html = html.replace(/^- (.+)$/gm, "<li>$1</li>");
-  html = html.replace(/(<li>.*<\/li>\n?)+/g, (match) => `<ul>${match}</ul>`);
-
-  // Ordered lists
-  html = html.replace(/^\d+\. (.+)$/gm, "<li>$1</li>");
-
-  // Paragraphs (lines not already wrapped)
-  html = html.replace(/^(?!<[a-z]|__CODE_BLOCK)(.+)$/gm, (_, content) => {
-    if (content.trim()) {
-      return `<p>${content}</p>`;
-    }
-    return content;
-  });
-
-  // Restore code blocks
-  codeBlocks.forEach((block, idx) => {
-    html = html.replace(`__CODE_BLOCK_${idx}__`, block);
-  });
-
-  // Clean up extra newlines
-  html = html.replace(/\n{3,}/g, "\n\n");
-
-  return html;
-}
 
 // Server-side data loading with caching
 const getResearchDoc = cache(async (slug: string) => {
@@ -124,15 +20,13 @@ const getResearchDoc = cache(async (slug: string) => {
   }
 
   const content = fs.readFileSync(filePath, "utf-8");
+  const doc = await processDocument(content, { basePath: '/research', slug });
 
-  // Extract title from first # heading
-  const titleMatch = content.match(/^# (.+)$/m);
-  const title = titleMatch ? titleMatch[1] : slug;
-
-  // Convert markdown to HTML
-  const html = markdownToHtml(content, slug);
-
-  return { title, html };
+  return {
+    title: doc.title,
+    html: doc.html,
+    frontmatter: doc.frontmatter,
+  };
 }, "research-doc");
 
 export const route = {
@@ -155,7 +49,27 @@ export default function ResearchDocument() {
           {(data) => (
             <>
               <Title>{data().title} - CALC Research</Title>
+              {/* Frontmatter metadata display */}
+              <Show when={data().frontmatter.summary || data().frontmatter.tags}>
+                <div class="mb-6 p-4 bg-gray-50 rounded-lg border border-gray-200">
+                  <Show when={data().frontmatter.summary}>
+                    <p class="text-gray-600 italic mb-2">{data().frontmatter.summary as string}</p>
+                  </Show>
+                  <Show when={data().frontmatter.tags}>
+                    <div class="flex flex-wrap gap-2">
+                      {(data().frontmatter.tags as string[])?.map((tag) => (
+                        <span class="px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded">{tag}</span>
+                      ))}
+                    </div>
+                  </Show>
+                  <Show when={data().frontmatter.modified}>
+                    <p class="text-xs text-gray-400 mt-2">Last modified: {data().frontmatter.modified as string}</p>
+                  </Show>
+                </div>
+              </Show>
               <article class="prose-research" innerHTML={data().html} />
+              {/* Client-side hydration for mermaid, etc. */}
+              <div innerHTML={clientHydrationScript} />
             </>
           )}
         </Show>

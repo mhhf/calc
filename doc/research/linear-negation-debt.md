@@ -1,3 +1,11 @@
+---
+title: "Linear Negation as Debt Semantics"
+created: 2026-02-10
+modified: 2026-02-10
+summary: Interpreting linear negation as debt or obligation with game-semantic perspective connecting to accounting liabilities and financial derivatives.
+tags: [linear-negation, debt, game-semantics, accounting, duality]
+---
+
 # Linear Negation as Debt Semantics
 
 This document explores the interpretation of linear negation (A⊥) as "debt" or "obligation," and its relevance to CALC's coin ownership modeling.

@@ -1,3 +1,12 @@
+---
+title: Extended Celf DSL Refactor
+created: 2026-02-10
+modified: 2026-02-10
+summary: Implementation plan for replacing ll.json with Extended Celf DSL using tree-sitter parser and family abstraction
+tags: [dsl, celf, parser, tree-sitter, refactor]
+status: stable
+---
+
 # DSL Refactor: Extended Celf Implementation Plan
 
 This document outlines the implementation plan for replacing ll.json with an Extended Celf DSL.

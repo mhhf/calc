@@ -1,3 +1,11 @@
+---
+title: v2 Prover Benchmark Results
+created: 2026-02-10
+modified: 2026-02-10
+summary: Performance benchmarks showing v2 focused prover is 5-8x faster than v1 through content-addressed multisets and proper focusing discipline.
+tags: [benchmark, performance, v2, prover, optimization]
+---
+
 # v2 Prover Benchmark Results
 
 **Date:** 2026-02-02

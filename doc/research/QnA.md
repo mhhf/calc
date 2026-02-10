@@ -1,3 +1,11 @@
+---
+title: "Deep Answers: Proof Theory Questions"
+created: 2026-02-10
+modified: 2026-02-10
+summary: Accessible Q&A covering structural connectives, residuation, display property, cut elimination, fixpoints, and non-determinism in proof theory.
+tags: [Q&A, proof-theory, tutorial, residuation, cut-elimination]
+---
+
 # Deep Answers: Proof Theory Questions
 
 Accessible Q&A-style explanations of foundational proof theory concepts. For deeper treatment, see the dedicated documents referenced below.

@@ -1,3 +1,11 @@
+---
+title: "Prover Architecture: LCF, Tactics, and Proof Orchestration"
+created: 2026-02-10
+modified: 2026-02-10
+summary: Theorem prover architectures including LCF trusted kernel, tactic languages, Sledgehammer parallel orchestration, and monad hierarchies for proof automation.
+tags: [prover-architecture, LCF, tactics, Sledgehammer, automation]
+---
+
 # Prover Architecture: LCF, Tactics, and Proof Orchestration
 
 Comprehensive research on theorem prover architectures: LCF style, tactics, Sledgehammer, and how they apply to CALC.

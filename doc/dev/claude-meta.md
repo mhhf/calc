@@ -1,3 +1,11 @@
+---
+title: Claude Code Integration
+created: 2026-02-10
+modified: 2026-02-10
+summary: Documentation system architecture, Claude Code configuration, and workflow automation for CALC project
+tags: [documentation, claude-code, tooling, automation]
+---
+
 # Claude Code Configuration & Documentation System
 
 Research on how to structure CALC's documentation, Claude Code integration, and workflow automation.

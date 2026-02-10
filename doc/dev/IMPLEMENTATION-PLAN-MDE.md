@@ -1,3 +1,12 @@
+---
+title: MDE Implementation Plan
+created: 2026-02-04
+modified: 2026-02-10
+summary: Minimal Unix-philosophy implementation for MDE parsing and hybrid backward/forward proof search with content-addressed architecture
+tags: [mde, implementation, prover, forward-chaining, unix-philosophy]
+status: stable
+---
+
 # Implementation Plan: MDE Parsing and Proving
 
 **Goal:** Parse `.mde` files from `optimism-mde/lib/` and prove things about them.

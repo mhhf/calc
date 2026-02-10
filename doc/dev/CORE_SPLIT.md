@@ -1,3 +1,11 @@
+---
+title: Core/Calculus Separation
+created: 2026-02-10
+modified: 2026-02-10
+summary: Design for separating generic sequent calculus machinery from ILL-specific focused proof search optimization
+tags: [architecture, separation, prover, core, calculus]
+---
+
 # Core/Calculus Separation Architecture
 
 Design document for separating generic "Gentzen machinery" from logic-specific optimized provers.

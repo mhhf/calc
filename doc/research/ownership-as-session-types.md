@@ -1,3 +1,11 @@
+---
+title: "Ownership Modalities as Session Types"
+created: 2026-02-10
+modified: 2026-02-10
+summary: Exploring ownership modalities through session types correspondence revealing ownership as protocol context rather than pure type-theoretic construct.
+tags: [ownership, session-types, authorization, correspondence, MPST]
+---
+
 # Ownership Modalities as Session Types
 
 This document explores whether ownership modalities (`[Alice] A`) can be expressed as session types, connecting authorization logic with the propositions-as-sessions correspondence.

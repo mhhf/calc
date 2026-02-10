@@ -1,3 +1,11 @@
+---
+title: "Resource Semantics: What Are Terms?"
+created: 2026-02-10
+modified: 2026-02-10
+summary: Exploring term semantics for resource types as receipts, audit trails, or proof witnesses showing resource provenance and synthesis in linear logic.
+tags: [resource-semantics, terms, proofs, Curry-Howard, provenance]
+---
+
 # Resource Semantics: What Are Terms?
 
 If `A` is a resource type, what is the semantics of `a : A`? Can terms be 'receipts' or 'traces' showing WHERE the resource comes from / how it's synthesized?

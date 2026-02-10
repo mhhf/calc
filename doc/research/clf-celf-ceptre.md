@@ -1,3 +1,11 @@
+---
+title: "CLF, Celf, and Ceptre: Research for CALC v2 Integration"
+created: 2026-02-02
+modified: 2026-02-10
+summary: Requirements for implementing CLF's concurrent logical framework in CALC v2 including lax monad, forward chaining, quiescence detection, and Ceptre's stage system.
+tags: [CLF, Celf, Ceptre, forward-chaining, lax-monad, logical-framework]
+---
+
 # CLF, Celf, and Ceptre: Research for CALC v2 Integration
 
 **Date:** 2026-02-02

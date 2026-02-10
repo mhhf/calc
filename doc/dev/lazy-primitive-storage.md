@@ -1,3 +1,11 @@
+---
+title: Lazy Primitive Storage
+created: 2026-02-10
+modified: 2026-02-10
+summary: Opaque primitive storage for efficient numeric types with ephemeral pattern matching and O(1) FFI operations
+tags: [optimization, primitives, storage, ffi, bigint]
+---
+
 # Lazy Primitive Storage
 
 Implementation design for efficient storage of numeric types using lazy expansion.

@@ -1,3 +1,11 @@
+---
+title: Calculus Family Abstraction
+created: 2026-02-10
+modified: 2026-02-10
+summary: Design for family abstraction allowing multiple calculi to share infrastructure through role annotations and modes
+tags: [family, abstraction, lnl, multi-type, calculus]
+---
+
 # Calculus Family Abstraction Design
 
 ## Current Implementation

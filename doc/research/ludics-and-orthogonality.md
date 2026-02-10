@@ -1,3 +1,11 @@
+---
+title: "Ludics, Orthogonality, and Girard's Post-Linear-Logic Work"
+created: 2026-02-10
+modified: 2026-02-10
+summary: Girard's Ludics framework with interactive game semantics and orthogonality potentially modeling multi-party consensus through converging interactions.
+tags: [Ludics, orthogonality, game-semantics, Girard, consensus]
+---
+
 # Ludics, Orthogonality, and Girard's Post-Linear-Logic Work
 
 Comprehensive research on Girard's post-linear-logic research: Ludics, Geometry of Interaction, Transcendental Syntax, and how orthogonality could model consensus in CALC.

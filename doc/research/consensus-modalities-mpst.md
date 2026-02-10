@@ -1,3 +1,11 @@
+---
+title: "Consensus Modalities and Multiparty Session Types"
+created: 2026-02-10
+modified: 2026-02-10
+summary: Exploring composite principal modalities for multi-party consent using MPST global types and the challenges of k-of-n threshold consensus in linear logic.
+tags: [consensus, MPST, session-types, authorization, multi-party]
+---
+
 # Consensus Modalities and Multiparty Session Types
 
 This document explores how consensus modalities (`[A ∧ B] φ` — "both A and B must consent") can be modeled using multiparty session types (MPST), and what gaps remain.

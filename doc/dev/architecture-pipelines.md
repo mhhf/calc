@@ -1,3 +1,11 @@
+---
+title: Clean Architecture Pipeline
+created: 2026-02-10
+modified: 2026-02-10
+summary: Design for parallel v2 implementation separating core Gentzen machinery from calculus-specific optimizations
+tags: [architecture, v2, pipelines, separation-of-concerns]
+---
+
 # Architecture: Clean Parallel Implementation
 
 ## Philosophy

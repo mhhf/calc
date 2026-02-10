@@ -1,3 +1,11 @@
+---
+title: "Adjunctions and Adjoint Logic"
+created: 2026-02-10
+modified: 2026-02-10
+summary: Categorical adjunctions and Pfenning's adjoint logic framework unifying LNL, modal logics, and session types through mode preorders and adjoint modalities.
+tags: [adjunctions, adjoint-logic, category-theory, LNL, multimodal]
+---
+
 # Adjunctions and Adjoint Logic
 
 Comprehensive research on categorical adjunctions, Pfenning's adjoint logic, and their application to CALC's multimodal framework.

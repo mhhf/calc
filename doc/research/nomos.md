@@ -1,3 +1,11 @@
+---
+title: "Nomos: Session Types + Linear Types for Smart Contracts"
+created: 2026-02-10
+modified: 2026-02-10
+summary: CMU's domain-specific language combining session types and linear types for smart contracts with automatic resource analysis and re-entrancy prevention.
+tags: [Nomos, session-types, linear-types, smart-contracts, blockchain]
+---
+
 # Nomos: Session Types + Linear Types for Smart Contracts
 
 > **See also:** [[authorization-logic]] for principals and says modality, [[multi-type-display-calculus]] for adjunctions between modes, [[ownership-as-session-types]] for ownership-channel correspondence, [[graded-resource-tracking]] for resource analysis.

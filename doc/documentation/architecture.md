@@ -1,3 +1,11 @@
+---
+title: Architecture
+created: 2026-02-10
+modified: 2026-02-10
+summary: Three-layer architecture separating Framework, Object Logic, and Prover with focus tracking as position-based state rather than syntactic transformation.
+tags: [architecture, framework, prover, focusing, polarity, layers]
+---
+
 # Architecture
 
 CALC uses a clean three-layer separation between Framework, Object Logic, and Prover.

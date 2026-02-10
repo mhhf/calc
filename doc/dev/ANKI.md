@@ -1,3 +1,11 @@
+---
+title: Flashcard Definitions
+created: 2026-02-10
+modified: 2026-02-10
+summary: Flashcard-style Q&A definitions for proof theory, linear logic, display calculus, and categorical concepts
+tags: [learning, anki, definitions, proof-theory]
+---
+
 # ANKI.md
 
 Flashcard-style definitions for key concepts. Format: **Term** → Definition

@@ -1,3 +1,11 @@
+---
+title: Manual Proof View Implementation
+created: 2026-02-10
+modified: 2026-02-10
+summary: Design for interactive proof assistant with classical tree view and Lamport-style structured proofs
+tags: [ui, proof-assistant, interactive, lamport, manual-proof]
+---
+
 # Manual Proof View Implementation
 
 Interactive proof assistant for constructing proofs in the sequent calculus.

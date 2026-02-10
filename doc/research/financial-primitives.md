@@ -1,3 +1,11 @@
+---
+title: "Financial Primitives in CALC"
+created: 2026-02-10
+modified: 2026-02-10
+summary: Mapping financial derivatives (futures, options, swaps, leverage) to linear logic connectives and additive choice for modeling market mechanisms.
+tags: [finance, derivatives, options, markets, linear-logic]
+---
+
 # Financial Primitives in CALC
 
 Research on how basic financial derivatives and market mechanisms map to linear logic / CALC machinery.

@@ -1,3 +1,11 @@
+---
+title: "Research Insights"
+created: 2026-02-10
+modified: 2026-02-10
+summary: Key discoveries including Pacioli group as grading ring, ownership as fibration not mode, debt as channel, and MPST methodology for authorization.
+tags: [insights, novel-contributions, research, pacioli-group, ownership]
+---
+
 # Research Insights
 
 Key discoveries from the CALC research program that may be significant contributions.

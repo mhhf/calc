@@ -1,3 +1,11 @@
+---
+title: Parser Pipeline
+created: 2026-02-10
+modified: 2026-02-10
+summary: Documentation of how sequent strings in ll.json are transformed into AST nodes through dynamic Jison grammar generation.
+tags: [parser, jison, ast, pipeline, grammar]
+---
+
 # Parser Pipeline
 
 How sequent strings in ll.json become AST nodes.

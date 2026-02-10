@@ -1,3 +1,11 @@
+---
+title: "Multi-Type Display Calculus in CALC"
+created: 2026-02-10
+modified: 2026-02-10
+summary: Analysis of CALC's LNL implementation as multi-type display calculus with persistent and linear contexts as separate type systems connected by adjoint functors.
+tags: [multi-type, display-calculus, LNL, adjunction, exponentials]
+---
+
 # Multi-Type Display Calculus in CALC
 
 Deep research on how CALC implements multi-type display calculus and whether special rules can be generalized.

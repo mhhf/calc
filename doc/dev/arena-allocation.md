@@ -1,3 +1,11 @@
+---
+title: Arena Allocation Strategy
+created: 2026-02-10
+modified: 2026-02-10
+summary: Deep dive into region-based memory management for efficient backtracking in proof search with scoped arenas
+tags: [optimization, memory-management, backtracking, performance]
+---
+
 # Arena Allocation for Proof Search
 
 Deep dive into region-based memory management for efficient backtracking.

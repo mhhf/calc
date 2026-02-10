@@ -1,3 +1,11 @@
+---
+title: "Residuation: A Knowledge Base"
+created: 2026-02-10
+modified: 2026-02-10
+summary: Comprehensive reference on residuation in residuated lattices connecting to Galois connections, display postulates, and logical connectives lacking residuals.
+tags: [residuation, Galois-connection, display-calculus, residuated-lattices, adjunction]
+---
+
 # Residuation: A Knowledge Base
 
 Comprehensive reference on residuation, its role in logic, and why it matters for display calculus.

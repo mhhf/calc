@@ -1,3 +1,11 @@
+---
+title: "CALC Operations Analysis and Benchmarking Strategy"
+created: 2026-02-10
+modified: 2026-02-10
+summary: Catalog of CALC's primitive operations showing proof search dominated by O(n²) unification and O(n×m) substitution with benchmarking framework for performance measurement.
+tags: [benchmarking, complexity-analysis, performance, profiling, optimization]
+---
+
 # CALC Operations Analysis and Benchmarking Strategy
 
 Research document analyzing primitive operations, their complexity, usage frequency, and benchmarking strategy.

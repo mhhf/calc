@@ -1,3 +1,11 @@
+---
+title: "Polynomial Memoization via Subformula Property"
+created: 2026-02-10
+modified: 2026-02-10
+summary: Leveraging subformula property to bound proof search space enabling polynomial-time memoization using Merkle-DAG hashing for sequent deduplication.
+tags: [memoization, subformula-property, optimization, polynomial-time, proof-search]
+---
+
 # Polynomial Memoization via Subformula Property
 
 Deep dive into how the subformula property enables polynomial-time proof search through memoization.

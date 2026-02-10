@@ -1,3 +1,11 @@
+---
+title: "Typed DSL / Logical Framework for CALC"
+created: 2026-02-10
+modified: 2026-02-10
+summary: Design of typed DSL for CALC using logical framework approach with three-file architecture inspired by Celf, Twelf, and Lean for type-safe rule definitions.
+tags: [DSL, logical-framework, LF, CLF, Celf]
+---
+
 # Typed DSL / Logical Framework for CALC
 
 Research on logical frameworks (LF, CLF, Twelf, Celf) and their influence on CALC's DSL design.

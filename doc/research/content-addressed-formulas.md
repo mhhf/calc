@@ -1,3 +1,11 @@
+---
+title: "Content-Addressed Formulas, Terms, and Sequents"
+created: 2026-02-10
+modified: 2026-02-10
+summary: Merkle-DAG hash consing implementation for O(1) equality checking and efficient memory sharing in proof search using content-addressed AST nodes.
+tags: [hash-consing, Merkle-DAG, optimization, content-addressing, equality]
+---
+
 # Content-Addressed Formulas, Terms, and Sequents
 
 Research document for CALC project: designing efficient identity and equality checking for logical objects.

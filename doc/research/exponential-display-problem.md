@@ -1,3 +1,11 @@
+---
+title: "Why Exponentials Break Display Calculus"
+created: 2026-02-10
+modified: 2026-02-10
+summary: Rigorous proof that exponential modality cannot have display postulates and the multi-type LNL decomposition solution via adjoint functors.
+tags: [exponentials, display-calculus, LNL, bang-modality, proof-theory]
+---
+
 # Why Exponentials Break Display Calculus
 
 A rigorous explanation of why the linear logic exponential (!) cannot have a display postulate, and how the problem is solved.

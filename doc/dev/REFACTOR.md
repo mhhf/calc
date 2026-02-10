@@ -1,3 +1,11 @@
+---
+title: Refactoring Plan
+created: 2026-02-10
+modified: 2026-02-10
+summary: Code analysis, technical debt tracking, and modernization strategies for CALC including parser migration and Rust/Zig rewrite plans
+tags: [refactoring, technical-debt, modernization, dependencies]
+---
+
 # REFACTOR.md
 
 This document tracks code analysis, technical debt, refactoring plans, and modernization strategies for the CALC proof system.

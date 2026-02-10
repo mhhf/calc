@@ -1,3 +1,11 @@
+---
+title: Optimization Strategies
+created: 2026-02-10
+modified: 2026-02-10
+summary: Comprehensive catalog of deferred optimizations including clause indexing, memoization, arena allocation, and explicit substitutions
+tags: [optimization, performance, benchmarking, strategies]
+---
+
 # Optimization Strategies for Content-Addressed Proof Search
 
 Deferred optimizations to benchmark and evaluate. Each should be tested with real workloads before implementation.

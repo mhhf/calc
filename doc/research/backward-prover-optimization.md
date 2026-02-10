@@ -1,3 +1,11 @@
+---
+title: "Backward Prover Optimization: Deep Analysis"
+created: 2026-02-10
+modified: 2026-02-10
+summary: Analysis of proof search bottlenecks revealing 90% overhead in substitution operations with optimization strategies for 10-30x speedup through simultaneous substitution and union-find unification.
+tags: [optimization, proof-search, substitution, unification, performance]
+---
+
 # Backward Prover Optimization: Deep Analysis
 
 ## Table of Contents

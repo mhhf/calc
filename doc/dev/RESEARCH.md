@@ -1,3 +1,11 @@
+---
+title: Research Documentation
+created: 2026-02-10
+modified: 2026-02-10
+summary: Comprehensive research goals, core topics, and knowledge base for extending CALC with quantitative types and multimodalities
+tags: [research, linear-logic, quantum-types, multimodal-logic, focusing]
+---
+
 # RESEARCH.md
 
 This document tracks research goals, directions, knowledge base, and resources for reviving and extending the CALC linear logic proof system.

@@ -1,3 +1,11 @@
+---
+title: "Logics of Interest: Display Calculus Expressibility"
+created: 2026-02-10
+modified: 2026-02-10
+summary: Survey of linear, modal, and quantitative logics assessing display calculus expressibility from classical linear logic to QTT and graded modal types.
+tags: [logics-survey, display-calculus, linear-logic, modal-logic, QTT]
+---
+
 # Logics of Interest: Display Calculus Expressibility
 
 Overview of logics relevant to the CALC project and whether they can be expressed via display calculus.

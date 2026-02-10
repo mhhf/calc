@@ -1,3 +1,11 @@
+---
+title: "BDI Framework: Belief-Desire-Intention for CALC"
+created: 2026-02-10
+modified: 2026-02-10
+summary: BDI agent model connecting beliefs as exponentials, intentions as linear resources, and plans as proofs in resource-sensitive linear logic framework.
+tags: [BDI, agents, linear-logic, resource-semantics, planning]
+---
+
 # BDI Framework: Belief-Desire-Intention for CALC
 
 The BDI (Belief-Desire-Intention) model is a foundational framework for rational agents. This document explores its formal foundations and, critically, how it connects to CALC's linear logic approach to resource-sensitive reasoning.

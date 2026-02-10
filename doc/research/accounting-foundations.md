@@ -1,3 +1,11 @@
+---
+title: "Accounting Foundations: Mathematical Structures and Linear Logic"
+created: 2026-02-10
+modified: 2026-02-10
+summary: Mathematical foundations of accounting connecting double-entry bookkeeping, the Pacioli group, and linear logic resource semantics with CALC's ownership representation.
+tags: [accounting, linear-logic, pacioli-group, resource-semantics, ownership]
+---
+
 # Accounting Foundations: Mathematical Structures and Linear Logic
 
 Comprehensive research on the mathematical foundations of accounting, plain text accounting systems, and their deep connection to linear logic and CALC.

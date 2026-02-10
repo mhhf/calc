@@ -1,3 +1,11 @@
+---
+title: Display Calculus UI Implementation
+created: 2026-02-10
+modified: 2026-02-10
+summary: Plan for implementing Calculus Overview and Meta Overview pages following academic presentation conventions
+tags: [ui, display-calculus, documentation, presentation]
+---
+
 # Display Implementation Plan
 
 This document describes how to implement the Calculus Overview and Meta Overview pages following academic conventions for presenting sequent calculi and display calculi.

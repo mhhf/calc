@@ -1,3 +1,12 @@
+---
+title: Ownership & Authorization Plan
+created: 2026-02-10
+modified: 2026-02-10
+summary: Implementation plan for authorization modalities, composite principals, and threshold structures using multi-type display calculus
+tags: [authorization, ownership, modalities, consensus, research]
+priority: LOW
+---
+
 # Ownership & Authorization Implementation Plan
 
 Implementation plan for authorization/ownership modalities in CALC, based on research in `dev/research/authorization-logic.md`.

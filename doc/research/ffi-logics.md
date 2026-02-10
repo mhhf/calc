@@ -1,3 +1,11 @@
+---
+title: "FFI for Logics: Trusted External Computation in Proof Search"
+created: 2026-02-10
+modified: 2026-02-10
+summary: Approaches for integrating trusted external computation in logic systems including mode declarations, CLP, oracles, and proof-carrying code for computational predicates.
+tags: [FFI, oracles, mode-checking, CLP, trusted-computation]
+---
+
 # FFI for Logics: Trusted External Computation in Proof Search
 
 How to escape proof search for computational predicates like `plus(A,B,C)` where A+B=C.

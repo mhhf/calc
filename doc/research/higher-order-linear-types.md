@@ -1,3 +1,11 @@
+---
+title: "Higher-Order Linear Types"
+created: 2026-02-05
+modified: 2026-02-10
+summary: Research on type constructors taking linear types as arguments including second-order linear logic, higher-kinded types, and parametric polymorphism in linear systems.
+tags: [higher-order, type-constructors, second-order, polymorphism, linear-logic]
+---
+
 # Higher-Order Linear Types
 
 **Date:** 2026-02-05

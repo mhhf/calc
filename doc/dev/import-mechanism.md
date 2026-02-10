@@ -1,3 +1,11 @@
+---
+title: Import Mechanism Design
+created: 2026-02-10
+modified: 2026-02-10
+summary: Module system implementation for @import directives including built-in primitives and resolution order
+tags: [import, modules, primitives, resolution]
+---
+
 # @import Mechanism
 
 Implementation design for module system in `.calc` files.

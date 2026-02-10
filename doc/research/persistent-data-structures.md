@@ -1,3 +1,11 @@
+---
+title: "Persistent Data Structures for Proof Search"
+created: 2026-02-10
+modified: 2026-02-10
+summary: Immutable data structures with structural sharing using HAMT for efficient backtracking in proof search with O(log n) operations instead of O(n) copying.
+tags: [persistent-data-structures, HAMT, optimization, backtracking, immutability]
+---
+
 # Persistent Data Structures for Proof Search
 
 Deep dive into immutable data structures with structural sharing for efficient backtracking.

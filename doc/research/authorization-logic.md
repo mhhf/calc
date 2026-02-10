@@ -1,3 +1,11 @@
+---
+title: "Authorization Logic: Deep Research"
+created: 2026-02-10
+modified: 2026-02-10
+summary: Authorization logics combining says modality, speaks-for delegation, and linear logic for consumable credentials relevant to CALC's ownership and consensus goals.
+tags: [authorization, says-modality, delegation, linear-logic, security]
+---
+
 # Authorization Logic: Deep Research
 
 This document covers the theory and practice of authorization logics, particularly their connection to linear logic and relevance to CALC's ownership/consensus modality goals.

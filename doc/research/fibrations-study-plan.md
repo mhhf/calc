@@ -1,3 +1,11 @@
+---
+title: "Fibrations Study Plan"
+created: 2026-02-10
+modified: 2026-02-10
+summary: Study path for understanding fibrations to model ownership as indexed categories with fibers over principals for resource reindexing semantics.
+tags: [fibrations, category-theory, ownership, indexed-categories, study-plan]
+---
+
 # Fibrations Study Plan
 
 A minimal but complete study path to understand fibrations well enough to model ownership `[Alice] A` as "A in the fiber over Alice."

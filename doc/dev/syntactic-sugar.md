@@ -1,3 +1,11 @@
+---
+title: Syntactic Sugar Design
+created: 2026-02-10
+modified: 2026-02-10
+summary: Implementation of @literal and @sugar annotations for lexer and parser-level transformations
+tags: [syntax, sugar, literals, parser, dsl]
+---
+
 # Syntactic Sugar
 
 Implementation design for `@literal` and `@sugar` annotations in `.calc` files.

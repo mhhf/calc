@@ -1,3 +1,11 @@
+---
+title: Frontend Refactor Plan
+created: 2026-02-10
+modified: 2026-02-10
+summary: Complete rewrite of UI from CycleJS to SolidJS with TypeScript, Tailwind, and clean separation from core library
+tags: [frontend, solidjs, ui, refactor, typescript]
+---
+
 # Frontend Refactor: CycleJS → SolidJS
 
 ## Overview

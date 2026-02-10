@@ -1,3 +1,11 @@
+---
+title: Completed Work
+created: 2026-02-10
+modified: 2026-02-10
+summary: Archive of completed tasks including v1→v2 migration, MDE/Celf implementation, research insights, and foundational understanding
+tags: [done, completed, milestones, v2]
+---
+
 # DONE
 
 Completed tasks and research for the CALC project.

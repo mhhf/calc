@@ -1,3 +1,11 @@
+---
+title: Development Notes
+created: 2026-02-10
+modified: 2026-02-10
+summary: Questions and logs regarding multiset matching and sequent implementation decisions.
+tags: [development, multiset, sequent, questions]
+---
+
 ## Questions
 
  [ ] how to do set/ multiset matching?

@@ -1,3 +1,11 @@
+---
+title: Development Overview
+created: 2026-02-10
+modified: 2026-02-10
+summary: Concise overview of the CALC revival project including goals, research directions, code status, and next steps
+tags: [overview, development, getting-started]
+---
+
 # Development Overview
 
 This document provides a concise overview of the CALC revival project - goals, research directions, code status, and next steps.

@@ -1,3 +1,11 @@
+---
+title: "Logic Engineering: Designing Sequent Calculi"
+created: 2026-02-10
+modified: 2026-02-10
+summary: Methodology for designing sound and complete sequent calculi balancing proof-theoretic and model-theoretic approaches with cut elimination verification.
+tags: [logic-design, sequent-calculus, proof-theory, semantics, methodology]
+---
+
 # Logic Engineering: Designing Sequent Calculi
 
 How to design a "good" and correct sequent calculus. This document covers the fundamental question: syntax first or semantics first?

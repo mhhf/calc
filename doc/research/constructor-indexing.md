@@ -1,3 +1,11 @@
+---
+title: "O(1) Identity via Constructor Indexing"
+created: 2026-02-10
+modified: 2026-02-10
+summary: Optimization strategy for identity rule acceleration from O(m·n²) to O(1) using constructor-based indexing and hash consing for proof search.
+tags: [optimization, indexing, identity-rule, proof-search, hash-consing]
+---
+
 # O(1) Identity via Constructor Indexing
 
 Deep dive into accelerating the identity rule from O(m·n²) to O(1) for ground formulas.

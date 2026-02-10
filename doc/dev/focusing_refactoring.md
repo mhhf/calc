@@ -1,3 +1,11 @@
+---
+title: Focusing Architecture Refactor
+created: 2026-02-10
+modified: 2026-02-10
+summary: Analysis of hybrid focusing architecture and options for cleaner separation between logic definition and proof search strategy
+tags: [focusing, architecture, refactor, proof-search, andreoli]
+---
+
 # Focusing Architecture: Refactoring Considerations
 
 This document analyzes the current hybrid focusing architecture and proposes options for refactoring to achieve a cleaner separation of concerns.
