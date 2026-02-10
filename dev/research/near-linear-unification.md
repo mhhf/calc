@@ -2,6 +2,23 @@
 
 Deep dive into upgrading from O(n²) Robinson unification to O(n·α(n)) Martelli-Montanari.
 
+> **See also:** [[content-addressed-formulas]] for Merkle-DAG hash consing enabling O(1) equality, [[backward-prover-optimization]] for overall optimization strategy, [[benchmarking]] for performance analysis.
+
+---
+
+## Table of Contents
+
+1. [Current Implementation Analysis](#1-current-implementation-analysis)
+2. [The Martelli-Montanari Algorithm](#2-the-martelli-montanari-algorithm)
+3. [Union-Find Data Structure](#3-union-find-data-structure)
+4. [Near-Linear Unification with Union-Find](#4-near-linear-unification-with-union-find)
+5. [Detailed Implementation for CALC](#5-detailed-implementation-for-calc)
+6. [Comparison: Before and After](#6-comparison-before-and-after)
+7. [Integration with Merkle-DAG](#7-integration-with-merkle-dag)
+8. [Edge Cases and Considerations](#8-edge-cases-and-considerations)
+9. [Recommendation](#9-recommendation)
+10. [References](#10-references)
+
 ---
 
 ## 1. Current Implementation Analysis

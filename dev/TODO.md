@@ -6,27 +6,91 @@ Outstanding tasks for the CALC project. See DONE.md for completed items.
 
 ## HIGH Priority
 
-### Higher Order Linear Types:
-Priority: HIGH
+### BDI
+**Priority:** HIGH
 
-I'm curious about linear types that can wrap linear types.
-Right now we only have the posibility of doing:
+research BDI framework and logic - behaviour desire intention and how it might fit into our system, create a research document for bdi
 
-```
-bla: type.
-omg: bla.
-omg2: bla.
+### Primitives, Lazy Storage, and FFI (Prerequisites)
+**Priority:** HIGH — implement BEFORE multimodal logic
+**Status:** Research complete — ready for implementation
 
-foo: bla -> ltype.
-```
+Implement primitive types with lazy storage and FFI. These are prerequisites for graded modalities and usable in `ill.calc` today.
 
-but i'd like something like:
+**Key decisions (from research):**
+- **Object-level quantities**: `10` is a term of type `bin`, not a meta-level JS number
+- **Lazy storage**: Store `10` as `binlit(10n)`, expand only during pattern match
+- **Ephemeral expansion**: No intermediate forms like `o(binlit(5n))` ever stored
+- **Different hashes**: `binlit(10n)` ≠ `o(i(...))` — correct for content-addressing
+- **FFI integration**: Arithmetic uses BigInt directly, O(1) operations
+- **@import mechanism**: `@import primitives` for modularization
 
-```
-bar: ltype -> ltype
-```
+**Phase 1: @import and Primitive Infrastructure**
+- [ ] Implement `@import` parsing in `.calc` loader
+- [ ] Create `lib/primitives.calc` with `bin`, `nat`, `string`
+- [ ] Extend Store for `binlit` tag with BigInt children
+- [ ] Add `hashBigInt()` for content-addressing
+- [ ] Create primitive type registry
 
-We would need to research that in depth if its possible and how easy and 'far away' it is from the constructive LL we already implemented.
+**Phase 2: Lazy Storage**
+- [ ] Modify `unify()` to detect and handle `binlit` nodes
+- [ ] Implement ephemeral pattern matching (no intermediate storage)
+- [ ] Test: `binlit(10n)` matched against `o X` → `X = binlit(5n)`
+
+**Phase 3: FFI with Lazy Storage**
+- [ ] FFI dispatch detects `binlit` arguments
+- [ ] Implement `ffiPlus`, `ffiMul` operating on BigInt
+- [ ] Mode checking for inverse operations
+
+**Phase 4: Syntactic Sugar**
+- [ ] Parse `@literal` annotations for numeric literals
+- [ ] Parse `@sugar` annotations on constructors
+- [ ] Lexer produces `binlit` nodes for `/[0-9]+/`
+- [ ] Render: compact by default, option for expanded
+
+**See:**
+- `dev/lazy-primitive-storage.md` — Store extension, ephemeral expansion
+- `dev/syntactic-sugar.md` — @literal and @sugar annotations
+- `dev/import-mechanism.md` — @import system, primitives module
+- `dev/research/graded-modalities.md` — Theory of object-level quantities
+
+---
+
+### Multimodal Linear Logic Implementation
+**Priority:** HIGH — but requires primitives/lazy storage first
+**Status:** Design converging — ready for formalization after prerequisites
+
+Design and implement multimodal linear logic with:
+- Ownership modality: `[Alice] A` (possession/box)
+- Authorization modality: `⟨Alice⟩ A` (affirmation/diamond)
+- Graded modality: `[]_{100} token` (quantities)
+
+**Key decisions (from research):**
+- Use **MTDC with parametric indices** (not SELL — SELL requires fixed index sets)
+- User-centric ownership: `[Alice] []_{10} eth` (not contract-centric)
+- Fresh name generation for token/contract identity
+- `WITH` clause for atomic contract creation with deposit
+- Rules are persistent implications `!(P ⊸ Q)` — forward-chaining
+- **Graded quantities are object-level** — enables split/merge rules in logic
+
+**Minimal core:**
+- Connectives: `⊗`, `⊸`, `!`, `[P]`, `⟨P⟩`, `[]_r`
+- Operations: mint, transfer, contract creation (WITH)
+- Engine: forward-chaining rule application (Celf-style)
+
+**Implementation tasks:**
+- [ ] Extend parser for `[P]`, `⟨P⟩`, `[]_r` modalities
+- [ ] Implement fresh name generation
+- [ ] Implement `WITH` clause for atomic deposit
+- [ ] Forward-chaining engine for rule application
+- [ ] Worked examples: token, transfer, atomic swap, AMM
+
+**Proofs needed:**
+- Cut-elimination (via MTDC Belnap conditions)
+- Conservation (total supply preserved)
+- No counterfeiting (freshness property)
+
+**See:** dev/research/multimodal-linear-logic.md, dev/research/ownership-representation.md
 
 
 ### Pacioli Grading Semiring
@@ -94,11 +158,6 @@ Use `CALC_PROFILE=1` to identify bottlenecks before implementing:
 - Arena Allocation (for Zig port)
 
 ---
-
-### Conditional execution
-**Priority:** MEDIUM
-
-research BDI framework and logic - behaviour desire intention and how it might fit into our system, create a research document for bdi
 
 ### Conditional execution
 **Priority:** MEDIUM

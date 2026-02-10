@@ -1,8 +1,6 @@
-# Quantitative Type Theory (QTT)
+# Graded Resource Tracking: QTT and Graded Modalities
 
-Comprehensive research document on QTT and its relationship to graded types, display calculus, and our project goals.
-
-See also: [[display-calculus]] | [[RESEARCH]] | [[ANKI]]
+Comprehensive research on Quantitative Type Theory (QTT), graded modal types, and their application to CALC's resource tracking goals.
 
 ---
 
@@ -11,12 +9,13 @@ See also: [[display-calculus]] | [[RESEARCH]] | [[ANKI]]
 1. [What is QTT?](#what-is-qtt)
 2. [The Semiring Structure](#the-semiring-structure)
 3. [Typing Rules](#typing-rules)
-4. [QTT vs Granule (Graded Modal Types)](#qtt-vs-granule-graded-modal-types)
-5. [QTT vs Multi-Type Display Calculus](#qtt-vs-multi-type-display-calculus)
-6. [Implementations](#implementations)
-7. [Relevance to Our Goals](#relevance-to-our-goals)
-8. [Open Questions](#open-questions)
-9. [Sources](#sources)
+4. [QTT vs Granule (Graded Modal Types)](#qtt-vs-granule)
+5. [Object-Level vs Meta-Level Quantities](#object-level-vs-meta-level-quantities)
+6. [QTT vs Multi-Type Display Calculus](#qtt-vs-multi-type-display-calculus)
+7. [Implementations](#implementations)
+8. [Relevance to CALC](#relevance-to-calc)
+9. [Open Questions](#open-questions)
+10. [References](#references)
 
 ---
 
@@ -73,14 +72,14 @@ A **semiring** is a tuple `(S, +, ·, 0, 1)` where:
 
 ### Common Semirings
 
- | Semiring        | Elements               | Use Case                 |
- | ----------      | ----------             | ----------               |
- | Zero-One-Many   | `{0, 1, ω}`            | Idris 2, basic linearity |
- | Natural Numbers | `(ℕ, +, ×, 0, 1)`      | Exact usage counting     |
- | Booleans        | `({0, 1}, ∨, ∧, 0, 1)` | Used/unused              |
- | Five-Point      | `{0, 1-, 1, 1+, ω}`    | Affine, linear, relevant |
- | Security Levels | `{public, secret}`     | Information flow         |
- | Real Numbers    | `(ℝ≥0, +, ×, 0, 1)`    | **Accounting!**          |
+| Semiring | Elements | Use Case |
+|----------|----------|----------|
+| Zero-One-Many | `{0, 1, ω}` | Idris 2, basic linearity |
+| Natural Numbers | `(ℕ, +, ×, 0, 1)` | Exact usage counting |
+| Booleans | `({0, 1}, ∨, ∧, 0, 1)` | Used/unused |
+| Five-Point | `{0, 1-, 1, 1+, ω}` | Affine, linear, relevant |
+| Security Levels | `{public, secret}` | Information flow |
+| **Real Numbers** | `(ℝ≥0, +, ×, 0, 1)` | **Accounting!** |
 
 ### Zero-One-Many Semiring (Idris 2)
 
@@ -140,9 +139,7 @@ McBride's original system failed to admit substitution. Atkey fixed this by:
 
 ---
 
-## QTT vs Granule (Graded Modal Types)
-
-### Different Approaches to the Same Problem
+## QTT vs Granule
 
 Both QTT and Granule track "how much" variables are used, but differently:
 
@@ -187,11 +184,100 @@ This is the state of the art for combining all features.
 
 ---
 
+## Object-Level vs Meta-Level Quantities
+
+### The Design Question
+
+For a graded modality `[]_{10} eth` (meaning "10 units of eth"), where does the quantity `10` live?
+
+1. **Object-level**: A term of type `bin` or `nat` in the logic
+2. **Meta-level**: A JavaScript number, external to the logic
+
+### Object-Level Approach
+
+The quantity `10` is a **term** defined with constructors:
+
+```
+bin: type.
+e: bin.           % zero
+i: bin -> bin.    % 2*X + 1 (odd)
+o: bin -> bin.    % 2*X (even)
+
+% 10 = o (i (o (i (o e))))  (LSB-first binary)
+```
+
+**Graded modality:**
+```
+graded: bin -> formula -> formula
+  @ascii "[]_{ #1 } #2"
+  @prec 85.
+```
+
+**Rules operate at object level:**
+```
+% Split rule
+graded_split: graded(Sum, A) -o graded(M, A) * graded(N, A)
+  <- plus M N Sum.
+
+% Merge rule
+graded_merge: graded(M, A) * graded(N, A) -o graded(Sum, A)
+  <- plus M N Sum.
+```
+
+**Advantages:**
+- Uniform: everything is in the logic
+- Object-level rules for split/merge/transfer
+- Can reason about quantities using the same proof machinery
+- Conservation proofs are proofs in the logic
+
+**Disadvantages:**
+- Verbose representation (256 levels for 256-bit numbers)
+- Slow without optimization
+- **Solution: Lazy storage** (see `dev/lazy-primitive-storage.md`)
+
+### Meta-Level Approach
+
+The quantity `10` is a **JavaScript number**, external to the logic.
+
+**Rules would need meta-constraints:**
+```
+graded_split: graded(?M, A) -o graded(?N, A) * graded(?K, A)
+  where M = N + K   % <-- meta-level arithmetic!
+```
+
+**Disadvantages:**
+- Requires meta-level ring theory for operations
+- Can't use object-level proof search for arithmetic
+- Split/merge rules need special handling outside the logic
+- Conservation proofs require meta-reasoning
+
+### Recommendation: Object-Level with Lazy Storage
+
+**Use object-level quantities** because:
+
+1. **Object-level rules work naturally**
+   - `plus M N Sum` is an ordinary goal
+   - If M, N, Sum are ground, FFI handles in O(1)
+   - If variables, proof search finds bindings
+
+2. **Conservation proofs stay in the logic**
+   - Prove `total_supply_before = total_supply_after`
+   - Uses same proof machinery as everything else
+
+3. **Lazy storage gives efficiency**
+   - Store `10` as `binlit(10n)` — one node
+   - Expand only during pattern match
+   - FFI operates on BigInt directly
+
+4. **Clean semantics**
+   - Graded modalities from literature (BLL, QTT) use object-level grades
+   - Semiring structure is explicit in the logic
+
+---
+
 ## QTT vs Multi-Type Display Calculus
 
 ### They Operate at Different Levels!
-
-This is a crucial insight:
 
 | Aspect | Multi-Type Display Calculus | QTT |
 |--------|----------------------------|-----|
@@ -287,7 +373,7 @@ https://github.com/granule-project/gerty
 
 ---
 
-## Relevance to Our Goals
+## Relevance to CALC
 
 ### Goal: Accounting with Linear Logic
 
@@ -337,11 +423,26 @@ Sequent:
   owns Alice 100.0 USD ⊢ owns Alice 50.0 USD ⊗ owns Alice 50.0 USD
 ```
 
+### Example: Resource Splitting
+
+**Goal:** Split `[]_{15} eth` into `[]_{10} eth ⊗ []_{5} eth`
+
+```
+1. Input: graded(binlit(15n), eth)
+2. Apply graded_split rule
+3. Need to prove: plus M N 15
+4. User provides M=10, N=5
+5. FFI verifies: 10 + 5 = 15 ✓
+6. Result: graded(binlit(10n), eth) ⊗ graded(binlit(5n), eth)
+```
+
+No recursive term expansion needed!
+
 ---
 
 ## Open Questions
 
-### For Our Project
+### For CALC
 
 1. **Semiring for accounting**: What's the right semiring for real-number quantities?
    - `(ℝ≥0, +, ×, 0, 1)` works but what about negative quantities?
@@ -364,7 +465,32 @@ Sequent:
 
 ---
 
-## Sources
+## Summary
+
+**QTT and Granule are complementary, not competing:**
+
+| For... | Use... |
+|--------|--------|
+| Designing proof rules | Multi-Type Display Calculus |
+| Typing programs | QTT |
+| Proof search | Sequent calculus (possibly display-style) |
+| Quantitative tracking | Semiring grades (either approach) |
+| Multi-sort logic | MTDC or labelled sequents |
+
+**For CALC's Accounting Goal:**
+
+The ideal system combines:
+1. **MTDC's** multi-type expressivity (owners, quantities, propositions)
+2. **QTT/Granule's** semiring-graded quantities
+3. **Focused sequent calculus** for proof search
+
+This is a **research contribution** - no existing system has all three.
+
+**Key Decision**: Use object-level quantities with lazy storage for efficiency.
+
+---
+
+## References
 
 ### Primary Papers
 
@@ -391,55 +517,13 @@ Sequent:
 - [QTT TypeScript Implementation](https://github.com/atennapel/qtt-ts)
 - [Additive Pairs in QTT (Thesis)](https://dspace.cuni.cz/bitstream/handle/20.500.11956/127263/120390854.pdf)
 
----
-
-## Summary: MTDC vs QTT
-
-### The Bottom Line
-
-**They're complementary, not competing:**
-
-| For...                | Use...                                    |
-| --------              | --------                                  |
-| Designing proof rules | Multi-Type Display Calculus               |
-| Typing programs       | QTT                                       |
-| Proof search          | Sequent calculus (possibly display-style) |
-| Quantitative tracking | Semiring grades (either approach)         |
-| Multi-sort logic      | MTDC or labelled sequents                 |
-
-### For Our Accounting Goal
-
-The ideal system combines:
-1. **MTDC's** multi-type expressivity (owners, quantities, propositions)
-2. **QTT/Granule's** semiring-graded quantities
-3. **Focused sequent calculus** for proof search
-
-This is a **research contribution** - no existing system has all three.
-
-### Can You Implement Granule in QTT?
-
-**Partially.** QTT and Granule solve the same problem differently:
-- QTT: grades on binders
-- Granule: grades on modalities
-
-Idris 2 (QTT) can express many Granule patterns, but lacks:
-- Grade polymorphism
-- Multiple semirings at once
-- The full graded comonad structure
-
-For our purposes, **Granule's approach** (graded modalities in linear logic) is more directly applicable because:
-1. It has a sequent calculus presentation
-2. It generalizes naturally to real numbers
-3. It connects cleanly to proof theory
-
-## Cross-References
+### Cross-References
 
 See also in this knowledge base:
 - [[exponential-display-problem]] — Why ! needs special treatment
 - [[residuation]] — Galois connections and residuation
-- [[logics-overview]] — Which logics can be displayed
-- [[ANKI]] — Flashcards on graded modal types
+- `dev/lazy-primitive-storage.md` — Efficient storage for quantities
 
 ---
 
-*Last updated: 2026-01-27*
+*Created: 2026-02-10 (merged from QTT.md and graded-modalities.md)*

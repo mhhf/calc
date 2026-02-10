@@ -1,6 +1,22 @@
-# Algebraic Accounting: Mathematical Foundations
+# Accounting Foundations: Mathematical Structures and Linear Logic
 
-This document explores the mathematical structures underlying accounting, with focus on connections to linear logic and CALC's research goals.
+Comprehensive research on the mathematical foundations of accounting, plain text accounting systems, and their deep connection to linear logic and CALC.
+
+---
+
+## Table of Contents
+
+1. [Overview](#overview)
+2. [The Pacioli Group](#the-pacioli-group)
+3. [The Grothendieck Group](#the-grothendieck-group)
+4. [Graph-Theoretic View](#graph-theoretic-view)
+5. [Linear Algebra Formulation](#linear-algebra-formulation)
+6. [Plain Text Accounting Systems](#plain-text-accounting-systems)
+7. [Connection to Linear Logic](#connection-to-linear-logic)
+8. [Category-Theoretic View](#category-theoretic-view)
+9. [Connection to CALC](#connection-to-calc)
+10. [Open Questions](#open-questions)
+11. [References](#references)
 
 ---
 
@@ -8,11 +24,16 @@ This document explores the mathematical structures underlying accounting, with f
 
 Accounting is one of the oldest "applied mathematics" — double-entry bookkeeping predates calculus by 300 years (Pacioli 1494 vs Newton/Leibniz 1680s). Yet its mathematical foundations were only formalized in the 1980s.
 
-Key insight: **Accounting = Applied Linear Algebra + Group Theory + Graph Theory**
+**Key insight**: Accounting = Applied Linear Algebra + Group Theory + Graph Theory
+
+**The fundamental invariant**:
+> **The sum of all postings in a transaction must equal zero.**
+
+This is the **conservation law** of accounting — value cannot be created or destroyed, only transferred.
 
 ---
 
-## The Pacioli Group (Ellerman)
+## The Pacioli Group
 
 ### Definition
 
@@ -64,11 +85,7 @@ Both are group isomorphisms P → ℤ (or ℝ for real amounts).
 3. **Error detection**: Cross-sum equality is a checksum
 4. **Semantic clarity**: Debits and credits have different meanings
 
----
-
-## Multidimensional Generalization (Pⁿ)
-
-### Definition
+### Multidimensional Generalization (Pⁿ)
 
 The **multidimensional Pacioli Group** Pⁿ handles n commodities:
 
@@ -77,20 +94,6 @@ Pⁿ = { [x⃗ // y⃗] : x⃗, y⃗ ∈ ℝ≥0ⁿ }
 ```
 
 Each vector component is a different commodity (BTC, ETH, USD, etc.).
-
-### Preserved Properties
-
-All double-entry features generalize:
-- Balance sheet equation ✓
-- Equity accounts ✓
-- Temporary accounts ✓
-- Trial balance ✓
-
-### Encoding Rules
-
-For a vector equation `A = B + C`:
-- Left-hand side: debit isomorphism → debit-balance accounts
-- Right-hand side: credit isomorphism → credit-balance accounts
 
 ---
 
@@ -122,8 +125,6 @@ Both represent the integer 2
 The Grothendieck group is fundamental in algebraic K-theory:
 - K₀(X) of a manifold X = Grothendieck group of vector bundles
 - K₀(R) of a ring R = Grothendieck group of finitely generated projective modules
-
-This suggests deep connections between accounting and algebraic topology!
 
 ---
 
@@ -199,7 +200,122 @@ This means: for every transaction (column), debits equal credits.
 balance = M · amounts
 ```
 
-Where `amounts` is the vector of transaction amounts.
+---
+
+## Plain Text Accounting Systems
+
+### Overview
+
+**Plain Text Accounting (PTA)** is a methodology for bookkeeping using human-readable text files and command-line tools.
+
+| System | Author | Language | Philosophy |
+|--------|--------|----------|------------|
+| **Ledger** | John Wiegley (2003) | C++ | Flexible, trusts user input |
+| **hledger** | Simon Michael (2006) | Haskell | Ledger-compatible, more strict |
+| **Beancount** | Martin Blais (2007) | Python | Pessimistic, maximum validation |
+
+### Core Principles
+
+1. **Human-readable data**: Plain text files, version-controllable
+2. **Read-only tools**: Software reads data, never modifies it
+3. **Double-entry bookkeeping**: Every transaction balances to zero
+4. **User owns data**: No proprietary formats, no lock-in
+
+### Data Model
+
+**Transaction**:
+```
+2024-01-15 * "Coffee Shop"
+  Expenses:Food:Coffee    $4.50
+  Assets:Cash            -$4.50
+```
+
+**Account hierarchy**:
+```
+Assets:Bank:Checking
+Liabilities:CreditCard:Visa
+Expenses:Food:Groceries
+Income:Salary:Employer
+Equity:Opening
+```
+
+**Commodities**: Currencies, stocks, cryptocurrencies
+```
+$100.00          -- Currency
+100 AAPL         -- Stock
+0.5 BTC          -- Cryptocurrency
+```
+
+### Validation & Constraints
+
+- **Transaction balance**: Every transaction must sum to zero
+- **Balance assertions**: Assert expected balance at a point in time
+- **Account open/close** (Beancount): Accounts must be opened before use
+- **Inventory booking**: FIFO/LIFO for cost basis tracking
+
+---
+
+## Connection to Linear Logic
+
+> **See also:** [[linear-negation-debt]] for detailed treatment of debt as linear negation.
+
+### The Fundamental Parallel
+
+| Accounting | Linear Logic |
+|------------|--------------|
+| Transaction balances to zero | Sequent is balanced |
+| Debits = Credits | Resources in = Resources out |
+| No creating value | No weakening |
+| No destroying value | No contraction (if tracking) |
+| T-account [x // y] | x ⊗ y⊥ (multiplicative with negation) |
+| Transfer A→B | Linear implication A ⊸ B |
+| Liability | Linear negation (A⊥) |
+
+### Conservation as Cut-Free Proofs
+
+The zero-sum property corresponds to:
+```
+Γ ⊢ Δ  where |Γ| = |Δ| (in some measure)
+```
+
+This is exactly the resource-counting property of linear logic!
+
+### Tensor Product (⊗) as Transaction
+
+A transaction transferring $100 from A to B:
+
+```
+Linear Logic:     [A] coin($, 100) ⊸ [B] coin($, 100)
+PTA Transaction:  A: -$100, B: +$100
+```
+
+### Linear Negation as Liability
+
+```
+coin(BTC, 0.5)⊥ = obligation to provide 0.5 BTC
+```
+
+In PTA, **liabilities are negative assets** — the same idea!
+
+```
+Assets:Cash        $1000
+Liabilities:Loan  -$1000   ← "owes $1000"
+```
+
+### Pacioli Group Relates to MULTIPLICATIVES
+
+**Key insight**: The Pacioli group relates to multiplicatives, NOT additives.
+
+- Additives (⊕, &): About **CHOICE** between alternatives
+- Pacioli [x // y]: Tracks BOTH debit AND credit simultaneously
+
+**Correct correspondence:**
+```
+[x // y]  ≈  x ⊗ y⊥
+```
+- x = asset/debit (positive resource)
+- y⊥ = liability/credit (obligation)
+- ⊗ = "have both simultaneously"
 
 ---
 
@@ -228,49 +344,11 @@ This forms a category! The zero-sum constraint means every morphism is "measure-
 
 ---
 
-## Connection to Linear Logic
+## Connection to CALC
 
-### The Fundamental Parallel
+> **See also:** [[ownership-design]] for CALC's ownership representation design.
 
-| Accounting | Linear Logic |
-|------------|--------------|
-| Transaction balances to zero | Sequent is balanced |
-| Debits = Credits | Resources in = Resources out |
-| No creating value | No weakening |
-| No destroying value | No contraction (if tracking) |
-| T-account [x // y] | A ⊗ A⊥ or A ⅋ A⊥ ? |
-| Transfer A→B | Linear implication A ⊸ B |
-| Liability | Linear negation (A⊥) |
-
-### The Pacioli Group as Linear Logic?
-
-**Hypothesis**: The T-account structure [x // y] might correspond to:
-
-1. **Tensor with negation**: x ⊗ y⊥
-   - "I have x debits AND owe y credits"
-
-2. **Par with negation**: x ⅋ y⊥
-   - "Either x debits OR y credits (entangled)"
-
-3. **Additive structure**: x ⊕ y⊥
-   - "Choice between x and y"
-
-**Open question**: Which is the correct correspondence?
-
-### Conservation as Cut-Free Proofs
-
-The zero-sum property corresponds to:
-```
-Γ ⊢ Δ  where |Γ| = |Δ| (in some measure)
-```
-
-This is exactly the resource-counting property of linear logic!
-
----
-
-## Connection to CALC Goals
-
-### Coin Ownership (from sketch.md)
+### Coin Ownership
 
 Our formula `[Alice] coin(BTC, 0.322)` maps to accounting:
 
@@ -320,74 +398,28 @@ Credit: B:C₂   -q₂
 
 All four entries must be atomic — exactly what accounting requires!
 
+### What CALC Adds Beyond PTA
+
+1. **Ownership modalities**: `[Alice]` vs `[Bob]` as first-class
+2. **Authorization logic**: Explicit `A says transfer(...)` proofs
+3. **Atomic swaps**: Multi-party consensus in logic
+4. **Proof search**: Automated derivation of valid transfers
+5. **Linear logic foundation**: Formal semantics, not just software
+
 ---
 
-## Research Update: Pacioli/Grothendieck and Linear Logic
+## Open Questions
 
-### Q1: Is Pacioli Group Related to Linear Logic Additives?
+### 1. Pacioli Group as Grading Structure
 
-**Answer: NO — Pacioli group relates to MULTIPLICATIVES, not additives.**
+> **See also:** [[graded-resource-tracking]] for graded modal types and [[insights]] for key discoveries.
 
-**Analysis of Linear Logic Additives:**
-- **⊕ (oplus)**: External/additive disjunction — "one OR the other, environment chooses"
-- **& (with)**: Internal/additive conjunction — "one OR the other, I choose"
-
-These are fundamentally about **CHOICE** between alternatives.
-
-**Analysis of Pacioli Group:**
-- [x // y] tracks BOTH debit (x) AND credit (y) simultaneously
-- Addition: [a // b] + [c // d] = [a+c // b+d] — componentwise, PARALLEL
-- Not about choosing between x and y
-
-**Correct correspondence: Pacioli group relates to MULTIPLICATIVES:**
-```
-[x // y]  ≈  x ⊗ y⊥
-```
-- x = asset/debit (positive resource)
-- y⊥ = liability/credit (obligation)
-- ⊗ = "have both simultaneously"
-
-**The inverse operation:**
-```
--[x // y] = [y // x]  ≈  y ⊗ x⊥
-```
-Flipping debit/credit swaps which side is the obligation.
-
-**Why not additives:**
-- [x // y] + [a // b] = [x+a // y+b] — both sides accumulate
-- A ⊕ B would mean "choose x OR y" — but T-accounts track both
-- A & B would mean "offer choice" — but T-accounts are determined
-
-### Q2: Is Grothendieck Group = Linear Negation?
-
-**Answer: CONCEPTUALLY SIMILAR but structurally different.**
-
-| Grothendieck Group | Linear Negation |
-|-------------------|-----------------|
-| Element-level: monoid M → group K(M) | Formula-level: A → A⊥ |
-| Creates additive inverses | Creates logical duals |
-| Universal construction (left adjoint) | Built-in involution |
-| Equivalence classes of pairs | Already exists as operation |
-
-**The parallel:**
-- Grothendieck: "unsigned → signed" (adds inverses to elements)
-- Linear negation: "resource → obligation" (flips proponent/opponent)
-
-**Key difference:**
-- Grothendieck group is a **categorical construction** (left adjoint to forgetful functor)
-- Linear negation is a **logical operation** (de Morgan duality in star-autonomous categories)
-
-**The deep insight**: Grothendieck group operates on the **GRADE/QUANTITY level**, not formula level!
-
-### Q1+Q2 Synthesis: Pacioli Group as Grading Semiring
-
-**Key insight: The Pacioli group should be a GRADING STRUCTURE, not formula structure!**
+**Key insight**: The Pacioli group should be a GRADING STRUCTURE, not formula structure!
 
 In graded linear logic (Granule-style):
 ```
 □_r A   =  "r copies of A"
 ```
-where r comes from a semiring (or ring).
 
 **Proposal: Use Pacioli group P as the grading ring:**
 ```
@@ -399,40 +431,34 @@ Then:
 - Grade multiplication: [a//b] · [c//d] = ??? (needs definition)
 - Settlement: □_{[x//y]} A ⊗ □_{[y//x]} A⊥ ⊢ □_{[0//0]} 1
 
-**This connects:**
-- Ellerman's algebraic accounting
-- Graded linear logic (Granule, QTT)
-- CALC's ownership modalities
-
-### Updated Open Questions
-
-### 3. K-Theory Connection (Unchanged)
+### 2. K-Theory Connection
 
 If accounting relates to K₀, what does this mean for:
 - Multi-commodity tracking (vector bundles?)
 - Hierarchical accounts (sheaves?)
 - Time-varying balances (spectral sequences?)
 
-### 4. Categorical Semantics (Unchanged)
+### 3. Categorical Semantics
 
 Can we give accounting a proper categorical semantics where:
 - Objects = account states
 - Morphisms = transactions
 - The zero-sum constraint is built into the category structure?
 
-### 5. Pacioli Ring as Grading Structure (NEW)
-
-Can the Pacioli group be used as a grading RING for graded linear logic?
-- What is the multiplication operation?
-- How do grade polymorphism and T-accounts interact?
-- Does □_{[x//y]} A give clean accounting semantics?
-
-### 6. Star-Autonomous Accounting (NEW)
+### 4. Star-Autonomous Accounting
 
 Star-autonomous categories are the categorical semantics of classical linear logic.
 - Can accounting be given star-autonomous semantics?
 - What is the dualizing object?
 - Does the Pacioli group relate to the self-duality A ≅ (A⊥)⊥?
+
+### 5. How Do Balance Assertions Map to Logic?
+
+Balance assertions are **invariants** checked at specific points. In logic, might be a **predicate guard** or **precondition**:
+
+```
+check(date(2024-01-15), [Alice] coin($, 1234.56))
+```
 
 ---
 
@@ -444,6 +470,7 @@ Algebraic accounting reveals that double-entry bookkeeping has deep mathematical
 2. **Graph Theory**: Accounts as nodes, transactions as edges, zero-sum property
 3. **Linear Algebra**: Incidence matrices, null space = conservation
 4. **Category Theory**: Limits verify constraints, colimits aggregate
+5. **Plain Text Accounting**: Battle-tested implementations (Ledger, hledger, Beancount)
 
 **The parallel to linear logic is striking:**
 - Conservation = resource-sensitivity
@@ -451,7 +478,7 @@ Algebraic accounting reveals that double-entry bookkeeping has deep mathematical
 - Transactions = linear implications
 - Liabilities = linear negation
 
-This validates our approach in sketch.md and suggests that **linear logic IS the logic of accounting**.
+**Key insight**: PTA systems have been doing "applied linear logic" for 500+ years without knowing it.
 
 ---
 
@@ -470,9 +497,20 @@ This validates our approach in sketch.md and suggests that **linear logic IS the
 - [arXiv:2508.14132 — Macroeconomic Accounting via Category Theory](https://arxiv.org/abs/2508.14132)
 - [Sulganik, "Towards a Theory of Mathematical Accounting"](https://gilkalai.wordpress.com/2012/06/19/eyal-sulganik-towards-a-theory-of-mathematical-accounting/)
 
+### Plain Text Accounting
+- [Plain Text Accounting](https://plaintextaccounting.org/)
+- [Ledger CLI](https://ledger-cli.org/)
+- [hledger](https://hledger.org/)
+- [Beancount Documentation](https://beancount.github.io/docs/)
+
+### Linear Logic
+- [Stanford Encyclopedia: Linear Logic](https://plato.stanford.edu/entries/logic-linear/)
+- [nLab: Linear Logic](https://ncatlab.org/nlab/show/linear+logic)
+- [Wadler, "A Taste of Linear Logic"](https://homepages.inf.ed.ac.uk/wadler/papers/lineartaste/lineartaste-revised.pdf)
+
 ### Grothendieck Group
 - [Wikipedia: Grothendieck Group](https://en.wikipedia.org/wiki/Grothendieck_group)
 
 ---
 
-*Last updated: 2026-01-29*
+*Created: 2026-02-10 (merged from algebraic-accounting.md and plain-text-accounting.md)*

@@ -2,6 +2,8 @@
 
 This document addresses fundamental questions about proof calculi, the Curry-Howard correspondence, and why certain proof formalisms work better for certain logics.
 
+> **See also:** [[display-calculus]] for Belnap's conditions, [[residuation]] for Galois connections, [[logics-overview]] for expressibility survey, [[adjunctions-and-adjoint-logic]] for categorical perspective.
+
 ---
 
 ## Table of Contents

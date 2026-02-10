@@ -2,6 +2,8 @@
 
 How to design a "good" and correct sequent calculus. This document covers the fundamental question: syntax first or semantics first?
 
+> **See also:** [[proof-calculi-foundations]] for hierarchy of proof systems, [[display-calculus]] for display methodology, [[residuation]] for Galois connections, [[DSL-approaches]] for practical implementation.
+
 ---
 
 ## Table of Contents

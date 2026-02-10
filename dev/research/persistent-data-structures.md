@@ -2,6 +2,22 @@
 
 Deep dive into immutable data structures with structural sharing for efficient backtracking.
 
+> **See also:** [[content-addressed-formulas]] for Merkle-DAG hash consing, [[backward-prover-optimization]] for overall optimization strategy, [[explicit-substitutions]] for lazy evaluation.
+
+---
+
+## Table of Contents
+
+1. [The Problem: Copying is Expensive](#1-the-problem-copying-is-expensive)
+2. [Persistent Data Structures: Core Concept](#2-persistent-data-structures-core-concept)
+3. [HAMT: Hash Array Mapped Trie](#3-hamt-hash-array-mapped-trie)
+4. [Application to Proof Search](#4-application-to-proof-search)
+5. [Complexity Comparison](#5-complexity-comparison)
+6. [Integration with Merkle-DAG](#6-integration-with-merkle-dag)
+7. [Implementation Options](#7-implementation-options)
+8. [Recommendation](#8-recommendation)
+9. [References](#9-references)
+
 ---
 
 ## 1. The Problem: Copying is Expensive

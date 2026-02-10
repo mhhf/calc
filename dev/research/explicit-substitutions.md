@@ -2,6 +2,24 @@
 
 Deep dive into deferring substitution operations until actually needed.
 
+> **See also:** [[content-addressed-formulas]] for Merkle-DAG store integration, [[backward-prover-optimization]] for overall optimization strategy.
+
+---
+
+## Table of Contents
+
+1. [The Problem: Eager Substitution is Expensive](#1-the-problem-eager-substitution-is-expensive)
+2. [Explicit Substitutions: Core Concept](#2-explicit-substitutions-core-concept)
+3. [Implementation: Closures](#3-implementation-closures)
+4. [Sequent with Closures](#4-sequent-with-closures)
+5. [When to Force: Strategic Forcing](#5-when-to-force-strategic-forcing)
+6. [Concrete Example](#6-concrete-example)
+7. [Integration with Merkle-DAG](#7-integration-with-merkle-dag)
+8. [Complexity Analysis](#8-complexity-analysis)
+9. [Edge Cases and Challenges](#9-edge-cases-and-challenges)
+10. [Recommendation](#10-recommendation)
+11. [References](#11-references)
+
 ---
 
 ## 1. The Problem: Eager Substitution is Expensive

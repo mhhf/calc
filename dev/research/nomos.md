@@ -1,5 +1,28 @@
 # Nomos: Session Types + Linear Types for Smart Contracts
 
+> **See also:** [[authorization-logic]] for principals and says modality, [[multi-type-display-calculus]] for adjunctions between modes, [[ownership-as-session-types]] for ownership-channel correspondence, [[graded-resource-tracking]] for resource analysis.
+
+---
+
+## Table of Contents
+
+1. [Overview](#overview)
+2. [Propositions-as-Sessions](#the-propositions-as-sessions-correspondence)
+3. [Session Type Syntax](#session-type-syntax)
+4. [Process Definition Syntax](#process-definition-syntax)
+5. [Re-entrancy Prevention](#re-entrancy-prevention-acquire-release-discipline)
+6. [Asset Tracking with Linear Types](#asset-tracking-with-linear-types)
+7. [Resource-Aware Types: Automatic Gas Analysis](#resource-aware-types-automatic-gas-analysis)
+8. [Deadlock Freedom](#deadlock-freedom)
+9. [Connection to Authorization Logic](#connection-to-authorization-logic)
+10. [Adjoint Logic Foundation](#adjoint-logic-foundation)
+11. [Rast: Resource-Aware Session Types](#rast-resource-aware-session-types)
+12. [Relevance to CALC](#relevance-to-calc)
+13. [Implementation](#implementation)
+14. [Key Papers](#key-papers)
+
+---
+
 ## Overview
 
 **Nomos** is a domain-specific language for smart contracts developed at CMU by Ankush Das, Stephanie Balzer, Jan Hoffmann, and Frank Pfenning. It combines:

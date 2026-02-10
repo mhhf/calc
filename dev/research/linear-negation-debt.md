@@ -2,6 +2,24 @@
 
 This document explores the interpretation of linear negation (A⊥) as "debt" or "obligation," and its relevance to CALC's coin ownership modeling.
 
+> **See also:** [[accounting-foundations]] for Pacioli group and conservation, [[financial-primitives]] for derivative modeling, [[ownership-design]] for coin ownership, [[ludics-and-orthogonality]] for game semantics and orthogonality.
+
+---
+
+## Table of Contents
+
+1. [Overview](#overview)
+2. [Formal Properties](#the-formal-properties)
+3. [Interpretations of A⊥](#interpretations-of-a)
+4. [The Debt Interpretation](#the-debt-interpretation)
+5. [Application to CALC](#application-to-calc)
+6. [Connection to Accounting](#connection-to-accounting)
+7. [Classical vs Intuitionistic](#classical-vs-intuitionistic-linear-logic)
+8. [Game-Semantic Perspective](#game-semantic-perspective)
+9. [Open Questions](#open-questions)
+10. [Summary](#summary)
+11. [References](#references)
+
 ---
 
 ## Overview

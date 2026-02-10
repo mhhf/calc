@@ -1,5 +1,16 @@
 # Backward Prover Optimization: Deep Analysis
 
+## Table of Contents
+
+1. [Executive Summary](#executive-summary)
+2. [Current Bottleneck Analysis](#current-bottleneck-analysis)
+3. [Optimization Strategies Ranked by Impact](#optimization-strategies-ranked-by-impact)
+4. [Recommended Implementation Plan](#recommended-implementation-plan)
+5. [Benchmark Summary](#benchmark-summary)
+6. [References](#references)
+
+---
+
 ## Executive Summary
 
 Analysis of backward chaining in `lib/mde/prove.js` reveals **90%+ overhead** in substitution operations (`subApply` 56.4%, `unify` 33.9%). Benchmarking shows:
@@ -92,6 +103,8 @@ const applySimultaneous = (h, theta) => {
 
 ### 2. Union-Find Unification ⭐⭐⭐⭐
 
+> **See also:** [[near-linear-unification]] for detailed algorithm analysis.
+
 Based on [Martelli-Montanari algorithm](https://dl.acm.org/doi/10.1145/357162.357169) with union-find:
 
 **Key insight**: Instead of maintaining idempotent substitution, use union-find with path compression:
@@ -139,6 +152,8 @@ const walk = (h, theta) => {
 ---
 
 ### 4. Tabling/Memoization ⭐⭐⭐
+
+> **See also:** [[polynomial-memoization]] for proof search memoization.
 
 [SLG resolution](https://www.swi-prolog.org/pldoc/man?section=tabling) memoizes subgoals:
 
@@ -196,6 +211,8 @@ function applyWithMemo(h, theta) {
 ---
 
 ### 6. Explicit Substitutions (λσ-calculus) ⭐⭐
+
+> **See also:** [[explicit-substitutions]] for detailed treatment.
 
 From [Abadi et al.](https://dl.acm.org/doi/10.1145/96709.96712):
 

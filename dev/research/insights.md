@@ -2,6 +2,21 @@
 
 Key discoveries from the CALC research program that may be significant contributions.
 
+> **See also:** [[graded-resource-tracking]] for QTT/Granule, [[fibrations-study-plan]] for ownership-as-fibration, [[linear-negation-debt]] for debt semantics, [[consensus-modalities-mpst]] for coherence/consensus, [[adjunctions-and-adjoint-logic]] for mode structure.
+
+---
+
+## Table of Contents
+
+1. [Pacioli Group as Grading Ring](#1-pacioli-group-as-grading-ring--potentially-novel)
+2. [Ownership as Fibration, Not Mode](#2-ownership-as-fibration-not-mode)
+3. [Debt as Channel](#3-debt-as-channel--unification-of-debt-and-session-types)
+4. [MPST Methodology for Authorization](#4-mpst-methodology-for-authorization)
+5. [Coherence = Consensus Achievability](#5-coherence--consensus-achievability--compile-time-guarantee)
+6. [Closed Questions](#6-closed-questions--what-not-to-pursue)
+7. [The Three-Level Structure](#7-the-three-level-structure--big-picture)
+8. [Two-Layer Architecture](#8-two-layer-architecture-clarification)
+
 ---
 
 ## 1. Pacioli Group as Grading Ring — Potentially Novel

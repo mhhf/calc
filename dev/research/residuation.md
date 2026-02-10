@@ -2,6 +2,8 @@
 
 Comprehensive reference on residuation, its role in logic, and why it matters for display calculus.
 
+> **See also:** [[display-calculus]] for display postulates, [[exponential-display-problem]] for why ! lacks residuals, [[QnA]] for tutorial questions, [[adjunctions-and-adjoint-logic]] for categorical perspective.
+
 ---
 
 ## Table of Contents

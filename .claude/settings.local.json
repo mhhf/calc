@@ -150,7 +150,16 @@
       "Bash(npm ls:*)",
       "Bash(npx mocha:*)",
       "Bash(./libexec/calc-mde-parse:*)",
-      "Bash(./libexec/calc-mde-exec:*)"
+      "Bash(./libexec/calc-mde-exec:*)",
+      "WebFetch(domain:pdfs.semanticscholar.org)",
+      "WebFetch(domain:kilthub.cmu.edu)",
+      "WebFetch(domain:apps.dtic.mil)",
+      "WebFetch(domain:cupdf.com)",
+      "WebFetch(domain:www.semanticscholar.org)",
+      "Bash(test:*)",
+      "Bash(xargs:*)",
+      "Bash(npm run build:*)",
+      "Bash(nix log:*)"
     ],
     "deny": [],
     "ask": []

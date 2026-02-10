@@ -2,6 +2,24 @@
 
 Deep dive into accelerating the identity rule from O(m·n²) to O(1) for ground formulas.
 
+> **See also:** [[content-addressed-formulas]] for the Merkle-DAG hash consing that enables O(1) ground lookups.
+
+---
+
+## Table of Contents
+
+1. [The Problem: Identity Rule is the Hot Path](#1-the-problem-identity-rule-is-the-hot-path)
+2. [The Key Insight: Unification Prerequisites](#2-the-key-insight-unification-prerequisites)
+3. [Constructor Index Design](#3-constructor-index-design)
+4. [Fast Identity Lookup](#4-fast-identity-lookup)
+5. [Concrete Example](#5-concrete-example)
+6. [Integration with Merkle-DAG](#6-integration-with-merkle-dag)
+7. [Complete Implementation](#7-complete-implementation)
+8. [Performance Analysis](#8-performance-analysis)
+9. [Edge Cases and Considerations](#9-edge-cases-and-considerations)
+10. [Recommendation](#10-recommendation)
+11. [References](#11-references)
+
 ---
 
 ## 1. The Problem: Identity Rule is the Hot Path

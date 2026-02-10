@@ -2,6 +2,21 @@
 
 If `A` is a resource type, what is the semantics of `a : A`? Can terms be 'receipts' or 'traces' showing WHERE the resource comes from / how it's synthesized?
 
+> **See also:** [[ownership-design]] for coin ownership model, [[accounting-foundations]] for Pacioli group, [[linear-negation-debt]] for debt semantics, [[proof-calculi-foundations]] for Curry-Howard.
+
+---
+
+## Table of Contents
+
+1. [The Question](#the-question)
+2. [Perspectives on Term Semantics](#perspectives-on-term-semantics)
+3. [Terms as Receipts / Audit Trails](#terms-as-receipts--audit-trails)
+4. [Linear Logic Perspective](#linear-logic-perspective)
+5. [What Terms Could Be in CALC](#what-terms-could-be-in-calc)
+6. [Connection to Blockchain](#connection-to-blockchain)
+7. [Open Questions](#open-questions)
+8. [References](#references)
+
 ---
 
 ## The Question

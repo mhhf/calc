@@ -4,6 +4,24 @@ This document explores how consensus modalities (`[A ∧ B] φ` — "both A and 
 
 ---
 
+## Table of Contents
+
+1. [The Core Question](#the-core-question)
+2. [Background: Composite Principals](#background-composite-principals-in-authorization-logic)
+3. [Multiparty Session Types Overview](#multiparty-session-types-mpst-overview)
+4. [Additive Choice with Multiple Principals](#additive-choice-with-multiple-principals-who-chooses)
+5. [The Gap: Consensus in MPST](#the-gap-consensus-in-mpst)
+6. [Approaches to Consensus in Session Types](#approaches-to-consensus-in-session-types)
+7. [Threshold Signatures and k-of-n Consent](#threshold-signatures-and-k-of-n-consent)
+8. [Ludics and Orthogonality](#ludics-and-orthogonality-for-consensus)
+9. [Synthesis: Modeling [A ∧ B]](#synthesis-modeling-a--b-in-calc)
+10. [Connection to Atomic Swap](#connection-to-calcs-atomic-swap)
+11. [Open Questions](#open-questions)
+12. [Recommendations](#recommendations-for-calc)
+13. [References](#references)
+
+---
+
 ## The Core Question
 
 Can we express:

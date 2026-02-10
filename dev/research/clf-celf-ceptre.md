@@ -8,6 +8,8 @@
 
 ## Executive Summary
 
+> **See also:** [[typed-dsl-logical-framework]] for logical frameworks (LF, CLF, Twelf), [[ffi-logics]] for FFI patterns.
+
 To achieve full CLF/Celf/Ceptre compatibility, CALC v2 needs:
 
 | Feature | Current Status | Priority |

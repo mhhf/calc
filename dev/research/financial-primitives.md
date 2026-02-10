@@ -2,6 +2,26 @@
 
 Research on how basic financial derivatives and market mechanisms map to linear logic / CALC machinery.
 
+> **See also:** [[ownership-design]] for ownership representation, [[linear-negation-debt]] for debt semantics, [[accounting-foundations]] for mathematical foundations.
+
+---
+
+## Table of Contents
+
+1. [Overview](#overview)
+2. [Financial Primitives Analysis](#financial-primitives-analysis)
+   - [Futures Contracts](#1-futures-contracts)
+   - [Options](#2-options)
+   - [Swaps](#3-swaps-interest-rate-currency-etc)
+   - [Leverage](#4-leverage)
+   - [Markets / Order Books](#5-markets--order-books)
+   - [Auctions](#6-auctions)
+3. [Summary: What Maps Naturally](#summary-what-maps-naturally)
+4. [Additional Features CALC Needs](#what-additional-features-calc-needs)
+5. [Peyton-Jones Combinators](#the-peyton-jones-combinators)
+6. [Recommendations](#recommendations)
+7. [References](#references)
+
 ---
 
 ## Overview

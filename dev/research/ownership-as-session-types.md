@@ -2,6 +2,25 @@
 
 This document explores whether ownership modalities (`[Alice] A`) can be expressed as session types, connecting authorization logic with the propositions-as-sessions correspondence.
 
+> **See also:** [[nomos]] for session types in smart contracts, [[authorization-logic]] for principal-based reasoning, [[linear-negation-debt]] for channel endpoint duality, [[multi-type-display-calculus]] for modes-as-principals approach.
+
+---
+
+## Table of Contents
+
+1. [Core Question](#the-core-question)
+2. [Background: Two Correspondences](#background-two-correspondences)
+3. [Attempting the Correspondence](#attempting-the-correspondence)
+4. [What Session Types DO Capture](#what-session-types-do-capture)
+5. [What Session Types DON'T Capture](#what-session-types-dont-capture)
+6. [Possible Synthesis: Three Approaches](#possible-synthesis-three-approaches)
+7. [Connection to MPST and Global Types](#connection-to-mpst-and-global-types)
+8. [Comparison Table](#comparison-table)
+9. [Conclusions](#conclusions)
+10. [Open Questions](#open-questions)
+11. [Summary](#summary)
+12. [References](#references)
+
 ---
 
 ## The Core Question

@@ -1,6 +1,18 @@
 # Deep Answers: Proof Theory Questions
 
-Comprehensive answers to foundational questions about display calculus, residuation, cut elimination, and sequent calculus limitations.
+Accessible Q&A-style explanations of foundational proof theory concepts. For deeper treatment, see the dedicated documents referenced below.
+
+---
+
+## Related Documents
+
+| Topic | Primary Document |
+|-------|------------------|
+| Residuation | [[residuation]] |
+| Display calculus | [[display-calculus]] |
+| Exponentials (!) problem | [[exponential-display-problem]] |
+| Adjoint decomposition | [[adjunctions-and-adjoint-logic]] |
+| Multi-type display calculus | [[multi-type-display-calculus]] |
 
 ---
 
@@ -50,6 +62,8 @@ The limitation is not the **number** of structural connectives, but the **requir
 ---
 
 ## 2. What is Residuation?
+
+> **See also:** [[residuation]] for comprehensive treatment with algebraic details.
 
 **Your question:** I need to understand residuation in depth, including why not all connectives have residuals.
 
@@ -142,6 +156,8 @@ In a **residuated lattice**, every operation has residuals by definition. The ex
 
 ## 3. Exponentials in "Linear Logic Properly Displayed"
 
+> **See also:** [[exponential-display-problem]] and [[adjunctions-and-adjoint-logic]] for the full treatment of ! decomposition.
+
 **Your question:** If exponentials are not residuated "in the usual sense" — in which sense ARE they? What tools were used to display them?
 
 ### The Problem
@@ -227,6 +243,8 @@ A **proper** display calculus has rules that work for ANY substitution of struct
 ---
 
 ## 4. What is the Display Property?
+
+> **See also:** [[display-calculus]] for Belnap's conditions C1-C8.
 
 **Your question:** Can you remind me what the display property is?
 
@@ -733,43 +751,6 @@ So the "computational content" might agree at a coarser level.
 
 ---
 
-## Summary of Research TODOs
-
-Based on these questions, the TODO list should include:
-
-### HIGH Priority
-
-- [ ] **Study residuation deeply**
-  - [ ] Work through examples in residuated lattices
-  - [ ] Understand Galois connections categorically
-  - [ ] Understand why ! is a comonad, not residuated
-
-- [ ] **Study adjoint decomposition for exponentials**
-  - [ ] Read Benton's LNL paper
-  - [ ] Understand how multi-type display calculus works
-  - [ ] See how ! decomposes into F ∘ G
-
-- [ ] **Study left/right decomposition patterns**
-  - [ ] What makes a good sequent rule?
-  - [ ] When do you need hypersequents/labels?
-  - [ ] Understand the "local" vs "global" distinction
-
-### MEDIUM Priority
-
-- [ ] **Study cut efficiency trade-offs**
-  - [ ] When to keep cuts, when to eliminate
-  - [ ] Proof compression techniques
-
-- [ ] **Study cyclic proofs**
-  - [ ] How do soundness conditions work?
-  - [ ] Connection to induction
-
-- [ ] **Study polarization and focusing**
-  - [ ] How does it restore confluence?
-  - [ ] Connection to proof search
-
----
-
 ## 10. Is My Understanding of Display Correct?
 
 **Your question:** In order to display a property/connective we have tools of 'residuation' and 'adjoints'. Since ! can be displayed with adjoints and linear logic connectives can be residuated, linear logic with '!' can be displayed and hence its cut-elimination stuff is working — is my understanding correct?
@@ -920,6 +901,8 @@ The problems arise mainly for:
 
 ## 12. What Makes a Connective "Structural" vs "Logical"?
 
+> **See also:** [[residuation]] and [[display-calculus]] for the formal treatment.
+
 **Your question:** What makes a connective 'structural' and what makes it 'logical'? Why is `,` (comma) structural counterpart of ⊗ (tensor)? What is structural meaning here? How does this relate to Galois connection? What is a structural negation?
 
 ### The Fundamental Distinction
@@ -1014,6 +997,8 @@ If * is "classical", then *A ≈ ¬A at the formula level.
 ---
 
 ## 13. Why Doesn't Bang Have Residuals? (Detailed Explanation)
+
+> **See also:** [[exponential-display-problem]] for the formal analysis.
 
 **Your question:** In the rule `!A ⊗ B ⊢ C iff !A ⊢ B ⊸ C` — do you mean `!(A ⊗ B) ⊢ C` or `(!A) ⊗ B ⊢ C`? Why is duplication a problem? What makes structural rules for ! "unsound"?
 
@@ -1128,4 +1113,4 @@ And ! = F ∘ G inherits enough structure for cut elimination!
 
 ---
 
-*Last updated: 2026-01-26*
+*Last updated: 2026-02-10*

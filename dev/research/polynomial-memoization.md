@@ -2,6 +2,24 @@
 
 Deep dive into how the subformula property enables polynomial-time proof search through memoization.
 
+> **See also:** [[content-addressed-formulas]] for Merkle-DAG sequent hashing, [[backward-prover-optimization]] for overall optimization strategy, [[proof-calculi-foundations]] for subformula property.
+
+---
+
+## Table of Contents
+
+1. [The Problem: Exponential Proof Search](#1-the-problem-exponential-proof-search)
+2. [The Subformula Property](#2-the-subformula-property-bounding-the-search-space)
+3. [From Subformula Property to Polynomial Bound](#3-from-subformula-property-to-polynomial-bound)
+4. [Memoization: Computing Each Sequent Once](#4-memoization-computing-each-sequent-once)
+5. [Implementing Memoization with Merkle-DAG](#5-implementing-memoization-with-merkle-dag)
+6. [Concrete Example](#6-concrete-example-before-and-after-memoization)
+7. [When Does Memoization Help Most?](#7-when-does-memoization-help-most)
+8. [Complexity Analysis](#8-complexity-analysis)
+9. [Implementation Details for CALC](#9-implementation-details-for-calc)
+10. [Recommendation](#10-recommendation-should-we-implement-this)
+11. [References](#11-references)
+
 ---
 
 ## 1. The Problem: Exponential Proof Search

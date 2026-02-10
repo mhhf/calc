@@ -2,6 +2,24 @@
 
 Research document for CALC project: designing efficient identity and equality checking for logical objects.
 
+> **See also:** [[constructor-indexing]] for O(1) identity lookup using hash indexes, [[benchmarking]] for complexity analysis of current implementation.
+
+---
+
+## Table of Contents
+
+1. [Problem Statement](#problem-statement)
+2. [Current Implementation Analysis](#current-implementation-analysis)
+3. [Chosen Approach: Merkle-DAG Hash Consing](#chosen-approach-merkle-dag-hash-consing)
+4. [Hash Function Selection](#hash-function-selection)
+5. [Merkle-DAG Hash Consing Implementation](#merkle-dag-hash-consing-implementation)
+6. [Memory Management Strategies](#memory-management-strategies)
+7. [Substitution in Merkle-DAG Store](#substitution-in-merkle-dag-store)
+8. [Integration with Proof Search](#integration-with-proof-search)
+9. [Complexity Analysis](#complexity-analysis)
+10. [Implementation Roadmap](#implementation-roadmap)
+11. [References](#references)
+
 ---
 
 ## Problem Statement

@@ -5,6 +5,11 @@ node_modules/
 # Nix/direnv
 .direnv/
 result
+result-*
+
+# SolidStart build outputs
+.output/
+.vinxi/
 
 # Tree-sitter generated files
 lib/tree-sitter-mde/src/

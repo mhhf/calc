@@ -4,6 +4,24 @@
 **Status:** Research Complete
 **Priority:** HIGH
 
+**See also:** [[multimodal-linear-logic]] — comprehensive treatment of ownership, location, and graded modalities
+
+---
+
+## Table of Contents
+
+1. [Executive Summary](#executive-summary)
+2. [Quick Answer](#quick-answer)
+3. [The Three-Level Hierarchy](#1-the-three-level-hierarchy)
+4. [Built-in Type Operators](#2-built-in-type-operators)
+5. [Approaches to Higher-Kinded Linear Types](#3-approaches-to-higher-kinded-linear-types)
+6. [Second-Order Linear Logic](#4-second-order-linear-logic)
+7. [What CALC Currently Has](#5-what-calc-currently-has)
+8. [Recommendations for CALC](#6-recommendations-for-calc)
+9. [Linear Modalities (Interpretation B)](#7-linear-modalities-interpretation-b)
+10. [Summary](#8-summary)
+11. [References](#references)
+
 ---
 
 ## Executive Summary

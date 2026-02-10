@@ -2,6 +2,25 @@
 
 Overview of logics relevant to the CALC project and whether they can be expressed via display calculus.
 
+> **See also:** [[display-calculus]] for display calculus methodology, [[graded-resource-tracking]] for QTT/Granule, [[multi-type-display-calculus]] for MTDC approach, [[exponential-display-problem]] for ! handling.
+
+---
+
+## Table of Contents
+
+1. [Summary Table](#summary-table)
+2. [Classical Linear Logic (CLL)](#1-classical-linear-logic-cll)
+3. [Intuitionistic Linear Logic (ILL)](#2-intuitionistic-linear-logic-ill)
+4. [Full Intuitionistic Linear Logic (FILL)](#3-full-intuitionistic-linear-logic-fill)
+5. [First-Order Logic (FOL)](#4-first-order-logic-fol)
+6. [Multimodal Logic](#5-multimodal-logic)
+7. [Quantitative Type Theory (QTT)](#6-quantitative-type-theory-qtt)
+8. [Graded Modal Types (Granule)](#7-graded-modal-types-granule)
+9. [Mixed Linear and Graded (mGL)](#8-mixed-linear-and-graded-logic-mgl)
+10. [Linear Logic Properly Displayed](#9-linear-logic-properly-displayed)
+11. [Hypersequent Calculus (HCP)](#10-hypersequent-calculus-hcp)
+12. [Conclusions](#conclusions-for-your-project)
+
 ---
 
 ## Summary Table

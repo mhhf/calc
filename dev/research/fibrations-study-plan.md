@@ -2,6 +2,21 @@
 
 A minimal but complete study path to understand fibrations well enough to model ownership `[Alice] A` as "A in the fiber over Alice."
 
+> **See also:** [[adjunctions-and-adjoint-logic]] for categorical background, [[ownership-design]] for ownership representation design.
+
+---
+
+## Table of Contents
+
+1. [Why Fibrations for CALC?](#why-fibrations-for-calc)
+2. [Prerequisites](#prerequisites-what-you-need-first)
+3. [The Intuition First](#the-intuition-first)
+4. [Study Path](#study-path)
+5. [Reading Order Summary](#reading-order-summary)
+6. [Key Concepts Checklist](#key-concepts-checklist)
+7. [How This Applies to CALC](#how-this-applies-to-calc)
+8. [References](#references)
+
 ---
 
 ## Why Fibrations for CALC?

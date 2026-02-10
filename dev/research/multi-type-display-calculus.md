@@ -2,6 +2,8 @@
 
 Deep research on how CALC implements multi-type display calculus and whether special rules can be generalized.
 
+> **See also:** [[exponential-display-problem]] for why ! needs adjoint decomposition, [[adjunctions-and-adjoint-logic]] for adjunction theory, [[logics-overview]] for which logics can be displayed, [[display-calculus]] for Belnap's conditions.
+
 ---
 
 ## Table of Contents

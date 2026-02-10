@@ -2,6 +2,8 @@
 
 This document investigates whether display calculus is the right choice for this project, compares it with alternatives, and provides recommendations for the architecture going forward.
 
+> **See also:** [[proof-calculi-foundations]] for hierarchy of proof formalisms, [[residuation]] for adjunction/residuation principles, [[multi-type-display-calculus]] for Greco & Palmigiano's MTDC approach, [[exponential-display-problem]] for the ! problem.
+
 ---
 
 ## Table of Contents
