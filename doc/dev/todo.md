@@ -6,10 +6,12 @@ Outstanding tasks for the CALC project. See DONE.md for completed items.
 
 ## HIGH Priority
 
-### BDI
+### ~~BDI~~ ✓ DONE
 **Priority:** HIGH
 
-research BDI framework and logic - behaviour desire intention and how it might fit into our system, create a research document for bdi
+~~research BDI framework and logic - behaviour desire intention and how it might fit into our system, create a research document for bdi~~
+
+**Completed:** Created `doc/research/bdi-framework.md`. Key insight: intentions are *linear* (consumed on execution), beliefs are *exponential* (persistent). This maps to CALC's LNL structure. See also Porello-Troquard's resource-sensitive agency.
 
 ### Primitives, Lazy Storage, and FFI (Prerequisites)
 **Priority:** HIGH — implement BEFORE multimodal logic

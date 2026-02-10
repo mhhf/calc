@@ -161,6 +161,11 @@
 
 **Tags:** `CLF` `Celf` `Ceptre` `forward-chaining` `lax-monad` `multiset-rewriting`
 
+### [[bdi-framework]]
+**Belief-Desire-Intention Agents.** Bratman's planning theory, Rao-Georgeff BDI logic (BDICTL + CTL*). Key insight: intentions are *linear* (consumed on execution), beliefs are *exponential* (persistent). Connects to Porello-Troquard's resource-sensitive agency and CALC's ownership modalities.
+
+**Tags:** `BDI` `agents` `intentions` `Bratman` `Rao-Georgeff` `AgentSpeak` `linear-agency` `Porello-Troquard`
+
 ---
 
 ## VII. Implementation Design
@@ -273,8 +278,8 @@ These documents detail specific optimizations; all build on content-addressed fo
    │  ownership-design│   │  proof-calculi   │   │     nomos        │
    │  authorization   │   │  display-calculus│   │     ludics       │
    │  consensus-mpst  │   │  residuation     │   │   clf-celf       │
-   └────────┬─────────┘   │  exponential-!   │   └──────────────────┘
-            │             └────────┬─────────┘
+   └────────┬─────────┘   │  exponential-!   │   │  bdi-framework   │
+            │             └────────┬─────────┘   └──────────────────┘
             │                      │
             └──────────┬───────────┘
                        ↓
@@ -301,6 +306,7 @@ These documents detail specific optimizations; all build on content-addressed fo
 1. **Pacioli group as grading semiring** — accounting + graded types unification
 2. **Ownership as fibration** — categorical semantics for `[P] A`
 3. **Coherence = consensus** — compile-time multi-party agreement
+4. **Linear BDI** — intentions as linear resources, beliefs as exponential (see [[bdi-framework]])
 
 ### Open Problems
 
@@ -315,7 +321,8 @@ These documents detail specific optimizations; all build on content-addressed fo
 - **Comparative analysis:** CALC vs Move vs Nomos
 - **Formal verification of CALC itself** in Lean/Agda
 - **Hardware acceleration** for proof search
+- **Linear BDI implementation:** Agent execution with linear intentions
 
 ---
 
-*Last updated: 2025-02-10*
+*Last updated: 2026-02-10*
