@@ -166,6 +166,11 @@
 
 **Tags:** `CLF` `Celf` `Ceptre` `forward-chaining` `lax-monad` `multiset-rewriting`
 
+### [[execution-trees-metaproofs]]
+**Execution Trees, Metaproofs, Coinduction.** Branch at additive choice (&) to explore all paths. Prove properties about programs (conservation, safety, termination). μMALL fixed points for induction/coinduction. Cyclic proofs for infinite behavior.
+
+**Tags:** `execution-trees` `metaproofs` `coinduction` `μMALL` `cyclic-proofs` `model-checking` `invariants`
+
 ### [[bdi-framework]]
 **Belief-Desire-Intention Agents.** Bratman's planning theory, Rao-Georgeff BDI logic (BDICTL + CTL*). Key insight: intentions are *linear* (consumed on execution), beliefs are *exponential* (persistent). Connects to Porello-Troquard's resource-sensitive agency and CALC's ownership modalities.
 
@@ -311,7 +316,7 @@
 |---------|--------|--------------|
 | Threshold modalities (k-of-n) | Predicate, not modality | [[consensus-modalities-mpst]] |
 | Temporal modalities for derivatives | Unexplored | [[financial-primitives]] |
-| Cyclic proofs for fixpoints | Mentioned, not developed | [[proof-calculi-foundations]] |
+| Cyclic proofs for fixpoints | Research complete, ready for impl | [[execution-trees-metaproofs]] |
 
 ### Unexplored Directions
 
