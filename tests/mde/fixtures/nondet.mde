@@ -1,0 +1,12 @@
+% Nondeterministic test calculus
+% Two rules can fire on 'start', creating a branch
+
+start : resource.
+left : resource.
+right : resource.
+done : resource.
+
+go_left : start -o { left }.
+go_right : start -o { right }.
+finish_left : left -o { done }.
+finish_right : right -o { done }.
