@@ -218,18 +218,10 @@
 
 **Tags:** `benchmarking` `complexity-analysis` `profiling` `hotspots`
 
-### Optimization Techniques
+### [[prover-optimization]]
+**Comprehensive Optimization Research.** Benchmarks, implemented optimizations (first-arg indexing, memoization), deferred strategies catalog (constructor index, near-linear unification, arena allocation).
 
-These documents detail specific optimizations; all build on content-addressed formulas:
-
-| Document | Technique | Complexity Improvement |
-|----------|-----------|----------------------|
-| [[near-linear-unification]] | Martelli-Montanari + Union-Find | O(n²) → O(n·α(n)) |
-| [[constructor-indexing]] | Index by outermost constructor | O(n) → O(1) lookup |
-| [[polynomial-memoization]] | Cache (sequent → result) | Exponential → polynomial |
-| [[explicit-substitutions]] | Lazy substitution evaluation | Defer O(n) work |
-| [[persistent-data-structures]] | HAMT for sequents | O(n) copy → O(1) |
-| [[backward-prover-optimization]] | Focusing, inversion, tabling | Various |
+**Tags:** `optimization` `benchmarking` `indexing` `memoization` `memory-management`
 
 ---
 

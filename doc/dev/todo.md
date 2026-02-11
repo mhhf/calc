@@ -1,6 +1,15 @@
+---
+title: TODO
+created: 2026-02-10
+modified: 2026-02-11
+summary: Outstanding development tasks
+tags: [planning, tasks]
+status: active
+---
+
 # TODO
 
-Outstanding tasks for the CALC project. See DONE.md for completed items.
+Outstanding tasks for the CALC project.
 
 ---
 
@@ -51,9 +60,7 @@ Implement primitive types with lazy storage and FFI. These are prerequisites for
 - [ ] Render: compact by default, option for expanded
 
 **Context docs (read before implementing):**
-- `doc/dev/lazy-primitive-storage.md` — Store extension, ephemeral expansion design
-- `doc/dev/import-mechanism.md` — @import system specification
-- `doc/dev/syntactic-sugar.md` — @literal and @sugar annotations
+- `doc/dev/primitives-implementation.md` — Merged implementation plan (@import, lazy storage, sugar)
 - `doc/research/graded-resource-tracking.md` — Theory of object-level quantities (why this design)
 - `doc/research/ffi-logics.md` — FFI patterns, mode checking
 
@@ -98,7 +105,7 @@ Design and implement multimodal linear logic with:
 - Conservation (total supply preserved)
 - No counterfeiting (freshness property)
 
-**See:** dev/research/multimodal-linear-logic.md, dev/research/ownership-representation.md
+**See:** doc/research/multimodal-linear-logic.md, doc/research/ownership-design.md
 
 
 ### Pacioli Grading Semiring
@@ -155,7 +162,7 @@ Apply MPST methodology to CALC:
 **Priority:** MEDIUM
 **Status:** Content-addressing complete, profiling infrastructure in place
 
-Deferred optimizations documented in **dev/optimization_strategies.md**.
+Deferred optimizations documented in **doc/research/prover-optimization.md**.
 
 Use `CALC_PROFILE=1` to identify bottlenecks before implementing:
 - Constructor Index (O(1) identity lookup)
@@ -219,7 +226,7 @@ Create a NEW calculus (e.g., `lnl-proper.family`) that IS a proper MTDC:
 - [ ] Design type-uniform sequent structure
 - [ ] Verify generic cut-elim applies
 
-**See:** dev/research/multi-type-display-calculus.md, dev/research/display-calculus.md
+**See:** doc/research/multi-type-display-calculus.md, doc/research/display-calculus.md
 
 ---
 
@@ -256,7 +263,7 @@ CALC implements Benton's LNL via persistent_ctx + linear_ctx. For multimodalitie
 - Cyclic Proofs: MEDIUM-HIGH for future (if we need recursive contracts/fixpoints)
 - Proof Nets: LOW (bad for multimodal logics)
 
-See: dev/research/multi-type-display-calculus.md (revised)
+See: doc/research/multi-type-display-calculus.md
 
 ---
 
@@ -383,7 +390,7 @@ combat * victory -o exploration.
 - [ ] Implement stage engine with transitions
 - [ ] Add `#interactive` mode (human chooses rules)
 
-**See:** dev/research/clf-celf-ceptre.md, Chris Martens' thesis
+**See:** doc/research/clf-celf-ceptre.md, Chris Martens' thesis
 
 ---
 
@@ -421,7 +428,7 @@ top : formula
 - Substitution becomes capture-avoiding
 - Need kind system (type : kind)
 
-**See:** dev/research/clf-celf-ceptre.md, CLF paper (Watkins et al.)
+**See:** doc/research/clf-celf-ceptre.md, CLF paper (Watkins et al.)
 
 ---
 
@@ -444,7 +451,7 @@ top : formula
 
 ### Documentation System (Executable Markdown)
 **Priority:** MEDIUM
-**Status:** Research complete — see [[claude-meta]]
+**Status:** Partially implemented in `src/ui/lib/markdown.ts`
 
 Implement executable code blocks in markdown for research docs.
 
@@ -452,21 +459,11 @@ Implement executable code blocks in markdown for research docs.
 - Server-side: graphviz, katex, calc (static output)
 - Client-side: mermaid, proof trees (interactive)
 
-**Phase 1: Markdown Processor**
-- [ ] Extract markdown processing to `src/ui/lib/markdown.ts`
-- [ ] Add YAML frontmatter parsing
-- [ ] Add server-side processors for graphviz, katex
-
-**Phase 2: Client Hydration**
+**Remaining work:**
 - [ ] Add client-side mermaid rendering
 - [ ] Add interactive proof tree viewer
-
-**Phase 3: Metadata & Interlinking**
-- [ ] Add unified frontmatter schema to existing docs
 - [ ] Generate backlinks from wiki-links
 - [ ] Add tags-based filtering
-
-**See:** [[claude-meta]] for full design
 
 ---
 

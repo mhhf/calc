@@ -1,88 +1,53 @@
 ---
 title: Calculus Family Abstraction
 created: 2026-02-10
-modified: 2026-02-10
-summary: Design for family abstraction allowing multiple calculi to share infrastructure through role annotations and modes
-tags: [family, abstraction, lnl, multi-type, calculus]
+modified: 2026-02-11
+summary: Family system for shared calculus infrastructure
+tags: [family, lnl, architecture]
+status: implemented
 ---
 
-# Calculus Family Abstraction Design
+# Calculus Family Abstraction
 
-## Current Implementation
+## Current Files
 
-All files in `calculus/` directory:
 ```
 calculus/
-├── lnl.family       # LNL (Linear/Non-Linear) family infrastructure
-├── ill.calc         # Intuitionistic Linear Logic connectives
-└── ill.rules        # ILL inference rules
+├── lnl.family    # LNL infrastructure (@mode linear/cartesian)
+├── ill.calc      # ILL connectives (@extends lnl)
+└── ill.rules     # ILL inference rules
 ```
 
-### Family File (lnl.family)
+## Key Concepts
 
-LNL is a multi-type display calculus with two modes:
-- **Linear** (`@mode linear`): No contraction/weakening
-- **Cartesian** (`@mode cartesian`): Contraction + weakening allowed
-
-Key declarations:
-```celf
-@family lnl.
-
-structure: type @layer structure @mode linear.
-cart_structure: type @layer structure @mode cartesian @structural "contraction weakening".
-
-seq: cart_structure -> structure -> formula -> sequent
-  @ascii "_ ; _ |- -- : _"
-  @role sequent.
-```
-
-### Calc File (ill.calc)
-
-Logic-specific connectives with `@extends` directive:
-```celf
-@extends lnl.
-
-formula: type.
-
-tensor: formula -> formula -> formula
-  @ascii "_ * _"
-  @polarity positive
-  @category multiplicative.
-```
+### Modes
+- `@mode linear` - No contraction/weakening
+- `@mode cartesian` - Contraction + weakening
 
 ### Role Annotations
 
-| Role | Purpose | Example |
-|------|---------|---------|
-| `judgment` | Unwrap in patterns | `deriv: sequent -> type @role judgment.` |
-| `sequent` | Sequent structure | `seq: ... @role sequent.` |
-| `context_concat` | Context join | `comma: ... @role context_concat.` |
-| `formula_lift` | Formula → structure | `struct: ... @role formula_lift.` |
-| `unit` | Empty context | `empty: structure @role unit.` |
-| `labeled_formula` | Named proof term | `labeled: term -> formula -> structure @role labeled_formula.` |
+| Role | Purpose |
+|------|---------|
+| `sequent` | Sequent structure |
+| `context_concat` | Context join |
+| `formula_lift` | Formula → structure |
+| `unit` | Empty context |
+| `labeled_formula` | Named proof term |
 
-## Metavariables
+### Metavariables
 
-Defined via `@metavar` directive:
 ```celf
 @metavar formula prefix="F?" examples="A B C".
 @metavar structure prefix="?" examples="X Y D".
-@metavar cart_structure prefix="G?" examples="G H".
 ```
 
 ## Generator Flow
 
 ```
-.family + .calc + .rules → generator.js → ll.json → parser
+.family + .calc + .rules → generator.js → ll.json
 ```
 
-The generator:
-1. Parses all files with tree-sitter
-2. Extracts family infrastructure and @role registry
-3. Extracts logic connectives
-4. Extracts inference rules
-5. Generates ll.json with patterns derived from @ascii annotations
+## References
 
-## Future: Direct to Parser
-
-Goal: Remove ll.json indirection, generate parser directly from .family+.calc+.rules files.
+- [[dsl_refactor]] - Migration status
+- Research: [[multi-type-display-calculus]]

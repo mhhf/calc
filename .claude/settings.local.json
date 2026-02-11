@@ -162,7 +162,12 @@
       "Bash(nix log:*)",
       "Bash(git reset:*)",
       "Bash(pgrep:*)",
-      "Bash(git mv:*)"
+      "Bash(git mv:*)",
+      "Bash(comm:*)",
+      "Bash(sort grep -o '\\[\\[[^]]*\\]\\]' /home/mhhf/src/calc/doc/research/INDEX.md)",
+      "WebFetch(domain:www.irit.fr)",
+      "WebFetch(domain:www.loa.istc.cnr.it)",
+      "Bash(echo:*)"
     ],
     "deny": [],
     "ask": []
