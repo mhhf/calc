@@ -15,64 +15,8 @@ Outstanding tasks for the CALC project.
 
 ## HIGH Priority
 
-### ~~BDI~~ ✓ DONE
-**Priority:** HIGH
-
-~~research BDI framework and logic - behaviour desire intention and how it might fit into our system, create a research document for bdi~~
-
-**Completed:** Created `doc/research/bdi-framework.md`. Key insight: intentions are *linear* (consumed on execution), beliefs are *exponential* (persistent). This maps to CALC's LNL structure. See also Porello-Troquard's resource-sensitive agency.
-
-### Primitives, Lazy Storage, and FFI (Prerequisites)
-**Priority:** HIGH — implement BEFORE multimodal logic
-**Status:** Research complete — ready for implementation
-
-Implement primitive types with lazy storage and FFI. These are prerequisites for graded modalities and usable in `ill.calc` today.
-
-**Key decisions (from research):**
-- **Object-level quantities**: `10` is a term of type `bin`, not a meta-level JS number
-- **Lazy storage**: Store `10` as `binlit(10n)`, expand only during pattern match
-- **Ephemeral expansion**: No intermediate forms like `o(binlit(5n))` ever stored
-- **Different hashes**: `binlit(10n)` ≠ `o(i(...))` — correct for content-addressing
-- **FFI integration**: Arithmetic uses BigInt directly, O(1) operations
-- **@import mechanism**: `@import primitives` for modularization
-
-**Phase 1: @import and Primitive Infrastructure**
-- [ ] Implement `@import` parsing in `.calc` loader
-- [ ] Create `lib/primitives.calc` with `bin`, `nat`, `string`
-- [ ] Extend Store for `binlit` tag with BigInt children
-- [ ] Add `hashBigInt()` for content-addressing
-- [ ] Create primitive type registry
-
-**Phase 2: Lazy Storage**
-- [ ] Modify `unify()` to detect and handle `binlit` nodes
-- [ ] Implement ephemeral pattern matching (no intermediate storage)
-- [ ] Test: `binlit(10n)` matched against `o X` → `X = binlit(5n)`
-
-**Phase 3: FFI with Lazy Storage**
-- [ ] FFI dispatch detects `binlit` arguments
-- [ ] Implement `ffiPlus`, `ffiMul` operating on BigInt
-- [ ] Mode checking for inverse operations
-
-**Phase 4: Syntactic Sugar**
-- [ ] Parse `@literal` annotations for numeric literals
-- [ ] Parse `@sugar` annotations on constructors
-- [ ] Lexer produces `binlit` nodes for `/[0-9]+/`
-- [ ] Render: compact by default, option for expanded
-
-**Context docs (read before implementing):**
-- `doc/dev/primitives-implementation.md` — Merged implementation plan (@import, lazy storage, sugar)
-- `doc/research/graded-resource-tracking.md` — Theory of object-level quantities (why this design)
-- `doc/research/ffi-logics.md` — FFI patterns, mode checking
-
-**Implementation files to understand:**
-- `lib/store.js` — Current Store structure (where binlit goes)
-- `lib/parser.js` — Parser generation (where @import hooks in)
-- `lib/calc.js` — Calculus loader (file loading mechanism)
-
----
-
 ### Multimodal Linear Logic Implementation
-**Priority:** HIGH — but requires primitives/lazy storage first
+**Priority:** HIGH
 **Status:** Design converging — ready for formalization after prerequisites
 
 Design and implement multimodal linear logic with:

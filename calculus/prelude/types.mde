@@ -1,0 +1,91 @@
+% Type bounds and policies for primitive types
+%
+% Usage:
+%   u32w_plus A B C.   % Wrapping (result mod 2^32)
+%   u32c_plus A B C.   % Checked (fails on overflow)
+%   plus A B C.        % Unbounded (arbitrary precision)
+
+% === Type Bounds ===
+u8_bound 256.
+u16_bound 65536.
+u32_bound 4294967296.
+u64_bound 18446744073709551616.
+u128_bound 340282366920938463463374607431768211456.
+u256_bound 115792089237316195423570985008687907853269984665640564039457584007913129639936.
+
+% === Generic Policies ===
+
+% Wrapping: result = (a + b) mod bound
+wrap_plus Bound A B C :-
+  plus A B Temp,
+  mod Temp Bound C.
+
+wrap_mul Bound A B C :-
+  mul A B Temp,
+  mod Temp Bound C.
+
+% Checked: fails if result >= bound
+checked_plus Bound A B C :-
+  plus A B C,
+  lt C Bound.
+
+checked_mul Bound A B C :-
+  mul A B C,
+  lt C Bound.
+
+% === Convenience Predicates (Wrapping) ===
+
+u8w_plus A B C :- u8_bound M, wrap_plus M A B C.
+u16w_plus A B C :- u16_bound M, wrap_plus M A B C.
+u32w_plus A B C :- u32_bound M, wrap_plus M A B C.
+u64w_plus A B C :- u64_bound M, wrap_plus M A B C.
+u128w_plus A B C :- u128_bound M, wrap_plus M A B C.
+u256w_plus A B C :- u256_bound M, wrap_plus M A B C.
+
+u8w_mul A B C :- u8_bound M, wrap_mul M A B C.
+u16w_mul A B C :- u16_bound M, wrap_mul M A B C.
+u32w_mul A B C :- u32_bound M, wrap_mul M A B C.
+u64w_mul A B C :- u64_bound M, wrap_mul M A B C.
+u128w_mul A B C :- u128_bound M, wrap_mul M A B C.
+u256w_mul A B C :- u256_bound M, wrap_mul M A B C.
+
+% === Convenience Predicates (Checked) ===
+
+u8c_plus A B C :- u8_bound M, checked_plus M A B C.
+u16c_plus A B C :- u16_bound M, checked_plus M A B C.
+u32c_plus A B C :- u32_bound M, checked_plus M A B C.
+u64c_plus A B C :- u64_bound M, checked_plus M A B C.
+u128c_plus A B C :- u128_bound M, checked_plus M A B C.
+u256c_plus A B C :- u256_bound M, checked_plus M A B C.
+
+u8c_mul A B C :- u8_bound M, checked_mul M A B C.
+u16c_mul A B C :- u16_bound M, checked_mul M A B C.
+u32c_mul A B C :- u32_bound M, checked_mul M A B C.
+u64c_mul A B C :- u64_bound M, checked_mul M A B C.
+u128c_mul A B C :- u128_bound M, checked_mul M A B C.
+u256c_mul A B C :- u256_bound M, checked_mul M A B C.
+
+% === Fixed-Point Types ===
+
+% Common decimal precisions
+fixed8_mul A B C :- fixed_mul 8 A B C.
+fixed18_mul A B C :- fixed_mul 18 A B C.
+
+fixed8_div A B C :- fixed_div 8 A B C.
+fixed18_div A B C :- fixed_div 18 A B C.
+
+% === Booleans ===
+
+true : bool.
+false : bool.
+
+and true true true.
+and true false false.
+and false true false.
+and false false false.
+
+or true X true.
+or false X X.
+
+not true false.
+not false true.
