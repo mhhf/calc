@@ -66,10 +66,10 @@ const serverProcessors: Record<string, (code: string, options?: Record<string, s
   // CALC formula rendering
   calc: (code: string) => {
     try {
-      // Dynamic require for calc library
-      const calc = require('../../../../lib/calc');
-      const node = calc.parse(code.trim());
-      const latex = node.toLatex();
+      // Use calcV2 module for browser-compatible parsing
+      const { parseFormula, renderFormula } = require('./calcV2');
+      const formula = parseFormula(code.trim());
+      const latex = renderFormula(formula, 'latex');
       return `<span class="calc-formula">${katex.renderToString(latex, {
         displayMode: true,
         throwOnError: false
