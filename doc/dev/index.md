@@ -21,6 +21,12 @@ Active implementation plans and design documents for in-progress work.
 | [[authorization-implementation]] | Ownership/authorization modalities | `authorization` `ownership` `modalities` |
 | [[todo]] | Outstanding development tasks | `planning` `tasks` |
 
+## Research (Active)
+
+| Document | Description | Tags |
+|----------|-------------|------|
+| [[../research/execution-trees-metaproofs]] | Execution trees, metaproofs, coinduction | `research` `execution` `metaproofs` |
+
 ## Completed
 
 | Document | Description | Completed |

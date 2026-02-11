@@ -100,6 +100,100 @@ Apply MPST methodology to CALC:
 
 ---
 
+### Execution Trees (Proofs Despite Choice)
+**Priority:** HIGH
+**Status:** Research complete — ready for implementation
+
+Build execution trees by branching at additive choice (&) points instead of stopping.
+
+**Problem:** Forward chaining stops at `A & B` because consumer picks branch.
+**Solution:** Explore BOTH branches, build tree of all possible executions.
+
+**Key concepts (from Ceptre):**
+- Stages run until **quiescence** (no rules fire)
+- Can run **interactive** (human picks) or **random** (engine picks)
+- Generate **trace graphs** of execution paths
+
+**Implementation tasks:**
+- [ ] Detect choice (with) in rule consequent
+- [ ] Fork state at branch points, explore both
+- [ ] Build recursive Tree structure with branch metadata
+- [ ] GraphViz dot output for visualization
+- [ ] Extract all leaf states for analysis
+
+**Applications:**
+- Model checking: verify property on all reachable states
+- Test generation: find paths to specific states
+- Game tree analysis: explore all player choices
+
+**See:** doc/research/execution-trees-metaproofs.md
+
+---
+
+### Metaproofs (Properties of Linear Logic Programs)
+**Priority:** HIGH
+**Status:** Research complete — design needed
+
+Prove properties **about** CALC programs: conservation, safety, termination.
+
+**Key metaproperties:**
+- **Conservation:** `∀ exec. total_supply(initial) = total_supply(final)`
+- **No counterfeiting:** Tokens only from mint or initial state
+- **Safety:** Bad states never reachable
+- **Progress:** System can always make a move
+- **Termination:** Forward chaining always reaches quiescence
+
+**Proof techniques:**
+1. **Reachability analysis** — Build exec tree, check all leaves
+2. **Inductive invariants** — Show `I(initial) ∧ ∀rule. I(pre) → I(post)`
+3. **External formalization** — Export to Twelf/Abella for high assurance
+
+**Implementation tasks:**
+- [ ] State property DSL (language to express invariants)
+- [ ] Invariant checker (initial + preservation verification)
+- [ ] Reachability queries ("can state S be reached?")
+- [ ] Counter-example generation (trace to violating state)
+
+**Depends on:** Execution trees (for reachability)
+
+**See:** doc/research/execution-trees-metaproofs.md
+
+---
+
+### Induction and Coinduction (Fixed Points)
+**Priority:** HIGH
+**Status:** Research complete — longer-term
+
+Handle unbounded/infinite behavior: recursive contracts, streaming payments.
+
+**μMALL approach** (Baelde & Miller):
+- Add least (μ) and greatest (ν) fixed points to MALL
+- Cut-elimination holds
+- Complete focused proof system
+- Undecidable in general (Π⁰₁-hard)
+
+**Cyclic proofs approach:**
+- Allow proofs with back-edges
+- Global progress condition for validity
+- Trades invariant complexity for proof structure
+
+**Applications:**
+- Recursive contract definitions: `νX. (pay ⊗ delay ⊗ X)`
+- Termination proofs for bounded execution (induction on gas)
+- Bisimulation for contract equivalence
+
+**Implementation tasks:**
+- [ ] Cycle detection in forward chaining
+- [ ] Bounded exploration with depth limit
+- [ ] Fixed point syntax (μ, ν connectives)
+- [ ] Progress checking for cyclic proofs
+
+**Depends on:** Execution trees, basic metaproofs
+
+**See:** doc/research/execution-trees-metaproofs.md
+
+---
+
 ## MEDIUM Priority
 
 ### Advanced Optimizations
