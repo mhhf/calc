@@ -18,9 +18,14 @@ Active implementation plans and design documents for in-progress work.
 | [[CORE_SPLIT]] | Design for generic vs focused prover separation | `architecture` `prover` `design` |
 | [[dsl_refactor]] | DSL migration from ll.json to .calc/.rules | `dsl` `celf` `tree-sitter` `migration` |
 | [[family-design]] | Calculus family abstraction (@mode, @role) | `family` `lnl` `architecture` |
-| [[primitives-implementation]] | @import, lazy storage, syntactic sugar | `primitives` `import` `storage` `sugar` |
 | [[authorization-implementation]] | Ownership/authorization modalities | `authorization` `ownership` `modalities` |
 | [[todo]] | Outstanding development tasks | `planning` `tasks` |
+
+## Completed
+
+| Document | Description | Completed |
+|----------|-------------|-----------|
+| [[primitives-implementation]] | binlit/strlit/charlit storage, type policies | 2026-02-11 |
 
 ## Document Lifecycle
 
