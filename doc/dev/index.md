@@ -19,6 +19,7 @@ Active implementation plans and design documents for in-progress work.
 | [[dsl_refactor]] | DSL migration from ll.json to .calc/.rules | `dsl` `celf` `tree-sitter` `migration` |
 | [[family-design]] | Calculus family abstraction (@mode, @role) | `family` `lnl` `architecture` |
 | [[authorization-implementation]] | Ownership/authorization modalities | `authorization` `ownership` `modalities` |
+| [[prooverlasagne]] | Layered prover architecture (L1 kernel → L2 generic → L3 focused → L4 strategy → L5 UI) | `architecture` `prover` `refactor` |
 | [[todo]] | Outstanding development tasks | `planning` `tasks` |
 
 ## Research (Active)
