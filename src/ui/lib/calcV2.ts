@@ -638,6 +638,7 @@ export function getApplicableRulesV2(seq: V2Sequent): V2ApplicableRule[] {
 export async function autoProveV2(seq: V2Sequent): Promise<{ success: boolean; proofTree?: V2ProofNode }> {
   ensureInitialized();
 
+  // The prover from browser.createProver already has ruleSpecs built in
   const prover = browser.createProver(browser.getCalculus());
   const result = prover.prove(seq, { maxDepth: 50 });
 
@@ -672,4 +673,12 @@ export function getSeqModule() {
 export function getBrowserModule() {
   ensureInitialized();
   return browser;
+}
+
+/**
+ * Get the ManualProofAPI (single source of truth for interactive proofs)
+ */
+export function getManualProofAPI() {
+  ensureInitialized();
+  return browser.getManualProofAPI();
 }

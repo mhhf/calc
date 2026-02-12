@@ -14,7 +14,7 @@
 @layer components {
   /* Inference Rule Styling - minimal like traditional proof theory */
   .inference-rule {
-    @apply inline-block text-center;
+    @apply inline-block text-center text-gray-900 dark:text-gray-100;
   }
 
   .inference-rule .premisses {
@@ -36,7 +36,7 @@
 
   /* Rule Card */
   .rule-card {
-    @apply bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-4;
+    @apply bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-4 text-gray-900 dark:text-gray-100;
   }
 
   .rule-card:hover {
@@ -70,6 +70,7 @@
     @apply w-full px-4 py-3 font-mono text-lg border-2 rounded-lg;
     @apply border-gray-300 dark:border-gray-600;
     @apply bg-white dark:bg-gray-800;
+    @apply text-gray-900 dark:text-gray-100;
     @apply focus:border-blue-500 dark:focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20;
   }
 
@@ -139,11 +140,15 @@
 }
 
 .prose-research pre {
-  @apply bg-gray-50 border border-gray-200 rounded-md p-4 overflow-x-auto mb-4;
+  @apply bg-gray-50 border border-gray-200 rounded-md p-4 overflow-x-auto mb-4 font-mono text-sm;
+  line-height: 1.4;
 }
 
 .prose-research pre code {
-  @apply bg-transparent p-0 border-0;
+  @apply bg-transparent p-0 border-0 text-sm font-mono;
+  line-height: 1.4;
+  display: block;
+  white-space: pre;
 }
 
 .prose-research blockquote {

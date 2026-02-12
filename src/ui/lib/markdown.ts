@@ -140,13 +140,14 @@ function escapeHtml(text: string): string {
 
 /**
  * Process code blocks - either server-render or mark for client hydration
+ * Stores results in the provided array and returns placeholders
  */
-async function processCodeBlocks(html: string): Promise<string> {
+async function processCodeBlocksWithPlaceholders(html: string, storage: string[]): Promise<string> {
   // Match code blocks with optional {processor, options} syntax
   // Format: ```{processor, option1=value1} or just ```processor
   const codeBlockRegex = /```(?:\{([^}]+)\}|(\w+))?\n([\s\S]*?)```/g;
 
-  const blocks: { match: string; replacement: string }[] = [];
+  const blocks: { match: string; index: number; replacement: string }[] = [];
   let match;
 
   while ((match = codeBlockRegex.exec(html)) !== null) {
@@ -185,10 +186,14 @@ async function processCodeBlocks(html: string): Promise<string> {
     // Regular code block with syntax highlighting
     else {
       const lang = processor || '';
-      replacement = `<pre><code class="language-${lang}">${escapeHtml(code)}</code></pre>`;
+      // Trim trailing newline that's typically before closing ```
+      const trimmedCode = code.replace(/\n$/, '');
+      replacement = `<pre><code class="language-${lang}">${escapeHtml(trimmedCode)}</code></pre>`;
     }
 
-    blocks.push({ match: fullMatch, replacement });
+    const index = storage.length;
+    storage.push(replacement);
+    blocks.push({ match: fullMatch, index, replacement: `CODE_BLOCK_${index}_PLACEHOLDER` });
   }
 
   // Replace all blocks (in reverse order to preserve indices)
@@ -250,13 +255,14 @@ export async function markdownToHtml(
   const { basePath = '/research' } = options;
   let html = markdown;
 
-  // Process code blocks first (before other transformations)
-  html = await processCodeBlocks(html);
+  // Extract code blocks first, replace with placeholders to protect from other processing
+  const codeBlocks: string[] = [];
+  html = await processCodeBlocksWithPlaceholders(html, codeBlocks);
 
   // Wiki-links
   html = processWikiLinks(html, basePath);
 
-  // Inline code (but not in code blocks)
+  // Inline code (but not in code blocks - they're already extracted)
   html = html.replace(/`([^`]+)`/g, '<code>$1</code>');
 
   // Headers
@@ -322,7 +328,7 @@ export async function markdownToHtml(
   html = processInlineMath(html);
 
   // Paragraphs (lines not already wrapped)
-  html = html.replace(/^(?!<[a-z]|<\/|$)(.+)$/gm, (_, content) => {
+  html = html.replace(/^(?!<[a-z]|<\/|$|CODE_BLOCK_)(.+)$/gm, (_, content) => {
     if (content.trim()) {
       return `<p>${content}</p>`;
     }
@@ -331,6 +337,11 @@ export async function markdownToHtml(
 
   // Clean up extra newlines
   html = html.replace(/\n{3,}/g, '\n\n');
+
+  // Restore code blocks from placeholders
+  for (let i = 0; i < codeBlocks.length; i++) {
+    html = html.replace(`CODE_BLOCK_${i}_PLACEHOLDER`, codeBlocks[i]);
+  }
 
   return html;
 }

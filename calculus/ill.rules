@@ -79,10 +79,8 @@ loli_l: deriv (seq G (comma (comma D (hyp any (loli A B))) D') C)
 % =============================================================================
 % With Rules (Additive Conjunction)
 % =============================================================================
-% Polarity: negative, but invertibility is SPECIAL for additives
-% &R is NOT invertible (must prove both with same resources - a choice)
-% &L1/&L2 ARE invertible (just project to one side)
-% These don't follow the standard pattern, so explicit @invertible is needed
+% Polarity: negative → &R is invertible (both premises share same context)
+% &L1/&L2 are the choice rules (project to one component) - not invertible
 
 %     Γ ; Δ |- A      Γ ; Δ |- B
 %    ────────────────────────────
@@ -90,24 +88,21 @@ loli_l: deriv (seq G (comma (comma D (hyp any (loli A B))) D') C)
 with_r: deriv (seq G D (hyp any (with A B)))
   <- deriv (seq G D (hyp any A))
   <- deriv (seq G D (hyp any B))
-  @pretty "&R"
-  @invertible false.
+  @pretty "&R".
 
 %      Γ ; Δ, A |- C
 %    ─────────────────
 %     Γ ; Δ, A & B |- C
 with_l1: deriv (seq G (comma D (hyp any (with A B))) C)
   <- deriv (seq G (comma D (hyp any A)) C)
-  @pretty "&L₁"
-  @invertible true.
+  @pretty "&L₁".
 
 %      Γ ; Δ, B |- C
 %    ─────────────────
 %     Γ ; Δ, A & B |- C
 with_l2: deriv (seq G (comma D (hyp any (with A B))) C)
   <- deriv (seq G (comma D (hyp any B)) C)
-  @pretty "&L₂"
-  @invertible true.
+  @pretty "&L₂".
 
 % =============================================================================
 % Unit Rules (Multiplicative Unit)

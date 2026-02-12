@@ -15,7 +15,7 @@ interface StructuredProofViewProps {
  */
 export default function StructuredProofView(props: StructuredProofViewProps) {
   return (
-    <div class="font-mono text-sm space-y-1 bg-white dark:bg-gray-800 rounded-lg p-4 border border-gray-200 dark:border-gray-700">
+    <div class="font-mono text-sm space-y-1 bg-white dark:bg-gray-800 rounded-lg p-4 border border-gray-200 dark:border-gray-700 text-gray-900 dark:text-gray-100">
       {/* Goal header */}
       <div class="mb-4 pb-2 border-b border-gray-200 dark:border-gray-700">
         <span class="font-bold text-gray-700 dark:text-gray-300">GOAL: </span>

@@ -36,7 +36,7 @@ export default function RuleDetailDialog(props: RuleDetailDialogProps) {
         onKeyDown={handleKeyDown}
         tabIndex={0}
       >
-        <div class="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-auto">
+        <div class="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-auto text-gray-900 dark:text-gray-100">
           {/* Header */}
           <div class="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700">
             <h2 class="text-lg font-semibold text-gray-900 dark:text-gray-100">
@@ -57,7 +57,7 @@ export default function RuleDetailDialog(props: RuleDetailDialogProps) {
             {/* Abstract Rule */}
             <section>
               <h3 class="text-sm font-medium text-gray-500 dark:text-gray-400 mb-2">Abstract Rule</h3>
-              <div class="bg-gray-50 dark:bg-gray-900 rounded-lg p-4">
+              <div class="bg-gray-50 dark:bg-gray-900 rounded-lg p-4 text-gray-900 dark:text-gray-100">
                 {/* Premises */}
                 <Show when={props.details!.abstractPremisesLatex.length > 0}>
                   <div class="flex flex-wrap gap-4 justify-center mb-2">
@@ -81,7 +81,7 @@ export default function RuleDetailDialog(props: RuleDetailDialogProps) {
             {/* Actual Conclusion */}
             <section>
               <h3 class="text-sm font-medium text-gray-500 dark:text-gray-400 mb-2">Applied to Sequent</h3>
-              <div class="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-4 text-center">
+              <div class="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-4 text-center text-gray-900 dark:text-gray-100">
                 <KaTeX latex={props.details!.actualConclusionLatex} />
               </div>
             </section>
@@ -90,7 +90,7 @@ export default function RuleDetailDialog(props: RuleDetailDialogProps) {
             <Show when={props.details!.substitution.length > 0}>
               <section>
                 <h3 class="text-sm font-medium text-gray-500 dark:text-gray-400 mb-2">Substitution (MGU)</h3>
-                <div class="bg-gray-50 dark:bg-gray-900 rounded-lg p-4">
+                <div class="bg-gray-50 dark:bg-gray-900 rounded-lg p-4 text-gray-900 dark:text-gray-100">
                   <div class="space-y-2">
                     <For each={props.details!.substitution}>
                       {(entry) => (
@@ -119,7 +119,7 @@ export default function RuleDetailDialog(props: RuleDetailDialogProps) {
                 <div class="space-y-2">
                   <For each={props.details!.instantiatedPremisesLatex}>
                     {(premise, index) => (
-                      <div class="bg-green-50 dark:bg-green-900/20 rounded-lg p-3">
+                      <div class="bg-green-50 dark:bg-green-900/20 rounded-lg p-3 text-gray-900 dark:text-gray-100">
                         <span class="text-xs text-gray-500 dark:text-gray-400 mr-2">{index() + 1}.</span>
                         <KaTeX latex={premise} />
                       </div>

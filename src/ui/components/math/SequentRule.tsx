@@ -110,7 +110,7 @@ export default function SequentRule(props: SequentRuleProps) {
   });
 
   return (
-    <div class="rule-card bg-white dark:bg-gray-800 rounded-lg p-4 border border-gray-200 dark:border-gray-700">
+    <div class="rule-card bg-white dark:bg-gray-800 rounded-lg p-4 border border-gray-200 dark:border-gray-700 text-gray-900 dark:text-gray-100">
       {/* Rule name */}
       <div class="flex items-center justify-between mb-3">
         <span class="font-mono text-sm font-semibold text-blue-600 dark:text-blue-400">

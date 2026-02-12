@@ -54,7 +54,7 @@ export default function ASTView(props: ASTViewProps) {
       }
     >
       {(tree) => (
-        <div class="bg-white dark:bg-gray-800 rounded-lg p-4 font-mono text-sm overflow-auto max-h-96">
+        <div class="bg-white dark:bg-gray-800 rounded-lg p-4 font-mono text-sm overflow-auto max-h-96 text-gray-900 dark:text-gray-100">
           <TreeNodeView node={tree()} />
         </div>
       )}

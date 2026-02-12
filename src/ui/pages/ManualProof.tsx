@@ -30,6 +30,7 @@ import {
   serializeProofTree,
   initBrowserRuleset,
   getContextEntries,
+  getLinearContext,
   type ProofTreeNode,
   type ApplicableRule,
   type ContextEntry,
@@ -96,11 +97,14 @@ export default function ManualProof() {
   // Get focus state from proof tree node (if any)
   const focusState = createMemo(() => {
     const node = selectedNode();
-    if (!node || !node.proverState) return null;
-    const state = node.proverState;
+    if (!node) return null;
+    // Focus info is stored in delta_in by applyRule for Focus actions
+    const focusPosition = node.delta_in?.focusPosition;
+    const focusId = node.delta_in?.focusId;
+    if (!focusPosition) return null;
     return {
-      position: state.focusPosition,
-      id: state.focusId,
+      position: focusPosition,
+      id: focusId,
     };
   });
 
@@ -108,9 +112,10 @@ export default function ManualProof() {
     const node = selectedNode();
     if (!node) return [];
     try {
-      return getApplicableRules(node.conclusion, {
+      // SUCKLESS: Pass the node directly - it extracts focus from delta_in
+      // No need to manually pass focusState
+      return getApplicableRules(node, {
         mode: proofMode(),
-        focusState: focusState() || undefined,
       });
     } catch (e) {
       console.error('Error getting applicable rules:', e);
@@ -172,25 +177,20 @@ export default function ManualProof() {
     if (!node) return;
 
     // Find the rule in applicable rules to check if it's a splitting rule
-    const rule = applicableRules().find(r => r.name === ruleName && r.position === position);
+    const rules = applicableRules();
+    const rule = rules.find(r => r.name === ruleName && r.position === position);
 
     // Check if this is a context-splitting rule with resources to distribute
     if (rule?.splitContext) {
-      // For left rules (position !== 'R'), the position is the principal formula's id
-      // The principal is being decomposed by the rule, so exclude it from distribution
-      const excludePrincipal = position !== 'R' ? position : undefined;
-      const entries = getContextEntries(node.conclusion, excludePrincipal);
-
-      // Only show dialog if there are actually resources to distribute
+      const entries = getContextEntries(node.conclusion, undefined, rule._apiAction);
       if (entries.length > 0) {
         setSplitDialogRule(rule);
         setSplitDialogPosition(position);
-        setSplitDialogPath(path);  // Save the path to ensure we apply to the correct node
-        return; // Dialog will handle the application
+        setSplitDialogPath(path);
+        return;
       }
     }
 
-    // Normal rule application
     applyRuleDirectly(ruleName, position);
   }
 
@@ -212,7 +212,7 @@ export default function ManualProof() {
     // Verify position exists for left rules (v2 uses index-based positions)
     if (position !== 'R') {
       const idx = parseInt(position, 10);
-      const linear = node.conclusion.linear || [];
+      const linear = getLinearContext(node.conclusion);
       if (isNaN(idx) || idx < 0 || idx >= linear.length) {
         console.error('applyRuleAtPath: position not found:', position);
         console.error('Available indices:', linear.length);
@@ -226,9 +226,9 @@ export default function ManualProof() {
 
       // Handle focus mode special actions
       if (proofMode() === 'focused') {
-        if (ruleName === 'Focus_L' || ruleName === 'Focus_R') {
-          // Focus action - use Proofstate.focus
-          newNode = applyFocusAction(node, position);
+        if (ruleName === 'Focus' || ruleName === 'Focus_L' || ruleName === 'Focus_R') {
+          // Focus action - handled by applyRule which stores focus info in delta_in
+          newNode = applyRule(node, ruleName, position);
         } else if (ruleName === 'Blur') {
           // Blur action - clear focus state
           newNode = applyBlurAction(node);
@@ -251,7 +251,7 @@ export default function ManualProof() {
         const newTree = setNodeAtPath(pt, path, newNode);
         setProofTree(newTree);
         pushHistory(newTree);
-        setSelectedPath(null);
+        setSelectedPath(null);  // Close modal, user clicks on next node to continue
       } else {
         setError('Failed to apply rule');
       }
@@ -277,7 +277,7 @@ export default function ManualProof() {
     // Verify the position still exists in this node's linear context (v2 uses indices)
     if (position !== 'R') {
       const idx = parseInt(position, 10);
-      const linear = node.conclusion.linear || [];
+      const linear = getLinearContext(node.conclusion);
       if (isNaN(idx) || idx < 0 || idx >= linear.length) {
         console.error('Position no longer valid in node:', position);
         console.error('Available indices:', linear.length);
@@ -290,7 +290,7 @@ export default function ManualProof() {
     }
 
     try {
-      const newNode = applyRuleWithSplit(node, rule.name, position, splits);
+      const newNode = applyRuleWithSplit(node, rule.name, position, splits, rule._apiAction);
 
       if (newNode) {
         const newTree = setNodeAtPath(pt, path, newNode);
@@ -352,7 +352,7 @@ export default function ManualProof() {
   }
 
   // Auto-complete selected node or entire tree
-  function handleAutoComplete() {
+  async function handleAutoComplete() {
     const pt = proofTree();
     const path = selectedPath();
 
@@ -363,7 +363,7 @@ export default function ManualProof() {
     try {
       // In unfocused mode, hide focus steps from the result
       const hideFocusSteps = proofMode() === 'unfocused';
-      const result = autoProve(targetPt, { hideFocusSteps });
+      const result = await autoProve(targetPt, { hideFocusSteps });
 
       if (result.success) {
         if (path && pt) {
@@ -437,11 +437,15 @@ export default function ManualProof() {
   }
 
   onMount(() => {
-    document.addEventListener('keydown', handleKeyDown);
+    if (typeof document !== 'undefined') {
+      document.addEventListener('keydown', handleKeyDown);
+    }
   });
 
   onCleanup(() => {
-    document.removeEventListener('keydown', handleKeyDown);
+    if (typeof document !== 'undefined') {
+      document.removeEventListener('keydown', handleKeyDown);
+    }
   });
 
   // Example sequents
@@ -456,7 +460,7 @@ export default function ManualProof() {
 
   return (
     <ErrorBoundary>
-      <div class="max-w-6xl mx-auto p-6 space-y-6">
+      <div class="max-w-6xl mx-auto p-6 space-y-6 text-gray-900 dark:text-gray-100">
         {/* Header */}
         <div>
           <h2 class="text-2xl font-bold text-gray-900 dark:text-white mb-2">
@@ -468,7 +472,7 @@ export default function ManualProof() {
         </div>
 
         {/* Input section */}
-        <div class="bg-white dark:bg-gray-800 rounded-lg p-4 shadow-sm border border-gray-200 dark:border-gray-700">
+        <div class="bg-white dark:bg-gray-800 rounded-lg p-4 shadow-sm border border-gray-200 dark:border-gray-700 text-gray-900 dark:text-gray-100">
           <FormulaInput
             value={input()}
             onInput={setInput}
@@ -608,7 +612,7 @@ export default function ManualProof() {
           </div>
 
           {/* Proof display */}
-          <div class="bg-white dark:bg-gray-800 rounded-lg p-6 shadow-sm border border-gray-200 dark:border-gray-700 overflow-x-auto">
+          <div class="bg-white dark:bg-gray-800 rounded-lg p-6 shadow-sm border border-gray-200 dark:border-gray-700 overflow-x-auto text-gray-900 dark:text-gray-100">
             <Show when={viewMode() === 'tree'}>
               <div class="flex justify-center min-w-fit">
                 <ClassicalProofTree
@@ -678,8 +682,8 @@ export default function ManualProof() {
             rule={splitDialogRule()!}
             contextEntries={getContextEntries(
               splitDialogNode()!.conclusion,
-              // Exclude principal formula for left rules (it's being decomposed, not distributed)
-              splitDialogPosition() !== 'R' ? splitDialogPosition()! : undefined
+              undefined,  // Don't manually exclude - API already computed correct entries
+              splitDialogRule()!._apiAction  // Use API's pre-computed contextEntries
             )}
             currentSequent={splitDialogNode()!.conclusion}
             position={splitDialogPosition()!}

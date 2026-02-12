@@ -61,7 +61,8 @@ export default function ContextSplitDialog(props: ContextSplitDialogProps) {
       props.currentSequent,
       props.rule.name,
       props.position,
-      split
+      split,
+      props.rule._apiAction
     );
   });
 
@@ -103,7 +104,7 @@ export default function ContextSplitDialog(props: ContextSplitDialogProps) {
         if (e.target === e.currentTarget) props.onCancel();
       }}
     >
-      <div class="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-hidden flex flex-col m-4">
+      <div class="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-hidden flex flex-col m-4 text-gray-900 dark:text-gray-100">
         {/* Header */}
         <div class="px-4 py-3 border-b border-gray-200 dark:border-gray-700 flex-shrink-0">
           <h3 class="text-lg font-bold text-gray-900 dark:text-white">
@@ -136,7 +137,7 @@ export default function ContextSplitDialog(props: ContextSplitDialogProps) {
                       >
                         {index() + 1}
                       </span>
-                      <div class="flex-1 bg-white dark:bg-gray-800 rounded-lg px-3 py-2 border border-gray-100 dark:border-gray-700 overflow-x-auto">
+                      <div class="flex-1 bg-white dark:bg-gray-800 rounded-lg px-3 py-2 border border-gray-100 dark:border-gray-700 overflow-x-auto text-gray-900 dark:text-gray-100">
                         <KaTeX latex={sequentToLatex(subgoal)} />
                       </div>
                     </div>
@@ -183,7 +184,7 @@ export default function ContextSplitDialog(props: ContextSplitDialogProps) {
                         >
                           {assignment()}
                         </span>
-                        <KaTeX latex={entry.formulaLatex} />
+                        <span class="text-gray-900 dark:text-gray-100"><KaTeX latex={entry.formulaLatex} /></span>
                       </div>
                       <span
                         class="text-xs font-medium"
@@ -229,7 +230,7 @@ export default function ContextSplitDialog(props: ContextSplitDialogProps) {
                 when={premise1Resources().length > 0}
                 fallback={<span class="text-sm text-gray-400 italic">Empty context</span>}
               >
-                <div class="space-y-1">
+                <div class="space-y-1 text-gray-900 dark:text-gray-100">
                   <For each={premise1Resources()}>
                     {(entry) => (
                       <div class="text-sm">
@@ -250,7 +251,7 @@ export default function ContextSplitDialog(props: ContextSplitDialogProps) {
                 when={premise2Resources().length > 0}
                 fallback={<span class="text-sm text-gray-400 italic">Empty context</span>}
               >
-                <div class="space-y-1">
+                <div class="space-y-1 text-gray-900 dark:text-gray-100">
                   <For each={premise2Resources()}>
                     {(entry) => (
                       <div class="text-sm">

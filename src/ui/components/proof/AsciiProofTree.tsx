@@ -62,7 +62,7 @@ export default function AsciiProofTree(props: AsciiProofTreeProps) {
       </div>
 
       {/* ASCII tree */}
-      <pre class="bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg p-4 overflow-auto font-mono text-sm whitespace-pre">
+      <pre class="bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg p-4 overflow-auto font-mono text-sm whitespace-pre text-gray-900 dark:text-gray-100">
         {asciiTree()}
       </pre>
     </div>

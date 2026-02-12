@@ -70,7 +70,7 @@ export default function Sandbox() {
 
   return (
     <ErrorBoundary>
-      <div class="max-w-4xl mx-auto p-6 space-y-6">
+      <div class="max-w-4xl mx-auto p-6 space-y-6 text-gray-900 dark:text-gray-100">
         <div>
           <h2 class="text-2xl font-bold text-gray-900 dark:text-white mb-2">
             Formula Sandbox
@@ -106,11 +106,11 @@ export default function Sandbox() {
         <Show when={parsed()}>
           <div class="space-y-4">
             {/* LaTeX rendering */}
-            <div class="bg-white dark:bg-gray-800 rounded-lg p-6 shadow-sm border border-gray-200 dark:border-gray-700">
+            <div class="bg-white dark:bg-gray-800 rounded-lg p-6 shadow-sm border border-gray-200 dark:border-gray-700 text-gray-900 dark:text-gray-100">
               <h3 class="text-sm font-medium text-gray-500 dark:text-gray-400 mb-3">
                 Rendered Formula
               </h3>
-              <div class="text-center text-2xl">
+              <div class="text-center text-2xl text-gray-900 dark:text-gray-100">
                 <KaTeX latex={latex()} display />
               </div>
             </div>

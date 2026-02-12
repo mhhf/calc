@@ -104,7 +104,7 @@ export default function JsonProofView(props: JsonProofViewProps) {
         <summary class="cursor-pointer hover:text-gray-800 dark:hover:text-gray-200">
           JSON Schema Info
         </summary>
-        <div class="mt-2 p-3 bg-gray-50 dark:bg-gray-900 rounded border border-gray-200 dark:border-gray-700 space-y-2">
+        <div class="mt-2 p-3 bg-gray-50 dark:bg-gray-900 rounded border border-gray-200 dark:border-gray-700 space-y-2 text-gray-800 dark:text-gray-200">
           <p><strong>version:</strong> Schema version (currently "1.0")</p>
           <p><strong>goal:</strong> The sequent being proved</p>
           <p><strong>complete:</strong> Whether all branches are closed</p>

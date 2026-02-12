@@ -55,14 +55,15 @@ export default function RuleSelector(props: RuleSelectorProps) {
         if (e.target === e.currentTarget) props.onCancel();
       }}
     >
-      <div class="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-3xl w-full max-h-[85vh] overflow-hidden flex flex-col m-4">
+      <div class="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-3xl w-full max-h-[85vh] overflow-hidden flex flex-col m-4 text-gray-900 dark:text-gray-100">
         {/* Header */}
         <div class="px-4 py-3 border-b border-gray-200 dark:border-gray-700 flex-shrink-0">
           <h3 class="text-lg font-bold text-gray-900 dark:text-white">
             Select Rule to Apply
           </h3>
-          <div class="mt-2 text-sm text-gray-600 dark:text-gray-400">
-            Current goal: <KaTeX latex={props.sequentLatex} />
+          <div class="mt-2 text-sm">
+            <span class="text-gray-600 dark:text-gray-400">Current goal: </span>
+            <span class="text-gray-900 dark:text-gray-100"><KaTeX latex={props.sequentLatex} /></span>
           </div>
         </div>
 
@@ -209,7 +210,7 @@ function RuleCard(props: RuleCardProps) {
               <div class="text-xs font-medium text-gray-500 dark:text-gray-400 mb-2 uppercase tracking-wide">
                 Abstract Rule
               </div>
-              <div class="bg-white dark:bg-gray-800 rounded-lg p-3 border border-gray-100 dark:border-gray-700">
+              <div class="bg-white dark:bg-gray-800 rounded-lg p-3 border border-gray-100 dark:border-gray-700 text-gray-900 dark:text-gray-100">
                 <SequentRule
                   name=""
                   ruleStrings={props.rule.ruleStrings}
@@ -226,7 +227,7 @@ function RuleCard(props: RuleCardProps) {
               <div class="text-xs font-medium text-gray-500 dark:text-gray-400 mb-2 uppercase tracking-wide">
                 Decomposing
               </div>
-              <div class="bg-blue-50 dark:bg-blue-900/20 rounded-lg px-3 py-2 border border-blue-100 dark:border-blue-800 inline-block">
+              <div class="bg-blue-50 dark:bg-blue-900/20 rounded-lg px-3 py-2 border border-blue-100 dark:border-blue-800 inline-block text-gray-900 dark:text-gray-100">
                 <KaTeX latex={props.rule.principalFormulaLatex!} />
               </div>
             </div>
@@ -276,7 +277,7 @@ function RuleCard(props: RuleCardProps) {
                       >
                         {index() + 1}
                       </span>
-                      <div class="flex-1 bg-gray-50 dark:bg-gray-900 rounded-lg px-3 py-2 border border-gray-100 dark:border-gray-700">
+                      <div class="flex-1 bg-gray-50 dark:bg-gray-900 rounded-lg px-3 py-2 border border-gray-100 dark:border-gray-700 text-gray-900 dark:text-gray-100">
                         <KaTeX latex={sequentToLatex(premise)} />
                       </div>
                     </div>

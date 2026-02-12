@@ -32,7 +32,7 @@ export default function MetaOverview() {
 
   return (
     <ErrorBoundary>
-      <div class="max-w-5xl mx-auto p-6 space-y-8">
+      <div class="max-w-5xl mx-auto p-6 space-y-8 text-gray-900 dark:text-gray-100">
         {/* Header */}
         <div>
           <h2 class="text-2xl font-bold text-gray-900 dark:text-white mb-2">

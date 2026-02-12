@@ -51,9 +51,9 @@ export default function ResearchDocument() {
               <Title>{data().title} - CALC Research</Title>
               {/* Frontmatter metadata display */}
               <Show when={data().frontmatter.summary || data().frontmatter.tags}>
-                <div class="mb-6 p-4 bg-gray-50 rounded-lg border border-gray-200">
+                <div class="mb-6 p-4 bg-gray-50 rounded-lg border border-gray-200 text-gray-900">
                   <Show when={data().frontmatter.summary}>
-                    <p class="text-gray-600 italic mb-2">{data().frontmatter.summary as string}</p>
+                    <p class="text-gray-700 italic mb-2">{data().frontmatter.summary as string}</p>
                   </Show>
                   <Show when={data().frontmatter.tags}>
                     <div class="flex flex-wrap gap-2">

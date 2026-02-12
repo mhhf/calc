@@ -33,13 +33,13 @@ export default function ClassicalProofTree(props: ClassicalProofTreeProps) {
   const isLeaf = () => props.pt.premisses.length === 0;
   const isNodeProven = createMemo(() => isProofComplete(props.pt));
 
-  // Get focus info from prover state if available
+  // Get focus info from delta_in if available
   const focusInfo = createMemo((): FocusInfo | undefined => {
-    const state = props.pt.proverState;
-    if (!state || !state.focusPosition) return undefined;
+    const deltaIn = props.pt.delta_in;
+    if (!deltaIn || !deltaIn.focusPosition) return undefined;
     return {
-      position: state.focusPosition as 'L' | 'R',
-      id: state.focusId,
+      position: deltaIn.focusPosition as 'L' | 'R',
+      id: deltaIn.focusId,
     };
   });
 
