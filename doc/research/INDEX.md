@@ -171,6 +171,11 @@
 
 **Tags:** `execution-trees` `metaproofs` `coinduction` `μMALL` `cyclic-proofs` `model-checking` `invariants`
 
+### [[muMALL-fixed-points]]
+**μMALL: Linear Logic with Fixed Points.** Comprehensive survey of Baelde & Miller's muMALL (MALL + μ/ν fixed points). Proof rules, focusing, cut-elimination, encoding exponentials (!A = ν X. A & X). Cyclic proofs (Doumane, Brotherston-Simpson, Fortier-Santocanale), GTC checking algorithms (Buchi, SCT, E-Cyclist), decision problems (Π⁰₁-hard). Implementations (Bedwyr, Abella, Linc, Rast). Session types (Caires-Pfenning, Derakhshan-Pfenning). Applications to CALC: metaproofs as fixed-point proofs, execution trees as unfoldings, cyclic proof engine design.
+
+**Tags:** `muMALL` `fixed-points` `induction` `coinduction` `cyclic-proofs` `session-types` `focusing` `Baelde` `Miller` `exponentials` `metaproofs`
+
 ### [[bdi-framework]]
 **Belief-Desire-Intention Agents.** Bratman's planning theory, Rao-Georgeff BDI logic (BDICTL + CTL*). Key insight: intentions are *linear* (consumed on execution), beliefs are *exponential* (persistent). Connects to Porello-Troquard's resource-sensitive agency and CALC's ownership modalities.
 
@@ -227,6 +232,11 @@
 **Comprehensive Optimization Research.** Benchmarks, implemented optimizations (first-arg indexing, memoization), deferred strategies catalog (constructor index, near-linear unification, arena allocation).
 
 **Tags:** `optimization` `benchmarking` `indexing` `memoization` `memory-management`
+
+### [[term-storage-models]]
+**Comparative Analysis of Term Storage.** Deep comparison of CALC's content-addressed store with storage models from Haskell (STG), OCaml, SML, Prolog (WAM), Coq, Agda, Idris 2, Lean 4, Isabelle, and Erlang/BEAM. Hash consing techniques, tagging systems, process isolation, and optimization strategies.
+
+**Tags:** `hash-consing` `storage` `memory` `WAM` `STG` `BEAM` `atoms` `interning` `GC`
 
 ---
 
@@ -316,7 +326,7 @@
 |---------|--------|--------------|
 | Threshold modalities (k-of-n) | Predicate, not modality | [[consensus-modalities-mpst]] |
 | Temporal modalities for derivatives | Unexplored | [[financial-primitives]] |
-| Cyclic proofs for fixpoints | Research complete, ready for impl | [[execution-trees-metaproofs]] |
+| μMALL fixed points & cyclic proofs | Deep survey complete, ready for impl | [[muMALL-fixed-points]] |
 
 ### Unexplored Directions
 
@@ -327,4 +337,4 @@
 
 ---
 
-*Last updated: 2026-02-10*
+*Last updated: 2026-02-12*
