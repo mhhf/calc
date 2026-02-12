@@ -41,22 +41,28 @@ describe('tree-sitter parser', () => {
     const result = await tsParser.parse('foo: a -o b.');
     assert.strictEqual(result.success, true, result.error);
     const decl = result.ast.declarations[0];
-    assert.strictEqual(decl.head.type, 'TermLoli');
+    // a -o b => TermApp(TermApp(TermIdent('loli'), a), b)
+    assert.strictEqual(decl.head.type, 'TermApp');
+    assert.strictEqual(decl.head.func.type, 'TermApp');
+    assert.strictEqual(decl.head.func.func.name, 'loli');
   });
 
   test('parses tensor', async () => {
     const result = await tsParser.parse('foo: a * b * c.');
     assert.strictEqual(result.success, true, result.error);
     const decl = result.ast.declarations[0];
-    // Tensor is left-associative: (a * b) * c
-    assert.strictEqual(decl.head.type, 'TermTensor');
+    // (a * b) * c => TermApp(TermApp(TermIdent('tensor'), TermApp(TermApp(TermIdent('tensor'), a), b)), c)
+    assert.strictEqual(decl.head.type, 'TermApp');
+    assert.strictEqual(decl.head.func.func.name, 'tensor');
   });
 
   test('parses bang', async () => {
     const result = await tsParser.parse('foo: !a.');
     assert.strictEqual(result.success, true, result.error);
     const decl = result.ast.declarations[0];
-    assert.strictEqual(decl.head.type, 'TermBang');
+    // !a => TermApp(TermIdent('bang'), a)
+    assert.strictEqual(decl.head.type, 'TermApp');
+    assert.strictEqual(decl.head.func.name, 'bang');
   });
 
   test('parses application', async () => {
@@ -71,7 +77,9 @@ describe('tree-sitter parser', () => {
     const result = await tsParser.parse('rule: a -o { b }.');
     assert.strictEqual(result.success, true, result.error);
     const decl = result.ast.declarations[0];
-    assert.strictEqual(decl.head.type, 'TermForward');
+    // a -o { b } => TermApp(TermApp(TermIdent('forward'), a), b)
+    assert.strictEqual(decl.head.type, 'TermApp');
+    assert.strictEqual(decl.head.func.func.name, 'forward');
   });
 
   test('parses backward chain', async () => {
@@ -86,7 +94,9 @@ describe('tree-sitter parser', () => {
     const result = await tsParser.parse('foo: (a & b).');
     assert.strictEqual(result.success, true, result.error);
     const decl = result.ast.declarations[0];
-    assert.strictEqual(decl.head.type, 'TermWith');
+    // a & b => TermApp(TermApp(TermIdent('with'), a), b)
+    assert.strictEqual(decl.head.type, 'TermApp');
+    assert.strictEqual(decl.head.func.func.name, 'with');
   });
 
   test('parses comments', async () => {

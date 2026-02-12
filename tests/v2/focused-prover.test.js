@@ -11,12 +11,14 @@ const Seq = require('../../lib/v2/kernel/sequent');
 const calculus = require('../../lib/v2/calculus');
 
 describe('v2 FocusedProver', () => {
-  let calc, AST, prover, ruleSpecs;
+  let calc, AST, prover, ruleSpecs, alternatives;
 
   before(async () => {
     calc = await calculus.loadILL();
     AST = calc.AST;
-    ruleSpecs = buildRuleSpecs(calc);
+    const built = buildRuleSpecs(calc);
+    ruleSpecs = built.specs;
+    alternatives = built.alternatives;
     prover = createProver(calc);
   });
 
@@ -117,14 +119,14 @@ describe('v2 FocusedProver', () => {
     it('should prove Q ⊢ Q', () => {
       const Q = AST.freevar('Q');
       const s = seq([Q], Q);
-      const result = prover.prove(s, { rules: ruleSpecs });
+      const result = prover.prove(s, { rules: ruleSpecs, alternatives });
       assert.strictEqual(result.success, true);
     });
 
     it('should prove A ⊢ A with atoms', () => {
       const A = AST.freevar('A');
       const s = seq([A], A);
-      const result = prover.prove(s, { rules: ruleSpecs });
+      const result = prover.prove(s, { rules: ruleSpecs, alternatives });
       assert.strictEqual(result.success, true);
     });
   });
@@ -134,7 +136,7 @@ describe('v2 FocusedProver', () => {
       const P = AST.freevar('P');
       const Q = AST.freevar('Q');
       const s = seq([P, AST.loli(P, Q)], Q);
-      const result = prover.prove(s, { rules: ruleSpecs });
+      const result = prover.prove(s, { rules: ruleSpecs, alternatives });
       assert.strictEqual(result.success, true);
     });
 
@@ -142,7 +144,7 @@ describe('v2 FocusedProver', () => {
       const A = AST.freevar('A');
       const B = AST.freevar('B');
       const s = seq([A], AST.loli(B, AST.tensor(A, B)));
-      const result = prover.prove(s, { rules: ruleSpecs });
+      const result = prover.prove(s, { rules: ruleSpecs, alternatives });
       assert.strictEqual(result.success, true);
     });
   });
@@ -153,7 +155,7 @@ describe('v2 FocusedProver', () => {
       const Q = AST.freevar('Q');
       const f = AST.tensor(P, Q);
       const s = seq([f], f);
-      const result = prover.prove(s, { rules: ruleSpecs });
+      const result = prover.prove(s, { rules: ruleSpecs, alternatives });
       assert.strictEqual(result.success, true);
     });
 
@@ -161,7 +163,7 @@ describe('v2 FocusedProver', () => {
       const P = AST.freevar('P');
       const Q = AST.freevar('Q');
       const s = seq([AST.tensor(P, Q)], AST.tensor(Q, P));
-      const result = prover.prove(s, { rules: ruleSpecs });
+      const result = prover.prove(s, { rules: ruleSpecs, alternatives });
       assert.strictEqual(result.success, true);
     });
 
@@ -169,7 +171,7 @@ describe('v2 FocusedProver', () => {
       const A = AST.freevar('A');
       const B = AST.freevar('B');
       const s = seq([A, B], AST.tensor(A, B));
-      const result = prover.prove(s, { rules: ruleSpecs });
+      const result = prover.prove(s, { rules: ruleSpecs, alternatives });
       assert.strictEqual(result.success, true);
     });
   });
@@ -179,7 +181,7 @@ describe('v2 FocusedProver', () => {
       const A = AST.freevar('A');
       const B = AST.freevar('B');
       const s = seq([AST.with(A, B)], A);
-      const result = prover.prove(s, { rules: ruleSpecs });
+      const result = prover.prove(s, { rules: ruleSpecs, alternatives });
       assert.strictEqual(result.success, true);
     });
 
@@ -187,14 +189,14 @@ describe('v2 FocusedProver', () => {
       const A = AST.freevar('A');
       const B = AST.freevar('B');
       const s = seq([AST.with(A, B)], B);
-      const result = prover.prove(s, { rules: ruleSpecs });
+      const result = prover.prove(s, { rules: ruleSpecs, alternatives });
       assert.strictEqual(result.success, true);
     });
 
     it('should prove A ⊢ A & A', () => {
       const A = AST.freevar('A');
       const s = seq([A], AST.with(A, A));
-      const result = prover.prove(s, { rules: ruleSpecs });
+      const result = prover.prove(s, { rules: ruleSpecs, alternatives });
       assert.strictEqual(result.success, true);
     });
   });
@@ -208,7 +210,7 @@ describe('v2 FocusedProver', () => {
         [AST.loli(AST.tensor(A, B), C)],
         AST.loli(A, AST.loli(B, C))
       );
-      const result = prover.prove(s, { rules: ruleSpecs });
+      const result = prover.prove(s, { rules: ruleSpecs, alternatives });
       assert.strictEqual(result.success, true);
     });
 
@@ -220,7 +222,7 @@ describe('v2 FocusedProver', () => {
         [AST.loli(A, AST.loli(B, C))],
         AST.loli(AST.tensor(A, B), C)
       );
-      const result = prover.prove(s, { rules: ruleSpecs });
+      const result = prover.prove(s, { rules: ruleSpecs, alternatives });
       assert.strictEqual(result.success, true);
     });
   });
@@ -234,7 +236,7 @@ describe('v2 FocusedProver', () => {
         [AST.loli(P, AST.with(R, Q))],
         AST.with(AST.loli(P, Q), AST.loli(P, R))
       );
-      const result = prover.prove(s, { rules: ruleSpecs });
+      const result = prover.prove(s, { rules: ruleSpecs, alternatives });
       assert.strictEqual(result.success, true);
     });
   });
@@ -242,20 +244,20 @@ describe('v2 FocusedProver', () => {
   describe('proof search - unit', () => {
     it('should prove ⊢ 1 with empty context', () => {
       const s = seq([], AST.one());
-      const result = prover.prove(s, { rules: ruleSpecs });
+      const result = prover.prove(s, { rules: ruleSpecs, alternatives });
       assert.strictEqual(result.success, true);
     });
 
     it('should prove 1 ⊢ 1', () => {
       const s = seq([AST.one()], AST.one());
-      const result = prover.prove(s, { rules: ruleSpecs });
+      const result = prover.prove(s, { rules: ruleSpecs, alternatives });
       assert.strictEqual(result.success, true);
     });
 
     it('should prove 1, A ⊢ A', () => {
       const A = AST.freevar('A');
       const s = seq([AST.one(), A], A);
-      const result = prover.prove(s, { rules: ruleSpecs });
+      const result = prover.prove(s, { rules: ruleSpecs, alternatives });
       assert.strictEqual(result.success, true);
     });
   });
@@ -264,7 +266,7 @@ describe('v2 FocusedProver', () => {
     it('should fail A ⊢ A ⊗ A (cannot duplicate)', () => {
       const A = AST.freevar('A');
       const s = seq([A], AST.tensor(A, A));
-      const result = prover.prove(s, { rules: ruleSpecs });
+      const result = prover.prove(s, { rules: ruleSpecs, alternatives });
       assert.strictEqual(result.success, false);
     });
 
@@ -272,7 +274,7 @@ describe('v2 FocusedProver', () => {
       const A = AST.freevar('A');
       const B = AST.freevar('B');
       const s = seq([A, B], A);
-      const result = prover.prove(s, { rules: ruleSpecs });
+      const result = prover.prove(s, { rules: ruleSpecs, alternatives });
       assert.strictEqual(result.success, false);
     });
   });
@@ -281,7 +283,7 @@ describe('v2 FocusedProver', () => {
     it('should produce valid proof tree for A ⊢ A', () => {
       const A = AST.freevar('A');
       const s = seq([A], A);
-      const result = prover.prove(s, { rules: ruleSpecs });
+      const result = prover.prove(s, { rules: ruleSpecs, alternatives });
 
       assert.ok(result.proofTree);
       assert.strictEqual(result.proofTree.proven, true);
@@ -292,7 +294,7 @@ describe('v2 FocusedProver', () => {
       const A = AST.freevar('A');
       const B = AST.freevar('B');
       const s = seq([AST.tensor(A, B)], AST.tensor(B, A));
-      const result = prover.prove(s, { rules: ruleSpecs });
+      const result = prover.prove(s, { rules: ruleSpecs, alternatives });
 
       assert.ok(result.proofTree);
       assert.strictEqual(result.proofTree.rule, 'tensor_l');
@@ -304,7 +306,7 @@ describe('v2 FocusedProver', () => {
     it('should prove !A ⊢ A (dereliction)', () => {
       const A = AST.freevar('A');
       const s = seq([AST.bang(A)], A);
-      const result = prover.prove(s, { rules: ruleSpecs });
+      const result = prover.prove(s, { rules: ruleSpecs, alternatives });
       assert.strictEqual(result.success, true);
     });
 
@@ -314,7 +316,7 @@ describe('v2 FocusedProver', () => {
       const A = AST.freevar('A');
       const bangA = AST.bang(A);
       const s = seq([bangA], bangA);
-      const result = prover.prove(s, { rules: ruleSpecs });
+      const result = prover.prove(s, { rules: ruleSpecs, alternatives });
       assert.strictEqual(result.success, true);
       assert.strictEqual(result.proofTree.rule, 'id');
     });
@@ -324,7 +326,7 @@ describe('v2 FocusedProver', () => {
       // A ⊸ !A means "given A, produce unlimited A" - not valid
       const A = AST.freevar('A');
       const s = seq([], AST.loli(A, AST.bang(A)));
-      const result = prover.prove(s, { rules: ruleSpecs });
+      const result = prover.prove(s, { rules: ruleSpecs, alternatives });
       // This should fail: after loli_r, we have A ⊢ !A
       // But promotion requires empty linear context
       assert.strictEqual(result.success, false);
@@ -333,7 +335,7 @@ describe('v2 FocusedProver', () => {
     it('should prove !A, !A ⊢ A ⊗ A (can use bang multiple times)', () => {
       const A = AST.freevar('A');
       const s = seq([AST.bang(A), AST.bang(A)], AST.tensor(A, A));
-      const result = prover.prove(s, { rules: ruleSpecs });
+      const result = prover.prove(s, { rules: ruleSpecs, alternatives });
       assert.strictEqual(result.success, true);
     });
 
@@ -341,7 +343,7 @@ describe('v2 FocusedProver', () => {
       // With just dereliction, !A becomes A, and we can't duplicate
       const A = AST.freevar('A');
       const s = seq([AST.bang(A)], AST.tensor(A, A));
-      const result = prover.prove(s, { rules: ruleSpecs });
+      const result = prover.prove(s, { rules: ruleSpecs, alternatives });
       // Without copy rule from cartesian, this should fail
       assert.strictEqual(result.success, false);
     });
@@ -363,7 +365,7 @@ describe('v2 FocusedProver', () => {
     it('should prove ·; A ⊢ A (copy from cartesian)', () => {
       const A = AST.freevar('A');
       const s = seqWithCart([], [A], A);
-      const result = prover.prove(s, { rules: ruleSpecs });
+      const result = prover.prove(s, { rules: ruleSpecs, alternatives });
       assert.strictEqual(result.success, true);
       assert.strictEqual(result.proofTree.rule, 'copy');
     });
@@ -372,7 +374,7 @@ describe('v2 FocusedProver', () => {
       // Empty linear + A in cartesian = can promote!
       const A = AST.freevar('A');
       const s = seqWithCart([], [A], AST.bang(A));
-      const result = prover.prove(s, { rules: ruleSpecs });
+      const result = prover.prove(s, { rules: ruleSpecs, alternatives });
       assert.strictEqual(result.success, true);
       assert.strictEqual(result.proofTree.rule, 'bang_r');
     });
@@ -381,7 +383,7 @@ describe('v2 FocusedProver', () => {
       // Can use cartesian formula multiple times via copy
       const A = AST.freevar('A');
       const s = seqWithCart([], [A], AST.tensor(A, A));
-      const result = prover.prove(s, { rules: ruleSpecs });
+      const result = prover.prove(s, { rules: ruleSpecs, alternatives });
       assert.strictEqual(result.success, true);
     });
   });

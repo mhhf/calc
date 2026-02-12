@@ -53,8 +53,16 @@ export interface Constructor {
 
 export interface Rule {
   name: string;
-  head: any;
-  premises: any[];
+  descriptor: {
+    connective: string | null;
+    side: 'l' | 'r' | null;
+    arity: number;
+    copyContext: boolean;
+    emptyLinear: boolean;
+    contextSplit: boolean;
+    contextFlow: string;
+    premises: Array<{ linear?: number[]; cartesian?: number[]; succedent?: number }>;
+  };
   invertible: boolean | null;
   pretty: string;
   structural: boolean;

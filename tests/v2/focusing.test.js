@@ -9,7 +9,7 @@ const { describe, it, before } = require('node:test');
 const assert = require('node:assert');
 
 const calculus = require('../../lib/v2/calculus');
-const { buildFocusingMeta, analyzeContextFlow, inferPolarity } = require('../../lib/v2/meta/focusing');
+const { buildFocusingMeta, inferPolarity } = require('../../lib/v2/meta/focusing');
 
 describe('v2 Focusing Metadata', () => {
   let ill;

@@ -3,13 +3,12 @@
  *
  * A. All 13 specs exist with correct metadata
  * B. makePremises produces correct premise sequents
- * C. extraLinear returns correct formula children
- * D. Integration: full proof search with generated specs
+ * C. Integration: full proof search with generated specs
  */
 const { describe, it, before } = require('node:test');
 const assert = require('node:assert');
 const calculus = require('../lib/v2/calculus');
-const { buildRuleSpecsFromAST } = require('../lib/v2/prover/rule-interpreter');
+const { buildRuleSpecs } = require('../lib/v2/prover/rule-interpreter');
 const Seq = require('../lib/v2/kernel/sequent');
 const Store = require('../lib/v2/kernel/store');
 
@@ -20,7 +19,7 @@ describe('Rule Interpreter', () => {
   before(async () => {
     calc = await calculus.loadILL();
     AST = calc.AST;
-    result = buildRuleSpecsFromAST(calc);
+    result = buildRuleSpecs(calc);
     specs = result.specs;
 
     p = AST.atom('p');
@@ -55,17 +54,6 @@ describe('Rule Interpreter', () => {
         assert.ok(specs[name], `spec ${name} exists`);
     });
 
-    it('numPremises', () => {
-      const expected = {
-        tensor_r: 2, tensor_l: 1, loli_r: 1, loli_l: 2,
-        with_r: 2, with_l1: 1, with_l2: 1,
-        one_r: 0, one_l: 1, bang_r: 1, bang_l: 1,
-        absorption: 1, copy: 1,
-      };
-      for (const [name, n] of Object.entries(expected))
-        assert.strictEqual(specs[name].numPremises, n, name);
-    });
-
     it('copyContext: only with_r copies', () => {
       assert.strictEqual(specs.with_r.copyContext, true);
       for (const name of ALL.filter(n => n !== 'with_r'))
@@ -77,18 +65,22 @@ describe('Rule Interpreter', () => {
       assert.ok(!specs.tensor_r.requiresEmptyDelta);
     });
 
-    it('absorption moves to cartesian', () => {
-      assert.strictEqual(specs.absorption.movesToCartesian, true);
-    });
-
-    it('copy is structural', () => {
-      assert.strictEqual(specs.copy.structural, true);
-      assert.ok(!specs.tensor_r.structural);
+    it('contextSplit for context-splitting rules', () => {
+      assert.strictEqual(specs.tensor_r.contextSplit, true);
+      assert.strictEqual(specs.loli_l.contextSplit, true);
+      assert.ok(!specs.with_r.contextSplit);
+      assert.ok(!specs.tensor_l.contextSplit);
     });
 
     it('alternatives map: bang_l → [absorption]', () => {
       assert.ok(result.alternatives.bang_l);
       assert.ok(result.alternatives.bang_l.includes('absorption'));
+    });
+
+    it('alternatives map: with_l → [with_l1, with_l2]', () => {
+      assert.ok(result.alternatives.with_l);
+      assert.ok(result.alternatives.with_l.includes('with_l1'));
+      assert.ok(result.alternatives.with_l.includes('with_l2'));
     });
   });
 
@@ -200,44 +192,7 @@ describe('Rule Interpreter', () => {
   });
 
   // =========================================================================
-  // C. extraLinear
-  // =========================================================================
-  describe('C. extraLinear', () => {
-
-    it('tensor_l: children of tensor', () => {
-      assert.deepStrictEqual(specs.tensor_l.extraLinear(AST.tensor(p, q)), [p, q]);
-    });
-
-    it('loli_r: first child of loli', () => {
-      assert.deepStrictEqual(specs.loli_r.extraLinear(AST.loli(p, q)), [p]);
-    });
-
-    it('loli_l: per-premise — [] for p0, [B] for p1', () => {
-      const f = AST.loli(p, q);
-      assert.deepStrictEqual(specs.loli_l.extraLinear(f, 0), []);
-      assert.deepStrictEqual(specs.loli_l.extraLinear(f, 1), [q]);
-    });
-
-    it('with_l1: first child', () => {
-      assert.deepStrictEqual(specs.with_l1.extraLinear(AST.with(p, q)), [p]);
-    });
-
-    it('with_l2: second child', () => {
-      assert.deepStrictEqual(specs.with_l2.extraLinear(AST.with(p, q)), [q]);
-    });
-
-    it('bang_l: child of bang', () => {
-      assert.deepStrictEqual(specs.bang_l.extraLinear(AST.bang(p)), [p]);
-    });
-
-    it('rules without extraLinear', () => {
-      for (const name of ['tensor_r', 'with_r', 'one_r', 'one_l', 'bang_r', 'absorption', 'copy'])
-        assert.strictEqual(specs[name].extraLinear, undefined, name);
-    });
-  });
-
-  // =========================================================================
-  // D. Integration — proof search
+  // C. Integration — proof search
   // =========================================================================
   describe('D. Proof search', () => {
     let prover;
@@ -248,10 +203,10 @@ describe('Rule Interpreter', () => {
     });
 
     const provable = (desc, mk) => it(desc, () => {
-      assert.ok(prover.prove(mk(), { rules: specs }).success, desc);
+      assert.ok(prover.prove(mk(), { rules: specs, alternatives: result.alternatives }).success, desc);
     });
     const unprovable = (desc, mk) => it(desc, () => {
-      assert.ok(!prover.prove(mk(), { rules: specs }).success, desc);
+      assert.ok(!prover.prove(mk(), { rules: specs, alternatives: result.alternatives }).success, desc);
     });
 
     provable('A |- A', () => mkSeq([p], p));

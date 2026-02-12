@@ -169,7 +169,7 @@ describe('ManualProofAPI - Rule Suggestions', () => {
       const C = AST.freevar('C');
       const state = api.createProofState(mkSeq([AST.bang(A)], C));
       const names = ruleNames(state, { mode: 'unfocused' });
-      assert.deepStrictEqual(names, ['bang_l']);
+      assert.deepStrictEqual(names, ['absorption', 'bang_l']);
     });
   });
 
