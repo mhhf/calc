@@ -14,7 +14,7 @@
 const fs = require('fs');
 const path = require('path');
 const calculus = require('../lib/calculus');
-const { computeParserTables, computeRendererFormats } = require('../lib/calculus/builders');
+const { computeParserTables, computeRendererFormats, computeConnectivesByType } = require('../lib/calculus/builders');
 const { computeRuleSpecMeta } = require('../lib/prover/rule-interpreter');
 
 async function main() {
@@ -27,6 +27,7 @@ async function main() {
   const parserTables = computeParserTables(ill.constructors);
   const rendererFormats = computeRendererFormats(ill.constructors);
   const ruleSpecMeta = computeRuleSpecMeta(ill.rules);
+  const connectivesByType = computeConnectivesByType(ill.constructors);
 
   // Extract the data we need for browser use
   // (everything except functions which can't be serialized)
@@ -44,7 +45,8 @@ async function main() {
     // Precomputed tables — skip recomputation at hydration
     parserTables,
     rendererFormats,
-    ruleSpecMeta
+    ruleSpecMeta,
+    connectivesByType
   };
 
   // Ensure output directory exists

@@ -183,23 +183,29 @@ O(1) identity for ground formulas via tag-based index. Highest-impact single opt
 Implemented: ExploreContext (incremental index + XOR hash), mutation+undo, strategy stack.
 
 ### Audit: Precompute Everything Possible at Compile Time
-**Priority:** VERY HIGH | **Status:** in-progress
+**Priority:** VERY HIGH | **Status:** DONE (audit complete, .calc/.rules fully precomputed)
 
-Profiling revealed that `tryMatch` was recomputing static rule properties (getPredicateHead,
-collectFreevars, collectOutputVars, dependsOnPersistentOutput) on every call — fixed by
-precomputing in `compileRule()`. But there may be MORE cases across the codebase where
-runtime computation repeats work that could be done once at compile/load time.
+**Completed:**
+- [x] `compileRule()` in forward.js precomputes `linearMeta` and `persistentOutputVars` (.ill data)
+- [x] `ill.json` precomputes `parserTables`, `rendererFormats`, `ruleSpecMeta`, `connectivesByType`
+- [x] Browser hydration skips all table derivation from constructors/rules
+- [x] `findAllMatches` spread eliminated — reusable `_indexedState` object (12.6% speedup)
 
-Done:
-- [x] `compileRule()` in forward.js precomputes `linearMeta` (pred, freevars, persistentDeps, pcSubPattern) and `persistentOutputVars`
-- [x] `ill.json` bundle precomputes `parserTables`, `rendererFormats`, `ruleSpecMeta` from .calc/.rules data — browser hydration skips table derivation
+**Audit result: .calc/.rules/.family data is fully precomputed.** Everything derivable
+from the calculus definition is now serialized in ill.json at build time. Browser hydration
+only creates closures (parser, renderer, AST constructors, makePremises). The Node path
+also uses precomputed metadata when available (ruleSpecMeta).
 
-Remaining:
-- [ ] Audit `forward.js` for remaining per-call computations on static data
-- [ ] Audit `prove.js` backward prover: freshenTerm/freshenClause create new Store entries every call — can variable suffixes be precomputed?
-- [ ] Audit `symexec.js` strategy layers for repeated work
-- [ ] Audit `unify.js` match/unify: isMetavar/isVar do Store.get every call — could tag be cached?
-- [ ] Check if `findAllMatches`'s `{ ...state, index: idx }` spread can be avoided
+**Remaining runtime computation is on .ill program data (not precomputable to JSON):**
+- `compileRule()` — walks .ill formula hashes (Store.get) to extract structure
+- `buildRuleIndex`/`buildOpcodeIndex` — groups compiled rules by trigger predicates
+- `buildStateIndex`/`hashState` — indexes execution state (changes every step)
+- `buildIndex` (backward) — indexes clauses/types for proof search
+- `freshenTerm`/`freshenClause` — renames variables per proof step
+
+**Low-priority Store-level opportunities:**
+- [ ] `isMetavar`/`isVar` do `Store.get(h)` per call — could maintain a `Set<hash>` of known metavars populated at `Store.put` time. Saves one Map lookup per unify/match step.
+- [ ] `freshenTerm`/`freshenClause` walk full clause trees. Could precompute variable position maps per clause at load time so freshening only visits variable positions.
 
 ### Symexec: 178-Match-Call Exhaustive Scans
 **Priority:** VERY HIGH | **Status:** needs-research
