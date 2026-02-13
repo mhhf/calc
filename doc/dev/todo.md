@@ -183,17 +183,21 @@ O(1) identity for ground formulas via tag-based index. Highest-impact single opt
 Implemented: ExploreContext (incremental index + XOR hash), mutation+undo, strategy stack.
 
 ### Audit: Precompute Everything Possible at Compile Time
-**Priority:** VERY HIGH | **Status:** needs-research
+**Priority:** VERY HIGH | **Status:** in-progress
 
 Profiling revealed that `tryMatch` was recomputing static rule properties (getPredicateHead,
 collectFreevars, collectOutputVars, dependsOnPersistentOutput) on every call — fixed by
 precomputing in `compileRule()`. But there may be MORE cases across the codebase where
 runtime computation repeats work that could be done once at compile/load time.
 
+Done:
+- [x] `compileRule()` in forward.js precomputes `linearMeta` (pred, freevars, persistentDeps, pcSubPattern) and `persistentOutputVars`
+- [x] `ill.json` bundle precomputes `parserTables`, `rendererFormats`, `ruleSpecMeta` from .calc/.rules data — browser hydration skips table derivation
+
+Remaining:
 - [ ] Audit `forward.js` for remaining per-call computations on static data
 - [ ] Audit `prove.js` backward prover: freshenTerm/freshenClause create new Store entries every call — can variable suffixes be precomputed?
 - [ ] Audit `symexec.js` strategy layers for repeated work
-- [ ] Audit `rule-interpreter.js` for anything recomputed per proof step
 - [ ] Audit `unify.js` match/unify: isMetavar/isVar do Store.get every call — could tag be cached?
 - [ ] Check if `findAllMatches`'s `{ ...state, index: idx }` spread can be avoided
 

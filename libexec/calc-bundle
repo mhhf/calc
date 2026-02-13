@@ -5,18 +5,28 @@
  * This script pre-processes the ILL calculus spec files and generates
  * a JSON bundle that can be used in the browser without file system access.
  *
+ * Precomputes all derived data from .family/.calc/.rules so that browser
+ * hydration only needs to create functions (closures), not recompute tables.
+ *
  * Usage: calc bundle [output-path]
  */
 
 const fs = require('fs');
 const path = require('path');
 const calculus = require('../lib/calculus');
+const { computeParserTables, computeRendererFormats } = require('../lib/calculus/builders');
+const { computeRuleSpecMeta } = require('../lib/prover/rule-interpreter');
 
 async function main() {
   const outputPath = process.argv[2] || path.join(__dirname, '../out/ill.json');
 
   console.log('Loading ILL calculus...');
   const ill = await calculus.loadILL();
+
+  // Precompute derived tables (pure data, serializable)
+  const parserTables = computeParserTables(ill.constructors);
+  const rendererFormats = computeRendererFormats(ill.constructors);
+  const ruleSpecMeta = computeRuleSpecMeta(ill.rules);
 
   // Extract the data we need for browser use
   // (everything except functions which can't be serialized)
@@ -29,7 +39,12 @@ async function main() {
     directives: ill.directives,
     rules: ill.rules,
     polarity: ill.polarity,
-    invertible: ill.invertible
+    invertible: ill.invertible,
+
+    // Precomputed tables — skip recomputation at hydration
+    parserTables,
+    rendererFormats,
+    ruleSpecMeta
   };
 
   // Ensure output directory exists
@@ -70,6 +85,22 @@ export interface Rule {
   numPremises: number;
 }
 
+export interface ParserTables {
+  operators: Array<{ name: string; op: string; precedence: number; assoc: string; ascii: string }>;
+  nullary: Record<string, string>;
+  unaryPrefix: Record<string, { name: string; precedence: number }>;
+}
+
+export interface RendererFormats {
+  ascii: Record<string, { template: string; prec: number }>;
+  latex: Record<string, { template: string; prec: number }>;
+}
+
+export interface RuleSpecMeta {
+  specData: Record<string, { copyContext: boolean; requiresEmptyDelta?: boolean; contextSplit?: boolean }>;
+  alternatives: Record<string, string[]>;
+}
+
 export interface ILLBundle {
   version: string;
   generated: string;
@@ -80,6 +111,9 @@ export interface ILLBundle {
   rules: Record<string, Rule>;
   polarity: Record<string, 'positive' | 'negative'>;
   invertible: Record<string, boolean>;
+  parserTables: ParserTables;
+  rendererFormats: RendererFormats;
+  ruleSpecMeta: RuleSpecMeta;
 }
 
 declare const bundle: ILLBundle;
