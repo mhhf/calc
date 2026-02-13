@@ -26,10 +26,10 @@ Store.get = h => {
   return realGet(h);
 };
 
-const realIntern = Store.intern.bind(Store);
-Store.intern = (t, c) => {
+const realPut = Store.put.bind(Store);
+Store.put = (t, c) => {
   if (currentOp && opStats[currentOp].interns != null) opStats[currentOp].interns++;
-  return realIntern(t, c);
+  return realPut(t, c);
 };
 
 function getHead(hash) {
@@ -84,7 +84,7 @@ function freshenTerm(h, counter, prefix = '') {
       const name = node.children[0];
       if (typeof name === 'string' && name.startsWith('_')) {
         if (!renamed.has(hash)) {
-          renamed.set(hash, Store.intern('freevar', [name + suffix]));
+          renamed.set(hash, Store.put('freevar', [name + suffix]));
         }
         return renamed.get(hash);
       }
@@ -99,7 +99,7 @@ function freshenTerm(h, counter, prefix = '') {
       }
       return c;
     });
-    return changed ? Store.intern(node.tag, newChildren) : hash;
+    return changed ? Store.put(node.tag, newChildren) : hash;
   }
 
   const result = go(h);
@@ -120,7 +120,7 @@ function freshenClause(clause, counter) {
       const name = node.children[0];
       if (typeof name === 'string' && name.startsWith('_')) {
         if (!renamed.has(h)) {
-          renamed.set(h, Store.intern('freevar', [name + suffix]));
+          renamed.set(h, Store.put('freevar', [name + suffix]));
         }
         return renamed.get(h);
       }
@@ -135,7 +135,7 @@ function freshenClause(clause, counter) {
       }
       return c;
     });
-    return changed ? Store.intern(node.tag, newChildren) : h;
+    return changed ? Store.put(node.tag, newChildren) : h;
   }
 
   const result = { head: go(clause.hash), premises: clause.premises.map(go) };

@@ -12,36 +12,36 @@ describe('FFI Convert', () => {
 
   describe('binToInt', () => {
     it('converts e to 0', () => {
-      const e = Store.intern('atom', ['e']);
+      const e = Store.put('atom', ['e']);
       assert.strictEqual(binToInt(e), 0n);
     });
 
     it('converts (i e) to 1', () => {
-      const e = Store.intern('atom', ['e']);
-      const i = Store.intern('atom', ['i']);
-      const i_e = Store.intern('app', [i, e]);
+      const e = Store.put('atom', ['e']);
+      const i = Store.put('atom', ['i']);
+      const i_e = Store.put('app', [i, e]);
       assert.strictEqual(binToInt(i_e), 1n);
     });
 
     it('converts (o (i e)) to 2', () => {
-      const e = Store.intern('atom', ['e']);
-      const i = Store.intern('atom', ['i']);
-      const o = Store.intern('atom', ['o']);
-      const i_e = Store.intern('app', [i, e]);
-      const o_i_e = Store.intern('app', [o, i_e]);
+      const e = Store.put('atom', ['e']);
+      const i = Store.put('atom', ['i']);
+      const o = Store.put('atom', ['o']);
+      const i_e = Store.put('app', [i, e]);
+      const o_i_e = Store.put('app', [o, i_e]);
       assert.strictEqual(binToInt(o_i_e), 2n);
     });
 
     it('converts (i (i e)) to 3', () => {
-      const e = Store.intern('atom', ['e']);
-      const i = Store.intern('atom', ['i']);
-      const i_e = Store.intern('app', [i, e]);
-      const i_i_e = Store.intern('app', [i, i_e]);
+      const e = Store.put('atom', ['e']);
+      const i = Store.put('atom', ['i']);
+      const i_e = Store.put('app', [i, e]);
+      const i_i_e = Store.put('app', [i, i_e]);
       assert.strictEqual(binToInt(i_i_e), 3n);
     });
 
     it('returns null for metavariable', () => {
-      const meta = Store.intern('freevar', ['_X']);
+      const meta = Store.put('freevar', ['_X']);
       assert.strictEqual(binToInt(meta), null);
     });
   });
@@ -83,7 +83,7 @@ describe('FFI Convert', () => {
 
   describe('isGround', () => {
     it('returns true for atoms', () => {
-      const e = Store.intern('atom', ['e']);
+      const e = Store.put('atom', ['e']);
       assert.strictEqual(isGround(e), true);
     });
 
@@ -93,19 +93,19 @@ describe('FFI Convert', () => {
     });
 
     it('returns false for metavariables', () => {
-      const meta = Store.intern('freevar', ['_X']);
+      const meta = Store.put('freevar', ['_X']);
       assert.strictEqual(isGround(meta), false);
     });
 
     it('returns true for non-meta freevars', () => {
-      const normal = Store.intern('freevar', ['X']);
+      const normal = Store.put('freevar', ['X']);
       assert.strictEqual(isGround(normal), true);
     });
 
     it('returns false for terms containing metavariables', () => {
-      const i = Store.intern('atom', ['i']);
-      const meta = Store.intern('freevar', ['_X']);
-      const app = Store.intern('app', [i, meta]);
+      const i = Store.put('atom', ['i']);
+      const meta = Store.put('freevar', ['_X']);
+      const app = Store.put('app', [i, meta]);
       assert.strictEqual(isGround(app), false);
     });
   });
@@ -137,14 +137,14 @@ describe('FFI Mode', () => {
 
     it('rejects metavar for + mode', () => {
       const a = intToBin(5n);
-      const b = Store.intern('freevar', ['_X']);
+      const b = Store.put('freevar', ['_X']);
       assert.strictEqual(ffi.mode.checkMode([a, b], '+ +'), false);
     });
 
     it('accepts metavar for - mode', () => {
       const a = intToBin(5n);
       const b = intToBin(3n);
-      const c = Store.intern('freevar', ['_C']);
+      const c = Store.put('freevar', ['_C']);
       assert.strictEqual(ffi.mode.checkMode([a, b, c], '+ + -'), true);
     });
 
@@ -162,7 +162,7 @@ describe('FFI Arithmetic', () => {
     it('computes 0 + 0 = 0', () => {
       const a = intToBin(0n);
       const b = intToBin(0n);
-      const c = Store.intern('freevar', ['_C']);
+      const c = Store.put('freevar', ['_C']);
 
       const result = ffi.arithmetic.plus([a, b, c]);
 
@@ -175,7 +175,7 @@ describe('FFI Arithmetic', () => {
     it('computes 1 + 1 = 2', () => {
       const a = intToBin(1n);
       const b = intToBin(1n);
-      const c = Store.intern('freevar', ['_C']);
+      const c = Store.put('freevar', ['_C']);
 
       const result = ffi.arithmetic.plus([a, b, c]);
 
@@ -186,7 +186,7 @@ describe('FFI Arithmetic', () => {
     it('computes 255 + 1 = 256', () => {
       const a = intToBin(255n);
       const b = intToBin(1n);
-      const c = Store.intern('freevar', ['_C']);
+      const c = Store.put('freevar', ['_C']);
 
       const result = ffi.arithmetic.plus([a, b, c]);
 
@@ -195,9 +195,9 @@ describe('FFI Arithmetic', () => {
     });
 
     it('fails mode check for non-ground first input', () => {
-      const a = Store.intern('freevar', ['_A']);
+      const a = Store.put('freevar', ['_A']);
       const b = intToBin(1n);
-      const c = Store.intern('freevar', ['_C']);
+      const c = Store.put('freevar', ['_C']);
 
       const result = ffi.arithmetic.plus([a, b, c]);
 
@@ -207,8 +207,8 @@ describe('FFI Arithmetic', () => {
 
     it('fails mode check for non-ground second input', () => {
       const a = intToBin(1n);
-      const b = Store.intern('freevar', ['_B']);
-      const c = Store.intern('freevar', ['_C']);
+      const b = Store.put('freevar', ['_B']);
+      const c = Store.put('freevar', ['_C']);
 
       const result = ffi.arithmetic.plus([a, b, c]);
 
@@ -220,7 +220,7 @@ describe('FFI Arithmetic', () => {
   describe('inc', () => {
     it('computes succ(0) = 1', () => {
       const a = intToBin(0n);
-      const b = Store.intern('freevar', ['_B']);
+      const b = Store.put('freevar', ['_B']);
 
       const result = ffi.arithmetic.inc([a, b]);
 
@@ -230,7 +230,7 @@ describe('FFI Arithmetic', () => {
 
     it('computes succ(255) = 256', () => {
       const a = intToBin(255n);
-      const b = Store.intern('freevar', ['_B']);
+      const b = Store.put('freevar', ['_B']);
 
       const result = ffi.arithmetic.inc([a, b]);
 
@@ -243,7 +243,7 @@ describe('FFI Arithmetic', () => {
     it('computes 3 * 5 = 15', () => {
       const a = intToBin(3n);
       const b = intToBin(5n);
-      const c = Store.intern('freevar', ['_C']);
+      const c = Store.put('freevar', ['_C']);
 
       const result = ffi.arithmetic.mul([a, b, c]);
 
@@ -254,7 +254,7 @@ describe('FFI Arithmetic', () => {
     it('computes 0 * 100 = 0', () => {
       const a = intToBin(0n);
       const b = intToBin(100n);
-      const c = Store.intern('freevar', ['_C']);
+      const c = Store.put('freevar', ['_C']);
 
       const result = ffi.arithmetic.mul([a, b, c]);
 
@@ -267,7 +267,7 @@ describe('FFI Arithmetic', () => {
     it('computes 5 - 3 = 2', () => {
       const a = intToBin(5n);
       const b = intToBin(3n);
-      const c = Store.intern('freevar', ['_C']);
+      const c = Store.put('freevar', ['_C']);
 
       const result = ffi.arithmetic.sub([a, b, c]);
 
@@ -278,7 +278,7 @@ describe('FFI Arithmetic', () => {
     it('computes 3 - 5 = 0 (saturating)', () => {
       const a = intToBin(3n);
       const b = intToBin(5n);
-      const c = Store.intern('freevar', ['_C']);
+      const c = Store.put('freevar', ['_C']);
 
       const result = ffi.arithmetic.sub([a, b, c]);
 
@@ -291,7 +291,7 @@ describe('FFI Arithmetic', () => {
     it('computes 10 / 3 = 3', () => {
       const a = intToBin(10n);
       const b = intToBin(3n);
-      const q = Store.intern('freevar', ['_Q']);
+      const q = Store.put('freevar', ['_Q']);
 
       const result = ffi.arithmetic.div([a, b, q]);
 
@@ -302,7 +302,7 @@ describe('FFI Arithmetic', () => {
     it('fails for division by zero', () => {
       const a = intToBin(10n);
       const b = intToBin(0n);
-      const q = Store.intern('freevar', ['_Q']);
+      const q = Store.put('freevar', ['_Q']);
 
       const result = ffi.arithmetic.div([a, b, q]);
 
@@ -315,7 +315,7 @@ describe('FFI Arithmetic', () => {
     it('computes 10 % 3 = 1', () => {
       const a = intToBin(10n);
       const b = intToBin(3n);
-      const r = Store.intern('freevar', ['_R']);
+      const r = Store.put('freevar', ['_R']);
 
       const result = ffi.arithmetic.mod([a, b, r]);
 

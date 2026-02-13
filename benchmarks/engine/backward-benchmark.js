@@ -191,7 +191,7 @@ function instrumentedProve(goal, clauses, types, opts = {}) {
         const name = node.children[0];
         if (typeof name === 'string' && name.startsWith('_')) {
           if (!renamed.has(hash)) {
-            renamed.set(hash, Store.intern('freevar', [name + suffix]));
+            renamed.set(hash, Store.put('freevar', [name + suffix]));
           }
           return renamed.get(hash);
         }
@@ -209,7 +209,7 @@ function instrumentedProve(goal, clauses, types, opts = {}) {
       });
 
       if (!changed) return hash;
-      return Store.intern(node.tag, newChildren);
+      return Store.put(node.tag, newChildren);
     }
 
     return freshen(h);
@@ -227,7 +227,7 @@ function instrumentedProve(goal, clauses, types, opts = {}) {
         const name = node.children[0];
         if (typeof name === 'string' && name.startsWith('_')) {
           if (!renamed.has(h)) {
-            renamed.set(h, Store.intern('freevar', [name + suffix]));
+            renamed.set(h, Store.put('freevar', [name + suffix]));
           }
           return renamed.get(h);
         }
@@ -245,7 +245,7 @@ function instrumentedProve(goal, clauses, types, opts = {}) {
       });
 
       if (!changed) return h;
-      return Store.intern(node.tag, newChildren);
+      return Store.put(node.tag, newChildren);
     }
 
     return {

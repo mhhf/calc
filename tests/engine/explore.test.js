@@ -86,16 +86,16 @@ describe('explore', { timeout: 10000 }, () => {
     beforeEach(() => { Store.clear(); });
 
     it('leaf returns single alternative', () => {
-      const h = Store.intern('atom', ['foo']);
+      const h = Store.put('atom', ['foo']);
       const alts = expandItem(h);
       assert.strictEqual(alts.length, 1);
       assert.deepStrictEqual(alts[0], { linear: [h], persistent: [] });
     });
 
     it('with(A,B) returns two alternatives', () => {
-      const a = Store.intern('atom', ['a']);
-      const b = Store.intern('atom', ['b']);
-      const w = Store.intern('with', [a, b]);
+      const a = Store.put('atom', ['a']);
+      const b = Store.put('atom', ['b']);
+      const w = Store.put('with', [a, b]);
       const alts = expandItem(w);
       assert.strictEqual(alts.length, 2);
       assert.deepStrictEqual(alts[0], { linear: [a], persistent: [] });
@@ -103,11 +103,11 @@ describe('explore', { timeout: 10000 }, () => {
     });
 
     it('tensor(A, with(B,C)) returns cross-product', () => {
-      const a = Store.intern('atom', ['a']);
-      const b = Store.intern('atom', ['b']);
-      const c = Store.intern('atom', ['c']);
-      const w = Store.intern('with', [b, c]);
-      const t = Store.intern('tensor', [a, w]);
+      const a = Store.put('atom', ['a']);
+      const b = Store.put('atom', ['b']);
+      const c = Store.put('atom', ['c']);
+      const w = Store.put('with', [b, c]);
+      const t = Store.put('tensor', [a, w]);
       const alts = expandItem(t);
       assert.strictEqual(alts.length, 2);
       assert.deepStrictEqual(alts[0].linear, [a, b]);
@@ -115,29 +115,29 @@ describe('explore', { timeout: 10000 }, () => {
     });
 
     it('with(with(A,B), C) returns three alternatives', () => {
-      const a = Store.intern('atom', ['a']);
-      const b = Store.intern('atom', ['b']);
-      const c = Store.intern('atom', ['c']);
-      const w1 = Store.intern('with', [a, b]);
-      const w2 = Store.intern('with', [w1, c]);
+      const a = Store.put('atom', ['a']);
+      const b = Store.put('atom', ['b']);
+      const c = Store.put('atom', ['c']);
+      const w1 = Store.put('with', [a, b]);
+      const w2 = Store.put('with', [w1, c]);
       const alts = expandItem(w2);
       assert.strictEqual(alts.length, 3);
     });
 
     it('bang(A) returns persistent alternative', () => {
-      const a = Store.intern('atom', ['a']);
-      const bang = Store.intern('bang', [a]);
+      const a = Store.put('atom', ['a']);
+      const bang = Store.put('bang', [a]);
       const alts = expandItem(bang);
       assert.strictEqual(alts.length, 1);
       assert.deepStrictEqual(alts[0], { linear: [], persistent: [a] });
     });
 
     it('loli(bang(P), monad(Q)) assumes P and produces Q', () => {
-      const p = Store.intern('atom', ['neq']);
-      const q = Store.intern('atom', ['result']);
-      const bangP = Store.intern('bang', [p]);
-      const monadQ = Store.intern('monad', [q]);
-      const loli = Store.intern('loli', [bangP, monadQ]);
+      const p = Store.put('atom', ['neq']);
+      const q = Store.put('atom', ['result']);
+      const bangP = Store.put('bang', [p]);
+      const monadQ = Store.put('monad', [q]);
+      const loli = Store.put('loli', [bangP, monadQ]);
       const alts = expandItem(loli);
       assert.strictEqual(alts.length, 1);
       assert.deepStrictEqual(alts[0].linear, [q]);
@@ -146,15 +146,15 @@ describe('explore', { timeout: 10000 }, () => {
     });
 
     it('with(loli(!P,{A}), loli(!Q,{B})) gives two guarded alternatives', () => {
-      const p = Store.intern('atom', ['neq']);
-      const q = Store.intern('atom', ['eq']);
-      const a = Store.intern('atom', ['zero']);
-      const b = Store.intern('atom', ['one']);
-      const bangP = Store.intern('bang', [p]);
-      const bangQ = Store.intern('bang', [q]);
-      const branch0 = Store.intern('loli', [bangP, Store.intern('monad', [a])]);
-      const branch1 = Store.intern('loli', [bangQ, Store.intern('monad', [b])]);
-      const w = Store.intern('with', [branch0, branch1]);
+      const p = Store.put('atom', ['neq']);
+      const q = Store.put('atom', ['eq']);
+      const a = Store.put('atom', ['zero']);
+      const b = Store.put('atom', ['one']);
+      const bangP = Store.put('bang', [p]);
+      const bangQ = Store.put('bang', [q]);
+      const branch0 = Store.put('loli', [bangP, Store.put('monad', [a])]);
+      const branch1 = Store.put('loli', [bangQ, Store.put('monad', [b])]);
+      const w = Store.put('with', [branch0, branch1]);
       const alts = expandItem(w);
       assert.strictEqual(alts.length, 2);
       // Branch 0: assume !neq, produce zero
@@ -170,23 +170,23 @@ describe('explore', { timeout: 10000 }, () => {
     beforeEach(() => { Store.clear(); });
 
     it('no choice returns single alternative', () => {
-      const a = Store.intern('atom', ['a']);
+      const a = Store.put('atom', ['a']);
       const alts = expandConsequentChoices({ linear: [a], persistent: [] });
       assert.strictEqual(alts.length, 1);
       assert.deepStrictEqual(alts[0].linear, [a]);
     });
 
     it('single with in linear produces two alternatives', () => {
-      const a = Store.intern('atom', ['a']);
-      const b = Store.intern('atom', ['b']);
-      const w = Store.intern('with', [a, b]);
+      const a = Store.put('atom', ['a']);
+      const b = Store.put('atom', ['b']);
+      const w = Store.put('with', [a, b]);
       const alts = expandConsequentChoices({ linear: [w], persistent: [] });
       assert.strictEqual(alts.length, 2);
     });
 
     it('preserves original persistent items', () => {
-      const a = Store.intern('atom', ['a']);
-      const p = Store.intern('atom', ['p']);
+      const a = Store.put('atom', ['a']);
+      const p = Store.put('atom', ['p']);
       const alts = expandConsequentChoices({ linear: [a], persistent: [p] });
       assert.strictEqual(alts.length, 1);
       assert(alts[0].persistent.includes(p));
@@ -223,9 +223,9 @@ describe('explore', { timeout: 10000 }, () => {
   describe('cycle detection', () => {
     it('detects back-edge in A -o { A } loop', () => {
       Store.clear();
-      const a = Store.intern('atom', ['loop_token']);
-      const loli = Store.intern('loli', [a, Store.intern('monad', [a])]);
-      const rule = forward.compileRule({ name: 'loop', hash: loli, antecedent: a, consequent: Store.intern('monad', [a]) });
+      const a = Store.put('atom', ['loop_token']);
+      const loli = Store.put('loli', [a, Store.put('monad', [a])]);
+      const rule = forward.compileRule({ name: 'loop', hash: loli, antecedent: a, consequent: Store.put('monad', [a]) });
 
       const state = forward.createState({ [a]: 1 }, {});
       const tree = explore(state, [rule], { maxDepth: 10 });

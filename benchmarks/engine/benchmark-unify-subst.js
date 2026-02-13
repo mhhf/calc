@@ -71,7 +71,7 @@ function applySimultaneous(h, theta) {
       }
       return c;
     });
-    return changed ? Store.intern(node.tag, newChildren) : hash;
+    return changed ? Store.put(node.tag, newChildren) : hash;
   }
   return go(h);
 }
@@ -103,7 +103,7 @@ function applySimultaneousMemo(h, theta) {
       return c;
     });
 
-    const result = changed ? Store.intern(node.tag, newChildren) : hash;
+    const result = changed ? Store.put(node.tag, newChildren) : hash;
     memo.set(hash, result);
     return result;
   }
@@ -233,17 +233,17 @@ function occursInUF(v, h, uf) {
 // ============================================================================
 
 function buildTestCases() {
-  const e = Store.intern('atom', ['e']);
-  const o = Store.intern('atom', ['o']);
-  const i = Store.intern('atom', ['i']);
-  const plus = Store.intern('atom', ['plus']);
-  const f = Store.intern('atom', ['f']);
+  const e = Store.put('atom', ['e']);
+  const o = Store.put('atom', ['o']);
+  const i = Store.put('atom', ['i']);
+  const plus = Store.put('atom', ['plus']);
+  const f = Store.put('atom', ['f']);
 
   // Helper to build nested term
   function buildNested(depth, base = e) {
     let term = base;
     for (let j = 0; j < depth; j++) {
-      term = Store.intern('app', [j % 2 === 0 ? o : i, term]);
+      term = Store.put('app', [j % 2 === 0 ? o : i, term]);
     }
     return term;
   }
@@ -252,7 +252,7 @@ function buildTestCases() {
   function buildApp(head, ...args) {
     let term = head;
     for (const arg of args) {
-      term = Store.intern('app', [term, arg]);
+      term = Store.put('app', [term, arg]);
     }
     return term;
   }
@@ -260,9 +260,9 @@ function buildTestCases() {
   const cases = {};
 
   // Case 1: Small unification (3 vars)
-  const X = Store.intern('freevar', ['_X']);
-  const Y = Store.intern('freevar', ['_Y']);
-  const Z = Store.intern('freevar', ['_Z']);
+  const X = Store.put('freevar', ['_X']);
+  const Y = Store.put('freevar', ['_Y']);
+  const Z = Store.put('freevar', ['_Z']);
   cases.smallUnify = {
     pattern: buildApp(plus, X, Y, Z),
     ground: buildApp(plus, buildNested(3), buildNested(4), buildNested(5)),
@@ -270,7 +270,7 @@ function buildTestCases() {
   };
 
   // Case 2: Medium unification (6 vars)
-  const vars6 = Array.from({length: 6}, (_, i) => Store.intern('freevar', ['_V' + i]));
+  const vars6 = Array.from({length: 6}, (_, i) => Store.put('freevar', ['_V' + i]));
   cases.mediumUnify = {
     pattern: buildApp(f, ...vars6),
     ground: buildApp(f, ...vars6.map((_, i) => buildNested(3 + i))),
@@ -278,7 +278,7 @@ function buildTestCases() {
   };
 
   // Case 3: Large unification (12 vars)
-  const vars12 = Array.from({length: 12}, (_, i) => Store.intern('freevar', ['_W' + i]));
+  const vars12 = Array.from({length: 12}, (_, i) => Store.put('freevar', ['_W' + i]));
   cases.largeUnify = {
     pattern: buildApp(f, ...vars12),
     ground: buildApp(f, ...vars12.map((_, i) => buildNested(2 + (i % 5)))),
@@ -417,7 +417,7 @@ function createProver(unifyFn, applyFn) {
         const name = node.children[0];
         if (typeof name === 'string' && name.startsWith('_')) {
           if (!renamed.has(hash)) {
-            renamed.set(hash, Store.intern('freevar', [name + suffix]));
+            renamed.set(hash, Store.put('freevar', [name + suffix]));
           }
           return renamed.get(hash);
         }
@@ -432,7 +432,7 @@ function createProver(unifyFn, applyFn) {
         }
         return c;
       });
-      return changed ? Store.intern(node.tag, newChildren) : hash;
+      return changed ? Store.put(node.tag, newChildren) : hash;
     }
     return go(h);
   }
@@ -448,7 +448,7 @@ function createProver(unifyFn, applyFn) {
         const name = node.children[0];
         if (typeof name === 'string' && name.startsWith('_')) {
           if (!renamed.has(h)) {
-            renamed.set(h, Store.intern('freevar', [name + suffix]));
+            renamed.set(h, Store.put('freevar', [name + suffix]));
           }
           return renamed.get(h);
         }
@@ -463,7 +463,7 @@ function createProver(unifyFn, applyFn) {
         }
         return c;
       });
-      return changed ? Store.intern(node.tag, newChildren) : h;
+      return changed ? Store.put(node.tag, newChildren) : h;
     }
 
     return {

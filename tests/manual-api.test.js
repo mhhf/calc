@@ -20,11 +20,11 @@ describe('ManualProofAPI', () => {
   describe('state creation', () => {
     it('should create initial proof state', () => {
       // Create test sequent: A -o B, C |- D
-      const A = Store.intern('atom', ['A']);
-      const B = Store.intern('atom', ['B']);
-      const C = Store.intern('atom', ['C']);
-      const D = Store.intern('atom', ['D']);
-      const loli = Store.intern('loli', [A, B]);
+      const A = Store.put('atom', ['A']);
+      const B = Store.put('atom', ['B']);
+      const C = Store.put('atom', ['C']);
+      const D = Store.put('atom', ['D']);
+      const loli = Store.put('loli', [A, B]);
       const seq = Seq.fromArrays([loli, C], [], D);
 
       const state = api.createProofState(seq);
@@ -36,11 +36,11 @@ describe('ManualProofAPI', () => {
 
   describe('applicable actions', () => {
     it('should show focus actions in inversion phase', () => {
-      const A = Store.intern('atom', ['A']);
-      const B = Store.intern('atom', ['B']);
-      const C = Store.intern('atom', ['C']);
-      const D = Store.intern('atom', ['D']);
-      const loli = Store.intern('loli', [A, B]);
+      const A = Store.put('atom', ['A']);
+      const B = Store.put('atom', ['B']);
+      const C = Store.put('atom', ['C']);
+      const D = Store.put('atom', ['D']);
+      const loli = Store.put('loli', [A, B]);
       const seq = Seq.fromArrays([loli, C], [], D);
 
       const state = api.createProofState(seq);
@@ -55,11 +55,11 @@ describe('ManualProofAPI', () => {
     });
 
     it('should show loli_l after focusing', () => {
-      const A = Store.intern('atom', ['A']);
-      const B = Store.intern('atom', ['B']);
-      const C = Store.intern('atom', ['C']);
-      const D = Store.intern('atom', ['D']);
-      const loli = Store.intern('loli', [A, B]);
+      const A = Store.put('atom', ['A']);
+      const B = Store.put('atom', ['B']);
+      const C = Store.put('atom', ['C']);
+      const D = Store.put('atom', ['D']);
+      const loli = Store.put('loli', [A, B]);
       const seq = Seq.fromArrays([loli, C], [], D);
 
       const state = api.createProofState(seq);
@@ -84,11 +84,11 @@ describe('ManualProofAPI', () => {
 
   describe('context entries for split', () => {
     it('should provide context entries for splitting rules', () => {
-      const A = Store.intern('atom', ['A']);
-      const B = Store.intern('atom', ['B']);
-      const C = Store.intern('atom', ['C']);
-      const D = Store.intern('atom', ['D']);
-      const loli = Store.intern('loli', [A, B]);
+      const A = Store.put('atom', ['A']);
+      const B = Store.put('atom', ['B']);
+      const C = Store.put('atom', ['C']);
+      const D = Store.put('atom', ['D']);
+      const loli = Store.put('loli', [A, B]);
       const seq = Seq.fromArrays([loli, C], [], D);
 
       const state = api.createProofState(seq);
@@ -105,10 +105,10 @@ describe('ManualProofAPI', () => {
 
   describe('rendering', () => {
     it('should render sequent with focus highlighting', () => {
-      const A = Store.intern('atom', ['A']);
-      const B = Store.intern('atom', ['B']);
-      const C = Store.intern('atom', ['C']);
-      const loli = Store.intern('loli', [A, B]);
+      const A = Store.put('atom', ['A']);
+      const B = Store.put('atom', ['B']);
+      const C = Store.put('atom', ['C']);
+      const loli = Store.put('loli', [A, B]);
       const seq = Seq.fromArrays([loli, C], [], C);
 
       const rendered = api.renderSequent(seq, 'latex', { position: 'L', index: 0 });

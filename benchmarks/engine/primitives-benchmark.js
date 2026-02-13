@@ -115,7 +115,7 @@ console.log('\n--- FFI Operations with binlit ---\n');
 Store.clear();
 const a = intToBin(1_000_000n);
 const b = intToBin(2_000_000n);
-const c = Store.intern('freevar', ['_C']);
+const c = Store.put('freevar', ['_C']);
 
 const ffiResults = [
   benchmark('plus', () => arithmetic.plus([a, b, c]), 10000),
@@ -137,7 +137,7 @@ Store.clear();
 const d18 = intToBin(18n);
 const fp_a = intToBin(1_500_000_000_000_000_000n); // 1.5
 const fp_b = intToBin(2_000_000_000_000_000_000n); // 2.0
-const fp_c = Store.intern('freevar', ['_C']);
+const fp_c = Store.put('freevar', ['_C']);
 
 const fixedResults = [
   benchmark('fixed_mul (18 decimals)', () => arithmetic.fixed_mul([d18, fp_a, fp_b, fp_c]), 10000),
@@ -157,8 +157,8 @@ const { strToHash, hashToStr } = require('../../lib/engine/ffi/convert');
 Store.clear();
 const str_a = strToHash('hello');
 const str_b = strToHash(' world');
-const str_c = Store.intern('freevar', ['_C']);
-const str_len = Store.intern('freevar', ['_Len']);
+const str_c = Store.put('freevar', ['_C']);
+const str_len = Store.put('freevar', ['_Len']);
 
 const stringResults = [
   benchmark('string_concat', () => arithmetic.string_concat([str_a, str_b, str_c]), 10000),
