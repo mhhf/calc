@@ -210,7 +210,8 @@ describe('tree-sitter parser annotations', () => {
     const result = await tsParser.parse('tensor: type @latex "#1 \\\\otimes #2".');
     assert.strictEqual(result.success, true, result.error);
     const decl = result.ast.declarations[0];
-    assert.strictEqual(decl.annotations[0].value.value, '#1 \\\\otimes #2');
+    // Parser unescapes \\\\ to \\ in string literals, producing \otimes (LaTeX command)
+    assert.strictEqual(decl.annotations[0].value.value, '#1 \\otimes #2');
   });
 
   test('parses annotation with precedence value', async () => {

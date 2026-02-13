@@ -1,7 +1,7 @@
 ---
 title: TODO
 created: 2026-02-10
-modified: 2026-02-11
+modified: 2026-02-13
 summary: Outstanding development tasks
 tags: [planning, tasks]
 status: active
@@ -13,7 +13,85 @@ Outstanding tasks for the CALC project.
 
 ---
 
+## HIGHEST Priority
+
+### Prover Lasagne Implementation
+**Priority:** HIGHEST
+**Status:** Design complete — ready for implementation
+**See:** doc/dev/prooverlasagne.md
+
+Implement the 5-layer prover architecture:
+- [ ] L1: Kernel (proof checker / verifier)
+- [ ] L2: Generic prover (exhaustive search, backtracking)
+- [ ] L3: Focused discipline (polarity, inversion phases)
+- [ ] L4: Strategy layer (manual, auto, forward, symexec)
+- [ ] Clean up browser.js duplication (extract shared builders)
+- [ ] Run full test suite, rebuild bundle
+
+### UI Refactor (L5 Thinning)
+**Priority:** HIGHEST — do immediately after prover API
+**Status:** Blocked by prover lasagne implementation
+
+`proofLogicV2.ts` (854 lines) is NOT the "thin wrapper" it should be. It contains:
+- Hardcoded rule schemas (`buildAbstractRuleStrings`)
+- Its own `ProofTreeNode` type with `delta_in`/`delta_out`
+- Focus handling logic (`applyFocusAction`, `collapseFocusSteps`)
+- Category assignment (`getRuleCategory`)
+- Serialization/export (115 lines)
+- Debug utilities on `window.calcDebug`
+
+After the prover API is clean (L1-L4), refactor L5:
+- [ ] Move rule schemas to L4a (manual strategy)
+- [ ] Move focus handling to L3
+- [ ] Move proof tree types to L2
+- [ ] Make proofLogicV2.ts a pure view adapter (~200 lines)
+- [ ] Remove `window.calcDebug` hacks
+
+---
+
 ## HIGH Priority
+
+### Lax Monad `{A}` — Backward/Forward Integration
+**Priority:** HIGH
+**Status:** needs-research
+
+CLF/Celf/LolliMon integrate forward and backward chaining via the lax monad `{A}`:
+entering the monad switches from backward (L2/L3) to forward (L4c), exiting at quiescence.
+
+- [ ] Study CLF, Celf, LolliMon lax monad semantics in depth
+- [ ] Design how `{A}` integrates with the prover lasagne layers
+- [ ] Prototype forward↔backward mode switch
+- [ ] Understand relationship to Ceptre stages
+
+**See:** doc/dev/prooverlasagne.md §3.6.1
+
+---
+
+### Analysis Layer / Metaproofs
+**Priority:** HIGH
+**Status:** needs-research
+
+Execution tree analysis, invariant checking, property verification.
+
+- [ ] Study Twelf/Abella approaches to metaproofs over linear logic
+- [ ] Design analysis layer that sits above L4
+- [ ] Property DSL for expressing invariants
+
+**See:** doc/research/execution-trees-metaproofs.md
+
+---
+
+### Dual Representation Elimination
+**Priority:** MEDIUM
+**Status:** needs-benchmarks
+
+`seq.contexts.linear` array vs `delta` multiset costs ~25% runtime. Need benchmarks before changing.
+
+- [ ] Profile actual overhead with `CALC_PROFILE=1`
+- [ ] Benchmark array vs multiset on real proof searches
+- [ ] Decide whether to unify
+
+---
 
 ### Multimodal Linear Logic Implementation
 **Priority:** HIGH

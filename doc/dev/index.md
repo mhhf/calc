@@ -15,9 +15,7 @@ Active implementation plans and design documents for in-progress work.
 | Document | Description | Tags |
 |----------|-------------|------|
 | [[architecture-pipelines]] | v2 architecture implementation tracker | `architecture` `v2` `implementation` |
-| [[CORE_SPLIT]] | Design for generic vs focused prover separation | `architecture` `prover` `design` |
 | [[dsl_refactor]] | DSL migration from ll.json to .calc/.rules | `dsl` `celf` `tree-sitter` `migration` |
-| [[family-design]] | Calculus family abstraction (@mode, @role) | `family` `lnl` `architecture` |
 | [[authorization-implementation]] | Ownership/authorization modalities | `authorization` `ownership` `modalities` |
 | [[prooverlasagne]] | Layered prover architecture (L1 kernel → L2 generic → L3 focused → L4 strategy → L5 UI) | `architecture` `prover` `refactor` |
 | [[todo]] | Outstanding development tasks | `planning` `tasks` |
@@ -33,6 +31,10 @@ Active implementation plans and design documents for in-progress work.
 | Document | Description | Completed |
 |----------|-------------|-----------|
 | [[primitives-implementation]] | binlit/strlit/charlit storage, type policies | 2026-02-11 |
+| ~~CORE_SPLIT~~ | Superseded by [[prooverlasagne]] §3.2-3.3 | 2026-02-13 |
+| ~~manual-proof-architecture~~ | Superseded by [[prooverlasagne]] §3.5, §3.7 | 2026-02-13 |
+| ~~manual-prover-refactor~~ | All bugs fixed, tests pass (67/67) | 2026-02-13 |
+| [[../documentation/family-design]] | Calculus family abstraction (moved to docs) | 2026-02-13 |
 
 ## Document Lifecycle
 

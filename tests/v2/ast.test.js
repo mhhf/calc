@@ -102,20 +102,21 @@ describe('v2 AST utilities', () => {
   });
 
   describe('copy', () => {
-    it('should deep copy AST', () => {
+    it('should copy AST (identity for content-addressed terms)', () => {
       const f = AST.tensor(AST.freevar('A'), AST.freevar('B'));
       const f2 = ast.copy(f);
-      assert.notStrictEqual(f, f2);
-      assert.notStrictEqual(f.children[0], f2.children[0]);
+      // Content-addressed: copy is identity (same hash = same immutable term)
+      assert.strictEqual(f, f2);
       assert.strictEqual(ast.eq(f, f2), true);
     });
 
     it('should preserve structure', () => {
       const f = AST.loli(AST.tensor(AST.freevar('A'), AST.freevar('B')), AST.freevar('C'));
       const f2 = ast.copy(f);
-      assert.strictEqual(f2.tag, 'loli');
-      assert.strictEqual(f2.children[0].tag, 'tensor');
-      assert.strictEqual(f2.children[1].tag, 'freevar');
+      // Content-addressed: use ast.tag/ast.children to inspect structure
+      assert.strictEqual(ast.tag(f2), 'loli');
+      assert.strictEqual(ast.tag(ast.children(f2)[0]), 'tensor');
+      assert.strictEqual(ast.tag(ast.children(f2)[1]), 'freevar');
     });
   });
 
@@ -150,14 +151,15 @@ describe('v2 AST utilities', () => {
   describe('mapChildren', () => {
     it('should map over children', () => {
       const f = AST.tensor(AST.freevar('A'), AST.freevar('B'));
+      // Content-addressed: children are hashes, use ast.tag/ast.children to inspect
       const f2 = ast.mapChildren(f, c => {
-        if (c.tag === 'freevar' && c.children[0] === 'A') {
+        if (ast.tag(c) === 'freevar' && ast.children(c)[0] === 'A') {
           return AST.freevar('X');
         }
         return c;
       });
-      assert.strictEqual(f2.children[0].children[0], 'X');
-      assert.strictEqual(f2.children[1].children[0], 'B');
+      assert.strictEqual(ast.children(ast.children(f2)[0])[0], 'X');
+      assert.strictEqual(ast.children(ast.children(f2)[1])[0], 'B');
     });
 
     it('should return same object if no change', () => {
