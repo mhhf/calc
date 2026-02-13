@@ -77,37 +77,64 @@ async function setupState() {
 
 // ─── Instrumented explore ────────────────────────────────────────────────────
 
-function instrumentedExplore(state, rules, calcCtx, maxDepth) {
+function instrumentedExplore(initialState, rules, calcCtx, maxDepth) {
   const timers = {
     findAllMatches: { time: 0, calls: 0 },
     hashState:      { time: 0, calls: 0 },
     expandChoices:  { time: 0, calls: 0 },
-    applyMatch:     { time: 0, calls: 0 },
-    applyChoiceMatch: { time: 0, calls: 0 },
+    mutateState:    { time: 0, calls: 0 },
+    undoMutate:     { time: 0, calls: 0 },
     setClone:       { time: 0, calls: 0 },
+    makeChildCtx:   { time: 0, calls: 0 },
+    snapshot:       { time: 0, calls: 0 },
+  };
+
+  // Mutable copy
+  const state = {
+    linear: { ...initialState.linear },
+    persistent: { ...initialState.persistent }
   };
 
   const ruleList = Array.isArray(rules) ? rules : (rules.rules || rules);
   const indexedRules = Array.isArray(rules) ? { rules } : rules;
   const strategy = symexec.detectStrategy(ruleList);
 
-  function go(st, depth, pathVisited) {
+  function go(depth, pathVisited, ctx) {
     let t0;
 
+    // Cycle detection uses numeric hash from context (incremental)
     t0 = performance.now();
-    const sh = symexec.hashState(st);
+    const sh = ctx.stateHash;
     timers.hashState.time += performance.now() - t0;
     timers.hashState.calls++;
 
-    if (pathVisited.has(sh)) return { type: 'cycle', state: st };
-    if (depth >= maxDepth) return { type: 'bound', state: st };
+    if (pathVisited.has(sh)) {
+      t0 = performance.now();
+      const snap = symexec.snapshotState(state);
+      timers.snapshot.time += performance.now() - t0;
+      timers.snapshot.calls++;
+      return { type: 'cycle', state: snap };
+    }
+    if (depth >= maxDepth) {
+      t0 = performance.now();
+      const snap = symexec.snapshotState(state);
+      timers.snapshot.time += performance.now() - t0;
+      timers.snapshot.calls++;
+      return { type: 'bound', state: snap };
+    }
 
     t0 = performance.now();
-    const matches = symexec.findAllMatches(st, indexedRules, calcCtx, strategy);
+    const matches = symexec.findAllMatches(state, indexedRules, calcCtx, strategy, ctx.stateIndex);
     timers.findAllMatches.time += performance.now() - t0;
     timers.findAllMatches.calls++;
 
-    if (matches.length === 0) return { type: 'leaf', state: st };
+    if (matches.length === 0) {
+      t0 = performance.now();
+      const snap = symexec.snapshotState(state);
+      timers.snapshot.time += performance.now() - t0;
+      timers.snapshot.calls++;
+      return { type: 'leaf', state: snap };
+    }
 
     t0 = performance.now();
     const nextVisited = new Set(pathVisited);
@@ -115,33 +142,69 @@ function instrumentedExplore(state, rules, calcCtx, maxDepth) {
     timers.setClone.time += performance.now() - t0;
     timers.setClone.calls++;
 
+    // Pre-expand choices and count total children for clone decision
+    const matchAlts = matches.map(m => symexec.expandConsequentChoices(m.rule.consequent));
+    let totalChildren = 0;
+    for (const alts of matchAlts) totalChildren += alts.length <= 1 ? 1 : alts.length;
+    const needsClone = totalChildren > 1;
+
     const children = [];
-    for (const m of matches) {
+    for (let mi = 0; mi < matches.length; mi++) {
+      const m = matches[mi];
       t0 = performance.now();
-      const alts = symexec.expandConsequentChoices(m.rule.consequent);
+      const alts = matchAlts[mi];
       timers.expandChoices.time += performance.now() - t0;
       timers.expandChoices.calls++;
 
       if (alts.length <= 1) {
         t0 = performance.now();
-        const ns = forward.applyMatch(st, m);
-        timers.applyMatch.time += performance.now() - t0;
-        timers.applyMatch.calls++;
-        children.push({ rule: m.rule.name, child: go(ns, depth + 1, nextVisited) });
+        const undo = symexec.mutateState(state, m.consumed, m.theta,
+          m.rule.consequent.linear || [], m.rule.consequent.persistent || []);
+        timers.mutateState.time += performance.now() - t0;
+        timers.mutateState.calls++;
+
+        t0 = performance.now();
+        const childCtx = symexec.makeChildCtx(ctx, state, undo, needsClone);
+        timers.makeChildCtx.time += performance.now() - t0;
+        timers.makeChildCtx.calls++;
+
+        const child = go(depth + 1, nextVisited, childCtx);
+
+        t0 = performance.now();
+        symexec.undoMutate(state, undo);
+        timers.undoMutate.time += performance.now() - t0;
+        timers.undoMutate.calls++;
+
+        children.push({ rule: m.rule.name, child });
       } else {
         for (let i = 0; i < alts.length; i++) {
           t0 = performance.now();
-          const ns = symexec.applyMatchChoice(st, m, alts[i]);
-          timers.applyChoiceMatch.time += performance.now() - t0;
-          timers.applyChoiceMatch.calls++;
-          children.push({ rule: m.rule.name, choice: i, child: go(ns, depth + 1, nextVisited) });
+          const undo = symexec.mutateState(state, m.consumed, m.theta,
+            alts[i].linear, alts[i].persistent);
+          timers.mutateState.time += performance.now() - t0;
+          timers.mutateState.calls++;
+
+          t0 = performance.now();
+          const childCtx = symexec.makeChildCtx(ctx, state, undo, needsClone);
+          timers.makeChildCtx.time += performance.now() - t0;
+          timers.makeChildCtx.calls++;
+
+          const child = go(depth + 1, nextVisited, childCtx);
+
+          t0 = performance.now();
+          symexec.undoMutate(state, undo);
+          timers.undoMutate.time += performance.now() - t0;
+          timers.undoMutate.calls++;
+
+          children.push({ rule: m.rule.name, choice: i, child });
         }
       }
     }
-    return { type: 'branch', state: st, children };
+    return { type: 'branch', state: null, children };
   }
 
-  const tree = go(state, 0, new Set());
+  const rootCtx = symexec.ExploreContext.fromState(state);
+  const tree = go(0, new Set(), rootCtx);
   return { tree, timers };
 }
 
@@ -181,8 +244,10 @@ async function runBenchmark(doProfile) {
       ['findAllMatches',       timers.findAllMatches],
       ['hashState',            timers.hashState],
       ['expandConsequentChoices', timers.expandChoices],
-      ['applyMatch',           timers.applyMatch],
-      ['applyMatchChoice',     timers.applyChoiceMatch],
+      ['mutateState',          timers.mutateState],
+      ['undoMutate',           timers.undoMutate],
+      ['makeChildCtx',         timers.makeChildCtx],
+      ['snapshotState',        timers.snapshot],
       ['Set clone',            timers.setClone],
     ];
     for (const [name, t] of rows) {
