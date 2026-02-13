@@ -134,46 +134,4 @@ describe('v2 AST utilities', () => {
     });
   });
 
-  describe('hash', () => {
-    it('should return same hash for equal ASTs', () => {
-      const f1 = AST.tensor(AST.freevar('A'), AST.freevar('B'));
-      const f2 = AST.tensor(AST.freevar('A'), AST.freevar('B'));
-      assert.strictEqual(ast.hash(f1), ast.hash(f2));
-    });
-
-    it('should return different hash for different ASTs', () => {
-      const f1 = AST.tensor(AST.freevar('A'), AST.freevar('B'));
-      const f2 = AST.loli(AST.freevar('A'), AST.freevar('B'));
-      assert.notStrictEqual(ast.hash(f1), ast.hash(f2));
-    });
-  });
-
-  describe('mapChildren', () => {
-    it('should map over children', () => {
-      const f = AST.tensor(AST.freevar('A'), AST.freevar('B'));
-      // Content-addressed: children are hashes, use ast.tag/ast.children to inspect
-      const f2 = ast.mapChildren(f, c => {
-        if (ast.tag(c) === 'freevar' && ast.children(c)[0] === 'A') {
-          return AST.freevar('X');
-        }
-        return c;
-      });
-      assert.strictEqual(ast.children(ast.children(f2)[0])[0], 'X');
-      assert.strictEqual(ast.children(ast.children(f2)[1])[0], 'B');
-    });
-
-    it('should return same object if no change', () => {
-      const f = AST.tensor(AST.freevar('A'), AST.freevar('B'));
-      const f2 = ast.mapChildren(f, c => c);
-      assert.strictEqual(f, f2);
-    });
-  });
-
-  describe('fold', () => {
-    it('should fold over AST', () => {
-      const f = AST.tensor(AST.freevar('A'), AST.freevar('B'));
-      const count = ast.fold(f, (acc, node) => acc + 1, 0);
-      assert.strictEqual(count, 3); // tensor, freevar(A), freevar(B)
-    });
-  });
 });

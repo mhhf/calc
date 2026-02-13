@@ -42,9 +42,43 @@ function loadModules() {
   originalApply = substMod.apply;
   originalOccurs = substMod.occurs;
 
-  // Legacy (slow) implementations for comparison
-  legacyUnify = unifyMod.unifyIdempotent;
-  legacyApply = substMod.applySequential;
+  // Legacy (slow) implementations for comparison — inlined here
+  const { sub, occurs } = substMod;
+  const { isMetavar, isFreevar, getVarName } = unifyMod;
+
+  legacyApply = (h, theta) => theta.reduce((acc, [v, val]) => sub(acc, v, val), h);
+
+  legacyUnify = (a, b) => {
+    const G = [[a, b]];
+    let theta = [];
+    while (G.length) {
+      const [t0, t1] = G.pop();
+      if (t0 === t1) continue;
+      if (isMetavar(t0)) {
+        if (occurs(t0, t1)) return null;
+        theta = [...theta.map(([v, x]) => [v, sub(x, t0, t1)]), [t0, t1]];
+        G.forEach((g, i) => { G[i] = [sub(g[0], t0, t1), sub(g[1], t0, t1)]; });
+        continue;
+      }
+      if (isMetavar(t1)) { G.push([t1, t0]); continue; }
+      if (isFreevar(t0) && isFreevar(t1)) {
+        if (getVarName(t0) !== getVarName(t1)) return null;
+        continue;
+      }
+      const n0 = Store.get(t0), n1 = Store.get(t1);
+      if (!n0 || !n1) return null;
+      if (n0.tag === n1.tag && n0.children.length === n1.children.length) {
+        for (let i = 0; i < n0.children.length; i++) {
+          const c0 = n0.children[i], c1 = n1.children[i];
+          if (typeof c0 === 'number' && typeof c1 === 'number') G.push([c0, c1]);
+          else if (c0 !== c1) return null;
+        }
+        continue;
+      }
+      return null;
+    }
+    return theta;
+  };
 }
 
 // ============================================================================
