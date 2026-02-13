@@ -35,7 +35,11 @@
     "profile": "CALC_PROFILE=1 node",
     "profile:engine": "node --expose-gc benchmarks/mde/run.js --profile",
     "profile:multisig": "CALC_PROFILE=1 node benchmarks/engine/multisig-profile-deep.js",
-    "bench:multisig": "node benchmarks/engine/multisig-bench.js"
+    "bench:multisig": "node benchmarks/engine/multisig-bench.js",
+    "bench:symexec": "node benchmarks/engine/symexec-bench.js",
+    "bench:symexec:save": "node benchmarks/engine/symexec-bench.js --save",
+    "bench:symexec:compare": "node benchmarks/engine/symexec-bench.js --compare",
+    "profile:symexec": "CALC_PROFILE=1 node benchmarks/engine/symexec-bench.js --profile"
   },
   "author": "",
   "license": "ISC",
