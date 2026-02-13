@@ -1,5 +1,5 @@
 /**
- * Tests for .rules2 parser: exhaustive equivalence against .rules pipeline
+ * Tests for .rules2 parser: proof search integration
  */
 const { describe, it, before } = require('node:test');
 const assert = require('node:assert');
@@ -8,101 +8,17 @@ const { buildRuleSpecs } = require('../lib/v2/prover/rule-interpreter');
 const Seq = require('../lib/v2/kernel/sequent');
 
 describe('.rules2 parser', () => {
-  let oldCalc, newCalc;
-
-  before(async () => {
-    oldCalc = await calculus.loadILL();
-    calculus.clearCache();
-    newCalc = await calculus.loadILL2();
-  });
-
-  // =========================================================================
-  // A. All 14 rules exist
-  // =========================================================================
-  describe('A. Rule set completeness', () => {
-    it('same rule names', () => {
-      const oldNames = Object.keys(oldCalc.rules).sort();
-      const newNames = Object.keys(newCalc.rules).sort();
-      assert.deepStrictEqual(newNames, oldNames);
-    });
-
-    it('all 14 rules present', () => {
-      assert.strictEqual(Object.keys(newCalc.rules).length, 14);
-    });
-  });
-
-  // =========================================================================
-  // B. Per-rule descriptor equivalence
-  // =========================================================================
-  describe('B. Descriptor equivalence', () => {
-    const RULES = [
-      'id', 'tensor_r', 'tensor_l', 'loli_r', 'loli_l',
-      'with_r', 'with_l1', 'with_l2',
-      'one_r', 'one_l',
-      'promotion', 'dereliction', 'absorption', 'copy'
-    ];
-
-    for (const name of RULES) {
-      it(`${name}: descriptor matches`, () => {
-        assert.deepStrictEqual(
-          newCalc.rules[name].descriptor,
-          oldCalc.rules[name].descriptor
-        );
-      });
-    }
-  });
-
-  // =========================================================================
-  // C. Per-rule metadata match
-  // =========================================================================
-  describe('C. Metadata equivalence', () => {
-    const FIELDS = ['pretty', 'structural', 'numPremises', 'invertible', 'bridge'];
-    const RULES = [
-      'id', 'tensor_r', 'tensor_l', 'loli_r', 'loli_l',
-      'with_r', 'with_l1', 'with_l2',
-      'one_r', 'one_l',
-      'promotion', 'dereliction', 'absorption', 'copy'
-    ];
-
-    for (const name of RULES) {
-      it(`${name}: all metadata fields match`, () => {
-        for (const field of FIELDS) {
-          assert.deepStrictEqual(
-            newCalc.rules[name][field],
-            oldCalc.rules[name][field],
-            `${name}.${field}`
-          );
-        }
-      });
-    }
-  });
-
-  // =========================================================================
-  // D. Full calculus equivalence
-  // =========================================================================
-  describe('D. Calculus-level equivalence', () => {
-    it('polarity map matches', () => {
-      assert.deepStrictEqual(newCalc.polarity, oldCalc.polarity);
-    });
-
-    it('invertibility map matches', () => {
-      assert.deepStrictEqual(newCalc.invertible, oldCalc.invertible);
-    });
-  });
-
-  // =========================================================================
-  // E. Proof search integration
-  // =========================================================================
-  describe('E. Proof search with rules2-sourced calculus', () => {
+  describe('Proof search integration', () => {
     let AST, specs, alternatives, prover;
 
-    before(() => {
-      AST = newCalc.AST;
-      const result = buildRuleSpecs(newCalc);
+    before(async () => {
+      const calc = await calculus.loadILL();
+      AST = calc.AST;
+      const result = buildRuleSpecs(calc);
       specs = result.specs;
       alternatives = result.alternatives;
       const { createProver } = require('../lib/v2/prover/focused/prover');
-      prover = createProver(newCalc);
+      prover = createProver(calc);
     });
 
     const mkSeq = (linear, succ) => Seq.fromArrays(linear, [], succ);

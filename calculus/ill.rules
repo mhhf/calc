@@ -1,171 +1,65 @@
-% =============================================================================
-% Intuitionistic Linear Logic - Inference Rules
-% =============================================================================
-%
-% Rules for ILL using the minimal LNL sequent: Γ ; Δ ⊢ C
-%   Γ = cartesian context (position 1, contraction/weakening OK)
-%   Δ = linear context (position 2, used exactly once)
-%   C = succedent (position 3, the conclusion)
-%
-% All positions use the same structure type. Mode is by position.
-%
-% Convention:
-%   Γ, Ω     = cartesian structures
-%   Δ, Δ'    = linear structures
-%   A, B, C  = formulas
-%   t, p, q  = terms
-%
-% Notation:
-%   hyp(t, A) = hypothesis "t : A" (or just "A" when t is --)
-%   comma(X, Y) = context concatenation
-%   empty = empty context (I)
-%
-% Invertibility: inferred from polarity when not specified
-%   - Positive connective: left rules invertible, right rules not
-%   - Negative connective: right rules invertible, left rules not
+@formulas A, B, C
 
-@extends lnl.
-
-% =============================================================================
-% Identity and Cut
-% =============================================================================
-
-%    ─────────────
-%     I ; A |- A
-id: deriv (seq empty (hyp any A) (hyp any A))
+id: ; A |- A
   @pretty "Id"
   @invertible true.
 
-% =============================================================================
-% Tensor Rules (Multiplicative Conjunction)
-% =============================================================================
-% Polarity: positive → tensor_r not invertible, tensor_l invertible (inferred)
-
-%     Γ ; Δ |- A      Γ ; Δ' |- B
-%    ─────────────────────────────
-%         Γ ; Δ, Δ' |- A ⊗ B
-tensor_r: deriv (seq G (comma D D') (hyp any (tensor A B)))
-  <- deriv (seq G D (hyp any A))
-  <- deriv (seq G D' (hyp any B))
+tensor_r: G ; D, D' |- A * B
+  <- G ; D |- A
+  <- G ; D' |- B
   @pretty "⊗R".
 
-%      Γ ; Δ, A, B |- C
-%    ────────────────────
-%     Γ ; Δ, A ⊗ B |- C
-tensor_l: deriv (seq G (comma D (hyp any (tensor A B))) C)
-  <- deriv (seq G (comma (comma D (hyp any A)) (hyp any B)) C)
+tensor_l: G ; D, A * B |- C
+  <- G ; D, A, B |- C
   @pretty "⊗L".
 
-% =============================================================================
-% Linear Implication Rules (Lollipop)
-% =============================================================================
-% Polarity: negative → loli_r invertible, loli_l not invertible (inferred)
-
-%      Γ ; Δ, A |- B
-%    ─────────────────
-%     Γ ; Δ |- A ⊸ B
-loli_r: deriv (seq G D (hyp any (loli A B)))
-  <- deriv (seq G (comma D (hyp any A)) (hyp any B))
+loli_r: G ; D |- A -o B
+  <- G ; D, A |- B
   @pretty "⊸R".
 
-%     Γ ; Δ |- A      Γ ; Δ', B |- C
-%    ────────────────────────────────
-%        Γ ; Δ, Δ', A ⊸ B |- C
-loli_l: deriv (seq G (comma (comma D (hyp any (loli A B))) D') C)
-  <- deriv (seq G D (hyp any A))
-  <- deriv (seq G (comma D' (hyp any B)) C)
+loli_l: G ; D, D', A -o B |- C
+  <- G ; D |- A
+  <- G ; D', B |- C
   @pretty "⊸L".
 
-% =============================================================================
-% With Rules (Additive Conjunction)
-% =============================================================================
-% Polarity: negative → &R is invertible (both premises share same context)
-% &L1/&L2 are the choice rules (project to one component) - not invertible
-
-%     Γ ; Δ |- A      Γ ; Δ |- B
-%    ────────────────────────────
-%          Γ ; Δ |- A & B
-with_r: deriv (seq G D (hyp any (with A B)))
-  <- deriv (seq G D (hyp any A))
-  <- deriv (seq G D (hyp any B))
+with_r: G ; D |- A & B
+  <- G ; D |- A
+  <- G ; D |- B
   @pretty "&R".
 
-%      Γ ; Δ, A |- C
-%    ─────────────────
-%     Γ ; Δ, A & B |- C
-with_l1: deriv (seq G (comma D (hyp any (with A B))) C)
-  <- deriv (seq G (comma D (hyp any A)) C)
+with_l1: G ; D, A & B |- C
+  <- G ; D, A |- C
   @pretty "&L₁".
 
-%      Γ ; Δ, B |- C
-%    ─────────────────
-%     Γ ; Δ, A & B |- C
-with_l2: deriv (seq G (comma D (hyp any (with A B))) C)
-  <- deriv (seq G (comma D (hyp any B)) C)
+with_l2: G ; D, A & B |- C
+  <- G ; D, B |- C
   @pretty "&L₂".
 
-% =============================================================================
-% Unit Rules (Multiplicative Unit)
-% =============================================================================
-% Polarity: positive → one_r not invertible, one_l invertible (inferred)
-
-%    ─────────────
-%     Γ ; I |- 1
-one_r: deriv (seq G empty (hyp any one))
+one_r: G ; |- I
   @pretty "1R".
 
-%      Γ ; Δ |- C
-%    ──────────────
-%     Γ ; Δ, 1 |- C
-one_l: deriv (seq G (comma D (hyp any one)) C)
-  <- deriv (seq G D C)
+one_l: G ; D, I |- C
+  <- G ; D |- C
   @pretty "1L".
 
-% =============================================================================
-% Bang Rules (Exponential - Bridge to Cartesian)
-% =============================================================================
-%
-% The bang ! is the key bridge between linear and cartesian modes.
-% !A means "A is available for unlimited use" (move to cartesian context).
-%
-% Bang rules don't follow standard naming (_r/_l), so explicit @invertible needed
-
-%      Γ ; I |- A
-%    ──────────────
-%     Γ ; I |- !A
-promotion: deriv (seq G empty (hyp any (bang A)))
-  <- deriv (seq G empty (hyp any A))
+promotion: G ; |- !A
+  <- G ; |- A
   @pretty "!R"
   @invertible false
   @bridge linear_to_cartesian.
 
-%      Γ ; Δ, A |- C
-%    ────────────────
-%     Γ ; Δ, !A |- C
-dereliction: deriv (seq G (comma D (hyp any (bang A))) C)
-  <- deriv (seq G (comma D (hyp any A)) C)
+dereliction: G ; D, !A |- C
+  <- G ; D, A |- C
   @pretty "!D"
   @invertible true.
 
-%     Γ, A ; Δ |- C
-%    ────────────────
-%     Γ ; Δ, !A |- C
-absorption: deriv (seq G (comma D (hyp any (bang A))) C)
-  <- deriv (seq (comma G (hyp any A)) D C)
+absorption: G ; D, !A |- C
+  <- G, A ; D |- C
   @pretty "!L"
   @invertible true
   @bridge linear_to_cartesian.
 
-% =============================================================================
-% Cartesian Context Rules
-% =============================================================================
-
-%     Γ, A ; Δ, A |- C
-%    ──────────────────
-%       Γ, A ; Δ |- C
-copy: deriv (seq (comma G (hyp any A)) D C)
-  <- deriv (seq (comma G (hyp any A)) (comma D (hyp any A)) C)
+copy: G, A ; D |- C
+  <- G, A ; D, A |- C
   @pretty "Copy"
   @structural true.
-
-% Note: Cartesian weakening (discard) is in lnl.family as cart_weakening

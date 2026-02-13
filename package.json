@@ -4,7 +4,7 @@
   "description": "Linear logic proof calculus sandbox",
   "main": "index.js",
   "scripts": {
-    "test": "node --test tests/hash.js tests/tree-sitter.js tests/v2/*.test.js tests/rule-interpreter.test.js tests/manual-prover-logic.test.js tests/manual-proof-flow.test.js",
+    "test": "node --test tests/hash.js tests/tree-sitter.js tests/v2/*.test.js tests/rule-interpreter.test.js tests/manual-prover-logic.test.js tests/manual-proof-flow.test.js tests/rules2-parser.test.js",
     "test:v2": "node --test tests/v2/calculus.test.js tests/v2/sequent.test.js tests/v2/kernel.test.js tests/v2/focusing.test.js tests/v2/sequent-ext.test.js tests/v2/focused-prover.test.js tests/v2/api.test.js",
     "test:mde": "node --test tests/mde/convert.test.js tests/mde/forward.test.js tests/mde/e2e.test.js",
     "test:celf": "echo 'celf tests removed'",
