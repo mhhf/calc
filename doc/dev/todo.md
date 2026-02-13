@@ -178,21 +178,70 @@ O(1) identity for ground formulas via tag-based index. Highest-impact single opt
 **See:** doc/dev/constructor-indexing.md, doc/research/prover-optimization.md
 
 ### Symexec: Incremental buildStateIndex & hashState
-**Priority:** MEDIUM | **Status:** profiled — ready for implementation
+**Priority:** MEDIUM | **Status:** DONE (181ms → 14ms → 8.4ms → 4.7ms)
 
-After strategy stack optimization (181ms → 14ms), remaining costs are evenly split:
-buildStateIndex 29%, hashState 23%, applyMatch 24%, tryMatch 21%.
-Both buildStateIndex and hashState rebuild from scratch every node (~178 facts).
-Incremental update via consumed/produced delta could eliminate most of this cost.
+Implemented: ExploreContext (incremental index + XOR hash), mutation+undo, strategy stack.
+
+### Audit: Precompute Everything Possible at Compile Time
+**Priority:** VERY HIGH | **Status:** needs-research
+
+Profiling revealed that `tryMatch` was recomputing static rule properties (getPredicateHead,
+collectFreevars, collectOutputVars, dependsOnPersistentOutput) on every call — fixed by
+precomputing in `compileRule()`. But there may be MORE cases across the codebase where
+runtime computation repeats work that could be done once at compile/load time.
+
+- [ ] Audit `forward.js` for remaining per-call computations on static data
+- [ ] Audit `prove.js` backward prover: freshenTerm/freshenClause create new Store entries every call — can variable suffixes be precomputed?
+- [ ] Audit `symexec.js` strategy layers for repeated work
+- [ ] Audit `rule-interpreter.js` for anything recomputed per proof step
+- [ ] Audit `unify.js` match/unify: isMetavar/isVar do Store.get every call — could tag be cached?
+- [ ] Check if `findAllMatches`'s `{ ...state, index: idx }` spread can be avoided
+
+### Symexec: 178-Match-Call Exhaustive Scans
+**Priority:** VERY HIGH | **Status:** needs-research
+
+6 of 63 nodes account for 64% of all `match()` calls (1,068 of 1,661). Each tries
+matching a rule against ALL 178 linear facts and finds nothing. These rules pass the
+predicate filter (trigger predicates exist in state) but fail matching every fact.
+
+Need to investigate:
+- [ ] Which specific rules cause the exhaustive scans? (rule name, antecedent structure)
+- [ ] Why do they pass the predicate filter but fail matching? (predicates present but wrong argument structure?)
+- [ ] Would first-argument indexing (like backward prover's `getFirstArgCtor`) prune candidates?
+- [ ] Are these non-opcode rules that fall through to predicate layer? (concatMemory, calldatacopy?)
+- [ ] Can the strategy stack add a layer that prevents these scans?
+
+Context: `findAllMatches` → `tryMatch(rule, state)` → for each linear pattern, looks up
+`index[pred]` to get candidate facts, then calls `match(pattern, fact)` for each. When the
+index bucket is large (e.g., all 178 facts have the same predicate? or fallback to all?),
+we scan everything.
+
+### Symexec: Prove Memo Cache
+**Priority:** VERY HIGH | **Status:** needs-research
+
+`prove()` (backward chaining) is called 153 times across 63 nodes (2.4/node), taking
+54% of findAllMatches time. Most calls are arithmetic FFI: `inc(binlit, _PC')`,
+`plus(binlit, binlit, _GAS')`, `neq(X, Y)`.
+
+Need to investigate:
+- [ ] How many prove calls have identical goal hashes? (same inc/plus with same binlit inputs)
+- [ ] Are goals fully ground after substitution? (if so, result is deterministic → cacheable)
+- [ ] What does the prove call tree look like? (depth, branching, FFI vs clause resolution)
+- [ ] Would a simple `Map<goalHash, theta>` cache work? (concerns: freshening, variable scoping)
+- [ ] How big would the cache get? (per-explore vs global lifetime)
+- [ ] Can we avoid prove entirely for FFI-only goals? (direct FFI dispatch without prove overhead)
+
+Context: tryMatch calls `backward.prove(goal, clauses, types, { maxDepth: 50 })` for each
+persistent antecedent pattern after substitution. Prove does: freshenTerm, getCandidates,
+unify, recurse on premises. For `inc(binlit(117), _PC')`, it freshens `inc` clause, unifies,
+then calls FFI `plus` to compute the result.
 
 ### Symexec: Non-Opcode Rule Strategy
 **Priority:** LOW
 
 4 non-opcode helper rules (concatMemory/z, concatMemory/s, calldatacopy/z, calldatacopy/s)
-cause 24% tryMatch waste — they're tried at every node but only match when their specific
-trigger predicates (`concatMemory`, `calldatacopy`) are present. The predicate layer already
-filters them, but they still get tried at nodes where predicates are present but values don't
-match. Could add a more specific strategy layer or just accept the small waste.
+cause tryMatch waste — they're tried at nodes where predicates are present but values don't
+match. The predicate layer filters by trigger predicate existence but not by argument values.
 
 ---
 
