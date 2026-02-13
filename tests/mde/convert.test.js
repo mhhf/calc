@@ -89,6 +89,43 @@ describe('MDE Convert', { timeout: 10000 }, () => {
     });
   });
 
+  describe('binlit normalization', () => {
+    it('normalizes e to binlit(0n)', async () => {
+      const h = await mde.parseExpr('e');
+      assert.strictEqual(Store.tag(h), 'binlit');
+      assert.deepStrictEqual(Store.children(h), [0n]);
+    });
+
+    it('normalizes (i e) to binlit(1n)', async () => {
+      const h = await mde.parseExpr('i e');
+      assert.strictEqual(Store.tag(h), 'binlit');
+      assert.deepStrictEqual(Store.children(h), [1n]);
+    });
+
+    it('normalizes (o (i e)) to binlit(2n)', async () => {
+      const h = await mde.parseExpr('o (i e)');
+      assert.strictEqual(Store.tag(h), 'binlit');
+      assert.deepStrictEqual(Store.children(h), [2n]);
+    });
+
+    it('normalizes N_75 hex expansion to binlit(117n)', async () => {
+      const h = await mde.parseExpr('N_75');
+      assert.strictEqual(Store.tag(h), 'binlit');
+      assert.deepStrictEqual(Store.children(h), [117n]);
+    });
+
+    it('keeps (i X) recursive when X is a metavar', async () => {
+      const h = await mde.parseExpr('i X');
+      assert.strictEqual(Store.tag(h), 'app', 'Should remain app when child is a metavar');
+    });
+
+    it('ee (natural zero) is not normalized', async () => {
+      const h = await mde.parseExpr('ee');
+      assert.strictEqual(Store.tag(h), 'atom');
+      assert.deepStrictEqual(Store.children(h), ['ee']);
+    });
+  });
+
   describe('hasMonad', () => {
     it('detects monad in forward rule', async () => {
       const h = await mde.parseExpr('A -o { B }');

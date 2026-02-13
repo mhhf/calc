@@ -3,6 +3,8 @@
  */
 const { describe, it, before } = require('node:test');
 const assert = require('node:assert');
+const path = require('path');
+const fs = require('fs');
 const forward = require('../../lib/v2/prover/strategy/forward');
 const mde = require('../../lib/mde');
 const Store = require('../../lib/v2/kernel/store');
@@ -158,6 +160,47 @@ describe('Forward Chaining', { timeout: 10000 }, () => {
       assert(result.trace, 'Should have trace');
       assert.strictEqual(result.trace.length, 1, 'Should have 1 trace entry');
       assert(result.trace[0].includes('foo_to_bar'), 'Trace should include rule name');
+    });
+  });
+
+  describe('EVM multi-step execution', { timeout: 30000 }, () => {
+    it('executes 5+ steps from JUMPDEST at PC=0x75', async () => {
+      const fixturesDir = path.join(__dirname, 'fixtures');
+      const calc = await mde.load([
+        path.join(fixturesDir, 'bin.mde'),
+        path.join(fixturesDir, 'evm.mde'),
+        path.join(fixturesDir, 'multisig_code.mde'),
+      ]);
+
+      // Build initial state
+      const state = { linear: {}, persistent: {} };
+      const basicFacts = [
+        'pc N_75',
+        'sh ee',
+        'gas N_ffff',
+        'caller sender_addr',
+        'sender member01',
+      ];
+      for (const f of basicFacts) {
+        const h = await mde.parseExpr(f);
+        state.linear[h] = 1;
+      }
+
+      // Load code facts from multisig_code.mde
+      const codeFile = fs.readFileSync(path.join(fixturesDir, 'multisig_code.mde'), 'utf8');
+      for (const line of codeFile.split('\n')) {
+        const trimmed = line.split('%')[0].trim();
+        if (!trimmed || !trimmed.startsWith('code')) continue;
+        const parts = trimmed.replace(/\*.*$/, '').trim();
+        if (parts) {
+          const h = await mde.parseExpr(parts);
+          state.linear[h] = 1;
+        }
+      }
+
+      const result = calc.exec(state, { maxSteps: 10, trace: true });
+
+      assert(result.steps >= 5, `Expected >= 5 steps, got ${result.steps}. Trace: ${result.trace?.join(' → ')}`);
     });
   });
 });
