@@ -2,6 +2,9 @@ out/
 *.*~
 node_modules/
 
+# Local Claude Code settings
+.claude/settings.local.json
+
 # Nix/direnv
 .direnv/
 result
