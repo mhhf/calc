@@ -1429,4 +1429,38 @@ Standard sequent < Hypersequent < Nested sequent < Display calculus ≈ Labelled
 
 ---
 
-*Last updated: 2026-02-02*
+## Term Representations: Flat vs Curried
+
+**WAM term representation**
+> Flat: functor cell f/n followed by n contiguous argument cells. `f(a,b,c)` = `[f/3, a, b, c]`. Head extraction O(1), argument access O(1). Used by all production Prolog systems.
+
+**Curried application chain**
+> `f(a,b,c)` stored as `app(app(app(f,a),b),c)`. Requires O(arity) traversals to extract head or first argument. Lean4 and Isabelle use this because partial application is fundamental to higher-order logic.
+
+**Coq's flat App representation**
+> `App of constr * constr array`. `mkApp` enforces: function is never itself an App (auto-flattens), array is non-empty. Formal spec uses binary app; implementation uses flat for performance. Head extraction O(1).
+
+**Ehoh flattened spine notation**
+> Term cell = `{f_code, num_args, args[]}`. First-order terms flat; variable-headed `X a b` uses internal `@(X,a,b)`. Best of both worlds: first-order performance with higher-order support.
+
+**Spine form**
+> Factor `((f a) b) c` into `(f, [a, b, c])` — head + argument list. Used by Twelf, Beluga, lambda-Prolog. Head extraction O(1), argument access O(1), pattern matching compares heads first for fast fail.
+
+**egg ENode representation**
+> `{op, children: SmallVec<[Id; 2]>}` — flat operator + children array. SmallVec: up to 2 children stored inline (no heap allocation), spills to heap for more. Tuned for common binary operators.
+
+**Structural sharing trade-off: curried vs flat**
+> Curried: `app(f,a)` subterm shared between `f(a,b)` and `f(a,c)`. Flat: `{f,[a,b]}` and `{f,[a,c]}` are distinct nodes. Curried wins for partial-application-heavy code; flat wins for first-order predicates where prefix sharing is rare.
+
+**Unification cost: curried vs flat**
+> Flat: tag+arity check first (O(1) fast fail), then pairwise args. Curried: unifying `f(a,b)` vs `g(x,y)` decomposes through N-1 intermediate app nodes before discovering f!=g. Flat is strictly better for first-order.
+
+**Deep indexing (SWI-Prolog JIT)**
+> Hash tables on functor+arity of any argument position, not just first. Enabled by flat representation where argument access is O(1). Impossible with curried where argument access is O(arity).
+
+**Pattern: first-order → flat, higher-order → curried**
+> WAM, Coq, egg/egglog, Ehoh use flat. Lean4, Isabelle use curried. Coq is the exception: higher-order theory but flat implementation for performance.
+
+---
+
+*Last updated: 2026-02-13*
