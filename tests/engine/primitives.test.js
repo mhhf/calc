@@ -8,7 +8,6 @@ const { unify, unifyBinlit, unifyStrlit } = require('../../lib/kernel/unify');
 const {
   binToInt,
   intToBin,
-  intToBinRecursive,
   strToHash,
   hashToStr,
   charToHash,
@@ -132,36 +131,15 @@ describe('Convert Functions', { timeout: 10000 }, () => {
       assert.strictEqual(binToInt(h), 0n);
     });
 
-    it('handles legacy i/o form', () => {
-      // 10 = (o (i (o (i e)))) = 0 + 2*(1 + 2*(0 + 2*(1 + 2*0)))
+    it('handles flat i/o form', () => {
+      // 10 = o(i(o(i(e)))) = 0 + 2*(1 + 2*(0 + 2*(1 + 2*0)))
       const e = Store.put('atom', ['e']);
-      const i = Store.put('atom', ['i']);
-      const o = Store.put('atom', ['o']);
-
-      const t1 = Store.put('app', [i, e]);     // (i e) = 1
-      const t2 = Store.put('app', [o, t1]);    // (o (i e)) = 2
-      const t3 = Store.put('app', [i, t2]);    // (i (o (i e))) = 5
-      const t4 = Store.put('app', [o, t3]);    // (o (i (o (i e)))) = 10
+      const t1 = Store.put('i', [e]);     // i(e) = 1
+      const t2 = Store.put('o', [t1]);    // o(i(e)) = 2
+      const t3 = Store.put('i', [t2]);    // i(o(i(e))) = 5
+      const t4 = Store.put('o', [t3]);    // o(i(o(i(e)))) = 10
 
       assert.strictEqual(binToInt(t4), 10n);
-    });
-  });
-
-  describe('intToBinRecursive', () => {
-    it('creates legacy form', () => {
-      const h = intToBinRecursive(0n);
-      const node = Store.get(h);
-      assert.strictEqual(node.tag, 'atom');
-      assert.strictEqual(node.children[0], 'e');
-    });
-
-    it('creates correct structure for 1', () => {
-      const h = intToBinRecursive(1n);
-      const node = Store.get(h);
-      assert.strictEqual(node.tag, 'app');
-      // (i e)
-      const head = Store.get(node.children[0]);
-      assert.strictEqual(head.children[0], 'i');
     });
   });
 
@@ -198,11 +176,10 @@ describe('Ephemeral Unification', { timeout: 10000 }, () => {
       assert(result !== null);
     });
 
-    it('unifies binlit(10n) with (o X)', () => {
+    it('unifies binlit(10n) with o(X)', () => {
       const ten = Store.put('binlit', [10n]);
-      const o = Store.put('atom', ['o']);
       const X = Store.put('freevar', ['_X']);
-      const oX = Store.put('app', [o, X]);
+      const oX = Store.put('o', [X]);
 
       const result = unify(oX, ten);
       assert(result !== null);
@@ -215,21 +192,19 @@ describe('Ephemeral Unification', { timeout: 10000 }, () => {
       assert.strictEqual(boundNode.children[0], 5n);
     });
 
-    it('fails to unify binlit(10n) with (i X)', () => {
+    it('fails to unify binlit(10n) with i(X)', () => {
       const ten = Store.put('binlit', [10n]);
-      const i = Store.put('atom', ['i']);
       const X = Store.put('freevar', ['_X']);
-      const iX = Store.put('app', [i, X]);
+      const iX = Store.put('i', [X]);
 
       const result = unify(iX, ten);
       assert.strictEqual(result, null);
     });
 
-    it('unifies binlit(7n) with (i X)', () => {
+    it('unifies binlit(7n) with i(X)', () => {
       const seven = Store.put('binlit', [7n]);
-      const i = Store.put('atom', ['i']);
       const X = Store.put('freevar', ['_X']);
-      const iX = Store.put('app', [i, X]);
+      const iX = Store.put('i', [X]);
 
       const result = unify(iX, seven);
       assert(result !== null);
@@ -242,11 +217,10 @@ describe('Ephemeral Unification', { timeout: 10000 }, () => {
       assert.strictEqual(boundNode.children[0], 3n);
     });
 
-    it('fails to unify binlit(0n) with (o X)', () => {
+    it('fails to unify binlit(0n) with o(X)', () => {
       const zero = Store.put('binlit', [0n]);
-      const o = Store.put('atom', ['o']);
       const X = Store.put('freevar', ['_X']);
-      const oX = Store.put('app', [o, X]);
+      const oX = Store.put('o', [X]);
 
       const result = unify(oX, zero);
       assert.strictEqual(result, null);
@@ -277,11 +251,9 @@ describe('Ephemeral Unification', { timeout: 10000 }, () => {
 
     it('fails to unify strlit("") with cons(H, T)', () => {
       const empty = Store.put('strlit', ['']);
-      const cons = Store.put('atom', ['cons']);
       const H = Store.put('freevar', ['_H']);
       const T = Store.put('freevar', ['_T']);
-      const consH = Store.put('app', [cons, H]);
-      const consHT = Store.put('app', [consH, T]);
+      const consHT = Store.put('cons', [H, T]);
 
       const result = unify(consHT, empty);
       assert.strictEqual(result, null);
@@ -289,11 +261,9 @@ describe('Ephemeral Unification', { timeout: 10000 }, () => {
 
     it('unifies strlit("hello") with cons(H, T)', () => {
       const hello = Store.put('strlit', ['hello']);
-      const cons = Store.put('atom', ['cons']);
       const H = Store.put('freevar', ['_H']);
       const T = Store.put('freevar', ['_T']);
-      const consH = Store.put('app', [cons, H]);
-      const consHT = Store.put('app', [consH, T]);
+      const consHT = Store.put('cons', [H, T]);
 
       const result = unify(consHT, hello);
       assert(result !== null);

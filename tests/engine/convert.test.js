@@ -63,7 +63,10 @@ describe('MDE Convert', { timeout: 10000 }, () => {
 
     it('converts application', async () => {
       const h = await mde.parseExpr('plus X Y');
-      assert.strictEqual(Store.tag(h), 'app');
+      // Flat form: tag is the predicate name, children are the args
+      assert.strictEqual(Store.tag(h), 'plus');
+      const children = Store.children(h);
+      assert.strictEqual(children.length, 2);
     });
 
     it('deduplicates identical subterms', async () => {
@@ -115,9 +118,11 @@ describe('MDE Convert', { timeout: 10000 }, () => {
       assert.deepStrictEqual(Store.children(h), [117n]);
     });
 
-    it('keeps (i X) recursive when X is a metavar', async () => {
+    it('keeps (i X) as flat pred when X is a metavar', async () => {
       const h = await mde.parseExpr('i X');
-      assert.strictEqual(Store.tag(h), 'app', 'Should remain app when child is a metavar');
+      // Flat form: {tag: 'i', children: [X_hash]}
+      assert.strictEqual(Store.tag(h), 'i', 'Should be flat pred with tag i');
+      assert.strictEqual(Store.children(h).length, 1);
     });
 
     it('ee (natural zero) is not normalized', async () => {
