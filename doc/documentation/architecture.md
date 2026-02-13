@@ -1,105 +1,239 @@
 ---
-title: Architecture
-created: 2026-02-10
-modified: 2026-02-10
-summary: Three-layer architecture separating Framework, Object Logic, and Prover with focus tracking as position-based state rather than syntactic transformation.
-tags: [architecture, framework, prover, focusing, polarity, layers]
+title: Prover Architecture (Lasagne)
+modified: 2026-02-13
+summary: Five-layer prover architecture separating verification, search, focusing, and strategy.
+tags: [architecture, prover, focusing, polarity, layers]
 ---
 
-# Architecture
+# Prover Architecture
 
-CALC uses a clean three-layer separation between Framework, Object Logic, and Prover.
+CALC's prover is structured as five layers. Each layer uses only the API of the layer below. No layer reimplements functionality from a lower layer.
 
 ```
-┌─────────────────────────────────────────────────────────────┐
-│  PROVER LAYER (lib/prover.js, lib/proofstate.js)            │
-│  - ProofSearchState: { phase, focusPosition, focusId }      │
-│  - FocusedProver: implements Andreoli's focusing discipline │
-│  - Focus tracked on ProofTree, NOT in sequent syntax        │
-│  - Uses polarity/context-mode inference (lib/polarity.js)   │
-├─────────────────────────────────────────────────────────────┤
-│  OBJECT LOGIC LAYER (ll.json)                               │
-│  - Syntax definitions (NO focus types)                      │
-│  - Inference rules (NO focus brackets)                      │
-│  - Pure logical specification                               │
-├─────────────────────────────────────────────────────────────┤
-│  FRAMEWORK LAYER                                            │
-│  - calc.js, parser.js, node.js, sequent.js, mgu.js, pt.js   │
-│  - Generic: works for ANY calculus                          │
-│  - NO knowledge of focusing or proof search strategy        │
-└─────────────────────────────────────────────────────────────┘
+┌─────────────────────────────────────────────────────────┐
+│  L5  INTERACTIVE / UI                                   │
+│      ManualProof.tsx, proofLogicV2.ts                   │
+│      Provides: UI state, view model, user interaction   │
+│      Uses: L4 API                                       │
+├─────────────────────────────────────────────────────────┤
+│  L4  STRATEGY (Manual / Auto / Forward / SymExec)       │
+│      strategy/manual.js, auto.js, forward.js, symexec.js│
+│      Provides: which rules to try, in what order        │
+│      Uses: L3 API (or L2 directly for unfocused)        │
+├─────────────────────────────────────────────────────────┤
+│  L3  FOCUSED DISCIPLINE                                 │
+│      focused.js                                         │
+│      Provides: inversion/focus phases, polarity, blur   │
+│      Uses: L2 API                                       │
+├─────────────────────────────────────────────────────────┤
+│  L2  GENERIC PROVER (search primitives)                 │
+│      generic.js                                         │
+│      Provides: enumerate applicable rules, apply, prove │
+│      Uses: L1 API + calculus object                     │
+├─────────────────────────────────────────────────────────┤
+│  L1  KERNEL (proof checker)                             │
+│      kernel.js                                          │
+│      Provides: verify proof step, verify proof tree     │
+│      Uses: calculus object (from .calc/.rules)          │
+└─────────────────────────────────────────────────────────┘
+       ↑
+┌──────┴──────────────────────────────────────────────────┐
+│  L0  CALCULUS OBJECT (generated from .calc/.rules)      │
+│      calculus/index.js, meta/focusing.js                │
+│      Provides: parser, renderer, rules, polarity,       │
+│                invertibility, context modes              │
+│      Source of truth: .calc + .rules files              │
+└─────────────────────────────────────────────────────────┘
 ```
 
-## Framework Layer
+## File Structure
 
-Generic proof infrastructure, independent of any specific calculus or proof strategy.
-
-| File | Purpose |
-|------|---------|
-| `lib/calc.js` | Calculus loader, initializes rules database |
-| `lib/parser.js` | Dynamic Jison grammar generation from ll.json |
-| `lib/node.js` | AST node representation, format-polymorphic rendering |
-| `lib/sequent.js` | Sequent structure (persistent_ctx, linear_ctx, succedent) |
-| `lib/mgu.js` | Most General Unifier - pattern matching |
-| `lib/pt.js` | Proof Tree data structure |
-| `lib/substitute.js` | Substitution application |
-
-## Object Logic Layer
-
-Pure logical specification in `ll.json`. Contains:
-
-- **Syntax definitions**: Formula constructors, structure types, terms
-- **Inference rules**: Left/right introduction rules for each connective
-- **Display formats**: ASCII, LaTeX, Isabelle output specifications
-
-Rules are written without prover-specific annotations:
-```json
-"Tensor_R": [
-  "?X, ?Y |- -- : F?A * F?B",
-  "?X |- -- : F?A",
-  "?Y |- -- : F?B"
-]
+```
+lib/v2/prover/
+├── kernel.js            # L1: verifyStep, verifyTree
+├── generic.js           # L2: connective, tryIdentity, applyRule, applicableRules
+├── focused.js           # L3: findInvertible, chooseFocus, prove (Andreoli)
+├── strategy/
+│   ├── manual.js        # L4a: interactive proof (getApplicableActions, applyAction)
+│   ├── auto.js          # L4b: automated backward search (wraps L3.prove)
+│   ├── forward.js       # L4c: forward chaining (multiset rewriting)
+│   └── symexec.js       # L4d: execution tree exploration
+├── context.js           # shared: multiset operations { [hash]: count }
+├── state.js             # shared: FocusedProofState class
+├── pt.js                # shared: ProofTree class
+├── rule-interpreter.js  # shared: builds rule specs from .rules descriptors
+└── index.js             # convenience re-exports
 ```
 
-## Prover Layer
+## Design Principles
 
-Implements focused proof search (Andreoli's discipline).
+**De Bruijn trust model.** L1 is the trusted kernel — small enough to read in one sitting. Upper layers produce proof trees; the kernel verifies them independently. Bugs in L2–L4 produce failed or slow proofs, never wrong proofs.
 
-| File | Purpose |
-|------|---------|
-| `lib/prover.js` | ProofSearchState, FocusedProver classes |
-| `lib/proofstate.js` | Main proof search API (Proofstate.auto) |
-| `lib/polarity.js` | Polarity and context-mode inference |
+**Generate, don't hardcode.** Polarity, invertibility, and rule application are all generated from `.rules` files via `rule-interpreter.js`. Adding a new connective to `.rules` requires zero prover code changes.
 
-### Key Insight: Focus = Position, Not Syntax
+**Stacking.** Each layer extends the one below by adding *strategy*, not *mechanism*. Layer N calls Layer N-1's API, never reaches into its internals.
 
-Focusing is just knowing WHICH formula to decompose. It doesn't require syntactic transformation.
+## L0 — Calculus Object
 
-- Prover tracks state externally: `{ phase: 'focus', focusPosition: 'R', focusId: null }`
-- Rules have `F?A * F?B` (no brackets, pure logical rules)
-- `applyRule()` extracts formula at position, matches against rule
-- MGU matches `Formula_Tensor` ↔ `Formula_Tensor` (no wrappers)
-- Sequent is NEVER modified for focus - focus is prover-internal state
-
-### ProofSearchState
-
-Tracks focusing state on ProofTree nodes:
+Generated from `ill.calc` + `ill.rules` at load time. The calculus object is the single source of truth for all layers:
 
 ```javascript
-class ProofSearchState {
-  constructor() {
-    this.phase = 'inversion';  // 'inversion' | 'focus'
-    this.focusPosition = null; // 'L' | 'R' | null
-    this.focusId = null;       // for left formulas
-  }
+calculus = {
+  rules:       { tensor_r: { descriptor, invertible, pretty, ... }, ... }
+  polarity:    { tensor: 'positive', loli: 'negative', ... }
+  invertible:  { tensor_r: false, tensor_l: true, loli_r: true, ... }
+  AST:         { tensor: (a,b) => hash, ... }
+  parse:       "A * B" → hash
+  render:      hash → "A * B" | "A \\otimes B"
+  isPositive:  tag → boolean
+  isNegative:  tag → boolean
 }
 ```
 
-### Polarity Inference
+Properties generated from `.rules`:
 
-Polarity is inferred from rule structure at load time (not specified in ll.json):
+| Property | Generated by |
+|---|---|
+| `polarity` | `meta/focusing.js:inferPolarityFromRules` |
+| `invertible` | `meta/focusing.js:inferInvertibilityFromRule` |
+| `rules[name].descriptor` | `rules2-parser.js:parseRules2` |
+| `parser`, `renderer` | `calculus/index.js` from `@ascii`/`@latex`/`@prec` annotations |
 
-- **Positive connectives**: Context split across premises (Tensor, Bang)
-- **Negative connectives**: Context preserved or copied (Loli, With, Forall)
+## L1 — Kernel (Proof Checker)
 
-See `lib/polarity.js` for the inference algorithm.
+Given a proof tree, answers "is this valid?" No search, no strategy, no heuristics.
+
+```javascript
+createKernel(calculus) → {
+  verifyStep(conclusion, rule, premises) → { valid, error? }
+  verifyTree(tree) → { valid, errors[] }
+}
+```
+
+Rule verification uses `rule-interpreter.js` to compute expected premises from the rule descriptor, then compares against the actual premises.
+
+## L2 — Generic Prover (Search Primitives)
+
+Provides logic-independent search primitives. All functions are unfocused — no polarity filtering.
+
+```javascript
+createGenericProver(calculus) → {
+  // Helpers
+  connective(h)                    // formula hash → tag (null for atoms)
+  isPositive(tag), isNegative(tag) // polarity checks
+  ruleName(h, side)                // formula + side → rule name
+  ruleIsInvertible(tag, side)      // invertibility check
+
+  // Core
+  tryIdentity(seq, focusPos, focusIdx) // identity axiom via unification
+  applyRule(seq, position, index, spec) // single rule application → premises
+  computeChildDelta(premise, delta)     // merge premise linear into delta
+  addDeltaToSequent(seq, delta, copy)   // inject delta into sequent
+
+  // Search
+  applicableRules(seq, specs, alts)     // enumerate ALL applicable rules
+  tryRuleAndRecurse(...)                // apply rule + recurse into premises
+}
+```
+
+Context threading uses Hodas-Miller lazy splitting: resources flow into the first premise, whatever remains flows to the next.
+
+## L3 — Focused Discipline
+
+Restricts L2's rule enumeration using Andreoli's focusing. Contains only focusing-specific logic.
+
+```javascript
+createProver(calculus) → {
+  findInvertible(seq)   // find formula with invertible rule
+  chooseFocus(seq)      // choose focus targets
+  prove(seq, opts)      // focused proof search with phases:
+                        //   0: identity, 0.5: copy, 1: inversion,
+                        //   2: focus choice, 3: focused decomposition
+  // + re-exports L2 helpers
+}
+```
+
+**Phase structure:**
+- **Inversion:** eagerly apply invertible rules (negative R, positive L)
+- **Focus:** choose a formula to focus on (positive R, negative L)
+- **Decomposition:** apply focused rules until blur or identity
+- **Blur:** transition back to inversion when hitting an invertible formula during focus
+
+Polarity assignments come from the calculus object. L3 contains zero logic-specific code.
+
+## L4 — Strategy Layer
+
+Multiple strategies coexist, all built on L3/L2:
+
+**L4a — Manual (interactive):** `strategy/manual.js`
+- `getApplicableActions(state, { mode })` — `'focused'` delegates to L3, `'unfocused'` to L2
+- `applyAction(state, action, userInput?)` — state transition with optional context split
+- Focus actions: `Focus_L` / `Focus_R`
+
+**L4b — Auto (automated backward search):** `strategy/auto.js`
+- Wraps L3's `prove()` with goal normalization
+
+**L4c — Forward (multiset rewriting):** `strategy/forward.js`
+- Committed-choice forward chaining with predicate indexing
+- Own state model `{ linear: { hash: count }, persistent: { hash: true } }` for performance
+- O(1) predicate-head lookup, opcode indexing for EVM-style rules
+
+**L4d — SymExec (execution trees):** `strategy/symexec.js`
+- Explores all forward chaining paths, branching at nondeterministic choice points
+- Tree structure: leaf (quiescent), branch (nondeterministic), bound (depth limit)
+
+## L5 — UI Layer
+
+Pure view. `proofLogicV2.ts` is a thin type adapter; `ManualProof.tsx` renders the proof tree and delegates all logic to L4a.
+
+## Genericity
+
+| Layer | Logic-independent | Logic-specific |
+|---|---|---|
+| **L1 kernel** | Tree verification structure | Rule matching (generated by `rule-interpreter.js`) |
+| **L2 generic** | Backtracking, depth limit, Hodas-Miller threading | Which rules exist (from calculus object) |
+| **L3 focused** | Phase alternation, blur condition, focus protocol | Polarity assignments (from calculus object) |
+| **L4 strategies** | Manual UI protocol, auto search, forward step/run | None |
+| **L5 UI** | Components, rendering, interaction | None |
+
+Adding a new connective (e.g., temporal `○`/`●`) requires only `.calc` + `.rules` changes. All layers pick it up automatically.
+
+## Proof State
+
+```javascript
+ProofState = {
+  conclusion: Sequent,      // what we're proving
+  rule: string | null,      // applied rule (null = open goal)
+  premises: ProofState[],   // child states
+  proven: boolean,          // is this subtree complete?
+  focus: { position, index, hash } | null,  // L3 focus state
+  delta: Multiset,          // remaining linear resources
+}
+```
+
+## Forward Chaining State
+
+Forward chaining maintains a separate state representation for performance:
+
+| Shared with backward | Separate |
+|---|---|
+| Rule definitions (calculus object) | State: flat multiset (no sequent structure) |
+| Context multiset operations (`context.js`) | Predicate-head indexing for O(1) match |
+| Store (content-addressed formulas) | Pattern matching (vs unification in backward) |
+
+## Open Research
+
+| Question | Notes |
+|---|---|
+| Lax monad `{A}` as backward/forward mode switch | CLF/Celf/LolliMon integrate via monad. May restructure L2/L4c boundary |
+| Metaproofs over execution trees | Property verification: conservation, safety, reachability, deadlock-freedom |
+| Generic structural interpreter per family | Different families (LNL, display, adjoint) need parameterized interpreter |
+| Ceptre stages | Named rule subsets running to quiescence with inter-stage transitions |
+
+## References
+
+- HOL Light kernel: ~400 lines, abstract `thm` type ([Harrison](https://www.cl.cam.ac.uk/~jrh13/papers/hollight.pdf))
+- Isabelle layering: kernel → tactics → Sledgehammer ([Paulson](https://arxiv.org/pdf/1907.02836))
+- Foundational Proof Certificates: focusing as proof format ([Miller](https://dl.acm.org/doi/10.1145/2503887.2503894))
+- Hodas-Miller lazy splitting ([1994](https://www.sciencedirect.com/science/article/pii/S0890540184710364))
+- Sterling-Harper proof refinement logics ([2017](https://arxiv.org/abs/1703.05215))
