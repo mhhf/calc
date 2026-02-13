@@ -74,7 +74,7 @@ async function main() {
   console.log('STEP-BY-STEP EXECUTION');
   console.log('-'.repeat(70));
 
-  const forward = require('../../lib/v2/prover/forward');
+  const forward = require('../../lib/v2/prover/strategy/forward');
   let currentState = state;
   const stepTimes = [];
   const stepDetails = [];

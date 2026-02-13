@@ -10,7 +10,7 @@ const fs = require('fs');
 const path = require('path');
 const { performance } = require('perf_hooks');
 
-const forward = require('../../lib/v2/prover/forward');
+const forward = require('../../lib/v2/prover/strategy/forward');
 
 function formatMs(ms) {
   if (ms < 0.001) return `${(ms * 1000000).toFixed(0)}ns`;

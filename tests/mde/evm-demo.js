@@ -7,7 +7,7 @@
  */
 
 const mde = require('../../lib/mde');
-const forward = require('../../lib/v2/prover/forward');
+const forward = require('../../lib/v2/prover/strategy/forward');
 const prove = require('../../lib/mde/prove');
 const path = require('path');
 

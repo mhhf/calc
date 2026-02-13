@@ -7,7 +7,7 @@
 const { describe, it, before } = require('node:test');
 const assert = require('node:assert');
 const calculus = require('../lib/v2/calculus');
-const { createManualProofAPI } = require('../lib/v2/prover/manual');
+const { createManualProofAPI } = require('../lib/v2/prover/strategy/manual');
 const Seq = require('../lib/v2/kernel/sequent');
 const Store = require('../lib/v2/kernel/store');
 

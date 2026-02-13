@@ -8,7 +8,7 @@ const assert = require('node:assert');
 const { createGenericProver, buildRuleSpecs } = require('../lib/v2/prover/generic');
 const Seq = require('../lib/v2/kernel/sequent');
 const calculus = require('../lib/v2/calculus');
-const Context = require('../lib/v2/prover/focused/context');
+const Context = require('../lib/v2/prover/context');
 
 describe('L2 Generic Prover', () => {
   let calc, AST, generic, specs, alternatives;

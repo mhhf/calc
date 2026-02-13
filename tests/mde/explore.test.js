@@ -5,8 +5,8 @@
 const assert = require('assert');
 const path = require('path');
 const mde = require('../../lib/mde');
-const { explore, countLeaves, getAllLeaves, maxDepth, countNodes } = require('../../lib/v2/prover/explore');
-const forward = require('../../lib/v2/prover/forward');
+const { explore, countLeaves, getAllLeaves, maxDepth, countNodes } = require('../../lib/v2/prover/strategy/symexec');
+const forward = require('../../lib/v2/prover/strategy/forward');
 const Store = require('../../lib/v2/kernel/store');
 
 describe('explore', function() {

@@ -5,7 +5,7 @@
  */
 
 const mde = require('../../lib/mde');
-const forward = require('../../lib/v2/prover/forward');
+const forward = require('../../lib/v2/prover/strategy/forward');
 const Store = require('../../lib/v2/kernel/store');
 const { match } = require('../../lib/v2/kernel/unify');
 const { apply: subApply } = require('../../lib/v2/kernel/substitute');

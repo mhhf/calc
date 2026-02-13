@@ -17,7 +17,7 @@ describe('.rules2 parser', () => {
       const result = buildRuleSpecs(calc);
       specs = result.specs;
       alternatives = result.alternatives;
-      const { createProver } = require('../lib/v2/prover/focused/prover');
+      const { createProver } = require('../lib/v2/prover/focused');
       prover = createProver(calc);
     });
 

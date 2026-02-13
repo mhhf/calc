@@ -198,7 +198,7 @@ describe('Rule Interpreter', () => {
     let prover;
 
     before(() => {
-      const { createProver } = require('../lib/v2/prover/focused/prover');
+      const { createProver } = require('../lib/v2/prover/focused');
       prover = createProver(calc);
     });
 

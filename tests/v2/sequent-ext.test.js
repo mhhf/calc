@@ -6,7 +6,7 @@ const { describe, it, before } = require('node:test');
 const assert = require('node:assert');
 
 const Seq = require('../../lib/v2/kernel/sequent');
-const Context = require('../../lib/v2/prover/focused/context');
+const Context = require('../../lib/v2/prover/context');
 const calculus = require('../../lib/v2/calculus');
 const Store = require('../../lib/v2/kernel/store');
 

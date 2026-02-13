@@ -3,7 +3,7 @@
  */
 const { describe, it, before } = require('node:test');
 const assert = require('node:assert');
-const forward = require('../../lib/v2/prover/forward');
+const forward = require('../../lib/v2/prover/strategy/forward');
 const mde = require('../../lib/mde');
 const Store = require('../../lib/v2/kernel/store');
 

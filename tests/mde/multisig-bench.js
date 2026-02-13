@@ -189,7 +189,7 @@ async function main() {
 
 async function runProfiled() {
   // Instrument the forward engine
-  const forward = require('../../lib/v2/prover/forward');
+  const forward = require('../../lib/v2/prover/strategy/forward');
   const originalRun = forward.run;
 
   let matchTime = 0;

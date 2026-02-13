@@ -6,7 +6,7 @@ const { describe, it, before } = require('node:test');
 const assert = require('node:assert');
 
 const { ProofTree, fromGoal, leaf } = require('../../lib/v2/prover/pt');
-const { FocusedProofState, inversion, focus } = require('../../lib/v2/prover/focused/state');
+const { FocusedProofState, inversion, focus } = require('../../lib/v2/prover/state');
 const Seq = require('../../lib/v2/kernel/sequent');
 const calculus = require('../../lib/v2/calculus');
 
