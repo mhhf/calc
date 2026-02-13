@@ -20,6 +20,14 @@ Active implementation plans and design documents for in-progress work.
 | [[prooverlasagne]] | Layered prover architecture (L1 kernel → L2 generic → L3 focused → L4 strategy → L5 UI) | `architecture` `prover` `refactor` |
 | [[todo]] | Outstanding development tasks | `planning` `tasks` |
 
+## Optimization Plans (Deferred)
+
+| Document | Verdict | Summary |
+|----------|---------|---------|
+| [[constructor-indexing]] | IMPLEMENT | O(1) identity via tag index, highest-impact single optimization |
+
+See also: [[../research/prover-optimization]] for the full optimization catalog.
+
 ## Research (Active)
 
 | Document | Description | Tags |
@@ -52,7 +60,9 @@ Active implementation plans and design documents for in-progress work.
 - import-mechanism, lazy-primitive-storage, syntactic-sugar
 
 **Deleted (obsolete/completed):**
-- focusing_refactoring (decision made, v2 uses inferred polarity)
+- explicit-substitutions (premise addressed by content-addressing: `copy = h => h`, `applySimultaneous`)
+- persistent-data-structures (premise invalidated: contexts are `{hash: count}`, no deep copy)
+- focusing_refactoring (decision made, uses inferred polarity)
 - v2-migration-history (redundant with CHANGELOG)
 - claude-meta, content_addressed_hash_bug, display_implementation
 - FFI-IMPLEMENTATION-PLAN, frontend-refactor, IMPLEMENTATION-PLAN-MDE

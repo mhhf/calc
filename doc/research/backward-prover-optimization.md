@@ -89,7 +89,7 @@ const applySimultaneous = (h, theta) => {
       }
       return c;
     });
-    return changed ? Store.intern(node.tag, newChildren) : hash;
+    return changed ? Store.put(node.tag, newChildren) : hash;
   }
   return go(h);
 };
@@ -220,7 +220,7 @@ function applyWithMemo(h, theta) {
 
 ### 6. Explicit Substitutions (λσ-calculus) ⭐⭐
 
-> **See also:** [[explicit-substitutions]] for detailed treatment.
+> Resolved: content-addressing makes `copy = h => h` (O(1)) and `applySimultaneous` does single traversal. Standalone doc deleted.
 
 From [Abadi et al.](https://dl.acm.org/doi/10.1145/96709.96712):
 

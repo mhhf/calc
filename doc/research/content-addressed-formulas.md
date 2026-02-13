@@ -10,7 +10,7 @@ tags: [hash-consing, Merkle-DAG, optimization, content-addressing, equality]
 
 Research document for CALC project: designing efficient identity and equality checking for logical objects.
 
-> **See also:** [[constructor-indexing]] for O(1) identity lookup using hash indexes, [[benchmarking]] for complexity analysis of current implementation.
+> **See also:** [[dev/constructor-indexing]] for O(1) identity lookup using hash indexes, [[benchmarking]] for complexity analysis of current implementation.
 
 ---
 

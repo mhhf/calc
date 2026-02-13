@@ -60,7 +60,7 @@ Two-level index: `head → firstArgCtor → [items]`
 
 **Speedup:** ~2.7x for complex queries.
 
-**File:** `lib/mde/prove.js`
+**File:** `lib/engine/prove.js`
 
 ### Goal Memoization (Tested)
 
@@ -94,16 +94,21 @@ Speedup:             60x on repeated goals
 |--------------|--------|-------|
 | Near-linear unification | Unify is 44% of time | Martelli-Montanari + Union-Find |
 | Lazy freshening | 2-3x | Only freshen bound variables |
-| Persistent data structures | O(1) copy | HAMT for sequents |
 
 ### Low Priority / Future
 
 | Optimization | When to use |
 |--------------|-------------|
-| Explicit substitutions | If substitution dominates |
 | Term indexing (substitution trees) | Context > 100 formulas |
 | Arena allocation | For Zig port |
 | Compiled arithmetic | Replace proof search with native ops |
+
+### Resolved by Content-Addressing
+
+| Optimization | Status |
+|--------------|--------|
+| Persistent data structures | Contexts are `{hash: count}` — copy is O(m) with tiny constants, no deep AST copy |
+| Explicit substitutions | `copy = h => h` (O(1)), `applySimultaneous` does single traversal |
 
 ---
 

@@ -55,9 +55,9 @@ The same `binlit(10n)` can be used as u32, u256, or unbounded bin. The POLICY de
 
 | Format | Stores | Example |
 |--------|--------|---------|
-| `binlit` | BigInt | `Store.intern('binlit', [10n])` |
-| `strlit` | String | `Store.intern('strlit', ['hello'])` |
-| `charlit` | Code point | `Store.intern('charlit', [97])` |
+| `binlit` | BigInt | `Store.put('binlit', [10n])` |
+| `strlit` | String | `Store.put('strlit', ['hello'])` |
+| `charlit` | Code point | `Store.put('charlit', [97])` |
 | atom | Bool | `atom('true')`, `atom('false')` |
 
 **Note**: `binlit` stores the VALUE only. No type information.
@@ -189,7 +189,7 @@ function computeHash(tag, children) {
 ```javascript
 // O(1) storage
 function intToBin(n) {
-  return Store.intern('binlit', [n]);
+  return Store.put('binlit', [n]);
 }
 
 // Handles both binlit and expanded forms
@@ -217,7 +217,7 @@ function binToInt(h) {
 
 // String storage
 function strToHash(s) {
-  return Store.intern('strlit', [s]);
+  return Store.put('strlit', [s]);
 }
 
 function hashToStr(h) {
@@ -261,14 +261,14 @@ function unifyBinlit(pattern, term, G, theta) {
 
     if (bit === 'o') {
       if (value === 0n || value % 2n !== 0n) return false;
-      const tailValue = Store.intern('binlit', [value / 2n]);
+      const tailValue = Store.put('binlit', [value / 2n]);
       G.push([tailPattern, tailValue]);
       return true;
     }
 
     if (bit === 'i') {
       if (value % 2n !== 1n) return false;
-      const tailValue = Store.intern('binlit', [value / 2n]);
+      const tailValue = Store.put('binlit', [value / 2n]);
       G.push([tailPattern, tailValue]);
       return true;
     }
@@ -310,8 +310,8 @@ function unifyStrlit(pattern, term, G, theta) {
         if (str === '') return false;  // Can't destructure empty string
         const headPattern = head.children[1];  // H
         const tailPattern = patternNode.children[1];  // T
-        const firstChar = Store.intern('charlit', [str.charCodeAt(0)]);
-        const restStr = Store.intern('strlit', [str.slice(1)]);
+        const firstChar = Store.put('charlit', [str.charCodeAt(0)]);
+        const restStr = Store.put('strlit', [str.slice(1)]);
         G.push([headPattern, firstChar]);
         G.push([tailPattern, restStr]);
         return true;
@@ -485,25 +485,25 @@ describe('Primitive Storage', () => {
   describe('binlit', () => {
     it('stores numbers compactly', () => {
       Store.clear();
-      const h = Store.intern('binlit', [256n]);
+      const h = Store.put('binlit', [256n]);
       assert.strictEqual(Store.size(), 1);
     });
 
     it('deduplicates identical values', () => {
-      const h1 = Store.intern('binlit', [42n]);
-      const h2 = Store.intern('binlit', [42n]);
+      const h1 = Store.put('binlit', [42n]);
+      const h2 = Store.put('binlit', [42n]);
       assert.strictEqual(h1, h2);
     });
   });
 
   describe('strlit', () => {
     it('stores strings', () => {
-      const h = Store.intern('strlit', ['hello']);
+      const h = Store.put('strlit', ['hello']);
       assert.strictEqual(Store.get(h).children[0], 'hello');
     });
 
     it('handles unicode', () => {
-      const h = Store.intern('strlit', ['hello 世界 🌍']);
+      const h = Store.put('strlit', ['hello 世界 🌍']);
       assert.strictEqual(Store.get(h).children[0], 'hello 世界 🌍');
     });
   });
@@ -511,21 +511,21 @@ describe('Primitive Storage', () => {
 
 describe('binlit Unification', () => {
   it('unifies binlit with e when zero', async () => {
-    const zero = Store.intern('binlit', [0n]);
+    const zero = Store.put('binlit', [0n]);
     const e = await mde.parseExpr('e');
     const result = unify(e, zero);
     assert(result !== null);
   });
 
   it('unifies binlit with (o X) for even numbers', async () => {
-    const ten = Store.intern('binlit', [10n]);
+    const ten = Store.put('binlit', [10n]);
     const oX = await mde.parseExpr('o X');
     const result = unify(oX, ten);
     assert(result !== null);
   });
 
   it('fails to unify binlit with (i X) for even numbers', async () => {
-    const ten = Store.intern('binlit', [10n]);
+    const ten = Store.put('binlit', [10n]);
     const iX = await mde.parseExpr('i X');
     const result = unify(iX, ten);
     assert(result === null);
@@ -591,14 +591,14 @@ describe('Boolean Logic', () => {
 
 describe('strlit Unification', () => {
   it('unifies strlit with nil when empty', async () => {
-    const empty = Store.intern('strlit', ['']);
+    const empty = Store.put('strlit', ['']);
     const nil = await mde.parseExpr('nil');
     const result = unify(nil, empty);
     assert(result !== null);
   });
 
   it('unifies strlit with cons(H, T)', async () => {
-    const hello = Store.intern('strlit', ['hello']);
+    const hello = Store.put('strlit', ['hello']);
     const consHT = await mde.parseExpr('cons H T');
     const result = unify(consHT, hello);
     assert(result !== null);
@@ -606,7 +606,7 @@ describe('strlit Unification', () => {
   });
 
   it('fails to unify empty strlit with cons', async () => {
-    const empty = Store.intern('strlit', ['']);
+    const empty = Store.put('strlit', ['']);
     const consHT = await mde.parseExpr('cons H T');
     const result = unify(consHT, empty);
     assert(result === null);
@@ -632,7 +632,7 @@ describe('Primitive Performance', function() {
       Store.clear();
       const t0 = performance.now();
       for (let i = 0; i < 1000; i++) {
-        Store.intern('binlit', [value - BigInt(i)]);
+        Store.put('binlit', [value - BigInt(i)]);
       }
       const binlitTime = performance.now() - t0;
       const binlitNodes = Store.size();
