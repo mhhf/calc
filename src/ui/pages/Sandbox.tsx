@@ -5,7 +5,7 @@ import ASTView from '../components/graph/ASTView';
 import ErrorBoundary from '../components/common/ErrorBoundary';
 
 // v2 API
-import { parseFormula, renderFormula, buildASTTree, type Formula } from '../lib/calcV2';
+import { parseFormula, renderFormula, buildASTTree, type Formula } from '../lib/calculus';
 
 export default function Sandbox() {
   const [input, setInput] = createSignal('');

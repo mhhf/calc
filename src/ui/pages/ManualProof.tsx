@@ -21,8 +21,6 @@ import {
   getApplicableRules,
   applyRule,
   applyRuleWithSplit,
-  applyFocusAction,
-  applyBlurAction,
   autoProve,
   collapseFocusSteps,
   sequentToLatex,
@@ -36,7 +34,7 @@ import {
   type ContextEntry,
   getRuleApplicationDetails,
   type RuleApplicationDetails,
-} from '../lib/proofLogicV2';
+} from '../lib/proofLogic';
 
 type ViewMode = 'tree' | 'structured' | 'ascii' | 'json';
 type ProofMode = 'unfocused' | 'focused';
@@ -222,30 +220,11 @@ export default function ManualProof() {
     }
 
     try {
-      let newNode: ProofTreeNode | null = null;
-
-      // Handle focus mode special actions
-      if (proofMode() === 'focused') {
-        if (ruleName === 'Focus' || ruleName === 'Focus_L' || ruleName === 'Focus_R') {
-          // Focus action - handled by applyRule which stores focus info in delta_in
-          newNode = applyRule(node, ruleName, position);
-        } else if (ruleName === 'Blur') {
-          // Blur action - clear focus state
-          newNode = applyBlurAction(node);
-        } else if (ruleName === 'Id+' || ruleName === 'Id-') {
-          // Identity with explicit polarity
-          newNode = applyRule(node, 'Id', position);
-          if (newNode) {
-            newNode.type = ruleName; // Show Id+ or Id- instead of Id
-          }
-        } else {
-          // Regular rule in focused mode
-          newNode = applyRule(node, ruleName, position);
-        }
-      } else {
-        // Unfocused mode - direct rule application
-        newNode = applyRule(node, ruleName, position);
-      }
+      // All rule application (focus, blur, identity, decomposition) is handled
+      // uniformly by applyRule via api.applyAction — single source of truth
+      const rules = applicableRules();
+      const rule = rules.find(r => r.name === ruleName && r.position === position);
+      const newNode = applyRule(node, ruleName, position, rule?._apiAction);
 
       if (newNode) {
         const newTree = setNodeAtPath(pt, path, newNode);

@@ -167,7 +167,17 @@
       "Bash(sort grep -o '\\[\\[[^]]*\\]\\]' /home/mhhf/src/calc/doc/research/INDEX.md)",
       "WebFetch(domain:www.irit.fr)",
       "WebFetch(domain:www.loa.istc.cnr.it)",
-      "Bash(echo:*)"
+      "Bash(echo:*)",
+      "Bash(npm run test:mde:*)",
+      "Bash(ls:*)",
+      "Bash(git stash:*)",
+      "Bash(for f in convert.test.js forward.test.js e2e.test.js explore.test.js primitives.test.js)",
+      "Bash(do git mv \"tests/mde/$f\" \"tests/engine/$f\")",
+      "Bash(for f in analyze-prove.js backward-benchmark.js benchmark-unify-subst.js demo.js evm-binlit-benchmark.js evm-demo.js evm-full-profile.js evm-profile.js ffi-integration.js ffi.js index-stats.js multisig-bench.js multisig-profile-deep.js multisig-profile.js primitives-benchmark.js PROFILE-REPORT.md)",
+      "Bash(do git mv \"tests/mde/$f\" \"benchmarks/engine/$f\")",
+      "Bash(git rm:*)",
+      "Bash(npm run build:bundle:*)",
+      "Bash(npm run test:engine:*)"
     ],
     "deny": [],
     "ask": []

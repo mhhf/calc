@@ -12,7 +12,7 @@ CALC's prover is structured as five layers. Each layer uses only the API of the 
 ```
 ┌─────────────────────────────────────────────────────────┐
 │  L5  INTERACTIVE / UI                                   │
-│      ManualProof.tsx, proofLogicV2.ts                   │
+│      ManualProof.tsx, proofLogic.ts                     │
 │      Provides: UI state, view model, user interaction   │
 │      Uses: L4 API                                       │
 ├─────────────────────────────────────────────────────────┤
@@ -49,7 +49,7 @@ CALC's prover is structured as five layers. Each layer uses only the API of the 
 ## File Structure
 
 ```
-lib/v2/prover/
+lib/prover/
 ├── kernel.js            # L1: verifyStep, verifyTree
 ├── generic.js           # L2: connective, tryIdentity, applyRule, applicableRules
 ├── focused.js           # L3: findInvertible, chooseFocus, prove (Andreoli)
@@ -184,7 +184,7 @@ Multiple strategies coexist, all built on L3/L2:
 
 ## L5 — UI Layer
 
-Pure view. `proofLogicV2.ts` is a thin type adapter; `ManualProof.tsx` renders the proof tree and delegates all logic to L4a.
+Pure view. `proofLogic.ts` is a thin type adapter; `ManualProof.tsx` renders the proof tree and delegates all logic to L4a.
 
 ## Genericity
 

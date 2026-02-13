@@ -9,7 +9,7 @@ const assert = require('node:assert');
 const path = require('path');
 const fs = require('fs');
 
-const tsParser = require('../lib/celf/ts-parser');
+const tsParser = require('../lib/meta-parser/cst-to-ast');
 
 describe('tree-sitter parser', () => {
 
@@ -143,11 +143,11 @@ describe('tree-sitter parser', () => {
     }
   });
 
-  test('parses optimism-mde bin.mde', async () => {
-    const testFile = '/home/mhhf/src/optimism-mde/lib/bin.mde';
+  test('parses bin.ill', async () => {
+    const testFile = path.join(__dirname, '../calculus/ill/programs/bin.ill');
     if (fs.existsSync(testFile)) {
       const result = await tsParser.parseFile(testFile);
-      // bin.mde has very deep nesting that causes stack overflow in CST->AST conversion
+      // bin.ill has very deep nesting that causes stack overflow in CST->AST conversion
       // This is a known limitation - the raw tree-sitter parser handles it fine,
       // but the recursive AST conversion doesn't. See deep-test.mde raw CST test.
       if (!result.success && result.error.includes('stack')) {
@@ -159,8 +159,8 @@ describe('tree-sitter parser', () => {
     }
   });
 
-  test('parses optimism-mde evm.mde', async () => {
-    const testFile = '/home/mhhf/src/optimism-mde/lib/evm.mde';
+  test('parses evm.ill', async () => {
+    const testFile = path.join(__dirname, '../calculus/ill/programs/evm.ill');
     if (fs.existsSync(testFile)) {
       const result = await tsParser.parseFile(testFile);
       assert.strictEqual(result.success, true, result.error);
@@ -168,8 +168,8 @@ describe('tree-sitter parser', () => {
     }
   });
 
-  test('parses optimism-mde helper.mde', async () => {
-    const testFile = '/home/mhhf/src/optimism-mde/lib/helper.mde';
+  test('parses helper.ill (test fixture)', async () => {
+    const testFile = path.join(__dirname, 'engine/fixtures/helper.ill');
     if (fs.existsSync(testFile)) {
       const result = await tsParser.parseFile(testFile);
       assert.strictEqual(result.success, true, result.error);

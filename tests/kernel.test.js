@@ -5,11 +5,11 @@
 const { describe, it, before } = require('node:test');
 const assert = require('node:assert');
 
-const { createKernel } = require('../lib/v2/prover/kernel');
-const { createProver, buildRuleSpecs } = require('../lib/v2/prover/focused');
-const Seq = require('../lib/v2/kernel/sequent');
-const calculus = require('../lib/v2/calculus');
-const { ProofTree, leaf } = require('../lib/v2/prover/pt');
+const { createKernel } = require('../lib/prover/kernel');
+const { createProver, buildRuleSpecs } = require('../lib/prover/focused');
+const Seq = require('../lib/kernel/sequent');
+const calculus = require('../lib/calculus');
+const { ProofTree, leaf } = require('../lib/prover/pt');
 
 describe('L1 Kernel - Proof Verification', () => {
   let calc, AST, kernel, prover, ruleSpecs, alternatives;

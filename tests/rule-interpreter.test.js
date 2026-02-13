@@ -7,10 +7,10 @@
  */
 const { describe, it, before } = require('node:test');
 const assert = require('node:assert');
-const calculus = require('../lib/v2/calculus');
-const { buildRuleSpecs } = require('../lib/v2/prover/rule-interpreter');
-const Seq = require('../lib/v2/kernel/sequent');
-const Store = require('../lib/v2/kernel/store');
+const calculus = require('../lib/calculus');
+const { buildRuleSpecs } = require('../lib/prover/rule-interpreter');
+const Seq = require('../lib/kernel/sequent');
+const Store = require('../lib/kernel/store');
 
 describe('Rule Interpreter', () => {
   let calc, AST, result, specs;
@@ -198,7 +198,7 @@ describe('Rule Interpreter', () => {
     let prover;
 
     before(() => {
-      const { createProver } = require('../lib/v2/prover/focused');
+      const { createProver } = require('../lib/prover/focused');
       prover = createProver(calc);
     });
 

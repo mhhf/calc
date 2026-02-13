@@ -17,35 +17,29 @@ Outstanding tasks for the CALC project.
 
 ### Prover Lasagne Implementation
 **Priority:** HIGHEST
-**Status:** Design complete — ready for implementation
+**Status:** DONE (2026-02-12)
 **See:** doc/dev/prooverlasagne.md
 
-Implement the 5-layer prover architecture:
-- [ ] L1: Kernel (proof checker / verifier)
-- [ ] L2: Generic prover (exhaustive search, backtracking)
-- [ ] L3: Focused discipline (polarity, inversion phases)
-- [ ] L4: Strategy layer (manual, auto, forward, symexec)
-- [ ] Clean up browser.js duplication (extract shared builders)
-- [ ] Run full test suite, rebuild bundle
+Implemented 5-layer prover architecture:
+- [x] L1: Kernel (proof checker / verifier)
+- [x] L2: Generic prover (exhaustive search, backtracking)
+- [x] L3: Focused discipline (polarity, inversion phases)
+- [x] L4: Strategy layer (manual, auto, forward, symexec)
+- [x] Clean up browser.js duplication (extract shared builders)
+- [x] Run full test suite, rebuild bundle
 
 ### UI Refactor (L5 Thinning)
-**Priority:** HIGHEST — do immediately after prover API
-**Status:** Blocked by prover lasagne implementation
+**Priority:** HIGHEST
+**Status:** DONE (2026-02-13)
 
-`proofLogicV2.ts` (854 lines) is NOT the "thin wrapper" it should be. It contains:
-- Hardcoded rule schemas (`buildAbstractRuleStrings`)
-- Its own `ProofTreeNode` type with `delta_in`/`delta_out`
-- Focus handling logic (`applyFocusAction`, `collapseFocusSteps`)
-- Category assignment (`getRuleCategory`)
-- Serialization/export (115 lines)
-- Debug utilities on `window.calcDebug`
-
-After the prover API is clean (L1-L4), refactor L5:
-- [ ] Move rule schemas to L4a (manual strategy)
-- [ ] Move focus handling to L3
-- [ ] Move proof tree types to L2
-- [ ] Make proofLogicV2.ts a pure view adapter (~200 lines)
-- [ ] Remove `window.calcDebug` hacks
+Refactored `proofLogicV2.ts` to be a thin adapter over ManualProofAPI:
+- [x] Cached ManualProofAPI instance (browser.js)
+- [x] Delegated applyRule to api.applyAction — single source of truth for focus/rules
+- [x] Removed focus branching from ManualProof.tsx
+- [x] Deleted dead code (buildAbstractRuleStrings)
+- [x] Made getRuleCategory data-driven (descriptor.connective)
+- [x] Fixed getRuleApplicationDetails to use api.getAbstractRule()
+- [x] Wrapped window.calcDebug in import.meta.env.DEV
 
 ---
 

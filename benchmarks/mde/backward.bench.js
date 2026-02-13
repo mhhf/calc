@@ -8,9 +8,9 @@
  * Profile: npm run profile:mde
  */
 
-const mde = require('../../lib/mde');
-const prove = require('../../lib/mde/prove');
-const Store = require('../../lib/v2/kernel/store');
+const mde = require('../../lib/engine');
+const prove = require('../../lib/engine/prove');
+const Store = require('../../lib/kernel/store');
 const { performance } = require('perf_hooks');
 const path = require('path');
 
@@ -51,7 +51,7 @@ function extractSolution(theta, varName = '_X') {
       let resolved = valHash;
       for (let i = 0; i < 50; i++) {
         const prev = resolved;
-        resolved = require('../../lib/v2/kernel/substitute').apply(resolved, theta);
+        resolved = require('../../lib/kernel/substitute').apply(resolved, theta);
         if (resolved === prev) break;
       }
       return hashToDec(resolved);
@@ -105,7 +105,7 @@ async function runBenchmarks(opts = {}) {
   } = opts;
 
   // Load calculus
-  const calc = await mde.load('/home/mhhf/src/optimism-mde/lib/bin.mde');
+  const calc = await mde.load(path.join(__dirname, '../../calculus/ill/programs/bin.ill'));
   const idx = prove.buildIndex(calc.clauses, calc.types);
 
   console.log('='.repeat(70));
@@ -197,7 +197,7 @@ async function runBenchmarks(opts = {}) {
 async function profileBenchmark(query, desc, opts = {}) {
   const { iterations = 10 } = opts;
 
-  const calc = await mde.load('/home/mhhf/src/optimism-mde/lib/bin.mde');
+  const calc = await mde.load(path.join(__dirname, '../../calculus/ill/programs/bin.ill'));
   const idx = prove.buildIndex(calc.clauses, calc.types);
   const goal = await mde.parseExpr(query);
 

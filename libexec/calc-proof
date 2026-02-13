@@ -1,16 +1,14 @@
 #!/usr/bin/env node
 /**
- * calc-proof - Proof search using v2 focused prover
+ * calc-proof - Proof search using focused prover
  *
  * Usage:
  *   calc proof "P, P -o Q |- Q"
  *   calc proof "A * B |- B * A"
  *   calc proof --profile "complex formula"
- *
- * For v1 prover, use: calc proof-v1
  */
 
-const v2 = require('../lib/v2');
+const v2 = require('../lib');
 const clc = require('cli-color');
 
 async function main() {

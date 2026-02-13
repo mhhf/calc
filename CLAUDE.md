@@ -27,83 +27,77 @@ CALC is an experimental proof calculus system for linear logic, inspired by the 
 ## Build & Development Commands
 
 ```bash
-# New SolidJS UI
 npm run dev           # Development server (http://localhost:3000)
 npm run build:ui      # Production build to out/ui/
-
-# Core
-npm run build:parser  # Regenerate parser from ll.json
-npm test              # Run Mocha tests
-make                  # Install CLI symlinks
-
-# Legacy CycleJS UI (deprecated)
-npm run ui:legacy     # Build and serve old UI
+npm run build:bundle  # Regenerate out/ill.json from calculus specs
+npm test              # Run core tests (417 tests)
+npm run test:engine   # Run engine tests (107 tests)
+npm run test:all      # Run everything
 ```
 
 ## Directory Structure
 
 ```
-lib/                  # Core library (used by CLI and UI)
-├── types/            # TypeScript type definitions
-├── calc.js           # Calculus database
-├── node.js           # AST representation
-├── parser.js         # Jison grammar generation
-├── sequent.js        # Logical sequents
-├── proofstate.js     # Proof search engine
-├── pt.js             # Proof trees
-└── ...
+lib/                     # Core library
+├── kernel/              # Content-addressed AST: store, sequent, unify, substitute, ast
+├── prover/              # Proof search engine (5-layer architecture)
+│   ├── kernel.js        # L1: proof verification
+│   ├── generic.js       # L2: search primitives
+│   ├── focused.js       # L3: Andreoli focusing
+│   ├── strategy/        # L4: manual, auto, forward, symexec
+│   ├── rule-interpreter.js  # descriptor → premise computation
+│   ├── context.js       # multiset operations
+│   ├── state.js         # proof state
+│   └── pt.js            # proof trees
+├── calculus/            # Calculus loader (from .calc/.rules files)
+├── engine/              # Forward/backward execution engine
+│   ├── convert.js       # .ill → content-addressed hashes
+│   ├── prove.js         # backward chaining
+│   └── ffi/             # foreign function interface
+├── meta-parser/         # Meta-level parser (tree-sitter CST → AST)
+│   ├── cst-to-ast.js    # CST → structured AST
+│   └── loader.js        # @extends chain resolution
+├── parser/              # Sequent string parser
+├── rules/               # .rules file parser (sequent notation → descriptors)
+├── tree-sitter-mde/     # Tree-sitter grammar (shared by meta-parser + engine)
+├── browser.js           # Browser-compatible API (loads from ill.json bundle)
+├── index.js             # Node.js API entry point
+└── hash.js              # Content-addressing hash functions
 
-src/ui/               # SolidJS frontend
-├── components/       # Reusable components
-│   ├── layout/       # Shell, TabNav
-│   ├── math/         # KaTeX, FormulaInput, InferenceRule
-│   ├── graph/        # ASTView, ProofTree
-│   └── common/       # ErrorBoundary, Loading
-├── pages/            # Route pages
-│   ├── Sandbox.tsx   # Formula sandbox
-│   ├── CalculusOverview.tsx
-│   └── MetaOverview.tsx
-├── state/            # UI-only state
-└── styles/           # Tailwind CSS
+calculus/ill/            # ILL calculus definition
+├── ill.calc             # Connective definitions
+├── ill.rules            # Inference rules (sequent notation)
+├── lnl.family           # Family infrastructure
+├── prelude/types.ill    # Type bounds, booleans
+└── programs/            # Real programs (EVM, binary arithmetic, multisig)
 
-libexec/              # CLI entry points
-out/                  # Generated outputs
-├── parser.js         # Generated Jison parser
-├── calc.json         # Calculus data for browser
-└── ui/               # Built SolidJS app
+src/ui/                  # SolidJS frontend
+├── lib/calculus.ts      # Calculus API for browser
+├── lib/proofLogic.ts    # Proof logic adapter
+├── pages/               # Route pages
+└── components/          # UI components
+
+tests/                   # Test suite
+├── engine/              # Engine tests + fixtures
+└── *.test.js            # Core prover tests
+
+benchmarks/              # Performance benchmarks
+├── engine/              # Engine benchmarks & profiles
+├── proof/               # Proof search benchmarks
+└── micro/               # Micro-benchmarks
+
+out/                     # Generated outputs
+├── ill.json             # Bundled calculus for browser
+└── ui/                  # Built SolidJS app
 ```
-
-## CLI Usage
-
-All commands are invoked via `calc <cmd> <options>`:
-- `calc parse <str>` - Parse formula, output tree and LaTeX
-- `calc proof` - Interactive/automated proof generation
-- `calc genparser` - Regenerate parser from ll.json
-- `calc gendoc` - Generate documentation
-- `calc debug-*` - Various debugging utilities
 
 ## Architecture
 
-**Core Data Flow:**
-```
-Formula Input → Parser (jison) → Node/AST → Sequent → Proofstate → Proof Tree → Output
-```
-
-**Key Components:**
-- `ll.json` - Master calculus definition (grammar, precedence, output formats)
-- `lib/parser.js` - Dynamically generates Jison grammar from ll.json
-- `lib/node.js` - AST with format-polymorphic rendering (ASCII, LaTeX, Isabelle)
-- `lib/sequent.js` - Logical sequent structure
-- `lib/proofstate.js` - Proof search with inversion and focusing
-- `lib/types/` - TypeScript definitions for all lib modules
+See `doc/documentation/architecture.md` for the full prover lasagne (L1-L5).
+See `doc/documentation/parser-pipeline.md` for the three parser paths.
 
 **Web UI (SolidJS):**
 - Tech: SolidJS + TypeScript + Tailwind CSS + Vite
 - Source: `src/ui/`
 - Build: `out/ui/`
-- Three tabs: Sandbox, Calculus Overview, Meta Overview
 - Imports `lib/` directly (CommonJS modules)
-
-**Custom Rule Language (LLT):**
-- Grammar: `src/llt.jison`
-- Programs: `programs/*.llt`

@@ -1,16 +1,14 @@
 #!/usr/bin/env node
 /**
- * calc-parse - Parse formulas/sequents using v2 parser
+ * calc-parse - Parse formulas/sequents
  *
  * Usage:
  *   calc parse "A -o B"        # Parse formula
  *   calc parse "A, B |- C"     # Parse sequent
  *   calc parse --latex "A * B" # Output LaTeX
- *
- * For v1 parser, use: calc parse-v1
  */
 
-const v2 = require('../lib/v2');
+const v2 = require('../lib');
 
 async function main() {
   let args = process.argv.slice(2);

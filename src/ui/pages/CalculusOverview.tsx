@@ -12,7 +12,7 @@ import {
   type ConnectiveInfo,
   type RuleInfo,
   type BNFProduction
-} from '../lib/calcV2';
+} from '../lib/calculus';
 
 /**
  * Simple BNF grammar display component

@@ -1,0 +1,95 @@
+#!/usr/bin/env node
+/**
+ * Generate browser-compatible bundle
+ *
+ * This script pre-processes the ILL calculus spec files and generates
+ * a JSON bundle that can be used in the browser without file system access.
+ *
+ * Usage: calc bundle [output-path]
+ */
+
+const fs = require('fs');
+const path = require('path');
+const calculus = require('../lib/calculus');
+
+async function main() {
+  const outputPath = process.argv[2] || path.join(__dirname, '../out/ill.json');
+
+  console.log('Loading ILL calculus...');
+  const ill = await calculus.loadILL();
+
+  // Extract the data we need for browser use
+  // (everything except functions which can't be serialized)
+  const bundle = {
+    version: '2.0',
+    generated: new Date().toISOString(),
+    name: ill.name,
+    baseTypes: ill.baseTypes,
+    constructors: ill.constructors,
+    directives: ill.directives,
+    rules: ill.rules,
+    polarity: ill.polarity,
+    invertible: ill.invertible
+  };
+
+  // Ensure output directory exists
+  const outDir = path.dirname(outputPath);
+  if (!fs.existsSync(outDir)) {
+    fs.mkdirSync(outDir, { recursive: true });
+  }
+
+  fs.writeFileSync(outputPath, JSON.stringify(bundle, null, 2));
+  console.log(`Written to ${outputPath}`);
+
+  // Also generate a TypeScript definition
+  const dtsPath = outputPath.replace('.json', '.d.ts');
+  const dts = `// Auto-generated type definitions for ILL bundle
+export interface Constructor {
+  name: string;
+  argTypes: string[];
+  returnType: string;
+  annotations: Record<string, any>;
+}
+
+export interface Rule {
+  name: string;
+  descriptor: {
+    connective: string | null;
+    side: 'l' | 'r' | null;
+    arity: number;
+    copyContext: boolean;
+    emptyLinear: boolean;
+    contextSplit: boolean;
+    contextFlow: string;
+    premises: Array<{ linear?: number[]; cartesian?: number[]; succedent?: number }>;
+  };
+  invertible: boolean | null;
+  pretty: string;
+  structural: boolean;
+  bridge: string | null;
+  numPremises: number;
+}
+
+export interface ILLBundle {
+  version: string;
+  generated: string;
+  name: string;
+  baseTypes: Record<string, any>;
+  constructors: Record<string, Constructor>;
+  directives: Record<string, any>;
+  rules: Record<string, Rule>;
+  polarity: Record<string, 'positive' | 'negative'>;
+  invertible: Record<string, boolean>;
+}
+
+declare const bundle: ILLBundle;
+export default bundle;
+`;
+  fs.writeFileSync(dtsPath, dts);
+  console.log(`Written type definitions to ${dtsPath}`);
+}
+
+main().catch(err => {
+  console.error('Error:', err);
+  process.exit(1);
+});

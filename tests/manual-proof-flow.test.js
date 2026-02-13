@@ -6,15 +6,15 @@
  */
 const { describe, it, before } = require('node:test');
 const assert = require('node:assert');
-const browser = require('../lib/v2/browser');
-const Seq = require('../lib/v2/kernel/sequent');
-const Store = require('../lib/v2/kernel/store');
+const browser = require('../lib/browser');
+const Seq = require('../lib/kernel/sequent');
+const Store = require('../lib/kernel/store');
 
 describe('Manual Proof Flows (browser simulation)', () => {
   let api;
 
   before(() => {
-    const bundle = require('../out/ill-v2.json');
+    const bundle = require('../out/ill.json');
     browser.initFromBundle(bundle);
     api = browser.getManualProofAPI();
   });

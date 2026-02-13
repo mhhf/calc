@@ -3,7 +3,7 @@ import { Router } from '@solidjs/router';
 import { RootLayout, routes } from './App';
 import './styles/app.css';
 
-// v2 API is lazily initialized via calcV2.ts when needed
+// v2 API is lazily initialized via calculus.ts when needed
 // No global initialization required
 
 // Mount the app

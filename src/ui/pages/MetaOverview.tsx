@@ -8,7 +8,7 @@ import {
   getSortNames,
   getMetavarConventions,
   getFormulaConnectives
-} from '../lib/calcV2';
+} from '../lib/calculus';
 
 /**
  * Code block component for JSON/code examples
@@ -304,7 +304,7 @@ rule plus_r2
               <span class="text-gray-400">→</span>
               <span class="px-3 py-1 bg-purple-100 dark:bg-purple-900/30 text-purple-800 dark:text-purple-300 rounded">Tree-sitter</span>
               <span class="text-gray-400">→</span>
-              <span class="px-3 py-1 bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300 rounded">ill-v2.json</span>
+              <span class="px-3 py-1 bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300 rounded">ill.json</span>
               <span class="text-gray-400">→</span>
               <span class="px-3 py-1 bg-orange-100 dark:bg-orange-900/30 text-orange-800 dark:text-orange-300 rounded">Runtime Parser</span>
               <span class="text-gray-400">→</span>
@@ -315,7 +315,7 @@ rule plus_r2
               <ul>
                 <li><strong>.calc + .rules</strong> define the calculus declaratively</li>
                 <li><strong>Tree-sitter</strong> parses these into an AST representation</li>
-                <li><strong>ill-v2.json</strong> bundles the calculus for browser use</li>
+                <li><strong>ill.json</strong> bundles the calculus for browser use</li>
                 <li><strong>Runtime Parser</strong> is built from @ascii/@prec annotations</li>
                 <li><strong>AST</strong> nodes are rendered in different formats (ascii, latex)</li>
               </ul>

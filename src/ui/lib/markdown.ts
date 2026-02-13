@@ -66,8 +66,8 @@ const serverProcessors: Record<string, (code: string, options?: Record<string, s
   // CALC formula rendering
   calc: (code: string) => {
     try {
-      // Use calcV2 module for browser-compatible parsing
-      const { parseFormula, renderFormula } = require('./calcV2');
+      // Use calculus module for browser-compatible parsing
+      const { parseFormula, renderFormula } = require('./calculus');
       const formula = parseFormula(code.trim());
       const latex = renderFormula(formula, 'latex');
       return `<span class="calc-formula">${katex.renderToString(latex, {

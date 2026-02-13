@@ -18,7 +18,7 @@ Completed tasks and research for the CALC project.
 The v2 rewrite is now the primary codebase.
 
 **UI (100% migrated):**
-- All pages use v2 API via `calcV2.ts` and `proofLogicV2.ts`
+- All pages use calculus API via `calculus.ts` and `proofLogic.ts`
 - Bundle size reduced ~25% by removing v1 dependencies
 
 **CLI (v2 is default):**

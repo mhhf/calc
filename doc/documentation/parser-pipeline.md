@@ -1,88 +1,79 @@
----
-title: Parser Pipeline
-created: 2026-02-10
-modified: 2026-02-10
-summary: Documentation of how sequent strings in ll.json are transformed into AST nodes through dynamic Jison grammar generation.
-tags: [parser, jison, ast, pipeline, grammar]
----
-
 # Parser Pipeline
 
-How sequent strings in ll.json become AST nodes.
+One tree-sitter grammar, three interpreters.
 
-## Overview
+## Architecture
 
 ```
-ll.json              lib/parser.js           Jison              out/parser.js
-─────────────────────────────────────────────────────────────────────────────
-calc_structure   →   generates grammar   →   compiles   →   parses strings
-(types, syntax)      object dynamically      to parser       into Node AST
+                     lib/tree-sitter-mde/grammar.js
+                              │ (Celf-style syntax)
+                              │
+               ┌──────────────┼──────────────┐
+               │              │              │
+         Meta Interpreter  Program Int.  Sequent Parser
+         lib/meta-parser/  lib/engine/   lib/rules/
+               │           convert.js    rules2-parser.js
+               │              │              │
+         Structured AST   Hash Store     Rule Descriptors
+         (constructors,   (content-      (premises,
+          annotations)    addressed)      context flow)
 ```
 
-## Step by Step
+## Three Parser Paths
 
-### 1. ll.json defines the calculus
+### 1. Meta Interpreter — defining calculi
 
-Types and their syntax:
-```json
-"Formula_Bin_Op": {
-  "Formula_Tensor": {
-    "ascii": "*",
-    "latex": "\\otimes"
-  },
-  "Formula_Loli": {
-    "ascii": "-o",
-    "latex": "\\multimap"
-  }
-}
+**Files:** `lib/meta-parser/cst-to-ast.js` + `lib/meta-parser/loader.js`
+
+**Input:** `.calc` and `.family` files (e.g., `calculus/ill/ill.calc`)
+
+**Output:** Structured AST — connective declarations with types, annotations (`@ascii`, `@latex`, `@prec`, `@polarity`), and `@extends` chains.
+
+**Used by:** `lib/calculus/index.js` to build the runtime calculus object (parser, renderer, AST constructors).
+
+```
+ill.calc → tree-sitter CST → cst-to-ast.js → loader.js (@extends chain) → calculus/index.js
 ```
 
-Rules reference these via strings:
-```json
-"Tensor_R": [
-  "?X, ?Y |- -- : [ F?A * F?B ]",
-  "?X |- -- : [ F?A ]",
-  "?Y |- -- : [ F?B ]"
-]
+### 2. Program Interpreter — running programs
+
+**File:** `lib/engine/convert.js`
+
+**Input:** `.ill` program files (e.g., `calculus/ill/programs/evm.ill`)
+
+**Output:** Content-addressed hashes in the global Store. Types become backward-chaining clauses, forward rules become multiset rewriting rules.
+
+**Used by:** `lib/engine/index.js` (the execution engine).
+
+```
+evm.ill → tree-sitter CST → convert.js → Store (hash → {tag, children})
 ```
 
-### 2. lib/parser.js generates Jison grammar
+### 3. Sequent Parser — defining inference rules
 
-- Iterates over `calc_structure`
-- Extracts symbols from `ascii` fields (`*`, `-o`, `|-`, etc.)
-- Builds BNF rules mapping syntax to Node constructors
-- Each rule becomes: `[syntax_pattern, "$$ = new yy.Node(id, [children]);"]`
+**File:** `lib/rules/rules2-parser.js`
 
-### 3. Jison compiles to parser
+**Input:** `.rules` files with sequent notation (e.g., `calculus/ill/ill.rules`)
 
-```bash
-./libexec/calc-genparser
+**Output:** Rule descriptors (`{ connective, side, arity, contextSplit, contextFlow, premises }`).
+
+**Used by:** `lib/calculus/index.js` and `lib/prover/rule-interpreter.js`.
+
+```
+ill.rules → custom parser (regex-based, not tree-sitter) → rule descriptors
 ```
 
-Outputs `out/parser.js` - a standalone parser module.
+## File Formats
 
-### 4. Parser converts strings to AST
+| Extension | Purpose | Parser | Example |
+|-----------|---------|--------|---------|
+| `.calc` | Connective definitions | Meta interpreter | `tensor : formula -> formula -> formula @ascii "_ * _"` |
+| `.family` | Family with `@extends` | Meta interpreter | `@extends ill.calc` |
+| `.rules` | Inference rules | Sequent parser | `tensor_r: G ; D, A, B |- C  ==>  G ; D, A * B |- C` |
+| `.ill` | Object-level programs | Program interpreter | `add (s X) Y (s Z) :- add X Y Z.` |
 
-```javascript
-const parser = require("./out/parser.js");
-parser.parse("?X |- -- : F?A * F?B")
-// → Node { id: ..., vals: [...] }
-```
+## Key Distinction
 
-## Key Files
-
- | File                     | Role                                       |
- | ------                   | ------                                     |
- | `ll.json`                | Calculus definition (types, syntax, rules) |
- | `lib/parser.js`          | Grammar generator                          |
- | `libexec/calc-genparser` | Build script                               |
- | `out/parser.js`          | Generated parser                           |
- | `lib/node.js`            | AST node class                             |
-
-## Adding New Syntax
-
-1. Add type/connective to `calc_structure` in ll.json with `ascii` field
-2. Run `npm run build:parser`
-3. Parser now recognizes the new syntax
-
-No manual grammar editing needed.
+The meta interpreter and program interpreter share the SAME tree-sitter grammar but produce different outputs:
+- **Meta:** structured AST for defining what connectives exist (used at build time)
+- **Program:** content-addressed hashes for execution (used at runtime)

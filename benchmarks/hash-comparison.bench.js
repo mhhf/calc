@@ -361,7 +361,7 @@ async function main() {
   console.log('-'.repeat(70));
 
   try {
-    const v2 = require('../lib/v2');
+    const v2 = require('../lib');
     const ill = await v2.loadILL();
     const sp = v2.createSequentParser(ill);
     const prover = v2.createProver(ill);

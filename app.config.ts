@@ -22,7 +22,7 @@ export default defineConfig({
       // Transform CommonJS modules (lib/*.js) for both dev and build
       commonjs({
         filter(id: string) {
-          return id.includes('/lib/') || id.includes('/out/parser.js') || id.includes('/out/ill-v2.json');
+          return id.includes('/lib/') || id.includes('/out/parser.js') || id.includes('/out/ill.json');
         }
       }),
       // MDX support for research docs
@@ -50,7 +50,7 @@ export default defineConfig({
     },
     build: {
       commonjsOptions: {
-        include: [/lib\/.*\.js$/, /out\/parser\.js$/, /out\/ill-v2\.json$/, /node_modules/],
+        include: [/lib\/.*\.js$/, /out\/parser\.js$/, /out\/ill\.json$/, /node_modules/],
         transformMixedEsModules: true,
       },
     },

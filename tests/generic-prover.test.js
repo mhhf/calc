@@ -5,10 +5,10 @@
 const { describe, it, before } = require('node:test');
 const assert = require('node:assert');
 
-const { createGenericProver, buildRuleSpecs } = require('../lib/v2/prover/generic');
-const Seq = require('../lib/v2/kernel/sequent');
-const calculus = require('../lib/v2/calculus');
-const Context = require('../lib/v2/prover/context');
+const { createGenericProver, buildRuleSpecs } = require('../lib/prover/generic');
+const Seq = require('../lib/kernel/sequent');
+const calculus = require('../lib/calculus');
+const Context = require('../lib/prover/context');
 
 describe('L2 Generic Prover', () => {
   let calc, AST, generic, specs, alternatives;

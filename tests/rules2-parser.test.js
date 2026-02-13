@@ -3,9 +3,9 @@
  */
 const { describe, it, before } = require('node:test');
 const assert = require('node:assert');
-const calculus = require('../lib/v2/calculus');
-const { buildRuleSpecs } = require('../lib/v2/prover/rule-interpreter');
-const Seq = require('../lib/v2/kernel/sequent');
+const calculus = require('../lib/calculus');
+const { buildRuleSpecs } = require('../lib/prover/rule-interpreter');
+const Seq = require('../lib/kernel/sequent');
 
 describe('.rules2 parser', () => {
   describe('Proof search integration', () => {
@@ -17,7 +17,7 @@ describe('.rules2 parser', () => {
       const result = buildRuleSpecs(calc);
       specs = result.specs;
       alternatives = result.alternatives;
-      const { createProver } = require('../lib/v2/prover/focused');
+      const { createProver } = require('../lib/prover/focused');
       prover = createProver(calc);
     });
 

@@ -3,7 +3,7 @@ import KaTeX from '../components/math/KaTeX';
 import ErrorBoundary from '../components/common/ErrorBoundary';
 
 // v2 API
-import { getCalculusName, getAllRules, hasRule, getBundle } from '../lib/calcV2';
+import { getCalculusName, getAllRules, hasRule, getBundle } from '../lib/calculus';
 
 type ConditionStatus = 'pass' | 'partial' | 'fail' | 'na';
 
