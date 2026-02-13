@@ -208,13 +208,22 @@ async function processCodeBlocksWithPlaceholders(html: string, storage: string[]
 /**
  * Convert wiki-style links [[doc]] to HTML links
  */
+const FOLDER_TO_ROUTE: Record<string, string> = {
+  research: '/research',
+  dev: '/dev',
+  documentation: '/docs',
+};
+
 function processWikiLinks(html: string, basePath: string = '/research'): string {
   return html.replace(/\[\[([^\]|]+)(?:\|([^\]]+))?\]\]/g, (_, doc, label) => {
     const displayText = label || doc;
-    // Handle cross-folder links like [[dev/todo]]
     if (doc.includes('/')) {
-      const [folder, name] = doc.split('/');
-      return `<a href="/${folder}/${name}">${displayText}</a>`;
+      // Strip leading ../ segments and resolve folder
+      const parts = doc.split('/').filter((p: string) => p !== '..');
+      const folder = parts[0];
+      const name = parts.slice(1).join('/');
+      const route = FOLDER_TO_ROUTE[folder] || `/${folder}`;
+      return `<a href="${route}/${name}">${displayText}</a>`;
     }
     return `<a href="${basePath}/${doc}">${displayText}</a>`;
   });

@@ -7,6 +7,8 @@ const tabs = [
   { path: '/health', label: 'Health' },
   { path: '/meta', label: 'Meta' },
   { path: '/research', label: 'Research' },
+  { path: '/docs', label: 'Docs' },
+  { path: '/dev', label: 'Dev' },
 ];
 
 export default function TabNav() {

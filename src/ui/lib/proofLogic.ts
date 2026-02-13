@@ -4,7 +4,7 @@
  * ARCHITECTURE: This is a thin layer over lib/browser.js
  * - All formulas/sequents use content-addressed hashes (numbers)
  * - The Store is the single source of truth
- * - Never create AST objects directly - always use Store.intern or browser APIs
+ * - Never create AST objects directly - always use Store.put or browser APIs
  */
 
 import {
