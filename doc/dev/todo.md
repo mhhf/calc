@@ -23,15 +23,17 @@ entering the monad switches from backward (L2/L3) to forward (L4c), exiting at q
 - [ ] Understand relationship to Ceptre stages
 
 ### Execution Trees
-**Priority:** HIGH | **Status:** research complete — ready for implementation
+**Priority:** HIGH | **Status:** DONE (symexec.js)
 
-Branch at additive choice (&) points instead of stopping. Explore all possible executions.
+Implemented in `lib/prover/strategy/symexec.js`:
 
-- [ ] Detect choice (with) in rule consequent
-- [ ] Fork state at branch points, explore both
-- [ ] Build recursive Tree structure with branch metadata
-- [ ] GraphViz dot output for visualization
-- [ ] Extract all leaf states for analysis
+- [x] Detect choice (with) in rule consequent — `expandItem()`, `expandConsequentChoices()`
+- [x] Fork state at branch points, explore both — `explore()` with mutation+undo
+- [x] Build recursive Tree structure with branch metadata — `{ type, state, children, rule, choice }`
+- [x] GraphViz dot output for visualization — `toDot()`
+- [x] Extract all leaf states for analysis — `getAllLeaves()`, `countLeaves()`, `maxDepth()`
+- [x] Cycle detection (back-edge via commutative XOR hash)
+- [x] Depth bounding (maxDepth option)
 
 **See:** doc/research/execution-trees-metaproofs.md
 
@@ -48,12 +50,12 @@ Prove properties about CALC programs: conservation, safety, termination.
 **See:** doc/research/execution-trees-metaproofs.md
 
 ### Induction and Coinduction (Fixed Points)
-**Priority:** MEDIUM | **Status:** research complete — longer-term | **Depends on:** execution trees, metaproofs
+**Priority:** MEDIUM | **Status:** partially implemented | **Depends on:** execution trees, metaproofs
 
 Handle unbounded/infinite behavior: recursive contracts, streaming payments.
 
-- [ ] Cycle detection in forward chaining
-- [ ] Bounded exploration with depth limit
+- [x] Cycle detection in forward chaining — back-edge detection via commutative XOR hash in `explore()`
+- [x] Bounded exploration with depth limit — `maxDepth` option in `explore()`
 - [ ] Fixed point syntax (μ, ν connectives)
 - [ ] Progress checking for cyclic proofs
 
@@ -208,50 +210,37 @@ also uses precomputed metadata when available (ruleSpecMeta).
 - [ ] `freshenTerm`/`freshenClause` walk full clause trees. Could precompute variable position maps per clause at load time so freshening only visits variable positions.
 
 ### Symexec: 178-Match-Call Exhaustive Scans
-**Priority:** VERY HIGH | **Status:** needs-research
+**Priority:** VERY HIGH | **Status:** DONE (1,661 → 605 match() calls)
 
-6 of 63 nodes account for 64% of all `match()` calls (1,068 of 1,661). Each tries
-matching a rule against ALL 178 linear facts and finds nothing. These rules pass the
-predicate filter (trigger predicates exist in state) but fail matching every fact.
+**Root cause:** Bug in tryMatch candidate lookup. When `pred` was known (e.g. 'calldatasize')
+but `index[pred]` was undefined (0 facts), the code fell through to scanning ALL linear facts
+(`Object.keys(state.linear)` → 178 match calls). Fix: `candidates = index[pred] || []`.
 
-Need to investigate:
-- [ ] Which specific rules cause the exhaustive scans? (rule name, antecedent structure)
-- [ ] Why do they pass the predicate filter but fail matching? (predicates present but wrong argument structure?)
-- [ ] Would first-argument indexing (like backward prover's `getFirstArgCtor`) prune candidates?
-- [ ] Are these non-opcode rules that fall through to predicate layer? (concatMemory, calldatacopy?)
-- [ ] Can the strategy stack add a layer that prevents these scans?
-
-Context: `findAllMatches` → `tryMatch(rule, state)` → for each linear pattern, looks up
-`index[pred]` to get candidate facts, then calls `match(pattern, fact)` for each. When the
-index bucket is large (e.g., all 178 facts have the same predicate? or fallback to all?),
-we scan everything.
+**Findings:**
+- [x] `evm/calldatasize` caused 64% of match() calls (6 tries × 178 facts = 1,068 calls)
+- [x] Rule was opcode-indexed (opcode 0x36), correctly selected by opcode layer
+- [x] But `calldatasize(_Size)` fact was missing from state → scanned ALL 178 facts
+- [x] Fix: known predicate with 0 indexed facts → empty candidates (not full scan)
+- [x] Next biggest: jumpi_neq/jumpi_eq at ~14 match/try — legitimate work (2×stack patterns)
 
 ### Symexec: Prove Memo Cache
-**Priority:** VERY HIGH | **Status:** needs-research
+**Priority:** VERY HIGH | **Status:** DONE (direct FFI bypass — 153 prove() calls → 0)
 
-`prove()` (backward chaining) is called 153 times across 63 nodes (2.4/node), taking
-54% of findAllMatches time. Most calls are arithmetic FFI: `inc(binlit, _PC')`,
-`plus(binlit, binlit, _GAS')`, `neq(X, Y)`.
+Solved by `tryFFIDirect()` in forward.js: persistent antecedents with FFI (inc, plus, neq,
+mul, etc.) are dispatched directly from tryMatch, bypassing the full prove() machinery.
+Added `neq` FFI for O(1) BigInt inequality. FFI failure is definitive (break immediately).
 
-Need to investigate:
-- [ ] How many prove calls have identical goal hashes? (same inc/plus with same binlit inputs)
-- [ ] Are goals fully ground after substitution? (if so, result is deterministic → cacheable)
-- [ ] What does the prove call tree look like? (depth, branching, FFI vs clause resolution)
-- [ ] Would a simple `Map<goalHash, theta>` cache work? (concerns: freshening, variable scoping)
-- [ ] How big would the cache get? (per-explore vs global lifetime)
-- [ ] Can we avoid prove entirely for FFI-only goals? (direct FFI dispatch without prove overhead)
-
-Context: tryMatch calls `backward.prove(goal, clauses, types, { maxDepth: 50 })` for each
-persistent antecedent pattern after substitution. Prove does: freshenTerm, getCandidates,
-unify, recurse on premises. For `inc(binlit(117), _PC')`, it freshens `inc` clause, unifies,
-then calls FFI `plus` to compute the result.
+- [x] Direct FFI dispatch without prove overhead — `tryFFIDirect()` in forward.js
+- [x] neq FFI added — `arithmetic.neq`, mode `+ +`
+- [x] Result: 153 prove() calls → 0 per 63-node tree (19% symexec speedup)
 
 ### Symexec: Non-Opcode Rule Strategy
-**Priority:** LOW
+**Priority:** LOW | **Status:** investigated — minimal impact
 
 4 non-opcode helper rules (concatMemory/z, concatMemory/s, calldatacopy/z, calldatacopy/s)
-cause tryMatch waste — they're tried at nodes where predicates are present but values don't
-match. The predicate layer filters by trigger predicate existence but not by argument values.
+go to predicate layer. In practice these contribute 0 match() calls because their trigger
+predicates (concatMemory, calldatacopy) are never present in the multisig benchmark state.
+Only relevant when those EVM instructions are actually used.
 
 ---
 
