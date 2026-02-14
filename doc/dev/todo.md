@@ -180,9 +180,12 @@ O(1) identity for ground formulas via tag-based index. Highest-impact single opt
 **See:** doc/dev/constructor-indexing.md, doc/research/prover-optimization.md
 
 ### Symexec: Incremental buildStateIndex & hashState
-**Priority:** MEDIUM | **Status:** DONE (181ms → 14ms → 8.4ms → 4.7ms)
+**Priority:** MEDIUM | **Status:** DONE (181ms → 14ms → 8.4ms → 4.7ms → 3.8ms)
 
 Implemented: ExploreContext (incremental index + XOR hash), mutation+undo, strategy stack.
+Latest: index mutation+undo eliminates cloneIndex (46µs per 173-entry codeByPC spread × 6 clones),
+mutable pathVisited Set eliminates new Set() copies.
+**See:** doc/documentation/symexec-optimizations.md
 
 ### Audit: Precompute Everything Possible at Compile Time
 **Priority:** VERY HIGH | **Status:** DONE (audit complete, .calc/.rules fully precomputed)

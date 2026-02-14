@@ -86,6 +86,7 @@ function instrumentedExplore(initialState, rules, calcCtx, maxDepth) {
     undoMutate:     { time: 0, calls: 0 },
     setClone:       { time: 0, calls: 0 },
     makeChildCtx:   { time: 0, calls: 0 },
+    undoIndex:      { time: 0, calls: 0 },
     snapshot:       { time: 0, calls: 0 },
   };
 
@@ -99,7 +100,10 @@ function instrumentedExplore(initialState, rules, calcCtx, maxDepth) {
   const indexedRules = Array.isArray(rules) ? { rules } : rules;
   const strategy = symexec.detectStrategy(ruleList);
 
-  function go(depth, pathVisited, ctx) {
+  // Mutable pathVisited: add before recursion, delete after (no Set copies)
+  const pathVisited = new Set();
+
+  function go(depth, ctx) {
     let t0;
 
     // Cycle detection uses numeric hash from context (incremental)
@@ -136,17 +140,10 @@ function instrumentedExplore(initialState, rules, calcCtx, maxDepth) {
       return { type: 'leaf', state: snap };
     }
 
-    t0 = performance.now();
-    const nextVisited = new Set(pathVisited);
-    nextVisited.add(sh);
-    timers.setClone.time += performance.now() - t0;
-    timers.setClone.calls++;
+    pathVisited.add(sh);
 
-    // Pre-expand choices and count total children for clone decision
+    // Pre-expand choices
     const matchAlts = matches.map(m => symexec.expandConsequentChoices(m.rule.consequent));
-    let totalChildren = 0;
-    for (const alts of matchAlts) totalChildren += alts.length <= 1 ? 1 : alts.length;
-    const needsClone = totalChildren > 1;
 
     const children = [];
     for (let mi = 0; mi < matches.length; mi++) {
@@ -164,11 +161,16 @@ function instrumentedExplore(initialState, rules, calcCtx, maxDepth) {
         timers.mutateState.calls++;
 
         t0 = performance.now();
-        const childCtx = symexec.makeChildCtx(ctx, state, undo, needsClone);
+        const { ctx: childCtx, indexUndo } = symexec.makeChildCtx(ctx, state, undo);
         timers.makeChildCtx.time += performance.now() - t0;
         timers.makeChildCtx.calls++;
 
-        const child = go(depth + 1, nextVisited, childCtx);
+        const child = go(depth + 1, childCtx);
+
+        t0 = performance.now();
+        symexec.undoIndexChanges(ctx.stateIndex, indexUndo);
+        timers.undoIndex.time += performance.now() - t0;
+        timers.undoIndex.calls++;
 
         t0 = performance.now();
         symexec.undoMutate(state, undo);
@@ -185,11 +187,16 @@ function instrumentedExplore(initialState, rules, calcCtx, maxDepth) {
           timers.mutateState.calls++;
 
           t0 = performance.now();
-          const childCtx = symexec.makeChildCtx(ctx, state, undo, needsClone);
+          const { ctx: childCtx, indexUndo } = symexec.makeChildCtx(ctx, state, undo);
           timers.makeChildCtx.time += performance.now() - t0;
           timers.makeChildCtx.calls++;
 
-          const child = go(depth + 1, nextVisited, childCtx);
+          const child = go(depth + 1, childCtx);
+
+          t0 = performance.now();
+          symexec.undoIndexChanges(ctx.stateIndex, indexUndo);
+          timers.undoIndex.time += performance.now() - t0;
+          timers.undoIndex.calls++;
 
           t0 = performance.now();
           symexec.undoMutate(state, undo);
@@ -200,11 +207,14 @@ function instrumentedExplore(initialState, rules, calcCtx, maxDepth) {
         }
       }
     }
+
+    pathVisited.delete(sh);
+
     return { type: 'branch', state: null, children };
   }
 
   const rootCtx = symexec.ExploreContext.fromState(state);
-  const tree = go(0, new Set(), rootCtx);
+  const tree = go(0, rootCtx);
   return { tree, timers };
 }
 
@@ -247,8 +257,8 @@ async function runBenchmark(doProfile) {
       ['mutateState',          timers.mutateState],
       ['undoMutate',           timers.undoMutate],
       ['makeChildCtx',         timers.makeChildCtx],
+      ['undoIndexChanges',     timers.undoIndex],
       ['snapshotState',        timers.snapshot],
-      ['Set clone',            timers.setClone],
     ];
     for (const [name, t] of rows) {
       if (t.calls === 0) continue;
