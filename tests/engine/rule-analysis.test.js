@@ -8,6 +8,7 @@ const { describe, it, before } = require('node:test');
 const assert = require('node:assert');
 const path = require('path');
 const forward = require('../../lib/prover/strategy/forward');
+const { analyzeRule } = require('../../lib/prover/strategy/rule-analysis');
 const mde = require('../../lib/engine');
 const Store = require('../../lib/kernel/store');
 
@@ -537,6 +538,216 @@ describe('Rule Analysis', { timeout: 10000 }, () => {
       assert.strictEqual(dump.anteLinear.length, 2);
       assert.strictEqual(dump.anteLinear[0].hash, dump.anteLinear[1].hash,
         'p(_X) * p(_X) gives identical pattern hashes');
+    });
+  });
+
+  // ============================================================================
+  // PART 6: analyzeRule — preserved/consumed/produced classification
+  // ============================================================================
+
+  describe('analyzeRule v1: preserved detection', () => {
+
+    // Helper: compare multisets (sorted arrays)
+    function sortedHashes(arr) { return [...arr].sort((a, b) => a - b); }
+    function assertMultisetEqual(actual, expected, msg) {
+      assert.deepStrictEqual(sortedHashes(actual), sortedHashes(expected), msg);
+    }
+
+    it('foo -o bar: pure consumed + produced', async () => {
+      const rule = await makeRule('c', 'foo -o { bar }');
+      const result = analyzeRule(rule);
+
+      const foo = rule.antecedent.linear[0];
+      const bar = rule.consequent.linear[0];
+
+      assertMultisetEqual(result.preserved, [], 'no preserved');
+      assertMultisetEqual(result.consumed, [foo], 'foo consumed');
+      assertMultisetEqual(result.produced, [bar], 'bar produced');
+    });
+
+    it('foo * bar -o foo * baz: foo preserved', async () => {
+      const rule = await makeRule('p', 'foo * bar -o { foo * baz }');
+      const result = analyzeRule(rule);
+
+      const foo = await mde.parseExpr('foo');
+      const bar = await mde.parseExpr('bar');
+      const baz = await mde.parseExpr('baz');
+
+      assertMultisetEqual(result.preserved, [foo], 'foo preserved');
+      assertMultisetEqual(result.consumed, [bar], 'bar consumed');
+      assertMultisetEqual(result.produced, [baz], 'baz produced');
+    });
+
+    it('p _X * bar -o p _X * baz: p(_X) preserved (shared metavar)', async () => {
+      const rule = await makeRule('pa', 'p _X * bar -o { p _X * baz }');
+      const result = analyzeRule(rule);
+
+      // p(_X) has the same hash on both sides (content-addressed, same metavar)
+      const pHash = rule.antecedent.linear.find(
+        h => forward.getPredicateHead(h) === 'p');
+
+      assert(result.preserved.includes(pHash), 'p(_X) should be preserved');
+      assert.strictEqual(result.preserved.length, 1);
+      assert.strictEqual(result.consumed.length, 1, '1 consumed (bar)');
+      assert.strictEqual(result.produced.length, 1, '1 produced (baz)');
+    });
+
+    it('a * b -o b * a: both preserved (swap)', async () => {
+      const rule = await makeRule('swap', 'a * b -o { b * a }');
+      const result = analyzeRule(rule);
+
+      assert.strictEqual(result.preserved.length, 2, 'both preserved');
+      assert.strictEqual(result.consumed.length, 0, 'none consumed');
+      assert.strictEqual(result.produced.length, 0, 'none produced');
+    });
+
+    it('coin * coin -o coin: 1 preserved, 1 consumed', async () => {
+      const rule = await makeRule('join', 'coin * coin -o { coin }');
+      const result = analyzeRule(rule);
+      const coin = await mde.parseExpr('coin');
+
+      assertMultisetEqual(result.preserved, [coin], '1 preserved');
+      assertMultisetEqual(result.consumed, [coin], '1 consumed');
+      assertMultisetEqual(result.produced, [], 'none produced');
+    });
+
+    it('coin -o coin * coin: 1 preserved, 1 produced', async () => {
+      const rule = await makeRule('split', 'coin -o { coin * coin }');
+      const result = analyzeRule(rule);
+      const coin = await mde.parseExpr('coin');
+
+      assertMultisetEqual(result.preserved, [coin], '1 preserved');
+      assertMultisetEqual(result.consumed, [], 'none consumed');
+      assertMultisetEqual(result.produced, [coin], '1 produced');
+    });
+
+    it('coin * coin * coin -o coin * coin: 2 preserved, 1 consumed', async () => {
+      const rule = await makeRule('3to2', 'coin * coin * coin -o { coin * coin }');
+      const result = analyzeRule(rule);
+      const coin = await mde.parseExpr('coin');
+
+      assertMultisetEqual(result.preserved, [coin, coin], '2 preserved');
+      assertMultisetEqual(result.consumed, [coin], '1 consumed');
+      assertMultisetEqual(result.produced, [], 'none produced');
+    });
+
+    it('a * a -o a * b: 1 a preserved, 1 a consumed, b produced', async () => {
+      const rule = await makeRule('partial', 'a * a -o { a * b }');
+      const result = analyzeRule(rule);
+      const a = await mde.parseExpr('a');
+      const b = await mde.parseExpr('b');
+
+      assertMultisetEqual(result.preserved, [a], '1 a preserved');
+      assertMultisetEqual(result.consumed, [a], '1 a consumed');
+      assertMultisetEqual(result.produced, [b], 'b produced');
+    });
+
+    it('p _X * p _Y -o p _Z: no preserved (different hashes)', async () => {
+      const rule = await makeRule('join_args',
+        'p _X * p _Y * !merge _X _Y _Z -o { p _Z }');
+      const result = analyzeRule(rule);
+
+      // All p(...) have different metavar args → different hashes → no preserved
+      assert.strictEqual(result.preserved.length, 0, 'no preserved');
+      assert.strictEqual(result.consumed.length, 2, '2 consumed');
+      assert.strictEqual(result.produced.length, 1, '1 produced');
+    });
+
+    it('p _X * p _X -o p _X: 1 preserved, 1 consumed (identical patterns)', async () => {
+      const rule = await makeRule('join_same', 'p _X * p _X -o { p _X }');
+      const result = analyzeRule(rule);
+      const pHash = rule.antecedent.linear[0]; // both are same hash
+
+      assertMultisetEqual(result.preserved, [pHash], '1 preserved');
+      assertMultisetEqual(result.consumed, [pHash], '1 consumed');
+      assertMultisetEqual(result.produced, [], 'none produced');
+    });
+
+    it('multiset invariant: preserved + consumed = antecedent', async () => {
+      const rule = await makeRule('inv', 'a * b * a * c -o { a * d * b }');
+      const result = analyzeRule(rule);
+
+      const anteHashes = sortedHashes(rule.antecedent.linear);
+      const reconstituted = sortedHashes([...result.preserved, ...result.consumed]);
+      assert.deepStrictEqual(reconstituted, anteHashes,
+        'preserved + consumed should equal antecedent (as multiset)');
+    });
+
+    it('multiset invariant: preserved + produced = consequent', async () => {
+      const rule = await makeRule('inv2', 'a * b * a * c -o { a * d * b }');
+      const result = analyzeRule(rule);
+
+      const conseqHashes = sortedHashes(rule.consequent.linear);
+      const reconstituted = sortedHashes([...result.preserved, ...result.produced]);
+      assert.deepStrictEqual(reconstituted, conseqHashes,
+        'preserved + produced should equal consequent (as multiset)');
+    });
+
+    it('evm/add: only code is preserved (v1, no delta detection)', async () => {
+      const calc = await mde.load(
+        path.join(__dirname, '../../calculus/ill/programs/evm.ill'));
+      const rule = calc.forwardRules.find(r => r.name === 'evm/add');
+      const result = analyzeRule(rule);
+
+      // code has identical hash on both sides → preserved
+      const codeHash = rule.antecedent.linear.find(
+        h => forward.getPredicateHead(h) === 'code');
+      assert(result.preserved.includes(codeHash), 'code should be preserved');
+
+      // pc, sh, stack have different hashes → consumed/produced
+      assert.strictEqual(result.preserved.length, 1, 'only code is preserved in v1');
+
+      // 4 consumed (pc, sh, stack, stack), 3 produced (pc', sh', stack')
+      assert.strictEqual(result.consumed.length, 4, '4 consumed');
+      assert.strictEqual(result.produced.length, 3, '3 produced');
+
+      // Verify multiset invariant
+      const anteHashes = sortedHashes(rule.antecedent.linear);
+      const reconstituted = sortedHashes([...result.preserved, ...result.consumed]);
+      assert.deepStrictEqual(reconstituted, anteHashes, 'multiset invariant');
+    });
+
+    it('evm/swap1: all different hashes — nothing preserved in v1', async () => {
+      const calc = await mde.load(
+        path.join(__dirname, '../../calculus/ill/programs/evm.ill'));
+      const rule = calc.forwardRules.find(r => r.name === 'evm/swap1');
+      const result = analyzeRule(rule);
+
+      // Check if code is preserved (should be if same hash)
+      const anteCode = rule.antecedent.linear.find(
+        h => forward.getPredicateHead(h) === 'code');
+      const conseqCode = rule.consequent.linear.find(
+        h => forward.getPredicateHead(h) === 'code');
+
+      if (anteCode === conseqCode) {
+        assert(result.preserved.includes(anteCode), 'code preserved if same hash');
+      }
+
+      // Multiset invariant always holds
+      const anteHashes = sortedHashes(rule.antecedent.linear);
+      const reconstituted = sortedHashes([...result.preserved, ...result.consumed]);
+      assert.deepStrictEqual(reconstituted, anteHashes, 'multiset invariant');
+    });
+
+    it('multiset invariants hold for ALL EVM rules', async () => {
+      const calc = await mde.load(
+        path.join(__dirname, '../../calculus/ill/programs/evm.ill'));
+
+      for (const rule of calc.forwardRules) {
+        const result = analyzeRule(rule);
+
+        // preserved + consumed = antecedent
+        const anteHashes = sortedHashes(rule.antecedent.linear);
+        const anteRecon = sortedHashes([...result.preserved, ...result.consumed]);
+        assert.deepStrictEqual(anteRecon, anteHashes,
+          `${rule.name}: preserved + consumed should equal antecedent`);
+
+        // preserved + produced = consequent
+        const conseqHashes = sortedHashes(rule.consequent.linear);
+        const conseqRecon = sortedHashes([...result.preserved, ...result.produced]);
+        assert.deepStrictEqual(conseqRecon, conseqHashes,
+          `${rule.name}: preserved + produced should equal consequent`);
+      }
     });
   });
 });
