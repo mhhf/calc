@@ -8,7 +8,7 @@ const { describe, it, before } = require('node:test');
 const assert = require('node:assert');
 const path = require('path');
 const forward = require('../../lib/prover/strategy/forward');
-const { analyzeRule } = require('../../lib/prover/strategy/rule-analysis');
+const { analyzeRule, analyzeDeltas } = require('../../lib/prover/strategy/rule-analysis');
 const mde = require('../../lib/engine');
 const Store = require('../../lib/kernel/store');
 
@@ -747,6 +747,335 @@ describe('Rule Analysis', { timeout: 10000 }, () => {
         const conseqRecon = sortedHashes([...result.preserved, ...result.produced]);
         assert.deepStrictEqual(conseqRecon, conseqHashes,
           `${rule.name}: preserved + produced should equal consequent`);
+      }
+    });
+  });
+
+  // ============================================================================
+  // PART 7: analyzeDeltas — delta detection (same pred, different args)
+  // ============================================================================
+
+  describe('analyzeDeltas: delta detection', () => {
+
+    function sortedHashes(arr) { return [...arr].sort((a, b) => a - b); }
+    function assertMultisetEqual(actual, expected, msg) {
+      assert.deepStrictEqual(sortedHashes(actual), sortedHashes(expected), msg);
+    }
+
+    // --- Single-pred deltas ---
+
+    it('p _X -o p _Y: one delta (position 0 changed)', async () => {
+      const rule = await makeRule('d1', 'p _X * !inc _X _Y -o { p _Y }');
+      const result = analyzeDeltas(rule);
+
+      assert.strictEqual(result.deltas.length, 1, 'one delta');
+      assert.strictEqual(result.deltas[0].pred, 'p');
+      assert.deepStrictEqual(result.deltas[0].changedPositions, [0],
+        'position 0 changed');
+
+      // consumed/produced should now exclude the delta pair
+      assert.strictEqual(result.consumed.length, 0, 'no remaining consumed');
+      assert.strictEqual(result.produced.length, 0, 'no remaining produced');
+    });
+
+    it('foo -o bar: no deltas (different preds)', async () => {
+      const rule = await makeRule('d2', 'foo -o { bar }');
+      const result = analyzeDeltas(rule);
+
+      assert.strictEqual(result.deltas.length, 0, 'no deltas');
+      assert.strictEqual(result.consumed.length, 1, 'foo consumed');
+      assert.strictEqual(result.produced.length, 1, 'bar produced');
+    });
+
+    it('preserved: foo * bar -o foo * baz has no deltas (foo preserved)', async () => {
+      const rule = await makeRule('d3', 'foo * bar -o { foo * baz }');
+      const result = analyzeDeltas(rule);
+
+      assert.strictEqual(result.deltas.length, 0, 'no deltas');
+      assert.strictEqual(result.preserved.length, 1, 'foo preserved');
+      assert.strictEqual(result.consumed.length, 1, 'bar consumed');
+      assert.strictEqual(result.produced.length, 1, 'baz produced');
+    });
+
+    it('mixed: keep * p _X * gone * !inc _X _Y -o keep * p _Y * born', async () => {
+      const rule = await makeRule('d4',
+        'keep * p _X * gone * !inc _X _Y -o { keep * p _Y * born }');
+      const result = analyzeDeltas(rule);
+
+      // keep is preserved (identical hash)
+      assert.strictEqual(result.preserved.length, 1, '1 preserved (keep)');
+
+      // p is a delta (same pred, arg 0 changed)
+      assert.strictEqual(result.deltas.length, 1, '1 delta (p)');
+      assert.strictEqual(result.deltas[0].pred, 'p');
+      assert.deepStrictEqual(result.deltas[0].changedPositions, [0]);
+
+      // gone consumed, born produced
+      assert.strictEqual(result.consumed.length, 1, '1 consumed (gone)');
+      assert.strictEqual(result.produced.length, 1, '1 produced (born)');
+    });
+
+    // --- Multi-position deltas ---
+
+    it('f _X _Y * !inc _X _X2 * !inc _Y _Y2 -o f _X2 _Y2: both positions changed', async () => {
+      const rule = await makeRule('d5',
+        'f _X _Y * !inc _X _X2 * !inc _Y _Y2 -o { f _X2 _Y2 }');
+      const result = analyzeDeltas(rule);
+
+      assert.strictEqual(result.deltas.length, 1, '1 delta');
+      assert.strictEqual(result.deltas[0].pred, 'f');
+      assert.deepStrictEqual(result.deltas[0].changedPositions, [0, 1],
+        'both positions changed');
+    });
+
+    it('f _X _Y * !inc _X _Z -o f _Z _Y: only position 0 changed', async () => {
+      const rule = await makeRule('d6',
+        'f _X _Y * !inc _X _Z -o { f _Z _Y }');
+      const result = analyzeDeltas(rule);
+
+      assert.strictEqual(result.deltas.length, 1, '1 delta');
+      assert.strictEqual(result.deltas[0].pred, 'f');
+      assert.deepStrictEqual(result.deltas[0].changedPositions, [0],
+        'only position 0 changed');
+
+      // Verify unchanged position has same child hash
+      const anteF = result.deltas[0].anteHash;
+      const conseqF = result.deltas[0].conseqHash;
+      assert.strictEqual(Store.child(anteF, 1), Store.child(conseqF, 1),
+        'position 1 is unchanged');
+      assert.notStrictEqual(Store.child(anteF, 0), Store.child(conseqF, 0),
+        'position 0 is changed');
+    });
+
+    // --- Nested structure deltas ---
+
+    it('f (g _X) * !inc _X _Y -o f (g _Y): nested delta', async () => {
+      const rule = await makeRule('d7',
+        'f (g _X) * !inc _X _Y -o { f (g _Y) }');
+      const result = analyzeDeltas(rule);
+
+      assert.strictEqual(result.deltas.length, 1);
+      assert.strictEqual(result.deltas[0].pred, 'f');
+      // Position 0 changes (g(_X) → g(_Y))
+      assert.deepStrictEqual(result.deltas[0].changedPositions, [0]);
+    });
+
+    it('f _X (g _Y) * !inc _X _Z -o f _Z (g _Y): partial nested delta', async () => {
+      const rule = await makeRule('d8',
+        'f _X (g _Y) * !inc _X _Z -o { f _Z (g _Y) }');
+      const result = analyzeDeltas(rule);
+
+      assert.strictEqual(result.deltas.length, 1);
+      assert.strictEqual(result.deltas[0].pred, 'f');
+      assert.deepStrictEqual(result.deltas[0].changedPositions, [0],
+        'only position 0 changed, position 1 (g _Y) preserved');
+    });
+
+    // --- N:M multi-match with deltas ---
+
+    it('coin * coin -o coin: no deltas (identical hashes, not different-arg)', async () => {
+      // All coins have identical hash → all go to preserved/consumed, no deltas
+      const rule = await makeRule('d9', 'coin * coin -o { coin }');
+      const result = analyzeDeltas(rule);
+
+      assert.strictEqual(result.deltas.length, 0, 'no deltas');
+      assert.strictEqual(result.preserved.length, 1, '1 preserved');
+      assert.strictEqual(result.consumed.length, 1, '1 consumed');
+    });
+
+    it('p _X * p _Y -o p _Z: 1 delta, 1 consumed (2 consumed, 1 produced)', async () => {
+      // Two consumed p with different args, one produced p with different arg
+      // Should pair one consumed with the produced → 1 delta + 1 remaining consumed
+      const rule = await makeRule('d10',
+        'p _X * p _Y * !merge _X _Y _Z -o { p _Z }');
+      const result = analyzeDeltas(rule);
+
+      assert.strictEqual(result.deltas.length, 1, '1 delta');
+      assert.strictEqual(result.deltas[0].pred, 'p');
+      assert.strictEqual(result.consumed.length, 1, '1 remaining consumed');
+      assert.strictEqual(result.produced.length, 0, 'no remaining produced');
+    });
+
+    it('p _X -o p _Y * p _Z: 1 delta, 1 produced (1 consumed, 2 produced)', async () => {
+      const rule = await makeRule('d11',
+        'p _X * !split _X _Y _Z -o { p _Y * p _Z }');
+      const result = analyzeDeltas(rule);
+
+      assert.strictEqual(result.deltas.length, 1, '1 delta');
+      assert.strictEqual(result.deltas[0].pred, 'p');
+      assert.strictEqual(result.consumed.length, 0, 'no remaining consumed');
+      assert.strictEqual(result.produced.length, 1, '1 remaining produced');
+    });
+
+    it('p _X * p _Y -o p _Y * p _X: all preserved (hash matching)', async () => {
+      // p(_X) appears on both sides → preserved. p(_Y) appears on both sides → preserved.
+      // Content-addressing: p(_X) ante hash = p(_X) conseq hash, same for p(_Y).
+      // So v1 sees both as preserved. 0 deltas.
+      const rule = await makeRule('d12', 'p _X * p _Y -o { p _Y * p _X }');
+      const result = analyzeDeltas(rule);
+
+      assert.strictEqual(result.preserved.length, 2, '2 preserved');
+      assert.strictEqual(result.deltas.length, 0, '0 deltas');
+      assert.strictEqual(result.consumed.length, 0, 'no consumed');
+      assert.strictEqual(result.produced.length, 0, 'no produced');
+    });
+
+    // --- Zero-arg (atom) deltas impossible ---
+
+    it('atoms have no deltas (different pred = different consumed/produced)', async () => {
+      const rule = await makeRule('d13', 'a * b -o { c * d }');
+      const result = analyzeDeltas(rule);
+
+      assert.strictEqual(result.deltas.length, 0);
+      assert.strictEqual(result.consumed.length, 2);
+      assert.strictEqual(result.produced.length, 2);
+    });
+
+    // --- Multiset invariants for deltas ---
+
+    it('multiset invariant: preserved + consumed + delta.ante = antecedent', async () => {
+      const rule = await makeRule('dinv',
+        'keep * p _X * q _A _B * gone * !inc _X _Y * !inc _A _A2 -o { keep * p _Y * q _A2 _B * born }');
+      const result = analyzeDeltas(rule);
+
+      const deltaAnteHashes = result.deltas.map(d => d.anteHash);
+      const anteHashes = sortedHashes(rule.antecedent.linear);
+      const reconstituted = sortedHashes([
+        ...result.preserved,
+        ...result.consumed,
+        ...deltaAnteHashes
+      ]);
+      assert.deepStrictEqual(reconstituted, anteHashes,
+        'preserved + consumed + delta.ante = antecedent');
+    });
+
+    it('multiset invariant: preserved + produced + delta.conseq = consequent', async () => {
+      const rule = await makeRule('dinv2',
+        'keep * p _X * q _A _B * gone * !inc _X _Y * !inc _A _A2 -o { keep * p _Y * q _A2 _B * born }');
+      const result = analyzeDeltas(rule);
+
+      const deltaConseqHashes = result.deltas.map(d => d.conseqHash);
+      const conseqHashes = sortedHashes(rule.consequent.linear);
+      const reconstituted = sortedHashes([
+        ...result.preserved,
+        ...result.produced,
+        ...deltaConseqHashes
+      ]);
+      assert.deepStrictEqual(reconstituted, conseqHashes,
+        'preserved + produced + delta.conseq = consequent');
+    });
+
+    // --- EVM rules ---
+
+    it('evm/add: pc, sh are deltas; stack has 2 consumed, 1 produced delta', async () => {
+      const calc = await mde.load(
+        path.join(__dirname, '../../calculus/ill/programs/evm.ill'));
+      const rule = calc.forwardRules.find(r => r.name === 'evm/add');
+      const result = analyzeDeltas(rule);
+
+      // code is preserved (identical hash)
+      const codeHash = rule.antecedent.linear.find(
+        h => forward.getPredicateHead(h) === 'code');
+      assert(result.preserved.includes(codeHash), 'code preserved');
+
+      // Check delta predicates
+      const deltaPreds = result.deltas.map(d => d.pred);
+
+      // pc should be a delta (PC → PC' via !inc)
+      assert(deltaPreds.includes('pc'), `pc should be delta, got: ${deltaPreds}`);
+      const pcDelta = result.deltas.find(d => d.pred === 'pc');
+      assert.deepStrictEqual(pcDelta.changedPositions, [0], 'pc: position 0 changes');
+
+      // sh should be a delta (SH → SH' — unwrap s() constructor)
+      assert(deltaPreds.includes('sh'), `sh should be delta, got: ${deltaPreds}`);
+
+      // evm/add does NOT have gas as a linear pattern (only eq, sload, etc. do)
+      assert(!deltaPreds.includes('gas'), 'no gas in evm/add');
+    });
+
+    it('evm/add: stack has delta and extra consumed (2 ante, 1 conseq)', async () => {
+      const calc = await mde.load(
+        path.join(__dirname, '../../calculus/ill/programs/evm.ill'));
+      const rule = calc.forwardRules.find(r => r.name === 'evm/add');
+      const result = analyzeDeltas(rule);
+
+      // stack: 2 consumed (pop X, Y), 1 produced (push X+Y)
+      // → 1 delta pair + 1 remaining consumed
+      const stackDeltas = result.deltas.filter(d => d.pred === 'stack');
+      assert.strictEqual(stackDeltas.length, 1, '1 stack delta pair');
+
+      const remainingConsumedStacks = result.consumed.filter(
+        h => forward.getPredicateHead(h) === 'stack');
+      assert.strictEqual(remainingConsumedStacks.length, 1, '1 stack remaining consumed');
+    });
+
+    it('multiset invariants hold for ALL EVM rules with deltas', async () => {
+      const calc = await mde.load(
+        path.join(__dirname, '../../calculus/ill/programs/evm.ill'));
+
+      for (const rule of calc.forwardRules) {
+        const result = analyzeDeltas(rule);
+        const deltaAnteHashes = result.deltas.map(d => d.anteHash);
+        const deltaConseqHashes = result.deltas.map(d => d.conseqHash);
+
+        // preserved + consumed + delta.ante = antecedent
+        const anteHashes = sortedHashes(rule.antecedent.linear);
+        const anteRecon = sortedHashes([
+          ...result.preserved,
+          ...result.consumed,
+          ...deltaAnteHashes
+        ]);
+        assert.deepStrictEqual(anteRecon, anteHashes,
+          `${rule.name}: preserved + consumed + delta.ante = antecedent`);
+
+        // preserved + produced + delta.conseq = consequent
+        const conseqHashes = sortedHashes(rule.consequent.linear);
+        const conseqRecon = sortedHashes([
+          ...result.preserved,
+          ...result.produced,
+          ...deltaConseqHashes
+        ]);
+        assert.deepStrictEqual(conseqRecon, conseqHashes,
+          `${rule.name}: preserved + produced + delta.conseq = consequent`);
+      }
+    });
+
+    it('all EVM deltas have valid changedPositions', async () => {
+      const calc = await mde.load(
+        path.join(__dirname, '../../calculus/ill/programs/evm.ill'));
+
+      for (const rule of calc.forwardRules) {
+        const result = analyzeDeltas(rule);
+        for (const delta of result.deltas) {
+          // changedPositions should be non-empty (otherwise it would be preserved)
+          assert(delta.changedPositions.length > 0,
+            `${rule.name}: delta ${delta.pred} should have at least one changed position`);
+
+          // changedPositions should be within arity bounds
+          const arity = Store.arity(delta.anteHash);
+          for (const pos of delta.changedPositions) {
+            assert(pos >= 0 && pos < arity,
+              `${rule.name}: delta ${delta.pred} position ${pos} out of bounds (arity ${arity})`);
+          }
+
+          // Ante and conseq should have same pred head
+          assert.strictEqual(
+            forward.getPredicateHead(delta.anteHash),
+            forward.getPredicateHead(delta.conseqHash),
+            `${rule.name}: delta ante/conseq should have same pred head`);
+
+          // Unchanged positions should have identical children
+          const a = Store.arity(delta.anteHash);
+          const changedSet = new Set(delta.changedPositions);
+          for (let i = 0; i < a; i++) {
+            if (!changedSet.has(i)) {
+              assert.strictEqual(
+                Store.child(delta.anteHash, i),
+                Store.child(delta.conseqHash, i),
+                `${rule.name}: delta ${delta.pred} position ${i} should be unchanged`);
+            }
+          }
+        }
       }
     });
   });
