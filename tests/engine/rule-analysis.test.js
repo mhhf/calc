@@ -1141,4 +1141,187 @@ describe('Rule Analysis', { timeout: 10000 }, () => {
       assert.strictEqual(a.produced.length, 0, 'no remaining produced');
     });
   });
+
+  // ============================================================================
+  // PART 9: Stage 3 — preserved optimization cross-check
+  // ============================================================================
+
+  describe('Preserved optimization cross-check', () => {
+
+    // Helper: compare two states for equality
+    function statesEqual(s1, s2) {
+      const l1 = Object.entries(s1.linear).filter(([, v]) => v > 0).sort(([a], [b]) => a - b);
+      const l2 = Object.entries(s2.linear).filter(([, v]) => v > 0).sort(([a], [b]) => a - b);
+      if (l1.length !== l2.length) return false;
+      for (let i = 0; i < l1.length; i++) {
+        if (l1[i][0] !== l2[i][0] || l1[i][1] !== l2[i][1]) return false;
+      }
+      const p1 = Object.keys(s1.persistent).sort();
+      const p2 = Object.keys(s2.persistent).sort();
+      if (p1.length !== p2.length) return false;
+      for (let i = 0; i < p1.length; i++) {
+        if (p1[i] !== p2[i]) return false;
+      }
+      return true;
+    }
+
+    function assertStatesEqual(s1, s2, msg) {
+      if (!statesEqual(s1, s2)) {
+        const fmt = s => JSON.stringify({
+          linear: Object.entries(s.linear).filter(([,v]) => v > 0),
+          persistent: Object.keys(s.persistent)
+        });
+        assert.fail(`${msg}\n  got:      ${fmt(s1)}\n  expected: ${fmt(s2)}`);
+      }
+    }
+
+    // Cross-check helper: run same scenario with opt ON and OFF, compare
+    function crossCheck(state, rules, opts, msg) {
+      const r1 = forward.run(
+        { linear: { ...state.linear }, persistent: { ...state.persistent } },
+        rules, { ...opts, optimizePreserved: false });
+      const r2 = forward.run(
+        { linear: { ...state.linear }, persistent: { ...state.persistent } },
+        rules, { ...opts, optimizePreserved: true });
+
+      assertStatesEqual(r1.state, r2.state,
+        `${msg}: final states should match`);
+      assert.strictEqual(r1.steps, r2.steps,
+        `${msg}: step count should match`);
+      assert.strictEqual(r1.quiescent, r2.quiescent,
+        `${msg}: quiescence should match`);
+      return { unopt: r1, opt: r2 };
+    }
+
+    it('foo -o bar: no preserved, same behavior', async () => {
+      const rule = await makeRule('xc1', 'foo -o { bar }');
+      const foo = await mde.parseExpr('foo');
+      const state = forward.createState({ [foo]: 1 }, {});
+      crossCheck(state, [rule], { maxSteps: 10 }, 'foo→bar');
+    });
+
+    it('foo * bar -o foo * baz: foo preserved', async () => {
+      const rule = await makeRule('xc2', 'foo * bar -o { foo * baz }');
+      const foo = await mde.parseExpr('foo');
+      const bar = await mde.parseExpr('bar');
+      const state = forward.createState({ [foo]: 1, [bar]: 1 }, {});
+      crossCheck(state, [rule], { maxSteps: 10 }, 'preserve foo');
+    });
+
+    it('coin * coin -o coin: resource counting with preserved', async () => {
+      const rule = await makeRule('xc3', 'coin * coin -o { coin }');
+      const coin = await mde.parseExpr('coin');
+
+      // With 3 coins: should fire once (consume 2, produce 1 → net 2)
+      // then fire again (consume 2, produce 1 → net 1), then stop
+      // Wait — coin*coin→coin consumes 2 produces 1 → net -1 each step
+      // 3 coins → step 1 → 2 coins → step 2 → 1 coin → stop
+      crossCheck(
+        forward.createState({ [coin]: 3 }, {}),
+        [rule], { maxSteps: 10 }, 'coin×3 join'
+      );
+    });
+
+    it('coin * coin -o coin: with exactly 2 coins', async () => {
+      const rule = await makeRule('xc3b', 'coin * coin -o { coin }');
+      const coin = await mde.parseExpr('coin');
+      crossCheck(
+        forward.createState({ [coin]: 2 }, {}),
+        [rule], { maxSteps: 10 }, 'coin×2 join'
+      );
+    });
+
+    it('coin * coin -o coin: with 1 coin (should not fire)', async () => {
+      const rule = await makeRule('xc3c', 'coin * coin -o { coin }');
+      const coin = await mde.parseExpr('coin');
+      crossCheck(
+        forward.createState({ [coin]: 1 }, {}),
+        [rule], { maxSteps: 10 }, 'coin×1 join'
+      );
+    });
+
+    it('a * b -o b * a: swap (both preserved, no-op)', async () => {
+      const rule = await makeRule('xc4', 'a * b -o { b * a }');
+      const a = await mde.parseExpr('a');
+      const b = await mde.parseExpr('b');
+      const state = forward.createState({ [a]: 1, [b]: 1 }, {});
+      // This rule is a no-op (swap identity). But does it loop?
+      // It fires once (consuming a,b → producing b,a → same state) then fires again...
+      // Actually: antecedent matches, so it fires → produces same state → matches again → infinite loop
+      // Limit steps to check both modes agree
+      crossCheck(state, [rule], { maxSteps: 5 }, 'swap a,b');
+    });
+
+    it('a * a -o a * b: partial preserve', async () => {
+      const rule = await makeRule('xc5', 'a * a -o { a * b }');
+      const a = await mde.parseExpr('a');
+      const state = forward.createState({ [a]: 2 }, {});
+      crossCheck(state, [rule], { maxSteps: 10 }, 'partial preserve a');
+    });
+
+    it('foo -o foo * bar: infinite producer (limited)', async () => {
+      const rule = await makeRule('xc6', 'foo -o { foo * bar }');
+      const foo = await mde.parseExpr('foo');
+      const state = forward.createState({ [foo]: 1 }, {});
+      crossCheck(state, [rule], { maxSteps: 10 }, 'infinite producer');
+    });
+
+    it('multi-rule: r1 produces what r2 consumes', async () => {
+      const r1 = await makeRule('xc7a', 'a -o { b }');
+      const r2 = await makeRule('xc7b', 'b -o { c }');
+      const a = await mde.parseExpr('a');
+      const state = forward.createState({ [a]: 1 }, {});
+      crossCheck(state, [r1, r2], { maxSteps: 10 }, 'chain a→b→c');
+    });
+
+    it('preserved with metavars: p _X * bar -o p _X * baz', async () => {
+      const rule = await makeRule('xc8', 'p _X * bar -o { p _X * baz }');
+      const pFoo = Store.put('p', [await mde.parseExpr('foo')]);
+      const bar = await mde.parseExpr('bar');
+      const state = forward.createState({ [pFoo]: 1, [bar]: 1 }, {});
+      crossCheck(state, [rule], { maxSteps: 10 }, 'metavar preserve');
+    });
+
+    it('EVM multisig: full execution cross-check', async () => {
+      const programsDir = path.join(__dirname, '../../calculus/ill/programs');
+      const fs = require('fs');
+      const calc = await mde.load([
+        path.join(programsDir, 'bin.ill'),
+        path.join(programsDir, 'evm.ill'),
+        path.join(programsDir, 'multisig_code.ill')
+      ]);
+
+      // Build initial state (same as benchmark)
+      const initState = { linear: {}, persistent: {} };
+      for (const f of ['pc N_75', 'sh ee', 'gas N_ffff', 'caller sender_addr', 'sender member01']) {
+        initState.linear[await mde.parseExpr(f)] = 1;
+      }
+      const codeFile = fs.readFileSync(path.join(programsDir, 'multisig_code.ill'), 'utf8');
+      for (const line of codeFile.split('\n')) {
+        const trimmed = line.split('%')[0].trim();
+        if (!trimmed || !trimmed.startsWith('code')) continue;
+        const parts = trimmed.replace(/\*.*$/, '').trim();
+        if (parts) initState.linear[await mde.parseExpr(parts)] = 1;
+      }
+
+      const calcCtx = { types: calc.types, clauses: calc.clauses };
+
+      const r1 = forward.run(
+        { linear: { ...initState.linear }, persistent: { ...initState.persistent } },
+        calc.forwardRules,
+        { maxSteps: 200, calc: calcCtx, optimizePreserved: false });
+
+      const r2 = forward.run(
+        { linear: { ...initState.linear }, persistent: { ...initState.persistent } },
+        calc.forwardRules,
+        { maxSteps: 200, calc: calcCtx, optimizePreserved: true });
+
+      assertStatesEqual(r1.state, r2.state,
+        'EVM multisig: final states should match');
+      assert.strictEqual(r1.steps, r2.steps,
+        'EVM multisig: step count should match');
+      assert.strictEqual(r1.quiescent, r2.quiescent,
+        'EVM multisig: quiescence should match');
+    });
+  });
 });
