@@ -63,16 +63,58 @@ For deeply nested types. O(K*D) vs O(N). Valuable when facts are merged into com
 
 ## Profiling Snapshot (2026-02-14)
 
-Symexec median: 2.3ms (was 5.59ms original).
+Symexec median: 2.3ms (was 5.59ms original). 63 nodes, 7 leaves, depth 38.
 
-findAllMatches breakdown (71.3% of total):
-- **Overhead (loop, index, theta copy, FFI, deferred):** 63.4% of findAllMatches (1.92ms)
-- **unify.match:** 28.3% (857µs, 605 calls, 1.4µs/call)
-- **substitute:** 8.3% (250µs, 251 calls)
+### V8 Profile Breakdown (node --prof, 500 runs)
 
-Other: mutateState 13.6%, makeChildCtx 8.1%, undo 5.2%.
+Top ticks (945 total, 48% unaccounted):
 
-**Next target:** The 1.92ms findAllMatches overhead — theta copying, candidate iteration, availability checks.
+| Source | Ticks | % | Where |
+|--------|-------|---|-------|
+| Map ops (construct+get+set) | 53 | 5.6% | `substitute.apply` `new Map(theta)` + `linearMeta.get()` |
+| match() | 27 | 2.9% | unify.js core |
+| KeyedLoadIC_Megamorphic | 26 | 2.8% | `state.linear[h]`, `consumed[h]` in tryMatch |
+| Array ops (push+grow+splice) | 23 | 2.4% | match theta, expandConsequentChoices |
+| tryMatch self | 18 | 1.9% | forward.js loop overhead |
+| computeHash | 13 | 1.4% | Store.put via FFI (inc, plus) + substitute |
+| ForInFilter | 9 | 1.0% | `for...in` in mutateState/undoMutate |
+| undoIndexChanges | 7 | 0.7% | symexec DFS undo |
+
+### Allocation Pressure
+
+~4,737 allocations per run (63-node tree):
+
+| Source | Count | % | What |
+|--------|-------|---|------|
+| match() | 1815 | 38% | theta copies + [var,val] pairs + goal stack |
+| tryMatch | 1512 | 32% | consumed/reserved/preservedCount objects + theta spreads |
+| substitute.apply | 1004 | 21% | `new Map(theta)` + newChildren arrays |
+| explore | 406 | 9% | undo logs, indexUndo, snapshots |
+
+GC spikes: 2% of runs >2x median (3.4ms max vs 1.2ms median).
+
+### Stage 5: Allocation Reduction (planned — high priority)
+
+**Targets and strategies:**
+
+**5a. Eliminate Map in substitute.apply (~3% improvement)**
+`new Map(theta)` on line 68 of substitute.js — 251 calls/run. Replace with linear scan of theta array. For theta ≤ 10 entries, linear scan (40 comparisons) is faster than Map construction (190ns) + lookups.
+
+**5b. Eliminate double theta copy (~2% improvement)**
+tryMatch copies theta with `[...theta]` before passing to match(). match() copies AGAIN with `[...initialTheta]`. 605 redundant copies. Fix: add `matchMut()` variant that skips internal copy — safe because tryMatch already provides a fresh copy.
+
+**5c. Replace linearMeta Map with plain object (~1% improvement)**
+`linearMeta` in compileRule() is a Map with numeric keys. Replace with `{}` — V8 optimizes integer-keyed object properties. Eliminates ~315 Map.get calls/run.
+
+**5d. Reduce tryMatch per-call allocations (~1% improvement)**
+Merge `preservedUsed` into `preservedCount` (decrement on use). Use index-based iteration to eliminate `deferred = []` array. Pre-allocate `resourcePatterns` on rule object.
+
+**5e. Cache expandConsequentChoices per rule (~0.5% improvement)**
+Consequent structure doesn't change between calls. Precompute alternatives in compileRule(), store as `rule.consequentAlts`.
+
+**Total estimated: ~7-10% improvement** from ticks, potentially 15-20% at p90 from reduced GC pressure.
+
+**Implementation order:** 5a → 5b → 5c → 5d → 5e (decreasing impact).
 
 ## References
 
