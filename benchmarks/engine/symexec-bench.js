@@ -156,7 +156,8 @@ function instrumentedExplore(initialState, rules, calcCtx, maxDepth) {
       if (alts.length <= 1) {
         t0 = performance.now();
         const undo = symexec.mutateState(state, m.consumed, m.theta,
-          m.rule.consequent.linear || [], m.rule.consequent.persistent || []);
+          m.rule.consequent.linear || [], m.rule.consequent.persistent || [],
+          m.slots, m.optimized ? m.rule : null);
         timers.mutateState.time += performance.now() - t0;
         timers.mutateState.calls++;
 
@@ -182,7 +183,7 @@ function instrumentedExplore(initialState, rules, calcCtx, maxDepth) {
         for (let i = 0; i < alts.length; i++) {
           t0 = performance.now();
           const undo = symexec.mutateState(state, m.consumed, m.theta,
-            alts[i].linear, alts[i].persistent);
+            alts[i].linear, alts[i].persistent, m.slots, null);
           timers.mutateState.time += performance.now() - t0;
           timers.mutateState.calls++;
 
@@ -213,7 +214,8 @@ function instrumentedExplore(initialState, rules, calcCtx, maxDepth) {
     return { type: 'branch', state: null, children };
   }
 
-  const rootCtx = symexec.ExploreContext.fromState(state);
+  const fpConfig = strategy.fpConfig || null;
+  const rootCtx = symexec.ExploreContext.fromState(state, fpConfig);
   const tree = go(0, rootCtx);
   return { tree, timers };
 }
