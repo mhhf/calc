@@ -142,14 +142,11 @@ function instrumentedExplore(initialState, rules, calcCtx, maxDepth) {
 
     pathVisited.add(sh);
 
-    // Use precomputed consequent alternatives
-    const matchAlts = matches.map(m => m.rule.consequentAlts);
-
     const children = [];
     for (let mi = 0; mi < matches.length; mi++) {
       const m = matches[mi];
       t0 = performance.now();
-      const alts = matchAlts[mi];
+      const alts = m.rule.consequentAlts;
       timers.expandChoices.time += performance.now() - t0;
       timers.expandChoices.calls++;
 
