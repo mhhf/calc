@@ -175,22 +175,16 @@ See `doc/documentation/buffer-limits.md` for details.
 
 ---
 
-## Stage 5: Theta Format Unification (superseded — low priority)
+## Stage 5: Theta Format Unification (done)
 
-**Status:** Largely superseded by Stage 6 (de Bruijn indexed theta). The hot path now uses indexed `theta[slot] = value` format, bypassing both flat and paired formats entirely.
+**Status:** Done. Reduced from 3 formats to 2 with a clear boundary:
 
-**Remaining tech debt:** Three theta formats coexist: (1) indexed `theta[slot]` on hot path (Stage 6), (2) flat `[v,t,v,t,...]` in `match()`/`applyFlat()` (dead on hot path, used by cold path callers), (3) paired `[[v,t],...]` in backward prover, FFI, sequent prover, tests. FFI/backward prover results are converted to indexed format at the `tryMatch` boundary (2 conversion sites).
+| Format | Functions | Where |
+|--------|-----------|-------|
+| **Indexed** `theta[slot]=value` | `matchIndexed`, `applyIndexed`, `subCompiled` | Hot path: forward.js, symexec.js |
+| **Paired** `[[v,t],...]` | `unify`, `match`, `apply` | Cold path: prove.js, FFI, prover L1-L3, tests |
 
-**Risk:** Silent data corruption if wrong format passed to wrong consumer. Mitigated by separate function names (`apply` vs `applyFlat`), but still a footgun.
-
-**Implementation:** ~40 mechanical edits across ~15 files:
-- `UnionFind.toTheta()` → produce flat format
-- All 14 FFI functions in `lib/engine/ffi/` → return flat format
-- `prove.js` backward prover → return flat format
-- `context.js`, `sequent.js`, `generic.js` → consume flat format
-- ~20 test assertions → update `theta.length` checks (1 binding = 2 entries)
-
-**Safety proof:** Purely mechanical transformation. Each edit changes `theta.push([v, t])` to `theta.push(v, t)` and `theta[i][0]`/`theta[i][1]` to `theta[i]`/`theta[i+1]` with step-by-2 loops. No algorithmic change. Test suite catches any mismatched format.
+Flat format `[v,t,v,t,...]` removed entirely. `match()` changed to return paired (same as `unify()`). `applyFlat()` deleted. `subCompiled()` moved to substitute.js (shared by forward.js and symexec.js). ~132 lines removed, 0 perf change.
 
 **Performance:** Near-zero improvement at current scale. Cold paths are called tens of times per run (vs thousands for hot paths). But eliminates conversion overhead at tryMatch boundaries and removes format confusion risk.
 

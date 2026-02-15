@@ -120,8 +120,8 @@ describe('v2 Kernel', () => {
     it('should match metavar to term', () => {
       const theta = match(AST.freevar('_A'), AST.atom('p'));
       assert.ok(theta !== null);
-      // Flat interleaved theta: [var, val, ...] — 1 binding = length 2
-      assert.strictEqual(theta.length, 2);
+      // Paired theta: [[var, val], ...] — 1 binding = length 1
+      assert.strictEqual(theta.length, 1);
     });
 
     it('should check consistent bindings', () => {
