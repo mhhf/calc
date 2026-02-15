@@ -1,757 +1,115 @@
 # Forward Chaining Optimization Roadmap
 
-Optimizing forward chaining execution while keeping everything as plain linear logic. All optimizations are optional transparent compile-time shortcuts — the logic frontend is unchanged.
-
 ## Architecture
 
-Forward chaining: rules of the form `A * B * !C -o { D * E }` consume linear facts and produce new ones. Persistent facts (`!C`) are proved via backward chaining / FFI. Execution proceeds until quiescence.
+Forward chaining: rules `A * B * !C -o { D * E }` consume linear facts, produce new ones. Persistent facts (`!C`) proved via backward chaining / FFI. Execution proceeds until quiescence.
 
-Key files: `forward.js` (engine), `symexec.js` (tree exploration), `rule-analysis.js` (compile-time analysis), `unify.js` (pattern matching), `substitute.js` (substitution), `store.js` (content-addressed terms).
+Key files: `forward.js` (engine), `symexec.js` (tree exploration), `rule-analysis.js` (compile-time analysis), `disc-tree.js` (discrimination tree indexing), `unify.js` (matching), `substitute.js` (substitution), `store.js` (content-addressed terms).
 
-## EVM Rule Profile (baseline)
+## Completed Stages
 
-44 forward rules in `evm.ill`. Per rule: 2-6 linear antecedents, 0-3 persistent antecedents, 2-6 consequent patterns.
+| Stage | What | Result |
+|-------|------|--------|
+| 1 | Flat TypedArray SoA store | 5.59ms → 3.47ms (−38%) |
+| 2 | Preserved/delta detection (compile-time) | Infrastructure for 3, 7 |
+| 3 | Preserved optimization (skip consume/produce) | −6-16% |
+| 4 | Allocation reduction (reusable buffers, flat worklist) | P90 −9.3% |
+| 5 | Theta format unification (3→2 formats) | −138 LOC, 0% perf |
+| 6 | De Bruijn indexed theta (O(1) metavar lookup) | −53% |
+| 7 | Delta bypass + compiled substitution | −8% |
+| 9 | Discrimination tree (general rule indexing) | O(depth) vs O(R) |
+| — | Generalized fingerprint layer (auto-detect) | Non-EVM programs |
 
-| Category | Facts | % of LHS | Description |
-|----------|-------|----------|-------------|
-| **Preserved** | 60 | 27% | Same pattern hash both sides — skip consume/produce |
-| **Delta** | 108 | 46% | Same predicate, different args — in-place update |
-| **Consumed** | 50 | 21% | Left-only, truly removed |
-| **Produced** | 27 | — | Right-only, truly new |
+**Current stack:** `fingerprintLayer` (O(1) for ground-discriminated rules) → `discTreeLayer` (O(depth) catch-all) → `predicateLayer` (safety net, never activates).
 
-Delta by predicate: pc(35), sh(28), gas(24), stack(17), code(1), storage(1), others(2).
+**Current bottleneck:** `findAllMatches` → `tryMatch` → `matchIndexed`.
 
-## Dependency Graph
+## Key Learnings
 
-```
-DONE                           TODO
-────                           ────
-Stage 1 (flat store)
-  │
-Stage 2 (preserved/delta detection)
-  │
-Stage 3 (preserved optimization)
-  │
-Stage 4 (allocation reduction)
-  │
-Stage 6 (de Bruijn theta)
-  │
-Stage 7 (delta + compiled sub)
-  │
-Stage 9 (discrimination trees)
-  │
-  ├──────────────────── Stage 5 (theta unification)     [superseded by 6, low]
-  │
-  ├──────────────────── Stage 5a (dirty rule tracking)  [SKIP — disc-tree supersedes for symexec]
-  │
-  ├──────────────────── Stage 8 (path-based access)     [standalone, future]
-  │
-  └──────────────────── Compiled matching (Maranget)    [standalone, future, 1000+ rules]
-```
+1. **CALC's engine IS TREAT-like.** No beta memories, full re-evaluation from alpha memories (stateIndex). Correct for linear logic — Rete's cached partial matches are pure overhead when facts are consumed. See `doc/research/forward-chaining-networks.md`.
 
-All future stages are independent of each other except Stage 7 → Stage 6. Each can be implemented and tested in isolation with cross-check tests.
+2. **CHR simpagation IS ILL forward rules.** Kept head = `!A`, removed head = linear, guard = FFI/backward proving. 25+ years of CHR compilation research applies. See `doc/research/forward-chaining-networks.md`.
 
-## Key Insights from Research (2026-02-15)
+3. **Strategy stack IS a manually compiled decision tree.** The fingerprint layer does what Maranget's algorithm would automate. The disc-tree layer generalizes to arbitrary patterns. Together they handle the full range from 44 to 400+ rules without manual tuning.
 
-Research in `doc/research/` revealed several insights that affect optimization priorities:
+4. **Semi-naive for linear logic is fundamentally harder than Datalog.** Fact consumption invalidates matches — needs provenance tracking ≈ Rete beta network. Dirty predicate tracking (Stage 5a) would be the cheap approximation, but the disc-tree already prunes candidates by pattern structure, making 5a redundant for symexec. See `doc/research/incremental-matching.md`.
 
-1. **CALC's engine IS TREAT-like.** No beta memories, full re-evaluation from alpha memories (stateIndex). This is the correct architecture for linear logic — Rete's cached partial matches are pure overhead when facts are consumed every step. **See:** `doc/research/forward-chaining-networks.md`.
+5. **Disc-tree must filter by relevant predicates.** Naive implementation scans all state facts — 47% regression at 44 rules (178 facts, only 4 unclaimed rules). Fix: at build time collect which predicates appear in indexed rules, only scan those facts. Result: 0% regression. Lesson: catch-all layers must not do O(total_facts) work when they only have a few rules.
 
-2. **CHR simpagation IS ILL forward rules.** Direct formal correspondence: kept head `H1` = persistent antecedents (`!A`), removed head `H2` = linear antecedents, guard `G` = FFI/backward proving. This means 25+ years of CHR compilation research applies directly. **See:** `doc/research/forward-chaining-networks.md`.
+6. **Store.arity includes non-term children.** `atom('e')` has `arity=1` (string child) but 0 term children. Flatten functions must use `Store.isTermChild()` to filter, otherwise trie paths are wrong. This applies to any code that recursively walks Store terms.
 
-3. **opcodeLayer IS both a fingerprint index (K=2) AND a manually compiled decision tree.** The research confirms our hand-crafted strategy IS what the theory prescribes. Maranget's algorithm would automate this for arbitrary calculi. The `opcodeLayer` itself is EVM-specific (hard-coded `pred === 'code'` check), but the framework (`buildStrategyStack`, `detectStrategy`, layer `{ claims, build }` interface) is general. Generalizing `compileRule()` to detect discriminating ground positions in ANY trigger pattern — not just `code(_PC, _OP)` — would make the engine work for any .ill program. This is a ~50 LOC refactor, not a new optimization stage. **See:** `doc/research/term-indexing.md`, `doc/research/compiled-pattern-matching.md`.
+## What's Next
 
-4. **Semi-naive for linear logic is NOT ready — fundamentally harder than Datalog.** Standard semi-naive (Datalog) only tracks positive deltas: "which facts are NEW this cycle?" This works because Datalog is monotonic — facts only grow. Linear logic is non-monotonic — facts are CONSUMED. When fact A is consumed, any match that depended on A is invalidated. To know which matches depended on A, you need **provenance tracking**: for every match, store which facts contributed. When a fact is consumed, scan all stored matches for dependencies. This is essentially building Rete's beta network — the very architecture we've established is wrong for linear logic. Dirty predicate tracking (Stage 5a) is the sweet spot: coarser than semi-naive but simple, correct, and sufficient until 100K+ facts. **See:** `doc/research/incremental-matching.md`.
+All optimizations that matter at current scale (44 rules, ~20 facts, depth-2 terms) are done. The remaining items are triggered by specific scaling scenarios.
 
-5. **TREAT dirty tracking IS cheap and worth staging.** Unlike full semi-naive, simply tracking which predicates changed and filtering rules by their trigger predicates is ~30 LOC with no architectural changes. Marginal at 44 rules (opcodeLayer already handles 40/44), but critical infrastructure for 100+ rules and a stepping stone toward semi-naive.
+| Optimization | Trigger | Effort | Impact |
+|-------------|---------|--------|--------|
+| **Compiled matching (Maranget)** | 1000+ rules | ~500 LOC | Subsumes fingerprint + disc-tree. Single decision tree for all rules. |
+| **Stage 8 (path-based access)** | depth 4+ terms | ~150 LOC | ~10x on substitution at depth 10. Current EVM: depth 1-2, no benefit. |
+| **Semi-naive** | 100K+ facts | ~200 LOC | 10-50x. Fundamentally hard for linear logic (provenance tracking). |
+| **Join ordering** | 4+ antecedent rules | ~100 LOC | ~5-10%. Current deferral mechanism works fine. |
 
-6. **Stage 5 is partially superseded by Stage 6.** If de Bruijn indexed theta is adopted for the hot path, the flat `[v,t,v,t,...]` format becomes dead code there. The paired `[[v,t],...]` format remains for cold paths (backward prover, FFI). Stage 5 cleanup is still valuable before Zig port but lower priority.
+### Compiled Pattern Matching (Maranget)
 
-## READY — Design Complete, Can Implement Now
+Compile all rule patterns into a single static decision tree. Each term position tested at most once. Our fingerprint layer IS a hand-compiled decision tree for 2 levels; Maranget automates this for arbitrary depth.
 
-These optimizations have complete designs, well-understood tradeoffs, and clear safety proofs. Each is independently testable via cross-check tests.
+Three phases: (1) cross-rule decision tree for rule selection, (2) per-rule compiled match, (3) DAG sharing for overlapping patterns.
 
-**Preparation before any implementation:**
-- Fresh V8 profile at current state (post-Stage 4 + micro-optimizations)
-- Add cross-check test infrastructure (run symexec with both old and new path, compare trees)
+**When:** When the rule set exceeds ~100 and manual strategy layers can't keep up. Or when supporting arbitrary user-defined calculi where fingerprint detection doesn't find a discriminator.
 
-| Order | Stage | Effort | Impact at 44 rules | Impact at 400 rules | Status |
-|-------|-------|--------|-------------------|--------------------|--------|
-| 1 | **Generalize opcodeLayer** | ~50 LOC refactor | 0% (same perf) | Required for non-EVM programs | **Done** |
-| 2 | **Stage 6** (de Bruijn theta) | ~150 LOC | ~53% (with prior micro-opts) | ~5-10% | **Done** |
-| 3 | **Stage 7** (delta + compiled sub) | ~330 LOC | ~8% | ~10-15% | **Done** |
-| 4 | **Stage 9** (discrimination trees) | ~120 LOC | ~0% (fingerprint handles EVM) | O(depth) vs O(R) | **Done** |
-| — | **Stage 5a** (dirty tracking) | ~30 LOC | ~0% | Superseded by disc-tree | **Skipped** |
-| — | **Stage 5** (theta unification) | ~40 edits | ~0% | ~0% | superseded by 6 |
+See `doc/research/compiled-pattern-matching.md`.
 
-**Generalize opcodeLayer:** Refactor `compileRule()` to detect discriminating ground positions in ANY trigger pattern, not just `code(_PC, _OP)`. The current code has `if (pred === 'code')` hard-coded in two places (lines 295, 323). Replace with: for each trigger pattern, find child positions with ground (non-metavar) values across rules; build a hash index on the most discriminating position. Same performance on EVM, but works for any .ill program. This is not an optimization — it's a generality fix. The `buildStrategyStack` / `detectStrategy` / layer interface is already general; only the `opcodeLayer` itself is EVM-specific.
+### Stage 8: Path-Based Nested Access
 
-**Zig note:** The generalized fingerprint detection becomes a `comptime` analysis: scan rule patterns at compile time, identify the best discriminating position, generate a `comptime` lookup table. Zero runtime cost.
+For deeply nested terms, navigate directly to changed argument via position path. O(K×D) vs O(N).
 
-## FUTURE — Needs Scale or More Design Work
+**When:** Calculi with compound types like `state(pc(V), stack(S), gas(G), mem(M))`.
 
-These are well-researched but not worth implementing at current scale (44 rules, 20 facts, depth-2 terms). Each has a clear trigger condition.
+### Semi-Naive for Linear Logic
 
-| Stage | Trigger | Effort | Impact | Why not now |
-|-------|---------|--------|--------|-------------|
-| **Stage 9** (disc trees) | — | ~120 LOC | O(depth) vs O(R) at 400+ rules | **Done** — `disc-tree.js` |
-| **Stage 8** (path-based access) | depth 4+ terms | ~150 LOC | ~10x at depth 10 | EVM terms are depth 1-2; no benefit |
-| **Semi-naive** (full delta + provenance) | 100K+ facts | ~200 LOC | 10-50x | Fundamentally hard for linear logic (see insight #4); dirty tracking (5a) is sufficient until then |
-| **Join ordering** | 4+ antecedent rules | ~100 LOC | ~5-10% | Current deferral mechanism works; CHR-style automatic ordering needs profiling to justify |
-| **Compiled pattern matching** (Maranget) | 100+ rules, arbitrary calculi | ~500 LOC | Subsumes 5a + 9 | Automates what opcodeLayer does manually; worth it when strategy stack can't be hand-tuned |
+Track which predicates changed per step, only re-evaluate affected rules. For full semi-naive: need provenance tracking (which facts contributed to each match). This is Rete's beta network — wrong for linear logic.
 
-## Scale Considerations
-
-Current: 44 rules, ~20 linear facts, depth-2 terms, 6-8 metavars per rule.
-
-| Scenario | Rules | Facts | Term depth | Bottleneck | Stage needed |
-|----------|-------|-------|------------|------------|-------------|
-| Current EVM | 44 | ~20 | 2 | tryMatch | 6, 7 |
-| Large EVM | 400 | ~50 | 2 | rule selection | 5a, 9 |
-| Multi-calculus | 1000 | ~200 | 2-4 | rule selection + match | 5a, 9 |
-| Symbolic exec | 44 | 100000 | 2 | state indexing | semi-naive |
-| Nested types | 44 | ~20 | 10+ | match + substitute | 8 |
-| Full scale | 1000 | 100000 | 10+ | everything | 5a, 6-9, semi-naive |
-
-### FUTURE Techniques — Detail
-
-**Semi-naive evaluation — NOT READY for linear logic.** Standard semi-naive (Datalog) tracks positive deltas only: "which facts are new this cycle?" This works because Datalog is monotonic (facts only grow). In linear logic, facts are CONSUMED — when fact A is consumed by one rule, every other match that depended on A is invalidated. Knowing which matches depended on A requires **provenance tracking**: storing `{ruleId, [fact1, fact2, ...]}` for every computed match. When a fact is consumed, scanning all stored matches for dependencies. This is structurally similar to Rete's beta memory — the architecture we've established is wrong for linear logic. **Verdict:** Stage 5a (dirty predicate tracking) gives 90% of the benefit at 1% of the complexity. Full semi-naive is only justified at 100K+ facts where even dirty tracking can't prune enough candidates. Not safe to implement without careful design. **See:** `doc/research/incremental-matching.md`.
-
-**Join ordering.** For multi-antecedent rules, process the most selective condition first. Our deferral mechanism (defer patterns that depend on persistent output vars) is a manual form. Automatic selectivity estimation could improve ordering for rules with 4+ antecedents. CHR compilers have sophisticated join ordering; LEAPS defers joins until rule firing. **Verdict:** Current deferral works for EVM rules (2-6 antecedents, highly selective). Profile first before investing here. **See:** `doc/research/forward-chaining-networks.md`.
-
-**Fingerprint indexing.** Already partially done: `opcodeLayer` IS a K=2 fingerprint index (predicate head + opcode child). Generalizing `compileRule()` to detect ground positions in any trigger pattern (see READY section) extends this to arbitrary programs. At 100-500 rules, a full K=3+ fingerprint trie could replace the strategy stack. **See:** `doc/research/term-indexing.md`.
-
-**Compiled pattern matching (Maranget).** Compile all rule patterns into a single decision tree. Our `opcodeLayer` IS a manually compiled decision tree. Automating this via Maranget's column necessity heuristic generalizes to arbitrary calculi without hand-crafted strategy layers. Subsumes Stage 9 and Stage 5a — a compiled tree inherently only tests discriminating positions. Three phases: rule selection → per-rule compiled match → cross-rule DAG. **Verdict:** Worth investing at 100+ rules or when supporting arbitrary calculi. **See:** `doc/research/compiled-pattern-matching.md`.
-
----
-
-## Stage 1: Flat Array Store (done)
-
-TypedArray SoA arena in `lib/kernel/store.js`. Terms are sequential uint32 indices. Content-addressing via dedup Map on `put()`.
-
-**Result:** 5.59ms → 3.47ms (38%).
-
-**Zig mapping:** Direct. SoA layout → Zig `MultiArrayList` or manual struct-of-slices. Dedup map → `std.HashMap`. String interning → `std.StringHashMap`. BigInt side table → `ArrayList(u256)` or similar.
-
----
-
-## Stage 2: Preserved/Delta Detection (done)
-
-`rule-analysis.js` — `analyzeRule()` (preserved) and `analyzeDeltas()` (delta detection). Compile-time analysis stored on `rule.analysis`. 67 tests.
-
-**Safety:** Pure static analysis of pattern hashes. No runtime behavior change. Provably correct: if `hash(ante_pattern) === hash(conseq_pattern)`, content-addressing guarantees structural identity.
-
----
-
-## Stage 3: Preserved Optimization (done)
-
-`tryMatch`: preserved patterns reserved (not consumed). `applyMatch`/`mutateState`: preserved consequent patterns skipped.
-
-**Result:** ~6-16% improvement. Cross-check tests verify identical results with `optimizePreserved: false`.
-
-**Safety:** Cross-check test runs every symexec with both paths, asserts identical trees. If the optimization produces a different result, the test fails.
-
----
-
-## Stage 4: Allocation Reduction (done)
-
-Eliminates ~70% of GC-prone allocations on the hot path. Multiple sub-optimizations:
-
-- `linearMeta` as plain object (not Map)
-- Reusable `_workPatterns` buffer
-- Theta truncate-on-failure (no `[...theta]` copy per match attempt)
-- FFI theta push loop (no spread)
-- `indexRemove` swap-with-last — O(1)
-- Flat interleaved theta `[v,t,v,t,...]` — eliminates ~1500 pair allocs/run
-- Flat parallel worklist `_Gp[]`/`_Gt[]` — eliminates ~2000 pair allocs/run
-- Arity-specialized `applyFlat` — eliminates `newChildren[]` for arity 0/1/2
-- `analyzeBufferLimits` precomputes maxWorklist/maxTheta per rule
-- `expandConsequentChoices` moved to `compileRule` (precomputed)
-
-**Result:** P75 −6.6%, P90 −9.3%, tail −20%. Median 0.95ms (100-run, 20 warmup).
-
-**Remaining tech debt:** Two theta formats coexist — flat `[v,t,v,t,...]` for hot path, paired `[[v,t],...]` for cold path. See Stage 5.
-
-**Non-reentrancy invariant:** The flat worklist `_Gp`/`_Gt` is module-level shared state. `match()` must never be called from within another `match()` call. This is safe because: (1) `match()` is iterative, (2) it only calls Store reads and `Store.put`, (3) the backward prover uses `unify()` (separate path), (4) forward chaining is single-threaded. A warning comment in `unify.js` documents this invariant.
-
-See `doc/documentation/buffer-limits.md` for details.
-
----
-
-## Stage 5: Theta Format Unification (done)
-
-**Status:** Done. Reduced from 3 formats to 2 with a clear boundary:
-
-| Format | Functions | Where |
-|--------|-----------|-------|
-| **Indexed** `theta[slot]=value` | `matchIndexed`, `applyIndexed`, `subCompiled` | Hot path: forward.js, symexec.js |
-| **Paired** `[[v,t],...]` | `unify`, `match`, `apply` | Cold path: prove.js, FFI, prover L1-L3, tests |
-
-Flat format `[v,t,v,t,...]` removed entirely. `match()` changed to return paired (same as `unify()`). `applyFlat()` deleted. `subCompiled()` moved to substitute.js (shared by forward.js and symexec.js). ~132 lines removed, 0 perf change.
-
-**Performance:** Near-zero improvement at current scale. Cold paths are called tens of times per run (vs thousands for hot paths). But eliminates conversion overhead at tryMatch boundaries and removes format confusion risk.
-
-**When to do:** Before Zig port, TypeScript migration, or new prover implementation.
-
-**Zig relevance:** In Zig both formats would be `[]const Binding` or `[]const u32` — format unification makes the port simpler.
-
-**At scale (100000 facts):** Still near-zero — cold path frequency doesn't scale with fact count.
-
----
-
-## Stage 5a: Dirty Rule Tracking (todo — low effort, high scaling impact)
-
-**Status:** Design complete. Independent of all other stages. ~30 LOC.
-
-### Core Idea
-
-Only re-evaluate rules whose trigger predicates overlap with facts that changed in the last step. This is the **TREAT algorithm's** core optimization (Miranker, 1987) applied to CALC's forward engine.
-
-Currently, `findAllMatches` evaluates all candidate rules every step, regardless of what changed. With dirty tracking, rules whose trigger predicates are disjoint from the changed predicates are skipped entirely.
-
-### Why It Matters
-
-CALC's engine is already TREAT-like (no cached partial matches, re-evaluates joins from alpha memories). The one missing TREAT optimization is **dirty marking**: when facts change, only mark affected rules as needing re-evaluation.
-
-At 44 rules with `opcodeLayer` handling 40/44: marginal (~0% on current multisig benchmark, since the 4 predicate-layer rules never match anyway). But at 100+ rules where the predicate layer handles 60+ rules: ~80% reduction in `tryMatch` calls (only ~5-10 rules affected per step instead of all 60+).
-
-### Design
-
-```javascript
-// In compileRule() or buildRuleIndex() — precompute once:
-// rulesByPred[pred] = [rule1, rule2, ...]  (already exists as triggerPreds)
-
-// In mutateState() — track changed predicates:
-// changedPreds already extractable from consumed/produced hashes
-
-// In findAllMatches() — filter candidates:
-function findAllMatches(state, rules, calc, strategy, stateIndex, changedPreds) {
-  if (!changedPreds) {
-    return fullFindAllMatches(state, rules, calc, strategy, stateIndex);  // first step
-  }
-  const candidates = [];
-  for (const pred of changedPreds) {
-    const affected = rulesByPred[pred];
-    if (affected) for (const r of affected) candidates.push(r);
-  }
-  // deduplicate (a rule may be triggered by multiple changed preds)
-  return uniqueCandidates(candidates).map(r => tryMatch(r, state, calc)).filter(Boolean);
-}
-```
-
-### Implementation (~30 LOC)
-
-1. **`mutateState()`** already knows consumed/produced hashes. Extract predicate heads into a `changedPreds` Set (~5 LOC).
-2. **`findAllMatches()`** accept optional `changedPreds`. When provided, intersect with `rulesByPred` to get dirty rules (~15 LOC).
-3. **`explore()`** pass `changedPreds` from `mutateState` to `findAllMatches` (~5 LOC).
-4. First step (no parent state) uses full evaluation (no delta yet).
-
-### Safety
-
-**Soundness:** If a rule's trigger predicates didn't change, no new facts match its first antecedent, so `tryMatch` would return the same result as last step. Skipping it is safe.
-
-**Completeness:** Every predicate head that changed is tracked. Every rule whose trigger predicate matches a changed predicate is re-evaluated. No rule is wrongly skipped.
-
-**Cross-check test:** Run with and without dirty tracking, assert identical symexec trees.
-
-### Interaction with Other Stages
-
-- **Stage 5a + Stage 9:** Discrimination trees also filter candidates by pattern structure. Dirty tracking filters by *what changed*; disc trees filter by *what the fact looks like*. They compose: dirty tracking selects which disc tree queries to even issue.
-- **Stage 5a + compiled matching:** A compiled Maranget decision tree inherently only tests discriminating positions — it subsumes both Stage 5a and Stage 9. Stage 5a is the cheap manual version.
-- **Stage 5a → semi-naive:** Dirty tracking is the first step toward semi-naive evaluation. Full semi-naive additionally tracks *which specific facts* are new (not just which predicates changed) and handles negative deltas (consumed facts).
-
-### Performance
-
-| Scale | Without dirty tracking | With dirty tracking | Savings |
-|-------|----------------------|--------------------|---------|
-| 44 rules (current) | 4 predicate-layer tries | 0-1 tries | ~0% total (predicateLayer is negligible) |
-| 100 rules | ~60 tries | ~5-10 tries | ~80% of tryMatch calls |
-| 400 rules | ~360 tries | ~10-20 tries | ~95% of tryMatch calls |
-| 1000 rules | ~960 tries | ~10-30 tries | ~97% of tryMatch calls |
-
-### Zig Mapping
-
-`changedPreds` → `std.BoundedArray(u32, MAX_PREDS)` (stack-allocated, no heap). `rulesByPred` → `std.AutoHashMap(u32, []const *Rule)` (built once at init). The dirty-filtering loop is a simple intersection — `inline for` over changedPreds, index into rulesByPred. Zero allocation at runtime.
-
-**See:** `doc/research/forward-chaining-networks.md` (TREAT algorithm), `doc/research/incremental-matching.md` (delta predicate tracking).
-
----
-
-## Stage 6: De Bruijn Indexed Theta (done)
-
-**Status:** Done. Commit `352ac7d`.
-
-### Core Idea
-
-Replace the flat interleaved theta scan with O(1) indexed lookup. This is the term-rewriting analogue of **de Bruijn indices**: each metavariable in a rule gets a compile-time slot index, and theta becomes a fixed-size indexed array rather than a scan-searched list.
-
-In lambda calculus, de Bruijn indices replace variable names with positional indices relative to their binder, eliminating alpha-equivalence issues. Here we do the same for pattern matching: each metavar `_X` in a rule gets a fixed slot number, eliminating dependence on match ordering.
-
-### Why Position-Based Indexing Is Unsafe
-
-Theta positions in the current flat format are **not stable**. The deferral mechanism in `tryMatch` changes binding order: if pattern A is deferred because it depends on a persistent output var, pattern B matches first, and `_X` ends up at a different position.
-
-De Bruijn slots avoid this: `_X` always goes to slot `N` regardless of which pattern matches first. The slot assignment is a compile-time invariant, not a runtime artifact.
-
-### Design
-
-```javascript
-// Compile time (compileRule):
-metavarSlots = { [metavarHash]: slotIndex }  // e.g. {_PC: 0, _OP: 1, _PC': 2}
-metavarCount = 3
-
-// Runtime (tryMatch):
-theta = new Array(metavarCount)    // fixed-size, filled with undefined
-theta[slots[_PC]] = value          // O(1) write
-result = theta[slots[_PC']]        // O(1) read
-```
-
-### Implementation (~150 LOC added, ~30 removed)
-
-1. **`compileRule()`**: Collect all metavar hashes across antecedent + consequent patterns using existing `collectMetavars()` in rule-analysis.js. Assign sequential slot indices. Store as `compiled.metavarSlots` (plain object) and `compiled.metavarCount` (number).
-
-2. **`tryMatch()`**: Create `theta = new Array(rule.metavarCount)` instead of `theta = []`. Pass `rule.metavarSlots` to `match()` and `applyFlat()`.
-
-3. **`match()`**: Accept optional `slots` parameter. When provided:
-   - Binding write: `theta[slots[p]] = t` instead of `theta.push(p, t)`
-   - Binding check: `theta[slots[p]] !== undefined` instead of linear scan
-   - Consistent binding: `theta[slots[p]] === t` instead of scan + compare
-
-4. **`applyFlat()`**: Accept optional `slots` parameter. When provided:
-   - Lookup: `const idx = slots[hash]; if (idx !== undefined) return theta[idx]`
-   - Replaces: `for (let i = 0; i < theta.length; i += 2) { if (theta[i] === hash) ... }`
-
-5. **FFI/backward prover boundary**: Convert paired results to indexed:
-   `theta[slots[pair[0]]] = pair[1]` instead of `theta.push(pair[0], pair[1])`
-
-### Safety Proof
-
-**Completeness:** Every metavar that appears in any pattern of a rule gets a slot. `collectMetavars` walks all antecedent + consequent patterns. If a metavar appears at runtime that wasn't seen at compile time, `slots[p]` returns `undefined`, and `theta[undefined]` is harmless — same as "not bound". No silent corruption.
-
-**Determinism:** Slot assignments are derived from pattern structure (hash → index), which is immutable per compiled rule. No runtime state affects the mapping.
-
-**Idempotence:** Each metavar has exactly one slot. Multiple bindings of the same metavar write to the same slot — consistent binding check is automatic (`theta[slot] !== undefined && theta[slot] !== t` → fail).
-
-**Cross-check test:** Run symexec with both flat-scan and indexed-slot implementations, assert identical trees.
-
-### Performance
-
-**Current scale (44 rules, 6-8 metavars):** ~3-5% from eliminating linear scans. Each `applyFlat` call scans 6-8 theta entries ~50 times per symexec run. Indexed lookup: O(1) per variable.
-
-**At scale (1000 rules, 20+ metavars):** More significant. Linear scan of 20 entries × thousands of calls per run = measurable overhead. Indexed: still O(1).
-
-**Memory:** `new Array(N)` for N ≤ 20 is negligible. No GC pressure (fixed-size, reusable).
-
-### Complications
-
-1. **match() API change:** Adding `slots` parameter to `match()` changes its signature. Cold-path callers (without slots) must still work. Solution: `slots` is optional, default behavior unchanged.
-
-2. **FFI format bridge:** FFI returns paired `[[v,t],...]`. With indexed theta, conversion is `theta[slots[v]] = t` per pair. Same complexity, different format.
-
-3. **Dynamic rules:** Slot assignments are per-rule, computed in `compileRule()`. New rules at runtime just call `compileRule()` independently. No global state.
-
-### Zig Mapping
-
-Slots map → `[MAX_METAVARS]?u32` (fixed-size array of optional indices). Theta → `[MAX_METAVARS]?u32` (fixed-size array of optional term indices). Both are stack-allocated, zero-allocation. Hash-to-slot at compile time → Zig `comptime` block or lookup table.
-
-### Theoretical Background
-
-De Bruijn indices (N.G. de Bruijn, 1972) replace named variables with positional indices in lambda calculus. The key insight — separating variable identity from binding position — applies equally to pattern matching substitutions. Our indexed slots are a "named de Bruijn" scheme: we keep variable names for debugging/display but use positional indices for all runtime operations.
-
-Related: Explicit substitution calculi (Abadi et al. 1991), which make substitution a first-class operation with indexed variables. Our compiled substitution (Stage 7) is an instance of this.
-
-**See:** `doc/research/de-bruijn-indexed-matching.md` for full theoretical analysis.
-
----
-
-## Stage 7: Delta Optimization + Compiled Substitution (done)
-
-**Status:** Done. Commit `ec40f46`. Depends on Stage 6.
-
-### Core Idea
-
-For delta patterns (same predicate, different args on both sides of `-o`), replace full match + substitute with direct Store operations:
-
-- **Antecedent (delta bypass):** Instead of `match(pattern, fact, theta)`, extract changed args directly: `theta[slots._PC] = Store.child(fact, 0)`. Bind-only, no decomposition.
-- **Consequent (compiled substitution):** Instead of `applyFlat(pattern, theta)`, compile to: `Store.put('pc', [theta[slots._PC']])`. Zero traversal, zero scan.
-
-### Why This Works
-
-Content-addressing guarantees: `Store.put('pc', [newVal])` produces the **same hash** as `applyFlat(pc_pattern, theta)`. Both create a node with tag 'pc' and children `[newVal]`. Dedup ensures identity. This is provably correct by the hash-consing invariant.
-
-### Estimated Speedup
-
-~5-8% at 0.95ms median. Saves ~140 match calls (delta patterns) and ~140 applyFlat calls (delta consequents) per symexec run. At 400 rules with proportionally more deltas: ~10-15%.
-
-### Implementation (~200 LOC added, ~50 removed)
-
-**7a. Per-pattern role metadata:**
-
-Extend `analyzeDeltas()` to produce per-pattern roles, keyed by **position index** (not pattern hash, because the same predicate can appear twice — e.g., `stack` in evm/add):
-
-```javascript
-// In compileRule(), after analyzeDeltas():
-compiled.patternRoles = [];  // indexed by position in antecedent.linear[]
-for (let i = 0; i < linearPats.length; i++) {
-  const role = classifyPattern(i, analysis);
-  compiled.patternRoles[i] = role;
-  // role = { type: 'preserved' } | { type: 'delta', conseqIdx, changedPositions } | { type: 'consumed' }
-}
-```
-
-**7b. Delta bypass in tryMatch:**
-
-```javascript
-if (role.type === 'delta') {
-  // Bind changed args directly instead of full match
-  for (const pos of role.changedPositions) {
-    theta[slots[metavarAtPos(pattern, pos)]] = Store.child(fact, pos);
-  }
-  // Still "consume" the fact (it will be "produced" with new args)
-  consumed[fact] = (consumed[fact] || 0) + 1;
-  continue;
-}
-```
-
-**7c. Compiled substitution in applyMatch:**
-
-```javascript
-// Precomputed in compileRule():
-compiled.compiledConseq = consequent.linear.map(pattern => {
-  const tag = Store.tag(pattern);
-  const arity = Store.arity(pattern);
-  const childSources = [];  // for each child: { type: 'slot', idx } | { type: 'literal', hash }
-  for (let i = 0; i < arity; i++) {
-    const c = Store.child(pattern, i);
-    if (isMetavar(c)) childSources.push({ type: 'slot', idx: slots[c] });
-    else childSources.push({ type: 'literal', hash: c });
-  }
-  return { tag, arity, childSources };
-});
-
-// Runtime: instead of applyFlat(pattern, theta):
-const { tag, childSources } = compiled.compiledConseq[i];
-const children = childSources.map(s => s.type === 'slot' ? theta[s.idx] : s.hash);
-return Store.put(tag, children);
-```
-
-### Complications and Solutions
-
-1. **Variable flow:** Matching `pc _PC` binds `_PC` into theta. Downstream patterns like `code _PC OP` depend on this binding. Delta bypass must still write bindings. **Solution:** With de Bruijn slots (Stage 6), `theta[slots._PC] = Store.child(fact, 0)` — always writes to the correct slot regardless of processing order.
-
-2. **Multi-match identity:** When `stack` appears twice in antecedent (evm/add), one is delta and one is consumed. **Solution:** Use position indices, not pattern hashes, as role keys. Position is unambiguous.
-
-3. **Ordering guarantees:** Deferral changes match order. **Solution:** De Bruijn slots (Stage 6) make theta writes order-independent. Each metavar has a fixed slot.
-
-4. **Additive choice (`A & B`):** Different consequent alternatives may have different delta structure. **Solution:** Compute delta analysis per `consequentAlt`, not per rule. `consequentAlts` is already precomputed.
-
-5. **Nested delta patterns:** If a delta pattern has arity > 1 with nested metavars (e.g., `f(g(_X, _Y), _Z)`), direct `Store.child` extraction only works for flat patterns. **Solution:** For nested patterns, fall back to full match. Delta bypass is a fast path, not a replacement. The `changedPositions` analysis already identifies which positions change.
-
-### Safety Proof
-
-**Correctness:** For any delta pattern, `Store.put(pred, [Store.child(fact, 0)])` produces the same hash as `applyFlat(pred_pattern, theta)` where theta binds the metavar to `Store.child(fact, 0)`. This follows from hash-consing: same tag + same children → same hash. QED.
-
-**Completeness:** Delta bypass only applies to patterns classified as delta by compile-time analysis. All other patterns use the full match path. The fallback is always available.
-
-**Cross-check test:** Run every symexec with both optimized and unoptimized paths, assert identical trees. Property test: for every delta pattern, `Store.put(pred, [directRead]) === applyFlat(pattern, theta)`.
-
-### Performance at Scale
-
-At 400 EVM rules: proportionally more delta patterns (~400+ delta bypasses per run). Each bypass saves a `match()` call (~5-10 Store reads) and a `applyFlat()` call (~3-5 Store reads + traversal). Estimated: ~10-15% improvement.
-
-At 100000 facts: delta bypass doesn't depend on fact count (it's per-rule, not per-fact). Same improvement ratio.
-
-### Zig Mapping
-
-Compiled consequent → `comptime` array of `ChildSource` unions. Delta bypass → inline `store.child()` + `store.put()`. No closures, no dynamic dispatch. The compiled substitution compiles naturally to Zig's comptime evaluation.
-
----
-
-## Stage 8: Path-Based Nested Access (future)
-
-**Status:** Design only. Independent of other stages. Not needed at current scale.
-
-### Core Idea
-
-For deeply nested term types, navigate directly to the changed argument via a position path instead of full tree traversal. O(K×D) where K = changed positions, D = depth, vs O(N) for full traversal where N = total term size.
-
-### When This Matters
-
-Current EVM terms are flat (arity 1-2, depth 1-2). If future calculi use compound types like `state(pc(V), stack(S), gas(G), mem(M))`, a single delta update touches one leaf in a depth-4 tree. Full traversal walks all 8+ nodes; path-based access walks 4 (root → state → pc → V).
-
-**At depth 10+ with branching factor 2:** Full traversal = ~1000 nodes. Path-based = 10 nodes. 100x speedup on the substitution step.
-
-### Design Sketch
-
-```javascript
-// Compile time: for each delta, compute path from root to changed position
-// path = [childIdx, childIdx, ...] from root to leaf
-compiled.deltaPaths = deltas.map(d => ({
-  path: computePath(d.anteHash, d.changedPositions),
-  // For consequent: same path, but leaf is different metavar
-}));
-
-// Runtime: navigate path, extract/replace leaf
-function navigatePath(hash, path) {
-  let h = hash;
-  for (const idx of path) h = Store.child(h, idx);
-  return h;
-}
-```
-
-### Safety
-
-Path-based access reads the same content-addressed values as full traversal — it just skips irrelevant subtrees. If the path is wrong (bug), `Store.child` returns a wrong value, and the cross-check test catches it.
-
-**Invariant:** A path is valid iff it was derived from the pattern structure at compile time, and the runtime term has the same structure (guaranteed by pattern matching success).
-
-### Complications
-
-1. **Variable-structure terms:** If the term structure varies (e.g., lists of different lengths), paths are not fixed. **Solution:** Path optimization only applies to fixed-arity constructors. Variable-arity constructs (lists, tensors) use full traversal.
-
-2. **Hash-consing invalidation:** Changing a leaf requires rebuilding all ancestors (new hash at each level). This is O(D) `Store.put` calls regardless. **Solution:** For depth-D terms with 1 changed leaf, we do D `Store.put` calls. This is still better than full traversal + substitution of the whole tree.
-
-### Performance at Scale
-
-At depth 2 (current): No benefit. Path navigation = 2 steps, full traversal = 3-4 nodes. Overhead of path infrastructure may negate gains.
-
-At depth 10: ~10x improvement on substitution step. Substitution is currently ~20% of total time. Net: ~15-18% improvement.
-
-At depth 20: ~20x on substitution. Diminishing returns — other bottlenecks dominate.
-
-### Zig Mapping
-
-Paths → `comptime` array of `u8` indices. Navigation → `inline for` over path. Store.put chain → `comptime`-unrolled loop. Zero allocation, fully static.
-
----
-
-## Stage 9: Discrimination Tree Indexing (done)
-
-**Status:** Done. File: `lib/prover/strategy/disc-tree.js` (~120 LOC). Tests: `tests/engine/disc-tree.test.js` (19 tests).
-
-### Core Idea
-
-Replace predicate-head filtering with a discrimination tree (trie) for rule selection. Currently `findAllMatches` tries each candidate rule via `tryMatch` — the opcode layer gives O(1) for 40/44 EVM rules, but this shortcut is EVM-specific. For a general calculus with 1000 rules, we need O(term-depth) rule selection instead of O(rules).
-
-### Theoretical Background
-
-**Discrimination trees** (Voronkov, 2001; McCune, 1992) are tries where each path corresponds to a depth-first traversal of a term. A query term traverses the trie, and at metavar (wildcard) positions, both the wildcard branch and the concrete branch are followed. All matching rules are collected at leaves.
-
-**Path indexing** (Stickel, 1989) indexes terms by the set of (position, symbol) pairs. Faster for retrieval of instances, but discrimination trees are better for one-sided matching (our use case).
-
-**Substitution trees** (Graf, 1995) combine indexing with substitution sharing. More complex but eliminate redundant variable bindings. Overkill for our current scale.
-
-**Code trees** (Voronkov, 1995) — a variant used in Vampire. Compile indexing operations to bytecode instructions. Maximum flexibility, but complex implementation.
-
-**Rete algorithm** (Forgy, 1982) — the classic forward chaining optimization. Maintains a network of partial matches, incrementally updated as facts change. Key difference from discrimination trees: Rete indexes **across multiple patterns** in a rule (join optimization), while discrimination trees index **single patterns**. Rete is more powerful for multi-pattern rules but has higher memory overhead (stores all partial matches). For linear logic where facts are consumed, Rete's partial match cache invalidation becomes complex — consumed facts must be retracted from all partial matches.
-
-For our use case (content-addressed terms, forward chaining, linear logic), discrimination trees are the best fit: simpler than Rete, handle fact consumption naturally (no cached partial matches to invalidate), and integrate well with hash-consing.
-
-### Design
-
-```javascript
-// Build trie at init time (once per rule set)
-function buildDiscriminationTree(rules) {
-  const root = { children: new Map(), wildcard: null, rules: [] };
-
-  for (const rule of rules) {
-    // Index by first linear antecedent (the "trigger" pattern)
-    const trigger = rule.antecedent.linear[0];
-    insertIntoTrie(root, trigger, rule);
-  }
-  return root;
-}
-
-function insertIntoTrie(node, pattern, rule) {
-  // Depth-first traversal of pattern structure
-  const tag = Store.tag(pattern);
-  if (isMetavar(pattern)) {
-    // Wildcard: matches any term
-    if (!node.wildcard) node.wildcard = { children: new Map(), wildcard: null, rules: [] };
-    node.wildcard.rules.push(rule);
-    return;
-  }
-  // Concrete: branch on tag
-  if (!node.children.has(tag)) {
-    node.children.set(tag, { children: new Map(), wildcard: null, rules: [] });
-  }
-  const child = node.children.get(tag);
-  // Recurse into children...
-  child.rules.push(rule);
-}
-
-function queryTrie(node, fact) {
-  const results = [];
-  // Follow concrete path
-  const tag = Store.tag(fact);
-  if (node.children.has(tag)) {
-    results.push(...node.children.get(tag).rules);
-  }
-  // Also follow wildcard path (patterns with metavar at this position)
-  if (node.wildcard) {
-    results.push(...node.wildcard.rules);
-  }
-  return results;
-}
-```
-
-### Implementation (~300 LOC)
-
-1. **Trie data structure:** Nodes with `Map<tag, Node>` children and a `wildcard` branch. Leaf nodes store rule references.
-
-2. **Insertion:** Walk the trigger pattern depth-first. At each node, branch on tag. At metavars, branch to wildcard. Terminal nodes store the rule.
-
-3. **Query:** Walk the fact depth-first. At each node, follow both the concrete branch (matching tag) and the wildcard branch. Collect all rules at leaves.
-
-4. **Integration:** Replace the predicate-head filter loop in `findMatch()` with `queryTrie(root, changedFact)`.
-
-5. **Incremental update:** When rules are added dynamically, insert into the trie. When removed, decrement reference count at leaf.
-
-### Safety Proof
-
-**Soundness:** The trie only eliminates rules that CANNOT match. If a fact doesn't match a trigger pattern's structure at any position, the full `tryMatch()` would also fail. The trie is a conservative filter.
-
-**Completeness:** All rules with a matching trigger structure are returned. The wildcard branch ensures that rules with metavars at any position are always included.
-
-**Proof:** Consider a rule R with trigger pattern P and a fact F. If `match(P, F, [])` succeeds, then at every position in P, either P has a metavar (wildcard → included) or P has the same tag as F (concrete branch → included). Therefore R appears in the trie query result. QED.
-
-**Cross-check test:** Run with and without trie, assert same set of matching rules for every step.
-
-### Complications
-
-1. **Multi-trigger rules:** Some rules have multiple linear antecedents. Which to index on? **Solution:** Index on the most discriminating pattern (fewest matching facts). Heuristic: index on the pattern with the most concrete (non-metavar) positions. Falls back to indexing on the first linear pattern.
-
-2. **Wildcard explosion:** If most patterns start with a metavar, the wildcard branch contains most rules, and the trie degenerates to linear scan. **Solution:** Use deeper indexing (look at child[0], child[1], etc.) to discriminate. For EVM rules, the first position is almost always a concrete predicate head — wildcard explosion is unlikely.
-
-3. **Dynamic rules:** Adding a rule = inserting a trie path (O(pattern-depth)). Removing = decrementing a leaf counter. No full rebuild needed.
-
-4. **Content-addressed optimization:** Since our terms are content-addressed, two facts with the same hash are identical. The trie can use **hash-based shortcuts**: if a trie node has seen a particular hash before, cache the result. This makes repeated queries O(1) via memoization.
-
-### Performance at Scale
-
-At 44 rules (current): ~2-3% improvement over opcode layer. Not worth the complexity.
-
-At 100 rules: ~10-15% improvement. Opcode layer covers ~40 rules; remaining 60 need predicate-head scan.
-
-At 400 rules: ~25-35% improvement. Trie reduces candidate set from ~400 to ~5-10 per query.
-
-At 1000 rules: ~40-60% improvement. Linear scan of 1000 rules per step is prohibitive. Trie: O(term-depth) = O(2-4) per query.
-
-**Memory:** O(rules × pattern-depth) nodes. At 1000 rules with depth-4 patterns: ~4000 nodes × ~50 bytes = ~200KB. Negligible.
-
-### Zig Mapping
-
-Trie nodes → Zig struct with `AutoHashMap(u32, *Node)` children. Wildcard → optional pointer. Rules at leaf → `ArrayList(*Rule)`. For maximum performance: flatten the trie into an array with offset-based children (cache-friendly).
-
-Alternative: Zig `comptime` trie generation — if rules are known at compile time, the entire trie can be a comptime-generated array of structs.
-
-### Relationship to Rete
-
-The Rete algorithm (Forgy, 1982) builds a network that indexes **across multiple patterns**, maintaining partial match results (alpha memories for individual patterns, beta memories for joins). Rete's alpha network IS essentially a discrimination tree. The beta network adds multi-condition join tracking.
-
-| Aspect | Discrimination Tree | Rete |
-|--------|-------------------|------|
-| **Scope** | Single-pattern matching | Multi-pattern rule matching |
-| **State** | Stateless (query-time) | Stateful (maintains partial matches) |
-| **Incremental** | No | Yes (core advantage) |
-| **Memory** | Low | High (O(N^K) partial matches) |
-
-For linear logic, Rete has specific problems:
-
-- **Memory:** For 100000 facts and 1000 rules, partial match memory can explode.
-- **Fact retraction:** Consumed facts must be retracted from all partial matches — complex invalidation.
-- **Non-determinism:** Linear logic's consumption choice interacts badly with Rete's deterministic execution.
-
-**Alternatives:** TREAT (Miranker) drops beta memories and re-evaluates joins from scratch — often faster when facts change frequently (exactly the linear logic case). LEAPS (used in CHR — Constraint Handling Rules) defers join evaluation until a rule fires. CHR is the closest production-system model to linear logic: its "simpagation" rules directly model linear/non-linear splitting.
-
-Our approach: discrimination tree for the alpha network, `tryMatch()` for the join. Simpler than full Rete, handles consumption naturally.
-
-### Compiled Pattern Matching (future alternative)
-
-Instead of a trie traversed at runtime, compile all rules into a **static decision tree** (Maranget, 2008). The compiler analyzes all 44 rule patterns simultaneously, identifies the most discriminating position to test first, and generates a cascade of branches. Each term position is tested at most once.
-
-This is what the `opcodeLayer` does manually for two levels (opcode tag → opcode value). Maranget's algorithm automates this for arbitrary depth. The result: a flat array of `{ position, value, if_match, if_fail }` entries — essentially a bytecode VM for pattern matching.
-
-**When to consider:** When the rule set is fixed at compile/load time (our case) and the discrimination tree's runtime overhead is measurable. For 1000+ rules, compiled matching could outperform a discrimination tree by eliminating trie pointer chasing.
-
-**Complexity:** Decision tree size can be exponential in the worst case (overlapping patterns), but DAG conversion with sharing mitigates this. Implementation: ~500 LOC. Well-understood from OCaml/Haskell compiler literature.
-
-**See:** `doc/research/compiled-pattern-matching.md` for detailed analysis including per-rule compiled match functions and cross-rule DAG sharing. `doc/research/term-indexing.md` for the discrimination tree alternative.
-
----
+**When:** 100K+ facts where even disc-tree can't prune enough candidates.
 
 ## Profiling History
 
-| Milestone | Median | P90 | Notes |
-|-----------|--------|-----|-------|
-| Original | 5.59ms | — | Baseline |
-| Stage 1 (flat store) | 3.47ms | — | −38% |
-| Stage 3 (preserved) | ~2.8ms | — | −6-16% |
-| Strategy stack | 14ms→2.3ms | — | 12.7x (was 181ms original) |
-| Incremental context | 2.3ms→1.4ms | — | 1.7x |
-| Mutation+undo | 1.4ms→0.8ms | — | 1.8x |
-| Index+set undo | 0.8ms→0.6ms | — | 1.25x |
-| Direct FFI bypass | — | — | 1.2x |
-| Stage 4 (alloc reduction) | 0.95ms | 1.2ms | P90 −9.3% |
-| Micro-opts (truncate, dealloc) | 2.51ms | — | Post-Stage-4 re-baseline |
-| opcodeLayer generalization | — | — | 0% (generality, not perf) |
-| Stage 6 (de Bruijn theta) | 1.19ms | 1.64ms | −53% from re-baseline |
-| Stage 7 (delta + compiled sub) | 1.09ms | 1.75ms | −8% from Stage 6 |
-| Stage 9 (disc-tree) | 1.95ms | — | ~0% at 44 rules (scaling infrastructure) |
+| Milestone | Median | Notes |
+|-----------|--------|-------|
+| Original | 181ms | Before strategy stack |
+| Strategy stack | 14ms | 12.7x |
+| + incremental context | 8.4ms | 1.7x |
+| + mutation+undo | 4.7ms | 1.8x |
+| + index+set undo | 3.8ms | 1.25x |
+| + direct FFI bypass | 5.9ms | 1.2x (different baseline) |
+| Stage 6 (de Bruijn theta) | 1.19ms | −53% |
+| Stage 7 (compiled sub) | 1.09ms | −8% |
+| Stage 9 (disc-tree) | ~1.9ms | 0% at 44 rules |
 
-Current bottleneck: `findAllMatches` → `tryMatch` → `matchIndexed`. GC pressure reduced ~90% from original.
+## Zig Port Mapping
 
----
-
-## Zig Port Mapping (cross-cutting)
-
-Each optimization has a Zig mapping in its section. Here's the cross-cutting picture:
-
-| JS concept | Zig equivalent | Notes |
-|-----------|---------------|-------|
-| `Store.put/get/tag/child/arity` | SoA `MultiArrayList` + dedup `HashMap` | Direct port. SoA is natural in Zig. |
-| `theta = []` (dynamic array) | `[MAX_METAVARS]?u32` (stack array) | Fixed-size, zero-allocation. Stage 6 enables this. |
-| `match()` worklist `_Gp/_Gt` | `[MAX_WORKLIST]u32` (stack array) | Already module-level in JS. In Zig: stack-local. |
-| `metavarSlots` (hash→index map) | `comptime` lookup table or `[MAX_METAVARS]u32` | Slot assignment at comptime. |
-| `compiledConseq` (child sources) | `comptime` array of `ChildSource` unions | Stage 7. No closures, no dynamic dispatch. |
-| `changedPreds` (Set) | `BoundedArray(u32, MAX_PREDS)` | Stage 5a. Stack-allocated, no heap. |
-| `rulesByPred` (Map) | `AutoHashMap(u32, []const *Rule)` | Built once at init. |
-| `stateIndex` (Map of arrays) | `AutoHashMap(u32, ArrayList(u32))` | Or: flat sorted array with binary search. |
-| Discrimination tree (Map of nodes) | Flat array with offset-based children | Cache-friendly. `comptime` generation if rules are static. |
-| `pathVisited` (Set) | `AutoHashMap(u64, void)` | Or: bloom filter for probabilistic cycle detection. |
-
-**Key Zig advantage:** Every `new Array(N)` in JS that has a compile-time-known bound becomes a stack allocation in Zig. No GC, no heap fragmentation. The entire forward engine hot path can be zero-allocation in Zig with Stages 5a + 6 + 7.
-
-**Zig `comptime` opportunities:**
-- Stage 6: slot assignment tables generated at `comptime`
-- Stage 7: compiled consequent child sources as `comptime` arrays
-- Stage 9: discrimination tree / decision tree as `comptime`-generated flat array
-- Rule compilation: `comptime fn compileRule(rule: Rule) CompiledRule`
+| JS concept | Zig equivalent |
+|-----------|---------------|
+| `Store.put/get/tag/child/arity` | SoA `MultiArrayList` + dedup `HashMap` |
+| `theta = new Array(N)` | `[MAX_METAVARS]?u32` (stack) |
+| `_Gp/_Gt` worklist | `[MAX_WORKLIST]u32` (stack) |
+| `metavarSlots` | `comptime` lookup table |
+| `compiledConseq` | `comptime` array of `ChildSource` unions |
+| `stateIndex` | `AutoHashMap(u32, ArrayList(u32))` |
+| Discrimination tree | Flat array with offset-based children; `comptime` if rules static |
+| `pathVisited` | `AutoHashMap(u64, void)` or bloom filter |
 
 ## References
 
-- Abadi, Cardelli, Curien & Levy (1991) — *Explicit substitutions*. First-class substitution with indexed variables.
-- Baader & Nipkow (1998) — *Term Rewriting and All That*. Positions and paths in term rewriting.
-- Christian (1993) — *Flatterms, discrimination nets, and fast term rewriting*. Flat array term representation for discrimination net traversal.
-- Conchon & Filliatre (2006) — *Type-safe modular hash-consing*. Content-addressed term stores.
-- de Bruijn (1972) — *Lambda calculus notation with nameless dummies*. Positional variable indices.
-- Forgy (1982) — *Rete: A fast algorithm for the many pattern/many object match problem*. Forward chaining network.
-- Fruhwirth (2009) — *Constraint Handling Rules*. Production system with linear resource semantics.
-- Graf (1995) — *Substitution tree indexing*. Combined indexing and substitution sharing.
-- Le Fessant & Maranget (2001) — *Optimizing pattern matching*. Decision tree compilation.
-- Maranget (2008) — *Compiling pattern matching to good decision trees*. Optimal column selection.
-- McCune (1992) — *Experiments with discrimination-tree indexing and path indexing*. Empirical comparison.
-- Miranker (1987) — *TREAT: A better match algorithm for AI production systems*. Alternative to Rete.
-- Miranker et al. (1990) — *On the performance of lazy matching in production systems (LEAPS)*. Deferred join evaluation.
-- Bancilhon (1986) — *Naive evaluation of recursively defined relations*. Semi-naive evaluation for Datalog.
-- Ngo et al. (2012) — *Worst-case optimal join algorithms*. Leapfrog trie join for conjunctive queries.
-- Schrijvers & Demoen (2004) — *The K.U.Leuven CHR system*. Occurrence-based CHR compilation.
-- Rawson — [discrimination-tree (Rust crate)](https://github.com/MichaelRawson/discrimination-tree). Reference implementation.
-- Sampson (2019) — *Flattening ASTs (arena allocation)*. SoA layout for compilers.
-- Stickel (1989) — *The path-indexing method for indexing terms*. Alternative to discrimination trees.
-- Voronkov (1995) — *The anatomy of Vampire*. Code trees for term indexing.
-- Voronkov (2001) — *Term indexing*. In *Handbook of Automated Reasoning*. Comprehensive survey.
-- Scholz et al. (2016) — *On fast large-scale program analysis in Datalog*. Souffle: compiled Datalog with B-trees, Bries, automatic index selection.
-- Willsey et al. (2021) — *egg: Fast and extensible equality saturation*. E-graphs with hash consing.
-- Zhang et al. (2022) — *Relational e-matching*. Pattern matching as conjunctive queries, worst-case optimal joins.
-- Zig compiler — [PR #7920](https://github.com/ziglang/zig/pull/7920). SoA/MultiArrayList AST layout, `extra_data` sidecar pattern.
+- Abadi, Cardelli, Curien & Levy (1991) — *Explicit substitutions*
+- Baader & Nipkow (1998) — *Term Rewriting and All That*
+- Christian (1993) — *Flatterms, discrimination nets, and fast term rewriting*
+- Conchon & Filliatre (2006) — *Type-safe modular hash-consing*
+- de Bruijn (1972) — *Lambda calculus notation with nameless dummies*
+- Forgy (1982) — *Rete: A fast algorithm for the many pattern/many object match problem*
+- Fruhwirth (2009) — *Constraint Handling Rules*
+- Graf (1995) — *Substitution tree indexing*
+- Maranget (2008) — *Compiling pattern matching to good decision trees*
+- McCune (1992) — *Experiments with discrimination-tree indexing and path indexing*
+- Miranker (1987) — *TREAT: A better match algorithm for AI production systems*
+- Rawson — [discrimination-tree (Rust crate)](https://github.com/MichaelRawson/discrimination-tree)
+- Voronkov (2001) — *Term indexing* (Handbook of Automated Reasoning)
