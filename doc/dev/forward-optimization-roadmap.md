@@ -64,9 +64,17 @@ Current: 44 rules, ~20 linear facts, depth-2 terms, 6-8 metavars per rule.
 | Current EVM | 44 | ~20 | 2 | tryMatch | 6, 7 |
 | Large EVM | 400 | ~50 | 2 | rule selection | 9 |
 | Multi-calculus | 1000 | ~200 | 2-4 | rule selection + match | 9 |
-| Symbolic exec | 44 | 100000 | 2 | state indexing | (custom) |
+| Symbolic exec | 44 | 100000 | 2 | state indexing | semi-naive |
 | Nested types | 44 | ~20 | 10+ | match + substitute | 8 |
-| Full scale | 1000 | 100000 | 10+ | everything | 6-9 |
+| Full scale | 1000 | 100000 | 10+ | everything | 6-9 + semi-naive |
+
+### Techniques Not Yet Staged (future research)
+
+**Semi-naive evaluation.** At 100000 facts, re-matching all rules against the entire state every step is prohibitive. Semi-naive evaluation (from Datalog) tracks which facts are new each cycle and only matches rules against the delta. The existing `makeChildCtx` incremental updates are a step toward this. Critical at 100K+ facts but requires architectural changes to `findAllMatches`.
+
+**Join ordering.** For multi-antecedent rules, process the most selective condition first. Our deferral mechanism (defer patterns that depend on persistent output vars) is a manual form of this. Automatic selectivity estimation could improve ordering for rules with 4+ antecedents.
+
+**Fingerprint indexing.** A lightweight alternative to full discrimination trees (E prover). Sample K positions in a term, build a K-element feature vector, and use it as a trie key. Cheaper to maintain than full discrimination trees but non-perfect (may return false positives requiring post-filtering). Our `opcodeLayer` is essentially a 1-position fingerprint index.
 
 ---
 
@@ -584,5 +592,7 @@ Current bottleneck: `findAllMatches` → `tryMatch` → `match` + `applyFlat`. G
 - Stickel (1989) — *The path-indexing method for indexing terms*. Alternative to discrimination trees.
 - Voronkov (1995) — *The anatomy of Vampire*. Code trees for term indexing.
 - Voronkov (2001) — *Term indexing*. In *Handbook of Automated Reasoning*. Comprehensive survey.
+- Scholz et al. (2016) — *On fast large-scale program analysis in Datalog*. Souffle: compiled Datalog with B-trees, Bries, automatic index selection.
 - Willsey et al. (2021) — *egg: Fast and extensible equality saturation*. E-graphs with hash consing.
+- Zhang et al. (2022) — *Relational e-matching*. Pattern matching as conjunctive queries, worst-case optimal joins.
 - Zig compiler — [PR #7920](https://github.com/ziglang/zig/pull/7920). SoA/MultiArrayList AST layout, `extra_data` sidecar pattern.
