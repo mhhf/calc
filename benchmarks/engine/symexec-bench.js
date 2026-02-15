@@ -142,8 +142,8 @@ function instrumentedExplore(initialState, rules, calcCtx, maxDepth) {
 
     pathVisited.add(sh);
 
-    // Pre-expand choices
-    const matchAlts = matches.map(m => symexec.expandConsequentChoices(m.rule.consequent));
+    // Use precomputed consequent alternatives
+    const matchAlts = matches.map(m => m.rule.consequentAlts);
 
     const children = [];
     for (let mi = 0; mi < matches.length; mi++) {
