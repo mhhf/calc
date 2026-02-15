@@ -36,6 +36,8 @@ Stage 4 (allocation reduction)
   │
   ├──────────────────── Stage 5 (theta unification)     [standalone, low]
   │
+  ├──────────────────── Stage 5a (dirty rule tracking)  [standalone, low, ~30 LOC]
+  │
   ├──────────────────── Stage 6 (de Bruijn theta)       [standalone, medium]
   │                       │
   │                     Stage 7 (delta + compiled sub)   [depends on 6, medium]
@@ -47,13 +49,44 @@ Stage 4 (allocation reduction)
 
 All future stages are independent of each other except Stage 7 → Stage 6. Each can be implemented and tested in isolation with cross-check tests.
 
+## Key Insights from Research (2026-02-15)
+
+Research in `doc/research/` revealed several insights that affect optimization priorities:
+
+1. **CALC's engine IS TREAT-like.** No beta memories, full re-evaluation from alpha memories (stateIndex). This is the correct architecture for linear logic — Rete's cached partial matches are pure overhead when facts are consumed every step. **See:** `doc/research/forward-chaining-networks.md`.
+
+2. **CHR simpagation IS ILL forward rules.** Direct formal correspondence: kept head `H1` = persistent antecedents (`!A`), removed head `H2` = linear antecedents, guard `G` = FFI/backward proving. This means 25+ years of CHR compilation research applies directly. **See:** `doc/research/forward-chaining-networks.md`.
+
+3. **opcodeLayer IS both a fingerprint index (K=2) AND a manually compiled decision tree.** The research confirms our hand-crafted strategy IS what the theory prescribes. Maranget's algorithm would automate this for arbitrary calculi. **See:** `doc/research/term-indexing.md`, `doc/research/compiled-pattern-matching.md`.
+
+4. **Semi-naive for linear logic is harder than expected.** Standard semi-naive assumes monotonic derivation (facts only added). Linear logic is non-monotonic — facts are consumed. This requires tracking both positive and negative deltas, plus provenance (which facts contributed to each match). Not the cheap ~30 LOC optimization initially hoped — more like ~200 LOC with architectural changes. Deferred until 100K+ facts. **See:** `doc/research/incremental-matching.md`.
+
+5. **TREAT dirty tracking IS cheap and worth staging.** Unlike full semi-naive, simply tracking which predicates changed and filtering rules by their trigger predicates is ~30 LOC with no architectural changes. Marginal at 44 rules (opcodeLayer already handles 40/44), but critical infrastructure for 100+ rules and a stepping stone toward semi-naive.
+
+6. **Stage 5 is partially superseded by Stage 6.** If de Bruijn indexed theta is adopted for the hot path, the flat `[v,t,v,t,...]` format becomes dead code there. The paired `[[v,t],...]` format remains for cold paths (backward prover, FFI). Stage 5 cleanup is still valuable before Zig port but lower priority.
+
 ## Implementation Order
 
-1. **Stage 6** — De Bruijn indexed theta. Enables Stage 7. Moderate effort (~150 LOC).
-2. **Stage 7** — Delta optimization + compiled substitution. Depends on Stage 6. Moderate effort (~200 LOC).
-3. **Stage 5** — Theta format unification. Tech debt cleanup. Low effort (~40 edits).
-4. **Stage 9** — Discrimination tree indexing. When rules exceed ~100. High effort (~300 LOC).
-5. **Stage 8** — Path-based nested access. When terms become deeply nested. Future.
+**For current scale (44 rules, optimizing tryMatch speed):**
+
+1. **Stage 6** — De Bruijn indexed theta. O(1) metavar lookup. Enables Stage 7. ~150 LOC.
+2. **Stage 7** — Delta optimization + compiled substitution. Depends on 6. ~200 LOC.
+3. **Stage 5** — Theta format unification. Tech debt cleanup before Zig port. ~40 edits.
+
+**When scaling to 100+ rules:**
+
+4. **Stage 5a** — Dirty rule tracking. ~30 LOC. Do BEFORE adding many rules.
+5. **Stage 9** — Discrimination tree / compiled pattern matching. ~300 LOC.
+
+**When scaling to deep terms or 100K+ facts:**
+
+6. **Stage 8** — Path-based nested access. When terms exceed depth 4.
+7. **Semi-naive** — Full delta tracking with provenance. ~200 LOC. Architectural change.
+
+**Preparation before Stage 6:**
+- Fresh V8 profile at current state (post-Stage 4 + micro-optimizations)
+- Run `collectMetavars` on all 44 rules, verify slot counts match expectations
+- Add cross-check test infrastructure (run symexec with both old and new path, compare trees)
 
 ## Scale Considerations
 
@@ -62,23 +95,23 @@ Current: 44 rules, ~20 linear facts, depth-2 terms, 6-8 metavars per rule.
 | Scenario | Rules | Facts | Term depth | Bottleneck | Stage needed |
 |----------|-------|-------|------------|------------|-------------|
 | Current EVM | 44 | ~20 | 2 | tryMatch | 6, 7 |
-| Large EVM | 400 | ~50 | 2 | rule selection | 9 |
-| Multi-calculus | 1000 | ~200 | 2-4 | rule selection + match | 9 |
+| Large EVM | 400 | ~50 | 2 | rule selection | 5a, 9 |
+| Multi-calculus | 1000 | ~200 | 2-4 | rule selection + match | 5a, 9 |
 | Symbolic exec | 44 | 100000 | 2 | state indexing | semi-naive |
 | Nested types | 44 | ~20 | 10+ | match + substitute | 8 |
-| Full scale | 1000 | 100000 | 10+ | everything | 6-9 + semi-naive |
+| Full scale | 1000 | 100000 | 10+ | everything | 5a, 6-9, semi-naive |
 
 ### Techniques Not Yet Staged (future research)
 
-**Semi-naive evaluation.** At 100000 facts, re-matching all rules against the entire state every step is prohibitive. Semi-naive evaluation (from Datalog) tracks which facts are new each cycle and only matches rules against the delta. The existing `makeChildCtx` incremental updates are a step toward this. Critical at 100K+ facts but requires architectural changes to `findAllMatches`. Linear logic complication: non-monotonic consumption requires tracking both positive and negative deltas, plus provenance (which facts contributed to each match). **See:** `doc/research/incremental-matching.md`.
+**Semi-naive evaluation.** At 100000 facts, re-matching all rules against the entire state every step is prohibitive. Semi-naive evaluation (from Datalog) tracks which facts are new each cycle and only matches rules against the delta. The existing `makeChildCtx` incremental updates are a step toward this. Critical at 100K+ facts but requires architectural changes to `findAllMatches`. Linear logic complication: non-monotonic consumption requires tracking both positive and negative deltas, plus provenance (which facts contributed to each match). Significantly harder than Stage 5a (~200 LOC vs ~30 LOC). **See:** `doc/research/incremental-matching.md`.
 
 **Join ordering.** For multi-antecedent rules, process the most selective condition first. Our deferral mechanism (defer patterns that depend on persistent output vars) is a manual form of this. Automatic selectivity estimation could improve ordering for rules with 4+ antecedents. CHR compilers have sophisticated join ordering; LEAPS defers joins until rule firing. **See:** `doc/research/forward-chaining-networks.md`.
 
-**Fingerprint indexing.** A lightweight alternative to full discrimination trees (E prover). Sample K positions in a term, build a K-element feature vector, and use it as a trie key. Cheaper to maintain than full discrimination trees but non-perfect (may return false positives requiring post-filtering). Our `opcodeLayer` is essentially a 1-position fingerprint index. **See:** `doc/research/term-indexing.md`.
+**Fingerprint indexing.** Already partially done: `opcodeLayer` IS a K=2 fingerprint index (predicate head + opcode child). Extending to K=3+ or more positions is possible but diminishing returns at 44 rules. At 100-500 rules, a full fingerprint trie could replace the strategy stack. **See:** `doc/research/term-indexing.md`.
 
-**TREAT-style dirty tracking.** Only re-evaluate rules whose trigger predicates overlap with changed facts. CALC's forward engine is already TREAT-like (no beta memories, full re-evaluation). Adding dirty tracking is cheap (~30 LOC) and provides 2-10x at 100+ rules. **See:** `doc/research/forward-chaining-networks.md`.
+**Compiled pattern matching.** Compile all rule patterns into a single decision tree (Maranget, 2008). Our `opcodeLayer` IS a manually compiled decision tree. Automating this via Maranget's column necessity heuristic generalizes to arbitrary calculi without hand-crafted strategy layers. Subsumes Stage 9 (discrimination trees) and Stage 5a (dirty tracking) — a compiled tree inherently only tests positions that discriminate. Three phases: rule selection tree → per-rule compiled match → cross-rule DAG. **See:** `doc/research/compiled-pattern-matching.md`.
 
-**Compiled pattern matching.** Compile all rule patterns into a single decision tree (Maranget, 2008). The compiler identifies the most discriminating term position to test first, generating a flat branch cascade. Our `opcodeLayer` IS a manually compiled decision tree (tests child[1] first). Automating this generalizes to arbitrary calculi. **See:** `doc/research/compiled-pattern-matching.md`.
+**Note:** TREAT-style dirty tracking is now **Stage 5a** (see below). Compiled pattern matching is the long-term replacement for both Stage 5a and Stage 9 — it automates what they do manually.
 
 ---
 
@@ -159,6 +192,84 @@ See `doc/documentation/buffer-limits.md` for details.
 **Zig relevance:** In Zig both formats would be `[]const Binding` or `[]const u32` — format unification makes the port simpler.
 
 **At scale (100000 facts):** Still near-zero — cold path frequency doesn't scale with fact count.
+
+---
+
+## Stage 5a: Dirty Rule Tracking (todo — low effort, high scaling impact)
+
+**Status:** Design complete. Independent of all other stages. ~30 LOC.
+
+### Core Idea
+
+Only re-evaluate rules whose trigger predicates overlap with facts that changed in the last step. This is the **TREAT algorithm's** core optimization (Miranker, 1987) applied to CALC's forward engine.
+
+Currently, `findAllMatches` evaluates all candidate rules every step, regardless of what changed. With dirty tracking, rules whose trigger predicates are disjoint from the changed predicates are skipped entirely.
+
+### Why It Matters
+
+CALC's engine is already TREAT-like (no cached partial matches, re-evaluates joins from alpha memories). The one missing TREAT optimization is **dirty marking**: when facts change, only mark affected rules as needing re-evaluation.
+
+At 44 rules with `opcodeLayer` handling 40/44: marginal (~0% on current multisig benchmark, since the 4 predicate-layer rules never match anyway). But at 100+ rules where the predicate layer handles 60+ rules: ~80% reduction in `tryMatch` calls (only ~5-10 rules affected per step instead of all 60+).
+
+### Design
+
+```javascript
+// In compileRule() or buildRuleIndex() — precompute once:
+// rulesByPred[pred] = [rule1, rule2, ...]  (already exists as triggerPreds)
+
+// In mutateState() — track changed predicates:
+// changedPreds already extractable from consumed/produced hashes
+
+// In findAllMatches() — filter candidates:
+function findAllMatches(state, rules, calc, strategy, stateIndex, changedPreds) {
+  if (!changedPreds) {
+    return fullFindAllMatches(state, rules, calc, strategy, stateIndex);  // first step
+  }
+  const candidates = [];
+  for (const pred of changedPreds) {
+    const affected = rulesByPred[pred];
+    if (affected) for (const r of affected) candidates.push(r);
+  }
+  // deduplicate (a rule may be triggered by multiple changed preds)
+  return uniqueCandidates(candidates).map(r => tryMatch(r, state, calc)).filter(Boolean);
+}
+```
+
+### Implementation (~30 LOC)
+
+1. **`mutateState()`** already knows consumed/produced hashes. Extract predicate heads into a `changedPreds` Set (~5 LOC).
+2. **`findAllMatches()`** accept optional `changedPreds`. When provided, intersect with `rulesByPred` to get dirty rules (~15 LOC).
+3. **`explore()`** pass `changedPreds` from `mutateState` to `findAllMatches` (~5 LOC).
+4. First step (no parent state) uses full evaluation (no delta yet).
+
+### Safety
+
+**Soundness:** If a rule's trigger predicates didn't change, no new facts match its first antecedent, so `tryMatch` would return the same result as last step. Skipping it is safe.
+
+**Completeness:** Every predicate head that changed is tracked. Every rule whose trigger predicate matches a changed predicate is re-evaluated. No rule is wrongly skipped.
+
+**Cross-check test:** Run with and without dirty tracking, assert identical symexec trees.
+
+### Interaction with Other Stages
+
+- **Stage 5a + Stage 9:** Discrimination trees also filter candidates by pattern structure. Dirty tracking filters by *what changed*; disc trees filter by *what the fact looks like*. They compose: dirty tracking selects which disc tree queries to even issue.
+- **Stage 5a + compiled matching:** A compiled Maranget decision tree inherently only tests discriminating positions — it subsumes both Stage 5a and Stage 9. Stage 5a is the cheap manual version.
+- **Stage 5a → semi-naive:** Dirty tracking is the first step toward semi-naive evaluation. Full semi-naive additionally tracks *which specific facts* are new (not just which predicates changed) and handles negative deltas (consumed facts).
+
+### Performance
+
+| Scale | Without dirty tracking | With dirty tracking | Savings |
+|-------|----------------------|--------------------|---------|
+| 44 rules (current) | 4 predicate-layer tries | 0-1 tries | ~0% total (predicateLayer is negligible) |
+| 100 rules | ~60 tries | ~5-10 tries | ~80% of tryMatch calls |
+| 400 rules | ~360 tries | ~10-20 tries | ~95% of tryMatch calls |
+| 1000 rules | ~960 tries | ~10-30 tries | ~97% of tryMatch calls |
+
+### Zig Mapping
+
+`changedPreds` → `std.BoundedArray(u32, MAX_PREDS)` (stack-allocated, no heap). `rulesByPred` → `std.AutoHashMap(u32, []const *Rule)` (built once at init). The dirty-filtering loop is a simple intersection — `inline for` over changedPreds, index into rulesByPred. Zero allocation at runtime.
+
+**See:** `doc/research/forward-chaining-networks.md` (TREAT algorithm), `doc/research/incremental-matching.md` (delta predicate tracking).
 
 ---
 
@@ -580,6 +691,33 @@ This is what the `opcodeLayer` does manually for two levels (opcode tag → opco
 | Stage 4 (alloc reduction) | 0.95ms | 1.2ms | P90 −9.3% |
 
 Current bottleneck: `findAllMatches` → `tryMatch` → `match` + `applyFlat`. GC pressure reduced ~70%.
+
+---
+
+## Zig Port Mapping (cross-cutting)
+
+Each optimization has a Zig mapping in its section. Here's the cross-cutting picture:
+
+| JS concept | Zig equivalent | Notes |
+|-----------|---------------|-------|
+| `Store.put/get/tag/child/arity` | SoA `MultiArrayList` + dedup `HashMap` | Direct port. SoA is natural in Zig. |
+| `theta = []` (dynamic array) | `[MAX_METAVARS]?u32` (stack array) | Fixed-size, zero-allocation. Stage 6 enables this. |
+| `match()` worklist `_Gp/_Gt` | `[MAX_WORKLIST]u32` (stack array) | Already module-level in JS. In Zig: stack-local. |
+| `metavarSlots` (hash→index map) | `comptime` lookup table or `[MAX_METAVARS]u32` | Slot assignment at comptime. |
+| `compiledConseq` (child sources) | `comptime` array of `ChildSource` unions | Stage 7. No closures, no dynamic dispatch. |
+| `changedPreds` (Set) | `BoundedArray(u32, MAX_PREDS)` | Stage 5a. Stack-allocated, no heap. |
+| `rulesByPred` (Map) | `AutoHashMap(u32, []const *Rule)` | Built once at init. |
+| `stateIndex` (Map of arrays) | `AutoHashMap(u32, ArrayList(u32))` | Or: flat sorted array with binary search. |
+| Discrimination tree (Map of nodes) | Flat array with offset-based children | Cache-friendly. `comptime` generation if rules are static. |
+| `pathVisited` (Set) | `AutoHashMap(u64, void)` | Or: bloom filter for probabilistic cycle detection. |
+
+**Key Zig advantage:** Every `new Array(N)` in JS that has a compile-time-known bound becomes a stack allocation in Zig. No GC, no heap fragmentation. The entire forward engine hot path can be zero-allocation in Zig with Stages 5a + 6 + 7.
+
+**Zig `comptime` opportunities:**
+- Stage 6: slot assignment tables generated at `comptime`
+- Stage 7: compiled consequent child sources as `comptime` arrays
+- Stage 9: discrimination tree / decision tree as `comptime`-generated flat array
+- Rule compilation: `comptime fn compileRule(rule: Rule) CompiledRule`
 
 ## References
 

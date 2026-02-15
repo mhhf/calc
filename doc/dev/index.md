@@ -1,7 +1,7 @@
 ---
 title: Development Index
 created: 2026-02-10
-modified: 2026-02-11
+modified: 2026-02-15
 summary: Index of active development documents
 tags: [index, development]
 ---
@@ -20,11 +20,14 @@ Active implementation plans and design documents for in-progress work.
 | [[prooverlasagne]] | Layered prover architecture (L1 kernel → L2 generic → L3 focused → L4 strategy → L5 UI) | `architecture` `prover` `refactor` |
 | [[todo]] | Outstanding development tasks | `planning` `tasks` |
 
-## Optimization Plans (Deferred)
+## Optimization Plans
 
-| Document | Verdict | Summary |
-|----------|---------|---------|
-| [[constructor-indexing]] | IMPLEMENT | O(1) identity via tag index, highest-impact single optimization |
+| Document | Status | Summary |
+|----------|--------|---------|
+| [[forward-optimization-roadmap]] | ACTIVE | Forward chaining: Stages 1-4 done, 5a/6/7 next |
+| [[constructor-indexing]] | DEFERRED | O(1) identity via tag index (sequent prover) |
+
+**Forward optimization next steps:** Stage 6 (de Bruijn theta) → Stage 7 (delta + compiled sub) → Stage 5a (dirty tracking at 100+ rules).
 
 See also: [[../research/prover-optimization]] for the full optimization catalog.
 
@@ -33,6 +36,11 @@ See also: [[../research/prover-optimization]] for the full optimization catalog.
 | Document | Description | Tags |
 |----------|-------------|------|
 | [[../research/execution-trees-metaproofs]] | Execution trees, metaproofs, coinduction | `research` `execution` `metaproofs` |
+| [[../research/de-bruijn-indexed-matching]] | De Bruijn indexed pattern matching | `optimization` `de-Bruijn` `Stage-6` |
+| [[../research/term-indexing]] | Discrimination trees, fingerprints, code trees | `optimization` `indexing` `Stage-9` |
+| [[../research/forward-chaining-networks]] | Rete, TREAT, LEAPS, CHR for linear logic | `optimization` `TREAT` `CHR` |
+| [[../research/compiled-pattern-matching]] | Maranget decision trees, compiled match | `optimization` `compilation` |
+| [[../research/incremental-matching]] | Semi-naive evaluation, relational e-matching | `optimization` `incremental` `Datalog` |
 
 ## Completed
 
