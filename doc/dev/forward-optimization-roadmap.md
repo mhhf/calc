@@ -57,36 +57,45 @@ Research in `doc/research/` revealed several insights that affect optimization p
 
 2. **CHR simpagation IS ILL forward rules.** Direct formal correspondence: kept head `H1` = persistent antecedents (`!A`), removed head `H2` = linear antecedents, guard `G` = FFI/backward proving. This means 25+ years of CHR compilation research applies directly. **See:** `doc/research/forward-chaining-networks.md`.
 
-3. **opcodeLayer IS both a fingerprint index (K=2) AND a manually compiled decision tree.** The research confirms our hand-crafted strategy IS what the theory prescribes. Maranget's algorithm would automate this for arbitrary calculi. **See:** `doc/research/term-indexing.md`, `doc/research/compiled-pattern-matching.md`.
+3. **opcodeLayer IS both a fingerprint index (K=2) AND a manually compiled decision tree.** The research confirms our hand-crafted strategy IS what the theory prescribes. Maranget's algorithm would automate this for arbitrary calculi. The `opcodeLayer` itself is EVM-specific (hard-coded `pred === 'code'` check), but the framework (`buildStrategyStack`, `detectStrategy`, layer `{ claims, build }` interface) is general. Generalizing `compileRule()` to detect discriminating ground positions in ANY trigger pattern — not just `code(_PC, _OP)` — would make the engine work for any .ill program. This is a ~50 LOC refactor, not a new optimization stage. **See:** `doc/research/term-indexing.md`, `doc/research/compiled-pattern-matching.md`.
 
-4. **Semi-naive for linear logic is harder than expected.** Standard semi-naive assumes monotonic derivation (facts only added). Linear logic is non-monotonic — facts are consumed. This requires tracking both positive and negative deltas, plus provenance (which facts contributed to each match). Not the cheap ~30 LOC optimization initially hoped — more like ~200 LOC with architectural changes. Deferred until 100K+ facts. **See:** `doc/research/incremental-matching.md`.
+4. **Semi-naive for linear logic is NOT ready — fundamentally harder than Datalog.** Standard semi-naive (Datalog) only tracks positive deltas: "which facts are NEW this cycle?" This works because Datalog is monotonic — facts only grow. Linear logic is non-monotonic — facts are CONSUMED. When fact A is consumed, any match that depended on A is invalidated. To know which matches depended on A, you need **provenance tracking**: for every match, store which facts contributed. When a fact is consumed, scan all stored matches for dependencies. This is essentially building Rete's beta network — the very architecture we've established is wrong for linear logic. Dirty predicate tracking (Stage 5a) is the sweet spot: coarser than semi-naive but simple, correct, and sufficient until 100K+ facts. **See:** `doc/research/incremental-matching.md`.
 
 5. **TREAT dirty tracking IS cheap and worth staging.** Unlike full semi-naive, simply tracking which predicates changed and filtering rules by their trigger predicates is ~30 LOC with no architectural changes. Marginal at 44 rules (opcodeLayer already handles 40/44), but critical infrastructure for 100+ rules and a stepping stone toward semi-naive.
 
 6. **Stage 5 is partially superseded by Stage 6.** If de Bruijn indexed theta is adopted for the hot path, the flat `[v,t,v,t,...]` format becomes dead code there. The paired `[[v,t],...]` format remains for cold paths (backward prover, FFI). Stage 5 cleanup is still valuable before Zig port but lower priority.
 
-## Implementation Order
+## READY — Design Complete, Can Implement Now
 
-**For current scale (44 rules, optimizing tryMatch speed):**
+These optimizations have complete designs, well-understood tradeoffs, and clear safety proofs. Each is independently testable via cross-check tests.
 
-1. **Stage 6** — De Bruijn indexed theta. O(1) metavar lookup. Enables Stage 7. ~150 LOC.
-2. **Stage 7** — Delta optimization + compiled substitution. Depends on 6. ~200 LOC.
-3. **Stage 5** — Theta format unification. Tech debt cleanup before Zig port. ~40 edits.
-
-**When scaling to 100+ rules:**
-
-4. **Stage 5a** — Dirty rule tracking. ~30 LOC. Do BEFORE adding many rules.
-5. **Stage 9** — Discrimination tree / compiled pattern matching. ~300 LOC.
-
-**When scaling to deep terms or 100K+ facts:**
-
-6. **Stage 8** — Path-based nested access. When terms exceed depth 4.
-7. **Semi-naive** — Full delta tracking with provenance. ~200 LOC. Architectural change.
-
-**Preparation before Stage 6:**
+**Preparation before any implementation:**
 - Fresh V8 profile at current state (post-Stage 4 + micro-optimizations)
-- Run `collectMetavars` on all 44 rules, verify slot counts match expectations
 - Add cross-check test infrastructure (run symexec with both old and new path, compare trees)
+
+| Order | Stage | Effort | Impact at 44 rules | Impact at 400 rules | Enables |
+|-------|-------|--------|-------------------|--------------------|---------|
+| 1 | **Generalize opcodeLayer** | ~50 LOC refactor | 0% (same perf) | Required for non-EVM programs | — |
+| 2 | **Stage 6** (de Bruijn theta) | ~150 LOC | ~3-5% | ~5-10% | Stage 7 |
+| 3 | **Stage 7** (delta + compiled sub) | ~200 LOC | ~5-8% | ~10-15% | — |
+| 4 | **Stage 5a** (dirty tracking) | ~30 LOC | ~0% | ~80% fewer tryMatch calls | semi-naive |
+| 5 | **Stage 5** (theta unification) | ~40 edits | ~0% | ~0% | Zig port |
+
+**Generalize opcodeLayer:** Refactor `compileRule()` to detect discriminating ground positions in ANY trigger pattern, not just `code(_PC, _OP)`. The current code has `if (pred === 'code')` hard-coded in two places (lines 295, 323). Replace with: for each trigger pattern, find child positions with ground (non-metavar) values across rules; build a hash index on the most discriminating position. Same performance on EVM, but works for any .ill program. This is not an optimization — it's a generality fix. The `buildStrategyStack` / `detectStrategy` / layer interface is already general; only the `opcodeLayer` itself is EVM-specific.
+
+**Zig note:** The generalized fingerprint detection becomes a `comptime` analysis: scan rule patterns at compile time, identify the best discriminating position, generate a `comptime` lookup table. Zero runtime cost.
+
+## FUTURE — Needs Scale or More Design Work
+
+These are well-researched but not worth implementing at current scale (44 rules, 20 facts, depth-2 terms). Each has a clear trigger condition.
+
+| Stage | Trigger | Effort | Impact | Why not now |
+|-------|---------|--------|--------|-------------|
+| **Stage 9** (disc trees / compiled matching) | 100+ rules | ~300 LOC | 25-60% at 400+ rules | opcodeLayer handles 40/44; overkill at current scale |
+| **Stage 8** (path-based access) | depth 4+ terms | ~150 LOC | ~10x at depth 10 | EVM terms are depth 1-2; no benefit |
+| **Semi-naive** (full delta + provenance) | 100K+ facts | ~200 LOC | 10-50x | Fundamentally hard for linear logic (see insight #4); dirty tracking (5a) is sufficient until then |
+| **Join ordering** | 4+ antecedent rules | ~100 LOC | ~5-10% | Current deferral mechanism works; CHR-style automatic ordering needs profiling to justify |
+| **Compiled pattern matching** (Maranget) | 100+ rules, arbitrary calculi | ~500 LOC | Subsumes 5a + 9 | Automates what opcodeLayer does manually; worth it when strategy stack can't be hand-tuned |
 
 ## Scale Considerations
 
@@ -101,17 +110,15 @@ Current: 44 rules, ~20 linear facts, depth-2 terms, 6-8 metavars per rule.
 | Nested types | 44 | ~20 | 10+ | match + substitute | 8 |
 | Full scale | 1000 | 100000 | 10+ | everything | 5a, 6-9, semi-naive |
 
-### Techniques Not Yet Staged (future research)
+### FUTURE Techniques — Detail
 
-**Semi-naive evaluation.** At 100000 facts, re-matching all rules against the entire state every step is prohibitive. Semi-naive evaluation (from Datalog) tracks which facts are new each cycle and only matches rules against the delta. The existing `makeChildCtx` incremental updates are a step toward this. Critical at 100K+ facts but requires architectural changes to `findAllMatches`. Linear logic complication: non-monotonic consumption requires tracking both positive and negative deltas, plus provenance (which facts contributed to each match). Significantly harder than Stage 5a (~200 LOC vs ~30 LOC). **See:** `doc/research/incremental-matching.md`.
+**Semi-naive evaluation — NOT READY for linear logic.** Standard semi-naive (Datalog) tracks positive deltas only: "which facts are new this cycle?" This works because Datalog is monotonic (facts only grow). In linear logic, facts are CONSUMED — when fact A is consumed by one rule, every other match that depended on A is invalidated. Knowing which matches depended on A requires **provenance tracking**: storing `{ruleId, [fact1, fact2, ...]}` for every computed match. When a fact is consumed, scanning all stored matches for dependencies. This is structurally similar to Rete's beta memory — the architecture we've established is wrong for linear logic. **Verdict:** Stage 5a (dirty predicate tracking) gives 90% of the benefit at 1% of the complexity. Full semi-naive is only justified at 100K+ facts where even dirty tracking can't prune enough candidates. Not safe to implement without careful design. **See:** `doc/research/incremental-matching.md`.
 
-**Join ordering.** For multi-antecedent rules, process the most selective condition first. Our deferral mechanism (defer patterns that depend on persistent output vars) is a manual form of this. Automatic selectivity estimation could improve ordering for rules with 4+ antecedents. CHR compilers have sophisticated join ordering; LEAPS defers joins until rule firing. **See:** `doc/research/forward-chaining-networks.md`.
+**Join ordering.** For multi-antecedent rules, process the most selective condition first. Our deferral mechanism (defer patterns that depend on persistent output vars) is a manual form. Automatic selectivity estimation could improve ordering for rules with 4+ antecedents. CHR compilers have sophisticated join ordering; LEAPS defers joins until rule firing. **Verdict:** Current deferral works for EVM rules (2-6 antecedents, highly selective). Profile first before investing here. **See:** `doc/research/forward-chaining-networks.md`.
 
-**Fingerprint indexing.** Already partially done: `opcodeLayer` IS a K=2 fingerprint index (predicate head + opcode child). Extending to K=3+ or more positions is possible but diminishing returns at 44 rules. At 100-500 rules, a full fingerprint trie could replace the strategy stack. **See:** `doc/research/term-indexing.md`.
+**Fingerprint indexing.** Already partially done: `opcodeLayer` IS a K=2 fingerprint index (predicate head + opcode child). Generalizing `compileRule()` to detect ground positions in any trigger pattern (see READY section) extends this to arbitrary programs. At 100-500 rules, a full K=3+ fingerprint trie could replace the strategy stack. **See:** `doc/research/term-indexing.md`.
 
-**Compiled pattern matching.** Compile all rule patterns into a single decision tree (Maranget, 2008). Our `opcodeLayer` IS a manually compiled decision tree. Automating this via Maranget's column necessity heuristic generalizes to arbitrary calculi without hand-crafted strategy layers. Subsumes Stage 9 (discrimination trees) and Stage 5a (dirty tracking) — a compiled tree inherently only tests positions that discriminate. Three phases: rule selection tree → per-rule compiled match → cross-rule DAG. **See:** `doc/research/compiled-pattern-matching.md`.
-
-**Note:** TREAT-style dirty tracking is now **Stage 5a** (see below). Compiled pattern matching is the long-term replacement for both Stage 5a and Stage 9 — it automates what they do manually.
+**Compiled pattern matching (Maranget).** Compile all rule patterns into a single decision tree. Our `opcodeLayer` IS a manually compiled decision tree. Automating this via Maranget's column necessity heuristic generalizes to arbitrary calculi without hand-crafted strategy layers. Subsumes Stage 9 and Stage 5a — a compiled tree inherently only tests discriminating positions. Three phases: rule selection → per-rule compiled match → cross-rule DAG. **Verdict:** Worth investing at 100+ rules or when supporting arbitrary calculi. **See:** `doc/research/compiled-pattern-matching.md`.
 
 ---
 
