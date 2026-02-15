@@ -18,6 +18,7 @@ Key files: `forward.js` (engine), `symexec.js` (tree exploration), `rule-analysi
 | 6 | De Bruijn indexed theta (O(1) metavar lookup) | −53% |
 | 7 | Delta bypass + compiled substitution | −8% |
 | 9 | Discrimination tree (general rule indexing) | O(depth) vs O(R) |
+| 10 | Flat undo log + matchAlts elimination | −13% |
 | — | Generalized fingerprint layer (auto-detect) | Non-EVM programs |
 
 **Current stack:** `fingerprintLayer` (O(1) for ground-discriminated rules) → `discTreeLayer` (O(depth) catch-all) → `predicateLayer` (safety net, never activates).
@@ -34,9 +35,11 @@ Key files: `forward.js` (engine), `symexec.js` (tree exploration), `rule-analysi
 
 4. **Semi-naive for linear logic is fundamentally harder than Datalog.** Fact consumption invalidates matches — needs provenance tracking ≈ Rete beta network. Dirty predicate tracking (Stage 5a) would be the cheap approximation, but the disc-tree already prunes candidates by pattern structure, making 5a redundant for symexec. See `doc/research/incremental-matching.md`.
 
-5. **Disc-tree must filter by relevant predicates.** Naive implementation scans all state facts — 47% regression at 44 rules (178 facts, only 4 unclaimed rules). Fix: at build time collect which predicates appear in indexed rules, only scan those facts. Result: 0% regression. Lesson: catch-all layers must not do O(total_facts) work when they only have a few rules.
+5. **V8 handles numeric-key objects efficiently.** Plain objects with ~178 numeric keys use V8's sparse array storage, NOT dictionary mode. Microbenchmark: object reads 1.85x faster, writes 5.3x faster, clone 8.6x faster than Map. Map only wins on iteration (5.25x). Don't convert to Map for the state representation.
 
-6. **Store.arity includes non-term children.** `atom('e')` has `arity=1` (string child) but 0 term children. Flatten functions must use `Store.isTermChild()` to filter, otherwise trie paths are wrong. This applies to any code that recursively walks Store terms.
+6. **Disc-tree must filter by relevant predicates.** Naive implementation scans all state facts — 47% regression at 44 rules (178 facts, only 4 unclaimed rules). Fix: at build time collect which predicates appear in indexed rules, only scan those facts. Result: 0% regression. Lesson: catch-all layers must not do O(total_facts) work when they only have a few rules.
+
+7. **Store.arity includes non-term children.** `atom('e')` has `arity=1` (string child) but 0 term children. Flatten functions must use `Store.isTermChild()` to filter, otherwise trie paths are wrong. This applies to any code that recursively walks Store terms.
 
 ## What's Next
 
@@ -84,6 +87,7 @@ Track which predicates changed per step, only re-evaluate affected rules. For fu
 | Stage 6 (de Bruijn theta) | 1.19ms | −53% |
 | Stage 7 (compiled sub) | 1.09ms | −8% |
 | Stage 9 (disc-tree) | ~1.9ms | 0% at 44 rules |
+| Stage 10 (flat undo + matchAlts) | 1.05ms | −13% |
 
 ## Zig Port Mapping
 
