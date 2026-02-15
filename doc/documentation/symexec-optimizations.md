@@ -85,6 +85,31 @@ created `new Set(parent)` at each of 56 branch nodes (avg ~25 entries per copy =
 | Set copy per branch | 56 × 1.5µs = 85µs |
 | Mutable Set add/delete | 56 × ~0.02µs ≈ 1µs |
 
+## 4. De Bruijn indexed theta (Stage 6)
+
+Each metavar in a rule gets a compile-time slot index (`metavarSlots`). Theta becomes
+`theta[slot] = value` (O(1) lookup) instead of linear scan. The undo stack (`_undoStack`
+in unify.js) tracks which slots were written so they can be cleared on match failure.
+
+**Critical invariant:** `undoSave()` at tryMatch entry, `undoRestore(theta, saved)` on
+every failure exit, `undoDiscard(saved)` on success exit. Without discard, `_undoLen`
+grows monotonically across calls, eventually overflowing the fixed-size undo buffer.
+
+## 5. Delta bypass + compiled substitution (Stage 7)
+
+**Delta bypass:** For flat delta patterns (children are metavars or ground), extract
+children directly via `Store.child(fact, pos)` instead of full `matchIndexed` decomposition.
+~140 match calls eliminated per run.
+
+**Compiled substitution:** Precomputed recipes map consequent patterns to direct
+`Store.put(tag, [theta[slot0], theta[slot1]])` calls, bypassing recursive `applyIndexed`
+traversal. Recipe indices align with full consequent pattern list (not filtered).
+
+**mutateState integration:** When `rule` is passed to `mutateState`, it handles
+preserved-skip + compiled substitution together. This ensures recipe indices align
+with pattern indices. Multi-alt paths (with-connective choices) use external
+`filterPreserved` since alt patterns differ from the original consequent.
+
 ## When to be careful
 
 - **Adding new tree consumers**: Terminal nodes (leaf/bound/cycle) snapshot the state

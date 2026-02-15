@@ -34,13 +34,13 @@ Stage 3 (preserved optimization)
   │
 Stage 4 (allocation reduction)
   │
-  ├──────────────────── Stage 5 (theta unification)     [standalone, low]
+Stage 6 (de Bruijn theta)
+  │
+Stage 7 (delta + compiled sub)
+  │
+  ├──────────────────── Stage 5 (theta unification)     [superseded by 6, low]
   │
   ├──────────────────── Stage 5a (dirty rule tracking)  [standalone, low, ~30 LOC]
-  │
-  ├──────────────────── Stage 6 (de Bruijn theta)       [standalone, medium]
-  │                       │
-  │                     Stage 7 (delta + compiled sub)   [depends on 6, medium]
   │
   ├──────────────────── Stage 8 (path-based access)     [standalone, future]
   │
@@ -73,13 +73,13 @@ These optimizations have complete designs, well-understood tradeoffs, and clear 
 - Fresh V8 profile at current state (post-Stage 4 + micro-optimizations)
 - Add cross-check test infrastructure (run symexec with both old and new path, compare trees)
 
-| Order | Stage | Effort | Impact at 44 rules | Impact at 400 rules | Enables |
-|-------|-------|--------|-------------------|--------------------|---------|
-| 1 | **Generalize opcodeLayer** | ~50 LOC refactor | 0% (same perf) | Required for non-EVM programs | — |
-| 2 | **Stage 6** (de Bruijn theta) | ~150 LOC | ~3-5% | ~5-10% | Stage 7 |
-| 3 | **Stage 7** (delta + compiled sub) | ~200 LOC | ~5-8% | ~10-15% | — |
-| 4 | **Stage 5a** (dirty tracking) | ~30 LOC | ~0% | ~80% fewer tryMatch calls | semi-naive |
-| 5 | **Stage 5** (theta unification) | ~40 edits | ~0% | ~0% | Zig port |
+| Order | Stage | Effort | Impact at 44 rules | Impact at 400 rules | Status |
+|-------|-------|--------|-------------------|--------------------|--------|
+| 1 | **Generalize opcodeLayer** | ~50 LOC refactor | 0% (same perf) | Required for non-EVM programs | **Done** |
+| 2 | **Stage 6** (de Bruijn theta) | ~150 LOC | ~53% (with prior micro-opts) | ~5-10% | **Done** |
+| 3 | **Stage 7** (delta + compiled sub) | ~330 LOC | ~8% | ~10-15% | **Done** |
+| 4 | **Stage 5a** (dirty tracking) | ~30 LOC | ~0% | ~80% fewer tryMatch calls | todo |
+| 5 | **Stage 5** (theta unification) | ~40 edits | ~0% | ~0% | superseded by 6 |
 
 **Generalize opcodeLayer:** Refactor `compileRule()` to detect discriminating ground positions in ANY trigger pattern, not just `code(_PC, _OP)`. The current code has `if (pred === 'code')` hard-coded in two places (lines 295, 323). Replace with: for each trigger pattern, find child positions with ground (non-metavar) values across rules; build a hash index on the most discriminating position. Same performance on EVM, but works for any .ill program. This is not an optimization — it's a generality fix. The `buildStrategyStack` / `detectStrategy` / layer interface is already general; only the `opcodeLayer` itself is EVM-specific.
 
@@ -175,11 +175,11 @@ See `doc/documentation/buffer-limits.md` for details.
 
 ---
 
-## Stage 5: Theta Format Unification (todo — low priority)
+## Stage 5: Theta Format Unification (superseded — low priority)
 
-**Status:** Tech debt. Not blocking any optimization.
+**Status:** Largely superseded by Stage 6 (de Bruijn indexed theta). The hot path now uses indexed `theta[slot] = value` format, bypassing both flat and paired formats entirely.
 
-**Problem:** Two theta formats coexist. Hot path uses flat `[v,t,v,t,...]` (`applyFlat` in substitute.js, `match` in unify.js, `tryMatch` in forward.js). Cold path uses paired `[[v,t],...]` (`apply` in substitute.js, `unifyUF` in unify.js, backward prover, sequent prover, FFI functions, tests). Conversion at 2 points in `tryMatch`.
+**Remaining tech debt:** Three theta formats coexist: (1) indexed `theta[slot]` on hot path (Stage 6), (2) flat `[v,t,v,t,...]` in `match()`/`applyFlat()` (dead on hot path, used by cold path callers), (3) paired `[[v,t],...]` in backward prover, FFI, sequent prover, tests. FFI/backward prover results are converted to indexed format at the `tryMatch` boundary (2 conversion sites).
 
 **Risk:** Silent data corruption if wrong format passed to wrong consumer. Mitigated by separate function names (`apply` vs `applyFlat`), but still a footgun.
 
@@ -280,9 +280,9 @@ function findAllMatches(state, rules, calc, strategy, stateIndex, changedPreds) 
 
 ---
 
-## Stage 6: De Bruijn Indexed Theta (todo — medium priority)
+## Stage 6: De Bruijn Indexed Theta (done)
 
-**Status:** Design complete. Prerequisite for Stage 7.
+**Status:** Done. Commit `352ac7d`.
 
 ### Core Idea
 
@@ -367,9 +367,9 @@ Related: Explicit substitution calculi (Abadi et al. 1991), which make substitut
 
 ---
 
-## Stage 7: Delta Optimization + Compiled Substitution (todo — medium priority)
+## Stage 7: Delta Optimization + Compiled Substitution (done)
 
-**Status:** Design complete. Depends on Stage 6.
+**Status:** Done. Commit `ec40f46`. Depends on Stage 6.
 
 ### Core Idea
 
@@ -696,8 +696,12 @@ This is what the `opcodeLayer` does manually for two levels (opcode tag → opco
 | Index+set undo | 0.8ms→0.6ms | — | 1.25x |
 | Direct FFI bypass | — | — | 1.2x |
 | Stage 4 (alloc reduction) | 0.95ms | 1.2ms | P90 −9.3% |
+| Micro-opts (truncate, dealloc) | 2.51ms | — | Post-Stage-4 re-baseline |
+| opcodeLayer generalization | — | — | 0% (generality, not perf) |
+| Stage 6 (de Bruijn theta) | 1.19ms | 1.64ms | −53% from re-baseline |
+| Stage 7 (delta + compiled sub) | 1.09ms | 1.75ms | −8% from Stage 6 |
 
-Current bottleneck: `findAllMatches` → `tryMatch` → `match` + `applyFlat`. GC pressure reduced ~70%.
+Current bottleneck: `findAllMatches` → `tryMatch` → `matchIndexed`. GC pressure reduced ~90% from original.
 
 ---
 
