@@ -7,8 +7,8 @@
 const { describe, it, before } = require('node:test');
 const assert = require('node:assert');
 const path = require('path');
-const forward = require('../../lib/prover/strategy/forward');
-const { analyzeRule, analyzeDeltas } = require('../../lib/prover/strategy/rule-analysis');
+const forward = require('../../lib/engine/forward');
+const { analyzeRule, analyzeDeltas } = require('../../lib/engine/rule-analysis');
 const mde = require('../../lib/engine');
 const Store = require('../../lib/kernel/store');
 

@@ -10,12 +10,12 @@ const { isMetavar } = require('../../lib/kernel/unify');
 const {
   createNode, insert, flattenPattern, flattenFact,
   subtreeSize, queryFlat, collectAll, makeDiscTreeLayer, WILDCARD
-} = require('../../lib/prover/strategy/disc-tree');
+} = require('../../lib/engine/disc-tree');
 const {
   explore, countNodes, countLeaves, maxDepth, getAllLeaves,
   buildStrategyStack, makeDiscTreeLayer: makeDiscTreeLayerFromSymexec
-} = require('../../lib/prover/strategy/symexec');
-const forward = require('../../lib/prover/strategy/forward');
+} = require('../../lib/engine/symexec');
+const forward = require('../../lib/engine/forward');
 const mde = require('../../lib/engine');
 
 describe('disc-tree', () => {

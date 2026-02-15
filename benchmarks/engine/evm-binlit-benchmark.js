@@ -10,7 +10,7 @@
  */
 
 const mde = require('../../lib/engine');
-const forward = require('../../lib/prover/strategy/forward');
+const forward = require('../../lib/engine/forward');
 const Store = require('../../lib/kernel/store');
 const prove = require('../../lib/engine/prove');
 const path = require('path');

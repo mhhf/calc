@@ -18,8 +18,8 @@ const fs = require('fs');
 const { performance } = require('perf_hooks');
 const mde = require('../../lib/engine');
 const Store = require('../../lib/kernel/store');
-const forward = require('../../lib/prover/strategy/forward');
-const symexec = require('../../lib/prover/strategy/symexec');
+const forward = require('../../lib/engine/forward');
+const symexec = require('../../lib/engine/symexec');
 
 const BASELINE_PATH = path.join(__dirname, 'symexec-baseline.json');
 const WARMUP = 3;

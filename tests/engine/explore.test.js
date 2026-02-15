@@ -9,8 +9,8 @@ const mde = require('../../lib/engine');
 const {
   explore, countLeaves, getAllLeaves, maxDepth, countNodes,
   expandItem, expandConsequentChoices, hashState, toDot
-} = require('../../lib/prover/strategy/symexec');
-const forward = require('../../lib/prover/strategy/forward');
+} = require('../../lib/engine/symexec');
+const forward = require('../../lib/engine/forward');
 const Store = require('../../lib/kernel/store');
 
 describe('explore', { timeout: 10000 }, () => {
