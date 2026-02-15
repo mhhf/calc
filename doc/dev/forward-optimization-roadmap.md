@@ -38,13 +38,15 @@ Stage 6 (de Bruijn theta)
   │
 Stage 7 (delta + compiled sub)
   │
+Stage 9 (discrimination trees)
+  │
   ├──────────────────── Stage 5 (theta unification)     [superseded by 6, low]
   │
-  ├──────────────────── Stage 5a (dirty rule tracking)  [standalone, low, ~30 LOC]
+  ├──────────────────── Stage 5a (dirty rule tracking)  [SKIP — disc-tree supersedes for symexec]
   │
   ├──────────────────── Stage 8 (path-based access)     [standalone, future]
   │
-  └──────────────────── Stage 9 (discrimination trees)  [standalone, future]
+  └──────────────────── Compiled matching (Maranget)    [standalone, future, 1000+ rules]
 ```
 
 All future stages are independent of each other except Stage 7 → Stage 6. Each can be implemented and tested in isolation with cross-check tests.
@@ -78,8 +80,9 @@ These optimizations have complete designs, well-understood tradeoffs, and clear 
 | 1 | **Generalize opcodeLayer** | ~50 LOC refactor | 0% (same perf) | Required for non-EVM programs | **Done** |
 | 2 | **Stage 6** (de Bruijn theta) | ~150 LOC | ~53% (with prior micro-opts) | ~5-10% | **Done** |
 | 3 | **Stage 7** (delta + compiled sub) | ~330 LOC | ~8% | ~10-15% | **Done** |
-| 4 | **Stage 5a** (dirty tracking) | ~30 LOC | ~0% | ~80% fewer tryMatch calls | todo |
-| 5 | **Stage 5** (theta unification) | ~40 edits | ~0% | ~0% | superseded by 6 |
+| 4 | **Stage 9** (discrimination trees) | ~120 LOC | ~0% (fingerprint handles EVM) | O(depth) vs O(R) | **Done** |
+| — | **Stage 5a** (dirty tracking) | ~30 LOC | ~0% | Superseded by disc-tree | **Skipped** |
+| — | **Stage 5** (theta unification) | ~40 edits | ~0% | ~0% | superseded by 6 |
 
 **Generalize opcodeLayer:** Refactor `compileRule()` to detect discriminating ground positions in ANY trigger pattern, not just `code(_PC, _OP)`. The current code has `if (pred === 'code')` hard-coded in two places (lines 295, 323). Replace with: for each trigger pattern, find child positions with ground (non-metavar) values across rules; build a hash index on the most discriminating position. Same performance on EVM, but works for any .ill program. This is not an optimization — it's a generality fix. The `buildStrategyStack` / `detectStrategy` / layer interface is already general; only the `opcodeLayer` itself is EVM-specific.
 
@@ -91,7 +94,7 @@ These are well-researched but not worth implementing at current scale (44 rules,
 
 | Stage | Trigger | Effort | Impact | Why not now |
 |-------|---------|--------|--------|-------------|
-| **Stage 9** (disc trees / compiled matching) | 100+ rules | ~300 LOC | 25-60% at 400+ rules | opcodeLayer handles 40/44; overkill at current scale |
+| **Stage 9** (disc trees) | — | ~120 LOC | O(depth) vs O(R) at 400+ rules | **Done** — `disc-tree.js` |
 | **Stage 8** (path-based access) | depth 4+ terms | ~150 LOC | ~10x at depth 10 | EVM terms are depth 1-2; no benefit |
 | **Semi-naive** (full delta + provenance) | 100K+ facts | ~200 LOC | 10-50x | Fundamentally hard for linear logic (see insight #4); dirty tracking (5a) is sufficient until then |
 | **Join ordering** | 4+ antecedent rules | ~100 LOC | ~5-10% | Current deferral mechanism works; CHR-style automatic ordering needs profiling to justify |
@@ -522,9 +525,9 @@ Paths → `comptime` array of `u8` indices. Navigation → `inline for` over pat
 
 ---
 
-## Stage 9: Discrimination Tree Indexing (future)
+## Stage 9: Discrimination Tree Indexing (done)
 
-**Status:** Design only. Independent. Relevant when rules exceed ~100.
+**Status:** Done. File: `lib/prover/strategy/disc-tree.js` (~120 LOC). Tests: `tests/engine/disc-tree.test.js` (19 tests).
 
 ### Core Idea
 
@@ -694,6 +697,7 @@ This is what the `opcodeLayer` does manually for two levels (opcode tag → opco
 | opcodeLayer generalization | — | — | 0% (generality, not perf) |
 | Stage 6 (de Bruijn theta) | 1.19ms | 1.64ms | −53% from re-baseline |
 | Stage 7 (delta + compiled sub) | 1.09ms | 1.75ms | −8% from Stage 6 |
+| Stage 9 (disc-tree) | 1.95ms | — | ~0% at 44 rules (scaling infrastructure) |
 
 Current bottleneck: `findAllMatches` → `tryMatch` → `matchIndexed`. GC pressure reduced ~90% from original.
 
