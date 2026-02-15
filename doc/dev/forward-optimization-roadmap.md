@@ -1,6 +1,6 @@
 # Forward Chaining Optimization Roadmap
 
-Optimizing forward chaining execution while keeping everything as plain linear logic. All optimizations are transparent compile-time shortcuts — the logic frontend is unchanged.
+Optimizing forward chaining execution while keeping everything as plain linear logic. All optimizations are optional transparent compile-time shortcuts — the logic frontend is unchanged.
 
 ## Architecture
 
@@ -70,11 +70,15 @@ Current: 44 rules, ~20 linear facts, depth-2 terms, 6-8 metavars per rule.
 
 ### Techniques Not Yet Staged (future research)
 
-**Semi-naive evaluation.** At 100000 facts, re-matching all rules against the entire state every step is prohibitive. Semi-naive evaluation (from Datalog) tracks which facts are new each cycle and only matches rules against the delta. The existing `makeChildCtx` incremental updates are a step toward this. Critical at 100K+ facts but requires architectural changes to `findAllMatches`.
+**Semi-naive evaluation.** At 100000 facts, re-matching all rules against the entire state every step is prohibitive. Semi-naive evaluation (from Datalog) tracks which facts are new each cycle and only matches rules against the delta. The existing `makeChildCtx` incremental updates are a step toward this. Critical at 100K+ facts but requires architectural changes to `findAllMatches`. Linear logic complication: non-monotonic consumption requires tracking both positive and negative deltas, plus provenance (which facts contributed to each match). **See:** `doc/research/incremental-matching.md`.
 
-**Join ordering.** For multi-antecedent rules, process the most selective condition first. Our deferral mechanism (defer patterns that depend on persistent output vars) is a manual form of this. Automatic selectivity estimation could improve ordering for rules with 4+ antecedents.
+**Join ordering.** For multi-antecedent rules, process the most selective condition first. Our deferral mechanism (defer patterns that depend on persistent output vars) is a manual form of this. Automatic selectivity estimation could improve ordering for rules with 4+ antecedents. CHR compilers have sophisticated join ordering; LEAPS defers joins until rule firing. **See:** `doc/research/forward-chaining-networks.md`.
 
-**Fingerprint indexing.** A lightweight alternative to full discrimination trees (E prover). Sample K positions in a term, build a K-element feature vector, and use it as a trie key. Cheaper to maintain than full discrimination trees but non-perfect (may return false positives requiring post-filtering). Our `opcodeLayer` is essentially a 1-position fingerprint index.
+**Fingerprint indexing.** A lightweight alternative to full discrimination trees (E prover). Sample K positions in a term, build a K-element feature vector, and use it as a trie key. Cheaper to maintain than full discrimination trees but non-perfect (may return false positives requiring post-filtering). Our `opcodeLayer` is essentially a 1-position fingerprint index. **See:** `doc/research/term-indexing.md`.
+
+**TREAT-style dirty tracking.** Only re-evaluate rules whose trigger predicates overlap with changed facts. CALC's forward engine is already TREAT-like (no beta memories, full re-evaluation). Adding dirty tracking is cheap (~30 LOC) and provides 2-10x at 100+ rules. **See:** `doc/research/forward-chaining-networks.md`.
+
+**Compiled pattern matching.** Compile all rule patterns into a single decision tree (Maranget, 2008). The compiler identifies the most discriminating term position to test first, generating a flat branch cascade. Our `opcodeLayer` IS a manually compiled decision tree (tests child[1] first). Automating this generalizes to arbitrary calculi. **See:** `doc/research/compiled-pattern-matching.md`.
 
 ---
 
@@ -240,6 +244,8 @@ Slots map → `[MAX_METAVARS]?u32` (fixed-size array of optional indices). Theta
 De Bruijn indices (N.G. de Bruijn, 1972) replace named variables with positional indices in lambda calculus. The key insight — separating variable identity from binding position — applies equally to pattern matching substitutions. Our indexed slots are a "named de Bruijn" scheme: we keep variable names for debugging/display but use positional indices for all runtime operations.
 
 Related: Explicit substitution calculi (Abadi et al. 1991), which make substitution a first-class operation with indexed variables. Our compiled substitution (Stage 7) is an instance of this.
+
+**See:** `doc/research/de-bruijn-indexed-matching.md` for full theoretical analysis.
 
 ---
 
@@ -555,6 +561,8 @@ This is what the `opcodeLayer` does manually for two levels (opcode tag → opco
 
 **Complexity:** Decision tree size can be exponential in the worst case (overlapping patterns), but DAG conversion with sharing mitigates this. Implementation: ~500 LOC. Well-understood from OCaml/Haskell compiler literature.
 
+**See:** `doc/research/compiled-pattern-matching.md` for detailed analysis including per-rule compiled match functions and cross-rule DAG sharing. `doc/research/term-indexing.md` for the discrimination tree alternative.
+
 ---
 
 ## Profiling History
@@ -587,6 +595,10 @@ Current bottleneck: `findAllMatches` → `tryMatch` → `match` + `applyFlat`. G
 - Maranget (2008) — *Compiling pattern matching to good decision trees*. Optimal column selection.
 - McCune (1992) — *Experiments with discrimination-tree indexing and path indexing*. Empirical comparison.
 - Miranker (1987) — *TREAT: A better match algorithm for AI production systems*. Alternative to Rete.
+- Miranker et al. (1990) — *On the performance of lazy matching in production systems (LEAPS)*. Deferred join evaluation.
+- Bancilhon (1986) — *Naive evaluation of recursively defined relations*. Semi-naive evaluation for Datalog.
+- Ngo et al. (2012) — *Worst-case optimal join algorithms*. Leapfrog trie join for conjunctive queries.
+- Schrijvers & Demoen (2004) — *The K.U.Leuven CHR system*. Occurrence-based CHR compilation.
 - Rawson — [discrimination-tree (Rust crate)](https://github.com/MichaelRawson/discrimination-tree). Reference implementation.
 - Sampson (2019) — *Flattening ASTs (arena allocation)*. SoA layout for compilers.
 - Stickel (1989) — *The path-indexing method for indexing terms*. Alternative to discrimination trees.

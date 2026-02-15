@@ -237,6 +237,43 @@ Added `neq` FFI for O(1) BigInt inequality. FFI failure is definitive (break imm
 - [x] neq FFI added — `arithmetic.neq`, mode `+ +`
 - [x] Result: 153 prove() calls → 0 per 63-node tree (19% symexec speedup)
 
+### Forward Optimization Stages 6-9
+**Priority:** MEDIUM | **Status:** design complete, research in progress
+
+**See:** doc/dev/forward-optimization-roadmap.md
+
+- [ ] **Stage 6: De Bruijn indexed theta** — compile-time slot assignment, O(1) metavar lookup
+  - Research complete: doc/research/de-bruijn-indexed-matching.md
+  - Undo stack needed for intra-rule pattern failure reset
+  - Enables Stage 7
+- [ ] **Stage 7: Delta optimization + compiled substitution** — depends on Stage 6
+  - Delta bypass: extract changed args directly instead of full match()
+  - Compiled consequent: Store.put chain instead of applyFlat traversal
+- [ ] **Stage 9: Discrimination tree indexing** — for 100+ rules
+  - Research complete: doc/research/term-indexing.md
+  - Compiled pattern matching (Maranget) as alternative: doc/research/compiled-pattern-matching.md
+  - Recommendation: fingerprints <100 rules, discrimination trees 100-500, code trees 500+
+- [ ] **Stage 5: Theta format unification** — superseded if Stage 6 adopted globally
+
+**Research items (from de Bruijn analysis):**
+- [ ] Compile-time first-occurrence vs subsequent-occurrence distinction (WAM get_variable/get_value)
+- [ ] Compiled match functions (per-rule specialized matchers, beyond generic match())
+- [ ] Interaction between deferral order and first/subsequent classification
+
+**Research items (from forward chaining networks):**
+- [ ] TREAT-style dirty rule tracking — only re-evaluate rules whose trigger predicates changed
+- [ ] CHR join ordering — match most selective antecedent first (beyond current deferral)
+- [ ] LEAPS delta-driven activation — maintain activation queue instead of scanning all rules
+- [ ] Tabled forward chaining — cache symexec subtrees for recurring states
+
+**Research items (from incremental matching):**
+- [ ] Delta predicate tracking in `findAllMatches` (~30 LOC, helps at any scale)
+- [ ] Full semi-naive evaluation at 100K+ facts (positive + negative delta for linear logic)
+- [ ] Provenance tracking for non-monotonic semi-naive (which facts contributed to each match)
+- [ ] Relational e-matching for multi-antecedent rules (leapfrog trie join at 100K+ facts)
+
+**See also:** doc/research/forward-chaining-networks.md, doc/research/incremental-matching.md
+
 ### Symexec: Non-Opcode Rule Strategy
 **Priority:** LOW | **Status:** investigated — minimal impact
 

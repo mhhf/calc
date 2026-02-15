@@ -238,6 +238,31 @@
 
 **Tags:** `hash-consing` `storage` `memory` `WAM` `STG` `BEAM` `atoms` `interning` `GC`
 
+### [[de-bruijn-indexed-matching]]
+**De Bruijn Indexed Pattern Matching.** Compile-time slot assignment for metavariables. Replaces linear theta scan with O(1) indexed lookup. WAM register allocation analogy (get_variable/get_value). Explicit substitution connection (λσ-calculus). Concrete code-level analysis of match(), applyFlat(), tryMatch(). Enables Stage 7 (delta optimization). Prerequisite for compiled substitution.
+
+**Tags:** `de-Bruijn` `WAM` `register-allocation` `slot-indexing` `pattern-matching` `substitution` `Stage-6`
+
+### [[term-indexing]]
+**Term Indexing for Rule Selection.** Comprehensive survey of discrimination trees, path indexing, substitution trees, code trees, fingerprint indexing. Detailed analysis of CALC's current indexing architecture (opcodeLayer, predicateLayer, strategy stack). How discrimination trees integrate with the strategy stack. Hash-consing interaction. Multi-antecedent indexing. Concrete recommendation: fingerprints < 100 rules, discrimination trees 100-500, code trees 500+.
+
+**Tags:** `discrimination-trees` `path-indexing` `fingerprint-indexing` `code-trees` `rule-selection` `Stage-9`
+
+### [[forward-chaining-networks]]
+**Forward Chaining Networks.** Rete, TREAT, LEAPS, CHR for linear logic. Why Rete is a poor fit (beta memory explosion with fact consumption). Why TREAT matches CALC's architecture (no cached partial matches). CHR simpagation as ILL forward rules. Concrete adoption recommendations: dirty rule tracking from TREAT, join ordering from CHR, delta-driven activation from LEAPS. Scale analysis: 10-100x improvement at 1000 rules.
+
+**Tags:** `Rete` `TREAT` `LEAPS` `CHR` `simpagation` `forward-chaining` `production-systems` `linear-logic`
+
+### [[compiled-pattern-matching]]
+**Compiled Pattern Matching.** Maranget's decision tree compilation. Column heuristic (necessity scoring). DAG conversion for space. Application to CALC: Phase 1 (rule selection), Phase 2 (per-rule compiled match), Phase 3 (cross-rule DAG). CALC's opcodeLayer IS a manually compiled decision tree. Compiled tryMatch eliminates generic loop for 2-5x per-rule improvement.
+
+**Tags:** `Maranget` `decision-trees` `compilation` `partial-evaluation` `column-heuristic` `code-generation`
+
+### [[incremental-matching]]
+**Incremental Matching and Semi-Naive Evaluation.** Delta-driven techniques for avoiding redundant rule evaluation. Semi-naive evaluation (Bancilhon/Ullman): match rules only against changed facts. Relational e-matching (Zhang et al.): pattern matching as conjunctive queries with worst-case optimal joins (leapfrog trie join). Linear logic complication: non-monotonic (consumed facts need negative delta + provenance tracking). Symexec application: memoized match evaluation across tree using parent-child deltas. Souffle-style automatic index selection. Scale: 10-50x at 100K+ facts.
+
+**Tags:** `semi-naive` `delta-tracking` `relational-e-matching` `leapfrog-join` `Datalog` `Souffle` `incremental` `provenance`
+
 ---
 
 ## IX. Semantic Foundations
@@ -327,6 +352,8 @@
 | Threshold modalities (k-of-n) | Predicate, not modality | [[consensus-modalities-mpst]] |
 | Temporal modalities for derivatives | Unexplored | [[financial-primitives]] |
 | μMALL fixed points & cyclic proofs | Deep survey complete, ready for impl | [[muMALL-fixed-points]] |
+| Semi-naive for linear logic | Design complete, needs impl | [[incremental-matching]] |
+| Compiled pattern matching | Design complete (3 phases) | [[compiled-pattern-matching]] |
 
 ### Unexplored Directions
 
@@ -334,7 +361,10 @@
 - **Formal verification of CALC itself** in Lean/Agda
 - **Hardware acceleration** for proof search
 - **Linear BDI implementation:** Agent execution with linear intentions
+- **Relational e-matching** for multi-antecedent rules at 100K+ facts (see [[incremental-matching]])
+- **Tabled forward chaining** — cache symexec subtrees for recurring states (see [[forward-chaining-networks]])
+- **CHRiSM probabilistic choice** — Monte Carlo tree search over execution trees (see [[forward-chaining-networks]])
 
 ---
 
-*Last updated: 2026-02-12*
+*Last updated: 2026-02-15*
