@@ -518,15 +518,34 @@ Alternative: Zig `comptime` trie generation — if rules are known at compile ti
 
 ### Relationship to Rete
 
-The Rete algorithm builds a network that indexes **across multiple patterns**, maintaining partial match results (alpha memories for individual patterns, beta memories for joins). This is powerful for multi-pattern rules but comes with costs:
+The Rete algorithm (Forgy, 1982) builds a network that indexes **across multiple patterns**, maintaining partial match results (alpha memories for individual patterns, beta memories for joins). Rete's alpha network IS essentially a discrimination tree. The beta network adds multi-condition join tracking.
 
-- **Memory:** Rete stores all partial matches. For 100000 facts and 1000 rules, partial match memory can explode.
-- **Fact retraction:** In linear logic, facts are consumed. Rete must retract partial matches involving consumed facts — this is complex and error-prone.
-- **Complexity:** Full Rete implementation is 1000+ LOC with subtle invalidation logic.
+| Aspect | Discrimination Tree | Rete |
+|--------|-------------------|------|
+| **Scope** | Single-pattern matching | Multi-pattern rule matching |
+| **State** | Stateless (query-time) | Stateful (maintains partial matches) |
+| **Incremental** | No | Yes (core advantage) |
+| **Memory** | Low | High (O(N^K) partial matches) |
 
-Our discrimination tree approach is simpler: it only indexes single patterns (the trigger), and `tryMatch()` handles the multi-pattern join. This is less optimal for rules with many antecedents but much simpler and naturally handles linear fact consumption.
+For linear logic, Rete has specific problems:
 
-**Future consideration:** If profiling shows that multi-pattern join is the bottleneck (not single-pattern lookup), a limited Rete-like approach — caching the first two patterns' join results and invalidating on consumption — could be worthwhile. But this is a Stage 10+ optimization.
+- **Memory:** For 100000 facts and 1000 rules, partial match memory can explode.
+- **Fact retraction:** Consumed facts must be retracted from all partial matches — complex invalidation.
+- **Non-determinism:** Linear logic's consumption choice interacts badly with Rete's deterministic execution.
+
+**Alternatives:** TREAT (Miranker) drops beta memories and re-evaluates joins from scratch — often faster when facts change frequently (exactly the linear logic case). LEAPS (used in CHR — Constraint Handling Rules) defers join evaluation until a rule fires. CHR is the closest production-system model to linear logic: its "simpagation" rules directly model linear/non-linear splitting.
+
+Our approach: discrimination tree for the alpha network, `tryMatch()` for the join. Simpler than full Rete, handles consumption naturally.
+
+### Compiled Pattern Matching (future alternative)
+
+Instead of a trie traversed at runtime, compile all rules into a **static decision tree** (Maranget, 2008). The compiler analyzes all 44 rule patterns simultaneously, identifies the most discriminating position to test first, and generates a cascade of branches. Each term position is tested at most once.
+
+This is what the `opcodeLayer` does manually for two levels (opcode tag → opcode value). Maranget's algorithm automates this for arbitrary depth. The result: a flat array of `{ position, value, if_match, if_fail }` entries — essentially a bytecode VM for pattern matching.
+
+**When to consider:** When the rule set is fixed at compile/load time (our case) and the discrimination tree's runtime overhead is measurable. For 1000+ rules, compiled matching could outperform a discrimination tree by eliminating trie pointer chasing.
+
+**Complexity:** Decision tree size can be exponential in the worst case (overlapping patterns), but DAG conversion with sharing mitigates this. Implementation: ~500 LOC. Well-understood from OCaml/Haskell compiler literature.
 
 ---
 
@@ -548,16 +567,22 @@ Current bottleneck: `findAllMatches` → `tryMatch` → `match` + `applyFlat`. G
 
 ## References
 
+- Abadi, Cardelli, Curien & Levy (1991) — *Explicit substitutions*. First-class substitution with indexed variables.
 - Baader & Nipkow (1998) — *Term Rewriting and All That*. Positions and paths in term rewriting.
+- Christian (1993) — *Flatterms, discrimination nets, and fast term rewriting*. Flat array term representation for discrimination net traversal.
 - Conchon & Filliatre (2006) — *Type-safe modular hash-consing*. Content-addressed term stores.
 - de Bruijn (1972) — *Lambda calculus notation with nameless dummies*. Positional variable indices.
-- Abadi, Cardelli, Curien & Levy (1991) — *Explicit substitutions*. First-class substitution with indexed variables.
-- Forgy (1982) — *Rete: A fast algorithm for the many pattern/many object match problem*. Forward chaining network optimization.
+- Forgy (1982) — *Rete: A fast algorithm for the many pattern/many object match problem*. Forward chaining network.
+- Fruhwirth (2009) — *Constraint Handling Rules*. Production system with linear resource semantics.
 - Graf (1995) — *Substitution tree indexing*. Combined indexing and substitution sharing.
-- Le Fessant & Maranget (2001) — *Optimizing pattern matching*. Decision tree compilation for pattern matching.
+- Le Fessant & Maranget (2001) — *Optimizing pattern matching*. Decision tree compilation.
 - Maranget (2008) — *Compiling pattern matching to good decision trees*. Optimal column selection.
-- McCune (1992) — *Experiments with discrimination-tree indexing and path indexing for term retrieval*. Empirical comparison of indexing techniques.
+- McCune (1992) — *Experiments with discrimination-tree indexing and path indexing*. Empirical comparison.
+- Miranker (1987) — *TREAT: A better match algorithm for AI production systems*. Alternative to Rete.
+- Rawson — [discrimination-tree (Rust crate)](https://github.com/MichaelRawson/discrimination-tree). Reference implementation.
 - Sampson (2019) — *Flattening ASTs (arena allocation)*. SoA layout for compilers.
 - Stickel (1989) — *The path-indexing method for indexing terms*. Alternative to discrimination trees.
 - Voronkov (1995) — *The anatomy of Vampire*. Code trees for term indexing.
 - Voronkov (2001) — *Term indexing*. In *Handbook of Automated Reasoning*. Comprehensive survey.
+- Willsey et al. (2021) — *egg: Fast and extensible equality saturation*. E-graphs with hash consing.
+- Zig compiler — [PR #7920](https://github.com/ziglang/zig/pull/7920). SoA/MultiArrayList AST layout, `extra_data` sidecar pattern.
