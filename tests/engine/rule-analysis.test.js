@@ -1079,4 +1079,66 @@ describe('Rule Analysis', { timeout: 10000 }, () => {
       }
     });
   });
+
+  // ============================================================================
+  // PART 8: compileRule integration — analysis metadata on compiled rules
+  // ============================================================================
+
+  describe('compileRule integration: analysis metadata', () => {
+
+    it('compiled rule has analysis field', async () => {
+      const rule = await makeRule('int1', 'foo * bar -o { foo * baz }');
+      assert(rule.analysis, 'compiled rule should have analysis field');
+      assert(Array.isArray(rule.analysis.preserved), 'analysis.preserved is array');
+      assert(Array.isArray(rule.analysis.consumed), 'analysis.consumed is array');
+      assert(Array.isArray(rule.analysis.produced), 'analysis.produced is array');
+      assert(Array.isArray(rule.analysis.deltas), 'analysis.deltas is array');
+    });
+
+    it('analysis matches standalone analyzeDeltas call', async () => {
+      const rule = await makeRule('int2',
+        'keep * p _X * gone * !inc _X _Y -o { keep * p _Y * born }');
+
+      // Analysis from compileRule should match standalone call
+      const standalone = analyzeDeltas(rule);
+      assert.deepStrictEqual(rule.analysis, standalone,
+        'embedded analysis should equal standalone call');
+    });
+
+    it('EVM rules have analysis metadata via mde.load()', async () => {
+      const calc = await mde.load(
+        path.join(__dirname, '../../calculus/ill/programs/evm.ill'));
+
+      for (const rule of calc.forwardRules) {
+        assert(rule.analysis, `${rule.name} should have analysis`);
+        assert(Array.isArray(rule.analysis.preserved),
+          `${rule.name} should have preserved array`);
+        assert(Array.isArray(rule.analysis.deltas),
+          `${rule.name} should have deltas array`);
+      }
+    });
+
+    it('evm/add analysis matches expectations', async () => {
+      const calc = await mde.load(
+        path.join(__dirname, '../../calculus/ill/programs/evm.ill'));
+      const rule = calc.forwardRules.find(r => r.name === 'evm/add');
+      const a = rule.analysis;
+
+      // code is preserved
+      assert.strictEqual(a.preserved.length, 1, '1 preserved');
+      assert.strictEqual(forward.getPredicateHead(a.preserved[0]), 'code');
+
+      // pc, sh, stack are deltas (3 total: pc, sh, 1 of 2 stacks)
+      const deltaPreds = a.deltas.map(d => d.pred).sort();
+      assert.deepStrictEqual(deltaPreds, ['pc', 'sh', 'stack'],
+        'deltas: pc, sh, stack');
+
+      // 1 remaining consumed (extra stack)
+      assert.strictEqual(a.consumed.length, 1, '1 remaining consumed');
+      assert.strictEqual(forward.getPredicateHead(a.consumed[0]), 'stack');
+
+      // 0 remaining produced
+      assert.strictEqual(a.produced.length, 0, 'no remaining produced');
+    });
+  });
 });
