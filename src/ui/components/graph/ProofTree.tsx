@@ -1,6 +1,6 @@
 import { Show, createMemo } from 'solid-js';
 import KaTeX from '../math/KaTeX';
-import type { PTTree } from '../../../../lib/types/pt';
+import type { PTTree } from '../../../../lib/types';
 
 interface ProofTreeProps {
   tree: PTTree | null;

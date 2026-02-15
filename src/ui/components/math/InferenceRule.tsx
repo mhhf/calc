@@ -1,6 +1,6 @@
 import { createMemo, Show } from 'solid-js';
 import KaTeX from './KaTeX';
-import type { Rule } from '../../../../lib/types/calc';
+import type { Rule } from '../../../../lib/types';
 
 interface InferenceRuleProps {
   rule: Rule;

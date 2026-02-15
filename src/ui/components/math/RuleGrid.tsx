@@ -1,6 +1,6 @@
 import { For, Show, createMemo } from 'solid-js';
 import InferenceRule from './InferenceRule';
-import type { Rule } from '../../../../lib/types/calc';
+import type { Rule } from '../../../../lib/types';
 
 interface RuleGridProps {
   rules: Rule[];

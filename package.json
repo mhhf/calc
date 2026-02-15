@@ -18,9 +18,6 @@
     "start": "vinxi start",
     "build:ui": "npm run build:bundle && vite build --config src/ui/vite.config.ts",
     "preview": "vite preview --config src/ui/vite.config.ts",
-    "export": "./libexec/calc-export > src/html/calculus.html",
-    "export:full": "./libexec/calc-export --full > src/html/calculus-full.html",
-    "export:meta": "./libexec/calc-export --meta > src/html/calculus-meta.html",
     "bench": "node --expose-gc benchmarks/run.js",
     "bench:proof": "node --expose-gc benchmarks/run.js --category=proof",
     "bench:micro": "node --expose-gc benchmarks/run.js --category=micro",
@@ -46,9 +43,6 @@
   "dependencies": {
     "@hpcc-js/wasm-graphviz": "^1.21.0",
     "cli-color": "^2.0.0",
-    "copy-paste": "^1.3.0",
-    "readline-sync": "^1.4.7",
-    "shelljs": "^0.7.8",
     "tree-sitter": "^0.25.0",
     "web-tree-sitter": "^0.25.10"
   },

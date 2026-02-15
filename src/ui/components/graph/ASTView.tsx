@@ -1,5 +1,5 @@
 import { createMemo, Show } from 'solid-js';
-import type { TreeNode } from '../../../../lib/types/node';
+import type { TreeNode } from '../../../../lib/types';
 
 interface ASTViewProps {
   tree: TreeNode | null;

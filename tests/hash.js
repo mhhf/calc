@@ -1,13 +1,9 @@
 const { describe, it } = require('node:test');
 const assert = require('node:assert');
 const {
-  hash64,
   hashString,
-  hashBytes,
   hashBigInt,
-  hashNumber,
   hashCombine,
-  structHash,
 } = require('../lib/hash');
 
 describe('Hash', () => {
@@ -56,34 +52,6 @@ describe('Hash', () => {
     });
   });
 
-  describe('hashNumber', () => {
-    it('should produce consistent hashes', () => {
-      assert.strictEqual(hashNumber(42), hashNumber(42));
-    });
-
-    it('should handle floats (truncates)', () => {
-      assert.strictEqual(hashNumber(3.14), hashNumber(3));
-    });
-  });
-
-  describe('hashBytes', () => {
-    it('should produce consistent hashes', () => {
-      const buf = new Uint8Array([1, 2, 3, 4]);
-      assert.strictEqual(hashBytes(buf), hashBytes(new Uint8Array([1, 2, 3, 4])));
-    });
-
-    it('should produce different hashes for different buffers', () => {
-      const buf1 = new Uint8Array([1, 2, 3]);
-      const buf2 = new Uint8Array([1, 2, 4]);
-      assert.notStrictEqual(hashBytes(buf1), hashBytes(buf2));
-    });
-
-    it('should handle empty buffer', () => {
-      const h = hashBytes(new Uint8Array(0));
-      assert.strictEqual(typeof h, 'number');
-    });
-  });
-
   describe('hashCombine', () => {
     it('should combine multiple hashes', () => {
       const h1 = hashString('a');
@@ -105,70 +73,12 @@ describe('Hash', () => {
     });
   });
 
-  describe('structHash', () => {
-    it('should include constructor ID', () => {
-      const h1 = structHash(1, [0x123]);
-      const h2 = structHash(2, [0x123]);
-      assert.notStrictEqual(h1, h2);
-    });
-
-    it('should include children', () => {
-      const h1 = structHash(1, [0x123]);
-      const h2 = structHash(1, [0x456]);
-      assert.notStrictEqual(h1, h2);
-    });
-
-    it('should include arity', () => {
-      const h1 = structHash(1, [0x123]);
-      const h2 = structHash(1, [0x123, 0x123]);
-      assert.notStrictEqual(h1, h2);
-    });
-
-    it('should handle empty children', () => {
-      const h = structHash(5, []);
-      assert.strictEqual(typeof h, 'number');
-    });
-
-    it('should be consistent', () => {
-      assert.strictEqual(structHash(1, [0xABC, 0xDEF]), structHash(1, [0xABC, 0xDEF]));
-    });
-  });
-
-  describe('hash64', () => {
-    it('should dispatch to hashString for strings', () => {
-      assert.strictEqual(hash64('test'), hashString('test'));
-    });
-
-    it('should dispatch to hashBigInt for bigints', () => {
-      assert.strictEqual(hash64(42n), hashBigInt(42n));
-    });
-
-    it('should dispatch to hashNumber for numbers', () => {
-      assert.strictEqual(hash64(42), hashNumber(42));
-    });
-
-    it('should dispatch to hashBytes for Uint8Array', () => {
-      const buf = new Uint8Array([1, 2, 3]);
-      assert.strictEqual(hash64(buf), hashBytes(buf));
-    });
-
-    it('should handle arrays by hashing elements', () => {
-      const h = hash64(['a', 'b', 'c']);
-      assert.strictEqual(typeof h, 'number');
-    });
-
-    it('should throw for unsupported types', () => {
-      assert.throws(() => hash64({}), /Cannot hash/);
-    });
-  });
-
   describe('collision resistance', () => {
     it('should have low collision rate for sequential strings', () => {
       const hashes = new Set();
       for (let i = 0; i < 10000; i++) {
         hashes.add(hashString(`test_${i}`));
       }
-      // Should have no collisions for 10k sequential strings
       assert.strictEqual(hashes.size, 10000);
     });
 
