@@ -19,11 +19,12 @@ Key files: `forward.js` (engine), `symexec.js` (tree exploration), `rule-analysi
 | 7 | Delta bypass + compiled substitution | −8% |
 | 9 | Discrimination tree (general rule indexing) | O(depth) vs O(R) |
 | 10 | Flat undo log + matchAlts elimination | −13% |
+| 11 | Numeric tag IDs + slots-based metavar check | ~2% (Zig-ready) |
 | — | Generalized fingerprint layer (auto-detect) | Non-EVM programs |
 
 **Current stack:** `fingerprintLayer` (O(1) for ground-discriminated rules) → `discTreeLayer` (O(depth) catch-all) → `predicateLayer` (safety net, never activates).
 
-**Current bottleneck:** `findAllMatches` → `tryMatch` → `matchIndexed`.
+**Current bottleneck:** evenly distributed — no single dominant cost. 74 tryMatch calls for 63 nodes (strategy stack very effective). matchIndexed + substitute = 10%, state.linear access = ~20%, mutations/undo = ~15%, FFI = ~6%, DFS/alloc = ~10%, other overhead = ~40%.
 
 ## Key Learnings
 
@@ -40,6 +41,10 @@ Key files: `forward.js` (engine), `symexec.js` (tree exploration), `rule-analysi
 6. **Disc-tree must filter by relevant predicates.** Naive implementation scans all state facts — 47% regression at 44 rules (178 facts, only 4 unclaimed rules). Fix: at build time collect which predicates appear in indexed rules, only scan those facts. Result: 0% regression. Lesson: catch-all layers must not do O(total_facts) work when they only have a few rules.
 
 7. **Store.arity includes non-term children.** `atom('e')` has `arity=1` (string child) but 0 term children. Flatten functions must use `Store.isTermChild()` to filter, otherwise trie paths are wrong. This applies to any code that recursively walks Store terms.
+
+8. **V8 string interning makes string-based tag comparison nearly as fast as numeric.** `Store.tag()` returns `TAG_NAMES[tags[id]]` — the same interned string object every time. String comparison `===` between interned strings is a pointer comparison. Adding `Store.tagId()` (raw numeric ID) and replacing `isVar()` with `slots[p] !== undefined` gives only ~2% improvement in V8. However, these changes eliminate string allocation in the hot path, which is essential for the Zig port.
+
+9. **At 44 rules, the strategy stack reduces tryMatch calls to 74 for a 63-node tree (1.2×/node).** Only 18 failures out of 74 calls (76% success rate). The remaining failures are inherent: both JUMPI branches must be tried, and calldatasize has overlapping trigger predicates. No further candidate filtering improvement is possible at this scale.
 
 ## What's Next
 
@@ -88,12 +93,13 @@ Track which predicates changed per step, only re-evaluate affected rules. For fu
 | Stage 7 (compiled sub) | 1.09ms | −8% |
 | Stage 9 (disc-tree) | ~1.9ms | 0% at 44 rules |
 | Stage 10 (flat undo + matchAlts) | 1.05ms | −13% |
+| Stage 11 (numeric tagId + slots) | ~1.0ms | ~2%, Zig-ready |
 
 ## Zig Port Mapping
 
 | JS concept | Zig equivalent |
 |-----------|---------------|
-| `Store.put/get/tag/child/arity` | SoA `MultiArrayList` + dedup `HashMap` |
+| `Store.put/get/tag/child/arity/tagId` | SoA `MultiArrayList` + dedup `HashMap` |
 | `theta = new Array(N)` | `[MAX_METAVARS]?u32` (stack) |
 | `_Gp/_Gt` worklist | `[MAX_WORKLIST]u32` (stack) |
 | `metavarSlots` | `comptime` lookup table |
