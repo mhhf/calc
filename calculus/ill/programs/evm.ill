@@ -114,10 +114,10 @@ evm/mul:
   sh (s (s SH)) *
   stack (s SH) A *
   stack SH  B *
-  trim A A' *
-  trim B B' *
+  !trim A A' *
+  !trim B B' *
   !mul A B C *
-  to256 C C'
+  !to256 C C'
   -o {
     code PC (o (i (e))) *
     pc PC' *
@@ -244,7 +244,7 @@ evm/lt:
   stack (s SH) X *
   stack SH Y *
   !gt Y X (e) Z *
-  to256 Z Z'
+  !to256 Z Z'
   -o {
     code PC (o (o (o (o (i (e)))))) *
     pc PC' *
@@ -260,7 +260,7 @@ evm/gt:
   stack (s SH) X *
   stack SH Y *
   !gt X Y (e) Z *
-  to256 Z Z'
+  !to256 Z Z'
   -o {
     code PC (i (o (o (o (i (e)))))) *
     pc PC' *
