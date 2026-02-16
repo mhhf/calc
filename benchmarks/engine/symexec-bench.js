@@ -54,23 +54,10 @@ async function setupState() {
   const calc = await mde.load([
     path.join(__dirname, '../../calculus/ill/programs/bin.ill'),
     path.join(__dirname, '../../calculus/ill/programs/evm.ill'),
-    path.join(__dirname, '../../calculus/ill/programs/multisig_code.ill'),
+    path.join(__dirname, '../../calculus/ill/programs/multisig.ill'),
   ]);
 
-  const state = { linear: {}, persistent: {} };
-  for (const f of ['pc N_75', 'sh ee', 'gas N_ffff', 'caller sender_addr', 'sender member01']) {
-    state.linear[await mde.parseExpr(f)] = 1;
-  }
-
-  const codeFile = fs.readFileSync(
-    path.join(__dirname, '../../calculus/ill/programs/multisig_code.ill'), 'utf8'
-  );
-  for (const line of codeFile.split('\n')) {
-    const trimmed = line.split('%')[0].trim();
-    if (!trimmed || !trimmed.startsWith('code')) continue;
-    const parts = trimmed.replace(/\*.*$/, '').trim();
-    if (parts) state.linear[await mde.parseExpr(parts)] = 1;
-  }
+  const state = mde.decomposeQuery(calc.queries.get('symex'));
 
   return { calc, state };
 }

@@ -2,26 +2,6 @@
 % Compiled from celf-evm multisig example
 % 174 instructions total
 
-% Symbolic member addresses (20-byte Ethereum addresses)
-% Using lowercase so they're parsed as atoms, not freevars
-member01: bin.
-member02: bin.
-member03: bin.
-member04: bin.
-member05: bin.
-member06: bin.
-
-% Symbolic contract addresses and values
-contract_address: bin.
-sender_addr: bin.
-target_addr: bin.
-tx_value: bin.
-deadline: bin.
-timestamp: bin.
-gaslimit_val: bin.
-wallet_balance: bin.
-call_value: bin.
-
 code N_00  N_60  *   % PUSH1
 code N_01  N_75  *
 code N_02  N_56  *   % JUMP
@@ -143,7 +123,7 @@ code N_75  N_5b  *   % ..............................   auth
 code N_76  N_60  *   % PUSH1
 code N_77  N_f7  *
 code N_78  N_73  *   % PUSH20
-code N_79  member01 *
+code N_79  Member01 *
 code N_8d  N_33  *   % CALLER
 code N_8e  N_14  *   % EQ
 code N_8f  N_60  *   % PUSH1
@@ -152,7 +132,7 @@ code N_91  N_57  *   % JUMPI
 code N_92  N_60  *   % PUSH1
 code N_93  N_f6  *
 code N_94  N_73  *   % PUSH20
-code N_95  member02 *
+code N_95  Member02 *
 code N_a9  N_33  *   % CALLER
 code N_aa  N_14  *   % EQ
 code N_ab  N_60  *   % PUSH1
@@ -161,7 +141,7 @@ code N_ad  N_57  *   % JUMPI
 code N_ae  N_60  *   % PUSH1
 code N_af  N_f5  *
 code N_b0  N_73  *   % PUSH20
-code N_b1  member03 *
+code N_b1  Member03 *
 code N_c5  N_33  *   % CALLER
 code N_c6  N_14  *   % EQ
 code N_c7  N_60  *   % PUSH1
@@ -170,7 +150,7 @@ code N_c9  N_57  *   % JUMPI
 code N_ca  N_60  *   % PUSH1
 code N_cb  N_f4  *
 code N_cc  N_73  *   % PUSH20
-code N_cd  member04  *
+code N_cd  Member04  *
 code N_e1  N_33  *   % CALLER
 code N_e2  N_14  *   % EQ
 code N_e3  N_60  *   % PUSH1
@@ -179,7 +159,7 @@ code N_e5  N_57  *   % JUMPI
 code N_e6  N_60  *   % PUSH1
 code N_e7  N_f3  *
 code N_e8  N_73  *   % PUSH20
-code N_e9  member05  *
+code N_e9  Member05  *
 code N_fd  N_33  *   % CALLER
 code N_fe  N_14  *   % EQ
 code N_ff  N_60  *   % PUSH1
@@ -188,7 +168,7 @@ code N_0101  N_57  *   % JUMPI
 code N_0102  N_60  *   % PUSH1
 code N_0103  N_f2  *
 code N_0104  N_73  *   % PUSH20
-code N_0105  member06  *
+code N_0105  Member06  *
 code N_0119  N_33  *   % CALLER
 code N_011a  N_14  *   % EQ
 code N_011b  N_60  *   % PUSH1

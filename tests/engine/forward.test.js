@@ -1,10 +1,9 @@
 /**
  * Tests for Forward Chaining Engine
  */
-const { describe, it, before } = require('node:test');
+const { describe, it } = require('node:test');
 const assert = require('node:assert');
 const path = require('path');
-const fs = require('fs');
 const forward = require('../../lib/engine/forward');
 const mde = require('../../lib/engine');
 const Store = require('../../lib/kernel/store');
@@ -164,39 +163,15 @@ describe('Forward Chaining', { timeout: 10000 }, () => {
   });
 
   describe('EVM multi-step execution', { timeout: 30000 }, () => {
-    it('executes 5+ steps from JUMPDEST at PC=0x75', async () => {
+    it('executes 5+ steps from multisig query', async () => {
       const programsDir = path.join(__dirname, '../../calculus/ill/programs');
       const calc = await mde.load([
         path.join(programsDir, 'bin.ill'),
         path.join(programsDir, 'evm.ill'),
-        path.join(programsDir, 'multisig_code.ill'),
+        path.join(programsDir, 'multisig.ill'),
       ]);
 
-      // Build initial state
-      const state = { linear: {}, persistent: {} };
-      const basicFacts = [
-        'pc N_75',
-        'sh ee',
-        'gas N_ffff',
-        'caller sender_addr',
-        'sender member01',
-      ];
-      for (const f of basicFacts) {
-        const h = await mde.parseExpr(f);
-        state.linear[h] = 1;
-      }
-
-      // Load code facts from multisig_code.mde
-      const codeFile = fs.readFileSync(path.join(programsDir, 'multisig_code.ill'), 'utf8');
-      for (const line of codeFile.split('\n')) {
-        const trimmed = line.split('%')[0].trim();
-        if (!trimmed || !trimmed.startsWith('code')) continue;
-        const parts = trimmed.replace(/\*.*$/, '').trim();
-        if (parts) {
-          const h = await mde.parseExpr(parts);
-          state.linear[h] = 1;
-        }
-      }
+      const state = mde.decomposeQuery(calc.queries.get('symex'));
 
       const result = calc.exec(state, { maxSteps: 10, trace: true });
 

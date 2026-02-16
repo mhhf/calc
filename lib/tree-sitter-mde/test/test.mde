@@ -12,3 +12,6 @@ plus/s1: plus (o M) (o N) (o R) <- plus M N R.
 % Forward rule
 step: foo X * bar Y -o { baz Z }.
 rule: !foo X * bar Y -o { baz Z }.
+
+% Query directive
+#symex foo X * bar Y * !baz Z.

@@ -1,0 +1,49 @@
+% Multisig Contract — Full EVM Symbolic Execution Query
+% Mirrors celf-evm/multisig.mde
+
+% Helper: prove Agent is not a member of the multisig
+isNotMember: bin -> type.
+isNotMember/z:
+  isNotMember Agent
+  -o {
+    !neq Agent Member01 *
+    !neq Agent Member02 *
+    !neq Agent Member03 *
+    !neq Agent Member04 *
+    !neq Agent Member05 *
+    !neq Agent Member06
+  }.
+
+#symex
+  % Execution state
+  pc N_00 *
+  sh ee *
+  mh N_00 *
+  gas N_00 *
+
+  % Contract context
+  address      Contract_Address *
+  sender       Sender *
+  timestamp    Time *
+  gaslimit     Gaslimit *
+  balance      Contract_Address WB *
+
+  % Code
+  #import(multisig_code.ill)
+
+  % Sender is Member01
+  !eq Sender Member01 *
+
+  % Storage
+  storage ((sha3 (concat (concat (concat ee Deadline) Target) Value))) N_02 *
+
+  % Transaction data
+  calldata     N_00 N_20 Deadline *
+  calldata     N_20 N_20 Target *
+  calldata     N_40 N_20 Value *
+  calldatasize N_60 *
+  callvalue    V *
+
+  % Proof assumption: time has NOT passed deadline
+  !gt Time Deadline N_00 N_00
+  .

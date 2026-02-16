@@ -1284,25 +1284,13 @@ describe('Rule Analysis', { timeout: 10000 }, () => {
 
     it('EVM multisig: full execution cross-check', async () => {
       const programsDir = path.join(__dirname, '../../calculus/ill/programs');
-      const fs = require('fs');
       const calc = await mde.load([
         path.join(programsDir, 'bin.ill'),
         path.join(programsDir, 'evm.ill'),
-        path.join(programsDir, 'multisig_code.ill')
+        path.join(programsDir, 'multisig.ill')
       ]);
 
-      // Build initial state (same as benchmark)
-      const initState = { linear: {}, persistent: {} };
-      for (const f of ['pc N_75', 'sh ee', 'gas N_ffff', 'caller sender_addr', 'sender member01']) {
-        initState.linear[await mde.parseExpr(f)] = 1;
-      }
-      const codeFile = fs.readFileSync(path.join(programsDir, 'multisig_code.ill'), 'utf8');
-      for (const line of codeFile.split('\n')) {
-        const trimmed = line.split('%')[0].trim();
-        if (!trimmed || !trimmed.startsWith('code')) continue;
-        const parts = trimmed.replace(/\*.*$/, '').trim();
-        if (parts) initState.linear[await mde.parseExpr(parts)] = 1;
-      }
+      const initState = mde.decomposeQuery(calc.queries.get('symex'));
 
       const calcCtx = { types: calc.types, clauses: calc.clauses };
 
