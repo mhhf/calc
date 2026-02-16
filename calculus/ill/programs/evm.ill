@@ -481,7 +481,7 @@ evm/calldataload:
   stack      SH    POS  *
   calldata   POS   Size V
   -o {
-    code PC' (i (o (i (o (i (i (e))))))) *
+    code PC (i (o (i (o (i (i (e))))))) *
     stack SH V *
     sh (s SH) *
     pc PC' *
