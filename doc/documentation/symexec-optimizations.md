@@ -1,6 +1,6 @@
 ---
 title: Symexec DFS Mutation+Undo Pattern
-created: 2026-02-13
+modified: 2026-02-15
 summary: Why explore() mutates state, index, and pathVisited in-place
 tags: [performance, symexec, architecture]
 ---
@@ -31,7 +31,7 @@ undoMutate(state, undo)
 cost 62 × 46µs = 2.85ms — nearly the entire explore budget. Mutation+undo costs
 ~4µs per step (for-in over 5–9 changed keys).
 
-**Undo log shape:** `{ linearOrig: { hash: oldCount }, persistentOrig: { hash: wasPresent } }`
+**Undo log shape:** Flat array `[type, hash, oldValue, type, hash, oldValue, ...]` where `type=0` is linear, `type=1` is persistent. Read backward in triples during undo. Avoids object allocation.
 
 ## 2. Index mutation+undo
 

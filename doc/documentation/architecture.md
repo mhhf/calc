@@ -1,6 +1,6 @@
 ---
 title: Prover Architecture (Lasagne)
-modified: 2026-02-13
+modified: 2026-02-15
 summary: Five-layer prover architecture separating verification, search, focusing, and strategy.
 tags: [architecture, prover, focusing, polarity, layers]
 ---
@@ -49,20 +49,38 @@ CALC's prover is structured as five layers. Each layer uses only the API of the 
 ## File Structure
 
 ```
-lib/prover/
-├── kernel.js            # L1: verifyStep, verifyTree
-├── generic.js           # L2: connective, tryIdentity, applyRule, applicableRules
-├── focused.js           # L3: findInvertible, chooseFocus, prove (Andreoli)
+lib/prover/                      # Backward proof search
+├── kernel.js                    # L1: verifyStep, verifyTree
+├── generic.js                   # L2: connective, tryIdentity, applyRule, applicableRules
+├── focused.js                   # L3: findInvertible, chooseFocus, prove (Andreoli)
 ├── strategy/
-│   ├── manual.js        # L4a: interactive proof (getApplicableActions, applyAction)
-│   ├── auto.js          # L4b: automated backward search (wraps L3.prove)
-│   ├── forward.js       # L4c: forward chaining (multiset rewriting)
-│   └── symexec.js       # L4d: execution tree exploration
-├── context.js           # shared: multiset operations { [hash]: count }
-├── state.js             # shared: FocusedProofState class
-├── pt.js                # shared: ProofTree class
-├── rule-interpreter.js  # shared: builds rule specs from .rules descriptors
-└── index.js             # convenience re-exports
+│   ├── manual.js                # L4a: interactive proof (getApplicableActions, applyAction)
+│   └── auto.js                  # L4b: automated backward search (wraps L3.prove)
+├── context.js                   # shared: multiset operations { [hash]: count }
+├── state.js                     # shared: FocusedProofState class
+├── pt.js                        # shared: ProofTree class
+├── rule-interpreter.js          # shared: builds rule specs from .rules descriptors
+└── index.js                     # convenience re-exports
+
+lib/engine/                      # Forward execution engine (L4c/L4d)
+├── forward.js                   # matching + state transformation
+├── symexec.js                   # execution tree exploration (DFS + mutation/undo)
+├── compile.js                   # rule compilation (de Bruijn slots, metavar analysis)
+├── rule-analysis.js             # pattern roles, compiled substitution recipes
+├── disc-tree.js                 # discrimination tree indexing
+├── prove.js                     # backward chaining for persistent antecedents
+├── ffi/                         # foreign function interface (arithmetic, etc.)
+├── convert.js                   # .ill → content-addressed hashes
+├── hex.js                       # hex/binary utilities
+└── index.js                     # loader + API
+
+lib/kernel/                      # Content-addressed AST substrate
+├── store.js                     # SoA TypedArray arena (tags, arities, children)
+├── unify.js                     # pattern matching (matchIndexed) + unification
+├── substitute.js                # substitution (applyIndexed, subCompiled)
+├── ast.js                       # AST construction helpers
+├── ast-hash.js                  # stable hashing for AST equality
+└── sequent.js                   # sequent structure
 ```
 
 ## Design Principles
@@ -173,14 +191,37 @@ Multiple strategies coexist, all built on L3/L2:
 **L4b — Auto (automated backward search):** `strategy/auto.js`
 - Wraps L3's `prove()` with goal normalization
 
-**L4c — Forward (multiset rewriting):** `strategy/forward.js`
-- Committed-choice forward chaining with predicate indexing
-- Own state model `{ linear: { hash: count }, persistent: { hash: true } }` for performance
-- O(1) predicate-head lookup, opcode indexing for EVM-style rules
+**L4c/L4d — Forward Engine:** `lib/engine/`
 
-**L4d — SymExec (execution trees):** `strategy/symexec.js`
-- Explores all forward chaining paths, branching at nondeterministic choice points
-- Tree structure: leaf (quiescent), branch (nondeterministic), bound (depth limit)
+The forward engine has its own internal layered architecture, separate from the backward proof search (L1–L3). It implements committed-choice forward chaining (multiset rewriting) with a compilation pipeline:
+
+```
+┌──────────────────────────────────────────────────────────────┐
+│  EXPLORATION       symexec.js                                │
+│  DFS over execution tree, mutation+undo, branching           │
+├──────────────────────────────────────────────────────────────┤
+│  EXECUTION         forward.js: applyMatch, run               │
+│  State transformation: consume facts, produce new facts      │
+├──────────────────────────────────────────────────────────────┤
+│  MATCHING          forward.js: tryMatch, findAllMatches      │
+│  Worklist-based pattern matching with de Bruijn theta        │
+├──────────────────────────────────────────────────────────────┤
+│  INDEXING          symexec.js: strategy stack                │
+│  fingerprintLayer → discTreeLayer → predicateLayer           │
+├──────────────────────────────────────────────────────────────┤
+│  COMPILATION       compile.js, rule-analysis.js              │
+│  De Bruijn slots, pattern roles, compiled substitution       │
+├──────────────────────────────────────────────────────────────┤
+│  STORE             lib/kernel/store.js, unify.js             │
+│  Content-addressed SoA arena, matchIndexed, applyIndexed     │
+└──────────────────────────────────────────────────────────────┘
+```
+
+**Program-aware indexing (auto-detected).** The strategy stack includes a fingerprint layer that detects dominant discriminating predicates from rule structure. For EVM, `code(PC, OPCODE)` is the discriminator — 40 of 44 rules have a ground opcode child. The fingerprint layer resolves these in O(1). This is auto-detected by `detectFingerprintConfig()` from rule patterns; no program-specific code exists. The disc-tree layer (general-purpose trie) handles all remaining rules. See `doc/documentation/strategy-layers.md`.
+
+**Backward proving for guards.** Persistent antecedents (`!C` in `A * B * !C -o { D }`) are proved via backward chaining or FFI. `prove.js` handles clause resolution; `ffi/` handles arithmetic (inc, plus, neq, mul). `tryFFIDirect()` in forward.js bypasses the full prove machinery for O(1) FFI evaluation.
+
+**Mutation+undo.** During DFS exploration, `state`, `stateIndex`, and `pathVisited` are mutated in-place and restored after each child subtree returns. Snapshots are taken only at terminal nodes. See `doc/documentation/symexec-optimizations.md`.
 
 ## L5 — UI Layer
 
@@ -193,10 +234,13 @@ Pure view. `proofLogic.ts` is a thin type adapter; `ManualProof.tsx` renders the
 | **L1 kernel** | Tree verification structure | Rule matching (generated by `rule-interpreter.js`) |
 | **L2 generic** | Backtracking, depth limit, Hodas-Miller threading | Which rules exist (from calculus object) |
 | **L3 focused** | Phase alternation, blur condition, focus protocol | Polarity assignments (from calculus object) |
-| **L4 strategies** | Manual UI protocol, auto search, forward step/run | None |
+| **L4 backward** | Manual UI protocol, auto search | None |
+| **L4 forward** | Strategy stack, matching, mutation+undo | None (indexing auto-detected from rules) |
 | **L5 UI** | Components, rendering, interaction | None |
 
-Adding a new connective (e.g., temporal `○`/`●`) requires only `.calc` + `.rules` changes. All layers pick it up automatically.
+Adding a new connective (e.g., temporal `○`/`●`) requires only `.calc` + `.rules` changes. All backward layers pick it up automatically.
+
+Adding new forward rules requires only `.ill` changes. The strategy stack auto-detects whether fingerprint indexing is available from rule structure — no code changes needed for program-specific optimizations.
 
 ## Proof State
 
@@ -211,15 +255,17 @@ ProofState = {
 }
 ```
 
-## Forward Chaining State
+## Backward vs Forward
 
-Forward chaining maintains a separate state representation for performance:
+| | Backward (L1–L3) | Forward (L4c/L4d) |
+|---|---|---|
+| **State** | Sequent `{ contexts, succedent }` | Flat multiset `{ linear: {h: count}, persistent: {h: true} }` |
+| **Matching** | Unification (bidirectional) | Pattern matching (one-way, matchIndexed) |
+| **Execution** | Proof tree construction | Multiset rewriting (consume/produce facts) |
+| **Indexing** | Rule enumeration from sequent | Strategy stack (fingerprint → disc-tree → predicate) |
+| **Shared** | Store, unify.js, substitute.js | Store, unify.js, substitute.js |
 
-| Shared with backward | Separate |
-|---|---|
-| Rule definitions (calculus object) | State: flat multiset (no sequent structure) |
-| Context multiset operations (`context.js`) | Predicate-head indexing for O(1) match |
-| Store (content-addressed formulas) | Pattern matching (vs unification in backward) |
+See `doc/dev/forward-optimization-roadmap.md` for profiling history (181ms → ~1ms).
 
 ## Open Research
 
