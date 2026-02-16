@@ -130,6 +130,38 @@ describe('MDE Convert', { timeout: 10000 }, () => {
       assert.strictEqual(Store.tag(h), 'atom');
       assert.deepStrictEqual(Store.children(h), ['ee']);
     });
+
+    it('decimal literal 42 → binlit(42n)', async () => {
+      const h = await mde.parseExpr('42');
+      assert.strictEqual(Store.tag(h), 'binlit');
+      assert.deepStrictEqual(Store.children(h), [42n]);
+    });
+
+    it('hex literal 0x60 → binlit(96n)', async () => {
+      const h = await mde.parseExpr('0x60');
+      assert.strictEqual(Store.tag(h), 'binlit');
+      assert.deepStrictEqual(Store.children(h), [96n]);
+    });
+
+    it('decimal 0 → binlit(0n), same as e', async () => {
+      const h0 = await mde.parseExpr('0');
+      const he = await mde.parseExpr('e');
+      assert.strictEqual(h0, he, 'decimal 0 and e should produce same hash');
+    });
+
+    it('0x60 matches binary (o (o (o (o (o (i (i (e))))))))', async () => {
+      const hHex = await mde.parseExpr('0x60');
+      const hBin = await mde.parseExpr('o (o (o (o (o (i (i e))))))');
+      assert.strictEqual(hHex, hBin, 'hex literal should match binary form');
+    });
+
+    it('numeric literal in application: code 0 0x60', async () => {
+      const h = await mde.parseExpr('code 0 0x60');
+      assert.strictEqual(Store.tag(h), 'code');
+      const [pc, opcode] = Store.children(h);
+      assert.deepStrictEqual(Store.children(pc), [0n]);
+      assert.deepStrictEqual(Store.children(opcode), [96n]);
+    });
   });
 
   describe('hasMonad', () => {

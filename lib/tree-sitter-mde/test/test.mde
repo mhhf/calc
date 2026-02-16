@@ -13,5 +13,10 @@ plus/s1: plus (o M) (o N) (o R) <- plus M N R.
 step: foo X * bar Y -o { baz Z }.
 rule: !foo X * bar Y -o { baz Z }.
 
+% Numeric literals in expressions
+code: bin -> bin -> type.
+evm/push1: pc PC * code PC 0x60 -o { pc 42 }.
+test_dec: foo 123 * bar 0.
+
 % Query directive
 #symex foo X * bar Y * !baz Z.

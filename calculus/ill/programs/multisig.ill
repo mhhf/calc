@@ -16,10 +16,10 @@ isNotMember/z:
 
 #symex
   % Execution state
-  pc N_00 *
+  pc 0 *
   sh ee *
-  mh N_00 *
-  gas N_00 *
+  mh 0 *
+  gas 0 *
 
   % Contract context
   address      Contract_Address *
@@ -35,15 +35,15 @@ isNotMember/z:
   !eq Sender Member01 *
 
   % Storage
-  storage ((sha3 (concat (concat (concat e Deadline) Target) Value))) N_02 *
+  storage ((sha3 (concat (concat (concat 0 Deadline) Target) Value))) 2 *
 
   % Transaction data
-  calldata     N_00 N_20 Deadline *
-  calldata     N_20 N_20 Target *
-  calldata     N_40 N_20 Value *
-  calldatasize N_60 *
+  calldata     0 32 Deadline *
+  calldata     32 32 Target *
+  calldata     64 32 Value *
+  calldatasize 96 *
   callvalue    V *
 
   % Proof assumption: time has NOT passed deadline
-  !gt Time Deadline N_00 N_00
+  !gt Time Deadline 0 0
   .

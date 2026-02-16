@@ -55,10 +55,10 @@ describe('MDE End-to-End', { timeout: 10000 }, () => {
     });
 
     it('executes STOP instruction', async () => {
-      // Initial state: pc at 0, code[0] = STOP (N_00)
-      const pc = await mde.parseExpr('pc e'); // e = binary 0
-      const code = await mde.parseExpr('code e N_00'); // N_00 = STOP opcode
-      const inc = await mde.parseExpr('inc e (i e)'); // inc(0, 1)
+      // Initial state: pc at 0, code[0] = STOP (0x00)
+      const pc = await mde.parseExpr('pc 0');
+      const code = await mde.parseExpr('code 0 0x00');
+      const inc = await mde.parseExpr('inc 0 1');
 
       const state = mde.createState(
         { [pc]: 1, [code]: 1 },
@@ -101,9 +101,9 @@ describe('MDE End-to-End', { timeout: 10000 }, () => {
     it('forward step is fast', async () => {
       const calc = await mde.load(path.join(__dirname, '../../calculus/ill/programs/evm.ill'));
 
-      const pc = await mde.parseExpr('pc e');
-      const code = await mde.parseExpr('code e N_00');
-      const inc = await mde.parseExpr('inc e (i e)');
+      const pc = await mde.parseExpr('pc 0');
+      const code = await mde.parseExpr('code 0 0x00');
+      const inc = await mde.parseExpr('inc 0 1');
 
       const state = mde.createState(
         { [pc]: 1, [code]: 1 },
