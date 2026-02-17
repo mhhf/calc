@@ -375,7 +375,7 @@
 | Compiled pattern matching | Design complete (3 phases) | [[compiled-pattern-matching]] |
 | Symbolic arithmetic (Problem A) | Research complete, foundation needed | [[equational-completion]], evm-modeling-approaches |
 | Symbolic branching (Problem B) | Needs design document | evm-modeling-approaches |
-| tryFFIDirect bug | Identified, test written, fix pending | evm-modeling-approaches |
+| tryFFIDirect bug | **Fixed** | evm-modeling-approaches |
 
 ### Unexplored Directions
 

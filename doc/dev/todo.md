@@ -18,9 +18,9 @@ status: active
 - [x] Equational completion theory — see `doc/research/equational-completion.md`
 - [ ] Meta-level branching design document (Problem B)
 
-### Phase 2: Bug Fix
-- [ ] Fix tryFFIDirect definitive failure (`forward.js:227`) — remove `skipModeCheck &&`
-- [ ] Test: non-multiModal FFI with non-numeric ground term → backward proving attempted
+### Phase 2: Bug Fix — DONE
+- [x] Fix tryFFIDirect definitive failure (`forward.js:227`) — remove `skipModeCheck &&`
+- [x] Test: non-multiModal FFI with non-numeric ground term → backward proving attempted
 
 ### Phase 3: Decide — Expressions vs Pure Backward Chaining
 Expression constructors (`plus_expr`, `mul_expr`) embed computation results in term structure.

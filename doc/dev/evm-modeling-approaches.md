@@ -67,19 +67,11 @@ Multisig works because all arithmetic has concrete arguments (PC, opcodes, gas a
 
 For k-dss: `Urn_ink + dink`, `Art * rate`, `(ink + dink) * spot` — all symbolic. The engine gets stuck after the first arithmetic opcode.
 
-### Known Bug: tryFFIDirect Definitive Failure
+### Fixed: tryFFIDirect Definitive Failure
 
-`tryFFIDirect` (`forward.js:200-229`) has a bug that blocks symbolic execution even after catch-all clauses are added.
+`tryFFIDirect` (`forward.js:200-228`) had a bug where FFI failures with a `reason` field (conversion_failed, mode_mismatch, division_by_zero) were treated as definitive for non-multiModal predicates — skipping persistent state lookup and backward proving entirely. Fixed: all `{success: false, reason: ...}` results are now non-definitive (return null → fallback). Only failures without a `reason` (e.g. `neq(5,5)` → `{success: false}`) remain definitive.
 
-**The bug:** `isGround()` (`convert.js:90-107`) checks only for metavariables, not "is this a concrete number." A ground symbolic term like `plus_expr(A, B)` passes `isGround` (no metavars) but fails `binToInt` (tag is `plus_expr`, not `binlit`/`i`/`o`/`e`). The FFI returns `{success: false, reason: 'conversion_failed'}`.
-
-In `tryMatch` (line 424-436), any truthy non-success FFI result triggers `break` — definitive failure. This skips both the persistent state lookup (lines 439-460) and backward proving (lines 462+). For non-multiModal predicates (all except `plus`), `conversion_failed` is indistinguishable from genuine mathematical failure like `neq(5,5)`.
-
-**Effect:** Even with catch-all backward clauses (`plus_sym: plus X Y (plus_expr X Y).`), the backward prover is never reached for ground symbolic terms. The rule is skipped entirely.
-
-**Fix:** Remove the `skipModeCheck &&` guard on line 227 so that ALL `{success: false, reason: ...}` results return `null` (non-definitive), allowing fallback to state lookup and backward proving. Genuine failures like `neq(5,5)` return `{success: false}` without a `reason` field — these remain definitive.
-
-**Test:** `tests/engine/forward.test.js` — "tryFFIDirect definitive failure bug" describe block.
+**Test:** `tests/engine/forward.test.js` — "tryFFIDirect non-definitive failure fallback" describe block.
 
 ### Problem A vs Problem B
 
