@@ -51,11 +51,9 @@ function stats(arr) {
 // ─── State setup ─────────────────────────────────────────────────────────────
 
 async function setupState() {
-  const calc = await mde.load([
-    path.join(__dirname, '../../calculus/ill/programs/bin.ill'),
-    path.join(__dirname, '../../calculus/ill/programs/evm.ill'),
-    path.join(__dirname, '../../calculus/ill/programs/multisig.ill'),
-  ]);
+  const calc = await mde.load(
+    path.join(__dirname, '../../calculus/ill/programs/multisig.ill')
+  );
 
   const state = mde.decomposeQuery(calc.queries.get('symex'));
 

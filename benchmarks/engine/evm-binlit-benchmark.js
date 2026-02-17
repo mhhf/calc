@@ -35,10 +35,9 @@ async function main() {
   console.log('='.repeat(70));
   console.log();
 
-  const calc = await mde.load([
-    path.join(__dirname, '../../calculus/ill/programs/bin.ill'),
+  const calc = await mde.load(
     path.join(__dirname, '../../calculus/ill/programs/evm.ill')
-  ]);
+  );
 
   const backwardIndex = prove.buildIndex(calc.clauses, calc.types);
 

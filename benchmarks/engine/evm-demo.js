@@ -49,10 +49,9 @@ function fmt(h) {
   console.log("=== EVM ADD Demo ===\n");
 
   // Load EVM calculus with arithmetic
-  const calc = await mde.load([
-    path.join(__dirname, "../../calculus/ill/programs/bin.ill"),
+  const calc = await mde.load(
     path.join(__dirname, "../../calculus/ill/programs/evm.ill")
-  ]);
+  );
 
   console.log(`Loaded: ${calc.forwardRules.length} forward rules, ${calc.clauses.size} backward clauses\n`);
 

@@ -17,10 +17,9 @@ const path = require('path');
 
   // Load
   const loadStart = performance.now();
-  const calc = await mde.load([
-    path.join(__dirname, "../../calculus/ill/programs/bin.ill"),
+  const calc = await mde.load(
     path.join(__dirname, "../../calculus/ill/programs/evm.ill")
-  ]);
+  );
   const loadTime = performance.now() - loadStart;
 
   // Parse state

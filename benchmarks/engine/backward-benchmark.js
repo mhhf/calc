@@ -274,10 +274,9 @@ function instrumentedProve(goal, clauses, types, opts = {}) {
   console.log();
 
   // Load calculus
-  const calc = await mde.load([
-    path.join(__dirname, '../../calculus/ill/programs/bin.ill'),
+  const calc = await mde.load(
     path.join(__dirname, '../../calculus/ill/programs/evm.ill')
-  ]);
+  );
 
   console.log(`Loaded: ${calc.clauses.size} clauses, ${calc.types.size} types\n`);
 

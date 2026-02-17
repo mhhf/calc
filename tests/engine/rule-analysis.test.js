@@ -1283,12 +1283,9 @@ describe('Rule Analysis', { timeout: 10000 }, () => {
     });
 
     it('EVM multisig: full execution cross-check', async () => {
-      const programsDir = path.join(__dirname, '../../calculus/ill/programs');
-      const calc = await mde.load([
-        path.join(programsDir, 'bin.ill'),
-        path.join(programsDir, 'evm.ill'),
-        path.join(programsDir, 'multisig.ill')
-      ]);
+      const calc = await mde.load(
+        path.join(__dirname, '../../calculus/ill/programs/multisig.ill')
+      );
 
       const initState = mde.decomposeQuery(calc.queries.get('symex'));
 

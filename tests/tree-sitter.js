@@ -162,7 +162,10 @@ describe('tree-sitter parser', () => {
   test('parses evm.ill', async () => {
     const testFile = path.join(__dirname, '../calculus/ill/programs/evm.ill');
     if (fs.existsSync(testFile)) {
-      const result = await tsParser.parseFile(testFile);
+      // Strip #import directives (resolved at text level before parsing)
+      const source = fs.readFileSync(testFile, 'utf8')
+        .replace(/#import\([^)]+\)/g, '');
+      const result = await tsParser.parse(source);
       assert.strictEqual(result.success, true, result.error);
       assert.ok(result.ast.declarations.length > 0);
     }

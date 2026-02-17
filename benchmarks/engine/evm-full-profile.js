@@ -24,10 +24,9 @@ async function main() {
   console.log('='.repeat(70));
   console.log();
 
-  const calc = await mde.load([
-    path.join(__dirname, '../../calculus/ill/programs/bin.ill'),
+  const calc = await mde.load(
     path.join(__dirname, '../../calculus/ill/programs/evm.ill')
-  ]);
+  );
 
   console.log(`Loaded: ${calc.forwardRules.length} forward rules, ${calc.clauses.size} clauses`);
   console.log();

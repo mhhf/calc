@@ -7,10 +7,9 @@ const Store = require('../../lib/kernel/store');
 const path = require('path');
 
 (async () => {
-  const calc = await mde.load([
-    path.join(__dirname, '../../calculus/ill/programs/bin.ill'),
+  const calc = await mde.load(
     path.join(__dirname, '../../calculus/ill/programs/evm.ill')
-  ]);
+  );
 
   const idx = prove.buildIndex(calc.clauses, calc.types);
 

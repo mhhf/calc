@@ -303,11 +303,9 @@ describe('disc-tree', () => {
   describe('integration with explore', { timeout: 30000 }, () => {
     it('explores EVM multisig tree from declarative query', async () => {
       Store.clear();
-      const calc = await mde.load([
-        path.join(__dirname, '../../calculus/ill/programs/bin.ill'),
-        path.join(__dirname, '../../calculus/ill/programs/evm.ill'),
-        path.join(__dirname, '../../calculus/ill/programs/multisig.ill'),
-      ]);
+      const calc = await mde.load(
+        path.join(__dirname, '../../calculus/ill/programs/multisig.ill')
+      );
 
       const state = mde.decomposeQuery(calc.queries.get('symex'));
 
