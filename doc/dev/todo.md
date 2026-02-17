@@ -16,19 +16,36 @@ status: active
 - [x] Tool comparison (hevm, halmos, K, Tamarin, Rosette) — see `doc/research/symbolic-arithmetic-design-space.md`
 - [x] Expression simplification survey — see `doc/research/expression-simplification.md`
 - [x] Equational completion theory — see `doc/research/equational-completion.md`
-- [ ] Confluence proof for restricted Store.put normalization
 - [ ] Meta-level branching design document (Problem B)
 
 ### Phase 2: Bug Fix
 - [ ] Fix tryFFIDirect definitive failure (`forward.js:227`) — remove `skipModeCheck &&`
 - [ ] Test: non-multiModal FFI with non-numeric ground term → backward proving attempted
 
-### Phase 3: Foundation — Problem A (Arithmetic)
-Object logic level. Prerequisite for ALL simplification approaches.
+### Phase 3: Decide — Expressions vs Pure Backward Chaining
+Expression constructors (`plus_expr`, `mul_expr`) embed computation results in term structure.
+This may conflict with ILL's philosophy: all computation lives in persistent backward-chaining
+predicates, terms are inert data. Alternative approaches (R2 loli/evar, R3 CPS, T6 freeze)
+keep computation in the backward prover and avoid expression terms entirely.
+
+- [ ] Prototype both: expression catch-alls (R1) vs loli-freeze (T6+R2)
+- [ ] Evaluate: does the engine need expression terms, or can backward chaining handle everything?
+- [ ] Decision checkpoint
+
+### Phase 3a: Foundation — Problem A (if expressions chosen)
+Only if Phase 3 decides in favor of expression constructors.
 - [ ] Expression type constructors (`calculus/ill/prelude/symbolic.ill`)
 - [ ] Catch-all backward clauses (equational completion)
+- [ ] Confluence proof for restricted Store.put normalization
 - [ ] Store.put restricted normalization (ground folding)
 - [ ] Import wiring (`evm.ill` → `symbolic.ill`)
+- [ ] Integration tests
+
+### Phase 3b: Foundation — Problem A (if pure backward chaining chosen)
+Only if Phase 3 decides against expression constructors.
+- [ ] T6 loli-freeze: auto-emit loli on FFI mode mismatch (~20 LOC)
+- [ ] T7 Mercury modes: reverse-mode FFI, result cache (~100 LOC)
+- [ ] Eigenvariable fresh generation (if R2 chosen)
 - [ ] Integration tests
 
 ### Phase 4: Foundation — Problem B (Branching)

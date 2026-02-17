@@ -1,5 +1,7 @@
 # Equational Completion for Arithmetic in ILL
 
+**Status:** Theoretical analysis. Applies only if expression constructors (`plus_expr`, etc.) are adopted (approaches R1, R3-R5). The alternative — keeping all computation in backward chaining via loli-freeze (T6) and eigenvariables (R2) — avoids expression terms entirely and does not require equational completion. See `doc/dev/todo.md` Phase 3 for the decision checkpoint.
+
 ## What Is Equational Completion?
 
 A relation `plus(X, Y, Z)` in CALC's backward prover has partial coverage:

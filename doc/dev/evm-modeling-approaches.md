@@ -126,6 +126,8 @@ The term `plus_expr(X, 3)` enters the state as a stack value. Subsequent operati
 
 ### Where Normalization Should Happen
 
+**Note:** This section assumes expression constructors (`plus_expr`, etc.) are adopted. Alternative approaches (T6 loli-freeze, R2 eigenvariables) avoid expression terms entirely — normalization is then unnecessary. See `doc/dev/todo.md` Phase 3.
+
 Two kinds of normalization serve different purposes:
 
 **Restricted Store.put normalization (ground folding):** When `Store.put('plus_expr', [binlit(3), binlit(5)])` is called and ALL children are `binlit`, redirect to `Store.put('binlit', [8n])`. Safe because:
