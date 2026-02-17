@@ -276,9 +276,39 @@ Ordered by impact/effort ratio:
 - **Full AC matching in the forward engine**: the overhead of multiset matching in the hot loop would dominate. Better to canonicalize at construction time (Tier 1).
 - **Unrestricted equality saturation**: e-graphs can blow up. Need size limits and extraction heuristics. The colored e-graph approach is more controlled.
 
+## 9. CLP / Coroutining / Mercury Modes
+
+### CLP(FD) Bounds Propagation
+
+Each symbolic variable carries an interval domain `[lo, hi]`. Constraints between variables trigger propagation: `X + Y = Z` generates indexicals `X in min(Z)-max(Y)..max(Z)-min(Y)`. When a domain shrinks to a single value, the variable auto-binds. Bounds consistency (tracking only min/max) is cheap and sufficient for path feasibility.
+
+### Coroutining = Loli Mechanism
+
+Prolog's `freeze(X, Goal)` suspends `Goal` until X is bound. CALC's loli mechanism (`!P -o { body }`) is semantically identical. When FFI mode-mismatch occurs (e.g., `plus(X, 3, Y)` with X unbound), instead of failing, emit a loli watching for X's binding. When X becomes ground (through branching or constraint resolution), the loli fires and computes Y. Chains compose naturally: `loli(bind(X,_V), {plus(_V,3,Y) * loli(bind(Y,_W), {mul(_W,2,Z)})})`.
+
+### Mercury Mode Formalization
+
+Mercury requires explicit mode declarations with determinism categories. For FFIs: formalize `plus` as having modes `{+ + - det, - + + det}`. At rule compile time, analyze groundness flow to select the appropriate mode — or suspend if no mode matches. Enables reverse-mode computation automatically.
+
+### Tabling (XSB Prolog)
+
+Memoize subgoal calls and answers in a trie. For CALC: a simple hash table `(ffi_name, ground_inputs_hash) → output_hash` avoids redundant BigInt operations across symexec branches. Content-addressed Store makes lookup trivial. Pure FFIs never need cache invalidation.
+
+### Applicability to CALC
+
+These techniques target the **R2 (Loli/Evar) approach** specifically:
+- **Loli-as-freeze** is already implemented; needs auto-emit on FFI mode mismatch (~20 LOC)
+- **Bounds propagation** as domain facts `domain(eigen_id, lo, hi)` with narrowing forward rules (~200 LOC)
+- **Mercury modes** formalize existing implicit FFI modes into selectable data (~100 LOC)
+- **FFI result cache** eliminates redundant computation across branches (~30 LOC)
+
+The key insight: CALC's forward engine already has all the architectural primitives for CLP-style constraint handling. The loli mechanism IS `freeze`, persistent facts ARE the constraint store, forward rules ARE propagators. The gap is in the FFI layer — mode mismatch should suspend rather than fail.
+
 ## Key Insight
 
 The single most impactful technique is **normalization at construction time** (AC-canonical forms in Store.put). This is the Maude philosophy: don't rewrite what you can normalize. When `plus(a, plus(b, c))` and `plus(c, plus(a, b))` produce the same hash, every downstream operation — matching, indexing, state dedup — benefits automatically with zero per-step cost.
+
+The second key insight: **CALC's loli mechanism already implements CLP-style coroutining**. Making FFI mode-mismatch auto-emit lolis (instead of failing) gives deferred computation with ~20 LOC change.
 
 ## References
 
@@ -297,3 +327,8 @@ The single most impactful technique is **normalization at construction time** (A
 - Metatheory.jl — [Julia e-graph library](https://github.com/JuliaSymbolics/Metatheory.jl)
 - Zucker (2023) — *Knuth Bendix Solver on Z3 AST* ([blog](https://www.philipzucker.com/knuth_bendix_knuck/))
 - Nelson & Oppen (1979) — *Simplification by Cooperating Decision Procedures*
+- Jaffar & Maher (1994) — *Constraint Logic Programming: A Survey*
+- Triska — *The Finite Domain Constraint Solver of SWI-Prolog* ([paper](https://www.metalevel.at/swiclpfd.pdf))
+- Mercury mode system — [reference](https://www.mercurylang.org/information/doc-latest/mercury_ref/Determinism.html)
+- XSB Prolog — *Extending Prolog with Tabled Logic Programming* ([paper](https://arxiv.org/abs/1012.5123))
+- Betz — *A Unified Analytical Foundation for CHR* (CHR ↔ linear logic connection)

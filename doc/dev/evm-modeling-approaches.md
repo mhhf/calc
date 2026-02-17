@@ -1170,6 +1170,38 @@ Lightweight alternative to full SMT. Catches simple contradictions fast. Inspire
 
 **LOC:** ~200 (interval store, update on arithmetic facts, infeasibility check).
 
+### T6: Loli = freeze (Coroutining via Deferred Computation)
+
+CALC's loli mechanism (`!P -o { body }`) IS Prolog's `freeze(X, Goal)` / `when(ground(X), Goal)`. The insight: when FFI mode-mismatch occurs (e.g., `plus(X, 3, Y)` with X unbound), instead of failing, **emit a loli that watches for X to become ground**:
+
+```
+loli(bind(X, _V), {plus(_V, 3, Y)})
+```
+
+When a `bind(X, 5)` fact appears (from branching or constraint resolution), the loli fires and Y becomes `8`. Chains compose: `loli(bind(X, _V), {plus(_V, 3, Y) * loli(bind(Y, _W), {mul(_W, 2, Z)})})`.
+
+This is **dataflow computation** — exactly how spreadsheets work. The engine never blocks on unbound variables; it records what to do when the variable becomes available and continues with other fireable rules.
+
+**Already implemented:** The loli mechanism exists. The missing piece: make FFI mode-mismatch emit lolis automatically instead of returning `null`.
+
+**LOC:** ~20 (auto-emit loli on mode mismatch in `tryFFIDirect`).
+
+### T7: Mercury Mode Formalization + FFI Result Cache
+
+**Mode formalization:** FFI modes (`+ + -`) are currently informal. Make them data:
+```javascript
+{ name: 'plus', modes: [
+  { args: ['+','+','-'], det: 'det' },   // forward: C = A + B
+  { args: ['-','+','+'], det: 'det' }    // reverse: A = C - B
+]}
+```
+
+At rule compile time, analyze which mode applies given groundness flow from antecedent matching. Enables **reverse-mode FFI** automatically: if `plus(X, 3, 8)` has X unbound but args 2,3 ground, select `- + +` mode and compute X = 5.
+
+**FFI result cache:** Simple hash table `(ffi_name, ground_inputs_hash) → output_hash`. FFIs are pure functions — results never invalidate. For symexec where branches recompute the same arithmetic (75× inc, 60× plus per 63-node tree), this avoids redundant BigInt operations.
+
+**LOC:** ~100 (mode data structure, multi-mode selection, result cache).
+
 ### Theory Techniques vs Existing Approaches (Cross-Cutting)
 
 | Theory Technique | Compatible With | Primary Benefit |
@@ -1179,6 +1211,8 @@ Lightweight alternative to full SMT. Catches simple contradictions fast. Inspire
 | T3 CHR Compilation | Forward engine (all) | Faster rule matching (join ordering, guard scheduling) |
 | T4 Bottom-Up Simplifier | R1 Skolem + S1 Engine | Deep subterm simplification, congruence propagation |
 | T5 Interval Tracking | All approaches | Path pruning, contradiction detection |
+| T6 Loli = freeze | R2 Loli best fit, compatible with all | Deferred computation, dataflow chains |
+| T7 Mode Formalization | Forward engine (all) | Reverse-mode FFI, result caching |
 
 ### Revised Top 5 Approaches (Theory-Integrated)
 
@@ -1198,12 +1232,14 @@ Incorporating theory techniques, the recommended approaches become:
 - JS: ~300 LOC (AC-norm). .ill: ~80 lines.
 - **Why #2:** Most extensible. New simplifications = new .ill rules.
 
-**3. Loli Eigenvariables + Constraint Propagation + Intervals (R2 × T5)**
+**3. Loli Eigenvariables + Deferred Computation + Intervals (R2 × T5,T6,T7)**
 - Flat constraints with step-indexed eigenvariables
+- Loli-as-freeze (T6): FFI mode-mismatch auto-emits loli watchers
+- Reverse-mode FFI (T7): `plus(X, 3, 8)` → X = 5 via `- + +` mode
+- FFI result cache (T7): avoid redundant BigInt across symexec branches
 - Interval tracking (T5) for path feasibility pruning
-- CLP-style attributed variables for constraint propagation
-- JS: ~300 LOC. .ill: full rewrite.
-- **Why #3:** Most SMT-ready. Flat constraints export directly.
+- JS: ~320 LOC. .ill: full rewrite.
+- **Why #3:** Most SMT-ready. Deferred computation means engine never blocks. Flat constraints export directly. Loli mechanism already exists — just needs auto-emit on mode mismatch.
 
 **4. Hybrid Skolem + E-Graph Layer (R1 × S3 × T1,T2)**
 - Skolem terms for state flow, e-graph for equivalence tracking
