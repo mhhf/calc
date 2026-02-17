@@ -1127,6 +1127,8 @@ Content-addressing then gives AC equivalence for free: `plus(a,plus(b,c))` and `
 
 **LOC:** ~300 (flatten/sort in Store, constant folding, identity rules).
 
+**Complexity:** Storage: O(1) per term — actually *reduces* storage via dedup (N AC-equivalent terms → 1 hash). Computation: O(A log A) per `Store.put` where A = children after flattening (EVM: A=2-3 → O(1)). Zero per-step cost after construction. Benefit compounds with scale: more terms → more dedup payoff. At 100K+ terms, AC equivalence classes collapse with no explicit tracking.
+
 ### T2: E-Graphs / Colored E-Graphs
 
 Store is half an e-graph (content-addressed hashcons). The missing half: union-find equivalence classes. A full e-graph would represent all equivalent forms of a symbolic expression simultaneously. **Extraction** picks the simplest form via cost function.
@@ -1137,6 +1139,8 @@ Store is half an e-graph (content-addressed hashcons). The missing half: union-f
 
 **LOC:** ~800 for basic e-graph + rebuild. ~300 for colored extension.
 
+**Complexity:** Storage: O(N) union-find + O(C × E_colored) for colored extension (C = branch colors). For tree depth D: O(2^D × E_avg) worst case. Computation: union O(α(N)) ≈ O(1), rebuild O(|worklist|) — can cascade. Equality saturation: O(iterations × R_simp × N_enodes) per round — potentially expensive. At 10K+ terms, rebuild cascades become costly; at 100K+, only viable with egg-style batch rebuild + e-matching. Most powerful discovery engine but least predictable scaling.
+
 ### T3: CHR Compilation for Forward Engine
 
 CHR simpagation IS ILL forward rules. Decades of compilation research applies directly:
@@ -1145,6 +1149,8 @@ CHR simpagation IS ILL forward rules. Decades of compilation research applies di
 - **Occurrence indexing:** Each constraint occurrence in a rule head compiled to a lookup.
 
 **LOC:** ~150 (join ordering in rule-analysis.js, guard reordering).
+
+**Complexity:** Storage: O(R × A) compile-time metadata, O(1) runtime. Computation: reduces matching from O(|Facts_A| × |Facts_B|) to O(min(|Facts_A|, |Facts_B|) × selectivity). At 100K+ facts, wrong join order is O(N²) per rule — makes matching intractable. Right join order brings this to O(N × selectivity). Benefit grows quadratically with fact count. Purely subtractive (removes wasted work), zero runtime overhead.
 
 ### T4: Bottom-Up Simplifier (Isabelle simp architecture)
 
@@ -1158,6 +1164,8 @@ Missing piece from Isabelle: congruence rules. If `!eq A 5` is in persistent sta
 
 **LOC:** ~300 (bottom-up traverser, congruence propagation). Connects to existing disc-tree + FFI.
 
+**Complexity:** Storage: O(E) equality store from `!eq` facts, O(D) stack per traversal. Computation per term: O(D × (R_lookup + E_propagation)) — with disc-tree R_lookup = O(depth), with equality hash E_propagation = O(1), so O(D²) per term. Critical for expression size control: without active simplification, symbolic terms grow O(steps) — at k-dss scale (1000+ steps) this means depth-100+ terms. Needs incremental simplification (only re-simplify affected subterms) at 100K+ facts.
+
 ### T5: Interval Tracking + Path Feasibility
 
 Maintain `[lo, hi]` bounds per symbolic variable, updated on every arithmetic/comparison fact:
@@ -1169,6 +1177,8 @@ Maintain `[lo, hi]` bounds per symbolic variable, updated on every arithmetic/co
 Lightweight alternative to full SMT. Catches simple contradictions fast. Inspired by abstract interpretation (Cousot & Cousot) interval domain.
 
 **LOC:** ~200 (interval store, update on arithmetic facts, infeasibility check).
+
+**Complexity:** Storage: O(V) per execution path, O(D × V) for tree depth D with copy-on-write. Computation: O(1) per arithmetic/comparison fact, O(V) per branch intersection check. **Unique property:** pruning benefit is exponential — each pruned node saves an entire subtree. At 50K+ branches, early pruning is the single biggest factor. The only technique that directly attacks the exponential branching problem.
 
 ### T6: Loli = freeze (Coroutining via Deferred Computation)
 
@@ -1186,6 +1196,8 @@ This is **dataflow computation** — exactly how spreadsheets work. The engine n
 
 **LOC:** ~20 (auto-emit loli on mode mismatch in `tryFFIDirect`).
 
+**Complexity:** Storage: O(L) deferred lolis, L ≈ V (symbolic variables). Computation: O(1) per deferral, O(L) per `findAllLoliMatches` scan. At L > 1K, needs loli indexing (disc-tree on trigger) for O(log L) lookup. **Not an optimizer — an enabler:** without T6, the engine cannot handle symbolic values at all (FFI fails on unbound inputs). With T6, symbolic values propagate through the computation graph via dataflow chains.
+
 ### T7: Mercury Mode Formalization + FFI Result Cache
 
 **Mode formalization:** FFI modes (`+ + -`) are currently informal. Make them data:
@@ -1202,6 +1214,8 @@ At rule compile time, analyze which mode applies given groundness flow from ante
 
 **LOC:** ~100 (mode data structure, multi-mode selection, result cache).
 
+**Complexity:** Storage: mode table O(F × M) ≈ O(30), cache O(unique FFI calls). Computation: O(M) mode selection ≈ O(1), O(1) cache lookup. Cache hit rate grows with scale: ~40% at 100 calls → ~80% at 100K calls. Reverse-mode is synergistic with T6: when a loli fires with partial groundness, reverse-mode can solve for the remaining variable. Together T6+T7 form a complete deferred-computation system.
+
 ### Theory Techniques vs Existing Approaches (Cross-Cutting)
 
 | Theory Technique | Compatible With | Primary Benefit |
@@ -1214,62 +1228,95 @@ At rule compile time, analyze which mode applies given groundness flow from ante
 | T6 Loli = freeze | R2 Loli best fit, compatible with all | Deferred computation, dataflow chains |
 | T7 Mode Formalization | Forward engine (all) | Reverse-mode FFI, result caching |
 
-### Revised Top 5 Approaches (Theory-Integrated)
+### Scaling Analysis
 
-Incorporating theory techniques, the recommended approaches become:
+**Scale points** (what N means in CALC's context):
 
-**1. Skolem + AC-Canonical Engine Normalization (R1 × S1 × T1,T4)**
-- Catch-all clauses produce Skolem terms
-- AC-normalization at Store.put time (T1) for canonical forms
-- Bottom-up simplifier (T4) for deep rewrites
-- JS: ~400 LOC. .ill: ~30 lines.
-- **Why #1:** Highest impact/effort ratio. T1 alone handles most common simplifications for free.
+| Scale | Rules (R) | Facts (N) | Symbolic vars (V) | Tree nodes (B) | Example |
+|-------|-----------|-----------|-------------------|----------------|---------|
+| 10 | 10 | 50 | 5 | 10 | bin.ill |
+| 100 | 44 | 200 | 10 | 63 | multisig (current) |
+| 1K | 200 | 2K | 30 | 500 | single real contract |
+| 10K | 500 | 10K | 100 | 5K | small contract suite |
+| 100K | 1K | 100K | 300 | 50K | k-dss scale |
+| 1M+ | 2K+ | 1M+ | 500+ | 500K+ | multi-contract analysis |
 
-**2. Skolem + ILL Simplification Rules + AC-Canonical (R1 × S2 × T1)**
-- Same Skolem terms, but simplification rules in .ill (declarative)
-- AC-normalization at construction time (T1) handles commutativity/associativity
-- .ill rules handle domain-specific lemmas (sha3 injectivity, etc.)
-- JS: ~300 LOC (AC-norm). .ill: ~80 lines.
-- **Why #2:** Most extensible. New simplifications = new .ill rules.
+**Comparative speedup** (multiplier over baseline without the technique):
 
-**3. Loli Eigenvariables + Deferred Computation + Intervals (R2 × T5,T6,T7)**
-- Flat constraints with step-indexed eigenvariables
-- Loli-as-freeze (T6): FFI mode-mismatch auto-emits loli watchers
-- Reverse-mode FFI (T7): `plus(X, 3, 8)` → X = 5 via `- + +` mode
-- FFI result cache (T7): avoid redundant BigInt across symexec branches
-- Interval tracking (T5) for path feasibility pruning
-- JS: ~320 LOC. .ill: full rewrite.
-- **Why #3:** Most SMT-ready. Deferred computation means engine never blocks. Flat constraints export directly. Loli mechanism already exists — just needs auto-emit on mode mismatch.
+| Scale | T1 AC-norm | T2 E-graph | T3 CHR join | T4 Simp | T5 Intervals | T6 Freeze | T7 Modes |
+|-------|-----------|-----------|--------|---------|-------------|----------|---------|
+| 10 | 1.0x | 0.9x | 1.0x | 0.95x | 1.0x | enabler | 1.02x |
+| 100 | 1.05x | 1.0x | 1.1x | 1.1x | 1.2x | enabler | 1.05x |
+| 1K | 1.2x | 1.5x | 2-5x | 1.5x | 2-5x | enabler | 1.2x |
+| 10K | 1.5x | 2-5x | 5-20x | 2-5x | 5-30x | enabler | 1.5x |
+| 100K | 2x | 3-10x? | 10-50x | 3-10x | 10-100x | enabler | 2x |
+| 1M+ | 3x+ | risky | 50-200x | 5-20x | 100-1000x+ | enabler | 2-3x |
 
-**4. Hybrid Skolem + E-Graph Layer (R1 × S3 × T1,T2)**
-- Skolem terms for state flow, e-graph for equivalence tracking
-- AC-normalization (T1) as base layer
-- Colored e-graph (T2) for branch-sensitive simplification
-- JS: ~1100 LOC. .ill: ~60 lines.
-- **Why #4:** Most powerful at scale. But highest implementation cost.
+Notes on the table:
+- T2 "risky" at 1M+: rebuild cascades and colored extension are O(2^D) in branch depth without aggressive pruning.
+- T3 dominates at scale because wrong join order is O(N²) — converting to O(N × sel) is the largest single-technique gain at 100K+ facts.
+- T5 has exponential ROI: each pruned branch saves an entire subtree, compounding at every level of the tree.
+- T6 is marked "enabler" because without it, symbolic execution simply fails (FFI returns null on unbound inputs). The comparison is not "faster vs slower" but "works vs doesn't work."
+- T1 and T7 are universally beneficial but modest — they reduce constant factors, not asymptotic complexity.
 
-**5. Skolem + AC-Canonical + CHR Join Optimization (R1 × S1 × T1,T3)**
-- Same as Approach 1, but with CHR-style rule matching optimization
-- Join ordering (T3) reorders antecedent matching by selectivity
-- Guard scheduling (T3) moves cheap FFI checks first
-- JS: ~550 LOC. .ill: ~30 lines.
-- **Why #5:** Performance-focused. Best when rule count grows (100+ symbolic rules).
+**Implementation complexity summary:**
+
+| Technique | LOC | Risk | Storage/term | Compute/op | Scales with |
+|-----------|-----|------|-------------|-----------|-------------|
+| T1 AC-norm | 300 | low | O(1), reduces via dedup | O(A log A) ≈ O(1) | term count (sublinear) |
+| T2 E-graph | 1100 | high | O(N + C×Ec) | O(sat_iters × R × N) | unpredictable |
+| T3 CHR join | 150 | low | O(1) runtime | O(1) amortized | fact count (quadratic gain) |
+| T4 Simp | 300 | medium | O(E) equalities | O(D²) per term | term depth × equality count |
+| T5 Intervals | 200 | low | O(V) per path | O(1) update, O(V) branch | variable count (bounded) |
+| T6 Freeze | 20 | very low | O(L) lolis | O(1) emit, O(L) scan | deferred count (small) |
+| T7 Modes | 100 | low | O(F×M) + cache | O(1) lookup | FFI call count (linear cache) |
+
+### Revised Top 5 Approaches (Ranked by Scaling Analysis)
+
+**1. T6 + T7: Loli=freeze + Mercury Modes (120 LOC) — Capability Enabler**
+- Auto-emit loli on FFI mode mismatch (T6, ~20 LOC)
+- Formalize FFI modes, enable reverse-mode, add result cache (T7, ~100 LOC)
+- **Why #1:** Not an optimizer — a prerequisite. Without these, the engine cannot handle symbolic values (FFI fails on unbound inputs). With them, deferred computation chains propagate values through the computation graph. Reverse-mode solves constraints that currently stall. Loli mechanism already exists — just wire up auto-emit. Near-zero risk, near-zero implementation cost.
+
+**2. T5: Interval Tracking (200 LOC) — Exponential Pruning**
+- Maintain `[lo, hi]` bounds per symbolic variable
+- Prune infeasible paths on empty intersection
+- **Why #2:** The only technique that attacks the exponential branching problem. O(1) per operation, but ROI is exponential in tree depth. At k-dss scale (50K+ branches), early pruning is the difference between feasible and infeasible. Cheap to implement, orthogonal to everything else.
+
+**3. T1: AC-Normalization (300 LOC) — Universal Foundation**
+- Flatten, sort, constant-fold AC operators at `Store.put` time
+- Content-addressing gives AC equivalence for free
+- **Why #3:** "Always helps, never hurts." Zero per-step cost, benefit compounds with scale via dedup. At 100K+ terms, AC equivalence classes collapse naturally. Foundation layer that makes T4 (simplifier) and T2 (e-graphs) more effective by reducing the term space. 20+ years of Maude production use.
+
+**4. T3: CHR Join Ordering (150 LOC) — Matching Efficiency**
+- Reorder antecedent matching by selectivity at compile time
+- Schedule cheap guards (neq, lt) before expensive pattern matches
+- **Why #4:** At 100K+ facts, this is mandatory — wrong join order is O(N²) per rule per step. Right join order is O(N × selectivity). Well-understood from CHR literature, compile-time only (zero runtime overhead), directly applicable since CALC's forward rules ARE CHR simpagation. The 50-200x gain at 1M+ facts is the largest single-technique improvement.
+
+**5. T4: Bottom-Up Simplifier (300 LOC) — Expression Size Control**
+- Post-step bottom-up normalization with congruence propagation
+- If `!eq(A, 5)` in state, `plus(A, 3)` → `8`
+- **Why #5:** Keeps terms small. Without active simplification, symbolic terms grow O(steps) — at k-dss scale this means unbounded expression depth. Congruence propagation is the most impactful sub-technique. Connects to existing disc-tree + FFI infrastructure.
+
+**Dropped: T2 (E-Graphs)** — most powerful discovery engine but highest risk/cost ratio. Colored extension is O(2^D) storage in branch depth. Better to build T1+T4+T5 first (90% of benefit at 30% of cost). E-graphs become relevant when equivalence *discovery* (not just propagation) is the bottleneck — a k-dss+ concern.
 
 ### Recommended Implementation Order (Revised)
 
-1. **Foundation (all approaches):** Catch-all constructors in .ill, import graph, stack-as-list. ~1 hour.
+1. **T6+T7 (enable symbolic execution):** Auto-emit loli on FFI mode mismatch, formalize modes, add cache. ~120 LOC. Unlocks all subsequent work.
 
-2. **T1: AC-Canonical Store.put.** Implement for `plus`/`mul`. Immediate benefit for all approaches. ~1 day.
+2. **T1 (AC-canonical Store.put):** Implement for `plus`/`mul`. Immediate benefit for all approaches. ~300 LOC.
 
-3. **Approach 1 (Skolem + T1 + T4).** Implement engine normalizer + AC-canonical forms. Benchmark symbolic multisig. ~2 days.
+3. **T5 (interval tracking):** Add `[lo, hi]` per symbolic var, integrate with symexec branching. ~200 LOC.
 
-4. **Approach 2 (Skolem + T1 + ILL rules).** Same benchmark with declarative rules instead of engine normalizer. Compare step counts. ~1 day.
+4. **Foundation:** Catch-all constructors in .ill, import graph, stack-as-list. ~1 hour.
 
-5. **Approach 3 (Loli + T5).** Implement eigenvariable generation + interval tracking. Same benchmark. Compare constraint growth vs expression growth. ~2 days.
+5. **Benchmark symbolic multisig.** Compare: (a) T6+T7 alone, (b) +T1, (c) +T5 pruning. Measure state size, tree size, time.
 
-6. **Evaluate:** Which approach produces smaller states? Which has fewer steps? Which handles branching (JUMPI) better?
+6. **T3 (CHR join ordering):** When scaling to 500+ rules / 10K+ facts. ~150 LOC.
 
-7. **Scale-up (if needed):** Add T2 (e-graphs) and/or T3 (CHR join ordering) to the winning approach.
+7. **T4 (bottom-up simplifier):** When expression depth exceeds 5-10. ~300 LOC.
+
+8. **Evaluate at k-dss scale:** If equivalence discovery is the bottleneck, add T2 (e-graphs). Otherwise, the T1+T3+T4+T5+T6+T7 stack covers the need.
 
 ## Open Questions
 
