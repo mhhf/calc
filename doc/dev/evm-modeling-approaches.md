@@ -67,6 +67,43 @@ Multisig works because all arithmetic has concrete arguments (PC, opcodes, gas a
 
 For k-dss: `Urn_ink + dink`, `Art * rate`, `(ink + dink) * spot` — all symbolic. The engine gets stuck after the first arithmetic opcode.
 
+### Known Bug: tryFFIDirect Definitive Failure
+
+`tryFFIDirect` (`forward.js:200-229`) has a bug that blocks symbolic execution even after catch-all clauses are added.
+
+**The bug:** `isGround()` (`convert.js:90-107`) checks only for metavariables, not "is this a concrete number." A ground symbolic term like `plus_expr(A, B)` passes `isGround` (no metavars) but fails `binToInt` (tag is `plus_expr`, not `binlit`/`i`/`o`/`e`). The FFI returns `{success: false, reason: 'conversion_failed'}`.
+
+In `tryMatch` (line 424-436), any truthy non-success FFI result triggers `break` — definitive failure. This skips both the persistent state lookup (lines 439-460) and backward proving (lines 462+). For non-multiModal predicates (all except `plus`), `conversion_failed` is indistinguishable from genuine mathematical failure like `neq(5,5)`.
+
+**Effect:** Even with catch-all backward clauses (`plus_sym: plus X Y (plus_expr X Y).`), the backward prover is never reached for ground symbolic terms. The rule is skipped entirely.
+
+**Fix:** Remove the `skipModeCheck &&` guard on line 227 so that ALL `{success: false, reason: ...}` results return `null` (non-definitive), allowing fallback to state lookup and backward proving. Genuine failures like `neq(5,5)` return `{success: false}` without a `reason` field — these remain definitive.
+
+**Test:** `tests/engine/forward.test.js` — "tryFFIDirect definitive failure bug" describe block.
+
+### Problem A vs Problem B
+
+Two distinct challenges for symbolic execution:
+
+**Problem A (object logic): What is the result of symbolic arithmetic?**
+
+When `!plus A B C` can't compute C because A or B is symbolic, what value does C take? This is an object-level concern — the backward prover needs clauses that produce a result for any inputs.
+
+Solutions: value representations R1-R5 (see below). All require:
+1. The tryFFIDirect bug fix (above) — otherwise backward proving is never reached
+2. Catch-all backward clauses (equational completion) — `plus_sym: plus X Y (plus_expr X Y).`
+3. Expression type constructors — `plus_expr`, `mul_expr`, etc.
+
+See `doc/research/equational-completion.md` for the theoretical foundation.
+
+**Problem B (meta level): How to branch on symbolic conditions?**
+
+When JUMPI's condition is symbolic (`gt(32, ?S)` — unknown calldata size), neither `jumpi_neq` (`!neq ?C 0`) nor `jumpi_eq` (pattern match on `0`) can fire.
+
+This is a meta-level concern. The object logic rules are unchanged — no `jumpi_sym` or `may_neq` rules. The symexec engine (`symexec.js`) must decide, at the meta level, to explore both branches. Object logic just needs to handle whatever values flow through.
+
+Needs a separate design document.
+
 ### The Design Question (Reframed)
 
 Not "how to arrange state facts" but: **when FFI fails on symbolic values, what should the result be, and where/when is it simplified?**
@@ -89,13 +126,18 @@ The term `plus_expr(X, 3)` enters the state as a stack value. Subsequent operati
 
 ### Where Normalization Should Happen
 
-Previous draft proposed Store.put-time normalization. **This is wrong:**
+Two kinds of normalization serve different purposes:
 
-- Store.put can't normalize: it would corrupt rule patterns (`plus(_A, _B, _C)` with metavars)
-- Content-addressing dedup would break (hash/content mismatch)
-- Ground arithmetic is already handled by FFI (zero work needed)
+**Restricted Store.put normalization (ground folding):** When `Store.put('plus_expr', [binlit(3), binlit(5)])` is called and ALL children are `binlit`, redirect to `Store.put('binlit', [8n])`. Safe because:
+- Rule patterns contain metavar/freevar children (tag ≠ `binlit`) → normalization never fires on patterns
+- Content-addressing preserved: the `plus_expr` is never stored, so no hash/content mismatch
+- Ensures confluence: catch-all path and FFI path produce the same hash for ground inputs
 
-The correct hook: **post-substitution** in `applyIndexed`/`subCompiled` (substitute.js, 6 call sites). When substitution produces a new term, check if it's simplifiable before returning.
+See `doc/research/equational-completion.md` for the full safety argument.
+
+**Unrestricted Store.put normalization IS wrong:** Normalizing `Store.put('plus_expr', [_A, binlit(0)])` → `_A` would corrupt rule patterns containing metavars. The normalization must only fire when ALL children are concrete values (`binlit`).
+
+**Post-substitution normalization (advanced):** For symbolic identities like `plus_expr(X, 0) → X` where children may not be `binlit`, the hook is `applyIndexed`/`subCompiled` (substitute.js). When substitution produces a new term, check if it's simplifiable before returning. This is for Strategy S1/S3 (engine-level simplification), complementary to the restricted Store.put approach.
 
 ### Normalization Confluence
 
@@ -312,7 +354,7 @@ The fundamental challenge with nested computation: `cons(plus(A, plus(2, 3)), Re
 
 **C1 (built-in normalizer) and C2 (simplification as forward rules) can't handle this** without rules for every possible nesting depth.
 
-**C3 (normalization phase) is the right approach.** The implementation is **post-substitution normalization** in `applyIndexed`/`subCompiled` (substitute.js). NOT in Store.put (see "Where Normalization Should Happen" above).
+**C3 (normalization phase) is the right approach.** Two complementary hooks: restricted Store.put normalization for ground folding (all children `binlit`), and post-substitution normalization in `applyIndexed`/`subCompiled` (substitute.js) for symbolic identities. See "Where Normalization Should Happen" above.
 
 When substitution produces a new term via `Store.put('plus_expr', [hash_of_3, hash_of_5])`, the normalizer wrapping the call detects both children are ground binlits, computes 3+5=8, and returns `Store.put('binlit', [8n])` instead.
 

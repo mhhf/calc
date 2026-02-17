@@ -18,6 +18,7 @@ Active implementation plans and design documents for in-progress work.
 | [[dsl_refactor]] | DSL migration from ll.json to .calc/.rules | `dsl` `celf` `tree-sitter` `migration` |
 | [[authorization-implementation]] | Ownership/authorization modalities | `authorization` `ownership` `modalities` |
 | [[prooverlasagne]] | Layered prover architecture (L1 kernel → L2 generic → L3 focused → L4 strategy → L5 UI) | `architecture` `prover` `refactor` |
+| [[evm-modeling-approaches]] | EVM symbolic execution design space | `symbolic-execution` `EVM` `design` |
 | [[todo]] | Outstanding development tasks | `planning` `tasks` |
 
 ## Optimization Plans
@@ -41,6 +42,7 @@ See also: [[../research/prover-optimization]] for the full optimization catalog.
 | [[../research/forward-chaining-networks]] | Rete, TREAT, LEAPS, CHR for linear logic | `optimization` `TREAT` `CHR` |
 | [[../research/compiled-pattern-matching]] | Maranget decision trees, compiled match | `optimization` `compilation` |
 | [[../research/incremental-matching]] | Semi-naive evaluation, relational e-matching | `optimization` `incremental` `Datalog` |
+| [[../research/equational-completion]] | Equational completion for arithmetic catch-alls | `equational-completion` `confluence` |
 
 ## Completed
 

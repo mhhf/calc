@@ -263,16 +263,6 @@
 
 **Tags:** `semi-naive` `delta-tracking` `relational-e-matching` `leapfrog-join` `Datalog` `Souffle` `incremental` `provenance`
 
-### [[expression-simplification]]
-**Expression Simplification from Proof Theory.** Comprehensive survey of 8 techniques for simplifying symbolic arithmetic in ILL forward chaining: e-graphs/equality saturation (egg, egglog, colored e-graphs), Knuth-Bendix completion, AC-normalization (Maude-style), Isabelle's simplifier (simp), Coq ring/omega, Lean4 simp + disc trees, Maude rewriting logic (equational attributes, narrowing), CHR compilation (join ordering, guard scheduling). Tiered recommendations: AC-canonical Store.put (Tier 1), interval tracking + CHR join ordering (Tier 2), scoped e-graphs + Horner normalization (Tier 3). Key insight: normalization at construction time (Maude philosophy) is highest-impact technique.
-
-**Tags:** `e-graphs` `equality-saturation` `AC-normalization` `Knuth-Bendix` `CHR` `Isabelle-simp` `Coq-ring` `Maude` `Horner-form` `colored-e-graphs`
-
-### [[symbolic-arithmetic-design-space]]
-**Symbolic Arithmetic Design Space.** Comparison of how five EVM tools (hevm, halmos, K/KEVM, Tamarin, Rosette) handle symbolic arithmetic. Eager vs lazy simplification, own AST vs solver AST, fork vs merge at branches. Extended with theory-informed approaches from proof theory literature.
-
-**Tags:** `hevm` `halmos` `K-framework` `Tamarin` `Rosette` `symbolic-execution` `SMT` `design-space`
-
 ---
 
 ## IX. Semantic Foundations
@@ -305,6 +295,25 @@
 
 ### [[bibliography]]
 **Citations.** Comprehensive bibliography organized by topic.
+
+---
+
+## XI. Symbolic Execution
+
+### [[equational-completion]]
+**Equational Completion for Arithmetic.** Catch-all backward clauses as completion of partial relations. Confluence via restricted Store.put normalization. Conservative extension argument. Why boolean catch-alls are unsound. Backward prover semantics (first-match-wins, fallback chain ordering).
+
+**Tags:** `equational-completion` `confluence` `catch-all` `symbolic-arithmetic` `Store-normalization`
+
+### [[expression-simplification]]
+**Expression Simplification from Proof Theory.** Comprehensive survey of 8 techniques for simplifying symbolic arithmetic in ILL forward chaining: e-graphs/equality saturation (egg, egglog, colored e-graphs), Knuth-Bendix completion, AC-normalization (Maude-style), Isabelle's simplifier (simp), Coq ring/omega, Lean4 simp + disc trees, Maude rewriting logic (equational attributes, narrowing), CHR compilation (join ordering, guard scheduling). Tiered recommendations: AC-canonical Store.put (Tier 1), interval tracking + CHR join ordering (Tier 2), scoped e-graphs + Horner normalization (Tier 3). Key insight: normalization at construction time (Maude philosophy) is highest-impact technique.
+
+**Tags:** `e-graphs` `equality-saturation` `AC-normalization` `Knuth-Bendix` `CHR` `Isabelle-simp` `Coq-ring` `Maude` `Horner-form` `colored-e-graphs`
+
+### [[symbolic-arithmetic-design-space]]
+**Symbolic Arithmetic Design Space.** Comparison of how five EVM tools (hevm, halmos, K/KEVM, Tamarin, Rosette) handle symbolic arithmetic. Eager vs lazy simplification, own AST vs solver AST, fork vs merge at branches. Extended with theory-informed approaches from proof theory literature.
+
+**Tags:** `hevm` `halmos` `K-framework` `Tamarin` `Rosette` `symbolic-execution` `SMT` `design-space`
 
 ---
 
@@ -364,6 +373,9 @@
 | μMALL fixed points & cyclic proofs | Deep survey complete, ready for impl | [[muMALL-fixed-points]] |
 | Semi-naive for linear logic | Design complete, needs impl | [[incremental-matching]] |
 | Compiled pattern matching | Design complete (3 phases) | [[compiled-pattern-matching]] |
+| Symbolic arithmetic (Problem A) | Research complete, foundation needed | [[equational-completion]], evm-modeling-approaches |
+| Symbolic branching (Problem B) | Needs design document | evm-modeling-approaches |
+| tryFFIDirect bug | Identified, test written, fix pending | evm-modeling-approaches |
 
 ### Unexplored Directions
 

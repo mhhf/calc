@@ -9,6 +9,45 @@ status: active
 
 # TODO
 
+## Currently Working On: Symbolic Execution Foundation
+
+### Phase 1: Research & Design (current)
+- [x] Design space exploration (R1-R5, S1-S3, T1-T7) — see `doc/dev/evm-modeling-approaches.md`
+- [x] Tool comparison (hevm, halmos, K, Tamarin, Rosette) — see `doc/research/symbolic-arithmetic-design-space.md`
+- [x] Expression simplification survey — see `doc/research/expression-simplification.md`
+- [x] Equational completion theory — see `doc/research/equational-completion.md`
+- [ ] Confluence proof for restricted Store.put normalization
+- [ ] Meta-level branching design document (Problem B)
+
+### Phase 2: Bug Fix
+- [ ] Fix tryFFIDirect definitive failure (`forward.js:227`) — remove `skipModeCheck &&`
+- [ ] Test: non-multiModal FFI with non-numeric ground term → backward proving attempted
+
+### Phase 3: Foundation — Problem A (Arithmetic)
+Object logic level. Prerequisite for ALL simplification approaches.
+- [ ] Expression type constructors (`calculus/ill/prelude/symbolic.ill`)
+- [ ] Catch-all backward clauses (equational completion)
+- [ ] Store.put restricted normalization (ground folding)
+- [ ] Import wiring (`evm.ill` → `symbolic.ill`)
+- [ ] Integration tests
+
+### Phase 4: Foundation — Problem B (Branching)
+Meta-level concern. Object logic unchanged.
+- [ ] Design document for meta-level branching
+- [ ] Path condition accumulation strategy
+- [ ] Implementation
+
+### Phase 5: Simplification Approach (choose after benchmarking)
+- Approach 1: Skolem + engine normalization (R1×S1 — hevm path)
+- Approach 2: Skolem + ILL rules (R1×S2 — K path)
+- Approach 3: Loli eigenvariables + constraint propagation (R2)
+- Approach 4: Hybrid engine + ILL lemmas (R1×S3)
+- Approach 5: CPS decomposition (R3×S1)
+
+Cross-references: `doc/dev/evm-modeling-approaches.md`, `doc/research/equational-completion.md`
+
+---
+
 ## Architecture & Engine
 
 ### Lax Monad `{A}` — Backward/Forward Integration
@@ -273,6 +312,16 @@ Added `neq` FFI for O(1) BigInt inequality. FFI failure is definitive (break imm
 - [ ] Relational e-matching for multi-antecedent rules (leapfrog trie join at 100K+ facts)
 
 **See also:** doc/research/forward-chaining-networks.md, doc/research/incremental-matching.md
+
+### Disc-Tree for Backward Proving
+**Priority:** LOW | **Status:** to think about once at scale
+
+Discrimination tree indexing for backward chaining (prove/search). Currently backward proving
+uses clause-index scan. At scale (100+ backward clauses), disc-tree could give O(depth) vs O(R)
+candidate selection — same win as forward disc-tree (Stage 9). Not needed at current 44-rule scale.
+
+- [ ] Profile backward proving at scale to confirm bottleneck
+- [ ] Adapt `lib/prover/strategy/disc-tree.js` for backward clause indexing
 
 ### Symexec: Non-Opcode Rule Strategy
 **Priority:** LOW | **Status:** investigated — minimal impact

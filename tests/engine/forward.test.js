@@ -7,6 +7,7 @@ const path = require('path');
 const forward = require('../../lib/engine/forward');
 const mde = require('../../lib/engine');
 const Store = require('../../lib/kernel/store');
+const ffi = require('../../lib/engine/ffi');
 
 describe('Forward Chaining', { timeout: 10000 }, () => {
   describe('flattenTensor', () => {
@@ -162,14 +163,90 @@ describe('Forward Chaining', { timeout: 10000 }, () => {
     });
   });
 
+  describe('tryFFIDirect definitive failure bug', () => {
+    // Bug: forward.js:227 — when tryFFIDirect returns {success: false, reason: 'conversion_failed'}
+    // for a non-multiModal predicate, tryMatch treats it as definitive failure (line 436: break).
+    // This skips persistent state lookup and backward proving entirely.
+    //
+    // The issue: isGround() checks only for metavars, not "is numeric."
+    // A ground atom like (atom 'sym') passes isGround but fails binToInt → conversion_failed.
+    // For non-multiModal predicates (inc, to256, etc.), this non-definitive failure
+    // is treated as definitive, blocking all fallback paths.
+
+    it('isGround returns true for non-numeric ground terms', () => {
+      // A symbolic expression term — ground (no metavars) but not a binlit
+      const sym = Store.put('atom', ['sym']);
+      assert.strictEqual(ffi.convert.isGround(sym), true,
+        'atom is ground (no metavars)');
+
+      const symExpr = Store.put('plus_expr', [
+        Store.put('binlit', [3n]),
+        Store.put('binlit', [5n])
+      ]);
+      assert.strictEqual(ffi.convert.isGround(symExpr), true,
+        'plus_expr with binlit children is ground');
+      assert.strictEqual(ffi.convert.binToInt(symExpr), null,
+        'binToInt returns null for non-binlit tag');
+    });
+
+    it('non-multiModal FFI returns conversion_failed for ground non-numeric input', () => {
+      // inc has mode '+ -' and is NOT multiModal
+      const sym = Store.put('atom', ['sym']);
+      const result = ffi.arithmetic.inc([sym, 0]);
+      assert.strictEqual(result.success, false);
+      assert.strictEqual(result.reason, 'conversion_failed',
+        'inc returns conversion_failed, not mode_mismatch');
+    });
+
+    it('conversion_failed prevents persistent state fallback', async () => {
+      // This test demonstrates the bug end-to-end:
+      // A rule with !inc where the input is ground but non-numeric.
+      // The FFI returns conversion_failed, tryMatch treats it as definitive → rule fails.
+      // But if persistent state lookup were tried, it could find a match.
+
+      // Rule: foo _X * !inc _X _Y -o { bar _Y }
+      const ruleH = await mde.parseExpr('foo _X * !inc _X _Y -o { bar _Y }');
+      const [ante, conseq] = Store.children(ruleH);
+      const rule = forward.compileRule({
+        name: 'test_inc',
+        hash: ruleH,
+        antecedent: ante,
+        consequent: conseq
+      });
+
+      // Create a ground but non-numeric term as the value of foo
+      const sym = Store.put('atom', ['sym']);
+      const fooSym = Store.put('foo', [sym]);
+
+      // Pre-compute what inc(sym) should be — put it in persistent state
+      const incResult = Store.put('atom', ['sym_plus_1']);
+      const incFact = Store.put('inc', [sym, incResult]);
+
+      const state = forward.createState(
+        { [fooSym]: 1 },
+        { [incFact]: true }
+      );
+
+      // tryMatch should find inc(sym, sym_plus_1) in persistent state,
+      // but the bug causes tryFFIDirect to return {success: false, reason: 'conversion_failed'}
+      // which is treated as definitive failure (break on line 436).
+      // The persistent state lookup (lines 439-460) is never reached.
+      const result = forward.tryMatch(rule, state, null);
+
+      // BUG: result is null because conversion_failed is treated as definitive.
+      // EXPECTED: result should succeed, binding Y to sym_plus_1.
+      // When the bug is fixed, change this assertion to: assert.notStrictEqual(result, null)
+      assert.strictEqual(result, null,
+        'BUG: tryMatch fails because conversion_failed is treated as definitive — ' +
+        'persistent state lookup is skipped');
+    });
+  });
+
   describe('EVM multi-step execution', { timeout: 30000 }, () => {
     it('executes 5+ steps from multisig query', async () => {
-      const programsDir = path.join(__dirname, '../../calculus/ill/programs');
-      const calc = await mde.load([
-        path.join(programsDir, 'bin.ill'),
-        path.join(programsDir, 'evm.ill'),
-        path.join(programsDir, 'multisig.ill'),
-      ]);
+      const calc = await mde.load(
+        path.join(__dirname, '../../calculus/ill/programs/multisig.ill')
+      );
 
       const state = mde.decomposeQuery(calc.queries.get('symex'));
 
