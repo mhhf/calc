@@ -1216,6 +1216,117 @@ At rule compile time, analyze which mode applies given groundness flow from ante
 
 **Complexity:** Storage: mode table O(F × M) ≈ O(30), cache O(unique FFI calls). Computation: O(M) mode selection ≈ O(1), O(1) cache lookup. Cache hit rate grows with scale: ~40% at 100 calls → ~80% at 100K calls. Reverse-mode is synergistic with T6: when a loli fires with partial groundness, reverse-mode can solve for the remaining variable. Together T6+T7 form a complete deferred-computation system.
 
+### Concrete Examples: T1-T7 Applied to evm.ill
+
+To ground the theory, here's how each technique affects actual EVM execution state. We trace two scenarios from `evm.ill`: (A) arithmetic on symbolic values, (B) branching on symbolic conditions.
+
+#### Setup: Symbolic Execution of Multisig
+
+**Concrete execution (current):** Initial facts include ground values: `calldatasize 96`, `calldata 0 32 0x1234...`. Everything evaluates — FFI always has ground inputs.
+
+**Symbolic execution (goal):** Initial facts have unknowns: `calldatasize ?S`, `calldata 0 32 ?D`. The `?S` and `?D` represent arbitrary external inputs.
+
+#### Scenario A: ADD with symbolic operand
+
+State just before ADD at PC=44 fires:
+```
+pc(44), code(44, 0x01), sh(s(s(0))), stack(1, ?D), stack(0, 1), gas(G)
+```
+
+The `evm/add` rule tries `!plus ?D 1 C` via FFI. `?D` is symbolic (from CALLDATALOAD). FFI mode `+ + -` requires all inputs ground.
+
+**Current behavior:** FFI returns null. Rule doesn't fire. Execution **stalls**.
+
+**T1 (AC-Normalization):** No effect on this stall — plus is AC but `?D` is still unground. However, if a later step produces `plus(plus(?D, 1), 3)`, AC-norm canonicalizes to `plus(?D, 4)` (flatten + fold constants). State:
+```
+stack(0, plus(?D, 4))    % instead of plus(plus(?D, 1), 3)
+```
+Benefit: downstream matching/dedup treats `plus(1, ?D)` and `plus(?D, 1)` identically.
+
+**T2 (E-Graphs):** `?D` gets e-class `c0`, `plus(?D, 1)` gets e-class `c1`. Later if `?D = 0x1234` is discovered (e.g. from branch resolution), equality saturation rewrites: `plus(0x1234, 1) → 0x1235`. Extraction picks the simplest form. State:
+```
+stack(0, c1)    where c1 = {plus(?D, 1)}
+% later after ?D = 0x1234:
+stack(0, c1)    where c1 = {plus(?D, 1), plus(0x1234, 1), 0x1235}  → extracts 0x1235
+```
+
+**T3 (CHR Join Ordering):** No effect on state. ADD has 8 antecedents — join ordering would match `code PC 0x01` first (most selective: only 1 fact per PC value) instead of `pc PC` first. Speeds up matching, doesn't change the FFI stall.
+
+**T4 (Bottom-Up Simplifier):** If `!eq(?D, 0x1234)` is in persistent state (from a branch), the simplifier substitutes `?D → 0x1234` before FFI call: `plus(0x1234, 1, C)` → C = 0x1235. State:
+```
+stack(0, 0x1235)    % simplified via congruence
+```
+Without a known equality, no simplification possible — stalls like baseline.
+
+**T5 (Interval Tracking):** Doesn't help ADD evaluate. But tracks: if `?D` came from CALLDATALOAD, `?D ∈ [0, 2^256-1]`. After `plus(?D, 1, C)`: `C ∈ [1, 2^256]`. Later arithmetic/comparisons tighten bounds. Prunes infeasible branches when intervals become empty.
+
+**T6 (Loli=freeze):** FFI `plus(?D, 1, C)` fails (mode mismatch on ?D). Auto-emit:
+```
+loli(ground(?D), {plus(?D, 1, C)})
+```
+Execution **continues with other fireable rules**. When `?D` becomes ground (e.g. branch resolves `?D = 0x1234`), loli fires: `plus(0x1234, 1, C)` → C = 0x1235. State during deferral:
+```
+pc(44), stack(1, ?D), stack(0, 1), loli(ground(?D), {plus(?D, 1, C) * ...rest of ADD consequent...})
+% other rules keep firing (SHA3, SSTORE, etc.)
+```
+
+**T7 (Mercury Modes):** For ADD: FFI `plus` has mode `+ + -` (forward). No reverse mode helps here (both `?D` and `1` needed as inputs, `?D` is unbound). But for SUB (`evm/sub` rule: `!plus C B A` where A, B are known from stack): mode `- + +` fires: `C = A - B`. State:
+```
+% SUB: plus(C, B, A) with A=5, B=3 → mode - + + → C = 2
+stack(0, 2)    % no stall, reverse-mode computes directly
+```
+Also: FFI result cache avoids re-computing `plus(0x1234, 1)` across multiple symexec branches that share the same calldata.
+
+#### Scenario B: JUMPI with symbolic condition
+
+State just before JUMPI at PC=16 fires:
+```
+pc(16), code(16, 0x57), sh(s(s(0))), stack(1, 51), stack(0, ?C), gas(G)
+```
+
+Where `?C = gt(32, ?S)` — the result of comparing calldatasize with 32. Two rules compete:
+- `evm/jumpi_neq`: requires `!neq ?C 0` (FFI)
+- `evm/jumpi_eq`: requires `stack SH 0` (pattern match on literal 0)
+
+**Current behavior (concrete):** With `?C = 1` (ground), `jumpi_neq` fires. With `?C = 0`, `jumpi_eq` fires. No ambiguity.
+
+**Symbolic behavior:** With `?C = gt(32, ?S)` (symbolic), neither rule can fire — FFI can't evaluate `neq(gt(32, ?S), 0)`, and `gt(32, ?S)` doesn't pattern-match `0`.
+
+**T1 (AC-Normalization):** No help — GT and NEQ are not AC.
+
+**T2 (E-Graphs):** Both branches explored. True branch: e-graph records `gt(32, ?S) ≡ nonzero`. False branch: `gt(32, ?S) ≡ 0`. If `?S = 96` later, equality saturation: `gt(32, 96) → 0`, only the false branch survives.
+
+**T3 (CHR Join Ordering):** No help with the fundamental branch — just faster matching.
+
+**T4 (Bottom-Up Simplifier):** If `?S` has a known value via `!eq`, simplifies `gt(32, ?S)` to a concrete 0 or 1. Otherwise, no help.
+
+**T5 (Interval Tracking):** After the branch:
+```
+% jumpi_neq branch (C ≠ 0, so gt(32, ?S) ≠ 0, so ?S < 32):
+intervals: {?S: [0, 31]}
+
+% jumpi_eq branch (C = 0, so gt(32, ?S) = 0, so ?S ≥ 32):
+intervals: {?S: [32, 2^256-1]}
+```
+Later, if `lt(?S, 10)` is tested on the neq branch: `?S ∈ [0, 9]`. If `gt(?S, 200)` tested on the eq branch: `?S ∈ [200, 2^256-1]`. If any intersection is empty, that path is **pruned** — exponential savings.
+
+**T6 (Loli=freeze):** Symexec's additive choice (`&`) explores both branches regardless. On the neq branch, `neq(?C, 0)` deferred via loli:
+```
+loli(ground(?C), {neq(?C, 0) -o { pc 51 }})
+```
+Execution continues. When `?S` becomes ground → `?C = gt(32, concrete_S)` resolves → loli fires → neq succeeds or fails → determines if this branch survives.
+
+**T7 (Mercury Modes):** For GT: only mode `+ + + -` available. `?S` unbound → mode mismatch → falls to T6 (deferred). But with result cache: if another branch already computed `gt(32, ?S)` with the same `?S`, cache returns the result.
+
+#### Summary: Which technique helps where
+
+| Scenario | T1 | T2 | T3 | T4 | T5 | T6 | T7 |
+|----------|----|----|----|----|----|----|-----|
+| ADD with symbolic operand | dedup later | discover equality | faster match | simplify if eq known | track bounds | **defer, fire when ground** | reverse-mode for SUB |
+| JUMPI symbolic branch | — | track branch equalities | — | simplify if eq known | **prune infeasible paths** | **defer neq check** | cache across branches |
+| Expression growth | **canonicalize** | track equivalences | — | **keep terms small** | — | — | — |
+| Large fact set (100K+) | — | — | **join ordering** | — | — | — | cache |
+
 ### Theory Techniques vs Existing Approaches (Cross-Cutting)
 
 | Theory Technique | Compatible With | Primary Benefit |
