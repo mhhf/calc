@@ -99,6 +99,13 @@ describe('tree-sitter parser', () => {
     assert.strictEqual(decl.head.func.func.name, 'with');
   });
 
+  test('parses plus (additive disjunction)', async () => {
+    const result = await tsParser.parse('foo: (a + b).');
+    assert.strictEqual(result.success, true, result.error);
+    const decl = result.ast.declarations[0];
+    assert.strictEqual(decl.head.func.func.name, 'plus');
+  });
+
   test('parses comments', async () => {
     const result = await tsParser.parse('% This is a comment\nfoo: bar.');
     assert.strictEqual(result.success, true, result.error);

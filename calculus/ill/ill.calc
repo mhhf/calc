@@ -5,7 +5,7 @@
 % ILL connectives with polarity and category annotations.
 %
 % Multiplicatives: ⊗ (tensor), ⊸ (loli), 1 (one)
-% Additives: & (with)
+% Additives: & (with), ⊕ (plus)
 % Exponentials: ! (bang) - derived from F ∘ G adjunction
 
 @extends lnl.
@@ -59,6 +59,16 @@ with: formula -> formula -> formula
   @latex "#1 \\& #2"
   @prec 70 left
   @category additive.
+
+% Plus (additive disjunction): A ⊕ B
+% "Exactly one holds — handle both cases"
+% Polarity: positive (explicit — auto-inference fails for multi-right-rule connectives)
+plus: formula -> formula -> formula
+  @ascii "_ + _"
+  @latex "#1 \\oplus #2"
+  @prec 70 left
+  @category additive
+  @polarity positive.
 
 % =============================================================================
 % Exponentials

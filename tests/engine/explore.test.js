@@ -145,6 +145,34 @@ describe('explore', { timeout: 10000 }, () => {
       assert.strictEqual(alts[0].persistent[0], bangP);
     });
 
+    it('plus(A,B) returns two alternatives', () => {
+      const a = Store.put('atom', ['a']);
+      const b = Store.put('atom', ['b']);
+      const p = Store.put('plus', [a, b]);
+      const alts = expandItem(p);
+      assert.strictEqual(alts.length, 2);
+      assert.deepStrictEqual(alts[0], { linear: [a], persistent: [] });
+      assert.deepStrictEqual(alts[1], { linear: [b], persistent: [] });
+    });
+
+    it('plus(loli(!P,{A}), loli(!Q,{B})) gives two guarded alternatives', () => {
+      const p = Store.put('atom', ['neq']);
+      const q = Store.put('atom', ['eq']);
+      const a = Store.put('atom', ['zero']);
+      const b = Store.put('atom', ['one']);
+      const bangP = Store.put('bang', [p]);
+      const bangQ = Store.put('bang', [q]);
+      const branch0 = Store.put('loli', [bangP, Store.put('monad', [a])]);
+      const branch1 = Store.put('loli', [bangQ, Store.put('monad', [b])]);
+      const pl = Store.put('plus', [branch0, branch1]);
+      const alts = expandItem(pl);
+      assert.strictEqual(alts.length, 2);
+      assert.deepStrictEqual(alts[0].linear, [a]);
+      assert.strictEqual(alts[0].persistent[0], bangP);
+      assert.deepStrictEqual(alts[1].linear, [b]);
+      assert.strictEqual(alts[1].persistent[0], bangQ);
+    });
+
     it('with(loli(!P,{A}), loli(!Q,{B})) gives two guarded alternatives', () => {
       const p = Store.put('atom', ['neq']);
       const q = Store.put('atom', ['eq']);
@@ -216,6 +244,29 @@ describe('explore', { timeout: 10000 }, () => {
       assert.strictEqual(tree.children[0].choice, 0);
       assert.strictEqual(tree.children[1].choice, 1);
       // Each choice path should eventually reach a leaf (done)
+      assert.strictEqual(countLeaves(tree), 2);
+    });
+  });
+
+  describe('choice forking via plus fixture', () => {
+    it('forks on A + B consequent', async () => {
+      Store.clear();
+      const calc = await mde.load([
+        path.join(__dirname, 'fixtures/choice_plus.ill')
+      ]);
+
+      const startHash = await mde.parseExpr('start');
+      const state = forward.createState({ [startHash]: 1 }, {});
+
+      const tree = explore(state, calc.forwardRules, {
+        maxDepth: 5,
+        calc: { clauses: calc.clauses, types: calc.types }
+      });
+
+      assert.strictEqual(tree.type, 'branch');
+      assert.strictEqual(tree.children.length, 2);
+      assert.strictEqual(tree.children[0].choice, 0);
+      assert.strictEqual(tree.children[1].choice, 1);
       assert.strictEqual(countLeaves(tree), 2);
     });
   });

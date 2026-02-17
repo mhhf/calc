@@ -199,43 +199,27 @@ evm/eq:
     sh (s SH) *
     ((!neq X Y -o {
       stack SH 0
-    }) &
+    }) +
     (!eq X Y -o {
       stack SH 1
     }))
   }.
 
-evm/iszero_eq:
+evm/iszero:
   pc PC *
   code PC 0x15 *
   !inc PC PC' *
   gas GAS *
   !inc GAS GAS' *
   sh (s SH) *
-  stack SH 0
+  stack SH V
   -o {
     code PC 0x15 *
     pc PC' *
     gas GAS' *
     sh (s SH) *
-    stack SH 1
-  }.
-
-evm/iszero_neq:
-  pc PC *
-  code PC 0x15 *
-  !inc PC PC' *
-  gas GAS *
-  !inc GAS GAS' *
-  sh (s SH) *
-  stack SH V *
-  !neq V 0
-  -o {
-    code PC 0x15 *
-    pc PC' *
-    gas GAS' *
-    sh (s SH) *
-    stack SH 0
+    ((!eq V 0 -o { stack SH 1 }) +
+     (!neq V 0 -o { stack SH 0 }))
   }.
 
 evm/lt:
@@ -637,36 +621,21 @@ evm/jump:
     gas GAS'
   }.
 
-evm/jumpi_neq:
-  pc PC *
-  code PC 0x57 *
-  gas GAS *
-  !plus 10 GAS GAS' * %1010 = 10 *
-  sh (s (s SH)) *
-  stack (s SH) NPC *
-  stack SH C *
-  !neq C 0
-  -o {
-    code PC 0x57 *
-    sh SH *
-    gas GAS' *
-    pc NPC
-  }.
-
-evm/jumpi_eq:
+evm/jumpi:
   pc PC *
   code PC 0x57 *
   !inc PC PC' *
   gas GAS *
-  !plus 16 GAS GAS' *
+  !plus 10 GAS GAS' *
   sh (s (s SH)) *
   stack (s SH) NPC *
-  stack SH 0
+  stack SH C
   -o {
     code PC 0x57 *
     sh SH *
     gas GAS' *
-    pc PC'
+    ((!neq C 0 -o { pc NPC }) +
+     (!eq C 0 -o { pc PC' }))
   }.
 
 evm/gas:
