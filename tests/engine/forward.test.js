@@ -163,15 +163,10 @@ describe('Forward Chaining', { timeout: 10000 }, () => {
     });
   });
 
-  describe('tryFFIDirect definitive failure bug', () => {
-    // Bug: forward.js:227 — when tryFFIDirect returns {success: false, reason: 'conversion_failed'}
-    // for a non-multiModal predicate, tryMatch treats it as definitive failure (line 436: break).
-    // This skips persistent state lookup and backward proving entirely.
-    //
-    // The issue: isGround() checks only for metavars, not "is numeric."
-    // A ground atom like (atom 'sym') passes isGround but fails binToInt → conversion_failed.
-    // For non-multiModal predicates (inc, to256, etc.), this non-definitive failure
-    // is treated as definitive, blocking all fallback paths.
+  describe('tryFFIDirect non-definitive failure fallback', () => {
+    // FFI failures with a reason (conversion_failed, mode_mismatch, division_by_zero)
+    // are non-definitive — tryMatch falls through to state lookup and backward proving.
+    // Only failures WITHOUT a reason (e.g. neq(5,5)) are definitive mathematical "no".
 
     it('isGround returns true for non-numeric ground terms', () => {
       // A symbolic expression term — ground (no metavars) but not a binlit
@@ -198,14 +193,14 @@ describe('Forward Chaining', { timeout: 10000 }, () => {
         'inc returns conversion_failed, not mode_mismatch');
     });
 
-    it('conversion_failed prevents persistent state fallback', async () => {
-      // This test demonstrates the bug end-to-end:
+    it('conversion_failed falls through to persistent state lookup', async () => {
       // A rule with !inc where the input is ground but non-numeric.
-      // The FFI returns conversion_failed, tryMatch treats it as definitive → rule fails.
-      // But if persistent state lookup were tried, it could find a match.
+      // FFI returns conversion_failed (non-definitive), tryMatch falls through
+      // to persistent state lookup and finds the matching fact.
 
-      // Rule: foo _X * !inc _X _Y -o { bar _Y }
-      const ruleH = await mde.parseExpr('foo _X * !inc _X _Y -o { bar _Y }');
+      // Rule: foo X * !inc X Y -o { bar Y }
+      // (uppercase = freevar/metavar in parseExpr, lowercase = atom)
+      const ruleH = await mde.parseExpr('foo X * !inc X Y -o { bar Y }');
       const [ante, conseq] = Store.children(ruleH);
       const rule = forward.compileRule({
         name: 'test_inc',
@@ -227,18 +222,12 @@ describe('Forward Chaining', { timeout: 10000 }, () => {
         { [incFact]: true }
       );
 
-      // tryMatch should find inc(sym, sym_plus_1) in persistent state,
-      // but the bug causes tryFFIDirect to return {success: false, reason: 'conversion_failed'}
-      // which is treated as definitive failure (break on line 436).
-      // The persistent state lookup (lines 439-460) is never reached.
+      // FFI can't convert sym to BigInt → conversion_failed (non-definitive).
+      // tryMatch falls through to persistent state lookup, finds inc(sym, sym_plus_1).
       const result = forward.tryMatch(rule, state, null);
 
-      // BUG: result is null because conversion_failed is treated as definitive.
-      // EXPECTED: result should succeed, binding Y to sym_plus_1.
-      // When the bug is fixed, change this assertion to: assert.notStrictEqual(result, null)
-      assert.strictEqual(result, null,
-        'BUG: tryMatch fails because conversion_failed is treated as definitive — ' +
-        'persistent state lookup is skipped');
+      assert.notStrictEqual(result, null,
+        'tryMatch should succeed via persistent state fallback');
     });
   });
 
