@@ -1,7 +1,7 @@
 ---
 title: TODO
 created: 2026-02-10
-modified: 2026-02-13
+modified: 2026-02-17
 summary: Outstanding development tasks
 tags: [planning, tasks]
 status: active
@@ -9,14 +9,127 @@ status: active
 
 # TODO
 
-## Currently Working On: Symbolic Execution Foundation
+## Currently Working On: Forward Chaining Theory Cleanup
 
-### Phase 1: Research & Design (current)
+### Context
+While implementing ⊕ (Phase 4), we discovered that the forward engine's handling of
+loli continuations in rule consequents is unsound. This points to a deeper issue:
+the forward chaining engine was built incrementally with optimizations that conflate
+multiple theoretical layers. Before proceeding, we need to understand and clean up
+the theory.
+
+### The Bug (discovered 2026-02-17)
+`expandItem` in `compile.js:150-159` decomposes `!P -o {Q}` into `{ linear: [Q], persistent: [bang(P)] }`.
+This transforms a CONDITIONAL ("if P then Q") into an UNCONDITIONAL assertion ("Q and P").
+It applies modus ponens without checking the premise. Result: dead ⊕ branches run with
+corrupted state (wrong stack values, false persistent facts). Exponential blowup: 263 → 13109
+nodes in the multisig benchmark.
+
+This bug EXISTED BEFORE ⊕ — old `evm/eq` with `&` had the same incorrect decomposition.
+Adding ⊕ to iszero/jumpi amplified it from ~2 false branches to 2^N.
+
+### Root Cause: Theory Gap in Loli Continuation Firing
+The decomposition exists as a WORKAROUND. `_tryFireLoli` only handles linear triggers
+(matching trigger hashes against `state.linear`). A bang trigger (`!P`) would need to be
+PROVED (via FFI/backward chaining), but `_tryFireLoli` doesn't do this. So `expandItem`
+eagerly decomposes the loli to sidestep the firing mechanism — and the sidestep is wrong.
+
+### Open Theoretical Questions
+
+**Q1: Why does CLF exclude lolis from the monad?**
+CLF restricts `{C}` to atoms, tensor, bang, one, existentials — NO lolis inside monads.
+Watkins/Cervesato/Pfenning are careful people. Why this restriction? Possible reasons:
+- Lolis inside monads create "dormant rules" that need a firing mechanism (which CLF avoids?)
+- The monadic let `{A} ⊗ (A -o {B}) -o {B}` already gives sequencing — nested lolis redundant?
+- Metatheoretic properties (subject reduction, progress) might break with nested lolis?
+- Is it about keeping the monad's operational semantics simple (committed choice)?
+Need to read CLF paper sections 3-4 carefully.
+
+**Q2: Why `!P -o {Q}` and not `!P -o Q` — why the double monad?**
+In our EVM rules: `!neq X Y -o { stack SH 0 }`. The outer monad comes from the rule
+(`Δ -o {C}`), and the inner `{...}` wraps the loli body. But `!P -o Q` (without inner monad)
+should also be valid — Q is just a formula, not a computation. What's the semantic difference?
+- `!P -o {Q}`: "if P, then run computation producing Q" (monadic sequencing)
+- `!P -o Q`: "if P, then Q holds" (pure implication)
+In forward chaining, do we need the monadic wrapper? Or is it an artifact of our parser
+treating `-o {...}` specially?
+
+**Q3: What IS `_tryFireLoli` theoretically?**
+The loli firing mechanism scans `state.linear` for loli facts and fires them. But this
+is ad-hoc — it's not derived from any rule of the calculus. Theoretically, a loli in
+the linear state is just a fact. It should fire when the antecedent is available, via
+normal rule matching. Questions:
+- Should loli continuations be compiled into rules? (Then they'd fire via `tryMatch`)
+- Is `_tryFireLoli` an optimization of rule matching, or a separate mechanism?
+- How does this relate to CLF's operational semantics?
+
+**Q4: Layer separation — what is proof search vs optimization?**
+The forward engine conflates:
+- L1: Multiset rewriting (pure theory — consume Δ, produce C)
+- L2: Monadic decomposition (expandItem — turn C into state updates)
+- L3: Continuation management (loli firing — _tryFireLoli)
+- L4: Search strategy (symexec — exhaustive exploration)
+- L5: Optimizations (strategy stack, mutation+undo, FFI bypass, compiled sub, etc.)
+Which layers are theoretically clean? Which are optimizations? Can we selectively
+enable/disable optimizations to isolate bugs? Currently L2 and L3 are conflated
+(expandItem does L3's job incorrectly), and L5 is interleaved throughout.
+
+**Q5: Is `expandItem` itself theoretically clean?**
+The `{ linear, persistent }` decomposition IS needed (bang must go to persistent, tensor
+distributes, etc.). But is it doing the right thing for ALL connectives?
+- `bang → persistent`: Correct ✓ (! means unlimited use, persistent is unlimited)
+- `tensor → distribute`: Correct ✓ (both sides produced)
+- `with/plus → fork`: Correct ✓ (alternatives)
+- `loli → ???`: WRONG ✗ (should be: keep as linear fact, fire later)
+- What about nested structures? `!(A ⊗ B)` → persistent [A ⊗ B]? Or distribute first?
+Need to derive `expandItem` from first principles (CLF monadic decomposition rules).
+
+### The Fix (staged)
+
+**Stage 1: Fix the theory gap (correctness)**
+1. Remove `expandItem`'s loli decomposition (lines 150-159) — lolis become linear facts
+2. Extend `_tryFireLoli` to handle bang triggers — prove inner predicate via FFI/backward chaining
+3. When bang trigger proved: fire loli, consume it, produce body
+4. When bang trigger fails: loli stays dormant, branch is stuck → leaf
+5. Test: both ⊕ branches created, dead branch becomes stuck leaf (correct state, no corruption)
+
+**Stage 2: Eager guard pruning (performance optimization)**
+Prune dead branches at fork time: before creating a ⊕ branch, check if its loli guard
+is decidable and false. Skip the branch entirely. This is Andreoli focusing — resolving
+synchronous (⊕) choices eagerly when decidable. Separate from stage 1.
+
+**Stage 3: Theory cleanup (understanding)**
+- Answer Q1-Q5 above
+- Derive `expandItem` from CLF monadic decomposition
+- Define clean layer separation (L1-L5) with enable/disable for each optimization
+- Document which `_tryFireLoli` behavior is pure theory vs optimization
+- Consider: should loli continuations compile to rules instead of using ad-hoc firing?
+
+### Phase 4 Status: ⊕ Implemented, Bug Found
+- [x] Analysis: ⊕ is the correct connective (not &) for decidable case splits
+- [x] B1 independence: Problem B is independent of Problem A
+- [x] Add `plus` (⊕) connective to `ill.calc` + rules to `ill.rules`
+- [x] Grammar: `expr_plus` in tree-sitter, `convert.js`, `cst-to-ast.js`
+- [x] Forward engine: `expandItem` treats `plus` like `with` (fork)
+- [x] Focusing: ⊕ positive, ⊕L invertible, regex updated for numbered right rules
+- [x] EVM rules rewritten: evm/eq (& → +), evm/iszero + evm/jumpi (merged with +)
+- [x] Tests: 513 pass (397 core + 116 engine)
+- [ ] **BUG: expandItem loli decomposition is unsound** — see "The Bug" above
+- [ ] Stage 1: Fix loli continuation firing for bang triggers
+- [ ] Stage 2: Eager guard pruning at ⊕ fork time
+- [ ] Stage 3: Theory cleanup — derive from CLF, layer separation
+- [ ] Rewrite EVM rules to match research doc design? (result * !guard vs !guard -o {result})
+
+---
+
+## Symbolic Execution Foundation
+
+### Phase 1: Research & Design — DONE
 - [x] Design space exploration (R1-R5, S1-S3, T1-T7) — see `doc/dev/evm-modeling-approaches.md`
 - [x] Tool comparison (hevm, halmos, K, Tamarin, Rosette) — see `doc/research/symbolic-arithmetic-design-space.md`
 - [x] Expression simplification survey — see `doc/research/expression-simplification.md`
 - [x] Equational completion theory — see `doc/research/equational-completion.md`
-- [ ] Meta-level branching design document (Problem B)
+- [x] Symbolic branching analysis (Problem B) — see `doc/research/symbolic-branching.md`
 
 ### Phase 2: Bug Fix — DONE
 - [x] Fix tryFFIDirect definitive failure (`forward.js:227`) — remove `skipModeCheck &&`
@@ -47,12 +160,6 @@ Only if Phase 3 decides against expression constructors.
 - [ ] T7 Mercury modes: reverse-mode FFI, result cache (~100 LOC)
 - [ ] Eigenvariable fresh generation (if R2 chosen)
 - [ ] Integration tests
-
-### Phase 4: Foundation — Problem B (Branching)
-Meta-level concern. Object logic unchanged.
-- [ ] Design document for meta-level branching
-- [ ] Path condition accumulation strategy
-- [ ] Implementation
 
 ### Phase 5: Simplification Approach (choose after benchmarking)
 - Approach 1: Skolem + engine normalization (R1×S1 — hevm path)
@@ -92,6 +199,17 @@ Implemented in `lib/prover/strategy/symexec.js`:
 - [x] Depth bounding (maxDepth option)
 
 **See:** doc/research/execution-trees-metaproofs.md
+
+### Hypersequent Interpretation of Symexec Trees
+**Priority:** LOW | **Status:** open question | **Depends on:** ⊕ implementation
+
+The symexec tree is structurally a hypersequent: each leaf is a component sequent, the whole tree is their meta-level disjunction. ⊕L creates object-level alternatives; `explore()` builds the hypersequent. Pruning infeasible leaves = eliminating hypersequent components. Avron's framework could formalize what symexec computes. Explore once ⊕ machinery is working.
+
+- [ ] Study Avron (1991) hypersequent calculus in context of symexec trees
+- [ ] Formalize: is the symexec tree exactly a hypersequent derivation?
+- [ ] Relationship between ⊕L (object-level case split) and hypersequent external structural rules
+
+**See:** doc/research/symbolic-branching.md
 
 ### Metaproofs
 **Priority:** HIGH | **Status:** research complete — design needed | **Depends on:** execution trees
@@ -370,7 +488,7 @@ Only relevant when those EVM instructions are actually used.
 
 ## Deprioritized
 
-- **Display Calculus Completeness** — decided to stay with ILL fragment (no par, plus, why-not)
+- **Display Calculus Completeness** — decided to stay with ILL fragment (no par, why-not). ⊕ (plus) now added.
 - **Proof Nets** — hard for multimodalities, low relevance
 - **PDF/HTML proof export** — already have HTML UI
 - **Isabelle Export** — formal verification of cut-elim, not needed now

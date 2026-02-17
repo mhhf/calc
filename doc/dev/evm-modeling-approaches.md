@@ -88,13 +88,13 @@ Solutions: value representations R1-R5 (see below). All require:
 
 See `doc/research/equational-completion.md` for the theoretical foundation.
 
-**Problem B (meta level): How to branch on symbolic conditions?**
+**Problem B (object level): How to branch on symbolic conditions?**
 
 When JUMPI's condition is symbolic (`gt(32, ?S)` — unknown calldata size), neither `jumpi_neq` (`!neq ?C 0`) nor `jumpi_eq` (pattern match on `0`) can fire.
 
-This is a meta-level concern. The object logic rules are unchanged — no `jumpi_sym` or `may_neq` rules. The symexec engine (`symexec.js`) must decide, at the meta level, to explore both branches. Object logic just needs to handle whatever values flow through.
+**Solution:** Add ⊕ (additive disjunction / internal choice) to ILL. Comparison operations produce `⊕` instead of `&` — the system decides (one holds), both cases explored. Each ⊕ branch gets the result AND a path condition as a persistent fact. With ⊕ at comparisons, GT doesn't compute `gt(32, ?S)` — it branches, each branch gets concrete 0 or 1. JUMPI always sees concrete. B1: independent of Problem A.
 
-Needs a separate design document.
+See `doc/research/symbolic-branching.md` for full analysis.
 
 ### The Design Question (Reframed)
 

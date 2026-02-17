@@ -305,6 +305,11 @@
 
 **Tags:** `equational-completion` `confluence` `catch-all` `symbolic-arithmetic` `Store-normalization`
 
+### [[symbolic-branching]]
+**Symbolic Branching in ILL Forward Chaining.** Analysis of how to handle conditional branches on symbolic values. ⊕ (additive disjunction) as the theoretically correct object-level solution — "system decided, handle both cases." Comparison with & (external choice). ⊕L gives case analysis with shared context. Decidability axiom for constructive case-split. Path conditions as persistent ILL facts. DNF analogy: symbolic execution = normalization of ⊕ into alternative tree. Concrete EVM rule designs (evm/eq, evm/jumpi with ⊕). Literature: Forum, CHR∨, CLF/Celf/Ceptre (none put ⊕ in forward chaining). Relationship to Problem A (B1: independent).
+
+**Tags:** `symbolic-execution` `branching` `oplus` `with` `case-analysis` `path-conditions` `forward-chaining` `focusing`
+
 ### [[expression-simplification]]
 **Expression Simplification from Proof Theory.** Comprehensive survey of 8 techniques for simplifying symbolic arithmetic in ILL forward chaining: e-graphs/equality saturation (egg, egglog, colored e-graphs), Knuth-Bendix completion, AC-normalization (Maude-style), Isabelle's simplifier (simp), Coq ring/omega, Lean4 simp + disc trees, Maude rewriting logic (equational attributes, narrowing), CHR compilation (join ordering, guard scheduling). Tiered recommendations: AC-canonical Store.put (Tier 1), interval tracking + CHR join ordering (Tier 2), scoped e-graphs + Horner normalization (Tier 3). Key insight: normalization at construction time (Maude philosophy) is highest-impact technique.
 
@@ -374,7 +379,7 @@
 | Semi-naive for linear logic | Design complete, needs impl | [[incremental-matching]] |
 | Compiled pattern matching | Design complete (3 phases) | [[compiled-pattern-matching]] |
 | Symbolic arithmetic (Problem A) | Research complete, foundation needed | [[equational-completion]], evm-modeling-approaches |
-| Symbolic branching (Problem B) | Needs design document | evm-modeling-approaches |
+| Symbolic branching (Problem B) | **Solved** — ⊕ at object level | [[symbolic-branching]] |
 | tryFFIDirect bug | **Fixed** | evm-modeling-approaches |
 
 ### Unexplored Directions
@@ -389,4 +394,4 @@
 
 ---
 
-*Last updated: 2026-02-15*
+*Last updated: 2026-02-17*

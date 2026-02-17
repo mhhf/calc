@@ -1,7 +1,7 @@
 ---
 title: Development Index
 created: 2026-02-10
-modified: 2026-02-15
+modified: 2026-02-17
 summary: Index of active development documents
 tags: [index, development]
 ---
@@ -43,6 +43,7 @@ See also: [[../research/prover-optimization]] for the full optimization catalog.
 | [[../research/compiled-pattern-matching]] | Maranget decision trees, compiled match | `optimization` `compilation` |
 | [[../research/incremental-matching]] | Semi-naive evaluation, relational e-matching | `optimization` `incremental` `Datalog` |
 | [[../research/equational-completion]] | Equational completion for arithmetic catch-alls | `equational-completion` `confluence` |
+| [[../research/symbolic-branching]] | ⊕ for symbolic branching in forward chaining | `symbolic-execution` `branching` `oplus` |
 
 ## Completed
 
