@@ -127,6 +127,73 @@ This is always correct (guards are checked by `tryMatch` as persistent anteceden
 
 **Recommendation:** Fix `_tryFireLoli` (Stage 1). This preserves the expressive ⊕-with-loli-guard pattern, and the fix is small. Add Stage 2 for performance. Consider rule splitting later if we want strict CLF compliance.
 
+## Why `!P -o {Q}` and Not `!P -o Q`? The Inner Monad
+
+The EVM rules write `!eq V 0 -o { stack SH 1 }` with braces around the body, even though we're already inside the outer monad of the rule. Is the inner `{...}` necessary? What happens without it?
+
+### What the parser produces
+
+The parser (`convert.js:101-107`) distinguishes the two forms:
+
+| Syntax | AST | Monad-wrapped? |
+|---|---|---|
+| `!P -o { Q }` | `loli(bang(P), monad(Q))` | Yes |
+| `!P -o Q` | `loli(bang(P), Q)` | No |
+
+The check is `node.text.includes('{')` — if braces are present, the body is wrapped in `monad()`.
+
+### How `expandItem` reacts to each form
+
+`expandItem` (compile.js:150-159) checks **both** the trigger and the body:
+
+```javascript
+if (Store.tag(c0) === 'bang' && Store.tag(c1) === 'monad') {
+  // decompose — THIS IS THE BUG
+}
+```
+
+- **With inner monad** (`!P -o {Q}`): Both conditions pass → `expandItem` eagerly decomposes → **BUG** (unconditional assertion).
+- **Without inner monad** (`!P -o Q`): `Store.tag(c1) === 'monad'` fails → falls through to the default `return [{ linear: [h], persistent: [] }]` → loli stays as a linear fact in the state. **No bug.**
+
+So removing the inner braces would accidentally avoid the bug — but not by fixing it. The loli would survive `expandItem` and land in `state.linear` as a dormant continuation.
+
+### But `_tryFireLoli` can't fire it either
+
+`_tryFireLoli` (forward.js:602-649) handles lolis in the state, but only with **linear** triggers:
+
+```javascript
+// Ground path: looks for trigger hash in state.linear
+if (!state.linear[trigger] || state.linear[trigger] <= 0) return null;
+```
+
+The trigger `bang(eq(V, 0))` is not in `state.linear` (it's a persistent proposition that needs backward proving). So `_tryFireLoli` returns null → the loli never fires → the body (`stack SH 1`) is never produced → branch is stuck.
+
+| Form | expandItem | _tryFireLoli | Result |
+|---|---|---|---|
+| `!P -o { Q }` | Decomposes (BUG) | Not reached | Corrupted state |
+| `!P -o Q` | Passes through | Can't handle bang trigger | Permanently stuck |
+
+Both forms are broken. The first is **dangerously** wrong (corruption, false branches). The second is **safely** wrong (stuck leaf, no corruption). Neither produces correct behavior.
+
+### The inner monad is syntactic, not semantic
+
+In CLF, `{A}` is the lax modality — it wraps the forward-chaining fragment. Nesting `{...}` inside an already-open monad would mean a second round of forward execution (monadic let). Our engine doesn't implement multi-round monadic semantics — `expandItem` just strips the monad and decomposes the body. The inner `{...}` functions as a **signal to `expandItem`** that this body should be decomposed into state updates, not as a semantic distinction.
+
+But lolis inside monads are already non-standard (CLF forbids them — see "Why CLF Avoids This Problem Entirely" above). So the question of whether the inner loli body is `{Q}` or `Q` is a syntactic detail of our extension, not a CLF-theoretic question.
+
+### After Stage 1, either form works
+
+Stage 1 extends `_tryFireLoli` for bang triggers: detect `Store.tag(trigger) === 'bang'`, call `tryFFIDirect` to prove the guard. With this fix:
+
+- Lolis survive `expandItem` (because the loli case is removed)
+- `_tryFireLoli` detects the bang trigger and proves it
+- Guard succeeds → fire loli, produce body (correct)
+- Guard fails → loli stays dormant, branch stuck (correct)
+
+After Stage 1, both `!P -o {Q}` and `!P -o Q` work correctly. `_tryFireLoli` already handles both: `const bodyInner = Store.tag(body) === 'monad' ? Store.child(body, 0) : body` (forward.js:605). The inner monad becomes irrelevant — keep it or drop it, behavior is the same.
+
+**Recommendation:** After Stage 1, drop the inner monad. Write `!eq V 0 -o stack SH 1` instead of `!eq V 0 -o { stack SH 1 }`. The simpler form is clearer, and the inner braces served no semantic purpose — they only existed because `expandItem` needed them as a decomposition signal, which is the very code path we're removing.
+
 ## Phase 4 Status: ⊕ Implemented, Bug Found
 - [x] Analysis: ⊕ is the correct connective (not &) for decidable case splits
 - [x] B1 independence: Problem B is independent of Problem A
