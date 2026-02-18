@@ -27,7 +27,7 @@ export default function DocIndex() {
   const [docs] = createResource(folder, fetchDocs);
 
   return (
-    <div class="max-w-4xl mx-auto p-6">
+    <div class="mx-auto p-6" style="max-width: 1280px">
       <h2 class="text-2xl font-bold text-gray-900 dark:text-white mb-6">
         {FOLDER_LABELS[folder()] || folder()}
       </h2>

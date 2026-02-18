@@ -104,27 +104,40 @@
   }
 }
 
-/* Research document prose styling - GitHub README style (light theme) */
+/* Research document prose styling — GitHub markdown rendering */
 .prose-research {
-  @apply text-gray-900 leading-relaxed max-w-none;
+  @apply text-gray-900 max-w-none;
   font-size: 16px;
-  line-height: 1.6;
+  line-height: 1.5;
+  word-wrap: break-word;
 }
 
 .prose-research h1 {
-  @apply text-3xl font-semibold text-gray-900 mt-6 mb-4 pb-2 border-b border-gray-200;
+  font-size: 2em;
+  font-weight: 600;
+  line-height: 1.25;
+  @apply text-gray-900 mt-6 mb-4 pb-2 border-b border-gray-200;
 }
 
 .prose-research h2 {
-  @apply text-2xl font-semibold text-gray-900 mt-6 mb-3 pb-1 border-b border-gray-200;
+  font-size: 1.5em;
+  font-weight: 600;
+  line-height: 1.25;
+  @apply text-gray-900 mt-6 mb-3 pb-2 border-b border-gray-200;
 }
 
 .prose-research h3 {
-  @apply text-xl font-semibold text-gray-900 mt-5 mb-2;
+  font-size: 1.25em;
+  font-weight: 600;
+  line-height: 1.25;
+  @apply text-gray-900 mt-6 mb-2;
 }
 
 .prose-research h4 {
-  @apply text-lg font-semibold text-gray-900 mt-4 mb-2;
+  font-size: 1em;
+  font-weight: 600;
+  line-height: 1.25;
+  @apply text-gray-900 mt-6 mb-2;
 }
 
 .prose-research p {
@@ -136,35 +149,42 @@
 }
 
 .prose-research code {
-  @apply bg-gray-100 px-1.5 py-0.5 rounded text-sm font-mono text-gray-800 border border-gray-200;
+  @apply bg-gray-100 px-1.5 py-0.5 rounded font-mono text-gray-800;
+  font-size: 85%;
 }
 
 .prose-research pre {
-  @apply bg-gray-50 border border-gray-200 rounded-md p-4 overflow-x-auto mb-4 font-mono text-sm;
-  line-height: 1.4;
+  @apply bg-gray-50 border border-gray-200 rounded-md p-4 overflow-x-auto mb-4 font-mono;
+  font-size: 85%;
+  line-height: 1.45;
 }
 
 .prose-research pre code {
-  @apply bg-transparent p-0 border-0 text-sm font-mono;
-  line-height: 1.4;
+  @apply bg-transparent p-0 border-0 font-mono;
+  font-size: 100%;
+  line-height: inherit;
   display: block;
   white-space: pre;
 }
 
 .prose-research blockquote {
-  @apply border-l-4 border-gray-300 pl-4 py-1 text-gray-600 my-4;
+  @apply border-l-4 border-gray-300 pl-4 text-gray-600 my-4;
 }
 
 .prose-research ul {
-  @apply list-disc ml-6 mb-4 space-y-1;
+  @apply list-disc pl-8 mb-4;
 }
 
 .prose-research ol {
-  @apply list-decimal ml-6 mb-4 space-y-1;
+  @apply list-decimal pl-8 mb-4;
 }
 
 .prose-research li {
   @apply text-gray-800;
+}
+
+.prose-research li + li {
+  margin-top: 0.25em;
 }
 
 .prose-research table {
@@ -189,4 +209,24 @@
 
 .prose-research em {
   @apply italic;
+}
+
+.prose-research img {
+  @apply max-w-full;
+}
+
+.prose-research .math-block {
+  @apply overflow-x-auto my-4;
+}
+
+.prose-research .graphviz-diagram {
+  @apply my-4 overflow-x-auto;
+}
+
+.prose-research .graphviz-diagram svg {
+  @apply max-w-full h-auto;
+}
+
+.prose-research .error {
+  @apply text-red-600 bg-red-50 border border-red-200 rounded p-2;
 }

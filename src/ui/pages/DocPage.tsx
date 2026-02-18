@@ -37,7 +37,7 @@ export default function DocPage() {
   }
 
   return (
-    <div class="max-w-4xl mx-auto p-6">
+    <div class="mx-auto p-6" style="max-width: 1280px">
       <A
         href={`/${folder()}`}
         class="inline-flex items-center gap-1 text-sm text-blue-600 dark:text-blue-400 hover:underline mb-4"
