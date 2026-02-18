@@ -17,7 +17,7 @@ Only if TODO_0002 decides in favor of expression constructors.
 
 - [ ] Expression type constructors (`calculus/ill/prelude/symbolic.ill`)
 - [ ] Catch-all backward clauses (equational completion)
-- [ ] Confluence proof for restricted Store.put normalization
+- [ ] Confluence proof — see [TODO_0028](0028_confluence-proof.md)
 - [ ] Store.put restricted normalization (ground folding)
 - [ ] Import wiring (`evm.ill` -> `symbolic.ill`)
 - [ ] Integration tests

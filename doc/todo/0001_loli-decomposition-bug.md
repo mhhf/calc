@@ -35,16 +35,6 @@ Existed before plus — old `evm/eq` with `&` had the same bug. Adding plus to i
 
 Prune dead branches at fork time: before creating a branch, check if its loli guard is decidable and false. Skip the branch entirely. This is Andreoli focusing — resolving synchronous choices eagerly when decidable.
 
-## TODO_0001.Stage_3 — Theory cleanup (understanding)
+## TODO_0001.Stage_3 — Theory cleanup
 
-Open theoretical questions:
-
-- **Q1:** Why does CLF exclude lolis from the monad?
-- **Q2:** Why `!P -o {Q}` and not `!P -o Q` — why the double monad?
-- **Q3:** What IS `_tryFireLoli` theoretically? Should loli continuations compile to rules?
-- **Q4:** Layer separation — what is proof search vs optimization? (L1 rewriting, L2 decomposition, L3 continuation, L4 strategy, L5 optimization)
-- **Q5:** Is `expandItem` itself theoretically clean for all connectives?
-
-Derive `expandItem` from CLF monadic decomposition. Define clean layer separation with enable/disable for each optimization.
-
-See: `doc/research/clf-celf-ceptre.md`
+See [TODO_0027](0027_clf-theory-questions.md) — exported as standalone research task (Q1-Q5, layer separation, expandItem derivation).
