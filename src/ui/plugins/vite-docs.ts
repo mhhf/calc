@@ -15,6 +15,7 @@ const ALLOWED_FOLDERS: Record<string, string> = {
   research: 'research',
   dev: 'dev',
   docs: 'documentation',
+  todo: 'todo',
 };
 
 function extractFrontmatter(content: string) {

@@ -9,6 +9,7 @@ const tabs = [
   { path: '/research', label: 'Research' },
   { path: '/docs', label: 'Docs' },
   { path: '/dev', label: 'Dev' },
+  { path: '/todo', label: 'Todo' },
 ];
 
 export default function TabNav() {

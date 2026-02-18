@@ -13,6 +13,7 @@ const FOLDER_LABELS: Record<string, string> = {
   research: 'Research',
   dev: 'Development',
   docs: 'Documentation',
+  todo: 'Todo',
 };
 
 async function fetchDocs(folder: string): Promise<DocEntry[]> {
