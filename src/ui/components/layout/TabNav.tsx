@@ -23,7 +23,9 @@ export default function TabNav() {
               href={tab.path}
               class="tab-link"
               classList={{
-                active: location.pathname === tab.path,
+                active: tab.path === '/'
+                  ? location.pathname === '/'
+                  : location.pathname === tab.path || location.pathname.startsWith(tab.path + '/'),
               }}
               end={tab.path === '/'}
             >

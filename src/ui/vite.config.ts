@@ -2,10 +2,12 @@ import { defineConfig } from 'vite';
 import solid from 'vite-plugin-solid';
 import tailwindcss from '@tailwindcss/vite';
 import commonjs from 'vite-plugin-commonjs';
+import viteDocs from './plugins/vite-docs';
 import path from 'path';
 
 export default defineConfig({
   plugins: [
+    viteDocs(),
     // Transform CommonJS modules (lib/*.js) for both dev and build
     commonjs({
       filter(id) {
