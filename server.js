@@ -32,7 +32,8 @@ function extractFrontmatter(content) {
     const key = line.slice(0, i).trim();
     const val = line.slice(i + 1).trim();
     if (val.startsWith('[') && val.endsWith(']')) {
-      fm[key] = val.slice(1, -1).split(',').map(s => s.trim().replace(/^["']|["']$/g, ''));
+      const inner = val.slice(1, -1).trim();
+      fm[key] = inner ? inner.split(',').map(s => s.trim().replace(/^["']|["']$/g, '')) : [];
     } else if ((val.startsWith('"') && val.endsWith('"')) || (val.startsWith("'") && val.endsWith("'"))) {
       fm[key] = val.slice(1, -1);
     } else {
@@ -52,7 +53,7 @@ app.get('/api/docs/:folder', (c) => {
     const docs = files.map(f => {
       const content = fs.readFileSync(path.join(folderPath, f), 'utf-8');
       const fm = extractFrontmatter(content);
-      return { slug: f.replace(/\.md$/, ''), title: fm.title || f.replace(/\.md$/, ''), summary: fm.summary || '', tags: fm.tags || [], status: fm.status || '' };
+      return { slug: f.replace(/\.md$/, ''), title: fm.title || f.replace(/\.md$/, ''), summary: fm.summary || '', tags: fm.tags || [], status: fm.status || '', priority: fm.priority ? Number(fm.priority) : undefined, type: fm.type || undefined, depends_on: fm.depends_on || [], required_by: fm.required_by || [] };
     });
     return c.json(docs);
   } catch (e) {

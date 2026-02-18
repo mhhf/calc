@@ -28,7 +28,8 @@ function extractFrontmatter(content: string) {
     const key = line.slice(0, i).trim();
     let val = line.slice(i + 1).trim();
     if (val.startsWith('[') && val.endsWith(']')) {
-      fm[key] = val.slice(1, -1).split(',').map(s => s.trim().replace(/^["']|["']$/g, ''));
+      const inner = val.slice(1, -1).trim();
+      fm[key] = inner ? inner.split(',').map(s => s.trim().replace(/^["']|["']$/g, '')) : [];
     } else if ((val.startsWith('"') && val.endsWith('"')) || (val.startsWith("'") && val.endsWith("'"))) {
       fm[key] = val.slice(1, -1);
     } else {
@@ -73,6 +74,11 @@ export default function viteDocs(): Plugin {
                 summary: fm.summary || '',
                 tags: fm.tags || [],
                 status: fm.status || '',
+                // Extra fields for todo items
+                priority: fm.priority ? Number(fm.priority) : undefined,
+                type: fm.type || undefined,
+                depends_on: fm.depends_on || [],
+                required_by: fm.required_by || [],
               };
             });
             res.setHeader('Content-Type', 'application/json');
