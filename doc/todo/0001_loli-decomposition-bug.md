@@ -9,6 +9,7 @@ status: planning
 priority: 10
 depends_on: []
 required_by: [TODO_0002]
+subsumed_by: TODO_0041
 ---
 
 # Unsound Loli Decomposition in Forward Engine

@@ -7,7 +7,7 @@ tags: [architecture, CLF, lax-monad, forward-backward]
 type: research
 status: planning
 priority: 8
-depends_on: []
+depends_on: [TODO_0041]
 required_by: [TODO_0010, TODO_0011]
 ---
 
