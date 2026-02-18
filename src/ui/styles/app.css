@@ -4,6 +4,7 @@
   html {
     font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto,
       'Helvetica Neue', Arial, sans-serif;
+    scroll-behavior: smooth;
   }
 
   body {
@@ -343,6 +344,77 @@
   border: 1px solid #ff8182;
   border-radius: 6px;
   padding: 0.5em 1em;
+}
+
+/* ──────────────────────────────────────────────────
+   Table of Contents — left-accent stripe
+   ────────────────────────────────────────────────── */
+.prose-research .toc {
+  border-left: 3px solid #3b82f6;
+  padding-left: 1.25em;
+  margin: 0 0 2em;
+  font-size: 0.875em;
+  line-height: 1.7;
+}
+
+.prose-research .toc .toc-title {
+  display: block;
+  font-size: 0.75em;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #6b7280;
+  margin-bottom: 0.5em;
+}
+
+.prose-research .toc > ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.prose-research .toc ul ul {
+  list-style: none;
+  padding-left: 1em;
+  margin: 0;
+}
+
+.prose-research .toc li {
+  margin: 0;
+}
+
+/* top-level items: semibold, extra spacing between groups */
+.prose-research .toc > ul > li > a {
+  font-weight: 600;
+  color: #1f2937;
+}
+.prose-research .toc > ul > li + li {
+  margin-top: 0.35em;
+}
+
+/* level 2 */
+.prose-research .toc > ul > li > ul > li > a {
+  font-weight: 400;
+  color: #374151;
+}
+
+/* level 3 */
+.prose-research .toc > ul > li > ul > li > ul > li > a {
+  font-weight: 400;
+  color: #6b7280;
+  font-size: 0.95em;
+}
+
+.prose-research .toc a {
+  text-decoration: none;
+  color: inherit;
+  display: block;
+  padding: 0.15em 0;
+  transition: color 0.15s ease;
+}
+
+.prose-research .toc a:hover {
+  color: #6b7280;
 }
 
 /* ──────────────────────────────────────────────────

@@ -41,6 +41,19 @@ export interface ProcessedDocument {
 // basePath is set per-render before calling marked.parse()
 let currentBasePath = '/research';
 
+// Heading collection for TOC generation (reset before each parse)
+let collectedHeadings: { depth: number; text: string; id: string }[] = [];
+
+function slugify(text: string): string {
+  return text
+    .toLowerCase()
+    .replace(/<[^>]*>/g, '')       // strip HTML tags
+    .replace(/[^\w\s-]/g, '')      // remove non-word chars
+    .replace(/\s+/g, '-')          // spaces → hyphens
+    .replace(/-+/g, '-')           // collapse hyphens
+    .trim();
+}
+
 const marked = new Marked(
   markedHighlight({
     emptyLangClass: 'hljs',
@@ -54,6 +67,14 @@ const marked = new Marked(
   }),
   {
     renderer: {
+      heading({ tokens, depth }) {
+        const text = this.parser.parseInline(tokens);
+        const id = slugify(text);
+        if (depth <= 3) {
+          collectedHeadings.push({ depth, text, id });
+        }
+        return `<h${depth} id="${id}">${text}</h${depth}>\n`;
+      },
       // Handle .md links and external links
       link({ href, text }) {
         if (href.endsWith('.md')) {
@@ -70,6 +91,24 @@ const marked = new Marked(
     },
   }
 );
+
+function buildToc(headings: { depth: number; text: string; id: string }[]): string {
+  if (headings.length < 2) return '';
+  const minDepth = Math.min(...headings.map(h => h.depth));
+
+  let html = '<nav class="toc"><span class="toc-title">On this page</span><ul>';
+  let currentDepth = minDepth;
+
+  for (const h of headings) {
+    while (currentDepth < h.depth) { html += '<ul>'; currentDepth++; }
+    while (currentDepth > h.depth) { html += '</ul>'; currentDepth--; }
+    html += `<li><a href="#${h.id}">${h.text}</a></li>`;
+  }
+  while (currentDepth > minDepth) { html += '</ul>'; currentDepth--; }
+
+  html += '</ul></nav>';
+  return html;
+}
 
 // Server-side processors for special code blocks
 const serverProcessors: Record<string, (code: string, options?: Record<string, string>) => Promise<string> | string> = {
@@ -252,14 +291,19 @@ export async function markdownToHtml(
   // 2. Process wiki-links in the raw markdown (before marked converts []() links)
   let processed = processWikiLinks(md, basePath);
 
-  // 3. Run marked for core markdown → HTML
+  // 3. Run marked for core markdown → HTML (collects headings for TOC)
   currentBasePath = basePath;
+  collectedHeadings = [];
   let html = await marked.parse(processed);
 
-  // 4. Process inline math on the HTML
+  // 4. Prepend TOC if enough headings
+  const toc = buildToc(collectedHeadings);
+  if (toc) html = toc + html;
+
+  // 5. Process inline math on the HTML
   html = processInlineMath(html);
 
-  // 5. Restore special blocks from placeholders
+  // 6. Restore special blocks from placeholders
   for (const [placeholder, content] of blocks) {
     html = html.replace(
       new RegExp(`<div data-placeholder="${placeholder}"></div>`),
