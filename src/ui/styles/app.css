@@ -104,129 +104,283 @@
   }
 }
 
-/* Research document prose styling — GitHub markdown rendering */
+/* ──────────────────────────────────────────────────
+   Document page card — white background container
+   ────────────────────────────────────────────────── */
+.doc-card {
+  @apply bg-white rounded-xl shadow-sm border border-gray-200;
+  @apply dark:bg-gray-800 dark:border-gray-700;
+}
+
+/* ──────────────────────────────────────────────────
+   Prose styling — GitHub-flavored markdown rendering
+   ────────────────────────────────────────────────── */
 .prose-research {
-  @apply text-gray-900 max-w-none;
+  color: #1f2328;
   font-size: 16px;
-  line-height: 1.5;
+  line-height: 1.6;
   word-wrap: break-word;
 }
 
+/* Headings */
 .prose-research h1 {
   font-size: 2em;
   font-weight: 600;
   line-height: 1.25;
-  @apply text-gray-900 mt-6 mb-4 pb-2 border-b border-gray-200;
+  color: #1f2328;
+  margin: 1.5em 0 0.67em;
+  padding-bottom: 0.3em;
+  border-bottom: 1px solid #d1d9e0;
 }
 
 .prose-research h2 {
   font-size: 1.5em;
   font-weight: 600;
   line-height: 1.25;
-  @apply text-gray-900 mt-6 mb-3 pb-2 border-b border-gray-200;
+  color: #1f2328;
+  margin: 1.5em 0 0.5em;
+  padding-bottom: 0.3em;
+  border-bottom: 1px solid #d1d9e0;
 }
 
 .prose-research h3 {
   font-size: 1.25em;
   font-weight: 600;
   line-height: 1.25;
-  @apply text-gray-900 mt-6 mb-2;
+  color: #1f2328;
+  margin: 1.5em 0 0.5em;
 }
 
 .prose-research h4 {
   font-size: 1em;
   font-weight: 600;
   line-height: 1.25;
-  @apply text-gray-900 mt-6 mb-2;
+  color: #1f2328;
+  margin: 1.5em 0 0.5em;
 }
 
+/* Paragraphs */
 .prose-research p {
-  @apply mb-4 text-gray-800;
+  margin-bottom: 1em;
 }
 
+/* Links */
 .prose-research a {
-  @apply text-blue-600 hover:underline;
+  color: #0969da;
+  text-decoration: none;
+}
+.prose-research a:hover {
+  text-decoration: underline;
 }
 
+/* Inline code — GitHub style */
 .prose-research code {
-  @apply bg-gray-100 px-1.5 py-0.5 rounded font-mono text-gray-800;
+  padding: 0.2em 0.4em;
+  margin: 0;
   font-size: 85%;
+  white-space: break-spaces;
+  background-color: rgba(175, 184, 193, 0.2);
+  border-radius: 6px;
+  font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas,
+               "Liberation Mono", monospace;
+  color: inherit;
 }
 
+/* Code blocks — Monokai Sublime */
 .prose-research pre {
-  @apply bg-gray-50 border border-gray-200 rounded-md p-4 overflow-x-auto mb-4 font-mono;
+  background: #23241f;
+  border-radius: 8px;
+  padding: 1em;
+  overflow-x: auto;
+  margin-bottom: 1em;
   font-size: 85%;
-  line-height: 1.45;
+  line-height: 1.5;
+  border: none;
 }
 
 .prose-research pre code {
-  @apply bg-transparent p-0 border-0 font-mono;
+  padding: 0;
+  margin: 0;
+  background: transparent;
+  border: none;
+  border-radius: 0;
   font-size: 100%;
   line-height: inherit;
-  display: block;
   white-space: pre;
+  display: block;
+  color: #f8f8f2;
 }
 
+/* Blockquotes */
 .prose-research blockquote {
-  @apply border-l-4 border-gray-300 pl-4 text-gray-600 my-4;
+  margin: 1em 0;
+  padding: 0 1em;
+  color: #656d76;
+  border-left: 3px solid #d1d9e0;
+}
+.prose-research blockquote p {
+  margin-bottom: 0.5em;
 }
 
+/* Lists — consistent indentation */
 .prose-research ul {
-  @apply list-disc pl-8 mb-4;
+  list-style-type: disc;
+  padding-left: 2em;
+  margin-bottom: 1em;
 }
 
 .prose-research ol {
-  @apply list-decimal pl-8 mb-4;
+  list-style-type: decimal;
+  padding-left: 2em;
+  margin-bottom: 1em;
 }
 
 .prose-research li {
-  @apply text-gray-800;
-}
-
-.prose-research li + li {
   margin-top: 0.25em;
 }
 
+.prose-research li > p {
+  margin-bottom: 0.5em;
+}
+
+/* Nested lists */
+.prose-research ul ul,
+.prose-research ol ul {
+  list-style-type: circle;
+  margin-bottom: 0;
+}
+
+.prose-research ul ul ul,
+.prose-research ol ul ul {
+  list-style-type: square;
+}
+
+.prose-research ol ol,
+.prose-research ul ol {
+  list-style-type: lower-alpha;
+  margin-bottom: 0;
+}
+
+/* Tables — distinct from background */
 .prose-research table {
-  @apply w-full border-collapse mb-4;
+  width: 100%;
+  border-collapse: collapse;
+  margin-bottom: 1em;
+  border: 1px solid #d1d9e0;
+  border-radius: 6px;
+  overflow: hidden;
 }
 
 .prose-research th {
-  @apply bg-gray-50 border border-gray-200 px-4 py-2 text-left font-semibold text-gray-900;
+  background-color: #f6f8fa;
+  border: 1px solid #d1d9e0;
+  padding: 8px 16px;
+  text-align: left;
+  font-weight: 600;
+  color: #1f2328;
 }
 
 .prose-research td {
-  @apply border border-gray-200 px-4 py-2 text-gray-800;
+  border: 1px solid #d1d9e0;
+  padding: 8px 16px;
+  color: #1f2328;
 }
 
+.prose-research tr:nth-child(even) {
+  background-color: #f6f8fa;
+}
+
+/* Horizontal rules */
 .prose-research hr {
-  @apply border-gray-200 my-6;
+  border: none;
+  border-top: 1px solid #d1d9e0;
+  margin: 1.5em 0;
 }
 
+/* Bold / italic */
 .prose-research strong {
-  @apply font-semibold text-gray-900;
+  font-weight: 600;
+  color: #1f2328;
 }
 
 .prose-research em {
-  @apply italic;
+  font-style: italic;
 }
 
+/* Images */
 .prose-research img {
-  @apply max-w-full;
+  max-width: 100%;
+  border-radius: 6px;
 }
 
+/* Task lists (checkboxes from marked) */
+.prose-research .task-list-item {
+  list-style-type: none;
+}
+.prose-research input[type="checkbox"] {
+  margin-right: 0.5em;
+}
+
+/* Special blocks */
 .prose-research .math-block {
-  @apply overflow-x-auto my-4;
+  overflow-x: auto;
+  margin: 1em 0;
 }
 
 .prose-research .graphviz-diagram {
-  @apply my-4 overflow-x-auto;
+  margin: 1em 0;
+  overflow-x: auto;
 }
 
 .prose-research .graphviz-diagram svg {
-  @apply max-w-full h-auto;
+  max-width: 100%;
+  height: auto;
 }
 
 .prose-research .error {
-  @apply text-red-600 bg-red-50 border border-red-200 rounded p-2;
+  color: #cf222e;
+  background-color: #ffebe9;
+  border: 1px solid #ff8182;
+  border-radius: 6px;
+  padding: 0.5em 1em;
 }
+
+/* ──────────────────────────────────────────────────
+   Highlight.js Monokai Sublime theme (inline)
+   ────────────────────────────────────────────────── */
+.hljs {
+  background: #23241f;
+  color: #f8f8f2;
+}
+.hljs-tag,
+.hljs-subst { color: #f8f8f2; }
+.hljs-strong,
+.hljs-emphasis { color: #a8a8a2; }
+.hljs-bullet,
+.hljs-quote,
+.hljs-number,
+.hljs-regexp,
+.hljs-literal,
+.hljs-link { color: #ae81ff; }
+.hljs-code,
+.hljs-title,
+.hljs-section,
+.hljs-selector-class { color: #a6e22e; }
+.hljs-keyword,
+.hljs-selector-tag,
+.hljs-name,
+.hljs-attr { color: #f92672; }
+.hljs-symbol,
+.hljs-attribute { color: #66d9ef; }
+.hljs-params,
+.hljs-title.class_ { color: #f8f8f2; }
+.hljs-string,
+.hljs-type,
+.hljs-built_in,
+.hljs-addition,
+.hljs-variable { color: #e6db74; }
+.hljs-comment,
+.hljs-deletion,
+.hljs-meta { color: #75715e; }
+.hljs-strong { font-weight: bold; }
+.hljs-emphasis { font-style: italic; }

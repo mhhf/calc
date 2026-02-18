@@ -29,7 +29,7 @@ export default defineConfig({
     },
   },
   optimizeDeps: {
-    include: ['katex'],
+    include: ['katex', 'highlight.js', 'marked', 'marked-highlight'],
   },
   resolve: {
     alias: {

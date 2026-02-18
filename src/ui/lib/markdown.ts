@@ -1,8 +1,9 @@
 /**
  * Hybrid Markdown Processor
  *
- * Server-side: graphviz, katex, calc formulas
- * Client-side: mermaid (via hydration markers)
+ * Uses `marked` for core markdown parsing with highlight.js for syntax
+ * highlighting. Special code blocks (graphviz, katex, mermaid, calc)
+ * are extracted before parsing and re-injected after.
  *
  * Code block syntax:
  *   ```{graphviz}     - Server-rendered GraphViz
@@ -12,6 +13,9 @@
  *   ```javascript     - Syntax highlighted code block
  */
 
+import { Marked } from 'marked';
+import { markedHighlight } from 'marked-highlight';
+import hljs from 'highlight.js';
 import katex from 'katex';
 
 // Types
@@ -33,9 +37,42 @@ export interface ProcessedDocument {
   backlinks?: string[];
 }
 
-// Server-side processors
+// Configure marked with highlight.js
+// basePath is set per-render before calling marked.parse()
+let currentBasePath = '/research';
+
+const marked = new Marked(
+  markedHighlight({
+    emptyLangClass: 'hljs',
+    langPrefix: 'hljs language-',
+    highlight(code, lang) {
+      if (lang && hljs.getLanguage(lang)) {
+        return hljs.highlight(code, { language: lang }).value;
+      }
+      return hljs.highlightAuto(code).value;
+    },
+  }),
+  {
+    renderer: {
+      // Handle .md links and external links
+      link({ href, text }) {
+        if (href.endsWith('.md')) {
+          href = currentBasePath + '/' + href.replace(/\.md$/, '');
+        }
+        if (href.startsWith('#')) {
+          return `<a href="${href}">${text}</a>`;
+        }
+        if (href.startsWith('http://') || href.startsWith('https://')) {
+          return `<a href="${href}" target="_blank" rel="noopener">${text}</a>`;
+        }
+        return `<a href="${href}">${text}</a>`;
+      },
+    },
+  }
+);
+
+// Server-side processors for special code blocks
 const serverProcessors: Record<string, (code: string, options?: Record<string, string>) => Promise<string> | string> = {
-  // KaTeX math rendering
   katex: (code: string) => {
     try {
       return `<div class="math-block">${katex.renderToString(code.trim(), {
@@ -47,10 +84,8 @@ const serverProcessors: Record<string, (code: string, options?: Record<string, s
     }
   },
 
-  // GraphViz - rendered server-side via @hpcc-js/wasm-graphviz
   graphviz: async (code: string) => {
     try {
-      // Dynamic import for SSR
       const { Graphviz } = await import('@hpcc-js/wasm-graphviz');
       const graphviz = await Graphviz.load();
       const svg = graphviz.dot(code.trim());
@@ -60,13 +95,10 @@ const serverProcessors: Record<string, (code: string, options?: Record<string, s
     }
   },
 
-  // Viz.js alias for GraphViz
   viz: async (code: string) => serverProcessors.graphviz(code),
 
-  // CALC formula rendering
   calc: (code: string) => {
     try {
-      // Use calculus module for browser-compatible parsing
       const { parseFormula, renderFormula } = require('./calculus');
       const formula = parseFormula(code.trim());
       const latex = renderFormula(formula, 'latex');
@@ -80,129 +112,81 @@ const serverProcessors: Record<string, (code: string, options?: Record<string, s
   },
 };
 
-// Client-side blocks (rendered as hydration markers)
 const clientBlocks = ['mermaid', 'proof'];
 
 /**
  * Parse YAML frontmatter from markdown content
  */
 export function parseFrontmatter(content: string): { frontmatter: Frontmatter; body: string } {
-  const frontmatterRegex = /^---\n([\s\S]*?)\n---\n/;
-  const match = content.match(frontmatterRegex);
+  const match = content.match(/^---\n([\s\S]*?)\n---\n/);
+  if (!match) return { frontmatter: {}, body: content };
 
-  if (!match) {
-    return { frontmatter: {}, body: content };
-  }
-
-  const yamlContent = match[1];
-  const body = content.slice(match[0].length);
-
-  // Simple YAML parser (handles common cases)
   const frontmatter: Frontmatter = {};
-  const lines = yamlContent.split('\n');
+  for (const line of match[1].split('\n')) {
+    const i = line.indexOf(':');
+    if (i === -1) continue;
+    const key = line.slice(0, i).trim();
+    const value = line.slice(i + 1).trim();
 
-  for (const line of lines) {
-    const colonIndex = line.indexOf(':');
-    if (colonIndex === -1) continue;
-
-    const key = line.slice(0, colonIndex).trim();
-    let value = line.slice(colonIndex + 1).trim();
-
-    // Handle arrays [tag1, tag2]
     if (value.startsWith('[') && value.endsWith(']')) {
-      const arrayContent = value.slice(1, -1);
-      frontmatter[key] = arrayContent.split(',').map(s => s.trim().replace(/^["']|["']$/g, ''));
-    }
-    // Handle quoted strings
-    else if ((value.startsWith('"') && value.endsWith('"')) ||
-             (value.startsWith("'") && value.endsWith("'"))) {
+      const inner = value.slice(1, -1).trim();
+      frontmatter[key] = inner ? inner.split(',').map(s => s.trim().replace(/^["']|["']$/g, '')) : [];
+    } else if ((value.startsWith('"') && value.endsWith('"')) || (value.startsWith("'") && value.endsWith("'"))) {
       frontmatter[key] = value.slice(1, -1);
-    }
-    // Handle plain values
-    else {
+    } else {
       frontmatter[key] = value;
     }
   }
 
-  return { frontmatter, body };
+  return { frontmatter, body: content.slice(match[0].length) };
 }
 
-/**
- * Escape HTML entities
- */
 function escapeHtml(text: string): string {
-  return text
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;');
+  return text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 }
 
 /**
- * Process code blocks - either server-render or mark for client hydration
- * Stores results in the provided array and returns placeholders
+ * Extract special code blocks (katex, graphviz, mermaid, calc) and replace
+ * with placeholders. Returns the modified markdown + a map of processed blocks.
  */
-async function processCodeBlocksWithPlaceholders(html: string, storage: string[]): Promise<string> {
-  // Match code blocks with optional {processor, options} syntax
-  // Format: ```{processor, option1=value1} or just ```processor
-  const codeBlockRegex = /```(?:\{([^}]+)\}|(\w+))?\n([\s\S]*?)```/g;
+async function extractSpecialBlocks(md: string): Promise<{ md: string; blocks: Map<string, string> }> {
+  const blocks = new Map<string, string>();
+  const regex = /```\{([^}]+)\}\n([\s\S]*?)```/g;
+  let idx = 0;
 
-  const blocks: { match: string; index: number; replacement: string }[] = [];
-  let match;
+  // Collect all matches first
+  const matches: { full: string; optionsStr: string; code: string }[] = [];
+  let m;
+  while ((m = regex.exec(md)) !== null) {
+    matches.push({ full: m[0], optionsStr: m[1], code: m[2] });
+  }
 
-  while ((match = codeBlockRegex.exec(html)) !== null) {
-    const fullMatch = match[0];
-    const optionsStr = match[1]; // {processor, opts}
-    const langOnly = match[2];   // just processor name
-    const code = match[3];
-
-    let processor: string | undefined;
+  // Process and replace
+  let result = md;
+  for (const { full, optionsStr, code } of matches) {
+    const parts = optionsStr.split(',').map(s => s.trim());
+    const processor = parts[0];
     const options: Record<string, string> = {};
-
-    if (optionsStr) {
-      // Parse {processor, opt1=val1, opt2}
-      const parts = optionsStr.split(',').map(s => s.trim());
-      processor = parts[0];
-      for (let i = 1; i < parts.length; i++) {
-        const [key, val] = parts[i].split('=');
-        options[key.trim()] = val?.trim() || 'true';
-      }
-    } else if (langOnly) {
-      processor = langOnly;
+    for (let i = 1; i < parts.length; i++) {
+      const [k, v] = parts[i].split('=');
+      options[k.trim()] = v?.trim() || 'true';
     }
 
-    let replacement: string;
-
-    // Check if it's a server-side processor
-    if (processor && serverProcessors[processor]) {
-      const result = serverProcessors[processor](code, options);
-      replacement = await Promise.resolve(result);
-    }
-    // Check if it's a client-side block
-    else if (processor && clientBlocks.includes(processor)) {
-      // Render as hydration marker for client-side rendering
-      replacement = `<div class="client-render" data-processor="${processor}" data-options='${JSON.stringify(options)}'><pre class="client-source">${escapeHtml(code)}</pre></div>`;
-    }
-    // Regular code block with syntax highlighting
-    else {
-      const lang = processor || '';
-      // Trim trailing newline that's typically before closing ```
-      const trimmedCode = code.replace(/\n$/, '');
-      replacement = `<pre><code class="language-${lang}">${escapeHtml(trimmedCode)}</code></pre>`;
+    let html: string;
+    if (serverProcessors[processor]) {
+      html = await Promise.resolve(serverProcessors[processor](code, options));
+    } else if (clientBlocks.includes(processor)) {
+      html = `<div class="client-render" data-processor="${processor}" data-options='${JSON.stringify(options)}'><pre class="client-source">${escapeHtml(code)}</pre></div>`;
+    } else {
+      continue; // Not a special block, let marked handle it
     }
 
-    const index = storage.length;
-    storage.push(replacement);
-    blocks.push({ match: fullMatch, index, replacement: `CODE_BLOCK_${index}_PLACEHOLDER` });
+    const placeholder = `SPECIAL_BLOCK_${idx++}`;
+    blocks.set(placeholder, html);
+    result = result.replace(full, `<div data-placeholder="${placeholder}"></div>`);
   }
 
-  // Replace all blocks (in reverse order to preserve indices)
-  let result = html;
-  for (let i = blocks.length - 1; i >= 0; i--) {
-    result = result.replace(blocks[i].match, blocks[i].replacement);
-  }
-
-  return result;
+  return { md: result, blocks };
 }
 
 /**
@@ -214,11 +198,10 @@ const FOLDER_TO_ROUTE: Record<string, string> = {
   documentation: '/docs',
 };
 
-function processWikiLinks(html: string, basePath: string = '/research'): string {
+function processWikiLinks(html: string, basePath: string): string {
   return html.replace(/\[\[([^\]|]+)(?:\|([^\]]+))?\]\]/g, (_, doc, label) => {
     const displayText = label || doc;
     if (doc.includes('/')) {
-      // Strip leading ../ segments and resolve folder
       const parts = doc.split('/').filter((p: string) => p !== '..');
       const folder = parts[0];
       const name = parts.slice(1).join('/');
@@ -242,7 +225,7 @@ function processInlineMath(html: string): string {
     }
   });
 
-  // Inline math $...$  (but not $$)
+  // Inline math $...$ (not $$)
   html = html.replace(/(?<!\$)\$(?!\$)([^$\n]+)\$(?!\$)/g, (_, math) => {
     try {
       return katex.renderToString(math.trim(), { displayMode: false, throwOnError: false });
@@ -262,94 +245,26 @@ export async function markdownToHtml(
   options: { basePath?: string; slug?: string } = {}
 ): Promise<string> {
   const { basePath = '/research' } = options;
-  let html = markdown;
 
-  // Extract code blocks first, replace with placeholders to protect from other processing
-  const codeBlocks: string[] = [];
-  html = await processCodeBlocksWithPlaceholders(html, codeBlocks);
+  // 1. Extract special code blocks before marked sees them
+  const { md, blocks } = await extractSpecialBlocks(markdown);
 
-  // Wiki-links
-  html = processWikiLinks(html, basePath);
+  // 2. Process wiki-links in the raw markdown (before marked converts []() links)
+  let processed = processWikiLinks(md, basePath);
 
-  // Inline code (but not in code blocks - they're already extracted)
-  html = html.replace(/`([^`]+)`/g, '<code>$1</code>');
+  // 3. Run marked for core markdown → HTML
+  currentBasePath = basePath;
+  let html = await marked.parse(processed);
 
-  // Headers
-  html = html.replace(/^#### (.+)$/gm, '<h4>$1</h4>');
-  html = html.replace(/^### (.+)$/gm, '<h3>$1</h3>');
-  html = html.replace(/^## (.+)$/gm, '<h2>$1</h2>');
-  html = html.replace(/^# (.+)$/gm, '<h1>$1</h1>');
-
-  // Bold and italic
-  html = html.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
-  html = html.replace(/\*([^*]+)\*/g, '<em>$1</em>');
-
-  // Links [text](url)
-  html = html.replace(/\[([^\]]+)\]\(([^)]+)\)/g, (_, text, url) => {
-    if (url.endsWith('.md')) {
-      url = basePath + '/' + url.replace('.md', '');
-    }
-    if (url.startsWith('#')) {
-      return `<a href="${url}">${text}</a>`;
-    }
-    return `<a href="${url}" target="_blank" rel="noopener">${text}</a>`;
-  });
-
-  // Blockquotes
-  html = html.replace(/^> (.+)$/gm, '<blockquote>$1</blockquote>');
-  html = html.replace(/<\/blockquote>\n<blockquote>/g, '\n');
-
-  // Horizontal rules
-  html = html.replace(/^---+$/gm, '<hr>');
-
-  // Tables
-  const tableRegex = /\|(.+)\|\n\|[-| ]+\|\n((?:\|.+\|\n?)+)/g;
-  html = html.replace(tableRegex, (_, header, body) => {
-    const headers = header.split('|').filter((h: string) => h.trim());
-    const rows = body.trim().split('\n').map((row: string) =>
-      row.split('|').filter((c: string) => c.trim())
-    );
-
-    let table = '<table><thead><tr>';
-    headers.forEach((h: string) => {
-      table += `<th>${h.trim()}</th>`;
-    });
-    table += '</tr></thead><tbody>';
-    rows.forEach((row: string[]) => {
-      table += '<tr>';
-      row.forEach((cell: string) => {
-        table += `<td>${cell.trim()}</td>`;
-      });
-      table += '</tr>';
-    });
-    table += '</tbody></table>';
-    return table;
-  });
-
-  // Unordered lists
-  html = html.replace(/^- (.+)$/gm, '<li>$1</li>');
-  html = html.replace(/(<li>.*<\/li>\n?)+/g, (match) => `<ul>${match}</ul>`);
-
-  // Ordered lists
-  html = html.replace(/^\d+\. (.+)$/gm, '<li>$1</li>');
-
-  // Process inline math
+  // 4. Process inline math on the HTML
   html = processInlineMath(html);
 
-  // Paragraphs (lines not already wrapped)
-  html = html.replace(/^(?!<[a-z]|<\/|$|CODE_BLOCK_)(.+)$/gm, (_, content) => {
-    if (content.trim()) {
-      return `<p>${content}</p>`;
-    }
-    return content;
-  });
-
-  // Clean up extra newlines
-  html = html.replace(/\n{3,}/g, '\n\n');
-
-  // Restore code blocks from placeholders
-  for (let i = 0; i < codeBlocks.length; i++) {
-    html = html.replace(`CODE_BLOCK_${i}_PLACEHOLDER`, codeBlocks[i]);
+  // 5. Restore special blocks from placeholders
+  for (const [placeholder, content] of blocks) {
+    html = html.replace(
+      new RegExp(`<div data-placeholder="${placeholder}"></div>`),
+      content
+    );
   }
 
   return html;
@@ -364,7 +279,6 @@ export async function processDocument(
 ): Promise<ProcessedDocument> {
   const { frontmatter, body } = parseFrontmatter(content);
 
-  // Extract title from frontmatter or first # heading
   let title = frontmatter.title as string | undefined;
   if (!title) {
     const titleMatch = body.match(/^# (.+)$/m);
@@ -373,19 +287,14 @@ export async function processDocument(
 
   const html = await markdownToHtml(body, options);
 
-  return {
-    frontmatter,
-    html,
-    title,
-  };
+  return { frontmatter, html, title };
 }
 
 /**
- * Client-side hydration script (to be included in page)
+ * Client-side hydration for mermaid blocks
  */
 export const clientHydrationScript = `
 <script type="module">
-  // Hydrate mermaid blocks
   const mermaidBlocks = document.querySelectorAll('.client-render[data-processor="mermaid"]');
   if (mermaidBlocks.length > 0) {
     import('https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs').then(({ default: mermaid }) => {

@@ -13,13 +13,12 @@ async function fetchAndProcess(args: { folder: string; slug: string }) {
 export default function DocPage() {
   const params = useParams<{ slug: string }>();
   const location = useLocation();
-  const folder = () => location.pathname.split('/')[1]; // e.g. "research"
+  const folder = () => location.pathname.split('/')[1];
   const [doc] = createResource(
     () => ({ folder: folder(), slug: params.slug }),
     fetchAndProcess,
   );
 
-  // Hydrate client-side blocks after content renders
   function hydrateBlocks(el: HTMLElement) {
     const mermaidBlocks = el.querySelectorAll('.client-render[data-processor="mermaid"]');
     if (mermaidBlocks.length > 0) {
@@ -37,10 +36,10 @@ export default function DocPage() {
   }
 
   return (
-    <div class="mx-auto p-6" style="max-width: 1280px">
+    <div class="mx-auto px-6 py-6" style="max-width: 960px">
       <A
         href={`/${folder()}`}
-        class="inline-flex items-center gap-1 text-sm text-blue-600 dark:text-blue-400 hover:underline mb-4"
+        class="inline-flex items-center gap-1 text-sm text-blue-600 hover:underline mb-4"
       >
         &larr; Back
       </A>
@@ -55,8 +54,8 @@ export default function DocPage() {
 
       <Show when={doc()}>
         {(d) => (
-          <>
-            <h1 class="text-2xl font-bold text-gray-900 dark:text-white mb-6">
+          <div class="doc-card px-10 py-8">
+            <h1 class="text-2xl font-bold text-gray-900 mb-6">
               {d().title}
             </h1>
             <article
@@ -66,7 +65,7 @@ export default function DocPage() {
               class="prose-research"
               innerHTML={d().html}
             />
-          </>
+          </div>
         )}
       </Show>
     </div>
