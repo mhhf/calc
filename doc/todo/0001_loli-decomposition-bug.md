@@ -1,11 +1,11 @@
 ---
 title: "Unsound Loli Decomposition in Forward Engine"
 created: 2026-02-17
-modified: 2026-02-18
+modified: 2026-02-19
 summary: "expandItem unsoundly decomposes guarded loli continuations — transforms conditionals into unconditional assertions, corrupting dead ⊕ branches"
 tags: [forward-engine, loli, soundness, CLF, expandItem]
 type: bug
-status: planning
+status: subsumed
 priority: 10
 depends_on: []
 required_by: [TODO_0002]
@@ -13,6 +13,8 @@ subsumed_by: TODO_0041
 ---
 
 # Unsound Loli Decomposition in Forward Engine
+
+**Status:** This TODO is subsumed by [TODO_0041](0041_unified-rule-matching.md), which addresses the root architectural issue (two separate rule systems) that causes this soundness bug. All detailed analysis from this document has been ported to TODO_0041.
 
 **See also:** `doc/research/forward-chaining.md` (theory), `doc/documentation/forward-chaining-engine.md` (implementation)
 

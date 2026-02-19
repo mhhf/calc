@@ -45,6 +45,12 @@ When a subtask grows large enough to stand alone:
 2. In the parent, replace the subtask body with a link: `TODO_0001.Stage_2 — see [TODO_0005](0005_title.md)`
 3. Set `depends_on` / `required_by` in both files
 
-## Closing
+## Closing / Subsuming
 
-Set `status: done` and update `modified`. Do not delete the file.
+When marking a TODO as `done` or `subsumed`:
+
+1. Set `status: done` (or `status: subsumed`) and update `modified`. Do not delete the file.
+2. **Update all dependents:** Search all TODOs for references to the closed item in `depends_on`, `required_by`, or `subsumed_by` fields.
+   - `depends_on: [TODO_XXXX]` → replace with the subsuming TODO (if subsumed) or remove (if done with no successor)
+   - `required_by: [TODO_XXXX]` → remove the closed item (the dependency is satisfied)
+   - If a subsuming TODO exists, ensure the subsuming TODO inherits the closed item's `required_by` entries (i.e. things that were blocked by the closed item should now depend on the subsuming item instead)

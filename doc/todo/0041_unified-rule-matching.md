@@ -1,14 +1,14 @@
 ---
 title: "Unified Rule Matching — Compiled Rules and Loli Continuations"
 created: 2026-02-18
-modified: 2026-02-18
+modified: 2026-02-19
 summary: "The engine has two separate rule-firing mechanisms that should be one — compiled rules (full optimization pipeline) vs loli continuations (ad-hoc fallback). This causes a priority bug in exhaustive exploration and duplicates the forward/backward boundary."
 tags: [architecture, forward-engine, loli, matching, soundness]
 type: design
 status: planning
-priority: 8
+priority: 10
 depends_on: []
-required_by: [TODO_0006, TODO_0010]
+required_by: [TODO_0002, TODO_0006, TODO_0010]
 subsumes: [TODO_0001]
 ---
 
@@ -105,6 +105,161 @@ Give the monad operational semantics. Makes lolis-in-monads unnecessary — guar
 - **CLF** forbids lolis inside the monad — forces all guards into the rule's antecedent. No `expandItem` hack needed.
 - **Ceptre** has stages — structured quiescence where rule subsets run in phases. The SHA3 pattern (start helpers → iterate → fire continuation) is ad-hoc staging.
 - **CLF** allows `∃x.C` in the monad — existential quantification creates fresh names. We have no existential; every consequent variable must be bound by the antecedent.
+
+## Detailed Analysis (from TODO_0001)
+
+### The Soundness Bug in `expandItem`
+
+Our EVM rules use **guarded loli continuations** inside ⊕ forks to model conditional branching:
+
+```ill
+evm/iszero:
+  pc PC * code PC 0x15 * ... * stack SH V
+  -o {
+    pc PC' * gas GAS' * code PC 0x15 * sh (s SH) *
+    ((!eq V 0 -o { stack SH 1 }) +      ← branch A: if V==0, push 1
+     (!neq V 0 -o { stack SH 0 }))      ← branch B: if V≠0, push 0
+  }.
+```
+
+When this rule fires, the consequent produces shared facts and a `⊕` that forks into two branches. Each branch is a **loli continuation** with a **bang guard**: `!eq V 0 ⊸ {stack SH 1}` means "IF eq(V,0) can be proved, THEN produce `stack SH 1`."
+
+The guard `!eq V 0` is persistent (bang-wrapped) — it needs to be **proved** via backward chaining or FFI, not just found in the state.
+
+### What Goes Wrong
+
+`expandItem` in `compile.js:150-159` decomposes `!P ⊸ {Q}` into `{ linear: [Q], persistent: [!P] }`:
+
+```javascript
+// compile.js:150-159
+if (t === 'loli') {
+  if (Store.tag(c0) === 'bang' && Store.tag(c1) === 'monad') {
+    return bodyAlts.map(a => ({
+      linear: a.linear,                  // Q's body — added unconditionally!
+      persistent: [c0, ...a.persistent]  // !P — asserted as fact without proving!
+    }));
+  }
+}
+```
+
+This transforms a **conditional** ("if P then Q") into an **unconditional** assertion ("Q AND !P"). It applies modus ponens without checking the premise. Both ⊕ branches get their bodies and guards unconditionally, so:
+
+- Branch A gets: `stack SH 1` + `!eq(V,0)` — even when V≠0
+- Branch B gets: `stack SH 0` + `!neq(V,0)` — even when V=0
+
+Dead branches run with **corrupted state** (wrong stack values, false persistent facts), producing invalid execution traces instead of becoming stuck leaves. The bug existed before ⊕ (old `evm/eq` with `&` had the same decomposition), but ⊕ on iszero/jumpi amplified it from ~2 false branches to 2^N (263 → 13109 nodes in multisig benchmark).
+
+### Why `expandItem` Does This
+
+`_tryFireLoli` (forward.js:602-649) handles loli continuations in the state, but only supports **linear** triggers — it matches trigger hashes against `state.linear`. A bang trigger like `!eq(V,0)` needs backward proving, which `_tryFireLoli` doesn't do. So `expandItem` was made to eagerly decompose the loli as a **workaround** to avoid the firing mechanism entirely — and the workaround is unsound.
+
+### Why CLF Avoids This Problem Entirely
+
+CLF restricts what can appear inside the monad `{C}` to: atoms, `⊗`, `1`, `!`, `∃`. **No lolis allowed.** This is deliberate — lolis inside the monad create "dormant rules" that need a firing mechanism (matching trigger, proving guard, scheduling). CLF's monadic semantics are simpler: everything in `{C}` immediately decomposes into state updates. The monadic let `{A} ⊗ (A ⊸ {B}) ⊸ {B}` provides sequencing at the **rule level** (between separate forward rules), not inside a single consequent.
+
+Our EVM rules violate this restriction by putting lolis inside `{...}`. This is an extension of CLF, not standard CLF.
+
+### `expandItem` Is Correct for Everything Except Lolis
+
+The `{ linear, persistent }` decomposition is the right model for CLF's allowed monadic connectives:
+
+| Connective | Decomposition | Correct? |
+|---|---|---|
+| `atom` | `{ linear: [atom] }` | ✓ atom becomes a linear fact |
+| `A ⊗ B` | cross product of A, B | ✓ tensor distributes |
+| `!A` | `{ persistent: [A] }` | ✓ bang becomes persistent |
+| `1` | `{ }` (empty) | ✓ one = no resource |
+| `A & B` / `A ⊕ B` | alternatives of A, B | ✓ fork the execution tree |
+| `A ⊸ B` | **BUG** | ✗ should stay as linear fact, fire later |
+
+If we remove the loli case, `expandItem` becomes exactly CLF's monadic decomposition — correct by construction.
+
+### `_tryFireLoli` Is Theoretically a Rule Application
+
+`_tryFireLoli` is not ad-hoc — it's an implementation of the loli-left rule applied to facts in the state. A `loli(trigger, body)` in `state.linear` is a fact of type `A ⊸ B`. When `A` appears in the state (or can be proved), the loli-left rule fires: consume the loli, consume A (or mark the proof as used), produce B. `_tryFireLoli` implements this for **linear** triggers. The missing piece is handling **persistent** (bang) triggers.
+
+### The Inner Monad Question: `!P ⊸ {Q}` vs `!P ⊸ Q`
+
+The EVM rules write `!eq V 0 -o { stack SH 1 }` with braces around the body, even though we're already inside the outer monad of the rule. Is the inner `{...}` necessary?
+
+#### What the parser produces
+
+The parser (`convert.js:101-107`) distinguishes the two forms:
+
+| Syntax | AST | Monad-wrapped? |
+|---|---|---|
+| `!P -o { Q }` | `loli(bang(P), monad(Q))` | Yes |
+| `!P -o Q` | `loli(bang(P), Q)` | No |
+
+The check is `node.text.includes('{')` — if braces are present, the body is wrapped in `monad()`.
+
+#### How `expandItem` reacts to each form
+
+`expandItem` checks **both** the trigger and the body:
+
+```javascript
+if (Store.tag(c0) === 'bang' && Store.tag(c1) === 'monad') {
+  // decompose — THIS IS THE BUG
+}
+```
+
+- **With inner monad** (`!P -o {Q}`): Both conditions pass → `expandItem` eagerly decomposes → **BUG** (unconditional assertion).
+- **Without inner monad** (`!P -o Q`): `Store.tag(c1) === 'monad'` fails → falls through to default → loli stays as a linear fact in the state. **No bug.**
+
+So removing the inner braces would accidentally avoid the bug — but not by fixing it. The loli would survive `expandItem` and land in `state.linear` as a dormant continuation.
+
+#### But `_tryFireLoli` can't fire it either
+
+`_tryFireLoli` only handles **linear** triggers:
+
+```javascript
+// Ground path: looks for trigger hash in state.linear
+if (!state.linear[trigger] || state.linear[trigger] <= 0) return null;
+```
+
+The trigger `bang(eq(V, 0))` is not in `state.linear` (it's a persistent proposition that needs backward proving). So `_tryFireLoli` returns null → the loli never fires → branch is stuck.
+
+| Form | expandItem | _tryFireLoli | Result |
+|---|---|---|---|
+| `!P -o { Q }` | Decomposes (BUG) | Not reached | Corrupted state |
+| `!P -o Q` | Passes through | Can't handle bang trigger | Permanently stuck |
+
+Both forms are broken. The first is **dangerously** wrong (corruption, false branches). The second is **safely** wrong (stuck leaf, no corruption). Neither produces correct behavior.
+
+#### The inner monad is syntactic, not semantic
+
+In CLF, `{A}` is the lax modality — it wraps the forward-chaining fragment. Nesting `{...}` inside an already-open monad would mean a second round of forward execution (monadic let). Our engine doesn't implement multi-round monadic semantics — `expandItem` just strips the monad and decomposes the body. The inner `{...}` functions as a **signal to `expandItem`** that this body should be decomposed into state updates, not as a semantic distinction.
+
+But lolis inside monads are already non-standard (CLF forbids them). So the question of whether the inner loli body is `{Q}` or `Q` is a syntactic detail of our extension, not a CLF-theoretic question.
+
+#### After the fix, either form works
+
+With unified rule matching, lolis survive `expandItem` (the loli case is removed) and go through the same matching pipeline as compiled rules. Bang triggers get persistent proving for free. `_tryFireLoli` already handles both forms: `const bodyInner = Store.tag(body) === 'monad' ? Store.child(body, 0) : body` (forward.js:605).
+
+After the fix, both `!P -o {Q}` and `!P -o Q` work correctly. The inner monad becomes irrelevant.
+
+**Recommendation:** After the fix, drop the inner monad. Write `!eq V 0 -o stack SH 1` instead of `!eq V 0 -o { stack SH 1 }`. The simpler form is clearer, and the inner braces served no semantic purpose — they only existed because `expandItem` needed them as a decomposition signal, which is the code path we're removing.
+
+### Alternative: Rewrite EVM rules to avoid lolis in consequents
+
+Instead of `(!eq V 0 -o { stack SH 1 }) + (!neq V 0 -o { stack SH 0 })`, use two separate rules with persistent antecedents:
+
+```ill
+evm/iszero_true:  ... * !eq V 0  -o { ... * stack SH 1 }.
+evm/iszero_false: ... * !neq V 0 -o { ... * stack SH 0 }.
+```
+
+This is always correct (guards are checked by `tryMatch` as persistent antecedents). But it duplicates the shared antecedent (`pc * code * gas * sh * stack`) across rules, inflating the rule count. It also loses the explicit ⊕ structure that connects the two branches.
+
+### Tradeoffs
+
+| Approach | Correctness | Code change | Rule count | Theory |
+|---|---|---|---|---|
+| Unified rule matching | ✓ (after fix) | ~50 LOC | Same | Extends CLF (lolis in monad) |
+| Split into separate rules | ✓ (by construction) | ~0 LOC engine | 2× branching rules | CLF-compliant |
+| Eager pruning (on top of unified) | ✓ + fast | +30 LOC | Same | Focusing optimization |
+
+**Recommendation:** Unified rule matching. This preserves the expressive ⊕-with-loli-guard pattern, and the fix addresses both soundness and architectural issues. Add eager pruning for performance. Consider rule splitting later if we want strict CLF compliance.
 
 ## References
 

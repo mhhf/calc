@@ -8,7 +8,7 @@ type: research
 status: planning
 priority: 7
 depends_on: []
-required_by: [TODO_0001, TODO_0041]
+required_by: [TODO_0041]
 ---
 
 # CLF Theory Questions
