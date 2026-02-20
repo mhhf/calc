@@ -1232,7 +1232,7 @@ This is **dataflow computation** — exactly how spreadsheets work. The engine n
 
 **LOC:** ~20 (auto-emit loli on mode mismatch in `tryFFIDirect`).
 
-**Complexity:** Storage: O(L) deferred lolis, L ≈ V (symbolic variables). Computation: O(1) per deferral, O(L) per `findAllLoliMatches` scan. At L > 1K, needs loli indexing (disc-tree on trigger) for O(log L) lookup. **Not an optimizer — an enabler:** without T6, the engine cannot handle symbolic values at all (FFI fails on unbound inputs). With T6, symbolic values propagate through the computation graph via dataflow chains.
+**Complexity:** Storage: O(L) deferred lolis, L ≈ V (symbolic variables). Computation: O(1) per deferral, O(L) per loli scan in `findAllMatches` (via `matchLoli`). At L > 1K, needs loli indexing (disc-tree on trigger) for O(log L) lookup. **Not an optimizer — an enabler:** without T6, the engine cannot handle symbolic values at all (FFI fails on unbound inputs). With T6, symbolic values propagate through the computation graph via dataflow chains.
 
 ### T7: Mercury Mode Formalization + FFI Result Cache
 

@@ -186,19 +186,19 @@ Layer 2: Discrimination tree (O(depth))
 
 `detectStrategy(rules)` auto-builds the stack based on rule structure.
 
-### 5.3 Loli Continuations (`forward.js: _tryFireLoli`)
+### 5.3 Loli Continuations (`forward.js: matchLoli`)
 
-When no compiled rules match, the engine checks for fireable loli continuations in the state. `findLoliMatch` / `findAllLoliMatches` scan `state.linear` for facts with tag `loli`:
+After compiled rule matching, the engine scans for fireable loli continuations in `state.linear`. `matchLoli(h, state, calc)` uses the same two-phase pipeline as `tryMatch`:
 
 ```
 for each loli(trigger, body) in state.linear:
-  if trigger is ground:
-    check if trigger hash exists in state.linear → fire
-  if trigger has freevars:
-    pattern-match trigger against state.linear facts → fire with bindings
+  flattenTensor(trigger) → { linear: [...], persistent: [...] }
+  Phase 1: match linear trigger patterns against state.linear (via matchIdx)
+  Phase 2: prove persistent triggers via provePersistentGoals (FFI → state → backward)
+  if all matched → instantiate body, return match
 ```
 
-Currently only matches against **linear** state. Persistent/bang triggers are NOT handled — this is the theory gap described in section 7.
+`provePersistentGoals` is a shared helper extracted from `tryMatch` Phase 2. Both compiled rules and loli continuations use the same FFI → state lookup → backward chaining pipeline.
 
 ## 6. State Mutation and Execution
 
@@ -208,15 +208,13 @@ Currently only matches against **linear** state. Persistent/bang triggers are NO
 while steps < maxSteps:
   m = findMatch(state, rules, calc)
   if no match:
-    loliM = findLoliMatch(state)
-    if no loli match → QUIESCENT, return
-    state = applyLoliMatch(state, loliM)    // immutable: new state object
-  else:
-    state = applyMatch(state, m)             // immutable: new state object
+    m = matchFirstLoli(state, calc)
+    if no match → QUIESCENT, return
+  state = applyMatch(state, m)             // immutable: new state object
   steps++
 ```
 
-`applyMatch` creates a new state: copies linear/persistent, subtracts consumed facts, adds produced facts (via `subApplyIdx` or `subCompiled` for substitution).
+`matchFirstLoli` returns the same match shape as `tryMatch`, so `applyMatch` handles both uniformly. `applyMatch` creates a new state: copies linear/persistent, subtracts consumed facts, adds produced facts.
 
 ### 6.2 Exhaustive (`symexec.js: explore`)
 
@@ -269,9 +267,7 @@ Only **terminal nodes** (leaf, bound, cycle) snapshot the state. Branch nodes st
 - Hash: XOR is self-inverse — `h ^= hashPair(old)` removes old, `h ^= hashPair(new)` adds new
 - Index: `indexAdd` / `indexRemove` mutate in place; `undoIndexChanges` reverses
 
-## 7. The expandItem Bug (Loli Decomposition)
-
-### What Happens
+## 7. Guarded Loli Continuations
 
 In EVM rules like `evm/iszero`:
 
@@ -284,45 +280,15 @@ pc PC * code PC 0x15 * !inc PC PC' * gas GAS * !inc GAS GAS' * sh (s SH) * stack
 }.
 ```
 
-The consequent (inside `{...}`) contains a `plus` (⊕) with two loli branches. Each loli has a bang trigger: `!eq V 0` and `!neq V 0`.
+The ⊕ creates two alternatives. Each contains a loli with a persistent trigger (`!eq V 0` / `!neq V 0`). After the parent rule fires, these lolis become linear facts in state. `matchLoli` then:
 
-`expandConsequentChoices` calls `expandItem` on each element. When it reaches `loli(bang(eq(V,0)), monad(stack(SH,1)))`, the loli case (compile.js:150-159) fires:
+1. Extracts `bang(eq(V,0))` → `flattenTensor` → persistent trigger `[eq(V,0)]`
+2. `provePersistentGoals` proves `eq(V,0)` via FFI (O(1) bigint comparison)
+3. Guard succeeds → loli fires, body produced. Guard fails → null, loli stays dormant → stuck leaf.
 
-```javascript
-if (t === 'loli') {
-  if (Store.tag(c0) === 'bang' && Store.tag(c1) === 'monad') {
-    return bodyAlts.map(a => ({
-      linear: a.linear,                    // [stack(SH, 1)]
-      persistent: [c0, ...a.persistent]    // [bang(eq(V, 0))]
-    }));
-  }
-}
-```
+Dead branches stop immediately instead of running with corrupted state. EVM multisig tree: 210 nodes, 19 leaves (vs 13109/946 with the old unsound decomposition).
 
-This decomposes the conditional `!eq V 0 ⊸ {stack SH 1}` into an **unconditional** assertion: "produce `stack SH 1` AND assert `!eq(V,0)`." It applies modus ponens without checking the premise.
-
-### Why This Is Wrong
-
-When the symexec explorer creates two ⊕ branches:
-- Branch 0 (`!eq V 0`): adds `stack SH 1` + persistent `!eq(V,0)` — but `eq(V,0)` may be false
-- Branch 1 (`!neq V 0`): adds `stack SH 0` + persistent `!neq(V,0)` — but `neq(V,0)` may be false
-
-Dead branches run with **corrupted state**: wrong stack values and false persistent facts. This causes exponential blowup (263 → 13109 nodes in the multisig benchmark) because dead branches keep executing instead of becoming stuck leaves.
-
-### Why It Exists
-
-`_tryFireLoli` only handles **linear** triggers — it matches trigger hashes against `state.linear`. A bang trigger like `!eq(V,0)` needs to be **proved** via backward chaining / FFI, but `_tryFireLoli` has no proving capability. So `expandItem` eagerly decomposes the loli to sidestep the firing mechanism — and the sidestep is unsound.
-
-### The Correct Approach
-
-See `doc/research/forward-chaining.md` section 6: CLF excludes lolis from monads precisely because they need a separate firing mechanism. Our engine already has loli firing (`_tryFireLoli`); it just needs to be extended to handle bang triggers:
-
-1. **Remove** the loli decomposition from `expandItem` — lolis become linear facts in the state
-2. **Extend** `_tryFireLoli` to detect bang triggers and prove them (via `tryFFIDirect` / backward chaining)
-3. When the guard proves true → fire loli, consume it, produce body
-4. When the guard fails → loli stays dormant, branch becomes a stuck leaf (correct behavior)
-
-Optional optimization (stage 2): **eager guard pruning** at ⊕ fork time — before creating a branch, check if its guard is decidable and false, skip it entirely.
+Optional future optimization: **eager guard pruning** at ⊕ fork time — before creating a branch, check if its guard is decidable and false, skip it entirely.
 
 ## 8. Optimization Summary
 
@@ -340,7 +306,9 @@ Optional optimization (stage 2): **eager guard pruning** at ⊕ fork time — be
 | Flat undo log | State undo | ~13% | Flat array vs object allocation |
 | Numeric tagId | Tag comparison | ~2% | Numeric comparison vs string |
 
-Total: **181ms → ~1ms** median for the 63-node multisig execution tree (EVM, 44 rules).
+| Unified loli matching | Soundness fix | 62× | matchLoli with provePersistentGoals; dead branches → stuck leaves |
+
+Total: **181ms → ~1ms** median for the 210-node multisig execution tree (EVM, 43 rules). Soundness fix (unified loli matching) reduced tree from 13109 → 210 nodes by eliminating dead branches.
 
 ## 9. Key Design Decisions
 

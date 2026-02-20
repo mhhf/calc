@@ -8,7 +8,7 @@ type: research
 status: planning
 priority: 10
 depends_on: []
-required_by: [TODO_0041, TODO_0042]
+required_by: [TODO_0042]
 ---
 
 # CHR/CHR∨ ↔ Linear Logic Mapping
