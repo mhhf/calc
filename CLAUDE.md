@@ -5,7 +5,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ## Principles
 - Rather then guessing, lying or faking confidence, admit you don't know or have incomplete information - ask me questions or tell me how i can support you, i'm happy to help.
 - always keep the git repository clean. On the end of a task, stash and commit with the correct message - keep it short. For a big chunk of work that will require iteration, user feedback, multiple commits, potentially sessions over multiple days - create a feature-branch, then rebase once you are done
-- Keep the root directory clean, write all documents, except CLAUDE.md and README.md in the doc/ folder (doc/dev/ for development notes, doc/research/ for research, doc/documentation/ for technical docs), don't keep junk in the root
+- Keep the root directory clean (only CLAUDE.md and README.md). All documents go in `doc/` — see **doc/ Placement Rule** below
 - Don't write 'status update' documents or other verbose documents unless its told expricitly. Keep all documents descriptive of what IS not how it changed. Keep it VERY short and concise
 - rather then simply recognizing an error and fixing it - think always how to isolate it and test it in isolation - e.g. via unit and integration tests. If its not possible then how to encapsule it (e.g. via logs), then either testing the failed state via unit tests or testing your hypothesis via verifying the logs. only after you verified the fail and isolated the error, you should think about fixing it
 
@@ -90,6 +90,18 @@ out/                     # Generated outputs
 ├── ill.json             # Bundled calculus for browser
 └── ui/                  # Built SolidJS app
 ```
+
+## doc/ Placement Rule
+
+| Subdirectory | What goes there | Examples |
+|---|---|---|
+| `doc/research/` | **External knowledge** — literature surveys, paper summaries, technique catalogs, design-space explorations sourced from existing work | `clf-celf-ceptre.md`, `term-indexing.md`, `chr-linear-logic.md` |
+| `doc/theory/` | **Our original contributions** — novel theorems, proof sketches, formal judgments, theoretical results unique to CALC that don't exist in the literature | `exhaustive-forward-chaining.md` |
+| `doc/documentation/` | **How CALC works NOW** — system architecture, data-flow docs, reference material for the current implementation | `architecture.md`, `parser-pipeline.md`, `content-addressed-store.md` |
+| `doc/todo/` | **Numbered task specs** — each file is `NNNN_title.md` with YAML frontmatter (see `.claude/rules/doc-todo.md` for format). Covers planned work: features, bugs, research tasks | `0041_unified-rule-matching.md` |
+| `doc/dev/` | **WIP & ephemeral** — implementation plans, optimization roadmaps, design deliberations, performance studies, anything in-progress that hasn't settled into documentation or theory yet | `forward-optimization-roadmap.md`, `evm-modeling-approaches.md` |
+
+**Decision heuristic:** "Did we invent it?" → `theory/`. "Did someone else write about it?" → `research/`. "Does it describe the system as-is?" → `documentation/`. "Is it a concrete task to do?" → `todo/`. "Is it in-flight thinking?" → `dev/`.
 
 ## Architecture
 
