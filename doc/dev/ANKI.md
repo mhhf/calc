@@ -47,3 +47,15 @@ CHR propagation rules keep their heads — without history, they loop. The propa
 ## Why is completeness harder than soundness for CHR ↔ ILL?
 
 Full completeness (every ILL derivation = operational derivation) fails because: (1) ILL allows arbitrary resource shuffling not corresponding to rule application, (2) propagation history restricts operational derivations beyond what logic captures. Completeness holds for specific program classes.
+
+## What is a "prefix firing" in Simmons/Pfenning's cost semantics?
+
+A triple `⟨r, σ, [l₀,...,lₖ₋₁]⟩` — rule r, substitution σ, consumed linear facts. The abstract running time = total prefix firings to quiescence. There exists an interpreter achieving O(1) amortized per firing with appropriate indexing. (Simmons & Pfenning, ICALP 2008)
+
+## What are omega_t and omega_r in CHR?
+
+**omega_t** (theoretical): abstract operational semantics — highly nondeterministic, doesn't fix rule/constraint/matching order. **omega_r** (refined): the implemented semantics — deterministic rule order (textual), active-constraint driven. omega_r is correct w.r.t. omega_t (every omega_r derivation is an omega_t derivation). (Duck et al., ICLP 2004)
+
+## How does Stéphan (ICLP 2018) differ from Betz/Frühwirth?
+
+Betz shows operational derivations *imply* linear logic entailment (translation-based). Stéphan constructs a semantics where CHR derivations *are* linear logic proof trees — a more intrinsic proof-theoretic characterization. Both prove soundness/completeness w.r.t. omega_t.

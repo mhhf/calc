@@ -326,6 +326,18 @@ This is already sketched in `doc/research/forward-chaining-networks.md` as the T
 
 **Guard scheduling (priority: low):** CALC already has `tryFFIDirect()` which inlines FFI checks. The remaining opportunity: for rules with multiple persistent antecedents, try the cheapest/most-selective guard first. Currently CALC proves persistent goals in declaration order. Reordering by: (1) FFI-provable goals first (O(1)), (2) state-lookup goals second, (3) backward-chaining goals last, would short-circuit faster on guard failures. This is already approximately what happens due to `provePersistentGoals`'s try-FFI-first strategy, but the pattern ordering could be optimized at compile time.
 
+### 5.4 Simmons/Pfenning Cost Semantics (Complexity Bounds)
+
+Simmons & Pfenning (ICALP 2008) define **Linear Logical Algorithms** (LLA), a restricted ILL fragment for forward chaining with a formal cost semantics.
+
+**Prefix firing:** a triple `⟨r, σ, [l₀, ..., lₖ₋₁]⟩` — rule r, substitution σ, consumed linear facts. Extends McAllester's cost model to linear resources.
+
+**Abstract running time:** total number of prefix firings from initial state to quiescence.
+
+**Key theorem:** there exists an interpreter executing any LLA trace in time proportional to the abstract running time (O(1) amortized per firing with appropriate indexing).
+
+**Relevance to CALC:** the prefix firing count maps directly to the number of rule firings in symexec's execution tree. CALC's strategy stack optimization aspires to O(1) per candidate check, which aligns with the LLA efficient interpreter result. The cost semantics could provide formal complexity bounds for CALC programs — e.g., proving that the EVM multisig executes in O(gas) prefix firings.
+
 ---
 
 ## 6. Research Tasks
@@ -336,8 +348,8 @@ This is already sketched in `doc/research/forward-chaining-networks.md` as the T
 - [x] Map CHR∨ disjunction to CALC's `⊕` in consequents (Section 3)
 - [x] Analyze confluence for EVM rule set (Section 4)
 - [x] Extract concrete compilation improvements (Section 5)
-- [ ] Integrate findings into `doc/theory/exhaustive-forward-chaining.md`
-- [ ] Write ANKI flashcards for key results
+- [x] Integrate findings into `doc/theory/exhaustive-forward-chaining.md`
+- [x] Write ANKI flashcards for key results (`doc/dev/ANKI.md`)
 
 ## References
 
