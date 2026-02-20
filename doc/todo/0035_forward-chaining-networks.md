@@ -20,4 +20,6 @@ Extracted from TODO_0022.Topic_1. Production rule system techniques for scaling 
 - [ ] LEAPS delta-driven activation — maintain activation queue instead of scanning all rules
 - [ ] Tabled forward chaining — cache symexec subtrees for recurring states
 
+[TODO_0043](0043_chr-linear-logic-mapping.md) §5 analyzed CHR compilation techniques vs CALC's existing optimizations (comparison tables, concrete improvements). Delta-driven activation is in `doc/dev/forward-optimization-roadmap.md`.
+
 See: `doc/research/forward-chaining-networks.md`

@@ -7,7 +7,7 @@ tags: [theory, symexec, completeness, soundness, model-checking]
 type: research
 status: planning
 priority: 7
-depends_on: []
+depends_on: [TODO_0045]
 required_by: [TODO_0008]
 ---
 
