@@ -10,6 +10,7 @@ const mainTabs = [
 
 const docTabs = [
   { path: '/research', label: 'Research' },
+  { path: '/theory', label: 'Theory' },
   { path: '/docs', label: 'Docs' },
   { path: '/dev', label: 'Dev' },
   { path: '/todo', label: 'Todo' },

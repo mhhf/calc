@@ -32,6 +32,23 @@ const STATUS_COLORS: Record<string, string> = {
 
 const CLOSED_STATUSES = new Set(['done', 'subsumed']);
 
+/** Compute up to 3 recommended TODOs: unblocked, highest priority, active */
+function computeRecommended(todos: TodoEntry[]): Set<string> {
+  const closedIds = new Set(
+    todos.filter(t => CLOSED_STATUSES.has(t.status)).map(t => todoId(t.slug))
+  );
+  const unblocked = todos.filter(t => {
+    if (CLOSED_STATUSES.has(t.status)) return false;
+    if (!t.depends_on?.length) return true;
+    return t.depends_on.every(dep => {
+      const depId = dep.match(/TODO_(\d{4})/)?.[1];
+      return depId ? closedIds.has(depId) : false;
+    });
+  });
+  unblocked.sort((a, b) => (b.priority ?? 0) - (a.priority ?? 0));
+  return new Set(unblocked.slice(0, 3).map(t => t.slug));
+}
+
 function priorityColor(p: number): string {
   if (p >= 9) return 'bg-red-500 text-white';
   if (p >= 7) return 'bg-orange-400 text-white';
@@ -91,6 +108,8 @@ export default function TodoIndex() {
     const items = applyFilters(all.filter(t => isClosed(t)));
     return [...items].sort((a, b) => todoId(a.slug).localeCompare(todoId(b.slug)));
   });
+
+  const recommended = createMemo(() => computeRecommended(todos() || []));
 
   const statusCounts = createMemo(() => {
     const counts: Record<string, number> = {};
@@ -178,7 +197,7 @@ export default function TodoIndex() {
         {/* Active items */}
         <div class="space-y-2">
           <For each={activeItems()}>
-            {(todo) => <TodoCard todo={todo} />}
+            {(todo) => <TodoCard todo={todo} recommended={recommended().has(todo.slug)} />}
           </For>
         </div>
 
@@ -200,7 +219,7 @@ export default function TodoIndex() {
   );
 }
 
-function TodoCard(props: { todo: TodoEntry; muted?: boolean }) {
+function TodoCard(props: { todo: TodoEntry; muted?: boolean; recommended?: boolean }) {
   const todo = props.todo;
   const id = todoId(todo.slug);
 
@@ -229,6 +248,12 @@ function TodoCard(props: { todo: TodoEntry; muted?: boolean }) {
         </Show>
 
         <div class="flex-1 min-w-0">
+          {/* Recommended star — top right */}
+          <Show when={props.recommended}>
+            <div class="float-right ml-2" title="Recommended: unblocked, high priority">
+              <span class="text-amber-400 text-lg">&#9733;</span>
+            </div>
+          </Show>
           {/* Top row: ID + Title + Type + Status */}
           <div class="flex items-center gap-2 flex-wrap">
             <span class="font-mono text-xs text-gray-400 shrink-0">

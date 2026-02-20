@@ -38,6 +38,8 @@ export const routes = [
   { path: '/research/:slug', component: DocPage },
   { path: '/docs', component: DocIndex },
   { path: '/docs/:slug', component: DocPage },
+  { path: '/theory', component: DocIndex },
+  { path: '/theory/:slug', component: DocPage },
   { path: '/dev', component: DocIndex },
   { path: '/dev/:slug', component: DocPage },
   { path: '/todo', component: TodoIndex },

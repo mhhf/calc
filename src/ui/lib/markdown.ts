@@ -233,6 +233,7 @@ async function extractSpecialBlocks(md: string): Promise<{ md: string; blocks: M
  */
 const FOLDER_TO_ROUTE: Record<string, string> = {
   research: '/research',
+  theory: '/theory',
   dev: '/dev',
   documentation: '/docs',
 };
