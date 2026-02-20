@@ -7,7 +7,7 @@ tags: [performance, research, incremental, semi-naive, matching]
 type: research
 status: planning
 priority: 3
-depends_on: []
+depends_on: [TODO_0044]
 required_by: []
 ---
 

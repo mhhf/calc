@@ -8,7 +8,7 @@ type: design
 status: planning
 priority: 10
 depends_on: []
-required_by: [TODO_0002, TODO_0006, TODO_0010]
+required_by: [TODO_0002, TODO_0006, TODO_0010, TODO_0042, TODO_0045]
 subsumes: [TODO_0001]
 ---
 
@@ -263,9 +263,12 @@ This is always correct (guards are checked by `tryMatch` as persistent anteceden
 
 ## References
 
+- `doc/theory/exhaustive-forward-chaining.md` — CALC's theoretical position (CLF extensions)
+- `doc/research/chr-linear-logic.md` — CHR ↔ linear logic soundness results
 - `doc/research/forward-chaining.md` §6 (lolis as continuations)
 - `doc/documentation/forward-chaining-engine.md` §5.3, §7
-- [TODO_0001](0001_loli-decomposition-bug.md) — the immediate soundness fix
+- [TODO_0001](0001_loli-decomposition-bug.md) — the immediate soundness fix (subsumed)
 - [TODO_0006](0006_lax-monad-integration.md) — monad operational semantics
-- [TODO_0010](0010_ceptre-stages.md) — Ceptre stages (depends on monad)
-- [TODO_0027](0027_clf-theory-questions.md) — Q3 (what is `_tryFireLoli` theoretically?)
+- [TODO_0010](0010_ceptre-stages.md) — Ceptre stages (deferred)
+- [TODO_0027](0027_clf-theory-questions.md) — CLF theory questions (Q1-Q5 answered)
+- [TODO_0043](0043_chr-linear-logic-mapping.md) — CHR∨ soundness mapping for ⊕

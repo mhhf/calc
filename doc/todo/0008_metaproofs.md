@@ -7,7 +7,7 @@ tags: [metaproofs, verification, safety, invariants]
 type: design
 status: planning
 priority: 8
-depends_on: []
+depends_on: [TODO_0042]
 required_by: [TODO_0009]
 ---
 

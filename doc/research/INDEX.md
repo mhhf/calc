@@ -248,6 +248,11 @@
 
 **Tags:** `discrimination-trees` `path-indexing` `fingerprint-indexing` `code-trees` `rule-selection` `Stage-9`
 
+### [[chr-linear-logic]]
+**CHR and Linear Logic.** Comprehensive survey: CHR operational semantics (omega_t, omega_r), simpagation ↔ ILL forward rules (Betz & Frühwirth 2005-2018), CHR∨ disjunction ↔ ⊕, soundness/completeness theorems, compilation techniques (occurrence indexing, join ordering, guard scheduling), confluence analysis, CHRrp priorities, CHRiSM probabilistic extension. Key result: CALC's forward engine IS a CHR engine; existing soundness proofs transfer.
+
+**Tags:** `CHR` `linear-logic` `forward-chaining` `multiset-rewriting` `compilation` `confluence` `CHRv` `soundness`
+
 ### [[forward-chaining-networks]]
 **Forward Chaining Networks.** Rete, TREAT, LEAPS, CHR for linear logic. Why Rete is a poor fit (beta memory explosion with fact consumption). Why TREAT matches CALC's architecture (no cached partial matches). CHR simpagation as ILL forward rules. Concrete adoption recommendations: dirty rule tracking from TREAT, join ordering from CHR, delta-driven activation from LEAPS. Scale analysis: 10-100x improvement at 1000 rules.
 
@@ -376,7 +381,8 @@
 | Threshold modalities (k-of-n) | Predicate, not modality | [[consensus-modalities-mpst]] |
 | Temporal modalities for derivatives | Unexplored | [[financial-primitives]] |
 | μMALL fixed points & cyclic proofs | Deep survey complete, ready for impl | [[muMALL-fixed-points]] |
-| Semi-naive for linear logic | Design complete, needs impl | [[incremental-matching]] |
+| Semi-naive for linear logic | Open problem, no published solution | [[incremental-matching]] |
+| CHR ↔ ILL soundness mapping | Research complete, application pending | [[chr-linear-logic]] |
 | Compiled pattern matching | Design complete (3 phases) | [[compiled-pattern-matching]] |
 | Symbolic arithmetic (Problem A) | Research complete, foundation needed | [[equational-completion]], evm-modeling-approaches |
 | Symbolic branching (Problem B) | **Solved** — ⊕ at object level | [[symbolic-branching]] |

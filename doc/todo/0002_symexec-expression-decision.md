@@ -1,7 +1,7 @@
 ---
 title: "Symbolic Execution: Expression vs Pure Backward Chaining Decision"
 created: 2026-02-18
-modified: 2026-02-18
+modified: 2026-02-19
 summary: "Decide whether symbolic execution needs expression constructors or can use pure backward chaining"
 tags: [symexec, expressions, design-decision]
 type: design
@@ -23,10 +23,26 @@ Skolem-style expression terms in the Store. Catch-all backward clauses for equat
 
 Loli-freeze: auto-emit loli on FFI mode mismatch. Mercury modes for reverse-mode FFI. Eigenvariable fresh generation. Keeps terms inert.
 
+## Open Questions
+
+### Existentials (∃) and Eigenvariables
+
+CLF allows `∃` inside the monad — forward rules can create fresh names. CALC doesn't have this yet. Symbolic values (eigenvariables) in symexec ARE existentially quantified — making this explicit could clarify the design:
+
+- **Option 1 (Skolem / R1):** expression terms `plus_expr(X, 3)` are implicitly Skolemized existentials
+- **Option 2 (Loli-freeze / R2):** eigenvariables with deferred binding are explicit existentials with suspended proof obligations
+- **∃ in monad** would give clean scoping: `∃Y. (plus(X, 3, Y) ⊗ stack(SH, Y))` means "there exists a Y such that plus(X,3,Y) and stack(SH,Y)"
+- This connects Skolemization (R1) and loli-freeze (R2) as two different elimination strategies for the same existential
+
+Research needed: how does Celf handle `∃` in forward chaining? Does it solve the symbolic value problem cleanly?
+
+See: `doc/theory/exhaustive-forward-chaining.md` §Open Questions Q1
+
 ## Tasks
 
 - [ ] Prototype both: expression catch-alls (R1) vs loli-freeze (T6+R2)
 - [ ] Evaluate: does the engine need expression terms, or can backward chaining handle everything?
+- [ ] Investigate ∃ in monad as unifying framework for R1/R2
 - [ ] Decision checkpoint
 
 See: `doc/dev/evm-modeling-approaches.md`, `doc/research/symbolic-arithmetic-design-space.md`
