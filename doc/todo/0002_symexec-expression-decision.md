@@ -36,7 +36,14 @@ CLF allows `∃` inside the monad — forward rules can create fresh names. CALC
 
 Research needed: how does Celf handle `∃` in forward chaining? Does it solve the symbolic value problem cleanly?
 
-See: `doc/theory/exhaustive-forward-chaining.md` §Open Questions Q1
+**QCHR connection (Barichard & Stéphan, TOCL 2025):** QCHR extends CHR with ∃/∀ quantified rules and a dynamic binder (quantifiers generated at runtime). This is exactly the pattern CALC needs:
+- Expression terms (R1) = Skolemized ∃ (eliminate the quantifier by naming the witness)
+- Loli-freeze (R2) = deferred ∃ (suspend the quantifier until more information available)
+- QCHR's ∃-elimination rule: find at least one value in [low,up] making body succeed
+- QCHR's ∀-elimination: all values must succeed (= symexec exhaustive exploration)
+- The ω_l^{∃∀} proof framework handles both elimination strategies uniformly
+
+See: `doc/theory/exhaustive-forward-chaining.md` §Q1, §Q6; `doc/research/chr-linear-logic.md` §2.5; `doc/todo/0043_chr-linear-logic-mapping.md` §8
 
 ## Tasks
 

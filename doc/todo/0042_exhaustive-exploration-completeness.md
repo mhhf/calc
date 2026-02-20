@@ -48,6 +48,17 @@ For finite-state systems (bounded gas in EVM): the state space is finite, and cy
 
 The execution tree is a Kripke structure. Completeness of exploration = completeness of the reachability analysis. Properties expressible as CTL queries over leaves (safety, reachability, invariants) are decidable given a complete tree.
 
+### Connection to QCHR (Stéphan & Barichard, TOCL 2025)
+
+CALC's exhaustive exploration is conceptually a QCHR game-tree solver where all branching is universal (∀ — explore all rule choices). The ω_l^{∃∀} system provides proof-theoretical soundness/completeness for this pattern:
+- ∀-branching at rule nondeterminism = "for all applicable rules, explore the subtree"
+- ∃-branching at ⊕ disjunction = "system decides which branch" (but symexec explores all)
+- QCHR's tabling/memoization = `pathVisited` cycle detection + state hashing
+- QCHR dynamic binder = loli continuations (rules produced at runtime)
+- **Theorem 5.1 (QCHR):** ω_r^{∃∀} is sound and complete w.r.t. ω_l^{∃∀} — could ground CALC's completeness proof
+
+See `doc/research/chr-linear-logic.md` §2.5, `doc/todo/0043_chr-linear-logic-mapping.md` §8.
+
 ## Tasks
 
 - [ ] Formalize soundness: path from root to leaf = valid trace
@@ -58,7 +69,11 @@ The execution tree is a Kripke structure. Completeness of exploration = complete
 
 ## References
 
-- `doc/theory/exhaustive-forward-chaining.md` — proposed execution tree judgment
+- `doc/theory/exhaustive-forward-chaining.md` — proposed execution tree judgment, Q5+Q6
 - `doc/research/execution-trees-metaproofs.md` — execution trees and metaproofs
+- `doc/research/chr-linear-logic.md` — §2.5 (QCHR), §10.3 (CALC↔QCHR mapping)
 - [TODO_0008](0008_metaproofs.md) — program property verification (requires completeness)
 - [TODO_0041](0041_unified-rule-matching.md) — unified matching (prerequisite: fixes priority bug)
+- [TODO_0043](0043_chr-linear-logic-mapping.md) — CHR soundness mapping, §8 (QCHR connection)
+- [TODO_0045](0045_execution-tree-judgment.md) — execution tree judgment formalization
+- Barichard, Stéphan (2025) "Quantified Constraint Handling Rules" ACM TOCL 26(3):1-46
