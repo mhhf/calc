@@ -392,6 +392,11 @@
 - **Tabled forward chaining** — cache symexec subtrees for recurring states (see [[forward-chaining-networks]])
 - **CHRiSM probabilistic choice** — Monte Carlo tree search over execution trees (see [[forward-chaining-networks]])
 
+### Original Theory → `doc/theory/`
+
+CALC's own theoretical contributions and synthesis live in [`doc/theory/`](../theory/INDEX.md):
+- **Exhaustive forward chaining in MALL** — how CALC extends CLF with additives, loli-in-monad, and don't-know nondeterminism
+
 ---
 
 *Last updated: 2026-02-17*
