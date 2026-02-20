@@ -118,12 +118,15 @@ Tree constructors:
 | Multiset rewriting | mutateState / undoMutate | Mutation+undo pattern |
 | Focusing (Andreoli) | Strategy stack layers | Fingerprint -> disc-tree -> predicate |
 
-| CHR | CALC |
-|---|---|
-| Simplification `H <=> B` | Linear antecedent, linear consequent |
-| Propagation `H ==> B` | Persistent antecedent, linear consequent |
-| Simpagation `H1 \ H2 <=> G \| B` | Persistent + linear ante, guard (FFI), consequent |
-| CHR-disjunction `H <=> B1 \/ B2` | `plus` in consequent |
+| CHR | CALC | ILL |
+|---|---|---|
+| Simplification `H <=> B` | Linear antecedent, linear consequent | `H^L ⊢ ∃ȳ.B^L` |
+| Propagation `H ==> B` | Persistent antecedent, linear consequent | `!H^L ⊢ !H^L ⊗ ∃ȳ.B^L` |
+| Simpagation `H1 \ H2 <=> G \| B` | Persistent + linear ante, guard (FFI), consequent | `H₁^L ⊗ H₂^L ⊗ G^L ⊢ H₁^L ⊗ ∃ȳ.B^L ⊗ G^L` |
+| CHR∨ disjunction `H <=> B1 ; B2` | `plus` in consequent | `H^L ⊢ B₁^L ⊕ B₂^L` |
+| Guard `G` | FFI / backward proving | `!G^L` (banged, appears both sides) |
+| Propagation history | N/A (linear consumption prevents re-fire) | — |
+| Active constraint | Strategy stack | — |
 
 ## Open Theoretical Questions
 
@@ -138,9 +141,16 @@ CLF allows `exists` inside `{A}` — forward rules can create fresh names. CALC 
 
 No published work addresses Datalog-style semi-naive evaluation when facts can be consumed. CALC's strategy stack (indexing, not incrementality) sidesteps the problem. For very large state spaces, incremental matching would matter. This is an open research problem where CALC could contribute.
 
-### Q3: Completeness of plus-in-Forward via CHR-Disjunction
+### Q3: Soundness via CHR-Disjunction ✓ (Resolved — TODO_0043)
 
-Betz & Fruhwirth (2013) proved soundness and completeness for CHR with disjunction mapped to linear logic. Their `plus` semantics should transfer directly to CALC's `plus`-in-consequent. Verifying this mapping would give a soundness proof "for free."
+Betz & Frühwirth (2013) proved soundness for CHR∨ with disjunction mapped to ILL via ⊕. CALC's forward engine maps directly to CHR simpagation, and ⊕-in-consequent maps to CHR∨ disjunction. **Theorem 4.8 (Soundness) transfers:** every CALC forward derivation `S₀ ↦* S` implies `S₀^L ⊢_Σ S^L` in ILL.
+
+Key points:
+- CALC forward rules = CHR simpagation (persistent ante = kept head, linear ante = removed head, FFI = guard)
+- `⊕` in consequent = CHR∨ disjunction `(B₁ ; B₂)^L = B₁^L ⊕ B₂^L`
+- Loli-in-monad = dynamic simpagation rule (sound via loli-left + per-step induction)
+- EVM rules are confluent for ground execution (deterministic opcode dispatch)
+- See [TODO_0043](../todo/0043_chr-linear-logic-mapping.md) for full analysis
 
 ### Q4: Relationship to Focusing
 
