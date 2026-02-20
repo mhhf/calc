@@ -3,10 +3,10 @@ title: "Symbolic Execution: Expression Foundation — Skolem Path (Backlogged)"
 created: 2026-02-18
 modified: 2026-02-21
 summary: "Implement expression type constructors and equational completion — backlogged in favor of eigenvariable/∃ path"
-tags: [symexec, expressions, implementation, backlogged]
+tags: [symexec, expressions, implementation]
 type: implementation
 cluster: Symexec
-status: planning
+status: backlogged
 priority: 3
 depends_on: []
 required_by: [TODO_0005]

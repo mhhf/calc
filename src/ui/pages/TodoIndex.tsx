@@ -29,9 +29,10 @@ const STATUS_COLORS: Record<string, string> = {
   'in progress':              'bg-blue-100 text-blue-800',
   done:                       'bg-green-100 text-green-800',
   subsumed:                   'bg-gray-200 text-gray-500',
+  backlogged:                 'bg-gray-200 text-gray-500',
 };
 
-const CLOSED_STATUSES = new Set(['done', 'subsumed']);
+const CLOSED_STATUSES = new Set(['done', 'subsumed', 'backlogged']);
 
 /** Compute up to 3 recommended TODOs: unblocked, highest priority, active */
 function computeRecommended(todos: TodoEntry[]): Set<string> {

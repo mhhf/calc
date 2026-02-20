@@ -6,7 +6,7 @@ summary: "Prove confluence of restricted Store.put normalization (ground folding
 tags: [research, confluence, normalization, Store]
 type: research
 cluster: Symexec
-status: planning
+status: backlogged
 priority: 2
 depends_on: [TODO_0003]
 required_by: []
