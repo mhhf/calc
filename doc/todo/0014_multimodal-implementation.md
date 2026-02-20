@@ -5,6 +5,7 @@ modified: 2026-02-18
 summary: "Implement ownership, authorization, and graded modalities"
 tags: [multimodal, ownership, authorization, graded-types, implementation]
 type: implementation
+cluster: Multimodal
 status: planning
 priority: 8
 depends_on: []

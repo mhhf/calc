@@ -5,6 +5,7 @@ modified: 2026-02-18
 summary: "Choose and implement simplification strategy after expression/backward decision"
 tags: [symexec, simplification, design-decision]
 type: design
+cluster: Symexec
 status: planning
 priority: 7
 depends_on: [TODO_0003, TODO_0004]
@@ -25,4 +26,4 @@ Choose after benchmarking TODO_0003 or TODO_0004.
 
 ## TODO_0005.Option_5 — CPS decomposition (R3xS1)
 
-See: `doc/dev/evm-modeling-approaches.md`, `doc/research/equational-completion.md`
+See: `doc/research/evm-modeling-approaches.md`, `doc/research/equational-completion.md`

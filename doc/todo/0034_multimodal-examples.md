@@ -5,6 +5,7 @@ modified: 2026-02-18
 summary: "Implement token, transfer, atomic swap, AMM as multimodal programs"
 tags: [multimodal, examples, financial, implementation]
 type: implementation
+cluster: Multimodal
 status: planning
 priority: 6
 depends_on: [TODO_0033, TODO_0014]

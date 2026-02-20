@@ -5,6 +5,7 @@ modified: 2026-02-18
 summary: "Delta predicate tracking, semi-naive evaluation, provenance, relational e-matching"
 tags: [performance, research, incremental, semi-naive, matching]
 type: research
+cluster: Performance
 status: planning
 priority: 3
 depends_on: [TODO_0044]

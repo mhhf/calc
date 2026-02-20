@@ -5,6 +5,7 @@ modified: 2026-02-18
 summary: "Interactive proof tree viewer, backlinks, tag filtering"
 tags: [tooling, documentation, UI]
 type: implementation
+cluster: Tooling
 status: planning
 priority: 4
 depends_on: []

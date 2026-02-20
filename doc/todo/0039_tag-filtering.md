@@ -5,6 +5,7 @@ modified: 2026-02-18
 summary: "Filter document listings by frontmatter tags"
 tags: [tooling, documentation, tags, UI]
 type: implementation
+cluster: Tooling
 status: planning
 priority: 3
 depends_on: []

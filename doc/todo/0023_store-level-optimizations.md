@@ -5,6 +5,7 @@ modified: 2026-02-18
 summary: "isMetavar Set and precomputed variable position maps"
 tags: [performance, Store, optimization]
 type: implementation
+cluster: Performance
 status: planning
 priority: 2
 depends_on: []

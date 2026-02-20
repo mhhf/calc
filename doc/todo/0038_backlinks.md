@@ -5,6 +5,7 @@ modified: 2026-02-18
 summary: "Generate and display backlinks from [[wiki-link]] references across docs"
 tags: [tooling, documentation, backlinks]
 type: implementation
+cluster: Tooling
 status: planning
 priority: 3
 depends_on: []

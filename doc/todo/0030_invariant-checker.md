@@ -5,6 +5,7 @@ modified: 2026-02-18
 summary: "Verify initial + preservation conditions for state invariants"
 tags: [metaproofs, invariants, verification, implementation]
 type: implementation
+cluster: Verification
 status: planning
 priority: 7
 depends_on: [TODO_0029]

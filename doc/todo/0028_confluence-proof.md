@@ -5,6 +5,7 @@ modified: 2026-02-18
 summary: "Prove confluence of restricted Store.put normalization (ground folding) for expression terms"
 tags: [research, confluence, normalization, Store]
 type: research
+cluster: Symexec
 status: planning
 priority: 6
 depends_on: [TODO_0002]

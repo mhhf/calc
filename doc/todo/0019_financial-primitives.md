@@ -5,6 +5,7 @@ modified: 2026-02-18
 summary: "Conditional execution, price oracles, time-based expiry, partial settlement"
 tags: [research, financial, primitives, oracles]
 type: research
+cluster: Financial
 status: planning
 priority: 4
 depends_on: []

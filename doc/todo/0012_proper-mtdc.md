@@ -5,6 +5,7 @@ modified: 2026-02-18
 summary: "Implement Greco & Palmigiano's proper MTDC with type-uniform sequents and generic cut-elim"
 tags: [MTDC, display-calculus, ILL, cut-elimination]
 type: research
+cluster: MTDC
 status: planning
 priority: 8
 depends_on: []

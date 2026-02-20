@@ -265,7 +265,7 @@ ProofState = {
 | **Indexing** | Rule enumeration from sequent | Strategy stack (fingerprint → disc-tree → predicate) |
 | **Shared** | Store, unify.js, substitute.js | Store, unify.js, substitute.js |
 
-See `doc/dev/forward-optimization-roadmap.md` for profiling history (181ms → ~1ms).
+See `doc/documentation/forward-optimization-roadmap.md` for profiling history (181ms → ~1ms).
 
 ## Open Research
 

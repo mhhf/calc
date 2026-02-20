@@ -5,6 +5,7 @@ modified: 2026-02-18
 summary: "Design language to express invariants over CALC program states"
 tags: [metaproofs, DSL, invariants, design]
 type: design
+cluster: Verification
 status: planning
 priority: 8
 depends_on: []

@@ -5,6 +5,7 @@ modified: 2026-02-18
 summary: "Per-rule specialized matchers, WAM-style compilation, Maranget decision trees"
 tags: [performance, research, compilation, WAM, Maranget]
 type: research
+cluster: Performance
 status: planning
 priority: 3
 depends_on: []

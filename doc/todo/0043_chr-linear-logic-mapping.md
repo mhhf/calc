@@ -5,6 +5,7 @@ modified: 2026-02-20
 summary: "Apply Betz & Frühwirth's CHR ↔ linear logic results to CALC: formal soundness proof for forward engine, CHR∨ soundness for ⊕ in consequents, confluence analysis, compilation techniques"
 tags: [CHR, linear-logic, soundness, forward-engine, oplus, theory]
 type: research
+cluster: Theory
 status: done
 priority: 10
 depends_on: []
@@ -349,7 +350,7 @@ Simmons & Pfenning (ICALP 2008) define **Linear Logical Algorithms** (LLA), a re
 - [x] Analyze confluence for EVM rule set (Section 4)
 - [x] Extract concrete compilation improvements (Section 5)
 - [x] Integrate findings into `doc/theory/exhaustive-forward-chaining.md`
-- [x] Write ANKI flashcards for key results (`doc/dev/ANKI.md`)
+- [x] Write ANKI flashcards for key results (`doc/ANKI.md`)
 
 ---
 

@@ -5,6 +5,7 @@ modified: 2026-02-18
 summary: "Can the Pacioli group be a well-behaved grading semiring for graded linear logic?"
 tags: [research, Pacioli, graded-logic, semiring]
 type: research
+cluster: Financial
 status: planning
 priority: 4
 depends_on: []

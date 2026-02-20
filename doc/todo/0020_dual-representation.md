@@ -5,6 +5,7 @@ modified: 2026-02-18
 summary: "Profile seq.contexts.linear array vs delta multiset overhead"
 tags: [performance, representation, profiling]
 type: implementation
+cluster: Performance
 status: planning
 priority: 4
 depends_on: []

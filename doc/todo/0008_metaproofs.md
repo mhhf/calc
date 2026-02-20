@@ -5,6 +5,7 @@ modified: 2026-02-18
 summary: "Prove properties about CALC programs: conservation, safety, termination"
 tags: [metaproofs, verification, safety, invariants]
 type: design
+cluster: Theory
 status: planning
 priority: 8
 depends_on: [TODO_0042]

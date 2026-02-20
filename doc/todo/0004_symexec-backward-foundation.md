@@ -5,6 +5,7 @@ modified: 2026-02-18
 summary: "Implement loli-freeze and Mercury modes — if pure backward chaining chosen"
 tags: [symexec, backward-chaining, implementation]
 type: implementation
+cluster: Symexec
 status: planning
 priority: 8
 depends_on: [TODO_0002]

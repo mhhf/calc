@@ -5,6 +5,7 @@ modified: 2026-02-18
 summary: "Can state S be reached? Search symexec tree for matching leaves"
 tags: [metaproofs, reachability, verification]
 type: implementation
+cluster: Verification
 status: planning
 priority: 7
 depends_on: [TODO_0029]

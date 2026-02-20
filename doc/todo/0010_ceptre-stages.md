@@ -5,6 +5,7 @@ modified: 2026-02-19
 summary: "Named rule subsets running to quiescence with inter-stage transitions"
 tags: [Ceptre, stages, forward-engine]
 type: research
+cluster: CLF
 status: planning
 priority: 2
 depends_on: [TODO_0006]

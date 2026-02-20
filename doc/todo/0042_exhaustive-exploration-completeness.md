@@ -5,6 +5,7 @@ modified: 2026-02-19
 summary: "Prove that symexec's exhaustive exploration finds all reachable quiescent states — soundness, completeness, and termination guarantees"
 tags: [theory, symexec, completeness, soundness, model-checking]
 type: research
+cluster: Theory
 status: planning
 priority: 7
 depends_on: [TODO_0045]

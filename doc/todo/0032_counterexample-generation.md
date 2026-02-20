@@ -5,6 +5,7 @@ modified: 2026-02-18
 summary: "Generate execution trace to a state violating a property"
 tags: [metaproofs, counterexample, debugging]
 type: implementation
+cluster: Verification
 status: planning
 priority: 6
 depends_on: [TODO_0029]

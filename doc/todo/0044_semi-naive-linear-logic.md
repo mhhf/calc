@@ -5,6 +5,7 @@ modified: 2026-02-19
 summary: "Open research problem: adapt Datalog's semi-naive evaluation to linear logic where facts can be consumed. No published solution exists."
 tags: [research, semi-naive, Datalog, incremental, forward-engine, open-problem]
 type: research
+cluster: Performance
 status: planning
 priority: 4
 depends_on: []

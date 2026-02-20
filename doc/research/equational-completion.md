@@ -114,6 +114,6 @@ Ground folding ensures that `plus_expr(3, 5)` and `binlit(8)` are the same Store
 - Knuth & Bendix (1970) — *Simple Word Problems in Universal Algebras*
 - Baader & Nipkow (1998) — *Term Rewriting and All That*
 - Eker (2003) — *Associative-Commutative Rewriting on Large Terms* (Maude)
-- `doc/dev/evm-modeling-approaches.md` — design space (R1-R5, S1-S3)
+- `doc/research/evm-modeling-approaches.md` — design space (R1-R5, S1-S3)
 - `doc/research/expression-simplification.md` — simplification techniques survey
 - `doc/research/symbolic-arithmetic-design-space.md` — tool comparison

@@ -5,6 +5,7 @@ modified: 2026-02-18
 summary: "Handle unbounded/infinite behavior via fixed point connectives"
 tags: [fixed-points, induction, coinduction, cyclic-proofs]
 type: research
+cluster: Theory
 status: planning
 priority: 5
 depends_on: [TODO_0008]

@@ -5,6 +5,7 @@ modified: 2026-02-18
 summary: "TREAT, CHR join ordering, LEAPS, tabled forward chaining"
 tags: [performance, research, TREAT, CHR, LEAPS, forward-engine]
 type: research
+cluster: Performance
 status: planning
 priority: 3
 depends_on: []
@@ -20,6 +21,6 @@ Extracted from TODO_0022.Topic_1. Production rule system techniques for scaling 
 - [ ] LEAPS delta-driven activation — maintain activation queue instead of scanning all rules
 - [ ] Tabled forward chaining — cache symexec subtrees for recurring states
 
-[TODO_0043](0043_chr-linear-logic-mapping.md) §5 analyzed CHR compilation techniques vs CALC's existing optimizations (comparison tables, concrete improvements). Delta-driven activation is in `doc/dev/forward-optimization-roadmap.md`.
+[TODO_0043](0043_chr-linear-logic-mapping.md) §5 analyzed CHR compilation techniques vs CALC's existing optimizations (comparison tables, concrete improvements). Delta-driven activation is in `doc/documentation/forward-optimization-roadmap.md`.
 
 See: `doc/research/forward-chaining-networks.md`

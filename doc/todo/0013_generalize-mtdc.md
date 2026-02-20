@@ -5,6 +5,7 @@ modified: 2026-02-18
 summary: "Generalize beyond LNL to support arbitrary types, bridge rules, ownership modalities"
 tags: [MTDC, generalization, modalities]
 type: research
+cluster: MTDC
 status: planning
 priority: 5
 depends_on: [TODO_0012]

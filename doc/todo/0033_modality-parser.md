@@ -5,6 +5,7 @@ modified: 2026-02-18
 summary: "Extend tree-sitter grammar and parser for ownership/authorization/graded modalities"
 tags: [parser, modalities, tree-sitter, implementation]
 type: implementation
+cluster: Multimodal
 status: planning
 priority: 7
 depends_on: []

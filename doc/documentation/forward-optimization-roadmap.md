@@ -48,54 +48,15 @@ Key files: `forward.js` (engine), `symexec.js` (tree exploration), `rule-analysi
 
 ## What's Next
 
-All optimizations that matter at current scale (44 rules, ~20 facts, depth-2 terms) are done. The remaining items are triggered by specific scaling scenarios.
+All optimizations that matter at current scale (44 rules, ~20 facts, depth-2 terms) are done. The remaining items are tracked as TODOs, triggered by specific scaling scenarios:
 
-| Optimization | Trigger | Effort | Impact |
-|-------------|---------|--------|--------|
-| **Delta-driven activation** | 100+ rules | ~150 LOC | Skip ~80% of rule evaluations per step. CHR's "active constraint" semantics. |
-| **Compiled matching (Maranget)** | 1000+ rules | ~500 LOC | Subsumes fingerprint + disc-tree. Single decision tree for all rules. |
-| **Stage 8 (path-based access)** | depth 4+ terms | ~150 LOC | ~10x on substitution at depth 10. Current EVM: depth 1-2, no benefit. |
-| **Semi-naive** | 100K+ facts | ~200 LOC | 10-50x. Fundamentally hard for linear logic (provenance tracking). |
-| **Join ordering** | 4+ antecedent rules | ~100 LOC | ~5-10%. Current deferral mechanism works fine. |
-
-### Delta-Driven Activation (CHR Active Constraint)
-
-CHR's refined semantics (omega_r) activates rules from newly added/changed constraints — only rules whose trigger predicates overlap with the delta are re-evaluated. CALC currently re-scans all candidates per step via `findAllMatches`.
-
-**Sketch:** After `mutateState`, track which predicates changed (consumed + produced). Only re-evaluate rules whose `triggerPreds` intersect the changed set:
-
-```
-changedPreds = {preds from consumed facts} ∪ {preds from produced facts}
-candidates = rules.filter(r => r.triggerPreds ∩ changedPreds ≠ ∅)
-```
-
-At 44 rules with ~3-4 predicates changing per step, this would skip ~80% of rule evaluations. The strategy stack already does O(1) fingerprint lookup for most rules, so the real win is at 100+ rules where disc-tree traversal becomes the bottleneck.
-
-**When:** 100+ rules, or when disc-tree scans dominate profiling. Also relevant for symexec where `findAllMatches` is 83% of total time.
-
-**CHR background:** See `doc/research/chr-linear-logic.md` (Section 6.1) and `doc/todo/0043_chr-linear-logic-mapping.md` (Section 5.3).
-
-### Compiled Pattern Matching (Maranget)
-
-Compile all rule patterns into a single static decision tree. Each term position tested at most once. Our fingerprint layer IS a hand-compiled decision tree for 2 levels; Maranget automates this for arbitrary depth.
-
-Three phases: (1) cross-rule decision tree for rule selection, (2) per-rule compiled match, (3) DAG sharing for overlapping patterns.
-
-**When:** When the rule set exceeds ~100 and manual strategy layers can't keep up. Or when supporting arbitrary user-defined calculi where fingerprint detection doesn't find a discriminator.
-
-See `doc/research/compiled-pattern-matching.md`.
-
-### Stage 8: Path-Based Nested Access
-
-For deeply nested terms, navigate directly to changed argument via position path. O(K×D) vs O(N).
-
-**When:** Calculi with compound types like `state(pc(V), stack(S), gas(G), mem(M))`.
-
-### Semi-Naive for Linear Logic
-
-Track which predicates changed per step, only re-evaluate affected rules. For full semi-naive: need provenance tracking (which facts contributed to each match). This is Rete's beta network — wrong for linear logic.
-
-**When:** 100K+ facts where even disc-tree can't prune enough candidates.
+| Optimization | Trigger | TODO |
+|-------------|---------|------|
+| Delta-driven activation | 100+ rules | [TODO_0035](../todo/0035_forward-chaining-networks.md) |
+| Compiled matching (Maranget) | 1000+ rules | [TODO_0037](../todo/0037_compiled-pattern-matching.md) |
+| Semi-naive for linear logic | 100K+ facts | [TODO_0044](../todo/0044_semi-naive-linear-logic.md) |
+| Join ordering | 4+ antecedent rules | [TODO_0035](../todo/0035_forward-chaining-networks.md) |
+| Path-based nested access | depth 4+ terms | [TODO_0022](../todo/0022_forward-optimization-research.md) |
 
 ## Profiling History
 

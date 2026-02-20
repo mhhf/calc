@@ -5,6 +5,7 @@ modified: 2026-02-18
 summary: "Model debt as session types with pay/renegotiate/default choices"
 tags: [research, session-types, debt, financial]
 type: research
+cluster: Financial
 status: planning
 priority: 4
 depends_on: []

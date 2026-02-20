@@ -5,6 +5,7 @@ modified: 2026-02-18
 summary: "Discrimination tree indexing for backward chaining clause selection"
 tags: [performance, disc-tree, backward-prover]
 type: implementation
+cluster: Performance
 status: planning
 priority: 2
 depends_on: []

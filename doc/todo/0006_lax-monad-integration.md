@@ -5,6 +5,7 @@ modified: 2026-02-18
 summary: "Integrate forward and backward chaining via CLF lax monad"
 tags: [architecture, CLF, lax-monad, forward-backward]
 type: research
+cluster: CLF
 status: planning
 priority: 8
 depends_on: []

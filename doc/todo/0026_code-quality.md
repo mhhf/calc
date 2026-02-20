@@ -5,6 +5,7 @@ modified: 2026-02-18
 summary: "ESLint, gradual TypeScript, CI"
 tags: [tooling, quality, CI]
 type: tooling
+cluster: Tooling
 status: planning
 priority: 2
 depends_on: []
