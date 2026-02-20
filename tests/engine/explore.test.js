@@ -132,7 +132,7 @@ describe('explore', { timeout: 10000 }, () => {
       assert.deepStrictEqual(alts[0], { linear: [], persistent: [a] });
     });
 
-    it('loli(bang(P), monad(Q)) assumes P and produces Q', () => {
+    it('loli stays as opaque linear fact (fired by matchLoli at runtime)', () => {
       const p = Store.put('atom', ['neq']);
       const q = Store.put('atom', ['result']);
       const bangP = Store.put('bang', [p]);
@@ -140,9 +140,7 @@ describe('explore', { timeout: 10000 }, () => {
       const loli = Store.put('loli', [bangP, monadQ]);
       const alts = expandItem(loli);
       assert.strictEqual(alts.length, 1);
-      assert.deepStrictEqual(alts[0].linear, [q]);
-      assert.strictEqual(alts[0].persistent.length, 1);
-      assert.strictEqual(alts[0].persistent[0], bangP);
+      assert.deepStrictEqual(alts[0], { linear: [loli], persistent: [] });
     });
 
     it('plus(A,B) returns two alternatives', () => {
@@ -155,7 +153,7 @@ describe('explore', { timeout: 10000 }, () => {
       assert.deepStrictEqual(alts[1], { linear: [b], persistent: [] });
     });
 
-    it('plus(loli(!P,{A}), loli(!Q,{B})) gives two guarded alternatives', () => {
+    it('plus(loli(!P,{A}), loli(!Q,{B})) gives two loli alternatives', () => {
       const p = Store.put('atom', ['neq']);
       const q = Store.put('atom', ['eq']);
       const a = Store.put('atom', ['zero']);
@@ -167,13 +165,12 @@ describe('explore', { timeout: 10000 }, () => {
       const pl = Store.put('plus', [branch0, branch1]);
       const alts = expandItem(pl);
       assert.strictEqual(alts.length, 2);
-      assert.deepStrictEqual(alts[0].linear, [a]);
-      assert.strictEqual(alts[0].persistent[0], bangP);
-      assert.deepStrictEqual(alts[1].linear, [b]);
-      assert.strictEqual(alts[1].persistent[0], bangQ);
+      // Each branch is a loli fact (fired by matchLoli at runtime)
+      assert.deepStrictEqual(alts[0], { linear: [branch0], persistent: [] });
+      assert.deepStrictEqual(alts[1], { linear: [branch1], persistent: [] });
     });
 
-    it('with(loli(!P,{A}), loli(!Q,{B})) gives two guarded alternatives', () => {
+    it('with(loli(!P,{A}), loli(!Q,{B})) gives two loli alternatives', () => {
       const p = Store.put('atom', ['neq']);
       const q = Store.put('atom', ['eq']);
       const a = Store.put('atom', ['zero']);
@@ -185,12 +182,9 @@ describe('explore', { timeout: 10000 }, () => {
       const w = Store.put('with', [branch0, branch1]);
       const alts = expandItem(w);
       assert.strictEqual(alts.length, 2);
-      // Branch 0: assume !neq, produce zero
-      assert.deepStrictEqual(alts[0].linear, [a]);
-      assert.strictEqual(alts[0].persistent[0], bangP);
-      // Branch 1: assume !eq, produce one
-      assert.deepStrictEqual(alts[1].linear, [b]);
-      assert.strictEqual(alts[1].persistent[0], bangQ);
+      // Each branch is a loli fact (fired by matchLoli at runtime)
+      assert.deepStrictEqual(alts[0], { linear: [branch0], persistent: [] });
+      assert.deepStrictEqual(alts[1], { linear: [branch1], persistent: [] });
     });
   });
 
@@ -399,6 +393,189 @@ describe('explore', { timeout: 10000 }, () => {
         ]
       };
       assert.strictEqual(countNodes(tree), 3);
+    });
+  });
+
+  describe('matchLoli', () => {
+    beforeEach(() => { Store.clear(); });
+
+    it('fires loli with ground linear trigger', () => {
+      const trigger = Store.put('atom', ['unblock']);
+      const result = Store.put('atom', ['done']);
+      const body = Store.put('monad', [result]);
+      const loli = Store.put('loli', [trigger, body]);
+
+      const state = forward.createState(
+        { [loli]: 1, [trigger]: 1 },
+        {}
+      );
+      const m = forward.matchLoli(loli, state, null);
+      assert(m, 'matchLoli should return a match');
+      assert.strictEqual(m.consumed[loli], 1);
+      assert.strictEqual(m.consumed[trigger], 1);
+      assert(m.rule.consequent.linear.includes(result));
+    });
+
+    it('fires loli with parameterized linear trigger', () => {
+      const X = Store.put('freevar', ['_X']);
+      // Predicates use tag-as-name, not atom wrapper
+      const triggerPattern = Store.put('data', [X]);
+      const bodyPattern = Store.put('processed', [X]);
+      const body = Store.put('monad', [bodyPattern]);
+      const loli = Store.put('loli', [triggerPattern, body]);
+
+      const val = Store.put('binlit', [42n]);
+      const triggerFact = Store.put('data', [val]);
+
+      const state = forward.createState(
+        { [loli]: 1, [triggerFact]: 1 },
+        {}
+      );
+      const m = forward.matchLoli(loli, state, null);
+      assert(m, 'matchLoli should return a match');
+      assert.strictEqual(m.consumed[loli], 1);
+      assert.strictEqual(m.consumed[triggerFact], 1);
+      // Body should be instantiated with X=42
+      const expectedResult = Store.put('processed', [val]);
+      assert(m.rule.consequent.linear.includes(expectedResult));
+    });
+
+    it('fires loli with persistent trigger (state lookup)', () => {
+      const guard = Store.put('atom', ['check']);
+      const bangGuard = Store.put('bang', [guard]);
+      const result = Store.put('atom', ['guarded_result']);
+      const body = Store.put('monad', [result]);
+      const loli = Store.put('loli', [bangGuard, body]);
+
+      const state = forward.createState(
+        { [loli]: 1 },
+        { [guard]: true }  // Guard is provable via state
+      );
+      const m = forward.matchLoli(loli, state, null);
+      assert(m, 'matchLoli should fire when guard is in persistent state');
+      assert.strictEqual(m.consumed[loli], 1);
+      assert(m.rule.consequent.linear.includes(result));
+    });
+
+    it('returns null when persistent guard fails', () => {
+      const guard = Store.put('atom', ['check']);
+      const bangGuard = Store.put('bang', [guard]);
+      const result = Store.put('atom', ['guarded_result']);
+      const body = Store.put('monad', [result]);
+      const loli = Store.put('loli', [bangGuard, body]);
+
+      const state = forward.createState(
+        { [loli]: 1 },
+        {}  // Guard NOT in state
+      );
+      const m = forward.matchLoli(loli, state, null);
+      assert.strictEqual(m, null, 'matchLoli should return null when guard fails');
+    });
+
+    it('returns null when linear trigger is absent', () => {
+      const trigger = Store.put('atom', ['unblock']);
+      const result = Store.put('atom', ['done']);
+      const body = Store.put('monad', [result]);
+      const loli = Store.put('loli', [trigger, body]);
+
+      const state = forward.createState(
+        { [loli]: 1 },  // trigger NOT in state
+        {}
+      );
+      const m = forward.matchLoli(loli, state, null);
+      assert.strictEqual(m, null, 'matchLoli should return null when trigger absent');
+    });
+
+    it('handles mixed trigger (linear + persistent)', () => {
+      const linTrigger = Store.put('atom', ['resource']);
+      const guard = Store.put('atom', ['condition']);
+      const bangGuard = Store.put('bang', [guard]);
+      const trigger = Store.put('tensor', [linTrigger, bangGuard]);
+      const result = Store.put('atom', ['combined_result']);
+      const body = Store.put('monad', [result]);
+      const loli = Store.put('loli', [trigger, body]);
+
+      // Both linear trigger and persistent guard present
+      const state = forward.createState(
+        { [loli]: 1, [linTrigger]: 1 },
+        { [guard]: true }
+      );
+      const m = forward.matchLoli(loli, state, null);
+      assert(m, 'matchLoli should fire with mixed trigger');
+      assert.strictEqual(m.consumed[loli], 1);
+      assert.strictEqual(m.consumed[linTrigger], 1);
+      assert(m.rule.consequent.linear.includes(result));
+    });
+
+    it('handles body with plus (multiple consequent alternatives)', () => {
+      const trigger = Store.put('atom', ['start']);
+      const a = Store.put('atom', ['left']);
+      const b = Store.put('atom', ['right']);
+      const plusBody = Store.put('plus', [a, b]);
+      const body = Store.put('monad', [plusBody]);
+      const loli = Store.put('loli', [trigger, body]);
+
+      const state = forward.createState(
+        { [loli]: 1, [trigger]: 1 },
+        {}
+      );
+      const m = forward.matchLoli(loli, state, null);
+      assert(m, 'matchLoli should fire');
+      assert.strictEqual(m.rule.consequentAlts.length, 2, 'should have 2 alternatives from plus');
+    });
+  });
+
+  describe('guarded loli integration', () => {
+    it('explore: guard success fires loli, guard failure produces stuck leaf', () => {
+      Store.clear();
+      // Build: start -o { tensor(shared, plus(loli(!guard, {result_a}), loli(!noguard, {result_b}))) }
+      const start = Store.put('atom', ['start']);
+      const shared = Store.put('atom', ['shared_fact']);
+      const guard = Store.put('atom', ['guard']);
+      const noguard = Store.put('atom', ['noguard']);
+      const resultA = Store.put('atom', ['result_a']);
+      const resultB = Store.put('atom', ['result_b']);
+
+      const loliA = Store.put('loli', [Store.put('bang', [guard]), Store.put('monad', [resultA])]);
+      const loliB = Store.put('loli', [Store.put('bang', [noguard]), Store.put('monad', [resultB])]);
+      const choice = Store.put('plus', [loliA, loliB]);
+      const conseq = Store.put('tensor', [shared, choice]);
+
+      const rule = forward.compileRule({
+        name: 'produce',
+        hash: 0,
+        antecedent: start,
+        consequent: Store.put('monad', [conseq])
+      });
+
+      // Guard is provable, noguard is NOT
+      const state = forward.createState(
+        { [start]: 1 },
+        { [guard]: true }
+      );
+
+      const tree = explore(state, [rule], {
+        maxDepth: 5,
+        calc: null
+      });
+
+      // Root should branch (rule fires, plus creates 2 alternatives)
+      assert.strictEqual(tree.type, 'branch');
+      assert.strictEqual(tree.children.length, 2);
+
+      // Both alternatives should eventually become leaves
+      const leaves = getAllLeaves(tree);
+      assert(leaves.length >= 2, `expected >= 2 leaves, got ${leaves.length}`);
+
+      // One leaf should have result_a (guard proved), the other should NOT have result_b
+      let hasResultA = false;
+      let hasResultB = false;
+      for (const leaf of leaves) {
+        if (leaf.state && leaf.state.linear[resultA]) hasResultA = true;
+        if (leaf.state && leaf.state.linear[resultB]) hasResultB = true;
+      }
+      assert(hasResultA, 'guard branch should produce result_a');
+      assert(!hasResultB, 'noguard branch should NOT produce result_b (guard fails)');
     });
   });
 });

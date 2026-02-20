@@ -1,17 +1,18 @@
 {
-  "date": "2026-02-16T08:48:52.256Z",
+  "date": "2026-02-20T12:00:00.000Z",
   "runs": 10,
   "facts": 188,
-  "rules": 45,
+  "rules": 43,
   "tree": {
-    "nodes": 263
+    "nodes": 210
   },
   "timing": {
-    "mean": 6.071117699999999,
-    "median": 5.61262899999997,
-    "p95": 11.438495000000017,
-    "min": 4.115971999999999,
-    "max": 11.438495000000017,
-    "stddev": 2.079058794010034
-  }
+    "mean": 7.32,
+    "median": 5.72,
+    "p95": 13.02,
+    "min": 4.76,
+    "max": 13.02,
+    "stddev": 2.59
+  },
+  "note": "After TODO_0041: unified rule matching with matchLoli. Dead branches now stop at stuck loli leaves instead of running with corrupted state."
 }

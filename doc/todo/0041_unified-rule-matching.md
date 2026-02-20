@@ -5,7 +5,7 @@ modified: 2026-02-20
 summary: "Unify compiled rules and loli continuations into one matching pipeline with a shared persistent-proving helper. Fixes the expandItem soundness bug and the priority bug in exhaustive exploration."
 tags: [architecture, forward-engine, loli, matching, soundness]
 type: design
-status: ready for implementation
+status: done
 priority: 10
 depends_on: []
 required_by: [TODO_0002, TODO_0006, TODO_0010, TODO_0042, TODO_0045]
