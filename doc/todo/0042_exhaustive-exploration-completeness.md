@@ -7,7 +7,7 @@ tags: [theory, symexec, completeness, soundness, model-checking]
 type: research
 status: planning
 priority: 7
-depends_on: [TODO_0041]
+depends_on: []
 required_by: [TODO_0008]
 ---
 
@@ -37,7 +37,7 @@ Each tree node records the rule and substitution that produced it. Replaying the
 
 Harder. Requires showing that `findAllMatches` at each state returns ALL applicable rules (no missed matches). Depends on:
 - Strategy stack correctness: fingerprint + disc-tree + predicate layers don't miss rules
-- Loli unification: after TODO_0041, loli continuations compete equally (the priority bug is the current completeness hole)
+- Loli unification: after TODO_0041 (done), loli continuations compete equally (priority bug fixed)
 - State hash correctness: `hashState` doesn't create false cycle detections (hash collision → missed states)
 
 ### Termination
@@ -62,7 +62,7 @@ See `doc/research/chr-linear-logic.md` §2.5, `doc/todo/0043_chr-linear-logic-ma
 ## Tasks
 
 - [ ] Formalize soundness: path from root to leaf = valid trace
-- [ ] Formalize completeness: findAllMatches returns all applicable rules (depends on TODO_0041)
+- [ ] Formalize completeness: findAllMatches returns all applicable rules (TODO_0041 done — loli priority fixed)
 - [ ] Analyze hash collision probability (32-bit XOR hash on states)
 - [ ] Characterize termination conditions (gas bounds, resource consumption)
 - [ ] Connect to model checking theory (CTL over execution trees)
@@ -73,7 +73,7 @@ See `doc/research/chr-linear-logic.md` §2.5, `doc/todo/0043_chr-linear-logic-ma
 - `doc/research/execution-trees-metaproofs.md` — execution trees and metaproofs
 - `doc/research/chr-linear-logic.md` — §2.5 (QCHR), §10.3 (CALC↔QCHR mapping)
 - [TODO_0008](0008_metaproofs.md) — program property verification (requires completeness)
-- [TODO_0041](0041_unified-rule-matching.md) — unified matching (prerequisite: fixes priority bug)
+- [TODO_0041](0041_unified-rule-matching.md) — unified matching (done: fixed priority bug)
 - [TODO_0043](0043_chr-linear-logic-mapping.md) — CHR soundness mapping, §8 (QCHR connection)
 - [TODO_0045](0045_execution-tree-judgment.md) — execution tree judgment formalization
 - Barichard, Stéphan (2025) "Quantified Constraint Handling Rules" ACM TOCL 26(3):1-46

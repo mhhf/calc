@@ -7,7 +7,7 @@ tags: [symexec, expressions, design-decision]
 type: design
 status: planning
 priority: 9
-depends_on: [TODO_0041]
+depends_on: []
 required_by: [TODO_0003, TODO_0004, TODO_0005]
 ---
 
