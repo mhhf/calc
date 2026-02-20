@@ -351,6 +351,66 @@ Simmons & Pfenning (ICALP 2008) define **Linear Logical Algorithms** (LLA), a re
 - [x] Integrate findings into `doc/theory/exhaustive-forward-chaining.md`
 - [x] Write ANKI flashcards for key results (`doc/dev/ANKI.md`)
 
+---
+
+## 7. Stéphan's Proof-Theoretical Approach (ICLP 2018)
+
+### 7.1 Key Insight: Derivations as Proof Trees
+
+Where Betz translates CHR states to ILL and shows entailment, Stéphan constructs a sequent calculus (ω_l) where CHR derivations **are** proof trees. Each rule application = an inference rule in the calculus.
+
+### 7.2 The ω_l Sequent Calculus
+
+Two sequent forms:
+- Non-focused: `(Γ ▸ Ω_# ◁ S_↑ ⊢ S_↓)` — process goals using program Γ
+- Focused: `(Γ ! Δ ▷ a ◁ S_↑ ⊢ S_↓)` — focused on constraint a
+
+Inference rules: true, ⊗_L (split goal), W (skip rule), F (focus), ↑ (inactivate), \⟺ (apply).
+
+**Hidden Cut:** The ⊗_L rule is actually a hidden use of Cut — it splits resources between a lemma (left subproof) and its use (right subproof).
+
+**Results:** ω_l is sound AND complete w.r.t. ω_t (Theorem 7). The deterministic variant ω_l^⊗ (store as sequence) eliminates two hidden nondeterminism sources.
+
+### 7.3 Crucial Translation Difference from Betz
+
+Stéphan translates program comma "," as **& (additive conjunction)**, not ⊗ or !:
+- Betz: program = `!r₁ ⊗ !r₂ ⊗ ...` (rules always available via dereliction)
+- Stéphan: program = `r₁ & r₂ & ...` (rule selection = additive choice)
+
+This captures committed choice more naturally: picking a rule = &L₁ or &L₂.
+
+### 7.4 Relevance to CALC
+
+CALC's `run()` loop maps directly to ω_l proof construction:
+- `applyMatch` = Apply (\\⟺) inference
+- Fact stays in state = Inactivate (↑)
+- Rule doesn't match = Weakening (W)
+- Strategy stack ordering = & rule selection
+
+The symexec execution tree = collection of ω_l proofs sharing prefixes. Each root-to-leaf path = one ω_l proof. Branch nodes = different & choices.
+
+---
+
+## 8. QCHR: Quantified CHR (TOCL 2025)
+
+Barichard & Stéphan extend CHR with ∃/∀ quantified rules, building on ω_l.
+
+**New rule types:**
+- Existential simpagation: succeeds if ∃ value in [low,up] makes body succeed
+- Universal simpagation: succeeds if ∀ values in [low,up] make body succeed
+- Dynamic binder — quantifiers generated at runtime (not statically declared)
+
+**ω_l^{∃∀} system:** Extends ω_l with ∃-Apply, ∀-Apply, ∃-elimination, ∀-elimination, ∀-true. Theorem 5.1: ω_r^{∃∀} (operational) is sound and complete w.r.t. ω_l^{∃∀} (proof-theoretical).
+
+**Connection to CALC:**
+- CALC's symexec = QCHR solving (exhaustive = universal quantification over rule choices)
+- ⊕ branching = existential branching (system decides)
+- Loli continuations = dynamic binder (rules generated at runtime = quantifiers generated at runtime)
+- `pathVisited` cycle detection = QCHR tabling/memoization
+- The ω_l^{∃∀} system provides the proof framework for formalizing CALC's execution trees
+
+---
+
 ## References
 
 - `doc/research/chr-linear-logic.md` — comprehensive CHR survey
@@ -358,6 +418,7 @@ Simmons & Pfenning (ICALP 2008) define **Linear Logical Algorithms** (LLA), a re
 - `doc/research/forward-chaining-networks.md` — production system algorithms
 - Betz & Frühwirth (2005) "A Linear-Logic Semantics for CHR" CP 2005
 - Betz & Frühwirth (2013) "CHR with Disjunction" ACM TOCL 14(1) — [arXiv 1009.2900](https://arxiv.org/abs/1009.2900)
-- Stéphan (2018) "A New Proof-Theoretical Linear Semantics for CHR" ICLP 2018
+- Stéphan (2018) "A New Proof-Theoretical Linear Semantics for CHR" ICLP 2018 — [OASIcs 4:1-4:17](https://drops.dagstuhl.de/entities/document/10.4230/OASIcs.ICLP.2018.4)
+- Barichard & Stéphan (2025) "Quantified Constraint Handling Rules" ACM TOCL 26(3):1-46
 - Betz (2014) PhD thesis: unified framework
 - Simmons & Pfenning (2008) "Linear Logical Algorithms" ICALP 2008 — [PDF](https://www.cs.cmu.edu/~fp/papers/icalp08.pdf)

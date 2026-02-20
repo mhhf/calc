@@ -58,4 +58,36 @@ A triple `⟨r, σ, [l₀,...,lₖ₋₁]⟩` — rule r, substitution σ, consu
 
 ## How does Stéphan (ICLP 2018) differ from Betz/Frühwirth?
 
-Betz shows operational derivations *imply* linear logic entailment (translation-based). Stéphan constructs a semantics where CHR derivations *are* linear logic proof trees — a more intrinsic proof-theoretic characterization. Both prove soundness/completeness w.r.t. omega_t.
+Betz shows operational derivations *imply* linear logic entailment (translation-based). Stéphan constructs a sequent calculus (ω_l) where CHR derivations *are* proof trees. Each CHR step = an inference rule application. Betz: program = `!r₁ ⊗ !r₂` (banged rules). Stéphan: program = `r₁ & r₂` (additive conjunction = committed choice).
+
+## What are the two sequent forms in Stéphan's ω_l system?
+
+**Non-focused:** `(Γ ▸ Ω_# ◁ S_↑ ⊢ S_↓)` — process goal Ω_# using program Γ, consuming from up-store S_↑, producing down-store S_↓. **Focused:** `(Γ ! Δ ▷ a ◁ S_↑ ⊢ S_↓)` — focused on identified constraint a, trying rules Δ.
+
+## What are the key inference rules in ω_l?
+
+**true** (axiom: goal solved), **⊗_L** (split goal, allocate resources — hidden Cut!), **W** (Weakening: skip rule), **F** (Focusing: select constraint), **↑** (Inactivate: store constraint unchanged), **\⟺** (Apply: fire simpagation rule on focused constraint).
+
+## Why does Stéphan translate program comma as & (not ⊗)?
+
+& (additive conjunction) captures committed choice: rule selection = &L₁ or &L₂. Unchosen rules remain available via Weakening. Betz uses `!r₁ ⊗ !r₂` (bang + tensor) which requires dereliction to access rules. Stéphan's & is more proof-theoretically natural for modeling "pick one rule to apply."
+
+## What are the four hidden nondeterminism sources in CHR?
+
+(1) Don't-care rule selection (committed choice — by design). (2) Don't-know disjunction (CHR∨ — deliberate). (3) Constraint store ordering (multiset → wake-up order unspecified). (4) Multi-headed matching (which constraints chosen from multiset). Stéphan's ω_l^⊗ (sequence store) eliminates sources 3+4.
+
+## What is the Hidden Cut insight in Stéphan's ⊗_L rule?
+
+The Left-elimination-of-conjunction (⊗_L) rule is a hidden use of Cut in linear logic. It splits resources between a "lemma" (left subproof — solve one constraint) and its "use" (right subproof — solve the rest). Both ω_l and ω_l^⊗ eliminate cut instances to linearize derivations.
+
+## What is QCHR and how does it extend CHR?
+
+QCHR (Barichard & Stéphan, TOCL 2025) adds quantified rules: **existential simpagation** (∃ value making body succeed) and **universal simpagation** (∀ values must succeed). Dynamic binder: quantifiers generated at runtime (not statically like QCSP). Enables modeling games with unknown number of moves.
+
+## How does QCHR relate to CALC's symexec?
+
+CALC's symexec = QCHR solving where all branching is universal (∀ — explore everything). ⊕ = existential (system decides). Loli continuations = dynamic binder (rules produced at runtime = quantifiers generated at runtime). `pathVisited` = QCHR tabling/memoization. ω_l^{∃∀} provides the proof framework for execution trees.
+
+## What does Theorem 7 (Stéphan ICLP 2018) state?
+
+The ω_l sequent calculus system is **sound AND complete** w.r.t. the ω_t operational semantics. A CHR goal is solved by program Γ iff there exists an ω_l proof of the corresponding sequent. (Contrast: ω_l^⊗ is only sound, not complete — it's deterministic.)

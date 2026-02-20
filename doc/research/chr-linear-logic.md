@@ -158,13 +158,95 @@ Betz, "Verification of Constraint Handling Rules using Linear Logic Phase Semant
 
 Uses Girard's phase semantics (a denotational semantics for linear logic based on commutative monoids) to verify CHR program properties. Phase semantics provides an alternative to proof-theoretic reasoning: a formula is valid iff it holds in all phase models. This enables model-theoretic verification of CHR programs through their linear logic translation.
 
-### 2.4 Proof-Theoretical Semantics (ICLP 2018)
+### 2.4 Proof-Theoretical Semantics (Stéphan, ICLP 2018)
 
-Stéphan, "A New Proof-Theoretical Linear Semantics for CHR" (ICLP 2018, OASIcs).
+Stéphan, "A New Proof-Theoretical Linear Semantics for CHR" (ICLP 2018, OASIcs, pp. 4:1-4:17).
 
-Proposes a new proof-theoretical (as opposed to model-theoretical) linear semantics. Key contribution: the semantics is defined directly as a proof system, not as a translation followed by reasoning in linear logic. Demonstrates completeness and soundness with respect to omega_t.
+Instead of translating CHR states to ILL formulas and showing entailment (Betz), Stéphan defines two sequent calculus systems where CHR derivations **are** proof trees.
 
-### 2.5 Betz PhD Thesis (2014)
+**Motivation — four hidden nondeterminism sources in CHR:**
+1. Don't-care rule selection (committed choice) — inherent, by design
+2. Don't-know disjunction (CHR∨) — deliberate
+3. Constraint store ordering (unordered multiset → wake-up order unspecified)
+4. Multi-headed matching (which constraints from multiset are chosen/kept)
+
+None of the prior semantics (ω_t, ω_r, Betz's translation, axiomatic semantics) resolve sources 3+4. Stéphan's ω_l^⊗ system eliminates them.
+
+**Two sequent calculus systems:**
+
+**ω_l system** (store as multi-set):
+- Two kinds of sequents:
+  - Non-focused: `(Γ ▸ Ω_# ◁ S_↑ ⊢ S_↓)` — process goal Ω_# using program Γ, consuming from up-store S_↑, producing down-store S_↓
+  - Focused: `(Γ ! Δ ▷ a ◁ S_↑ ⊢ S_↓)` — focused on identified constraint a, trying rules Δ
+- Inference rules: true (axiom), ⊗_L (split goal), W (skip rule), F (focus on constraint), ↑ (inactivate/store), \⟺ (apply simpagation)
+- **Theorem 7**: Sound AND complete w.r.t. ω_t
+
+**ω_l^⊗ system** (store as sequence):
+- Adds Exchange rule (X) for permuting identified constraints
+- Completely deterministic — eliminates nondeterminism sources 3+4
+- **Theorem 8**: Sound (but not complete) w.r.t. ω_t
+
+**Hidden Cut insight:** The ⊗_L (left-elimination-of-conjunction) rule is actually a hidden use of the cut rule in linear logic. It splits resources between a "lemma" (left subproof — solve one constraint) and its "use" (right subproof — solve the rest). Both operational semantics eliminate cut instances to linearize derivations. The Apply rule also uses cut when kept-head resources (S^K) haven't been fully consumed.
+
+**Translation to linear logic (Definition 10):**
+
+Simpagation rule (K\D ⟺ B₁,...,B_p) translates to:
+```
+∀x̄∃ȳ(K₁(x₁)⊗...⊗K_m(x_m)⊗D₁(x_{m+1})⊗...⊗D_n(x_{m+n}) ⊸ K₁(x₁)⊗...⊗K_m(x_m)⊗B₁(y₁)⊗...⊗B_p(y_p))
+```
+
+**Crucial difference from Betz:** In Stéphan, the program comma "," between rules translates to **& (additive conjunction)**, not ⊗ or bang. Rule selection = &L₁ or &L₂ (committed choice between rules via additive elimination). In Betz, the program is a conjunction of banged implications `!(K⊗D ⊸ K⊗B)`.
+
+This means:
+- **Betz**: program = `!r₁ ⊗ !r₂ ⊗ ... ⊗ !rₙ` (all rules always available, via dereliction)
+- **Stéphan**: program = `r₁ & r₂ & ... & rₙ` (choose one rule = additive left rule)
+
+The & translation elegantly captures committed choice: picking a rule is an additive choice, and the unchosen rules remain available (via Weakening) for future steps. This is more proof-theoretically natural than Betz's bang-based encoding.
+
+**Translation of sequents (Definition 12):** The goal becomes a tensor product (inducing sequence structure), the up-store becomes a set of tokens, and the down-store becomes a tensor of tokens. The full translation L(.) maps each ω_l inference rule to a derivable linear-logic proof fragment:
+- true → 1L + !W
+- ⊗_L → ⊗L + Cut
+- W → &L₂
+- F → !D + !C
+- ↑ → !W (for inactivate axiom)
+- \⟺ → ⊸L + ∃L + ∀L
+
+**Theorems 14, 15**: The translation of any ω_l (resp. ω_l^⊗) proof is a valid linear proof. This establishes the soundness of the sequent calculus w.r.t. linear logic.
+
+**Focusing connection (Section 4 Discussion):** Stéphan notes that the two phases of ω_l^⊗ (non-focused / focused) resemble Andreoli's focusing (asynchronous / synchronous), but they are NOT the same: ω_l^⊗ phases are about constraint activation order, while focusing is about connective polarity. Stéphan suggests translating ω_l proofs into focusing proofs as future work, which would "understand the semantics of CHR in terms of synchronous and asynchronous connectors."
+
+### 2.5 Quantified CHR (Stéphan & Barichard, TOCL 2025)
+
+Barichard and Stéphan, "Quantified Constraint Handling Rules" (ACM TOCL 26(3), 2025, pp. 1-46).
+
+Extends CHR with quantified rules, building on the ω_l sequent calculus from ICLP 2018.
+
+**New rule types:**
+- Existential simpagation: body succeeds if ∃ value in [low,up] makes it succeed
+- Universal simpagation: body succeeds if ∀ values in [low,up] make it succeed
+- Subsumes existential/universal simplification and propagation
+
+**Key innovation — dynamic binder:** Quantifiers generated during execution, not declared statically (unlike QCSP/QCSP+ which require a fixed alternation of quantifiers). This allows modeling games where the number of moves is unknown a priori.
+
+**Proof-theoretical semantics ω_l^{∃∀}:** Extends ω_l with four new inference rules and one axiom:
+- ∃-Apply / ∀-Apply: apply quantified simpagation to focused constraint
+- ∃-elimination: finds at least one value in interval making goal succeed
+- ∀-elimination: proves goal succeeds for all values in interval
+- ∀-true: terminal axiom for universal quantifier
+
+**Theorem 5.1**: Operational semantics ω_r^{∃∀} is sound and complete w.r.t. ω_l^{∃∀}.
+
+**Game-tree semantics:**
+- ∃ = player A (can choose strategy) → like ⊕ (internal choice)
+- ∀ = player B (adversary, tries all moves) → like & (external choice) or exhaustive exploration
+- Execution tree = game tree with ∃/∀ branching at quantified rule applications
+- Tabling/memoization: store previously explored states, avoid re-computation
+
+**Performance:** QCHR++ (C++ implementation) outperforms QuaCode (QCSP solver) by 30-100x on game benchmarks (Nim, Connect-Four, Checkers). Tabling gives additional 100x on games with repeated states.
+
+**Relevance to CALC:** See Section 10.3 below.
+
+### 2.6 Betz PhD Thesis (2014)
 
 Betz, "A Unified Analytical Foundation for Constraint Handling Rules" (PhD thesis, Ulm University, 2014).
 
@@ -407,7 +489,43 @@ Abdennadher and Frühwirth: Two terminating, confluent CHR programs are operatio
 | Strategy stack (opcode index) | Constraint indexing |
 | Disc-tree | Specialized join index |
 
-### 10.2 What CALC Could Gain from CHR Theory
+### 10.2 CALC ↔ Stéphan's ω_l System
+
+Stéphan's proof-theoretical approach is arguably more natural for CALC than Betz's translation:
+
+| Stéphan's ω_l concept | CALC equivalent |
+|---|---|
+| Non-focused sequent (process goal) | `findAllMatches` / `run` loop |
+| Focused sequent (try rules on a constraint) | Strategy stack evaluation for one fact |
+| ⊗_L (split goal into head + tail) | `expandItem` decomposing tensor/plus |
+| W (Weakening — skip a rule) | Rule doesn't match, try next |
+| F (Focusing — select constraint) | `matchFirstLoli` / `findMatch` picks a fact |
+| ↑ (Inactivate — store unchanged) | Fact stays in state (no rule fires on it) |
+| \⟺ (Apply — fire rule) | `applyMatch` / `mutateState` |
+| & between rules (committed choice) | `findMatch` returns first successful rule |
+| ω_l^⊗ (sequence store) | CALC's linear array ordering in `state.linear` |
+| Hidden Cut in ⊗_L | `expandItem` splitting resources between subgoals |
+
+**Program as & (not ⊗ or !):** Stéphan's translation of the program as additive conjunction directly models CALC's committed-choice rule selection in `run()`. The strategy stack's first-match-wins behavior is exactly &L₁ vs &L₂: try rule 1, if it doesn't apply, try rule 2.
+
+**ω_l^⊗ = deterministic CALC:** The ω_l^⊗ system (store as sequence, Exchange rule for reordering) corresponds to CALC's `run()` in committed-choice mode. The sequence ordering eliminates the multiset nondeterminism — exactly what CALC's array-indexed state provides.
+
+### 10.3 CALC ↔ QCHR
+
+| QCHR concept | CALC equivalent |
+|---|---|
+| Existential branching (∃ — one value suffices) | ⊕ in consequent (some branch will be taken) |
+| Universal branching (∀ — all values must work) | Symexec exhaustive exploration (all branches explored) |
+| Dynamic binder (quantifiers generated at runtime) | Loli continuations (rules produced at runtime) |
+| Game tree (∃/∀ alternation) | Execution tree (branch/fork nodes) |
+| Tabling/memoization | `pathVisited` cycle detection + state hashing |
+| QCHR++ solver | `symexec.js` explore() |
+
+**Key insight:** CALC's symexec is conceptually a QCHR solver where all branching is universal (∀ — explore everything). When CALC adds constraint simplification (TODO_0002), some branches may become provably infeasible, turning universal branching into existential (only feasible branches survive). This is exactly QCHR's model: ∃ for "system decides" choices, ∀ for "must handle all cases" choices.
+
+**Quantifiers for CALC's Q1:** QCHR's ∃/∀ rules provide the machinery CALC needs for explicit existential quantification in the monad (Q1 in `exhaustive-forward-chaining.md`). Fresh symbolic values = existentially quantified constraints. The ω_l^{∃∀} system gives a ready-made proof framework.
+
+### 10.4 What CALC Could Gain from CHR Theory
 
 1. **Formal soundness**: The Betz/Frühwirth translation provides a ready-made proof that our forward engine is sound w.r.t. ILL. The translation is nearly identical to what we already do.
 
@@ -432,7 +550,8 @@ Abdennadher and Frühwirth: Two terminating, confluent CHR programs are operatio
 - Betz, H. and Frühwirth, T. (2013). "Linear-Logic Based Analysis of Constraint Handling Rules with Disjunction." *ACM TOCL*, 14(1).
 - Betz, H. (2014). *A Unified Analytical Foundation for Constraint Handling Rules*. PhD thesis, Ulm University.
 - Betz, H. "Verification of CHR Using Linear Logic Phase Semantics." Ulm University.
-- Stéphan, I. (2018). "A New Proof-Theoretical Linear Semantics for CHR." *ICLP 2018*, OASIcs.
+- Stéphan, I. (2018). "A New Proof-Theoretical Linear Semantics for CHR." *ICLP 2018*, OASIcs, pp. 4:1-4:17.
+- Barichard, V. and Stéphan, I. (2025). "Quantified Constraint Handling Rules." *ACM TOCL*, 26(3), pp. 1-46.
 
 ### Compilation
 - Holzbaur, C. and Frühwirth, T. (1999). "Compiling CHR into Prolog with Attributed Variables." *PPDP 1999*.

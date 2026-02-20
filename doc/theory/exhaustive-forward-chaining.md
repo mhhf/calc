@@ -152,16 +152,55 @@ Key points:
 - EVM rules are confluent for ground execution (deterministic opcode dispatch)
 - See [TODO_0043](../todo/0043_chr-linear-logic-mapping.md) for full analysis
 
-### Q4: Relationship to Focusing
+### Q4: Relationship to Focusing (Partially Resolved)
 
-The strategy stack (fingerprint -> disc-tree -> predicate) is a manually constructed focused proof search strategy for the forward fragment. Andreoli's focusing says: apply invertible rules eagerly (inversion phase), then choose a formula and decompose synchronously (focus phase). The strategy stack does exactly this — it's focusing compiled into indexing. Formalizing this connection would explain why the strategy stack is correct.
+The strategy stack (fingerprint -> disc-tree -> predicate) is a manually constructed focused proof search strategy for the forward fragment. Andreoli's focusing says: apply invertible rules eagerly (inversion phase), then choose a formula and decompose synchronously (focus phase). The strategy stack does exactly this — it's focusing compiled into indexing.
 
-### Q5: Execution Trees as Proofs
+Stéphan (ICLP 2018, Section 4) notes that his ω_l^⊗ system's two phases (non-focused / focused) resemble Andreoli's focusing phases but are NOT identical: ω_l^⊗ phases are about constraint activation, focusing is about connective polarity. He suggests translating ω_l proofs into focusing proofs as future work, which would "understand the semantics of CHR in terms of synchronous and asynchronous connectors."
 
-Is the execution tree itself a proof object? In what logic? Possibilities:
+For CALC: the strategy stack's phases map more naturally to Stéphan's ω_l phases than to Andreoli's focusing:
+- **Non-focused phase** = `findAllMatches` scanning candidates
+- **Focused phase** = `tryMatch` + `provePersistentGoals` on a specific rule+fact pair
+- **Rule selection via &** = strategy stack ordering (first-match-wins = &L₁ / &L₂)
+
+Formalizing this via Stéphan's framework may be more tractable than via Andreoli's directly.
+
+### Q5: Execution Trees as Proofs (Partially Resolved)
+
+Is the execution tree itself a proof object? In what logic?
+
+Stéphan's ω_l system provides a direct answer: each CHR derivation **is** an ω_l proof tree. For CALC's single-trace `run()`, the execution trace is literally an ω_l proof:
+- Each `applyMatch` step = an Apply (\\⟺) inference in ω_l
+- Each unconsumed fact = an Inactivate (↑) inference
+- Each rule-skipping step = a Weakening (W) inference
+- Quiescence = true axiom (goal solved)
+
+For CALC's symexec execution tree (multiple traces), the tree is a **collection** of ω_l proofs sharing common prefixes. Each root-to-leaf path is one ω_l proof. The branch nodes where multiple rules could fire correspond to different &L choices (which rule to apply). The fork nodes from ⊕ correspond to... what? ⊕ is not in Stéphan's system (he doesn't cover CHR∨).
+
+**Remaining possibilities for the full tree:**
 - A proof in branching-time linear logic (CTL over ILL states)
 - A proof in muMALL (MALL with fixed points) — the tree's finite depth witnesses termination
+- An ω_l^{∃∀} proof (Stéphan & Barichard 2025) where universal quantification models exhaustive exploration: "for all rule choices, the execution terminates"
 - A metaproof about the object-level ILL program
+
+The QCHR connection (Q6) is the most promising: the execution tree = a game tree where ∀ = "explore all branches."
+
+### Q6: QCHR and Quantified Execution Trees
+
+Stéphan & Barichard (TOCL 2025) extend CHR with quantified rules (∃/∀ over value domains) and give a proof-theoretical semantics ω_l^{∃∀}.
+
+**Connection to CALC's symexec:**
+- CALC's exhaustive exploration = universal quantification over rule choices
+- ⊕ branching = existential quantification (system decides, but we must explore all)
+- The execution tree is a **game tree** where CALC always plays the ∀ role (explore everything)
+
+When CALC adds constraint simplification (TODO_0002), infeasible branches can be pruned:
+- Provably-false branches eliminated → pure ∃ (system decided)
+- Symbolic branches that depend on unknown values → ∀ (must handle all cases)
+
+This suggests the execution tree type is an ω_l^{∃∀} proof where ∀-branching = rule nondeterminism and ∃-branching = ⊕ disjunction.
+
+**Dynamic binder = loli continuations:** QCHR's key feature is quantifiers generated at runtime. CALC's loli-in-monad does the same: a rule consequent produces `(!G -o {B})`, which is a dynamically generated rule (= a dynamically generated quantifier scope in QCHR terms).
 
 ## References
 
@@ -179,6 +218,8 @@ Is the execution tree itself a proof object? In what logic? Possibilities:
 **CHR connection:**
 - Betz, Fruhwirth (2005) — Linear-Logic Semantics for CHR. CP 2005
 - Betz, Fruhwirth (2013) — CHR with Disjunction. ACM TOCL 14(1)
+- Stéphan (2018) — A New Proof-Theoretical Linear Semantics for CHR. ICLP 2018, OASIcs 4:1-4:17
+- Barichard, Stéphan (2025) — Quantified Constraint Handling Rules. ACM TOCL 26(3):1-46
 
 **Focusing and polarity:**
 - Chaudhuri, Pfenning, Price (2006) — Forward and Backward Chaining in the Inverse Method. IJCAR 2006
