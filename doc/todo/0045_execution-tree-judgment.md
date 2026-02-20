@@ -7,7 +7,7 @@ tags: [theory, execution-tree, judgment, proof-theory, formalization]
 type: research
 status: planning
 priority: 6
-depends_on: [TODO_0043]
+depends_on: []
 required_by: [TODO_0042]
 ---
 

@@ -5,7 +5,7 @@ modified: 2026-02-20
 summary: "Apply Betz & Frühwirth's CHR ↔ linear logic results to CALC: formal soundness proof for forward engine, CHR∨ soundness for ⊕ in consequents, confluence analysis, compilation techniques"
 tags: [CHR, linear-logic, soundness, forward-engine, oplus, theory]
 type: research
-status: in progress
+status: done
 priority: 10
 depends_on: []
 required_by: [TODO_0042]
