@@ -52,10 +52,28 @@ All optimizations that matter at current scale (44 rules, ~20 facts, depth-2 ter
 
 | Optimization | Trigger | Effort | Impact |
 |-------------|---------|--------|--------|
+| **Delta-driven activation** | 100+ rules | ~150 LOC | Skip ~80% of rule evaluations per step. CHR's "active constraint" semantics. |
 | **Compiled matching (Maranget)** | 1000+ rules | ~500 LOC | Subsumes fingerprint + disc-tree. Single decision tree for all rules. |
 | **Stage 8 (path-based access)** | depth 4+ terms | ~150 LOC | ~10x on substitution at depth 10. Current EVM: depth 1-2, no benefit. |
 | **Semi-naive** | 100K+ facts | ~200 LOC | 10-50x. Fundamentally hard for linear logic (provenance tracking). |
 | **Join ordering** | 4+ antecedent rules | ~100 LOC | ~5-10%. Current deferral mechanism works fine. |
+
+### Delta-Driven Activation (CHR Active Constraint)
+
+CHR's refined semantics (omega_r) activates rules from newly added/changed constraints — only rules whose trigger predicates overlap with the delta are re-evaluated. CALC currently re-scans all candidates per step via `findAllMatches`.
+
+**Sketch:** After `mutateState`, track which predicates changed (consumed + produced). Only re-evaluate rules whose `triggerPreds` intersect the changed set:
+
+```
+changedPreds = {preds from consumed facts} ∪ {preds from produced facts}
+candidates = rules.filter(r => r.triggerPreds ∩ changedPreds ≠ ∅)
+```
+
+At 44 rules with ~3-4 predicates changing per step, this would skip ~80% of rule evaluations. The strategy stack already does O(1) fingerprint lookup for most rules, so the real win is at 100+ rules where disc-tree traversal becomes the bottleneck.
+
+**When:** 100+ rules, or when disc-tree scans dominate profiling. Also relevant for symexec where `findAllMatches` is 83% of total time.
+
+**CHR background:** See `doc/research/chr-linear-logic.md` (Section 6.1) and `doc/todo/0043_chr-linear-logic-mapping.md` (Section 5.3).
 
 ### Compiled Pattern Matching (Maranget)
 
