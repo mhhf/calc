@@ -6,13 +6,28 @@ summary: "Decomposition of symbolic value handling into three independent proble
 tags: [symexec, expressions, design-decision, decomposition]
 type: design
 cluster: Symexec
-status: researching
+status: done
 priority: 9
 depends_on: []
-required_by: [TODO_0003, TODO_0004, TODO_0005]
+required_by: [TODO_0004, TODO_0005]
 ---
 
 # Symbolic Execution: Three Isolated Problems
+
+## Decision
+
+**P1 (∃-Elimination): Explicit ∃ connective with eigenvariables and eager resolution.** Skolem path backlogged as fallback.
+
+Rationale:
+- ∃ is standard CLF — completes CALC's monadic decomposition (`expandItem` already handles ⊗, ⊕, ⊸, !; ∃ fills the gap)
+- Eigenvariables keep constraints flat (SMT-ready) without nested expression trees
+- Eager resolution: same FFI → state → backward fallback as today. Ground inputs resolve immediately (zero overhead). Symbolic inputs accumulate constraints.
+- Skolem is "dirty theory" — catch-all axioms make fallback ordering an implementation detail, leads toward K-framework (term rewriting replaces backward chaining)
+- Skolem path preserved in [TODO_0003](0003_symexec-expression-foundation.md) (backlogged)
+
+**P2 (Witness Representation):** Opaque `evar(N)` nodes (monotonic counter). Flat constraints in persistent context. Constraint index for dependency tracking.
+
+**P3 (Simplification):** Deferred. Eigenvariable constraints work without propagation (they just accumulate). See [TODO_0005](0005_symexec-simplification.md).
 
 ## The Obstruction
 
@@ -31,68 +46,62 @@ This decomposes into **three independent problems**, each with its own theoretic
 | Mechanism | Theory | What happens | Sequential flow? |
 |---|---|---|---|
 | Skolem witness | Conservative extension | Add axiom `∀X,Y. plus(X,Y,f(X,Y))` | Yes |
-| Eigenvariable (CLF ∃R) | Standard CLF | Fresh param α, constraint `!plus(A,B,α)` | Yes |
+| **Eigenvariable (CLF ∃R)** | **Standard CLF** | **Fresh param α, constraint `!plus(A,B,α)`** | **Yes** |
 | Loli-freeze | Standard loli-left | Suspend: `!plus(A,B,C) ⊸ {body}` | **No** (blocks) |
 
-Loli-freeze alone is insufficient for sequential computation (no PC fact produced). Must compose with Skolem or eigenvariable.
+**Decision: Eigenvariable via explicit ∃ connective.**
 
 **Theoretical foundations:** CLF (Watkins 2004), QCHR ω_l^{∃∀} (Barichard & Stéphan 2025), CLP freeze (Jaffar & Maher 1994), Simmons 2012 (forward chaining with ∃). Bruni et al. IJCAR 2024: first Skolemization for ILL — naive Skolemization unsound in general ILL, but safe for CALC's flat state.
 
-**Status:** Understanding phase. Both Skolem and eigenvariable should be prototyped.
-
 ### Problem 2: Witness Representation
 
-**Question:** Given a mechanism from P1, what does the symbolic value look like in the Store?
+**Question:** Given eigenvariable mechanism, what does the symbolic value look like in the Store?
 
-**Skolem path:** New constructors `plus_expr(A,B)`, `mul_expr(A,B)`, etc. Content-addressed, self-describing, pattern-matchable. Requires ground folding for confluence (`plus_expr(3,5)` must equal `binlit(8)`). Conservative extension of backward theory.
-
-**Eigenvariable path:** Opaque `evar(N)` nodes with constraint index. Flat constraints in persistent context. No deduplication (each evar unique). SMT-ready.
-
-**Key tradeoff:** Skolem terms carry provenance in structure (inspectable). Eigenvariables separate data from provenance (constraints external). See comparison in research doc.
-
-**Status:** Depends on P1 decision. Two independent prototyping paths.
+**Decision:** Opaque `evar(N)` nodes with constraint index. Flat constraints as persistent facts. No expression constructors, no catch-all clauses, no ground folding needed. SMT-ready.
 
 ### Problem 3: Term Simplification
 
-**Question:** Given expression terms (P2), how to prevent unbounded growth?
+**Question:** Given accumulated constraints, how to prevent unbounded growth?
 
-**For Skolem path (term rewriting):**
-- Level 0: Ground folding (required for confluence — part of P2)
-- Level 1: Identity/annihilation (`X+0→X`, `X*0→0`)
-- Level 2: AC-normalization (flatten + sort + constant fold) — **highest impact**
-- Level 3: Cancellation (`X-X→0`)
-
-**For eigenvariable path (constraint propagation):**
-- Resolution when variables become ground
-- Transitive propagation through constraint graph
-- Domain narrowing / interval reasoning
-
-**This is pure term rewriting / CLP.** No linear logic needed. Can be studied independently.
-
-**Status:** Depends on P2. Completely deferrable — expressions work without normalization, just grow.
+**Deferred.** Constraints accumulate without propagation. Still useful (SMT export, symbolic traces). Propagation levels (equality resolution → FFI re-check → chain simplification → domain propagation) added incrementally per [TODO_0005](0005_symexec-simplification.md).
 
 ## Dependency Order
 
 ```
-Problem 1: ∃-Elimination
+TODO_0002 (this — decided)
     │
-    ├──→ Skolem ──→ P2a: Expression Constructors ──→ P3a: TRS Simplification
-    │                                                      (optional)
-    └──→ Eigenvariable ──→ P2b: Constraint Store ──→ P3b: Constraint Propagation
-                                                          (optional)
+    └──→ TODO_0004: Add ∃ connective + forward engine eigenvariables
+              │
+              └──→ TODO_0005: Constraint propagation (optional)
 ```
 
-Each level isolated. Each prototypable and testable independently.
+Skolem path backlogged: TODO_0003, TODO_0028.
+
+## Implementation Findings
+
+**EVM rule audit (11 need ∃, 26 unchanged):**
+- Restructure: evm/add, mul, sub, exp, lt, gt, and, or, not, concatMemory/s, calldatacopy/s
+- Unchanged: all rules with `!inc PC PC'` or `!plus N GAS GAS'` (literal N) — PC and gas always ground
+- ⊕ guards (eq/neq/iszero/jumpi): stay as loli guards inside ⊕
+
+**Key simplification:** ∃ in rule consequents is immediately decomposed by `expandItem`. It never persists as a formula in state. Therefore:
+- Unification/substitution don't need ∃ support (no ∃-formulas to unify)
+- ∃-bound variables are just metavar slots not matched by antecedent — existing `metavarSlots` infrastructure suffices
+- ∃ is metadata on compiled rules: "this slot is existential"
+
+**Estimated effort:** ~200 LOC total (grammar ~10, parser ~20, forward engine ~50, constraint index ~20, EVM rules ~50, tests ~50). NOT the 44-72h general-purpose estimate — CALC only needs forward-engine ∃.
 
 ## Open Questions
 
-**Q1 (P1):** Should CALC add ∃ as a first-class connective (~200 LOC: parser, rules, focusing), or is implicit Skolemization / implicit eigenvariable generation sufficient?
+**Q3 (P3, deferred):** Store.put-time normalization vs post-step pass? Only relevant when P3 is tackled.
 
-**Q2 (P2, Skolem):** Is the initial algebra extension (free elements) the right framing? What about catch-all safety — only for total functions (plus, mul, inc), NOT for partial relations (neq, lt, eq). See `doc/research/equational-completion.md`.
+**Q4 (cross-cutting, deferred):** Rewriting modulo SMT (Rocha & Meseguer 2013) — long-term architecture. Push/pop solver stack maps to CALC's mutation+undo.
 
-**Q3 (P3):** Store.put-time normalization (Maude philosophy: zero per-step cost, Store theory-aware) vs post-step pass (generic Store, O(new_facts) per step)?
+**NQ1 (implementation):** Store representation for `exists` node: de Bruijn index for bound variable, or just mark the metavar slot as existential in the compiled rule? For the forward engine, slot-marking suffices. For the backward prover (later), de Bruijn may be needed.
 
-**Q4 (cross-cutting):** Rewriting modulo SMT (Rocha & Meseguer 2013, Whitters et al. CADE 2023) — symbolic states as (constraint, multiset). Push/pop solver stack maps to CALC's mutation+undo. Is this the natural long-term architecture?
+**NQ2 (implementation):** evar nodes: `Store.put('evar', [N])` with new tag, or reuse `freevar` with naming convention? New tag is cleaner (no collision risk, easy to detect).
+
+**NQ3 (phasing):** Forward-engine-only first (minimal ~150 LOC), backward prover ∃ as Phase 2? Recommended: yes, forward-only first.
 
 ## Resolved Questions
 
@@ -135,13 +144,12 @@ No. ⊕ forks (both branches explored in parallel via tree). ∃ generates fresh
 ## Cross-References
 
 - `doc/research/symbolic-values-in-forward-chaining.md` — **main analysis** (three problems isolated, theory, examples)
-- `doc/research/equational-completion.md` — confluence for catch-all clauses
+- `doc/research/eigenvariable-walkthrough.md` — step-by-step scenarios, branch pruning, ⊕ semantics
+- `doc/research/equational-completion.md` — confluence for catch-all clauses (Skolem, backlogged)
 - `doc/research/evm-modeling-approaches.md` — full design space (R1-R5, S1-S3, T1-T7)
-- `doc/research/expression-simplification.md` — simplification techniques survey
-- `doc/research/symbolic-branching.md` — ⊕ for boolean branching (separate from these three problems)
 - `doc/research/chr-linear-logic.md` §2.5 — QCHR framework
 - `doc/theory/exhaustive-forward-chaining.md` — existentials and QCHR
-- [TODO_0003](0003_symexec-expression-foundation.md) — Skolem path implementation
-- [TODO_0004](0004_symexec-backward-foundation.md) — Eigenvariable path implementation
-- [TODO_0005](0005_symexec-simplification.md) — Simplification (Problem 3)
-- [TODO_0028](0028_confluence-proof.md) — Confluence proof (Problem 2, Skolem)
+- [TODO_0003](0003_symexec-expression-foundation.md) — Skolem path (backlogged)
+- [TODO_0004](0004_symexec-backward-foundation.md) — **Active: ∃ connective implementation**
+- [TODO_0005](0005_symexec-simplification.md) — Constraint propagation (deferred)
+- [TODO_0028](0028_confluence-proof.md) — Confluence proof (Skolem, backlogged)

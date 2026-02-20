@@ -1,29 +1,41 @@
 ---
-title: "Symbolic Execution: Simplification Approach"
+title: "Symbolic Execution: Constraint Propagation"
 created: 2026-02-18
-modified: 2026-02-18
-summary: "Choose and implement simplification strategy after expression/backward decision"
-tags: [symexec, simplification, design-decision]
-type: design
+modified: 2026-02-21
+summary: "Constraint propagation levels for eigenvariable path: equality resolution, FFI re-check, chain simplification, domain propagation"
+tags: [symexec, simplification, constraint-propagation, CLP]
+type: implementation
 cluster: Symexec
 status: planning
-priority: 7
-depends_on: [TODO_0003, TODO_0004]
+priority: 5
+depends_on: [TODO_0004]
 required_by: []
 ---
 
-# Simplification Approach
+# Constraint Propagation
 
-Choose after benchmarking TODO_0003 or TODO_0004.
+After [TODO_0004](0004_symexec-backward-foundation.md) (∃ + eigenvariables), constraints accumulate without simplification. This TODO adds propagation levels incrementally.
 
-## TODO_0005.Option_1 — Skolem + engine normalization (R1xS1 — hevm path)
+## TODO_0005.Level_0 — Equality Resolution (~30 LOC)
 
-## TODO_0005.Option_2 — Skolem + ILL rules (R1xS2 — K path)
+When `!eq(α, v)` appears (from ⊕ branching), substitute α → v everywhere. Cascade through dependent constraints via inverted index.
 
-## TODO_0005.Option_3 — Loli eigenvariables + constraint propagation (R2)
+## TODO_0005.Level_1 — FFI Re-check (~20 LOC)
 
-## TODO_0005.Option_4 — Hybrid engine + ILL lemmas (R1xS3)
+When a constraint's inputs all become ground, re-prove via FFI. E.g., `!plus(binlit(5), binlit(3), α₀)` → FFI gives 8 → α₀ = 8 → cascade.
 
-## TODO_0005.Option_5 — CPS decomposition (R3xS1)
+## TODO_0005.Level_2 — Chain Simplification (~100 LOC)
 
-See: `doc/research/evm-modeling-approaches.md`, `doc/research/equational-completion.md`
+Detect and merge constraint chains: `!plus(X, 3, Y), !plus(Y, 5, Z)` → `!plus(X, 8, Z)`. Delete intermediate evar. Eigenvariable analogue of AC-normalization. Requires constraint pattern matching.
+
+## TODO_0005.Level_3 — Domain Propagation (~200 LOC)
+
+Track intervals: `!neq(α, 0)` → domain(α) = [1, 2²⁵⁶-1]. CLP(FD) territory.
+
+## TODO_0005.Level_4 — Multi-Mode Resolution
+
+Constraint rewriting for non-standard modes: `!plus(A, B, C) ∧ ground(A,C) ⟹ B = C-A`. Requires multi-mode FFI or explicit rewrite rules.
+
+Each level independent and testable. Level 0 is the minimum useful propagation.
+
+See: `doc/research/eigenvariable-walkthrough.md` §8, `doc/research/symbolic-values-in-forward-chaining.md` §3.6

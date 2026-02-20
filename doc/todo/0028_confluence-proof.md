@@ -7,9 +7,9 @@ tags: [research, confluence, normalization, Store]
 type: research
 cluster: Symexec
 status: planning
-priority: 6
-depends_on: [TODO_0002]
-required_by: [TODO_0003]
+priority: 2
+depends_on: [TODO_0003]
+required_by: []
 ---
 
 # Confluence Proof
