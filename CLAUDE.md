@@ -12,7 +12,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## ANKI
 
-I want to create an anki deck where I learn potential concepts. Whenever I tell you or once we have research results (with my approval) - write new discoveries as flashcards of the style Q:A to doc/dev/ANKI.md. They should have the style of mdanki
+I want to create an anki deck where I learn potential concepts. Whenever I tell you or once we have research results (with my approval) - write new discoveries as flashcards of the style Q:A to doc/ANKI.md. They should have the style of mdanki
 ```
 ## questions
 
@@ -99,9 +99,8 @@ out/                     # Generated outputs
 | `doc/theory/` | **Our original contributions** — novel theorems, proof sketches, formal judgments, theoretical results unique to CALC that don't exist in the literature | `exhaustive-forward-chaining.md` |
 | `doc/documentation/` | **How CALC works NOW** — system architecture, data-flow docs, reference material for the current implementation | `architecture.md`, `parser-pipeline.md`, `content-addressed-store.md` |
 | `doc/todo/` | **Numbered task specs** — each file is `NNNN_title.md` with YAML frontmatter (see `.claude/rules/doc-todo.md` for format). Covers planned work: features, bugs, research tasks | `0041_unified-rule-matching.md` |
-| `doc/dev/` | **WIP & ephemeral** — implementation plans, optimization roadmaps, design deliberations, performance studies, anything in-progress that hasn't settled into documentation or theory yet | `forward-optimization-roadmap.md`, `evm-modeling-approaches.md` |
 
-**Decision heuristic:** "Did we invent it?" → `theory/`. "Did someone else write about it?" → `research/`. "Does it describe the system as-is?" → `documentation/`. "Is it a concrete task to do?" → `todo/`. "Is it in-flight thinking?" → `dev/`.
+**Decision heuristic:** "Did we invent it?" → `theory/`. "Did someone else write about it?" → `research/`. "Does it describe the system as-is?" → `documentation/`. "Is it a concrete task to do?" → `todo/`.
 
 ## Architecture
 

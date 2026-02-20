@@ -80,6 +80,7 @@ export default function viteDocs(): Plugin {
                 type: fm.type || undefined,
                 depends_on: fm.depends_on || [],
                 required_by: fm.required_by || [],
+                cluster: fm.cluster || undefined,
               };
             });
             res.setHeader('Content-Type', 'application/json');
