@@ -8,7 +8,7 @@ type: implementation
 cluster: Symexec
 status: ready for implementation
 priority: 9
-depends_on: [TODO_0002]
+depends_on: []
 required_by: [TODO_0005]
 ---
 
