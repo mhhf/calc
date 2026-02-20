@@ -32,6 +32,8 @@ A loli `A -o B` in the state is a **latent rule** / **continuation** — it fire
 
 **Theoretical status:** the firing mechanism for loli-in-state is just loli-left. The extension is sound provided lolis compete equally with compiled rules (the TODO_0041 priority bug violates this). After unification, the operational semantics is: at each step, select any fireable rule OR any fireable loli continuation.
 
+**Linearity safety:** a loli `!A -o B` produced by a rule consequent is LINEAR — it fires once and is consumed. The concern that `!A -o B` could behave like `!(A -o B)` (persistent, infinite firing) is prevented by bang_r's promotion rule, which requires the linear context to be empty. Since `!A -o B` = `loli(bang(A), B)` is itself a linear formula (not bang-wrapped), it occupies the linear context, blocking promotion. The derivation `!A -o B |- !(A -o B)` is not valid in ILL. Only the converse holds (dereliction). This structural guarantee is what makes loli-in-monad sound without risk of infinite resource production.
+
 ### 2. Additives (plus) in Forward Consequents
 
 CLF's monad excludes additives. CALC uses `plus` (internal choice) in forward-chaining consequents:
