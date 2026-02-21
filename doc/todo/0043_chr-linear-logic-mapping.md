@@ -3,7 +3,7 @@ title: "CHR/CHR∨ ↔ Linear Logic: Soundness Mapping for CALC"
 created: 2026-02-19
 modified: 2026-02-20
 summary: "Apply Betz & Frühwirth's CHR ↔ linear logic results to CALC: formal soundness proof for forward engine, CHR∨ soundness for ⊕ in consequents, confluence analysis, compilation techniques"
-tags: [CHR, linear-logic, soundness, forward-engine, oplus, theory]
+tags: [chr, linear-logic, soundness, forward-engine, oplus, theory]
 type: research
 cluster: Theory
 status: done

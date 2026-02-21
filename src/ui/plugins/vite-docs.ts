@@ -2,7 +2,7 @@
  * Vite plugin to serve documentation markdown files during development.
  *
  * Handles:
- *   GET /api/docs/:folder       → JSON array of { slug, title, summary, tags }
+ *   GET /api/docs/:folder       → JSON array of { slug, title, summary, tags, modified, category, ... }
  *   GET /api/docs/:folder/:slug → raw markdown text
  */
 import type { Plugin } from 'vite';
@@ -75,6 +75,8 @@ export default function viteDocs(): Plugin {
                 summary: fm.summary || '',
                 tags: fm.tags || [],
                 status: fm.status || '',
+                modified: fm.modified || '',
+                category: fm.category || '',
                 // Extra fields for todo items
                 priority: fm.priority ? Number(fm.priority) : undefined,
                 type: fm.type || undefined,

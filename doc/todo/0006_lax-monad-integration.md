@@ -3,7 +3,7 @@ title: "Lax Monad {A} — Backward/Forward Integration"
 created: 2026-02-18
 modified: 2026-02-18
 summary: "Integrate forward and backward chaining via CLF lax monad"
-tags: [architecture, CLF, lax-monad, forward-backward]
+tags: [architecture, clf, lax-monad, forward-backward]
 type: research
 cluster: CLF
 status: planning

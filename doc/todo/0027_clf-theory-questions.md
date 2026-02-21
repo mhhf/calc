@@ -3,7 +3,7 @@ title: "CLF Theory Questions: Loli, Monad, Layer Separation"
 created: 2026-02-18
 modified: 2026-02-20
 summary: "Answer foundational questions about CLF monadic decomposition, loli firing, and engine layer separation"
-tags: [research, CLF, loli, monad, theory]
+tags: [research, clf, loli, monad, theory]
 type: research
 status: done
 priority: 7

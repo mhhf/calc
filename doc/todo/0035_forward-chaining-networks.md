@@ -3,7 +3,7 @@ title: "Forward Chaining Network Optimizations"
 created: 2026-02-18
 modified: 2026-02-18
 summary: "TREAT, CHR join ordering, LEAPS, tabled forward chaining"
-tags: [performance, research, TREAT, CHR, LEAPS, forward-engine]
+tags: [performance, research, TREAT, chr, LEAPS, forward-engine]
 type: research
 cluster: Performance
 status: planning

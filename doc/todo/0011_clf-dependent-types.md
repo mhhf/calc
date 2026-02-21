@@ -3,7 +3,7 @@ title: "CLF Dependent Types"
 created: 2026-02-18
 modified: 2026-02-18
 summary: "Add Pi and existential types for full LF/LLF/CLF compatibility"
-tags: [CLF, dependent-types, type-theory]
+tags: [clf, dependent-types, type-theory]
 type: research
 cluster: CLF
 status: planning

@@ -93,14 +93,15 @@ out/                     # Generated outputs
 
 ## doc/ Placement Rule
 
-| Subdirectory | What goes there | Examples |
-|---|---|---|
-| `doc/research/` | **External knowledge** — literature surveys, paper summaries, technique catalogs, design-space explorations sourced from existing work | `clf-celf-ceptre.md`, `term-indexing.md`, `chr-linear-logic.md` |
-| `doc/theory/` | **Our original contributions** — novel theorems, proof sketches, formal judgments, theoretical results unique to CALC that don't exist in the literature | `exhaustive-forward-chaining.md` |
-| `doc/documentation/` | **How CALC works NOW** — system architecture, data-flow docs, reference material for the current implementation | `architecture.md`, `parser-pipeline.md`, `content-addressed-store.md` |
-| `doc/todo/` | **Numbered task specs** — each file is `NNNN_title.md` with YAML frontmatter (see `.claude/rules/doc-todo.md` for format). Covers planned work: features, bugs, research tasks | `0041_unified-rule-matching.md` |
+| Subdirectory | What goes there | Naming | Examples |
+|---|---|---|---|
+| `doc/research/` | **External knowledge** — literature surveys, paper summaries, technique catalogs sourced from existing work | `NNNN_title.md` + `meta.yaml` | `0007_chr-linear-logic.md` |
+| `doc/theory/` | **Our original contributions** — novel theorems, proof sketches, design frameworks unique to CALC | `NNNN_title.md` + `meta.yaml` | `0001_exhaustive-forward-chaining.md` |
+| `doc/documentation/` | **How CALC works NOW** — system architecture, data-flow docs, reference material | free-form | `architecture.md`, `content-addressed-store.md` |
+| `doc/todo/` | **Numbered task specs** — planned work, bugs, research tasks | `NNNN_title.md` + `meta.yaml` | `0041_unified-rule-matching.md` |
+| `doc/def/` | **Atomic definitions** — one concept per file, encyclopedia of terms | `NNNN_title.md` + `meta.yaml` | `0005_internal-vs-external-choice.md` |
 
-**Decision heuristic:** "Did we invent it?" → `theory/`. "Did someone else write about it?" → `research/`. "Does it describe the system as-is?" → `documentation/`. "Is it a concrete task to do?" → `todo/`.
+**Decision heuristic:** "Did we invent it?" → `theory/`. "Did someone else write about it?" → `research/`. "Does it describe the system as-is?" → `documentation/`. "Is it a concrete task to do?" → `todo/`. "Is it a single concept/term to define?" → `def/`.
 
 ## Architecture
 

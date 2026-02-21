@@ -3,7 +3,7 @@ title: "Unsound Loli Decomposition in Forward Engine"
 created: 2026-02-17
 modified: 2026-02-19
 summary: "expandItem unsoundly decomposes guarded loli continuations — transforms conditionals into unconditional assertions, corrupting dead ⊕ branches"
-tags: [forward-engine, loli, soundness, CLF, expandItem]
+tags: [forward-engine, loli, soundness, clf, expandItem]
 type: bug
 cluster: Symexec
 status: subsumed

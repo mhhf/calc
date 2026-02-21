@@ -3,7 +3,7 @@ title: "Confluence Proof for Store.put Normalization"
 created: 2026-02-18
 modified: 2026-02-18
 summary: "Prove confluence of restricted Store.put normalization (ground folding) for expression terms"
-tags: [research, confluence, normalization, Store]
+tags: [research, confluence, normalization, store]
 type: research
 cluster: Symexec
 status: backlogged

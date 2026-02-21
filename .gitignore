@@ -19,3 +19,5 @@ lib/tree-sitter-mde/src/
 lib/tree-sitter-mde/*.so
 lib/tree-sitter-mde/*.wasm
 lib/tree-sitter-mde/bindings/
+
+.todo
