@@ -53,7 +53,7 @@ app.get('/api/docs/:folder', (c) => {
     const docs = files.map(f => {
       const content = fs.readFileSync(path.join(folderPath, f), 'utf-8');
       const fm = extractFrontmatter(content);
-      return { slug: f.replace(/\.md$/, ''), title: fm.title || f.replace(/\.md$/, ''), summary: fm.summary || '', tags: fm.tags || [], status: fm.status || '', priority: fm.priority ? Number(fm.priority) : undefined, type: fm.type || undefined, depends_on: fm.depends_on || [], required_by: fm.required_by || [], cluster: fm.cluster || undefined };
+      return { slug: f.replace(/\.md$/, ''), title: fm.title || fm.term || f.replace(/\.md$/, ''), summary: fm.summary || '', tags: fm.tags || [], status: fm.status || '', priority: fm.priority ? Number(fm.priority) : undefined, type: fm.type || undefined, depends_on: fm.depends_on || [], required_by: fm.required_by || [], cluster: fm.cluster || undefined };
     });
     return c.json(docs);
   } catch (e) {

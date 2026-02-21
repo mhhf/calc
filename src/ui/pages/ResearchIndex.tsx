@@ -14,6 +14,7 @@ interface DocEntry {
 const FOLDER_LABELS: Record<string, string> = {
   research: 'Research',
   theory: 'Theory',
+  def: 'Definitions',
 };
 
 /** Fixed display order for research categories (matches INDEX.md sections) */
