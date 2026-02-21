@@ -14,7 +14,7 @@ const DOC_ROOT = path.resolve(__dirname, '../../../doc');
 const ALLOWED_FOLDERS: Record<string, string> = {
   research: 'research',
   theory: 'theory',
-  dev: 'dev',
+  def: 'def',
   docs: 'documentation',
   todo: 'todo',
 };
@@ -71,7 +71,7 @@ export default function viteDocs(): Plugin {
               const fm = extractFrontmatter(content);
               return {
                 slug: f.replace(/\.md$/, ''),
-                title: fm.title || f.replace(/\.md$/, ''),
+                title: (fm.title || fm.term || f.replace(/\.md$/, '')) as string,
                 summary: fm.summary || '',
                 tags: fm.tags || [],
                 status: fm.status || '',
