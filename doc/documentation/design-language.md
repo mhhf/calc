@@ -2,6 +2,28 @@
 
 CALC is a neo-academic tool — theoretical math and computer science research presented with clarity and precision. The visual language reflects this: clean, minimal, typographically disciplined, never decorative.
 
+## Methodology
+
+A design language is built bottom-up through four layers:
+
+1. **Design Tokens** — atomic values (colors, sizes, spacing, radii, shadows). Platform-agnostic primitives.
+2. **Foundations** — how tokens compose into rules: color roles, type scale, spacing rhythm, dark mode mapping.
+3. **Components** — reusable UI blocks (tabs, cards, inputs, buttons) built from foundations.
+4. **Patterns** — component compositions solving recurring problems (navigation, form layouts, proof display).
+
+References: IBM Carbon (layering model), GitHub Primer (token → semantic mapping), Tailwind (utility-first tokens).
+
+### Academic-Specific Considerations
+
+From typographic research (Schwen, PLOS Comp Bio) and proof assistant UIs (Lean, Coq):
+
+- **75-80 character line width** for prose — optimal reading measure (~600-700px at 16px)
+- **Monospaced for formal notation** — sequents, terms, rules
+- **Inference trees as Gentzen-style derivations** — traditional proof theory rendering
+- **Restrained, low-saturation palettes** — neutral-heavy, one accent for interaction, semantic colors for status only
+- **White space over decorative grid lines** — spacing and subtle shading do the structuring
+- **Right-align numbers in tables**, use tabular/monospaced figures
+
 ## Principles
 
 1. **White space is structure.** Let content breathe. Margins and padding do the work that borders and backgrounds shouldn't.
@@ -9,6 +31,7 @@ CALC is a neo-academic tool — theoretical math and computer science research p
 3. **Minimal palette, maximum clarity.** Few colors, each with a defined role. No ad-hoc hex values.
 4. **Code is a first-class citizen.** Monokai code blocks are visually distinct from prose — dark islands in a light sea.
 5. **Light by default.** White/gray is the canvas. Dark mode inverts the canvas, not the logic.
+6. **Three levels of visual weight maximum** per view: primary (what you act on), secondary (supporting info), tertiary (metadata/chrome).
 
 ## Color Palette
 
@@ -51,7 +74,7 @@ CALC is a neo-academic tool — theoretical math and computer science research p
 
 ### Code — Monokai Sublime
 
-Code blocks use a fixed dark palette regardless of light/dark mode:
+Fixed dark palette regardless of light/dark mode:
 
 | Token      | Value     | Role                  |
 |------------|----------|-----------------------|
@@ -74,27 +97,55 @@ Code blocks use a fixed dark palette regardless of light/dark mode:
 | Heading| same stack                                                            | 600    | scale  |
 | Code   | ui-monospace, SFMono-Regular, SF Mono, Menlo, Consolas, monospace     | 400    | 85%    |
 
-Line height: 1.6 body, 1.25 headings, 1.5 code.
+**Type scale** (base 16px, ratio 1.25 — Major Third): xs 10px, sm 13px, base 16px, lg 20px, xl 25px, 2xl 31px. Ratio 1.25 gives clear hierarchy without wasting vertical space in a data-dense tool.
+
+**Line height**: 1.6 body, 1.25 headings, 1.5 code. Snap to 4px grid (e.g. 16px × 1.5 = 24px).
+
+## Spacing
+
+4px base unit. All spacing is a multiple of 4.
+
+| Token | Value | Use |
+|-------|-------|-----|
+| 1 | 4px | Icon-to-text gap, tight padding |
+| 2 | 8px | Intra-component spacing |
+| 3 | 12px | Related element gaps |
+| 4 | 16px | Default padding, card padding |
+| 6 | 24px | Section gaps |
+| 8 | 32px | Major section separation |
+| 12 | 48px | Page-level margins |
+
+**Proximity heuristic** (Gestalt): tightly related = 4-8px, within component = 8-12px, between components = 16-24px, between sections = 32-48px.
+
+## Contrast Requirements (WCAG AA)
+
+| Context | Minimum ratio |
+|---------|---------------|
+| Normal text | 4.5:1 |
+| Large text (18px bold / 24px) | 3:1 |
+| Non-text UI elements | 3:1 |
+
+Rule of thumb: 5 Tailwind shade steps apart gives ~4.5:1 contrast (e.g. gray-900 on white, gray-100 on gray-800).
 
 ## Component Patterns
 
 ### Main Tabs (left — tool pages)
 
-Light canvas background. Active tab: white bg, blue-600 text, 2px blue bottom border. Inactive: gray text, hover to gray-100 bg.
+Light canvas background. Active: white bg, blue-600 text, 2px blue bottom border. Inactive: gray text, hover to gray-100 bg.
 
 ### Doc Tabs (right — dark, inverted)
 
-Dark background to visually separate documentation from interactive tool pages. Active tab: darkest bg (gray-900), **white text**, blue-400 bottom border accent. Inactive: gray-700 bg, gray-300 text, hover lightens.
+Dark background visually separates documentation from interactive tool pages. Active: gray-900 bg, **white text**, blue-400 bottom border accent. Inactive: gray-700 bg, gray-300 text, hover lightens.
 
-The key: active doc tab uses **white text** (not blue) for readability on dark backgrounds. The blue accent is on the border only.
+Key: active doc tab uses **white text** (not blue) for readability on dark backgrounds. Blue accent on border only.
 
 ### Cards
 
-White (light) / gray-800 (dark) background. 1px border in `border` token. Rounded-lg. Shadow-sm. Hover: shadow-md + blue-300 border.
+White / gray-800 (dark) background. 1px border. Rounded-lg. Shadow-sm. Hover: shadow-md + blue-300 border.
 
 ### Buttons
 
-Primary: blue-600 bg, white text, rounded-lg, hover blue-700. Secondary: outline style with border-gray-300.
+Primary: blue-600 bg, white text, rounded-lg, hover blue-700. Secondary: outline with border-gray-300.
 
 ### Form Inputs
 
@@ -102,11 +153,7 @@ Primary: blue-600 bg, white text, rounded-lg, hover blue-700. Secondary: outline
 
 ### Status Badges
 
-Pill shape (rounded-full). Wash background + dark text of same hue:
-- Draft: yellow
-- Review: blue
-- Stable: green
-- Research: purple
+Pill shape. Wash background + dark text of same hue: draft (yellow), review (blue), stable (green), research (purple).
 
 ### Proof View Toggles
 
@@ -114,12 +161,15 @@ Button group with rounded-lg container + border. Active: blue-600 bg, white text
 
 ## Dark Mode
 
-Class-based (`dark:` prefix on root). Inverts canvas/surface/text. Colors shift from 600→400 weight. Backgrounds shift from 50→900/20 wash. Persisted in localStorage, defaults to system preference.
+Class-based (`dark:` prefix on root). Inverts canvas/surface/text. Colors shift 600→400. Backgrounds shift 50→900/20 wash. Persisted in localStorage, defaults to system preference.
+
+Dark mode is not just inversion — it requires reduced saturation and different shade mappings (Primer approach).
 
 ## Anti-Patterns
 
 - No gradient backgrounds
 - No drop shadows heavier than shadow-md
-- No ad-hoc hex colors outside this palette (prose-research GitHub styling is an allowed exception for markdown rendering)
+- No ad-hoc hex colors outside this palette (prose-research GitHub styling is an allowed exception)
 - No decorative borders or ornamental elements
 - No color as the sole differentiator (always pair with text/icon/position)
+- No serif fonts for UI chrome (reserve for long-form prose if ever added)

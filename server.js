@@ -20,7 +20,7 @@ app.get('/api/health', (c) => c.json({ status: 'ok' }));
 
 // Documentation API
 const DOC_ROOT = path.resolve(__dirname, 'doc');
-const ALLOWED_FOLDERS = { research: 'research', theory: 'theory', dev: 'dev', docs: 'documentation', todo: 'todo' };
+const ALLOWED_FOLDERS = { research: 'research', theory: 'theory', def: 'def', docs: 'documentation', todo: 'todo' };
 
 function extractFrontmatter(content) {
   const m = content.match(/^---\n([\s\S]*?)\n---\n/);

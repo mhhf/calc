@@ -41,8 +41,8 @@ export const routes = [
   { path: '/docs/:slug', component: DocPage },
   { path: '/theory', component: ResearchIndex },
   { path: '/theory/:slug', component: DocPage },
-  { path: '/dev', component: DocIndex },
-  { path: '/dev/:slug', component: DocPage },
+  { path: '/def', component: ResearchIndex },
+  { path: '/def/:slug', component: DocPage },
   { path: '/todo', component: TodoIndex },
   { path: '/todo/:slug', component: DocPage },
 ];
