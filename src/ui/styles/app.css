@@ -68,11 +68,11 @@
 
   /* Doc tabs — inverted: dark bg, bright text */
   .tab-link-doc.active {
-    @apply bg-gray-800 dark:bg-gray-100 text-blue-400 dark:text-blue-600 border-blue-400 dark:border-blue-600;
+    @apply bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900 border-b-2 border-blue-400 dark:border-blue-600;
   }
 
   .tab-link-doc:not(.active) {
-    @apply bg-gray-700 dark:bg-gray-300 text-gray-200 dark:text-gray-700 hover:bg-gray-600 dark:hover:bg-gray-200 hover:text-white dark:hover:text-gray-900;
+    @apply bg-gray-700 dark:bg-gray-300 text-gray-300 dark:text-gray-600 hover:bg-gray-600 dark:hover:bg-gray-200 hover:text-white dark:hover:text-gray-900;
   }
 
   /* Input styling */
