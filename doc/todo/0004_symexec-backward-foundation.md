@@ -46,11 +46,28 @@ Decided in [TODO_0002](0002_symexec-expression-decision.md): explicit ∃ with e
 
 **Bug 4 — Existential goal dependency ordering:** `resolveExistentials` collected goals by iterating `existentialSlots` (Set insertion order), which didn't respect dependency chains. For `evm/gt`: `to256(Z,Z')` was tried before `gt(X,Y,0,Z)`, so Z was unbound when to256 needed it. **Fix:** Collect goals from `rule.consequent.persistent` (preserves .ill syntax order = dependency order).
 
-### Open Edge Cases
+### Edge Cases Found During Audit (both fixed)
 
-**Edge case 1 — `exists` + multi-alt consequent in `run()`:** When `consequentAlts.length > 1`, `compiled.consequent = conseqFlat` (unexpanded). If a rule combined `exists` with additive choice (e.g. `exists X. (A & B)`), `applyMatch` in `run()` would emit raw `exists(...)` nodes containing `bound(0)` into state — invalid facts. `symexec.js` is unaffected (uses `applyMatchChoice` with individual alternatives). No current rule triggers this. Fix would require `run()` to handle choice (pick first alt for committed choice, or expand exists separately from choice). Low priority — only matters if someone writes `exists X. (A & B)` in a forward rule consequent.
+**Edge case 1 — `exists` + multi-alt consequent:** `effectiveConseq` used `conseqFlat` (raw, unexpanded) for multi-alt rules. Two bugs:
 
-**Edge case 2 — Quantified persistent antecedent patterns:** `collectOutputVars` in `compile.js` walks persistent antecedent patterns (`!P`) to identify FFI output positions. It does not handle `exists`/`forall`/`bound` nodes. If a rule had `!exists X. P(X)` in its antecedent, `collectOutputVars` would traverse into the binder body — `bound` nodes would be silently ignored (correct) but the analysis might misidentify output positions under the binder. No current rule has quantified persistent antecedents. Low priority — `!exists X. P(X)` would be semantically unusual (a persistent quantified assumption).
+*Bug A — `resolveExistentials` can't find goals:* `flattenTensor` can't see inside `exists(...)`, so `conseqFlat.persistent = []`. The `!plus` goal buried under exists is invisible → existential slot always gets `freshEvar`, even when FFI could resolve it.
+
+*Bug B — `applyMatch` emits raw `exists` into state:* `subApplyIdx` on `exists(with(b(bound(0)), ...))` leaves `bound(0)` intact (it's not in `slots`) → invalid fact in state.
+
+Example trace for `foo: a X -o { exists Y. ((b Y & c Y) * !plus X 1 Y) }`:
+1. `conseqFlat = { linear: [exists(...)], persistent: [] }` — flattenTensor stops at exists
+2. `expandConsequentChoices` correctly opens exists: `[{linear:[b(_m0)], persistent:[plus(X,1,_m0)]}, {linear:[c(_m0)], persistent:[plus(X,1,_m0)]}]`
+3. Old code: `effectiveConseq = conseqFlat` → `compiled.consequent.persistent = []` → no goals found
+4. `resolveExistentials` falls through to `freshEvar()` even when `plus(3,1,Y)` is FFI-solvable
+
+**Fix:** `effectiveConseq = consequentAlts[0]` (always use first expanded alt). Correct for committed choice (`run()` picks first alt) and for symexec (uses `consequentAlts` directly for branching). `resolveExistentials` now sees the persistent goals.
+
+**Edge case 2 — `NON_PRED_TAGS` missing quantifier tags:** `getPredicateHead` treats `exists`, `forall`, `bound`, `evar` as predicate heads (they weren't in `NON_PRED_TAGS`). Consequences:
+- `collectOutputVars`: if `exists(body)` were a persistent antecedent, falls to "last argument" heuristic, misidentifies output vars
+- `tryFFIDirect`: would try FFI lookup for `exists` tag (falls through harmlessly but conceptually wrong)
+- `buildStateIndex`: would index `evar(N)` under predicate `'evar'` if it appeared as bare fact
+
+**Fix:** Added `bound`, `exists`, `forall`, `evar` to `NON_PRED_TAGS`. Note: `plus` (⊕ connective) was NOT added — it collides with the user-defined `plus` predicate (arithmetic addition). The connective `plus` is handled by `expandItem` directly.
 
 ## TODO_0004.Phase_1 — Store Foundation: Locally Nameless Binders
 
