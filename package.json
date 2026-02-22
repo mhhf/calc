@@ -4,7 +4,7 @@
   "description": "Linear logic proof calculus sandbox",
   "main": "index.js",
   "scripts": {
-    "test": "node --test tests/hash.js tests/tree-sitter.js tests/calculus.test.js tests/sequent.test.js tests/kernel-ops.test.js tests/focusing.test.js tests/sequent-ext.test.js tests/focused-prover.test.js tests/api.test.js tests/ast.test.js tests/prover.test.js tests/rule-interpreter.test.js tests/manual-prover-logic.test.js tests/manual-proof-flow.test.js tests/rules2-parser.test.js tests/kernel.test.js tests/generic-prover.test.js tests/manual-api.test.js tests/ui-flow.test.js",
+    "test": "node --test tests/hash.js tests/tree-sitter.js tests/calculus.test.js tests/sequent.test.js tests/kernel-ops.test.js tests/focusing.test.js tests/sequent-ext.test.js tests/focused-prover.test.js tests/api.test.js tests/ast.test.js tests/prover.test.js tests/rule-interpreter.test.js tests/manual-prover-logic.test.js tests/manual-proof-flow.test.js tests/rules2-parser.test.js tests/kernel.test.js tests/generic-prover.test.js tests/manual-api.test.js tests/ui-flow.test.js tests/store-quantifiers.test.js tests/quantifiers.test.js",
     "test:engine": "node --test tests/engine/convert.test.js tests/engine/forward.test.js tests/engine/e2e.test.js tests/engine/explore.test.js tests/engine/primitives.test.js",
     "test:ts": "node --test tests/tree-sitter.js",
     "test:e2e": "node tests/e2e-solidjs.js",

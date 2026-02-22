@@ -100,13 +100,14 @@ evm/add:
   !inc PC PC' *
   sh (s (s SH)) *
   stack (s SH) A *
-  stack SH  B *
-  !plus A B C
+  stack SH  B
   -o {
+    exists C. (
     code PC 0x01 *
     pc PC' *
     sh (s SH) *
-    stack SH C
+    stack SH C *
+    !plus A B C)
   }.
 
 evm/mul:
@@ -115,16 +116,14 @@ evm/mul:
   !inc PC PC' *
   sh (s (s SH)) *
   stack (s SH) A *
-  stack SH  B *
-  !trim A A' *
-  !trim B B' *
-  !mul A B C *
-  !to256 C C'
+  stack SH  B
   -o {
+    exists C. (
     code PC 0x02 *
     pc PC' *
     sh (s SH) *
-    stack SH C'
+    stack SH C *
+    !mul A B C)
   }.
 
 evm/sub:
@@ -133,13 +132,14 @@ evm/sub:
   !inc PC PC' *
   sh (s (s SH)) *
   stack (s SH) A *
-  stack SH  B *
-  !plus C B A
+  stack SH  B
   -o {
+    exists C. (
     code PC 0x03 *
     pc PC' *
     sh (s SH) *
-    stack SH C
+    stack SH C *
+    !plus C B A)
   }.
 
 evm/exp:
@@ -148,18 +148,14 @@ evm/exp:
   !inc PC PC' *
   sh (s (s SH)) *
   stack (s SH) Base *
-  stack SH  Exponent *
-  !trim Base Base' *
-  !trim Exponent Exponent' *
-  !exp Base' Exponent' Result *
-  !to256 Result Result'
+  stack SH  Exponent
   -o {
-    debug Base' *
-    debug Exponent' *
+    exists Result. (
     code PC 0x0a *
     pc PC' *
     sh (s SH) *
-    stack SH Result'
+    stack SH Result *
+    !exp Base Exponent Result)
   }.
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%  10
@@ -228,14 +224,14 @@ evm/lt:
   !inc PC PC' *
   sh (s (s SH)) *
   stack (s SH) X *
-  stack SH Y *
-  !gt Y X 0 Z *
-  !to256 Z Z'
+  stack SH Y
   -o {
+    exists Z. (
     code PC 0x10 *
     pc PC' *
     sh (s SH) *
-    stack SH Z'
+    stack SH Z *
+    !gt Y X 0 Z)
   }.
 
 evm/gt:
@@ -244,14 +240,14 @@ evm/gt:
   !inc PC PC' *
   sh (s (s SH)) *
   stack (s SH) X *
-  stack SH Y *
-  !gt X Y 0 Z *
-  !to256 Z Z'
+  stack SH Y
   -o {
+    exists Z. (
     code PC 0x11 *
     pc PC' *
     sh (s SH) *
-    stack SH Z'
+    stack SH Z *
+    !gt X Y 0 Z)
   }.
 
 evm/and:
@@ -260,13 +256,14 @@ evm/and:
   !inc PC PC' *
   sh (s (s SH)) *
   stack (s SH) X *
-  stack SH  Y *
-  !and X Y Z
+  stack SH  Y
   -o {
+    exists Z. (
     code PC 0x16 *
     pc PC' *
     sh (s SH) *
-    stack SH Z
+    stack SH Z *
+    !and X Y Z)
   }.
 
 evm/or:
@@ -275,13 +272,14 @@ evm/or:
   !inc PC PC' *
   sh (s (s SH)) *
   stack (s SH) X *
-  stack SH  Y *
-  !or X Y Z
+  stack SH  Y
   -o {
+    exists Z. (
     code PC 0x17 *
     pc PC' *
     sh (s SH) *
-    stack SH Z
+    stack SH Z *
+    !or X Y Z)
   }.
 
 evm/not:
@@ -289,13 +287,14 @@ evm/not:
   code PC 0x19 *
   !inc PC PC' *
   sh (s SH) *
-  stack SH X *
-  !not X Y
+  stack SH X
   -o {
+    exists Y. (
     code PC 0x19 *
     pc PC' *
     sh (s SH) *
-    stack SH Y
+    stack SH Y *
+    !not X Y)
   }.
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%  20
@@ -312,11 +311,12 @@ concatMemory/z: concatMemory X X Z
 concatMemory/s:
   concatMemory Pos To Z *
   !neq Pos To           *
-  memory Pos Size V     *
-  !plus Pos Size Pos'
+  memory Pos Size V
   -o {
+    exists Pos'. (
     memory Pos Size V *
-    concatMemory Pos' To (concat Z V)
+    concatMemory Pos' To (concat Z V) *
+    !plus Pos Size Pos')
   }.
 
 evm/sha3:
@@ -501,13 +501,14 @@ calldatacopy/z:
 calldatacopy/s:
   calldatacopy Ms Cs Ce *
   calldata Cs Size D *
-  !neq Cs Ce *
-  !plus Cs Size Cs' *
-  !plus Ms Size Ms'
+  !neq Cs Ce
   -o {
+    exists Cs'. exists Ms'. (
     memory Ms Size D *
     calldata Cs Size D *
-    calldatacopy Ms' Cs' Ce
+    calldatacopy Ms' Cs' Ce *
+    !plus Cs Size Cs' *
+    !plus Ms Size Ms')
   }.
 
 evm/calldatacopy:
@@ -517,14 +518,14 @@ evm/calldatacopy:
   sh (s (s (s SH))) *
   stack (s (s SH))         Mem_start      *
   stack (s SH)             Calldata_start *
-  stack SH                 Copy_length    *
-  !plus Calldata_start Copy_length Calldata_end
+  stack SH                 Copy_length
 %TODO fill memory with zeros in  case mem_start is bigger then the current mem_height
   -o {
-    code PC 0x37 *
+    exists Calldata_end. (code PC 0x37 *
     sh SH *
     calldatacopy Mem_start Calldata_start Calldata_end *
-    (unblock -o {pc PC'})
+    !plus Calldata_start Copy_length Calldata_end *
+    (unblock -o {pc PC'}))
   }.
 
 
