@@ -55,7 +55,7 @@ export default function RuleSelector(props: RuleSelectorProps) {
         if (e.target === e.currentTarget) props.onCancel();
       }}
     >
-      <div class="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-3xl w-full max-h-[85vh] overflow-hidden flex flex-col m-4 text-gray-900 dark:text-gray-100">
+      <div class="bg-white dark:bg-gray-800 rounded-lg shadow-lg max-w-3xl w-full max-h-[85vh] overflow-hidden flex flex-col m-4 text-gray-900 dark:text-gray-100">
         {/* Header */}
         <div class="px-4 py-3 border-b border-gray-200 dark:border-gray-700 flex-shrink-0">
           <h3 class="text-lg font-bold text-gray-900 dark:text-white">

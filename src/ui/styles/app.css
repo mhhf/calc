@@ -429,6 +429,92 @@
 }
 
 /* ──────────────────────────────────────────────────
+   Prose-research — dark mode overrides
+   ────────────────────────────────────────────────── */
+.dark .prose-research {
+  color: #e5e7eb;
+}
+
+.dark .prose-research h1,
+.dark .prose-research h2,
+.dark .prose-research h3,
+.dark .prose-research h4 {
+  color: #e5e7eb;
+}
+
+.dark .prose-research h1,
+.dark .prose-research h2 {
+  border-bottom-color: #374151;
+}
+
+.dark .prose-research strong {
+  color: #e5e7eb;
+}
+
+.dark .prose-research a {
+  color: #60a5fa;
+}
+
+.dark .prose-research code {
+  background-color: rgba(110, 118, 129, 0.4);
+}
+
+.dark .prose-research blockquote {
+  color: #9ca3af;
+  border-left-color: #374151;
+}
+
+.dark .prose-research th {
+  background-color: #1f2937;
+  border-color: #374151;
+  color: #e5e7eb;
+}
+
+.dark .prose-research td {
+  border-color: #374151;
+  color: #e5e7eb;
+}
+
+.dark .prose-research tr:nth-child(even) {
+  background-color: #1f2937;
+}
+
+.dark .prose-research table {
+  border-color: #374151;
+}
+
+.dark .prose-research hr {
+  border-top-color: #374151;
+}
+
+.dark .prose-research .error {
+  color: #f87171;
+  background-color: rgba(127, 29, 29, 0.2);
+  border-color: #991b1b;
+}
+
+/* TOC dark mode */
+.dark .prose-research .toc .toc-title {
+  color: #9ca3af;
+}
+
+.dark .prose-research .toc > ul > li > a {
+  color: #e5e7eb;
+}
+
+.dark .prose-research .toc > ul > li > ul > li > a {
+  color: #d1d5db;
+}
+
+.dark .prose-research .toc > ul > li > ul > li > ul > li > a {
+  color: #9ca3af;
+}
+
+.dark .prose-research .toc a:hover {
+  color: #9ca3af;
+}
+
+/* ──────────────────────────────────────────────────
    Highlight.js Monokai Sublime theme (inline)
    ────────────────────────────────────────────────── */
 .hljs {

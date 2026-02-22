@@ -36,7 +36,7 @@ export default function RuleDetailDialog(props: RuleDetailDialogProps) {
         onKeyDown={handleKeyDown}
         tabIndex={0}
       >
-        <div class="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-auto text-gray-900 dark:text-gray-100">
+        <div class="bg-white dark:bg-gray-800 rounded-lg shadow-lg max-w-2xl w-full max-h-[90vh] overflow-auto text-gray-900 dark:text-gray-100">
           {/* Header */}
           <div class="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700">
             <h2 class="text-lg font-semibold text-gray-900 dark:text-gray-100">

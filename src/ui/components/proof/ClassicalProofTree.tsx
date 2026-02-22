@@ -89,7 +89,7 @@ export default function ClassicalProofTree(props: ClassicalProofTreeProps) {
         <div class="relative">
           <div class="border-b border-current" />
           <span
-            class="absolute left-full top-1/2 -translate-y-1/2 pl-1 text-[0.7em] whitespace-nowrap text-gray-500 dark:text-gray-400 cursor-pointer hover:text-blue-600 dark:hover:text-blue-400"
+            class="absolute left-full top-1/2 -translate-y-1/2 pl-1 text-xs whitespace-nowrap text-gray-500 dark:text-gray-400 cursor-pointer hover:text-blue-600 dark:hover:text-blue-400"
             onClick={(e) => {
               e.stopPropagation();
               props.onRuleClick?.(props.pt);

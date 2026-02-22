@@ -15,21 +15,21 @@ interface TodoEntry {
 }
 
 const TYPE_COLORS: Record<string, string> = {
-  bug:            'bg-red-100 text-red-800',
-  research:       'bg-purple-100 text-purple-800',
-  design:         'bg-blue-100 text-blue-800',
-  implementation: 'bg-emerald-100 text-emerald-800',
-  tooling:        'bg-gray-200 text-gray-700',
+  bug:            'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400',
+  research:       'bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-400',
+  design:         'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400',
+  implementation: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-400',
+  tooling:        'bg-gray-200 text-gray-700 dark:bg-gray-700 dark:text-gray-300',
 };
 
 const STATUS_COLORS: Record<string, string> = {
-  planning:                   'bg-gray-200 text-gray-700',
-  researching:                'bg-purple-100 text-purple-700',
-  'ready for implementation': 'bg-teal-100 text-teal-800',
-  'in progress':              'bg-blue-100 text-blue-800',
-  done:                       'bg-green-100 text-green-800',
-  subsumed:                   'bg-gray-200 text-gray-500',
-  backlogged:                 'bg-gray-200 text-gray-500',
+  planning:                   'bg-gray-200 text-gray-700 dark:bg-gray-700 dark:text-gray-300',
+  researching:                'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400',
+  'ready for implementation': 'bg-teal-100 text-teal-800 dark:bg-teal-900/30 dark:text-teal-400',
+  'in progress':              'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400',
+  done:                       'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400',
+  subsumed:                   'bg-gray-200 text-gray-500 dark:bg-gray-700 dark:text-gray-400',
+  backlogged:                 'bg-gray-200 text-gray-500 dark:bg-gray-700 dark:text-gray-400',
 };
 
 const CLOSED_STATUSES = new Set(['done', 'subsumed', 'backlogged']);
@@ -52,10 +52,10 @@ function computeRecommended(todos: TodoEntry[]): Set<string> {
 }
 
 function priorityColor(p: number): string {
-  if (p >= 9) return 'bg-red-500 text-white';
-  if (p >= 7) return 'bg-orange-400 text-white';
-  if (p >= 4) return 'bg-yellow-400 text-gray-900';
-  return 'bg-gray-300 text-gray-700';
+  if (p >= 9) return 'bg-red-500 text-white dark:bg-red-600';
+  if (p >= 7) return 'bg-orange-400 text-white dark:bg-orange-500';
+  if (p >= 4) return 'bg-yellow-400 text-gray-900 dark:bg-yellow-500';
+  return 'bg-gray-300 text-gray-700 dark:bg-gray-600 dark:text-gray-300';
 }
 
 /** Extract the 4-digit TODO number from slug like "0001_loli-..." */
@@ -445,12 +445,12 @@ function TodoCard(props: { todo: TodoEntry; muted?: boolean; recommended?: boole
               {todo.title}
             </span>
             <Show when={todo.type}>
-              <span class={`shrink-0 px-1.5 py-0.5 text-[10px] font-medium uppercase rounded ${TYPE_COLORS[todo.type!] || 'bg-gray-100 text-gray-600'}`}>
+              <span class={`shrink-0 px-1.5 py-0.5 text-xs font-medium uppercase rounded ${TYPE_COLORS[todo.type!] || 'bg-gray-100 text-gray-600'}`}>
                 {todo.type}
               </span>
             </Show>
             <Show when={todo.status}>
-              <span class={`shrink-0 px-1.5 py-0.5 text-[10px] rounded ${STATUS_COLORS[todo.status] || 'bg-gray-100 text-gray-600'}`}>
+              <span class={`shrink-0 px-1.5 py-0.5 text-xs rounded ${STATUS_COLORS[todo.status] || 'bg-gray-100 text-gray-600'}`}>
                 {todo.status}
               </span>
             </Show>

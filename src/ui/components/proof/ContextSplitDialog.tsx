@@ -104,7 +104,7 @@ export default function ContextSplitDialog(props: ContextSplitDialogProps) {
         if (e.target === e.currentTarget) props.onCancel();
       }}
     >
-      <div class="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-hidden flex flex-col m-4 text-gray-900 dark:text-gray-100">
+      <div class="bg-white dark:bg-gray-800 rounded-lg shadow-lg max-w-2xl w-full max-h-[90vh] overflow-hidden flex flex-col m-4 text-gray-900 dark:text-gray-100">
         {/* Header */}
         <div class="px-4 py-3 border-b border-gray-200 dark:border-gray-700 flex-shrink-0">
           <h3 class="text-lg font-bold text-gray-900 dark:text-white">
@@ -120,7 +120,7 @@ export default function ContextSplitDialog(props: ContextSplitDialogProps) {
         <div class="flex-1 overflow-auto p-4">
           {/* Subgoal Preview - shown at top when all assigned */}
           <Show when={previewSubgoals()}>
-            <div class="mb-6 bg-gradient-to-r from-emerald-50 to-violet-50 dark:from-emerald-900/20 dark:to-violet-900/20 rounded-lg p-4 border border-gray-200 dark:border-gray-700">
+            <div class="mb-6 bg-gray-50 dark:bg-gray-800 rounded-lg p-4 border border-gray-200 dark:border-gray-700">
               <div class="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3 uppercase tracking-wide">
                 New Subgoals Preview
               </div>
