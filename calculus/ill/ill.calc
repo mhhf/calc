@@ -88,6 +88,29 @@ bang: formula -> formula
   @category exponential.
 
 % =============================================================================
+% Quantifiers
+% =============================================================================
+
+% Existential: ∃X.A
+% "There exists a witness"
+% Polarity: positive (like ⊗, ⊕ — invertible on left, focusable on right)
+exists: formula -> formula
+  @ascii "exists _"
+  @latex "\\exists #1"
+  @prec 45 right
+  @category quantifier
+  @polarity positive.
+
+% Universal: ∀X.A
+% "For all values"
+% Polarity: negative (like ⊸, & — invertible on right, focusable on left)
+forall: formula -> formula
+  @ascii "forall _"
+  @latex "\\forall #1"
+  @prec 45 right
+  @category quantifier.
+
+% =============================================================================
 % Atoms
 % =============================================================================
 
