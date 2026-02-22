@@ -46,6 +46,12 @@ Decided in [TODO_0002](0002_symexec-expression-decision.md): explicit ∃ with e
 
 **Bug 4 — Existential goal dependency ordering:** `resolveExistentials` collected goals by iterating `existentialSlots` (Set insertion order), which didn't respect dependency chains. For `evm/gt`: `to256(Z,Z')` was tried before `gt(X,Y,0,Z)`, so Z was unbound when to256 needed it. **Fix:** Collect goals from `rule.consequent.persistent` (preserves .ill syntax order = dependency order).
 
+### Open Edge Cases
+
+**Edge case 1 — `exists` + multi-alt consequent in `run()`:** When `consequentAlts.length > 1`, `compiled.consequent = conseqFlat` (unexpanded). If a rule combined `exists` with additive choice (e.g. `exists X. (A & B)`), `applyMatch` in `run()` would emit raw `exists(...)` nodes containing `bound(0)` into state — invalid facts. `symexec.js` is unaffected (uses `applyMatchChoice` with individual alternatives). No current rule triggers this. Fix would require `run()` to handle choice (pick first alt for committed choice, or expand exists separately from choice). Low priority — only matters if someone writes `exists X. (A & B)` in a forward rule consequent.
+
+**Edge case 2 — Quantified persistent antecedent patterns:** `collectOutputVars` in `compile.js` walks persistent antecedent patterns (`!P`) to identify FFI output positions. It does not handle `exists`/`forall`/`bound` nodes. If a rule had `!exists X. P(X)` in its antecedent, `collectOutputVars` would traverse into the binder body — `bound` nodes would be silently ignored (correct) but the analysis might misidentify output positions under the binder. No current rule has quantified persistent antecedents. Low priority — `!exists X. P(X)` would be semantically unusual (a persistent quantified assumption).
+
 ## TODO_0004.Phase_1 — Store Foundation: Locally Nameless Binders
 
 Bound variables are de Bruijn indices (`bound(0)`), free variables keep their Store hashes unchanged. Alpha-equivalence for free: `∃X.p(X)` and `∃Y.p(Y)` get the same hash. No shifting needed for free variables under substitution (Aydemir et al. 2008, §2.3).

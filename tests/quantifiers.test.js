@@ -7,12 +7,12 @@ const assert = require('node:assert');
 
 const Store = require('../lib/kernel/store');
 const { debruijnSubst } = require('../lib/kernel/substitute');
-const { freshEvar, resetFresh } = require('../lib/kernel/fresh');
+const { freshEvar, resetFresh, getFreshCounter, resetMetavar } = require('../lib/kernel/fresh');
 const calculus = require('../lib/calculus');
 const { createProver, buildRuleSpecs } = require('../lib/prover/focused');
 const Seq = require('../lib/kernel/sequent');
 const { parseExpr } = require('../lib/engine/convert');
-const { compileRule, expandItem, resetExistsCounter } = require('../lib/engine/compile');
+const { compileRule, expandItem } = require('../lib/engine/compile');
 const { resolveExistentials, tryMatch, createState } = require('../lib/engine/forward');
 
 describe('Quantifier Store operations', () => {
@@ -82,6 +82,40 @@ describe('debruijnSubst', () => {
     const result = debruijnSubst(body, 0n, replacement);
     // Result: p(q(bound(0))) — the bound(0) in replacement is NOT shifted
     assert.strictEqual(result, Store.put('p', [replacement]));
+  });
+
+  it('no-change: bound(1) untouched at index=0', () => {
+    const p = Store.put('atom', ['p']);
+    const b1 = Store.put('bound', [1n]);
+    const body = Store.put('app', [p, b1]);
+    const a = Store.put('atom', ['a']);
+    const result = debruijnSubst(body, 0n, a);
+    assert.strictEqual(result, body);
+  });
+
+  it('nested forall binder', () => {
+    const p = Store.put('atom', ['p']);
+    const b0 = Store.put('bound', [0n]);
+    const b1 = Store.put('bound', [1n]);
+    const inner = Store.put('app', [p, b0, b1]);
+    const body = Store.put('forall', [inner]);
+    const a = Store.put('atom', ['a']);
+    const result = debruijnSubst(body, 0n, a);
+    const expectedInner = Store.put('app', [p, b0, a]);
+    const expected = Store.put('forall', [expectedInner]);
+    assert.strictEqual(result, expected);
+  });
+});
+
+describe('freshEvar', () => {
+  it('monotonic counter', () => {
+    resetFresh(10n);
+    assert.strictEqual(getFreshCounter(), 10n);
+    const e1 = freshEvar();
+    const e2 = freshEvar();
+    assert.strictEqual(Store.child(e1, 0), 10n);
+    assert.strictEqual(Store.child(e2, 0), 11n);
+    assert.strictEqual(getFreshCounter(), 12n);
   });
 });
 
@@ -273,7 +307,7 @@ describe('resolveExistentials three-level fallback', () => {
     const ex = Store.put('exists', [pb]);
     const monad = Store.put('monad', [ex]);
 
-    resetExistsCounter();
+    resetMetavar();
     const rule = { name: 'test', hash: Store.put('loli', [a, monad]), antecedent: a, consequent: monad };
     const compiled = compileRule(rule);
 
@@ -292,7 +326,7 @@ describe('resolveExistentials three-level fallback', () => {
     // Rule: a X Y -o { exists Z. (b Z * !plus X Y Z) }
     // After matching a(3,4): X=3, Y=4 → FFI resolves Z=7
     const { parseExpr } = require('../lib/engine/convert');
-    resetExistsCounter();
+    resetMetavar();
     const ruleH = await parseExpr('a X Y -o { exists Z. (b Z * !plus X Y Z) }');
     const [ante, conseq] = Store.children(ruleH);
     const compiled = compileRule({ name: 'test_ffi', hash: ruleH, antecedent: ante, consequent: conseq });
