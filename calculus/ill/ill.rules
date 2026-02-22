@@ -48,6 +48,26 @@ plus_l: G ; D, A + B |- C
   <- G ; D, B |- C
   @pretty "+L".
 
+exists_r: G ; D |- exists A
+  <- G ; D |- A
+  @pretty "∃R"
+  @binding metavar.
+
+exists_l: G ; D, exists A |- C
+  <- G ; D, A |- C
+  @pretty "∃L"
+  @binding eigenvariable.
+
+forall_r: G ; D |- forall A
+  <- G ; D |- A
+  @pretty "∀R"
+  @binding eigenvariable.
+
+forall_l: G ; D, forall A |- C
+  <- G ; D, A |- C
+  @pretty "∀L"
+  @binding metavar.
+
 one_r: G ; |- I
   @pretty "1R".
 
