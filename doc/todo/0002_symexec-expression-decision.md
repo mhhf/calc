@@ -143,8 +143,8 @@ No. ⊕ forks (both branches explored in parallel via tree). ∃ generates fresh
 
 ## Cross-References
 
-- `doc/research/symbolic-values-in-forward-chaining.md` — **main analysis** (three problems isolated, theory, examples)
-- `doc/research/eigenvariable-walkthrough.md` — step-by-step scenarios, branch pruning, ⊕ semantics
+- [THY_0009](../theory/0009_symbolic-values-in-forward-chaining.md) — **main analysis** (three problems isolated, theory, examples)
+- [RES_0039](../research/0039_symbolic-arithmetic-design-space.md) — design space comparison (hevm, halmos, K, Tamarin, Rosette)
 - `doc/research/equational-completion.md` — confluence for catch-all clauses (Skolem, backlogged)
 - `doc/research/evm-modeling-approaches.md` — full design space (R1-R5, S1-S3, T1-T7)
 - `doc/research/chr-linear-logic.md` §2.5 — QCHR framework

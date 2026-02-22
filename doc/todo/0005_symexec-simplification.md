@@ -38,4 +38,4 @@ Constraint rewriting for non-standard modes: `!plus(A, B, C) ∧ ground(A,C) ⟹
 
 Each level independent and testable. Level 0 is the minimum useful propagation.
 
-See: `doc/research/eigenvariable-walkthrough.md` §8, `doc/research/symbolic-values-in-forward-chaining.md` §3.6
+See: [THY_0009](../theory/0009_symbolic-values-in-forward-chaining.md) §3.6, [RES_0021](../research/0021_fresh-variable-generation.md)
