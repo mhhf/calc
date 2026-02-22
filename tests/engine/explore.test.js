@@ -143,17 +143,17 @@ describe('explore', { timeout: 10000 }, () => {
       assert.deepStrictEqual(alts[0], { linear: [loli], persistent: [] });
     });
 
-    it('plus(A,B) returns two alternatives', () => {
+    it('oplus(A,B) returns two alternatives', () => {
       const a = Store.put('atom', ['a']);
       const b = Store.put('atom', ['b']);
-      const p = Store.put('plus', [a, b]);
+      const p = Store.put('oplus', [a, b]);
       const alts = expandItem(p);
       assert.strictEqual(alts.length, 2);
       assert.deepStrictEqual(alts[0], { linear: [a], persistent: [] });
       assert.deepStrictEqual(alts[1], { linear: [b], persistent: [] });
     });
 
-    it('plus(loli(!P,{A}), loli(!Q,{B})) gives two loli alternatives', () => {
+    it('oplus(loli(!P,{A}), loli(!Q,{B})) gives two loli alternatives', () => {
       const p = Store.put('atom', ['neq']);
       const q = Store.put('atom', ['eq']);
       const a = Store.put('atom', ['zero']);
@@ -162,7 +162,7 @@ describe('explore', { timeout: 10000 }, () => {
       const bangQ = Store.put('bang', [q]);
       const branch0 = Store.put('loli', [bangP, Store.put('monad', [a])]);
       const branch1 = Store.put('loli', [bangQ, Store.put('monad', [b])]);
-      const pl = Store.put('plus', [branch0, branch1]);
+      const pl = Store.put('oplus', [branch0, branch1]);
       const alts = expandItem(pl);
       assert.strictEqual(alts.length, 2);
       // Each branch is a loli fact (fired by matchLoli at runtime)
@@ -507,11 +507,11 @@ describe('explore', { timeout: 10000 }, () => {
       assert(m.rule.consequent.linear.includes(result));
     });
 
-    it('handles body with plus (multiple consequent alternatives)', () => {
+    it('handles body with oplus (multiple consequent alternatives)', () => {
       const trigger = Store.put('atom', ['start']);
       const a = Store.put('atom', ['left']);
       const b = Store.put('atom', ['right']);
-      const plusBody = Store.put('plus', [a, b]);
+      const plusBody = Store.put('oplus', [a, b]);
       const body = Store.put('monad', [plusBody]);
       const loli = Store.put('loli', [trigger, body]);
 
@@ -521,14 +521,14 @@ describe('explore', { timeout: 10000 }, () => {
       );
       const m = forward.matchLoli(loli, state, null);
       assert(m, 'matchLoli should fire');
-      assert.strictEqual(m.rule.consequentAlts.length, 2, 'should have 2 alternatives from plus');
+      assert.strictEqual(m.rule.consequentAlts.length, 2, 'should have 2 alternatives from oplus');
     });
   });
 
   describe('guarded loli integration', () => {
     it('explore: guard success fires loli, guard failure produces stuck leaf', () => {
       Store.clear();
-      // Build: start -o { tensor(shared, plus(loli(!guard, {result_a}), loli(!noguard, {result_b}))) }
+      // Build: start -o { tensor(shared, oplus(loli(!guard, {result_a}), loli(!noguard, {result_b}))) }
       const start = Store.put('atom', ['start']);
       const shared = Store.put('atom', ['shared_fact']);
       const guard = Store.put('atom', ['guard']);
@@ -538,7 +538,7 @@ describe('explore', { timeout: 10000 }, () => {
 
       const loliA = Store.put('loli', [Store.put('bang', [guard]), Store.put('monad', [resultA])]);
       const loliB = Store.put('loli', [Store.put('bang', [noguard]), Store.put('monad', [resultB])]);
-      const choice = Store.put('plus', [loliA, loliB]);
+      const choice = Store.put('oplus', [loliA, loliB]);
       const conseq = Store.put('tensor', [shared, choice]);
 
       const rule = forward.compileRule({

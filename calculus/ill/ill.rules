@@ -35,15 +35,15 @@ with_l2: G ; D, A & B |- C
   <- G ; D, B |- C
   @pretty "&L₂".
 
-plus_r1: G ; D |- A + B
+oplus_r1: G ; D |- A + B
   <- G ; D |- A
   @pretty "+R₁".
 
-plus_r2: G ; D |- A + B
+oplus_r2: G ; D |- A + B
   <- G ; D |- B
   @pretty "+R₂".
 
-plus_l: G ; D, A + B |- C
+oplus_l: G ; D, A + B |- C
   <- G ; D, A |- C
   <- G ; D, B |- C
   @pretty "+L".

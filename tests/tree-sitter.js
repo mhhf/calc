@@ -103,7 +103,7 @@ describe('tree-sitter parser', () => {
     const result = await tsParser.parse('foo: (a + b).');
     assert.strictEqual(result.success, true, result.error);
     const decl = result.ast.declarations[0];
-    assert.strictEqual(decl.head.func.func.name, 'plus');
+    assert.strictEqual(decl.head.func.func.name, 'oplus');
   });
 
   test('parses comments', async () => {
