@@ -12,8 +12,8 @@ const calculus = require('../lib/calculus');
 const { createProver, buildRuleSpecs } = require('../lib/prover/focused');
 const Seq = require('../lib/kernel/sequent');
 const { parseExpr } = require('../lib/engine/convert');
-const { compileRule, expandItem } = require('../lib/engine/compile');
-const { resolveExistentials } = require('../lib/engine/forward');
+const { compileRule, expandItem, resetExistsCounter } = require('../lib/engine/compile');
+const { resolveExistentials, tryMatch, createState } = require('../lib/engine/forward');
 
 describe('Quantifier Store operations', () => {
   it('exists(body) creates arity-1 node', () => {
@@ -214,6 +214,107 @@ describe('Forward engine with exists', () => {
     const compiled = compileRule(rule);
 
     assert.ok(compiled.existentialSlots.length > 0, 'should have existential slots');
+  });
+});
+
+describe('Loli variables are NOT existential slots', () => {
+  it('compileRule excludes loli-trigger variables from existentialSlots', () => {
+    // Simulate sha3-like rule: a -o { b * (c Z -o { d Z }) }
+    // Z only appears in the loli — it should NOT be an existential slot.
+    const z = Store.put('freevar', ['_Z']);
+    const a = Store.put('atom', ['a']);
+    const b = Store.put('atom', ['b']);
+    const cz = Store.put('c', [z]);
+    const dz = Store.put('d', [z]);
+    const monadBody = Store.put('monad', [dz]);
+    const loli = Store.put('loli', [cz, monadBody]);
+    const body = Store.put('tensor', [b, loli]);
+    const monad = Store.put('monad', [body]);
+
+    const rule = { name: 'test_loli', hash: Store.put('loli', [a, monad]), antecedent: a, consequent: monad };
+    const compiled = compileRule(rule);
+
+    // Z should NOT be in existentialSlots — it's a loli pattern variable
+    assert.strictEqual(compiled.existentialSlots.length, 0,
+      'loli-only variable Z should not be treated as existential');
+  });
+
+  it('mixed: exists X in body + Z in loli → only X is existential', () => {
+    // a -o { exists X. (p X * (q Z -o { r Z })) }
+    const x = Store.put('freevar', ['_ex0']);
+    const z = Store.put('freevar', ['_Z']);
+    const a = Store.put('atom', ['a']);
+    const px = Store.put('p', [x]);
+    const qz = Store.put('q', [z]);
+    const rz = Store.put('r', [z]);
+    const loliBody = Store.put('monad', [rz]);
+    const loli = Store.put('loli', [qz, loliBody]);
+    const tensor = Store.put('tensor', [px, loli]);
+    // exists wraps the tensor — after expandItem, X becomes a fresh metavar
+    const ex = Store.put('exists', [tensor]);
+    const monad = Store.put('monad', [ex]);
+
+    const rule = { name: 'test_mixed', hash: Store.put('loli', [a, monad]), antecedent: a, consequent: monad };
+    const compiled = compileRule(rule);
+
+    // Should have exactly 1 existential slot (for the exists-opened X), not 2
+    assert.strictEqual(compiled.existentialSlots.length, 1,
+      'only exists-opened var should be existential, not loli var Z');
+  });
+});
+
+describe('resolveExistentials three-level fallback', () => {
+  it('always returns true (exists never blocks)', () => {
+    // Rule with existential slot but no goals — gets freshEvar
+    resetFresh();
+    const a = Store.put('atom', ['a']);
+    const b0 = Store.put('bound', [0n]);
+    const pb = Store.put('p', [b0]);
+    const ex = Store.put('exists', [pb]);
+    const monad = Store.put('monad', [ex]);
+
+    resetExistsCounter();
+    const rule = { name: 'test', hash: Store.put('loli', [a, monad]), antecedent: a, consequent: monad };
+    const compiled = compileRule(rule);
+
+    const theta = new Array(compiled.metavarCount);
+    const state = createState();
+    const result = resolveExistentials(theta, compiled.metavarSlots, compiled, state, null);
+
+    assert.strictEqual(result, true, 'resolveExistentials always returns true');
+    // The existential slot should be bound to a freshEvar
+    const slot = compiled.existentialSlots[0];
+    assert.notStrictEqual(theta[slot], undefined, 'existential slot should be bound');
+    assert.strictEqual(Store.tag(theta[slot]), 'evar', 'unresolvable slot gets freshEvar');
+  });
+
+  it('resolves via FFI when inputs are ground', async () => {
+    // Rule: a X Y -o { exists Z. (b Z * !plus X Y Z) }
+    // After matching a(3,4): X=3, Y=4 → FFI resolves Z=7
+    const { parseExpr } = require('../lib/engine/convert');
+    resetExistsCounter();
+    const ruleH = await parseExpr('a X Y -o { exists Z. (b Z * !plus X Y Z) }');
+    const [ante, conseq] = Store.children(ruleH);
+    const compiled = compileRule({ name: 'test_ffi', hash: ruleH, antecedent: ante, consequent: conseq });
+
+    assert.ok(compiled.existentialSlots.length > 0, 'should have existential slots');
+
+    // Build state with a(3, 4)
+    const three = Store.put('binlit', [3n]);
+    const four = Store.put('binlit', [4n]);
+    const aFact = Store.put('a', [three, four]);
+    const state = createState({ [aFact]: 1 }, {});
+
+    const match = tryMatch(compiled, state, null);
+    assert.notStrictEqual(match, null, 'tryMatch should succeed');
+
+    // Check that the existential slot was resolved to 7
+    const seven = Store.put('binlit', [7n]);
+    let foundSeven = false;
+    for (const slot of compiled.existentialSlots) {
+      if (match.theta[slot] === seven) foundSeven = true;
+    }
+    assert.ok(foundSeven, 'existential Z should be resolved to 7 via FFI');
   });
 });
 

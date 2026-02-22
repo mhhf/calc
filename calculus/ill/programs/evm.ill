@@ -103,11 +103,11 @@ evm/add:
   stack SH  B
   -o {
     exists C. (
-    code PC 0x01 *
-    pc PC' *
-    sh (s SH) *
-    stack SH C *
-    !plus A B C)
+      code PC 0x01 *
+      pc PC' *
+      sh (s SH) *
+      stack SH C *
+      !plus A B C)
   }.
 
 evm/mul:
@@ -118,12 +118,12 @@ evm/mul:
   stack (s SH) A *
   stack SH  B
   -o {
-    exists C. (
-    code PC 0x02 *
-    pc PC' *
-    sh (s SH) *
-    stack SH C *
-    !mul A B C)
+    exists A'. exists B'. exists C. exists C'. (
+      code PC 0x02 *
+      pc PC' *
+      sh (s SH) *
+      stack SH C' *
+      !trim A A' * !trim B B' * !mul A' B' C * !to256 C C')
   }.
 
 evm/sub:
@@ -135,11 +135,11 @@ evm/sub:
   stack SH  B
   -o {
     exists C. (
-    code PC 0x03 *
-    pc PC' *
-    sh (s SH) *
-    stack SH C *
-    !plus C B A)
+      code PC 0x03 *
+      pc PC' *
+      sh (s SH) *
+      stack SH C *
+      !plus C B A)
   }.
 
 evm/exp:
@@ -150,12 +150,14 @@ evm/exp:
   stack (s SH) Base *
   stack SH  Exponent
   -o {
-    exists Result. (
-    code PC 0x0a *
-    pc PC' *
-    sh (s SH) *
-    stack SH Result *
-    !exp Base Exponent Result)
+    exists Base'. exists Exponent'. exists Result. exists Result'. (
+      debug Base' *
+      debug Exponent' *
+      code PC 0x0a *
+      pc PC' *
+      sh (s SH) *
+      stack SH Result' *
+      !trim Base Base' * !trim Exponent Exponent' * !exp Base' Exponent' Result * !to256 Result Result')
   }.
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%  10
@@ -226,12 +228,12 @@ evm/lt:
   stack (s SH) X *
   stack SH Y
   -o {
-    exists Z. (
-    code PC 0x10 *
-    pc PC' *
-    sh (s SH) *
-    stack SH Z *
-    !gt Y X 0 Z)
+    exists Z. exists Z'. (
+      code PC 0x10 *
+      pc PC' *
+      sh (s SH) *
+      stack SH Z' *
+      !gt Y X 0 Z * !to256 Z Z')
   }.
 
 evm/gt:
@@ -242,12 +244,12 @@ evm/gt:
   stack (s SH) X *
   stack SH Y
   -o {
-    exists Z. (
-    code PC 0x11 *
-    pc PC' *
-    sh (s SH) *
-    stack SH Z *
-    !gt X Y 0 Z)
+    exists Z. exists Z'. (
+      code PC 0x11 *
+      pc PC' *
+      sh (s SH) *
+      stack SH Z' *
+      !gt X Y 0 Z * !to256 Z Z')
   }.
 
 evm/and:
@@ -259,11 +261,11 @@ evm/and:
   stack SH  Y
   -o {
     exists Z. (
-    code PC 0x16 *
-    pc PC' *
-    sh (s SH) *
-    stack SH Z *
-    !and X Y Z)
+      code PC 0x16 *
+      pc PC' *
+      sh (s SH) *
+      stack SH Z *
+      !and X Y Z)
   }.
 
 evm/or:
@@ -275,11 +277,11 @@ evm/or:
   stack SH  Y
   -o {
     exists Z. (
-    code PC 0x17 *
-    pc PC' *
-    sh (s SH) *
-    stack SH Z *
-    !or X Y Z)
+      code PC 0x17 *
+      pc PC' *
+      sh (s SH) *
+      stack SH Z *
+      !or X Y Z)
   }.
 
 evm/not:
@@ -290,11 +292,11 @@ evm/not:
   stack SH X
   -o {
     exists Y. (
-    code PC 0x19 *
-    pc PC' *
-    sh (s SH) *
-    stack SH Y *
-    !not X Y)
+      code PC 0x19 *
+      pc PC' *
+      sh (s SH) *
+      stack SH Y *
+      !not X Y)
   }.
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%  20
@@ -314,9 +316,9 @@ concatMemory/s:
   memory Pos Size V
   -o {
     exists Pos'. (
-    memory Pos Size V *
-    concatMemory Pos' To (concat Z V) *
-    !plus Pos Size Pos')
+      memory Pos Size V *
+      concatMemory Pos' To (concat Z V) *
+      !plus Pos Size Pos')
   }.
 
 evm/sha3:
@@ -504,11 +506,10 @@ calldatacopy/s:
   !neq Cs Ce
   -o {
     exists Cs'. exists Ms'. (
-    memory Ms Size D *
-    calldata Cs Size D *
-    calldatacopy Ms' Cs' Ce *
-    !plus Cs Size Cs' *
-    !plus Ms Size Ms')
+      memory Ms Size D *
+      calldata Cs Size D *
+      calldatacopy Ms' Cs' Ce *
+      !plus Cs Size Cs' * !plus Ms Size Ms')
   }.
 
 evm/calldatacopy:
@@ -521,11 +522,12 @@ evm/calldatacopy:
   stack SH                 Copy_length
 %TODO fill memory with zeros in  case mem_start is bigger then the current mem_height
   -o {
-    exists Calldata_end. (code PC 0x37 *
-    sh SH *
-    calldatacopy Mem_start Calldata_start Calldata_end *
-    !plus Calldata_start Copy_length Calldata_end *
-    (unblock -o {pc PC'}))
+    exists Calldata_end. (
+      code PC 0x37 *
+      sh SH *
+      calldatacopy Mem_start Calldata_start Calldata_end *
+      (unblock -o {pc PC'}) *
+      !plus Calldata_start Copy_length Calldata_end)
   }.
 
 
