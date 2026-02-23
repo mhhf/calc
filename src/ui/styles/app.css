@@ -1,6 +1,44 @@
 @import "tailwindcss";
 
-@custom-variant dark (&:where(.dark, .dark *));
+@custom-variant dark (&:is(.dark, .dark *));
+
+/* ──────────────────────────────────────────────────
+   Dark theme color overrides
+   Overrides Tailwind v4 color tokens for warm dark themes.
+   Gray scale → backgrounds, borders, text
+   Blue scale → primary accent (active tabs, focus, links)
+   ────────────────────────────────────────────────── */
+
+/* Dark theme: neutral grays + amber (Monokai) accent */
+.dark {
+  --color-gray-950: #0a0a0a;
+  --color-gray-900: #141414;
+  --color-gray-800: #1f1f1f;
+  --color-gray-700: #333333;
+  --color-gray-600: #4d4d4d;
+  --color-gray-500: #6b6b6b;
+  --color-gray-400: #8a8a8a;
+  --color-gray-300: #a3a3a3;
+  --color-gray-200: #bfbfbf;
+  --color-gray-100: #d9d9d9;
+  --color-gray-50: #f0f0f0;
+
+  --color-blue-400: #f4bf75;
+  --color-blue-500: #d9a85e;
+  --color-blue-600: #c99a4d;
+  --color-blue-700: #a67e3b;
+  --color-blue-800: #7d5f2c;
+  --color-blue-900: #3d2e14;
+
+  --prose-fg: #d9d9d9;
+  --prose-fg-secondary: #a3a3a3;
+  --prose-fg-muted: #6b6b6b;
+  --prose-link: #f4bf75;
+  --prose-border: #333333;
+  --prose-bg-subtle: #1f1f1f;
+  --prose-code-bg: rgba(107, 107, 107, 0.3);
+  --prose-toc-accent: #f4bf75;
+}
 
 @layer base {
   html {
@@ -429,62 +467,63 @@
 }
 
 /* ──────────────────────────────────────────────────
-   Prose-research — dark mode overrides
+   Prose-research — dark mode overrides (theme-aware)
+   Uses --prose-* CSS variables defined per theme above.
    ────────────────────────────────────────────────── */
 .dark .prose-research {
-  color: #e5e7eb;
+  color: var(--prose-fg);
 }
 
 .dark .prose-research h1,
 .dark .prose-research h2,
 .dark .prose-research h3,
 .dark .prose-research h4 {
-  color: #e5e7eb;
+  color: var(--prose-fg);
 }
 
 .dark .prose-research h1,
 .dark .prose-research h2 {
-  border-bottom-color: #374151;
+  border-bottom-color: var(--prose-border);
 }
 
 .dark .prose-research strong {
-  color: #e5e7eb;
+  color: var(--prose-fg);
 }
 
 .dark .prose-research a {
-  color: #60a5fa;
+  color: var(--prose-link);
 }
 
 .dark .prose-research code {
-  background-color: rgba(110, 118, 129, 0.4);
+  background-color: var(--prose-code-bg);
 }
 
 .dark .prose-research blockquote {
-  color: #9ca3af;
-  border-left-color: #374151;
+  color: var(--prose-fg-muted);
+  border-left-color: var(--prose-border);
 }
 
 .dark .prose-research th {
-  background-color: #1f2937;
-  border-color: #374151;
-  color: #e5e7eb;
+  background-color: var(--prose-bg-subtle);
+  border-color: var(--prose-border);
+  color: var(--prose-fg);
 }
 
 .dark .prose-research td {
-  border-color: #374151;
-  color: #e5e7eb;
+  border-color: var(--prose-border);
+  color: var(--prose-fg);
 }
 
 .dark .prose-research tr:nth-child(even) {
-  background-color: #1f2937;
+  background-color: var(--prose-bg-subtle);
 }
 
 .dark .prose-research table {
-  border-color: #374151;
+  border-color: var(--prose-border);
 }
 
 .dark .prose-research hr {
-  border-top-color: #374151;
+  border-top-color: var(--prose-border);
 }
 
 .dark .prose-research .error {
@@ -494,24 +533,28 @@
 }
 
 /* TOC dark mode */
+.dark .prose-research .toc {
+  border-left-color: var(--prose-toc-accent);
+}
+
 .dark .prose-research .toc .toc-title {
-  color: #9ca3af;
+  color: var(--prose-fg-muted);
 }
 
 .dark .prose-research .toc > ul > li > a {
-  color: #e5e7eb;
+  color: var(--prose-fg);
 }
 
 .dark .prose-research .toc > ul > li > ul > li > a {
-  color: #d1d5db;
+  color: var(--prose-fg-secondary);
 }
 
 .dark .prose-research .toc > ul > li > ul > li > ul > li > a {
-  color: #9ca3af;
+  color: var(--prose-fg-muted);
 }
 
 .dark .prose-research .toc a:hover {
-  color: #9ca3af;
+  color: var(--prose-fg-muted);
 }
 
 /* ──────────────────────────────────────────────────

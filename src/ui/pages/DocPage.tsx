@@ -55,7 +55,7 @@ export default function DocPage() {
       <Show when={doc()}>
         {(d) => (
           <div class="doc-card px-10 py-8">
-            <h1 class="text-2xl font-bold text-gray-900 mb-6">
+            <h1 class="text-2xl font-bold text-gray-900 dark:text-white mb-6">
               {d().title}
             </h1>
             <article

@@ -18,6 +18,7 @@ export function toggleDarkMode() {
   }
 }
 
+
 // Calculus overview filters
 export const [ruleFilter, setRuleFilter] = createSignal('');
 export const [showStructuralRules, setShowStructuralRules] = createSignal(false);
