@@ -175,6 +175,22 @@ describe('L2 Generic Prover', () => {
       const result = generic.applyRule(s, 'R', -1, null);
       assert.strictEqual(result, null);
     });
+
+    it('bang_r returns null with non-empty linear (requiresEmptyDelta)', () => {
+      const A = AST.freevar('A');
+      const B = AST.freevar('B');
+      const s = seq([B], AST.bang(A));
+      const result = generic.applyRule(s, 'R', -1, specs['bang_r']);
+      assert.strictEqual(result, null);
+    });
+
+    it('bang_r succeeds with empty linear', () => {
+      const A = AST.freevar('A');
+      const s = seq([], AST.bang(A));
+      const result = generic.applyRule(s, 'R', -1, specs['bang_r']);
+      assert.ok(result?.success);
+      assert.strictEqual(result.premises.length, 1);
+    });
   });
 
   describe('applicableRules', () => {
