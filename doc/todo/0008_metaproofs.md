@@ -10,6 +10,7 @@ status: planning
 priority: 8
 depends_on: [TODO_0042]
 required_by: [TODO_0009]
+starred: true
 ---
 
 # Metaproofs — Program Property Verification
@@ -899,9 +900,10 @@ When TODO_0005 adds constraint propagation (equality resolution, FFI re-check), 
 - RES_0014 — Execution Trees, Metaproofs, and Coinduction
 - RES_0031 — muMALL: Fixed Points in Linear Logic
 - RES_0050 — Metaproof & Verification Landscape
+- RES_0051 — Induction, Coinduction, Termination, Bisimulation survey
 - THY_0001 — Exhaustive Forward Chaining (judgment, Q5-Q6)
 - TODO_0042 — Completeness of Exhaustive Exploration
 - TODO_0043 — CHR∨ Soundness Mapping
 - TODO_0045 — Execution Tree Judgment
 - TODO_0005 — Constraint Propagation (enables symbolic invariant checking)
-- TODO_0009 — Induction/Coinduction (muMALL fixed points for temporal properties)
+- TODO_0009 — Induction/Coinduction (fixed points, cyclic proofs, termination, bisimulation)
