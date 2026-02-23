@@ -1,11 +1,11 @@
 ---
 title: "Manual Prover Allows bang_r With Non-Empty Linear Context"
 created: 2026-02-20
-modified: 2026-02-20
+modified: 2026-02-23
 summary: "buildRuleAction() in manual.js never checks requiresEmptyDelta, so the UI offers bang_r (promotion) even when the linear context is non-empty. This lets users construct invalid proofs."
 tags: [bug, soundness, manual-prover]
 type: bug
-status: ready for implementation
+status: done
 priority: 8
 depends_on: []
 required_by: []

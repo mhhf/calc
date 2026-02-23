@@ -472,6 +472,59 @@ describe('ManualProofAPI - Rule Suggestions', () => {
   });
 
   // =========================================================================
+  // Soundness: requiresEmptyDelta (TODO_0046)
+  // =========================================================================
+  describe('bang_r requires empty linear context', () => {
+    it('bang_r NOT offered with non-empty linear (unfocused)', () => {
+      const A = AST.freevar('A');
+      const B = AST.freevar('B');
+      const loli = AST.loli(A, B);
+      // A -o B ⊢ !(A -o B) — the unsound derivation from TODO_0046
+      const state = api.createProofState(mkSeq([loli], AST.bang(loli)));
+      const names = ruleNames(state, { mode: 'unfocused' });
+      assert.ok(!names.includes('bang_r'), 'bang_r must not be offered with non-empty linear');
+    });
+
+    it('bang_r NOT offered with non-empty linear (focused, after Focus_R)', () => {
+      const P = AST.freevar('P');
+      const bangP = AST.bang(P);
+      // P ⊢ !P — linear P present
+      const state = api.createProofState(mkSeq([P], bangP));
+      state.focus = { position: 'R', index: -1, hash: bangP };
+
+      const actions = api.getApplicableActions(state, { mode: 'focused' });
+      const rnames = actions.filter(a => a.type === 'rule').map(a => a.name);
+      assert.ok(!rnames.includes('bang_r'), 'bang_r must not be offered in focused phase with non-empty linear');
+    });
+
+    it('bang_r IS offered with empty linear (unfocused)', () => {
+      const A = AST.freevar('A');
+      // ⊢ !A — empty linear context
+      const state = api.createProofState(mkSeq([], AST.bang(A)));
+      const names = ruleNames(state, { mode: 'unfocused' });
+      assert.ok(names.includes('bang_r'), 'bang_r should be offered with empty linear');
+    });
+
+    it('bang_r IS offered with empty linear + cartesian context', () => {
+      const A = AST.freevar('A');
+      // ; A ⊢ !A — cartesian A, empty linear
+      const state = api.createProofState(mkSeqCart([], [A], AST.bang(A)));
+      const names = ruleNames(state, { mode: 'unfocused' });
+      assert.ok(names.includes('bang_r'), 'bang_r allowed: linear empty, cartesian is fine');
+    });
+
+    it('bang_r premise has correct structure when applied', () => {
+      const A = AST.freevar('A');
+      const state = api.createProofState(mkSeq([], AST.bang(A)));
+      const actions = api.getApplicableActions(state, { mode: 'unfocused' });
+      const bangR = actions.find(a => a.name === 'bang_r');
+      assert.ok(bangR, 'bang_r available');
+      assert.strictEqual(bangR.premises.length, 1, 'one premise');
+      assert.strictEqual(bangR.premises[0].succedent, A, 'premise succedent is A');
+    });
+  });
+
+  // =========================================================================
   // Action application
   // =========================================================================
   describe('action application', () => {
