@@ -10,6 +10,7 @@ status: planning
 priority: 7
 depends_on: []
 required_by: [TODO_0042]
+starred: true
 ---
 
 # Formalize Execution Tree Judgment

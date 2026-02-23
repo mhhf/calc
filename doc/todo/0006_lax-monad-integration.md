@@ -10,6 +10,7 @@ status: planning
 priority: 8
 depends_on: []
 required_by: [TODO_0010, TODO_0011]
+starred: false
 ---
 
 # Lax Monad {A}

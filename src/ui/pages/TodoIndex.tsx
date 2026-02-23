@@ -12,6 +12,7 @@ interface TodoEntry {
   depends_on: string[];
   required_by: string[];
   cluster?: string;
+  starred?: boolean;
 }
 
 const TYPE_COLORS: Record<string, string> = {
@@ -34,21 +35,14 @@ const STATUS_COLORS: Record<string, string> = {
 
 const CLOSED_STATUSES = new Set(['done', 'subsumed', 'backlogged']);
 
-/** Compute up to 3 recommended TODOs: unblocked, highest priority, active */
-function computeRecommended(todos: TodoEntry[]): Set<string> {
-  const closedIds = new Set(
-    todos.filter(t => CLOSED_STATUSES.has(t.status)).map(t => todoId(t.slug))
-  );
-  const unblocked = todos.filter(t => {
-    if (CLOSED_STATUSES.has(t.status)) return false;
-    if (!t.depends_on?.length) return true;
-    return t.depends_on.every(dep => {
-      const depId = dep.match(/TODO_(\d{4})/)?.[1];
-      return depId ? closedIds.has(depId) : false;
-    });
+async function toggleStar(slug: string, current: boolean): Promise<boolean> {
+  const res = await fetch(`/api/docs/todo/${slug}/star`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ starred: !current }),
   });
-  unblocked.sort((a, b) => (b.priority ?? 0) - (a.priority ?? 0));
-  return new Set(unblocked.slice(0, 3).map(t => t.slug));
+  if (!res.ok) throw new Error(`Failed to toggle star: ${res.status}`);
+  return !current;
 }
 
 function priorityColor(p: number): string {
@@ -248,7 +242,7 @@ function ClusterOverview(props: { todos: TodoEntry[] }) {
 }
 
 export default function TodoIndex() {
-  const [todos] = createResource(fetchTodos);
+  const [todos, { mutate }] = createResource(fetchTodos);
   const [typeFilter, setTypeFilter] = createSignal<string | null>(null);
   const [statusFilter, setStatusFilter] = createSignal<string | null>(null);
 
@@ -276,7 +270,10 @@ export default function TodoIndex() {
     return [...items].sort((a, b) => todoId(a.slug).localeCompare(todoId(b.slug)));
   });
 
-  const recommended = createMemo(() => computeRecommended(todos() || []));
+  const handleToggleStar = async (slug: string, current: boolean) => {
+    const newVal = await toggleStar(slug, current);
+    mutate(prev => prev?.map(t => t.slug === slug ? { ...t, starred: newVal } : t));
+  };
 
   const hasClusters = createMemo(() => (todos() || []).some(t => t.cluster));
 
@@ -371,7 +368,24 @@ export default function TodoIndex() {
         {/* Active items */}
         <div class="space-y-2">
           <For each={activeItems()}>
-            {(todo) => <TodoCard todo={todo} recommended={recommended().has(todo.slug)} />}
+            {(todo) => (
+              <div class="flex items-center gap-2">
+                <div class="flex-1 min-w-0">
+                  <TodoCard todo={todo} />
+                </div>
+                <button
+                  class="shrink-0 text-xl leading-none p-1 transition-colors"
+                  classList={{
+                    'text-amber-400 hover:text-amber-300': !!todo.starred,
+                    'text-gray-300 dark:text-gray-600 hover:text-amber-400': !todo.starred,
+                  }}
+                  title={todo.starred ? 'Unstar' : 'Star — mark as current focus'}
+                  onClick={() => handleToggleStar(todo.slug, !!todo.starred)}
+                >
+                  &#9733;
+                </button>
+              </div>
+            )}
           </For>
         </div>
 
@@ -393,7 +407,7 @@ export default function TodoIndex() {
   );
 }
 
-function TodoCard(props: { todo: TodoEntry; muted?: boolean; recommended?: boolean }) {
+function TodoCard(props: { todo: TodoEntry; muted?: boolean }) {
   const todo = props.todo;
   const id = todoId(todo.slug);
 
@@ -423,12 +437,6 @@ function TodoCard(props: { todo: TodoEntry; muted?: boolean; recommended?: boole
         </Show>
 
         <div class="flex-1 min-w-0">
-          {/* Recommended star — top right */}
-          <Show when={props.recommended}>
-            <div class="float-right ml-2" title="Recommended: unblocked, high priority">
-              <span class="text-blue-400 text-lg">&#9733;</span>
-            </div>
-          </Show>
           {/* Top row: ID + Title + Type + Status */}
           <div class="flex items-center gap-2 flex-wrap">
             <span class="font-mono text-xs text-gray-400 shrink-0">

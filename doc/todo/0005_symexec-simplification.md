@@ -10,6 +10,7 @@ status: planning
 priority: 5
 depends_on: [TODO_0004]
 required_by: []
+starred: true
 ---
 
 # Constraint Propagation

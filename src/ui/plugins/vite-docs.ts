@@ -47,6 +47,33 @@ export default function viteDocs(): Plugin {
       server.middlewares.use((req, res, next) => {
         const url = req.url || '';
 
+        // PATCH /api/docs/todo/:slug/star — toggle starred in frontmatter
+        const starMatch = url.match(/^\/api\/docs\/todo\/([^/]+)\/star$/);
+        if (starMatch && req.method === 'PATCH') {
+          const slug = starMatch[1];
+          const filePath = path.join(DOC_ROOT, 'todo', slug + '.md');
+          let body = '';
+          req.on('data', (chunk: Buffer) => { body += chunk; });
+          req.on('end', () => {
+            try {
+              const { starred } = JSON.parse(body);
+              let content = fs.readFileSync(filePath, 'utf-8');
+              if (/^starred:/m.test(content)) {
+                content = content.replace(/^starred:.*$/m, `starred: ${starred}`);
+              } else {
+                content = content.replace(/^---\n([\s\S]*?)\n---/, (_, fm) => `---\n${fm}\nstarred: ${starred}\n---`);
+              }
+              fs.writeFileSync(filePath, content, 'utf-8');
+              res.setHeader('Content-Type', 'application/json');
+              res.end(JSON.stringify({ ok: true, starred }));
+            } catch {
+              res.statusCode = 500;
+              res.end(JSON.stringify({ error: 'failed to update star' }));
+            }
+          });
+          return;
+        }
+
         // Match /api/docs/:folder or /api/docs/:folder/:slug
         const m = url.match(/^\/api\/docs\/([^/]+)(?:\/(.+))?$/);
         if (!m) return next();
@@ -83,6 +110,7 @@ export default function viteDocs(): Plugin {
                 depends_on: fm.depends_on || [],
                 required_by: fm.required_by || [],
                 cluster: fm.cluster || undefined,
+                starred: fm.starred === 'true',
               };
             });
             res.setHeader('Content-Type', 'application/json');

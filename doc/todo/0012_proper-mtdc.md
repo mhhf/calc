@@ -10,6 +10,7 @@ status: planning
 priority: 8
 depends_on: []
 required_by: [TODO_0013]
+starred: false
 ---
 
 # Proper Multi-Type Display Calculus for ILL
