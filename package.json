@@ -34,7 +34,10 @@
     "bench:symexec": "node benchmarks/engine/symexec-bench.js",
     "bench:symexec:save": "node benchmarks/engine/symexec-bench.js --save",
     "bench:symexec:compare": "node benchmarks/engine/symexec-bench.js --compare",
-    "profile:symexec": "CALC_PROFILE=1 node benchmarks/engine/symexec-bench.js --profile"
+    "profile:symexec": "CALC_PROFILE=1 node benchmarks/engine/symexec-bench.js --profile",
+    "bench:diff": "node --expose-gc tools/bench-compare.js",
+    "bench:diff:engine": "node --expose-gc tools/bench-compare.js --suite=engine",
+    "bench:diff:symexec": "node --expose-gc tools/bench-compare.js --suite=symexec"
   },
   "author": "",
   "license": "ISC",
