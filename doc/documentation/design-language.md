@@ -153,7 +153,16 @@ Primary: blue-600 bg, white text, rounded-lg, hover blue-700. Secondary: outline
 
 ### Status Badges
 
-Pill shape. Wash background + dark text of same hue: draft (yellow), review (blue), stable (green), research (purple).
+Pill shape. Max 3 semantic hues + gray + accent:
+
+| Hue | Role | Examples |
+|-----|------|----------|
+| **Gray** | Default / neutral | draft, review, planning, in progress, research, design, implementation, tooling |
+| **Green** | Success / done | done, stable |
+| **Red** | Danger / bugs | bug |
+| **Accent** (blue/amber) | Primary emphasis | high-priority badges (≥9) |
+
+No ad-hoc orange, yellow, teal, or purple badges. Dependency references (`needs:`, `blocks:`) use gray monospace text, not colored links.
 
 ### Proof View Toggles
 
@@ -161,15 +170,24 @@ Button group with rounded-lg container + border. Active: blue-600 bg, white text
 
 ## Dark Mode
 
-Class-based (`dark:` prefix on root). Inverts canvas/surface/text. Colors shift 600→400. Backgrounds shift 50→900/20 wash. Persisted in localStorage, defaults to system preference.
+Class-based (`dark:` prefix on root). Persisted in localStorage, defaults to system preference.
 
-Dark mode is not just inversion — it requires reduced saturation and different shade mappings (Primer approach).
+**Dark theme: neutral grays + amber accent.** In dark mode, Tailwind's blue scale is overridden to amber (Monokai-inspired) via CSS custom properties in `app.css`. All components using `text-blue-*` / `bg-blue-*` tokens automatically get amber in dark mode — no per-component overrides needed.
+
+| Light | Dark | Role |
+|-------|------|------|
+| Blue-600 | Amber (`#c99a4d`) | Primary accent (links, active tabs, focus) |
+| Gray-900 (`#111827`) | Neutral gray (`#141414`) | Canvas background |
+| Gray-100 | Neutral gray (`#d9d9d9`) | Body text |
+| White | White (`#ffffff`) | Headings (via `--prose-heading`) |
+
+Prose styling derives from the same Tailwind color tokens (`var(--color-gray-*)`, `var(--color-blue-*)`) — no hardcoded hex values. Dark mode overrides apply automatically through the token layer.
 
 ## Anti-Patterns
 
 - No gradient backgrounds
 - No drop shadows heavier than shadow-md
-- No ad-hoc hex colors outside this palette (prose-research GitHub styling is an allowed exception)
+- No ad-hoc hex colors outside this palette (prose uses `var(--color-*)` tokens, not hardcoded hex)
 - No decorative borders or ornamental elements
 - No color as the sole differentiator (always pair with text/icon/position)
 - No serif fonts for UI chrome (reserve for long-form prose if ever added)

@@ -16,17 +16,17 @@ interface TodoEntry {
 
 const TYPE_COLORS: Record<string, string> = {
   bug:            'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400',
-  research:       'bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-400',
-  design:         'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400',
-  implementation: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-400',
+  research:       'bg-gray-200 text-gray-700 dark:bg-gray-700 dark:text-gray-300',
+  design:         'bg-gray-200 text-gray-700 dark:bg-gray-700 dark:text-gray-300',
+  implementation: 'bg-gray-200 text-gray-700 dark:bg-gray-700 dark:text-gray-300',
   tooling:        'bg-gray-200 text-gray-700 dark:bg-gray-700 dark:text-gray-300',
 };
 
 const STATUS_COLORS: Record<string, string> = {
   planning:                   'bg-gray-200 text-gray-700 dark:bg-gray-700 dark:text-gray-300',
-  researching:                'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400',
-  'ready for implementation': 'bg-teal-100 text-teal-800 dark:bg-teal-900/30 dark:text-teal-400',
-  'in progress':              'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400',
+  researching:                'bg-gray-200 text-gray-700 dark:bg-gray-700 dark:text-gray-300',
+  'ready for implementation': 'bg-gray-200 text-gray-700 dark:bg-gray-700 dark:text-gray-300',
+  'in progress':              'bg-gray-200 text-gray-700 dark:bg-gray-700 dark:text-gray-300',
   done:                       'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400',
   subsumed:                   'bg-gray-200 text-gray-500 dark:bg-gray-700 dark:text-gray-400',
   backlogged:                 'bg-gray-200 text-gray-500 dark:bg-gray-700 dark:text-gray-400',
@@ -52,10 +52,9 @@ function computeRecommended(todos: TodoEntry[]): Set<string> {
 }
 
 function priorityColor(p: number): string {
-  if (p >= 9) return 'bg-red-500 text-white dark:bg-red-600';
-  if (p >= 7) return 'bg-orange-400 text-white dark:bg-orange-500';
-  if (p >= 4) return 'bg-yellow-400 text-gray-900 dark:bg-yellow-500';
-  return 'bg-gray-300 text-gray-700 dark:bg-gray-600 dark:text-gray-300';
+  if (p >= 9) return 'bg-blue-500 text-white dark:bg-blue-600';
+  if (p >= 7) return 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300';
+  return 'bg-gray-200 text-gray-600 dark:bg-gray-700 dark:text-gray-300';
 }
 
 /** Extract the 4-digit TODO number from slug like "0001_loli-..." */
@@ -427,7 +426,7 @@ function TodoCard(props: { todo: TodoEntry; muted?: boolean; recommended?: boole
           {/* Recommended star — top right */}
           <Show when={props.recommended}>
             <div class="float-right ml-2" title="Recommended: unblocked, high priority">
-              <span class="text-amber-400 text-lg">&#9733;</span>
+              <span class="text-blue-400 text-lg">&#9733;</span>
             </div>
           </Show>
           {/* Top row: ID + Title + Type + Status */}
@@ -475,7 +474,7 @@ function TodoCard(props: { todo: TodoEntry; muted?: boolean; recommended?: boole
                     return (
                       <>
                         {i() > 0 && ', '}
-                        <span class="font-mono text-orange-600 dark:text-orange-400">
+                        <span class="font-mono text-gray-500 dark:text-gray-400">
                           {depId ? depId : dep}
                         </span>
                       </>
@@ -493,7 +492,7 @@ function TodoCard(props: { todo: TodoEntry; muted?: boolean; recommended?: boole
                     return (
                       <>
                         {i() > 0 && ', '}
-                        <span class="font-mono text-blue-600 dark:text-blue-400">
+                        <span class="font-mono text-gray-500 dark:text-gray-400">
                           {depId ? depId : dep}
                         </span>
                       </>
