@@ -235,7 +235,7 @@ rule loli_r
                 <div>
                   <p class="font-medium text-gray-900 dark:text-white">Add the constructor</p>
                   <p class="text-sm text-gray-600 dark:text-gray-400">In the <code>.calc</code> file:</p>
-                  <CodeBlock code={`constructor plus : formula -> formula -> formula
+                  <CodeBlock code={`constructor oplus : formula -> formula -> formula
   @ascii "_ + _"
   @latex "#1 \\\\oplus #2"
   @prec 65 left
@@ -248,7 +248,7 @@ rule loli_r
                 <div>
                   <p class="font-medium text-gray-900 dark:text-white">Set polarity</p>
                   <p class="text-sm text-gray-600 dark:text-gray-400">In the <code>.rules</code> file:</p>
-                  <CodeBlock code={`polarity plus positive`} />
+                  <CodeBlock code={`polarity oplus positive`} />
                 </div>
               </div>
 
@@ -257,24 +257,24 @@ rule loli_r
                 <div>
                   <p class="font-medium text-gray-900 dark:text-white">Define inference rules</p>
                   <p class="text-sm text-gray-600 dark:text-gray-400">In the <code>.rules</code> file:</p>
-                  <CodeBlock code={`// Plus left (additive - context preserved)
-rule plus_l
+                  <CodeBlock code={`// Oplus left (additive - context preserved)
+rule oplus_l
   deriv (seq G (comma D (hyp any A)) C)
   deriv (seq G (comma D (hyp any B)) C)
   -----------------
-  deriv (seq G (comma D (hyp any (plus A B))) C)
+  deriv (seq G (comma D (hyp any (oplus A B))) C)
 
-// Plus right 1
-rule plus_r1
+// Oplus right 1
+rule oplus_r1
   deriv (seq G D (hyp any A))
   -----------------
-  deriv (seq G D (hyp any (plus A B)))
+  deriv (seq G D (hyp any (oplus A B)))
 
-// Plus right 2
-rule plus_r2
+// Oplus right 2
+rule oplus_r2
   deriv (seq G D (hyp any B))
   -----------------
-  deriv (seq G D (hyp any (plus A B)))`} />
+  deriv (seq G D (hyp any (oplus A B)))`} />
                 </div>
               </div>
 

@@ -290,6 +290,23 @@ export function getFormulaConnectives(): ConnectiveInfo[] {
   return result;
 }
 
+const CONNECTIVE_CATEGORIES: Record<string, string> = {
+  tensor: 'Multiplicatives', loli: 'Multiplicatives', one: 'Multiplicatives',
+  with: 'Additives', oplus: 'Additives',
+  bang: 'Exponentials',
+};
+
+/** Classify a rule into its logical category using descriptor metadata. */
+export function getRuleCategory(ruleName: string, rule?: any): string {
+  if (ruleName === 'id' || ruleName === 'Id') return 'Identity';
+  if (ruleName === 'Focus_L' || ruleName === 'Focus_R') return 'Focus';
+  const r = rule ?? browser.getCalculus()?.rules?.[ruleName];
+  const connective = r?.descriptor?.connective;
+  if (connective && CONNECTIVE_CATEGORIES[connective]) return CONNECTIVE_CATEGORIES[connective];
+  if (r?.structural) return 'Structural';
+  return 'Other';
+}
+
 /**
  * Get all inference rules with metadata, grouped by category
  */
@@ -305,19 +322,7 @@ export function getRulesGrouped(): Record<string, RuleInfo[]> {
   };
 
   for (const [name, rule] of Object.entries(calc.rules) as [string, any][]) {
-    // Determine category based on rule name
-    let category = 'Other';
-    if (name === 'id' || name === 'Id') {
-      category = 'Identity';
-    } else if (name.includes('tensor') || name.includes('loli') || name.includes('one')) {
-      category = 'Multiplicatives';
-    } else if (name.includes('with') || name.includes('plus')) {
-      category = 'Additives';
-    } else if (name.includes('bang') || name.includes('promotion') || name.includes('dereliction') || name.includes('absorption') || name.includes('copy')) {
-      category = 'Exponentials';
-    } else if (rule.structural) {
-      category = 'Structural';
-    }
+    const category = getRuleCategory(name, rule);
 
     if (!groups[category]) {
       groups[category] = [];

@@ -5,7 +5,7 @@
 const { describe, it, before } = require('node:test');
 const assert = require('node:assert');
 
-const { seq, hash, eq, hashAST } = require('../lib/kernel/sequent');
+const { seq, hash, eq } = require('../lib/kernel/sequent');
 const calculus = require('../lib/calculus');
 
 describe('v2 Sequent', () => {
@@ -16,17 +16,17 @@ describe('v2 Sequent', () => {
     AST = ill.AST;
   });
 
-  describe('hashAST', () => {
-    it('should hash same AST to same value', () => {
+  describe('content-addressed identity', () => {
+    it('same structure produces same hash', () => {
       const a = AST.tensor(AST.freevar('A'), AST.freevar('B'));
       const b = AST.tensor(AST.freevar('A'), AST.freevar('B'));
-      assert.strictEqual(hashAST(a), hashAST(b));
+      assert.strictEqual(a, b);
     });
 
-    it('should hash different AST to different value', () => {
+    it('different structure produces different hash', () => {
       const a = AST.tensor(AST.freevar('A'), AST.freevar('B'));
       const b = AST.tensor(AST.freevar('B'), AST.freevar('A'));
-      assert.notStrictEqual(hashAST(a), hashAST(b));
+      assert.notStrictEqual(a, b);
     });
   });
 

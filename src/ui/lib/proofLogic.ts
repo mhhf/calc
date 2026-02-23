@@ -17,6 +17,7 @@ import {
   getSeqModule,
   autoProveV2,
   getManualProofAPI,
+  getRuleCategory,
 } from './calculus';
 
 // =============================================================================
@@ -288,23 +289,6 @@ export function getCartesianContext(seq: V2Sequent): FormulaHash[] {
 // =============================================================================
 // Rule Helpers
 // =============================================================================
-
-const CONNECTIVE_CATEGORIES: Record<string, string> = {
-  tensor: 'Multiplicatives', loli: 'Multiplicatives', one: 'Multiplicatives',
-  with: 'Additives', plus: 'Additives',
-  bang: 'Exponentials',
-};
-
-function getRuleCategory(ruleName: string): string {
-  if (ruleName === 'id') return 'Identity';
-  if (ruleName === 'Focus_L' || ruleName === 'Focus_R') return 'Focus';
-  const calc = getCalculus();
-  const rule = calc?.rules?.[ruleName];
-  const connective = rule?.descriptor?.connective;
-  if (connective && CONNECTIVE_CATEGORIES[connective]) return CONNECTIVE_CATEGORIES[connective];
-  if (rule?.structural) return 'Structural';
-  return 'Other';
-}
 
 /**
  * Get applicable rules for a proof tree node.
