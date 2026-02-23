@@ -6,7 +6,7 @@ const { describe, it, before } = require('node:test');
 const assert = require('node:assert');
 
 const { ProofTree, fromGoal, leaf } = require('../lib/prover/pt');
-const { FocusedProofState, inversion, focus } = require('../lib/prover/state');
+const { inversion, focus } = require('../lib/prover/state');
 const Seq = require('../lib/kernel/sequent');
 const calculus = require('../lib/calculus');
 
@@ -68,56 +68,6 @@ describe('v2 ProofTree', () => {
       });
 
       assert.strictEqual(pt.isComplete(), true);
-    });
-  });
-
-  describe('traversal', () => {
-    it('getGoals should find unproven nodes', () => {
-      const s1 = Seq.fromArrays([AST.freevar('A')], [], AST.freevar('A'));
-      const s2 = Seq.fromArrays([AST.freevar('B')], [], AST.freevar('B'));
-      const p1 = leaf(s1, 'id');
-      const p2 = fromGoal(s2);  // Unproven!
-
-      const pt = new ProofTree({
-        conclusion: Seq.fromArrays([], [], AST.tensor(AST.freevar('A'), AST.freevar('B'))),
-        premisses: [p1, p2],
-        rule: 'tensor_r',
-        proven: false
-      });
-
-      const goals = pt.getGoals();
-      assert.strictEqual(goals.length, 1);
-      assert.strictEqual(goals[0], p2);
-    });
-
-    it('size should count all nodes', () => {
-      const s1 = Seq.fromArrays([AST.freevar('A')], [], AST.freevar('A'));
-      const s2 = Seq.fromArrays([AST.freevar('B')], [], AST.freevar('B'));
-      const p1 = leaf(s1, 'id');
-      const p2 = leaf(s2, 'id');
-
-      const pt = new ProofTree({
-        conclusion: Seq.fromArrays([], [], AST.tensor(AST.freevar('A'), AST.freevar('B'))),
-        premisses: [p1, p2],
-        rule: 'tensor_r',
-        proven: true
-      });
-
-      assert.strictEqual(pt.size(), 3);
-    });
-
-    it('depth should compute tree depth', () => {
-      const s1 = Seq.fromArrays([AST.freevar('A')], [], AST.freevar('A'));
-      const p1 = leaf(s1, 'id');
-
-      const pt = new ProofTree({
-        conclusion: Seq.fromArrays([], [], AST.freevar('A')),
-        premisses: [p1],
-        rule: 'some_rule',
-        proven: true
-      });
-
-      assert.strictEqual(pt.depth(), 2);
     });
   });
 
@@ -195,12 +145,6 @@ describe('v2 FocusedProofState', () => {
       assert.strictEqual(state.position, 'R');
     });
 
-    it('blur should exit focus phase', () => {
-      const state = focus('R');
-      state.blur();
-      assert.strictEqual(state.isInversion(), true);
-      assert.strictEqual(state.position, null);
-    });
   });
 
   describe('queries', () => {

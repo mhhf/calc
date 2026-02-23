@@ -1,8 +1,9 @@
 /**
  * Calculus API for UI
  *
- * Provides a unified API for the prover and parser that works
- * in the browser. Lazily initializes from the pre-bundled ILL spec.
+ * Thin wrapper over lib/browser.js. Lazily initializes from the pre-bundled ILL spec.
+ * Provides: parsing, rendering, calculus metadata, and low-level module access.
+ * Proof logic lives in proofLogic.ts (not here).
  */
 
 // @ts-ignore - CommonJS module
@@ -18,26 +19,6 @@ export interface Formula {
   children: (Formula | string)[];
 }
 
-export interface Sequent {
-  linear: Formula[];
-  cartesian: Formula[];
-  succedent: Formula;
-}
-
-export interface ProofTree {
-  rule: string;
-  conclusion: Sequent;
-  premises: ProofTree[];
-  success?: boolean;
-}
-
-export interface ProveResult {
-  success: boolean;
-  proofTree?: ProofTree;
-  sequent?: Sequent;
-  formatted?: string;
-}
-
 // Initialization
 let initialized = false;
 
@@ -48,26 +29,21 @@ function ensureInitialized() {
   }
 }
 
-/**
- * Parse a formula string
- */
+// ============================================================================
+// Parsing & Rendering
+// ============================================================================
+
 export function parseFormula(input: string): Formula {
   ensureInitialized();
   return browser.parseFormula(input);
 }
 
-/**
- * Parse a sequent string (e.g., "A, B |- C")
- */
-export function parseSequent(input: string): Sequent {
+export function parseSequent(input: string): any {
   ensureInitialized();
   return browser.parseSequent(input);
 }
 
-/**
- * Render a formula to string
- */
-export function renderFormula(formula: Formula, format: 'ascii' | 'latex' = 'ascii'): string {
+export function renderFormula(formula: any, format: 'ascii' | 'latex' = 'ascii'): string {
   ensureInitialized();
   try {
     return browser.render(formula, format);
@@ -77,71 +53,35 @@ export function renderFormula(formula: Formula, format: 'ascii' | 'latex' = 'asc
   }
 }
 
-/**
- * Render a sequent to string
- */
-export function renderSequent(seq: Sequent, format: 'ascii' | 'latex' = 'ascii'): string {
+export function renderSequent(seq: any, format: 'ascii' | 'latex' = 'ascii'): string {
   ensureInitialized();
   return browser.render(seq, format);
 }
 
-/**
- * Prove a sequent string
- */
-export async function prove(sequentStr: string): Promise<ProveResult> {
-  ensureInitialized();
-  return browser.proveString(sequentStr);
-}
+// ============================================================================
+// Calculus Access
+// ============================================================================
 
-/**
- * Get the loaded calculus (for advanced use)
- */
 export function getCalculus() {
   ensureInitialized();
   return browser.getCalculus();
 }
 
 /**
- * Check if a formula is atomic
- */
-export function isAtomic(formula: Formula): boolean {
-  return formula?.tag === 'atom' || formula?.tag === 'freevar';
-}
-
-/**
- * Get the connective name from a formula
- */
-export function getConnective(formula: Formula): string | null {
-  if (!formula?.tag) return null;
-  if (formula.tag === 'atom' || formula.tag === 'freevar') return null;
-  return formula.tag;
-}
-
-/**
- * Build AST tree data for visualization.
- * Returns a TreeNode structure compatible with ASTView.tsx
+ * Build AST tree data for visualization (Sandbox.tsx).
  */
 export function buildASTTree(formula: Formula): any {
   if (!formula?.tag) return null;
 
-  // Build the head object expected by ASTView.tsx
   const node: any = {
-    head: {
-      constr: formula.tag,
-      name: formula.tag
-    },
+    head: { constr: formula.tag, name: formula.tag },
     children: []
   };
 
   for (const child of formula.children) {
     if (typeof child === 'string') {
-      // Leaf node (variable name, atom name, etc.)
       node.children.push({
-        head: {
-          constr: 'leaf',
-          name: child,
-          ascii: child
-        },
+        head: { constr: 'leaf', name: child, ascii: child },
         children: []
       });
     } else if (child?.tag) {
@@ -152,72 +92,8 @@ export function buildASTTree(formula: Formula): any {
   return node;
 }
 
-/**
- * Get info about the calculus rules
- */
-export function getRulesInfo() {
-  ensureInitialized();
-  const calc = browser.getCalculus();
-  return {
-    rules: calc.rules,
-    polarity: calc.polarity,
-    invertible: calc.invertible
-  };
-}
-
-/**
- * Get connective info for display
- */
-export function getConnectives() {
-  ensureInitialized();
-  const calc = browser.getCalculus();
-  const result: any[] = [];
-
-  for (const [name, constr] of Object.entries(calc.constructors) as [string, any][]) {
-    const ann = constr.annotations;
-    if (constr.returnType === 'formula' && ann?.ascii) {
-      result.push({
-        name,
-        ascii: ann.ascii,
-        latex: ann.latex,
-        prec: typeof ann.prec === 'object'
-          ? ann.prec.precedence
-          : ann.prec,
-        polarity: calc.polarity[name],
-        category: ann.category
-      });
-    }
-  }
-
-  return result;
-}
-
-/**
- * Format proof tree for display
- */
-export function formatProofTree(tree: any): string {
-  if (!tree) return '';
-
-  const lines: string[] = [];
-
-  function addNode(node: any, indent: number) {
-    const prefix = '  '.repeat(indent);
-    const seq = node.conclusion
-      ? renderSequent(node.conclusion, 'ascii')
-      : '?';
-    lines.push(`${prefix}${node.rule}: ${seq}`);
-
-    for (const premise of node.premises || []) {
-      addNode(premise, indent + 1);
-    }
-  }
-
-  addNode(tree, 0);
-  return lines.join('\n');
-}
-
 // ============================================================================
-// Calculus Overview API (for CalculusOverview.tsx and MetaOverview.tsx)
+// Calculus Metadata (for CalculusOverview.tsx, MetaOverview.tsx, CalculusHealth.tsx)
 // ============================================================================
 
 export interface ConnectiveInfo {
@@ -244,18 +120,12 @@ export interface BNFProduction {
   alternatives: string[];
 }
 
-/**
- * Get the calculus name
- */
 export function getCalculusName(): string {
   ensureInitialized();
   const calc = browser.getCalculus();
   return calc.name || 'Linear Logic';
 }
 
-/**
- * Get all formula connectives with metadata
- */
 export function getFormulaConnectives(): ConnectiveInfo[] {
   ensureInitialized();
   const calc = browser.getCalculus();
@@ -263,7 +133,7 @@ export function getFormulaConnectives(): ConnectiveInfo[] {
 
   for (const [name, constr] of Object.entries(calc.constructors) as [string, any][]) {
     if (constr.returnType !== 'formula') continue;
-    if (name === 'atom') continue; // Skip atom constructor
+    if (name === 'atom') continue;
 
     const prec = constr.annotations.prec;
     const precedence = typeof prec === 'object' ? prec.precedence : (prec || 100);
@@ -279,7 +149,6 @@ export function getFormulaConnectives(): ConnectiveInfo[] {
     });
   }
 
-  // Sort by category then precedence
   result.sort((a, b) => {
     if (a.category !== b.category) {
       return (a.category || '').localeCompare(b.category || '');
@@ -290,11 +159,13 @@ export function getFormulaConnectives(): ConnectiveInfo[] {
   return result;
 }
 
-const CONNECTIVE_CATEGORIES: Record<string, string> = {
-  tensor: 'Multiplicatives', loli: 'Multiplicatives', one: 'Multiplicatives',
-  with: 'Additives', oplus: 'Additives',
-  bang: 'Exponentials',
-};
+/** Look up connective category from constructor annotations (e.g. "multiplicative" → "Multiplicatives"). */
+function getConnectiveCategory(connective: string): string | null {
+  const calc = browser.getCalculus();
+  const cat = calc?.constructors?.[connective]?.annotations?.category;
+  if (!cat) return null;
+  return cat.charAt(0).toUpperCase() + cat.slice(1) + 's';
+}
 
 /** Classify a rule into its logical category using descriptor metadata. */
 export function getRuleCategory(ruleName: string, rule?: any): string {
@@ -302,14 +173,14 @@ export function getRuleCategory(ruleName: string, rule?: any): string {
   if (ruleName === 'Focus_L' || ruleName === 'Focus_R') return 'Focus';
   const r = rule ?? browser.getCalculus()?.rules?.[ruleName];
   const connective = r?.descriptor?.connective;
-  if (connective && CONNECTIVE_CATEGORIES[connective]) return CONNECTIVE_CATEGORIES[connective];
+  if (connective) {
+    const cat = getConnectiveCategory(connective);
+    if (cat) return cat;
+  }
   if (r?.structural) return 'Structural';
   return 'Other';
 }
 
-/**
- * Get all inference rules with metadata, grouped by category
- */
 export function getRulesGrouped(): Record<string, RuleInfo[]> {
   ensureInitialized();
   const calc = browser.getCalculus();
@@ -323,11 +194,7 @@ export function getRulesGrouped(): Record<string, RuleInfo[]> {
 
   for (const [name, rule] of Object.entries(calc.rules) as [string, any][]) {
     const category = getRuleCategory(name, rule);
-
-    if (!groups[category]) {
-      groups[category] = [];
-    }
-
+    if (!groups[category]) groups[category] = [];
     groups[category].push({
       name,
       pretty: rule.pretty || name,
@@ -338,96 +205,56 @@ export function getRulesGrouped(): Record<string, RuleInfo[]> {
     });
   }
 
-  // Remove empty groups
   for (const key of Object.keys(groups)) {
-    if (groups[key].length === 0) {
-      delete groups[key];
-    }
+    if (groups[key].length === 0) delete groups[key];
   }
 
   return groups;
 }
 
-/**
- * Get BNF-style grammar productions
- */
 export function getBNFGrammar(): BNFProduction[] {
   ensureInitialized();
   const calc = browser.getCalculus();
   const productions: BNFProduction[] = [];
 
-  // Group constructors by return type
   const byType: Record<string, any[]> = {};
-
   for (const [name, constr] of Object.entries(calc.constructors) as [string, any][]) {
     const rt = constr.returnType;
     if (!byType[rt]) byType[rt] = [];
     byType[rt].push({ name, ...constr });
   }
 
-  // Generate BNF for formula type
   if (byType['formula']) {
     const alternatives: string[] = [];
-
     for (const constr of byType['formula']) {
       const ascii = constr.annotations.ascii || constr.name;
-      if (constr.argTypes.length === 0) {
-        // Nullary: just the symbol
-        alternatives.push(ascii);
-      } else if (constr.argTypes.length === 1) {
-        // Unary prefix
-        alternatives.push(ascii.replace('_', 'A'));
-      } else if (constr.argTypes.length === 2) {
-        // Binary
-        alternatives.push(ascii.replace('_', 'A').replace('_', 'B'));
-      }
+      if (constr.argTypes.length === 0) alternatives.push(ascii);
+      else if (constr.argTypes.length === 1) alternatives.push(ascii.replace('_', 'A'));
+      else if (constr.argTypes.length === 2) alternatives.push(ascii.replace('_', 'A').replace('_', 'B'));
     }
-
-    // Add atom
     alternatives.push('p, q, r, ...');
-
-    productions.push({
-      lhs: 'Formula',
-      alternatives
-    });
+    productions.push({ lhs: 'Formula', alternatives });
   }
 
-  // Generate BNF for sequent
   if (byType['sequent']) {
-    productions.push({
-      lhs: 'Sequent',
-      alternatives: ['Γ ; Δ ⊢ A']
-    });
+    productions.push({ lhs: 'Sequent', alternatives: ['Γ ; Δ ⊢ A'] });
   }
 
   return productions;
 }
 
-/**
- * Get polarity information
- */
 export function getPolarityInfo(): Array<{ name: string; polarity: string }> {
   ensureInitialized();
   const calc = browser.getCalculus();
-  const result: Array<{ name: string; polarity: string }> = [];
-
-  for (const [name, pol] of Object.entries(calc.polarity) as [string, string][]) {
-    result.push({ name, polarity: pol });
-  }
-
-  return result;
+  return Object.entries(calc.polarity).map(([name, pol]) => ({ name, polarity: pol as string }));
 }
 
-/**
- * Get metavariable conventions from directives
- */
 export function getMetavarConventions(): Array<{ pattern: string; meaning: string; example: string }> {
   ensureInitialized();
   const calc = browser.getCalculus();
   const directives = calc.directives;
 
   if (!directives?.metavars) {
-    // Default conventions
     return [
       { pattern: 'A, B, C', meaning: 'Formula metavariable', example: 'A -o B' },
       { pattern: 'Γ, Δ', meaning: 'Context (multiset of formulas)', example: 'Γ, A ⊢ B' },
@@ -443,54 +270,23 @@ export function getMetavarConventions(): Array<{ pattern: string; meaning: strin
   }));
 }
 
-/**
- * Get sort names (base types) from the calculus
- */
 export function getSortNames(): string[] {
   ensureInitialized();
   const calc = browser.getCalculus();
   return Object.keys(calc.baseTypes || {});
 }
 
-/**
- * Render a rule to LaTeX for display
- */
-export function renderRuleToLatex(ruleName: string): { conclusion: string; premises: string[] } | null {
-  ensureInitialized();
-  const calc = browser.getCalculus();
-  const rule = calc.rules[ruleName];
-
-  if (!rule) return null;
-
-  // For v2, rules are stored as AST - we need to render them
-  // This is a simplified version - rules in v2 are complex term structures
-  // For now, return the pretty name
-  return {
-    conclusion: rule.pretty || ruleName,
-    premises: Array(rule.numPremises).fill('...')
-  };
-}
-
-/**
- * Get the raw bundle data (for advanced use)
- */
 export function getBundle() {
   ensureInitialized();
   return illBundle;
 }
 
-/**
- * Get all rules from the bundle
- */
 export function getAllRules(): Record<string, any> {
   ensureInitialized();
   const calc = browser.getCalculus();
   return calc.rules || {};
 }
 
-/**
- * Check if a rule exists
- */
 export function hasRule(ruleName: string): boolean {
   ensureInitialized();
   const calc = browser.getCalculus();
@@ -498,191 +294,19 @@ export function hasRule(ruleName: string): boolean {
 }
 
 // ============================================================================
-// Manual Proof API (for ManualProof.tsx)
+// Low-level Module Access (for proofLogic.ts)
 // ============================================================================
 
-export interface V2Sequent {
-  linear: Formula[];
-  cartesian: Formula[];
-  succedent: Formula;
-}
-
-export interface V2ProofNode {
-  conclusion: V2Sequent;
-  premisses: V2ProofNode[];
-  rule: string | null;
-  proven: boolean;
-}
-
-export interface V2ApplicableRule {
-  name: string;
-  position: 'L' | 'R';
-  index?: number;
-  formula?: Formula;
-  invertible: boolean;
-}
-
-/**
- * Parse sequent string into v2 sequent
- */
-export function parseSequentV2(input: string): V2Sequent {
-  ensureInitialized();
-  return browser.parseSequent(input);
-}
-
-/**
- * Create initial proof tree from a sequent
- */
-export function createProofTreeV2(seq: V2Sequent): V2ProofNode {
-  return {
-    conclusion: seq,
-    premisses: [],
-    rule: null,
-    proven: false
-  };
-}
-
-/**
- * Check if proof tree is complete
- */
-export function isProofCompleteV2(pt: V2ProofNode): boolean {
-  if (!pt.proven && pt.rule === null) return false;
-  if (pt.premisses.length === 0 && pt.rule !== null) return true;
-  return pt.premisses.every(p => isProofCompleteV2(p));
-}
-
-/**
- * Get applicable rules for a sequent (simplified version for UI)
- */
-export function getApplicableRulesV2(seq: V2Sequent): V2ApplicableRule[] {
-  ensureInitialized();
-  const calc = browser.getCalculus();
-  const rules: V2ApplicableRule[] = [];
-
-  // Check right rules (based on succedent connective)
-  const succTag = seq.succedent?.tag;
-  if (succTag && succTag !== 'atom' && succTag !== 'freevar') {
-    const ruleName = `${succTag}_r`;
-    if (calc.rules[ruleName]) {
-      rules.push({
-        name: ruleName,
-        position: 'R',
-        formula: seq.succedent,
-        invertible: calc.invertible?.[ruleName] ?? false
-      });
-    }
-    // Check alternatives like with_r1, with_r2
-    for (const alt of ['1', '2']) {
-      const altName = `${succTag}_r${alt}`;
-      if (calc.rules[altName]) {
-        rules.push({
-          name: altName,
-          position: 'R',
-          formula: seq.succedent,
-          invertible: calc.invertible?.[altName] ?? false
-        });
-      }
-    }
-  }
-
-  // Check for identity (atom matching)
-  if (seq.succedent?.tag === 'atom' || seq.succedent?.tag === 'freevar') {
-    for (let i = 0; i < (seq.linear?.length || 0); i++) {
-      const f = seq.linear[i];
-      if (f?.tag === seq.succedent?.tag &&
-          f?.children?.[0] === seq.succedent?.children?.[0]) {
-        rules.push({
-          name: 'id',
-          position: 'L',
-          index: i,
-          formula: f,
-          invertible: true
-        });
-        break;
-      }
-    }
-  }
-
-  // Check left rules (based on context formula connectives)
-  for (let i = 0; i < (seq.linear?.length || 0); i++) {
-    const f = seq.linear[i];
-    const tag = f?.tag;
-    if (tag && tag !== 'atom' && tag !== 'freevar') {
-      const ruleName = `${tag}_l`;
-      if (calc.rules[ruleName]) {
-        rules.push({
-          name: ruleName,
-          position: 'L',
-          index: i,
-          formula: f,
-          invertible: calc.invertible?.[ruleName] ?? false
-        });
-      }
-      // Check alternatives
-      for (const alt of ['1', '2']) {
-        const altName = `${tag}_l${alt}`;
-        if (calc.rules[altName]) {
-          rules.push({
-            name: altName,
-            position: 'L',
-            index: i,
-            formula: f,
-            invertible: calc.invertible?.[altName] ?? false
-          });
-        }
-      }
-    }
-  }
-
-  return rules;
-}
-
-/**
- * Auto-prove a sequent (using v2 prover)
- */
-export async function autoProveV2(seq: V2Sequent): Promise<{ success: boolean; proofTree?: V2ProofNode }> {
-  ensureInitialized();
-
-  // The prover from browser.createProver already has ruleSpecs built in
-  const prover = browser.createProver(browser.getCalculus());
-  const result = prover.prove(seq, { maxDepth: 50 });
-
-  if (!result.success) {
-    return { success: false };
-  }
-
-  const convertTree = (pt: any): V2ProofNode => ({
-    conclusion: pt.conclusion,
-    premisses: (pt.premisses || []).map(convertTree),
-    rule: pt.rule || 'id',
-    proven: pt.proven
-  });
-
-  return {
-    success: true,
-    proofTree: result.proofTree ? convertTree(result.proofTree) : undefined
-  };
-}
-
-/**
- * Get the Seq module from browser for advanced operations
- */
 export function getSeqModule() {
   ensureInitialized();
   return browser.Seq;
 }
 
-/**
- * Get the full browser module for advanced operations
- */
 export function getBrowserModule() {
   ensureInitialized();
   return browser;
 }
 
-/**
- * Get the ManualProofAPI (single source of truth for interactive proofs)
- */
 export function getManualProofAPI() {
   ensureInitialized();
   return browser.getManualProofAPI();

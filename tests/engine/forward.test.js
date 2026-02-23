@@ -8,6 +8,7 @@ const forward = require('../../lib/engine/forward');
 const mde = require('../../lib/engine');
 const Store = require('../../lib/kernel/store');
 const ffi = require('../../lib/engine/ffi');
+const { tryMatch } = require('../../lib/engine/match');
 
 describe('Forward Chaining', { timeout: 10000 }, () => {
   describe('flattenTensor', () => {
@@ -224,7 +225,7 @@ describe('Forward Chaining', { timeout: 10000 }, () => {
 
       // FFI can't convert sym to BigInt → conversion_failed (non-definitive).
       // tryMatch falls through to persistent state lookup, finds inc(sym, sym_plus_1).
-      const result = forward.tryMatch(rule, state, null);
+      const result = tryMatch(rule, state, null);
 
       assert.notStrictEqual(result, null,
         'tryMatch should succeed via persistent state fallback');

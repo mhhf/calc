@@ -7,10 +7,14 @@ const assert = require('node:assert');
 const path = require('path');
 const mde = require('../../lib/engine');
 const {
-  explore, countLeaves, getAllLeaves, maxDepth, countNodes,
-  expandItem, expandConsequentChoices, hashState, toDot
+  explore,
+  expandItem, expandConsequentChoices, hashState
 } = require('../../lib/engine/symexec');
+const {
+  countLeaves, getAllLeaves, maxDepth, countNodes, toDot
+} = require('../../lib/engine/tree-utils');
 const forward = require('../../lib/engine/forward');
+const { matchLoli } = require('../../lib/engine/match');
 const Store = require('../../lib/kernel/store');
 
 describe('explore', { timeout: 10000 }, () => {
@@ -409,7 +413,7 @@ describe('explore', { timeout: 10000 }, () => {
         { [loli]: 1, [trigger]: 1 },
         {}
       );
-      const m = forward.matchLoli(loli, state, null);
+      const m = matchLoli(loli, state, null);
       assert(m, 'matchLoli should return a match');
       assert.strictEqual(m.consumed[loli], 1);
       assert.strictEqual(m.consumed[trigger], 1);
@@ -431,7 +435,7 @@ describe('explore', { timeout: 10000 }, () => {
         { [loli]: 1, [triggerFact]: 1 },
         {}
       );
-      const m = forward.matchLoli(loli, state, null);
+      const m = matchLoli(loli, state, null);
       assert(m, 'matchLoli should return a match');
       assert.strictEqual(m.consumed[loli], 1);
       assert.strictEqual(m.consumed[triggerFact], 1);
@@ -451,7 +455,7 @@ describe('explore', { timeout: 10000 }, () => {
         { [loli]: 1 },
         { [guard]: true }  // Guard is provable via state
       );
-      const m = forward.matchLoli(loli, state, null);
+      const m = matchLoli(loli, state, null);
       assert(m, 'matchLoli should fire when guard is in persistent state');
       assert.strictEqual(m.consumed[loli], 1);
       assert(m.rule.consequent.linear.includes(result));
@@ -468,7 +472,7 @@ describe('explore', { timeout: 10000 }, () => {
         { [loli]: 1 },
         {}  // Guard NOT in state
       );
-      const m = forward.matchLoli(loli, state, null);
+      const m = matchLoli(loli, state, null);
       assert.strictEqual(m, null, 'matchLoli should return null when guard fails');
     });
 
@@ -482,7 +486,7 @@ describe('explore', { timeout: 10000 }, () => {
         { [loli]: 1 },  // trigger NOT in state
         {}
       );
-      const m = forward.matchLoli(loli, state, null);
+      const m = matchLoli(loli, state, null);
       assert.strictEqual(m, null, 'matchLoli should return null when trigger absent');
     });
 
@@ -500,7 +504,7 @@ describe('explore', { timeout: 10000 }, () => {
         { [loli]: 1, [linTrigger]: 1 },
         { [guard]: true }
       );
-      const m = forward.matchLoli(loli, state, null);
+      const m = matchLoli(loli, state, null);
       assert(m, 'matchLoli should fire with mixed trigger');
       assert.strictEqual(m.consumed[loli], 1);
       assert.strictEqual(m.consumed[linTrigger], 1);
@@ -519,7 +523,7 @@ describe('explore', { timeout: 10000 }, () => {
         { [loli]: 1, [trigger]: 1 },
         {}
       );
-      const m = forward.matchLoli(loli, state, null);
+      const m = matchLoli(loli, state, null);
       assert(m, 'matchLoli should fire');
       assert.strictEqual(m.rule.consequentAlts.length, 2, 'should have 2 alternatives from oplus');
     });

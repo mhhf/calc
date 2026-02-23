@@ -2,20 +2,18 @@
  * Tests for discrimination tree rule indexing
  */
 
-const { describe, it, before, beforeEach } = require('node:test');
+const { describe, it, beforeEach } = require('node:test');
 const assert = require('node:assert');
 const path = require('path');
 const Store = require('../../lib/kernel/store');
-const { isMetavar } = require('../../lib/kernel/unify');
 const {
   createNode, insert, flattenPattern, flattenFact,
-  subtreeSize, queryFlat, collectAll, makeDiscTreeLayer, WILDCARD
+  subtreeSize, queryFlat, collectAll, makeDiscTreeLayer
 } = require('../../lib/engine/disc-tree');
+const { explore } = require('../../lib/engine/symexec');
 const {
-  explore, countNodes, countLeaves, maxDepth, getAllLeaves,
-  buildStrategyStack, makeDiscTreeLayer: makeDiscTreeLayerFromSymexec
-} = require('../../lib/engine/symexec');
-const forward = require('../../lib/engine/forward');
+  countNodes, countLeaves, maxDepth, getAllLeaves
+} = require('../../lib/engine/tree-utils');
 const mde = require('../../lib/engine');
 
 describe('disc-tree', () => {

@@ -41,7 +41,8 @@ if (files.length === 0) {
 (async () => {
   const mde = require('../lib/engine');
   const symexec = require('../lib/engine/symexec');
-  const { show, classifyLeaf, showInteresting } = require('../lib/engine/show');
+  const { getAllLeaves, countNodes, maxDepth } = require('../lib/engine/tree-utils');
+  const { classifyLeaf, showInteresting } = require('../lib/engine/show');
 
   const calc = await mde.load(files);
   const query = calc.queries.get(opts.query);
@@ -57,9 +58,9 @@ if (files.length === 0) {
   const tree = symexec.explore(state, calc.forwardRules, { maxDepth: opts.depth, calc: calcCtx });
   const elapsed = performance.now() - t0;
 
-  const leaves = symexec.getAllLeaves(tree);
-  const nodes = symexec.countNodes(tree);
-  const depth = symexec.maxDepth(tree);
+  const leaves = getAllLeaves(tree);
+  const nodes = countNodes(tree);
+  const depth = maxDepth(tree);
 
   console.log(`Nodes: ${nodes}  Leaves: ${leaves.length}  Depth: ${depth}  Time: ${elapsed.toFixed(1)}ms`);
   console.log();

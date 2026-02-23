@@ -15,7 +15,6 @@ import {
   getCalculus,
   getBrowserModule,
   getSeqModule,
-  autoProveV2,
   getManualProofAPI,
   getRuleCategory,
 } from './calculus';
@@ -28,7 +27,7 @@ import {
 export type FormulaHash = number;
 
 /** A sequent with hash-based formulas */
-export type V2Sequent = {
+export type Sequent = {
   contexts: {
     linear: FormulaHash[];
     cartesian: FormulaHash[];
@@ -37,9 +36,9 @@ export type V2Sequent = {
   _hash?: number | null;
 };
 
-export type V2ProofNode = {
-  conclusion: V2Sequent;
-  premisses: V2ProofNode[];
+export type ProofNode = {
+  conclusion: Sequent;
+  premisses: ProofNode[];
   rule: string | null;
   proven: boolean;
 };
@@ -48,7 +47,7 @@ export interface ApplicableRule {
   name: string;
   category: string;
   ruleStrings: string[];
-  premises: V2Sequent[];
+  premises: Sequent[];
   position: string;  // 'R' or index for L
   principalFormula?: string;
   principalFormulaLatex?: string;
@@ -57,7 +56,7 @@ export interface ApplicableRule {
 }
 
 export interface ProofTreeNode {
-  conclusion: V2Sequent;
+  conclusion: Sequent;
   premisses: ProofTreeNode[];
   type: string;  // Rule name or '???'
   proven: boolean;
@@ -128,8 +127,8 @@ export function initBrowserRuleset(): void {
 // Parsing - Delegates to browser module
 // =============================================================================
 
-export function parseSequent(input: string): V2Sequent {
-  return browserParseSequent(input) as V2Sequent;
+export function parseSequent(input: string): Sequent {
+  return browserParseSequent(input) as Sequent;
 }
 
 export function parseFormula(input: string): FormulaHash {
@@ -144,7 +143,7 @@ export function renderFormula(hash: FormulaHash, format: 'ascii' | 'latex' = 'as
   return browserRenderFormula(hash, format);
 }
 
-export function sequentToLatex(seq: V2Sequent, simplify = true, focusInfo?: FocusInfo): string {
+export function sequentToLatex(seq: Sequent, simplify = true, focusInfo?: FocusInfo): string {
   try {
     // Use ManualProofAPI for focus-aware rendering
     if (focusInfo?.position) {
@@ -186,7 +185,7 @@ export function sequentToLatex(seq: V2Sequent, simplify = true, focusInfo?: Focu
   }
 }
 
-export function sequentToAscii(seq: V2Sequent, focusInfo?: FocusInfo): string {
+export function sequentToAscii(seq: Sequent, focusInfo?: FocusInfo): string {
   try {
     if (focusInfo?.position) {
       const api = getManualProofAPI();
@@ -206,7 +205,7 @@ export function sequentToAscii(seq: V2Sequent, focusInfo?: FocusInfo): string {
 // Proof Tree Operations
 // =============================================================================
 
-export function createProofTree(sequent: V2Sequent): ProofTreeNode {
+export function createProofTree(sequent: Sequent): ProofTreeNode {
   return {
     conclusion: sequent,
     premisses: [],
@@ -278,11 +277,11 @@ export function cloneProofTree(pt: ProofTreeNode): ProofTreeNode {
 // Context Helpers
 // =============================================================================
 
-export function getLinearContext(seq: V2Sequent): FormulaHash[] {
+export function getLinearContext(seq: Sequent): FormulaHash[] {
   return seq.contexts?.linear || [];
 }
 
-export function getCartesianContext(seq: V2Sequent): FormulaHash[] {
+export function getCartesianContext(seq: Sequent): FormulaHash[] {
   return seq.contexts?.cartesian || [];
 }
 
@@ -298,13 +297,13 @@ export function getCartesianContext(seq: V2Sequent): FormulaHash[] {
  * The node IS the source of truth - we read delta_in directly.
  */
 export function getApplicableRules(
-  seqOrNode: V2Sequent | ProofTreeNode,
+  seqOrNode: Sequent | ProofTreeNode,
   options: GetRulesOptions = {}
 ): ApplicableRule[] {
   const { mode = 'unfocused', focusState: optionsFocusState } = options;
 
   // Handle both sequent and node input for backward compatibility
-  let seq: V2Sequent;
+  let seq: Sequent;
   let nodeFocusState: { position: string; id: string | null } | null = null;
 
   if ('conclusion' in seqOrNode) {
@@ -322,7 +321,7 @@ export function getApplicableRules(
     }
   } else {
     // It's a raw sequent
-    seq = seqOrNode as V2Sequent;
+    seq = seqOrNode as Sequent;
   }
 
   // Use node's focus state if available, otherwise use options (for backward compat)
@@ -495,7 +494,7 @@ export function applyRuleWithSplit(
 
   // Build full premises with split context
   const barePremises = action.barePremises;
-  const premises = barePremises.map((barePremise: V2Sequent, i: number) => {
+  const premises = barePremises.map((barePremise: Sequent, i: number) => {
     const premiseLinear = barePremise.contexts?.linear || [];
     const additions = i === 0 ? p1Hashes : p2Hashes;
     return Seq.fromArrays([...additions, ...premiseLinear], cart, barePremise.succedent);
@@ -507,7 +506,7 @@ export function applyRuleWithSplit(
   return ptCopy;
 }
 
-export function getContextEntries(seq: V2Sequent, excludeId?: string, apiAction?: any): ContextEntry[] {
+export function getContextEntries(seq: Sequent, excludeId?: string, apiAction?: any): ContextEntry[] {
   // If API action has context entries (from delta tracking), use those
   if (apiAction?.contextEntries) {
     return apiAction.contextEntries.map((entry: any, i: number) => ({
@@ -530,12 +529,12 @@ export function getContextEntries(seq: V2Sequent, excludeId?: string, apiAction?
 }
 
 export function previewSplitSubgoals(
-  seq: V2Sequent,
+  seq: Sequent,
   ruleName: string,
   position: string,
   split: { premise1: string[]; premise2: string[] },
   apiAction?: any
-): V2Sequent[] | null {
+): Sequent[] | null {
   const testPt = createProofTree(seq);
   const result = applyRuleWithSplit(testPt, ruleName, position, split, apiAction);
   if (!result) return null;
@@ -550,17 +549,19 @@ export async function autoProve(
   pt: ProofTreeNode,
   options: AutoProveOptions = {}
 ): Promise<{ success: boolean; pt: ProofTreeNode }> {
-  const result = await autoProveV2(pt.conclusion);
+  const browser = getBrowserModule();
+  const prover = browser.createProver(browser.getCalculus());
+  const result = prover.prove(pt.conclusion, { maxDepth: 50 });
 
   if (!result.success || !result.proofTree) {
     return { success: false, pt };
   }
 
-  const convertTree = (v2pt: V2ProofNode): ProofTreeNode => ({
-    conclusion: v2pt.conclusion,
-    premisses: v2pt.premisses.map(convertTree),
-    type: v2pt.rule || '???',
-    proven: v2pt.proven,
+  const convertTree = (raw: any): ProofTreeNode => ({
+    conclusion: raw.conclusion,
+    premisses: (raw.premisses || []).map(convertTree),
+    type: raw.rule || '???',
+    proven: raw.proven,
     delta_in: {},
     delta_out: {},
   });
@@ -595,7 +596,7 @@ export function collapseFocusSteps(pt: ProofTreeNode): ProofTreeNode {
 export interface StructuredStep {
   level: number;
   step: number;
-  sequent: V2Sequent;
+  sequent: Sequent;
   sequentLatex: string;
   ruleName: string;
   isProven: boolean;
@@ -752,10 +753,6 @@ export function getRuleApplicationDetails(pt: ProofTreeNode): RuleApplicationDet
     instantiatedPremisesLatex: pt.premisses.map(p => sequentToLatex(p.conclusion)),
   };
 }
-
-// Legacy type aliases for backwards compatibility
-export type Formula = FormulaHash;
-export type Sequent = V2Sequent;
 
 // =============================================================================
 // Browser Console Debug Utility

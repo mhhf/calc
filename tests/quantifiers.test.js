@@ -13,7 +13,8 @@ const { createProver, buildRuleSpecs } = require('../lib/prover/focused');
 const Seq = require('../lib/kernel/sequent');
 const { parseExpr } = require('../lib/engine/convert');
 const { compileRule, expandItem } = require('../lib/engine/compile');
-const { resolveExistentials, tryMatch, createState } = require('../lib/engine/forward');
+const { createState } = require('../lib/engine/forward');
+const { resolveExistentials, tryMatch } = require('../lib/engine/match');
 
 describe('Quantifier Store operations', () => {
   it('exists(body) creates arity-1 node', () => {

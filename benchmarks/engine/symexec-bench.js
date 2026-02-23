@@ -20,6 +20,8 @@ const mde = require('../../lib/engine');
 const Store = require('../../lib/kernel/store');
 const forward = require('../../lib/engine/forward');
 const symexec = require('../../lib/engine/symexec');
+const { detectStrategy } = require('../../lib/engine/strategy');
+const treeUtils = require('../../lib/engine/tree-utils');
 
 const BASELINE_PATH = path.join(__dirname, 'symexec-baseline.json');
 const WARMUP = 3;
@@ -83,7 +85,7 @@ function instrumentedExplore(initialState, rules, calcCtx, maxDepth) {
 
   const ruleList = Array.isArray(rules) ? rules : (rules.rules || rules);
   const indexedRules = Array.isArray(rules) ? { rules } : rules;
-  const strategy = symexec.detectStrategy(ruleList);
+  const strategy = detectStrategy(ruleList);
 
   // Mutable pathVisited: add before recursion, delete after (no Set copies)
   const pathVisited = new Set();
@@ -225,9 +227,9 @@ async function runBenchmark(doProfile) {
     const totalTime = Object.values(timers).reduce((s, t) => s + t.time, 0);
     const prof = forward.getProfile();
 
-    const nodes = symexec.countNodes(tree);
-    const leaves = symexec.countLeaves(tree);
-    const depth = symexec.maxDepth(tree);
+    const nodes = treeUtils.countNodes(tree);
+    const leaves = treeUtils.countLeaves(tree);
+    const depth = treeUtils.maxDepth(tree);
 
     console.log(`Tree: ${nodes} nodes, ${leaves} leaves, depth ${depth}`);
     console.log();
@@ -288,11 +290,11 @@ async function runBenchmark(doProfile) {
 
       // Record tree metrics on first measured run
       if (i === WARMUP) {
-        const nodes = symexec.countNodes(tree);
-        const leaves = symexec.countLeaves(tree);
-        const depth = symexec.maxDepth(tree);
+        const nodes = treeUtils.countNodes(tree);
+        const leaves = treeUtils.countLeaves(tree);
+        const depth = treeUtils.maxDepth(tree);
         const leafTypes = {};
-        for (const l of symexec.getAllLeaves(tree)) {
+        for (const l of treeUtils.getAllLeaves(tree)) {
           leafTypes[l.type] = (leafTypes[l.type] || 0) + 1;
         }
         console.log(`Tree: ${nodes} nodes, ${leaves} leaves, depth ${depth}`);
@@ -321,7 +323,7 @@ async function runBenchmark(doProfile) {
     facts: linearCount,
     rules: ruleCount,
     tree: {
-      nodes: symexec.countNodes(symexec.explore(state, calc.forwardRules, { maxDepth: 200, calc: calcCtx })),
+      nodes: treeUtils.countNodes(symexec.explore(state, calc.forwardRules, { maxDepth: 200, calc: calcCtx })),
     },
     timing: {
       mean: s.mean,

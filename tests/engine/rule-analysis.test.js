@@ -8,6 +8,7 @@ const { describe, it, before } = require('node:test');
 const assert = require('node:assert');
 const path = require('path');
 const forward = require('../../lib/engine/forward');
+const { getPredicateHead } = require('../../lib/kernel/ast');
 const { analyzeRule, analyzeDeltas } = require('../../lib/engine/rule-analysis');
 const mde = require('../../lib/engine');
 const Store = require('../../lib/kernel/store');
@@ -22,21 +23,21 @@ async function makeRule(name, expr) {
 // Helper: dump a compiled rule's structure for inspection
 function dumpRule(rule) {
   const anteLinear = (rule.antecedent.linear || []).map(h => ({
-    pred: forward.getPredicateHead(h),
+    pred: getPredicateHead(h),
     tag: Store.tag(h),
     arity: Store.arity(h),
     hash: h,
     children: Store.children(h)
   }));
   const antePersistent = (rule.antecedent.persistent || []).map(h => ({
-    pred: forward.getPredicateHead(h),
+    pred: getPredicateHead(h),
     tag: Store.tag(h),
     arity: Store.arity(h),
     hash: h,
     children: Store.children(h)
   }));
   const conseqLinear = (rule.consequent.linear || []).map(h => ({
-    pred: forward.getPredicateHead(h),
+    pred: getPredicateHead(h),
     tag: Store.tag(h),
     arity: Store.arity(h),
     hash: h,
@@ -584,7 +585,7 @@ describe('Rule Analysis', { timeout: 10000 }, () => {
 
       // p(_X) has the same hash on both sides (content-addressed, same metavar)
       const pHash = rule.antecedent.linear.find(
-        h => forward.getPredicateHead(h) === 'p');
+        h => getPredicateHead(h) === 'p');
 
       assert(result.preserved.includes(pHash), 'p(_X) should be preserved');
       assert.strictEqual(result.preserved.length, 1);
@@ -691,7 +692,7 @@ describe('Rule Analysis', { timeout: 10000 }, () => {
 
       // code has identical hash on both sides → preserved
       const codeHash = rule.antecedent.linear.find(
-        h => forward.getPredicateHead(h) === 'code');
+        h => getPredicateHead(h) === 'code');
       assert(result.preserved.includes(codeHash), 'code should be preserved');
 
       // pc, sh, stack have different hashes → consumed/produced
@@ -715,9 +716,9 @@ describe('Rule Analysis', { timeout: 10000 }, () => {
 
       // Check if code is preserved (should be if same hash)
       const anteCode = rule.antecedent.linear.find(
-        h => forward.getPredicateHead(h) === 'code');
+        h => getPredicateHead(h) === 'code');
       const conseqCode = rule.consequent.linear.find(
-        h => forward.getPredicateHead(h) === 'code');
+        h => getPredicateHead(h) === 'code');
 
       if (anteCode === conseqCode) {
         assert(result.preserved.includes(anteCode), 'code preserved if same hash');
@@ -975,7 +976,7 @@ describe('Rule Analysis', { timeout: 10000 }, () => {
 
       // code is preserved (identical hash)
       const codeHash = rule.antecedent.linear.find(
-        h => forward.getPredicateHead(h) === 'code');
+        h => getPredicateHead(h) === 'code');
       assert(result.preserved.includes(codeHash), 'code preserved');
 
       // Check delta predicates
@@ -1005,7 +1006,7 @@ describe('Rule Analysis', { timeout: 10000 }, () => {
       assert.strictEqual(stackDeltas.length, 1, '1 stack delta pair');
 
       const remainingConsumedStacks = result.consumed.filter(
-        h => forward.getPredicateHead(h) === 'stack');
+        h => getPredicateHead(h) === 'stack');
       assert.strictEqual(remainingConsumedStacks.length, 1, '1 stack remaining consumed');
     });
 
@@ -1060,8 +1061,8 @@ describe('Rule Analysis', { timeout: 10000 }, () => {
 
           // Ante and conseq should have same pred head
           assert.strictEqual(
-            forward.getPredicateHead(delta.anteHash),
-            forward.getPredicateHead(delta.conseqHash),
+            getPredicateHead(delta.anteHash),
+            getPredicateHead(delta.conseqHash),
             `${rule.name}: delta ante/conseq should have same pred head`);
 
           // Unchanged positions should have identical children
@@ -1126,7 +1127,7 @@ describe('Rule Analysis', { timeout: 10000 }, () => {
 
       // code is preserved
       assert.strictEqual(a.preserved.length, 1, '1 preserved');
-      assert.strictEqual(forward.getPredicateHead(a.preserved[0]), 'code');
+      assert.strictEqual(getPredicateHead(a.preserved[0]), 'code');
 
       // pc, sh, stack are deltas (3 total: pc, sh, 1 of 2 stacks)
       const deltaPreds = a.deltas.map(d => d.pred).sort();
@@ -1135,7 +1136,7 @@ describe('Rule Analysis', { timeout: 10000 }, () => {
 
       // 1 remaining consumed (extra stack)
       assert.strictEqual(a.consumed.length, 1, '1 remaining consumed');
-      assert.strictEqual(forward.getPredicateHead(a.consumed[0]), 'stack');
+      assert.strictEqual(getPredicateHead(a.consumed[0]), 'stack');
 
       // 0 remaining produced
       assert.strictEqual(a.produced.length, 0, 'no remaining produced');
