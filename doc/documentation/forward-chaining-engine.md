@@ -1,325 +1,317 @@
 ---
-title: "Forward Chaining Engine — Implementation"
+title: "Forward Chaining Engine — Architecture & Implementation"
 created: 2026-02-18
-modified: 2026-02-18
-summary: How the CALC forward chaining engine works — files, functions, data flow, optimizations, design decisions.
-tags: [implementation, forward-chaining, engine, architecture]
+modified: 2026-02-23
+summary: How the CALC forward chaining engine works — modules, data flow, matching, strategy, optimizations.
+tags: [implementation, forward-chaining, engine, architecture, CHR]
 ---
 
-# Forward Chaining Engine — Implementation
+# Forward Chaining Engine
 
-## 1. Overview
+The forward engine executes ILL programs by multiset rewriting. A state (multiset of linear + persistent facts) is transformed by rules until quiescence. Conceptually a CHR-like runtime with exhaustive exploration (CHR-v).
 
-The forward chaining engine executes ILL programs by multiset rewriting. A state (multiset of linear + persistent facts) is transformed by rules until quiescence (no rules fire). Two modes of operation:
+## Module Architecture
 
-- **Single-path** (`forward.run`): committed choice — fires first matching rule, one execution path
-- **Exhaustive** (`symexec.explore`): explores ALL execution paths — branches at every non-deterministic choice, builds an execution tree
+```mermaid
+graph TB
+    subgraph Compilation["Compile Time"]
+        COMPILE["<b>compile.js</b> (315 lines)<br/>Rule compilation:<br/>flatten, de Bruijn slots,<br/>discriminator detection"]
+        ANALYSIS["<b>rule-analysis.js</b> (285 lines)<br/>Pattern classification:<br/>preserved, delta, consumed,<br/>compiled substitution"]
+    end
 
-Both share the same matching and state-manipulation machinery; they differ only in exploration strategy.
+    subgraph Runtime["Runtime"]
+        MATCH["<b>match.js</b> (730 lines)<br/>Pattern matching primitives:<br/>tryMatch, provePersistentGoals,<br/>matchLoli, state indexing"]
+        STRATEGY["<b>strategy.js</b> (237 lines)<br/>Rule selection:<br/>fingerprint, disc-tree, predicate<br/>findMatch, findAllMatches"]
+        FORWARD["<b>forward.js</b> (145 lines)<br/>Execution + main loop:<br/>applyMatch, run, createState"]
+        SYMEXEC["<b>symexec.js</b> (590 lines)<br/>Exhaustive exploration:<br/>explore, mutateState/undo,<br/>ExploreContext, tree utils"]
+    end
 
-## 2. File Map
+    subgraph Support["Support"]
+        DTREE["<b>disc-tree.js</b> (242 lines)<br/>Discrimination tree indexing"]
+        PROVE["<b>prove.js</b> (350 lines)<br/>Backward chaining"]
+        FFI["<b>ffi/</b><br/>Foreign function interface"]
+        CONVERT["<b>convert.js</b> (403 lines)<br/>.ill → content-addressed hashes"]
+    end
 
-```
-lib/engine/
-├── index.js           # Public API: load(), exec(), prove()
-├── convert.js         # .ill parser → content-addressed hashes
-├── compile.js         # Rule compiler: raw rule → compiled rule with indexes
-├── forward.js         # Matching + execution: tryMatch, findMatch, applyMatch, run
-├── symexec.js         # Exhaustive exploration: explore(), strategy stack, mutation+undo
-├── rule-analysis.js   # Static analysis: delta detection, pattern roles, compiled substitution
-├── disc-tree.js       # Discrimination tree indexing for rule selection
-├── prove.js           # Backward chaining prover (called for persistent antecedents)
-├── show.js            # Debug: show(hash), classifyLeaf(), showInteresting()
-├── hex.js             # Hex notation expansion
-└── ffi/               # Foreign function interface
-    ├── index.js       # FFI registry
-    ├── arithmetic.js  # Arithmetic FFI: plus, inc, mul, neq, eq, lt, ...
-    ├── mode.js        # Mode checking (+ = ground input, - = computed output)
-    └── convert.js     # Binary ↔ BigInt conversion
-```
+    subgraph Kernel["lib/kernel/"]
+        STORE["store.js — content-addressed arena"]
+        UNIFY["unify.js — matchIndexed, undo stack"]
+        SUBST["substitute.js — applyIndexed, subCompiled"]
+    end
 
-## 3. Data Flow: From .ill to Execution
+    COMPILE --> ANALYSIS
+    MATCH --> UNIFY
+    MATCH --> SUBST
+    MATCH --> PROVE
+    MATCH --> FFI
+    STRATEGY --> MATCH
+    STRATEGY --> DTREE
+    FORWARD --> STRATEGY
+    FORWARD --> MATCH
+    FORWARD --> COMPILE
+    SYMEXEC --> STRATEGY
+    SYMEXEC --> MATCH
+    SYMEXEC --> SUBST
+    PROVE --> FFI
+    PROVE --> UNIFY
 
-### 3.1 Loading
-
-```
-.ill file → convert.load() → { types, clauses, forwardRules, queries }
-                                   │           │           │
-                                   │           │    raw rules { name, hash,
-                                   │           │    antecedent, consequent }
-                                   │           │           │
-                                   │           │    compile.compileRule()
-                                   │           │           │
-                                   │           │    compiled rules with indexes,
-                                   │           │    slots, analysis metadata
-                                   │           │
-                                   │    backward-chaining     forward rules
-                                   │    clauses (inc, plus)   (EVM opcodes)
-                                   │           │
-                                   │    prove.buildIndex()
-                                   │           │
-                                   │    clause index for
-                                   │    backward proving
-```
-
-`convert.js` parses .ill files via tree-sitter, converting expressions to content-addressed hashes (`Store.put`). It classifies declarations:
-- **Has monad** (`{...}` in consequent) → forward rule
-- **Has premises** (`<- ...`) → backward clause
-- **Neither** → type/constructor
-
-### 3.2 Rule Compilation (`compile.js`)
-
-`compileRule(rule)` transforms a raw rule into a compiled form optimized for matching:
-
-```
-Input:  { name: 'evm/add', hash, antecedent: loli_hash, consequent: monad_hash }
-
-Processing:
-1. flattenTensor(antecedent)  → { linear: [pc_pat, code_pat, stack_pat, ...],
-                                   persistent: [inc_pat, plus_pat] }
-2. unwrapMonad(consequent)    → tensor body
-3. flattenTensor(body)        → { linear: [...], persistent: [...] }
-4. Extract triggerPreds        → ['pc', 'code', 'stack', ...]  (for rule indexing)
-5. Detect discriminator        → { pred: 'code', groundPos: 1, groundValue: 0x01 }
-6. Collect metavars            → Set of all freevar hashes
-7. Assign de Bruijn slots      → { _PC: 0, _PC': 1, _GAS: 2, ... }
-8. analyzeDeltas()             → which linear patterns are preserved (appear in both ante/conseq)
-9. computePatternRoles()       → per-pattern: delta bypass info, binding slots, ground checks
-10. compileSubstitution()      → per-consequent-pattern: compiled recipe for Store.put
-11. expandConsequentChoices()  → if with/plus in consequent, pre-expand all alternatives
-
-Output: compiled rule with all metadata for O(1) decisions during matching
+    style MATCH fill:#cce5ff,stroke:#004085
+    style STRATEGY fill:#e2d5f1,stroke:#5a3d8a
+    style FORWARD fill:#d4edda,stroke:#155724
+    style SYMEXEC fill:#fff3cd,stroke:#856404
+    style COMPILE fill:#e8e8e8,stroke:#666
+    style ANALYSIS fill:#e8e8e8,stroke:#666
 ```
 
-### 3.3 The `expandItem` / `expandConsequentChoices` Mechanism
+## Data Flow: .ill to Execution
 
-When a rule's consequent contains additive connectives (`&` or `⊕`), the alternatives must be enumerated at **compile time** (stored in `rule.consequentAlts`). `expandItem(h)` recursively walks the consequent, distributing through tensor and splitting at with/plus:
+```mermaid
+flowchart LR
+    ILL[".ill file"] --> CONV["convert.load()"]
+    CONV --> TYPES["types"]
+    CONV --> CLAUSES["clauses<br/>(backward)"]
+    CONV --> FWRULES["forwardRules<br/>(raw)"]
 
-```
-expandItem(tensor(A, B))  = cross product of expandItem(A) × expandItem(B)
-expandItem(with(A, B))    = expandItem(A) ∪ expandItem(B)
-expandItem(plus(A, B))    = expandItem(A) ∪ expandItem(B)
-expandItem(bang(A))        = { linear: [], persistent: [A] }
-expandItem(atom)           = { linear: [atom], persistent: [] }
-```
+    FWRULES --> COMP["compileRule()"]
+    COMP --> COMPILED["compiled rules<br/>slots, triggers,<br/>pattern roles,<br/>compiled sub"]
 
-Each alternative is a `{ linear: [...], persistent: [...] }` — the facts to add to state when choosing that branch. The symexec explorer creates one child per alternative.
+    CLAUSES --> IDX["prove.buildIndex()"]
+    IDX --> CIDX["clause index"]
 
-**Bug:** `expandItem` also handles `loli(bang(P), monad(Q))` by decomposing it into `{ linear: [Q_body], persistent: [bang(P)] }`. This is **unsound** — see section 7.
-
-## 4. Matching (`forward.js: tryMatch`)
-
-`tryMatch(rule, state, calc, matchOpts)` is the core matching function. It attempts to find state facts that satisfy all of a rule's antecedent patterns.
-
-### 4.1 Algorithm (worklist with persistent deferral)
-
-```
-theta = new Array(metavarCount)     // de Bruijn indexed substitution
-consumed = {}                        // hash → count of consumed linear facts
-
-REPEAT until all patterns matched or failure:
-  Phase 1 — Linear patterns:
-    for each unmatched linear pattern P:
-      if P depends on unbound persistent outputs → DEFER
-      try Strategy A: delta bypass (direct Store.child extraction)
-      try Strategy B: secondary index O(1) lookup
-      try Strategy C: general matching against indexed candidates
-      if no candidate matches → FAIL
-
-  Phase 2 — Persistent patterns:
-    for the next unproved persistent pattern:
-      try FFI direct (tryFFIDirect) → O(1) arithmetic
-      try state lookup (pattern match against persistent facts)
-      try backward proving (prove.prove) → recursive search
-      if all fail → FAIL
-
-  if no progress made → FAIL
-
-return { rule, theta, slots, consumed }
+    COMPILED --> RUN["forward.run()"]
+    COMPILED --> EXPLORE["symexec.explore()"]
+    CIDX --> RUN
+    CIDX --> EXPLORE
 ```
 
-### 4.2 Linear Pattern Matching Strategies
+## Matching Pipeline
 
-Each linear pattern is tried against state facts in order of cheapness:
+`tryMatch(rule, state, calc)` — "can this rule fire against this state?"
 
-**Strategy A — Delta bypass:** For "flat delta" patterns (identified at compile time by `computePatternRoles`), extract children directly via `Store.child` instead of calling `matchIndexed`. This avoids the generic matching loop for simple patterns like `pc(PC)` where the structure is known at compile time.
+```mermaid
+flowchart TB
+    START["tryMatch(rule, state)"] --> SETUP["Create theta[], consumed{}, reserved{}"]
+    SETUP --> WORKLIST
 
-**Strategy B — Secondary index:** For the fingerprint predicate (e.g., `code`), use the `_byKey` secondary index for O(1) lookup. The key pattern (e.g., `PC` in `code PC 0x14`) is first instantiated from theta, then used to look up the fact directly.
+    subgraph WORKLIST["matchAllLinear — worklist with persistent interleaving"]
+        direction TB
+        LP["Phase 1: Match next linear pattern"]
+        PP["Phase 2: Prove persistent patterns"]
+        LP --> |"all linear matched"| PP
+        PP --> |"new bindings unlock deferred patterns"| LP
+        LP --> |"pattern fails"| FAIL1["FAIL"]
+        PP --> |"can't prove"| FAIL2["FAIL"]
+    end
 
-**Strategy C — General matching:** `matchIndexed(pattern, fact, theta, slots)` from `unify.js`. Walks both terms in lockstep, binding metavars in theta. Uses the undo stack for rollback on failure.
+    subgraph LINEAR["Linear Pattern Strategies"]
+        direction TB
+        A["<b>Delta bypass</b><br/>Direct Store.child extraction<br/>O(arity) for flat deltas"]
+        B["<b>Secondary index</b><br/>O(1) fingerprint lookup<br/>for discriminator predicate"]
+        C["<b>General matching</b><br/>matchIndexed against<br/>indexed candidates"]
+        A --> |"not delta"| B
+        B --> |"not fingerprint"| C
+    end
 
-### 4.3 Persistent Pattern Proving
+    LP --> LINEAR
 
-Persistent antecedents (`!inc PC PC'`, `!plus 2 GAS GAS'`, `!neq X Y`) are **proved**, not matched against state. The cascade:
+    WORKLIST --> EXIST["resolveExistentials()<br/>bind forall vars via state/FFI/backward"]
+    EXIST --> RESULT["return { rule, theta, consumed }"]
 
-1. **FFI direct** (`tryFFIDirect`): Check if the predicate has an FFI implementation (arithmetic, string ops). Call the FFI function with the instantiated arguments. O(1) for ground arguments. FFI failure without reason (e.g., `neq(5,5)`) is **definitive** — the rule cannot fire, break immediately.
-
-2. **State lookup**: Pattern-match against persistent facts already in the state. Handles symbolic/non-ground cases where FFI can't decide.
-
-3. **Backward proving** (`prove.prove`): Full backward chaining search using clause index. Last resort — expensive but complete.
-
-## 5. Rule Selection
-
-### 5.1 Single-Path (`forward.js: findMatch`)
-
-Tries rules in order, returns first match (committed choice):
-1. EVM strategy: O(1) lookup via `pc → code → opcode → rule`
-2. Predicate filter: skip rules whose trigger predicates are absent from state
-
-### 5.2 Exhaustive (`symexec.js: findAllMatches`)
-
-Tries ALL rules, returns all matches. Uses a **strategy stack** — layered indexing where each layer claims rules it can index efficiently:
-
-```
-Layer 1: Fingerprint layer (O(1))
-  - Rules with a ground discriminator in a binary+ predicate
-  - 40/44 EVM rules claimed
-  - Lookup: pc → code → opcode → candidate rules
-
-Layer 2: Discrimination tree (O(depth))
-  - Trie over preorder pattern traversals
-  - Remaining 4 rules (concatMemory, calldatacopy helpers)
-  - Only scans facts from relevant predicates
-
-(Predicate filter is safety net — currently 0 rules reach it)
+    style FAIL1 fill:#f8d7da,stroke:#721c24
+    style FAIL2 fill:#f8d7da,stroke:#721c24
+    style RESULT fill:#d4edda,stroke:#155724
 ```
 
-`detectStrategy(rules)` auto-builds the stack based on rule structure.
+## Persistent Proving
 
-### 5.3 Loli Continuations (`forward.js: matchLoli`)
+Persistent antecedents (e.g. `!inc PC PC'`, `!neq X Y`) must be proved, not consumed. Two conceptual levels:
 
-After compiled rule matching, the engine scans for fireable loli continuations in `state.linear`. `matchLoli(h, state, calc)` uses the same two-phase pipeline as `tryMatch`:
+```mermaid
+flowchart TB
+    GOAL["Persistent goal<br/>e.g. inc(PC, PC')"] --> LOOKUP
 
+    subgraph LEVEL1["Level 1: State Lookup"]
+        LOOKUP["Pattern-match against<br/>state.persistent facts"]
+    end
+
+    LOOKUP --> |"found"| SUCCESS["Proved<br/>update theta"]
+    LOOKUP --> |"not in state"| BACKWARD
+
+    subgraph LEVEL2["Level 2: Backward Prove"]
+        BACKWARD["prove(goal)"]
+        FFI_CHECK{"FFI available<br/>for predicate?"}
+        FFI["<b>2a. FFI</b><br/>O(1) arithmetic<br/>(inc, plus, neq, ...)"]
+        CLAUSES["<b>2b. Clause resolution</b><br/>Backward chaining<br/>via prove.js"]
+
+        BACKWARD --> FFI_CHECK
+        FFI_CHECK --> |"yes"| FFI
+        FFI_CHECK --> |"no"| CLAUSES
+        FFI --> |"mode mismatch"| CLAUSES
+    end
+
+    FFI --> |"success"| SUCCESS
+    FFI --> |"definitive fail<br/>(e.g. neq 5 5)"| FAIL["FAIL<br/>rule cannot fire"]
+    CLAUSES --> |"success"| SUCCESS
+    CLAUSES --> |"fail"| FAIL
+
+    style SUCCESS fill:#d4edda,stroke:#155724
+    style FAIL fill:#f8d7da,stroke:#721c24
+    style FFI fill:#fff3cd,stroke:#856404
 ```
-for each loli(trigger, body) in state.linear:
-  flattenTensor(trigger) → { linear: [...], persistent: [...] }
-  Phase 1: match linear trigger patterns against state.linear (via matchIdx)
-  Phase 2: prove persistent triggers via provePersistentGoals (FFI → state → backward)
-  if all matched → instantiate body, return match
+
+FFI is an optimization of backward proving — arithmetic predicates like `inc`, `plus`, `neq` have O(1) native implementations that bypass the full clause resolution pipeline.
+
+## Strategy Stack
+
+Rule selection uses a layered strategy stack. Each layer claims rules it can index efficiently; unclaimed rules fall through.
+
+```mermaid
+flowchart TB
+    STATE["State + Rules"] --> DETECT["detectStrategy(rules)<br/>auto-select layers"]
+
+    DETECT --> FP{"Fingerprint<br/>structure<br/>detected?"}
+    FP --> |"yes"| FPLAYER["<b>Fingerprint Layer</b><br/>O(1) by ground discriminator<br/>e.g. code(PC, <b>OPCODE</b>)<br/>Claims 40/44 EVM rules"]
+    FP --> |"no"| DTLAYER
+
+    FPLAYER --> |"unclaimed rules"| DTLAYER["<b>Disc-Tree Layer</b><br/>O(depth) trie lookup<br/>Catches remaining rules"]
+
+    DTLAYER --> |"unclaimed rules"| PREDLAYER["<b>Predicate Layer</b><br/>O(R) safety net<br/>Filter by trigger preds"]
+
+    subgraph Selection["Selection Modes"]
+        COMMITTED["<b>findMatch</b><br/>First match (committed choice)<br/>Used by forward.run()"]
+        EXHAUSTIVE["<b>findAllMatches</b><br/>All matches + loli scan<br/>Used by symexec.explore()"]
+    end
+
+    FPLAYER --> Selection
+    DTLAYER --> Selection
+    PREDLAYER --> Selection
 ```
 
-`provePersistentGoals` is a shared helper extracted from `tryMatch` Phase 2. Both compiled rules and loli continuations use the same FFI → state lookup → backward chaining pipeline.
+The fingerprint layer is **program-agnostic** — it auto-detects any dominant discriminating predicate from rule structure. For EVM, `code(PC, OPCODE)` is the discriminator (40/44 rules have a ground opcode child). For other programs, a different predicate may be detected, or the fingerprint layer is skipped entirely.
 
-## 6. State Mutation and Execution
+## Execution Modes
 
-### 6.1 Single-Path (`forward.js: run`)
+### Single-Path: `forward.run()`
+
+Committed choice — fires first matching rule, one execution path:
 
 ```
 while steps < maxSteps:
-  m = findMatch(state, rules, calc)
-  if no match:
-    m = matchFirstLoli(state, calc)
-    if no match → QUIESCENT, return
-  state = applyMatch(state, m)             // immutable: new state object
-  steps++
+  m = findMatch(state, rules, calc)      // strategy stack
+  if !m: m = matchFirstLoli(state, calc) // loli fallback
+  if !m: return QUIESCENT
+  state = applyMatch(state, m)           // immutable: new state
 ```
 
-`matchFirstLoli` returns the same match shape as `tryMatch`, so `applyMatch` handles both uniformly. `applyMatch` creates a new state: copies linear/persistent, subtracts consumed facts, adds produced facts.
+### Exhaustive: `symexec.explore()`
 
-### 6.2 Exhaustive (`symexec.js: explore`)
+DFS over all execution paths with mutation + undo:
 
-DFS with **mutation + undo** (no state copying at branch nodes):
+```mermaid
+flowchart TB
+    START["explore(state, rules)"] --> INIT["Create mutable state copy<br/>Build ExploreContext (index + hash)"]
+    INIT --> DFS
 
-```
-go(depth, ctx):
-  if ctx.stateHash in pathVisited → CYCLE
-  if depth >= maxDepth → BOUND
+    subgraph DFS["go(depth, ctx)"]
+        CYCLE{"cycle?<br/>hash in<br/>pathVisited"} --> |"yes"| CYCLENODE["CYCLE node"]
+        CYCLE --> |"no"| DEPTH{"depth<br/>limit?"}
+        DEPTH --> |"yes"| BOUNDNODE["BOUND node"]
+        DEPTH --> |"no"| FIND["findAllMatches()"]
+        FIND --> |"none"| LEAF["LEAF node<br/>(snapshot state)"]
+        FIND --> |"matches found"| FOREACH
 
-  matches = findAllMatches(state, rules, calc, strategy, ctx.stateIndex)
-  if no matches → LEAF (snapshot state)
+        subgraph FOREACH["For each match"]
+            MUTATE["mutateState()<br/>in-place + undo log"]
+            CHILD_CTX["makeChildCtx()<br/>incremental index + hash"]
+            RECURSE["go(depth+1, childCtx)"]
+            UNDO_IDX["undoIndexChanges()"]
+            UNDO_STATE["undoMutate()"]
 
-  pathVisited.add(ctx.stateHash)
-  for each match m:
-    if m has 1 alternative:
-      undo = mutateState(state, m.consumed, m.theta, m.consequent)
-      childCtx = makeChildCtx(ctx, state, undo)   // incremental index + hash update
-      child = go(depth+1, childCtx)
-      undoIndexChanges(ctx.stateIndex, indexUndo)   // restore index
-      undoMutate(state, undo)                        // restore state
-    else:  // multiple alternatives (with/plus fork)
-      for each alternative alt:
-        undo = mutateState(state, m.consumed, m.theta, alt)
-        childCtx = makeChildCtx(ctx, state, undo)
-        child = go(depth+1, childCtx)
-        undoIndexChanges(ctx.stateIndex, indexUndo)
-        undoMutate(state, undo)
-  pathVisited.delete(ctx.stateHash)
-  return branch node with children
+            MUTATE --> CHILD_CTX --> RECURSE --> UNDO_IDX --> UNDO_STATE
+        end
+    end
+
+    DFS --> TREE["Execution tree<br/>leaf / branch / bound / cycle"]
 ```
 
-**Core invariant:** When `go()` returns, state, stateIndex, and pathVisited are in exactly their original state.
+**Core invariant:** When `go()` returns, state, stateIndex, and pathVisited are in their original state.
 
-**Three mutable structures:**
-- `state.linear` / `state.persistent` — mutated by `mutateState`, restored by `undoMutate`
-- `ctx.stateIndex` — mutated by `makeChildCtx` (indexAdd/indexRemove), restored by `undoIndexChanges`
-- `pathVisited` — mutated by add/delete around the DFS
+## Rule Compilation Pipeline
 
-Only **terminal nodes** (leaf, bound, cycle) snapshot the state. Branch nodes store `state: null`.
+`compileRule(rule)` transforms a raw rule into an optimized compiled form:
 
-### 6.3 Flat Undo Log
+```mermaid
+flowchart LR
+    RAW["Raw rule<br/>{name, hash,<br/>antecedent,<br/>consequent}"]
 
-`mutateState` returns a flat array `[TYPE, hash, oldValue, TYPE, hash, oldValue, ...]` where TYPE is 0=linear, 1=persistent. Each hash recorded once (first-touch-wins). `undoMutate` iterates backward restoring original values. This eliminates 3 object allocations per step vs the old `{ linearOrig, persistentOrig }` format.
+    RAW --> F1["flattenTensor<br/>→ linear[] + persistent[]"]
+    F1 --> F2["Extract triggers<br/>+ discriminator"]
+    F2 --> F3["Collect persistent<br/>output vars"]
+    F3 --> F4["De Bruijn slot<br/>assignment"]
+    F4 --> F5["analyzeDeltas<br/>preserved/consumed/delta"]
+    F5 --> F6["computePatternRoles<br/>per-position metadata"]
+    F6 --> F7["compileSubstitution<br/>O(1) recipes"]
+    F7 --> F8["expandConsequentChoices<br/>pre-expand with/oplus"]
 
-### 6.4 Incremental ExploreContext
-
-`ExploreContext` carries `stateIndex` (facts grouped by predicate) and `stateHash` (commutative XOR fingerprint) through the tree. `makeChildCtx` reads the undo log to compute O(delta) updates instead of rebuilding from scratch:
-
-- Hash: XOR is self-inverse — `h ^= hashPair(old)` removes old, `h ^= hashPair(new)` adds new
-- Index: `indexAdd` / `indexRemove` mutate in place; `undoIndexChanges` reverses
-
-## 7. Guarded Loli Continuations
-
-In EVM rules like `evm/iszero`:
-
-```ill
-pc PC * code PC 0x15 * !inc PC PC' * gas GAS * !inc GAS GAS' * sh (s SH) * stack SH V
--o {
-  code PC 0x15 * pc PC' * gas GAS' * sh (s SH) *
-  ((!eq V 0 -o { stack SH 1 }) +
-   (!neq V 0 -o { stack SH 0 }))
-}.
+    F8 --> COMPILED["Compiled rule"]
 ```
 
-The ⊕ creates two alternatives. Each contains a loli with a persistent trigger (`!eq V 0` / `!neq V 0`). After the parent rule fires, these lolis become linear facts in state. `matchLoli` then:
+## Loli Continuations
 
-1. Extracts `bang(eq(V,0))` → `flattenTensor` → persistent trigger `[eq(V,0)]`
-2. `provePersistentGoals` proves `eq(V,0)` via FFI (O(1) bigint comparison)
-3. Guard succeeds → loli fires, body produced. Guard fails → null, loli stays dormant → stuck leaf.
+Guarded loli continuations (e.g. `!eq V 0 -o { stack SH 1 }`) become linear facts in state. `matchLoli` uses the same persistent proving pipeline as `tryMatch`:
 
-Dead branches stop immediately instead of running with corrupted state. EVM multisig tree: 210 nodes, 19 leaves (vs 13109/946 with the old unsound decomposition).
+1. Extract trigger → `flattenTensor` → linear + persistent components
+2. Match linear triggers against state (via matchIndexed)
+3. Prove persistent triggers (state lookup → backward prove [FFI | clauses])
+4. Guard succeeds → loli fires, body produced. Guard fails → null (stuck leaf).
 
-Optional future optimization: **eager guard pruning** at ⊕ fork time — before creating a branch, check if its guard is decidable and false, skip it entirely.
-
-## 8. Optimization Summary
+## Optimization Summary
 
 | Stage | What | Speedup | Technique |
 |-------|------|---------|-----------|
-| Strategy stack | Rule selection | 12.7× | O(1) fingerprint + disc-tree vs O(R) scan |
-| Incremental context | State hashing + indexing | 1.7× | O(delta) XOR hash + incremental index |
-| Mutation + undo | State management | 1.8× | In-place mutation, undo log, snapshot only at terminals |
-| Index + Set undo | Index management | 1.25× | Mutable index + undo, mutable pathVisited |
-| Direct FFI bypass | Persistent proving | 1.2× | Direct FFI call bypasses full prove() |
-| De Bruijn theta | Substitution lookup | 2.1× | Compile-time slot assignment, O(1) vs linear scan |
+| Strategy stack | Rule selection | 12.7x | O(1) fingerprint + disc-tree vs O(R) scan |
+| Incremental context | State hashing + indexing | 1.7x | O(delta) XOR hash + incremental index |
+| Mutation + undo | State management | 1.8x | In-place mutation, undo log, snapshot only at terminals |
+| Index + Set undo | Index management | 1.25x | Mutable index + undo, mutable pathVisited |
+| Direct FFI bypass | Persistent proving | 1.2x | O(1) FFI call inside backward prove |
+| De Bruijn theta | Substitution lookup | 2.1x | Compile-time slot assignment, O(1) access |
 | Delta bypass | Linear matching | ~8% | Direct Store.child extraction for flat patterns |
 | Compiled substitution | Consequent production | ~8% | Store.put recipe vs generic applyIndexed |
 | Disc-tree | Catch-all rule selection | ~0% at 44 rules | Trie over preorder traversals |
 | Flat undo log | State undo | ~13% | Flat array vs object allocation |
 | Numeric tagId | Tag comparison | ~2% | Numeric comparison vs string |
+| Unified loli matching | Soundness fix | 62x | Dead branches → stuck leaves |
 
-| Unified loli matching | Soundness fix | 62× | matchLoli with provePersistentGoals; dead branches → stuck leaves |
+Total: **181ms → ~1ms** median for the 210-node multisig execution tree (43 rules).
 
-Total: **181ms → ~1ms** median for the 210-node multisig execution tree (EVM, 43 rules). Soundness fix (unified loli matching) reduced tree from 13109 → 210 nodes by eliminating dead branches.
+## CHR Correspondence
 
-## 9. Key Design Decisions
+The forward engine implements a fragment of CHR (Constraint Handling Rules):
 
-**TREAT-like, not Rete**: No cached partial matches (beta memories). Full re-evaluation from alpha memories (stateIndex) per step. Simpler, correct for linear logic's non-monotonicity. At 44 rules and ~180 facts, per-step matching is fast enough.
+| CHR | CALC Forward Engine |
+|-----|---------------------|
+| Simpagation `H1 \ H2 <=> G \| B` | Forward rule: preserved + consumed → produced |
+| Removed heads (H2) | Linear facts in `state.linear` |
+| Kept heads (H1) | Persistent facts in `state.persistent` |
+| Guard evaluation | Persistent proving (state lookup → backward) |
+| CHR-v disjunctive body | oplus in consequent (`expandItem` forking) |
+| Propagation history | N/A (lolis are self-deleting linear facts) |
+| omega_r occurrence iteration | Strategy stack (fingerprint → disc-tree → predicate) |
+| Committed choice | `forward.run()` |
+| CHR-v backtracking search | `symexec.explore()` with mutation + undo |
 
-**Strategy stack over Rete network**: Rule selection via layered indexing (fingerprint → disc-tree → predicate filter) rather than a persistent network. Each layer claims rules it can index; unclaimed rules fall through. Auto-detected from rule structure.
+Soundness: Betz & Fruhwirth (2013) — every CHR derivation corresponds to a valid ILL proof.
 
-**Mutation + undo over immutable state**: DFS exploration mutates one shared state in-place, restoring after each child returns. Only terminal nodes clone. Eliminates O(n) state copies at each of 62 branch nodes (for the multisig tree).
+## Design Decisions
 
-**De Bruijn indexed theta**: Metavariables get compile-time slot indices. Theta is a flat array with O(1) access. Undo stack in `unify.js` for rollback on match failure.
+**TREAT-like, not Rete.** No cached partial matches. Full re-evaluation per step. Correct for linear logic's non-monotonicity.
 
-**FFI bypass**: Persistent antecedents with known FFI (arithmetic) are dispatched directly, bypassing the full backward proving pipeline. All 153 prove() calls per 63-node tree eliminated.
+**Strategy stack over Rete network.** Layered indexing auto-detected from rule structure. Each layer claims rules; unclaimed fall through.
 
-**Compiled substitution**: Consequent patterns get compile-time recipes (`{ tag, slots }`) that call `Store.put(tag, [theta[slot0], theta[slot1]])` directly instead of walking the pattern tree with `applyIndexed`.
+**Mutation + undo over immutable state.** DFS mutates one shared state in-place, restoring after each child. Only terminals snapshot.
+
+**De Bruijn indexed theta.** Metavars get compile-time slot indices. Theta is a flat array.
+
+**State lookup before backward proving.** Check if a persistent fact is already known before attempting to prove it via FFI or clause resolution.
+
+**FFI as backward prove optimization.** FFI (arithmetic) is conceptually a fast path within backward proving, not a separate proving mechanism.

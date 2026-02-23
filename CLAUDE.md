@@ -51,6 +51,11 @@ lib/                     # Core library
 │   └── pt.js            # proof trees
 ├── calculus/            # Calculus loader (from .calc/.rules files)
 ├── engine/              # Forward/backward execution engine
+│   ├── match.js         # Pattern matching + indexing + persistent proving
+│   ├── strategy.js      # Rule selection: fingerprint, disc-tree, predicate layers
+│   ├── forward.js       # Execution + committed-choice main loop
+│   ├── symexec.js       # Exhaustive DFS exploration + mutation/undo
+│   ├── compile.js       # Rule compilation (de Bruijn slots, metavar analysis)
 │   ├── convert.js       # .ill → content-addressed hashes
 │   ├── prove.js         # backward chaining
 │   └── ffi/             # foreign function interface
@@ -102,6 +107,10 @@ out/                     # Generated outputs
 | `doc/def/` | **Atomic definitions** — one concept per file, encyclopedia of terms | `NNNN_title.md` + `meta.yaml` | `0005_internal-vs-external-choice.md` |
 
 **Decision heuristic:** "Did we invent it?" → `theory/`. "Did someone else write about it?" → `research/`. "Does it describe the system as-is?" → `documentation/`. "Is it a concrete task to do?" → `todo/`. "Is it a single concept/term to define?" → `def/`.
+
+## Diagrams
+
+Use ` ```mermaid` fenced code blocks for all diagrams in documentation. Both ` ```mermaid` (standard) and ` ```{mermaid}` (legacy) are supported by the markdown renderer. Renders as SVG via [Beautiful Mermaid](https://agents.craft.do/mermaid).
 
 ## Architecture
 

@@ -190,14 +190,15 @@ function escapeHtml(text: string): string {
  */
 async function extractSpecialBlocks(md: string): Promise<{ md: string; blocks: Map<string, string> }> {
   const blocks = new Map<string, string>();
-  const regex = /```\{([^}]+)\}\n([\s\S]*?)```/g;
+  // Match both ```{mermaid} (legacy) and ```mermaid (standard fenced)
+  const regex = /```(?:\{([^}]+)\}|(mermaid|proof|katex|graphviz|viz|calc))\n([\s\S]*?)```/g;
   let idx = 0;
 
   // Collect all matches first
   const matches: { full: string; optionsStr: string; code: string }[] = [];
   let m;
   while ((m = regex.exec(md)) !== null) {
-    matches.push({ full: m[0], optionsStr: m[1], code: m[2] });
+    matches.push({ full: m[0], optionsStr: m[1] || m[2], code: m[3] });
   }
 
   // Process and replace
