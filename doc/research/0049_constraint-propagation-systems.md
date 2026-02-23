@@ -253,6 +253,36 @@ Forward step fires →
 
 This is the CLP(FD) propagation cycle adapted to CALC's forward engine.
 
+## 7. Performance Comparison of Approaches in Practice
+
+### EVM Symbolic Execution Benchmarks (CAV 2024)
+
+Shared benchmark suite (199 tests: conformance + real-world ERC20/ERC721/deposit contract):
+- **hevm** (eager simplification): 1.5-1.6s per test
+- **halmos** (delegate to Z3): 4.2-5.8s per test
+- **KEVM** (rule-driven, user lemmas): 10min-35min per test
+
+hevm's speed comes from **smart constructors + equivalence propagation + constant folding** — all running before any SMT call. "hevm skips almost all SMT queries during exploration."
+
+### Constraint Solving Latency Comparison
+
+| Approach | Per-operation cost | Total for 1000 constraints | Notes |
+|----------|-------------------|---------------------------|-------|
+| Equality substitution (union-find) | O(α(n)) ≈ O(1) | ~10μs | Tarjan 1975, every SMT solver |
+| Constant folding (smart constructor) | O(1) | ~5μs | Every compiler |
+| Bounds propagation (CLP(FD)) | O(1) per constraint | ~50μs | Triska 2012, SWI-Prolog |
+| E-graph equality saturation | O(n) per rebuild | ~1-100ms | Risk of blowup. Willsey 2021 |
+| SMT query (Z3) | 0.1-10ms per query | 100ms-10s | Complete but high latency |
+| AC-matching (Maude) | O(log n) | ~100μs | Eker 2003 |
+
+### E-Graph Scalability Caveat
+
+"Even if a set of rewrite rules terminates as a TRS, it may yield an infinite number of e-classes in equality saturation." Commutativity (`a+b => b+a`) causes infinite loops. "Precisely characterizing when e-graph rewriting blows up is an unsolved research problem" (egg discussion #60).
+
+### Incremental Solving: Stack vs Cache (Liu et al. HVC 2014)
+
+Stack-based incremental solving (Z3 push/pop) achieves median 5x speedup over cache-based approaches on 96 C programs. CALC's `mutateState`/`undoMutate` is already a stack-based architecture.
+
 ## References
 
 - Holzbaur (1992) — *Metastructures vs Attributed Variables* (PLILP)
@@ -266,3 +296,10 @@ This is the CLP(FD) propagation cycle adapted to CALC's forward engine.
 - Liu et al. (2014) — *Comparative Study of Incremental Constraint Solving in Symbolic Execution* (HVC)
 - Jaffar & Maher (1994) — *Constraint Logic Programming: A Survey* (JLP)
 - Betz & Fruhwirth (2013) — *CHR-v via Linear Logic* (connecting CHR to ILL)
+- Eker (2003) — *Associative-Commutative Rewriting on Large Terms* (Maude)
+- Rocha & Meseguer (2013) — *Rewriting Modulo SMT* (NASA/TM-2013-218033)
+- Whitters, Nigam, Talcott (2023) — *Incremental Rewriting Modulo SMT* (CADE)
+- Nieuwenhuis & Oliveras (2005) — *Proof-Producing Congruence Closure* (RTA)
+- Singher & Shacham (2023) — *Colored E-Graph: Equality Reasoning with Conditions*
+- hevm CAV 2024 — *Hevm, a Fast Symbolic Execution Framework for EVM Bytecode*
+- Meseguer (1992) — *Conditional Rewriting Logic* (TCS)

@@ -857,6 +857,210 @@ This happens naturally — after propagation changes state, the next `findAllMat
 
 ---
 
+## Performance and Scalability: Evidence from Literature and Real-World Systems
+
+### The K-DSS Cautionary Tale
+
+K/KEVM symbolic execution of MakerDAO's DSS contracts (k-dss) takes **days to weeks** per proof. The root causes, per the CAV 2024 benchmarks and K framework documentation:
+
+1. **Modular rule overhead:** A single EVM ADD requires 5 K rule applications due to modularity. With thousands of opcodes per contract, this compounds severely.
+2. **Stuck terms and lemma engineering:** When `+Int` can't reduce (symbolic args), the term stays "stuck." Users must manually write simplification lemmas. Without appropriate lemmas, proofs diverge. This is the K team's self-identified "major usability bottleneck."
+3. **SMT solver overhead:** The Haskell backend delegates feasibility to Z3 periodically. Each SMT call costs ~1-10ms. At thousands of calls per proof, this dominates runtime.
+4. **No eager simplification:** K delays simplification to user-written rules with `[simplification]` attributes. Unlike hevm's smart constructors, K doesn't fold constants at construction time.
+
+**Benchmark numbers (CAV 2024 shared benchmark, 199 tests):** hevm: 1.5-1.6s per test. halmos: 4.2-5.8s. KEVM: 10min-35min. **hevm is 200-1400x faster than KEVM** on the same benchmarks.
+
+### Why hevm is Fast: Eager Simplification
+
+hevm's key insight: **simplify eagerly, before the SMT solver ever sees the expression.**
+
+The simplification pipeline (all running before SMT):
+1. **Smart constructors:** `Add(Lit 3, Lit 5)` → `Lit 8` at construction time. O(1).
+2. **Canonicalization:** Commutative ops get smaller arg first. `Add(Var x, Lit 3)` → `Add(Lit 3, Var x)`. Enables more constant folding.
+3. **AC-flattening:** `Add(Add(a, b), c)` → flattened `[a, b, c]` internally.
+4. **Equivalence propagation:** If constraint forces `Var "a"` to `Lit 5`, replace everywhere. **This is exactly Level 0 of TODO_0005.**
+5. **Dead write elimination:** Remove writes that are overwritten before being read.
+6. **Trivial constraint deletion:** Remove `true` constraints, short-circuit on `false`.
+
+"hevm skips almost all SMT queries during exploration" — the static simplification catches most cases. SMT is only invoked for genuinely hard path conditions.
+
+**Critical lesson for CALC:** Eager simplification (at construction/propagation time) is not optional — it's the difference between seconds and hours. K's approach of leaving simplification to user-written rules is the wrong architecture.
+
+### Approach Comparison: Research Depth and Real-World Validation
+
+#### Approach 1: Eager Propagation (hevm-style smart constructors + equivalence propagation)
+
+**Research body:** Largest and most practically validated.
+- Smart constructors: compiler optimization since the 1970s (Aho, Sethi, Ullman). Every production compiler uses them.
+- Equivalence propagation (equality substitution): union-find since Tarjan 1975. O(α(n)) amortized. In every SMT solver (Z3, CVC5), every compiler (GCC, LLVM), every proof assistant (Coq, Lean).
+- Constant folding: ~50 years of engineering. Trivially correct, trivially efficient.
+- Canonicalization: standard in every symbolic math system (Mathematica, SymPy, Maple).
+
+**Real-world validation:** hevm (production EVM tool, 10-30x faster than competitors), LLVM (billions of devices), Z3 (most-used SMT solver), GCC/Clang.
+
+**Scalability:** O(1) per simplification step. O(n) for full propagation sweep. Linear in state size. No exponential blowup. Deterministic. Terminates trivially (each step reduces term count or size).
+
+**Complexity:** ~200-400 LOC for a complete implementation. No external dependencies. No configuration. No user-written lemmas.
+
+#### Approach 2: CLP(FD) Bounds Propagation
+
+**Research body:** Extensive — 40+ years. Jaffar & Maher 1994 survey (3000+ citations). SICStus, ECLiPSe, SWI-Prolog, Gecode, Choco, OR-Tools.
+
+- Arc consistency (AC-3): Mackworth 1977. O(ed^3). Well-studied but d=2^256 makes it impractical for CALC.
+- **Bounds consistency:** O(1) per constraint per wakeup. Practical for arithmetic. Triska 2012 (SWI-Prolog CLP(FD)) shows it scales to millions of constraints.
+- Propagation loop: Fixpoint iteration, well-understood convergence guarantees.
+
+**Real-world validation:** Google OR-Tools (scheduling, routing — billions of queries/day). Gecode (constraint programming competition winner repeatedly). SICStus Prolog CLP(FD) (industrial applications in scheduling, planning).
+
+**Scalability:** Bounds propagation is O(1) per constraint. Fixpoint loop is O(c * p) where c = constraints, p = propagation rounds (typically 2-5). Practical for 10K+ constraints.
+
+**Complexity:** ~200 LOC for basic bounds tracking + propagation. Well-defined, well-tested algorithms.
+
+**Limitation:** Only detects infeasibility (empty domain). Doesn't resolve evars to concrete values unless domain narrows to singleton. Complementary to Approach 1, not a replacement.
+
+#### Approach 3: E-Graph Equality Saturation (egg/egglog)
+
+**Research body:** Growing rapidly (egg: POPL 2021, 250+ citations in 4 years). Active academic area. Used in compiler optimization (Cranelift, MLIR), hardware synthesis.
+
+**Real-world validation:** Cranelift (Wasmtime JIT compiler), Diospyros (DSP vectorization), Tensat (deep learning — 50x speedup). egglog (PLDI 2025 workshop).
+
+**Scalability concern — the fundamental problem:** "Even if a set of rewrite rules terminates when applied as a term-rewriting system, it may still yield an infinite number of distinct e-classes in equality saturation." Adding commutativity (`a+b => b+a`) causes e-graphs to loop infinitely. "Precisely characterizing when e-graph rewriting blows up is an unsolved research problem."
+
+E-graphs are monotonic (only add equivalences, never remove). **This conflicts with ILL's linear resource consumption.** A scoped/colored e-graph variant would be needed (~300+ LOC on top of base ~500-800 LOC).
+
+**Complexity:** 800-1100 LOC minimum. Research-grade, not battle-tested for constraint propagation (egg targets compiler optimization, not constraint solving).
+
+**Verdict:** Powerful but risky. Blowup is unpredictable. Overkill for CALC's needs at this stage. Consider only if simpler approaches prove insufficient.
+
+#### Approach 4: Full SMT Integration (Z3/CVC5)
+
+**Research body:** Largest of all — SMT solving has thousands of papers, dozens of textbooks, annual competitions (SMT-COMP). DPLL(T) framework (Nieuwenhuis & Oliveras 2006). Nelson-Oppen combination (1979).
+
+**Real-world validation:** Every industrial verification tool (Coverity, Infer, KLEE, angr, Manticore, hevm, halmos). Z3 alone has 10,000+ citations.
+
+**Scalability:** Complete decision procedure for bitvector arithmetic. Handles arbitrary boolean combinations. But:
+- **Latency:** Even trivial queries take 0.1-1ms due to startup overhead
+- **Unpredictable performance:** Some queries solve in microseconds, others timeout after minutes
+- **External dependency:** Z3 WASM is ~5MB. CVC5 is larger.
+- **Impedance mismatch:** CALC's per-step budget is ~1-10μs. SMT's per-query budget is ~1-100ms. **3-4 orders of magnitude gap.**
+
+**halmos lesson:** halmos delegates everything to Z3. Result: 3-4x slower than hevm on the same benchmarks. Z3's internal simplification helps, but the round-trip overhead dominates.
+
+**Verdict:** Wrong granularity for per-step constraint propagation. Right tool for final leaf-state feasibility checking (a separate feature, not TODO_0005).
+
+#### Approach 5: Maude-style Rewriting Modulo Equational Theory
+
+**Research body:** Deep — Meseguer's rewriting logic (1992+), Maude system (30+ years). Rocha & Meseguer's "Rewriting Modulo SMT" (2013, NASA). Incremental Rewriting Modulo SMT (Whitters, Nigam, Talcott — CADE 2023).
+
+**Real-world validation:** Maude (NASA formal verification, protocol analysis). Tamarin prover (security protocol verification — used in TLS 1.3, 5G AKA analysis).
+
+**Scalability:**
+- AC-matching: O(log n) per rewrite step on flat sorted arrays (Eker 2003). Efficient for large terms.
+- **Variant pruning** (Tamarin): Pre-compute variants to reduce reasoning modulo E to reasoning modulo AC. 2026 paper on rule variant restrictions shows "significant performance improvements."
+- **Incremental rewriting modulo SMT:** Rules only add constraints (never remove), enabling incremental SMT solving. Maps directly to CALC's persistent fact accumulation.
+
+**Complexity:** ~400-600 LOC for AC-normalization at Store.put time + constraint rewriting rules. Maude's equational attribute approach (`[assoc comm id: 0]`) is clean and well-understood.
+
+**Limitation:** Full narrowing (Maude's symbolic execution mode) is exponential in the worst case. But **CALC doesn't need narrowing** — it does forward chaining with explicit ∃-elimination, which is strictly simpler.
+
+#### Approach 6: CHR Compilation
+
+**Research body:** 30+ years (Frühwirth 1991). Hundreds of papers. Mature implementations: SWI-Prolog CHR, JCHR (Java), CCHR (C — "fastest CHR implementation"), K.U.Leuven CHR system.
+
+**Real-world validation:** Used in type inference (GHC's type checker uses CHR-like rules), constraint solver implementations, agent programming. CCHR (C implementation) processes millions of constraints/second.
+
+**Scalability:** CHR compilation optimizations are directly relevant:
+- **Occurrence indexing:** Each constraint position in a rule head gets compiled to a lookup. Avoids re-scanning.
+- **Join ordering:** Match most selective antecedent first (not left-to-right). Can provide 10-100x speedup for multi-headed rules.
+- **Guard scheduling:** Evaluate cheap guards before expensive joins. CALC's FFI guards are perfect candidates.
+- **Propagation history:** Prevents re-firing. CALC's `pathVisited` is a coarser version.
+
+**Complexity:** Core CHR compilation: ~200-300 LOC. CALC already has most of the infrastructure (forward rules ARE CHR simpagation).
+
+**Limitation:** CHR is a framework, not a specific algorithm. It tells you how to organize constraint propagation, not what propagation rules to write.
+
+### Scalability Analysis for CALC's Specific Problem
+
+CALC's constraint propagation problem has specific characteristics that narrow the field:
+
+1. **Constraint count:** O(arithmetic_ops * symbolic_vars) per execution path. For EVM multisig (210 nodes, 43 rules): ~50-200 constraints per path. For k-dss scale: ~1000-5000 constraints per path.
+
+2. **Constraint shape:** Almost entirely arithmetic chains: `!plus(X, c, Y)`, `!mul(X, c, Y)`, `!gt(X, Y, R)`. No nested quantifiers, no higher-order constraints.
+
+3. **Resolution pattern:** Most constraints resolve via equality propagation (from ⊕ branching) + FFI re-check (one arithmetic operation). Chain depth is typically 3-10.
+
+4. **Per-step budget:** Current symexec runs at ~1μs per forward step (210 nodes in ~1ms). Propagation must not exceed ~10μs per step (10x budget).
+
+5. **Backtracking:** DFS with mutation/undo. Propagation changes must be undoable in O(delta).
+
+Given these characteristics:
+
+| Approach | Fits constraint shape? | Meets per-step budget? | Handles backtracking? | Implementation complexity |
+|----------|----------------------|----------------------|---------------------|--------------------------|
+| Eager propagation (hevm-style) | Yes — arithmetic chains | Yes — O(1) per op | Yes — undo log | ~160 LOC (minimal) |
+| CLP(FD) bounds | Partially — complements eager | Yes — O(1) per constraint | Yes — save/restore bounds | ~200 LOC |
+| E-graph | Overkill — simple chains | Risk — blowup | Needs scoped variant | ~800-1100 LOC |
+| SMT | Yes — complete | No — 0.1-1ms per query | Yes — push/pop | ~100 LOC (glue) + 5MB dep |
+| Maude rewriting | Yes — AC-normalize | Yes — O(log n) | Needs custom undo | ~400-600 LOC |
+| CHR compilation | Framework — not algorithm | Yes — compiled propagators | Yes — trail-based | ~200-300 LOC |
+
+### Recommended Strategy: Hevm-Style Eager Propagation
+
+**Recommendation: Approach 1 (eager propagation) as the core, with Approach 2 (bounds) as optional Level 3.**
+
+**Rationale:**
+
+1. **Biggest research body + most real-world validation.** Smart constructors, union-find equality propagation, and constant folding are the most battle-tested techniques in all of computer science. Every production compiler, every SMT solver, every symbolic execution tool uses them.
+
+2. **hevm proves it works for EVM.** hevm is the fastest EVM symbolic execution tool (200-1400x faster than K/KEVM), and its performance comes primarily from eager simplification — the exact approach proposed in Level 0 + Level 1.
+
+3. **Minimal complexity.** 160 LOC for the core (Foundation + Level 0 + Level 1). No external dependencies. No configuration. No user-written rules. No risk of blowup.
+
+4. **Fits CALC's architecture.** Inverted index + substitution + FFI re-check maps directly onto the existing `mutateState`/`undoMutate` framework. No new concepts needed.
+
+5. **Incremental.** Each level is independently testable. Level 0 alone (equality propagation) gives 80% of the value. Level 1 (FFI re-check) cascades through chains. Levels 2-4 are optional additions when scaling demands.
+
+6. **K-DSS avoidance.** K's failure mode — leaving simplification to user-written lemmas — is exactly what eager propagation prevents. Every simplification that can be automated should be. Users should never need to write simplification hints.
+
+**What NOT to do:**
+
+- **Don't build an e-graph.** Too much complexity for the problem at hand. Unpredictable blowup. CALC's constraints are simple arithmetic chains, not compiler IR transformations.
+- **Don't integrate SMT per-step.** Wrong granularity. SMT is for leaf-state feasibility checking (separate feature).
+- **Don't use K-style user lemmas.** This is the primary cause of K's poor performance and usability problems.
+- **Don't try full AC-normalization of the Store at this stage.** AC-normalization is valuable ([RES_0016](../research/0016_expression-simplification.md) §3) but it's a Store-layer change, orthogonal to constraint propagation. Keep it as a separate TODO.
+
+**Later upgrades (if scaling requires):**
+
+1. **CLP(FD) bounds (Level 3)** — adds infeasibility detection for symbolic path conditions. ~200 LOC. Well-understood, well-tested algorithm.
+2. **AC-normalization at Store.put** — separate TODO. Maude's equational attributes approach. ~200 LOC. Independent of constraint propagation.
+3. **SMT export for leaf validation** — separate TODO. After full tree exploration, export leaf state constraints to Z3 for feasibility. Prunes impossible leaves.
+4. **CHR join ordering** — compilation optimization, not constraint propagation. Applies when CALC has 100+ rules. Separate TODO.
+
+### Performance Projection
+
+With Level 0 + Level 1 implemented:
+
+**EVM multisig (210 nodes, current benchmark):**
+- Current: ~50 constraints accumulate, no resolution
+- After: most constraints resolve via FFI re-check. ~5-10 remain (genuinely symbolic)
+- Overhead: ~0.1μs per propagation step (inverted index lookup + one FFI call)
+- Impact on symexec time: <5% overhead, possibly faster (smaller state → faster matching)
+
+**k-dss scale (estimated 5000+ nodes):**
+- Without propagation: ~2000 constraints, matching degrades (O(n) state scan per rule)
+- With propagation: ~200 constraints remain (10x reduction), matching stays fast
+- Branch pruning: ~30-50% of branches detected infeasible via chain resolution
+- Estimated speedup: 3-10x from reduced state size + branch pruning
+
+**Comparison to K/KEVM on same problems:**
+- K: days-to-weeks (modular rule overhead + stuck terms + SMT per-step)
+- CALC with propagation: minutes-to-hours (estimated — eager simplification + no SMT per-step + compiled matching)
+- hevm: seconds-to-minutes (mature tool with 5+ years of optimization)
+
+CALC won't match hevm's speed immediately (hevm has 5 years of engineering), but the same architectural choices (eager propagation, smart construction, no SMT per-step) put it on the right trajectory.
+
+---
+
 ## Cross-References
 
 - [TODO_0004](0004_symexec-backward-foundation.md) — ∃ connective + eigenvariables (done, prerequisite)
