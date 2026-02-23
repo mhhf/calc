@@ -17,7 +17,7 @@ starred: false
 
 CLF/Celf/LolliMon integrate forward and backward chaining via the lax monad `{A}`: entering the monad switches from backward (L2/L3) to forward (L4c), exiting at quiescence.
 
-- [ ] Study CLF, Celf, LolliMon lax monad semantics in depth
+- [x] Study CLF, Celf, LolliMon lax monad semantics in depth — see [RES_0052](../research/0052_clf-lax-monad-deep-study.md)
 - [ ] Design how `{A}` integrates with the prover lasagne layers
 - [ ] Prototype forward<->backward mode switch
 - [ ] Understand relationship to Ceptre stages
