@@ -91,3 +91,35 @@ CALC's symexec = QCHR solving where all branching is universal (∀ — explore 
 ## What does Theorem 7 (Stéphan ICLP 2018) state?
 
 The ω_l sequent calculus system is **sound AND complete** w.r.t. the ω_t operational semantics. A CHR goal is solved by program Γ iff there exists an ω_l proof of the corresponding sequent. (Contrast: ω_l^⊗ is only sound, not complete — it's deterministic.)
+
+## How does separation logic's separating conjunction map to linear logic?
+
+Separating conjunction `P * Q` = tensor `P ⊗ Q`. Magic wand `P -* Q` = lollipop `P ⊸ Q`. Empty heap `emp` = unit `1`. The key property: `P * Q` means P and Q hold on **disjoint** heap fragments — exactly tensor's "no implicit sharing."
+
+## What is the frame rule in separation logic and what is its ILL equivalent?
+
+Frame rule: if `{P} C {Q}` then `{P * R} C {Q * R}` (untouched resources R are preserved). In ILL: if a forward rule consumes P and produces Q, other linear facts are structurally preserved. This is automatic in CALC's forward engine — facts not mentioned in a rule's antecedent pass through unchanged.
+
+## What are McCarthy's select/store axioms for memory arrays?
+
+(1) `select(store(a, i, v), i) = v` — read what you wrote. (2) `i ≠ j ⟹ select(store(a, i, v), j) = select(a, j)` — reads at other indices unaffected. (3) `(∀i. select(a,i) = select(b,i)) ⟹ a = b` — extensionality. Foundation of SMT array theory (Z3 QF_ABV).
+
+## How does hevm represent EVM memory symbolically?
+
+Algebraic write-chain: `WriteWord offset value (WriteWord offset2 value2 (ConcreteBuf ""))`. MSTORE prepends a node. MLOAD traverses newest→oldest, checks overlap. Concrete offset exact match = O(1). Symbolic offset = abstract `ReadWord(sym, buf)` term deferred to SMT.
+
+## Why is encoding SMT arrays via store chains 50x slower than via assertions?
+
+EPFL study: `a = store(store(..., i1, v1), i2, v2)` creates deeply nested terms. Z3 must instantiate axioms per nesting level. Instead use `(assert (= (select a i1) v1))` etc. — flat, independent assertions. Also: QF_ABV theory config gives 100x speedup over default.
+
+## What is CALC's structural advantage over hevm/halmos for memory aliasing?
+
+Linear logic's no-contraction means each `mem M` fact exists exactly once — no aliasing by construction. hevm/halmos need SMT reasoning to determine if symbolic address A refers to the same cell as B. CALC's write-log is totally ordered: the question is "which write covers this byte?" — a local traversal, not a global constraint.
+
+## What is the write-log memory model for CALC's EVM executor?
+
+Single linear fact `mem M` where M is a content-addressed write-chain term: `write(offset, value, prev_mem)`. MSTORE prepends a `write` node (O(1)). MLOAD traverses the chain via FFI, reconstructing 32 bytes with most-recent-write-wins (O(W)). Zero for unwritten bytes. Content-addressed sharing across symexec branches.
+
+## Why do per-cell linear memory facts cause spurious branching in symexec?
+
+Two rules needed: `mstore_init` (no existing cell) + `mstore_update` (overwrite). Symexec's `findAllMatches` returns both as applicable. For N MSTOREs: up to 2^N branches. The write-log model avoids this — single `evm/mstore` rule fires unconditionally, wrapping the write into the log term.
