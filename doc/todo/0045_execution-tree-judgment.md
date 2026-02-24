@@ -109,93 +109,197 @@ exhaustively (don't-know nondeterminism over don't-care choices).
 
 ---
 
-## 3. Proposed Inference Rules
+## 3. Object/Meta Distinction and Verification Architecture
 
-### 3.1 Quiescence (Leaf)
+### 3.1 The Three Levels
 
 ```
-  findAllMatches(Σ, Δ) = ∅
+Level 3 (meta-meta): "The implementation is correct"
+    Claim ABOUT the JS code. Cannot be proved inside the system.
+    Trust model: testing, inspection, or verified extraction.
+
+Level 2 (meta):      Σ; Δ ⊢_fwd T
+    Execution tree judgment. Claims about all reachable states.
+    Side conditions reference the ABSTRACT matching function.
+    This is what TODO_0045 formalizes.
+
+Level 1 (object):    Δ₀ ⊢_ILL Δ_q
+    Individual ILL entailment. Each step is a sequent transformation.
+    This is what the kernel (L1, kernel.js) can verify.
+```
+
+The inference rules below are **Level 2 (meta-level) rules**. They describe
+the tree construction algorithm abstractly. Side conditions like "no rule
+matches Δ" are meta-level assertions, NOT something derived inside ILL.
+
+This is the standard approach: Stéphan's ω_l, Simmons' SLS, and CLF all
+define meta-level judgments with side conditions about matching/applicability.
+The side conditions are properties OF the program and state, checked externally.
+
+### 3.2 What "Proving Soundness" Actually Means
+
+There is a **verification gap** between three things:
+
+1. **The abstract algorithm** (on paper): "find all matching rules, apply each,
+   recurse." Described by the inference rules below.
+2. **The JS implementation** (`explore()`, `findAllMatches()`, etc.): ~1500 LOC
+   of JavaScript implementing the algorithm.
+3. **The ILL derivation**: each individual step is a valid sequent transformation.
+
+**Soundness of the abstract algorithm** (Level 2 → Level 1) is provable on paper:
+"IF the matching function correctly identifies applicable rules and IF apply
+correctly transforms state, THEN each leaf is ILL-entailed by the initial state."
+This is a theorem about the abstract algorithm, not about JavaScript.
+
+**Faithfulness of the implementation** (Level 3 → Level 2) is the hard part.
+There are four approaches, each with a different trust boundary:
+
+| Approach | Trust boundary | What you prove | What you trust |
+|---|---|---|---|
+| **A. Paper proof + trusted impl** | JS code = algorithm | Algorithm correct (on paper) | JS faithfully implements algorithm |
+| **B. Proof certificates + kernel** | Only the L1 kernel | Nothing about explore() | 200 LOC kernel checks each step |
+| **C. Property-based testing** | Test harness | Statistical confidence | Test coverage is adequate |
+| **D. Verified extraction** | Proof assistant | Everything | Coq/Lean/Agda |
+
+### 3.3 Approach B: Proof Certificates (the de Bruijn Way)
+
+This is the most practical high-assurance approach for CALC. The idea:
+
+**Don't trust `explore()` at all. Have it emit certificates. Trust only the kernel.**
+
+```
+explore() produces:  Tree T  +  for each path p in T, a certificate C_p
+
+Certificate C_p = sequence of (rule, θ, consumed, produced) tuples
+
+Kernel checks each step:
+  for each (rule, θ, consumed, produced) in C_p:
+    1. consumed ⊆ current_state        (resources available)
+    2. θ = unify(rule.antecedent, consumed)  (substitution valid)
+    3. produced = substitute(rule.consequent, θ)  (output correct)
+    4. persistent antecedents are provable    (guards hold)
+    ✓ → advance state
+    ✗ → reject certificate (bug in explore)
+```
+
+**Soundness is FREE:** If the kernel accepts a certificate, the path is sound
+by construction. Bugs in `explore()`, `findAllMatches()`, `tryMatch()`, the
+strategy stack, preserved-skip, mutation+undo — none of them matter. The kernel
+is the single point of trust.
+
+**Completeness remains an oracle claim:** The kernel can verify "this path is
+valid" but NOT "no paths were missed." Completeness requires trusting that
+`findAllMatches()` returns ALL applicable rules. This is an inherent limitation —
+you cannot verify a negative ("nothing was missed") via a positive certificate.
+
+**What CALC already has:** The L1 kernel (`lib/prover/kernel.js`: `verifyStep`,
+`verifyTree`) already checks individual proof steps. The gap: it operates on
+backward-chaining proof trees, not forward-chaining execution traces. Extending
+it to verify forward step certificates is ~50-100 LOC.
+
+### 3.4 What We Can and Cannot Prove
+
+| Property | Provable? | How | Trust boundary |
+|---|---|---|---|
+| **Per-step soundness** | Yes (paper) | Betz Theorem 4.8 | The abstract step is valid ILL |
+| **Per-step soundness** | Yes (machine) | Kernel verifies certificate | Only 200 LOC kernel |
+| **Tree soundness** | Yes (paper) | Induction over tree (§5.1) | Abstract algorithm correct |
+| **Tree soundness** | Yes (machine) | Kernel verifies every path | Only 200 LOC kernel |
+| **Completeness** | Partially (paper) | Under assumptions (§5.2) | `findAllMatches` is complete |
+| **Completeness** | No (machine) | Can't verify a negative | Trust `findAllMatches` |
+| **JS faithfulness** | No (without Coq) | Can't prove JS correct | Trust or test |
+
+**The honest answer:** At some point you trust an oracle. The question is
+WHERE you draw the trust boundary:
+
+- **Minimal trust (Approach B):** Trust only `verifyStep` (~200 LOC). Everything
+  else is untrusted and checked. Soundness is machine-verified per path.
+  Completeness requires trusting `findAllMatches`.
+- **Medium trust (Approach A):** Trust that the JS implements the paper algorithm.
+  Soundness is proved on paper. Tested via engine tests (124 tests).
+- **Maximum trust (Approach D):** Formalize in Coq, extract to OCaml/JS. Trust
+  only the Coq kernel. Enormous effort, not practical short-term.
+
+### 3.5 Meta-Level Inference Rules
+
+These rules describe the **abstract algorithm**. Side conditions are meta-level
+assertions about the abstract matching function `matches(Σ, Δ)`, NOT about the
+JS implementation. The JS implementation is claimed to faithfully implement
+this abstract function — that claim is the trust boundary (or verified via
+certificates per §3.3).
+
+**Notation:**
+- `matches(Σ, Δ)` — abstract function returning the set of all (rule, θ) pairs
+  where rule r ∈ Σ matches state Δ with substitution θ. Meta-level, not in ILL.
+- `apply(r, θ, Δ)` — abstract function applying rule r with substitution θ to
+  state Δ, consuming linear resources and producing consequent. Meta-level.
+- `alts(r, θ)` — alternatives from ⊕ in rule r's consequent. Meta-level.
+
+#### LEAF (Quiescence)
+
+```
+  matches(Σ, Δ) = ∅
   ─────────────────────────────── LEAF
-  Σ; Δ ⊢_fwd leaf(Δ) : A
+  Σ; Δ ⊢_fwd leaf(Δ)
 ```
 
-No rules fire. The state Δ is quiescent.
+Side condition: no rule in Σ matches Δ. This is an assertion about the
+abstract matching function. The JS `findAllMatches()` computes this; the
+kernel does not check it (it's a completeness concern, not soundness).
 
-### 3.2 Deterministic Step
-
-```
-  r ∈ Σ    θ = match(r, Δ)    Δ' = apply(r, θ, Δ)
-  Σ; Δ' ⊢_fwd T : A
-  findAllMatches(Σ, Δ) = {(r,θ)}
-  ───────────────────────────────────────────────── STEP
-  Σ; Δ ⊢_fwd step(r, θ, T) : A
-```
-
-Exactly one rule fires. Apply it and continue. This is a **cut** with the
-rule axiom r, consuming linear resources and producing the consequent.
-
-### 3.3 Additive Fork (⊕L Inversion)
+#### STEP (Deterministic)
 
 ```
-  r ∈ Σ    θ = match(r, Δ)    apply(r,θ,Δ) produces C₁ ⊕ C₂
-  Δ₁ = apply(r, θ, Δ, alt=1)    Δ₂ = apply(r, θ, Δ, alt=2)
-  Σ; Δ₁ ⊢_fwd T₁ : A           Σ; Δ₂ ⊢_fwd T₂ : A
-  ──────────────────────────────────────────────────────────── FORK
-  Σ; Δ ⊢_fwd step(r, θ, fork(T₁, T₂)) : A
+  matches(Σ, Δ) = {(r, θ)}    |alts(r, θ)| = 1
+  Δ' = apply(r, θ, Δ)
+  Σ; Δ' ⊢_fwd T
+  ───────────────────────────────────────────── STEP
+  Σ; Δ ⊢_fwd step(r, θ, T)
 ```
 
-The rule consequent contains ⊕ (internal choice). Both branches are explored.
-This corresponds to ⊕L (invertible, case-split eagerly). Each branch gets the
-full shared context — branches are alternatives, not parallel.
+One rule, one alternative. The step Δ → Δ' is verifiable by the kernel
+(ILL derivation). The continuation T is recursive.
 
-**Key insight:** ⊕L is invertible, so the fork is **forced** (no choice involved).
-This matches the implementation: `expandConsequentChoices` produces all alternatives,
-and `explore()` iterates over all of them.
-
-### 3.4 Nondeterministic Branch (∀ Over Rules)
+#### FORK (⊕ Case Split)
 
 ```
-  findAllMatches(Σ, Δ) = {(r₁,θ₁), ..., (rₙ,θₙ)}    n > 1
-  ∀i. Δᵢ = apply(rᵢ, θᵢ, Δ)
-  ∀i. Σ; Δᵢ ⊢_fwd Tᵢ : A
-  ──────────────────────────────────────────────────────── BRANCH
-  Σ; Δ ⊢_fwd branch(r₁:T₁, ..., rₙ:Tₙ) : A
+  (r, θ) ∈ matches(Σ, Δ)    alts(r, θ) = {a₁, ..., aₖ}    k > 1
+  ∀i. Δᵢ = apply(r, θ, Δ, aᵢ)
+  ∀i. Σ; Δᵢ ⊢_fwd Tᵢ
+  ──────────────────────────────────────────────────── FORK
+  Σ; Δ ⊢_fwd step(r, θ, fork(T₁, ..., Tₖ))
 ```
 
-Multiple rules can fire. All are explored. This is the **∀-branching** that
-distinguishes CALC's exhaustive exploration from CLF's committed choice.
+⊕L inversion: the consequent has ⊕, so all alternatives are explored.
+Each Δ → Δᵢ is independently verifiable by the kernel.
 
-In Stéphan's ω_l terms: CLF makes a single &L choice (committed choice, one rule).
-CALC makes ALL &L choices (exhaustive, exploring every rule). The branch node
-records the universal quantification over rule selections.
-
-### 3.5 Cycle Detection
+#### BRANCH (∀ Over Rules)
 
 ```
-  Δ ∈ pathVisited
-  ───────────────────────────────── CYCLE
-  Σ; Δ ⊢_fwd cycle(Δ) : A
+  matches(Σ, Δ) = {(r₁,θ₁), ..., (rₙ,θₙ)}    n ≥ 1
+  ∀i. Σ; apply(rᵢ, θᵢ, Δ) ⊢_fwd Tᵢ
+  ──────────────────────────────────────────────── BRANCH
+  Σ; Δ ⊢_fwd branch(r₁:T₁, ..., rₙ:Tₙ)
 ```
 
-The state Δ has been seen earlier on the current root-to-here path.
-This is a back-edge in the DFS tree, preventing infinite loops.
+All applicable rules explored. Note: STEP is the special case n=1, k=1.
+BRANCH with forks is the general case (each rᵢ may itself have forks).
 
-**Implementation detail:** Cycle detection uses `computeNumericHash(state)` —
-a 32-bit XOR hash of all linear fact (hash,count) pairs and persistent fact
-hashes. The set `pathVisited` stores these numeric hashes. False positives
-(hash collision → missed exploration) are possible but improbable at 32 bits.
-See §7.2 for analysis.
+The universal quantification "for all applicable rules" is the meta-level
+claim that cannot be kernel-checked. The kernel can verify each path
+(soundness) but not that ALL paths are present (completeness).
 
-### 3.6 Depth Bound
+#### CYCLE / BOUND (Terminal)
 
 ```
-  depth ≥ maxDepth
-  ───────────────────────────────── BOUND
-  Σ; Δ ⊢_fwd bound(Δ) : A
+  Δ ∈ path                           depth ≥ maxDepth
+  ──────────────── CYCLE              ──────────────────── BOUND
+  Σ; Δ ⊢_fwd cycle(Δ)               Σ; Δ ⊢_fwd bound(Δ)
 ```
 
-Depth limit reached. The tree is truncated. This ensures finiteness but
-sacrifices completeness (bounded completeness only).
+Both are terminal: no further exploration. Neither makes a leaf claim
+(no quiescent state asserted). Soundness is vacuous. These are pragmatic
+truncations, not proof-theoretic constructs.
 
 ---
 
@@ -463,75 +567,170 @@ Forum validates the design choice theoretically, even though no practical system
 
 ## 5. Soundness and Completeness
 
-### 5.1 Soundness Theorem (per-constructor)
+### 5.1 The Verification Gap — What Can Be Proved and How
 
-**Theorem (Soundness):** For every leaf `Δ_q` in tree T where `Σ; Δ₀ ⊢_fwd T : A`,
-the state Δ_q is reachable from Δ₀ by a valid sequence of forward steps.
+There are two separate questions:
 
-**Proof strategy:** Compositional, by induction on the tree structure:
+**Q1 (Abstract soundness):** "Is the abstract algorithm correct?"
+— IF `matches()` returns a valid (r,θ) pair, AND `apply()` correctly transforms
+state, THEN every leaf is ILL-entailed by the initial state.
+This is provable on paper by induction on the tree. It's a theorem about the
+**abstract algorithm** described in §3.5, not about JavaScript.
 
-- **leaf(Δ_q):** Δ_q = Δ₀ (zero steps). Trivially reachable.
-- **step(r,θ,T'):** By induction, every leaf in T' is reachable from Δ' = apply(r,θ,Δ₀).
-  Since Δ₀ → Δ' is a valid forward step (r matches with θ), prepending this step
-  gives reachability from Δ₀. Validity of the step follows from the Betz/Frühwirth
-  soundness theorem (Theorem 4.8, TOCL 2013): rule application = valid ILL deduction.
-- **fork(T₁,T₂):** Each Tᵢ explores one ⊕ alternative. By CHR∨ soundness,
-  each alternative is a valid continuation. Every leaf in T₁ ∪ T₂ is reachable.
-- **branch(rᵢ:Tᵢ):** Each Tᵢ is the subtree after applying rᵢ. By induction,
-  leaves in each Tᵢ are reachable from apply(rᵢ,θᵢ,Δ₀). Since each rᵢ matches
-  Δ₀, prepending the step gives reachability.
-- **cycle(Δ):** Δ is on the current path → already shown reachable by the
-  ancestor that first visited it. No new leaves.
-- **bound(Δ):** Truncation. Δ is reachable (it's the state at depth maxDepth),
-  but we don't know what happens beyond. Soundness holds vacuously (no leaf claim).
+**Q2 (Implementation faithfulness):** "Does the JS code implement the algorithm?"
+— Does `findAllMatches()` compute the same set as abstract `matches()`?
+— Does `mutateState()` compute the same state as abstract `apply()`?
+This is NOT provable without formalizing the JS. At some point, you trust an oracle.
 
-**Per-step soundness follows from:**
-1. `tryMatch` correctness: pattern matching produces valid substitutions
-2. `provePersistentGoals` correctness: persistent antecedents are legitimately provable
-3. `mutateState` correctness: resource accounting preserves the ILL derivation
-4. `matchLoli` correctness: loli-left is a valid ILL derivation step
-5. `expandConsequentChoices` correctness: ⊕L inversion produces valid alternatives
+**The honest position:**
+- Q1 is solvable (paper proof, induction, cite Betz/Stéphan)
+- Q2 is an **engineering trust boundary** — addressed by one of:
+  - Approach B: emit certificates, verify with kernel (trust only kernel)
+  - Approach C: property-based testing (trust test coverage)
+  - Approach D: verified extraction (trust proof assistant)
+  - Or simply: manual inspection + code review (trust the developer)
 
-### 5.2 Completeness Theorem
+Every real system draws this line somewhere. CompCert trusts the Coq kernel.
+GCC trusts its test suite. CALC should explicitly state its trust boundary.
 
-**Theorem (Completeness, for finite states):** Every quiescent state reachable from
-Δ₀ appears as a leaf in the tree T where `Σ; Δ₀ ⊢_fwd T : A`.
+### 5.2 Soundness of the Abstract Algorithm (Q1)
 
-**Depends on TODO_0042.** Completeness requires:
+**Theorem (Soundness):** For every leaf `Δ_q` in tree T where `Σ; Δ₀ ⊢_fwd T`,
+the state Δ_q is reachable from Δ₀ by a valid sequence of ILL derivation steps.
 
-1. **Match completeness:** `findAllMatches(Σ, Δ)` returns ALL applicable rules.
-   - Strategy stack correctness: fingerprint + disc-tree + predicate layers don't miss rules
-   - Loli scanning: `findAllMatches` scans all lolis in state (after TODO_0041, done)
-   - **Critical assumption:** each rule has a SINGLE match per state. If a rule can
-     match the same state in multiple ways (different substitutions), only one is found.
-     For EVM rules (dispatch by opcode), this holds. For general rules, multi-match
-     completeness would require backtracking in `tryMatch` — not currently implemented.
+**Proof:** By induction on the tree structure.
 
-2. **No false cycle detection:** Hash collisions in `pathVisited` can cause missed
-   states. See §7.2 for collision probability analysis.
+- **leaf(Δ_q):** Δ_q = Δ₀ (zero steps). Trivially reachable via reflexivity.
 
-3. **Termination:** The state space must be finite and the depth bound sufficient.
-   For EVM with bounded gas, the state space is finite (gas decreases monotonically).
+- **step(r,θ,T'):** The step Δ₀ → Δ' is a valid ILL derivation by
+  Betz/Frühwirth Theorem 4.8: rule application = valid ILL deduction
+  (simpagation maps to linear implication). By induction hypothesis,
+  every leaf in T' is reachable from Δ'. Composing gives reachability from Δ₀.
+
+- **fork(T₁,...,Tₖ):** Each Tᵢ explores one ⊕ alternative. Each Δ → Δᵢ is
+  independently a valid ILL step (⊕L inversion, which is sound — Betz TOCL 2013
+  Theorem 4.8 covers CHR∨ disjunction). By induction, leaves in each Tᵢ are
+  reachable from Δᵢ, hence from Δ₀.
+
+- **branch(rᵢ:Tᵢ):** Each rᵢ independently matches Δ₀. Each Δ₀ → apply(rᵢ,θᵢ,Δ₀)
+  is a valid ILL step (same as step case). By induction, leaves in each Tᵢ are
+  reachable. Note: the universal quantification ("all rules explored") is NOT
+  needed for soundness — soundness only says "every leaf in the tree IS reachable",
+  not "every reachable state IS a leaf."
+
+- **cycle(Δ) / bound(Δ):** No leaf claim. Soundness holds vacuously.
+
+**What this proof assumes (the oracle):**
+1. `matches(Σ, Δ)` returns VALID matches — every (r,θ) pair it returns actually
+   satisfies: θ unifies r's antecedent with facts in Δ, and persistent antecedents
+   are provable. This is the **per-step validity** assumption.
+2. `apply(r, θ, Δ)` correctly computes the resulting state.
+
+These are assumptions about the ABSTRACT functions, not about JS code.
+For the JS: Approach B (certificates + kernel) eliminates assumption 1 entirely.
+
+### 5.3 Soundness via Certificates (Eliminating the Oracle)
+
+With proof certificates (§3.3), soundness becomes **machine-checkable**:
+
+```
+For each root-to-leaf path p = [(r₁,θ₁), (r₂,θ₂), ..., (rₙ,θₙ)]:
+  Δ₀ →[r₁,θ₁] Δ₁ →[r₂,θ₂] Δ₂ → ... → Δₙ = leaf
+
+  The kernel verifies each step Δᵢ →[rᵢ₊₁,θᵢ₊₁] Δᵢ₊₁:
+    - consumed resources exist in Δᵢ
+    - substitution θ is valid
+    - produced resources match rule consequent
+    - persistent antecedents are provable
+
+  If ALL steps verify → path is sound. No trust in explore() needed.
+```
+
+**Trust boundary:** Only the kernel (~200 LOC). Everything else — `explore()`,
+`findAllMatches()`, `tryMatch()`, the strategy stack, mutation+undo — is
+untrusted code whose output is checked by the kernel.
+
+**Soundness theorem (certificate version):** If the kernel accepts all path
+certificates in tree T, then every leaf in T is reachable from Δ₀ by valid
+ILL derivation steps. Proof: each kernel-verified step is a valid ILL inference
+(by correctness of `verifyStep`). Composition of valid steps gives reachability.
+
+**What the kernel CAN'T check:** Completeness. The kernel verifies "this path
+is valid" but not "no paths were missed." That requires trusting `findAllMatches`.
+
+### 5.4 Completeness (Inherently Requires an Oracle)
+
+**Theorem (Completeness, for finite states):** Every quiescent state reachable
+from Δ₀ appears as a leaf in the tree T where `Σ; Δ₀ ⊢_fwd T`.
+
+**This theorem is inherently about the implementation.** It says: the algorithm
+(and hence the code) doesn't MISS any reachable state. You cannot verify this
+via certificates — you'd need a certificate for something that DOESN'T exist
+(a missed state), which is a logical impossibility.
+
+**Completeness requires trusting:**
+
+1. **Match completeness:** `matches(Σ, Δ)` returns ALL applicable (r,θ) pairs.
+   For the abstract algorithm, this is definitional. For the JS implementation,
+   this is the oracle claim. Mitigations:
+   - Strategy stack has a catch-all layer (no rule falls through)
+   - Loli scanning covers all loli-tagged facts (after TODO_0041)
+   - **Known gap:** single-match-per-rule (§7.3) — limits completeness to
+     programs where rules match uniquely. Holds for EVM.
+
+2. **No false cycle detection:** Hash collisions in `pathVisited` cause missed
+   subtrees. Mitigation: 32-bit XOR hash has negligible collision probability
+   for paths < 1000 steps (§7.2). Not a proof, a probabilistic argument.
+
+3. **Sufficient depth/termination:** The depth bound must exceed the longest
+   trace, and the state space must be finite. For EVM with bounded gas, gas
+   decreases monotonically → finite. For general programs: undecidable.
 
 **Completeness conditions:**
 
-| Condition | Status | Notes |
+| Condition | Nature | Verifiable? |
 |---|---|---|
-| Strategy stack covers all rules | ✓ (by construction) | Catch-all layer handles unclaimed rules |
-| Loli scanning complete | ✓ (after TODO_0041) | `findAllMatches` scans all loli tags |
-| Single-match per rule | Assumed | Holds for EVM dispatch; general case needs multi-match |
-| No hash collisions | Probabilistic | See §7.2 |
-| Sufficient depth bound | User-provided | Must exceed longest trace |
-| Finite state space | Program-dependent | EVM: gas bound; general: may diverge |
+| `matches()` returns all valid pairs | Oracle claim | Testing only (Approach C) |
+| Strategy stack doesn't drop rules | Structural (catch-all layer) | Code inspection |
+| Loli scanning covers all lolis | Implementation detail | Code inspection + tests |
+| Single-match suffices | Program property | Provable per-program (EVM: yes) |
+| No hash collisions | Probabilistic | Statistical argument |
+| Depth bound sufficient | User parameter | User responsibility |
+| State space finite | Program property | Gas bound for EVM; undecidable generally |
 
-### 5.3 Connection to QCHR Completeness
+### 5.5 Connection to QCHR Completeness
 
 QCHR Theorem 5.1 states: ω_r^{∃∀} is sound and complete w.r.t. ω_l^{∃∀}.
 
-If we establish the mapping CALC ↔ QCHR (§4.5), we get completeness of CALC's
-operational semantics (`explore()`) w.r.t. the proof-theoretical semantics
-(ω_l^{∃∀}). This is the strongest available completeness result for the full
-tree (covering both ∀-branching and ∃-branching).
+This theorem is about the ABSTRACT QCHR operational semantics ω_r^{∃∀}, not
+about any specific implementation (QCHR++ is C++, CALC is JS). It says: "the
+abstract algorithm explores exactly the right set of states."
+
+If we establish the mapping CALC's abstract algorithm ↔ QCHR's ω_r^{∃∀}, we
+inherit completeness at the ABSTRACT level. The implementation gap (Level 3 → Level 2
+from §3.1) remains — it always does, in every system. The value of the QCHR
+mapping is: it gives us the strongest known completeness result for the abstract
+algorithm, covering both ∀-branching and ∃-branching in one framework.
+
+### 5.6 Practical Recommendation
+
+**For CALC's trust model:**
+
+1. **Soundness:** Implement Approach B (certificates + kernel). Cost: ~100 LOC
+   to extend L1 kernel for forward step verification. Benefit: machine-checked
+   soundness with minimal trust boundary.
+
+2. **Completeness:** Accept as an oracle claim, backed by:
+   - Paper proof that the abstract algorithm is complete (via QCHR Theorem 5.1)
+   - Engine tests (124 tests) as statistical confidence
+   - Structural argument (catch-all strategy layer)
+   - Per-program analysis for specific rule sets (EVM: deterministic dispatch)
+
+3. **Document the trust boundary explicitly:** "Soundness is kernel-verified.
+   Completeness assumes `findAllMatches` is faithful to the abstract `matches()`
+   function. This assumption is tested but not machine-verified."
+
+This is an honest, defensible position — stronger than most practical systems.
 
 ---
 
