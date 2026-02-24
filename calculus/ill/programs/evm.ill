@@ -6,6 +6,8 @@
 % 01   ADD           *
 % 02   MUL           *
 % 03   SUB           *
+% 04   DIV           *
+% 06   MOD           *
 % 0a   EXP           *
 
 % 10   LT            *
@@ -15,6 +17,8 @@
 % 16   AND           *
 % 17   OR            *
 % 19   NOT           *
+% 1b   SHL           *
+% 1c   SHR           *
 
 % 20   SHA3          TODO
 
@@ -29,28 +33,39 @@
 % 42   TIMESTAMP     *
 % 45   GASLIMIT      *
 
+% 50   POP           *
 % 54   SLOAD
 % 55   SSTORE        *
 % 56   JUMP          *
 % 57   JUMPI
 % 5a   GAS
 % 5b   JUMPDEST
+% 5f   PUSH0         *
 
 % 60   PUSH1
+% 61   PUSH2         *
+% 63   PUSH4         *
 % 73   PUSH20        *
+% 7f   PUSH32        *
 
 % 80   DUP1
 % 81   DUP2          *
 % 82   DUP3          *
+% 83   DUP4          *
+% 84   DUP5          *
 
 % 90   SWAP1         *
+% 91   SWAP2         *
+% 92   SWAP3         *
 
 % a4   LOG4          *
 
 % f1   CALL          ?
+% f3   RETURN        *
 % fe   INVALID       *
 % fd   REVERT        *
 
+return: type.
 invalid: type.
 revert: type.
 log0: type.
@@ -76,6 +91,8 @@ memory: bin -> bin -> bin -> type.
 mh: bin -> type.
 timestamp: bin -> type.
 gaslimit: bin -> type.
+shr: bin -> bin -> bin -> type.
+shl: bin -> bin -> bin -> type.
 concat: bin -> bin -> bin.
 sha3: bin -> bin.
 call: bin -> bin -> bin -> bin -> bin -> bin -> bin -> type.
@@ -158,6 +175,38 @@ evm/exp:
       sh (s SH) *
       stack SH Result' *
       !trim Base Base' * !trim Exponent Exponent' * !exp Base' Exponent' Result * !to256 Result Result')
+  }.
+
+evm/div:
+  pc PC *
+  code PC 0x04 *
+  !inc PC PC' *
+  sh (s (s SH)) *
+  stack (s SH) A *
+  stack SH  B
+  -o {
+    exists A'. exists B'. exists Q. exists Q'. (
+      code PC 0x04 *
+      pc PC' *
+      sh (s SH) *
+      stack SH Q' *
+      !trim A A' * !trim B B' * !div A' B' Q * !to256 Q Q')
+  }.
+
+evm/mod:
+  pc PC *
+  code PC 0x06 *
+  !inc PC PC' *
+  sh (s (s SH)) *
+  stack (s SH) A *
+  stack SH  B
+  -o {
+    exists A'. exists B'. exists R. exists R'. (
+      code PC 0x06 *
+      pc PC' *
+      sh (s SH) *
+      stack SH R' *
+      !trim A A' * !trim B B' * !mod A' B' R * !to256 R R')
   }.
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%  10
@@ -297,6 +346,38 @@ evm/not:
       sh (s SH) *
       stack SH Y *
       !not X Y)
+  }.
+
+evm/shl:
+  pc PC *
+  code PC 0x1b *
+  !inc PC PC' *
+  sh (s (s SH)) *
+  stack (s SH) Shift *
+  stack SH  Value
+  -o {
+    exists Z. (
+      code PC 0x1b *
+      pc PC' *
+      sh (s SH) *
+      stack SH Z *
+      !shl Shift Value Z)
+  }.
+
+evm/shr:
+  pc PC *
+  code PC 0x1c *
+  !inc PC PC' *
+  sh (s (s SH)) *
+  stack (s SH) Shift *
+  stack SH  Value
+  -o {
+    exists Z. (
+      code PC 0x1c *
+      pc PC' *
+      sh (s SH) *
+      stack SH Z *
+      !shr Shift Value Z)
   }.
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%  20
@@ -572,6 +653,17 @@ evm/gaslimit:
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%  50
 
+evm/pop:
+  pc PC *
+  code PC 0x50 *
+  !inc PC PC' *
+  sh (s SH) *
+  stack SH V
+  -o {
+    code PC 0x50 *
+    pc PC' *
+    sh SH
+  }.
 
 evm/sload:
   pc PC *
@@ -668,6 +760,21 @@ evm/jumpdest:
     gas GAS'
   }.
 
+evm/push0:
+  pc PC *
+  code PC 0x5f *
+  !inc PC PC' *
+  gas GAS *
+  !plus 2 GAS GAS' *
+  sh SH
+  -o {
+    code PC 0x5f *
+    pc PC' *
+    gas GAS' *
+    sh (s SH) *
+    stack SH e
+  }.
+
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%  60
 
 evm/push1:
@@ -711,6 +818,40 @@ evm/push1:
 %    stack SH V'
 %  }.
 
+evm/push2:
+  pc PC *
+  code PC 0x61 *
+  !inc PC PC' *
+  code PC' V *
+  !plus 2 PC' PC_Target *
+  gas GAS *
+  !plus 3 GAS GAS' *
+  sh SH
+  -o {
+    code PC 0x61 *
+    pc PC_Target *
+    sh (s SH) *
+    stack SH V *
+    gas GAS'
+  }.
+
+evm/push4:
+  pc PC *
+  code PC 0x63 *
+  !inc PC PC' *
+  code PC' V *
+  !plus 4 PC' PC_Target *
+  gas GAS *
+  !plus 3 GAS GAS' *
+  sh SH
+  -o {
+    code PC 0x63 *
+    pc PC_Target *
+    sh (s SH) *
+    stack SH V *
+    gas GAS'
+  }.
+
 evm/push20:
   pc PC *
   code PC 0x73 *
@@ -722,6 +863,23 @@ evm/push20:
   sh SH
   -o {
     code PC 0x73 *
+    pc PC_Target *
+    sh (s SH) *
+    stack SH V *
+    gas GAS'
+  }.
+
+evm/push32:
+  pc PC *
+  code PC 0x7f *
+  !inc PC PC' *
+  code PC' V *
+  !plus 32 PC' PC_Target *
+  gas GAS *
+  !plus 3 GAS GAS' *
+  sh SH
+  -o {
+    code PC 0x7f *
     pc PC_Target *
     sh (s SH) *
     stack SH V *
@@ -782,6 +940,41 @@ evm/dup3:
     stack SH V *
     stack (s (s (s SH))) V
   }.
+
+evm/dup4:
+  pc PC *
+  code PC 0x83 *
+  !inc PC PC' *
+  gas GAS *
+  !plus 3 GAS GAS' * %11 = 3
+  sh (s (s (s (s SH)))) *
+  stack SH V
+  -o {
+    code PC 0x83 *
+    pc PC' *
+    gas GAS' *
+    sh (s (s (s (s (s SH))))) *
+    stack SH V *
+    stack (s (s (s (s SH)))) V
+  }.
+
+evm/dup5:
+  pc PC *
+  code PC 0x84 *
+  !inc PC PC' *
+  gas GAS *
+  !plus 3 GAS GAS' * %11 = 3
+  sh (s (s (s (s (s SH))))) *
+  stack SH V
+  -o {
+    code PC 0x84 *
+    pc PC' *
+    gas GAS' *
+    sh (s (s (s (s (s (s SH)))))) *
+    stack SH V *
+    stack (s (s (s (s (s SH))))) V
+  }.
+
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%  90
 
 evm/swap1:
@@ -799,6 +992,42 @@ evm/swap1:
     gas GAS' *
     sh (s (s SH)) *
     stack (s SH) Y *
+    stack SH  X
+  }.
+
+evm/swap2:
+  pc PC *
+  code PC 0x91 *
+  !inc PC PC' *
+  gas GAS *
+  !inc GAS GAS' *                  % simplified
+  sh (s (s (s SH))) *
+  stack (s (s SH)) X *
+  stack SH  Y
+  -o {
+    code PC 0x91 *
+    pc PC' *
+    gas GAS' *
+    sh (s (s (s SH))) *
+    stack (s (s SH)) Y *
+    stack SH  X
+  }.
+
+evm/swap3:
+  pc PC *
+  code PC 0x92 *
+  !inc PC PC' *
+  gas GAS *
+  !inc GAS GAS' *                  % simplified
+  sh (s (s (s (s SH)))) *
+  stack (s (s (s SH))) X *
+  stack SH  Y
+  -o {
+    code PC 0x92 *
+    pc PC' *
+    gas GAS' *
+    sh (s (s (s (s SH)))) *
+    stack (s (s (s SH))) Y *
     stack SH  X
   }.
 
@@ -866,6 +1095,19 @@ evm/call:
     % address Contract_Address *
     % balance ADDRESS VALUE' *
     % balance Contract_Address New_Value
+  }.
+
+evm/return:
+  pc PC *
+  code PC 0xf3 *
+  !inc PC PC' *
+  sh (s (s SH)) *
+  stack (s SH) Offset *
+  stack SH  Size
+  -o {
+    code PC 0xf3 *
+    sh SH *
+    return
   }.
 
 evm/invalid:

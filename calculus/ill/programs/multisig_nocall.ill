@@ -1,0 +1,55 @@
+#import(evm.ill)
+
+% Multisig Contract — No-CALL Variant for 1:1 hevm Benchmark
+% CALL replaced with SSTORE(fired=1) + STOP
+% Same branching structure as original (6 member EQ checks)
+
+% Helper: prove Agent is not a member of the multisig
+isNotMember: bin -> type.
+isNotMember/z:
+  isNotMember Agent
+  -o {
+    !neq Agent Member01 *
+    !neq Agent Member02 *
+    !neq Agent Member03 *
+    !neq Agent Member04 *
+    !neq Agent Member05 *
+    !neq Agent Member06
+  }.
+
+#symex
+  % Execution state
+  pc 0 *
+  sh ee *
+  mh 0 *
+  gas 0 *
+
+  % Contract context
+  address      Contract_Address *
+  sender       Sender *
+  timestamp    Time *
+  gaslimit     Gaslimit *
+  balance      Contract_Address WB *
+
+  % Code
+  #import(multisig_nocall_code.ill)
+
+  % Sender is Member01
+  !eq Sender Member01 *
+
+  % Storage — fired flag slot (initially 0)
+  storage 0xff 0 *
+
+  % Storage — proposal with 2 existing votes
+  storage ((sha3 (concat (concat (concat 0 Deadline) Target) Value))) 2 *
+
+  % Transaction data
+  calldata     0 32 Deadline *
+  calldata     32 32 Target *
+  calldata     64 32 Value *
+  calldatasize 96 *
+  callvalue    V *
+
+  % Proof assumption: time has NOT passed deadline
+  !gt Time Deadline 0 0
+  .
