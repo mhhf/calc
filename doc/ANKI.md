@@ -118,8 +118,16 @@ Linear logic's no-contraction means each `mem M` fact exists exactly once — no
 
 ## What is the write-log memory model for CALC's EVM executor?
 
-Single linear fact `mem M` where M is a content-addressed write-chain term: `write(offset, value, prev_mem)`. MSTORE prepends a `write` node (O(1)). MLOAD traverses the chain via FFI, reconstructing 32 bytes with most-recent-write-wins (O(W)). Zero for unwritten bytes. Content-addressed sharing across symexec branches.
+Single linear fact `mem M` where M is a content-addressed write-chain term: `write(offset, value, prev_mem)`. MSTORE wraps a `write` constructor (O(1)). MLOAD triggers a recursive forward-rule traversal (like `concatMemory`) gated by a loli continuation. Three rules encode McCarthy's axioms: `mem_read/hit` (exact match), `mem_read/miss` (`!neq` guard, skip), `mem_read/zero` (empty → 0). No FFI for reads — the rules ARE the semantics.
 
 ## Why do per-cell linear memory facts cause spurious branching in symexec?
 
 Two rules needed: `mstore_init` (no existing cell) + `mstore_update` (overwrite). Symexec's `findAllMatches` returns both as applicable. For N MSTOREs: up to 2^N branches. The write-log model avoids this — single `evm/mstore` rule fires unconditionally, wrapping the write into the log term.
+
+## How does MLOAD's loli continuation gate opcode dispatch during memory traversal?
+
+The `evm/mload` rule consumes `pc` but does NOT produce `pc PC'` — it captures it in a loli: `(mem_read_done V -o { pc PC' * ... })`. During the traversal, no opcode rule can fire (they all need `pc`). Only `mem_read/*` rules match. When traversal produces `mem_read_done V`, the loli fires, restoring `pc`, stack, and the original `mem`.
+
+## What happens when MLOAD encounters a symbolic offset in the write-log?
+
+With concrete write `write(0x40, V, M)` and symbolic read offset `calldataload(4)`: `mem_read/hit` fails (structural unification mismatch — different tags). `mem_read/miss` fails (`!neq calldataload(4) 0x40` gets non-ground input → FFI fails). Neither fires → stuck leaf. This is the sound approximation: the logic can't determine the result without knowing the offset. If the offset is a free metavar instead, unification BINDS it to the write offset — naturally forking on possible values.

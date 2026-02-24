@@ -16,11 +16,11 @@ required_by: []
 
 ## Problem
 
-Every solc-compiled contract uses MLOAD/MSTORE extensively (ABI encoding, scratch space, free memory pointer at `0x40`). Without memory support, CALC can only run hand-crafted bytecode that avoids memory operations. MLOAD (0x51) and MSTORE (0x52) are the blocking opcodes for all future benchmarks against hevm/halmos/KEVM.
+Every solc-compiled contract uses MLOAD/MSTORE extensively (ABI encoding, scratch space, free memory pointer at `0x40`). Without memory support, CALC can only run hand-crafted bytecode. MLOAD (0x51) and MSTORE (0x52) are the blocking opcodes for all future benchmarks against hevm/halmos/KEVM.
 
 ## EVM Memory Semantics
 
-From the Yellow Paper (precise spec):
+From the Yellow Paper:
 
 - **Byte-addressable**: each address indexes one byte
 - **MLOAD(offset)**: reads 32 bytes at `[offset, offset+32)`, returns 256-bit big-endian word
@@ -32,19 +32,19 @@ From the Yellow Paper (precise spec):
 - **Gas**: `cost = words²/512 + 3*words` — quadratic for large memory
 - **Non-aligned access**: MLOAD/MSTORE at ANY byte offset (not just multiples of 32)
 
-Non-aligned access means MSTORE(0, X) then MSTORE(1, Y) produces an overlap at bytes [1..31]. MLOAD(0) must reconstruct from both writes. This is the central design challenge.
+Non-aligned access means MSTORE(0, X) then MSTORE(1, Y) produces an overlap at bytes [1..31]. MLOAD(0) must reconstruct from both writes.
 
 ## Current State in CALC
 
-`evm.ill:90` declares `memory: bin -> bin -> bin -> type.` — a **linear** ternary predicate `memory Pos Size V`. Used by two rules:
+`evm.ill:90` declares `memory: bin -> bin -> bin -> type.` — a **linear** ternary predicate `memory Pos Size V`. Used by:
 
-1. **concatMemory** (lines 388-403): iterates over `memory` facts, concatenating values. Consumes each `memory Pos Size V` and re-produces it (preserve-on-read pattern). Driven by `!neq Pos To` guard and `!plus Pos Size Pos'` increment.
+1. **concatMemory** (lines 388-403): iterates over `memory` facts via recursive forward rules, concatenating values. Consumes each `memory Pos Size V` and re-produces it (preserve-on-read). Driven by `!neq` guard and `!plus` increment.
 
-2. **SHA3** (lines 405-423): triggers `concatMemory` with a loli continuation (`unblockConcatMemory Z -o {...}`). The continuation fires when `concatMemory/z` produces `unblockConcatMemory Z`, passing the concatenated bytes `Z` as `sha3 Z` onto the stack.
+2. **SHA3** (lines 405-423): triggers `concatMemory` with a loli continuation (`unblockConcatMemory Z -o {...}`). The continuation fires when traversal completes, passing concatenated bytes as `sha3 Z`.
 
-3. **CALLDATACOPY** (lines 577-612): produces `memory Ms Size D` facts from `calldata` facts. Also uses a blocking pattern (`unblock -o {pc PC'}`).
+3. **CALLDATACOPY** (lines 577-612): produces `memory Ms Size D` facts from `calldata` facts. Uses blocking pattern (`unblock -o {pc PC'}`).
 
-**Key observation**: Memory facts are **linear** — consumed on read, manually re-produced. This is the separation logic pattern `addr ↦ v * P ⊢ addr ↦ v * Q` encoded as `memory Pos Size V -o (memory Pos Size V * ...)`.
+**Key observation**: concatMemory already IS a rule-based write-chain traversal — recursive forward rules that walk a data structure, gated by a loli continuation. The memory model should follow the same pattern.
 
 ## How Other Tools Model Memory
 
@@ -52,567 +52,534 @@ See RES_0061 for full survey. Summary:
 
 | Tool | Representation | Symbolic offsets | Read-after-write |
 |------|---------------|-----------------|-----------------|
-| **hevm** | Algebraic write-chain (`WriteWord o v buf`) | Abstract `ReadWord` term → SMT | Pattern match on concrete offsets; byte-by-byte for overlap |
+| **hevm** | Algebraic write-chain (`WriteWord o v buf`) | Abstract `ReadWord` term → SMT | Pattern match on offsets; byte-by-byte for overlap |
 | **KEVM** | K `Bytes` cell; rewrite rules | Transparent via matching logic | Implicit (single mutable cell) |
 | **halmos** | `ByteVec` (concrete/symbolic chunks) | Require concrete; fork if symbolic | Chunk iteration |
 | **Mythril** | Z3 `Array(BV256, BV8)` | Z3 `select` | SMT array theory |
 | **Manticore** | SMT constraint arrays | Fork on concrete values | SMT constraint propagation |
 
-**Key insight from hevm (RES_0060)**: Memory is an algebraic expression tree. Writes prepend nodes; reads traverse from newest to oldest. Concrete offsets resolve in O(1) per exact match or O(32) for byte-level reconstruction. Symbolic offsets produce abstract `ReadWord` terms deferred to SMT. Pre-SMT simplification (dead write elimination, constant folding) keeps terms small.
+## Design Philosophy
 
-**Key insight from separation logic (RES_0061 §9)**: Linear logic's tensor `⊗` = separation logic's separating conjunction `*`. The lollipop `⊸` = magic wand `-*`. CALC's linear facts already model heap cells. The frame rule ("untouched resources are preserved") is structural in ILL.
+CALC's forward rules ARE the semantics. Existing "FFI-accelerated" predicates (`!neq`, `!plus`, `!inc`, `!mul`) have clean ILL clause definitions — the FFI is an optimization layer, not the definition. Memory read/write should follow the same principle: **the rules define the semantics; FFI may accelerate later**.
+
+The write-log idea (single linear `mem M` fact with nested `write` terms) is correct. The key reconsidered insight: **the read traversal should be forward rules, not FFI**. CALC's unification already handles nested term destructuring (`sh (s (s SH))` matches nested `s` constructors). The same mechanism destructures `write(Offset, V, Rest)` — zero new engine machinery needed.
 
 ## Design Options
 
-### Option A: Write-Log Term (Recommended)
+### Option A: Pure ILL Rules with Write-Log (Recommended)
 
-Single linear fact `mem M` where `M` is a content-addressed write-log:
+Single linear fact `mem M` where `M` is a content-addressed write-log. MSTORE wraps a `write` constructor (O(1)). MLOAD fires a recursive rule traversal via loli continuation — the same established pattern as SHA3/concatMemory.
+
+#### Type Declarations
 
 ```
 mem: bin -> type.
-write: bin -> bin -> bin -> bin.    % write(offset, value, prev_mem)
-write8: bin -> bin -> bin -> bin.   % write8(offset, byte, prev_mem)
+mem_reading: bin -> bin -> bin -> type.   % mem_reading Offset CurrentTerm OrigMem
+mem_read_done: bin -> type.               % mem_read_done Value (triggers loli)
+write: bin -> bin -> bin -> bin.           % write(offset, value, prev)
+write8: bin -> bin -> bin -> bin.          % write8(addr, byte, prev)
 empty_mem: bin.
 ```
 
-**MSTORE rule:**
-```
-evm/mstore:
-  pc PC * code PC 0x52 * !inc PC PC' *
-  sh (s (s SH)) *
-  stack (s SH) Offset *
-  stack SH Value *
-  mem M
-  -o {
-    exists M'. (
-      code PC 0x52 *
-      pc PC' *
-      sh SH *
-      mem M' *
-      !mem_write Offset Value M M')
-  }.
-```
-
-**MLOAD rule:**
-```
-evm/mload:
-  pc PC * code PC 0x51 * !inc PC PC' *
-  sh (s SH) *
-  stack SH Offset *
-  mem M
-  -o {
-    exists V. (
-      code PC 0x51 *
-      pc PC' *
-      mem M *
-      sh (s SH) *
-      stack SH V *
-      !mem_read Offset M V)
-  }.
-```
-
-**FFI `mem_write`** (mode: `+ + + -`): creates `Store.put({tag:'write', children:[offset,value,oldMem]})`.
-
-**FFI `mem_read`** (mode: `+ + -`): traverses write chain from newest to oldest, reconstructs 32-byte value handling overlaps.
-
-#### Worked Example
+#### MSTORE — O(1), one rule
 
 ```
-% Initial: mem empty_mem
-
-PUSH1 0x42  PUSH1 0x00  MSTORE
-% → mem (write 0x00 0x42 empty_mem)
-
-PUSH1 0xBB  PUSH1 0x20  MSTORE
-% → mem (write 0x20 0xBB (write 0x00 0x42 empty_mem))
-
-PUSH1 0x00  MLOAD
-% → mem_read(0x00, write(0x20, 0xBB, write(0x00, 0x42, empty_mem)), V)
-% → traverse: write(0x20,...) — offset 0x20 ≠ 0x00, skip
-% → traverse: write(0x00, 0x42,...) — exact match, V = 0x42
-```
-
-#### Overlap Example
-
-```
-PUSH1 0xAA  PUSH1 0x00  MSTORE
-% → write(0, 0xAA, empty)
-
-PUSH1 0xBB  PUSH1 0x01  MSTORE
-% → write(1, 0xBB, write(0, 0xAA, empty))
-
-PUSH1 0x00  MLOAD   % read bytes [0..31]
-% → byte 0: from write(0, 0xAA) — byte 0 of big-endian 0xAA
-% → bytes 1..31: from write(1, 0xBB) — overwrites write(0) at those positions
-% FFI reconstructs 32-byte value byte-by-byte, most recent write wins
-```
-
-#### Read Algorithm (FFI `mem_read`)
-
-```
-mem_read(offset, log):
-  result = [0] * 32          // zero-initialized
-  covered = [false] * 32     // which bytes resolved
-  ptr = log
-  while ptr ≠ empty_mem:
-    match ptr:
-      write(wo, wv, inner):
-        for each byte position b in [0..31]:
-          if covered[b]: continue
-          target_addr = offset + b
-          if wo ≤ target_addr < wo + 32:      // write covers this byte
-            result[b] = byte_of(wv, target_addr - wo)
-            covered[b] = true
-        ptr = inner
-      write8(wo, wb, inner):
-        b = wo - offset
-        if 0 ≤ b < 32 and not covered[b]:
-          result[b] = wb
-          covered[b] = true
-        ptr = inner
-  return big_endian_word(result)
-```
-
-**Complexity**: O(W * 32) where W = writes in chain. With early termination when all 32 bytes covered: typically O(1) for exact-match reads, O(W) worst case for heavily overlapping patterns.
-
-**Optimization**: if offset is concrete and exactly matches a write offset with no intervening overlap, return immediately (O(1)).
-
-#### Properties
-
-| Property | Value |
-|----------|-------|
-| Linear facts | 1 (`mem M`) |
-| Write cost | O(1) — prepend to chain |
-| Read cost (aligned, exact match) | O(1) |
-| Read cost (overlapping) | O(W * 32) |
-| Undo in symexec | Restore single `mem` hash |
-| Content-addressed sharing | Same write sequence = same hash across branches |
-| Engine changes required | None (standard linear fact + FFI) |
-| Symbolic offset support | Future (return abstract term) |
-
-### Option B: Per-Cell Linear Facts
-
-One linear fact per memory cell at some granularity.
-
-**Word granularity**: `mem32 Offset Value` — one fact per 32-byte word.
-
-```
-evm/mstore:
-  ... stack (s SH) Offset * stack SH Value *
-  mem32 Offset Old
-  -o {
-    mem32 Offset Value * ...
-  }.
-```
-
-**Problem 1 — First write**: No `mem32 Offset Old` exists for unwritten locations. Need either (a) pre-populate all offsets with zero (impractical — infinite), (b) two rules: `mstore_init` (no existing fact) + `mstore_update` (overwrite), or (c) negation-as-failure guard.
-
-**Problem 2 — Non-aligned access**: MSTORE(1, V) writes bytes [1..32], spanning the word at offset 0 and offset 32. Must split into two partial updates: read word at 0, modify bytes [1..31], write back; read word at 32, modify byte [32], write back. This requires reading two facts, modifying, writing two facts. The rule becomes complex and the matching requires two separate memory facts.
-
-**Problem 3 — Matching complexity**: Forward engine scans all `mem32` facts by predicate. With N active memory cells, each MLOAD/MSTORE rule match is O(N). Needs secondary indexing by offset.
-
-**Byte granularity**: `mem1 Addr Byte` — one fact per byte.
-
-```
-evm/mstore:
-  ... mem1 (Offset+0) _ * mem1 (Offset+1) _ * ... * mem1 (Offset+31) _
-  -o {
-    mem1 (Offset+0) byte0(Value) * ... * mem1 (Offset+31) byte31(Value) * ...
-  }.
-```
-
-**Problem**: 32 linear pattern matches per MLOAD/MSTORE. 32 consumed + 32 produced per operation. Forward engine does 32× matching work. For 100 MSTOREs: 3200 facts in state.
-
-#### Properties
-
-| Property | Word granularity | Byte granularity |
-|----------|-----------------|-----------------|
-| Linear facts | N (one per written word) | N (one per written byte) |
-| Write cost | O(N) matching | O(32*N) matching |
-| Non-aligned access | Complex rule splitting | Natural |
-| First-write problem | Needs two rules or guard | Needs two rules or guard |
-| Engine changes | Secondary index on offset | Secondary index on addr |
-| Symexec branching risk | 2× per first-write if two rules | Same |
-
-### Option C: Generation Counters
-
-```
-!mem Offset Gen Value    % Persistent — all versions accumulate
-memgen G                 % Linear — current generation (monotonic)
-```
-
-MSTORE increments gen and adds a new persistent fact. MLOAD queries for the latest gen at an offset.
-
-**Problem 1**: Persistent facts cannot be retracted. All historical values accumulate. After 100 MSTOREs, 100 persistent memory facts exist. MLOAD must find the one with maximum gen for the target offset — requires FFI or backward chaining with ordering.
-
-**Problem 2**: In symexec, different branches have different `memgen` values but share the persistent fact set. Branch A writes `!mem 0 gen5 0xAA`, branch B writes `!mem 0 gen5 0xBB` — collision. Persistent facts are branch-global in current symexec, not branch-local.
-
-**Problem 3**: No way to "uncommit" persistent facts on symexec backtrack. The `undoMutate` log supports `TYPE=1` (persistent fact added) by removing it, but this contradicts the "persistent = never removed" semantics.
-
-**Verdict**: Fundamentally incompatible with symexec's mutation/undo model.
-
-### Option D: FFI Side-Effect Map
-
-Memory lives entirely in a JavaScript `Map` on the state object. FFI predicates read/write it.
-
-```javascript
-state.memory = new Map();  // offset → Uint8Array (or BigInt)
-```
-
-**MSTORE**: FFI mutates `state.memory.set(offset, value)`.
-**MLOAD**: FFI queries `state.memory.get(offset)` or returns 0.
-
-**Problem 1 — Breaks proof terms**: No linear logic witness for memory operations. Memory changes are invisible to the proof tree. This undermines CALC's core value proposition (proofs as certificates).
-
-**Problem 2 — Symexec undo**: `undoMutate` must save/restore the Map. Need a separate undo log for memory. Map deep-copy on each branch = O(N) per branch.
-
-**Problem 3 — No symbolic reasoning**: If offset is a metavariable, FFI can't compute. No path forward to symbolic memory analysis.
-
-**When it makes sense**: As an internal optimization behind Option A. The write-log term is the "official" representation; an FFI cache (`state._memCache`) accelerates concrete lookups.
-
-### Option E: Persistent Map with Versioning (Functional Map)
-
-Memory as a **persistent** (immutable, structural-sharing) data structure in the Store.
-
-```
-mem: bin -> type.
-% Where the term is a hash-consed balanced tree / HAMT
-```
-
-Write produces a new root; old root still accessible. Like Clojure's persistent vectors or Ethereum's Merkle-Patricia trie.
-
-**Problem**: The content-addressed Store doesn't support efficient tree structures natively. Would need to implement a persistent map inside the Store — significant complexity. Essentially reimplementing hevm's approach inside CALC's term language.
-
-**When it makes sense**: If read performance on large memories becomes critical. The write-log's O(W) reads are fine for <1000 writes. For contracts with 10K+ memory operations, a persistent map would give O(log N) reads.
-
-## Comparison Matrix
-
-| | A: Write-Log | B: Per-Cell | C: Gen Counters | D: FFI Map | E: Persistent Map |
-|---|---|---|---|---|---|
-| **ILL semantics** | Clean | Clean | Broken (symexec) | None | Clean |
-| **Engine changes** | None | Index needed | N/A | Undo log | Store extension |
-| **Write cost** | O(1) | O(N) match | O(1) | O(1) | O(log N) |
-| **Read cost** | O(W) | O(N) match | O(W) + ordering | O(1) | O(log N) |
-| **Symexec undo** | 1 fact | N facts | Broken | Map copy | 1 fact |
-| **Non-aligned** | FFI handles | Complex | FFI handles | FFI handles | FFI handles |
-| **Zero-init** | FFI default | Two rules | FFI default | Map default | FFI default |
-| **Symbolic offsets** | Future (abstract term) | Matching fails | N/A | Impossible | Future |
-| **Content sharing** | Same writes = same hash | Per-fact | N/A | N/A | Same structure = same hash |
-| **Complexity** | ~150 LOC FFI | ~50 LOC rules + engine | N/A | ~50 LOC FFI | ~500 LOC Store |
-| **First-write** | No problem | Branching risk | No problem | No problem | No problem |
-
-## Recommendation: Option A (Write-Log Term)
-
-**Rationale**:
-
-1. **Zero engine changes** — standard linear fact + persistent FFI predicates. No new indexing, no new matching strategies. The forward engine sees `mem M` as one more linear fact.
-
-2. **Clean undo** — symexec restores a single hash. Current `undoMutate` already handles this.
-
-3. **Content-addressed sharing** — identical write sequences across symexec branches share the same Store hash. Reduces memory and improves cycle detection.
-
-4. **Separation of concerns** — ILL rules express control flow (which opcode fires, what stack effects occur). FFI handles byte-level reconstruction (overlap detection, big-endian encoding). Each layer does one thing.
-
-5. **No first-write problem** — `empty_mem` is the initial state. FFI returns 0 for unwritten offsets.
-
-6. **Path to symbolic** — when THY_0009 (symbolic arithmetic) is implemented, `mem_read` can return abstract `ReadWord(sym_offset, mem)` terms instead of failing on symbolic offsets.
-
-7. **Suckless** — minimal code, no special cases, composes with existing machinery.
-
-**Trade-off**: O(W) reads for W writes in the chain. Acceptable for typical contracts (W < 1000). Mitigations: (a) early termination when all 32 bytes covered, (b) exact-match fast path, (c) optional FFI cache for repeated reads at same offset.
-
-## Implementation Plan
-
-### TODO_0049.Stage_1 — Core FFI (mem_write, mem_read)
-
-Register three new predicate tags: `write`, `write8`, `empty_mem`.
-
-**`lib/engine/ffi/memory.js`** (~120 LOC):
-
-```javascript
-// mem_write(offset, value, oldMem, newMem) — mode: + + + -
-//   newMem = Store.put({tag:'write', children:[offset, value, oldMem]})
-
-// mem_write8(offset, byte, oldMem, newMem) — mode: + + + -
-//   newMem = Store.put({tag:'write8', children:[offset, byte, oldMem]})
-
-// mem_read(offset, memTerm, value) — mode: + + -
-//   Traverse write chain, reconstruct 32-byte value, handle overlaps.
-//   Return 0 for unwritten bytes.
-
-// mem_size(memTerm, size) — mode: + -
-//   Traverse chain, find max(offset + write_size). For MSIZE opcode.
-```
-
-Register in `lib/engine/ffi/index.js`:
-```javascript
-mem_write:  { ffi: 'memory.mem_write',  mode: '+ + + -' },
-mem_write8: { ffi: 'memory.mem_write8', mode: '+ + + -' },
-mem_read:   { ffi: 'memory.mem_read',   mode: '+ + -' },
-mem_size:   { ffi: 'memory.mem_size',   mode: '+ -' },
-```
-
-### TODO_0049.Stage_2 — EVM Rules (MLOAD, MSTORE, MSTORE8, MSIZE)
-
-Add to `evm.ill`:
-
-```
-% Memory types
-mem: bin -> type.
-
-% MLOAD (0x51): read 32 bytes at offset
-evm/mload:
-  pc PC * code PC 0x51 * !inc PC PC' *
-  sh (s SH) * stack SH Offset *
-  mem M
-  -o {
-    exists V. (
-      code PC 0x51 * pc PC' *
-      mem M * sh (s SH) * stack SH V *
-      !mem_read Offset M V)
-  }.
-
-% MSTORE (0x52): write 32-byte word at offset
 evm/mstore:
   pc PC * code PC 0x52 * !inc PC PC' *
   sh (s (s SH)) *
   stack (s SH) Offset * stack SH Value *
   mem M
   -o {
-    exists M'. (
-      code PC 0x52 * pc PC' *
-      sh SH * mem M' *
-      !mem_write Offset Value M M')
+    code PC 0x52 * pc PC' * sh SH *
+    mem (write Offset Value M)
   }.
+```
 
-% MSTORE8 (0x53): write 1 byte at offset
+Just wraps a `write` constructor. Content-addressed: same write sequence = same hash across symexec branches.
+
+#### MLOAD — loli continuation + recursive traversal
+
+```
+evm/mload:
+  pc PC * code PC 0x51 * !inc PC PC' *
+  sh (s SH) * stack SH Offset *
+  mem M
+  -o {
+    code PC 0x51 *
+    mem_reading Offset M M *
+    (mem_read_done V -o {
+      pc PC' * sh (s SH) * stack SH V * mem M
+    })
+  }.
+```
+
+Key design: `pc PC'` is NOT produced yet — it's captured in the loli. No opcode rule can fire during traversal (they all need `pc`). Only `mem_read/*` rules match.
+
+#### Traversal Rules — McCarthy's Axioms as ILL
+
+```
+% Axiom 1: select(store(a, i, v), i) = v
+mem_read/hit:
+  mem_reading Offset (write Offset V Rest) OrigMem
+  -o { mem_read_done V }.
+
+% Axiom 2: i ≠ j ⟹ select(store(a, i, v), j) = select(a, j)
+mem_read/miss:
+  mem_reading Offset (write Other V Rest) OrigMem *
+  !neq Offset Other
+  -o { mem_reading Offset Rest OrigMem }.
+
+% Zero-initialization: select(empty, i) = 0
+mem_read/zero:
+  mem_reading Offset empty_mem OrigMem
+  -o { mem_read_done 0 }.
+```
+
+**These three rules ARE the array theory.** No FFI, no engine changes. Just the axioms expressed as ILL forward rules.
+
+#### How Unification Handles This
+
+`mem_read/hit` has pattern `mem_reading Offset (write Offset V Rest) OrigMem`. Against a state fact like `mem_reading(0x40, write(0x40, 0x42, empty_mem), full_mem)`:
+
+1. Top-level: tag `mem_reading`, arity 3 — match
+2. Child 0: `Offset` binds to `0x40`
+3. Child 1: unify with `write(Offset, V, Rest)` — tag `write`, arity 3, decompose:
+   - `Offset` (already bound to `0x40`) vs `0x40` → equal ✓
+   - `V` binds to `0x42`
+   - `Rest` binds to `empty_mem`
+4. Child 2: `OrigMem` binds to `full_mem`
+
+This is standard structural unification on content-addressed terms (`unify.js:322-335`). No extensions needed.
+
+#### Mutual Exclusion — No Spurious Branching
+
+At each traversal step, exactly one of {hit, miss, zero} can fire:
+
+- **hit**: unification succeeds iff outermost write offset = read offset (same metavar `Offset` appears in both positions — non-linear pattern, checked by unification)
+- **miss**: unification succeeds for any `write` node, but `!neq Offset Other` fails when offsets are equal (because `Other` binds to the same value as `Offset`)
+- **zero**: only matches `empty_mem` (different tag than `write` — structural mismatch excludes hit/miss)
+
+In symexec, `findAllMatches` tries all three rules but only one succeeds per state. Zero spurious branches.
+
+#### Worked Example
+
+```
+% Initial: mem empty_mem * pc 0 * ... (some bytecode)
+
+Step 1: PUSH1 0x42 → stack 0 0x42
+Step 2: PUSH1 0x00 → stack 1 0x00
+Step 3: MSTORE → mem (write 0x00 0x42 empty_mem)
+
+Step 4: PUSH1 0xBB → stack 0 0xBB
+Step 5: PUSH1 0x20 → stack 1 0x20
+Step 6: MSTORE → mem (write 0x20 0xBB (write 0x00 0x42 empty_mem))
+
+Step 7: PUSH1 0x00 → stack 0 0x00
+Step 8: MLOAD fires:
+  consumes: mem (write 0x20 0xBB (write 0x00 0x42 empty_mem)), stack 0 0x00
+  produces: mem_reading 0x00 (write 0x20 0xBB ...) (write 0x20 0xBB ...)
+            loli: (mem_read_done V -o { pc PC' * sh (s SH) * stack SH V * mem (write 0x20 ...) })
+
+Step 9: mem_read/miss fires (0x00 ≠ 0x20):
+  consumes: mem_reading 0x00 (write 0x20 0xBB (write 0x00 0x42 empty_mem)) OrigMem
+  produces: mem_reading 0x00 (write 0x00 0x42 empty_mem) OrigMem
+
+Step 10: mem_read/hit fires (0x00 = 0x00):
+  consumes: mem_reading 0x00 (write 0x00 0x42 empty_mem) OrigMem
+  produces: mem_read_done 0x42
+
+Step 11: loli fires:
+  consumes: mem_read_done 0x42
+  produces: pc PC' * sh (s SH) * stack SH 0x42 * mem (write 0x20 0xBB (write 0x00 0x42 empty_mem))
+```
+
+3 traversal steps for W=2 writes. Original memory restored via loli. Opcode dispatch resumes.
+
+#### MSTORE8
+
+```
 evm/mstore8:
   pc PC * code PC 0x53 * !inc PC PC' *
   sh (s (s SH)) *
   stack (s SH) Offset * stack SH Value *
   mem M
   -o {
-    exists M'. (
-      code PC 0x53 * pc PC' *
-      sh SH * mem M' *
-      !mem_write8 Offset Value M M')
-  }.
-
-% MSIZE (0x59): current memory size in bytes (rounded up to 32)
-evm/msize:
-  pc PC * code PC 0x59 * !inc PC PC' *
-  sh SH * mem M
-  -o {
-    exists S. (
-      code PC 0x59 * pc PC' *
-      mem M * sh (s SH) * stack SH S *
-      !mem_size M S)
+    exists Byte. (
+      code PC 0x53 * pc PC' * sh SH *
+      mem (write8 Offset Byte M) *
+      !mod Value 0x100 Byte)
   }.
 ```
+
+Additional traversal rule for `write8` nodes (skipped during word-level reads — see Non-Aligned Access below):
+
+```
+mem_read/skip8:
+  mem_reading Offset (write8 Addr Byte Rest) OrigMem
+  -o { mem_reading Offset Rest OrigMem }.
+```
+
+This skips `write8` entries during aligned 32-byte reads. Full byte-level reconstruction (where `write8` contributes a single byte to the result) is a Stage 2 extension.
+
+### Option B: Per-Cell Linear Facts
+
+One linear fact per memory cell.
+
+**First-write problem**: No fact exists for unwritten locations. Needs either `mstore_init` + `mstore_update` (two rules → 2^N branching in symexec) or negation-as-failure (not in ILL).
+
+**Matching complexity**: O(N) scan per MLOAD/MSTORE for N active cells. Needs engine-level secondary indexing.
+
+**Non-aligned access**: MSTORE(1, V) spans two word-aligned regions. Requires consuming and splitting two `mem32` facts.
+
+**Verdict**: Correct theory but engineering problems (branching, indexing, first-write) make it impractical without engine extensions.
+
+### Option C: Generation Counters
+
+Persistent `!mem Offset Gen Value` facts with monotonic counter.
+
+**Verdict**: Fundamentally incompatible with symexec's mutation/undo. Persistent facts are branch-global; different branches produce conflicting versions at same gen. See detailed analysis in previous revision.
+
+### Option D: FFI Side-Effect Map
+
+Memory as JavaScript `Map` on state object. FFI mutates it.
+
+**Verdict**: Breaks proof terms (memory invisible to derivation tree). Breaks symexec undo (need separate undo log). No path to symbolic reasoning. Fast but unprincipled — the memory semantics live outside the logic.
+
+### Option E: Write-Log with FFI Traversal
+
+Same write-log term as Option A, but read traversal done in FFI (`mem_read` JavaScript function) instead of forward rules.
+
+**Verdict**: Correct representation but the traversal — which IS McCarthy's array axioms — is hidden in FFI. The axioms should be rules, not code. FFI is justified for irreducibly computational operations (keccak256, bigint arithmetic) but not for axiom application that ILL can express directly. See Design Philosophy above.
+
+**As optimization**: Option E is a valid fast-path for Option A. Like `!plus` has clause definitions (`plus/z`, `plus/s`) but FFI evaluates in O(1). Same principle: define via rules, accelerate via FFI when profiling shows it matters.
+
+## Comparison Matrix
+
+| | A: Pure Rules | B: Per-Cell | C: Gen Counters | D: FFI Map | E: FFI Traversal |
+|---|---|---|---|---|---|
+| **Theory faithful** | Yes | Yes | No (symexec) | No | Partially |
+| **Engine changes** | None | Index needed | N/A | Undo log | None |
+| **Write** | O(1) | O(N) match | O(1) | O(1) | O(1) |
+| **Read** | O(W) rule steps | O(N) match | Broken | O(1) | O(W) in FFI |
+| **No spurious branching** | Yes | No (first-write) | N/A | N/A | Yes |
+| **Proof witness** | Every step | Every step | N/A | None | Single step |
+| **Symexec undo** | 1 fact | N facts | Broken | Map copy | 1 fact |
+| **Symbolic offsets** | Sound stuck | Matching fails | N/A | Impossible | FFI fails |
+| **Content sharing** | Yes | Per-fact | N/A | N/A | Yes |
+| **New FFI predicates** | 0 | 0 | N/A | 3+ | 3+ |
+
+## Recommendation: Option A (Pure ILL Rules)
+
+The three `mem_read` rules encode McCarthy's select/store axioms directly in ILL. Memory write is a term constructor. Memory read is a recursive rule traversal gated by a loli continuation — the same established pattern as SHA3's `concatMemory`.
+
+**Why this fits CALC's philosophy**:
+
+1. **Rules ARE the semantics** — each traversal step is a valid ILL inference. The execution tree shows how the read resolved, not just the result.
+
+2. **Zero new machinery** — no FFI, no engine changes, no new indexing. Uses only structural unification (already in `unify.js`), `!neq` (already FFI-accelerated), and loli continuations (already used by SHA3/CALLDATACOPY).
+
+3. **Content-addressed sharing** — identical write sequences across branches share the same Store hash. The `mem (write 0x40 0x80 empty_mem)` term for the Solidity free-memory-pointer initialization is created once, shared across all branches.
+
+4. **Sound symbolic behavior** — when offsets are symbolic, the traversal gets stuck (neither hit nor miss can fire). This is the correct approximation: the logic can't determine the read result without knowing the offset.
+
+5. **Optimization path** — if profiling shows reads are slow, add FFI `mem_read` as a fast-path (like `!plus` FFI). The rules remain the definition; the FFI is the acceleration. No theory change needed.
+
+## Symbolic Computation Analysis
+
+### Concrete Offsets (typical solc code)
+
+All offsets are ground `binlit` values. Unification resolves hit/miss deterministically. `!neq` evaluates in O(1) via FFI. Each MLOAD takes W forward steps.
+
+### Symbolic MSTORE Offset
+
+`write(sym_offset, V, M)` wraps fine — the symbolic offset is just a term in the write-log. O(1). No issue.
+
+### Concrete Read, Symbolic Write in Chain
+
+Reading at `0x40`, chain has `write(calldataload(4), V, ...)`:
+
+- `mem_read/hit`: unify `0x40 ?= calldataload(4)`. Different tags → fails.
+- `mem_read/miss`: `!neq 0x40 calldataload(4)`. `neq` FFI gets non-ground input → `{success: false}`. Fails.
+- Neither fires → **stuck leaf**.
+
+This is the sound approximation: can't determine alias without knowing the symbolic offset's value.
+
+### Symbolic Read Offset
+
+Reading with `calldataload(4)` as offset, chain has `write(0x40, V, ...)`:
+
+- `mem_read/hit`: unify `calldataload(4) ?= 0x40`. Structural mismatch → fails.
+- `mem_read/miss`: `!neq calldataload(4) 0x40`. Non-ground → fails.
+- **Stuck leaf**.
+
+Same sound approximation.
+
+### Free Metavar as Offset (eigenvariable)
+
+If the stack value is genuinely a free metavar `X` (from existential introduction):
+
+- `mem_read/hit`: unify `X ?= 0x40`. X is a metavar → **binds X = 0x40**. Rule fires.
+
+This is actually correct: it means "this execution path assumes the read offset is 0x40." Each write in the chain produces one such binding, and only the first-matched one fires (committed choice in `run()`) or all are explored (symexec). If symexec tries all writes, each produces a branch where the metavar is bound to that write's offset. This is **fork on possible values** — emerging naturally from the logic, not from an explicit fork mechanism.
+
+### Symbolic Value in Write
+
+`write(0x40, sym_value, M)`. Reading at 0x40:
+
+- `mem_read/hit` succeeds (offsets match), produces `mem_read_done sym_value`.
+- The symbolic value flows through as a proof term. Works perfectly.
+
+### Summary Table
+
+| Read offset | Write offset | Behavior | Correct? |
+|-------------|-------------|----------|----------|
+| Concrete | Concrete | Normal traversal | Yes |
+| Concrete | Symbolic | Stuck leaf (can't determine alias) | Yes (sound) |
+| Symbolic expr | Concrete | Stuck leaf (can't determine alias) | Yes (sound) |
+| Free metavar | Concrete | Binds metavar — fork on values | Yes (complete) |
+| Any | Any (value symbolic) | Value flows through as term | Yes |
+
+## Performance Analysis
+
+### Cost per MLOAD
+
+Each MLOAD takes **W forward steps** where W = writes in the chain. Each step = one `findAllMatches` + one `applyMatch`.
+
+| W (writes) | Steps per MLOAD | At ~10μs/step | Context |
+|-----------|----------------|---------------|---------|
+| 1 | 2 (miss/zero or hit) | ~20μs | Free memory pointer read (`0x40`) — most common solc MLOAD |
+| 5-10 | 6-11 | 50-110μs | Simple function |
+| 20-50 | 21-51 | 200-510μs | Medium contract |
+| 100-500 | 101-501 | 1-5ms | Heavy contract |
+| 1000+ | 1001+ | 10ms+ | Pathological (needs FFI fast-path) |
+
+### Comparison with FFI Approach
+
+| | Rule-based (Option A) | FFI-based (Option E) |
+|---|---|---|
+| Cost per MLOAD | W × ~10μs (rule match) | 1 × 10μs + W × ~50ns (Store.get) |
+| Constant factor | ~100× higher | Baseline |
+| For W=1 (free mem ptr) | ~20μs | ~10μs |
+| For W=10 (simple fn) | ~110μs | ~11μs |
+| For W=100 (heavy) | ~1ms | ~15μs |
+| Proof witness | Every step visible | Single opaque step |
+
+The rule-based approach is ~10× slower for typical W. But:
+
+1. **CALC's overall symexec is I/O-bound on rule matching, not memory reads.** The multisig benchmark (no memory) takes ~8ms for 124 nodes. Memory reads add intermediate nodes to the tree, but these are linear chains (no branching), so the tree stays tractable.
+
+2. **solc's free-memory-pointer pattern**: `PUSH1 0x40 MLOAD` reads offset 0x40, written once at init. W=1, cost = 2 steps. This is the most common MLOAD in all solc output.
+
+3. **If profiling shows reads dominate**: add FFI `mem_read` as a fast-path. The rules remain the definition.
+
+### State Size
+
+One `mem` fact in `state.linear` regardless of memory size. Write-log nodes accumulate in Store but are content-addressed (shared across branches).
+
+### Symexec Tree Impact
+
+Each MLOAD adds W intermediate `mem_reading` nodes. These are linear chains (no branching). For a contract with R reads and average chain length W:
+
+- Additional nodes: R × W
+- Additional branching: 0
+
+For a contract with 20 MLOADs and W=10: 200 extra nodes. On a tree of ~200 nodes (current multisig), this roughly doubles the tree size but adds zero branches.
+
+## Non-Aligned Access
+
+The aligned rules (`mem_read/hit` checks exact offset match) cover ~99% of solc output. Non-aligned overlap (MLOAD at offset 1 after MSTORE at offset 0) requires byte-level reconstruction.
+
+### Stage 1: Aligned Only
+
+The three rules above handle aligned access correctly. Non-aligned reads that don't exactly match any write offset traverse the entire chain and return 0 — incorrect for overlapping writes but sufficient for solc code.
+
+Document the limitation. Detect it: if `mem_read/zero` fires but the write chain contained writes whose ranges overlap the read range, log a warning.
+
+### Stage 2: Byte-Level Reconstruction (future)
+
+Add overlap detection rule:
+
+```
+% Overlap: write at Other partially covers read at Offset
+mem_read/overlap:
+  mem_reading Offset (write Other V Rest) OrigMem *
+  !neq Offset Other *
+  !overlaps Offset 32 Other 32     % ranges [Offset,Offset+32) and [Other,Other+32) intersect
+  -o {
+    % byte-level merge — complex multi-rule expansion
+    ...
+  }.
+```
+
+The `!overlaps` predicate is decidable arithmetic (FFI). The byte-level merge requires extracting individual bytes from the write value and merging them into the partial result. This is expressible as ILL rules but verbose (~30 lines). Defer to when a real contract needs it.
+
+### Alternative: Byte-Granularity Write-Log
+
+Store writes at byte level: MSTORE produces 32 `write8` entries. MLOAD reads 32 bytes individually.
+
+- MSTORE cost: 32 `Store.put` calls (still O(1) per entry)
+- MLOAD cost: 32 × W traversals per byte position = O(32W) steps
+
+This handles overlap naturally but is 32× more expensive. Not worth it for the aligned-access common case. Keep as a design option if non-aligned access becomes critical.
+
+## SHA3 Migration
+
+Current SHA3 uses `concatMemory` to iterate over `memory Pos Size V` facts. With write-log memory, SHA3 needs to read a byte range from the log.
+
+### Pure-Rule Approach
+
+SHA3 produces a range-reading traversal that collects bytes, then the loli fires with `sha3(collected)` as an opaque symbolic term:
+
+```
+evm/sha3:
+  pc PC * code PC 0x20 * !inc PC PC' *
+  sh (s (s SH)) * stack (s SH) From * stack SH Size *
+  mem M
+  -o {
+    exists To. (
+      code PC 0x20 *
+      sha3_reading From To M 0 *
+      !plus From Size To *
+      (sha3_read_done Z -o {
+        pc PC' * sh (s SH) * stack SH (sha3 Z) * mem M
+      })
+    )
+  }.
+
+% SHA3 range read — collect bytes via MLOAD-like traversal per byte position
+% (simplified — actual implementation iterates byte positions)
+sha3_reading/done:
+  sha3_reading Pos Pos OrigMem Acc
+  -o { sha3_read_done Acc }.
+
+sha3_reading/step:
+  sha3_reading Pos To OrigMem Acc *
+  !neq Pos To
+  -o {
+    exists Pos'. (
+      sha3_byte_reading Pos To OrigMem OrigMem Acc *
+      !inc Pos Pos')
+  }.
+```
+
+Each byte position triggers a sub-traversal of the write-log to find the byte value at that position. Then `sha3_byte_reading` rules traverse the chain (like `mem_read`) to find which write covers byte `Pos`.
+
+This is O(Size × W) rule steps. For SHA3(64 bytes, W=10): ~640 steps. Expensive but pure.
+
+### Pragmatic Note
+
+The hash computation (`keccak256`) cannot be expressed in ILL — it's irreducibly computational. The current approach uses an opaque `sha3(Z)` term (symbolic hash). If concrete hash values are ever needed (e.g., for storage slot computation in solc), keccak256 FFI would be justified — it's a cryptographic primitive, not an axiom.
+
+## Memory Across CALL Frames
+
+Each CALL creates fresh memory:
+
+```
+% CALL: save caller memory, fresh memory for callee
+evm/call:
+  ... mem M_caller ...
+  -o {
+    mem empty_mem * saved_mem M_caller * ...
+  }.
+
+% RETURN: restore caller memory
+evm/return:
+  ... mem M_callee * saved_mem M_caller ...
+  -o {
+    mem M_caller * ...
+  }.
+```
+
+`saved_mem` is a linear fact — consumed exactly once on RETURN. The caller's write-log is preserved as a content-addressed term in the Store. Clean and compositional.
+
+## Connections to Theory
+
+### McCarthy's Axioms = ILL Forward Rules
+
+| McCarthy Axiom | ILL Rule | Meaning |
+|---------------|----------|---------|
+| `select(store(a, i, v), i) = v` | `mem_read/hit` | Read what you wrote |
+| `i ≠ j ⟹ select(store(a, i, v), j) = select(a, j)` | `mem_read/miss` | Reads at other indices unaffected |
+| `select(empty, i) = 0` | `mem_read/zero` | Zero initialization |
+
+The three rules are a direct encoding. No interpretation gap.
+
+### Separation Logic Correspondence (RES_0061 §9)
+
+| Linear Logic | Separation Logic | In CALC |
+|-------------|-----------------|---------|
+| `⊗` (tensor) | `*` (separating conjunction) | `mem M * stack N V` = disjoint resources |
+| `⊸` (lollipop) | `-*` (magic wand) | `mem M ⊸ mem (write O V M)` = memory update |
+| `1` (unit) | `emp` (empty heap) | `empty_mem` |
+| No contraction | Disjointness | Each `mem` fact exists once = no aliasing |
+
+### Linear Logic Advantage Over SMT-Based Tools
+
+hevm/halmos/Mythril/Manticore all struggle with memory aliasing: "does symbolic address A refer to the same cell as B?" This requires SMT reasoning.
+
+CALC's `mem M` exists exactly once (linearity). The write-log is totally ordered. The question "which write covers this byte?" is a local traversal, not a global constraint. Aliasing is impossible by construction — separation logic's frame rule is structural in ILL.
+
+### Proof Witness Quality
+
+Option A produces a proof tree where every memory read step is visible:
+
+```
+evm/mload → mem_read/miss → mem_read/miss → mem_read/hit → loli fires
+```
+
+Each step is a valid ILL inference. The L1 kernel can verify the full derivation. Compare with FFI-based reads where the traversal is a single opaque step — the proof certificate says "FFI computed V" but not how.
+
+## Implementation Plan
+
+### TODO_0049.Stage_1 — Core Rules
+
+Add to `evm.ill`:
+- Type declarations: `mem`, `mem_reading`, `mem_read_done`, `write`, `write8`, `empty_mem`
+- Rules: `evm/mstore`, `evm/mstore8`, `evm/mload`, `evm/msize`
+- Traversal: `mem_read/hit`, `mem_read/miss`, `mem_read/zero`, `mem_read/skip8`
+
+No FFI. No engine changes. ~30 lines of `.ill` rules.
 
 Initial state in query files: `mem empty_mem *`
 
-### TODO_0049.Stage_3 — Migrate SHA3 and CALLDATACOPY
+### TODO_0049.Stage_2 — Migrate SHA3 and CALLDATACOPY
 
-Replace the current `concatMemory`/`unblockConcatMemory` blocking pattern with direct FFI:
+Replace `concatMemory`/`unblockConcatMemory` with write-log-aware range reading. SHA3 iterates byte positions; each triggers a sub-traversal. CALLDATACOPY wraps calldata bytes as `write8` entries in the log (or a single `calldatacopy` term node if byte-level is too slow).
 
-```
-% SHA3: hash memory range [Offset, Offset+Size)
-sha3_mem: bin -> bin -> bin -> bin -> type.  % FFI: sha3_mem Offset Size Mem Result
-
-evm/sha3:
-  pc PC * code PC 0x20 * !inc PC PC' *
-  sh (s (s SH)) * stack (s SH) Offset * stack SH Size *
-  mem M
-  -o {
-    exists V. (
-      code PC 0x20 * pc PC' *
-      mem M * sh (s SH) * stack SH V *
-      !sha3_mem Offset Size M V)
-  }.
-```
-
-FFI `sha3_mem` reads bytes `[Offset, Offset+Size)` from the write-log and either:
-- Computes concrete keccak256 if all bytes are ground
-- Returns symbolic `sha3(bytes)` term if any byte is symbolic
-
-Similarly, CALLDATACOPY writes calldata bytes into the memory log:
-
-```
-calldatacopy_mem: bin -> bin -> bin -> bin -> bin -> bin -> type.
-% FFI: calldatacopy_mem MemStart DataStart Length CalldataTerm OldMem NewMem
-
-evm/calldatacopy:
-  pc PC * code PC 0x37 * !inc PC PC' *
-  sh (s (s (s SH))) *
-  stack (s (s SH)) MemStart *
-  stack (s SH) DataStart *
-  stack SH Length *
-  mem M * calldata_blob CD
-  -o {
-    exists M'. (
-      code PC 0x37 * pc PC' *
-      sh SH * mem M' * calldata_blob CD *
-      !calldatacopy_mem MemStart DataStart Length CD M M')
-  }.
-```
-
-This eliminates the iterative `concatMemory` loop and the loli-blocking pattern entirely. Each memory-touching opcode becomes a single rule + FFI call.
-
-### TODO_0049.Stage_4 — Tests
+### TODO_0049.Stage_3 — Tests
 
 ```
 tests/engine/memory.test.js:
   - MSTORE then MLOAD at same offset → correct value
   - MSTORE then MLOAD at different offset → 0
   - Two MSTOREs then MLOAD → latest value wins
-  - Non-aligned overlap: MSTORE(0, X), MSTORE(1, Y), MLOAD(0) → correct merge
-  - MSTORE8 then MLOAD → byte placed correctly
+  - MSTORE8 skip during word-level MLOAD
   - Zero initialization: MLOAD without prior MSTORE → 0
-  - MSIZE after expansion
-  - SHA3 via mem_read (replaces concatMemory tests)
-  - Symexec with memory: branching preserves/restores mem correctly
+  - Symexec branching: memory preserved/restored correctly on backtrack
+  - Symbolic offset: MLOAD with symbolic offset → stuck leaf
+  - Loli gating: no opcode fires during mem_read traversal
 ```
 
-### TODO_0049.Stage_5 — Benchmark (solc contract)
+### TODO_0049.Stage_4 — Benchmark (solc contract)
 
-After memory works, compile a simple Solidity contract with `solc --bin`:
+Compile simple Solidity contract with `solc --bin`. Run through CALC symexec. Compare tree size and timing with hevm.
 
-```solidity
-contract Simple {
-    function add(uint a, uint b) public pure returns (uint) {
-        return a + b;
-    }
-}
-```
+### TODO_0049.Stage_5 — FFI Fast-Path (if needed)
 
-This uses MLOAD/MSTORE for ABI decoding. Run through CALC symexec and compare with hevm.
+If profiling shows memory reads dominate execution time, add FFI `mem_read` that traverses the write-log in JavaScript (O(W) at ~50ns/step instead of ~10μs/step). The rules remain the definition. The FFI is registered as an acceleration for `mem_read/hit + mem_read/miss + mem_read/zero`, analogous to how `!plus` FFI accelerates `plus/z + plus/s`.
 
-## Edge Cases
+### TODO_0049.Stage_6 — Non-Aligned Access (if needed)
 
-### Non-Aligned Overlapping Writes
-
-```
-MSTORE(0, 0xAAAA...AA)   → 32 bytes of 0xAA at [0..31]
-MSTORE(16, 0xBBBB...BB)  → 32 bytes of 0xBB at [16..47]
-MLOAD(0) → bytes [0..15] from first write, bytes [16..31] from second write
-```
-
-The read algorithm handles this: traverse from newest write, fill bytes, most recent write wins for each byte position.
-
-### MSTORE8 + MLOAD Interaction
-
-```
-MSTORE(0, 0)              → 32 zero bytes at [0..31]
-MSTORE8(31, 0xFF)         → byte 0xFF at [31]
-MLOAD(0) → 0x00...00FF    → 255
-```
-
-Write chain: `write8(31, 0xFF, write(0, 0, empty_mem))`. Read traverses: byte 31 covered by `write8`, bytes [0..30] covered by `write(0, 0, ...)`.
-
-### Symbolic Offsets
-
-When `Offset` is a metavariable (not ground):
-
-- **Stage 1 (current plan)**: `mem_read` returns `{success: false, reason: 'symbolic_offset'}`. The forward rule fails to fire. Symexec records a stuck leaf. This is the halmos approach — practical for solc code where offsets are almost always concrete.
-
-- **Stage 2 (future, connects to THY_0009)**: Return an abstract `ReadWord(sym_offset, mem_snapshot)` term as the value. The term is content-addressed and can participate in later equality/inequality reasoning. This is the hevm approach.
-
-- **Stage 3 (future, connects to RES_0049)**: Fork on possible concrete values via constraint analysis. Only viable with a constraint propagation system.
-
-### Memory Across CALL Frames
-
-Each CALL creates fresh memory. With write-log:
-
-```
-% Before CALL:
-%   mem M_caller
-
-% CALL fires:
-%   consume: mem M_caller
-%   produce: mem empty_mem * saved_mem M_caller
-
-% Callee executes with fresh memory...
-
-% RETURN fires:
-%   consume: mem M_callee * saved_mem M_caller
-%   produce: mem M_caller * returndata (extract M_callee ret_offset ret_size)
-```
-
-The caller's memory is preserved as a linear `saved_mem` fact, restored on return. Clean and compositional.
-
-## Performance Analysis
-
-### Write Performance
-
-O(1) — one `Store.put` to create a `write` node. The content-addressed Store deduplicates identical writes automatically.
-
-### Read Performance
-
-| Scenario | Cost | Typical for solc |
-|----------|------|-----------------|
-| Exact aligned match (most common) | O(1) per match + O(W) chain traversal worst case | Yes — free memory pointer at 0x40, ABI slots |
-| Non-overlapping different offset | O(W) traversal to not-found, then zero | Rare |
-| Overlapping writes | O(W * 32) byte reconstruction | Very rare |
-| All 32 bytes covered early | O(K) where K = writes until coverage | Common |
-
-**Typical solc pattern**: 5-20 memory operations per function. Write-log length W ≈ 5-20. Read cost ≈ O(5-20) traversal steps. At ~50ns per Store.get, this is ~250ns-1μs per MLOAD. Negligible compared to rule matching (~10μs).
-
-### State Size
-
-One `mem` fact in `state.linear` regardless of memory size. No memory-proportional state growth. Write-log nodes accumulate in Store but are content-addressed (shared across branches).
-
-### Symexec Branching
-
-**Zero spurious branches from memory operations.** Each MLOAD/MSTORE fires exactly one rule (the `evm/mload` or `evm/mstore` rule). No two-rule ambiguity, no negation-as-failure needed.
-
-Compare with Option B (per-cell): `mstore_init` + `mstore_update` = 2 rules per MSTORE = potential 2^N branching in symexec for N MSTOREs.
-
-### Scalability
-
-- **1K writes** (medium contract): O(1K) reads worst case, ~50μs per MLOAD. Fine.
-- **10K writes** (complex contract): O(10K) reads = ~500μs per MLOAD. Might need optimization.
-- **Optimization path**: periodic "compaction" — flatten concrete portions of the write-log to a `ConcreteBuf` node. FFI reads a `ConcreteBuf` in O(1) via direct byte access. This is exactly hevm's `simplifyReads` strategy.
-
-## Connections to Theory
-
-### Separation Logic Correspondence (RES_0061 §9)
-
-| CALC | Separation Logic | Meaning |
-|------|-----------------|---------|
-| `mem M₁ ⊗ mem M₂` | Not possible — single `mem` | Memory is one resource, not split |
-| `mem M ⊸ mem M'` | `{P} MSTORE {Q}` | Memory update as linear transformation |
-| `mem M ⊗ stack N V` | `M * (N ↦ V)` | Memory and stack are disjoint resources |
-| Content-addressed hash | Heap fingerprint | O(1) state equality |
-
-### Linear Logic Advantage (vs hevm/halmos)
-
-All other tools struggle with memory aliasing: "does symbolic address A refer to the same cell as symbolic address B?" This requires SMT reasoning (Z3 array theory or bitvector theory).
-
-CALC's linear fact `mem M` exists exactly once. There is no aliasing — the write-log is a totally-ordered sequence of writes. The only question is "which write covers this byte?", which is a local traversal, not a global constraint.
-
-**This is the theoretical core of why CALC's approach is sound**: linear logic's no-contraction rule means each memory cell is unique by construction. Separation logic's separating conjunction `*` = tensor `⊗` gives disjointness for free. See RES_0061 §12.
-
-### Proof Terms
-
-Each memory operation produces a proof term via the forward engine's derivation tree:
-
-```
-evm/mstore @ step 5:
-  consumed: [mem(write(0, 0xAA, empty)), stack(1, 0), stack(0, 0xAA), ...]
-  produced: [mem(write(0, 0xAA, write(0, 0xAA, empty))), ...]
-```
-
-This is a verifiable certificate: L1 kernel can check that the memory transformation was valid by replaying the FFI computation. The write-log term IS the proof witness for the memory state.
+Add `mem_read/overlap` rule with `!overlaps` arithmetic guard and byte-level merge rules. Only needed when a real contract requires non-aligned memory access.
 
 ## Open Questions
 
-1. **Tag registration**: Should `write`, `write8`, `empty_mem` be pre-registered tags (below `PRED_BOUNDARY`) or dynamic predicates? Pre-registered = faster matching; dynamic = cleaner separation. Recommendation: dynamic (they're only used inside `mem` terms, never as standalone predicates).
+1. **Tag registration**: `write`, `write8`, `empty_mem` should be dynamic predicate tags (above `PRED_BOUNDARY`). They're term constructors used inside `mem` arguments, not standalone predicates. Same status as `sha3`, `concat`, `s`, `e`.
 
-2. **Compaction strategy**: When to flatten the write-log? Options: (a) never (simplest), (b) after N writes (periodic), (c) on read miss (lazy). Start with (a), measure, add (b) if needed.
+2. **Gas for memory expansion**: Track as separate linear `memsize S` fact. MSTORE/MLOAD rules include `!mem_expand` persistent guard that computes new size and gas cost. Orthogonal to memory model.
 
-3. **Gas for memory expansion**: Track `msize` as a separate linear fact `memsize S`? Or compute dynamically from the write-log? Separate fact is cleaner — `mem_write` FFI also updates `memsize` if offset+32 exceeds current size.
+3. **MCOPY (EIP-5656)**: Add `copy(dst, src, len, prev)` term constructor. Read traversal handles `copy` nodes by reading from the source region of the same log. Expressible as rules.
 
-4. **MCOPY (EIP-5656)**: `copy(dst, src, len)` node in write-log. FFI `mem_read` resolves `copy` nodes by reading from the source region. Straightforward extension.
+4. **RETURNDATASIZE / RETURNDATACOPY**: Return data is a separate buffer. Model as `returndata RD` linear fact with similar write-log structure.
 
-5. **RETURNDATASIZE / RETURNDATACOPY**: Return data from CALL is a separate buffer, not part of `mem`. Model as `returndata RD` linear fact with similar write-log structure.
+5. **Compaction**: If write chains grow very long, add a `compact(ByteMap, prev)` term constructor that flattens concrete portions. Read traversal checks `compact` first (O(1) for covered bytes). This is hevm's `simplifyReads` strategy expressed as a term constructor.
