@@ -31,6 +31,17 @@ required_by: []
 - **Modification**: CALL replaced with SSTORE(fired=1) + STOP
 - **Opcodes used**: PUSH1, PUSH20, JUMP, JUMPDEST, CALLDATASIZE, CALLDATACOPY, GT, JUMPI, CALLDATALOAD, DUP1, DUP3, SLOAD, EXP, AND, OR, NOT, SWAP1, SSTORE, SHA3, LT, TIMESTAMP, SUB, CALLER, EQ, CALLVALUE, GASLIMIT, ISZERO, ADD, STOP, INVALID
 
+**Results (2026-02-24):**
+
+| Tool | Median | Notes |
+|------|--------|-------|
+| hevm 0.54.2 | ~44ms | Haskell + z3 solver |
+| CALC (warm) | ~8ms | 124 nodes, 11 leaves, depth 60 |
+
+**CALC is ~5x faster than hevm** on this 287-byte hand-crafted contract.
+
+Caveats: hevm does full SMT solving (z3) for path feasibility; CALC uses FFI arithmetic. hevm supports the full EVM; CALC only supports non-memory opcodes. Single contract, hand-crafted bytecode — results may differ for solc-compiled code.
+
 ## Opcode Coverage
 
 ### Supported (in evm.ill)
