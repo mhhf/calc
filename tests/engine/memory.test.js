@@ -2,7 +2,7 @@
  * Tests for EVM memory model (write-log with McCarthy axiom traversal)
  */
 
-const { describe, it, before, beforeEach } = require('node:test');
+const { describe, it, beforeEach } = require('node:test');
 const assert = require('node:assert');
 const path = require('path');
 const mde = require('../../lib/engine');
@@ -180,6 +180,47 @@ describe('Memory FFI', () => {
     });
   });
 
+  describe('splice_byte', () => {
+    it('sets byte at correct position', () => {
+      const base = intToBin(0n);  // all zeros
+      const rOff = intToBin(0n);
+      const addr = intToBin(0n);  // first byte
+      const byte_ = intToBin(0xABn);
+      const out = Store.put('freevar', ['_Out']);
+      const r = memory.splice_byte([base, rOff, addr, byte_, out]);
+      assert(r.success);
+      // byte 0 = 0xAB, rest = 0x00
+      assert.strictEqual(binToInt(r.theta[0][1]), 0xABn << (31n * 8n));
+    });
+
+    it('sets byte at last position', () => {
+      const base = intToBin(0n);
+      const rOff = intToBin(0n);
+      const addr = intToBin(31n);  // last byte
+      const byte_ = intToBin(0xFFn);
+      const out = Store.put('freevar', ['_Out']);
+      const r = memory.splice_byte([base, rOff, addr, byte_, out]);
+      assert(r.success);
+      assert.strictEqual(binToInt(r.theta[0][1]), 0xFFn);
+    });
+
+    it('preserves other bytes', () => {
+      const base = intToBin((1n << 256n) - 1n);  // all 0xFF
+      const rOff = intToBin(0n);
+      const addr = intToBin(16n);  // middle byte
+      const byte_ = intToBin(0x00n);
+      const out = Store.put('freevar', ['_Out']);
+      const r = memory.splice_byte([base, rOff, addr, byte_, out]);
+      assert(r.success);
+      const result = binToInt(r.theta[0][1]);
+      // byte 16 should be 0x00, all others 0xFF
+      const shift = BigInt(8 * (31 - 16));
+      assert.strictEqual((result >> shift) & 0xFFn, 0x00n);
+      // byte 15 still 0xFF
+      assert.strictEqual((result >> BigInt(8 * (31 - 15))) & 0xFFn, 0xFFn);
+    });
+  });
+
   describe('mem_read_range', () => {
     it('reads from empty memory (all zeros)', () => {
       const emptyMem = Store.put('empty_mem', []);
@@ -255,25 +296,15 @@ describe('Memory FFI', () => {
 // ============================================================================
 
 describe('EVM Memory Integration', { timeout: 30000 }, () => {
-  let calc;
-
-  before(async () => {
-    Store.clear();
-    calc = await mde.load(
-      path.join(__dirname, '../../calculus/ill/programs/evm.ill')
-    );
-  });
-
   /**
    * Build a minimal EVM initial state with bytecode.
    * bytecodeMap: { address: opcode, ... }  e.g. { 0: 0x60, 1: 0x42, 2: 0x60, 3: 0x00, 4: 0x52 }
    * Returns { linear, persistent } state.
    */
-  async function buildEvmState(bytecodeMap, extraLinear = '', extraPersistent = '') {
+  async function buildEvmState(bytecodeMap) {
     const linear = {};
     const persistent = {};
 
-    // pc, sh, gas, mem, memsize
     linear[await mde.parseExpr('pc 0')] = 1;
     linear[await mde.parseExpr('sh ee')] = 1;
     linear[await mde.parseExpr('gas 0')] = 1;
@@ -282,37 +313,13 @@ describe('EVM Memory Integration', { timeout: 30000 }, () => {
 
     // Code bytes (linear — EVM rules consume and re-produce code facts)
     for (const [addr, opcode] of Object.entries(bytecodeMap)) {
-      const codeExpr = `code ${addr} ${opcode}`;
-      const h = await mde.parseExpr(codeExpr);
+      const h = await mde.parseExpr(`code ${addr} ${opcode}`);
       linear[h] = (linear[h] || 0) + 1;
-    }
-
-    // Extra linear facts
-    if (extraLinear) {
-      const parts = extraLinear.split(' * ');
-      for (const p of parts) {
-        if (p.trim()) {
-          const h = await mde.parseExpr(p.trim());
-          if (h) linear[h] = (linear[h] || 0) + 1;
-        }
-      }
-    }
-
-    // Extra persistent facts (parse !-prefixed items)
-    if (extraPersistent) {
-      const parts = extraPersistent.split(' * ');
-      for (const p of parts) {
-        if (p.trim()) {
-          const h = await mde.parseExpr(p.trim());
-          if (h) persistent[h] = true;
-        }
-      }
     }
 
     // Standard persistent facts for inc
     for (let i = 0; i < 20; i++) {
-      const incFact = await mde.parseExpr(`inc ${i} ${i + 1}`);
-      persistent[incFact] = true;
+      persistent[await mde.parseExpr(`inc ${i} ${i + 1}`)] = true;
     }
 
     return { linear, persistent };

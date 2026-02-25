@@ -1,29 +1,3 @@
-%cleanup:
-%  stop *
-%  code X Y
-%  -o {
-%    stop
-%  }.
-%cleanup_dirty:
-%  gas X *
-%  sh Y *
-%  stop
-%  -o {
-%    stop
-%  }.
-%cleanup_stack:
-%  stack X Y *
-%  stop
-%  -o {
-%    stop
-%  }.
-%cleanup_memory:
-%  memory X Y *
-%  stop
-%  -o {
-%    stop
-%  }.
-
 VM: type.
 bootVM: VM -o {
   pc                             N_00  *
