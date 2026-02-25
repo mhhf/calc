@@ -17,6 +17,20 @@ const FOLDER_LABELS: Record<string, string> = {
   def: 'Definitions',
 };
 
+const FOLDER_PREFIXES: Record<string, string> = {
+  research: 'RES',
+  theory: 'THY',
+  def: 'DEF',
+};
+
+/** Extract the 4-digit doc number from slug like "0007_chr-..." */
+function docId(slug: string, folder: string): string | null {
+  const m = slug.match(/^(\d{4})/);
+  if (!m) return null;
+  const prefix = FOLDER_PREFIXES[folder] || folder.toUpperCase();
+  return `${prefix}_${m[1]}`;
+}
+
 /** Fixed display order for research categories (matches INDEX.md sections) */
 const CATEGORY_ORDER = [
   'Motivation',
@@ -185,19 +199,23 @@ export default function ResearchIndex() {
                       </a>
                       <ul>
                         <For each={categoryDocs}>
-                          {(doc) => (
-                            <li>
-                              <a
-                                href={`#cat-${doc.slug}`}
-                                onClick={(e) => {
-                                  e.preventDefault();
-                                  document.getElementById(`cat-${doc.slug}`)?.scrollIntoView({ behavior: 'smooth' });
-                                }}
-                              >
-                                {doc.title}
-                              </a>
-                            </li>
-                          )}
+                          {(doc) => {
+                            const id = docId(doc.slug, folder());
+                            return (
+                              <li>
+                                <a
+                                  href={`#cat-${doc.slug}`}
+                                  onClick={(e) => {
+                                    e.preventDefault();
+                                    document.getElementById(`cat-${doc.slug}`)?.scrollIntoView({ behavior: 'smooth' });
+                                  }}
+                                >
+                                  {id && <span class="font-mono text-xs text-gray-400">{id} </span>}
+                                  {doc.title}
+                                </a>
+                              </li>
+                            );
+                          }}
                         </For>
                       </ul>
                     </li>
@@ -222,7 +240,9 @@ export default function ResearchIndex() {
                 </h3>
                 <div class="space-y-2">
                   <For each={categoryDocs}>
-                    {(doc) => (
+                    {(doc) => {
+                      const id = docId(doc.slug, folder());
+                      return (
                       <A
                         id={`cat-${doc.slug}`}
                         href={`/${folder()}/${doc.slug}`}
@@ -231,6 +251,7 @@ export default function ResearchIndex() {
                         <div class="flex items-start justify-between gap-4">
                           <div class="min-w-0 flex-1">
                             <h4 class="font-semibold text-gray-900 dark:text-white truncate">
+                              {id && <span class="font-mono text-xs text-gray-400 mr-2">{id}</span>}
                               {doc.title}
                             </h4>
                             <Show when={doc.summary}>
@@ -277,7 +298,7 @@ export default function ResearchIndex() {
                           </div>
                         </Show>
                       </A>
-                    )}
+                    );}}
                   </For>
                 </div>
               </section>

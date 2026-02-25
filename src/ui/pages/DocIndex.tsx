@@ -16,6 +16,12 @@ const FOLDER_LABELS: Record<string, string> = {
   todo: 'Todo',
 };
 
+/** Extract the 4-digit doc number from slug like "0007_chr-..." */
+function docId(slug: string): string | null {
+  const m = slug.match(/^(\d{4})/);
+  return m ? `DOC_${m[1]}` : null;
+}
+
 async function fetchDocs(folder: string): Promise<DocEntry[]> {
   const res = await fetch(`/api/docs/${folder}`);
   if (!res.ok) throw new Error(`Failed to fetch docs: ${res.status}`);
@@ -44,7 +50,9 @@ export default function DocIndex() {
       <Show when={docs()}>
         <div class="space-y-3">
           <For each={docs()}>
-            {(doc) => (
+            {(doc) => {
+              const id = docId(doc.slug);
+              return (
               <A
                 href={`/${folder()}/${doc.slug}`}
                 class="block p-4 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 hover:border-blue-400 dark:hover:border-blue-500 transition-colors"
@@ -52,6 +60,7 @@ export default function DocIndex() {
                 <div class="flex items-start justify-between gap-4">
                   <div class="min-w-0">
                     <h3 class="font-semibold text-gray-900 dark:text-white truncate">
+                      {id && <span class="font-mono text-xs text-gray-400 mr-2">{id}</span>}
                       {doc.title}
                     </h3>
                     <Show when={doc.summary}>
@@ -84,7 +93,7 @@ export default function DocIndex() {
                   </div>
                 </Show>
               </A>
-            )}
+            );}}
           </For>
         </div>
       </Show>
