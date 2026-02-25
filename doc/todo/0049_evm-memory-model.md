@@ -557,7 +557,7 @@ Add `compact(ByteMap, Prev)` term constructor that flattens concrete portions of
 
 ## Optimization Ideas
 
-The write-log traversal is O(W) per MLOAD. At 500 writes that's ~5ms per read at 10μs/step. This section collects optimization strategies — from simple FFI acceleration to architectural changes that could yield O(1) reads. All preserve the ILL rules as the logical definition.
+The write-log traversal is O(W) per MLOAD. At 500 writes that's ~5ms per read at 10μs/step. This section collects optimization strategies that are **sound for symbolic offsets and overlapping writes**. All preserve the ILL rules as the logical definition. Ideas that break for symbolic offsets (Baker Array, Shadow Map, Embedded HAMT, Generalized Array) were evaluated and rejected — see RES_0062 for details.
 
 ### Idea 1: Backward-Chaining Oracle (`!mem_read` as Persistent Predicate)
 
@@ -582,6 +582,8 @@ The traversal rules (`hit`/`miss`/`zero`) remain as ILL clause definitions — t
 **Fit**: perfect. Uses existing `provePersistentGoals` → FFI path in `match.js`. One new FFI function. The proof tree records `!mem_read M 0x40 V` as a single step instead of W steps — less verbose but still verifiable.
 
 **Limitation**: the read is now a single opaque step in the proof tree. The W-step derivation via `hit`/`miss`/`zero` is the "real" proof; the FFI is a trusted shortcut. Same tradeoff as `!plus`.
+
+**Symbolic soundness**: fully sound. The FFI traverses the same write-log as the rules. Symbolic offsets → FFI returns null → backward prover falls back to clause resolution → rules produce stuck leaf. Overlapping writes handled by the same traversal logic (overlap-aware rules in Stage 2).
 
 ### Idea 2: Memoized Reads via Content-Addressing
 
@@ -608,62 +610,9 @@ function mem_read(memHash, offset) {
 
 **Fit**: transparent optimization layer. Can be added to the FFI from Idea 1 or to a compaction pass. Zero logic changes.
 
-### Idea 3: Baker/Filliâtre Persistent Array (O(1) Current-Version Reads)
+**Symbolic soundness**: fully sound. Cache key = (mem_hash, offset). Symbolic offsets are never cached (the traversal produces a stuck leaf, not a value — nothing to cache). Overlapping writes: the cache stores the final result after full traversal, which already accounts for overlaps via the overlap-aware rules.
 
-The "shallow binding" trick from functional programming (Baker 1991, Conchon & Filliâtre 2007): the **most recent** version of the array is a flat JavaScript Map. Older versions are stored as diff chains.
-
-```
-State:
-  current_version → Map { 0x40: 0x80, 0x20: 0xBB, ... }  (flat, O(1) lookup)
-
-On MSTORE(offset, value):
-  1. Record undo: old_value = current_version.get(offset)
-  2. current_version.set(offset, value)  → O(1)
-  3. Produce write-log term: mem (write Offset Value M)
-
-On MLOAD(offset):
-  1. value = current_version.get(offset)  → O(1)
-  2. Return value (or 0 if absent)
-
-On symexec branch (fork):
-  1. Snapshot = copy of current_version  → O(N) where N = entries
-  2. ... or use COW (copy-on-write map) → O(1) fork, O(log n) first write
-
-On symexec undo (backtrack):
-  1. Replay undo log to restore previous version → O(writes_since_fork)
-```
-
-**This maps perfectly to symexec's mutation/undo pattern.** During forward execution within one branch, the "current" memory is always the most recent version → O(1) reads. On backtrack, the undo log replays. Cost = O(writes_since_fork) per backtrack, which is typically small.
-
-The write-log term `mem M` still exists in the state — it's the logical representation. The persistent array is a shadow structure for fast access. The two are kept in sync by the MSTORE rule (or its FFI).
-
-**Fit**: requires integration with symexec.js's `applyMutation`/`undoMutation` hooks. Medium complexity. The persistent array is engine-level state, not visible to the logic.
-
-### Idea 4: State-Level Offset Index (Shadow Map)
-
-The engine's `state` object maintains a Map alongside the write-log:
-
-```javascript
-// In state object (alongside state.linear, state.persistent)
-state.memIndex = new Map();  // offset → value (for the current mem fact)
-
-// On MSTORE (in applyMatch or a hook):
-state.memIndex.set(offset, value);
-
-// On MLOAD (via FFI or rule optimization):
-value = state.memIndex.get(offset) ?? 0;  // O(1)
-
-// On symexec undo:
-// memIndex mutations are undone alongside linear fact mutations
-```
-
-**This is the simplest possible optimization.** The forward engine already maintains `state.linear` and `state.persistent` sets. Adding `state.memIndex` as a third structure is straightforward. The undo system already tracks mutations — extending it to track `memIndex` changes is ~10 lines.
-
-**Fit**: engine-level, transparent to rules. Can be implemented as a special case in `applyMatch` when the matched rule produces a `mem (write ...)` fact. No FFI needed — the index is updated by the engine, read by the engine.
-
-**Limitation**: only works for the concrete-offset case. Symbolic offsets can't be indexed. But 90%+ of EVM accesses are concrete.
-
-### Idea 5: Content-Addressed Read-Through Cache on Store Terms
+### Idea 3: Content-Addressed Read-Through Cache on Store Terms
 
 Attach a read cache **to each write-log term** in the Store. When a read at offset X traverses through `write(Y, V, rest)` and finds result R, cache `{X → R}` on the `write(Y, V, rest)` term.
 
@@ -683,9 +632,11 @@ Store.setReadCache = (termHash, offset, value) => ...
 
 **Cost**: O(1) per cache probe. Cache grows with O(unique_reads × unique_terms). Memory is bounded by Store size.
 
-### Idea 6: Generalized Indexed Linear Predicate
+**Symbolic soundness**: fully sound. Same reasoning as Idea 2 — caches results of completed traversals. Symbolic offsets/overlaps just mean no cache hit → normal rules fire. The cache only stores concrete, fully-resolved results.
 
-A new engine concept: **indexed linear facts** with O(1) lookup by key.
+### Idea 4: Generalized Indexed Persistent Predicate
+
+A new engine concept: **indexed persistent facts** with O(1) lookup by key.
 
 Currently, `code PC V` is a persistent fact — the backward prover scans all `!code` facts to find the one matching PC. With ~300 bytecode bytes, that's ~300 candidates per instruction fetch (mitigated by first-argument indexing in `prove.js`, but still O(log n) at best).
 
@@ -713,44 +664,9 @@ function proveCode(pc) {
 
 **Impact on code lookup**: currently ~300 `!code PC V` persistent facts. Each opcode rule has `code PC Opcode` in its antecedent. The backward prover resolves this via clause indexing. With an indexed structure: O(1) per instruction fetch. For a 287-byte multisig contract executed to ~200 nodes, that's 200 × O(1) vs 200 × O(log 300) — modest but measurable.
 
-**For memory**: memory can't use this directly (it's one `mem M` fact, not per-cell facts). But the *shadow index* from Idea 4 achieves the same effect.
+**Symbolic soundness**: orthogonal to memory. Applies to `code` and `calldata` which are persistent, immutable, and always concrete-keyed. Does not apply to `mem` (which is one linear fact, not per-cell facts). No symbolic offset or overlap concerns.
 
-### Idea 7: Write-Log with Embedded Index Term
-
-The write-log itself carries an index as a content-addressed term:
-
-```
-% Term: indexed_mem(Index, Log)
-% where Index is a HAMT mapping offset → value
-% and Log is the standard write(Offset, Value, Prev) chain
-
-evm/mstore:
-  ... mem (indexed_mem Idx Log)
-  -o {
-    mem (indexed_mem (hamt_insert Idx Offset Value) (write Offset Value Log))
-  }.
-
-evm/mload:
-  ... mem (indexed_mem Idx Log) *
-  !hamt_lookup Idx Offset V       % O(log₃₂ n) ≈ O(1) for n < 10⁶
-  -o {
-    ... stack SH V * mem (indexed_mem Idx Log)
-  }.
-```
-
-**Self-contained**: the index is part of the term, not external state. Content-addressed and shared across branches (identical index states = identical hashes). The HAMT is built from Store terms — `put('hamt_node', [bitmap, child0, child1, ...])`.
-
-**Write cost**: O(log₃₂ n) for HAMT insert ≈ 4-5 `Store.put` calls for ~1000 entries. Plus O(1) for the `write` node. Total: ~6 `Store.put` calls per MSTORE.
-
-**Read cost**: O(log₃₂ n) for HAMT lookup via FFI. For n=1000: ~2 levels. O(1) effective.
-
-**Symexec**: on fork, both branches share the same `indexed_mem` hash. First diverging MSTORE creates new HAMT nodes only along the modified path (structural sharing).
-
-**Overlap handling**: the HAMT stores the *most recent* value per offset. It naturally handles the word-level case (latest write wins). For byte-level overlap, the HAMT entry could store a `splice` term.
-
-**Trade-off**: MSTORE is slightly more expensive (HAMT insert). MLOAD is O(1) instead of O(W). For write-heavy workloads (many MSTOREs, few MLOADs): slight regression. For read-heavy workloads (many MLOADs): massive improvement.
-
-### Idea 8: Traversal Short-Circuit (Engine-Level Batching)
+### Idea 5: Traversal Short-Circuit (Engine-Level Batching)
 
 The engine detects the `mem_reading` traversal pattern (repeated `miss` → eventual `hit`) and short-circuits it:
 
@@ -768,57 +684,29 @@ The engine detects the `mem_reading` traversal pattern (repeated `miss` → even
 
 **Fit**: requires pattern recognition in the engine. Medium complexity. Could be triggered by a rule annotation (`@batch` or `@traversal`) rather than hard-coded pattern matching.
 
-### Idea 9: Generalized Array Abstraction
-
-Unify `code`, `stack`, `calldata`, and `mem` under one abstraction:
-
-```
-% Generalized indexed collection
-arr: bin -> type.              % arr(RootHash) — one linear fact
-arr_persistent: bin -> type.   % arr_persistent(RootHash) — one persistent fact
-
-% Operations (FFI-backed)
-!arr_read Root Key Value       % O(1) read via HAMT/trie
-arr_write Root Key Value Root' % O(log n) write, produces new root
-
-% EVM-specific instantiations:
-% code   = arr_persistent(code_root)    — immutable, persistent
-% memory = arr(mem_root)                — mutable, linear
-% stack  = arr(stack_root)              — mutable, linear
-% storage = arr(storage_root)           — mutable, linear
-```
-
-**For code**: `arr_persistent` with HAMT root. `!arr_read CodeRoot PC Opcode` replaces `!code PC Opcode`. O(1) via FFI. One persistent fact instead of ~300.
-
-**For stack**: `arr(stack_root)` linear fact. `PUSH` = `arr_write StackRoot Height Value NewRoot`. `POP` = `arr_read StackRoot Height Value`. O(1) via HAMT. Replaces ~10 `stack N V` linear facts.
-
-**For memory**: `arr(mem_root)` with write-log semantics. The HAMT handles concrete offsets. Symbolic offsets fall back to the write-log tail.
-
-**Benefit**: the engine's state has 3-4 `arr` facts instead of ~300 `code` + ~10 `stack` + 1 `mem`. Pattern matching is faster (fewer facts to scan). Each access is O(1) via FFI.
-
-**Cost**: every operation goes through FFI. The proof tree records opaque steps. Less transparency than individual `stack N V` facts.
+**Symbolic soundness**: fully sound. The batch traversal follows the same logic as the rules. On encountering a symbolic offset (where `!neq` or `!no_overlap` fails on non-ground input), the short-circuit aborts and falls back to normal rule execution → stuck leaf. Overlapping writes handled by the same overlap-aware rules within the batch.
 
 ### Comparison
 
-| Idea | Read Cost | Write Cost | Complexity | Engine Changes | Theory Clean |
-|------|-----------|------------|------------|---------------|-------------|
-| 1. BC Oracle | O(W)@50ns | O(1) | Low | 1 FFI function | Yes (like !plus) |
-| 2. Memo Cache | O(1) amortized | O(1) | Low | Cache in FFI | Yes |
-| 3. Baker Array | O(1) | O(1) | Medium | Undo hooks | Yes (shadow) |
-| 4. Shadow Map | O(1) | O(1) | Low | ~20 LOC | Yes (shadow) |
-| 5. Term Cache | O(1) amortized | O(1) | Medium | Store extension | Yes |
-| 6. Indexed Pred | O(1) | N/A (persistent) | Medium | Index structure | Yes |
-| 7. Embedded HAMT | O(1) | O(log₃₂ n) | High | HAMT in Store | Yes (in-term) |
-| 8. Short-Circuit | O(1) engine | O(1) | Medium | Pattern detect | Yes (batch) |
-| 9. Generalized Arr | O(1) | O(log n) | High | New abstraction | Partial |
+| Idea | Read Cost | Write Cost | Complexity | Symbolic Sound |
+|------|-----------|------------|------------|---------------|
+| 1. BC Oracle | O(W)@50ns | O(1) | Low | Yes (fallback to rules) |
+| 2. Memo Cache | O(1) amortized | O(1) | Low | Yes (cache miss → rules) |
+| 3. Term Cache | O(1) amortized | O(1) | Medium | Yes (cache miss → rules) |
+| 4. Indexed Pred | O(1) | N/A (persistent) | Medium | Orthogonal (code/calldata) |
+| 5. Short-Circuit | O(1) engine | O(1) | Medium | Yes (abort → rules) |
+
+All five ideas are **acceleration layers** that fall through to the ILL rules on miss or failure. Symbolic offsets and overlapping writes are always handled by the base rules.
 
 ### Recommended Optimization Path
 
 **Phase 1** (easy, high impact): Ideas 1 + 2. Add `!mem_read` FFI with memoization cache. One new FFI function, ~50 LOC. 200× speedup for reads. Keeps all rules as definitions.
 
-**Phase 2** (medium, highest impact): Idea 4. Shadow Map in engine state. ~20 LOC in `applyMatch` + undo system. O(1) reads without any FFI overhead. Combined with Idea 2 for cross-branch sharing.
+**Phase 2** (medium, complementary): Idea 3. Per-term read cache in Store. Exploits content-addressed sharing across symexec branches — reads through shared write-log prefixes are O(1) after first traversal.
 
-**Phase 3** (ambitious): Idea 7 or 9. Embedded HAMT index or generalized array abstraction. Unifies memory, code, stack under one O(1) structure. Requires Store-level HAMT implementation (~200 LOC) and FFI integration.
+**Phase 3** (medium, orthogonal): Idea 4. Indexed persistent predicates for `code`/`calldata`. O(1) instruction fetch. Independent of memory model.
+
+**Phase 4** (medium, if needed): Idea 5. Engine-level short-circuit for traversal patterns. Reduces overhead of the rule-firing loop itself. Most impactful when combined with Phase 1 (FFI does the traversal, short-circuit avoids per-step rule matching).
 
 ## Open Questions
 
