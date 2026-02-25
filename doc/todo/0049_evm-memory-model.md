@@ -1,9 +1,9 @@
 ---
 title: EVM Memory Model Design
 created: 2026-02-24
-modified: 2026-02-26
+modified: 2026-02-25
 summary: Design MLOAD/MSTORE memory model for CALC's EVM symbolic executor
-tags: [evm, memory, architecture, linear-logic, separation-logic]
+tags: [evm, memory-model, architecture, linear-logic, separation-logic, symexec, forward-chaining, McCarthy]
 type: design
 status: ready for implementation
 priority: 6
@@ -695,44 +695,133 @@ For k-dss scale contracts (5000+ nodes), TODO_0005 Level 0+1 is estimated at 3-1
 
 ### Independence
 
-TODO_0005 is orthogonal to the memory model. The memory stages (1-7) can be implemented and tested without it. TODO_0005 can be implemented before or after the memory model. The interaction is purely at the constraint level — when path conditions happen to constrain values that originated from memory reads.
+TODO_0005 is orthogonal to the memory model. All memory stages can be implemented and tested without it. TODO_0005 can be implemented before or after the memory model. The interaction is purely at the constraint level — when path conditions happen to constrain values that originated from memory reads.
+
+## Design Properties
+
+### Not Skolemization — Uninterpreted Functions
+
+The memory model uses **structured symbolic terms**, not Skolemization.
+
+Skolemization eliminates ∃ by introducing fresh constants: `∃x. P(x)` → `P(sk)`. Our engine handles `exists` via fresh evars resolved by constraints — standard.
+
+What we do with `sha3(Bytes)` and `write(Offset, Value, Mem)` is create **uninterpreted function terms**. Key property: **congruence** — two `sha3` terms with the same argument are content-addressed to the same hash → automatically equal. Different arguments → automatically distinct. No axioms needed.
+
+The asymmetry with arithmetic is deliberate:
+
+| Domain | Representation | Why |
+|--------|---------------|-----|
+| Memory | Structural terms: `write(O, V, M)` | Writes are data construction, not computation |
+| SHA3 | Opaque term: `sha3(Bytes)` | Hash is uncomputable, but equality is structural |
+| Arithmetic | Concrete or fail | FFI needs actual numbers; `plus(X, 3)` would poison downstream `binToInt` |
+
+Design principle: **structural where possible** (memory, SHA3), **computational where necessary** (arithmetic), **stuck where unknown** (symbolic guards).
+
+### No Simplification Needed
+
+The write-log is append-only. We don't have rewrite rules, and we don't need them.
+
+**Dead writes are harmless.** `write(0, B, write(0, A, empty_mem))` — inner `write(0, A, ...)` is dead. But `mem_read/hit` matches the outermost write first and returns `B`. The dead write costs one extra miss step for reads at other offsets, nothing more.
+
+**Content-addressing gives free structural sharing.** The term `write(0, A, empty_mem)` is a single hash in the Store. Every symexec branch sharing this memory prefix shares the actual data. Write-log grows linearly per branch, but common prefixes are shared across the exploration tree.
+
+**Why not compact?** A GC rule like `mem (write O V1 (write O V2 Rest)) -o { mem (write O V1 Rest) }` would compete nondeterministically with read rules in the committed-choice engine. The correct optimization layer is FFI (Idea 1+2 in Optimization Ideas) — not term rewriting.
+
+### Overlap Behavior by Stage
+
+With `!neq`-based rules (no overlap handling): unaligned overlapping writes produce **silently wrong** answers (miss skips a partially-overlapping write because offsets differ).
+
+With `!no_overlap`-based rules (overlap-aware): unaligned overlapping writes produce either correct spliced results (concrete) or **loud stuck leaves** (symbolic). Silent wrong is worse than loud stuck.
+
+**Decision: go directly to `!no_overlap` from the start.** The aligned solc fast path is identical — `!no_overlap R 32 W 32` passes on every step when all writes are 32-byte aligned at distinct offsets, same as `!neq R W`. For unaligned writes, partial overlap is correctly detected and patched.
+
+## Audit Findings
+
+### `mh` → `memsize` Migration
+
+`mh: bin -> type.` (evm.ill:91) is unused legacy ("memory height"). Never referenced in any forward rule. Initial states in `multisig.ill` and `multisig_nocall.ill` have `mh 0` — must be replaced with `mem empty_mem * memsize 0`. The `mh` type declaration is removed entirely.
+
+### Gas Omission in Memory Rules
+
+Memory rules omit `gas G * !gasCost G Cost G'` — consistent with ADD/MUL/SUB pattern. EQ/ISZERO/SHA3/JUMP include gas. This is an intentional simplification for the arithmetic subset. Gas can be added uniformly later.
+
+### `memory` Type Scope
+
+`memory: bin -> bin -> bin -> type.` is only used by `concatMemory/s`, `concatMemory/z`, old `calldatacopy/s`, old `calldatacopy/z`. Clean removal — no other rules reference it.
+
+### Loli Variable Capture — Verified Correct
+
+MLOAD's loli `(mem_read_done V -o { pc PC' * ... * mem M })` captures `M`, `PC'`, `SH`. Variables in the loli body are substituted during consequent instantiation via `subApplyIdx` (compile.js). `M` correctly refers to the original memory at loli creation time, not at firing time. Verified through compile.js and match.js code paths.
+
+### `memsize` Safety During Traversal
+
+No `mem_read/*` rule matches `memsize` — it sits inert during the traversal. `memsize S'` is produced immediately by MLOAD (not gated by the loli) because expansion happens before the read. Verified: no interference.
+
+### `binToInt` Handles Zero Correctly
+
+`binToInt(atom('e'))` → 0n (convert.js:26). The `!mem_read_range` FFI will correctly extract byte value 0 from write-log entries. `mem_read/zero` produces literal `0` which is `atom('e')` in the Store.
 
 ## Implementation Plan
 
-### TODO_0049.Stage_1 — Core Rules (MSTORE, MLOAD, MSIZE)
+The stages are ordered for implementing everything in one pass — no intermediate states, no backward compatibility. Tests accompany each code change rather than being a separate stage.
 
-Add to `evm.ill`:
-- Type declarations: `mem`, `memsize`, `mem_reading`, `mem_read_done`, `write`, `empty_mem`
-- Rules: `evm/mstore`, `evm/mload`, `evm/msize`
-- Traversal: `mem_read/hit`, `mem_read/miss` (with `!neq`), `mem_read/zero`
-- FFI: `!mem_expand` in `lib/engine/ffi/arithmetic.js`
+### TODO_0049.Stage_1 — FFIs
 
-Update initial state in program files: add `mem empty_mem * memsize 0 *`.
+New file `lib/engine/ffi/memory.js` with all memory FFI predicates:
+- `!mem_expand` — memory size high-water mark update
+- `!mem_read_range` — read byte range from write-log (~60 LOC)
+- `!no_overlap` — disjoint range check: `[R,R+Rs) ∩ [W,W+Ws) = ∅`
+- `!overlaps` — partial overlap check (negation of `!no_overlap`)
+- `!splice` — byte-level overlay of overlapping writes (~30 LOC)
+- `!mod` — modulo for MSTORE8 (unless already in arithmetic.js)
 
-~30 lines `.ill` + ~15 LOC FFI. No engine changes.
+FFI registration in `lib/engine/ffi/index.js`.
 
-MSTORE8 deferred to Stage 5 (requires overlap handling for correctness).
+~150 LOC total. Pure arithmetic on content-addressed terms. No state access.
 
-### TODO_0049.Stage_2 — SHA3 + CALLDATACOPY Migration
+### TODO_0049.Stage_2 — evm.ill Rewrite
 
-Remove from `evm.ill`:
+Single atomic pass through `evm.ill`:
+
+**Remove:**
 - `memory: bin -> bin -> bin -> type.`
-- `concatMemory`, `unblockConcatMemory`, old `concatMemory/z`, `concatMemory/s`
-- Old `evm/sha3`, old `evm/calldatacopy`, `calldatacopy/z`, `calldatacopy/s`
+- `mh: bin -> type.`
 - `unblock: type.`
+- `concatMemory`, `unblockConcatMemory`, `concatMemory/z`, `concatMemory/s`
+- Old `evm/sha3`, old `evm/calldatacopy`, `calldatacopy/z`, `calldatacopy/s`
 
-Add to `evm.ill`:
-- `calldatacopy_iter`, `calldatacopy_done` types
+**Add types:**
+- `mem`, `memsize`, `mem_reading`, `mem_read_done`, `mem_base_found`
+- `mem_patch`, `mem_patch_byte`, `mem_vpatch`
+- `write`, `write8`, `vwrite`, `empty_mem`, `splice`
+- `saved_mem`, `saved_memsize`
+- `calldatacopy_iter`, `calldatacopy_done`
+
+**Add rules:**
+- `evm/mstore`, `evm/mload`, `evm/msize`, `evm/mstore8`
+- Overlap-aware traversal: `mem_read/hit`, `mem_read/miss` (with `!no_overlap`), `mem_read/partial` (with `!overlaps`), `mem_read/zero`
+- `write8` traversal: `mem_read/write8_miss`, `mem_read/write8_overlap`
+- `vwrite` traversal: `mem_read/vmiss`, `mem_read/vpartial`
+- Finalization: `mem_finalize/clean`, `mem_finalize/patch`
 - New `evm/sha3` (single rule with `!mem_read_range`)
 - New `evm/calldatacopy` + `calldatacopy_iter/s` + `calldatacopy_iter/z`
 
-Add FFI:
-- `!mem_read_range` in `lib/engine/ffi/memory.js` (~60 LOC)
-- FFI registration in `lib/engine/ffi/index.js`
+**Update initial states** in `multisig.ill`, `multisig_nocall.ill`:
+- Remove `mh 0`
+- Add `mem empty_mem * memsize 0`
 
-~30 lines `.ill` + ~80 LOC FFI (new file).
+~80 lines `.ill` changes. No engine changes.
 
-### TODO_0049.Stage_3 — Tests
+### TODO_0049.Stage_3 — CALL Frame Memory
+
+Add to `evm.ill`:
+- `saved_mem`, `saved_memsize` types (already declared in Stage 2)
+- Update `evm/call` to save caller memory: `mem M * memsize S → saved_mem M * saved_memsize S * mem empty_mem * memsize 0`
+- Update `evm/return` to restore: `mem M_callee * saved_mem M_caller * saved_memsize S_caller → mem M_caller * memsize S_caller`
+
+Needed for multi-contract benchmarks (external calls).
+
+### TODO_0049.Stage_4 — Tests
 
 ```
 tests/engine/memory.test.js:
@@ -749,6 +838,15 @@ tests/engine/memory.test.js:
   - MLOAD at offset 992 → MSIZE = 1024
   - MSIZE monotonically increasing (two MSTOREs, check after each)
 
+  Overlap:
+  - Aligned writes at distinct offsets: !no_overlap passes, identical to !neq path
+  - Overlapping writes: MSTORE(0, A) then MSTORE(16, B) then MLOAD(0) → splice(A, 0, 16, B)
+  - MSTORE8: write8 node correctly patched into word-level read
+  - Symbolic overlap: partial overlap with symbolic offset → stuck leaf
+
+  MSTORE8:
+  - MSTORE8 then MLOAD at containing word → correct byte patched
+
   Symbolic:
   - Symbolic offset: MLOAD with symbolic offset → stuck leaf
   - Symbolic value: MLOAD returns symbolic value as-is
@@ -763,32 +861,18 @@ tests/engine/memory.test.js:
   - CALLDATACOPY with multiple chunks → all accessible via MLOAD
 
   Symexec:
-  - Memory preserved/restored correctly on backtrack
+  - Memory preserved/restored correctly on backtrack (mutate/undo)
   - Loli gating: no opcode fires during mem_read traversal
   - Content-addressed sharing: same write sequence = same mem hash across branches
 ```
 
-### TODO_0049.Stage_4 — Benchmark (solc contract)
+### TODO_0049.Stage_5 — Benchmark (solc contract)
 
 Compile simple Solidity contract with `solc --bin`. Run through CALC symexec. Compare tree size and timing with hevm.
 
-### TODO_0049.Stage_5 — Overlap + MSTORE8 + vwrite
+### Deferred: FFI Fast-Path + Memoization
 
-Replace `!neq` with `!no_overlap` in `mem_read/miss`. Add `mem_read/partial` with `!overlaps`. Add `mem_base_found`/`mem_finalize` patch assembly rules. Add `!splice` FFI. Add `evm/mstore8` rule with `write8` constructor. Add `vwrite` for variable-length operations.
-
-New FFI predicates: `!no_overlap`, `!overlaps`, `!splice`, `!contains`, `!extract_word`.
-
-Only needed when a real contract requires non-aligned memory access or MSTORE8.
-
-### TODO_0049.Stage_6 — CALL Frame Memory
-
-Add `saved_mem`, `saved_memsize` types. Update `evm/call` to save caller memory and provide fresh `mem empty_mem * memsize 0`. Update `evm/return` to restore caller memory and discard callee's.
-
-Needed for multi-contract benchmarks (external calls).
-
-### TODO_0049.Stage_7 — FFI Fast-Path + Memoization
-
-If profiling shows memory reads dominate execution time, add FFI `!mem_read` for MLOAD (see Optimization Idea 1) with memoization cache (Idea 2). The rules remain the definition. Analogous to how `!plus` FFI accelerates `plus/z + plus/s`.
+Not a stage — implement only if profiling shows memory reads dominate execution time. Add FFI `!mem_read` for MLOAD (see Optimization Idea 1) with memoization cache (Idea 2). The rules remain the definition.
 
 O(W) at ~50ns/step instead of ~10μs/step. 200× speedup. Zero logic changes. Cache keyed by `(mem_hash, offset)` — content-addressed = no invalidation needed.
 
@@ -867,16 +951,24 @@ Engine recognizes `mem_reading` traversal pattern, executes in JavaScript batch,
 
 ## Open Questions
 
-1. **Tag registration**: `write`, `empty_mem`, `write8`, `vwrite`, `mcopy`, `splice` are dynamic predicate tags (above `PRED_BOUNDARY`). Same status as `sha3`, `concat`, `s`, `e`. Automatic — no action needed.
+1. ~~**Tag registration**~~: Resolved. `write`, `empty_mem`, `write8`, `vwrite`, `splice` are dynamic predicate tags (above `PRED_BOUNDARY`). Automatic — no action needed.
 
-2. **Gas for memory expansion**: Currently modeled via `!mem_expand` FFI updating `memsize S`. Gas cost computation (`words²/512 + 3*words`) is orthogonal — add `!mem_gas OldSize NewSize GasCost` FFI when gas modeling matters.
+2. **Gas for memory expansion**: Currently modeled via `!mem_expand` FFI updating `memsize S`. Gas cost computation (`words²/512 + 3*words`) is orthogonal — add `!mem_gas OldSize NewSize GasCost` FFI when gas modeling matters. Memory rules omit gas, consistent with ADD/MUL/SUB.
 
 3. **RETURNDATASIZE / RETURNDATACOPY**: Return data is a separate buffer. Model as `returndata RD` linear fact with `vwrite`-based write-log. Same pattern as `mem`.
 
-4. **Patch ordering**: When multiple patches exist, they must be applied newest-first (most-recent-write-wins). The traversal naturally visits writes newest→oldest, so patches accumulate in the correct order.
+4. ~~**Patch ordering**~~: Resolved. Traversal visits writes newest→oldest, patches accumulate in correct order (most-recent-write-wins).
 
 5. **`splice` commutativity**: `splice(splice(Base, R, W1, V1), R, W2, V2)` must equal `splice(Base, R, W2, V2)` when W2's range fully covers W1's range within the read window. The FFI must respect this.
 
 6. **`!keccak256` FFI**: Concrete keccak256 computation for storage slot resolution. Add when SLOAD needs concrete slot computation (e.g., `storage (sha3 (concat 0 slot)) V` requires matching against actual slot hash).
 
-7. **Gas modeling in CALLDATACOPY loli**: The loli continuation captures `sh SH` — stack height should be restored after the copy. Verify stack height tracking is correct through the loli chain.
+7. ~~**CALLDATACOPY loli stack height**~~: Resolved. Loli captures `sh SH` and restores it on `calldatacopy_done`. Same pattern as existing CALLDATACOPY blocking.
+
+8. ~~**`mh` legacy type**~~: Resolved. `mh: bin -> type.` is unused. Remove and replace `mh 0` with `mem empty_mem * memsize 0` in initial states.
+
+9. ~~**Loli variable capture**~~: Resolved. `M` in MLOAD's loli is substituted during consequent instantiation via `subApplyIdx`. Correctly refers to original memory at loli creation.
+
+10. ~~**`memsize` during traversal**~~: Resolved. No `mem_read/*` rule matches `memsize`. Safe.
+
+11. ~~**`binToInt` zero handling**~~: Resolved. `binToInt(atom('e'))` → 0n. `mem_read/zero` produces literal 0 correctly.

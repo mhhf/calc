@@ -2,15 +2,15 @@ tags:
   linear-logic: 32
   chr: 18
   research: 17
+  forward-chaining: 15
   performance: 15
-  forward-chaining: 14
   architecture: 11
   clf: 11
   optimization: 10
   ownership: 10
   proof-theory: 10
   session-types: 10
-  symexec: 9
+  symexec: 10
   implementation: 8
   soundness: 8
   authorization: 7
@@ -45,6 +45,7 @@ tags:
   lax-monad: 4
   lnl: 4
   loli: 4
+  memory-model: 4
   model-checking: 4
   multimodal: 4
   prover: 4
@@ -63,7 +64,6 @@ tags:
   incremental: 3
   induction: 3
   matching: 3
-  memory-model: 3
   modal-logic: 3
   modalities: 3
   MPST: 3
@@ -281,8 +281,8 @@ tags:
   manual-prover: 1
   markets: 1
   Martelli-Montanari: 1
+  McCarthy: 1
   memoization: 1
-  memory: 1
   memory-management: 1
   MemSight: 1
   Merkle-DAG: 1
