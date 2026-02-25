@@ -2,9 +2,9 @@
 title: "Symbolic Memory Data Structures -- Beyond McCarthy Arrays"
 created: 2026-02-25
 modified: 2026-02-25
-summary: "Deep survey of data structures and approaches for byte-addressable symbolic memory with overlapping writes, partial reads, and symbolic offsets -- interval trees, write-log models, functional memory, persistent structures, region-based models, and performance analysis"
-tags: [symbolic-execution, memory-model, data-structures, interval-tree, persistent-data-structure, copy-on-write, write-absorption, KLEE, angr, hevm, Crucible, MemSight, linear-logic, separation-logic]
-category: "Symbolic Execution"
+summary: "Deep survey of persistent data structures for byte-addressable symbolic memory -- interval trees, write-log models, persistent structures, HAMTs, Patricia tries, hash-consed treaps, region-based models, plus content-addressed Store representations and ILL forward rule encodings for CALC integration"
+tags: [symbolic-execution, memory-model, data-structures, interval-tree, persistent-data-structure, copy-on-write, write-absorption, KLEE, angr, hevm, Crucible, MemSight, linear-logic, separation-logic, HAMT, patricia-trie, hash-consing, content-addressing, treap]
+category: "Performance"
 ---
 
 # RES_0062: Symbolic Memory Data Structures -- Beyond McCarthy Arrays
@@ -453,7 +453,268 @@ The only challenge is **symbolic addresses** -- when a rule produces `mem(X, val
 2. **Deferred matching:** Keep `mem(X, val)` as a symbolic fact; resolve when `X` is bound
 3. **Constraint propagation:** Propagate address constraints to narrow `X`'s domain
 
-## 14. Key Papers
+## 14. Content-Addressed Store Representations
+
+How each data structure maps to CALC's `{ tag, children }` Store nodes.
+
+### 14.1 Persistent Interval Tree as Store Terms
+
+An interval tree stores memory regions `[lo, hi) -> value`. Each node augmented with `max_hi` (maximum high endpoint in subtree) for pruning.
+
+```
+% In the Store (conceptual)
+put('itree', ['nil'])                                          % empty
+put('itree', ['node', left_h, lo_h, hi_h, val_h, maxhi_h, right_h])  % internal
+```
+
+Path-copying produces O(log n) new Store nodes per write. Shared subtrees have identical hashes -- automatic deduplication. The augmented `max_hi` field must be recomputed along the path, which creates slightly more new nodes than a plain BST.
+
+**Symbolic offset handling:** the overlap test `lo <= query < hi` becomes a constraint. Options: defer (keep read as unresolved term), fork (exponential worst case), or accumulate constraints along the path.
+
+### 14.2 HAMT as Store Terms
+
+A HAMT with 32-way branching, keyed by memory address directly (no pre-hashing needed since addresses are already integers).
+
+```
+put('hamt', ['empty'])                                         % empty
+put('hamt', ['leaf', addr_h, val_h])                           % single entry
+put('hamt', ['node', bitmap_h, child0_h, child1_h, ...])      % internal (bitmap + packed children)
+put('hamt', ['collision', pair_list_h])                        % hash collision
+```
+
+With 5-bit chunks per level: 256/5 = ~52 levels for a full 256-bit address. However, EVM memory is concentrated in low addresses (< 2^16), so most tries have ~4 levels. The bitmap encoding means empty children consume no space.
+
+**Structural sharing is automatic and maximal:** two execution branches that differ by one write share all HAMT nodes except the ~4 nodes on the modified path.
+
+**Symbolic offset problem:** HAMT dispatch extracts specific bits from the key. A symbolic address means undefined bit extraction -- must fall back to scanning all children at each level (exponential worst case, but bounded by 32 per level).
+
+### 14.3 Merkle Patricia Trie as Store Terms
+
+Following Ethereum's Modified Merkle Patricia Trie pattern:
+
+```
+put('mtrie', ['empty'])                                        % empty trie
+put('mtrie', ['leaf', suffix_h, val_h])                        % leaf: remaining key suffix + value
+put('mtrie', ['ext', prefix_h, child_h])                       % extension: shared prefix + child
+put('mtrie', ['branch', c0_h, c1_h, ..., c15_h, val_h])       % 16-way branch + optional value
+```
+
+**Why 16-way (hex):** each nibble (4 bits) of the address selects a branch. For 256-bit addresses, maximum depth is 64 nibbles. Patricia compression collapses long chains of single-child nodes into extension nodes, so typical depth is proportional to the discriminating prefix length.
+
+**Sparsity:** a branch node with only 2 occupied children still stores 16 child slots (14 are `mtrie_empty`). In the Store, `mtrie_empty` is a single hash -- so 14 of the 16 children are the same hash, but they still take space in the `children` array. Optimization: use a bitmap like HAMT to pack only existing children.
+
+**Content-addressing:** identical subtrees produce identical Store hashes by construction. This is exactly how Ethereum's state trie achieves its Merkle property.
+
+### 14.4 Hash-Consed Treap as Store Terms
+
+A treap (tree + heap) where priority = hash(key), giving **unique tree shape** for any set of keys.
+
+```
+put('htreap', ['nil'])                                         % empty
+put('htreap', ['node', addr_h, val_h, left_h, right_h])       % BST by addr, heap by hash(addr)
+```
+
+**Why unique representation matters:** two memory states with the same set of `(addr, value)` pairs produce the exact same treap structure, regardless of insertion order. This means:
+- O(1) memory state equality: root hashes match iff memory contents are identical
+- Automatic deduplication across execution branches that reach the same state
+- No normalization needed -- the shape is a pure function of the data
+
+**Confluent persistence (Liljenzin 2013):** merge two treaps that share most content in O(m log(n/m)) where m = number of differing entries among n total. Equal subtrees are detected by O(1) hash comparison and skipped. Directly applicable to merging execution paths after conditional branches.
+
+**Priority computation:** `priority(addr) = FNV_hash(addr)`. Since CALC already uses FNV-1a for content-addressing, the same hash function serves double duty. The priority need not be stored explicitly -- it can be recomputed from the address.
+
+## 15. ILL Forward Rule Encodings
+
+Three approaches for expressing memory operations as ILL rules.
+
+### 15.1 Approach A: Memory as Opaque FFI Term
+
+The memory structure is a single linear fact `mem(T)` where `T` is a Store hash pointing to the tree root. Read/write are FFI-backed:
+
+```
+% MSTORE: consume old memory, produce new memory via FFI
+evm/mstore:
+  pc PC * code PC 0x52 * !inc PC PC' *
+  sh (s (s SH)) *
+  stack (s SH) Offset *
+  stack SH Value *
+  mem M
+  -o {
+    code PC 0x52 * sh SH * pc PC' *
+    mem (ffi_mstore M Offset 32 Value)
+  }.
+
+% MLOAD: read value from memory via FFI (memory not consumed)
+evm/mload:
+  pc PC * code PC 0x51 * !inc PC PC' *
+  sh (s SH) *
+  stack SH Offset *
+  mem M *
+  !ffi_mload M Offset 32 V
+  -o {
+    code PC 0x51 * sh (s (s SH)) *
+    stack (s SH) V *
+    mem M *
+    pc PC'
+  }.
+```
+
+**Pros:** clean linear semantics; tree operations in FFI are fast; existing `prove.js` FFI infrastructure handles `ffi_mstore`/`ffi_mload`.
+
+**Cons:** memory structure is opaque to the logic; cannot reason about memory contents within proofs; FFI is a trusted boundary.
+
+### 15.2 Approach B: Tree Nodes as Linear Facts
+
+Each tree node is a separate linear fact. Writes decompose into path-copy rules:
+
+```
+% BST node: mem_node(key, value, left_subtree_id, right_subtree_id)
+mem_node : bin -> bin -> bin -> bin -> type.
+
+% Write left: target < node key
+mem_write/left:
+  mem_node K V L R * write_target T Val * !less T K
+  -o { exists L'. (
+    mem_node K V L' R *
+    write_into L T Val L')
+  }.
+
+% Write right: target >= node key
+mem_write/right:
+  mem_node K V L R * write_target T Val * !geq T K * !neq T K
+  -o { exists R'. (
+    mem_node K V L R' *
+    write_into R T Val R')
+  }.
+
+% Write hit: target = node key (update in place)
+mem_write/hit:
+  mem_node K V L R * write_target K Val'
+  -o {
+    mem_node K Val' L R
+  }.
+```
+
+**Pros:** fully expressible in ILL; memory structure is transparent to the logic; proofs witness the tree path.
+
+**Cons:** many rules; hard to keep balanced (rebalancing rules are complex); O(log n) rule applications per write; each node is a separate linear fact that the forward engine must match.
+
+### 15.3 Approach C: Hybrid (Recommended)
+
+FFI-backed tree operations behind a linear interface. The memory is ONE linear fact `mem(root_hash)`. FFI functions implement the tree operations:
+
+```javascript
+// In lib/engine/ffi/memory.js
+function ffi_mstore(state, args) {
+  // args: [root_hash, offset, size, value]
+  const root = args[0], offset = args[1], size = args[2], val = args[3];
+  // Perform persistent trie insert, return new root hash
+  return patriciaTrie.write(root, offset, size, val);
+}
+
+function ffi_mload(state, args) {
+  // args: [root_hash, offset, size]
+  const root = args[0], offset = args[1], size = args[2];
+  // Read from persistent trie, return value hash
+  return patriciaTrie.read(root, offset, size);
+}
+```
+
+The persistent trie operations create new Store nodes (via `Store.put`) and return root hashes. Since the tree is in the Store, it participates in content-addressing: identical memory states have identical root hashes.
+
+**MLOAD semantics:** `mem M` is consumed and re-produced unchanged. This maintains linear discipline while allowing the forward engine to track that the memory fact was "used." Alternatively, `!mem M` (persistent) avoids consumption/re-production but loses the ability to track memory frame changes.
+
+## 16. Comparative Analysis for CALC Integration
+
+### 16.1 Content-Addressing Quality
+
+| Structure | Unique Representation | Hash-Cons Automatic | Structural Sharing |
+|-----------|----------------------|--------------------|--------------------|
+| Flat `memory` facts (current) | Yes (per fact) | Yes | Per-fact only |
+| hevm write chain | No (order-dependent) | No | Full chain |
+| Interval tree | No (rotation-dependent) | No | Path-copy |
+| HAMT | Yes (if key = addr directly) | Yes (by construction) | Excellent |
+| Patricia trie | Yes | Yes (Merkle property) | Excellent |
+| Hash-consed treap | **Yes** (strongest) | **Yes** (by construction) | **Excellent + merge** |
+
+### 16.2 Symbolic Offset Compatibility
+
+| Structure | Concrete | Bounded Symbolic | Unbounded Symbolic |
+|-----------|----------|------------------|--------------------|
+| Flat facts | O(n) scan | Natural (unification) | Natural (unification) |
+| Write chain | O(n) scan | Defer | Defer |
+| HAMT | O(1) effective | O(32^levels) branching | Impractical |
+| Patricia trie | O(key_len) | Constraint propagation | O(16^levels) branching |
+| Hash-consed treap | O(log n) | Fork | Fork |
+| Hybrid (log + tree) | O(log n) | Log: natural | Log: natural |
+
+### 16.3 EVM-Specific Fitness
+
+For EVM symbolic execution in CALC:
+- **90%+ of addresses are concrete** (computed by ADD/MUL on concrete values)
+- **Memory is sparse** (typically < 1000 cells, in addresses 0x00-0xFFFF)
+- **32-byte word alignment** is common (MSTORE/MLOAD are 32-byte operations)
+- **State forking** happens at every conditional jump
+
+**Recommended:** Merkle Patricia Trie (primary) with compacted write log (for symbolic addresses).
+
+The Patricia trie handles the 90% concrete case at O(key_prefix_length) ~ O(4-8) levels. The write log handles the 10% symbolic case. Compaction moves entries from log to trie when addresses become concrete (resolved by backward chaining of `!plus`, `!inc` etc).
+
+## 17. Recommended Architecture for CALC
+
+### Tier 1: Merkle Patricia Trie (primary)
+
+Implement as FFI-backed persistent trie in the Store:
+- 16-way branching (hex nibbles of address)
+- Patricia compression for sparse addresses
+- Branch/Extension/Leaf node types (Ethereum-style)
+- New Store tag: `mtrie` with subtags `empty`, `leaf`, `ext`, `branch`
+
+### Tier 2: Compacted Write Log (symbolic layer)
+
+For symbolic addresses that cannot enter the trie:
+- Append-only log of `(symbolic_addr, size, value)` triples
+- Reads check log first (O(k)), then trie (O(key_len))
+- On address resolution (when metavar binds to concrete), compact into trie
+
+### Tier 3: Hash-Consed Treap (for merge-heavy workloads)
+
+If CALC develops path merging (join after conditional branches):
+- O(m log(n/m)) merge via equal-subtree skipping
+- Unique representation enables automatic detection of convergent states
+
+## 18. Key Papers (extended)
+
+- Coppa, D'Elia, Demetrescu. "Rethinking Pointer Reasoning in Symbolic Execution" (ASE 2017) -- MemSight
+- Borzacchiello, Coppa, D'Elia, Demetrescu. "Memory Models in Symbolic Execution: Key Ideas and New Thoughts" (STVR 2019) -- comprehensive survey
+- Kapus, Cadar. "A Segmented Memory Model for Symbolic Execution" (ESEC/FSE 2019) -- segmented model
+- Trtik, Strejcek. "Symbolic Memory with Pointers" (ATVA 2014) -- segment-offset-plane model
+- Cha et al. "Unleashing MAYHEM on Binary Code" (S&P 2012) -- hybrid symbolic/concrete memory
+- Nandi et al. "Practical Verification of Smart Contracts using Memory Splitting" (OOPSLA 2024) -- Certora
+- Hadarean et al. "Extending the Theory of Arrays: memset, memcpy, and Beyond" (VSTTE 2013) -- array theory extension
+- Perry et al. "Accelerating Array Constraints in Symbolic Execution" (ISSTA 2017) -- KLEE array optimization
+- Bucur et al. "Encoding Symbolic Expressions as Efficient Solver Queries" (EPFL 2015) -- encoding benchmark
+- Slaby, Strejcek, Trtik. "Compact Symbolic Execution" (ATVA 2013) -- compact symex
+- **Driscoll, Sarnak, Sleator, Tarjan (1989).** "Making Data Structures Persistent." *J. Computer and System Sciences* 38(1) -- foundational: path copying, fat nodes
+- **Bagwell (2001).** "Ideal Hash Trees." -- original HAMT paper, 32-way branching, bitmap compression
+- **Liljenzin (2013).** "Confluently Persistent Sets and Maps." arXiv:1301.3388 -- hash-consed treaps with unique representation and O(m log(n/m)) merge
+- **Okasaki (1998).** *Purely Functional Data Structures.* -- canonical reference for persistent balanced trees
+- **Filliâtre & Conchon (2006).** "Type-Safe Modular Hash-Consing." -- hash-consing in ML
+- **Steindorfer & Vinju (2015).** "Optimizing Hash-Array Mapped Tries for Fast and Lean Immutable JVM Collections." *OOPSLA* -- CHAMP: improved HAMT
+- **Ethereum Yellow Paper** (Appendix D). Modified Merkle Patricia Trie -- production-proven content-addressed trie over 2^256
+- **Zhu (2025).** "Efficient Symbolic Computation via Hash Consing." arXiv:2509.20534 -- 3.2x speedup from hash-consing in symbolic computation
+
+## 19. Open Questions
+
+1. **Nibble vs. byte branching:** should the Patricia trie branch on 4-bit nibbles (Ethereum-style, 16-way) or 8-bit bytes (256-way, shallower)? Byte branching gives 32 levels for 256-bit keys but wider nodes.
+
+2. **Compaction trigger:** for the hybrid log+trie approach, what is the optimal compaction threshold? Fixed count? Read-count-since-last-compaction? Triggered by metavar binding?
+
+3. **MLOAD linearity:** should `mem(T)` be linear (consumed/re-produced by reads) or persistent (`!mem(T)`)? Linear is more precise but persistent avoids unnecessary consumption.
+
+4. **Symbolic address narrowing:** can we exploit Patricia trie structure to narrow symbolic address ranges? If the trie has entries only at 0x00-0xFF, a symbolic address X with X > 0xFF reads zero.
+
+5. **Incremental hash computation:** when path-copying a trie, can we avoid recomputing the full FNV hash? The root hash depends only on the changed child -- partial update possible.
 
 - Coppa, D'Elia, Demetrescu. "Rethinking Pointer Reasoning in Symbolic Execution" (ASE 2017) -- MemSight
 - Borzacchiello, Coppa, D'Elia, Demetrescu. "Memory Models in Symbolic Execution: Key Ideas and New Thoughts" (STVR 2019) -- comprehensive survey
