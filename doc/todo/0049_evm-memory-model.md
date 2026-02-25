@@ -757,6 +757,10 @@ MLOAD's loli `(mem_read_done V -o { pc PC' * ... * mem M })` captures `M`, `PC'`
 
 No `mem_read/*` rule matches `memsize` — it sits inert during the traversal. `memsize S'` is produced immediately by MLOAD (not gated by the loli) because expansion happens before the read. Verified: no interference.
 
+### `splice` Patch Ordering is Correct
+
+`mem_finalize/patch` applies patches one at a time via `mem_base_found`. Traversal visits writes newest→oldest, so patches arrive newest-first. Each `splice` overwrites the relevant byte range in the base value. "Last writer wins" is automatic: the newest patch (applied first) sets the bytes, and older patches for the same bytes are overwritten by newer ones that were already applied. No commutativity concern — the order is deterministic.
+
 ### `binToInt` Handles Zero Correctly
 
 `binToInt(atom('e'))` → 0n (convert.js:26). The `!mem_read_range` FFI will correctly extract byte value 0 from write-log entries. `mem_read/zero` produces literal `0` which is `atom('e')` in the Store.
@@ -949,26 +953,10 @@ Engine recognizes `mem_reading` traversal pattern, executes in JavaScript batch,
 
 **Phase 4** (medium, if needed): Idea 5. Engine-level traversal short-circuit.
 
-## Open Questions
+## Future Work (out of scope)
 
-1. ~~**Tag registration**~~: Resolved. `write`, `empty_mem`, `write8`, `vwrite`, `splice` are dynamic predicate tags (above `PRED_BOUNDARY`). Automatic — no action needed.
+These are not blockers — they are separate concerns to address when needed:
 
-2. **Gas for memory expansion**: Currently modeled via `!mem_expand` FFI updating `memsize S`. Gas cost computation (`words²/512 + 3*words`) is orthogonal — add `!mem_gas OldSize NewSize GasCost` FFI when gas modeling matters. Memory rules omit gas, consistent with ADD/MUL/SUB.
-
-3. **RETURNDATASIZE / RETURNDATACOPY**: Return data is a separate buffer. Model as `returndata RD` linear fact with `vwrite`-based write-log. Same pattern as `mem`.
-
-4. ~~**Patch ordering**~~: Resolved. Traversal visits writes newest→oldest, patches accumulate in correct order (most-recent-write-wins).
-
-5. **`splice` commutativity**: `splice(splice(Base, R, W1, V1), R, W2, V2)` must equal `splice(Base, R, W2, V2)` when W2's range fully covers W1's range within the read window. The FFI must respect this.
-
-6. **`!keccak256` FFI**: Concrete keccak256 computation for storage slot resolution. Add when SLOAD needs concrete slot computation (e.g., `storage (sha3 (concat 0 slot)) V` requires matching against actual slot hash).
-
-7. ~~**CALLDATACOPY loli stack height**~~: Resolved. Loli captures `sh SH` and restores it on `calldatacopy_done`. Same pattern as existing CALLDATACOPY blocking.
-
-8. ~~**`mh` legacy type**~~: Resolved. `mh: bin -> type.` is unused. Remove and replace `mh 0` with `mem empty_mem * memsize 0` in initial states.
-
-9. ~~**Loli variable capture**~~: Resolved. `M` in MLOAD's loli is substituted during consequent instantiation via `subApplyIdx`. Correctly refers to original memory at loli creation.
-
-10. ~~**`memsize` during traversal**~~: Resolved. No `mem_read/*` rule matches `memsize`. Safe.
-
-11. ~~**`binToInt` zero handling**~~: Resolved. `binToInt(atom('e'))` → 0n. `mem_read/zero` produces literal 0 correctly.
+- **Gas modeling**: Add `!mem_gas OldSize NewSize GasCost` FFI when gas matters. Orthogonal — gas is also omitted for ADD/MUL/SUB.
+- **RETURNDATACOPY**: Separate buffer, same write-log pattern. Model as `returndata RD` linear fact. Separate TODO.
+- **`!keccak256` FFI**: Concrete keccak256 for storage slot resolution. Only needed when SLOAD requires concrete hash comparison.
