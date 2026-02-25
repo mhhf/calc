@@ -131,3 +131,19 @@ The `evm/mload` rule consumes `pc` but does NOT produce `pc PC'` — it captures
 ## What happens when MLOAD encounters a symbolic offset in the write-log?
 
 With concrete write `write(0x40, V, M)` and symbolic read offset `calldataload(4)`: `mem_read/hit` fails (structural unification mismatch — different tags). `mem_read/miss` fails (`!neq calldataload(4) 0x40` gets non-ground input → FFI fails). Neither fires → stuck leaf. This is the sound approximation: the logic can't determine the result without knowing the offset. If the offset is a free metavar instead, unification BINDS it to the write offset — naturally forking on possible values.
+
+## Why do McCarthy's word-level axioms fail for EVM's byte-addressable memory?
+
+McCarthy axioms model word-addressable arrays: `select(store(a, i, v), i) = v`. EVM MSTORE writes a 32-byte *window* at `[offset, offset+32)`. Two writes at offsets 0 and 16 produce a 16-byte overlap at `[16, 32)`. The word-level `hit` rule returns the full earlier value at offset 0, ignoring the later write's partial coverage. Need overlap-aware rules: `!no_overlap` to skip disjoint writes, `!overlaps` to detect partial coverage, `splice` to reconstruct bytes from multiple overlapping writes.
+
+## What are the six approaches for byte-addressable symbolic memory in CALC?
+
+(1) **Per-byte decomposition** — MSTORE→32 `write8` nodes. Correct but 32× chain blowup. (2) **Overlap detection rules** — word-level `write` + overlap guards + byte reconstruction. Medium complexity. (3) **Non-overlapping interval tree** — writes split existing intervals. O(log n) reads but order-dependent tree shape. (4) **Hybrid write-log + compaction** — periodic flatten to lookup table. O(1) amortized reads. (5) **Region splitting** (Certora) — static analysis separates memory regions. 120× speedup but needs bytecode analysis. (6) **Lazy splice** — collect overlapping writes as patches during traversal, assemble via `splice` term. Recommended: backward-compatible with Stage 1, minimal FFI, content-addressed sharing preserved.
+
+## What is the `splice` operation in CALC's deferred overlap model?
+
+`splice(Base, ReadOff, WriteOff, WriteVal)` = "take Base as the default 32-byte value, overlay bytes from WriteVal at WriteOff for the portion that intersects `[ReadOff, ReadOff+32)`." For concrete values: byte extraction + concatenation (FFI). For symbolic values: remains as an opaque term capturing the overlap relationship. Applied newest-first during patch assembly.
+
+## How does MCOPY (EIP-5656) work in the write-log model?
+
+An `mcopy(Dest, Src, Size, Prev)` term node in the write-log. Reading through it: if the read range `[R,R+32)` falls within `[Dest, Dest+Size)`, redirect to `[Src+(R-Dest), ...)` in the prior state (`Prev`). This is a pointer redirection within the log — pure ILL rule, no FFI. The source data is resolved by continuing traversal at the redirected offset.
