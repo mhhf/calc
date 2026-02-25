@@ -75,169 +75,75 @@ function isClosed(todo: TodoEntry): boolean {
   return CLOSED_STATUSES.has(todo.status);
 }
 
-/**
- * Render a cluster's items as a dependency chain string.
- * Topo-sort by depends_on edges within the cluster, group by level.
- * Single level → join with " · ", multiple → levels joined by " → ", siblings by "/"
- */
-function computeChainLevels(
-  ids: string[],
-  depsMap: Map<string, string[]>
-): string[][] {
-  const idSet = new Set(ids);
-  // Build intra-cluster adjacency: edges[child] = [parents within cluster]
-  const inDeg = new Map<string, number>();
-  const children = new Map<string, string[]>(); // parent → children
-  for (const id of ids) {
-    inDeg.set(id, 0);
-    children.set(id, []);
-  }
-  for (const id of ids) {
-    const deps = depsMap.get(id) || [];
-    for (const dep of deps) {
-      if (idSet.has(dep)) {
-        inDeg.set(id, (inDeg.get(id) || 0) + 1);
-        children.get(dep)!.push(id);
-      }
-    }
-  }
-  // Kahn's algorithm — group by topological level
-  const levels: string[][] = [];
-  let queue = ids.filter(id => inDeg.get(id) === 0);
-  while (queue.length > 0) {
-    queue.sort(); // deterministic ordering within level
-    levels.push(queue);
-    const next: string[] = [];
-    for (const id of queue) {
-      for (const child of children.get(id) || []) {
-        const d = (inDeg.get(child) || 1) - 1;
-        inDeg.set(child, d);
-        if (d === 0) next.push(child);
-      }
-    }
-    queue = next;
-  }
-  return levels;
-}
-
-function ClusterOverview(props: { todos: TodoEntry[] }) {
-  const closedIds = createMemo(() =>
-    new Set(props.todos.filter(t => CLOSED_STATUSES.has(t.status)).map(t => todoId(t.slug)))
+function TodoTocIndex(props: { todos: TodoEntry[] }) {
+  const activeTodos = createMemo(() =>
+    props.todos.filter(t => !isClosed(t))
   );
 
-  const depsMap = createMemo(() => {
-    const m = new Map<string, string[]>();
-    for (const t of props.todos) {
-      const id = todoId(t.slug);
-      const deps = (t.depends_on || []).map(d => parseTodoRef(d)).filter((d): d is string => d !== null);
-      m.set(id, deps);
+  const grouped = createMemo(() => {
+    const groups: Record<string, TodoEntry[]> = {};
+    for (const t of activeTodos()) {
+      const cat = t.cluster || 'Other';
+      (groups[cat] ??= []).push(t);
     }
-    return m;
-  });
-
-  const clusters = createMemo(() => {
-    const map: Record<string, string[]> = {};
-    for (const t of props.todos) {
-      if (t.cluster) {
-        (map[t.cluster] ??= []).push(todoId(t.slug));
-      }
+    // Sort within each group by ID
+    for (const cat of Object.keys(groups)) {
+      groups[cat].sort((a, b) => todoId(a.slug).localeCompare(todoId(b.slug)));
     }
-    return map;
+    // Named clusters first (alphabetically), then "Other" last
+    const ordered: [string, TodoEntry[]][] = [];
+    const cats = Object.keys(groups).filter(c => c !== 'Other').sort();
+    for (const cat of cats) ordered.push([cat, groups[cat]]);
+    if (groups['Other']) ordered.push(['Other', groups['Other']]);
+    return ordered;
   });
-
-  const standaloneIds = createMemo(() => {
-    const clustered = new Set<string>();
-    for (const ids of Object.values(clusters())) {
-      for (const id of ids) clustered.add(id);
-    }
-    return props.todos.map(t => todoId(t.slug)).filter(id => !clustered.has(id)).sort();
-  });
-
-  const clusterEntries = createMemo(() =>
-    Object.entries(clusters()).map(([name, ids]) => ({
-      name,
-      levels: computeChainLevels(ids, depsMap()),
-    }))
-  );
 
   return (
-    <div class="mb-6 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 p-4 font-mono text-xs">
-      <For each={clusterEntries()}>
-        {(entry) => (
-          <div class="flex gap-2 py-0.5">
-            <span class="shrink-0 w-24 text-right text-gray-500 dark:text-gray-400 font-semibold">
-              {entry.name}
-            </span>
-            <span class="text-gray-700 dark:text-gray-300">
-              <For each={entry.levels}>
-                {(level, li) => (
-                  <>
-                    {li() > 0 && (
-                      <span class="text-gray-400 mx-1">{'\u2192'}</span>
-                    )}
-                    <For each={level}>
-                      {(id, si) => (
-                        <>
-                          {si() > 0 && (
-                            <span class="text-gray-400">{entry.levels.length > 1 ? '/' : ' \u00b7 '}</span>
-                          )}
-                          <a
-                            href={`#todo-${id}`}
-                            class="hover:underline"
-                            classList={{
-                              'line-through opacity-50': closedIds().has(id),
-                              'text-blue-600 dark:text-blue-400': !closedIds().has(id),
-                            }}
-                            onClick={(e) => {
-                              e.preventDefault();
-                              document.getElementById(`todo-${id}`)?.scrollIntoView({ behavior: 'smooth' });
-                            }}
-                          >
-                            {id}
-                          </a>
-                        </>
-                      )}
+    <Show when={grouped().length > 0}>
+      <div class="prose-research">
+        <nav class="toc">
+          <span class="toc-title">Index</span>
+          <ul>
+            <For each={grouped()}>
+              {([category, categoryTodos]) => (
+                <li>
+                  <a
+                    href={`#cluster-${category.toLowerCase().replace(/\s+/g, '-')}`}
+                    onClick={(e) => {
+                      e.preventDefault();
+                      document.getElementById(`cluster-${category.toLowerCase().replace(/\s+/g, '-')}`)?.scrollIntoView({ behavior: 'smooth' });
+                    }}
+                  >
+                    {category}
+                  </a>
+                  <ul>
+                    <For each={categoryTodos}>
+                      {(todo) => {
+                        const id = todoId(todo.slug);
+                        return (
+                          <li>
+                            <a
+                              href={`#todo-${id}`}
+                              onClick={(e) => {
+                                e.preventDefault();
+                                document.getElementById(`todo-${id}`)?.scrollIntoView({ behavior: 'smooth' });
+                              }}
+                            >
+                              <span class="font-mono text-xs text-gray-400">TODO_{id} </span>
+                              {todo.title}
+                            </a>
+                          </li>
+                        );
+                      }}
                     </For>
-                  </>
-                )}
-              </For>
-            </span>
-          </div>
-        )}
-      </For>
-      <Show when={standaloneIds().length > 0}>
-        <div class="border-t border-gray-200 dark:border-gray-700 mt-1 pt-1">
-          <div class="flex gap-2 py-0.5">
-            <span class="shrink-0 w-24 text-right text-gray-500 dark:text-gray-400 font-semibold">
-              Other
-            </span>
-            <span class="text-gray-700 dark:text-gray-300">
-              <For each={standaloneIds()}>
-                {(id, i) => (
-                  <>
-                    {i() > 0 && <span class="text-gray-400"> {'\u00b7'} </span>}
-                    <a
-                      href={`#todo-${id}`}
-                      class="hover:underline"
-                      classList={{
-                        'line-through opacity-50': closedIds().has(id),
-                        'text-blue-600 dark:text-blue-400': !closedIds().has(id),
-                      }}
-                      onClick={(e) => {
-                        e.preventDefault();
-                        document.getElementById(`todo-${id}`)?.scrollIntoView({ behavior: 'smooth' });
-                      }}
-                    >
-                      {id}
-                    </a>
-                  </>
-                )}
-              </For>
-            </span>
-          </div>
-        </div>
-      </Show>
-    </div>
+                  </ul>
+                </li>
+              )}
+            </For>
+          </ul>
+        </nav>
+      </div>
+    </Show>
   );
 }
 
@@ -275,8 +181,6 @@ export default function TodoIndex() {
     mutate(prev => prev?.map(t => t.slug === slug ? { ...t, starred: newVal } : t));
   };
 
-  const hasClusters = createMemo(() => (todos() || []).some(t => t.cluster));
-
   const statusCounts = createMemo(() => {
     const counts: Record<string, number> = {};
     for (const t of todos() || []) {
@@ -301,9 +205,9 @@ export default function TodoIndex() {
         </Show>
       </div>
 
-      {/* Cluster overview */}
-      <Show when={todos() && hasClusters()}>
-        <ClusterOverview todos={todos()!} />
+      {/* TOC index */}
+      <Show when={todos()}>
+        <TodoTocIndex todos={todos()!} />
       </Show>
 
       {/* Filters */}
