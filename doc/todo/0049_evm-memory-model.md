@@ -10,6 +10,7 @@ priority: 6
 cluster: Symexec
 depends_on: []
 required_by: []
+starred: true
 ---
 
 # EVM Memory Model Design
@@ -613,365 +614,19 @@ The result must be:
 
 With symbolic offsets it becomes even more complex: if the write offset is `calldataload(4)`, we can't determine which bytes overlap at analysis time.
 
-### Design Space: Six Approaches
+### Design Space
 
-#### Approach 1: Per-Byte Decomposition (KLEE/angr/Triton Style)
+Three approaches were investigated and rejected before arriving at the recommended design. They are documented in RES_0062 for reference but are not viable for CALC:
 
-**Idea**: Decompose every MSTORE into 32 individual byte writes. Every MLOAD reads 32 individual bytes and concatenates.
+- **Per-Byte Decomposition** (KLEE/angr/Triton style): Decompose MSTORE into 32 `write8` nodes. Correct semantics but 32× chain blowup — at 1000 MSTOREs, MLOAD costs 1,024,000 rule steps. KLEE/angr avoid this via O(1) byte arrays; CALC's linked-list write-log has no random access. Structurally incompatible.
 
-```
-% Type declarations
-write8: bin -> bin -> bin -> bin.    % write8(byte_addr, byte_val, prev)
+- **Non-Overlapping Interval Tree**: Memory as a balanced tree of `[start, len) → value` intervals, split on write. O(log n) reads, but: insertion-order-dependent tree shape breaks content-addressed sharing (two identical memory states can have different Store hashes); interval splitting logic requires heavy FFI (not expressible as pure ILL rules); symbolic offsets completely fail (all comparisons need ground values).
 
-% MSTORE decomposed: write 32 bytes individually
-% Instead of: mem (write Offset Value M)
-% Produce:    mem (write8 (Offset+31) (byte 0 Value) (write8 (Offset+30) (byte 1 Value) ...))
-%
-% Conceptually (actual implementation needs 32 rules or FFI):
-evm/mstore:
-  pc PC * code PC 0x52 * !inc PC PC' *
-  sh (s (s SH)) * stack (s SH) Offset * stack SH Value *
-  mem M
-  -o {
-    code PC 0x52 * pc PC' * sh SH *
-    mem (mstore_bytes Offset Value 32 M)
-  }.
-```
+- **Region Splitting** (Certora style): Static analysis partitions memory into disjoint regions with separate `mem` facts. 120× speedup reported but requires bytecode analysis infrastructure CALC doesn't have, depends on Solidity allocator conventions, and symbolic offsets may span region boundaries. A preprocessing optimization, not a memory model.
 
-Where `mstore_bytes(Offset, Value, Size, Prev)` is an FFI-computed term that expands to 32 nested `write8` nodes.
+#### Write-Log with Overlap Detection (Recommended for CALC)
 
-**MLOAD**: read 32 bytes, each via independent chain traversal, then concatenate:
-
-```
-% Read byte i of a 32-byte MLOAD
-mem_read8/hit:
-  mem_reading8 Addr (write8 Addr Byte Rest) OrigMem
-  -o { mem_byte_done Addr Byte }.
-
-mem_read8/miss:
-  mem_reading8 Addr (write8 Other Byte Rest) OrigMem *
-  !neq Addr Other
-  -o { mem_reading8 Addr Rest OrigMem }.
-
-mem_read8/zero:
-  mem_reading8 Addr empty_mem OrigMem
-  -o { mem_byte_done Addr 0 }.
-```
-
-**Worked example** (from the overlapping scenario above):
-
-```
-After MSTORE(0, 0xAA..AA) + MSTORE(16, 0xBB..BB):
-
-mem = write8(47, 0xBB, write8(46, 0xBB, ... write8(16, 0xBB,
-      write8(31, 0xAA, write8(30, 0xAA, ... write8(0, 0xAA,
-      empty_mem))...)))
-
-MLOAD(0) reads bytes [0..31]:
-  Byte 0:  traverse → hits write8(0, 0xAA, ...) after 64 steps  → 0xAA ✓
-  Byte 15: traverse → hits write8(15, 0xAA, ...) after 49 steps → 0xAA ✓
-  Byte 16: traverse → hits write8(16, 0xBB, ...) after 32 steps → 0xBB ✓
-  Byte 31: traverse → hits write8(31, 0xAA, ...) after 34 steps → 0xAA ✗ WRONG!
-```
-
-Wait — byte 31 is in the overlap region `[16,32) ∩ [0,32)`. The second MSTORE(16) writes to bytes [16..47]. Byte 31 was written by BOTH MSTOREs. The write8 chain has the second MSTORE's bytes outermost (most recent), so `write8(31, 0xBB, ...)` is found first. **Correct!**
-
-Let me redo: MSTORE(16, 0xBB..BB) writes bytes [16..47]. Byte 31 = byte index 15 of value 0xBB..BB = 0xBB. The `write8` for byte 31 from the second MSTORE is outermost → found first → returns 0xBB. ✓
-
-**Performance at 1000+ operations**:
-
-| Metric | Value | Explanation |
-|--------|-------|-------------|
-| MSTORE cost | 32 `Store.put` calls + 32 `write8` nodes | O(32) term construction |
-| MLOAD cost | 32 × W_bytes traversal steps | W_bytes = total `write8` nodes in chain |
-| Chain length after N MSTOREs | 32 × N `write8` nodes | Grows 32× faster than word-level |
-| MLOAD at 100 MSTOREs | 32 × 3200 = 102,400 rule steps | Pathologically slow |
-| MLOAD at 1000 MSTOREs | 32 × 32,000 = 1,024,000 rule steps | Unusable |
-
-**Symbolic values**: `write8(Addr, (extract Value 31 8), ...)` — each byte is an `extract` term. Value is symbolic → each extracted byte is an opaque symbolic term. Works correctly but produces 32 `extract` terms per MSTORE.
-
-**Symbolic offsets**: Same behavior as word-level — `!neq Addr Other` fails on non-ground → stuck leaf. Correct.
-
-**Verdict**: Correct semantics. Natural overlap handling (most-recent-write-wins per byte). But **32× blowup** in chain length makes it prohibitively slow for >50 MSTOREs. This is why KLEE/angr use O(1) byte arrays, not linked lists.
-
-#### Approach 2: Word-Level Write-Log with Overlap Detection Rules
-
-**Idea**: Keep word-level `write(Offset, Value, Prev)` nodes (efficient MSTORE). Add overlap-aware read rules that detect when a write partially covers the read range.
-
-```
-% Types
-overlap_info: bin -> bin -> bin -> bin -> type.
-  % overlap_info ReadOffset WriteOffset WriteValue RestMem
-
-% New traversal rules (in addition to hit/miss/zero):
-
-% Partial overlap: write covers some but not all of the read range
-% Write at W covers [W, W+32). Read at R covers [R, R+32).
-% Overlap exists when W < R+32 AND R < W+32 AND W ≠ R.
-mem_read/overlap:
-  mem_reading R (write W V Rest) OrigMem *
-  !neq R W *
-  !lt W (plus R 32) *          % W < R + 32
-  !lt R (plus W 32)            % R < W + 32
-  -o {
-    % Must reconstruct: bytes from V where V covers [R,R+32),
-    % plus bytes from earlier writes for the uncovered portion.
-    mem_read_overlap R W V Rest OrigMem
-  }.
-```
-
-The reconstruction after detecting overlap is complex. For concrete offsets R and W:
-
-```
-% Case: write starts before read (W < R)
-%   Bytes [R, W+32) come from V (bytes R-W through 31)
-%   Bytes [W+32, R+32) come from earlier writes
-% Case: write starts after read (W > R)
-%   Bytes [R, W) come from earlier writes
-%   Bytes [W, R+32) come from V (bytes 0 through R+32-W-1)
-```
-
-**Worked example**:
-
-```
-MSTORE(0, 0xAA..AA)  → write(0, 0xAA..AA, empty_mem)
-MSTORE(16, 0xBB..BB) → write(16, 0xBB..BB, write(0, 0xAA..AA, empty_mem))
-MLOAD(0):
-
-mem_reading 0 (write 16 0xBB..BB (write 0 0xAA..AA empty_mem)) OrigMem
-
-Step 1: R=0, W=16. R ≠ W ✓. W < R+32 → 16 < 32 ✓. R < W+32 → 0 < 48 ✓.
-        → OVERLAP detected. W > R case:
-        Bytes [0, 16) from earlier writes (extract bytes 0-15 of 0xAA..AA)
-        Bytes [16, 32) from V (extract bytes 0-15 of 0xBB..BB)
-        Result: concat(extract(0xAA..AA, 0, 16), extract(0xBB..BB, 0, 16))
-```
-
-**The reconstruction problem**: building `concat(extract(...), extract(...))` requires either:
-
-1. **FFI**: compute the byte extraction and concatenation in JavaScript. Clean interface but the overlap semantics are in FFI, not in rules.
-
-2. **ILL rules**: express byte extraction as recursive rule traversal. `extract(V, Start, Len)` would need 32 step rules to extract individual bytes. Very verbose (~50+ rules).
-
-3. **Opaque symbolic term**: produce `overlap_result(R, W, V, RestResult)` as a symbolic term. Defer actual byte computation. Sound for symbolic analysis (the term captures all needed information) but doesn't compute concrete values.
-
-**Performance at 1000+ operations**:
-
-| Metric | Value | Explanation |
-|--------|-------|-------------|
-| MSTORE cost | O(1) — single `write` wrap | Same as word-level |
-| MLOAD cost (no overlap) | O(W) steps, W = writes in chain | Same as word-level |
-| MLOAD cost (with overlap) | O(W) steps + overlap reconstruction | Reconstruction is O(1) for FFI, O(32) for rules |
-| Chain length after N MSTOREs | N `write` nodes | Same as word-level |
-| Overlap frequency (solc) | ~1% of reads | Nearly all solc code is 32-byte aligned |
-
-**Verdict**: Preserves O(1) MSTORE and O(W) MLOAD from the word-level model. Overlap detection adds `!lt` FFI guards (new). Reconstruction either requires FFI (clean but puts semantics in code) or many rules (pure but verbose). Best fit for CALC's philosophy: **use opaque symbolic `overlap_result` terms** — the logic captures the overlap relationship; concrete byte extraction can be added later as FFI optimization.
-
-#### Approach 3: Non-Overlapping Interval Model
-
-**Idea**: Memory is a set of non-overlapping intervals `[start, start+len) → value`. Every write splits existing intervals to maintain the non-overlapping invariant.
-
-```
-% Memory as interval set (balanced tree of intervals)
-% Each node: interval(Start, Len, Value, Left, Right)
-% Invariant: no two intervals overlap
-
-% MSTORE: insert [Offset, Offset+32) → Value, splitting any overlapping intervals
-evm/mstore:
-  pc PC * code PC 0x52 * ... * mem M
-  -o { mem (interval_insert M Offset 32 Value) }.
-```
-
-Where `interval_insert` is an FFI that:
-1. Finds all intervals overlapping `[Offset, Offset+32)`
-2. Splits each into before/overlap/after
-3. Removes overlapping portions
-4. Inserts new interval `[Offset, Offset+32) → Value`
-
-**Worked example**:
-
-```
-After MSTORE(0, 0xAA..AA):
-  intervals = { [0, 32) → 0xAA..AA }
-
-After MSTORE(16, 0xBB..BB):
-  [0, 32) overlaps [16, 48). Split:
-    [0, 16)  → extract(0xAA..AA, 0, 16)   (kept from old)
-    [16, 48) → 0xBB..BB                     (new write, fully replaces overlap)
-  intervals = { [0, 16) → extract(0xAA..AA, 0, 16),  [16, 48) → 0xBB..BB }
-
-MLOAD(0) reads [0, 32):
-  [0, 16)  → extract(0xAA..AA, 0, 16)      (fully covered)
-  [16, 32) → extract(0xBB..BB, 0, 16)      (partially covered)
-  Result: concat(extract(0xAA..AA, 0, 16), extract(0xBB..BB, 0, 16))  ✓
-```
-
-**As ILL rules** (hybrid approach — tree in Store, operations as rules):
-
-```
-% Interval tree node: itree(Key, Len, Val, Left, Right)
-% Invariant maintained by insertion rules
-
-% Read from interval tree: find covering interval(s)
-mem_iread/found:
-  mem_ireading Offset Size (itree K Len V L R) OrigMem *
-  !le K Offset *                    % K <= Offset
-  !le (plus Offset Size) (plus K Len)  % Offset + Size <= K + Len
-  -o { mem_read_done (extract V (minus Offset K) Size) }.
-
-mem_iread/left:
-  mem_ireading Offset Size (itree K Len V L R) OrigMem *
-  !lt (plus Offset Size) K          % Offset + Size <= K → go left
-  -o { mem_ireading Offset Size L OrigMem }.
-
-mem_iread/right:
-  mem_ireading Offset Size (itree K Len V L R) OrigMem *
-  !le (plus K Len) Offset           % K + Len <= Offset → go right
-  -o { mem_ireading Offset Size R OrigMem }.
-
-% Cross-boundary read: partially in left, partially in right
-% ... complex splitting rules ...
-```
-
-**Performance at 1000+ operations**:
-
-| Metric | Value | Explanation |
-|--------|-------|-------------|
-| MSTORE cost | O(k log n) | k = overlapping intervals, n = total intervals |
-| MLOAD cost | O(log n) best, O(k log n) cross-boundary | k = intervals spanning read range |
-| Interval count after N aligned MSTOREs | N (no splitting) | Aligned writes don't create fragments |
-| Interval count after N overlapping MSTOREs | Up to 2N (splits) | Each overlap creates at most 2 fragments |
-
-**Symbolic offsets**: Problematic. `!le K Offset` fails on non-ground → stuck. The tree traversal requires concrete offsets for comparison. Could defer to ITE chains (MemSight-style) but that breaks the pure-rules approach.
-
-**Symbolic values**: Work fine — `extract(sym_V, 5, 16)` is an opaque term.
-
-**Content-addressing**: The tree shape depends on insertion order (unless using a hash-consed treap). Two memory states with identical contents but different write histories may have different Store hashes. This breaks content-addressed sharing across symexec branches.
-
-**Verdict**: Excellent read performance O(log n). But: complex write logic (interval splitting), poor symbolic offset support, and insertion-order-dependent tree shape. Better suited to concrete-heavy workloads. The splitting logic is hard to express as pure ILL rules — needs FFI.
-
-#### Approach 4: Hybrid Write-Log + Compaction (hevm Style)
-
-**Idea**: Keep the simple `write(Offset, Value, Prev)` chain for all writes. Add a `compact` node that flattens concrete portions of the chain into a direct-lookup structure. Reads check compact nodes first (O(1)), then scan remaining writes.
-
-```
-% Term constructors
-write: bin -> bin -> bin -> bin.      % write(offset, value, prev)
-compact: bin -> bin -> bin.           % compact(lookup_table, prev)
-% where lookup_table is an FFI-managed concrete byte map
-
-% MSTORE: O(1) wrap as before
-evm/mstore:
-  ... mem M -o { mem (write Offset Value M) }.
-
-% Compaction trigger: after N writes, compact the chain
-% (implemented as FFI — traverses chain, builds lookup table)
-mem_compact:
-  mem M * !should_compact M
-  -o { mem (ffi_compact M) }.
-
-% Read rules — check compact node first
-mem_read/compact_hit:
-  mem_reading Offset (compact Table Rest) OrigMem *
-  !compact_lookup Table Offset V    % FFI: lookup in concrete table
-  -o { mem_read_done V }.
-
-mem_read/compact_miss:
-  mem_reading Offset (compact Table Rest) OrigMem *
-  !compact_no_entry Table Offset    % FFI: offset not in table
-  -o { mem_reading Offset Rest OrigMem }.
-```
-
-**Worked example**:
-
-```
-After 100 MSTOREs at various offsets:
-  mem = write(0x80, V100, write(0x60, V99, ... write(0x40, V1, empty_mem)...))
-
-Compact:
-  mem = compact({0x40→V1, 0x60→V99, 0x80→V100, ...}, empty_mem)
-  (All concrete writes absorbed into lookup table)
-
-MLOAD(0x60):
-  mem_read/compact_hit fires: lookup table has 0x60 → V99. Done in 1 step.
-```
-
-**For overlapping writes during compaction**:
-
-```
-After MSTORE(0, 0xAA..AA) + MSTORE(16, 0xBB..BB):
-  write(16, 0xBB..BB, write(0, 0xAA..AA, empty_mem))
-
-Compact traverses newest→oldest:
-  1. write(16, 0xBB..BB): store bytes [16..47] = 0xBB per byte
-  2. write(0, 0xAA..AA): store bytes [0..31] = 0xAA per byte
-     BUT bytes [16..31] already set by step 1 → skip (most recent wins)
-
-Result: compact({0→0xAA, 1→0xAA, ..., 15→0xAA, 16→0xBB, ..., 47→0xBB}, empty_mem)
-
-MLOAD(0) reads bytes [0..31] from compact table → O(1) per byte.
-```
-
-**Performance at 1000+ operations**:
-
-| Metric | Value | Explanation |
-|--------|-------|-------------|
-| MSTORE cost | O(1) write wrap | Same as word-level |
-| MLOAD pre-compact | O(W) | W = writes in chain |
-| MLOAD post-compact | O(1) | Direct table lookup |
-| Compact cost | O(W × 32) bytes processed | One-time cost |
-| Compact frequency | Every ~100 writes | Amortized O(1) per write |
-| Post-compact chain | 1 `compact` node + 0 `write` nodes | Clean slate |
-
-**Symbolic writes can't be compacted** — they stay as `write` nodes above the compact:
-
-```
-compact({0x40→0x80, ...}, empty_mem)           ← concrete, compacted
-write(calldataload(4), sym_val, compact(...))  ← symbolic, stays in log
-```
-
-Reads traverse the symbolic writes first, then hit the compact node.
-
-**Verdict**: Best of both worlds for concrete-heavy workloads. O(1) MSTORE, amortized O(1) MLOAD (with periodic compaction). Overlap handled correctly during compaction. But: compaction is FFI (the compact table is opaque to the logic), and symbolic writes accumulate above the compact node.
-
-#### Approach 5: Region Splitting (Certora Style)
-
-**Idea**: Static analysis identifies logically separate memory regions (e.g., scratch space [0x00..0x40), free memory pointer [0x40..0x60), dynamic allocations [0x80+..)). Each region gets its own `mem` fact. No cross-region aliasing possible.
-
-```
-% Separate memory regions
-mem_scratch: bin -> type.        % [0x00, 0x40) — scratch space
-mem_fmptr: bin -> type.          % [0x40, 0x60) — free memory pointer
-mem_heap: bin -> bin -> type.    % mem_heap HeapBase HeapMem — dynamic region
-
-% MSTORE routes to correct region based on offset
-evm/mstore_scratch:
-  ... stack SH Offset * !lt Offset 0x40 * mem_scratch M
-  -o { mem_scratch (write Offset Value M) }.
-
-evm/mstore_fmptr:
-  ... stack SH Offset * !eq Offset 0x40 * mem_fmptr M
-  -o { mem_fmptr (write Offset Value M) }.
-
-evm/mstore_heap:
-  ... stack SH Offset * !ge Offset 0x80 *
-  mem_heap Base M
-  -o { mem_heap Base (write Offset Value M) }.
-```
-
-**Performance**: Each region has a short write chain → fast reads. No cross-region aliasing → no overlap between regions. Certora reports **120× speedup** from this technique.
-
-**Problems for CALC**:
-1. Requires a static analysis pass on bytecode before rule execution — CALC doesn't have this infrastructure.
-2. Region boundaries depend on Solidity's allocator conventions — not general.
-3. Dynamic region allocation (`freePtr += 0x20`) creates new regions at runtime.
-4. Symbolic offsets may span region boundaries.
-
-**Verdict**: Powerful optimization for Solidity-specific verification but requires bytecode analysis infrastructure that CALC doesn't have. Not a good fit for CALC's general-purpose forward rule engine. Could be implemented as a preprocessing step that generates region-specific rules, but this is a separate project.
-
-#### Approach 6: Lazy Write-Log with Deferred Overlap (Recommended for CALC)
-
-**Idea**: Combine the simple write-log (Approach 2) with deferred overlap resolution. Instead of reconstructing bytes eagerly, produce symbolic `mem_slice` terms that capture the overlap relationship. Concrete extraction happens lazily (only when needed for a comparison or branch condition).
+**Idea**: Extend the Stage 1 write-log with overlap-aware read rules and deferred overlap resolution. Instead of reconstructing bytes eagerly, produce symbolic `splice` terms that capture the overlap relationship. Concrete extraction happens lazily (only when needed for a comparison or branch condition).
 
 ```
 % Core write-log (identical to Stage 1)
@@ -1129,25 +784,7 @@ All three are pure arithmetic on concrete bigints. No state mutation. Clean FFI.
 
 `!splice` is irreducibly computational (byte manipulation) — like `!mul` or `sha3`. FFI is justified.
 
-### Comparison Matrix: Byte-Addressable Approaches
-
-| | Approach 1 Per-Byte | Approach 2 Overlap Rules | Approach 3 Interval Tree | Approach 4 Hybrid+Compact | Approach 5 Region Split | Approach 6 Lazy Splice |
-|---|---|---|---|---|---|---|
-| **MSTORE** | O(32) | O(1) | O(k log n) | O(1) | O(1) | O(1) |
-| **MLOAD aligned** | O(32W) | O(W) | O(log n) | O(1) amortized | O(W/region) | O(W) |
-| **MLOAD overlap** | O(32W) | O(W)+recon | O(log n) | O(1) amortized | O(W/region) | O(W)+O(k) |
-| **Chain growth** | 32× | 1× | varies | 1× (compacted) | 1×/region | 1× |
-| **Pure ILL rules** | Yes | Partial | No (FFI tree) | No (FFI compact) | No (analysis) | Yes (splice=FFI) |
-| **Symbolic offsets** | Stuck (sound) | Stuck (sound) | Stuck | Stuck | Stuck | Stuck (sound) |
-| **Content sharing** | Yes | Yes | Order-dependent | Partial | Per-region | Yes |
-| **New FFI count** | 0 (but extract) | 3 (lt, overlaps, splice) | 5+ (tree ops) | 3+ (compact) | Analysis engine | 3 (no_overlap, overlaps, splice) |
-| **Complexity** | Simple | Medium | High | Medium | High | Medium |
-| **solc fit** | Poor (32× cost) | Good | Good | Excellent | Excellent | Good |
-| **General EVM** | Good | Good | Good | Good | Solidity only | Good |
-
-### Recommended Byte-Addressable Strategy
-
-**Approach 6 (Lazy Write-Log with Deferred Overlap)** is the best fit for CALC:
+### Why This Approach Fits CALC
 
 1. **Faithful to the theory**: The write-log IS the memory. Traversal rules ARE McCarthy's axioms (extended with overlap). The `splice` term is an honest representation of the overlap relationship — not a hack.
 
@@ -1163,11 +800,15 @@ All three are pure arithmetic on concrete bigints. No state mutation. Clean FFI.
 
 7. **Performance**: O(W) per MLOAD like Stage 1. Overlap detection adds O(1) per step. Patch assembly adds O(k) where k is typically 0. At 1000 MSTOREs, MLOAD is 1000 rule steps (~10ms at 10μs/step) — acceptable. If profiling shows this is slow, FFI fast-path (Option E from Stage 5) accelerates to ~50μs.
 
-**Implementation staging**:
+### Optimization: Compaction (hevm Style)
+
+If write chains grow long enough to matter, a `compact(ByteMap, Prev)` term constructor flattens concrete portions into a direct-lookup structure. Reads check compact nodes first (O(1)), then scan remaining writes. Compaction traverses newest→oldest, applies most-recent-write-wins per byte, resolves overlaps. Symbolic writes stay above the compact node. This is an FFI optimization layer — the rules remain the definition. See Stage 5 in the implementation plan and RES_0062 §4 for details.
+
+### Implementation Staging
 
 - **Stage 1**: Ship with `mem_read/hit + mem_read/miss + mem_read/zero` (current plan). `!neq` is sufficient for aligned access.
 - **Stage 2**: Replace `!neq` with `!no_overlap` in `mem_read/miss`. Add `mem_read/partial` with `!overlaps`. Add patch assembly rules. Add `!splice` FFI.
-- **Stage 3**: If needed, add compaction (Approach 4) as optimization layer on top.
+- **Stage 3**: If needed, add compaction as optimization layer on top.
 
 ### Symbolic Values of Arbitrary Length
 
@@ -1258,7 +899,7 @@ This is a **pointer redirection within the log** — the read at `R` in the dest
 
 4. **RETURNDATASIZE / RETURNDATACOPY**: Return data is a separate buffer. Model as `returndata RD` linear fact with similar write-log structure.
 
-5. **Compaction**: If write chains grow very long, add a `compact(ByteMap, prev)` term constructor that flattens concrete portions. Read traversal checks `compact` first (O(1) for covered bytes). This is hevm's `simplifyReads` strategy expressed as a term constructor. See Approach 4 above for details.
+5. **Compaction**: If write chains grow very long, add a `compact(ByteMap, prev)` term constructor that flattens concrete portions. Read traversal checks `compact` first (O(1) for covered bytes). This is hevm's `simplifyReads` strategy expressed as a term constructor. See "Optimization: Compaction" section above.
 
 6. **`!no_overlap` vs `!neq`**: Stage 1 uses `!neq` (sufficient for aligned 32-byte access). Stage 2 replaces with `!no_overlap` (handles arbitrary overlap). The transition is backward-compatible: `!neq R W` implies `!no_overlap R 32 W 32` for aligned access. But `!no_overlap` is strictly more permissive (skips non-overlapping writes that `!neq` would also skip, plus catches the edge case where `R ≠ W` but ranges overlap). For Stage 1, `!neq` is correct because all EVM MSTORE/MLOAD are 32-byte aligned and non-overlapping in solc code.
 
