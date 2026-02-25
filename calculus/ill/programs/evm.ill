@@ -20,7 +20,7 @@
 % 1b   SHL           *
 % 1c   SHR           *
 
-% 20   SHA3          TODO
+% 20   SHA3          *
 
 % 30   ADDRESS
 % 31   BALANCE
@@ -33,8 +33,12 @@
 % 42   TIMESTAMP     *
 % 45   GASLIMIT      *
 
+% 51   MLOAD         *
+% 52   MSTORE        *
+% 53   MSTORE8       *
 % 50   POP           *
 % 54   SLOAD
+% 59   MSIZE         *
 % 55   SSTORE        *
 % 56   JUMP          *
 % 57   JUMPI
@@ -87,8 +91,20 @@ callvalue: bin -> type.
 calldata: bin -> bin -> bin -> type.
 calldatasize: bin -> type.
 debug: bin -> type.
-memory: bin -> bin -> bin -> type.
-mh: bin -> type.
+mem: bin -> type.
+memsize: bin -> type.
+mem_reading: bin -> bin -> bin -> type.
+mem_read_done: bin -> type.
+mem_base_found: bin -> bin -> type.
+mem_patch: bin -> bin -> bin -> type.
+mem_patch_byte: bin -> bin -> bin -> type.
+write: bin -> bin -> bin -> bin.
+write8: bin -> bin -> bin -> bin.
+empty_mem: bin.
+saved_mem: bin -> type.
+saved_memsize: bin -> type.
+calldatacopy_iter: bin -> bin -> bin -> bin -> type.
+calldatacopy_done: bin -> type.
 timestamp: bin -> type.
 gaslimit: bin -> type.
 shr: bin -> bin -> bin -> type.
@@ -382,44 +398,25 @@ evm/shr:
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%  20
 
-% TODO - dirty -.-, I don't want to implemet sha3 in here
-% TODO - summ over memory
-
-concatMemory: bin -> bin -> bin -> type.
-unblockConcatMemory: bin -> type.
-concatMemory/z: concatMemory X X Z
-  -o {
-    unblockConcatMemory Z
-  }.
-concatMemory/s:
-  concatMemory Pos To Z *
-  !neq Pos To           *
-  memory Pos Size V
-  -o {
-    exists Pos'. (
-      memory Pos Size V *
-      concatMemory Pos' To (concat Z V) *
-      !plus Pos Size Pos')
-  }.
-
 evm/sha3:
-  pc PC             *
-  code PC 0x20      *
-  !inc PC PC'       *
-  gas GAS           *
-  !inc GAS GAS'     *
-  sh (s (s SH))     *
-  stack (s SH) From *
-  stack SH  To
+  pc PC *
+  code PC 0x20 *
+  !inc PC PC' *
+  gas GAS *
+  !inc GAS GAS' *
+  sh (s (s SH)) *
+  stack (s SH) Offset *
+  stack SH Size *
+  mem M * memsize S *
+  !mem_expand S Offset Size S' *
+  !mem_read_range M Offset Size Bytes
   -o {
-    concatMemory From To 0 *
-    (unblockConcatMemory Z -o {
-      code PC 0x20 *
-      pc PC' *
-      gas GAS' *
-      stack SH (sha3 Z) *
-      sh (s SH)
-    })
+    code PC 0x20 *
+    pc PC' *
+    gas GAS' *
+    sh (s SH) *
+    stack SH (sha3 Bytes) *
+    mem M * memsize S'
   }.
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%  30
@@ -571,26 +568,22 @@ evm/calldatasize:
     pc PC'
   }.
 
-calldatacopy: bin -> bin -> bin -> type.
-unblock: type.
-
-calldatacopy/z:
-  calldatacopy Ms Cs Cs
+calldatacopy_iter/z:
+  calldatacopy_iter Dest Ce Ce M
   -o {
-    unblock
+    calldatacopy_done M
   }.
 
-% TODO
-calldatacopy/s:
-  calldatacopy Ms Cs Ce *
+calldatacopy_iter/s:
+  calldatacopy_iter Dest Cs Ce M *
   calldata Cs Size D *
   !neq Cs Ce
   -o {
-    exists Cs'. exists Ms'. (
-      memory Ms Size D *
+    exists Cs'. exists Dest'. (
       calldata Cs Size D *
-      calldatacopy Ms' Cs' Ce *
-      !plus Cs Size Cs' * !plus Ms Size Ms')
+      calldatacopy_iter Dest' Cs' Ce (write Dest D M) *
+      !plus Cs Size Cs' *
+      !plus Dest Size Dest')
   }.
 
 evm/calldatacopy:
@@ -598,17 +591,21 @@ evm/calldatacopy:
   code PC 0x37 *
   !inc PC PC' *
   sh (s (s (s SH))) *
-  stack (s (s SH))         Mem_start      *
-  stack (s SH)             Calldata_start *
-  stack SH                 Copy_length
-%TODO fill memory with zeros in  case mem_start is bigger then the current mem_height
+  stack (s (s SH)) DestOffset *
+  stack (s SH) DataOffset *
+  stack SH Size *
+  mem M * memsize S *
+  !mem_expand S DestOffset Size S'
   -o {
-    exists Calldata_end. (
+    exists End. (
       code PC 0x37 *
-      sh SH *
-      calldatacopy Mem_start Calldata_start Calldata_end *
-      (unblock -o {pc PC'}) *
-      !plus Calldata_start Copy_length Calldata_end)
+      memsize S' *
+      calldatacopy_iter DestOffset DataOffset End M *
+      !plus DataOffset Size End *
+      (calldatacopy_done M' -o {
+        pc PC' * sh SH * mem M'
+      })
+    )
   }.
 
 
@@ -663,6 +660,118 @@ evm/pop:
     code PC 0x50 *
     pc PC' *
     sh SH
+  }.
+
+evm/mload:
+  pc PC *
+  code PC 0x51 *
+  !inc PC PC' *
+  sh (s SH) * stack SH Offset *
+  mem M * memsize S *
+  !mem_expand S Offset 32 S'
+  -o {
+    code PC 0x51 *
+    memsize S' *
+    mem_reading Offset M M *
+    (mem_read_done V -o {
+      pc PC' * sh (s SH) * stack SH V * mem M
+    })
+  }.
+
+evm/mstore:
+  pc PC *
+  code PC 0x52 *
+  !inc PC PC' *
+  sh (s (s SH)) *
+  stack (s SH) Offset * stack SH Value *
+  mem M * memsize S *
+  !mem_expand S Offset 32 S'
+  -o {
+    code PC 0x52 * pc PC' * sh SH *
+    mem (write Offset Value M) * memsize S'
+  }.
+
+evm/mstore8:
+  pc PC *
+  code PC 0x53 *
+  !inc PC PC' *
+  sh (s (s SH)) *
+  stack (s SH) Offset * stack SH Value *
+  mem M * memsize S *
+  !mem_expand S Offset 1 S'
+  -o {
+    exists Byte. (
+      code PC 0x53 * pc PC' * sh SH *
+      mem (write8 Offset Byte M) * memsize S' *
+      !mod Value 0x100 Byte)
+  }.
+
+evm/msize:
+  pc PC *
+  code PC 0x59 *
+  !inc PC PC' *
+  sh SH *
+  memsize S
+  -o {
+    code PC 0x59 * pc PC' *
+    sh (s SH) * stack SH S *
+    memsize S
+  }.
+
+% Memory traversal — McCarthy's axioms as ILL forward rules (overlap-aware)
+
+% Exact hit: same offset → return full value
+mem_read/hit:
+  mem_reading Offset (write Offset V Rest) OrigMem
+  -o { mem_base_found Offset V }.
+
+% Clean miss: no overlap → skip to next write
+mem_read/miss:
+  mem_reading R (write W V Rest) OrigMem *
+  !neq R W *
+  !no_overlap R 32 W 32
+  -o { mem_reading R Rest OrigMem }.
+
+% Partial overlap: record patch, continue
+mem_read/partial:
+  mem_reading R (write W V Rest) OrigMem *
+  !neq R W *
+  !overlaps R 32 W 32
+  -o {
+    mem_reading R Rest OrigMem *
+    mem_patch R W V
+  }.
+
+% Zero-initialization: unwritten memory is 0
+mem_read/zero:
+  mem_reading Offset empty_mem OrigMem
+  -o { mem_base_found Offset 0 }.
+
+% write8 during word-level read: disjoint → skip
+mem_read/write8_miss:
+  mem_reading R (write8 Addr Byte Rest) OrigMem *
+  !no_overlap R 32 Addr 1
+  -o { mem_reading R Rest OrigMem }.
+
+% write8 during word-level read: overlap → record byte patch
+mem_read/write8_overlap:
+  mem_reading R (write8 Addr Byte Rest) OrigMem *
+  !overlaps R 32 Addr 1
+  -o { mem_reading R Rest OrigMem * mem_patch_byte R Addr Byte }.
+
+% Finalize: no patches → return base directly
+mem_finalize/clean:
+  mem_base_found Offset V
+  -o { mem_read_done V }.
+
+% Finalize: apply word-level patch via splice
+mem_finalize/patch:
+  mem_base_found Offset Base *
+  mem_patch Offset W PatchV
+  -o {
+    exists Spliced. (
+      mem_base_found Offset Spliced *
+      !splice Base Offset W PatchV Spliced)
   }.
 
 evm/sload:
@@ -1033,7 +1142,6 @@ evm/swap3:
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%  a0
 
-% TODO - memory
 evm/log4:
   pc PC *
   code PC 0xa4 *

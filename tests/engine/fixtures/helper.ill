@@ -28,6 +28,6 @@ VM: type.
 bootVM: VM -o {
   pc                             N_00  *
   sh                             ee *
-  mh                             N_00  *
+  mem empty_mem * memsize         N_00  *
   gas                            N_00
 }.

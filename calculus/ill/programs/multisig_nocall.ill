@@ -21,7 +21,7 @@ isNotMember/z:
   % Execution state
   pc 0 *
   sh ee *
-  mh 0 *
+  mem empty_mem * memsize 0 *
   gas 0 *
 
   % Contract context

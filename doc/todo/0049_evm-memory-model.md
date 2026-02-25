@@ -5,7 +5,7 @@ modified: 2026-02-25
 summary: Design MLOAD/MSTORE memory model for CALC's EVM symbolic executor
 tags: [evm, memory-model, architecture, linear-logic, separation-logic, symexec, forward-chaining, McCarthy]
 type: design
-status: ready for implementation
+status: in progress
 priority: 6
 cluster: Symexec
 depends_on: []
