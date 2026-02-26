@@ -665,14 +665,12 @@ evm/mload:
   !inc PC PC' *
   sh (s SH) * stack SH Offset *
   mem M * memsize S *
-  !mem_expand S Offset 32 S'
+  !mem_expand S Offset 32 S' *
+  !mem_read M Offset V
   -o {
-    code PC 0x51 *
-    memsize S' *
-    mem_reading Offset M *
-    (mem_read_done V -o {
-      pc PC' * sh (s SH) * stack SH V * mem M
-    })
+    code PC 0x51 * pc PC' *
+    sh (s SH) * stack SH V *
+    mem M * memsize S'
   }.
 
 evm/mstore:
@@ -788,12 +786,10 @@ sha3_iter/done:
 sha3_iter/step:
   sha3_reading Offset End Acc M *
   !neq Offset End *
-  !plus Offset 32 Offset'
+  !plus Offset 32 Offset' *
+  !mem_read M Offset V
   -o {
-    mem_reading Offset M *
-    (mem_read_done V -o {
-      sha3_reading Offset' End (concat Acc V) M
-    })
+    sha3_reading Offset' End (concat Acc V) M
   }.
 
 evm/sload:
