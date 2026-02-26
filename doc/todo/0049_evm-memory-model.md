@@ -1,7 +1,7 @@
 ---
 title: EVM Memory Model Design
 created: 2026-02-24
-modified: 2026-02-26
+modified: 2026-02-27
 required_by: [TODO_0051]
 summary: Design MLOAD/MSTORE memory model for CALC's EVM symbolic executor
 tags: [evm, memory-model, architecture, linear-logic, separation-logic, symexec, forward-chaining, McCarthy]
@@ -796,9 +796,15 @@ Abstract CALL model implemented (TODO_0051): nondeterministic success/failure wi
 
 `tests/engine/memory.test.js`: 29 tests covering FFI unit tests + integration (MSTORE/MLOAD, MSIZE tracking, multisig baseline). Not all test cases from the original spec are covered (overlap integration, MSTORE8 integration, symbolic chain tests missing).
 
-### TODO_0049.Stage_5 — Benchmark (solc contract) [NOT DONE]
+### TODO_0049.Stage_5 — Benchmark (solc contract) [DONE]
 
-Deferred until CALL frame memory is implemented.
+Real solc-compiled MultisigNoCall.sol (solc 0.8.28, 987 bytes). Added 11 missing opcodes (PUSH3/12/15, DUP6/7/8, SWAP4/5, LOG2/LOG3, SLT). Fixed evm/add for modular 256-bit arithmetic (`!to256`). Added `bitwiseOr`, `bitwiseNot`, `slt` FFI.
+
+Results (single concrete sender, nonce=0):
+- 8816 nodes, 334 leaves (64 STOP, 63 RUNNING dead, 207 STUCK dead)
+- ~191ms median (vs hevm 57ms, ~3.4× slower)
+- All non-STOP leaves are dead oplus branches (stuck lolis)
+- Test: `tests/engine/solc-benchmark.test.js` (6 tests)
 
 ## Remaining Work
 

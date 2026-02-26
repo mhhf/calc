@@ -1,0 +1,39 @@
+#import(evm.ill)
+
+% MultisigNoCall.sol — solc 0.8.28 compiled bytecode
+% Symbolic execution of execute(uint256,uint256,bytes32)
+% Selector: 0xcd68b367
+
+#symex
+  % Execution state
+  pc 0 *
+  sh ee *
+  mem empty_mem * memsize 0 *
+  gas 0 *
+
+  % Contract context
+  address      Contract_Address *
+  sender       0x1111111111111111111111111111111111111111 *
+  timestamp    Time *
+  gaslimit     Gaslimit *
+  callvalue    V *
+
+  % Code
+  #import(multisig_nocall_solc_code.ill)
+
+  % Calldata: execute(uint256 deadline, uint256 callValue, bytes32 dataHash)
+  % Selector 0xcd68b367 left-aligned in 32-byte word
+  calldata 0  32 0xcd68b36700000000000000000000000000000000000000000000000000000000 *
+  calldata 4  32 Deadline *
+  calldata 36 32 CallValue *
+  calldata 68 32 DataHash *
+  calldatasize 100 *
+
+  % Storage: fired = false (slot 0)
+  storage 0 0 *
+
+  % Storage: nonces[proposalHash] (slot 1 mapping)
+  % proposalHash = keccak256(abi.encode(deadline, callValue, dataHash))
+  % nonceKey = keccak256(abi.encode(proposalHash, 1))
+  storage (sha3 (concat (concat 0 (sha3 (concat (concat (concat 0 Deadline) CallValue) DataHash))) 1)) 0
+  .
