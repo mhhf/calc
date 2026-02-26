@@ -7,7 +7,7 @@ const assert = require('node:assert');
 const path = require('path');
 const mde = require('../../lib/engine');
 const { explore } = require('../../lib/engine/symexec');
-const { countLeaves, getAllLeaves, countNodes } = require('../../lib/engine/tree-utils');
+const { getAllLeaves, countNodes } = require('../../lib/engine/tree-utils');
 const Store = require('../../lib/kernel/store');
 const { intToBin, binToInt } = require('../../lib/engine/ffi/convert');
 const memory = require('../../lib/engine/ffi/memory');
@@ -497,8 +497,10 @@ describe('EVM Memory Integration', { timeout: 30000 }, () => {
     });
   });
 
-  describe('Multisig regression', () => {
-    it('multisig program explores correctly with new memory model', async () => {
+  describe('Multisig symexec baseline', () => {
+    let tree, allLeaves;
+
+    it('explores to exact expected tree shape', async () => {
       Store.clear();
       const msCalc = await mde.load(
         path.join(__dirname, '../../calculus/ill/programs/multisig.ill')
@@ -506,22 +508,33 @@ describe('EVM Memory Integration', { timeout: 30000 }, () => {
 
       const state = mde.decomposeQuery(msCalc.queries.get('symex'));
 
-      const tree = explore(state, msCalc.forwardRules, {
+      tree = explore(state, msCalc.forwardRules, {
         maxDepth: 200,
         calc: { clauses: msCalc.clauses, types: msCalc.types }
       });
 
-      const nodes = countNodes(tree);
-      const leaves = countLeaves(tree);
+      allLeaves = getAllLeaves(tree);
 
-      // Should produce a non-trivial tree (execution explores multiple paths)
-      assert(nodes > 0, `Expected nodes > 0, got ${nodes}`);
-      assert(leaves > 0, `Expected leaves > 0, got ${leaves}`);
-
-      const allLeaves = getAllLeaves(tree);
+      // Exact tree shape — catches accidental pruning or explosion
+      assert.strictEqual(countNodes(tree), 210, 'Expected 210 nodes');
+      assert.strictEqual(allLeaves.length, 19, 'Expected 19 leaves');
       assert(allLeaves.every(l =>
         l.type === 'leaf' || l.type === 'bound' || l.type === 'cycle'
-      ), 'All leaves should be terminal types');
+      ), 'All leaves should be terminal types (no bound/cycle)');
+    });
+
+    it('has exactly 4 STOP leaves (successful termination)', async () => {
+      const { classifyLeaf } = require('../../lib/engine/show');
+      const stopLeaves = allLeaves.filter(l => classifyLeaf(l.state) === 'STOP');
+      assert.strictEqual(stopLeaves.length, 4,
+        `Expected 4 STOP leaves, got ${stopLeaves.length}`);
+    });
+
+    it('has no bound or cycle leaves (full exploration)', async () => {
+      const bound = allLeaves.filter(l => l.type === 'bound');
+      const cycle = allLeaves.filter(l => l.type === 'cycle');
+      assert.strictEqual(bound.length, 0, 'No depth-bound leaves');
+      assert.strictEqual(cycle.length, 0, 'No cycle leaves');
     });
   });
 });
