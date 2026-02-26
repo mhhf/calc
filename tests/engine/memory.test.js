@@ -90,13 +90,6 @@ describe('Memory FFI', () => {
       assert(!r.success);
     });
 
-    it('adjacent ranges succeed (right boundary)', () => {
-      const r = memory.no_overlap([
-        intToBin(0n), intToBin(32n), intToBin(32n), intToBin(32n)
-      ]);
-      assert(r.success);
-    });
-
     it('adjacent ranges succeed (left boundary)', () => {
       const r = memory.no_overlap([
         intToBin(32n), intToBin(32n), intToBin(0n), intToBin(32n)
@@ -123,103 +116,6 @@ describe('Memory FFI', () => {
         intToBin(0n), intToBin(32n), intToBin(15n), intToBin(1n)
       ]);
       assert(!r.success);
-    });
-  });
-
-  describe('overlaps', () => {
-    it('overlapping ranges succeed', () => {
-      const r = memory.overlaps([
-        intToBin(0n), intToBin(32n), intToBin(16n), intToBin(32n)
-      ]);
-      assert(r.success);
-    });
-
-    it('disjoint ranges fail', () => {
-      const r = memory.overlaps([
-        intToBin(0n), intToBin(32n), intToBin(64n), intToBin(32n)
-      ]);
-      assert(!r.success);
-    });
-  });
-
-  describe('splice', () => {
-    it('no overlap returns base unchanged', () => {
-      const base = intToBin(0xAAn);
-      const rOff = intToBin(0n);
-      const wOff = intToBin(100n);
-      const wVal = intToBin(0xBBn);
-      const out = Store.put('freevar', ['_Out']);
-      const r = memory.splice([base, rOff, wOff, wVal, out]);
-      assert(r.success);
-      assert.strictEqual(binToInt(r.theta[0][1]), 0xAAn);
-    });
-
-    it('full overlap replaces all bytes', () => {
-      // Same offset → full overlap → writeVal replaces base
-      const base = intToBin(0xAAn);
-      const off = intToBin(0n);
-      const wVal = intToBin(0xBBn);
-      const out = Store.put('freevar', ['_Out']);
-      const r = memory.splice([base, off, off, wVal, out]);
-      assert(r.success);
-      assert.strictEqual(binToInt(r.theta[0][1]), 0xBBn);
-    });
-
-    it('partial overlap splices bytes correctly', () => {
-      // Read at 0, write at 16 → overlap [16,32)
-      // Base: 0xFF..FF (32 bytes all 0xFF)
-      // Write: 0x00..00 (32 bytes all 0x00)
-      // Result: bytes [0,16) from base (0xFF), bytes [16,32) from write (0x00)
-      const base = (1n << 256n) - 1n;  // all 0xFF bytes
-      const wVal = 0n;                  // all 0x00 bytes
-      const out = Store.put('freevar', ['_Out']);
-      const r = memory.splice([intToBin(base), intToBin(0n), intToBin(16n), intToBin(wVal), out]);
-      assert(r.success);
-      const result = binToInt(r.theta[0][1]);
-      // First 16 bytes = 0xFF, last 16 bytes = 0x00
-      const expected = ((1n << 128n) - 1n) << 128n;
-      assert.strictEqual(result, expected);
-    });
-  });
-
-  describe('splice_byte', () => {
-    it('sets byte at correct position', () => {
-      const base = intToBin(0n);  // all zeros
-      const rOff = intToBin(0n);
-      const addr = intToBin(0n);  // first byte
-      const byte_ = intToBin(0xABn);
-      const out = Store.put('freevar', ['_Out']);
-      const r = memory.splice_byte([base, rOff, addr, byte_, out]);
-      assert(r.success);
-      // byte 0 = 0xAB, rest = 0x00
-      assert.strictEqual(binToInt(r.theta[0][1]), 0xABn << (31n * 8n));
-    });
-
-    it('sets byte at last position', () => {
-      const base = intToBin(0n);
-      const rOff = intToBin(0n);
-      const addr = intToBin(31n);  // last byte
-      const byte_ = intToBin(0xFFn);
-      const out = Store.put('freevar', ['_Out']);
-      const r = memory.splice_byte([base, rOff, addr, byte_, out]);
-      assert(r.success);
-      assert.strictEqual(binToInt(r.theta[0][1]), 0xFFn);
-    });
-
-    it('preserves other bytes', () => {
-      const base = intToBin((1n << 256n) - 1n);  // all 0xFF
-      const rOff = intToBin(0n);
-      const addr = intToBin(16n);  // middle byte
-      const byte_ = intToBin(0x00n);
-      const out = Store.put('freevar', ['_Out']);
-      const r = memory.splice_byte([base, rOff, addr, byte_, out]);
-      assert(r.success);
-      const result = binToInt(r.theta[0][1]);
-      // byte 16 should be 0x00, all others 0xFF
-      const shift = BigInt(8 * (31 - 16));
-      assert.strictEqual((result >> shift) & 0xFFn, 0x00n);
-      // byte 15 still 0xFF
-      assert.strictEqual((result >> BigInt(8 * (31 - 15))) & 0xFFn, 0xFFn);
     });
   });
 

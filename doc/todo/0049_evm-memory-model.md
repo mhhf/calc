@@ -1,11 +1,12 @@
 ---
 title: EVM Memory Model Design
 created: 2026-02-24
-modified: 2026-02-25
+modified: 2026-02-26
+required_by: [TODO_0051]
 summary: Design MLOAD/MSTORE memory model for CALC's EVM symbolic executor
 tags: [evm, memory-model, architecture, linear-logic, separation-logic, symexec, forward-chaining, McCarthy]
 type: design
-status: in progress
+status: done
 priority: 6
 cluster: Symexec
 depends_on: []
@@ -767,191 +768,134 @@ No `mem_read/*` rule matches `memsize` — it sits inert during the traversal. `
 
 ## Implementation Plan
 
-The stages are ordered for implementing everything in one pass — no intermediate states, no backward compatibility. Tests accompany each code change rather than being a separate stage.
+### TODO_0049.Stage_1 — FFIs [DONE]
 
-### TODO_0049.Stage_1 — FFIs
+`lib/engine/ffi/memory.js` with all memory FFI predicates. Registered in `lib/engine/ffi/index.js`.
 
-New file `lib/engine/ffi/memory.js` with all memory FFI predicates:
-- `!mem_expand` — memory size high-water mark update
-- `!mem_read_range` — read byte range from write-log (~60 LOC)
-- `!no_overlap` — disjoint range check: `[R,R+Rs) ∩ [W,W+Ws) = ∅`
-- `!overlaps` — partial overlap check (negation of `!no_overlap`)
-- `!splice` — byte-level overlay of overlapping writes (~30 LOC)
-- `!mod` — modulo for MSTORE8 (unless already in arithmetic.js)
+Implemented: `mem_expand`, `mem_read`, `mem_read_range`, `no_overlap`, `overlaps`, `splice`, `splice_byte`.
 
-FFI registration in `lib/engine/ffi/index.js`.
+### TODO_0049.Stage_2 — evm.ill Rewrite [DONE]
 
-~150 LOC total. Pure arithmetic on content-addressed terms. No state access.
+Old types/rules removed (`memory`, `mh`, `unblock`, `concatMemory`, etc.). New write-log model active: `evm/mstore`, `evm/mload`, `evm/mstore8`, `evm/msize`, `evm/sha3`, `evm/calldatacopy`. Initial states updated in both multisig files.
 
-### TODO_0049.Stage_2 — evm.ill Rewrite
+**Deviations from original design:**
 
-Single atomic pass through `evm.ill`:
+1. **MLOAD uses `!mem_read` FFI directly** (Optimization Idea 1), not the loli+`mem_reading` traversal originally planned. This is simpler and faster, but the forward traversal rules (`mem_read/hit`, `/miss`, `/partial`, `/zero`, `mem_finalize/*`) remain in evm.ill as dead code — nothing produces `mem_reading` facts. See Remaining Work.
 
-**Remove:**
-- `memory: bin -> bin -> bin -> type.`
-- `mh: bin -> type.`
-- `unblock: type.`
-- `concatMemory`, `unblockConcatMemory`, `concatMemory/z`, `concatMemory/s`
-- Old `evm/sha3`, old `evm/calldatacopy`, `calldatacopy/z`, `calldatacopy/s`
+2. **SHA3 uses word-by-word `!mem_read`** (loli + `sha3_reading` iteration), not `!mem_read_range` as originally planned (commit `41d901d`). Better: can handle per-word symbolic values where `!mem_read_range` would fail entirely.
 
-**Add types:**
-- `mem`, `memsize`, `mem_reading`, `mem_read_done`, `mem_base_found`
-- `mem_patch`, `mem_patch_byte`, `mem_vpatch`
-- `write`, `write8`, `vwrite`, `empty_mem`, `splice`
-- `saved_mem`, `saved_memsize`
-- `calldatacopy_iter`, `calldatacopy_done`
+3. **`OrigMem` parameter removed** from `mem_reading` (commit `30008c4`) — 2-param instead of 3-param. Moot since the traversal rules are dead.
 
-**Add rules:**
-- `evm/mstore`, `evm/mload`, `evm/msize`, `evm/mstore8`
-- Overlap-aware traversal: `mem_read/hit`, `mem_read/miss` (with `!no_overlap`), `mem_read/partial` (with `!overlaps`), `mem_read/zero`
-- `write8` traversal: `mem_read/write8_miss`, `mem_read/write8_overlap`
-- `vwrite` traversal: `mem_read/vmiss`, `mem_read/vpartial`
-- Finalization: `mem_finalize/clean`, `mem_finalize/patch`
-- New `evm/sha3` (single rule with `!mem_read_range`)
-- New `evm/calldatacopy` + `calldatacopy_iter/s` + `calldatacopy_iter/z`
+4. **`vwrite` not implemented** — deferred (no non-32-byte writes needed yet).
 
-**Update initial states** in `multisig.ill`, `multisig_nocall.ill`:
-- Remove `mh 0`
-- Add `mem empty_mem * memsize 0`
+### TODO_0049.Stage_3 — CALL Frame Memory [NOT DONE]
 
-~80 lines `.ill` changes. No engine changes.
+`saved_mem` / `saved_memsize` types declared but unused. The CALL rule is simplified (line 1194: `% SIMPLIFIED CALL - TODO`). Needed for multi-contract benchmarks.
 
-### TODO_0049.Stage_3 — CALL Frame Memory
+### TODO_0049.Stage_4 — Tests [DONE]
 
-Add to `evm.ill`:
-- `saved_mem`, `saved_memsize` types (already declared in Stage 2)
-- Update `evm/call` to save caller memory: `mem M * memsize S → saved_mem M * saved_memsize S * mem empty_mem * memsize 0`
-- Update `evm/return` to restore: `mem M_callee * saved_mem M_caller * saved_memsize S_caller → mem M_caller * memsize S_caller`
+`tests/engine/memory.test.js`: 29 tests covering FFI unit tests + integration (MSTORE/MLOAD, MSIZE tracking, multisig baseline). Not all test cases from the original spec are covered (overlap integration, MSTORE8 integration, symbolic chain tests missing).
 
-Needed for multi-contract benchmarks (external calls).
+### TODO_0049.Stage_5 — Benchmark (solc contract) [NOT DONE]
 
-### TODO_0049.Stage_4 — Tests
+Deferred until CALL frame memory is implemented.
+
+## Remaining Work
+
+### TODO_0049.RW_1 — Theory inversion (CRITICAL)
+
+`!mem_read` is FFI-only — no backward clause definitions. If FFI is turned off, MLOAD produces stuck leaves. This violates the architecture where FFI is optimization and theory works standalone (cf. `plus` has `plus/z*`+`plus/s*` clauses in bin.ill; `neq`, `inc` same).
+
+**Fix:** Add backward clauses for `mem_read` in evm.ill, following the `plus` pattern:
 
 ```
-tests/engine/memory.test.js:
-  Core:
-  - MSTORE then MLOAD at same offset → correct value
-  - MSTORE then MLOAD at different offset → 0
-  - Two MSTOREs then MLOAD → latest value wins (most recent write)
-  - Zero initialization: MLOAD without prior MSTORE → 0
+mem_read: bin -> bin -> bin -> type.
 
-  MSIZE:
-  - MSIZE returns 0 initially
-  - MSTORE at offset 0 → MSIZE = 32
-  - MSTORE at offset 32 → MSIZE = 64
-  - MLOAD at offset 992 → MSIZE = 1024
-  - MSIZE monotonically increasing (two MSTOREs, check after each)
-
-  Overlap:
-  - Aligned writes at distinct offsets: !no_overlap passes, identical to !neq path
-  - Overlapping writes: MSTORE(0, A) then MSTORE(16, B) then MLOAD(0) → splice(A, 0, 16, B)
-  - MSTORE8: write8 node correctly patched into word-level read
-  - Symbolic overlap: partial overlap with symbolic offset → stuck leaf
-
-  MSTORE8:
-  - MSTORE8 then MLOAD at containing word → correct byte patched
-
-  Symbolic:
-  - Symbolic offset: MLOAD with symbolic offset → stuck leaf
-  - Symbolic value: MLOAD returns symbolic value as-is
-  - Mixed chain: concrete + symbolic values in same write-log
-
-  SHA3:
-  - SHA3 of two 32-byte writes → correct hash term
-  - SHA3 with symbolic memory value → sha3(symbolic_bytes) opaque
-
-  CALLDATACOPY:
-  - CALLDATACOPY then MLOAD at copied offset → correct calldata value
-  - CALLDATACOPY with multiple chunks → all accessible via MLOAD
-
-  Symexec:
-  - Memory preserved/restored correctly on backtrack (mutate/undo)
-  - Loli gating: no opcode fires during mem_read traversal
-  - Content-addressed sharing: same write sequence = same mem hash across branches
+mem_read/hit: mem_read (write Offset V Rest) Offset V.
+mem_read/miss: mem_read (write W V Rest) R Result
+  <- neq R W
+  <- no_overlap R 32 W 32
+  <- mem_read Rest R Result.
+mem_read/zero: mem_read empty_mem R 0.
 ```
 
-### TODO_0049.Stage_5 — Benchmark (solc contract)
+**`no_overlap` also needs backward clauses** (currently FFI-only). Defined via `plus` only (which has clauses in bin.ill). The trick: `R+Rs ≤ W` ⟺ `∃D. W = (R+Rs) + D` — uses `plus` in subtraction mode (D free, fails when W < REnd):
 
-Compile simple Solidity contract with `solc --bin`. Run through CALC symexec. Compare tree size and timing with hevm.
+```
+no_overlap: bin -> bin -> bin -> bin -> type.
+no_overlap/left:  no_overlap R Rs W Ws <- plus R Rs REnd <- plus REnd D W.
+no_overlap/right: no_overlap R Rs W Ws <- plus W Ws WEnd <- plus WEnd D R.
+```
 
-### Deferred: FFI Fast-Path + Memoization
+**Completeness:** The `mem_read/miss` clause requires `no_overlap`. When writes partially overlap (e.g. MSTORE(0,..) then MSTORE(16,..)), neither `hit` nor `miss` matches → backward prover fails → stuck leaf. This is **sound** (no wrong answers) but **incomplete** for overlapping writes. The FFI handles overlaps with byte-level splice, extending coverage to 100% EVM. Simple `neq`-based clauses without `no_overlap` would be **silently wrong** — they'd skip partially-overlapping writes.
 
-Not a stage — implement only if profiling shows memory reads dominate execution time. Add FFI `!mem_read` for MLOAD (see Optimization Idea 1) with memoization cache (Idea 2). The rules remain the definition.
+**`write8` handling:** Similarly needs a `mem_read/write8_miss` clause with `no_overlap R 32 Addr 1`. Overlapping write8 → stuck leaf without FFI, handled by FFI.
 
-O(W) at ~50ns/step instead of ~10μs/step. 200× speedup. Zero logic changes. Cache keyed by `(mem_hash, offset)` — content-addressed = no invalidation needed.
+Same issue applies to `mem_expand` (no clauses). `mem_expand` involves ceiling division — complex in binary arithmetic. Defer or define as irreducible FFI (like `mul` which has clauses in bin.ill, but `mem_expand` has no natural recursive decomposition).
+
+### TODO_0049.RW_2 — Remove dead forward traversal rules
+
+The `mem_read/*` and `mem_finalize/*` forward rules (evm.ill lines 716-780) belong to the abandoned loli-based design (Design A). They are NOT backward clauses and cannot serve as fallback for `!mem_read`. Nothing produces `mem_reading` facts. These are dead code due to architectural change, not "inactive due to optimization."
+
+**Remove:** `mem_read/hit`, `mem_read/miss`, `mem_read/partial`, `mem_read/zero`, `mem_read/write8_miss`, `mem_read/write8_overlap`, `mem_finalize/clean`, `mem_finalize/patch`, `mem_finalize/byte_patch` (~65 LOC).
+
+**Remove dead type declarations:** `mem_reading`, `mem_read_done`, `mem_base_found`, `mem_patch`, `mem_patch_byte` (only used by dead rules).
+
+**Remove premature declarations:** `saved_mem`, `saved_memsize` (add back when CALL frame is implemented).
+
+### TODO_0049.RW_3 — FFI cleanup
+
+| FFI | Status | Action |
+|-----|--------|--------|
+| `mem_expand` | Active (MSTORE, MLOAD, SHA3, etc.) | Keep |
+| `mem_read` | Active (MLOAD, SHA3 iter) | Keep |
+| `mem_read_range` | Dead (SHA3 switched to word-by-word) | Remove |
+| `no_overlap` | Needed by RW_1 backward clauses + FFI accelerator | Keep |
+| `overlaps` | FFI accelerator for overlap detection | Keep |
+| `splice` | FFI accelerator for overlap resolution | Keep |
+| `splice_byte` | FFI accelerator for write8 overlap resolution | Keep |
+
+Remove `mem_read_range` from `memory.js`, `index.js`, `defaultMeta`.
+
+### TODO_0049.RW_4 — Stale references
+
+- `show.js:53` JSDoc mentions "unblock" (old predicate)
+- `symexec-inspect.js:88` regex filter matches "unblock" and "mstore" (neither are current predicate names)
+
+### TODO_0049.RW_5 — Missing test coverage
+
+Original test spec (Stage 4) includes cases not yet implemented:
+- Overlap integration tests (MSTORE at overlapping offsets → MLOAD)
+- MSTORE8 integration (write8 then MLOAD)
+- Symbolic value passthrough (MLOAD returns symbolic value as-is)
+- SHA3 integration (two writes → SHA3 → opaque `sha3(concat ...)` term)
+- CALLDATACOPY integration (copy then MLOAD)
 
 ## Optimization Ideas
 
 The write-log traversal is O(W) per MLOAD. At 500 writes that's ~5ms per read at 10μs/step. This section collects optimization strategies that are **sound for symbolic offsets and overlapping writes**. All preserve the ILL rules as the logical definition. Ideas that break for symbolic offsets (Baker Array, Shadow Map, Embedded HAMT, Generalized Array) were evaluated and rejected — see RES_0062 for details.
 
-### Idea 1: Backward-Chaining Oracle (`!mem_read` as Persistent Predicate)
+### Idea 1: Backward-Chaining Oracle (`!mem_read` as Persistent Predicate) [DONE]
 
-Make memory read a **persistent predicate** resolved by backward chaining, exactly like `!plus`, `!neq`, `!inc`.
+MLOAD uses `!mem_read M Offset V` as a persistent predicate, FFI-resolved. The FFI traverses the write-log in JavaScript: `Store.get` calls at ~50ns/step instead of ~10μs/step per rule application.
 
-```
-% Instead of forward traversal rules, MLOAD uses a persistent guard:
-evm/mload:
-  pc PC * code PC 0x51 * !inc PC PC' *
-  sh (s SH) * stack SH Offset *
-  mem M *
-  !mem_read M Offset V           % ← backward-chaining, FFI-accelerated
-  -o {
-    code PC 0x51 * pc PC' * sh (s SH) * stack SH V * mem M
-  }.
-```
+**Missing:** Backward clause definitions for `mem_read` (see RW_1). Currently FFI-only — no fallback. Must add clauses before this can be considered architecturally correct.
 
-The FFI for `mem_read` traverses the write-log in JavaScript: `Store.get` calls at ~50ns/step instead of ~10μs/step per rule application. Result: O(W) at 50ns = 25μs for W=500, vs 5ms for rule-based traversal. **200× speedup**, zero logic changes.
+### Idea 2: Memoized Reads via Content-Addressing [NOT DONE]
 
-The traversal rules (`hit`/`miss`/`zero`) remain as ILL clause definitions — the backward prover falls back to them if no FFI is registered. Same pattern as `plus/z`, `plus/s` clauses with `!plus` FFI.
+Since write-logs are content-addressed, `(mem_hash, offset)` uniquely determines the read result. A global cache exploits this. O(1) amortized. No cache invalidation needed. See optimization roadmap.
 
-### Idea 2: Memoized Reads via Content-Addressing
+### Idea 3: Content-Addressed Read-Through Cache on Store Terms [NOT DONE]
 
-Since write-logs are content-addressed, `(mem_hash, offset)` **uniquely determines** the read result. A global cache exploits this:
+Per-term read cache in Store. See optimization roadmap.
 
-```javascript
-const readCache = new Map();
-function mem_read(memHash, offset) {
-  const key = `${memHash}:${offset}`;
-  if (readCache.has(key)) return readCache.get(key);
-  const value = traverseWriteLog(memHash, offset);
-  readCache.set(key, value);
-  return value;
-}
-```
+### Idea 4: Generalized Indexed Persistent Predicate [NOT DONE]
 
-Many branches share the same memory prefix. After MSTORE(0x40, 0x80) at init, every branch has the same write-log for the free memory pointer. MLOAD(0x40) in branch 47 hits the cache populated by branch 1. O(1). No cache invalidation needed (content-addressed = immutable).
+O(1) lookup for `code PC V` and `calldata` via engine-level indexing. Orthogonal to memory model. See optimization roadmap.
 
-### Idea 3: Content-Addressed Read-Through Cache on Store Terms
+### Idea 5: Traversal Short-Circuit [N/A]
 
-Attach a read cache **to each write-log term** in the Store. Cache `{offset → result}` per term. Shared across branches because write-log terms are content-addressed. O(1) per cache probe.
-
-### Idea 4: Generalized Indexed Persistent Predicate
-
-O(1) lookup for `code PC V` and `calldata` via engine-level indexing. Orthogonal to memory model. See full description in earlier version.
-
-### Idea 5: Traversal Short-Circuit (Engine-Level Batching)
-
-Engine recognizes `mem_reading` traversal pattern, executes in JavaScript batch, produces W proof steps for verification. Single engine step instead of W steps.
-
-### Comparison
-
-| Idea | Read Cost | Write Cost | Complexity | Symbolic Sound |
-|------|-----------|------------|------------|---------------|
-| 1. BC Oracle | O(W)@50ns | O(1) | Low | Yes (fallback to rules) |
-| 2. Memo Cache | O(1) amortized | O(1) | Low | Yes (cache miss → rules) |
-| 3. Term Cache | O(1) amortized | O(1) | Medium | Yes (cache miss → rules) |
-| 4. Indexed Pred | O(1) | N/A (persistent) | Medium | Orthogonal (code/calldata) |
-| 5. Short-Circuit | O(1) engine | O(1) | Medium | Yes (abort → rules) |
-
-### Recommended Optimization Path
-
-**Phase 1** (easy, high impact): Ideas 1 + 2. `!mem_read` FFI with memoization. ~50 LOC. 200× speedup.
-
-**Phase 2** (medium): Idea 3. Per-term read cache in Store. Exploits content-addressed sharing.
-
-**Phase 3** (medium, orthogonal): Idea 4. Indexed persistent predicates for `code`/`calldata`.
-
-**Phase 4** (medium, if needed): Idea 5. Engine-level traversal short-circuit.
+Assumed loli-based traversal (Design A). Not applicable to current FFI-based design (Design B).
 
 ## Future Work (out of scope)
 

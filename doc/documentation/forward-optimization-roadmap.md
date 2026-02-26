@@ -58,6 +58,9 @@ All optimizations that matter at current scale (44 rules, ~20 facts, depth-2 ter
 | Semi-naive for linear logic | 100K+ facts | [TODO_0044](../todo/0044_semi-naive-linear-logic.md) |
 | Join ordering | 4+ antecedent rules | [TODO_0035](../todo/0035_forward-chaining-networks.md) |
 | Path-based nested access | depth 4+ terms | [TODO_0022](../todo/0022_forward-optimization-research.md) |
+| Memoized mem_read cache | W > 50 writes per MLOAD | [TODO_0049 Idea 2](../todo/0049_evm-memory-model.md) |
+| Per-term read cache in Store | Shared prefixes across branches | [TODO_0049 Idea 3](../todo/0049_evm-memory-model.md) |
+| Indexed persistent predicates (code/calldata) | O(N) code lookup | [TODO_0049 Idea 4](../todo/0049_evm-memory-model.md) |
 
 ### Persistent proving order
 
