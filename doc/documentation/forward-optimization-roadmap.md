@@ -58,15 +58,118 @@ All optimizations that matter at current scale (44 rules, ~20 facts, depth-2 ter
 | Semi-naive for linear logic | 100K+ facts | [TODO_0044](../todo/0044_semi-naive-linear-logic.md) |
 | Join ordering | 4+ antecedent rules | [TODO_0035](../todo/0035_forward-chaining-networks.md) |
 | Path-based nested access | depth 4+ terms | [TODO_0022](../todo/0022_forward-optimization-research.md) |
-| Memoized mem_read cache | W > 50 writes per MLOAD | [TODO_0049 Idea 2](../todo/0049_evm-memory-model.md) |
-| Per-term read cache in Store | Shared prefixes across branches | [TODO_0049 Idea 3](../todo/0049_evm-memory-model.md) |
-| Indexed persistent predicates (code/calldata) | O(N) code lookup | [TODO_0049 Idea 4](../todo/0049_evm-memory-model.md) |
+| Memoized mem_read cache | W > 50 writes per MLOAD | See [Memory Read Optimizations](#memory-read-optimizations) |
+| Per-term read cache in Store | Shared prefixes across branches | See [Memory Read Optimizations](#memory-read-optimizations) |
+| Indexed persistent predicates | O(N) persistent fact scan | See [Indexed Persistent Predicates](#indexed-persistent-predicates) |
 
 ### Persistent proving order
 
 Current order: state lookup → FFI → clause resolution. Reversing to FFI → state → clauses yields ~2.5% improvement on the EVM benchmark (n=100, p=0.012) because all 153 persistent goals per tree are FFI-resolvable (inc, plus, neq) — the state lookup always misses.
 
 However, FFI-first is only optimal when all persistent predicates are FFI-backed. Programs with user-defined persistent facts (e.g. lookup tables, memoization) would benefit from state-first order, since state lookup is O(1) via the predicate set guard vs backward proving overhead. The right long-term answer may be per-predicate dispatch: at compile time classify each persistent predicate as FFI-only, state-only, or mixed, and generate the appropriate proving order. For now, keeping state-first as the default is the more general choice.
+
+### Memory Read Optimizations
+
+The write-log memory model (TODO_0049) uses `mem_read` FFI to traverse a linked list of `write(Offset, Value, Rest)` nodes. Cost is O(W) per read where W = writes in the chain. At current scale (W=3, 6 reads) this is negligible (~5μs total). At scale it dominates.
+
+**Cost model:** Each write node costs ~195ns to traverse (3 `Store.child()` + 2 `Store.tag()` + 1 `binToInt()` + BigInt overlap arithmetic). The Uint8Array allocation (2×32 bytes) costs ~188ns per call regardless of chain depth. Exact-hit shortcut (outermost write matches) returns directly without byte assembly.
+
+#### Level 1: Global `(mem_hash, offset)` Cache
+
+Write-logs are content-addressed: same write sequence = same Store hash. A global `Map<(memHash, offset), valueHash>` gives O(1) amortized reads. No cache invalidation needed (content-addressed terms are immutable). Clear on `Store.clear()`.
+
+**When:** W > 50 writes per MLOAD. Before that, the FFI traversal itself is fast enough.
+
+**How:** ~20 lines in `memory.js`. Before the while-loop in `mem_read`, check `cache.get(memHash * PRIME + offsetHash)`. On FFI success, store the result. The cache key combines both hashes into a single number (both are small content-addressed integers).
+
+```javascript
+const readCache = new Map();
+function mem_read(args) {
+  const [memHash, offsetHash, valueSlot] = args;
+  const key = memHash * 2654435761 + offsetHash;  // Knuth multiplicative hash
+  const cached = readCache.get(key);
+  if (cached !== undefined)
+    return { success: true, theta: [[valueSlot, cached]] };
+  // ... existing traversal ...
+  readCache.set(key, resultHash);
+  return { success: true, theta: [[valueSlot, resultHash]] };
+}
+```
+
+**Estimated savings:**
+
+| Scale | Without | With | Savings |
+|-------|---------|------|---------|
+| Current (W=3, 6 reads) | 5μs | 5μs | 0 (no cache hits) |
+| Medium (W=50, 100 reads) | 1ms | 0.2ms | ~80% |
+| Large (W=500, 200 reads) | 19.5ms | ~1ms | ~95% |
+
+Cache hit rate depends on read patterns. Solidity's free-memory-pointer read (`MLOAD(0x40)`) is the most common MLOAD and always hits the same `(mem, 0x40)` pair within a branch. Across branches, different `mem` hashes mean different keys — no cross-branch hits at this level.
+
+#### Level 2: Per-Term Read Cache (Structural Sharing)
+
+Attach read results to individual write-log nodes, not just roots. When branch A has `mem = write(96, X, M)` and branch B has `mem = write(96, Y, M)`, both share the sub-term `M`. If branch A already computed `read(M, 0) = V`, branch B finds it cached on `M` without traversing.
+
+**When:** Branchy symexec trees (50+ branches) with shared memory prefixes. The Level 1 cache misses here because root hashes differ across branches even when they share deep prefixes.
+
+**How:** ~50 lines. A `WeakMap<termHash, Map<offset, valueHash>>` (or a flat array on Store terms). During `mem_read` traversal, before descending into `Rest`, check the cache on `Rest`. On completion, populate the cache for every node visited during traversal (walk back up the chain).
+
+The key insight: content-addressed terms are immutable, so a read result cached on an inner node is valid forever — any term that contains that node as a sub-term will produce the same read result for that offset from that node downward.
+
+**Estimated savings:**
+
+| Scale | Without L2 | With L1+L2 | Savings |
+|-------|-----------|-----------|---------|
+| Current | 5μs | 5μs | 0 |
+| 50 branches, W=500, shared prefix=400 | 78ms | ~1.7ms | ~98% |
+| 200 branches, W=1000, shared prefix=800 | 624ms | ~4ms | ~99% |
+
+**Implementation order:** Level 1 first (trivial, catches the common case). Level 2 only when profiling shows branch-prefix duplication is the bottleneck.
+
+### Indexed Persistent Predicates
+
+`provePersistentGoals` (match.js:273-359) resolves `!P` goals in three steps: state lookup → FFI → clause resolution. The state lookup scans all persistent facts with matching predicate name. A predicate-set guard (`persistentPreds.has(pred)`) makes this O(1) when the predicate isn't in state at all. But when it IS in state, the scan is O(N) where N = facts with that predicate.
+
+**Current benchmark:** Only 2 persistent facts in state (`eq`, `gt`). All `inc`/`plus`/`neq`/`mem_read` goals skip the scan via the predicate-set guard. Zero impact.
+
+**When:** Contracts with many persistent facts of the same predicate — e.g., 500 `sload` facts (storage slots), 200 `calldata` facts, or memoization tables. The scan becomes the bottleneck when N > 50 facts per predicate and goals are frequent.
+
+**How:** ~30 lines in `match.js`. At `buildStateIndex` time, build a secondary index: `_persistentByPred[pred][firstArg] = factHash`. In `provePersistentGoals`, replace the linear scan (lines 298-308) with an indexed lookup when the first argument of the goal is ground.
+
+```javascript
+// In buildStateIndex:
+const persistentIdx = {};
+for (const h in state.persistent) {
+  const pred = getPredicateHead(Number(h));
+  if (!pred) continue;
+  if (!persistentIdx[pred]) persistentIdx[pred] = {};
+  const firstArg = Store.child(Number(h), 0);
+  persistentIdx[pred][firstArg] = Number(h);
+}
+stateIndex._persistentIdx = persistentIdx;
+
+// In provePersistentGoals (state lookup):
+const pidx = state.index._persistentIdx;
+if (pidx && pidx[pPred]) {
+  const goalFirstArg = subApplyIdx(Store.child(pattern, 0), theta, slots);
+  const candidate = pidx[pPred][goalFirstArg];
+  if (candidate !== undefined) {
+    // try matchIdx against candidate only — O(1)
+  }
+}
+```
+
+Update the index incrementally when persistent facts are added (in `mutateState` / forward rule application).
+
+**Estimated savings:**
+
+| Scale | Without | With | Savings |
+|-------|---------|------|---------|
+| Current (2 persistent facts) | 0μs | 0μs | 0 |
+| 500 storage facts, 100 lookups/branch | ~1.25ms | ~5μs | ~99% |
+| 10K memoization entries, 500 lookups/branch | ~12.5ms | ~25μs | ~99% |
+
+**Note:** `code PC Opcode` is linear (not persistent) and already indexed via the fingerprint strategy at O(1). This optimization targets persistent facts only.
 
 ## Profiling History
 
