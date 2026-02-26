@@ -105,6 +105,8 @@ saved_mem: bin -> type.
 saved_memsize: bin -> type.
 calldatacopy_iter: bin -> bin -> bin -> bin -> type.
 calldatacopy_done: bin -> type.
+sha3_reading: bin -> bin -> bin -> bin -> type.
+sha3_done: bin -> type.
 timestamp: bin -> type.
 gaslimit: bin -> type.
 shr: bin -> bin -> bin -> type.
@@ -399,24 +401,19 @@ evm/shr:
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%  20
 
 evm/sha3:
-  pc PC *
-  code PC 0x20 *
-  !inc PC PC' *
-  gas GAS *
-  !inc GAS GAS' *
+  pc PC * code PC 0x20 * !inc PC PC' *
+  gas GAS * !inc GAS GAS' *
   sh (s (s SH)) *
-  stack (s SH) Offset *
-  stack SH Size *
+  stack (s SH) Offset * stack SH Size *
   mem M * memsize S *
   !mem_expand S Offset Size S' *
-  !mem_read_range M Offset Size Bytes
+  !plus Offset Size End
   -o {
-    code PC 0x20 *
-    pc PC' *
-    gas GAS' *
-    sh (s SH) *
-    stack SH (sha3 Bytes) *
-    mem M * memsize S'
+    code PC 0x20 * gas GAS' * memsize S' *
+    sha3_reading Offset End 0 M *
+    (sha3_done Bytes -o {
+      pc PC' * sh (s SH) * stack SH (sha3 Bytes) * mem M
+    })
   }.
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%  30
@@ -782,6 +779,21 @@ mem_finalize/byte_patch:
     exists Spliced. (
       mem_base_found Offset Spliced *
       !splice_byte Base Offset Addr Byte Spliced)
+  }.
+
+sha3_iter/done:
+  sha3_reading Offset Offset Acc M
+  -o { sha3_done Acc }.
+
+sha3_iter/step:
+  sha3_reading Offset End Acc M *
+  !neq Offset End *
+  !plus Offset 32 Offset'
+  -o {
+    mem_reading Offset M *
+    (mem_read_done V -o {
+      sha3_reading Offset' End (concat Acc V) M
+    })
   }.
 
 evm/sload:
