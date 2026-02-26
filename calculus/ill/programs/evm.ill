@@ -64,8 +64,10 @@
 
 % a4   LOG4          *
 
-% f1   CALL          ?
+% f1   CALL          *
 % f3   RETURN        *
+% f4   DELEGATECALL  *
+% fa   STATICCALL    *
 % fe   INVALID       *
 % fd   REVERT        *
 
@@ -108,7 +110,6 @@ shr: bin -> bin -> bin -> type.
 shl: bin -> bin -> bin -> type.
 concat: bin -> bin -> bin.
 sha3: bin -> bin.
-call: bin -> bin -> bin -> bin -> bin -> bin -> bin -> type.
 
 
 
@@ -1146,36 +1147,62 @@ evm/log4:
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%  f0
 
-% SIMPLIFIED CALL - TODO
+% Abstract CALL — nondeterministic success/failure, memory preserved
 evm/call:
-  pc PC *
-  code PC 0xf1 *
-  !inc PC PC' *
-  gas GAS *                        % simplified
-  !inc GAS GAS' *                  % simplified
-  sh    (s (s (s (s (s (s (s SH )))))))           *
-  stack    (s (s (s (s (s (s SH ))))))   GAS_T       *
-  stack       (s (s (s (s (s SH )))))    TO_T        *
-  stack          (s (s (s (s SH ))))     VALUE_T     *
-  stack             (s (s (s SH )))      InOffset_T  *
-  stack                (s (s SH ))       InSize_T    *
-  stack                   (s SH)         OutOffset_T *
-  stack                      SH          OutSize_T
-  % !plus BALANCE VALUE VALUE' *
-  % !plus New_Value VALUE Contract_BALANCE *
-  % balance ADDRESS BALANCE *
-  % address Contract_Address *
-  % balance Contract_Address Contract_BALANCE
+  pc PC * code PC 0xf1 * !inc PC PC' *
+  gas GAS * !inc GAS GAS' *
+  sh (s (s (s (s (s (s (s SH))))))) *
+  stack (s (s (s (s (s (s SH)))))) GAS_T *
+  stack (s (s (s (s (s SH))))) TO_T *
+  stack (s (s (s (s SH)))) VALUE_T *
+  stack (s (s (s SH))) InOffset_T *
+  stack (s (s SH)) InSize_T *
+  stack (s SH) OutOffset_T *
+  stack SH OutSize_T *
+  mem M * memsize S
   -o {
-    code PC 0xf1 *
-    pc PC' *
-    gas GAS' *
+    code PC 0xf1 * pc PC' * gas GAS' *
+    mem M * memsize S *
     sh (s SH) *
-    stack SH 1 *
-    call GAS_T TO_T VALUE_T InOffset_T InSize_T OutOffset_T OutSize_T
-    % address Contract_Address *
-    % balance ADDRESS VALUE' *
-    % balance Contract_Address New_Value
+    (stack SH 1 + stack SH 0)
+  }.
+
+% Abstract DELEGATECALL — 6 args (no value), same fork pattern
+evm/delegatecall:
+  pc PC * code PC 0xf4 * !inc PC PC' *
+  gas GAS * !inc GAS GAS' *
+  sh (s (s (s (s (s (s SH)))))) *
+  stack (s (s (s (s (s SH))))) GAS_T *
+  stack (s (s (s (s SH)))) TO_T *
+  stack (s (s (s SH))) InOffset_T *
+  stack (s (s SH)) InSize_T *
+  stack (s SH) OutOffset_T *
+  stack SH OutSize_T *
+  mem M * memsize S
+  -o {
+    code PC 0xf4 * pc PC' * gas GAS' *
+    mem M * memsize S *
+    sh (s SH) *
+    (stack SH 1 + stack SH 0)
+  }.
+
+% Abstract STATICCALL — 6 args (no value), same fork pattern
+evm/staticcall:
+  pc PC * code PC 0xfa * !inc PC PC' *
+  gas GAS * !inc GAS GAS' *
+  sh (s (s (s (s (s (s SH)))))) *
+  stack (s (s (s (s (s SH))))) GAS_T *
+  stack (s (s (s (s SH)))) TO_T *
+  stack (s (s (s SH))) InOffset_T *
+  stack (s (s SH)) InSize_T *
+  stack (s SH) OutOffset_T *
+  stack SH OutSize_T *
+  mem M * memsize S
+  -o {
+    code PC 0xfa * pc PC' * gas GAS' *
+    mem M * memsize S *
+    sh (s SH) *
+    (stack SH 1 + stack SH 0)
   }.
 
 evm/return:

@@ -438,13 +438,75 @@ describe('EVM Memory Integration', { timeout: 30000 }, () => {
     });
   });
 
-  describe('Multisig symexec baseline', () => {
+  describe('Abstract CALL', () => {
+    it('CALL produces nondeterministic fork with memory preserved', async () => {
+      Store.clear();
+      const calc = await mde.load(
+        path.join(__dirname, '../../calculus/ill/programs/evm.ill')
+      );
+
+      // PUSH1 0x42, PUSH1 0x00, MSTORE → non-empty memory
+      // Then 7 × PUSH1 + CALL
+      const state = await buildEvmState({
+        0: '0x60', 1: '0x42',    // PUSH1 0x42 (value)
+        2: '0x60', 3: '0x00',    // PUSH1 0x00 (offset)
+        4: '0x52',                // MSTORE → mem (write 0 0x42 empty_mem)
+        5: '0x60', 6: '0x00',    // PUSH1 OutSize
+        7: '0x60', 8: '0x00',    // PUSH1 OutOffset
+        9: '0x60', 10: '0x00',   // PUSH1 InSize
+        11: '0x60', 12: '0x00',  // PUSH1 InOffset
+        13: '0x60', 14: '0x00',  // PUSH1 Value
+        15: '0x60', 16: '0x01',  // PUSH1 To
+        17: '0x60', 18: '0xFF',  // PUSH1 Gas
+        19: '0xf1'                // CALL
+      });
+
+      const tree = explore(state, calc.forwardRules, {
+        maxDepth: 100,
+        calc: { clauses: calc.clauses, types: calc.types }
+      });
+
+      const leaves = getAllLeaves(tree);
+      assert.strictEqual(leaves.length, 2,
+        'CALL should produce 2 leaves (success + failure)');
+
+      // Check stack values: one branch has 1 (success), one has 0 (failure)
+      const stackValues = [];
+      for (const leaf of leaves) {
+        if (leaf.state) {
+          for (const h of Object.keys(leaf.state.linear)) {
+            const tag = Store.tag(Number(h));
+            if (tag === 'stack') {
+              stackValues.push(binToInt(Store.child(Number(h), 1)));
+            }
+          }
+        }
+      }
+      assert(stackValues.includes(1n), 'One branch should have stack 1 (success)');
+      assert(stackValues.includes(0n), 'One branch should have stack 0 (failure)');
+
+      // Verify memory preserved in both leaves (non-empty: write 0 0x42 empty_mem)
+      for (const leaf of leaves) {
+        let memHash = null;
+        for (const h of Object.keys(leaf.state.linear)) {
+          if (Store.tag(Number(h)) === 'mem') {
+            memHash = Store.child(Number(h), 0);
+          }
+        }
+        assert(memHash !== null, 'Memory should be preserved after CALL');
+        assert.strictEqual(Store.tag(memHash), 'write',
+          'Memory should contain a write node (not empty_mem)');
+      }
+    });
+  });
+
+  describe('Multisig no-call symexec baseline', () => {
     let tree, allLeaves;
 
     it('explores to exact expected tree shape', async () => {
       Store.clear();
       const msCalc = await mde.load(
-        path.join(__dirname, '../../calculus/ill/programs/multisig.ill')
+        path.join(__dirname, '../../calculus/ill/programs/multisig_nocall.ill')
       );
 
       const state = mde.decomposeQuery(msCalc.queries.get('symex'));
@@ -457,21 +519,69 @@ describe('EVM Memory Integration', { timeout: 30000 }, () => {
       allLeaves = getAllLeaves(tree);
 
       // Exact tree shape — catches accidental pruning or explosion
-      assert.strictEqual(countNodes(tree), 210, 'Expected 210 nodes');
-      assert.strictEqual(allLeaves.length, 19, 'Expected 19 leaves');
-      assert(allLeaves.every(l =>
-        l.type === 'leaf' || l.type === 'bound' || l.type === 'cycle'
-      ), 'All leaves should be terminal types (no bound/cycle)');
+      assert.strictEqual(countNodes(tree), 124, 'Expected 124 nodes');
+      assert.strictEqual(allLeaves.length, 11, 'Expected 11 leaves');
     });
 
-    it('has exactly 4 STOP leaves (successful termination)', async () => {
+    it('has exactly 2 STOP leaves (successful termination)', async () => {
+      const { classifyLeaf } = require('../../lib/engine/show');
+      const stopLeaves = allLeaves.filter(l => classifyLeaf(l.state) === 'STOP');
+      assert.strictEqual(stopLeaves.length, 2,
+        `Expected 2 STOP leaves, got ${stopLeaves.length}`);
+    });
+
+    it('has no bound or cycle leaves (full exploration)', async () => {
+      const bound = allLeaves.filter(l => l.type === 'bound');
+      const cycle = allLeaves.filter(l => l.type === 'cycle');
+      assert.strictEqual(bound.length, 0, 'No depth-bound leaves');
+      assert.strictEqual(cycle.length, 0, 'No cycle leaves');
+    });
+  });
+
+  describe('Multisig with abstract CALL', () => {
+    let tree, allLeaves;
+
+    it('explores past CALL with no stuck call facts', async () => {
+      Store.clear();
+      const msCalc = await mde.load(
+        path.join(__dirname, '../../calculus/ill/programs/multisig.ill')
+      );
+
+      const state = mde.decomposeQuery(msCalc.queries.get('symex'));
+
+      tree = explore(state, msCalc.forwardRules, {
+        maxDepth: 300,
+        calc: { clauses: msCalc.clauses, types: msCalc.types }
+      });
+
+      allLeaves = getAllLeaves(tree);
+
+      // No leaves should have stuck `call(...)` facts
+      for (const leaf of allLeaves) {
+        if (leaf.state) {
+          for (const h of Object.keys(leaf.state.linear)) {
+            const tag = Store.tag(Number(h));
+            assert.notStrictEqual(tag, 'call',
+              'No leaf should have stuck call(...) facts');
+          }
+        }
+      }
+    });
+
+    it('has exact expected tree shape', async () => {
+      // Abstract CALL forks into success + failure, doubling paths after CALL
+      assert.strictEqual(countNodes(tree), 246, 'Expected 246 nodes');
+      assert.strictEqual(allLeaves.length, 29, 'Expected 29 leaves');
+    });
+
+    it('has exactly 4 STOP leaves', async () => {
       const { classifyLeaf } = require('../../lib/engine/show');
       const stopLeaves = allLeaves.filter(l => classifyLeaf(l.state) === 'STOP');
       assert.strictEqual(stopLeaves.length, 4,
         `Expected 4 STOP leaves, got ${stopLeaves.length}`);
     });
 
-    it('has no bound or cycle leaves (full exploration)', async () => {
+    it('has no bound or cycle leaves', async () => {
       const bound = allLeaves.filter(l => l.type === 'bound');
       const cycle = allLeaves.filter(l => l.type === 'cycle');
       assert.strictEqual(bound.length, 0, 'No depth-bound leaves');

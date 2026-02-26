@@ -788,9 +788,9 @@ Old types/rules removed (`memory`, `mh`, `unblock`, `concatMemory`, etc.). New w
 
 4. **`vwrite` not implemented** — deferred (no non-32-byte writes needed yet).
 
-### TODO_0049.Stage_3 — CALL Frame Memory [NOT DONE]
+### TODO_0049.Stage_3 — CALL Frame Memory [DONE — Stage A]
 
-`saved_mem` / `saved_memsize` types declared but unused. The CALL rule is simplified (line 1194: `% SIMPLIFIED CALL - TODO`). Needed for multi-contract benchmarks.
+Abstract CALL model implemented (TODO_0051): nondeterministic success/failure with memory preserved. Full callee execution deferred to TODO_0053.
 
 ### TODO_0049.Stage_4 — Tests [DONE]
 
