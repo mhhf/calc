@@ -84,8 +84,8 @@ if (files.length === 0) {
       console.log();
     } else {
       const interesting = leaf.state
-        ? showInteresting(leaf.state, { exclude: [...excludeSet, 'storage', 'balance', 'mstore'] })
-            .filter(f => /^(stop|revert|invalid|pc|loli|unblock)/.test(f))
+        ? showInteresting(leaf.state, { exclude: [...excludeSet, 'storage', 'balance'] })
+            .filter(f => /^(stop|revert|invalid|pc|loli)/.test(f))
         : [];
       console.log(`${marker}Leaf ${i} [${leaf.type}]: ${status}\x1b[0m — ${interesting.join(', ')}`);
     }

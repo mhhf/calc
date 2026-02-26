@@ -2,13 +2,15 @@
  * Tests for EVM memory model (write-log with McCarthy axiom traversal)
  */
 
-const { describe, it, beforeEach } = require('node:test');
+const { describe, it, before, beforeEach } = require('node:test');
 const assert = require('node:assert');
 const path = require('path');
 const mde = require('../../lib/engine');
+const backward = require('../../lib/engine/prove');
 const { explore } = require('../../lib/engine/symexec');
 const { getAllLeaves, countNodes } = require('../../lib/engine/tree-utils');
 const Store = require('../../lib/kernel/store');
+const { apply: subApply } = require('../../lib/kernel/substitute');
 const { intToBin, binToInt } = require('../../lib/engine/ffi/convert');
 const memory = require('../../lib/engine/ffi/memory');
 
@@ -221,72 +223,115 @@ describe('Memory FFI', () => {
     });
   });
 
-  describe('mem_read_range', () => {
-    it('reads from empty memory (all zeros)', () => {
-      const emptyMem = Store.put('empty_mem', []);
-      const out = Store.put('freevar', ['_Out']);
-      const r = memory.mem_read_range([emptyMem, intToBin(0n), intToBin(32n), out]);
-      assert(r.success);
-      assert.strictEqual(binToInt(r.theta[0][1]), 0n);
+});
+
+// ============================================================================
+// Backward Clause Tests (theory without FFI)
+// ============================================================================
+
+describe('Memory Backward Clauses', { timeout: 30000 }, () => {
+  let calc;
+
+  before(async () => {
+    Store.clear();
+    calc = await mde.load(
+      path.join(__dirname, '../../calculus/ill/programs/evm.ill')
+    );
+  });
+
+  /** Prove a goal via backward clauses only, return result */
+  async function proveNoFFI(expr, opts = {}) {
+    const goal = await mde.parseExpr(expr);
+    return backward.prove(goal, calc.clauses, calc.types, {
+      useFFI: false,
+      maxDepth: opts.maxDepth || 100,
+      trace: opts.trace || false,
+    });
+  }
+
+  /** Prove and extract freevar V from result */
+  async function proveAndExtract(expr, varName = 'V') {
+    const goal = await mde.parseExpr(expr);
+    const vHash = Store.put('freevar', ['_' + varName]);
+    const result = backward.prove(goal, calc.clauses, calc.types, {
+      useFFI: false,
+      maxDepth: 100,
+    });
+    if (!result.success) return null;
+    const resolved = subApply(vHash, result.theta);
+    return resolved;
+  }
+
+  describe('no_overlap', () => {
+    it('disjoint: [0,32) vs [32,64) — left boundary', async () => {
+      const r = await proveNoFFI('no_overlap 0 32 32 32');
+      assert(r.success, 'Disjoint ranges should succeed');
     });
 
-    it('reads exact hit from single write', () => {
-      const emptyMem = Store.put('empty_mem', []);
-      const value = 0x42n;
-      const mem = Store.put('write', [intToBin(0n), intToBin(value), emptyMem]);
-      const out = Store.put('freevar', ['_Out']);
-      const r = memory.mem_read_range([mem, intToBin(0n), intToBin(32n), out]);
-      assert(r.success);
-      assert.strictEqual(binToInt(r.theta[0][1]), value);
+    it('disjoint: [32,64) vs [0,32) — right boundary', async () => {
+      const r = await proveNoFFI('no_overlap 32 32 0 32');
+      assert(r.success, 'Disjoint ranges (reversed) should succeed');
     });
 
-    it('most recent write wins', () => {
-      const emptyMem = Store.put('empty_mem', []);
-      const mem1 = Store.put('write', [intToBin(0n), intToBin(0xAAn), emptyMem]);
-      const mem2 = Store.put('write', [intToBin(0n), intToBin(0xBBn), mem1]);
-      const out = Store.put('freevar', ['_Out']);
-      const r = memory.mem_read_range([mem2, intToBin(0n), intToBin(32n), out]);
-      assert(r.success);
-      assert.strictEqual(binToInt(r.theta[0][1]), 0xBBn);
+    it('overlapping: [0,32) vs [16,48) — fails', async () => {
+      const r = await proveNoFFI('no_overlap 0 32 16 32');
+      assert(!r.success, 'Overlapping ranges should fail');
     });
 
-    it('reads zero for unwritten offset', () => {
-      const emptyMem = Store.put('empty_mem', []);
-      const mem = Store.put('write', [intToBin(0n), intToBin(0x42n), emptyMem]);
-      const out = Store.put('freevar', ['_Out']);
-      const r = memory.mem_read_range([mem, intToBin(32n), intToBin(32n), out]);
-      assert(r.success);
-      assert.strictEqual(binToInt(r.theta[0][1]), 0n);
+    it('disjoint: write8 [32,33) vs read [0,32)', async () => {
+      const r = await proveNoFFI('no_overlap 0 32 32 1');
+      assert(r.success, 'write8 disjoint from 32-byte read should succeed');
+    });
+  });
+
+  describe('mem_read', () => {
+    it('exact hit: write at 0, read at 0 → V = 42', async () => {
+      const v = await proveAndExtract('mem_read (write 0 42 empty_mem) 0 V');
+      assert(v !== null, 'Should prove mem_read');
+      assert.strictEqual(binToInt(v), 42n);
     });
 
-    it('zero-size read returns 0', () => {
-      const emptyMem = Store.put('empty_mem', []);
-      const out = Store.put('freevar', ['_Out']);
-      const r = memory.mem_read_range([emptyMem, intToBin(0n), intToBin(0n), out]);
-      assert(r.success);
-      assert.strictEqual(binToInt(r.theta[0][1]), 0n);
+    it('miss + zero: write at 32, read at 0 → V = 0', async () => {
+      const v = await proveAndExtract('mem_read (write 32 42 empty_mem) 0 V');
+      assert(v !== null, 'Should prove mem_read with miss + zero');
+      assert.strictEqual(binToInt(v), 0n);
     });
 
-    it('handles write8 nodes', () => {
-      const emptyMem = Store.put('empty_mem', []);
-      // write8 at offset 0, byte value 0xAB
-      const mem = Store.put('write8', [intToBin(0n), intToBin(0xABn), emptyMem]);
-      const out = Store.put('freevar', ['_Out']);
-      const r = memory.mem_read_range([mem, intToBin(0n), intToBin(32n), out]);
-      assert(r.success);
-      // byte 0 = 0xAB, rest = 0x00
-      const expected = 0xABn << (31n * 8n);
-      assert.strictEqual(binToInt(r.theta[0][1]), expected);
+    it('most recent wins: write 0xBB over 0xAA at same offset', async () => {
+      const v = await proveAndExtract(
+        'mem_read (write 0 0xBB (write 0 0xAA empty_mem)) 0 V'
+      );
+      assert(v !== null, 'Should prove mem_read');
+      assert.strictEqual(binToInt(v), 0xBBn);
     });
 
-    it('rejects symbolic offset', () => {
-      const emptyMem = Store.put('empty_mem', []);
-      const symOff = Store.put('freevar', ['_Sym']);
-      const mem = Store.put('write', [symOff, intToBin(0x42n), emptyMem]);
-      const out = Store.put('freevar', ['_Out']);
-      const r = memory.mem_read_range([mem, intToBin(0n), intToBin(32n), out]);
-      assert(!r.success);
-      assert.strictEqual(r.reason, 'symbolic_offset');
+    it('chain traversal: 3 writes, read at 64', async () => {
+      const v = await proveAndExtract(
+        'mem_read (write 64 0xCC (write 32 0xBB (write 0 0xAA empty_mem))) 64 V'
+      );
+      assert(v !== null, 'Should prove mem_read with chain traversal');
+      assert.strictEqual(binToInt(v), 0xCCn);
+    });
+
+    it('overlap → stuck: write at 16, read at 0 — fails (sound)', async () => {
+      const r = await proveNoFFI(
+        'mem_read (write 16 0xBB (write 0 0xAA empty_mem)) 0 V'
+      );
+      assert(!r.success, 'Partial overlap should fail (no clause matches)');
+    });
+
+    it('write8 miss: write8 at 32, read at 0 → V = 0', async () => {
+      const v = await proveAndExtract(
+        'mem_read (write8 32 0xAB empty_mem) 0 V'
+      );
+      assert(v !== null, 'Should prove mem_read with write8 miss');
+      assert.strictEqual(binToInt(v), 0n);
+    });
+
+    it('empty memory: read at 0 → V = 0', async () => {
+      const v = await proveAndExtract('mem_read empty_mem 0 V');
+      assert(v !== null, 'Should prove mem_read from empty memory');
+      assert.strictEqual(binToInt(v), 0n);
     });
   });
 });

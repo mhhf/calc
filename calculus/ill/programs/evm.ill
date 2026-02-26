@@ -93,16 +93,11 @@ calldatasize: bin -> type.
 debug: bin -> type.
 mem: bin -> type.
 memsize: bin -> type.
-mem_reading: bin -> bin -> type.
-mem_read_done: bin -> type.
-mem_base_found: bin -> bin -> type.
-mem_patch: bin -> bin -> bin -> type.
-mem_patch_byte: bin -> bin -> bin -> type.
+mem_read: bin -> bin -> bin -> type.
+no_overlap: bin -> bin -> bin -> bin -> type.
 write: bin -> bin -> bin -> bin.
 write8: bin -> bin -> bin -> bin.
 empty_mem: bin.
-saved_mem: bin -> type.
-saved_memsize: bin -> type.
 calldatacopy_iter: bin -> bin -> bin -> bin -> type.
 calldatacopy_done: bin -> type.
 sha3_reading: bin -> bin -> bin -> bin -> type.
@@ -713,71 +708,31 @@ evm/msize:
     memsize S
   }.
 
-% Memory traversal — McCarthy's axioms as ILL forward rules (overlap-aware)
+% McCarthy's axioms as backward clauses (theory for !mem_read FFI)
 
-% Exact hit: same offset → return full value
-mem_read/hit:
-  mem_reading Offset (write Offset V Rest)
-  -o { mem_base_found Offset V }.
+mem_read/hit: mem_read (write Offset V Rest) Offset V.
 
-% Clean miss: no overlap → skip to next write
-mem_read/miss:
-  mem_reading R (write W V Rest) *
-  !neq R W *
-  !no_overlap R 32 W 32
-  -o { mem_reading R Rest }.
+mem_read/miss: mem_read (write W V Rest) R Result
+  <- neq R W
+  <- no_overlap R 32 W 32
+  <- mem_read Rest R Result.
 
-% Partial overlap: record patch, continue
-mem_read/partial:
-  mem_reading R (write W V Rest) *
-  !neq R W *
-  !overlaps R 32 W 32
-  -o {
-    mem_reading R Rest *
-    mem_patch R W V
-  }.
+mem_read/write8_miss: mem_read (write8 Addr Byte Rest) R Result
+  <- no_overlap R 32 Addr 1
+  <- mem_read Rest R Result.
 
-% Zero-initialization: unwritten memory is 0
-mem_read/zero:
-  mem_reading Offset empty_mem
-  -o { mem_base_found Offset 0 }.
+mem_read/zero: mem_read empty_mem R 0.
 
-% write8 during word-level read: disjoint → skip
-mem_read/write8_miss:
-  mem_reading R (write8 Addr Byte Rest) *
-  !no_overlap R 32 Addr 1
-  -o { mem_reading R Rest }.
+% no_overlap — disjoint range check via plus in subtraction mode
+% R+Rs <= W  ⟺  ∃D. W = (R+Rs) + D
 
-% write8 during word-level read: overlap → record byte patch
-mem_read/write8_overlap:
-  mem_reading R (write8 Addr Byte Rest) *
-  !overlaps R 32 Addr 1
-  -o { mem_reading R Rest * mem_patch_byte R Addr Byte }.
+no_overlap/left: no_overlap R Rs W Ws
+  <- plus R Rs REnd
+  <- plus REnd D W.
 
-% Finalize: no patches → return base directly
-mem_finalize/clean:
-  mem_base_found Offset V
-  -o { mem_read_done V }.
-
-% Finalize: apply word-level patch via splice
-mem_finalize/patch:
-  mem_base_found Offset Base *
-  mem_patch Offset W PatchV
-  -o {
-    exists Spliced. (
-      mem_base_found Offset Spliced *
-      !splice Base Offset W PatchV Spliced)
-  }.
-
-% Finalize: apply byte-level patch from write8
-mem_finalize/byte_patch:
-  mem_base_found Offset Base *
-  mem_patch_byte Offset Addr Byte
-  -o {
-    exists Spliced. (
-      mem_base_found Offset Spliced *
-      !splice_byte Base Offset Addr Byte Spliced)
-  }.
+no_overlap/right: no_overlap R Rs W Ws
+  <- plus W Ws WEnd
+  <- plus WEnd D R.
 
 sha3_iter/done:
   sha3_reading Offset Offset Acc M
