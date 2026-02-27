@@ -21,6 +21,9 @@ Key files: `forward.js` (engine), `symexec.js` (tree exploration), `rule-analysi
 | 10 | Flat undo log + matchAlts elimination | −13% |
 | 11 | Numeric tag IDs + slots-based metavar check | ~2% (Zig-ready) |
 | — | Generalized fingerprint layer (auto-detect) | Non-EVM programs |
+| 12 | Tensor-in-oplus encoding + EqNeqSolver (TODO_0055) | Enables branch pruning for symbolic values |
+| 13 | Single-survivor oplus collapsing (TODO_0055) | Eliminates fork nodes when solver prunes one alt |
+| 14 | Structural memoization via (PC, SH) control hash | 49ms → 11ms (4.4×) for symbolic multisig |
 
 **Current stack:** `fingerprintLayer` (O(1) for ground-discriminated rules) → `discTreeLayer` (O(depth) catch-all) → `predicateLayer` (safety net, never activates).
 
@@ -46,12 +49,18 @@ Key files: `forward.js` (engine), `symexec.js` (tree exploration), `rule-analysi
 
 9. **At 44 rules, the strategy stack reduces tryMatch calls to 74 for a 63-node tree (1.2×/node).** Only 18 failures out of 74 calls (76% success rate). The remaining failures are inherent: both JUMPI branches must be tried, and calldatasize has overlapping trigger predicates. No further candidate filtering improvement is possible at this scale.
 
+10. **Structural memoization via control hash is cheap and effective for symmetric programs.** The EVM multisig checks 6 members with identical post-check logic. A hash of just `(PC, SH)` — O(1), two lookups — detects isomorphic subtrees and skips 5 of 6 member bodies. Savings: 2125→477 nodes, 49ms→11ms. Exact state memoization can't match because evars have unique hashes from a global counter; predicate histogram hashing can't match because `code` fact counts differ between member bodies (741, 739, ..., 733). The minimal control hash works precisely because it captures execution position without caring about concrete values.
+
+11. **hevm avoids the problem structural memo solves.** hevm uses lazy symbolic expressions — `ITE(EQ(caller, M1), 247, ITE(...))` is a single value, not 6 branches. It never explores member bodies separately, producing 7 nodes vs calc's 477. Structural memo is a post-hoc fix for eager branching. Lazy symbolic values (TODO_0002/0003) would be the architectural answer.
+
 ## What's Next
 
-All optimizations that matter at current scale (44 rules, ~20 facts, depth-2 terms) are done. The remaining items are tracked as TODOs, triggered by specific scaling scenarios:
+Per-step optimizations (stages 1-11) are done at current scale. The next wave targets tree-level optimizations (structural memo, constraint solving, branch pruning) and scaling triggers:
 
 | Optimization | Trigger | TODO |
 |-------------|---------|------|
+| Configurable control predicates | Non-EVM programs with symmetric structure | See note below |
+| Constraint propagation (equality + FFI re-check) | Symbolic evar chains (3+ deep) | [TODO_0005](../todo/0005_symexec-simplification.md) |
 | Persistent proving order (FFI before state) | Mixed FFI + state predicates | See note below |
 | Delta-driven activation | 100+ rules | [TODO_0035](../todo/0035_forward-chaining-networks.md) |
 | Compiled matching (Maranget) | 1000+ rules | [TODO_0037](../todo/0037_compiled-pattern-matching.md) |
@@ -63,6 +72,20 @@ All optimizations that matter at current scale (44 rules, ~20 facts, depth-2 ter
 | Per-term read cache (L2) | 50+ branches sharing memory prefixes | [TODO_0052](../todo/0052_memory-and-persistent-caching.md) |
 | Indexed persistent predicates | 50+ persistent facts per predicate | [TODO_0052](../todo/0052_memory-and-persistent-caching.md) |
 
+### Configurable control predicates
+
+Stage 14 implements structural memoization for EVM using a hardcoded `computeControlHash(stateIndex)` that hashes `(pc, sh)`. This works because PC and SH determine the EVM execution point — states with the same PC+SH produce isomorphic subtrees when branching depends only on symbolic values.
+
+The concept generalizes: any program with symmetric structure (checking against a list, dispatch tables, loop unrolling) can benefit. But each domain needs different "control predicates." The fix is to let programs declare them:
+
+```
+@control pc sh.
+```
+
+The engine reads the annotation and auto-computes the control hash from those predicates. Programs without `@control` get no structural memo (no overhead). Implementation: ~30 LOC in `symexec.js` (read annotation, generalize `computeControlHash` to iterate over declared predicates) + grammar support for `@control` annotation.
+
+**Soundness condition:** the declared control predicates must fully determine the subtree branching structure. Branching on concrete values excluded from the hash would cause unsound memoization. For EVM, this holds because all oplus branching is on symbolic evars/freevars, not on concrete member-specific values like `bitPos`.
+
 ### Persistent proving order
 
 Current order: state lookup → FFI → clause resolution. Reversing to FFI → state → clauses yields ~2.5% improvement on the EVM benchmark (n=100, p=0.012) because all 153 persistent goals per tree are FFI-resolvable (inc, plus, neq) — the state lookup always misses.
@@ -70,6 +93,8 @@ Current order: state lookup → FFI → clause resolution. Reversing to FFI → 
 However, FFI-first is only optimal when all persistent predicates are FFI-backed. Programs with user-defined persistent facts (e.g. lookup tables, memoization) would benefit from state-first order, since state lookup is O(1) via the predicate set guard vs backward proving overhead. The right long-term answer may be per-predicate dispatch: at compile time classify each persistent predicate as FFI-only, state-only, or mixed, and generate the appropriate proving order. For now, keeping state-first as the default is the more general choice.
 
 ## Profiling History
+
+### Hand-crafted bytecode (63 nodes, concrete)
 
 | Milestone | Median | Notes |
 |-----------|--------|-------|
@@ -84,6 +109,16 @@ However, FFI-first is only optimal when all persistent predicates are FFI-backed
 | Stage 9 (disc-tree) | ~1.9ms | 0% at 44 rules |
 | Stage 10 (flat undo + matchAlts) | 1.05ms | −13% |
 | Stage 11 (numeric tagId + slots) | ~1.0ms | ~2%, Zig-ready |
+
+### Real solc bytecode (MultisigNoCall, 1040 bytes)
+
+| Setup | Nodes | Median | Per-node | Notes |
+|-------|-------|--------|----------|-------|
+| Concrete (MEMBER1, nonce=0) | 280 | ~4ms | ~14μs | All oplus branches collapse (0 forks) |
+| Symbolic sender + nonce, no memo | 2125 | ~49ms | ~23μs | 31 leaves, 10 oplus forks |
+| Symbolic sender + nonce, memo | 477 | ~11ms | ~28μs | 9 memo hits, 2 real leaves |
+
+Per-node cost is 1.36× higher in symbolic vs concrete due to: more oplus alternatives explored per branch, constraint solver overhead (checkpoint/restore), and persistent goal failures on evars. The 2.3× total slowdown (11ms vs 4ms) comes primarily from 1.7× more nodes (477 vs 280), not per-node cost.
 
 ## Zig Port Mapping
 
