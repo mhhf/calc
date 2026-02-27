@@ -88,15 +88,24 @@ This gives calc a form of symbolic execution without an SMT solver — at the co
 | Concrete sender, nonce=0 | 280 | 1 (STOP) | 3.9ms | — |
 | Symbolic sender, nonce=0 | 1333 | 7 (6 STOP + 1 REVERT) | 22ms | — |
 | Symbolic sender + nonce | 2125 | 31 (18 STOP + 13 REVERT) | 47.5ms | ~50ms |
+| Symbolic + structural memo | 477 | 2 + 9 memo | **11ms** | ~50ms |
+
+## Structural memoization
+
+calc's `structuralMemo` option detects structurally isomorphic subtrees using a control hash based on `(PC, SH)`. In the multisig, the 6 member paths through `getMemberBit` produce identical subtrees (same opcodes, same branch pattern) — only concrete values differ. Structural memo explores the first member body (322 nodes) and skips the remaining 5.
+
+**Reduction**: 2125 → 477 nodes, 46ms → 11ms (4.2× speedup). calc is now **~4.5× faster** than hevm on the same symbolic workload.
+
+**Soundness**: The control hash is sound when branching depends only on symbolic values (evars/freevars), not on concrete argument values excluded from the hash. This holds for the multisig case (all body branching is on symbolic AND/ISZERO results). The option is opt-in for programs where this assumption may not hold.
 
 ## Key insights
 
-1. **Comparable performance**: calc matches hevm's speed (~50ms) on the same symbolic workload despite exploring 300× more tree nodes, because pattern matching + FFI arithmetic is cheaper per-node than SMT queries.
+1. **calc is 4.5× faster**: With structural memo, calc explores the same symbolic workload in 11ms vs hevm's ~50ms, while still discovering all 5 behavioral outcomes.
 
 2. **Different tree semantics**: calc produces an explicit enumeration (31 leaves), hevm produces a compact symbolic tree (7 nodes). Both discover the same 5 behavioral outcomes.
 
 3. **SMT advantage**: hevm can prune 6 false-positive overflow branches that calc cannot, thanks to z3's arithmetic reasoning. For deeper contracts with more checked arithmetic, this gap would widen.
 
-4. **Merging gap**: hevm's lazy symbolic expressions merge the 6 member paths into 1. calc enumerates them separately. Post-hoc subtree equivalence detection could close this presentation gap without architecture changes.
+4. **Structural memo closes the merging gap**: hevm's lazy symbolic expressions merge the 6 member paths into 1. calc's structural memo achieves a similar effect by detecting isomorphic subtrees and skipping redundant exploration.
 
 5. **No solver dependency**: calc requires no external tools. hevm requires z3 (or cvc5). This makes calc more portable and predictable (no SMT timeout variance).

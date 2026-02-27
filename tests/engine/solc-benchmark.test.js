@@ -85,3 +85,66 @@ describe('Solc multisig symexec', { timeout: 30000 }, () => {
     assert(dt < 1000, `Expected < 1s, got ${dt.toFixed(0)}ms`);
   });
 });
+
+describe('Solc multisig symbolic (structural memo)', { timeout: 30000 }, () => {
+  let treeFull, treeMemo;
+
+  before(async () => {
+    Store.clear();
+    const calc = await mde.load(
+      path.join(__dirname, '../../calculus/ill/programs/multisig_nocall_solc_symbolic.ill')
+    );
+    const state = mde.decomposeQuery(calc.queries.get('symex'));
+    const opts = { maxDepth: 500, calc: { clauses: calc.clauses, types: calc.types } };
+
+    treeFull = explore(state, calc.forwardRules, { ...opts, structuralMemo: false });
+    treeMemo = explore(state, calc.forwardRules, { ...opts, structuralMemo: true });
+  });
+
+  it('full exploration has 2125 nodes and 31 leaves', () => {
+    assert.strictEqual(countNodes(treeFull), 2125, 'Expected 2125 nodes');
+    assert.strictEqual(getAllLeaves(treeFull).length, 31, 'Expected 31 leaves');
+  });
+
+  it('structural memo reduces to <500 nodes', () => {
+    const n = countNodes(treeMemo);
+    assert(n < 500, `Expected <500 nodes with memo, got ${n}`);
+  });
+
+  it('structural memo produces memo nodes', () => {
+    let memoCount = 0;
+    function walk(node) {
+      if (!node) return;
+      if (node.type === 'memo') memoCount++;
+      if (node.children) for (const c of node.children) walk(c.child || c);
+    }
+    walk(treeMemo);
+    assert(memoCount > 0, `Expected memo nodes, got ${memoCount}`);
+  });
+
+  it('no bound or cycle nodes (full exploration achieved)', () => {
+    const leaves = getAllLeaves(treeFull);
+    const bound = leaves.filter(l => l.type === 'bound');
+    const cycle = leaves.filter(l => l.type === 'cycle');
+    assert.strictEqual(bound.length, 0, 'No depth-bound leaves');
+    assert.strictEqual(cycle.length, 0, 'No cycle leaves');
+  });
+
+  it('completes under 1s with structural memo', async () => {
+    Store.clear();
+    const calc = await mde.load(
+      path.join(__dirname, '../../calculus/ill/programs/multisig_nocall_solc_symbolic.ill')
+    );
+    const state = mde.decomposeQuery(calc.queries.get('symex'));
+
+    const t0 = performance.now();
+    explore(state, calc.forwardRules, {
+      maxDepth: 500,
+      structuralMemo: true,
+      calc: { clauses: calc.clauses, types: calc.types }
+    });
+    const dt = performance.now() - t0;
+
+    assert(dt < 1000, `Expected < 1s, got ${dt.toFixed(0)}ms`);
+  });
+});
