@@ -1,12 +1,12 @@
 ---
 title: "Commuting Match Reduction in Exhaustive Exploration"
 created: 2026-02-26
-modified: 2026-02-27
+modified: 2026-02-28
 summary: "Eliminate redundant tree branches caused by commuting matches — grounded in CLF definitional equality, Mazurkiewicz trace theory, and DPOR"
 tags: [symexec, forward-chaining, partial-order-reduction, loli, performance, theory, proof-nets, memoization, clf, concurrency]
 type: design
 cluster: Symexec
-status: ready for implementation
+status: in progress
 priority: 9
 depends_on: [TODO_0041]
 required_by: [TODO_0042]

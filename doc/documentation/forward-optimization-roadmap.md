@@ -57,6 +57,7 @@ All optimizations that matter at current scale (44 rules, ~20 facts, depth-2 ter
 | Compiled matching (Maranget) | 1000+ rules | [TODO_0037](../todo/0037_compiled-pattern-matching.md) |
 | Semi-naive for linear logic | 100K+ facts | [TODO_0044](../todo/0044_semi-naive-linear-logic.md) |
 | Join ordering | 4+ antecedent rules | [TODO_0035](../todo/0035_forward-chaining-networks.md) |
+| DPOR (Partial Order Reduction) | Forward-vs-forward commuting matches | [TODO_0054](../todo/0054_commuting-match-reduction.md) |
 | Path-based nested access | depth 4+ terms | [TODO_0022](../todo/0022_forward-optimization-research.md) |
 | Memoized mem_read cache (L1) | W > 50 writes per MLOAD | [TODO_0052](../todo/0052_memory-and-persistent-caching.md) |
 | Per-term read cache (L2) | 50+ branches sharing memory prefixes | [TODO_0052](../todo/0052_memory-and-persistent-caching.md) |

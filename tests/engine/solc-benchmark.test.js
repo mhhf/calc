@@ -36,13 +36,13 @@ describe('Solc multisig symexec', { timeout: 30000 }, () => {
   });
 
   it('explores to expected tree shape', () => {
-    assert.strictEqual(countNodes(tree), 8816, 'Expected 8816 nodes');
-    assert.strictEqual(allLeaves.length, 334, 'Expected 334 leaves');
+    assert.strictEqual(countNodes(tree), 301, 'Expected 301 nodes');
+    assert.strictEqual(allLeaves.length, 16, 'Expected 16 leaves');
   });
 
-  it('has 64 STOP leaves (successful termination)', () => {
-    assert.strictEqual(classes.STOP, 64,
-      `Expected 64 STOP leaves, got ${classes.STOP}`);
+  it('has 1 STOP leaf (successful termination)', () => {
+    assert.strictEqual(classes.STOP, 1,
+      `Expected 1 STOP leaf, got ${classes.STOP}`);
   });
 
   it('all STOP leaves emit Vote event (log3)', () => {

@@ -519,15 +519,15 @@ describe('EVM Memory Integration', { timeout: 30000 }, () => {
       allLeaves = getAllLeaves(tree);
 
       // Exact tree shape — catches accidental pruning or explosion
-      assert.strictEqual(countNodes(tree), 124, 'Expected 124 nodes');
-      assert.strictEqual(allLeaves.length, 11, 'Expected 11 leaves');
+      assert.strictEqual(countNodes(tree), 62, 'Expected 62 nodes');
+      assert.strictEqual(allLeaves.length, 6, 'Expected 6 leaves');
     });
 
-    it('has exactly 2 STOP leaves (successful termination)', async () => {
+    it('has exactly 1 STOP leaf (successful termination)', async () => {
       const { classifyLeaf } = require('../../lib/engine/show');
       const stopLeaves = allLeaves.filter(l => classifyLeaf(l.state) === 'STOP');
-      assert.strictEqual(stopLeaves.length, 2,
-        `Expected 2 STOP leaves, got ${stopLeaves.length}`);
+      assert.strictEqual(stopLeaves.length, 1,
+        `Expected 1 STOP leaf, got ${stopLeaves.length}`);
     });
 
     it('has no bound or cycle leaves (full exploration)', async () => {
@@ -570,15 +570,15 @@ describe('EVM Memory Integration', { timeout: 30000 }, () => {
 
     it('has exact expected tree shape', async () => {
       // Abstract CALL forks into success + failure, doubling paths after CALL
-      assert.strictEqual(countNodes(tree), 246, 'Expected 246 nodes');
-      assert.strictEqual(allLeaves.length, 29, 'Expected 29 leaves');
+      assert.strictEqual(countNodes(tree), 96, 'Expected 96 nodes');
+      assert.strictEqual(allLeaves.length, 11, 'Expected 11 leaves');
     });
 
-    it('has exactly 4 STOP leaves', async () => {
+    it('has exactly 1 STOP leaf', async () => {
       const { classifyLeaf } = require('../../lib/engine/show');
       const stopLeaves = allLeaves.filter(l => classifyLeaf(l.state) === 'STOP');
-      assert.strictEqual(stopLeaves.length, 4,
-        `Expected 4 STOP leaves, got ${stopLeaves.length}`);
+      assert.strictEqual(stopLeaves.length, 1,
+        `Expected 1 STOP leaf, got ${stopLeaves.length}`);
     });
 
     it('has no bound or cycle leaves', async () => {
