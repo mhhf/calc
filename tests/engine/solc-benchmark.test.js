@@ -36,8 +36,8 @@ describe('Solc multisig symexec', { timeout: 30000 }, () => {
   });
 
   it('explores to expected tree shape', () => {
-    assert.strictEqual(countNodes(tree), 295, 'Expected 295 nodes');
-    assert.strictEqual(allLeaves.length, 16, 'Expected 16 leaves');
+    assert.strictEqual(countNodes(tree), 280, 'Expected 280 nodes');
+    assert.strictEqual(allLeaves.length, 1, 'Expected 1 leaf');
   });
 
   it('has 1 STOP leaf (successful termination)', () => {
@@ -56,13 +56,9 @@ describe('Solc multisig symexec', { timeout: 30000 }, () => {
     }
   });
 
-  it('all non-STOP leaves are dead branches', () => {
-    const nonStop = allLeaves.filter(l => l.type !== 'dead' && classifyLeaf(l.state) !== 'STOP');
-    assert.strictEqual(nonStop.length, 0,
-      'Every non-STOP, non-dead leaf is unexpected');
-    // Verify dead branches exist (constraint solver pruning)
-    const dead = allLeaves.filter(l => l.type === 'dead');
-    assert.ok(dead.length > 0, 'Should have dead (pruned) branches');
+  it('only leaf is STOP (all infeasible branches collapsed)', () => {
+    assert.strictEqual(allLeaves.length, 1);
+    assert.strictEqual(classifyLeaf(allLeaves[0].state), 'STOP');
   });
 
   it('has no bound or cycle leaves (full exploration)', () => {

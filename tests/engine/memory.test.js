@@ -519,8 +519,8 @@ describe('EVM Memory Integration', { timeout: 30000 }, () => {
       allLeaves = getAllLeaves(tree);
 
       // Exact tree shape — catches accidental pruning or explosion
-      assert.strictEqual(countNodes(tree), 61, 'Expected 61 nodes');
-      assert.strictEqual(allLeaves.length, 6, 'Expected 6 leaves');
+      assert.strictEqual(countNodes(tree), 56, 'Expected 56 nodes');
+      assert.strictEqual(allLeaves.length, 1, 'Expected 1 leaf');
     });
 
     it('has exactly 1 STOP leaf (successful termination)', async () => {
@@ -570,8 +570,8 @@ describe('EVM Memory Integration', { timeout: 30000 }, () => {
 
     it('has exact expected tree shape', async () => {
       // Abstract CALL forks into success + failure, doubling paths after CALL
-      assert.strictEqual(countNodes(tree), 93, 'Expected 93 nodes');
-      assert.strictEqual(allLeaves.length, 11, 'Expected 11 leaves');
+      assert.strictEqual(countNodes(tree), 84, 'Expected 84 nodes');
+      assert.strictEqual(allLeaves.length, 2, 'Expected 2 leaves');
     });
 
     it('has exactly 1 STOP leaf', async () => {
