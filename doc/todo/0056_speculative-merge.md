@@ -33,15 +33,15 @@ The current fix (`computeControlHash` on `pc` and `sh`) is an EVM-specific hack 
 
 hevm's forward-jump merge (`EVM/Merge.hs`) does NOT collapse the member-check pattern. Nested JUMPIs during speculation trigger bail-out (`msActive` check). Actual hevm output on MultisigNoCall.sol:
 
-| Tool | Nodes | Leaves | Time |
-|---|---|---|---|
-| hevm (actual) | 86 | 56 (36 Success, 20 Failure) | 50ms |
-| calc (no memo) | 2125 | 31 (18 STOP, 13 REVERT) | 57ms |
-| calc (structural memo) | 477 | 11 (1 STOP, 1 REVERT, 9 memo) | 15ms |
+| Tool | Branch nodes | Leaves | Total nodes | Time |
+|---|---|---|---|---|
+| hevm (actual) | 30 ITE | 31 (18 Success, 13 Failure) | 61 | 52ms |
+| calc (no memo) | 30 oplus | 31 (18 STOP, 13 REVERT) | 2125 | 57ms |
+| calc (structural memo) | 30 oplus | 11 (2 real, 9 memo) | 477 | 22ms |
 
-hevm has MORE leaves than calc because hevm explores checked-arithmetic overflow branches (SMT can't always prune them eagerly). calc's structural memo achieves 3.5x better node count than hevm on this contract.
+hevm and calc have identical branching behavior: same 30 branch points, same 31 leaves, same 5 behavioral outcomes × 6 members. Neither tool merges per-member subtrees. The node count difference (61 vs 2125) is representation granularity: hevm compresses 50+ opcodes between JUMPIs into single ITE nodes; calc makes each opcode explicit.
 
-The doc previously claimed "hevm: 7 nodes, 4 leaves" — this was incorrect. Verified by running `hevm symbolic --show-tree` (v0.54.2).
+Verified by running `hevm symbolic --show-tree` (v0.54.2).
 
 ## Approaches Considered
 
