@@ -1,9 +1,9 @@
 ---
-title: "Guarded Branch Semantics: Encoding Conditional Oplus in ILL Forward Chaining"
+title: "Guarded Branch Semantics: Tensor Encoding + Constraint Graph Satisfiability"
 created: 2026-02-28
 modified: 2026-02-28
-summary: "Core design decision: how to encode guarded branches (JUMPI, EQ, ISZERO) in oplus consequents — loli vs tensor vs hybrid — and how to prune infeasible branches within the theory using additive zero"
-tags: [linear-logic, clf, oplus, loli, symexec, forward-chaining, theory, symbolic-execution, path-conditions, proof-theory, evm, soundness, design-decision]
+summary: "Tensor-in-oplus encoding for guarded branches, with additive zero for dead branch elimination and modular constraint solver (oracle interface, starting with eq/neq union-find) for path condition satisfiability at oplus expansion time"
+tags: [linear-logic, clf, oplus, symexec, forward-chaining, theory, symbolic-execution, path-conditions, proof-theory, soundness, CLP, design-decision]
 type: design
 status: researching
 priority: 10
@@ -15,418 +15,294 @@ starred: true
 
 # Guarded Branch Semantics
 
-## The Problem in One Paragraph
+## The Problem
 
-When a forward rule branches (EVM's JUMPI, EQ, ISZERO), we use oplus (`⊕`) to create alternatives. Each alternative has a **guard** — a condition that determines if the branch is valid. Currently we encode guards as **loli** (`!guard -o {body}`), which defers the check. This violates CLF, causes commuting matches (fixed by fusion in TODO_0054), and **kills both branches when guards are symbolic** (can't prove `!neq X Y` for symbolic X, Y). Switching to **tensor** (`!guard ⊗ body`) would fix the CLF violation but **asserts unchecked facts** — including false ones for ground values. Neither encoding works for both ground and symbolic execution. We need a unified semantics that is theory-clean, correct for ground values, and extends to symbolic path conditions.
+When a forward rule branches (JUMPI, EQ, ISZERO), we use oplus (`⊕`) to create alternatives. Each alternative has a **guard** — a condition that determines if the branch is valid. The old loli encoding (`!guard -o {body}`) violates CLF, causes commuting matches, and kills both branches for symbolic values. We need:
 
-## Concrete Example: JUMPI
+1. **CLF-compliant encoding** — tensor+bang in the monad, not loli
+2. **Works for ground AND symbolic** — one mechanism, no modes
+3. **Complete contradiction detection** — catches `!leq X 5 * !leq 6 X`, not just `!eq X Y * !neq X Y`
+4. **Theory-internal** — no external oracle (Z3), everything justified by ILL proof theory
 
-The EVM `JUMPI` instruction pops a condition `C` and destination `NPC` from the stack. If `C ≠ 0`, jump to `NPC`. If `C = 0`, continue to `PC'`.
-
-### Current encoding (loli-in-oplus)
+## Encoding: Tensor-in-oplus (decided)
 
 ```
 evm/jumpi: pc PC * code PC 0x57 * !inc PC PC' * stack SH C * stack (s SH) NPC * ...
   -o { code PC 0x57 * ... *
-       ((!neq C 0 -o { pc NPC }) ⊕ (!eq C 0 -o { pc PC' })) }
+       ((!neq C 0 ⊗ pc NPC) ⊕ (!eq C 0 ⊗ pc PC')) }
 ```
 
-The oplus produces two alternatives. Each is a **loli** — a deferred computation that fires when its guard is provable.
+Guards are **persistent facts produced** (asserted as path conditions), not checked.
 
-**Ground C = 5:**
-- Branch 0: loli `!neq 5 0 -o {pc NPC}` → FFI proves `neq 5 0` → fires → `pc NPC`
-- Branch 1: loli `!eq 5 0 -o {pc PC'}` → FFI disproves `eq 5 0` → stuck → dead leaf
+**Why tensor:**
+- **CLF compliance**: `!A ⊗ B` is allowed in the CLF monad (`S ::= P | S₁ ⊗ S₂ | 1 | !A | ∃x.S`). Loli is not.
+- **Symbolic execution**: tensor produces path conditions naturally. Both branches explored.
+- **No commuting matches**: no deferred computation, no loli fusion hack needed.
+- **Simpler engine**: no `matchLoli` for guard resolution — it's just fact production.
 
-**Symbolic C = X:**
-- Branch 0: loli `!neq X 0 -o {pc NPC}` → can't prove `neq X 0` → stuck → dead leaf
-- Branch 1: loli `!eq X 0 -o {pc PC'}` → can't prove `eq X 0` → stuck → dead leaf
-- **Both branches die.** Execution halts at the first conditional.
+**The only issue tensor introduces**: it asserts facts that might be false (e.g., `!eq 5 0`). This is handled by the satisfiability check + additive zero (below).
 
-### Proposed encoding (tensor-in-oplus)
+## Additive Zero (0)
 
-```
-evm/jumpi: ... -o { ... *
-  ((!neq C 0 ⊗ pc NPC) ⊕ (!eq C 0 ⊗ pc PC')) }
-```
+### The connective
 
-The `!neq C 0` is a persistent fact **produced** (asserted), not checked.
-
-**Ground C = 5:**
-- Branch 0: asserts `!neq 5 0`, produces `pc NPC` → continues (correct)
-- Branch 1: asserts `!eq 5 0`, produces `pc PC'` → continues (**wrong — asserts a false fact**)
-
-**Symbolic C = X:**
-- Branch 0: asserts `!neq X 0` (path condition: X ≠ 0), produces `pc NPC` → continues
-- Branch 1: asserts `!eq X 0` (path condition: X = 0), produces `pc PC'` → continues
-- **Both branches explored.** This is exactly symbolic execution with path conditions.
-
-### The tension
-
-| | Loli (check) | Tensor (assert) |
-|---|---|---|
-| Ground, true branch | Fires correctly | Asserts true fact (correct) |
-| Ground, false branch | Stuck (correct pruning) | **Asserts false fact (unsound)** |
-| Symbolic, both branches | **Both die (too conservative)** | Both explored (correct) |
-| CLF compliance | **Violates** (loli in monad) | Compliant (tensor+bang in monad) |
-| Commuting matches | Yes (fixed by fusion) | No (no loli produced) |
-
-Neither works alone. We need both: **check when decidable, assert when symbolic**.
-
-## Three Semantic Roles of Guards
-
-The core confusion is that `!neq C 0` plays three different roles depending on context:
-
-### 1. Guard as CHECK (loli encoding)
-
-"Prove `neq C 0` before proceeding."
-
-- Semantics: persistent antecedent in a loli continuation
-- Mechanism: backward chaining / FFI
-- Ground: correct (decidable → prune false branch)
-- Symbolic: broken (unprovable → both branches die)
-
-### 2. Guard as ASSERTION (tensor encoding)
-
-"Assert `neq C 0` as a persistent fact."
-
-- Semantics: persistent consequent in a tensor product
-- Mechanism: fact production
-- Ground: unsound (may assert false facts)
-- Symbolic: correct (path condition accumulation)
-
-### 3. Guard as PATH CONDITION (symbolic execution)
-
-"On this branch, assume `neq C 0` holds. Check consistency later."
-
-- Semantics: constraint in a path condition set
-- Mechanism: accumulate constraints, check satisfiability
-- Ground: correct if we check decidable constraints eagerly
-- Symbolic: correct (standard symbolic execution)
-
-**Key insight:** roles 2 and 3 are the same when we add **contradiction detection**. A false assertion (`!eq 5 0`) becomes detectable when paired with a true fact (`!neq 5 0`). The question is how to detect and handle the contradiction.
-
-## The Four Encodings
-
-### Encoding A: Loli-in-oplus (current)
+`0` (additive false) is standard ILL with one rule:
 
 ```
-((!neq C 0 -o { pc NPC }) ⊕ (!eq C 0 -o { pc PC' }))
-```
-
-| Property | Value |
-|---|---|
-| CLF compliance | No (loli in monad) |
-| Ground correctness | Yes (guard checked via FFI) |
-| Symbolic support | No (both branches die) |
-| Commuting matches | Yes (needs fusion hack) |
-| Complexity | Low (already implemented) |
-
-### Encoding B: Tensor-in-oplus (naive)
-
-```
-((!neq C 0 ⊗ pc NPC) ⊕ (!eq C 0 ⊗ pc PC'))
-```
-
-| Property | Value |
-|---|---|
-| CLF compliance | Yes (tensor+bang in monad is allowed) |
-| Ground correctness | **No** (asserts false facts) |
-| Symbolic support | Yes (path conditions) |
-| Commuting matches | No |
-| Complexity | Low (syntax change only) |
-
-### Encoding C: Guard-as-antecedent (Ceptre pattern)
-
-Two separate forward rules:
-
-```
-jumpi_neq: pc PC * code PC 0x57 * !neq C 0 * stack SH C * ... -o { pc NPC * ... }
-jumpi_eq:  pc PC * code PC 0x57 * !eq C 0  * stack SH C * ... -o { pc PC' * ... }
-```
-
-| Property | Value |
-|---|---|
-| CLF compliance | Yes (guard is rule antecedent, not in monad) |
-| Ground correctness | Yes (guard checked during matching) |
-| Symbolic support | No (neither rule fires) |
-| Commuting matches | No |
-| Complexity | Medium (duplicate rules, no oplus) |
-
-### Encoding D: Tensor-in-oplus + decidability + zero (proposed)
-
-```
-((!neq C 0 ⊗ pc NPC) ⊕ (!eq C 0 ⊗ pc PC'))
-```
-
-Plus: additive zero (`0`) as a connective, contradiction axioms, and decidability-aware expansion.
-
-| Property | Value |
-|---|---|
-| CLF compliance | Yes (tensor+bang in monad; 0 is standard ILL) |
-| Ground correctness | Yes (decidable guards checked at expansion; false → 0 → branch eliminated) |
-| Symbolic support | Yes (non-ground guards become path conditions) |
-| Commuting matches | No |
-| Complexity | Medium-high (needs 0, contradiction axioms, decidability check) |
-
-## Theory-Internal Branch Pruning via Additive Zero
-
-This is the crucial piece that makes Encoding D work without external oracles.
-
-### Additive zero (0) in ILL
-
-The additive false `0` is a standard ILL connective with one rule:
-
-```
-
 ─────────── 0_L       (no 0_R rule exists — 0 is unprovable)
 Γ, 0 ⊢ C
 ```
 
-`0_L` has **no premises**. If `0` appears in the linear context, the branch is **immediately closed** — it's the linear logic version of *ex falso quodlibet*.
+`0_L` has no premises. If `0` appears in the linear context, the branch is immediately closed — *ex falso quodlibet* for linear logic.
 
 ### The key isomorphism: A ⊕ 0 ≅ A
 
-```
-                                ───── Id        ─────── 0_L
-───── Id                         A ⊢ A           0 ⊢ A
-A ⊢ A ⊕ 0  (via ⊕R₁)          ─────────────────────── ⊕L
-                                      A ⊕ 0 ⊢ A
-```
+If one oplus branch produces `0`, that branch is trivially eliminable. The oplus collapses to the surviving branch. This is the mechanism for dead branch elimination.
 
-If one branch of an oplus produces `0`, that branch is trivially eliminable. The oplus collapses to the surviving branch.
+### In the forward engine
 
-### Contradiction axioms as forward rules
+When `0` is produced in the linear state, the engine returns `{ type: 'dead' }` — an infeasible branch, pruned by the satisfiability check.
 
-Add these as forward rules in the calculus:
+## The One Operation: UNSAT(Γ ∪ {g})
+
+At every oplus expansion, for each alternative branch B_i:
 
 ```
-contra/eq_neq: !eq X Y * !neq X Y -o { 0 }.
+Let Γ = accumulated path conditions (persistent facts from prior oplus expansions)
+Let g_i = new guard produced by B_i
+If UNSAT(Γ ∪ {g_i}):
+  Replace B_i with 0          (dead branch — 0_L eliminates it)
+Else:
+  Produce g_i as persistent fact, continue exploration
 ```
 
-When the same state contains both `!eq X Y` and `!neq X Y`, this rule fires and produces `0`. The `0` in the linear context triggers `0_L`, eliminating the branch.
+This is the **only** pruning operation. There is one mechanism, not levels or stages.
 
-**For ground C = 5 with tensor encoding:**
+### Ground is a special case
 
-1. Oplus expands into two branches
-2. Branch 0: state has `!neq 5 0` (asserted) — no contradiction, continues
-3. Branch 1: state has `!eq 5 0` (asserted) — but is `!neq 5 0` also present?
+Ground evaluation is what happens when the constraint solver receives a fully instantiated query. `UNSAT(∅ ∪ {!eq(5, 0)})` = "is eq(5,0) satisfiable?" = "is eq(5,0) true?" = FFI returns false → UNSAT. No mode switching, no special case. The solver just happens to return immediately for ground inputs.
 
-**Problem:** `!neq 5 0` is NOT in the persistent state on Branch 1. It's on Branch 0. The two assertions are on separate oplus branches. The contradiction axiom doesn't fire because both facts are never in the same state.
+### Path conditions accumulate AT oplus expansion
 
-### Why contradiction axioms alone aren't enough (for single-step guards)
-
-The contradiction axiom `!eq X Y * !neq X Y -o { 0 }` requires both facts in the same state. But in the basic case, `!neq C 0` and `!eq C 0` are produced on **different** branches.
-
-**When contradiction axioms ARE useful:** accumulated path conditions. After multiple branches:
+Path conditions accumulate at oplus expansion points — the only places where new persistent guard facts are produced. Each expansion adds constraints; the satisfiability check verifies consistency with all prior constraints.
 
 ```
-Step 1: JUMPI branches on C → path asserts !neq C 0
-Step 2: EQ compares C with 0 → path asserts !eq C 0
-Contradiction: !neq C 0 * !eq C 0 → 0 → branch dead
+Step 1: JUMPI fires on symbolic C
+  ├─ Branch A: guard !neq(C, 0)
+  │    UNSAT(∅ ∪ {!neq(C,0)})? SAT → assert. Γ_A = {!neq(C,0)}
+  │    Step 2: EQ compares C with 0
+  │    ├─ Branch A.1: guard !neq(C, 0)
+  │    │    UNSAT({!neq(C,0)} ∪ {!neq(C,0)})? SAT → continue ✓
+  │    └─ Branch A.2: guard !eq(C, 0)
+  │         UNSAT({!neq(C,0)} ∪ {!eq(C,0)})? UNSAT! → 0 ✓
+  └─ Branch B: guard !eq(C, 0)
+       UNSAT(∅ ∪ {!eq(C,0)})? SAT → assert. Γ_B = {!eq(C,0)}
+       Step 2: EQ compares C with 0
+       ├─ Branch B.1: guard !neq(C, 0)
+       │    UNSAT({!eq(C,0)} ∪ {!neq(C,0)})? UNSAT! → 0 ✓
+       └─ Branch B.2: guard !eq(C, 0)
+            UNSAT({!eq(C,0)} ∪ {!eq(C,0)})? SAT → continue ✓
 ```
 
-This catches **accumulated contradictions** across multiple branch points — exactly the infeasible path detection that symbolic execution needs.
+4 potential branches → 2 pruned immediately. Exponential savings.
 
-### Decidability-aware expansion (for single-step guards)
+## Modular Constraint Solver Architecture
 
-For ground, decidable guards at the point of oplus expansion:
+The constraint domain will grow over time. Today the guards are `eq`/`neq`. Tomorrow they might include `leq`/`gt`. Eventually they could involve `plus`, memory predicates, or user-defined constraints. The architecture must be **modular** — a stable interface with pluggable theory solvers behind it.
 
-**Principle:** For a decidable predicate P with ground arguments, `P ∨ ¬P` holds constructively (Martin-Löf's `Dec(A)`). We can compute which branch is valid.
-
-**Mechanism:** When `expandConsequentChoices` processes an oplus branch containing `!P(t₁,...,tₙ)`:
-
-1. If all arguments are ground and P is decidable:
-   - If `P(t₁,...,tₙ)` is true: produce the fact normally
-   - If `P(t₁,...,tₙ)` is false: replace the entire branch with `0`
-2. If any argument is non-ground: produce the fact as-is (path condition)
-
-**This is theory-clean because:**
-- The decidability check is justified by `Dec(P)` — not an oracle, but a theorem about the predicate
-- The `0` production is standard ILL
-- The `A ⊕ 0 ≅ A` isomorphism eliminates the dead branch
-- For non-ground terms, the fact becomes a path condition (standard symbolic execution)
-
-### The full picture: three layers of pruning
+### The interface
 
 ```
-Layer 1: Decidability check at expansion (single-step, ground guards)
-  → Ground eq/neq decided by FFI/clauses → dead branch becomes 0
-
-Layer 2: Contradiction axioms as forward rules (multi-step, accumulated path conditions)
-  → !eq X Y * !neq X Y in same state → 0 → branch eliminated
-
-Layer 3: Constraint propagation (future, for richer reasoning)
-  → !eq X Y * !neq Y Z * !eq X Z → transitivity → contradiction
-  → Requires propagation rules (CHR-style solver in ILL)
+ConstraintSolver:
+  addConstraint(fact)  → void       // add a persistent fact as constraint
+  checkSAT()           → bool       // is the accumulated constraint set satisfiable?
+  checkpoint()         → token      // snapshot for DFS backtracking
+  restore(token)       → void       // undo to a previous snapshot
 ```
 
-Each layer is independently correct and theory-internal.
+This interface is called at oplus expansion time. The implementation behind it can be anything — from a simple complement lookup to a full SMT solver. The rest of the engine doesn't care.
 
-## Ground vs Symbolic: Unified Semantics
+### Trust model: oracle (NOT like FFI)
 
-### Ground execution (all variables instantiated)
+The solver is an **oracle** — it says "SAT" or "UNSAT" and the engine trusts the answer. This is **not** the same trust model as FFI.
 
-1. Oplus expands into N branches
-2. Each branch's guard is decidable (ground args + decidable predicate)
-3. Decidability check replaces false branches with `0`
-4. Only true branch survives
-5. Result: deterministic execution, single path (like loli encoding today)
+**The difference:** FFI is optimization, theory is semantics. Every FFI predicate (`plus`, `neq`, `inc`) has backward clause definitions. Turn off FFI → clause resolution takes over, slower but produces the same results with full proof objects. The constraint solver has **no such fallback**. Turn it off → UNSAT branches are never pruned → the tree is correct but exponentially larger. There is no backward clause that derives `0` from contradictory path conditions.
 
-### Symbolic execution (some variables uninstantiated)
+This makes the constraint solver a **new trust boundary** in the system:
+- **FFI**: trusted optimization (can be removed, proofs still produced)
+- **Constraint solver**: trusted authority (cannot be removed without losing pruning entirely)
 
-1. Oplus expands into N branches
-2. Each branch's guard has non-ground args — NOT decidable
-3. Guard is produced as persistent fact (path condition)
-4. Both branches explored
-5. Contradiction axioms detect accumulated inconsistencies
-6. Result: forking execution with path conditions (standard symbolic execution)
+**Why this is acceptable (for now):**
+- The forward engine already operates outside the kernel's trust boundary. No forward execution produces kernel-verifiable proof objects today.
+- The solver's correctness is mathematically verifiable for each theory (union-find for eq/neq, Bellman-Ford for QF_IDL). These are textbook algorithms with known completeness proofs.
+- Soundness failure (solver says UNSAT when SAT) would prune a reachable branch — a **missed execution path**, detectable by comparison with solver-off runs.
 
-### Mixed execution (some guards ground, some symbolic)
+**The open question:** Can we close this gap? Two paths:
+1. **Contradiction axioms as witness**: `!eq X Y * !neq X Y -o { 0 }` is a proof-producing forward rule. If the solver could emit the specific contradicting facts, the engine could fire the appropriate axiom to derive `0` with a proof object. This works for eq/neq but requires axiom schemas for each theory extension.
+2. **Proof-producing solver**: Z3 can produce UNSAT proofs. Translate them into ILL derivations of `0`. Principled but significant work.
 
-Both mechanisms work simultaneously. Ground guards get decided. Symbolic guards become path conditions. No special cases needed.
+For Phase 1–3, we proceed with the oracle. The modular interface supports upgrading to proof-producing without engine changes.
 
-## What Needs to Be Added to the Calculus
+### Predicate registration
 
-### 1. Additive zero connective
+The solver needs to know which persistent facts are constraints (vs. ordinary persistent facts like `!code`). This uses the same mechanism as FFI: **explicit predicate registration**.
 
-Add `0` to `calculus/ill/ill.calc`:
 ```
-zero: formula
-  @ascii "0"
-  @latex "\\mathbf{0}"
-  @category additive
-  @polarity positive.
+solver.registerPredicate('eq', { arity: 2, type: 'equality' });
+solver.registerPredicate('neq', { arity: 2, type: 'disequality' });
+// later:
+solver.registerPredicate('lt', { arity: 2, type: 'less-than' });
 ```
 
-### 2. Zero-left rule
+At oplus expansion, persistent facts from the alternative are checked against registered predicates. Registered → fed to solver. Not registered → produced as ordinary persistent facts. This mirrors how FFI registration works in `calc.ffi`.
 
-Add to `calculus/ill/ill.rules`:
-```
-zero_L: Γ, 0 ⊢ C.
-```
-(No premises — the sequent is immediately provable.)
+### Theory solver progression
 
-### 3. Contradiction axioms
+Start minimal, extend as programs demand:
 
-Add as forward rules (in EVM programs or a shared prelude):
-```
-contra/eq_neq: !eq X Y * !neq X Y -o { 0 }.
-```
+| Theory | Predicates | Algorithm | Completeness | When |
+|---|---|---|---|---|
+| **Equality + disequality** | eq, neq | Union-find + forbid list | Complete for eq/neq | Phase 1 (start here) |
+| **Integer Difference Logic** | + lt, le, gt, ge | Constraint graph + Bellman-Ford | Complete for QF_IDL | When comparison guards appear |
+| **Linear Integer Arithmetic** | + plus(X,Y,Z) symbolic | Simplex + branch-and-bound | Complete for QF_LIA | When symbolic plus guards appear |
+| **Z3 backend** | anything | SMT | Complete for supported theories | When theories get complex |
 
-Optionally, for richer theories:
-```
-contra/gt_eq: !gt X Y * !eq X Y -o { 0 }.
-```
+Each row SUBSUMES the previous. The interface never changes — only the implementation behind `checkSAT()`.
 
-### 4. Decidability-aware oplus expansion
+### Why start with eq/neq, not jump to Bellman-Ford?
 
-Modify `expandConsequentChoices` in `compile.js` to check ground decidable guards and replace false branches with `0`.
+1. **Current programs only produce eq/neq guards** (EVM's JUMPI, EQ, ISZERO)
+2. Union-find + forbid is ~50 lines, well-understood, O(α(n))
+3. Adding Bellman-Ford later is extending the solver, not replacing it (union-find handles eq faster than the constraint graph would)
+4. We don't design for hypothetical complexity — we extend when real programs need it
 
-### 5. Zero handling in forward engine
+### What union-find + forbid catches
 
-When `0` appears in the linear state, the state is immediately quiescent (no rules can fire on `0`). The engine returns a `{ type: 'leaf', state }` with `0` in it, classified as an infeasible branch.
+- `!eq X Y * !neq X Y` → X in same class as Y, forbidden → **UNSAT** ✓
+- `!eq X Y * !eq Y Z * !neq X Z` → transitivity via union-find → **UNSAT** ✓
+- `!neq X 0 * !neq Y 0 * !eq X Y` → X=Y forced, but X≠0 not violated → **SAT** ✓
 
-Alternatively: detect `0` production and return a `{ type: 'dead' }` node (new tree node type for pruned branches — cleaner than letting them become stuck leaves).
+### What it does NOT catch (needs Bellman-Ford extension)
 
-## Decision: Tensor vs Loli vs Hybrid
+- `!leq X 5 * !leq 6 X` → X ≤ 5 ∧ 6 ≤ X → **contradiction** (missed — no eq/neq reasoning applies)
+- `!lt X Y * !lt Y Z * !lt Z X` → cyclic ordering → **contradiction** (missed)
+- `!eq X Y * !lt X Y` → X = Y ∧ X < Y → **contradiction** (partially — eq detected, but lt interaction missed)
 
-### Recommendation: Tensor (Encoding D) with decidability + zero
+These are real contradictions but they require **arithmetic bound reasoning**. When programs produce comparison guards, we add the constraint graph layer.
 
-**Why tensor, not loli:**
-1. **CLF compliance**: tensor+bang is allowed in the monad. Loli is not.
-2. **Symbolic execution**: tensor produces path conditions naturally. Loli blocks both branches.
-3. **No commuting matches**: tensor produces no deferred computation. No fusion hack needed.
-4. **Simpler engine**: no `matchLoli` needed for guard resolution — it's just fact production.
+### The Bellman-Ford layer (when needed)
 
-**Why decidability check, not blind assertion:**
-1. **Ground correctness**: blind tensor asserts false facts. Decidability check prevents this.
-2. **Theory-clean**: justified by `Dec(P)` (constructive excluded middle for decidable predicates).
-3. **Compatible with symbolic**: non-ground guards pass through as path conditions.
+All comparison predicates normalize to `X - Y ≤ c` (difference constraints):
 
-**Why zero, not external pruning:**
-1. **Theory-internal**: `0` is a standard ILL connective with well-understood proof theory.
-2. **`A ⊕ 0 ≅ A`**: dead branch elimination is a theorem, not a hack.
-3. **Composable**: contradiction axioms can catch accumulated path condition inconsistencies.
-4. **No oracle dependency**: no Z3/SMT needed for basic pruning.
+| Guard | Normalized | Notes |
+|---|---|---|
+| `eq(X, Y)` | `X - Y ≤ 0` ∧ `Y - X ≤ 0` | Two edges |
+| `neq(X, Y)` | Forbid(X, Y) | Separate list |
+| `lt(X, Y)` | `X - Y ≤ -1` | Integers: strict → non-strict |
+| `le(X, Y)` | `X - Y ≤ 0` | Direct |
+| `gt(X, Y)` | `Y - X ≤ -1` | Flip + strict |
 
-## Impact on Existing Code
+Build a directed weighted graph. **Negative-weight cycle = UNSAT.** This is complete for QF_IDL.
 
-### Rules affected (EVM)
+Example: `!leq X 5 * !leq 6 X`:
+- Edges: `zero →(5) X` and `X →(-6) zero`
+- Cycle weight: 5 + (-6) = -1 < 0 → **UNSAT** ✓
 
-Only 3 rules use loli-in-oplus:
-- `evm/eq` (lines 259-279)
-- `evm/iszero` (lines 281-296)
-- `evm/jumpi` (lines 830-845)
+### Ground: degenerate case
 
-The 3 plain-oplus rules (`evm/call`, `evm/delegatecall`, `evm/staticcall`) are unchanged — they have no guards.
+When all arguments are ground, there are no symbolic variables to reason about. `UNSAT(∅ ∪ {!eq(5, 0)})` = "is eq(5,0) true?" = FFI evaluates: false → UNSAT. The solver just happens to return immediately. As a practical optimization, ground guards short-circuit through FFI before consulting the constraint solver.
 
-### Engine changes
+## The CLP(T) Correspondence
+
+This architecture is exactly **CLP(T)** — Constraint Logic Programming over a theory T:
+
+| CLP(T) concept | CALC equivalent |
+|---|---|
+| Constraint store S | Constraint solver state (accumulated path conditions) |
+| New constraint c | Guard g in oplus branch |
+| Background theory T | Pluggable (eq/neq → QF_IDL → QF_LIA → ...) |
+| Satisfiability check | `solver.checkSAT()` at oplus expansion |
+| Failure (⊥) | Additive zero (0) in ILL |
+| Choice point | Oplus expansion |
+
+Properties:
+- **Soundness**: if the solver says UNSAT, the branch is genuinely infeasible
+- **Completeness**: depends on the solver — complete for its supported theory, conservative (never false UNSAT) for unsupported predicates
+- **Monotonicity**: adding constraints can only make UNSAT more likely, never less. Path conditions accumulate monotonically.
+- **Modularity**: upgrading the solver improves pruning precision without changing the architecture
+
+## Contradiction Axioms: Safety Net, Not Primary Mechanism
+
+Contradiction axioms like `!eq X Y * !neq X Y -o { 0 }` are valid ILL derivations and useful as a defense-in-depth mechanism for general programs where persistent facts might be produced outside oplus expansions. But for the primary path — oplus expansion with satisfiability check — they are redundant. The constraint graph catches everything they would catch and more.
+
+Keep them in the calculus as forward rules for generality. Don't rely on them for correctness.
+
+## What Needs to Be Added
+
+### To the calculus
+
+1. **Additive zero connective** in `ill.calc`:
+   ```
+   zero: formula @ascii "0" @latex "\\mathbf{0}" @category additive @polarity positive.
+   ```
+
+2. **Zero-left rule** in `ill.rules`:
+   ```
+   zero_L: Γ, 0 ⊢ C.
+   ```
+
+3. **Contradiction axioms** (optional, in prelude):
+   ```
+   contra/eq_neq: !eq X Y * !neq X Y -o { 0 }.
+   ```
+
+4. **Rewrite 3 EVM rules** from loli-in-oplus to tensor-in-oplus
+
+### To the engine
 
 | Component | Change |
 |---|---|
-| `ill.calc` | Add `zero` connective |
-| `ill.rules` | Add `zero_L` rule |
-| `compile.js` | Decidability-aware `expandConsequentChoices` |
-| `symexec.js` | Detect `0` in state → dead branch |
-| `tree-utils.js` | Optional: `dead` node type |
+| `lib/engine/constraint.js` | **NEW**: ConstraintSolver interface + eq/neq solver (union-find + forbid) |
+| `symexec.js` | Init solver in `explore()`, call at oplus expansion, checkpoint/restore in DFS |
+| `symexec.js` | Detect `0` in state → return `{ type: 'dead' }` |
+| `tree-utils.js` | `dead` node type (color: orange) |
+| `compile.js` | No change (oplus expansion already produces alternatives with persistent patterns) |
 | `match.js` | `drainPersistentLolis` becomes unnecessary for guard lolis |
-| `evm.ill` | Rewrite 3 rules: loli → tensor |
 
 ### What becomes unnecessary
 
 - Loli fusion (TODO_0054 Option C) — no persistent-trigger lolis from guards
-- `matchLoli` for guard-only lolis — guards are resolved at expansion, not runtime
-- State memoization for guard commuting — no commuting to memoize
+- `matchLoli` for guard-only lolis — guards are asserted, not checked
+- (Keep memoization (Option E) and `matchLoli` for non-guard lolis)
 
-Note: `matchLoli` is still needed for other lolis (linear-trigger lolis, non-guard deferred computations). And memoization is still useful for other sources of state duplication.
+## Connection to TODO_0005 (Constraint Propagation)
+
+TODO_0005 describes constraint propagation levels (equality resolution, FFI re-check, chain simplification, domain propagation). The modular constraint solver subsumes this:
+
+- **Equality resolution** (`!eq(evar(N), v)` → substitute): the eq/neq solver's union-find propagates equalities
+- **FFI re-check**: ground guards short-circuit through FFI (optimization)
+- **Chain simplification / domain propagation**: future solver layers (Bellman-Ford, Simplex) handle these
+
+TODO_0005 should be reframed as "extending the constraint solver with new theory layers" rather than a standalone feature.
 
 ## Research Directions
 
-### R1: Constraint propagation rules as forward rules (CHR-in-ILL)
+### R1: Z3 as a solver backend
 
-Write the constraint solver as forward rules in the calculus:
+If constraints grow complex enough (nonlinear arithmetic, bit-vectors, memory models), a Z3 backend behind the `ConstraintSolver` interface would be the pragmatic choice. The theory concern is that Z3 is an external oracle — it says UNSAT but doesn't produce a `0` derivation in ILL. Two approaches:
 
-```
-% Transitivity
-prop/eq_trans: !eq X Y * !eq Y Z -o { !eq X Z }.
+1. **Trust the oracle**: Z3 says UNSAT → produce 0. Sound if Z3 is sound (it is for supported theories). No proof object.
+2. **Proof-producing Z3**: Z3 can produce proofs. Translate the UNSAT proof into an ILL derivation that produces 0. Principled but significant work.
 
-% Substitution into neq
-prop/neq_eq: !neq X Y * !eq X Z -o { !neq Z Y }.
+For now, approach 1 is acceptable — the `0` production is justified by the soundness of the decision procedure (see trust model discussion above). The modular interface means we can add Z3 without touching the rest of the engine. Approach 2 would close the trust gap identified in the trust model section.
 
-% Contradiction
-contra/eq_neq: !eq X Y * !neq X Y -o { 0 }.
-```
+### R2: Focused proof search
 
-**Research questions:**
-- Termination: can propagation rules loop? (e.g., `!eq X Y → !eq Y X → !eq X Y → ...`)
-- Completeness: do the propagation rules catch all contradictions?
-- Interaction with forward execution: when do propagation rules fire relative to EVM rules?
-- Connection to CHR: these ARE CHR propagation rules. Can we use CHR confluence/termination analysis?
+`0` is positive (synchronous). Its left rule `0_L` is invertible → applied eagerly in the asynchronous phase. When `0` appears during focusing, the branch is immediately closed. This integrates naturally with CALC's backward prover.
 
-### R2: Decidability as a type-level property
+The forward engine's oplus expansion can be seen as a focusing phase: `⊕R₁`/`⊕R₂` are non-invertible (synchronous). The satisfiability check determines which branches to explore.
 
-Annotate predicates with decidability:
-
-```
-eq: bin -> bin -> type @decidable.
-neq: bin -> bin -> type @decidable.
-plus: bin -> bin -> bin -> type @decidable.
-```
-
-The `@decidable` annotation tells the engine that for ground arguments, the predicate can be fully evaluated. This replaces the current ad-hoc FFI registration with a theory-level concept.
-
-**Connection to Martin-Löf type theory:** `Dec(A) = A + (A → 0)`. For decidable predicates, we have a procedure that returns either a proof or a refutation. This is exactly what the FFI provides.
-
-### R3: Relationship to focused proof search
-
-In Andreoli's focusing discipline:
-- `0` is positive (synchronous). Its left rule `0_L` is invertible → applied eagerly in the asynchronous phase.
-- When `0` appears in the context during the asynchronous phase, the branch is immediately closed.
-- This integrates naturally with the focusing-based proof search that CALC's backward prover uses.
-
-**Question:** Can the forward engine's oplus expansion be seen as a focusing phase? The oplus right rules (`⊕R₁`, `⊕R₂`) are non-invertible — choosing a branch is a synchronous (focused) operation. The decidability check determines which branch to focus on.
-
-### R4: Connection to CHC (Constrained Horn Clauses)
+### R3: Connection to CHC (Constrained Horn Clauses)
 
 Our tensor encoding `(!neq C 0 ⊗ pc NPC)` parallels CHC's constraint-in-clause-body encoding:
 
@@ -436,40 +312,21 @@ post(NPC) :- pre(PC, C), C ≠ 0.
 post(PC')  :- pre(PC, C), C = 0.
 ```
 
-The guard `C ≠ 0` is a constraint in the background theory. CHC solvers (Spacer, Eldarica) use SMT to check satisfiability.
+The guard `C ≠ 0` is a constraint in the background theory. CALC's constraint graph is the decision procedure for this theory.
 
-**Question:** Can CALC's persistent predicates serve as a constraint theory? The backward clauses define the theory (like CHC's background theory). The FFI provides decision procedures. The contradiction axioms internalize theory consequences. Is this a complete CHC encoding?
+### R4: Incremental solver with DFS undo
 
-### R5: Path condition satisfiability without SMT
+The DFS exploration in `symexec.js` uses mutation/undo. The constraint solver needs the same pattern — this is why the interface has `checkpoint()`/`restore()`:
 
-For simple constraints (eq, neq on binary numbers with mostly-ground terms), can we avoid SMT entirely?
+- **Union-find undo**: log union operations, reverse on restore. Standard "union-find with rollback."
+- **Constraint graph undo**: log added edges, remove on restore.
+- **Z3**: push/pop scope (Z3 natively supports incremental assertions with backtracking).
 
-**Approach:** Union-find for equality + complement checking for inequality.
-- `!eq X Y` → union X and Y
-- `!neq X Y` → check if X and Y are in the same equivalence class. If yes → contradiction.
-- O(α(n)) per operation — effectively O(1).
-
-This is a specialized constraint solver for the equality/inequality fragment, implementable as forward rules or FFI. Theory-clean (union-find is a decision procedure for the theory of equality).
-
-### R6: The SSOS connection
-
-Pfenning and Simmons' SSOS (Substructural Operational Semantics) encodes conditionals as two forward rules with pattern matching on concrete values:
-
-```
-retn(true,  D') * cont(D', if_cont(E2,E3), D) -o eval(E2, D).
-retn(false, D') * cont(D', if_cont(E2,E3), D) -o eval(E3, D).
-```
-
-The branching is implicit in rule matching — no oplus, no guards. For symbolic values, neither rule matches, and execution is stuck (same as our Encoding C).
-
-**Question:** Can we combine SSOS-style matching with oplus-style branching? The concrete case uses matching. The symbolic case uses oplus with path conditions. This would be a two-mode system: concrete → deterministic matching, symbolic → nondeterministic branching with constraints.
+Each solver backend implements checkpoint/restore in the way natural to its data structure.
 
 ## Implementation Phases
 
-### Phase 0: Theory validation
-- Formalize the decidability-aware oplus expansion
-- Prove: for decidable P with ground args, `(!P ⊗ A) ⊕ (!¬P ⊗ B)` with P false reduces to `0 ⊕ B ≅ B`
-- Verify the contradiction axiom is a valid ILL derivation
+All design decisions are resolved. No open questions remain for Phases 1–4.
 
 ### Phase 1: Add zero to the calculus
 - Add `zero` connective to `ill.calc`
@@ -477,26 +334,29 @@ The branching is implicit in rule matching — no oplus, no guards. For symbolic
 - Rebuild `out/ill.json`
 - Update backward prover to handle `zero_L`
 
-### Phase 2: Decidability-aware expansion
-- Modify `expandConsequentChoices` in `compile.js`
-- Detect bang-terms in oplus branches
-- Check groundness + call FFI for decidable predicates
-- Replace false branches with `0`
+### Phase 2: Modular constraint solver + eq/neq theory
+- Define `ConstraintSolver` interface: `addConstraint`, `checkSAT`, `checkpoint`, `restore`
+- Implement eq/neq solver: union-find + forbid list with predicate registration
+- Ground optimization: short-circuit through FFI for fully ground guards
+- Hook into `go()` at oplus expansion: check `UNSAT(Γ ∪ {g})` before recursing
+- Produce 0 on UNSAT, detect `0` → `{ type: 'dead' }` tree node
 
-### Phase 3: Zero handling in forward engine
-- Detect `0` in linear state after rule application
-- Return appropriate tree node (dead/pruned)
-- Update tree-utils for new node type
+### Phase 3: Tensor encoding + EVM rule rewrite
+- Rewrite 3 EVM rules from loli-in-oplus to tensor-in-oplus
+- Add contradiction axiom `contra/eq_neq` as forward rule (safety net)
+- Verify all tests pass
 
-### Phase 4: Rewrite EVM rules
-- Change 3 rules from loli-in-oplus to tensor-in-oplus
-- Add contradiction axiom (`contra/eq_neq`)
-- Verify all tests pass with new encoding
-
-### Phase 5: Remove fusion hack
-- Once tensor encoding is verified, the loli fusion from TODO_0054 Option C becomes unnecessary for guard lolis
+### Phase 4: Cleanup
+- Remove loli fusion (TODO_0054 Option C) for guard lolis (guards no longer produce lolis)
+- Update tree-utils for `dead` node type
 - Keep memoization (Option E) as general safety net
-- Keep `matchLoli` for non-guard lolis
+- Keep `matchLoli` for non-guard lolis (linear-trigger lolis still exist)
+
+### Future: extend solver as programs demand
+- Comparison guards (lt/le/gt/ge) → add Bellman-Ford layer
+- Symbolic arithmetic guards (plus) → add Simplex layer or Z3 backend
+- Each extension is behind the same `ConstraintSolver` interface
+- Upgrade from oracle to witness-producing solver if kernel verification extends to forward execution
 
 ## References
 
@@ -509,40 +369,38 @@ The branching is implicit in rule matching — no oplus, no guards. For symbolic
 - Watkins, Cervesato, Pfenning, Walker (2004) "A Concurrent Logical Framework" — CLF type grammar, monad restrictions
 - Watkins et al. (2004) "CLF: The Propositional Fragment" — synchronous types in monad: `S ::= P | S₁ ⊗ S₂ | 1 | !A | ∃x.S`
 
-### Symbolic execution and path conditions
-- King (1976) "Symbolic Execution and Program Testing" — original formulation
-- Baldoni et al. (2018) "A Survey of Symbolic Execution Techniques" — comprehensive survey
-- Cadar, Dunbar, Engler (2008) "KLEE: Unassisted and Automatic Generation of High-Coverage Tests" — practical SE
+### Integer Difference Logic and constraint graphs
+- Bellman (1958) "On a routing problem" — shortest path algorithm
+- Dill (1989) "Timing Assumptions and Verification of Finite-State Concurrent Systems" — DBM for verification
+- Cotton & Maler (2006) "Fast and Flexible Difference Constraint Propagation for DPLL(T)" — incremental IDL
+- Nieuwenhuis, Oliveras, Tinelli (2006) "Solving SAT and SAT Modulo Theories" — DPLL(T) architecture
 
 ### Constraint logic programming
 - Jaffar & Lassez (1987) "Constraint Logic Programming" — CLP(X) framework
 - Jaffar, Maher et al. (1994) "Constraint Logic Programming: A Survey" — constraint theory integration
+- Marriott & Stuckey (1998) "Programming with Constraints" — CLP implementation, satisfiability at choice points
+- Hodas & Miller (1994) "Logic Programming in a Fragment of Intuitionistic Linear Logic" — linear logic + constraints
 
 ### CHR and contradiction handling
-- Fruhwirth (1998) "Theory and practice of Constraint Handling Rules" — `fail` built-in, contradiction rules
+- Fruhwirth (1998) "Theory and practice of Constraint Handling Rules" — `fail` built-in
 - Fruhwirth (2009) "Constraint Handling Rules" — comprehensive treatment
 
-### Negation in linear logic
-- Cerrito (1992) "A linear axiomatization of negation as failure"
-- Stuckey (1991) "Constructive negation for CLP" — constructive complement computation
-- Fages (1997) "Constructive negation by pruning"
+### Symbolic execution
+- King (1976) "Symbolic Execution and Program Testing" — path conditions
+- Baldoni et al. (2018) "A Survey of Symbolic Execution Techniques"
 
 ### Focusing and proof search
 - Andreoli (1992) "Logic Programming with Focusing Proofs in Linear Logic" — polarity of `0` (positive)
-- Liang & Miller (2009) "Focusing and Polarization in Linear, Intuitionistic, and Classical Logics"
-
-### SSOS
-- Pfenning & Simmons (2009) "Substructural Operational Semantics as Ordered Logic Programming"
-- Simmons (2012) "Substructural Logical Specifications" — PhD thesis
 
 ### Decidability and constructive logic
 - Martin-Löf (1984) "Intuitionistic Type Theory" — `Dec(A) = A + (A → 0)`
+- Presburger (1929) "Über die Vollständigkeit eines gewissen Systems der Arithmetik" — decidability of integer arithmetic without multiplication
 
 ### Existing CALC theory
-- [THY_0001](../theory/0001_exhaustive-forward-chaining.md) — loli-in-monad extension
+- [THY_0001](../theory/0001_exhaustive-forward-chaining.md) — loli-in-monad extension (to be superseded)
 - [THY_0004](../theory/0004_symbolic-branching.md) — oplus for symbolic branching
 - [THY_0009](../theory/0009_symbolic-values-in-forward-chaining.md) — three problems of symbolic values
-- [TODO_0054](0054_commuting-match-reduction.md) — commuting match reduction (fusion hack)
-- [TODO_0005](0005_symexec-simplification.md) — constraint propagation levels
+- [TODO_0054](0054_commuting-match-reduction.md) — commuting match reduction
+- [TODO_0005](0005_symexec-simplification.md) — constraint propagation (to be reframed as constraint graph implementation)
 - [RES_0049](../research/0049_constraint-propagation-systems.md) — CLP/CHR survey
 - [RES_0039](../research/0039_symbolic-arithmetic-design-space.md) — symbolic arithmetic design space

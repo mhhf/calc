@@ -22,23 +22,23 @@ tags:
   metaproofs: 7
   tooling: 7
   display-calculus: 6
-  evm: 6
   graded-types: 6
-  loli: 6
   oplus: 6
   sequent-calculus: 6
   verification: 6
+  CLP: 5
   coinduction: 5
   confluence: 5
   consensus: 5
   content-addressing: 5
   eigenvariable: 5
+  evm: 5
   hevm: 5
+  loli: 5
   QTT: 5
   resource-semantics: 5
   accounting: 4
   CHR: 4
-  CLP: 4
   compilation: 4
   documentation: 4
   financial: 4
