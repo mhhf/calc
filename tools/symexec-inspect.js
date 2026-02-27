@@ -13,9 +13,9 @@
  *   --all             Show all leaf states (not just summary)
  *
  * Examples:
- *   node tools/symexec-inspect.js calculus/ill/programs/{bin,evm,multisig}.ill
- *   node tools/symexec-inspect.js --leaf 2 calculus/ill/programs/{bin,evm,multisig}.ill
- *   node tools/symexec-inspect.js --all --exclude code,calldata,storage calculus/ill/programs/{bin,evm,multisig}.ill
+ *   node tools/symexec-inspect.js calculus/ill/programs/multisig.ill
+ *   node tools/symexec-inspect.js --leaf 2 calculus/ill/programs/multisig.ill
+ *   node tools/symexec-inspect.js --all --exclude code,calldata,storage calculus/ill/programs/multisig.ill
  */
 
 const path = require('path');
