@@ -75,6 +75,9 @@ one_l: G ; D, I |- C
   <- G ; D |- C
   @pretty "1L".
 
+zero_l: G ; D, zero |- C
+  @pretty "0L".
+
 promotion: G ; |- !A
   <- G ; |- A
   @pretty "!R"

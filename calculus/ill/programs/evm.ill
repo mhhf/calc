@@ -270,12 +270,8 @@ evm/eq:
     gas GAS' *
     code PC 0x14 *
     sh (s SH) *
-    ((!neq X Y -o {
-      stack SH 0
-    }) +
-    (!eq X Y -o {
-      stack SH 1
-    }))
+    ((!neq X Y * stack SH 0) +
+     (!eq X Y * stack SH 1))
   }.
 
 evm/iszero:
@@ -291,8 +287,8 @@ evm/iszero:
     pc PC' *
     gas GAS' *
     sh (s SH) *
-    ((!eq V 0 -o { stack SH 1 }) +
-     (!neq V 0 -o { stack SH 0 }))
+    ((!eq V 0 * stack SH 1) +
+     (!neq V 0 * stack SH 0))
   }.
 
 evm/lt:
@@ -840,8 +836,8 @@ evm/jumpi:
     code PC 0x57 *
     sh SH *
     gas GAS' *
-    ((!neq C 0 -o { pc NPC }) +
-     (!eq C 0 -o { pc PC' }))
+    ((!neq C 0 * pc NPC) +
+     (!eq C 0 * pc PC'))
   }.
 
 evm/gas:

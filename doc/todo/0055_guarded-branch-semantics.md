@@ -1,11 +1,11 @@
 ---
 title: "Guarded Branch Semantics: Tensor Encoding + Constraint Graph Satisfiability"
 created: 2026-02-28
-modified: 2026-02-28
+modified: 2026-02-27
 summary: "Tensor-in-oplus encoding for guarded branches, with additive zero for dead branch elimination and modular constraint solver (oracle interface, starting with eq/neq union-find) for path condition satisfiability at oplus expansion time"
 tags: [linear-logic, clf, oplus, symexec, forward-chaining, theory, symbolic-execution, path-conditions, proof-theory, soundness, CLP, design-decision]
 type: design
-status: researching
+status: done
 priority: 10
 cluster: Theory
 depends_on: [TODO_0054]

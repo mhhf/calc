@@ -50,6 +50,15 @@ one: formula
 % Additives
 % =============================================================================
 
+% Zero (additive false): 0
+% "Impossible — no resource can satisfy this"
+% Polarity: positive (no right rule — dual of ⊤)
+zero: formula
+  @ascii "zero"
+  @latex "\mathbf{0}"
+  @category additive
+  @polarity positive.
+
 % With (additive conjunction): A & B
 % "I can choose to use this as A or as B (but not both)"
 % Polarity: negative (inferred from context-copying right rule)

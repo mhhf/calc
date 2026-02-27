@@ -89,3 +89,8 @@ or false X X.
 
 not true false.
 not false true.
+
+% === Contradiction Axiom (defense-in-depth) ===
+% If contradictory eq/neq persist, produce zero (dead branch).
+% Redundant with constraint solver but serves as safety net.
+contra/eq_neq: !eq X Y * !neq X Y -o { zero }.

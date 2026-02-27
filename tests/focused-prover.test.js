@@ -262,6 +262,32 @@ describe('v2 FocusedProver', () => {
     });
   });
 
+  describe('proof search - zero (additive false)', () => {
+    it('should prove zero ⊢ B (zero implies anything)', () => {
+      const B = AST.freevar('B');
+      const s = seq([AST.zero()], B);
+      const result = prover.prove(s, { rules: ruleSpecs, alternatives });
+      assert.strictEqual(result.success, true);
+      assert.strictEqual(result.proofTree.rule, 'zero_l');
+    });
+
+    it('should prove zero, A ⊢ B (discards remaining context)', () => {
+      const A = AST.freevar('A');
+      const B = AST.freevar('B');
+      const s = seq([AST.zero(), A], B);
+      const result = prover.prove(s, { rules: ruleSpecs, alternatives });
+      assert.strictEqual(result.success, true);
+    });
+
+    it('should prove A ⊗ zero ⊢ B (tensor decomposition then zero_l)', () => {
+      const A = AST.freevar('A');
+      const B = AST.freevar('B');
+      const s = seq([AST.tensor(A, AST.zero())], B);
+      const result = prover.prove(s, { rules: ruleSpecs, alternatives });
+      assert.strictEqual(result.success, true);
+    });
+  });
+
   describe('resource linearity', () => {
     it('should fail A ⊢ A ⊗ A (cannot duplicate)', () => {
       const A = AST.freevar('A');
