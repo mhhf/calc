@@ -1,13 +1,13 @@
 tags:
-  linear-logic: 34
-  forward-chaining: 20
+  linear-logic: 35
+  forward-chaining: 21
   chr: 18
   performance: 17
   research: 17
-  symexec: 16
+  symexec: 17
   clf: 13
+  optimization: 12
   proof-theory: 12
-  optimization: 11
   symbolic-execution: 11
   architecture: 10
   ownership: 10
@@ -140,6 +140,7 @@ tags:
   resource-tracking: 2
   semantics: 2
   simplification: 2
+  state-merging: 2
   substitution: 2
   symbolic-arithmetic: 2
   temporal-logic: 2
@@ -157,6 +158,7 @@ tags:
   agents: 1
   algorithms: 1
   anki: 1
+  anti-unification: 1
   arena-allocation: 1
   array-theory: 1
   atomic-swaps: 1
@@ -372,7 +374,6 @@ tags:
   smart-contracts: 1
   specification: 1
   stages: 1
-  state-merging: 1
   STG: 1
   storage: 1
   storage-models: 1

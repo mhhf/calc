@@ -27,12 +27,14 @@ Both tools explore the same contract with symbolic sender + symbolic calldata ar
 
 ## Results (2026-02-27)
 
-| Metric | calc | hevm (--sig) |
-|---|---|---|
-| **Time (warm)** | 47.5ms | ~50ms |
-| **Nodes** | 2125 | 7 (symbolic ITE tree) |
-| **Leaves** | 31 | 4 (3 Success + 1 Failure) |
-| **Behavioral outcomes** | 5 (×6 per member + 6 false positives) | 5 (merged) |
+| Metric | calc | calc (structural memo) | hevm (--sig) |
+|---|---|---|---|
+| **Time (warm)** | 57ms | 15ms | 50ms |
+| **Nodes** | 2125 | 477 | 86 (ITE tree) |
+| **Leaves** | 31 | 11 (2 real + 9 memo) | 56 (36 Success + 20 Failure) |
+| **Behavioral outcomes** | 5 (×6 per member + 6 false positives) | 5 | 5 (×6 per member + overflow branches) |
+
+Note: hevm produces MORE leaves than calc because it explores checked-arithmetic overflow branches that calc's evar representation sidesteps. hevm's ITE tree has 30 ITE branch nodes. Verified with hevm v0.54.2 `--show-tree`.
 
 Both discover the same 5 behavioral outcomes:
 
@@ -100,12 +102,12 @@ calc's `structuralMemo` option detects structurally isomorphic subtrees using a 
 
 ## Key insights
 
-1. **calc is 4.5× faster**: With structural memo, calc explores the same symbolic workload in 11ms vs hevm's ~50ms, while still discovering all 5 behavioral outcomes.
+1. **calc is 3.3× faster**: With structural memo, calc explores the same symbolic workload in 15ms vs hevm's 50ms, with fewer leaves (11 vs 56).
 
-2. **Different tree semantics**: calc produces an explicit enumeration (31 leaves), hevm produces a compact symbolic tree (7 nodes). Both discover the same 5 behavioral outcomes.
+2. **hevm has more leaves, not fewer**: hevm's ITE tree has 86 nodes and 56 leaves. hevm's forward-jump merge (`Merge.hs`) bails out on nested JUMPIs (`msActive` check), so it does NOT collapse the member-check pattern. Each member JUMPI is a real branch.
 
-3. **SMT advantage**: hevm can prune 6 false-positive overflow branches that calc cannot, thanks to z3's arithmetic reasoning. For deeper contracts with more checked arithmetic, this gap would widen.
+3. **calc's structural memo is more effective**: calc's `(PC, SH)` control hash detects the isomorphic member subtrees and skips 6 of 7. hevm has no equivalent mechanism for this pattern.
 
-4. **Structural memo closes the merging gap**: hevm's lazy symbolic expressions merge the 6 member paths into 1. calc's structural memo achieves a similar effect by detecting isomorphic subtrees and skipping redundant exploration.
+4. **hevm explores more overflow branches**: hevm's SMT solver (z3) explores checked-arithmetic paths that calc's evar representation implicitly handles (evars don't trigger overflow checks).
 
 5. **No solver dependency**: calc requires no external tools. hevm requires z3 (or cvc5). This makes calc more portable and predictable (no SMT timeout variance).
