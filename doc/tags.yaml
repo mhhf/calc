@@ -1,55 +1,55 @@
 tags:
-  linear-logic: 32
+  linear-logic: 33
+  forward-chaining: 19
   chr: 18
+  performance: 17
   research: 17
-  forward-chaining: 15
-  performance: 15
-  architecture: 11
-  clf: 11
-  optimization: 10
+  symexec: 14
+  clf: 13
+  proof-theory: 12
+  optimization: 11
+  architecture: 10
   ownership: 10
-  proof-theory: 10
   session-types: 10
-  symexec: 10
+  soundness: 9
+  symbolic-execution: 9
+  forward-engine: 8
   implementation: 8
-  soundness: 8
+  theory: 8
   authorization: 7
   focusing: 7
-  forward-engine: 7
+  memory-model: 7
   metaproofs: 7
-  symbolic-execution: 7
   tooling: 7
   display-calculus: 6
+  evm: 6
   graded-types: 6
+  loli: 6
+  oplus: 6
   sequent-calculus: 6
-  theory: 6
+  verification: 6
   coinduction: 5
   confluence: 5
   consensus: 5
+  content-addressing: 5
   eigenvariable: 5
   hevm: 5
-  oplus: 5
   QTT: 5
-  verification: 5
+  resource-semantics: 5
   accounting: 4
   CHR: 4
   CLP: 4
   compilation: 4
-  content-addressing: 4
   documentation: 4
-  evm: 4
   financial: 4
   fixed-points: 4
   hash-consing: 4
   invariants: 4
   lax-monad: 4
   lnl: 4
-  loli: 4
-  memory-model: 4
   model-checking: 4
   multimodal: 4
   prover: 4
-  resource-semantics: 4
   semiring: 4
   store: 4
   WAM: 4
@@ -62,6 +62,7 @@ tags:
   DSL: 3
   fibrations: 3
   incremental: 3
+  indexing: 3
   induction: 3
   matching: 3
   modal-logic: 3
@@ -70,6 +71,7 @@ tags:
   muMALL: 3
   Petri-nets: 3
   polarity: 3
+  proof-nets: 3
   semi-naive: 3
   separation-logic: 3
   termination: 3
@@ -83,6 +85,7 @@ tags:
   Celf: 2
   Ceptre: 2
   completeness: 2
+  concurrency: 2
   connectives: 2
   constraint-propagation: 2
   Crucible: 2
@@ -95,6 +98,7 @@ tags:
   dependent-types: 2
   derivatives: 2
   design: 2
+  design-decision: 2
   duality: 2
   ethereum: 2
   execution-tree: 2
@@ -108,7 +112,6 @@ tags:
   HCP: 2
   HVM: 2
   hypersequents: 2
-  indexing: 2
   interaction-nets: 2
   judgment: 2
   KLEE: 2
@@ -117,16 +120,18 @@ tags:
   learning: 2
   logical-framework: 2
   Maranget: 2
+  memoization: 2
   metavariables: 2
   MTDC: 2
   multiset-rewriting: 2
   oracles: 2
   pacioli-group: 2
+  parallelism: 2
+  path-conditions: 2
   pattern-matching: 2
   primitives: 2
   principals: 2
   profiling: 2
-  proof-nets: 2
   proof-of-stake: 2
   proof-search: 2
   residuation: 2
@@ -201,7 +206,6 @@ tags:
   decomposition: 1
   definitions: 1
   delta-tracking: 1
-  design-decision: 1
   design-space: 1
   determinism: 1
   development: 1
@@ -281,8 +285,6 @@ tags:
   manual-prover: 1
   markets: 1
   Martelli-Montanari: 1
-  McCarthy: 1
-  memoization: 1
   memory-management: 1
   MemSight: 1
   Merkle-DAG: 1
@@ -311,11 +313,10 @@ tags:
   Pacioli: 1
   par: 1
   parallel-composition: 1
-  parallelism: 1
   parser: 1
+  partial-order-reduction: 1
   partition-refinement: 1
   path-addressing: 1
-  path-conditions: 1
   path-indexing: 1
   patricia-trie: 1
   persistent-data-structure: 1
