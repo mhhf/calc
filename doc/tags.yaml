@@ -4,15 +4,15 @@ tags:
   chr: 18
   performance: 17
   research: 17
-  symexec: 14
+  symexec: 15
   clf: 13
   proof-theory: 12
   optimization: 11
   architecture: 10
   ownership: 10
   session-types: 10
+  symbolic-execution: 10
   soundness: 9
-  symbolic-execution: 9
   forward-engine: 8
   implementation: 8
   theory: 8
@@ -21,23 +21,24 @@ tags:
   memory-model: 7
   metaproofs: 7
   tooling: 7
+  verification: 7
   display-calculus: 6
+  evm: 6
   graded-types: 6
+  hevm: 6
   oplus: 6
   sequent-calculus: 6
-  verification: 6
   CLP: 5
   coinduction: 5
   confluence: 5
   consensus: 5
   content-addressing: 5
   eigenvariable: 5
-  evm: 5
-  hevm: 5
   loli: 5
   QTT: 5
   resource-semantics: 5
   accounting: 4
+  benchmarking: 4
   CHR: 4
   compilation: 4
   documentation: 4
@@ -55,7 +56,6 @@ tags:
   WAM: 4
   adjoint-logic: 3
   adjunction: 3
-  benchmarking: 3
   bisimulation: 3
   Curry-Howard: 3
   cyclic-proofs: 3
@@ -74,6 +74,7 @@ tags:
   proof-nets: 3
   semi-naive: 3
   separation-logic: 3
+  smt: 3
   termination: 3
   UI: 3
   unification: 3
@@ -138,7 +139,6 @@ tags:
   resource-tracking: 2
   semantics: 2
   simplification: 2
-  smt: 2
   substitution: 2
   symbolic-arithmetic: 2
   temporal-logic: 2

@@ -1,0 +1,29 @@
+#import(evm.ill)
+
+% Symbolic storage test — nonce is a symbolic variable
+#symex
+  pc 0 *
+  sh ee *
+  mem empty_mem * memsize 0 *
+  gas 0 *
+
+  address      Contract_Address *
+  sender       Sender *
+  timestamp    Time *
+  gaslimit     Gaslimit *
+  callvalue    V *
+
+  #import(multisig_nocall_solc_code.ill)
+
+  calldata 0  32 0xcd68b36700000000000000000000000000000000000000000000000000000000 *
+  calldata 4  32 Deadline *
+  calldata 36 32 CallValue *
+  calldata 68 32 DataHash *
+  calldatasize 100 *
+
+  % Storage: fired = false (slot 0)
+  storage 0 0 *
+
+  % Storage: nonces[proposalHash] — SYMBOLIC (matches hevm AbstractStore)
+  storage (sha3 (concat (concat 0 (sha3 (concat (concat (concat 0 Deadline) CallValue) DataHash))) 1)) Nonce
+  .
