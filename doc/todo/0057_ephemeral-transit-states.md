@@ -141,10 +141,12 @@ The per-step computation is identical. `findAllMatches` still runs at every step
 
 ### Estimated savings
 
-- Allocation + GC: ~1ms (436 objects × ~2KB each = ~870KB avoided)
-- Solver checkpoint/restore: ~0.5ms (436 × ~1μs)
-- Function call overhead: ~0.5ms (436 × ~1μs per call/return)
-- **Total: ~2ms** (22ms → ~20ms)
+**Experimental result (TODO_0058):** Iterative chain + skip leaf snapshots = 11.41ms, skip leaf snapshots alone = 11.40ms. **Delta: 0ms.** V8's JIT eliminates function call overhead and object allocation cost is negligible. The savings predicted below do not materialize:
+
+- ~~Allocation + GC: ~1ms~~ → Negligible (V8 young-gen GC handles short-lived objects efficiently)
+- ~~Solver checkpoint/restore: ~0.5ms~~ → Negligible (0.5µs/call, already fast)
+- ~~Function call overhead: ~0.5ms~~ → Negligible (V8 JIT inlines)
+- **Total: ~0ms** (the per-step work dominates, not the orchestration)
 
 ### Side effects on tree consumers
 
@@ -305,11 +307,11 @@ Implementation complexity: Very high (substitution chaining, persistent goal col
 
 | Level | Nodes (tree) | Steps (compute) | Time estimate | Complexity |
 |---|---|---|---|---|
-| Current | 477 | 477 | 22ms | — |
-| Level 1 (iterative) | ~61 | 477 | ~20ms | Low |
-| Level 3a (block detection) | ~61 | 477 | ~20ms | Low |
-| Level 3b (threaded code) | ~61 | ~61 | ~14ms | Medium-high |
-| Level 3c (full composition) | ~61 | ~14 | ~5ms | Very high |
+| Current (structuralMemo) | 477 | 477 | 14ms | — |
+| Level 1 (iterative) | ~33 | 477 | **14ms** (0ms savings — invalidated) | Low |
+| Level 3a (block detection) | ~33 | 477 | **14ms** (tree compression only) | Low |
+| Level 3b (threaded code) | ~33 | ~33 | ~6ms | Medium-high |
+| Level 3c (full composition) | ~33 | ~14 | ~3ms | Very high |
 
 ## Connection to Existing Theory
 
@@ -355,7 +357,7 @@ They're complementary:
 
 ## Recommended Path
 
-**Phase 1: Level 1 (iterative deterministic chains).** Low risk, ~2ms savings, cleaner tree representation, eliminates stack overflow risk for deep programs. ~50 LOC change in `symexec.js`. Do this first.
+**Phase 1: Level 1 (iterative deterministic chains).** ~~Low risk, ~2ms savings, cleaner tree representation.~~ **INVALIDATED** by TODO_0058 experimental evidence: converting 444 recursive DFS calls to an iterative loop produces **zero additional time improvement** beyond skipping leaf snapshots (11.41ms vs 11.40ms). V8's JIT makes function call overhead negligible. Level 1 remains useful for tree compression (477→33 nodes) but is **not a performance optimization**.
 
 **Phase 2: Level 3b (threaded code).** Medium effort, ~8ms savings. At load time, build a rule successor graph from the code facts and fingerprint config. Replace `findAllMatches` with direct successor lookup during deterministic chains. ~100 LOC in new module + ~30 LOC in `symexec.js`.
 

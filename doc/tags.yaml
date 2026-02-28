@@ -1,11 +1,11 @@
 tags:
   linear-logic: 35
-  forward-chaining: 23
-  symexec: 19
+  forward-chaining: 24
+  symexec: 20
+  performance: 19
   chr: 18
-  performance: 18
   research: 17
-  optimization: 14
+  optimization: 15
   clf: 13
   proof-theory: 12
   symbolic-execution: 12
@@ -18,13 +18,13 @@ tags:
   forward-engine: 8
   implementation: 8
   authorization: 7
+  evm: 7
   hevm: 7
   memory-model: 7
   metaproofs: 7
   tooling: 7
   verification: 7
   display-calculus: 6
-  evm: 6
   graded-types: 6
   oplus: 6
   sequent-calculus: 6
@@ -73,6 +73,7 @@ tags:
   muMALL: 3
   Petri-nets: 3
   polarity: 3
+  profiling: 3
   proof-nets: 3
   proof-search: 3
   semi-naive: 3
@@ -139,7 +140,6 @@ tags:
   pattern-matching: 2
   primitives: 2
   principals: 2
-  profiling: 2
   proof-of-stake: 2
   residuation: 2
   resource-tracking: 2
