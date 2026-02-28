@@ -1,14 +1,14 @@
 tags:
   linear-logic: 35
-  forward-chaining: 21
+  forward-chaining: 23
+  symexec: 19
   chr: 18
-  performance: 17
+  performance: 18
   research: 17
-  symexec: 17
+  optimization: 14
   clf: 13
-  optimization: 12
   proof-theory: 12
-  symbolic-execution: 11
+  symbolic-execution: 12
   architecture: 10
   ownership: 10
   session-types: 10
@@ -49,11 +49,13 @@ tags:
   invariants: 4
   lax-monad: 4
   lnl: 4
+  memoization: 4
   model-checking: 4
   multimodal: 4
   prover: 4
   semiring: 4
   store: 4
+  unification: 4
   WAM: 4
   adjoint-logic: 3
   adjunction: 3
@@ -65,7 +67,6 @@ tags:
   indexing: 3
   induction: 3
   matching: 3
-  memoization: 3
   modal-logic: 3
   modalities: 3
   MPST: 3
@@ -77,10 +78,11 @@ tags:
   semi-naive: 3
   separation-logic: 3
   smt: 3
+  state-merging: 3
   termination: 3
   UI: 3
-  unification: 3
   angr: 2
+  anti-unification: 2
   benchmark: 2
   blockchain: 2
   branching: 2
@@ -111,6 +113,7 @@ tags:
   expressions: 2
   ffi: 2
   game-semantics: 2
+  generalization: 2
   Granule: 2
   halmos: 2
   HCP: 2
@@ -126,10 +129,12 @@ tags:
   Maranget: 2
   metavariables: 2
   MTDC: 2
+  multiset: 2
   multiset-rewriting: 2
   oracles: 2
   pacioli-group: 2
   parallelism: 2
+  partial-evaluation: 2
   path-conditions: 2
   pattern-matching: 2
   primitives: 2
@@ -140,8 +145,8 @@ tags:
   resource-tracking: 2
   semantics: 2
   simplification: 2
-  state-merging: 2
   substitution: 2
+  supercompilation: 2
   symbolic-arithmetic: 2
   temporal-logic: 2
   term-representation: 2
@@ -158,7 +163,6 @@ tags:
   agents: 1
   algorithms: 1
   anki: 1
-  anti-unification: 1
   arena-allocation: 1
   array-theory: 1
   atomic-swaps: 1
@@ -245,7 +249,6 @@ tags:
   Galois-connection: 1
   games: 1
   gap-analysis: 1
-  generalization: 1
   geometry-of-interaction: 1
   ghost: 1
   Girard: 1
@@ -302,7 +305,6 @@ tags:
   mu-calculus: 1
   multi-party: 1
   multi-type: 1
-  multiset: 1
   mythril: 1
   Nomos: 1
   nondeterminism: 1
@@ -318,7 +320,6 @@ tags:
   par: 1
   parallel-composition: 1
   parser: 1
-  partial-evaluation: 1
   partial-order-reduction: 1
   partition-refinement: 1
   path-addressing: 1
@@ -381,7 +382,6 @@ tags:
   store-optimization: 1
   study-plan: 1
   subformula-property: 1
-  supercompilation: 1
   tactics: 1
   tags: 1
   temporal-modalities: 1

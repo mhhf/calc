@@ -51,7 +51,7 @@ Key files: `forward.js` (engine), `symexec.js` (tree exploration), `rule-analysi
 
 10. **Structural memoization via control hash is cheap and effective for symmetric programs.** The EVM multisig checks 6 members with identical post-check logic. A hash of just `(PC, SH)` — O(1), two lookups — detects isomorphic subtrees and skips 5 of 6 member bodies. Savings: 2125→477 nodes, 49ms→11ms. Exact state memoization can't match because evars have unique hashes from a global counter; predicate histogram hashing can't match because `code` fact counts differ between member bodies (741, 739, ..., 733). The minimal control hash works precisely because it captures execution position without caring about concrete values.
 
-11. **hevm avoids the problem structural memo solves.** hevm uses lazy symbolic expressions — `ITE(EQ(caller, M1), 247, ITE(...))` is a single value, not 6 branches. It never explores member bodies separately, producing 7 nodes vs calc's 477. Structural memo is a post-hoc fix for eager branching. Lazy symbolic values (TODO_0002/0003) would be the architectural answer.
+11. **hevm's compactness is representation, not branching.** hevm and calc have identical branching: 30 branch points, 31 leaves, same 5 behavioral outcomes × 6 members. hevm's 61 total nodes vs calc's 477 (memo) / 2125 (no memo) reflects representation granularity: hevm collapses 50+ deterministic opcodes between JUMPIs into single ITE nodes with symbolic expressions; calc makes each opcode an explicit tree node. calc with structural memo is 2.4× faster (22ms vs 52ms) because memo skips 5 of 6 isomorphic member subtrees, something hevm does not do. Verified with hevm v0.54.2 `--show-tree` on MultisigNoCall.sol. See `doc/documentation/calc-vs-hevm.md`.
 
 ## What's Next
 
