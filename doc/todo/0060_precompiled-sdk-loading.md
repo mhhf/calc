@@ -312,14 +312,40 @@ WITH calculus-generated parser (Opt_A + Opt_B):
 
 The fused parse eliminates both the 11ms tree-sitter WASM overhead AND the separate AST conversion pass.
 
-### Scope
+### Scope: Replace tree-sitter entirely
 
-Replace tree-sitter for `.ill` files only. The meta-parser (`cst-to-ast.js`) keeps tree-sitter for `.calc`/`.family` files — those are parsed at build time only (`npm run build:bundle`), and tree-sitter's error reporting is valuable there.
+The .calc/.family syntax is identical to .ill syntax plus `@key value` annotations:
 
 ```
-lib/engine/convert.js  →  uses calculus-generated parser  (runtime, .ill files)
-lib/meta-parser/        →  keeps tree-sitter               (build time, .calc files)
+% ill.calc
+tensor: formula -> formula -> formula
+  @ascii "_ * _"
+  @prec 60 left.
+
+% lnl.family
+lin_exchange: deriv (seq G (comma X Y) C)
+  <- deriv (seq G (comma Y X) C)
+  @pretty "XL"
+  @structural exchange.
 ```
+
+Same declarations, same expressions (arrows + application), same comments, same `<-` premises. The meta-syntax wrapper needs ~10 more lines for `@annotations` and standalone `@directives` (`@family`, `@extends`, `@metavar`, `@schema`).
+
+**No bootstrapping problem**: .calc files define connectives but their expression bodies only use arrows and application — framework syntax that doesn't depend on parser tables. The connective operators (tensor `*`, loli `-o`, etc.) are what's BEING defined, not used in the definition.
+
+Bootstrap path:
+1. Parse .calc/.family with meta-syntax wrapper + framework syntax (arrows, application)
+2. Extract `@prec`/`@assoc` annotations → build `parserTables`
+3. Use `parserTables` to parse .ill/.rules files (with connective operators)
+
+```
+lib/engine/convert.js   →  uses calculus-generated parser  (runtime, .ill)
+lib/meta-parser/         →  uses same parser               (build time, .calc/.family)
+lib/rules/rules2-parser  →  already uses buildParser()     (build time, .rules)
+lib/tree-sitter-mde/     →  DELETE entirely
+```
+
+**Cleanup**: remove `lib/tree-sitter-mde/` (~11 KB WASM + grammar.js + bindings), `lib/meta-parser/cst-to-ast.js` (~400 lines), and the `build:ts:wasm` npm script. The meta-parser's `loader.js` (`@extends` chain resolution) stays but switches to the new parser.
 
 ## TODO_0060.Opt_C — Precompile Rules Too
 
