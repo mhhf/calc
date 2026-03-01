@@ -2,7 +2,7 @@
 title: "Symexec Sub-4ms: Per-Step Optimization Analysis"
 created: 2026-02-28
 modified: 2026-03-01
-summary: Deep profiling of symbolic multisig explore() identifies 8 concrete optimizations to reduce 14ms → 4ms. TODO_0059 (FactSet) done — 16.6ms → 11.6ms (−30%).
+summary: "Deep profiling of symbolic multisig explore(). TODO_0059 done (16.6→11.6ms). Opt_A done (11.6→9.2ms). Next: Opt_G compiled matching (−3.5ms, subsumes D+F). Decision: direct path A→G, skip standalone D+F."
 tags:
   - symexec
   - optimization
@@ -25,33 +25,301 @@ starred: true
 
 MultisigNoCall.sol (solc 0.8.28, 1040 bytes), symbolic sender + nonce, `structuralMemo: true`.
 
-| Metric | Original (pre-0059) | After TODO_0059 | Target |
-|---|---|---|---|
-| Nodes | 689 (670 deterministic + 9 multi-alt + 10 terminal) | 689 | 689 |
-| Leaves | 10 (2 leaf + 8 bound) | 10 | 10 |
-| Median time | **16.6ms** | **11.6ms** | **4ms** |
-| Per-node cost | 24µs | 16.8µs | 5.8µs |
+| Metric | Original | After 0059 | After Opt_A | Target |
+|---|---|---|---|---|
+| Nodes | 689 | 689 | 689 | 689 |
+| Leaves | 10 | 10 | 10 | 10 |
+| Median time | **16.6ms** | **11.6ms** | **~9.2ms** | **4ms** |
+| Per-node cost | 24µs | 16.8µs | ~13.3µs | 5.8µs |
 
-## Completed: TODO_0059 — FactSet Migration
+## Completed Optimizations
 
-**Status: DONE** (2026-03-01). Measured improvement: **16.6ms → 11.6ms (−30%, 1.43×)**.
+### TODO_0059 — FactSet Migration (DONE, 2026-03-01)
+
+**Measured: 16.6ms → 11.6ms (−30%, 1.43×).**
 
 Replaced `{hash:count}` JS objects + parallel `stateIndex` with sorted typed-array `FactSet` groups. State IS the index. Arena-based undo for DFS backtracking.
 
-### What was eliminated
-
 | Old component | Replacement | Savings |
 |---|---|---|
-| `buildStateIndex` | State IS the index — `state.linear.group(tagIdx)` | ~1ms (index rebuild) |
-| `makeChildCtx` + `undoIndexChanges` | FactSet.undo restores groups + hash | ~0.5ms (index sync) |
-| `computeNumericHash` / `hashPair` | Incremental Zobrist in FactSet.insert/remove | ~0.1ms |
-| `snapshotState` (`{...state.linear}`) | `toObject(state)` — still builds plain objects for output | **NOT saved** — see below |
-| V8 megamorphic IC (5.8% of ticks) | Int32Array indexed access | eliminated |
+| `buildStateIndex` | `state.linear.group(tagIdx)` | ~1ms |
+| `makeChildCtx` + `undoIndexChanges` | FactSet.undo via Arena | ~0.5ms |
+| V8 megamorphic IC (5.8% of ticks) | Int32Array access | eliminated |
 | `for-in` loop overhead (0.9% of ticks) | Direct array iteration | eliminated |
 
-### What was NOT saved
+### Opt_A — FactSet Snapshots at Terminal Nodes (DONE, 2026-03-01)
 
-`toObject(state)` at leaf nodes still converts FactSet back to `{hash:count}` plain objects for the output tree. This is comparable to the old `snapshotState` cost. Opt_A (skip leaf snapshots) remains the fix.
+**Measured: −20.9% geometric mean** (multisig 1.81ms, solc_symbolic 8.94ms).
+
+Replaced `toObject(state)` with `state.snapshot()` at all 5 terminal return sites in `symexec.explore()`. Only 31 terminal nodes (of 2125 total) get snapshots — the 2094 branch nodes store `state: null`. Made `show.js` (`classifyLeaf`, `showInteresting`) polymorphic via duck-typing (`state.linear.group` for FactSet path, plain-object fallback for hand-built test fixtures).
+
+| File | Change |
+|---|---|
+| `lib/engine/fact-set.js` | Added `State.hasLinear(hash)` |
+| `lib/engine/symexec.js` | 5× `toObject(state)` → `state.snapshot()`, removed `toObject` import |
+| `lib/engine/show.js` | Polymorphic `classifyLeaf`/`showInteresting` (FactSet + plain object) |
+| `tests/engine/explore.test.js` | 1 site → `state.hasLinear()` |
+| `tests/engine/solc-benchmark.test.js` | 1 site → `linear.groupLen()` |
+| `tests/engine/memory.test.js` | 7 blocks → FactSet group access |
+
+**Not changed:** `forward.js` still returns plain objects via `toObject()` (single call at API boundary, different use case). `toObject` remains exported from `fact-set.js` — used by `forward.js` (2 calls), `fact-set.test.js` (4 roundtrip tests), `symexec-bench.js` (3 calls in instrumented profiler).
+
+### ~~Opt_B: Skip drainPersistentLolis early exit~~ — DONE (part of TODO_0059)
+
+### Opt_C, Opt_E — standalone low-risk optimizations
+
+Opt_C (per-predicate persistent dispatch, ~0.5ms) and Opt_E (skip solver for non-oplus, ~0.3ms) remain viable as standalone changes. Both are also naturally subsumed by Opt_G.
+
+## Decision: Direct Path to Opt_G
+
+**Skip standalone Opt_D and Opt_F. Go directly to Opt_G (compiled matching).**
+
+Rationale: D and F are subsumed by G. Implementing D+F first saves ~2.1ms but creates throwaway code. G saves ~3.5ms and includes D+F for free. The generator is ~150 lines in `compile.js`, not a major complexity risk.
+
+## Opt_G: Compiled Matching — Full Specification
+
+### What It Is
+
+Auto-generate specialized match closures at `compileRule()` time. Each eligible rule gets a `rule.compiledMatcher` closure that replaces the generic `tryMatch` dispatch chain. Same semantics, less dispatch.
+
+**This is NOT a JIT compiler or code generator.** No files generated, no new build steps. Closures are plain JavaScript functions created in-memory during `mde.load()`. Changing `.ill` files requires no manual recompilation — `mde.load()` already parses, compiles, and generates closures in one pass.
+
+**Timing context:** `mde.load()` is one-time setup (~50-200ms for file I/O, tree-sitter parsing, Store population). The benchmark only measures `explore()` (~9ms). Adding ~0.5ms for closure generation goes into the one-time setup cost. Eager precompilation for all eligible rules — no lazy/warmup needed.
+
+### What It Eliminates Per Node (~5.3µs)
+
+| Eliminated overhead | Saving |
+|---|---|
+| `matchOnePattern` role dispatch × 5 patterns | ~1.5µs |
+| `state.linear.count()` binary searches × 5 | ~0.5µs |
+| `consumed[h] \|\| 0` property lookups × 5 | ~0.3µs |
+| `subApplyIdx` recursive walk for FFI goals × 2 | ~0.6µs |
+| `tryFFIDirect` 3 map lookups + mode loop × 2 | ~0.8µs |
+| FFI result object alloc + theta pair processing | ~0.3µs |
+| `matchAllLinear` worklist + phase switching | ~0.3µs |
+| `tryMatch` allocation (consumed, reserved, theta) | ~0.8µs |
+
+For ~536 hot-path nodes: 536 × 5.3µs ≈ **2.8ms**. Non-hot firings save ~0.7ms more. **Total: ~3.5ms.**
+
+### Background: tryMatch Flow and De Bruijn Slots
+
+Understanding how the generic `tryMatch` works is essential for the generator.
+
+**De Bruijn slots.** At compile time, `compileRule` collects all metavars (freevars starting with `_`) and assigns each a numeric slot index:
+
+```
+Rule: code PC Opcode * !inc PC PC2 -o { bar PC2 }
+
+Metavars collected: _PC, _Opcode, _PC2
+Slot assignment:    _PC → 0, _Opcode → 1, _PC2 → 2
+
+rule.metavarSlots = { hash_of_PC: 0, hash_of_Opcode: 1, hash_of_PC2: 2 }
+rule.metavarCount = 3
+```
+
+`theta` is a flat array `[binding_0, binding_1, binding_2]` indexed by slot number. At match time:
+
+1. **Allocate:** `theta = new Array(3)`, `consumed = {}`, `reserved = {}`
+2. **Match linear patterns:** For each pattern, call `matchOnePattern` → dispatch by role → `matchIdx(pattern, fact, theta, slots)` → unify, binding metavar hashes into theta via slot lookup
+3. **Prove persistent antecedents:** Call `provePersistentGoals` → for each pattern, 3-level fallback:
+   - Level 1: State lookup (scan `state.persistent.group(tagId)`, unify against each)
+   - Level 2a: FFI (`subApplyIdx(pattern, theta, slots)` → `tryFFIDirect(goal)`)
+   - Level 2b: Clause resolution (`backward.prove(goal, clauses, types)`)
+4. **Return:** `{ rule, theta, slots, consumed, optimized }`
+
+FFI returns metavar hashes, not slot indices: `{ theta: [[metavar_hash, result_hash]] }`. The slot transfer loop converts: `slot = slots[metavar_hash]; theta[slot] = result_hash`.
+
+### Persistent Proving: FFI-First vs State-Lookup-First
+
+The current code always does state lookup first, then FFI. This is suboptimal:
+
+- **Ground goal** `!plus(5, 3, Z)`: FFI computes the answer in nanoseconds. State lookup scans ~10-30 persistent `plus` facts with full `matchIdx` per entry. FFI-first is faster.
+- **Symbolic goal** `!plus(X, 3, Z)` where X is unbound: FFI can't compute (input not ground). State lookup is the only option.
+
+**Key insight:** Groundness of FFI input slots is known at **compile time** from slot dependency analysis. If all input slots are bound by prior linear matching, the goal will always be ground at runtime. The generator bakes this decision:
+
+```javascript
+// Compile-time: inc's input (slot 0) is always bound by linear match → emit FFI-first
+theta[2] = Store.put('s', [theta[0]]);  // no state lookup, no dispatch
+
+// Compile-time: myPred's input may be symbolic → emit state-lookup-first
+const grp = state.persistent.group(MY_PRED_TAG);
+for (...) { if (matchIdx(...)) { found = true; break; } }
+if (!found) { backward.prove(...); }  // clause fallback
+```
+
+### Eligibility Criteria (Relaxed)
+
+A rule qualifies for compiled matching if:
+
+1. All linear patterns have known predicate tags (no wildcards)
+2. All patterns are flat (children are metavars or ground constants)
+3. No persistent dependencies between linear patterns (no deferred matching)
+4. Single-alt consequent (no oplus/with branching in consequent)
+
+**Criterion 4 from original spec ("all persistent antecedents have FFI") is dropped.** Non-FFI persistent antecedents are handled by:
+
+- Inlining Level 1 (state lookup) with tag ID baked as compile-time constant
+- Calling Level 2b (clause resolution via `prove.js`) as fallback — not inlined, but still called from the closure
+
+This means **any rule with flat independent linear patterns** qualifies, regardless of FFI availability. For EVM: ~38/44 rules qualify (up from ~35). For pure-logic programs without FFI: all rules with flat patterns qualify (savings smaller — only linear dispatch overhead eliminated, not FFI dispatch).
+
+**Partial specialization** for ineligible rules (complex patterns, oplus consequents): inline linear matching only, fall back to generic `provePersistentGoals`. Still saves linear dispatch overhead.
+
+### Concrete Examples
+
+**EVM rule (with FFI):** `code PC Op * !inc PC PC2 -o { ... }`
+
+```javascript
+// Generated closure:
+const CODE_TAG = Store.TAG['code'];  // baked constant
+rule.compiledMatcher = function(state) {
+  const theta = this._theta;
+  theta[0] = 0; theta[1] = 0; theta[2] = 0;
+
+  const grp = state.linear.group(CODE_TAG);
+  if (grp.length === 0) return null;
+  const fact = grp[0];
+  theta[0] = Store.child(fact, 0);            // PC → slot 0
+  theta[1] = Store.child(fact, 1);            // Op → slot 1
+  theta[2] = Store.put('s', [theta[0]]);      // PC2 = inc(PC), FFI inlined
+
+  return { consumed: { [fact]: 1 }, theta, slots: this._slots };
+};
+```
+
+**Non-EVM rule (no FFI):** `token X * !myCheck X -o { result X }`
+
+```javascript
+const TOKEN_TAG = Store.TAG['token'];
+const CHECK_TAG = Store.TAG['myCustomCheck'];
+rule.compiledMatcher = function(state) {
+  const theta = this._theta;
+  theta[0] = 0;
+
+  const grp = state.linear.group(TOKEN_TAG);
+  if (grp.length === 0) return null;
+  theta[0] = Store.child(grp[0], 0);          // X → slot 0
+
+  // Level 1: state lookup (inlined, tag constant baked)
+  const checkGrp = state.persistent.group(CHECK_TAG);
+  let found = false;
+  for (let i = 0; i < checkGrp.length; i++) {
+    if (Store.child(checkGrp[i], 0) === theta[0]) { found = true; break; }
+  }
+  if (!found) {
+    // Level 2b: backward prove (called, not inlined)
+    const goal = Store.put('myCustomCheck', [theta[0]]);
+    const r = this._prove(goal);
+    if (!r.success) return null;
+  }
+
+  return { consumed: { [grp[0]]: 1 }, theta, slots: this._slots };
+};
+```
+
+**Rule with structural matching:** `plus X (s Y) (s Z) -o { !plus X Y Z }`
+
+```javascript
+const PLUS_TAG = Store.TAG['plus'];
+const S_TAG = Store.TAG['s'];
+rule.compiledMatcher = function(state) {
+  const theta = this._theta;
+  theta[0] = 0; theta[1] = 0; theta[2] = 0;
+
+  const grp = state.linear.group(PLUS_TAG);
+  for (let i = 0; i < grp.length; i++) {
+    const h = grp[i];
+    const c1 = Store.child(h, 1);
+    const c2 = Store.child(h, 2);
+    if (Store.tagId(c1) !== S_TAG) continue;  // must be s(...)
+    if (Store.tagId(c2) !== S_TAG) continue;
+    theta[0] = Store.child(h, 0);             // X
+    theta[1] = Store.child(c1, 0);            // Y (inside s)
+    theta[2] = Store.child(c2, 0);            // Z (inside s)
+    return { consumed: { [h]: 1 }, theta, slots: this._slots };
+  }
+  return null;
+};
+```
+
+### Insertion Point
+
+The cleanest insertion is **per-rule** in the strategy layer. `tryMatch` API unchanged:
+
+```javascript
+// In match.js tryMatch (existing function):
+function tryMatch(rule, state, calc, matchOpts) {
+  if (rule.compiledMatcher) {
+    const result = rule.compiledMatcher(state, calc);
+    if (DEBUG_VERIFY) {
+      const ref = genericTryMatch(rule, state, calc, matchOpts);
+      assertEquivalent(result, ref);
+    }
+    return result;
+  }
+  return genericTryMatch(rule, state, calc, matchOpts);
+}
+```
+
+The existing `tryMatch` body is renamed to `genericTryMatch` (no other changes). The compiled matcher returns the exact same shape: `{ rule, theta, slots, consumed, optimized }` or `null`.
+
+### Files to Modify
+
+| File | Change |
+|---|---|
+| `lib/engine/compile.js` | Add `generateMatcher(rule)` (~150 LOC). Call from `compileRule`. |
+| `lib/engine/match.js` | Rename `tryMatch` → `genericTryMatch`. New `tryMatch` dispatches to compiled or generic. |
+| `tests/engine/` | Add compiled matcher tests. Enable `DEBUG_VERIFY` in existing tests. |
+
+**No other files change.** `strategy.js`, `forward.js`, `symexec.js` call `tryMatch` unchanged. No new modules, no new exports. The generator lives entirely inside `compile.js`.
+
+### Correctness Verification
+
+**Dual-run protocol:** Run both compiled and generic paths, assert identical results.
+
+```javascript
+// DEBUG_VERIFY=true in tests — always check both paths
+// A single symexec run of the multisig tree exercises all compiled matchers
+```
+
+The generic `tryMatch` path is **never removed**. It stays as the reference implementation. Compiled matchers are an optimization layer that can be disabled without affecting correctness.
+
+### What Makes a Rule "Hard to Compile"
+
+These cases are excluded by eligibility and fall back to generic `tryMatch`:
+
+| Case | Why hard | Fallback |
+|---|---|---|
+| Cross-pattern shared metavars with backtracking | `foo(X) * bar(X)` needs choice points across candidates | Generic `matchAllLinear` with undo log |
+| oplus/with consequents | Multi-alt rules need solver integration | Generic `tryMatch` in symexec |
+| Deferred patterns (persistent deps) | Pattern matching order depends on runtime binding | Generic `matchAllLinear` worklist |
+| Nested non-flat patterns | Deep structural matching needs full `matchIdx` recursion | Generic path |
+
+## Remaining Optimizations (Post Opt_G)
+
+### Opt_C: Per-predicate persistent dispatch (~0.5ms)
+
+Subsumed by G for compiled rules. Only matters for ineligible rules using generic path.
+
+### Opt_E: Skip solver for non-oplus rules (~0.3ms)
+
+Independent of G. Still worth doing as a 3-line conditional in `symexec.js`.
+
+### Opt_H: Threaded code / fingerprint prediction (~1.7ms)
+
+After applying a rule, the new `pc` value is known. This determines the next fingerprint and candidate rule. 670 predicted steps × ~2.5µs = ~1.7ms. Combines naturally with G: the compiled matcher for the predicted rule is called directly, skipping `findAllMatches` entirely.
+
+## Performance Projection (Chosen Path: A → G)
+
+| Level | Optimizations | Estimated time | vs original |
+|---|---|---|---|
+| Original (pre-0059) | — | 16.6ms | — |
+| **After TODO_0059** | FactSet migration (measured) | **11.6ms** | **1.43×** |
+| **After Opt_A** | FactSet snapshots (measured) | **~9.2ms** | **1.8×** |
+| After Opt_G | Compiled matching (−3.5ms) | ~5.7ms | 2.9× |
+| After Opt_E | Skip solver for non-oplus (−0.3ms) | ~5.4ms | 3.1× |
+| After Opt_H | Threaded code (−1.7ms) | ~3.7ms | 4.5× |
 
 ## Original Profiling Results (pre-TODO_0059)
 
@@ -79,38 +347,7 @@ Replaced `{hash:count}` JS objects + parallel `stateIndex` with sorted typed-arr
 | backward prove (clauses) | 0.20ms | 15 | 13.4µs |
 | **other (dispatch, FFI, alloc)** | **~4ms** | — | — |
 
-**Key finding:** Matching and proving are only **14%** of findAllMatches time. The **86%** overhead is dispatch, FFI machinery, object allocation, and predicate guard checks.
-
-### V8 CPU Profile (top hotspots, pre-TODO_0059)
-
-| Ticks | % | Function | Post-0059 |
-|---|---|---|---|
-| 138 | 5.8% | `KeyedLoadIC_Megamorphic` — sparse numeric key access | **fixed** (Int32Array) |
-| 89 | 3.7% | `matchIndexed` — core unification | still present |
-| 56 | 2.4% | `FindOrderedHashMapEntry` — Map/Set lookups | still present |
-| 54 | 2.3% | `LoadIC` — standard property loads | reduced |
-| 27 | 1.1% | `KeyedLoadIC` — keyed loads | reduced |
-| 26 | 1.1% | `provePersistentGoals` | still present |
-| 22 | 0.9% | `ForInFilter` — for-in loop overhead | **fixed** (no for-in) |
-| 22 | 0.9% | `mutateState` | still present (less) |
-
-### Structural findings
-
-- **670/689 explored nodes are fully deterministic** (1 match, 1 alt). The strategy stack returns exactly 1 candidate rule per node.
-- **Average matches per node: ~1.0** — the fingerprint layer is perfectly selective.
-- **0 loli facts** in the symbolic multisig state → drainPersistentLolis does nothing.
-- **~17 matchIdx calls per node** — from matching ~5 linear patterns per rule across candidates.
-- Persistent antecedents: inc (dominant), plus, mem_expand, neq, mem_read.
-
-### Validated experiments (pre-TODO_0059)
-
-| Experiment | Median | vs Baseline | Correctness |
-|---|---|---|---|
-| Baseline (explore, structuralMemo=true) | 13.57ms | — | 477 nodes, 11 leaves |
-| Skip leaf snapshots | 11.40ms | −16% | 477 nodes, 11 leaves |
-| Iterative deterministic chain + no snapshot | 11.41ms | −16% | 33 nodes, 11 leaves |
-
-**Critical finding:** Converting 444 recursive DFS calls to an iterative loop produces **zero additional improvement**. V8's function call overhead and children array allocation are negligible. The cost is entirely in per-step work (findAllMatches + mutateState).
+**Key finding:** Matching and proving are only **14%** of findAllMatches time. The **86%** overhead is dispatch, FFI machinery, object allocation, and predicate guard checks. This is what Opt_G eliminates.
 
 ### FFI dispatch cost (micro-benchmarks)
 
@@ -120,170 +357,62 @@ Replaced `{hash:count}` JS objects + parallel `stateIndex` with sorted typed-arr
 | plus(5, 6, X) | 399ns | 120ns | 3.3× |
 | Full prove path (subApplyIdx + tryFFIDirect) | 478ns | 46ns | **10.4×** |
 
-## Remaining Optimization Plan
+### V8 CPU Profile (top hotspots, pre-TODO_0059)
 
-Savings re-estimated from the new 11.6ms baseline with 689 nodes (679 rule firings, 670 single-alt, 10 terminals). FactSet changed cost structure: state lookup is O(1) via groupLen, mutation is faster, but toObject at leaves and FFI dispatch overhead are unchanged.
-
-### Phase 1: Low-hanging fruit (11.6ms → ~7.5ms)
-
-#### Opt_A: Skip leaf snapshots (save ~1.5ms)
-
-`toObject(state)` converts FactSet → plain `{hash:count}` object at each terminal (10 calls). Estimated ~150µs/call × 10 = ~1.5ms. Most callers never access `.state` on memo/leaf/bound nodes.
-
-**Implementation:** Add `opts.snapshotLeaves = false` (default). When disabled, terminal nodes store `state: null`. Add a replay API to reconstruct leaf state on demand.
-
-**Risk:** Low — only affects callers that inspect leaf state (inspect tool, classifyLeaf).
-
-#### ~~Opt_B: Skip drainPersistentLolis early exit~~ — **DONE** (part of TODO_0059)
-
-drainPersistentLolis now reads `state.linear.group(TAG_LOLI)` directly — O(1) check, no array copy. Already exits early when no lolis. Remaining cost negligible.
-
-#### Opt_C: Per-predicate persistent dispatch (save ~0.5ms)
-
-`provePersistentGoals` still calls `subApplyIdx` + `tryFFIDirect` for every persistent pattern, even for predicates like `inc`/`plus` that are **never** in `state.persistent`. The FactSet `groupLen` guard is now O(1) (was O(n) set check), so the state-lookup overhead is already reduced. Remaining savings are from skipping the function call chain entirely for FFI-only predicates.
-
-679 firings × ~2 persistent antecedents × ~0.4µs dispatch overhead = ~0.5ms.
-
-**Implementation:** At compile time, classify each persistent antecedent predicate:
-- **FFI-only** (`inc`, `plus`, `neq`, `mul`, `mem_expand`): skip state lookup entirely, go directly to FFI.
-- **State-first** (user-defined): check state first, then FFI/clauses.
-
-Store a `persistentModes` array on the compiled rule: `[FFI_ONLY, FFI_ONLY, STATE_FIRST, ...]`.
-
-#### Opt_D: Inline FFI for common predicates (save ~1.4ms)
-
-The prove path for `inc(PC, PC')` is: `subApplyIdx(pattern, theta, slots)` → `tryFFIDirect(goal)` → tag dispatch → mode check → isGround check → FFI fn call → build result theta. Total: **478ns/call**.
-
-Direct inline: `theta[pc2Slot] = Store.put('s', [theta[pcSlot]])`. Total: **46ns/call**. **10.4× faster.**
-
-679 firings × ~2 persistent antecedents × ~430ns saved = ~0.58ms from dispatch savings alone. Additional savings from eliminating `subApplyIdx` goal instantiation (268ns × 1358 calls = ~0.36ms) and simpler control flow (~0.5ms). Total: ~1.4ms.
-
-**Implementation:** At compile time, for each persistent antecedent, generate an "inline prover" closure:
-
-```javascript
-rule.inlineProvers = [
-  // inc(PC, PC') → PC' = s(PC)
-  (theta) => { theta[3] = Store.put('s', [theta[0]]); return true; },
-  // plus(PC, 2, PC') → PC' = binlit(toInt(PC) + 2)
-  (theta) => { ... },
-];
-```
-
-Falls back to generic provePersistentGoals when inline prover is not available.
-
-#### Opt_E: Skip solver for non-oplus rules (save ~0.3ms)
-
-`solver.checkpoint()` + `solver.restore()` called for every rule match. For single-alt rules (670/679), the solver is never checked. 670 × ~0.4µs = ~0.3ms.
-
-**Implementation:** Conditional: only checkpoint/restore when `alts.length > 1` or when new persistent facts include eq/neq.
-
-**Phase 1 total: −(1.5 + 0.5 + 1.4 + 0.3) ≈ −3.7ms → ~7.9ms** (reduced from ~4.5ms estimated pre-0059 because FactSet already eliminated some of the state lookup overhead that Opt_C counted)
-
-### Phase 2: Medium effort (~7.9ms → ~5.0ms)
-
-#### Opt_F: Reusable tryMatch buffers (save ~0.7ms)
-
-`tryMatch` allocates per call: `new Array(metavarCount)`, `consumed = {}`, `reserved = {}`, `preservedCount = {}`. At 679 calls, that's ~2700 object allocations.
-
-679 calls × ~1µs alloc overhead = ~0.7ms.
-
-**Implementation:** Pre-allocate per-rule buffers. The `consumed` object can be replaced with a flat array indexed by antecedent position (only 2-13 entries).
-
-#### Opt_G: Compiled hot-path matching (save ~2.2ms)
-
-For the 10 most-fired rules (covering ~80% of 670 deterministic steps), generate a specialized match function that:
-1. Reads directly from `state.linear.group(tagIdx)` — no dispatch through matchOnePattern
-2. Uses delta bypass logic inline — no function call overhead
-3. Inlines the FFI computation (Opt_D) — no prove dispatch
-4. Returns a pre-allocated theta — no allocation
-
-536 hot-path steps × (16.8µs current − ~5µs compiled) ≈ ~6.3ms theoretical. But Opt_D already saves ~1.4ms of this, and overhead is shared. Realistic: ~2.2ms additional on top of Phase 1.
-
-**Phase 2 total: −(0.7 + 2.2) ≈ −2.9ms → ~5.0ms**
-
-### Phase 3: High effort (~5.0ms → ~3.3ms)
-
-#### Opt_H: Threaded code / fingerprint prediction (save ~1.7ms)
-
-After applying a rule, the new `pc` value is known (computed during substitution). This value determines the next fingerprint, which determines the next candidate rule.
-
-670 predicted steps × ~2.5µs saved (skip getCandidateRules + loli scan + candidate loop) = ~1.7ms.
-
-**Implementation:** At compile time, for each rule:
-1. Identify which theta slot produces the new `pc` value (from consequent pattern analysis)
-2. Store `rule.nextFingerprintSlot = pcSlotIdx`
-3. After mutateState, compute `nextFP = theta[rule.nextFingerprintSlot]`
-4. Look up `fpIndex[nextFP]` → if exactly 1 rule, try it directly without calling `findAllMatches`
-
-Combined with Opt_G (compiled matching on the predicted rule): skip the entire findAllMatches + tryMatch dispatch for deterministic steps.
-
-**Phase 3 total: −1.7ms → ~3.3ms**
-
-## Performance Projection
-
-| Level | Optimizations | Estimated time | vs original 16.6ms |
+| Ticks | % | Function | Post-0059 |
 |---|---|---|---|
-| Original (pre-0059) | — | 16.6ms | — |
-| **After TODO_0059** | **FactSet migration (measured)** | **11.6ms** | **1.43×** |
-| Phase 1 | + A+C+D+E (−3.7ms) | ~7.9ms | 2.1× |
-| Phase 2 | + F+G (−2.9ms) | ~5.0ms | 3.3× |
-| Phase 3 | + H (−1.7ms) | ~3.3ms | 5× |
+| 138 | 5.8% | `KeyedLoadIC_Megamorphic` | **fixed** (Int32Array) |
+| 89 | 3.7% | `matchIndexed` | still present |
+| 56 | 2.4% | `FindOrderedHashMapEntry` | still present |
+| 54 | 2.3% | `LoadIC` | reduced |
+| 26 | 1.1% | `provePersistentGoals` | still present |
+| 22 | 0.9% | `ForInFilter` | **fixed** (no for-in) |
 
-### Combined with other TODOs (JS)
+### Structural findings
 
-| Addition | Time | vs original |
+- **670/689 explored nodes are fully deterministic** (1 match, 1 alt).
+- **Average matches per node: ~1.0** — the fingerprint layer is perfectly selective.
+- **0 loli facts** in symbolic multisig state → drainPersistentLolis is no-op.
+- **~17 matchIdx calls per node** — from matching ~5 linear patterns per rule.
+- Persistent antecedents: inc (dominant), plus, mem_expand, neq, mem_read.
+
+### Validated experiments (pre-TODO_0059)
+
+| Experiment | Median | vs Baseline |
 |---|---|---|
-| + TODO_0054 Layer 2 (loli fusion, −5% nodes) | ~3.1ms | 5.4× |
-| + TODO_0005 L0+L1 (constraint propagation) | ~2.9ms | 5.7× |
-| + TODO_0052/0056 (zero impact at current scale) | ~2.9ms | 5.7× |
+| Baseline (structuralMemo=true) | 13.57ms | — |
+| Skip leaf snapshots | 11.40ms | −16% |
+| Iterative deterministic chain + no snapshot | 11.41ms | −16% |
 
-### Zig rewrite projection
-
-V8-specific overhead identified by profiling: megamorphic IC was 5.8% (**fixed** by FactSet), Map/Set 2.4%, property loads 3.4%, GC ~3-5%. FactSet already moves state ops closer to Zig-style (flat sorted arrays, arena undo, no index maintenance). A Zig rewrite eliminates the remaining JS runtime costs:
-
-| Operation | JS (after all opts) | Zig | Speedup |
-|---|---|---|---|
-| Pattern match (5 linear) | ~1.5µs | ~0.15µs | 10× |
-| Inline FFI (inc, plus) | ~0.1µs | ~0.01µs | 10× |
-| State mutation (5 facts) | ~1.0µs | ~0.10µs | 10× |
-| Hash/memo check | ~0.2µs | ~0.02µs | 10× |
-| **Per deterministic step** | **~2.8µs** | **~0.3µs** | **~10×** |
-
-| Level | JS time | Zig time | vs JS original |
-|---|---|---|---|
-| All TODO_0058 phases | ~3.3ms | ~0.3ms | 55× |
-| + all other TODOs | ~2.9ms | ~0.3ms | **55×** |
-
-## Theoretical minimum
-
-The irreducible per-step work (JS, after all optimizations):
-1. Pattern matching: 5 linear patterns × ~300ns (delta bypass) = 1.5µs
-2. Persistent proving: 2 patterns × ~50ns (inlined FFI) = 0.1µs
-3. State mutation: 5 consequent patterns × ~200ns (subCompiled + FactSet insert) = 1.0µs
-4. Hash update + cycle check: ~0.2µs (Zobrist incremental — maintained by FactSet)
-
-**JS minimum per step: ~2.8µs. For 679 steps: ~1.9ms.**
-**Zig minimum per step: ~0.3µs. For 679 steps: ~0.2ms.** (Memory bandwidth floor: ~0.1ms from ~21K cache line accesses at 5ns/L1-hit.)
-
-Below 2ms (JS) / 0.2ms (Zig) requires basic block compilation (TODO_0057 Level 3b+) which composes multiple steps into composite transformations, eliminating the per-step overhead entirely.
+**Critical finding:** Converting 444 recursive DFS calls to an iterative loop produces **zero improvement**. V8 JIT makes recursion free. The cost is entirely per-step work.
 
 ## Key Insights
 
-1. **Recursion is free.** V8's JIT makes recursive DFS calls essentially zero-cost. Iterative chains save no time. This invalidates TODO_0057 Level 1 as a performance optimization (it's still useful for tree compression).
+1. **The bottleneck is dispatch, not computation.** Matching (145ns/call) and FFI arithmetic (50-120ns) are fast. The 86% overhead is orchestration: dispatch, allocation, guard checks. Opt_G eliminates this.
 
-2. **The bottleneck is dispatch, not computation.** Matching (145ns/call) and FFI arithmetic (50-120ns) are fast. The cost is in the orchestration: checking which rule to try, dispatching through provePersistentGoals, allocating theta/consumed objects, iterating candidates.
+2. **FFI dispatch is 10× more expensive than the computation.** `provePersistentGoals → subApplyIdx → tryFFIDirect → fn` adds 430ns around a 46ns computation.
 
-3. ~~**V8 megamorphic IC is the #1 JavaScript hotspot.**~~ **FIXED by TODO_0059.** Sparse numeric-keyed objects (`state.linear`) were replaced by sorted Int32Array groups. V8 can now use monomorphic IC on typed array access.
+3. **FFI-first for ground goals, state-lookup for symbolic.** Current code always does state lookup first. With ~10-30 persistent facts per predicate group, this O(n) scan is wasteful when FFI can answer in nanoseconds. Opt_G bakes this decision at compile time via slot dependency analysis.
 
-4. **Snapshot cost persists.** `toObject(state)` at leaf nodes is still expensive (~1ms for 10 terminals) because it converts FactSet → plain `{hash:count}` objects. FactSet.snapshot() itself is fast (~250ns), but the output tree expects plain objects. Opt_A (skip leaf snapshots) is the fix.
+4. **Compiled matchers specialize the interpreter, not the rules.** Same semantics, less dispatch. Generic `tryMatch` stays as reference. Dual-run verification catches divergence.
 
-5. **FFI dispatch is 10× more expensive than the computation.** The `provePersistentGoals → subApplyIdx → tryFFIDirect → fn` chain adds 430ns of overhead around a 46ns computation. Inlining eliminates 90% of this cost.
+5. **Recursion is free.** V8 JIT makes DFS calls zero-cost. Iterative loops save nothing.
+
+6. **Only 31 of 2125 nodes store snapshots.** Branch nodes have `state: null`. Terminal snapshots (leaf/cycle/memo/bound) are the only allocation. FactSet.snapshot (~250ns) is 600× cheaper than toObject (~150µs).
+
+## Theoretical Minimum
+
+Per-step irreducible work (JS, after all optimizations):
+1. Pattern matching: 5 linear × ~300ns = 1.5µs
+2. Persistent proving: 2 × ~50ns (inlined FFI) = 0.1µs
+3. State mutation: 5 × ~200ns (subCompiled + FactSet) = 1.0µs
+4. Hash/cycle check: ~0.2µs
+
+**JS minimum: ~2.8µs/step × 679 = ~1.9ms.**
 
 ## Connection to Other TODOs
 
-- **TODO_0059 (FactSet Migration): DONE.** 16.6ms → 11.6ms (−30%). Eliminated stateIndex, makeChildCtx, undoIndexChanges. State IS the index. Arena-based undo. V8 megamorphic IC fixed.
-- **TODO_0057 (Ephemeral Transit States):** Level 1 (iterative loop) is **invalidated** as a performance optimization by experimental evidence. Level 3b (threaded code) corresponds to Opt_H here.
-- **TODO_0054 (Commuting Match Reduction):** Layer 2 (loli fusion) reduces node count by eliminating commuting branches. Orthogonal to per-node optimization.
-- **TODO_0005 (Constraint Propagation):** Levels 0+1 reduce state size. At larger scale (k-dss, 5000+ nodes): 3-10× from reduced state + branch pruning.
-- **TODO_0052 (Persistent Caching):** Not relevant at current scale (3 memory writes, 6 reads). Triggers at W>50.
-- **TODO_0056 (Speculative Merge):** Explicitly ineffective for multisig pattern (no short convergence). Useful for contracts with short if/else divergences.
+- **TODO_0059 (FactSet Migration): DONE.** 16.6ms → 11.6ms.
+- **TODO_0057 (Ephemeral Transit States):** Level 1 invalidated. Level 3b = Opt_H.
+- **TODO_0054 (Commuting Match Reduction):** Orthogonal (reduces node count).
+- **TODO_0005 (Constraint Propagation):** Orthogonal (reduces state size).
