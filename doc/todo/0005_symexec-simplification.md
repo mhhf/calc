@@ -1041,17 +1041,20 @@ Given these characteristics:
 
 With Level 0 + Level 1 implemented:
 
-**EVM multisig (210 nodes, current benchmark):**
+**Solc symbolic multisig (477 nodes, 13.6ms baseline, structuralMemo=true):**
 - Current: ~50 constraints accumulate, no resolution
 - After: most constraints resolve via FFI re-check. ~5-10 remain (genuinely symbolic)
 - Overhead: ~0.1μs per propagation step (inverted index lookup + one FFI call)
-- Impact on symexec time: <5% overhead, possibly faster (smaller state → faster matching)
+- Smaller state → faster matching at multi-alt points (22 oplus branches)
+- Might enable ~5 additional dead branches (beyond 15 already pruned by EqNeqSolver)
+- **Estimated savings: ~0.2ms** (13.6ms → ~13.4ms standalone; ~3.5ms → ~3.3ms on top of TODO_0058)
+- Levels 2-4 add ~0.1ms more (chain simplification reduces constraint count further)
 
 **k-dss scale (estimated 5000+ nodes):**
 - Without propagation: ~2000 constraints, matching degrades (O(n) state scan per rule)
 - With propagation: ~200 constraints remain (10x reduction), matching stays fast
 - Branch pruning: ~30-50% of branches detected infeasible via chain resolution
-- Estimated speedup: 3-10x from reduced state size + branch pruning
+- Estimated speedup: 3-10× from reduced state size + branch pruning
 
 **Comparison to K/KEVM on same problems:**
 - K: days-to-weeks (modular rule overhead + stuck terms + SMT per-step)

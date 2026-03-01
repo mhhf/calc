@@ -14,7 +14,7 @@ required_by: []
 
 # Memory Read Caching & Persistent Predicate Indexing
 
-Three independent optimizations. All zero-impact at current scale (210 nodes, W=3). Implement when profiling shows the specific bottleneck.
+Three independent optimizations. All zero-impact at current scale (solc symbolic multisig: 477 nodes, W=3, 13.6ms baseline). **0ms savings** in combined optimization pipeline. Implement when profiling shows the specific bottleneck (W>50 or 500+ persistent facts per predicate).
 
 ## Context
 

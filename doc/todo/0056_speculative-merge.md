@@ -409,11 +409,19 @@ Current `computeControlHash` cost: ~0.3ms. Generalized version adds ~0.3ms (fing
 
 | Approach | Multisig time | Generality | Implementation complexity |
 |---|---|---|---|
-| Current (PC+SH hash) | 22ms | EVM only | Low (done) |
-| Generalized fingerprint hash | ~23ms | Any fingerprint calculus | Low |
-| Fingerprint + MSG verify | ~23ms | Any calculus | Medium |
-| Speculative merge (budget=20) | ~43ms | Any oplus pattern | High |
-| Speculative merge + gen. memo | ~45ms | Both patterns | High |
+| Current (PC+SH hash) | 13.6ms | EVM only | Low (done) |
+| Generalized fingerprint hash | ~14ms | Any fingerprint calculus | Low |
+| Fingerprint + MSG verify | ~14ms | Any calculus | Medium |
+| Speculative merge (budget=20) | ~35ms | Any oplus pattern | High |
+| Speculative merge + gen. memo | ~36ms | Both patterns | High |
+
+(Times updated to reflect structuralMemo=true baseline of 13.6ms per TODO_0058 profiling.)
+
+### Impact on combined optimization pipeline (solc symbolic multisig)
+
+**Phase 1 (generalized controlHash): 0ms savings.** Same performance as current EVM-specific hash for the multisig benchmark. Value is generality — enables structural memo for non-EVM calculi without per-calculus code.
+
+**Speculative merge: negative value for multisig** (adds ~21ms overhead with zero convergence). Only beneficial for contracts with short-lived oplus divergences (if/else converging within ~20 steps). Not included in combined optimization estimate.
 
 ## Revised Implementation Plan
 
