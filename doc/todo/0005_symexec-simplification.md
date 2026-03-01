@@ -1060,6 +1060,15 @@ With Level 0 + Level 1 implemented:
 
 CALC won't match hevm's speed immediately (hevm has 5 years of engineering), but the same architectural choices (eager propagation, smart construction, no SMT per-step) put it on the right trajectory.
 
+**Zig rewrite projection:**
+
+| Scale | JS (with propagation) | Zig (with propagation) |
+|---|---|---|
+| Multisig (477 nodes) | ~0.2ms savings (13.6ms → ~13.4ms) | ~0.02ms savings (~1.4ms → ~1.38ms) |
+| k-dss (5000+ nodes) | 3-10× from reduced state + pruning | 3-10× (same algorithmic gain) |
+
+Constraint propagation is a pure algorithmic optimization — the same 3-10× branch pruning and state reduction applies regardless of implementation language. The per-propagation-step cost (~0.1µs in JS, ~0.01µs in Zig) is negligible at both scales.
+
 ---
 
 ## Cross-References

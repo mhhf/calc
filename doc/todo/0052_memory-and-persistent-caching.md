@@ -157,3 +157,16 @@ For a multi-contract benchmark (200K nodes, 50 branches, 1000 writes, 500 storag
 | **Total memory subsystem** | **~112ms** | **~3ms** | **97%** |
 
 The rest of the engine (unification, mutation/undo, substitution, DFS) scales linearly with node count — addressed by separate TODOs (TODO_0035 delta-driven, TODO_0037 compiled matching, TODO_0044 semi-naive).
+
+## Zig Rewrite Projection
+
+Caching is algorithmic (same hit rates regardless of language). The per-lookup and per-traversal costs shrink ~10× in Zig (flat hash maps, no GC, native u256 arithmetic):
+
+| Component | JS (with caching) | Zig (with caching) |
+|---|---|---|
+| mem_read cache hit | ~50ns | ~5ns |
+| mem_read traverse (W=500, miss) | ~100µs | ~10µs |
+| Persistent index lookup | ~50ns | ~5ns |
+| **1000× scale total** | **~3ms** | **~0.3ms** |
+
+At current multisig scale (W=3): zero impact in both JS and Zig.

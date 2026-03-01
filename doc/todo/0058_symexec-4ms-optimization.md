@@ -16,6 +16,7 @@ priority: 5
 cluster: Performance
 depends_on: []
 required_by: []
+starred: true
 ---
 
 # TODO 0058: Symexec Sub-4ms — Per-Step Optimization Analysis
@@ -203,18 +204,47 @@ Combined with Opt_G (compiled matching on the predicted rule): skip the entire f
 | Phase 3 | + H | ~4.5ms | 3× |
 | Phase 3 + tuning | All + V8 tuning | ~4ms | 3.4× |
 
+### Combined with other TODOs (JS)
+
+| Addition | Time | vs baseline |
+|---|---|---|
+| + TODO_0054 Layer 2 (loli fusion) | ~3.5ms | 3.9× |
+| + TODO_0005 L0+L1 (constraint propagation) | ~3.3ms | 4.1× |
+| + TODO_0052/0056 (zero impact at current scale) | ~3.3ms | 4.1× |
+
+### Zig rewrite projection
+
+V8-specific overhead identified by profiling (megamorphic IC 5.8%, Map/Set 2.4%, property loads 3.4%, GC ~3-5%) totals ~20% of named hotspots but diffuse overhead is much larger. A Zig rewrite eliminates all JS runtime costs:
+
+| Operation | JS (after all opts) | Zig | Speedup |
+|---|---|---|---|
+| Pattern match (5 linear) | ~1.5µs | ~0.15µs | 10× |
+| Inline FFI (inc, plus) | ~0.1µs | ~0.01µs | 10× |
+| State mutation (5 facts) | ~1.5µs | ~0.15µs | 10× |
+| Index maintenance | ~0.5µs | ~0.05µs | 10× |
+| Hash/memo check | ~0.3µs | ~0.03µs | 10× |
+| **Per deterministic step** | **~4µs** | **~0.4µs** | **10×** |
+
+Key Zig advantages: Store as flat struct array (one pointer offset vs dictionary lookup), state as bitset (100 bytes `@memcpy` vs 780-entry spread copy at 228µs), enum-indexed stateIndex (vs string-keyed property access), arena allocators (zero GC), native u256 (no BigInt boxing).
+
+| Level | JS time | Zig time | vs JS baseline |
+|---|---|---|---|
+| All TODO_0058 phases | ~4ms | ~0.4ms | 34× |
+| + all other TODOs | ~3.3ms | ~0.3ms | **45×** |
+
 ## Theoretical minimum
 
-The irreducible per-step work:
+The irreducible per-step work (JS):
 1. Pattern matching: 5 linear patterns × ~300ns (delta bypass) = 1.5µs
 2. Persistent proving: 2 patterns × ~50ns (inlined FFI) = 0.1µs
 3. State mutation: 5 consequent patterns × ~300ns (subCompiled + state update) = 1.5µs
 4. Index maintenance: 5 adds + 5 removes × ~50ns = 0.5µs
 5. Hash update + cycle check: ~0.3µs
 
-**Minimum per step: ~4µs. For 468 steps: ~1.9ms.**
+**JS minimum per step: ~4µs. For 468 steps: ~1.9ms.**
+**Zig minimum per step: ~0.4µs. For 468 steps: ~0.19ms.** (Memory bandwidth floor: ~0.1ms from ~21K cache line accesses at 5ns/L1-hit.)
 
-Below 2ms requires basic block compilation (TODO_0057 Level 3b+) which composes multiple steps into composite transformations, eliminating the per-step overhead entirely.
+Below 2ms (JS) / 0.2ms (Zig) requires basic block compilation (TODO_0057 Level 3b+) which composes multiple steps into composite transformations, eliminating the per-step overhead entirely.
 
 ## Key Insights
 
@@ -231,6 +261,7 @@ Below 2ms requires basic block compilation (TODO_0057 Level 3b+) which composes 
 ## Connection to Other TODOs
 
 - **TODO_0057 (Ephemeral Transit States):** Level 1 (iterative loop) is now **invalidated** as a performance optimization by experimental evidence. Level 3b (threaded code) corresponds to Opt_H here.
-- **TODO_0054 (DPOR):** Reduces node count, not per-node cost. Would help the no-memo case (2125 → fewer nodes) but is orthogonal to per-node optimization.
-- **TODO_0052 (Persistent Caching):** Not relevant at current scale (3 memory writes, 6 reads). Triggers at W>50.
-- **TODO_0056 (Speculative Merge):** Reduces tree size via anti-unification. Orthogonal to per-step cost.
+- **TODO_0054 (Commuting Match Reduction):** Layer 2 (loli fusion) reduces node count 477→~430 by eliminating commuting branches. Saves ~0.5ms on top of Phase 3 optimized per-node cost (430 × ~1µs fewer). Orthogonal to per-node optimization.
+- **TODO_0005 (Constraint Propagation):** Levels 0+1 reduce state size (~50 constraints → ~5-10). Saves ~0.2ms from faster matching at multi-alt points. At larger scale (k-dss, 5000+ nodes): 3-10× from reduced state + branch pruning.
+- **TODO_0052 (Persistent Caching):** Not relevant at current scale (3 memory writes, 6 reads). Triggers at W>50. At large scale (W=500): saves ~97% of mem_read cost.
+- **TODO_0056 (Speculative Merge):** Explicitly ineffective for multisig pattern (no short convergence). Useful for contracts with short if/else divergences.

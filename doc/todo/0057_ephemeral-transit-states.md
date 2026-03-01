@@ -305,13 +305,15 @@ Implementation complexity: Very high (substitution chaining, persistent goal col
 
 ### Performance estimates
 
-| Level | Nodes (tree) | Steps (compute) | Time estimate | Complexity |
-|---|---|---|---|---|
-| Current (structuralMemo) | 477 | 477 | 14ms | — |
-| Level 1 (iterative) | ~33 | 477 | **14ms** (0ms savings — invalidated) | Low |
-| Level 3a (block detection) | ~33 | 477 | **14ms** (tree compression only) | Low |
-| Level 3b (threaded code) | ~33 | ~33 | ~6ms | Medium-high |
-| Level 3c (full composition) | ~33 | ~14 | ~3ms | Very high |
+| Level | Nodes (tree) | Steps (compute) | JS time | Zig time | Complexity |
+|---|---|---|---|---|---|
+| Current (structuralMemo) | 477 | 477 | 14ms | ~1.4ms | — |
+| Level 1 (iterative) | ~33 | 477 | **14ms** (invalidated) | ~1.4ms | Low |
+| Level 3a (block detection) | ~33 | 477 | **14ms** (tree only) | ~1.4ms | Low |
+| Level 3b (threaded code) | ~33 | ~33 | ~6ms | ~0.5ms | Medium-high |
+| Level 3c (full composition) | ~33 | ~14 | ~3ms | ~0.2ms | Very high |
+
+Zig estimates assume ~10× per-step speedup from eliminating V8 overhead (megamorphic IC, GC, object allocation, property dispatch). See TODO_0058 for detailed Zig projection.
 
 ## Connection to Existing Theory
 

@@ -236,6 +236,17 @@ Each layer has a distinct theoretical justification:
 
 Each layer is independently correct. Together they cover all sources of redundancy.
 
+## Performance Impact (solc symbolic multisig, structuralMemo=true)
+
+| Layer | Nodes | JS time | Zig time | Notes |
+|---|---|---|---|---|
+| Baseline (memo only) | 477 | 13.6ms | ~1.4ms | Current |
+| + Layer 1 (state memo) | 477 (63 memo) | 13.6ms | ~1.4ms | Same nodes, some subtrees pruned earlier |
+| + Layer 2 (loli fusion) | ~430 | ~12.5ms | ~1.2ms | Eliminates ~47 commuting branch nodes |
+| + TODO_0058 all phases | ~430 | ~3.5ms | ~0.3ms | Combined with per-node optimization |
+
+Layer 2 saves ~1.1ms in baseline JS (fewer nodes × 29µs/node). After TODO_0058 Phase 3 optimizations reduce per-node cost, the node savings contribute ~0.5ms. The primary value is tree correctness (1 STOP leaf instead of 64→2 after memo), not performance.
+
 ## Also Blocked
 
 This TODO blocks the **symbolic sender/storage benchmark**: with 64× duplication, timing comparisons with hevm are meaningless. Fix commuting matches first, then benchmark.
