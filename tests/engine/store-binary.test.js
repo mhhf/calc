@@ -300,6 +300,26 @@ describe('Store Binary Format', () => {
       }
     });
 
+    it('load() auto-writes and re-uses cache', async () => {
+      const tmpFile = path.join(os.tmpdir(), `store-cache-test-${Date.now()}.bin`);
+      try {
+        Store.clear();
+        const binPath = path.join(__dirname, '../../calculus/ill/programs/bin.ill');
+
+        // First load: no cache exists, should parse and write cache
+        const calc1 = await mde.load(binPath, { cache: tmpFile });
+        assert.ok(fs.existsSync(tmpFile), 'Cache file should be written');
+        const typeCount = calc1.types.size;
+
+        // Second load: cache exists, should load from it
+        Store.clear();
+        const calc2 = await mde.load(binPath, { cache: tmpFile });
+        assert.strictEqual(calc2.types.size, typeCount);
+      } finally {
+        try { fs.unlinkSync(tmpFile); } catch {}
+      }
+    });
+
     it('precompiled calc produces same results as tree-sitter load', async () => {
       const tmpFile = path.join(os.tmpdir(), `store-binary-test2-${Date.now()}.bin`);
       try {
