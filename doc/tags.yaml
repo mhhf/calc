@@ -1,47 +1,47 @@
 tags:
   linear-logic: 35
   forward-chaining: 24
-  symexec: 20
-  performance: 19
+  symexec: 22
+  performance: 21
   chr: 18
   research: 17
-  optimization: 15
+  optimization: 16
   clf: 13
+  architecture: 12
   proof-theory: 12
   symbolic-execution: 12
-  architecture: 10
   ownership: 10
   session-types: 10
+  forward-engine: 9
   soundness: 9
   theory: 9
+  evm: 8
   focusing: 8
-  forward-engine: 8
   implementation: 8
   authorization: 7
-  evm: 7
   hevm: 7
   memory-model: 7
   metaproofs: 7
   tooling: 7
   verification: 7
+  content-addressing: 6
   display-calculus: 6
   graded-types: 6
   oplus: 6
   sequent-calculus: 6
+  benchmarking: 5
   CLP: 5
   coinduction: 5
+  compilation: 5
   confluence: 5
   consensus: 5
-  content-addressing: 5
   eigenvariable: 5
   loli: 5
   QTT: 5
   resource-semantics: 5
   accounting: 4
-  benchmarking: 4
   bisimulation: 4
   CHR: 4
-  compilation: 4
   documentation: 4
   financial: 4
   fixed-points: 4
@@ -61,6 +61,7 @@ tags:
   adjunction: 3
   Curry-Howard: 3
   cyclic-proofs: 3
+  data-structures: 3
   DSL: 3
   fibrations: 3
   incremental: 3
@@ -84,6 +85,7 @@ tags:
   UI: 3
   angr: 2
   anti-unification: 2
+  arena-allocation: 2
   benchmark: 2
   blockchain: 2
   branching: 2
@@ -97,7 +99,6 @@ tags:
   constraint-propagation: 2
   Crucible: 2
   cut-elimination: 2
-  data-structures: 2
   Datalog: 2
   de-bruijn: 2
   debt: 2
@@ -113,6 +114,7 @@ tags:
   exponentials: 2
   expressions: 2
   ffi: 2
+  flat-arrays: 2
   game-semantics: 2
   generalization: 2
   Granule: 2
@@ -152,6 +154,7 @@ tags:
   term-representation: 2
   term-rewriting: 2
   TREAT: 2
+  TypedArrays: 2
   union-find: 2
   v2: 2
   with: 2
@@ -163,7 +166,6 @@ tags:
   agents: 1
   algorithms: 1
   anki: 1
-  arena-allocation: 1
   array-theory: 1
   atomic-swaps: 1
   attributed-variables: 1
@@ -238,7 +240,6 @@ tags:
   financial-primitives: 1
   fingerprint-indexing: 1
   first-arg-indexing: 1
-  flat-arrays: 1
   flat-terms: 1
   formal-verification: 1
   formalization: 1
@@ -401,7 +402,6 @@ tags:
   tutorial: 1
   type-constructors: 1
   type-theory: 1
-  TypedArrays: 1
   universal: 1
   up-to: 1
   validators: 1
