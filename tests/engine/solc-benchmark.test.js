@@ -49,8 +49,9 @@ describe('Solc multisig symexec', { timeout: 30000 }, () => {
     const stops = allLeaves.filter(l => classifyLeaf(l.state) === 'STOP');
     for (const leaf of stops) {
       let hasLog = false;
-      for (const h of Object.keys(leaf.state.linear)) {
-        if (Store.tag(Number(h)) === 'log3') { hasLog = true; break; }
+      const log3TagId = Store.TAG['log3'];
+      if (log3TagId !== undefined && leaf.state.linear.groupLen(log3TagId) > 0) {
+        hasLog = true;
       }
       assert(hasLog, 'Every STOP leaf should emit a log3 (Vote event)');
     }

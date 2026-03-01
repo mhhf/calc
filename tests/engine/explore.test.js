@@ -575,8 +575,8 @@ describe('explore', { timeout: 10000 }, () => {
       let hasResultA = false;
       let hasResultB = false;
       for (const leaf of leaves) {
-        if (leaf.state && leaf.state.linear[resultA]) hasResultA = true;
-        if (leaf.state && leaf.state.linear[resultB]) hasResultB = true;
+        if (leaf.state && leaf.state.hasLinear(resultA)) hasResultA = true;
+        if (leaf.state && leaf.state.hasLinear(resultB)) hasResultB = true;
       }
       assert(hasResultA, 'guard branch should produce result_a');
       assert(!hasResultB, 'noguard branch should NOT produce result_b (guard fails)');

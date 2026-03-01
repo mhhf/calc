@@ -293,16 +293,12 @@ describe('EVM Memory Integration', { timeout: 30000 }, () => {
 
       // Check that at least one leaf has stack with value 0x42
       let found = false;
+      const stackTagId = Store.TAG['stack'];
       for (const leaf of leaves) {
-        if (leaf.state) {
-          for (const h of Object.keys(leaf.state.linear)) {
-            const tag = Store.tag(Number(h));
-            if (tag === 'stack') {
-              const v = Store.child(Number(h), 1);
-              if (binToInt(v) === 0x42n) {
-                found = true;
-              }
-            }
+        if (leaf.state && stackTagId !== undefined) {
+          const grp = leaf.state.linear.group(stackTagId);
+          for (let i = 0; i < grp.length; i++) {
+            if (binToInt(Store.child(grp[i], 1)) === 0x42n) found = true;
           }
         }
       }
@@ -335,16 +331,12 @@ describe('EVM Memory Integration', { timeout: 30000 }, () => {
 
       // Check that at least one leaf has stack with value 0
       let found = false;
+      const stackTagId2 = Store.TAG['stack'];
       for (const leaf of leaves) {
-        if (leaf.state) {
-          for (const h of Object.keys(leaf.state.linear)) {
-            const tag = Store.tag(Number(h));
-            if (tag === 'stack') {
-              const v = Store.child(Number(h), 1);
-              if (binToInt(v) === 0n) {
-                found = true;
-              }
-            }
+        if (leaf.state && stackTagId2 !== undefined) {
+          const grp = leaf.state.linear.group(stackTagId2);
+          for (let i = 0; i < grp.length; i++) {
+            if (binToInt(Store.child(grp[i], 1)) === 0n) found = true;
           }
         }
       }
@@ -379,16 +371,12 @@ describe('EVM Memory Integration', { timeout: 30000 }, () => {
 
       // The latest write (0xBB) should win
       let foundBB = false;
+      const stackTagId3 = Store.TAG['stack'];
       for (const leaf of leaves) {
-        if (leaf.state) {
-          for (const h of Object.keys(leaf.state.linear)) {
-            const tag = Store.tag(Number(h));
-            if (tag === 'stack') {
-              const v = Store.child(Number(h), 1);
-              if (binToInt(v) === 0xBBn) {
-                foundBB = true;
-              }
-            }
+        if (leaf.state && stackTagId3 !== undefined) {
+          const grp = leaf.state.linear.group(stackTagId3);
+          for (let i = 0; i < grp.length; i++) {
+            if (binToInt(Store.child(grp[i], 1)) === 0xBBn) foundBB = true;
           }
         }
       }
@@ -421,16 +409,12 @@ describe('EVM Memory Integration', { timeout: 30000 }, () => {
 
       // MSIZE should push 32 on stack
       let found = false;
+      const stackTagId4 = Store.TAG['stack'];
       for (const leaf of leaves) {
-        if (leaf.state) {
-          for (const h of Object.keys(leaf.state.linear)) {
-            const tag = Store.tag(Number(h));
-            if (tag === 'stack') {
-              const v = Store.child(Number(h), 1);
-              if (binToInt(v) === 32n) {
-                found = true;
-              }
-            }
+        if (leaf.state && stackTagId4 !== undefined) {
+          const grp = leaf.state.linear.group(stackTagId4);
+          for (let i = 0; i < grp.length; i++) {
+            if (binToInt(Store.child(grp[i], 1)) === 32n) found = true;
           }
         }
       }
@@ -472,13 +456,12 @@ describe('EVM Memory Integration', { timeout: 30000 }, () => {
 
       // Check stack values: one branch has 1 (success), one has 0 (failure)
       const stackValues = [];
+      const stackTagId5 = Store.TAG['stack'];
       for (const leaf of leaves) {
-        if (leaf.state) {
-          for (const h of Object.keys(leaf.state.linear)) {
-            const tag = Store.tag(Number(h));
-            if (tag === 'stack') {
-              stackValues.push(binToInt(Store.child(Number(h), 1)));
-            }
+        if (leaf.state && stackTagId5 !== undefined) {
+          const grp = leaf.state.linear.group(stackTagId5);
+          for (let i = 0; i < grp.length; i++) {
+            stackValues.push(binToInt(Store.child(grp[i], 1)));
           }
         }
       }
@@ -486,11 +469,13 @@ describe('EVM Memory Integration', { timeout: 30000 }, () => {
       assert(stackValues.includes(0n), 'One branch should have stack 0 (failure)');
 
       // Verify memory preserved in both leaves (non-empty: write 0 0x42 empty_mem)
+      const memTagId = Store.TAG['mem'];
       for (const leaf of leaves) {
         let memHash = null;
-        for (const h of Object.keys(leaf.state.linear)) {
-          if (Store.tag(Number(h)) === 'mem') {
-            memHash = Store.child(Number(h), 0);
+        if (memTagId !== undefined) {
+          const grp = leaf.state.linear.group(memTagId);
+          for (let i = 0; i < grp.length; i++) {
+            memHash = Store.child(grp[i], 0);
           }
         }
         assert(memHash !== null, 'Memory should be preserved after CALL');
@@ -557,13 +542,11 @@ describe('EVM Memory Integration', { timeout: 30000 }, () => {
       allLeaves = getAllLeaves(tree);
 
       // No leaves should have stuck `call(...)` facts
+      const callTagId = Store.TAG['call'];
       for (const leaf of allLeaves) {
-        if (leaf.state) {
-          for (const h of Object.keys(leaf.state.linear)) {
-            const tag = Store.tag(Number(h));
-            assert.notStrictEqual(tag, 'call',
-              'No leaf should have stuck call(...) facts');
-          }
+        if (leaf.state && callTagId !== undefined) {
+          assert.strictEqual(leaf.state.linear.groupLen(callTagId), 0,
+            'No leaf should have stuck call(...) facts');
         }
       }
     });
