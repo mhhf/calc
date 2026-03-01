@@ -84,47 +84,61 @@ async function runEngine(iterations) {
 
 // ─── Suite: symexec ──────────────────────────────────────────────────────────
 
-async function runSymexec(iterations) {
-  const path = require('path');
+function benchOne(label, state, forwardRules, calcCtx, exploreOpts, iterations) {
   const { performance } = require('perf_hooks');
-  const mde = require('../../lib/engine');
   const symexec = require('../../lib/engine/symexec');
-
-  const calc = await mde.load(
-    path.join(__dirname, '../../calculus/ill/programs/multisig.ill')
-  );
-  const state = mde.decomposeQuery(calc.queries.get('symex'));
-  const calcCtx = { clauses: calc.clauses, types: calc.types };
-
   const WARMUP = 3;
 
-  // Warmup
   for (let i = 0; i < WARMUP; i++) {
-    symexec.explore(state, calc.forwardRules, { maxDepth: 200, calc: calcCtx });
+    symexec.explore(state, forwardRules, exploreOpts);
   }
-
   if (global.gc) global.gc();
 
-  // Measure
   const times = [];
   for (let i = 0; i < iterations; i++) {
     const t0 = performance.now();
-    symexec.explore(state, calc.forwardRules, { maxDepth: 200, calc: calcCtx });
+    symexec.explore(state, forwardRules, exploreOpts);
     times.push(performance.now() - t0);
   }
-
   times.sort((a, b) => a - b);
-  const mean = times.reduce((a, b) => a + b, 0) / times.length;
-
   return {
-    'symexec.multisig': {
-      mean,
-      p50: times[Math.floor(times.length * 0.5)],
-      p95: times[Math.floor(times.length * 0.95)],
-      min: times[0],
-      max: times[times.length - 1],
-    },
+    mean: times.reduce((a, b) => a + b, 0) / times.length,
+    p50: times[Math.floor(times.length * 0.5)],
+    p95: times[Math.floor(times.length * 0.95)],
+    min: times[0],
+    max: times[times.length - 1],
   };
+}
+
+async function runSymexec(iterations) {
+  const path = require('path');
+  const mde = require('../../lib/engine');
+
+  const results = {};
+
+  // 1. Small multisig (committed-choice baseline)
+  {
+    const calc = await mde.load(
+      path.join(__dirname, '../../calculus/ill/programs/multisig.ill')
+    );
+    const state = mde.decomposeQuery(calc.queries.get('symex'));
+    const calcCtx = { clauses: calc.clauses, types: calc.types };
+    results['symexec.multisig'] = benchOne('multisig', state, calc.forwardRules, calcCtx,
+      { maxDepth: 200, calc: calcCtx }, iterations);
+  }
+
+  // 2. Solc symbolic multisig (structuralMemo)
+  {
+    const calc = await mde.load(
+      path.join(__dirname, '../../calculus/ill/programs/multisig_nocall_solc_symbolic.ill')
+    );
+    const state = mde.decomposeQuery(calc.queries.get('symex'));
+    const calcCtx = { clauses: calc.clauses, types: calc.types };
+    results['symexec.solc_symbolic'] = benchOne('solc_symbolic', state, calc.forwardRules, calcCtx,
+      { maxDepth: 200, calc: calcCtx, structuralMemo: true }, iterations);
+  }
+
+  return results;
 }
 
 // ─── Main ────────────────────────────────────────────────────────────────────
