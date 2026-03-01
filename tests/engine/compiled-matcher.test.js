@@ -218,114 +218,107 @@ describe('compilePersistentStep', () => {
   });
 });
 
-// ─── generateMatcher eligibility ─────────────────────────────────────
+// ─── persistentSteps attachment ──────────────────────────────────────
 
-describe('generateMatcher eligibility', { timeout: 10000 }, () => {
-  it('qualifies single-alt rules', async () => {
+describe('persistentSteps attachment', { timeout: 10000 }, () => {
+  it('attaches persistentSteps for rules with FFI antecedents', async () => {
     Store.clear();
     const calc = await mde.load(
       path.join(__dirname, '../../calculus/ill/programs/multisig_nocall_solc.ill')
     );
 
-    let compiled = 0, total = 0;
+    let withSteps = 0, total = 0;
     for (const rule of calc.forwardRules) {
       total++;
-      if (rule.compiledMatcher) compiled++;
+      if (rule.persistentSteps) withSteps++;
     }
 
-    assert(compiled > 0, `Expected some compiled matchers, got ${compiled}/${total}`);
-    // EVM rules: ~40 of 74 should be eligible
-    assert(compiled >= 30, `Expected ≥30 compiled matchers, got ${compiled}/${total}`);
+    assert(withSteps > 0, `Expected some rules with persistentSteps, got ${withSteps}/${total}`);
+    // EVM rules: ~40 of 74 have FFI persistent antecedents
+    assert(withSteps >= 30, `Expected ≥30 rules with persistentSteps, got ${withSteps}/${total}`);
   });
 
-  it('excludes multi-alt rules', async () => {
+  it('does not attach for rules without persistent antecedents', async () => {
     Store.clear();
     const calc = await mde.load(
       path.join(__dirname, '../../calculus/ill/programs/multisig_nocall_solc.ill')
     );
 
     for (const rule of calc.forwardRules) {
-      if (rule.consequentAlts && rule.consequentAlts.length > 1) {
-        assert(!rule.compiledMatcher,
-          `Multi-alt rule ${rule.name} should not have compiled matcher`);
+      const pats = rule.antecedent.persistent || [];
+      if (pats.length === 0) {
+        assert(!rule.persistentSteps,
+          `Rule ${rule.name} has no persistent antecedents but got persistentSteps`);
       }
     }
   });
 
-  it('excludes rules with persistent deps in linear patterns', async () => {
+  it('persistentSteps length matches persistent antecedent count', async () => {
     Store.clear();
     const calc = await mde.load(
       path.join(__dirname, '../../calculus/ill/programs/multisig_nocall_solc.ill')
     );
 
     for (const rule of calc.forwardRules) {
-      const linearPats = rule.antecedent.linear || [];
-      let hasDeps = false;
-      for (const p of linearPats) {
-        const meta = rule.linearMeta[p];
-        if (meta && meta.persistentDeps && meta.persistentDeps.size > 0) {
-          hasDeps = true;
-          break;
-        }
-      }
-      if (hasDeps) {
-        assert(!rule.compiledMatcher,
-          `Rule ${rule.name} with persistent deps should not have compiled matcher`);
-      }
+      if (!rule.persistentSteps) continue;
+      const pats = rule.antecedent.persistent || [];
+      assert.strictEqual(rule.persistentSteps.length, pats.length,
+        `Rule ${rule.name}: persistentSteps length mismatch`);
     }
   });
 });
 
-// ─── Preserved correctness ──────────────────────────────────────────
+// ─── Persistent step integration with tryMatch ──────────────────────
 
-describe('compiled matcher preserved correctness', { timeout: 10000 }, () => {
-  it('preserves code facts (not in consumed)', async () => {
+describe('persistent step integration', { timeout: 10000 }, () => {
+  it('tryMatch produces same results with and without persistentSteps', async () => {
     Store.clear();
     const calc = await mde.load(
       path.join(__dirname, '../../calculus/ill/programs/multisig_nocall_solc.ill')
     );
     const plainState = mde.decomposeQuery(calc.queries.get('symex'));
+    const state = forward.createState(plainState.linear, plainState.persistent);
 
-    // Run a few steps to reach a state where preserved rules fire
-    const result = forward.run(
-      forward.createState(plainState.linear, plainState.persistent),
-      calc.forwardRules,
-      { maxSteps: 5, calc: { clauses: calc.clauses, types: calc.types } }
-    );
-
-    // Try to match from the intermediate state
-    const state = forward.createState(result.state.linear, result.state.persistent);
-    let testedAny = false;
+    let testedCount = 0;
     for (const rule of calc.forwardRules) {
-      if (!rule.compiledMatcher) continue;
-      if (!rule.preserved || rule.preserved.length === 0) continue;
+      if (!rule.persistentSteps) continue;
 
-      const m = tryMatch(rule, state,
-        { clauses: calc.clauses, types: calc.types });
-      if (!m) continue;
+      // Run with persistent steps
+      const resultWith = tryMatch(rule, state, {
+        clauses: calc.clauses, types: calc.types
+      }, { optimizePreserved: true });
 
-      // Preserved patterns should not appear in consumed
-      for (const h of rule.preserved) {
-        if (m.consumed[h]) {
-          assert.fail(`Preserved pattern ${h} should not be in consumed for ${rule.name}`);
-        }
+      // Temporarily disable persistent steps and run generic path
+      const saved = rule.persistentSteps;
+      rule.persistentSteps = null;
+      const resultWithout = tryMatch(rule, state, {
+        clauses: calc.clauses, types: calc.types
+      }, { optimizePreserved: true });
+      rule.persistentSteps = saved;
+
+      // Both should agree on match/no-match
+      if (resultWith === null) {
+        assert.strictEqual(resultWithout, null,
+          `Rule ${rule.name}: with steps says no match but without matches`);
+      } else {
+        assert(resultWithout !== null,
+          `Rule ${rule.name}: with steps matches but without says no match`);
+        // Same consumed keys
+        const withKeys = Object.keys(resultWith.consumed).sort();
+        const withoutKeys = Object.keys(resultWithout.consumed).sort();
+        assert.deepStrictEqual(withKeys, withoutKeys,
+          `Rule ${rule.name}: consumed keys differ`);
       }
-      assert.strictEqual(m.optimized, true, 'should have optimized flag');
-
-      // applyMatch should produce correct state
-      const newState = forward.applyMatch(state, m);
-      assert(newState, 'applyMatch should succeed');
-      testedAny = true;
-      break;
+      testedCount++;
     }
-    assert(testedAny, 'Should have tested at least one preserved rule');
+    assert(testedCount > 20, `Expected ≥20 dual-run tests, got ${testedCount}`);
   });
 });
 
-// ─── E2E: compiled vs generic produce same tree ─────────────────────
+// ─── E2E: persistent steps produce same tree ─────────────────────────
 
-describe('E2E compiled matcher correctness', { timeout: 30000 }, () => {
-  it('multisig tree identical with compiled matchers (280 nodes)', async () => {
+describe('E2E persistent step correctness', { timeout: 30000 }, () => {
+  it('multisig tree identical with persistent steps (280 nodes)', async () => {
     Store.clear();
     const calc = await mde.load(
       path.join(__dirname, '../../calculus/ill/programs/multisig_nocall_solc.ill')
@@ -364,49 +357,5 @@ describe('E2E compiled matcher correctness', { timeout: 30000 }, () => {
       structuralMemo: true
     });
     assert(countNodes(treeMemo) < 500, `Memo: expected <500 nodes, got ${countNodes(treeMemo)}`);
-  });
-
-  it('generic path matches compiled path (dual-run spot check)', async () => {
-    Store.clear();
-    const calc = await mde.load(
-      path.join(__dirname, '../../calculus/ill/programs/multisig_nocall_solc.ill')
-    );
-    const plainState = mde.decomposeQuery(calc.queries.get('symex'));
-    const state = forward.createState(plainState.linear, plainState.persistent);
-
-    // Spot-check: for each rule with compiled matcher, compare results
-    let testedCount = 0;
-    for (const rule of calc.forwardRules) {
-      if (!rule.compiledMatcher) continue;
-
-      // Run compiled path
-      const compiledResult = rule.compiledMatcher(state, {
-        clauses: calc.clauses, types: calc.types
-      });
-
-      // Temporarily disable compiled matcher and run generic path
-      const saved = rule.compiledMatcher;
-      rule.compiledMatcher = null;
-      const genericResult = tryMatch(rule, state, {
-        clauses: calc.clauses, types: calc.types
-      }, { optimizePreserved: true });
-      rule.compiledMatcher = saved;
-
-      // Both should agree on match/no-match
-      if (compiledResult === null) {
-        assert.strictEqual(genericResult, null,
-          `Rule ${rule.name}: compiled says no match but generic matches`);
-      } else {
-        assert(genericResult !== null,
-          `Rule ${rule.name}: compiled matches but generic says no match`);
-        // Same consumed keys
-        const compiledKeys = Object.keys(compiledResult.consumed).sort();
-        const genericKeys = Object.keys(genericResult.consumed).sort();
-        assert.deepStrictEqual(compiledKeys, genericKeys,
-          `Rule ${rule.name}: consumed keys differ`);
-      }
-      testedCount++;
-    }
-    assert(testedCount > 20, `Expected ≥20 dual-run tests, got ${testedCount}`);
   });
 });
