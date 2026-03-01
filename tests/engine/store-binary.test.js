@@ -1,7 +1,7 @@
 /**
- * Tests for Store binary serialization/deserialization
+ * Tests for Store binary serialization/deserialization and auto-caching
  */
-const { describe, it, beforeEach } = require('node:test');
+const { describe, it, beforeEach, afterEach } = require('node:test');
 const assert = require('node:assert');
 const path = require('path');
 const fs = require('fs');
@@ -273,12 +273,12 @@ describe('Store Binary Format', () => {
   });
 
   describe('precompile/loadPrecompiled end-to-end', () => {
-    it('precompiles bin.ill and loads it back', async () => {
+    it('precompiles bin.ill and loads it back', () => {
       const tmpFile = path.join(os.tmpdir(), `store-binary-test-${Date.now()}.bin`);
       try {
         Store.clear();
         const binPath = path.join(__dirname, '../../calculus/ill/programs/bin.ill');
-        await mde.precompile(binPath, tmpFile);
+        mde.precompile(binPath, tmpFile);
 
         // Record what the parse produced
         const origSize = Store.size();
@@ -300,39 +300,19 @@ describe('Store Binary Format', () => {
       }
     });
 
-    it('load() auto-writes and re-uses cache', async () => {
-      const tmpFile = path.join(os.tmpdir(), `store-cache-test-${Date.now()}.bin`);
-      try {
-        Store.clear();
-        const binPath = path.join(__dirname, '../../calculus/ill/programs/bin.ill');
-
-        // First load: no cache exists, should parse and write cache
-        const calc1 = await mde.load(binPath, { cache: tmpFile });
-        assert.ok(fs.existsSync(tmpFile), 'Cache file should be written');
-        const typeCount = calc1.types.size;
-
-        // Second load: cache exists, should load from it
-        Store.clear();
-        const calc2 = await mde.load(binPath, { cache: tmpFile });
-        assert.strictEqual(calc2.types.size, typeCount);
-      } finally {
-        try { fs.unlinkSync(tmpFile); } catch {}
-      }
-    });
-
-    it('precompiled calc produces same results as source load', async () => {
+    it('precompiled calc produces same results as source load', () => {
       const tmpFile = path.join(os.tmpdir(), `store-binary-test2-${Date.now()}.bin`);
       try {
         const binPath = path.join(__dirname, '../../calculus/ill/programs/bin.ill');
 
-        // Load from source
+        // Load from source (no caching)
         Store.clear();
-        const calcTS = await mde.load(binPath);
+        const calcTS = mde.load(binPath, { cache: false });
         const tsTypes = new Map(calcTS.types);
 
         // Precompile and reload
         Store.clear();
-        await mde.precompile(binPath, tmpFile);
+        mde.precompile(binPath, tmpFile);
         Store.clear();
         const calcBin = mde.loadPrecompiled(tmpFile);
 
@@ -352,9 +332,9 @@ describe('Store Binary Format', () => {
       try {
         const msPath = path.join(__dirname, '../../calculus/ill/programs/multisig.ill');
 
-        // Source load + explore
+        // Source load + explore (no caching)
         Store.clear();
-        const calcSrc = mde.load(msPath);
+        const calcSrc = mde.load(msPath, { cache: false });
         const stateSrc = mde.decomposeQuery(calcSrc.queries.get('symex'));
         const treeSrc = symexec.explore(stateSrc, calcSrc.forwardRules, {
           maxDepth: 200,
@@ -379,6 +359,207 @@ describe('Store Binary Format', () => {
       } finally {
         try { fs.unlinkSync(tmpFile); } catch {}
       }
+    });
+  });
+
+  describe('auto-cache', () => {
+    let tmpDir;
+
+    beforeEach(() => {
+      Store.clear();
+      tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'calc-autocache-'));
+    });
+
+    afterEach(() => {
+      fs.rmSync(tmpDir, { recursive: true, force: true });
+    });
+
+    it('writes and reads full cache (load twice)', () => {
+      const binPath = path.join(__dirname, '../../calculus/ill/programs/bin.ill');
+
+      // First load: miss, writes cache
+      const calc1 = mde.load(binPath, { cacheDir: tmpDir });
+      const typeCount = calc1.types.size;
+      assert.ok(typeCount > 0);
+      const cacheFiles = fs.readdirSync(tmpDir).filter(f => f.endsWith('.bin'));
+      assert.ok(cacheFiles.length > 0, 'Cache file(s) should be written');
+
+      // Second load: full cache hit
+      Store.clear();
+      const calc2 = mde.load(binPath, { cacheDir: tmpDir });
+      assert.strictEqual(calc2.types.size, typeCount);
+      assert.ok(calc2.types.has('nat'));
+    });
+
+    it('invalidates cache when source changes', () => {
+      const tmpFile = path.join(tmpDir, 'test.ill');
+      fs.writeFileSync(tmpFile, 'mytype: type.');
+
+      // First load: writes cache
+      const calc1 = mde.load(tmpFile, { cacheDir: tmpDir });
+      assert.strictEqual(calc1.types.size, 1);
+      assert.ok(calc1.types.has('mytype'));
+
+      // Modify source
+      fs.writeFileSync(tmpFile, 'mytype: type.\nmytype2: type.');
+
+      // Second load: hash changed → cache miss → new cache
+      Store.clear();
+      const calc2 = mde.load(tmpFile, { cacheDir: tmpDir });
+      assert.strictEqual(calc2.types.size, 2);
+      assert.ok(calc2.types.has('mytype2'));
+    });
+
+    it('cache:imports restores SDK and parses top file fresh', () => {
+      const libFile = path.join(tmpDir, 'lib.ill');
+      const mainFile = path.join(tmpDir, 'main.ill');
+      fs.writeFileSync(libFile, 'nat: type.\nz: nat.\ns: nat -> nat.');
+      fs.writeFileSync(mainFile, '#import(lib.ill)\nmyfact: nat.');
+
+      // First load: miss, writes imports cache
+      const calc1 = mde.load(mainFile, { cache: 'imports', cacheDir: tmpDir });
+      assert.ok(calc1.types.has('nat'));
+      assert.ok(calc1.types.has('myfact'));
+
+      // Modify top file only
+      fs.writeFileSync(mainFile, '#import(lib.ill)\nmyfact2: nat.');
+
+      // Second load: imports cache hit, top file parsed fresh
+      Store.clear();
+      const calc2 = mde.load(mainFile, { cache: 'imports', cacheDir: tmpDir });
+      assert.ok(calc2.types.has('nat'), 'SDK types still present');
+      assert.ok(calc2.types.has('myfact2'), 'New top-file type present');
+      assert.ok(!calc2.types.has('myfact'), 'Old top-file type gone');
+    });
+
+    it('cache:false writes no cache files', () => {
+      const tmpFile = path.join(tmpDir, 'nocache.ill');
+      fs.writeFileSync(tmpFile, 'mytype: type.');
+
+      mde.load(tmpFile, { cache: false });
+      const cacheFiles = fs.readdirSync(tmpDir).filter(f => f.endsWith('.bin'));
+      assert.strictEqual(cacheFiles.length, 0, 'No cache files should be written');
+    });
+
+    it('cached load produces same types/clauses as fresh load', () => {
+      const binPath = path.join(__dirname, '../../calculus/ill/programs/bin.ill');
+
+      // Fresh load
+      Store.clear();
+      const calcFresh = mde.load(binPath, { cache: false });
+
+      // Cached load (first call = miss + write, same result)
+      Store.clear();
+      const calcCached = mde.load(binPath, { cacheDir: tmpDir });
+
+      assert.strictEqual(calcCached.types.size, calcFresh.types.size);
+      assert.strictEqual(calcCached.clauses.size, calcFresh.clauses.size);
+      for (const [name] of calcFresh.types) {
+        assert.ok(calcCached.types.has(name), `Missing type: ${name}`);
+      }
+    });
+
+    it('corrupted cache file falls back to fresh parse', () => {
+      const binPath = path.join(__dirname, '../../calculus/ill/programs/bin.ill');
+
+      // First load: writes cache
+      const calc1 = mde.load(binPath, { cacheDir: tmpDir });
+      const typeCount = calc1.types.size;
+
+      // Corrupt all cache files
+      for (const f of fs.readdirSync(tmpDir).filter(f => f.endsWith('.bin'))) {
+        const p = path.join(tmpDir, f);
+        const buf = fs.readFileSync(p);
+        buf[30] ^= 0xFF;
+        fs.writeFileSync(p, buf);
+      }
+
+      // Second load: corrupted → fallback to fresh parse
+      Store.clear();
+      const calc2 = mde.load(binPath, { cacheDir: tmpDir });
+      assert.strictEqual(calc2.types.size, typeCount);
+    });
+
+    it('file with no imports uses single-tier cache', () => {
+      const tmpFile = path.join(tmpDir, 'simple.ill');
+      fs.writeFileSync(tmpFile, 'mytype: type.\nval: mytype.');
+
+      // First load: writes one cache file (full only)
+      const calc = mde.load(tmpFile, { cacheDir: tmpDir });
+      assert.ok(calc.types.has('mytype'));
+      assert.ok(calc.types.has('val'));
+
+      const cacheFiles = fs.readdirSync(tmpDir).filter(f => f.endsWith('.bin'));
+      assert.strictEqual(cacheFiles.length, 1, 'Only full-tier cache file');
+
+      // Second load: hits full cache
+      Store.clear();
+      const calc2 = mde.load(tmpFile, { cacheDir: tmpDir });
+      assert.ok(calc2.types.has('mytype'));
+      assert.ok(calc2.types.has('val'));
+    });
+
+    it('cache:imports with real EVM files', () => {
+      const msPath = path.join(__dirname, '../../calculus/ill/programs/multisig.ill');
+
+      // First load: miss, writes imports cache
+      const calc1 = mde.load(msPath, { cache: 'imports', cacheDir: tmpDir });
+      assert.ok(calc1.types.has('nat'), 'has SDK type');
+      assert.ok(calc1.queries.has('symex'), 'has symex query');
+
+      // Only imports cache (not full)
+      const cacheFiles = fs.readdirSync(tmpDir).filter(f => f.endsWith('.bin'));
+      assert.strictEqual(cacheFiles.length, 1, 'Only imports cache file');
+
+      // Second load: imports cache hit, top file parsed fresh
+      Store.clear();
+      const calc2 = mde.load(msPath, { cache: 'imports', cacheDir: tmpDir });
+      assert.ok(calc2.types.has('nat'));
+      assert.ok(calc2.queries.has('symex'));
+      assert.strictEqual(calc2.types.size, calc1.types.size);
+    });
+
+    it('auto-cached symexec produces same tree as fresh', () => {
+      const symexec = require('../../lib/engine/symexec');
+      const treeUtils = require('../../lib/engine/tree-utils');
+      const msPath = path.join(__dirname, '../../calculus/ill/programs/multisig.ill');
+
+      // Fresh load
+      Store.clear();
+      const calcFresh = mde.load(msPath, { cache: false });
+      const stateFresh = mde.decomposeQuery(calcFresh.queries.get('symex'));
+      const treeFresh = symexec.explore(stateFresh, calcFresh.forwardRules, {
+        maxDepth: 200,
+        calc: { clauses: calcFresh.clauses, types: calcFresh.types }
+      });
+
+      // Auto-cached load (first call = miss + write)
+      Store.clear();
+      const calcCached = mde.load(msPath, { cacheDir: tmpDir });
+      const stateCached = mde.decomposeQuery(calcCached.queries.get('symex'));
+      const treeCached = symexec.explore(stateCached, calcCached.forwardRules, {
+        maxDepth: 200,
+        calc: { clauses: calcCached.clauses, types: calcCached.types }
+      });
+
+      assert.strictEqual(treeUtils.countNodes(treeCached), treeUtils.countNodes(treeFresh));
+      assert.strictEqual(treeUtils.countLeaves(treeCached), treeUtils.countLeaves(treeFresh));
+      assert.strictEqual(treeUtils.maxDepth(treeCached), treeUtils.maxDepth(treeFresh));
+    });
+
+    it('two-tier cache: full miss → imports hit → full hit', () => {
+      const msPath = path.join(__dirname, '../../calculus/ill/programs/multisig.ill');
+
+      // First load: double miss → writes both imports and full caches
+      const calc1 = mde.load(msPath, { cacheDir: tmpDir });
+      const cacheFiles1 = fs.readdirSync(tmpDir).filter(f => f.endsWith('.bin'));
+      assert.strictEqual(cacheFiles1.length, 2, 'Both imports and full cache written');
+
+      // Second load: full cache hit
+      Store.clear();
+      const calc2 = mde.load(msPath, { cacheDir: tmpDir });
+      assert.strictEqual(calc2.types.size, calc1.types.size);
+      assert.strictEqual(calc2.clauses.size, calc1.clauses.size);
     });
   });
 });

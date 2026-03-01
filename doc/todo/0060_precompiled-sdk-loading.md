@@ -613,3 +613,5 @@ Implementation:
 - **Opt_C**: Compiled rules stored in binary cache metadata (JSON, not v8.serialize — v8 showed no improvement over recompile). Set fields in `linearMeta` (freevars, persistentDeps) require explicit Array↔Set conversion for JSON round-trip.
 
 The v8.serialize approach from the plan (1.2ms estimated) measured at 1.38ms — no better than recompiling (1.41ms). Instead, compiled rules are included in the existing JSON metadata section of the binary cache, avoiding rule compilation entirely on cache hit.
+
+**Auto-caching (2026-03-01)**: `mde.load()` now uses content-hash keyed two-tier caching by default. Cache invalidation via recursive content hashing (change any source → all downstream hashes change). Two tiers: full program cache + imports-only (SDK) cache. Supports `cache: true` (default), `cache: 'imports'`, `cache: false`. See `doc/documentation/loader-and-precompile.md`.

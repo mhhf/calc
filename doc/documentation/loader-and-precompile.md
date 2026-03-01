@@ -5,13 +5,19 @@
 ```js
 const mde = require('./lib/engine');
 
-// Source load — parse .ill file(s) to calc context
+// Auto-cached load (default) — content-hash keyed, two-tier cache
 const calc = mde.load('program.ill');
 
-// Source load with auto-caching — writes binary on miss, reads on hit
-const calc = mde.load('program.ill', { cache: '/tmp/program.bin' });
+// Cache imports only — SDK cached, top file parsed fresh each time
+const calc = mde.load('program.ill', { cache: 'imports' });
 
-// Explicit precompile — writes binary cache
+// No caching
+const calc = mde.load('program.ill', { cache: false });
+
+// Custom cache directory (default: os.tmpdir()/calc-cache/)
+const calc = mde.load('program.ill', { cacheDir: '/tmp/my-cache' });
+
+// Explicit precompile — writes binary cache to specific path
 mde.precompile('program.ill', '/tmp/program.bin');
 
 // Load from precompiled binary
@@ -93,12 +99,60 @@ Forward rules are compiled (`compile.js`) at cache-write time and stored in meta
 
 Import chain example: `multisig.ill → evm.ill → bin.ill`.
 
-**Limitation**: precompiling only the SDK (e.g. `evm.ill`) and then loading a user program does not skip re-parsing imports — `#import(evm.ill)` in the user file triggers a full re-parse regardless of Store state. Incremental import-skipping is not yet implemented.
+`loadFile` accepts `opts.alreadyImported` — a pre-populated Set of paths to skip during import resolution. Used by auto-caching to avoid re-parsing cached imports.
+
+## Auto-Caching
+
+`load()` uses content-hash keyed two-tier caching by default. Cache files are stored in `os.tmpdir()/calc-cache/` (survives session, cleared on reboot).
+
+### Cache key: recursive content hash
+
+Each file's hash includes its source text and transitive dependency hashes:
+
+```
+fileHash(bin.ill)  = hashString(source)
+fileHash(evm.ill)  = hashCombine(hashString(source), fileHash(bin.ill))
+fullHash           = hashCombine(hashString(multisig.ill), fileHash(evm.ill), ...)
+importsHash        = hashCombine(sorted top-level import fileHashes)
+```
+
+Change any source file → all downstream hashes change → stale caches never loaded.
+
+### Two-tier cache
+
+| File | Purpose |
+|---|---|
+| `<fullHash>.bin` | Full program snapshot (all files) |
+| `<importsHash>.bin` | SDK-only snapshot (top-level imports + transitive deps) |
+
+**Top-level imports** = `#import` directives before any declarations. Inline imports (e.g. `#import(code.ill)` inside `#symex`) are part of the top file.
+
+### Load paths (cache: true)
+
+1. **Full cache hit** → `loadPrecompiled(fullHash.bin)` (~2.6ms)
+2. **Imports cache hit** → restore SDK, parse top file on top, write full cache (~3ms)
+3. **Double miss** → parse SDK bottom-up → snapshot imports cache, parse top file → snapshot full cache (~11ms + ~1ms write)
+
+### cache: 'imports'
+
+Same as above but never writes full cache. Top file always parsed fresh. Useful for benchmarking user programs against a cached SDK.
+
+### Incremental loading after SDK restore
+
+After `Store.restore(sdkSnapshot)`, Store has IDs 1..N. User program calls `Store.put()` → allocates N+1..M. Content-addressing ensures same (tag, children) → same ID via DEDUP. No conflicts. Only new forward rules need `compileRule()`.
+
+### Edge cases
+
+- **Corrupted cache**: CRC32 check fails → delete stale file → fallback to fresh parse
+- **Concurrent writes**: deterministic (same source → same content), last writer wins
+- **No imports**: single-tier cache only, `cache: 'imports'` degrades to `cache: false`
 
 ## Performance (multisig_nocall_solc_symbolic, 689 nodes, warm)
 
 | Path | Load | Explore | Total |
 |---|---|---|---|
 | Source (Pratt parser) | ~13.5ms | ~10ms | ~23.5ms |
-| Full precompiled | ~2.6ms | ~10ms | ~12.6ms |
+| Auto-cache hit (full) | ~2.6ms | ~10ms | ~12.6ms |
+| Auto-cache hit (imports) | ~3ms | ~10ms | ~13ms |
+| Explicit precompiled | ~2.6ms | ~10ms | ~12.6ms |
 | Before (tree-sitter) | ~51ms | ~10ms | ~61ms |
