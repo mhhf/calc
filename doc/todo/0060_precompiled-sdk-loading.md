@@ -2,7 +2,7 @@
 title: "Precompiled SDK Loading"
 created: 2026-03-01
 modified: 2026-03-01
-summary: "Eliminated 51ms mde.load() setup via binary precompilation + Pratt parser. Source load 7ms (was 51ms), precompiled 1.4ms (4.8x speedup). Tree-sitter removed entirely (-1105 lines)."
+summary: "Eliminated 51ms mde.load() setup via binary precompilation + Pratt parser. Source load ~11ms (was 51ms), precompiled ~2.6ms. Tree-sitter removed entirely (-1105 lines)."
 tags:
   - performance
   - symexec
@@ -612,17 +612,18 @@ All three optimizations implemented. Tree-sitter removed entirely (-1105 lines n
 
 | Metric | Before | After | Speedup |
 |---|---|---|---|
-| Source load (EVM SDK) | 51ms | 6.9ms | 7.4x |
-| Precompiled load | N/A | 1.4ms | 4.8x vs source |
-| Binary cache size | N/A | 200 KB | — |
+| Source load (EVM SDK) | 51ms | ~11ms | 4.7x |
+| Precompiled load | N/A | ~2.6ms | 4.2x vs source |
+| Warm total (load+explore) | ~56ms | ~4.7ms | 11.9x |
+| Binary cache size | N/A | 211 KB | — |
 | Tree-sitter WASM | 11ms | 0ms | eliminated |
 | Rule compilation | 1.4ms | 0ms (cached) | eliminated |
-| Tests | 611 | 662 | +51 new tests |
+| Tests | 611 | 663 | +52 new tests |
 | Lines of code | +1531 | -810 net | -1105 lines from tree-sitter |
 
 Implementation:
 - **Opt_A**: `Store.snapshot()`/`restore()` + `lib/engine/store-binary.js` (binary format with CRC32)
 - **Opt_B**: `lib/parser/declarations.js` + `buildParserFromTables` extensions (application, arrows, forwardRules, binaryNormalization). All parsers now synchronous.
-- **Opt_C**: Compiled rules stored in binary cache metadata (JSON, not v8.serialize — v8 showed no improvement over recompile)
+- **Opt_C**: Compiled rules stored in binary cache metadata (JSON, not v8.serialize — v8 showed no improvement over recompile). Set fields in `linearMeta` (freevars, persistentDeps) require explicit Array↔Set conversion for JSON round-trip.
 
 The v8.serialize approach from the plan (1.2ms estimated) measured at 1.38ms — no better than recompiling (1.41ms). Instead, compiled rules are included in the existing JSON metadata section of the binary cache, avoiding rule compilation entirely on cache hit.
