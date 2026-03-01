@@ -250,6 +250,174 @@ describe('v2 Calculus (generated from spec)', () => {
     });
   });
 
+  describe('extended parser (application, arrows, forward rules, binary norm)', () => {
+    let engineParse;
+    const Store = require('../lib/kernel/store');
+
+    before(() => {
+      const { buildParserFromTables, computeParserTables } = require('../lib/calculus/builders');
+      const tables = computeParserTables(ill.constructors);
+      tables.binders = { exists: 'exists', forall: 'forall' };
+      tables.multiCharFreevars = true;
+      tables.numbers = true;
+      tables.application = true;
+      tables.arrows = true;
+      tables.forwardRules = true;
+      tables.binaryNormalization = true;
+      engineParse = buildParserFromTables(tables);
+    });
+
+    it('should parse application f x y as flat predicate', () => {
+      const ast = engineParse('inc X Y');
+      assert.strictEqual(Store.tag(ast), 'inc');
+      assert.strictEqual(Store.arity(ast), 2);
+      assert.strictEqual(Store.tag(Store.child(ast, 0)), 'freevar');
+      assert.strictEqual(Store.tag(Store.child(ast, 1)), 'freevar');
+    });
+
+    it('should parse nested application: stack (s SH) A', () => {
+      const ast = engineParse('stack (s SH) A');
+      assert.strictEqual(Store.tag(ast), 'stack');
+      assert.strictEqual(Store.arity(ast), 2);
+      assert.strictEqual(Store.tag(Store.child(ast, 0)), 's');
+    });
+
+    it('should parse arrow: bin -> bin', () => {
+      const ast = engineParse('bin -> bin');
+      assert.strictEqual(Store.tag(ast), 'arrow');
+      assert.strictEqual(Store.tag(Store.child(ast, 0)), 'atom');
+      assert.strictEqual(Store.tag(Store.child(ast, 1)), 'atom');
+    });
+
+    it('should parse chained arrows: bin -> bin -> type', () => {
+      const ast = engineParse('bin -> bin -> type');
+      assert.strictEqual(Store.tag(ast), 'arrow');
+      const right = Store.child(ast, 1);
+      assert.strictEqual(Store.tag(right), 'arrow');
+    });
+
+    it('should parse lollipop: A -o B', () => {
+      const ast = engineParse('A -o B');
+      assert.strictEqual(Store.tag(ast), 'loli');
+    });
+
+    it('should parse forward rule: A -o { B }', () => {
+      const ast = engineParse('A -o { B }');
+      assert.strictEqual(Store.tag(ast), 'loli');
+      const conseq = Store.child(ast, 1);
+      assert.strictEqual(Store.tag(conseq), 'monad');
+    });
+
+    it('should normalize binary: e → binlit(0)', () => {
+      const ast = engineParse('e');
+      assert.strictEqual(Store.tag(ast), 'binlit');
+      assert.strictEqual(Store.child(ast, 0), 0n);
+    });
+
+    it('should normalize binary: i e → binlit(1)', () => {
+      const ast = engineParse('i e');
+      assert.strictEqual(Store.tag(ast), 'binlit');
+      assert.strictEqual(Store.child(ast, 0), 1n);
+    });
+
+    it('should normalize binary: o (i e) → binlit(2)', () => {
+      const ast = engineParse('o (i e)');
+      assert.strictEqual(Store.tag(ast), 'binlit');
+      assert.strictEqual(Store.child(ast, 0), 2n);
+    });
+
+    it('should parse type keyword', () => {
+      const ast = engineParse('type');
+      assert.strictEqual(Store.tag(ast), 'type');
+      assert.strictEqual(Store.arity(ast), 0);
+    });
+
+    it('should parse application with bang: !inc X Y', () => {
+      const ast = engineParse('!inc X Y');
+      assert.strictEqual(Store.tag(ast), 'bang');
+      const inner = Store.child(ast, 0);
+      assert.strictEqual(Store.tag(inner), 'inc');
+    });
+
+    it('should parse tensor with applications: pc PC * code PC 0x01', () => {
+      const ast = engineParse('pc PC * code PC 0x01');
+      assert.strictEqual(Store.tag(ast), 'tensor');
+      const left = Store.child(ast, 0);
+      const right = Store.child(ast, 1);
+      assert.strictEqual(Store.tag(left), 'pc');
+      assert.strictEqual(Store.tag(right), 'code');
+    });
+  });
+
+  describe('declaration parser', () => {
+    const { parseDeclarations } = require('../lib/parser/declarations');
+    const Store = require('../lib/kernel/store');
+    const id = (x) => Store.put('atom', [x]);
+
+    it('should parse simple declaration', () => {
+      const decls = parseDeclarations('foo: bar.', id);
+      assert.strictEqual(decls.length, 1);
+      assert.strictEqual(decls[0].type, 'declaration');
+      assert.strictEqual(decls[0].name, 'foo');
+    });
+
+    it('should parse declaration with premises', () => {
+      const decls = parseDeclarations('r: head <- p1 <- p2.', id);
+      assert.strictEqual(decls.length, 1);
+      assert.strictEqual(decls[0].premises.length, 2);
+    });
+
+    it('should parse comments', () => {
+      const decls = parseDeclarations('% comment\nfoo: bar.', id);
+      assert.strictEqual(decls.length, 1);
+      assert.strictEqual(decls[0].name, 'foo');
+    });
+
+    it('should parse query directive', () => {
+      const decls = parseDeclarations('#symex body.', id);
+      assert.strictEqual(decls.length, 1);
+      assert.strictEqual(decls[0].type, 'query');
+      assert.strictEqual(decls[0].kind, 'symex');
+    });
+
+    it('should parse standalone directive', () => {
+      const decls = parseDeclarations('@family lnl.', id);
+      assert.strictEqual(decls.length, 1);
+      assert.strictEqual(decls[0].type, 'directive');
+      assert.strictEqual(decls[0].key, 'family');
+    });
+
+    it('should parse declaration with slash name', () => {
+      const decls = parseDeclarations('eq/z: head.', id);
+      assert.strictEqual(decls[0].name, 'eq/z');
+    });
+
+    it('should parse multiple declarations', () => {
+      const decls = parseDeclarations('a: x.\nb: y.\nc: z.', id);
+      assert.strictEqual(decls.length, 3);
+    });
+
+    it('should parse declarations with annotations', () => {
+      const decls = parseDeclarations(
+        'tensor: body @ascii "_ * _" @prec 60 left.',
+        id, { annotations: true }
+      );
+      assert.strictEqual(decls[0].annotations.length, 2);
+      assert.strictEqual(decls[0].annotations[0].key, 'ascii');
+      assert.strictEqual(decls[0].annotations[0].value.value, '_ * _');
+      assert.strictEqual(decls[0].annotations[1].key, 'prec');
+      assert.strictEqual(decls[0].annotations[1].value.precedence, 60);
+      assert.strictEqual(decls[0].annotations[1].value.associativity, 'left');
+    });
+
+    it('should handle import directives', () => {
+      const decls = parseDeclarations('#import(bin.ill)\nfoo: bar.', id);
+      assert.strictEqual(decls.length, 2);
+      assert.strictEqual(decls[0].type, 'import');
+      assert.strictEqual(decls[0].path, 'bin.ill');
+    });
+  });
+
   describe('roundtrip', () => {
     it('should parse and render to same AST', () => {
       // Test that parse(render(ast)) === ast

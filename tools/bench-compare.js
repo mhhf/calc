@@ -127,24 +127,6 @@ function setupWorktree(commitHash) {
     fs.symlinkSync(nmSrc, nmDst);
   }
 
-  // Symlink tree-sitter node_modules
-  const tsNmSrc = path.join(ROOT, 'lib/tree-sitter-mde/node_modules');
-  const tsNmDst = path.join(wtPath, 'lib/tree-sitter-mde/node_modules');
-  if (fs.existsSync(tsNmSrc) && !fs.existsSync(tsNmDst)) {
-    fs.mkdirSync(path.dirname(tsNmDst), { recursive: true });
-    fs.symlinkSync(tsNmSrc, tsNmDst);
-  }
-
-  // Copy wasm files (grammar may differ at old commit)
-  const wasmGlob = ['mde.wasm', 'tree-sitter.wasm', 'tree-sitter-mde.wasm'];
-  for (const name of wasmGlob) {
-    const src = path.join(ROOT, 'lib/tree-sitter-mde', name);
-    const dst = path.join(wtPath, 'lib/tree-sitter-mde', name);
-    if (fs.existsSync(src) && !fs.existsSync(dst)) {
-      fs.copyFileSync(src, dst);
-    }
-  }
-
   // Copy json-adapter.js into worktree (may not exist at old commit)
   const adapterDst = path.join(wtPath, 'benchmarks/lib/json-adapter.js');
   if (!fs.existsSync(adapterDst)) {

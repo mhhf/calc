@@ -280,7 +280,7 @@ describe('Store Binary Format', () => {
         const binPath = path.join(__dirname, '../../calculus/ill/programs/bin.ill');
         await mde.precompile(binPath, tmpFile);
 
-        // Record what the tree-sitter parse produced
+        // Record what the parse produced
         const origSize = Store.size();
         assert.ok(origSize > 0);
 
@@ -320,12 +320,12 @@ describe('Store Binary Format', () => {
       }
     });
 
-    it('precompiled calc produces same results as tree-sitter load', async () => {
+    it('precompiled calc produces same results as source load', async () => {
       const tmpFile = path.join(os.tmpdir(), `store-binary-test2-${Date.now()}.bin`);
       try {
         const binPath = path.join(__dirname, '../../calculus/ill/programs/bin.ill');
 
-        // Load via tree-sitter
+        // Load from source
         Store.clear();
         const calcTS = await mde.load(binPath);
         const tsTypes = new Map(calcTS.types);
