@@ -1,7 +1,7 @@
 ---
 title: "Precompiled SDK Loading"
 created: 2026-03-01
-modified: 2026-03-01
+modified: 2026-03-02
 summary: "Eliminate 51ms mde.load() setup cost via binary precompilation of SDK (evm.ill + bin.ill). Fixes unfair hevm comparison. Zig-friendly binary format."
 tags:
   - performance
@@ -82,7 +82,8 @@ Store entry distribution:
 The Store's SoA layout maps directly to flat typed arrays:
 
 ```
-HEADER (12 bytes):
+HEADER (16 bytes):
+  u32 magic              0x43414C43 ("CALC")
   u32 nodeCount          (e.g. 1599 for SDK)
   u32 stringCount        (e.g. ~150)
   u32 bigintCount        (e.g. ~40)
@@ -95,6 +96,9 @@ SOA ARRAYS (nodeCount entries each):
   u32[nodeCount]         child2     (~6.4 KB)
   u32[nodeCount]         child3     (~6.4 KB)
 
+DEDUP HASHES (precomputed content hashes):
+  u32[nodeCount]         contentHashes  (~6.4 KB)
+
 STRING TABLE:
   u16 len, utf8[len]     × stringCount    (~2 KB)
 
@@ -103,12 +107,16 @@ BIGINT TABLE:
 
 TAG REGISTRY:
   u8 tagCount
-  u16 len, utf8[len]     × tagCount       (~0.3 KB)
+  (u8 id, u16 len, utf8[len])  × tagCount  (~0.3 KB)
 
-TOTAL: ~32 KB for SDK
+SDK METADATA (JSON):
+  u32 metaLen
+  utf8[metaLen]          { types, clauses, rawForwardRules }
+
+TOTAL: ~38 KB for SDK
 ```
 
-This is directly `mmap`-able in Zig as packed slices — zero parsing, zero allocation, just pointer arithmetic. `tags[i]`, `child0[i]` etc. are immediate memory offsets.
+This is directly `mmap`-able in Zig as packed slices — zero parsing, zero allocation, just pointer arithmetic. `tags[i]`, `child0[i]` etc. are immediate memory offsets. The content hashes enable DEDUP rebuild via pure `Map.set` — no FNV-1a recomputation.
 
 In Node.js: `fs.readFileSync` → `Buffer` → create `Uint8Array`/`Uint32Array` views → `Store.bulkLoad()`.
 
@@ -120,23 +128,38 @@ In Node.js: `fs.readFileSync` → `Buffer` → create `Uint8Array`/`Uint32Array`
 /** Serialize Store state to flat binary buffer */
 function snapshot() {
   // Copy SoA arrays (tags, arities, child0-3) as slices
+  // Precompute content hashes (computeHash per entry)
   // Serialize string table, bigint table, tag registry
   // Return Buffer
 }
 
 /** Restore Store state from binary buffer */
 function restore(buffer) {
-  // memcpy typed array slices into SoA arrays
-  // Rebuild string interning tables
-  // Rebuild bigint table
-  // Rebuild DEDUP map (computeHash per entry, ~3ms for 1599 entries)
-  // Set nextId, nextStringId, nextBigIntId, nextTag
+  // 1. Reset dynamic tags (TAG entries for IDs >= PRED_BOUNDARY)
+  // 2. Replay tag registry from binary
+  // 3. Bulk memcpy typed array slices (tags, arities, child0-3)
+  // 4. Rebuild string interning tables (STRING_TO_ID + ID_TO_STRING)
+  // 5. Rebuild bigint table (BIGINT_TABLE)
+  // 6. Rebuild DEDUP map from precomputed hashes (Map.set per entry)
+  // 7. Set nextId, nextStringId, nextBigIntId, nextTag
 }
 ```
 
+**Correctness: tag registry reset is required.** `Store.clear()` does NOT reset dynamic tags — `TAG['stack']` persists across `clear()` with its old ID. If a different file was loaded first (registering tags in a different order), tag IDs in the binary won't match the live registry. The restore must reset all dynamic tags (IDs ≥ `PRED_BOUNDARY`) before replaying the binary's tag registry.
+
 DEDUP rebuild is required because `explore()` calls `Store.put()` during execution (substitution results, FFI-computed terms). Without DEDUP, duplicate terms would get different IDs, breaking content-addressing.
 
-Measured DEDUP rebuild cost: **~0.8ms** for 1599 entries (in-memory Store.put replay without I/O).
+Measured restore cost breakdown (1599 SDK entries):
+
+| Restore phase | Time | Notes |
+|---|---|---|
+| Bulk TypedArray.set × 6 | 0.002ms | memcpy, O(1) per array |
+| DEDUP Map.set × 1599 | 0.07ms | from precomputed hashes |
+| String table rebuild | ~0.01ms | ~150 strings, Map.set each |
+| BigInt table rebuild | ~0.001ms | ~40 entries, array push |
+| **Total Store.restore** | **~0.22ms** | measured median |
+
+For comparison, Store.put replay (recomputing hashes): **0.55ms** — 2.5× slower.
 
 ### Incremental Loading
 
@@ -144,13 +167,17 @@ After SDK restore at Store IDs 1..N, user program loads incrementally at IDs N+1
 
 ```javascript
 // Load flow
-Store.restore(sdkBinary);          // IDs 1..1599 from binary
-const sdk = deserializeCalc(meta); // compiled rules, clauses, types
+Store.restore(sdkBinary);          // IDs 1..1599 from binary, 0.22ms
+const sdk = JSON.parse(metaJSON);  // types, clauses, rawForwardRules, ~0.05ms
 
 // User program adds IDs 1600..3896
 const user = await convert.load('multisig.ill', { skipImport: 'evm.ill' });
 // merge: sdk.forwardRules ∪ user.forwardRules, sdk.clauses ∪ user.clauses
 ```
+
+**SDK metadata**: `types` (Map<string, hash>), `clauses` (Map<string, {hash, premises}>), `rawForwardRules` (array of {name, hash, antecedent, consequent}). All reference Store IDs that exist after restore. Serialized as JSON section in the binary (~2 KB, parse cost ~0.05ms).
+
+**`parseExpr` API**: `convert.parseExpr(source)` is used by tests and externally. Must remain functional — the new parser must support standalone expression parsing (not just full-file parsing).
 
 ### Cache Invalidation
 
@@ -169,21 +196,27 @@ const cachePath = `out/cache/${key.toString(16)}.bin`;
 
 Cache file naming: `out/cache/<hex-hash>.bin`. No manifest file needed — the hash IS the version. If `evm.ill` changes, hash changes, old cache is stale (never loaded). Periodically clean stale caches.
 
+**Full-program cache**: For repeated runs of the same contract (CI, benchmarks), cache the ENTIRE loaded state (SDK + user program):
+```javascript
+const fullKey = hashCombine(sdkHash, hashString(userSource));
+```
+Setup → ~0.25ms (just Store.restore + rule deserialize). Useful for `npm run bench` and CI pipelines.
+
 ### Expected Performance
 
 ```
-PRECOMPILED SETUP:
-  Store.restore (SDK binary):   0.8ms   (memcpy + DEDUP rebuild)
-  compileRule (73 rules):       2.4ms   (deterministic, could also cache)
+PRECOMPILED SETUP (Opt_A only, tree-sitter for user program):
+  Store.restore (SDK binary):   0.22ms  (bulk copy + DEDUP from precomputed hashes)
+  compileRule (73 rules):       2.4ms   (deterministic, could also cache — see Opt_C)
   buildIndex:                   0.1ms
-  User program parse:          15-20ms  (tree-sitter + Store.put for 2297 entries)
+  User program parse:          ~33ms    (12ms tree-sitter WASM + ~21ms Store.put × 2297)
   ───
-  TOTAL SETUP:                ~19ms    (down from 51ms)
+  TOTAL SETUP:                ~36ms    (down from 51ms)
   + explore:                    9.2ms
-  TOTAL END-TO-END:           ~28ms    (down from 61ms, vs hevm 52ms)
+  TOTAL END-TO-END:           ~45ms    (down from 61ms, vs hevm 52ms)
 ```
 
-This is already an improvement, but tree-sitter's 11ms fixed WASM cost still dominates the user program parse. See Opt_B below.
+Tree-sitter's 11ms fixed WASM cost still dominates the user program parse. See Opt_B below.
 
 ## TODO_0060.Opt_B — Calculus-Generated .ill Parser
 
@@ -295,22 +328,32 @@ Each declaration extracts the text between `:` and `.` (or `<-`), then calls the
 3. **Already tested**: `buildParserFromTables` is in production (browser UI, sequent parsing). Only the extensions (application, numbers) are new code.
 4. **Minimal new code**: ~30 lines of extensions to builders.js + ~60 lines meta-syntax wrapper. Compare to tree-sitter: grammar.js (192 lines) + WASM binary (11 KB) + cst-to-ast.js integration.
 
+### Error Reporting
+
+Tree-sitter gives line/column info for syntax errors for free. The Pratt parser currently only reports `pos` (character offset). Need position tracking (~5 lines):
+```javascript
+let line = 1, col = 1;
+// Update in ws(): if (src[pos] === '\n') { line++; col = 1; } else col++;
+// Errors: `Parse error at line ${line}:${col}: ...`
+```
+
 ### Impact
 
 ```
 WITHOUT calculus-generated parser (Opt_A only):
-  User program: 12ms tree-sitter + 8ms Store.put = 20ms
+  User program: 12ms tree-sitter + 21ms Store.put = ~33ms
 
 WITH calculus-generated parser (Opt_A + Opt_B):
-  User program: ~1ms parse+Store.put (fused, no WASM) = ~1ms
-  SDK restore:                                           3ms
+  User program: ~4ms parse+Store.put (fused, no WASM)
+  SDK restore:                                         0.22ms
+  compileRule:                                         2.4ms
   ───
-  TOTAL SETUP:                                         ~4ms
-  + explore:                                             9ms
-  TOTAL END-TO-END:                                   ~13ms  (vs hevm 52ms = 4× faster)
+  TOTAL SETUP:                                         ~6.7ms
+  + explore:                                             9.2ms
+  TOTAL END-TO-END:                                   ~16ms  (vs hevm 52ms = 3.3× faster)
 ```
 
-The fused parse eliminates both the 11ms tree-sitter WASM overhead AND the separate AST conversion pass.
+The fused parse eliminates both the 11ms tree-sitter WASM overhead AND the separate AST conversion pass. User program (~2300 entries) at ~1.7µs/entry fused parse+put = ~4ms.
 
 ### Scope: Replace tree-sitter entirely
 
@@ -351,40 +394,46 @@ lib/tree-sitter-mde/     →  DELETE entirely
 
 `compileRule()` is deterministic: same raw rule → same compiled rule. The compiled rules contain Maps (`metavarSlots`, `linearMeta`, `existentialGoals`) and arrays, but no closures — all are serializable with a custom encoder.
 
-Store the compiled rules in the binary alongside the Store snapshot. Saves 2.4ms. Combined with Opt_A + Opt_B: total setup ~1.5ms.
+Serialization approach: `v8.serialize`/`v8.deserialize` handles Maps and Sets natively. Estimated 73 compiled rules ≈ 20 KB serialized, deserialize cost ~0.3ms. Alternative: custom JSON with replacer/reviver (Sets → arrays, Maps → entries).
 
-This is low priority — 2.4ms is small relative to explore()'s 9ms.
+Store the compiled rules in the binary alongside the Store snapshot. Saves 2.4ms. Combined with Opt_A + Opt_B: total setup ~4.6ms.
+
+This is medium priority — 2.4ms is 37% of the remaining setup cost after Opt_A + B.
 
 ## Implementation Plan
 
 ### Stage 1: Store.snapshot/restore + binary format
 
 Files to modify:
-- `lib/kernel/store.js` — add `snapshot()`, `restore()` exports
+- `lib/kernel/store.js` — add `snapshot()`, `restore()`, `resetDynamicTags()` exports. **Critical**: `restore()` must reset dynamic tags (IDs ≥ `PRED_BOUNDARY`) before loading. `snapshot()` must precompute content hashes (via `computeHash` per entry).
 - `lib/engine/index.js` — add `precompile()`, `loadPrecompiled()` API
 - `lib/hash.js` — already has FNV-1a (use for cache key)
 
 New files:
-- `lib/engine/store-binary.js` — binary serialization/deserialization (~100 lines)
+- `lib/engine/store-binary.js` — binary serialization/deserialization (~120 lines): write/read SoA arrays + precomputed hashes + string/bigint tables + tag registry + SDK metadata JSON
 - `tools/precompile.js` — CLI: `node tools/precompile.js evm.ill → out/cache/<hash>.bin`
 
 ### Stage 2: Incremental loading
 
 Files to modify:
 - `lib/engine/convert.js` — `resolveImports()` skip directive for precompiled imports
-- `lib/engine/index.js` — `load()` checks cache before full parse
+- `lib/engine/index.js` — `load()` checks cache before full parse, auto-writes cache on miss
 
 ### Stage 3: Calculus-generated .ill parser
 
 Files to modify:
-- `lib/calculus/builders.js` — extend `buildParserFromTables` with application, numbers, multi-char freevars, arrow, forward-rule syntax (~30 lines)
+- `lib/calculus/builders.js` — extend `buildParserFromTables` with application, numbers, multi-char freevars, arrow, forward-rule syntax, position tracking (~40 lines)
 
 New files:
-- `lib/engine/parse-ill.js` — meta-syntax wrapper (~60 lines): declarations, imports, queries, comments. Delegates expression parsing to the extended calculus-generated parser.
+- `lib/engine/parse-ill.js` — meta-syntax wrapper (~70 lines): declarations, imports, queries, comments, `@annotations` (for .calc/.family). Delegates expression parsing to the calculus-generated parser.
 
 Files to modify:
-- `lib/engine/convert.js` — replace `mdeParser.parse()` with `parseILLFile()`
-- `lib/engine/convert.js` — remove `require('../tree-sitter-mde')` for .ill path
+- `lib/engine/convert.js` — replace `mdeParser.parse()` with new parser, keep `parseExpr()` API working
+- `lib/meta-parser/loader.js` — switch from cst-to-ast.js to new parser
+- `lib/meta-parser/cst-to-ast.js` — DELETE
+
+Files to delete:
+- `lib/tree-sitter-mde/` — entire directory (WASM + grammar + bindings)
 
 ### Stage 4: Benchmark & comparison update
 
@@ -422,29 +471,30 @@ fn loadSnapshot(data: []const u8) StoreSnapshot {
 
 No JSON parsing, no object allocation, no GC pressure. Just pointer arithmetic into memory-mapped file. The SoA layout means cache-friendly iteration over any single field (e.g., scan all tags without touching children).
 
-## Tree-sitter: Keep or Replace?
+## Tree-sitter: Replace Entirely
 
-**Keep for .calc/.family files** (build-time only, meta-parser path):
-- Error messages for calculus definition syntax
-- `@annotations` and `@extends` chain resolution
-- Only runs during `npm run build:bundle`
-- Performance irrelevant (one-time)
+As detailed in Opt_B's scope, the calculus-generated parser replaces tree-sitter for ALL file types:
 
-**Replace for .ill files** (runtime, engine path):
-- The calculus-generated Pratt parser already handles all connectives
-- Extending it for application/numbers/freevars is ~30 lines
-- 11ms WASM overhead is 78% of user-program parse time
-- Direct-to-Store single pass eliminates intermediate CST allocation
-- Same parser tables used everywhere (browser, prover, rules, engine)
-
-## Projected Timeline
-
-| Stage | Savings | Cumulative setup | Effort |
+| File type | Current parser | New parser | When |
 |---|---|---|---|
-| **Baseline** | — | 51ms | — |
-| **Stage 1**: Store binary + precompile SDK | −34ms | 17ms | ~200 lines |
-| **Stage 2**: Incremental loading | −2ms | 15ms | ~50 lines |
-| **Stage 3**: Calculus-generated .ill parser | −11ms | 4ms | ~90 lines (30 ext + 60 wrapper) |
-| **Stage 4**: Precompile rules (Opt_C) | −2.4ms | 1.6ms | ~80 lines |
+| `.ill` (programs) | tree-sitter | calculus-generated + meta wrapper | Runtime |
+| `.calc` (calculus defs) | tree-sitter via cst-to-ast.js | same meta wrapper (no connective ops) | Build time |
+| `.family` (structural rules) | tree-sitter via cst-to-ast.js | same meta wrapper + `@annotations` | Build time |
+| `.rules` (inference rules) | `buildParser()` already | Already uses generated parser | Build time |
 
-End state: **1.6ms setup + 9.2ms explore = 10.8ms total** (vs hevm 52ms = **4.8× faster**).
+**Cleanup**: delete `lib/tree-sitter-mde/` (~11 KB WASM + grammar.js + bindings), `lib/meta-parser/cst-to-ast.js` (~400 lines), `build:ts:wasm` npm script. `loader.js` (`@extends` resolution) stays.
+
+## Projected Timeline (measured)
+
+| Stage | Savings | Cumulative setup | End-to-end | vs hevm |
+|---|---|---|---|---|
+| **Baseline** | — | 51ms | 61ms | 0.85× |
+| **Opt_A**: Store binary (precomputed hashes) | −15ms | 36ms | 45ms | 1.2× |
+| **Opt_B**: Calculus-generated parser | −29ms | 6.7ms | 16ms | 3.3× |
+| **Opt_C**: Precompile rules | −2.4ms | 4.3ms | 14ms | 3.7× |
+| **Full-program cache** (repeated runs) | −4ms | 0.35ms | 9.5ms | 5.5× |
+
+Measured inputs: Store.restore = 0.22ms (bulk copy + DEDUP from precomputed hashes), compileRule = 2.4ms, user program gen-parser = ~4ms, explore = 9.2ms.
+
+End state (general): **4.3ms setup + 9.2ms explore = 13.5ms** (vs hevm 52ms = **3.9× faster**).
+End state (cached): **0.35ms setup + 9.2ms explore = 9.5ms** (vs hevm 52ms = **5.5× faster**).
