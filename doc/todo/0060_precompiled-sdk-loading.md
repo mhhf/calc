@@ -196,11 +196,7 @@ const cachePath = `out/cache/${key.toString(16)}.bin`;
 
 Cache file naming: `out/cache/<hex-hash>.bin`. No manifest file needed — the hash IS the version. If `evm.ill` changes, hash changes, old cache is stale (never loaded). Periodically clean stale caches.
 
-**Full-program cache**: For repeated runs of the same contract (CI, benchmarks), cache the ENTIRE loaded state (SDK + user program):
-```javascript
-const fullKey = hashCombine(sdkHash, hashString(userSource));
-```
-Setup → ~0.25ms (just Store.restore + rule deserialize). Useful for `npm run bench` and CI pipelines.
+**Further optimization (out of scope)**: Precompiling user program code blocks (e.g., `multisig_nocall_solc_code.ill`) via Store.restore could eliminate ~4ms of user-program parse time. Worth exploring alongside generalized array structures — encoding program code as a single linear array predicate instead of hundreds of individual `code` facts. Separate research task.
 
 ### Expected Performance
 
@@ -492,9 +488,7 @@ As detailed in Opt_B's scope, the calculus-generated parser replaces tree-sitter
 | **Opt_A**: Store binary (precomputed hashes) | −15ms | 36ms | 45ms | 1.2× |
 | **Opt_B**: Calculus-generated parser | −29ms | 6.7ms | 16ms | 3.3× |
 | **Opt_C**: Precompile rules | −2.4ms | 4.3ms | 14ms | 3.7× |
-| **Full-program cache** (repeated runs) | −4ms | 0.35ms | 9.5ms | 5.5× |
 
 Measured inputs: Store.restore = 0.22ms (bulk copy + DEDUP from precomputed hashes), compileRule = 2.4ms, user program gen-parser = ~4ms, explore = 9.2ms.
 
-End state (general): **4.3ms setup + 9.2ms explore = 13.5ms** (vs hevm 52ms = **3.9× faster**).
-End state (cached): **0.35ms setup + 9.2ms explore = 9.5ms** (vs hevm 52ms = **5.5× faster**).
+End state: **4.3ms setup + 9.2ms explore = 13.5ms** (vs hevm 52ms = **3.9× faster**).
