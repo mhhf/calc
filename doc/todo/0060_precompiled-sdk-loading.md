@@ -2,7 +2,7 @@
 title: "Precompiled SDK Loading"
 created: 2026-03-01
 modified: 2026-03-02
-summary: "Eliminate 51ms mde.load() setup cost via binary precompilation of SDK (evm.ill + bin.ill). Fixes unfair hevm comparison. Zig-friendly binary format."
+summary: "Eliminate 51ms mde.load() setup cost via binary precompilation of SDK (evm.ill + bin.ill). Fixes unfair hevm comparison. Zig-friendly binary format. Replace tree-sitter with calculus-generated Pratt parser."
 tags:
   - performance
   - symexec
@@ -55,6 +55,41 @@ Two independent bottlenecks:
 1. **Tree-sitter WASM call overhead** — 11ms fixed cost per parse, regardless of input size (767-line code file: 11.5ms, full 51K file: 12.7ms)
 2. **Store.put volume** — 3896 entries × ~9µs/entry. Each entry: FNV-1a hash + DEDUP Map lookup + TypedArray write + string interning
 
+## Prerequisites (done)
+
+### Store.put collision detection
+
+`Store.put()` used FNV-1a 32-bit hashing for DEDUP with **no structural equality check**. On hash collision, it silently returned the wrong term — a soundness violation. Fixed: `matchesEntry()` now verifies tag + arity + children on every DEDUP hit. On collision, throws with diagnostic message. Cost: O(arity) per put (arity 0-4), negligible vs the 9µs/entry total.
+
+Birthday paradox at 3896 entries: ~0.18% per run. Low but non-zero. The fix turns a silent wrong answer into a loud error. Future: upgrade to 64-bit hash if scale demands it.
+
+### oplus/with precedence fix
+
+`ill.calc` declared both `with` and `oplus` at `@prec 70 left`. The tree-sitter grammar gave `&` higher precedence than `+` (separate grammar levels). This meant `A + B & C` parsed differently between the two parser paths. Fixed: oplus changed to `@prec 65 left`. Both parsers now agree: `&` (70) binds tighter than `+` (65).
+
+### Pratt parser binder support
+
+`buildParserFromTables` extended with opt-in features via tables fields:
+- `binders: { exists: 'exists', forall: 'forall' }` — `exists X. body` with de Bruijn encoding
+- `multiCharFreevars: true` — uppercase multi-char identifiers → freevar with `_` prefix
+- `numbers: true` — decimal/hex literals → `Store.put('binlit', [BigInt(n)])`
+
+These are opt-in: existing callers (browser, rules parser) are unaffected. 9 new tests cover binders, nested binders, de Bruijn indices, multi-char freevars, and number literals.
+
+## Why Pratt, Not Tree-sitter, Not Naive Recursive Descent
+
+**History**: The original parser was a naive recursive descent that crashed with stack overflow on deeply nested binary notation — `(i (o (i (o ... (e)))))` at 256 levels. Tree-sitter was adopted because its GLR parser handles arbitrary depth in O(n) without stack growth.
+
+**Problem with tree-sitter**: 11ms fixed WASM overhead per parse. The grammar is manually maintained (`grammar.js`) and drifted from the calculus definition (the oplus/with precedence bug). Two separate parser implementations for the same syntax = divergence risk.
+
+**Why Pratt works**: A Pratt parser uses ~2 stack frames per nesting level (vs ~7x amplification in tree-sitter CST walking). At 256 levels (deepest in the codebase — hand-written binary mask in `bin.ill`), that's ~512 frames. Node.js stack limit is ~12,800 frames. Safety margin: **25x**.
+
+The deepest nesting comes from `bin.ill`'s `to256` clause (256 levels). EVM bytecode files (`_code.ill`) use `0x` hex literals parsed as atomic tokens (zero nesting). `N_XX` hex expansion produces max 8-level nesting per byte.
+
+**Why not just recursive descent**: Pratt IS a form of recursive descent — specifically, operator-precedence climbing. The key advantage over a naive RD parser: the operator table is **derived from the calculus definition** (`ill.calc` `@prec`/`@assoc` annotations). Change the calculus, and the parser updates automatically. Single source of truth — no hand-maintained grammar that can drift.
+
+**Extra safety**: For binary prefix chains `(i (i (i ...)))`, an iterative accumulator can be added to `parseAtom` — detect `i`/`o` heads and accumulate bits in a loop instead of recursing. This would make binary parsing O(1) in stack depth.
+
 ## Precompilation Boundary
 
 The import chain for symbolic multisig:
@@ -82,15 +117,19 @@ Store entry distribution:
 The Store's SoA layout maps directly to flat typed arrays:
 
 ```
-HEADER (16 bytes):
+HEADER (20 bytes):
   u32 magic              0x43414C43 ("CALC")
+  u8  version            1 (format version — increment on breaking changes)
+  u8  endian             1 (1 = little-endian, 2 = big-endian)
+  u16 reserved           0
   u32 nodeCount          (e.g. 1599 for SDK)
   u32 stringCount        (e.g. ~150)
   u32 bigintCount        (e.g. ~40)
 
-SOA ARRAYS (nodeCount entries each):
+SOA ARRAYS:
   u8[nodeCount]          tags       (~1.6 KB)
   u8[nodeCount]          arities    (~1.6 KB)
+  PADDING                0-3 bytes to next 4-byte boundary
   u32[nodeCount]         child0     (~6.4 KB)
   u32[nodeCount]         child1     (~6.4 KB)
   u32[nodeCount]         child2     (~6.4 KB)
@@ -113,8 +152,17 @@ SDK METADATA (JSON):
   u32 metaLen
   utf8[metaLen]          { types, clauses, rawForwardRules }
 
+FOOTER:
+  u32 crc32              CRC32 of everything before this field
+
 TOTAL: ~38 KB for SDK
 ```
+
+**Alignment**: Padding between u8 arrays (tags, arities) and u32 arrays (child0-3) is required. Both JS (`new Uint32Array(buffer, offset)` requires 4-byte-aligned offset) and Zig (`@alignCast(4, ptr)`) reject unaligned u32 access. Padding = `(4 - (2 * nodeCount) % 4) % 4` bytes of zeros.
+
+**Endianness**: Standardized on little-endian (all target platforms: x86, ARM, RISC-V). Reader checks endian byte — mismatch is a format error, not silent corruption.
+
+**CRC32**: Detects truncated or corrupted cache files. Cheap (~0.01ms for 38 KB). On mismatch, cache miss → regenerate.
 
 This is directly `mmap`-able in Zig as packed slices — zero parsing, zero allocation, just pointer arithmetic. `tags[i]`, `child0[i]` etc. are immediate memory offsets. The content hashes enable DEDUP rebuild via pure `Map.set` — no FNV-1a recomputation.
 
@@ -225,10 +273,10 @@ The generated parser works from `parserTables` (precomputed in `out/ill.json`):
 ```json
 {
   "operators": [
-    { "name": "tensor", "op": "*", "precedence": 60, "assoc": "left" },
     { "name": "loli", "op": "-o", "precedence": 50, "assoc": "right" },
-    { "name": "with", "op": "&", "precedence": 70, "assoc": "left" },
-    { "name": "oplus", "op": "+", "precedence": 70, "assoc": "left" }
+    { "name": "tensor", "op": "*", "precedence": 60, "assoc": "left" },
+    { "name": "oplus", "op": "+", "precedence": 65, "assoc": "left" },
+    { "name": "with", "op": "&", "precedence": 70, "assoc": "left" }
   ],
   "nullary": { "I": "one", "zero": "zero" },
   "unaryPrefix": {
@@ -247,82 +295,85 @@ The generated parser handles **connectives** (the calculus-defined part). For .i
 
 | Feature | Category | Current handler | Status in generated parser |
 |---|---|---|---|
-| `A * B`, `A -o B`, `!A`, etc. | Calculus connectives | parserTables | Already works |
+| `A * B`, `A -o B`, `!A`, etc. | Calculus connectives | parserTables | Done |
+| `exists X. body` (binders) | Framework term syntax | convert.js:104-115 | Done (tables.binders) |
+| `42`, `0xff` (numbers) | Framework term syntax | convert.js:58-59 | Done (tables.numbers) |
+| `Sender` (multi-char freevars) | Framework term syntax | convert.js:70 | Done (tables.multiCharFreevars) |
 | `f x y z` (application) | Framework term syntax | convert.js:152-192 | Missing |
-| `42`, `0xff` (numbers) | Framework term syntax | convert.js:58-59 | Missing |
-| `Sender` (multi-char freevars) | Framework term syntax | convert.js:70 | Partial (only single-char) |
 | `i`/`o` (binary normalization) | Framework term syntax | convert.js:172-179 | Missing |
 | `A -> B` (arrow types) | Structural | convert.js:120-121 | Missing |
 | `A -o { B }` (forward rule) | Structural (monad wrap) | convert.js:126-128 | Missing |
-| `name: expr.` | Meta-syntax | tree-sitter | Not parser's job |
-| `#import(path)` | Meta-syntax | resolveImports | Not parser's job |
-| `#kind expr.` | Meta-syntax | tree-sitter | Not parser's job |
-| `<- premise` | Meta-syntax | tree-sitter | Not parser's job |
-| `% comment` | Meta-syntax | tree-sitter | Not parser's job |
+| `name: expr.` | Meta-syntax | tree-sitter | Not expr parser's job |
+| `#import(path)` | Meta-syntax | resolveImports | Not expr parser's job |
+| `#kind expr.` | Meta-syntax | tree-sitter | Not expr parser's job |
+| `<- premise` | Meta-syntax | tree-sitter | Not expr parser's job |
+| `% comment` | Meta-syntax | tree-sitter | Not expr parser's job |
 
-### Design: Two Layers
+### Design: Two Layers (calculus-agnostic)
 
-**Layer 1 — Extended expression parser** (extend `buildParserFromTables`):
+The naming and architecture must not be calculus-specific. "ILL" is one calculus. A different .calc/.family (say, classical linear logic, or a custom process algebra) must use the same parser infrastructure with different tables.
 
-The Pratt parser in builders.js needs three additions to `parseAtom`:
+**Layer 1 — Expression parser** (`lib/calculus/builders.js`, already done):
+
+`buildParserFromTables(tables)` takes a tables object and returns a `parse(input) → hash` function. The tables are **derived from the calculus definition** — change the calculus, parser updates automatically. Extended features are opt-in via tables fields:
 
 ```javascript
-// 1. Number literals → binlit
-const numMatch = src.slice(pos).match(/^(0x[0-9a-fA-F]+|\d+)/);
-if (numMatch) {
-  pos += numMatch[0].length; ws();
-  return Store.put('binlit', [BigInt(numMatch[0])]);
-}
-
-// 2. Multi-char freevars (uppercase start)
-if (/[A-Z]/.test(src[pos])) {
-  const m = src.slice(pos).match(/^[A-Z][a-zA-Z0-9_']*/);
-  pos += m[0].length; ws();
-  return Store.put('freevar', ['_' + m[0]]);
-}
-
-// 3. Application: after parsing an atom, if next token is also
-//    an atom (not an operator, not ')', not '.'), it's application.
-//    Collect spine, flatten: atom(head) + args → Store.put(head, args)
+const tables = computeParserTables(constructors);
+// Opt-in extensions for .ill/.calc/.family parsing:
+tables.binders = { exists: 'exists', forall: 'forall' };
+tables.multiCharFreevars = true;
+tables.numbers = true;
 ```
 
-Application is handled by adding a high-precedence "juxtaposition" rule to `parseExpr`: after parsing a primary, if the next token is another primary (not an operator), it's left-associative application. This is standard Pratt parser technique.
-
-Arrow (`->`) and forward rule (`-o { }`) are added to parserTables as structural operators, or handled as special cases in `parseExpr`.
-
-These extensions are **calculus-independent** — they're the framework's ambient term language. Any calculus loaded into CALC gets application, numbers, and freevars for free.
-
-**Layer 2 — Meta-syntax wrapper** (~60 lines):
+Remaining extensions (application, arrow, forward rule) are also framework-level and calculus-independent. They'll be added to `buildParserFromTables` as additional opt-in fields:
 
 ```javascript
-// lib/engine/parse-ill.js
-// Delegates expression parsing to the calculus-generated parser.
+tables.application = true;    // f x y → Store.put(f, [x, y])
+tables.arrows = true;         // A -> B → Store.put('arrow', [A, B])
+tables.forwardRules = true;   // A -o { B } → loli(A, monad(B))
+```
 
-function parseILLFile(source, exprParser) {
+Application is handled by adding a high-precedence "juxtaposition" rule to `parseExpr`: after parsing a primary, if the next token is another primary (not an operator, not `)`, not `.`), it's left-associative application with flat predicate form. This is standard Pratt parser technique.
+
+**Layer 2 — Declaration parser** (`lib/parser/declarations.js`, ~70 lines):
+
+```javascript
+// Calculus-agnostic. Parses any .ill, .calc, .family file.
+// Delegates expression parsing to a provided parser function.
+
+function parseDeclarations(source, parseExpr) {
   let pos = 0;
-  const types = new Map(), clauses = new Map();
-  const forwardRules = [], queries = new Map();
+  const declarations = [];
 
   while (pos < source.length) {
     skipWS();
     if (atEnd()) break;
-    if (peek('%')) { skipLine(); continue; }
-    if (peek('#')) { parseQueryOrImport(); continue; }
-    parseDeclaration();
+    if (peek('%')) { skipLine(); continue; }        // comments
+    if (peek('#')) { parseQuery(); continue; }      // #kind directives
+    if (peek('@')) { parseDirective(); continue; }  // @family, @extends, etc.
+    parseDeclaration();                             // name: body @annotations.
   }
 
-  return { types, clauses, forwardRules, queries };
+  return declarations;
 }
 ```
 
-Each declaration extracts the text between `:` and `.` (or `<-`), then calls the generated expression parser on that substring. No precedence logic in the wrapper — all operator handling is in the calculus-generated parser.
+Each declaration extracts the text between `:` and `.` (or `<-`), then calls the provided expression parser on that substring. No precedence logic in the wrapper — all operator handling is in the expression parser. `@annotations` are parsed as key-value pairs (same grammar for all file types).
 
-### Why This Is Better Than a Hand-Written Parser
+**Why two layers, not one**: The expression parser is a reusable function (also used by `parseExpr()` API, sequent parsing, rules parsing). The declaration parser is a thin framing layer. Separating them means:
+- `parseExpr('A * B')` works standalone (tests, REPL)
+- `parseDeclarations(fileContent, parseExpr)` wraps files
+- Different file types (`.ill`, `.calc`, `.family`) use the same declaration parser — only the expression parser configuration differs (`.calc` has no connective operators, `.ill` has the full table)
 
-1. **Calculus-derived**: Operator precedence and associativity come from ill.calc `@prec`/`@assoc` annotations. Change the calculus, and the parser updates automatically.
-2. **Single source of truth**: The browser, prover, rules parser, and now the engine all use the same generated parser tables. No divergence risk.
-3. **Already tested**: `buildParserFromTables` is in production (browser UI, sequent parsing). Only the extensions (application, numbers) are new code.
-4. **Minimal new code**: ~30 lines of extensions to builders.js + ~60 lines meta-syntax wrapper. Compare to tree-sitter: grammar.js (192 lines) + WASM binary (11 KB) + cst-to-ast.js integration.
+**File placement**: `lib/parser/declarations.js` alongside the existing `lib/parser/sequent-parser.js`. Both are calculus-agnostic parsers that take an expression parser function as input. The `lib/parser/` directory becomes the home for all parsing modules.
+
+### Why This Is Better
+
+1. **Calculus-derived**: Operator precedence and associativity come from `@prec`/`@assoc` annotations. Change the calculus, and the parser updates automatically.
+2. **Single source of truth**: The browser, prover, rules parser, and engine all use the same `buildParserFromTables`. No divergence risk.
+3. **Calculus-agnostic**: Nothing in the parser is ILL-specific. A new calculus with different connectives, a different `.calc` file, different precedences — everything works, no new parser code needed.
+4. **Already tested**: `buildParserFromTables` is in production (browser UI, sequent parsing). Extensions (binders, numbers, multi-char freevars) have 9 new tests. Only application/arrow/forward-rule remain.
+5. **Minimal new code**: ~40 lines of extensions to builders.js + ~70 lines declaration parser. Compare to tree-sitter: grammar.js (192 lines) + WASM binary (11 KB) + cst-to-ast.js (520 lines).
 
 ### Error Reporting
 
@@ -388,15 +439,45 @@ lib/tree-sitter-mde/     →  DELETE entirely
 
 ## TODO_0060.Opt_C — Precompile Rules Too
 
-`compileRule()` is deterministic: same raw rule → same compiled rule. The compiled rules contain Maps (`metavarSlots`, `linearMeta`, `existentialGoals`) and arrays, but no closures — all are serializable with a custom encoder.
+`compileRule()` is deterministic: same raw rule → same compiled rule. The compiled rules contain Maps (`metavarSlots`, `linearMeta`, `existentialGoals`) and Sets (`freevars`, `persistentDeps`), but no closures — all are serializable.
 
-Serialization approach: `v8.serialize`/`v8.deserialize` handles Maps and Sets natively. Estimated 73 compiled rules ≈ 20 KB serialized, deserialize cost ~0.3ms. Alternative: custom JSON with replacer/reviver (Sets → arrays, Maps → entries).
+### Serialization: v8.serialize (not JSON)
+
+`v8.serialize`/`v8.deserialize` handles Maps and Sets natively. Benchmarked on 73 simulated compiled rules:
+
+| Method | Serialize | Deserialize | Size |
+|---|---|---|---|
+| v8.serialize | 0.8ms | 1.2ms | 103 KB |
+| JSON + replacer/reviver | 1.1ms | 5.5ms | 132 KB |
+
+Custom JSON is **worse than no cache** — it costs 5.5ms to deserialize what takes only 2.4ms to recompute. Only `v8.deserialize` (1.2ms) makes caching worthwhile.
+
+### Cache key versioning
+
+`v8.serialize` output uses a wire format version that changes between Node.js major releases (e.g., v14 in Node 18, v15 in Node 20+). A binary written by Node 22 fails to deserialize on Node 20. Solution: include the wire format version in the cache key.
+
+```javascript
+const v8 = require('v8');
+const wireVersion = new v8.Deserializer(v8.serialize(null)).getWireFormatVersion();
+const cacheKey = `${sourceHash}_wf${wireVersion}`;
+// e.g. "a3f7b2c1_wf15"
+```
+
+On Node.js upgrade, wire format changes → cache key changes → one-time 2.4ms recompile. No silent corruption, no manual invalidation. The compiled rules are Node.js-only (they reference Store hashes), so browser portability is irrelevant.
 
 Store the compiled rules in the binary alongside the Store snapshot. Saves 2.4ms. Combined with Opt_A + Opt_B: total setup ~4.6ms.
 
 This is medium priority — 2.4ms is 37% of the remaining setup cost after Opt_A + B.
 
 ## Implementation Plan
+
+### Stage 0: Prerequisites (done)
+
+- `lib/kernel/store.js` — collision detection in `Store.put()` via `matchesEntry()`
+- `calculus/ill/ill.calc` — oplus precedence fixed to `@prec 65 left`
+- `lib/calculus/builders.js` — binder, number, multi-char freevar extensions (opt-in)
+- `tests/calculus.test.js` — 9 new tests for extended parser + precedence
+- `out/ill.json` — regenerated with updated parser tables
 
 ### Stage 1: Store.snapshot/restore + binary format
 
@@ -406,7 +487,7 @@ Files to modify:
 - `lib/hash.js` — already has FNV-1a (use for cache key)
 
 New files:
-- `lib/engine/store-binary.js` — binary serialization/deserialization (~120 lines): write/read SoA arrays + precomputed hashes + string/bigint tables + tag registry + SDK metadata JSON
+- `lib/engine/store-binary.js` — binary serialization/deserialization (~120 lines): write/read SoA arrays + precomputed hashes + string/bigint tables + tag registry + SDK metadata JSON. Include alignment padding, format version, endianness marker, CRC32.
 - `tools/precompile.js` — CLI: `node tools/precompile.js evm.ill → out/cache/<hash>.bin`
 
 ### Stage 2: Incremental loading
@@ -415,21 +496,21 @@ Files to modify:
 - `lib/engine/convert.js` — `resolveImports()` skip directive for precompiled imports
 - `lib/engine/index.js` — `load()` checks cache before full parse, auto-writes cache on miss
 
-### Stage 3: Calculus-generated .ill parser
+### Stage 3: Declaration parser + tree-sitter removal
 
 Files to modify:
-- `lib/calculus/builders.js` — extend `buildParserFromTables` with application, numbers, multi-char freevars, arrow, forward-rule syntax, position tracking (~40 lines)
+- `lib/calculus/builders.js` — add remaining extensions: application (juxtaposition), arrow, forward-rule syntax, binary normalization (`i`/`o`), position tracking (~40 lines)
 
 New files:
-- `lib/engine/parse-ill.js` — meta-syntax wrapper (~70 lines): declarations, imports, queries, comments, `@annotations` (for .calc/.family). Delegates expression parsing to the calculus-generated parser.
+- `lib/parser/declarations.js` — calculus-agnostic declaration parser (~70 lines): `name: body.`, `<- premise`, `% comment`, `#kind body.`, `@key value`. Takes an expression parser function as input. Handles `.ill`, `.calc`, and `.family` files — the expression parser configuration (which tables, which extensions) determines what connective operators are available.
 
 Files to modify:
-- `lib/engine/convert.js` — replace `mdeParser.parse()` with new parser, keep `parseExpr()` API working
-- `lib/meta-parser/loader.js` — switch from cst-to-ast.js to new parser
-- `lib/meta-parser/cst-to-ast.js` — DELETE
+- `lib/engine/convert.js` — replace `mdeParser.parse()` with `parseDeclarations(source, exprParser)`, keep `parseExpr()` API working (now just calls the expression parser directly — no more wrapping in `_tmp: expr.` hack)
+- `lib/meta-parser/loader.js` — switch from cst-to-ast.js to `parseDeclarations()` + framework-only expression parser (no connective operators — .calc files only use arrows and application)
 
 Files to delete:
-- `lib/tree-sitter-mde/` — entire directory (WASM + grammar + bindings)
+- `lib/meta-parser/cst-to-ast.js` (~520 lines)
+- `lib/tree-sitter-mde/` — entire directory (WASM + grammar.js + bindings)
 
 ### Stage 4: Benchmark & comparison update
 
@@ -450,35 +531,67 @@ const StoreSnapshot = struct {
     child1: []const u32,
     child2: []const u32,
     child3: []const u32,
-    // string table, bigint table as separate slices
 };
 
 fn loadSnapshot(data: []const u8) StoreSnapshot {
     const header = @ptrCast(*const Header, data.ptr);
     const n = header.nodeCount;
+    // After header (20 bytes), u8 arrays, then padding to 4-byte boundary
+    const u8_end = 20 + 2 * n;
+    const u32_start = (u8_end + 3) & ~@as(usize, 3); // align to 4
     return .{
-        .tags = data[12..][0..n],
-        .arities = data[12 + n ..][0..n],
-        .child0 = @ptrCast([*]const u32, @alignCast(4, data[12 + 2*n ..].ptr))[0..n],
-        // ...
+        .tags = data[20..][0..n],
+        .arities = data[20 + n ..][0..n],
+        .child0 = @ptrCast([*]const u32, @alignCast(4, data[u32_start..].ptr))[0..n],
+        // child1 at u32_start + 4*n, child2 at u32_start + 8*n, etc.
     };
 }
 ```
 
-No JSON parsing, no object allocation, no GC pressure. Just pointer arithmetic into memory-mapped file. The SoA layout means cache-friendly iteration over any single field (e.g., scan all tags without touching children).
+No JSON parsing, no object allocation, no GC pressure. Just pointer arithmetic into memory-mapped file. The alignment padding between u8 and u32 sections ensures `@alignCast` never traps. The SoA layout means cache-friendly iteration over any single field (e.g., scan all tags without touching children).
 
 ## Tree-sitter: Replace Entirely
 
-As detailed in Opt_B's scope, the calculus-generated parser replaces tree-sitter for ALL file types:
+The generated parser replaces tree-sitter for ALL file types. One declaration parser, one expression parser, different configurations:
 
-| File type | Current parser | New parser | When |
+| File type | Expression parser config | Declaration features | When |
 |---|---|---|---|
-| `.ill` (programs) | tree-sitter | calculus-generated + meta wrapper | Runtime |
-| `.calc` (calculus defs) | tree-sitter via cst-to-ast.js | same meta wrapper (no connective ops) | Build time |
-| `.family` (structural rules) | tree-sitter via cst-to-ast.js | same meta wrapper + `@annotations` | Build time |
-| `.rules` (inference rules) | `buildParser()` already | Already uses generated parser | Build time |
+| `.ill` (programs) | Full tables + all extensions | `name:`, `#kind`, `<-`, `%` | Runtime |
+| `.calc` (calculus defs) | No connective ops (framework only) | + `@annotations` | Build time |
+| `.family` (structural rules) | No connective ops (framework only) | + `@annotations`, `@directives` | Build time |
+| `.rules` (inference rules) | Full tables (already uses `buildParser()`) | Sequent notation | Build time |
 
-**Cleanup**: delete `lib/tree-sitter-mde/` (~11 KB WASM + grammar.js + bindings), `lib/meta-parser/cst-to-ast.js` (~400 lines), `build:ts:wasm` npm script. `loader.js` (`@extends` resolution) stays.
+The key insight: `.calc` and `.family` files define connectives but their expression bodies only use arrows and application — framework syntax. Connective operators (`*`, `-o`, etc.) are what's BEING defined, not used. So their expression parser needs no operator tables. `.ill` files use the full tables (including the connectives defined by `.calc`).
+
+```
+lib/calculus/builders.js        expression parser (Pratt, calculus-generated tables)
+lib/parser/declarations.js      declaration parser (calculus-agnostic, takes expr parser)
+lib/parser/sequent-parser.js    sequent parser (already exists, uses buildParser)
+lib/engine/convert.js           load orchestration (creates parser chain, classifies)
+lib/meta-parser/loader.js       @extends resolution (switches to declarations.js)
+```
+
+**Cleanup**: delete `lib/tree-sitter-mde/` (~11 KB WASM + grammar.js + bindings), `lib/meta-parser/cst-to-ast.js` (~520 lines), `build:ts:wasm` npm script. `loader.js` stays.
+
+## Testing Strategy
+
+**200+ existing tests** depend on the parsing pipeline (`mde.load`, `mde.parseExpr`). Migration must be staged:
+
+1. **Parity testing** (before deletion): Run both tree-sitter and the new parser on every `.ill` file. Assert identical Store entries for all 3896 SDK entries + all test fixtures. Catches any divergence.
+
+2. **Replace convert.js internals**: Swap tree-sitter for new parser inside `convert.js`. All 200+ existing tests serve as regression tests. `parseExpr` API unchanged — tests don't know about the internal switch.
+
+3. **Replace cst-to-ast.js**: Swap tree-sitter for new parser in `loader.js`. Run `npm run build:bundle` → verify `out/ill.json` is bit-identical. Build-time only — lower risk.
+
+4. **Delete tree-sitter**: Only after stages 2+3 pass with full test suite green.
+
+**New tests to add**:
+- Binary snapshot/restore round-trip: snapshot → restore → verify all entries match
+- Incremental loading: restore SDK → load user program → verify Store consistency
+- Binary format: alignment, endianness detection, CRC32 corruption detection
+- Application syntax: `f x y` → flat predicate form (critical for engine correctness)
+- Binary normalization: `(i (o (i e)))` → binlit via iterative accumulation
+- Arrow and forward rule: `A -> B`, `A -o { B }` parsing
 
 ## Projected Timeline (measured)
 

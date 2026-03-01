@@ -136,6 +136,14 @@ describe('v2 Calculus (generated from spec)', () => {
       // Actually & is 70 > -o 50, so it's (!A * B) -o (C & D)
       assert.strictEqual(ill.AST.tag(ast), 'loli');
     });
+
+    it('should give & higher precedence than +', () => {
+      // with (70) binds tighter than oplus (65)
+      // "A + B & C" should be "A + (B & C)"
+      const ast = ill.parse('A + B & C');
+      assert.strictEqual(ill.AST.tag(ast), 'oplus');
+      assert.strictEqual(ill.AST.tag(ill.AST.child(ast, 1)), 'with');
+    });
   });
 
   describe('renderer (generated)', () => {
@@ -159,6 +167,86 @@ describe('v2 Calculus (generated from spec)', () => {
     it('should render nullary correctly', () => {
       const ast = ill.AST.one();
       assert.strictEqual(ill.render(ast, 'ascii'), 'I');
+    });
+  });
+
+  describe('extended parser (binders, multi-char freevars, numbers)', () => {
+    let extParse;
+
+    before(() => {
+      const { buildParserFromTables, computeParserTables } = require('../lib/calculus/builders');
+      const tables = computeParserTables(ill.constructors);
+      tables.binders = { exists: 'exists', forall: 'forall' };
+      tables.multiCharFreevars = true;
+      tables.numbers = true;
+      extParse = buildParserFromTables(tables);
+    });
+
+    it('should parse exists X. body as binder with de Bruijn', () => {
+      const Store = require('../lib/kernel/store');
+      const ast = extParse('exists X. X');
+      assert.strictEqual(Store.tag(ast), 'exists');
+      const body = Store.child(ast, 0);
+      assert.strictEqual(Store.tag(body), 'bound');
+      assert.strictEqual(Store.child(body, 0), 0n); // de Bruijn index 0
+    });
+
+    it('should handle nested binders', () => {
+      const Store = require('../lib/kernel/store');
+      const ast = extParse('forall Y. exists X. X');
+      assert.strictEqual(Store.tag(ast), 'forall');
+      const inner = Store.child(ast, 0);
+      assert.strictEqual(Store.tag(inner), 'exists');
+      const body = Store.child(inner, 0);
+      assert.strictEqual(Store.tag(body), 'bound');
+      assert.strictEqual(Store.child(body, 0), 0n); // X is innermost
+    });
+
+    it('should reference outer binder at depth 1', () => {
+      const Store = require('../lib/kernel/store');
+      const ast = extParse('forall Y. exists X. Y');
+      const inner = Store.child(ast, 0);
+      const body = Store.child(inner, 0);
+      assert.strictEqual(Store.tag(body), 'bound');
+      assert.strictEqual(Store.child(body, 0), 1n); // Y is one level out
+    });
+
+    it('should parse multi-char freevars with _ prefix', () => {
+      const Store = require('../lib/kernel/store');
+      const ast = extParse('Sender');
+      assert.strictEqual(Store.tag(ast), 'freevar');
+      assert.strictEqual(Store.child(ast, 0), '_Sender');
+    });
+
+    it('should parse number literals', () => {
+      const Store = require('../lib/kernel/store');
+      const ast = extParse('42');
+      assert.strictEqual(Store.tag(ast), 'binlit');
+      assert.strictEqual(Store.child(ast, 0), 42n);
+    });
+
+    it('should parse hex literals', () => {
+      const Store = require('../lib/kernel/store');
+      const ast = extParse('0x60');
+      assert.strictEqual(Store.tag(ast), 'binlit');
+      assert.strictEqual(Store.child(ast, 0), 96n);
+    });
+
+    it('binder body extends to full expression', () => {
+      const Store = require('../lib/kernel/store');
+      // exists X. X * X should be exists(tensor(X, X))
+      const ast = extParse('exists X. X * X');
+      assert.strictEqual(Store.tag(ast), 'exists');
+      const body = Store.child(ast, 0);
+      assert.strictEqual(Store.tag(body), 'tensor');
+    });
+
+    it('unbound uppercase stays freevar (not bound)', () => {
+      const Store = require('../lib/kernel/store');
+      const ast = extParse('exists X. Y');
+      const body = Store.child(ast, 0);
+      assert.strictEqual(Store.tag(body), 'freevar');
+      assert.strictEqual(Store.child(body, 0), '_Y');
     });
   });
 
