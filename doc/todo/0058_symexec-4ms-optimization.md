@@ -2,7 +2,7 @@
 title: "Symexec Sub-4ms: Per-Step Optimization Analysis"
 created: 2026-02-28
 modified: 2026-03-01
-summary: "Deep profiling of symbolic multisig explore(). TODO_0059 done (16.6→11.6ms). Opt_A done (11.6→9.2ms). Next: Opt_G compiled matching (−3.5ms, subsumes D+F). Decision: direct path A→G, skip standalone D+F."
+summary: "Deep profiling of symbolic multisig explore(). TODO_0059 done (16.6→11.6ms). Opt_A done (11.6→9.2ms). Opt_G done (persistent steps: -32% matchIdx, -61% substitute, ~6-12% wall-clock). Next: Opt_E (skip solver) + Opt_H (threaded code)."
 tags:
   - symexec
   - optimization
@@ -25,12 +25,12 @@ starred: true
 
 MultisigNoCall.sol (solc 0.8.28, 1040 bytes), symbolic sender + nonce, `structuralMemo: true`.
 
-| Metric | Original | After 0059 | After Opt_A | Target |
-|---|---|---|---|---|
-| Nodes | 689 | 689 | 689 | 689 |
-| Leaves | 10 | 10 | 10 | 10 |
-| Median time | **16.6ms** | **11.6ms** | **~9.2ms** | **4ms** |
-| Per-node cost | 24µs | 16.8µs | ~13.3µs | 5.8µs |
+| Metric | Original | After 0059 | After Opt_A | After Opt_G | Target |
+|---|---|---|---|---|---|
+| Nodes | 689 | 689 | 689 | 689 | 689 |
+| Leaves | 10 | 10 | 10 | 10 | 10 |
+| Median time | **16.6ms** | **11.6ms** | **~9.2ms** | **~8.3ms** | **4ms** |
+| Per-node cost | 24µs | 16.8µs | ~13.3µs | ~12µs | 5.8µs |
 
 ## Completed Optimizations
 
@@ -70,13 +70,39 @@ Replaced `toObject(state)` with `state.snapshot()` at all 5 terminal return site
 
 Opt_C (per-predicate persistent dispatch, ~0.5ms) and Opt_E (skip solver for non-oplus, ~0.3ms) remain viable as standalone changes. Both are also naturally subsumed by Opt_G.
 
-## Decision: Direct Path to Opt_G
+## Opt_G: Compiled Matching — DONE (2026-03-02)
 
-**Skip standalone Opt_D and Opt_F. Go directly to Opt_G (compiled matching).**
+### Outcome: Persistent Step Fast Path
 
-Rationale: D and F are subsumed by G. Implementing D+F first saves ~2.1ms but creates throwaway code. G saves ~3.5ms and includes D+F for free. The generator is ~150 lines in `compile.js`, not a major complexity risk.
+**Measured: -32% matchIdx calls, -61% substitute calls, ~6-12% wall-clock improvement.**
 
-## Opt_G: Compiled Matching — Full Specification
+The original plan for per-rule closure dispatch (59 closures at one call site) caused **V8 megamorphic regression** (~25% slower). V8's inline cache degrades after 4+ distinct closures at a call site (see [RES_0069](../research/0069_v8-megamorphic-dispatch.md)).
+
+**Pivot**: Removed compiled linear matching entirely. Kept only `persistentSteps` — pre-compiled FFI closures (~4 types, stays within V8's polymorphic threshold). These are called from the existing monomorphic `matchAllLinear` path.
+
+| Metric | Before | After | Change |
+|---|---|---|---|
+| matchIdx calls | 10,376 | 7,021 | **-32%** |
+| substitute calls | 2,262 | 893 | **-61%** |
+| Profiled time | 6.08ms | 5.13ms | **-15.6%** |
+
+Files changed: `compile.js` (~50 LOC), `match.js` (10 LOC), `index.js` (1 LOC), `compiled-matcher.test.js` (new, 16 tests).
+
+### Why 3.5ms → ~0.9ms actual
+
+The original 3.5ms projection assumed compiled linear matchers would eliminate matchOnePattern dispatch (~1.5ms) AND inline FFI (~1.0ms) AND reuse buffers (~0.5ms). V8 megamorphic dispatch blocked the linear matcher component. Only the FFI inlining (persistent steps) was viable, yielding ~0.9ms. The flat bypass for consumed patterns (Strategy A extension) was attempted but regressed wall-clock despite 27% fewer matchIdx calls — the JS-level bypass code is not faster than matchIdx for simple 2-child patterns.
+
+## Remaining Optimizations
+
+### Opt_E: Skip solver for non-oplus rules (~0.3ms)
+
+Independent of G. Simple conditional in `symexec.js`.
+
+### Opt_H: Threaded code / fingerprint prediction (~1.7ms)
+
+After applying a rule, predict next rule from new PC value → skip `findAllMatches` for deterministic chains. Biggest remaining opportunity.
+
+## Original Opt_G Specification (archived)
 
 ### What It Is
 
@@ -310,16 +336,16 @@ Independent of G. Still worth doing as a 3-line conditional in `symexec.js`.
 
 After applying a rule, the new `pc` value is known. This determines the next fingerprint and candidate rule. 670 predicted steps × ~2.5µs = ~1.7ms. Combines naturally with G: the compiled matcher for the predicted rule is called directly, skipping `findAllMatches` entirely.
 
-## Performance Projection (Chosen Path: A → G)
+## Performance Projection
 
 | Level | Optimizations | Estimated time | vs original |
 |---|---|---|---|
 | Original (pre-0059) | — | 16.6ms | — |
 | **After TODO_0059** | FactSet migration (measured) | **11.6ms** | **1.43×** |
 | **After Opt_A** | FactSet snapshots (measured) | **~9.2ms** | **1.8×** |
-| After Opt_G | Compiled matching (−3.5ms) | ~5.7ms | 2.9× |
-| After Opt_E | Skip solver for non-oplus (−0.3ms) | ~5.4ms | 3.1× |
-| After Opt_H | Threaded code (−1.7ms) | ~3.7ms | 4.5× |
+| **After Opt_G** | Persistent step fast path (measured) | **~8.3ms** | **2.0×** |
+| After Opt_E | Skip solver for non-oplus (−0.3ms) | ~8.0ms | 2.1× |
+| After Opt_H | Threaded code (−1.7ms) | ~6.3ms | 2.6× |
 
 ## Original Profiling Results (pre-TODO_0059)
 
