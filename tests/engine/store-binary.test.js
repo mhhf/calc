@@ -344,5 +344,41 @@ describe('Store Binary Format', () => {
         try { fs.unlinkSync(tmpFile); } catch {}
       }
     });
+
+    it('precompiled symexec produces same tree as source load', () => {
+      const symexec = require('../../lib/engine/symexec');
+      const treeUtils = require('../../lib/engine/tree-utils');
+      const tmpFile = path.join(os.tmpdir(), `store-binary-symexec-${Date.now()}.bin`);
+      try {
+        const msPath = path.join(__dirname, '../../calculus/ill/programs/multisig.ill');
+
+        // Source load + explore
+        Store.clear();
+        const calcSrc = mde.load(msPath);
+        const stateSrc = mde.decomposeQuery(calcSrc.queries.get('symex'));
+        const treeSrc = symexec.explore(stateSrc, calcSrc.forwardRules, {
+          maxDepth: 200,
+          calc: { clauses: calcSrc.clauses, types: calcSrc.types }
+        });
+
+        // Precompile + load + explore
+        Store.clear();
+        mde.precompile(msPath, tmpFile);
+        Store.clear();
+        const calcBin = mde.loadPrecompiled(tmpFile);
+        const stateBin = mde.decomposeQuery(calcBin.queries.get('symex'));
+        const treeBin = symexec.explore(stateBin, calcBin.forwardRules, {
+          maxDepth: 200,
+          calc: { clauses: calcBin.clauses, types: calcBin.types }
+        });
+
+        // Same tree structure
+        assert.strictEqual(treeUtils.countNodes(treeBin), treeUtils.countNodes(treeSrc));
+        assert.strictEqual(treeUtils.countLeaves(treeBin), treeUtils.countLeaves(treeSrc));
+        assert.strictEqual(treeUtils.maxDepth(treeBin), treeUtils.maxDepth(treeSrc));
+      } finally {
+        try { fs.unlinkSync(tmpFile); } catch {}
+      }
+    });
   });
 });
