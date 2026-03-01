@@ -122,11 +122,13 @@ Replaced `{hash:count}` JS objects + parallel `stateIndex` with sorted typed-arr
 
 ## Remaining Optimization Plan
 
-### Phase 1: Low-hanging fruit (11.6ms → ~8ms)
+Savings re-estimated from the new 11.6ms baseline with 689 nodes (679 rule firings, 670 single-alt, 10 terminals). FactSet changed cost structure: state lookup is O(1) via groupLen, mutation is faster, but toObject at leaves and FFI dispatch overhead are unchanged.
 
-#### Opt_A: Skip leaf snapshots (save ~2ms)
+### Phase 1: Low-hanging fruit (11.6ms → ~7.5ms)
 
-`toObject(state)` at each terminal node converts FactSet → plain object (10 calls). Most callers never access `.state` on memo/leaf nodes.
+#### Opt_A: Skip leaf snapshots (save ~1.5ms)
+
+`toObject(state)` converts FactSet → plain `{hash:count}` object at each terminal (10 calls). Estimated ~150µs/call × 10 = ~1.5ms. Most callers never access `.state` on memo/leaf/bound nodes.
 
 **Implementation:** Add `opts.snapshotLeaves = false` (default). When disabled, terminal nodes store `state: null`. Add a replay API to reconstruct leaf state on demand.
 
@@ -136,9 +138,11 @@ Replaced `{hash:count}` JS objects + parallel `stateIndex` with sorted typed-arr
 
 drainPersistentLolis now reads `state.linear.group(TAG_LOLI)` directly — O(1) check, no array copy. Already exits early when no lolis. Remaining cost negligible.
 
-#### Opt_C: Per-predicate persistent dispatch (save ~0.7ms)
+#### Opt_C: Per-predicate persistent dispatch (save ~0.5ms)
 
-`provePersistentGoals` does a state lookup scan for every persistent pattern, even for predicates like `inc`/`plus` that are **never** in `state.persistent` (they're FFI-only). The FactSet groupLen guard is O(1) now but the dispatch overhead per call remains.
+`provePersistentGoals` still calls `subApplyIdx` + `tryFFIDirect` for every persistent pattern, even for predicates like `inc`/`plus` that are **never** in `state.persistent`. The FactSet `groupLen` guard is now O(1) (was O(n) set check), so the state-lookup overhead is already reduced. Remaining savings are from skipping the function call chain entirely for FFI-only predicates.
+
+679 firings × ~2 persistent antecedents × ~0.4µs dispatch overhead = ~0.5ms.
 
 **Implementation:** At compile time, classify each persistent antecedent predicate:
 - **FFI-only** (`inc`, `plus`, `neq`, `mul`, `mem_expand`): skip state lookup entirely, go directly to FFI.
@@ -146,11 +150,13 @@ drainPersistentLolis now reads `state.linear.group(TAG_LOLI)` directly — O(1) 
 
 Store a `persistentModes` array on the compiled rule: `[FFI_ONLY, FFI_ONLY, STATE_FIRST, ...]`.
 
-#### Opt_D: Inline FFI for common predicates (save ~1.0ms)
+#### Opt_D: Inline FFI for common predicates (save ~1.4ms)
 
 The prove path for `inc(PC, PC')` is: `subApplyIdx(pattern, theta, slots)` → `tryFFIDirect(goal)` → tag dispatch → mode check → isGround check → FFI fn call → build result theta. Total: **478ns/call**.
 
 Direct inline: `theta[pc2Slot] = Store.put('s', [theta[pcSlot]])`. Total: **46ns/call**. **10.4× faster.**
+
+679 firings × ~2 persistent antecedents × ~430ns saved = ~0.58ms from dispatch savings alone. Additional savings from eliminating `subApplyIdx` goal instantiation (268ns × 1358 calls = ~0.36ms) and simpler control flow (~0.5ms). Total: ~1.4ms.
 
 **Implementation:** At compile time, for each persistent antecedent, generate an "inline prover" closure:
 
@@ -165,37 +171,43 @@ rule.inlineProvers = [
 
 Falls back to generic provePersistentGoals when inline prover is not available.
 
-#### Opt_E: Skip solver for non-oplus rules (save ~0.2ms)
+#### Opt_E: Skip solver for non-oplus rules (save ~0.3ms)
 
-`solver.checkpoint()` + `solver.restore()` are called for every rule match. For single-alt rules (670/689), the solver is never checked. Skip the checkpoint/restore for these.
+`solver.checkpoint()` + `solver.restore()` called for every rule match. For single-alt rules (670/679), the solver is never checked. 670 × ~0.4µs = ~0.3ms.
 
 **Implementation:** Conditional: only checkpoint/restore when `alts.length > 1` or when new persistent facts include eq/neq.
 
-### Phase 2: Medium effort (~8ms → ~5.5ms)
+**Phase 1 total: −(1.5 + 0.5 + 1.4 + 0.3) ≈ −3.7ms → ~7.9ms** (reduced from ~4.5ms estimated pre-0059 because FactSet already eliminated some of the state lookup overhead that Opt_C counted)
 
-#### Opt_F: Reusable tryMatch buffers (save ~0.5ms)
+### Phase 2: Medium effort (~7.9ms → ~5.0ms)
 
-`tryMatch` allocates per call: `new Array(metavarCount)`, `consumed = {}`, `reserved = {}`, `preservedCount = {}`. At 679 calls, that's ~2700 object allocations. V8 is fast at allocation but not free.
+#### Opt_F: Reusable tryMatch buffers (save ~0.7ms)
+
+`tryMatch` allocates per call: `new Array(metavarCount)`, `consumed = {}`, `reserved = {}`, `preservedCount = {}`. At 679 calls, that's ~2700 object allocations.
+
+679 calls × ~1µs alloc overhead = ~0.7ms.
 
 **Implementation:** Pre-allocate per-rule buffers. The `consumed` object can be replaced with a flat array indexed by antecedent position (only 2-13 entries).
 
-#### Opt_G: Compiled hot-path matching (save ~1.5ms)
+#### Opt_G: Compiled hot-path matching (save ~2.2ms)
 
-For the 10 most-fired rules (covering ~80% of deterministic steps), generate a specialized match function that:
+For the 10 most-fired rules (covering ~80% of 670 deterministic steps), generate a specialized match function that:
 1. Reads directly from `state.linear.group(tagIdx)` — no dispatch through matchOnePattern
 2. Uses delta bypass logic inline — no function call overhead
 3. Inlines the FFI computation (Opt_D) — no prove dispatch
 4. Returns a pre-allocated theta — no allocation
 
-Each compiled match function is ~20 lines of specialized JavaScript.
+536 hot-path steps × (16.8µs current − ~5µs compiled) ≈ ~6.3ms theoretical. But Opt_D already saves ~1.4ms of this, and overhead is shared. Realistic: ~2.2ms additional on top of Phase 1.
 
-**Estimated per-call cost reduction:** 12.7µs → ~5µs for hot rules.
+**Phase 2 total: −(0.7 + 2.2) ≈ −2.9ms → ~5.0ms**
 
-### Phase 3: High effort (~5.5ms → 4ms)
+### Phase 3: High effort (~5.0ms → ~3.3ms)
 
-#### Opt_H: Threaded code / fingerprint prediction (save ~1.5ms)
+#### Opt_H: Threaded code / fingerprint prediction (save ~1.7ms)
 
 After applying a rule, the new `pc` value is known (computed during substitution). This value determines the next fingerprint, which determines the next candidate rule.
+
+670 predicted steps × ~2.5µs saved (skip getCandidateRules + loli scan + candidate loop) = ~1.7ms.
 
 **Implementation:** At compile time, for each rule:
 1. Identify which theta slot produces the new `pc` value (from consequent pattern analysis)
@@ -203,54 +215,52 @@ After applying a rule, the new `pc` value is known (computed during substitution
 3. After mutateState, compute `nextFP = theta[rule.nextFingerprintSlot]`
 4. Look up `fpIndex[nextFP]` → if exactly 1 rule, try it directly without calling `findAllMatches`
 
-**Estimated savings:** Skip `getCandidateRules` (1µs) + loli scan (0.5µs) + candidate loop overhead (1µs) = 2.5µs per predicted step. For 670 predicted steps: ~1.7ms.
-
 Combined with Opt_G (compiled matching on the predicted rule): skip the entire findAllMatches + tryMatch dispatch for deterministic steps.
+
+**Phase 3 total: −1.7ms → ~3.3ms**
 
 ## Performance Projection
 
-| Level | Optimizations | Estimated time | Improvement |
+| Level | Optimizations | Estimated time | vs original 16.6ms |
 |---|---|---|---|
 | Original (pre-0059) | — | 16.6ms | — |
-| **After TODO_0059** | **FactSet migration** | **11.6ms** | **1.43×** |
-| Phase 1 | + A+C+D+E | ~8ms | 2.1× |
-| Phase 2 | + F+G | ~5.5ms | 3× |
-| Phase 3 | + H | ~4ms | 4.2× |
+| **After TODO_0059** | **FactSet migration (measured)** | **11.6ms** | **1.43×** |
+| Phase 1 | + A+C+D+E (−3.7ms) | ~7.9ms | 2.1× |
+| Phase 2 | + F+G (−2.9ms) | ~5.0ms | 3.3× |
+| Phase 3 | + H (−1.7ms) | ~3.3ms | 5× |
 
 ### Combined with other TODOs (JS)
 
 | Addition | Time | vs original |
 |---|---|---|
-| + TODO_0054 Layer 2 (loli fusion) | ~3.5ms | 4.7× |
-| + TODO_0005 L0+L1 (constraint propagation) | ~3.3ms | 5× |
-| + TODO_0052/0056 (zero impact at current scale) | ~3.3ms | 5× |
+| + TODO_0054 Layer 2 (loli fusion, −5% nodes) | ~3.1ms | 5.4× |
+| + TODO_0005 L0+L1 (constraint propagation) | ~2.9ms | 5.7× |
+| + TODO_0052/0056 (zero impact at current scale) | ~2.9ms | 5.7× |
 
 ### Zig rewrite projection
 
-V8-specific overhead identified by profiling: megamorphic IC was 5.8% (**now fixed** by FactSet), Map/Set 2.4%, property loads 3.4%, GC ~3-5%. A Zig rewrite eliminates all remaining JS runtime costs:
+V8-specific overhead identified by profiling: megamorphic IC was 5.8% (**fixed** by FactSet), Map/Set 2.4%, property loads 3.4%, GC ~3-5%. FactSet already moves state ops closer to Zig-style (flat sorted arrays, arena undo, no index maintenance). A Zig rewrite eliminates the remaining JS runtime costs:
 
 | Operation | JS (after all opts) | Zig | Speedup |
 |---|---|---|---|
 | Pattern match (5 linear) | ~1.5µs | ~0.15µs | 10× |
 | Inline FFI (inc, plus) | ~0.1µs | ~0.01µs | 10× |
 | State mutation (5 facts) | ~1.0µs | ~0.10µs | 10× |
-| Hash/memo check | ~0.3µs | ~0.03µs | 10× |
-| **Per deterministic step** | **~3µs** | **~0.3µs** | **10×** |
-
-Note: FactSet already moves state ops closer to Zig-style (flat sorted arrays, arena undo). Index maintenance cost is eliminated (was ~0.5µs, now 0 — state IS the index).
+| Hash/memo check | ~0.2µs | ~0.02µs | 10× |
+| **Per deterministic step** | **~2.8µs** | **~0.3µs** | **~10×** |
 
 | Level | JS time | Zig time | vs JS original |
 |---|---|---|---|
-| All TODO_0058 phases | ~4ms | ~0.4ms | 42× |
-| + all other TODOs | ~3.3ms | ~0.3ms | **55×** |
+| All TODO_0058 phases | ~3.3ms | ~0.3ms | 55× |
+| + all other TODOs | ~2.9ms | ~0.3ms | **55×** |
 
 ## Theoretical minimum
 
-The irreducible per-step work (JS):
+The irreducible per-step work (JS, after all optimizations):
 1. Pattern matching: 5 linear patterns × ~300ns (delta bypass) = 1.5µs
 2. Persistent proving: 2 patterns × ~50ns (inlined FFI) = 0.1µs
 3. State mutation: 5 consequent patterns × ~200ns (subCompiled + FactSet insert) = 1.0µs
-4. Hash update + cycle check: ~0.2µs (Zobrist incremental — already done in FactSet)
+4. Hash update + cycle check: ~0.2µs (Zobrist incremental — maintained by FactSet)
 
 **JS minimum per step: ~2.8µs. For 679 steps: ~1.9ms.**
 **Zig minimum per step: ~0.3µs. For 679 steps: ~0.2ms.** (Memory bandwidth floor: ~0.1ms from ~21K cache line accesses at 5ns/L1-hit.)

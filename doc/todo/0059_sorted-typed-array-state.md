@@ -355,46 +355,43 @@ state.persistent.undo(arena, cpPersistent);
 
 No makeChildCtx. No undoIndexChanges. No separate indexUndo log.
 
-## Performance Projection (symbolic multisig, 477 nodes with memo)
+## Measured Results (solc symbolic multisig, 689 nodes with memo)
 
-| Cost center | Current | Model B | Savings |
+| Metric | Before | After | Change |
 |---|---|---|---|
-| Per-firing mutation + undo | ~1,800 ns | ~1,400 ns | ~400 ns × 466 = 186 µs |
-| Per-firing index sync (makeChildCtx + undoIndex) | ~2,000 ns | **0** | ~2,000 ns × 466 = **932 µs** |
-| Terminal snapshots (×11) | ~148 µs each = 1,628 µs | ~0.25 µs each = 2.8 µs | **1,625 µs** |
-| Initial setup | 104 µs | 48 µs | 56 µs |
-| **Total state ops** | **~3,690 µs** | **~750 µs** | **~2,940 µs (5× faster)** |
-| **Overall (14 ms base)** | **14 ms** | **~11.1 ms** | **~1.26× faster** |
+| Median | **16.56ms** | **11.58ms** | **−30% (1.43×)** |
+| Mean | 18.02ms | 12.18ms | −32% |
+| Min | 15.01ms | 10.28ms | −31% |
+| Per-node cost | 24µs | 16.8µs | −30% |
 
-State ops go from ~26% to ~7% of total runtime. Bottleneck shifts entirely to matching/proving.
+Also measured on small multisig (84 nodes): **1.76ms → 1.46ms (−17%)**.
 
-**Scaling**: For larger contracts (~5000 facts), snapshot savings grow from 590× to ~3500× (typed-array copy scales linearly; object spread scales super-linearly due to hidden class transitions).
+### What was estimated vs actual
 
-## Migration Stages
+| Cost center | Estimated savings | Actual | Notes |
+|---|---|---|---|
+| Index sync (makeChildCtx + undoIndex) | ~930 µs | **eliminated** | confirmed |
+| Mutation + undo | ~186 µs | faster (Arena vs undo log) | confirmed |
+| V8 megamorphic IC (5.8% of ticks) | ~800 µs | **eliminated** | Int32Array access is monomorphic |
+| for-in overhead (0.9% of ticks) | ~130 µs | **eliminated** | direct array iteration |
+| Terminal snapshots | ~1,625 µs | **NOT saved** | `toObject()` still builds plain objects for output |
+| **Total overall** | **~1.26× (estimated)** | **1.43× (measured)** | better than estimated |
 
-### TODO_0059.Stage_1 — FactSet + Arena primitives
+The estimate was conservative: it didn't account for V8 IC deoptimization cascades and diffuse overhead from dictionary-mode objects, which the FactSet migration also eliminates.
 
-New file: `lib/engine/fact-set.js`. Implement `FactSet`, `Arena`, `lowerBound`, `mix`. Unit tests: insert, remove, undo, snapshot, hash consistency, group iteration.
+**Terminal snapshot savings were NOT realized** because `toObject(state)` converts FactSet → plain `{hash:count}` objects for the output tree (same cost as old `{...state.linear}`). FactSet.snapshot() is fast (~250ns) but unused for output. Fix: TODO_0058 Opt_A (skip leaf snapshots or store FactSet snapshots directly).
 
-No integration yet — standalone module with its own tests.
+**Scaling**: For larger contracts (~5000 facts), the FactSet advantage grows further — sorted Int32Array insert/remove scales O(log n) vs dictionary-mode object access which scales poorly due to V8 hidden class transitions.
 
-### TODO_0059.Stage_2 — State creation + conversion
+## Migration Stages (all DONE)
 
-`createState(linearObj, persistentObj)` → builds FactSet from `{ hash: count }` objects. `toObject(factSet)` → converts back for API compatibility. Unit tests with real EVM initial states.
+All stages completed 2026-03-01. 602 tests pass. Net −149 LOC.
 
-### TODO_0059.Stage_3 — mutateState migration
-
-Replace `mutateState`/`undoMutate` to use FactSet.insert/remove + Arena. Keep same function signature (consumed, theta, patterns, slots). Run existing symexec tests — they should pass with no other changes.
-
-### TODO_0059.Stage_4 — Eliminate stateIndex
-
-Replace `buildStateIndex` calls with direct FactSet.group access. Replace `matchOnePattern` candidate iteration. Replace `provePersistentGoals` persistent iteration. Remove `makeChildCtx`, `undoIndexChanges`, `indexAdd`, `indexRemove`.
-
-### TODO_0059.Stage_5 — Snapshot + hashing migration
-
-Replace `snapshotState` with FactSet.snapshot. Replace `computeNumericHash` / `hashPair` with additive Zobrist. Remove `hashStateString`.
-
-Benchmark before/after with `bench:diff`.
+- **Stage 1** — `lib/engine/fact-set.js` (FactSet, Arena, State, fromObject/toObject) + 37 unit tests
+- **Stage 2** — `createState()` returns State, `forward.run()` uses State throughout
+- **Stage 3** — `mutateState` uses two Arenas (linArena, perArena), no return value
+- **Stage 4** — Removed `buildStateIndex`, `makeChildCtx`, `undoIndexChanges`, `indexAdd/Remove` (~190 LOC). Added `State.hasPredicate()` / `State.groupForPred()` for atom/predicate dispatch.
+- **Stage 5** — Incremental Zobrist via FactSet.insert/remove. `state.stateHash` for cycle detection. `hashStateString` kept for debug/test backward compat.
 
 ## Zig Translation Notes
 
