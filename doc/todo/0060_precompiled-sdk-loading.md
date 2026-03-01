@@ -119,9 +119,9 @@ The Store's SoA layout maps directly to flat typed arrays:
 ```
 HEADER (20 bytes):
   u32 magic              0x43414C43 ("CALC")
-  u8  version            1 (format version — increment on breaking changes)
-  u8  endian             1 (1 = little-endian, 2 = big-endian)
-  u16 reserved           0
+  u16 version            1 (format version — increment on breaking changes)
+  u8  endian             1 (1 = little-endian)
+  u8  reserved           0
   u32 nodeCount          (e.g. 1599 for SDK)
   u32 stringCount        (e.g. ~150)
   u32 bigintCount        (e.g. ~40)
@@ -142,20 +142,22 @@ STRING TABLE:
   u16 len, utf8[len]     × stringCount    (~2 KB)
 
 BIGINT TABLE:
-  u16 len, ascii[len]    × bigintCount    (~0.5 KB)
+  u8 sign, u16 byteLen, bytes[byteLen]  × bigintCount    (~0.5 KB)
 
 TAG REGISTRY:
-  u8 tagCount
-  (u8 id, u16 len, utf8[len])  × tagCount  (~0.3 KB)
+  u16 tagCount
+  (u16 nameLen, utf8[nameLen])  × tagCount  (~0.3 KB)
+  Tag IDs are implicit: pre-registered tags (0..PRED_BOUNDARY-1) are not
+  stored; dynamic tags start at PRED_BOUNDARY and are registered in order.
 
 SDK METADATA (JSON):
   u32 metaLen
-  utf8[metaLen]          { types, clauses, rawForwardRules }
+  utf8[metaLen]          { types, clauses, forwardRules, compiledRules, queries }
 
 FOOTER:
   u32 crc32              CRC32 of everything before this field
 
-TOTAL: ~38 KB for SDK
+TOTAL: ~38 KB for SDK-only, ~65 KB for full program
 ```
 
 **Alignment**: Padding between u8 arrays (tags, arities) and u32 arrays (child0-3) is required. Both JS (`new Uint32Array(buffer, offset)` requires 4-byte-aligned offset) and Zig (`@alignCast(4, ptr)`) reject unaligned u32 access. Padding = `(4 - (2 * nodeCount) % 4) % 4` bytes of zeros.
@@ -441,29 +443,13 @@ lib/tree-sitter-mde/     →  DELETE entirely
 
 `compileRule()` is deterministic: same raw rule → same compiled rule. The compiled rules contain Maps (`metavarSlots`, `linearMeta`, `existentialGoals`) and Sets (`freevars`, `persistentDeps`), but no closures — all are serializable.
 
-### Serialization: v8.serialize (not JSON)
+### Serialization
 
-`v8.serialize`/`v8.deserialize` handles Maps and Sets natively. Benchmarked on 73 simulated compiled rules:
+**Plan:** `v8.serialize`/`v8.deserialize` for native Map/Set support. **Actual:** JSON with explicit Set↔Array conversion helpers (`_serializeCompiledRules` / `_deserializeCompiledRules` in `lib/engine/index.js`).
 
-| Method | Serialize | Deserialize | Size |
-|---|---|---|---|
-| v8.serialize | 0.8ms | 1.2ms | 103 KB |
-| JSON + replacer/reviver | 1.1ms | 5.5ms | 132 KB |
+v8.serialize measured 1.38ms deserialize — no better than recompiling (1.41ms). Instead, compiled rules are embedded in the existing JSON metadata section of the binary cache. This avoids the v8 wire format versioning problem entirely (no cache key per Node.js major version needed).
 
-Custom JSON is **worse than no cache** — it costs 5.5ms to deserialize what takes only 2.4ms to recompute. Only `v8.deserialize` (1.2ms) makes caching worthwhile.
-
-### Cache key versioning
-
-`v8.serialize` output uses a wire format version that changes between Node.js major releases (e.g., v14 in Node 18, v15 in Node 20+). A binary written by Node 22 fails to deserialize on Node 20. Solution: include the wire format version in the cache key.
-
-```javascript
-const v8 = require('v8');
-const wireVersion = new v8.Deserializer(v8.serialize(null)).getWireFormatVersion();
-const cacheKey = `${sourceHash}_wf${wireVersion}`;
-// e.g. "a3f7b2c1_wf15"
-```
-
-On Node.js upgrade, wire format changes → cache key changes → one-time 2.4ms recompile. No silent corruption, no manual invalidation. The compiled rules are Node.js-only (they reference Store hashes), so browser portability is irrelevant.
+**Gotcha — Set serialization**: `linearMeta[p].freevars` and `.persistentDeps` are JavaScript `Set` objects. `JSON.stringify(new Set(...))` produces `{}`, silently dropping entries. The serialize/deserialize helpers convert Set↔Array at the serialization boundary.
 
 Store the compiled rules in the binary alongside the Store snapshot. Saves 2.4ms. Combined with Opt_A + Opt_B: total setup ~4.6ms.
 
