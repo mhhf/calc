@@ -18,8 +18,8 @@ const fs = require('fs');
 const { performance } = require('perf_hooks');
 const mde = require('../../lib/engine');
 const Store = require('../../lib/kernel/store');
-const forward = require('../../lib/engine/forward');
 const symexec = require('../../lib/engine/symexec');
+const match = require('../../lib/engine/match');
 const { detectStrategy } = require('../../lib/engine/strategy');
 const treeUtils = require('../../lib/engine/tree-utils');
 
@@ -65,63 +65,79 @@ async function setupState() {
 // ─── Instrumented explore ────────────────────────────────────────────────────
 
 function instrumentedExplore(initialState, rules, calcCtx, maxDepth) {
+  const { fromObject, toObject, Arena } = require('../../lib/engine/fact-set');
+
   const timers = {
     findAllMatches: { time: 0, calls: 0 },
     hashState:      { time: 0, calls: 0 },
     expandChoices:  { time: 0, calls: 0 },
     mutateState:    { time: 0, calls: 0 },
-    undoMutate:     { time: 0, calls: 0 },
-    setClone:       { time: 0, calls: 0 },
-    makeChildCtx:   { time: 0, calls: 0 },
-    undoIndex:      { time: 0, calls: 0 },
+    undoState:      { time: 0, calls: 0 },
     snapshot:       { time: 0, calls: 0 },
   };
 
-  // Mutable copy
-  const state = {
-    linear: { ...initialState.linear },
-    persistent: { ...initialState.persistent }
-  };
+  // Build FactSet-based State
+  const state = fromObject(initialState.linear, initialState.persistent);
 
   const ruleList = Array.isArray(rules) ? rules : (rules.rules || rules);
   const indexedRules = Array.isArray(rules) ? { rules } : rules;
   const strategy = detectStrategy(ruleList);
 
-  // Mutable pathVisited: add before recursion, delete after (no Set copies)
+  // Set up fingerprint on state
+  const fpConfig = strategy.fpConfig || null;
+  if (fpConfig) {
+    state._fpPred = fpConfig.pred;
+    state._fpKeyPos = fpConfig.keyPos;
+    const fpTagId = Store.TAG[fpConfig.pred];
+    state._byKey = {};
+    if (fpTagId !== undefined) {
+      const grp = state.linear.group(fpTagId);
+      for (let i = 0; i < grp.length; i++) {
+        const h = grp[i];
+        if (Store.arity(h) > fpConfig.keyPos) {
+          state._byKey[Store.child(h, fpConfig.keyPos)] = h;
+        }
+      }
+    }
+  }
+
+  // Arenas for mutation undo
+  const linArena = new Arena(16384);
+  const perArena = new Arena(4096);
+
   const pathVisited = new Set();
 
-  function go(depth, ctx) {
+  function go(depth) {
     let t0;
 
-    // Cycle detection uses numeric hash from context (incremental)
     t0 = performance.now();
-    const sh = ctx.stateHash;
+    const sh = state.stateHash;
     timers.hashState.time += performance.now() - t0;
     timers.hashState.calls++;
 
     if (pathVisited.has(sh)) {
       t0 = performance.now();
-      const snap = symexec.snapshotState(state);
+      const snap = toObject(state);
       timers.snapshot.time += performance.now() - t0;
       timers.snapshot.calls++;
       return { type: 'cycle', state: snap };
     }
     if (depth >= maxDepth) {
       t0 = performance.now();
-      const snap = symexec.snapshotState(state);
+      const snap = toObject(state);
       timers.snapshot.time += performance.now() - t0;
       timers.snapshot.calls++;
       return { type: 'bound', state: snap };
     }
 
     t0 = performance.now();
-    const matches = symexec.findAllMatches(state, indexedRules, calcCtx, strategy, ctx.stateIndex);
+    const matches = symexec.findAllMatches(state, indexedRules, calcCtx, strategy);
     timers.findAllMatches.time += performance.now() - t0;
     timers.findAllMatches.calls++;
 
     if (matches.length === 0) {
       t0 = performance.now();
-      const snap = symexec.snapshotState(state);
+      const snap = toObject(state);
       timers.snapshot.time += performance.now() - t0;
       timers.snapshot.calls++;
       return { type: 'leaf', state: snap };
@@ -138,55 +154,43 @@ function instrumentedExplore(initialState, rules, calcCtx, maxDepth) {
       timers.expandChoices.calls++;
 
       if (alts.length <= 1) {
+        const linCp = linArena.checkpoint();
+        const perCp = perArena.checkpoint();
+
         t0 = performance.now();
-        const undo = symexec.mutateState(state, m.consumed, m.theta,
+        symexec.mutateState(state, m.consumed, m.theta,
           m.rule.consequent.linear || [], m.rule.consequent.persistent || [],
-          m.slots, m.optimized ? m.rule : null);
+          m.slots, m.optimized ? m.rule : null, linArena, perArena);
         timers.mutateState.time += performance.now() - t0;
         timers.mutateState.calls++;
 
-        t0 = performance.now();
-        const { ctx: childCtx, indexUndo } = symexec.makeChildCtx(ctx, state, undo);
-        timers.makeChildCtx.time += performance.now() - t0;
-        timers.makeChildCtx.calls++;
-
-        const child = go(depth + 1, childCtx);
+        const child = go(depth + 1);
 
         t0 = performance.now();
-        symexec.undoIndexChanges(ctx.stateIndex, indexUndo);
-        timers.undoIndex.time += performance.now() - t0;
-        timers.undoIndex.calls++;
-
-        t0 = performance.now();
-        symexec.undoMutate(state, undo);
-        timers.undoMutate.time += performance.now() - t0;
-        timers.undoMutate.calls++;
+        state.persistent.undo(perArena, perCp);
+        state.linear.undo(linArena, linCp);
+        timers.undoState.time += performance.now() - t0;
+        timers.undoState.calls++;
 
         children.push({ rule: m.rule.name, child });
       } else {
         for (let i = 0; i < alts.length; i++) {
+          const linCp = linArena.checkpoint();
+          const perCp = perArena.checkpoint();
+
           t0 = performance.now();
-          const undo = symexec.mutateState(state, m.consumed, m.theta,
-            alts[i].linear, alts[i].persistent, m.slots, null);
+          symexec.mutateState(state, m.consumed, m.theta,
+            alts[i].linear, alts[i].persistent, m.slots, null, linArena, perArena);
           timers.mutateState.time += performance.now() - t0;
           timers.mutateState.calls++;
 
-          t0 = performance.now();
-          const { ctx: childCtx, indexUndo } = symexec.makeChildCtx(ctx, state, undo);
-          timers.makeChildCtx.time += performance.now() - t0;
-          timers.makeChildCtx.calls++;
-
-          const child = go(depth + 1, childCtx);
+          const child = go(depth + 1);
 
           t0 = performance.now();
-          symexec.undoIndexChanges(ctx.stateIndex, indexUndo);
-          timers.undoIndex.time += performance.now() - t0;
-          timers.undoIndex.calls++;
-
-          t0 = performance.now();
-          symexec.undoMutate(state, undo);
-          timers.undoMutate.time += performance.now() - t0;
-          timers.undoMutate.calls++;
+          state.persistent.undo(perArena, perCp);
+          state.linear.undo(linArena, linCp);
+          timers.undoState.time += performance.now() - t0;
+          timers.undoState.calls++;
 
           children.push({ rule: m.rule.name, choice: i, child });
         }
@@ -198,9 +202,7 @@ function instrumentedExplore(initialState, rules, calcCtx, maxDepth) {
     return { type: 'branch', state: null, children };
   }
 
-  const fpConfig = strategy.fpConfig || null;
-  const rootCtx = symexec.ExploreContext.fromState(state, fpConfig);
-  const tree = go(0, rootCtx);
+  const tree = go(0);
   return { tree, timers };
 }
 
@@ -221,11 +223,11 @@ async function runBenchmark(doProfile) {
 
   // ── Profile run ──
   if (doProfile) {
-    forward.resetProfile();
+    match.resetProfile();
 
     const { tree, timers } = instrumentedExplore(state, calc.forwardRules, calcCtx, 200);
     const totalTime = Object.values(timers).reduce((s, t) => s + t.time, 0);
-    const prof = forward.getProfile();
+    const prof = match.getProfile();
 
     const nodes = treeUtils.countNodes(tree);
     const leaves = treeUtils.countLeaves(tree);
@@ -241,10 +243,8 @@ async function runBenchmark(doProfile) {
       ['hashState',            timers.hashState],
       ['expandConsequentChoices', timers.expandChoices],
       ['mutateState',          timers.mutateState],
-      ['undoMutate',           timers.undoMutate],
-      ['makeChildCtx',         timers.makeChildCtx],
-      ['undoIndexChanges',     timers.undoIndex],
-      ['snapshotState',        timers.snapshot],
+      ['undoState',            timers.undoState],
+      ['toObject (snapshot)',   timers.snapshot],
     ];
     for (const [name, t] of rows) {
       if (t.calls === 0) continue;
