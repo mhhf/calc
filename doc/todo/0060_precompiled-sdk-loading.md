@@ -185,116 +185,140 @@ PRECOMPILED SETUP:
 
 This is already an improvement, but tree-sitter's 11ms fixed WASM cost still dominates the user program parse. See Opt_B below.
 
-## TODO_0060.Opt_B — Hand-Written .ill Parser
+## TODO_0060.Opt_B — Calculus-Generated .ill Parser
 
-### Why Tree-sitter Is Overkill
+### The Parser Already Exists
 
-The .ill grammar (`lib/tree-sitter-mde/grammar.js`) has **23 rules** with 6 precedence levels. Tree-sitter provides error recovery, incremental parsing, and syntax highlighting — **none of which are used**. The CST is consumed in a single linear walk by `convertExpr()` which calls `Store.put()` directly.
+`lib/calculus/builders.js` has a **Pratt precedence-climbing parser** generated from the calculus definition. It's used by the browser (`lib/browser.js`), the rules parser (`lib/rules/rules2-parser.js`), and the sequent parser. The only place it's NOT used is `lib/engine/convert.js` — which instead uses tree-sitter.
 
-Tree-sitter adds:
-- 11ms fixed WASM VM overhead per parse call (dominates for small inputs)
-- 11 KB WASM binary dependency
-- Async initialization (`TreeSitter.Parser.init()`)
-- WASM rebuild required after grammar changes (`npm run build:ts:wasm`)
+The generated parser works from `parserTables` (precomputed in `out/ill.json`):
 
-### .ill Syntax (Complete)
-
-```
-program     ::= (declaration | query | import | comment)*
-declaration ::= name ':' expr ('<-' expr)* '.'
-query       ::= '#' identifier expr '.'
-import      ::= '#import(' path ')'
-comment     ::= '%' .* '\n'
-
-expr        ::= plus ('->' expr | '-o' expr | '-o' '{' expr '}')
-              | 'exists' VAR '.' expr
-              | 'forall' VAR '.' expr
-              | plus
-plus        ::= with ('+' with)*
-with        ::= tensor ('&' tensor)*
-tensor      ::= bang ('*' bang)*
-bang        ::= '!' bang | app
-app         ::= atom+ (left-associative application)
-atom        ::= IDENT | VAR | NUMBER | '(' expr ')'
-
-name        ::= (IDENT | VAR) ('/' (IDENT | VAR | DIGIT+))*
-IDENT       ::= [a-z_][a-zA-Z0-9_']*
-VAR         ::= [A-Z][a-zA-Z0-9_']*
-NUMBER      ::= [0-9]+ | 0x[0-9a-fA-F]+
+```json
+{
+  "operators": [
+    { "name": "tensor", "op": "*", "precedence": 60, "assoc": "left" },
+    { "name": "loli", "op": "-o", "precedence": 50, "assoc": "right" },
+    { "name": "with", "op": "&", "precedence": 70, "assoc": "left" },
+    { "name": "oplus", "op": "+", "precedence": 70, "assoc": "left" }
+  ],
+  "nullary": { "I": "one", "zero": "zero" },
+  "unaryPrefix": {
+    "!": { "name": "bang", "precedence": 80, "keyword": false },
+    "exists": { "name": "exists", "precedence": 45, "keyword": true },
+    "forall": { "name": "forall", "precedence": 45, "keyword": true }
+  }
+}
 ```
 
-This is a textbook operator-precedence grammar. Hand-written recursive descent: **~150 lines**.
+These tables are **derived from the calculus definition** (ill.calc `@prec` and `@assoc` annotations). This is the whole point of CALC: the calculus defines the logic, and everything — including the parser — falls out of that definition.
 
-### Design: Direct-to-Store Parser
+### What's Missing
+
+The generated parser handles **connectives** (the calculus-defined part). For .ill files, it needs **framework-level extensions** (ambient term syntax that any calculus needs) and a **meta-syntax wrapper** (declarations, imports):
+
+| Feature | Category | Current handler | Status in generated parser |
+|---|---|---|---|
+| `A * B`, `A -o B`, `!A`, etc. | Calculus connectives | parserTables | Already works |
+| `f x y z` (application) | Framework term syntax | convert.js:152-192 | Missing |
+| `42`, `0xff` (numbers) | Framework term syntax | convert.js:58-59 | Missing |
+| `Sender` (multi-char freevars) | Framework term syntax | convert.js:70 | Partial (only single-char) |
+| `i`/`o` (binary normalization) | Framework term syntax | convert.js:172-179 | Missing |
+| `A -> B` (arrow types) | Structural | convert.js:120-121 | Missing |
+| `A -o { B }` (forward rule) | Structural (monad wrap) | convert.js:126-128 | Missing |
+| `name: expr.` | Meta-syntax | tree-sitter | Not parser's job |
+| `#import(path)` | Meta-syntax | resolveImports | Not parser's job |
+| `#kind expr.` | Meta-syntax | tree-sitter | Not parser's job |
+| `<- premise` | Meta-syntax | tree-sitter | Not parser's job |
+| `% comment` | Meta-syntax | tree-sitter | Not parser's job |
+
+### Design: Two Layers
+
+**Layer 1 — Extended expression parser** (extend `buildParserFromTables`):
+
+The Pratt parser in builders.js needs three additions to `parseAtom`:
 
 ```javascript
-// lib/engine/parse-ill.js (~150 lines)
-// Single-pass: source text → Store.put() calls. No intermediate CST.
+// 1. Number literals → binlit
+const numMatch = src.slice(pos).match(/^(0x[0-9a-fA-F]+|\d+)/);
+if (numMatch) {
+  pos += numMatch[0].length; ws();
+  return Store.put('binlit', [BigInt(numMatch[0])]);
+}
 
-function parseILL(source) {
+// 2. Multi-char freevars (uppercase start)
+if (/[A-Z]/.test(src[pos])) {
+  const m = src.slice(pos).match(/^[A-Z][a-zA-Z0-9_']*/);
+  pos += m[0].length; ws();
+  return Store.put('freevar', ['_' + m[0]]);
+}
+
+// 3. Application: after parsing an atom, if next token is also
+//    an atom (not an operator, not ')', not '.'), it's application.
+//    Collect spine, flatten: atom(head) + args → Store.put(head, args)
+```
+
+Application is handled by adding a high-precedence "juxtaposition" rule to `parseExpr`: after parsing a primary, if the next token is another primary (not an operator), it's left-associative application. This is standard Pratt parser technique.
+
+Arrow (`->`) and forward rule (`-o { }`) are added to parserTables as structural operators, or handled as special cases in `parseExpr`.
+
+These extensions are **calculus-independent** — they're the framework's ambient term language. Any calculus loaded into CALC gets application, numbers, and freevars for free.
+
+**Layer 2 — Meta-syntax wrapper** (~60 lines):
+
+```javascript
+// lib/engine/parse-ill.js
+// Delegates expression parsing to the calculus-generated parser.
+
+function parseILLFile(source, exprParser) {
   let pos = 0;
   const types = new Map(), clauses = new Map();
   const forwardRules = [], queries = new Map();
 
   while (pos < source.length) {
-    skipWhitespaceAndComments();
-    if (pos >= source.length) break;
-    if (source[pos] === '#') { parseDirective(); continue; }
+    skipWS();
+    if (atEnd()) break;
+    if (peek('%')) { skipLine(); continue; }
+    if (peek('#')) { parseQueryOrImport(); continue; }
     parseDeclaration();
   }
 
   return { types, clauses, forwardRules, queries };
 }
-
-function parseExpr() { return parseArrow(); }
-
-function parseArrow() {
-  let left = parsePlus();
-  if (match('->'))  return Store.put('arrow', [left, parseArrow()]);
-  if (match('-o')) {
-    if (match('{')) {
-      const body = parseExpr(); expect('}');
-      return Store.put('loli', [left, Store.put('monad', [body])]);
-    }
-    return Store.put('loli', [left, parseArrow()]);
-  }
-  return left;
-}
-
-function parsePlus() {
-  let left = parseWith();
-  while (match('+')) left = Store.put('oplus', [left, parseWith()]);
-  return left;
-}
-// ... 5 more precedence levels, each ~5 lines
 ```
 
-**Key advantage**: no intermediate CST allocation. Source bytes → Store entries in one pass.
+Each declaration extracts the text between `:` and `.` (or `<-`), then calls the generated expression parser on that substring. No precedence logic in the wrapper — all operator handling is in the calculus-generated parser.
+
+### Why This Is Better Than a Hand-Written Parser
+
+1. **Calculus-derived**: Operator precedence and associativity come from ill.calc `@prec`/`@assoc` annotations. Change the calculus, and the parser updates automatically.
+2. **Single source of truth**: The browser, prover, rules parser, and now the engine all use the same generated parser tables. No divergence risk.
+3. **Already tested**: `buildParserFromTables` is in production (browser UI, sequent parsing). Only the extensions (application, numbers) are new code.
+4. **Minimal new code**: ~30 lines of extensions to builders.js + ~60 lines meta-syntax wrapper. Compare to tree-sitter: grammar.js (192 lines) + WASM binary (11 KB) + cst-to-ast.js integration.
 
 ### Impact
 
 ```
-WITHOUT hand-written parser (Opt_A only):
-  User program: 12ms parse + 8ms Store.put = 20ms
+WITHOUT calculus-generated parser (Opt_A only):
+  User program: 12ms tree-sitter + 8ms Store.put = 20ms
 
-WITH hand-written parser (Opt_A + Opt_B):
-  User program: 1ms parse+Store.put (fused) = 1ms
-  SDK restore:                                 3ms
+WITH calculus-generated parser (Opt_A + Opt_B):
+  User program: ~1ms parse+Store.put (fused, no WASM) = ~1ms
+  SDK restore:                                           3ms
   ───
-  TOTAL SETUP:                                ~4ms
-  + explore:                                   9ms
-  TOTAL END-TO-END:                          ~13ms  (vs hevm 52ms = 4× faster)
+  TOTAL SETUP:                                         ~4ms
+  + explore:                                             9ms
+  TOTAL END-TO-END:                                   ~13ms  (vs hevm 52ms = 4× faster)
 ```
 
 The fused parse eliminates both the 11ms tree-sitter WASM overhead AND the separate AST conversion pass.
 
 ### Scope
 
-Replace tree-sitter for `.ill` files only. The meta-parser (`cst-to-ast.js`) uses tree-sitter for `.calc`/`.family` files — keep those. `.calc` files are only parsed at build time (`npm run build:bundle`), not at runtime.
+Replace tree-sitter for `.ill` files only. The meta-parser (`cst-to-ast.js`) keeps tree-sitter for `.calc`/`.family` files — those are parsed at build time only (`npm run build:bundle`), and tree-sitter's error reporting is valuable there.
 
 ```
-lib/engine/convert.js  →  uses new parseILL()  (runtime, .ill files)
-lib/meta-parser/        →  keeps tree-sitter    (build time, .calc files)
+lib/engine/convert.js  →  uses calculus-generated parser  (runtime, .ill files)
+lib/meta-parser/        →  keeps tree-sitter               (build time, .calc files)
 ```
 
 ## TODO_0060.Opt_C — Precompile Rules Too
@@ -324,13 +348,16 @@ Files to modify:
 - `lib/engine/convert.js` — `resolveImports()` skip directive for precompiled imports
 - `lib/engine/index.js` — `load()` checks cache before full parse
 
-### Stage 3: Hand-written .ill parser
-
-New files:
-- `lib/engine/parse-ill.js` — recursive descent parser (~150 lines)
+### Stage 3: Calculus-generated .ill parser
 
 Files to modify:
-- `lib/engine/convert.js` — replace `mdeParser.parse()` with `parseILL()`
+- `lib/calculus/builders.js` — extend `buildParserFromTables` with application, numbers, multi-char freevars, arrow, forward-rule syntax (~30 lines)
+
+New files:
+- `lib/engine/parse-ill.js` — meta-syntax wrapper (~60 lines): declarations, imports, queries, comments. Delegates expression parsing to the extended calculus-generated parser.
+
+Files to modify:
+- `lib/engine/convert.js` — replace `mdeParser.parse()` with `parseILLFile()`
 - `lib/engine/convert.js` — remove `require('../tree-sitter-mde')` for .ill path
 
 ### Stage 4: Benchmark & comparison update
@@ -338,7 +365,7 @@ Files to modify:
 Files to modify:
 - `benchmarks/engine/symexec-bench.js` — add precompiled-load variant
 - `tools/hevm-bench.sh` — use precompiled SDK for fair comparison
-- `doc/documentation/calc-vs-hevm.md` — honest numbers with setup cost
+- `doc/documentation/calc-vs-hevm.md` — already updated (2026-03-01)
 
 ## Zig Portability
 
@@ -378,11 +405,11 @@ No JSON parsing, no object allocation, no GC pressure. Just pointer arithmetic i
 - Performance irrelevant (one-time)
 
 **Replace for .ill files** (runtime, engine path):
-- Trivial grammar (6 precedence levels, ~150 LOC parser)
-- No error recovery needed (trusted input from our own tool chain)
-- No incremental parsing needed (single full parse)
+- The calculus-generated Pratt parser already handles all connectives
+- Extending it for application/numbers/freevars is ~30 lines
 - 11ms WASM overhead is 78% of user-program parse time
 - Direct-to-Store single pass eliminates intermediate CST allocation
+- Same parser tables used everywhere (browser, prover, rules, engine)
 
 ## Projected Timeline
 
@@ -391,7 +418,7 @@ No JSON parsing, no object allocation, no GC pressure. Just pointer arithmetic i
 | **Baseline** | — | 51ms | — |
 | **Stage 1**: Store binary + precompile SDK | −34ms | 17ms | ~200 lines |
 | **Stage 2**: Incremental loading | −2ms | 15ms | ~50 lines |
-| **Stage 3**: Hand-written .ill parser | −11ms | 4ms | ~150 lines |
+| **Stage 3**: Calculus-generated .ill parser | −11ms | 4ms | ~90 lines (30 ext + 60 wrapper) |
 | **Stage 4**: Precompile rules (Opt_C) | −2.4ms | 1.6ms | ~80 lines |
 
 End state: **1.6ms setup + 9.2ms explore = 10.8ms total** (vs hevm 52ms = **4.8× faster**).
