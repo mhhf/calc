@@ -1,8 +1,8 @@
 ---
 title: "Precompiled SDK Loading"
 created: 2026-03-01
-modified: 2026-03-02
-summary: "Eliminate 51ms mde.load() setup cost via binary precompilation of SDK (evm.ill + bin.ill). Fixes unfair hevm comparison. Zig-friendly binary format. Replace tree-sitter with calculus-generated Pratt parser."
+modified: 2026-03-01
+summary: "Eliminated 51ms mde.load() setup via binary precompilation + Pratt parser. Source load 7ms (was 51ms), precompiled 1.4ms (4.8x speedup). Tree-sitter removed entirely (-1105 lines)."
 tags:
   - performance
   - symexec
@@ -11,7 +11,7 @@ tags:
   - compilation
   - architecture
 type: implementation
-status: ready for implementation
+status: done
 priority: 3
 cluster: Performance
 depends_on: []
@@ -605,3 +605,24 @@ lib/meta-parser/loader.js       @extends resolution (switches to declarations.js
 Measured inputs: Store.restore = 0.22ms (bulk copy + DEDUP from precomputed hashes), compileRule = 2.4ms, user program gen-parser = ~4ms, explore = 9.2ms.
 
 End state: **4.3ms setup + 9.2ms explore = 13.5ms** (vs hevm 52ms = **3.9× faster**).
+
+## Actual Results (measured 2026-03-01)
+
+All three optimizations implemented. Tree-sitter removed entirely (-1105 lines net).
+
+| Metric | Before | After | Speedup |
+|---|---|---|---|
+| Source load (EVM SDK) | 51ms | 6.9ms | 7.4x |
+| Precompiled load | N/A | 1.4ms | 4.8x vs source |
+| Binary cache size | N/A | 200 KB | — |
+| Tree-sitter WASM | 11ms | 0ms | eliminated |
+| Rule compilation | 1.4ms | 0ms (cached) | eliminated |
+| Tests | 611 | 662 | +51 new tests |
+| Lines of code | +1531 | -810 net | -1105 lines from tree-sitter |
+
+Implementation:
+- **Opt_A**: `Store.snapshot()`/`restore()` + `lib/engine/store-binary.js` (binary format with CRC32)
+- **Opt_B**: `lib/parser/declarations.js` + `buildParserFromTables` extensions (application, arrows, forwardRules, binaryNormalization). All parsers now synchronous.
+- **Opt_C**: Compiled rules stored in binary cache metadata (JSON, not v8.serialize — v8 showed no improvement over recompile)
+
+The v8.serialize approach from the plan (1.2ms estimated) measured at 1.38ms — no better than recompiling (1.41ms). Instead, compiled rules are included in the existing JSON metadata section of the binary cache, avoiding rule compilation entirely on cache hit.
