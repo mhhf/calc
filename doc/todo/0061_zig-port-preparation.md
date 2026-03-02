@@ -218,13 +218,13 @@ Main wins: elimination of GC pauses (intermittent 2× spikes visible in current 
 
 Documented during audit (2026-03-02):
 
-1. **`new Array(n).fill(0)` vs `[0, 0, 0, 0]`** — 2× regression on hot-path buffer. V8 optimizes literal arrays with known shape; dynamic arrays get generic treatment. Fixed: keep literal + load-time arity assertion.
+1. **`new Array(n).fill(0)` vs `[0, 0, 0, 0]`** — 2× regression on hot-path buffer. V8 optimizes literal arrays with known element types; `new Array(n).fill(0)` produces a generic (holey) internal representation that defeats TurboFan's type specialization. Fixed: keep literal + load-time arity assertion.
 
-2. **Cross-module function calls in hot loops** — V8 cannot inline across `require()` boundaries. `mutateState` calling `consumeLinear`/`produceLinear` from state-ops.js regressed 49%. Fixed: keep inline copy in symexec.js, canonical version in state-ops.js.
+2. **Cross-module calls are fine** — TurboFan inlines across `require()` boundaries based on bytecode size and call frequency, not file boundaries. Empirically verified: `mutateState` delegating to `state-ops.js` shows identical performance to inline code (4.8ms vs 4.8ms over 8 processes). The `state-ops.js` deduplication is safe.
 
-3. **Bimodal JIT behavior** — solc_symbolic shows 7ms or 14ms depending on V8 JIT decisions (nondeterministic). Same code, same data, 2× variance. Zig eliminates this class of issue entirely.
+3. **Bimodal JIT behavior** — solc_symbolic shows 5ms or 14ms depending on V8 JIT decisions (nondeterministic). Same code, same data, ~2× variance across process invocations. Zig eliminates this class of issue entirely.
 
-These findings reinforce the case for Zig: the current performance ceiling is V8's optimization heuristics, not algorithmic.
+These findings reinforce the case for Zig: the current performance ceiling is V8's optimization nondeterminism, not algorithmic.
 
 ## Cleanup After Port
 
