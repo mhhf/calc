@@ -19,7 +19,7 @@ required_by: []
 **P1 (∃-Elimination): Explicit ∃ connective with eigenvariables and eager resolution.** Skolem path backlogged as fallback.
 
 Rationale:
-- ∃ is standard CLF — completes CALC's monadic decomposition (`expandItem` already handles ⊗, ⊕, ⊸, !; ∃ fills the gap)
+- ∃ is standard CLF — completes CALC's monadic decomposition (`expandChoiceItem` already handles ⊗, ⊕, ⊸, !; ∃ fills the gap)
 - Eigenvariables keep constraints flat (SMT-ready) without nested expression trees
 - Eager resolution: same FFI → state → backward fallback as today. Ground inputs resolve immediately (zero overhead). Symbolic inputs accumulate constraints.
 - Skolem is "dirty theory" — catch-all axioms make fallback ordering an implementation detail, leads toward K-framework (term rewriting replaces backward chaining)
@@ -84,7 +84,7 @@ Skolem path backlogged: TODO_0003, TODO_0028.
 - Unchanged: all rules with `!inc PC PC'` or `!plus N GAS GAS'` (literal N) — PC and gas always ground
 - ⊕ guards (eq/neq/iszero/jumpi): stay as loli guards inside ⊕
 
-**Key simplification:** ∃ in rule consequents is immediately decomposed by `expandItem`. It never persists as a formula in state. Therefore:
+**Key simplification:** ∃ in rule consequents is immediately decomposed by `expandChoiceItem`. It never persists as a formula in state. Therefore:
 - Unification/substitution don't need ∃ support (no ∃-formulas to unify)
 - ∃-bound variables are just metavar slots not matched by antecedent — existing `metavarSlots` infrastructure suffices
 - ∃ is metadata on compiled rules: "this slot is existential"
@@ -130,7 +130,7 @@ Yes. ⊕ forks into two children. Each child's loli guard determines feasibility
 Yes. Every ⊕ costs 3 nodes minimum (fork + 2 children), even if one child dies immediately. Possible optimization: guard-first evaluation — check guards before forking, skip dead branches. Saves O(branch_points) dead-leaf nodes.
 
 **RQ9 (P1): What is CALC's `{A}` relative to CLF?**
-CALC's `{...}` IS the CLF monad — implemented implicitly in `expandItem`. Correctly handles ⊗ (split), ⊕ (fork), ⊸ (suspend), ! (persistent). Missing: ∃. The implementation is incomplete, not dirty. Adding ∃ fills the main gap and completes the monadic decomposition.
+CALC's `{...}` IS the CLF monad — implemented implicitly in `expandChoiceItem`. Correctly handles ⊗ (split), ⊕ (fork), ⊸ (suspend), ! (persistent). Missing: ∃. The implementation is incomplete, not dirty. Adding ∃ fills the main gap and completes the monadic decomposition.
 
 **RQ10 (cross-cutting): Is ⊕ limited to exclusive binary guards?**
 No. EVM's `(!eq X Y ⊸ {...}) ⊕ (!neq X Y ⊸ {...})` is a special case (P ⊕ ¬P: exclusive, exhaustive). General ⊕ supports: unguarded choice (both explored), non-exclusive guards (both may survive), n-ary via nesting `(A ⊕ (B ⊕ C))`, non-exhaustive (both may die). Examples: process calculi (service selection), game modeling (multi-way moves), non-deterministic search.

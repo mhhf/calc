@@ -294,7 +294,7 @@ The forward engine implements a fragment of CHR (Constraint Handling Rules):
 | Removed heads (H2) | Linear facts in `state.linear` |
 | Kept heads (H1) | Persistent facts in `state.persistent` |
 | Guard evaluation | Persistent proving (state lookup → backward) |
-| CHR-v disjunctive body | oplus in consequent (`expandItem` forking) |
+| CHR-v disjunctive body | oplus in consequent (`expandChoiceItem` forking) |
 | Propagation history | N/A (lolis are self-deleting linear facts) |
 | omega_r occurrence iteration | Strategy stack (fingerprint → disc-tree → predicate) |
 | Committed choice | `forward.run()` |

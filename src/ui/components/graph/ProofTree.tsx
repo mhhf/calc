@@ -14,7 +14,7 @@ function ProofTreeNode(props: { node: PTTree }) {
 
   return (
     <div class="flex flex-col items-center">
-      {/* Children (premisses) */}
+      {/* Children (premises) */}
       <Show when={hasChildren()}>
         <div class="flex gap-4 mb-2">
           {props.node.children.map((child) => (

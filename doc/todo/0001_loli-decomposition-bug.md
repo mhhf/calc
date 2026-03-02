@@ -2,8 +2,8 @@
 title: "Unsound Loli Decomposition in Forward Engine"
 created: 2026-02-17
 modified: 2026-02-19
-summary: "expandItem unsoundly decomposes guarded loli continuations — transforms conditionals into unconditional assertions, corrupting dead ⊕ branches"
-tags: [forward-engine, loli, soundness, clf, expandItem]
+summary: "expandChoiceItem unsoundly decomposes guarded loli continuations — transforms conditionals into unconditional assertions, corrupting dead ⊕ branches"
+tags: [forward-engine, loli, soundness, clf, expandChoiceItem]
 type: bug
 cluster: Symexec
 status: subsumed
@@ -39,7 +39,7 @@ The guard `!eq V 0` is persistent (bang-wrapped) — it needs to be **proved** v
 
 ## What Goes Wrong
 
-`expandItem` in `compile.js:150-159` decomposes `!P ⊸ {Q}` into `{ linear: [Q], persistent: [!P] }`:
+`expandChoiceItem` in `compile.js:150-159` decomposes `!P ⊸ {Q}` into `{ linear: [Q], persistent: [!P] }`:
 
 ```javascript
 // compile.js:150-159
@@ -60,9 +60,9 @@ This transforms a **conditional** ("if P then Q") into an **unconditional** asse
 
 Dead branches run with **corrupted state** (wrong stack values, false persistent facts), producing invalid execution traces instead of becoming stuck leaves. The bug existed before ⊕ (old `evm/eq` with `&` had the same decomposition), but ⊕ on iszero/jumpi amplified it from ~2 false branches to 2^N (263 → 13109 nodes in multisig benchmark).
 
-## Why `expandItem` Does This
+## Why `expandChoiceItem` Does This
 
-`_tryFireLoli` (forward.js:602-649) handles loli continuations in the state, but only supports **linear** triggers — it matches trigger hashes against `state.linear`. A bang trigger like `!eq(V,0)` needs backward proving, which `_tryFireLoli` doesn't do. So `expandItem` was made to eagerly decompose the loli as a **workaround** to avoid the firing mechanism entirely — and the workaround is unsound.
+`_tryFireLoli` (forward.js:602-649) handles loli continuations in the state, but only supports **linear** triggers — it matches trigger hashes against `state.linear`. A bang trigger like `!eq(V,0)` needs backward proving, which `_tryFireLoli` doesn't do. So `expandChoiceItem` was made to eagerly decompose the loli as a **workaround** to avoid the firing mechanism entirely — and the workaround is unsound.
 
 ## Why CLF Avoids This Problem Entirely
 
@@ -70,7 +70,7 @@ CLF restricts what can appear inside the monad `{C}` to: atoms, `⊗`, `1`, `!`,
 
 Our EVM rules violate this restriction by putting lolis inside `{...}`. This is an extension of CLF, not standard CLF.
 
-## `expandItem` Is Correct for Everything Except Lolis
+## `expandChoiceItem` Is Correct for Everything Except Lolis
 
 The `{ linear, persistent }` decomposition is the right model for CLF's allowed monadic connectives:
 
@@ -83,7 +83,7 @@ The `{ linear, persistent }` decomposition is the right model for CLF's allowed 
 | `A & B` / `A ⊕ B` | alternatives of A, B | ✓ fork the execution tree |
 | `A ⊸ B` | **BUG** | ✗ should stay as linear fact, fire later |
 
-If we remove the loli case, `expandItem` becomes exactly CLF's monadic decomposition — correct by construction.
+If we remove the loli case, `expandChoiceItem` becomes exactly CLF's monadic decomposition — correct by construction.
 
 ## `_tryFireLoli` Is Theoretically a Rule Application
 
@@ -92,7 +92,7 @@ If we remove the loli case, `expandItem` becomes exactly CLF's monadic decomposi
 ## TODO_0001.Stage_1 — Extend `_tryFireLoli` for bang triggers (correctness)
 
 The minimal fix:
-1. **Remove** the loli case from `expandItem` (lines 150-159). Lolis become linear facts in the state, handled by `_tryFireLoli`.
+1. **Remove** the loli case from `expandChoiceItem` (lines 150-159). Lolis become linear facts in the state, handled by `_tryFireLoli`.
 2. **Extend** `_tryFireLoli` to detect bang triggers (`Store.tag(trigger) === 'bang'`).
 3. For bang triggers: call `tryFFIDirect(unwrapped_trigger)` or fall back to backward proving.
 4. If guard proves true → fire: consume loli, produce body.
@@ -108,7 +108,7 @@ Note: Stage 2 is an **optimization** that depends on Stage 1 being correct. It s
 
 ## TODO_0001.Stage_3 — Theory cleanup
 
-See [TODO_0027](0027_clf-theory-questions.md) — exported as standalone research task (Q1-Q5, layer separation, expandItem derivation).
+See [TODO_0027](0027_clf-theory-questions.md) — exported as standalone research task (Q1-Q5, layer separation, expandChoiceItem derivation).
 
 ## Alternative: Rewrite EVM rules to avoid lolis in consequents
 
@@ -146,9 +146,9 @@ The parser (`convert.js:101-107`) distinguishes the two forms:
 
 The check is `node.text.includes('{')` — if braces are present, the body is wrapped in `monad()`.
 
-### How `expandItem` reacts to each form
+### How `expandChoiceItem` reacts to each form
 
-`expandItem` (compile.js:150-159) checks **both** the trigger and the body:
+`expandChoiceItem` (compile.js:150-159) checks **both** the trigger and the body:
 
 ```javascript
 if (Store.tag(c0) === 'bang' && Store.tag(c1) === 'monad') {
@@ -156,10 +156,10 @@ if (Store.tag(c0) === 'bang' && Store.tag(c1) === 'monad') {
 }
 ```
 
-- **With inner monad** (`!P -o {Q}`): Both conditions pass → `expandItem` eagerly decomposes → **BUG** (unconditional assertion).
+- **With inner monad** (`!P -o {Q}`): Both conditions pass → `expandChoiceItem` eagerly decomposes → **BUG** (unconditional assertion).
 - **Without inner monad** (`!P -o Q`): `Store.tag(c1) === 'monad'` fails → falls through to the default `return [{ linear: [h], persistent: [] }]` → loli stays as a linear fact in the state. **No bug.**
 
-So removing the inner braces would accidentally avoid the bug — but not by fixing it. The loli would survive `expandItem` and land in `state.linear` as a dormant continuation.
+So removing the inner braces would accidentally avoid the bug — but not by fixing it. The loli would survive `expandChoiceItem` and land in `state.linear` as a dormant continuation.
 
 ### But `_tryFireLoli` can't fire it either
 
@@ -172,7 +172,7 @@ if (!state.linear[trigger] || state.linear[trigger] <= 0) return null;
 
 The trigger `bang(eq(V, 0))` is not in `state.linear` (it's a persistent proposition that needs backward proving). So `_tryFireLoli` returns null → the loli never fires → the body (`stack SH 1`) is never produced → branch is stuck.
 
-| Form | expandItem | _tryFireLoli | Result |
+| Form | expandChoiceItem | _tryFireLoli | Result |
 |---|---|---|---|
 | `!P -o { Q }` | Decomposes (BUG) | Not reached | Corrupted state |
 | `!P -o Q` | Passes through | Can't handle bang trigger | Permanently stuck |
@@ -181,7 +181,7 @@ Both forms are broken. The first is **dangerously** wrong (corruption, false bra
 
 ### The inner monad is syntactic, not semantic
 
-In CLF, `{A}` is the lax modality — it wraps the forward-chaining fragment. Nesting `{...}` inside an already-open monad would mean a second round of forward execution (monadic let). Our engine doesn't implement multi-round monadic semantics — `expandItem` just strips the monad and decomposes the body. The inner `{...}` functions as a **signal to `expandItem`** that this body should be decomposed into state updates, not as a semantic distinction.
+In CLF, `{A}` is the lax modality — it wraps the forward-chaining fragment. Nesting `{...}` inside an already-open monad would mean a second round of forward execution (monadic let). Our engine doesn't implement multi-round monadic semantics — `expandChoiceItem` just strips the monad and decomposes the body. The inner `{...}` functions as a **signal to `expandChoiceItem`** that this body should be decomposed into state updates, not as a semantic distinction.
 
 But lolis inside monads are already non-standard (CLF forbids them — see "Why CLF Avoids This Problem Entirely" above). So the question of whether the inner loli body is `{Q}` or `Q` is a syntactic detail of our extension, not a CLF-theoretic question.
 
@@ -189,25 +189,25 @@ But lolis inside monads are already non-standard (CLF forbids them — see "Why 
 
 Stage 1 extends `_tryFireLoli` for bang triggers: detect `Store.tag(trigger) === 'bang'`, call `tryFFIDirect` to prove the guard. With this fix:
 
-- Lolis survive `expandItem` (because the loli case is removed)
+- Lolis survive `expandChoiceItem` (because the loli case is removed)
 - `_tryFireLoli` detects the bang trigger and proves it
 - Guard succeeds → fire loli, produce body (correct)
 - Guard fails → loli stays dormant, branch stuck (correct)
 
 After Stage 1, both `!P -o {Q}` and `!P -o Q` work correctly. `_tryFireLoli` already handles both: `const bodyInner = Store.tag(body) === 'monad' ? Store.child(body, 0) : body` (forward.js:605). The inner monad becomes irrelevant — keep it or drop it, behavior is the same.
 
-**Recommendation:** After Stage 1, drop the inner monad. Write `!eq V 0 -o stack SH 1` instead of `!eq V 0 -o { stack SH 1 }`. The simpler form is clearer, and the inner braces served no semantic purpose — they only existed because `expandItem` needed them as a decomposition signal, which is the very code path we're removing.
+**Recommendation:** After Stage 1, drop the inner monad. Write `!eq V 0 -o stack SH 1` instead of `!eq V 0 -o { stack SH 1 }`. The simpler form is clearer, and the inner braces served no semantic purpose — they only existed because `expandChoiceItem` needed them as a decomposition signal, which is the very code path we're removing.
 
 ## Phase 4 Status: ⊕ Implemented, Bug Found
 - [x] Analysis: ⊕ is the correct connective (not &) for decidable case splits
 - [x] B1 independence: Problem B is independent of Problem A
 - [x] Add `plus` (⊕) connective to `ill.calc` + rules to `ill.rules`
 - [x] Grammar: `expr_plus` in tree-sitter, `convert.js`, `cst-to-ast.js`
-- [x] Forward engine: `expandItem` treats `plus` like `with` (fork)
+- [x] Forward engine: `expandChoiceItem` treats `plus` like `with` (fork)
 - [x] Focusing: ⊕ positive, ⊕L invertible, regex updated for numbered right rules
 - [x] EVM rules rewritten: evm/eq (& → +), evm/iszero + evm/jumpi (merged with +)
 - [x] Tests: 513 pass (397 core + 116 engine)
-- [ ] **BUG: expandItem loli decomposition is unsound** — see above
-- [ ] Stage 1: Extend `_tryFireLoli` for bang triggers, remove loli case from `expandItem`
+- [ ] **BUG: expandChoiceItem loli decomposition is unsound** — see above
+- [ ] Stage 1: Extend `_tryFireLoli` for bang triggers, remove loli case from `expandChoiceItem`
 - [ ] Stage 2: Eager guard pruning at ⊕ fork time
 - [ ] Decide: keep loli-in-monad extension or split into separate rules?

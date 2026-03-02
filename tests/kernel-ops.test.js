@@ -8,7 +8,7 @@ const assert = require('node:assert');
 const calculus = require('../lib/calculus');
 const Store = require('../lib/kernel/store');
 const { sub, apply, eq, copy, occurs } = require('../lib/kernel/substitute');
-const { unify, match, isVar } = require('../lib/kernel/unify');
+const { unify, match, isMetavar } = require('../lib/kernel/unify');
 
 describe('v2 Kernel', () => {
   let AST;
@@ -131,12 +131,11 @@ describe('v2 Kernel', () => {
     });
   });
 
-  describe('isVar', () => {
+  describe('isMetavar', () => {
     it('should identify metavars (not regular freevars)', () => {
-      // isVar now only returns true for metavars (unification variables)
-      assert.strictEqual(isVar(AST.freevar('_X')), true);
-      assert.strictEqual(isVar(AST.freevar('A')), false);  // A is ground
-      assert.strictEqual(isVar(AST.atom('p')), false);
+      assert.strictEqual(isMetavar(AST.freevar('_X')), true);
+      assert.strictEqual(isMetavar(AST.freevar('A')), false);  // A is ground
+      assert.strictEqual(isMetavar(AST.atom('p')), false);
     });
   });
 });

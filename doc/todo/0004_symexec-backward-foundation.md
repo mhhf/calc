@@ -32,7 +32,7 @@ Decided in [TODO_0002](0002_symexec-expression-decision.md): explicit ∃ with e
 | 4. Sequent Rules | **done** | ill.rules, rules2-parser `@binding`, rule-interpreter `makePremises` |
 | 5. Focusing | **done** | Polarity verified via tests |
 | 6. Backward Prover | **done** | Works via rule-interpreter `makePremises` + focusing |
-| 7. Forward Engine | **done** | `expandItem` + compile-time analysis + `resolveExistentials` three-level fallback via `provePersistentGoals` |
+| 7. Forward Engine | **done** | `expandChoiceItem` + compile-time analysis + `resolveExistentials` three-level fallback via `provePersistentGoals` |
 | 8. EVM Restructuring | **done** | 12 rules restructured with `exists`; 210 nodes, 4 STOP, matches master |
 | 9. Tests | **done** | 557 tests pass; Store, parser, backward prover, forward engine, integration |
 
@@ -67,7 +67,7 @@ Example trace for `foo: a X -o { exists Y. ((b Y & c Y) * !plus X 1 Y) }`:
 - `tryFFIDirect`: would try FFI lookup for `exists` tag (falls through harmlessly but conceptually wrong)
 - `buildStateIndex`: would index `evar(N)` under predicate `'evar'` if it appeared as bare fact
 
-**Fix:** Added `bound`, `exists`, `forall`, `evar` to `NON_PRED_TAGS`. Note: `plus` (⊕ connective) was NOT added — it collides with the user-defined `plus` predicate (arithmetic addition). The connective `plus` is handled by `expandItem` directly.
+**Fix:** Added `bound`, `exists`, `forall`, `evar` to `NON_PRED_TAGS`. Note: `plus` (⊕ connective) was NOT added — it collides with the user-defined `plus` predicate (arithmetic addition). The connective `plus` is handled by `expandChoiceItem` directly.
 
 ## TODO_0004.Phase_1 — Store Foundation: Locally Nameless Binders
 
@@ -166,11 +166,11 @@ Handled via rule-interpreter `makePremises` with `@binding` annotations. No chan
 
 Only ∃ — ∀ is negative, doesn't appear inside `{A}`.
 
-### Compile-time: expandItem
+### Compile-time: expandChoiceItem
 
-**Key insight** (from [TODO_0002](0002_symexec-expression-decision.md)): ∃ in rule consequents is immediately decomposed by `expandItem` at compile time. It never persists as a formula in state. ∃-bound variables are just metavar slots not matched by any antecedent — existing `metavarSlots` infrastructure suffices.
+**Key insight** (from [TODO_0002](0002_symexec-expression-decision.md)): ∃ in rule consequents is immediately decomposed by `expandChoiceItem` at compile time. It never persists as a formula in state. ∃-bound variables are just metavar slots not matched by any antecedent — existing `metavarSlots` infrastructure suffices.
 
-- [x] `expandItem` case for `exists` in `compile.js` — opens binder with fresh `_exN` metavar
+- [x] `expandChoiceItem` case for `exists` in `compile.js` — opens binder with fresh `_exN` metavar
 - [x] `existentialSlots` detection in `compileRule` — metavars in consequent but NOT in antecedent
 - [x] Loli variable exclusion — loli-only metavars excluded from existentialSlots (bug fix)
 - [x] `existentialGoals` mapping — existential slot → persistent consequent patterns
@@ -230,7 +230,7 @@ evm/add: pc(PC) * stack(1, A) * stack(0, B) * !inc(PC, PC')
 - [x] Store: de Bruijn, alpha-equivalence, `debruijnSubst`, mixed nested binders (`tests/store-quantifiers.test.js`)
 - [x] Parser: `exists X. A` / `forall X. A` de Bruijn encoding (`tests/quantifiers.test.js`)
 - [x] Backward prover: identity, ∃-intro, ∀-elim, invertibility (`tests/quantifiers.test.js`)
-- [x] Forward engine: `expandItem` with ∃, existential slot detection, loli exclusion (`tests/quantifiers.test.js`)
+- [x] Forward engine: `expandChoiceItem` with ∃, existential slot detection, loli exclusion (`tests/quantifiers.test.js`)
 - [x] Polarity: exists positive, forall negative (`tests/quantifiers.test.js`)
 - [x] Regression: all 557 tests pass
 - [x] Integration: EVM multisig with ∃-restructured rules, full three-level resolution

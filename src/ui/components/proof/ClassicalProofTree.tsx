@@ -30,7 +30,7 @@ export default function ClassicalProofTree(props: ClassicalProofTreeProps) {
   });
 
   const isUnproven = () => props.pt.type === '???';
-  const isLeaf = () => props.pt.premisses.length === 0;
+  const isLeaf = () => props.pt.premises.length === 0;
   const isNodeProven = createMemo(() => isProofComplete(props.pt));
 
   // Get focus info from delta_in if available
@@ -64,8 +64,8 @@ export default function ClassicalProofTree(props: ClassicalProofTreeProps) {
     <div class="inference-rule">
       {/* Premises (above the line) - also shown empty for axioms */}
       <Show when={showInferenceLine()}>
-        <div class="premisses">
-          <For each={props.pt.premisses}>
+        <div class="premises">
+          <For each={props.pt.premises}>
             {(premise, index) => (
               <span
                 class="formula"

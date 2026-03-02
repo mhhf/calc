@@ -201,7 +201,7 @@ Content-addressed Store makes it trivial: `Store.put('evar', [N])` → unique ha
 
 Module-level singleton with `fork(n)` for parallelism (Lean's `mkChild` pattern). One counter for the whole process — globally unique ids. `fork(n)` splits into n non-overlapping interleaved streams by multiplying stride. Works recursively to arbitrary depth (fork a fork of a fork). Serializable (two integers: start + stride), works across machines. `reset()` for test determinism.
 
-Imported by: forward engine (`expandItem` ∃ case), rule interpreter (`makePremises` eigenvariable closures), backward engine (`prove.js`, replacing existing `freshCounter`).
+Imported by: forward engine (`expandChoiceItem` ∃ case), rule interpreter (`makePremises` eigenvariable closures), backward engine (`prove.js`, replacing existing `freshCounter`).
 
 **Key design:** `next` is the next id to hand out (not the last used). `freshEvar()` returns `next`, then advances `next += stride`. `fork(n)` gives child i starting position `next + i*stride` with stride `stride*n`. Zero gaps — every positive integer is assigned to exactly one source.
 

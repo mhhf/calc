@@ -446,7 +446,7 @@ function computeControlHash(stateIndex, fpConfig) {
   let h = 0;
   for (const key of Object.keys(stateIndex)) {
     if (key[0] === '_') continue;
-    h ^= hashPair(stringHash(key), stateIndex[key].length);
+    h ^= hashFactEntry(stringHash(key), stateIndex[key].length);
   }
   return h;
 }

@@ -59,7 +59,7 @@ evm/eq: ... -o { ... * ((stack SH 0 * !neq X Y) + (stack SH 1 * !eq X Y)) }.
 
 This means: the rule produces a disjunction. Both branches must be explored because the result depends on symbolic values (or is undecidable at this point).
 
-**plus-left is invertible** — case-split eagerly. In the forward engine, `expandItem` forks into alternatives. Each alternative gets the full shared context (no linear resource duplication — branches are alternatives, not parallel).
+**plus-left is invertible** — case-split eagerly. In the forward engine, `expandChoiceItem` forks into alternatives. Each alternative gets the full shared context (no linear resource duplication — branches are alternatives, not parallel).
 
 **Semantic fit:** `plus` (internal choice / "producer decided") is correct for deterministic comparisons — the system has decided, the consumer handles both cases. `with` (external choice / "consumer decides") is correct for interactive/nondeterministic choice.
 

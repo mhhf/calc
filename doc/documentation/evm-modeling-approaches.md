@@ -830,7 +830,7 @@ evm/add:
   }.
 ```
 
-The engine's `expandItem` already handles `!P -o { body }` by:
+The engine's `expandChoiceItem` already handles `!P -o { body }` by:
 1. Producing the body as linear facts (execution continues)
 2. Adding `!P` as a persistent fact (constraint assumed)
 

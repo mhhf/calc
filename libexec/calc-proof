@@ -62,7 +62,7 @@ function printProofTree(pt, depth) {
   const rule = pt.rule || 'unknown';
   console.log(`${indent}${rule}`);
 
-  for (const premise of (pt.premisses || [])) {
+  for (const premise of (pt.premises || [])) {
     printProofTree(premise, depth + 1);
   }
 }

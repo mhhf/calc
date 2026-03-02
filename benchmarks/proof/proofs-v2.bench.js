@@ -134,8 +134,8 @@ async function runV2WithProfiling(category = 'all') {
 
     // Count proof tree statistics
     const tree = result.proofTree;
-    function treeSize(n) { return 1 + (n.premisses || []).reduce((s, c) => s + treeSize(c), 0); }
-    function treeDepth(n) { return 1 + (n.premisses?.length ? Math.max(...n.premisses.map(treeDepth)) : 0); }
+    function treeSize(n) { return 1 + (n.premises || []).reduce((s, c) => s + treeSize(c), 0); }
+    function treeDepth(n) { return 1 + (n.premises?.length ? Math.max(...n.premises.map(treeDepth)) : 0); }
     results[name] = {
       treeSize: treeSize(tree),
       treeDepth: treeDepth(tree),

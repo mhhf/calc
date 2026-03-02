@@ -20,7 +20,7 @@ Current:  app(app(app(atom("f"), a), b), c)   -- 3 Store nodes, 3 lookups to get
 Flat:     f(a, b, c)                           -- 1 Store node, 1 lookup
 ```
 
-Extracting head functor (`getHead` in `lib/engine/prove.js`) walks the entire app chain. First-argument indexing (`getFirstArgCtor`) walks it again. Every unification decomposes through O(arity) intermediate `app` nodes.
+Extracting head functor (`getHead` in `lib/engine/prove.js`) walks the entire app chain. First-argument indexing (`getFirstArgHead`) walks it again. Every unification decomposes through O(arity) intermediate `app` nodes.
 
 ---
 
@@ -323,7 +323,7 @@ CALC is primarily a **first-order logic programming engine** (predicates with gr
 
 **Option A (flat pred node)** is the strongest choice:
 - O(1) head extraction eliminates the `getHead` walk (hot path in prove.js)
-- O(1) first-arg access eliminates the `getFirstArgCtor` walk (hot path in indexing)
+- O(1) first-arg access eliminates the `getFirstArgHead` walk (hot path in indexing)
 - Unification skips N-1 intermediate app decompositions
 - Hash computation is simpler (one node instead of N+1)
 - The `app` tag can remain for genuine higher-order applications if needed

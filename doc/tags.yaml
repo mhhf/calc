@@ -233,7 +233,7 @@ tags:
   examples: 1
   execution: 1
   execution-trees: 1
-  expandItem: 1
+  expandChoiceItem: 1
   family: 1
   finality: 1
   financial-instruments: 1

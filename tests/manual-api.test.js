@@ -30,7 +30,7 @@ describe('ManualProofAPI', () => {
       const state = api.createProofState(seq);
       assert.strictEqual(state.focus, null, 'Initial state should have no focus');
       assert.ok(state.conclusion, 'State should have conclusion');
-      assert.strictEqual(state.premisses.length, 0, 'Initial state has no premises');
+      assert.strictEqual(state.premises.length, 0, 'Initial state has no premises');
     });
   });
 
@@ -70,10 +70,10 @@ describe('ManualProofAPI', () => {
       assert.ok(focusAction, 'Should find focus action');
 
       const focusedState = api.applyAction(state, focusAction);
-      assert.ok(focusedState.premisses[0].focus, 'Child state should have focus');
+      assert.ok(focusedState.premises[0].focus, 'Child state should have focus');
 
       // Get actions with focus
-      const childState = focusedState.premisses[0];
+      const childState = focusedState.premises[0];
       const focusedActions = api.getApplicableActions(childState);
 
       const loliRule = focusedActions.find(a => a.name === 'loli_l');

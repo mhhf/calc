@@ -60,7 +60,7 @@ Object operation micro-benchmarks on the 178-key state:
 
 ### makeChildCtx + undoIndex (9% — hash + index updates)
 
-`for-in` over the undo log (~9 entries), `hashPair` calls, `indexAdd`/`indexRemove` array scans. Already O(delta) per step.
+`for-in` over the undo log (~9 entries), `hashFactEntry` calls, `indexAdd`/`indexRemove` array scans. Already O(delta) per step.
 
 ### Loop bookkeeping (4%)
 

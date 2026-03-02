@@ -54,12 +54,12 @@ describe('UI Flow (browser simulation)', () => {
 
       // Step 3: Apply Focus
       const focusedState = api.applyAction(state, focusLoli);
-      assert.ok(focusedState.premisses[0], 'Should have child state');
-      assert.ok(focusedState.premisses[0].focus, 'Child should have focus');
-      console.log('After focus, child focus:', focusedState.premisses[0].focus);
+      assert.ok(focusedState.premises[0], 'Should have child state');
+      assert.ok(focusedState.premises[0].focus, 'Child should have focus');
+      console.log('After focus, child focus:', focusedState.premises[0].focus);
 
       // Step 4: Get actions with focus
-      const childState = focusedState.premisses[0];
+      const childState = focusedState.premises[0];
       actions = api.getApplicableActions(childState);
       console.log('Actions (with focus):', actions.map(a => `${a.name}@${a.position}${a.needsContextSplit ? ' [SPLIT]' : ''}`));
 

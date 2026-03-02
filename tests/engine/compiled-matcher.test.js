@@ -1,7 +1,7 @@
 /**
  * Tests for compiled pattern matching (Opt_G).
  *
- * Verifies compilePatternMatch, compilePersistentStep, generateMatcher
+ * Verifies compilePatternMatch, compilePersistentStep, compilePersistentSteps
  * produce identical results to the generic matching pipeline.
  */
 

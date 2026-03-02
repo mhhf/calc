@@ -419,7 +419,7 @@ Focused:      (Γ ! Δ ▷ a ◁ S_↑ ⊢ S_↓)
 | Rule | Notation | Meaning | CALC equivalent |
 |---|---|---|---|
 | true | — | Axiom: goal is empty, done | Quiescence in `run()` |
-| ⊗_L | tensor-left | Split goal into head + tail | `expandItem` splitting tensor |
+| ⊗_L | tensor-left | Split goal into head + tail | `expandChoiceItem` splitting tensor |
 | W | Weakening | Skip a rule (doesn't match) | Rule doesn't match in `tryMatch` |
 | F | Focus | Select a constraint to activate | `findMatch` picks a fact |
 | ↑ | Inactivate | Store constraint unchanged | Fact stays in state |
@@ -427,7 +427,7 @@ Focused:      (Γ ! Δ ▷ a ◁ S_↑ ⊢ S_↓)
 
 **Hidden Cut insight:** The ⊗_L rule is actually a **hidden cut** — it splits
 resources between a "lemma" (left subproof — solve one constraint) and its "use"
-(right subproof — solve the rest). This is exactly what `expandItem` does when it
+(right subproof — solve the rest). This is exactly what `expandChoiceItem` does when it
 distributes tensor components to separate state slots.
 
 **Crucial translation difference from Betz:**
@@ -818,8 +818,8 @@ For the multisig contract, K ≈ 6, giving 2^6 = 64 leaves (actual: ~43 after pr
 Cycle detection uses 32-bit XOR hash (`computeNumericHash`). The hash function:
 
 ```javascript
-hashPair(h, count) = scramble(h * 2654435761 ^ count * 2246822519)
-stateHash = XOR of hashPair(hash, count) for all facts
+hashFactEntry(h, count) = scramble(h * 2654435761 ^ count * 2246822519)
+stateHash = XOR of hashFactEntry(hash, count) for all facts
 ```
 
 **Collision probability:** For N distinct states visited on one path, the probability
@@ -988,4 +988,4 @@ pursuing if we find gaps that QCHR can't cover.
 - `lib/engine/strategy.js` — `findAllMatches()`, strategy stack
 - `lib/engine/match.js` — `tryMatch()`, `provePersistentGoals()`, `matchLoli()`
 - `lib/engine/forward.js` — `run()`, `applyMatch()` (committed-choice variant)
-- `lib/engine/compile.js` — `expandConsequentChoices()`, `expandItem()`
+- `lib/engine/compile.js` — `expandConsequentChoices()`, `expandChoiceItem()`

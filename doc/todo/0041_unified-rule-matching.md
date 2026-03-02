@@ -2,7 +2,7 @@
 title: "Unified Rule Matching — Compiled Rules and Loli Continuations"
 created: 2026-02-18
 modified: 2026-02-20
-summary: "Unify compiled rules and loli continuations into one matching pipeline with a shared persistent-proving helper. Fixes the expandItem soundness bug and the priority bug in exhaustive exploration."
+summary: "Unify compiled rules and loli continuations into one matching pipeline with a shared persistent-proving helper. Fixes the expandChoiceItem soundness bug and the priority bug in exhaustive exploration."
 tags: [architecture, forward-engine, loli, matching, soundness]
 type: design
 cluster: Symexec
@@ -28,9 +28,9 @@ The forward engine has two separate rule-firing mechanisms for what is theoretic
 
 In ILL, both are the same: a rule with antecedents and a consequent. The only structural difference is persistence. Both should use one matching pipeline.
 
-### Bug 1: Unsound `expandItem` decomposition
+### Bug 1: Unsound `expandChoiceItem` decomposition
 
-`expandItem` (compile.js:150-159) transforms conditional `!P ⊸ {Q}` into unconditional `Q AND !P`:
+`expandChoiceItem` (compile.js:150-159) transforms conditional `!P ⊸ {Q}` into unconditional `Q AND !P`:
 
 ```javascript
 if (Store.tag(c0) === 'bang' && Store.tag(c1) === 'monad') {
@@ -41,7 +41,7 @@ if (Store.tag(c0) === 'bang' && Store.tag(c1) === 'monad') {
 }
 ```
 
-This exists because `_tryFireLoli` can't prove persistent triggers, so `expandItem` eagerly decomposes as a workaround. The workaround applies modus ponens without checking the premise. Both ⊕ branches get bodies and guards unconditionally — dead branches run with corrupted state (wrong stack values, false persistent facts).
+This exists because `_tryFireLoli` can't prove persistent triggers, so `expandChoiceItem` eagerly decomposes as a workaround. The workaround applies modus ponens without checking the premise. Both ⊕ branches get bodies and guards unconditionally — dead branches run with corrupted state (wrong stack values, false persistent facts).
 
 ### Bug 2: Priority ordering in exhaustive exploration
 
@@ -90,9 +90,9 @@ provePersistentGoals(patterns, theta, slots, state, calc) → boolean
 ```
 This runs the same pipeline for any rule: FFI direct → state lookup → backward chaining. Both `tryMatch` (for compiled rules) and the new loli matcher call it.
 
-**2. Remove loli case from `expandItem` (compile.js:150-159)**
+**2. Remove loli case from `expandChoiceItem` (compile.js:150-159)**
 
-Delete the `if (t === 'loli') { ... }` block. Lolis fall through to default, becoming linear facts in state. `expandItem` becomes exactly CLF's monadic decomposition — correct by construction for all connectives.
+Delete the `if (t === 'loli') { ... }` block. Lolis fall through to default, becoming linear facts in state. `expandChoiceItem` becomes exactly CLF's monadic decomposition — correct by construction for all connectives.
 
 **3. Write `matchLoli(h, state, calc)` in forward.js**
 

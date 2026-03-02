@@ -69,7 +69,7 @@ function instrumentedExplore(initialState, rules, calcCtx, maxDepth) {
 
   const timers = {
     findAllMatches: { time: 0, calls: 0 },
-    hashState:      { time: 0, calls: 0 },
+    hashStateString: { time: 0, calls: 0 },
     expandChoices:  { time: 0, calls: 0 },
     mutateState:    { time: 0, calls: 0 },
     undoState:      { time: 0, calls: 0 },
@@ -112,8 +112,8 @@ function instrumentedExplore(initialState, rules, calcCtx, maxDepth) {
 
     t0 = performance.now();
     const sh = state.stateHash;
-    timers.hashState.time += performance.now() - t0;
-    timers.hashState.calls++;
+    timers.hashStateString.time += performance.now() - t0;
+    timers.hashStateString.calls++;
 
     if (pathVisited.has(sh)) {
       t0 = performance.now();
@@ -240,7 +240,7 @@ async function runBenchmark(doProfile) {
     console.log('─'.repeat(75));
     const rows = [
       ['findAllMatches',       timers.findAllMatches],
-      ['hashState',            timers.hashState],
+      ['hashStateString',      timers.hashStateString],
       ['expandConsequentChoices', timers.expandChoices],
       ['mutateState',          timers.mutateState],
       ['undoState',            timers.undoState],

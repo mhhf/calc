@@ -187,7 +187,7 @@ Without pruning, ground execution explores 2^k branches for k boolean operations
 
 1. **ill.calc:** `plus: formula -> formula -> formula` with annotations (@ascii `_ + _`, @prec, @category additive)
 2. **ill.rules:** `plus_r1`, `plus_r2`, `plus_l` (three rules)
-3. **compile.js / expandItem:** Add case for `plus` tag — same behavior as `with` (create two alternatives)
+3. **compile.js / expandChoiceItem:** Add case for `plus` tag — same behavior as `with` (create two alternatives)
 4. **Focusing metadata:** ⊕ positive, ⊕L invertible
 5. **EVM rules:** Rewrite comparison/boolean operations to use `⊕` + path conditions
 6. **(Optimization)** Eager path condition pruning for ground values

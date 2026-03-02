@@ -8,7 +8,7 @@ const path = require('path');
 const mde = require('../../lib/engine');
 const {
   explore,
-  expandItem, expandConsequentChoices, hashState
+  expandChoiceItem, expandConsequentChoices, hashStateString
 } = require('../../lib/engine/symexec');
 const {
   countLeaves, getAllLeaves, maxDepth, countNodes, toDot
@@ -86,12 +86,12 @@ describe('explore', { timeout: 10000 }, () => {
     });
   });
 
-  describe('expandItem', () => {
+  describe('expandChoiceItem', () => {
     beforeEach(() => { Store.clear(); });
 
     it('leaf returns single alternative', () => {
       const h = Store.put('atom', ['foo']);
-      const alts = expandItem(h);
+      const alts = expandChoiceItem(h);
       assert.strictEqual(alts.length, 1);
       assert.deepStrictEqual(alts[0], { linear: [h], persistent: [] });
     });
@@ -100,7 +100,7 @@ describe('explore', { timeout: 10000 }, () => {
       const a = Store.put('atom', ['a']);
       const b = Store.put('atom', ['b']);
       const w = Store.put('with', [a, b]);
-      const alts = expandItem(w);
+      const alts = expandChoiceItem(w);
       assert.strictEqual(alts.length, 2);
       assert.deepStrictEqual(alts[0], { linear: [a], persistent: [] });
       assert.deepStrictEqual(alts[1], { linear: [b], persistent: [] });
@@ -112,7 +112,7 @@ describe('explore', { timeout: 10000 }, () => {
       const c = Store.put('atom', ['c']);
       const w = Store.put('with', [b, c]);
       const t = Store.put('tensor', [a, w]);
-      const alts = expandItem(t);
+      const alts = expandChoiceItem(t);
       assert.strictEqual(alts.length, 2);
       assert.deepStrictEqual(alts[0].linear, [a, b]);
       assert.deepStrictEqual(alts[1].linear, [a, c]);
@@ -124,14 +124,14 @@ describe('explore', { timeout: 10000 }, () => {
       const c = Store.put('atom', ['c']);
       const w1 = Store.put('with', [a, b]);
       const w2 = Store.put('with', [w1, c]);
-      const alts = expandItem(w2);
+      const alts = expandChoiceItem(w2);
       assert.strictEqual(alts.length, 3);
     });
 
     it('bang(A) returns persistent alternative', () => {
       const a = Store.put('atom', ['a']);
       const bang = Store.put('bang', [a]);
-      const alts = expandItem(bang);
+      const alts = expandChoiceItem(bang);
       assert.strictEqual(alts.length, 1);
       assert.deepStrictEqual(alts[0], { linear: [], persistent: [a] });
     });
@@ -142,7 +142,7 @@ describe('explore', { timeout: 10000 }, () => {
       const bangP = Store.put('bang', [p]);
       const monadQ = Store.put('monad', [q]);
       const loli = Store.put('loli', [bangP, monadQ]);
-      const alts = expandItem(loli);
+      const alts = expandChoiceItem(loli);
       assert.strictEqual(alts.length, 1);
       assert.deepStrictEqual(alts[0], { linear: [loli], persistent: [] });
     });
@@ -151,7 +151,7 @@ describe('explore', { timeout: 10000 }, () => {
       const a = Store.put('atom', ['a']);
       const b = Store.put('atom', ['b']);
       const p = Store.put('oplus', [a, b]);
-      const alts = expandItem(p);
+      const alts = expandChoiceItem(p);
       assert.strictEqual(alts.length, 2);
       assert.deepStrictEqual(alts[0], { linear: [a], persistent: [] });
       assert.deepStrictEqual(alts[1], { linear: [b], persistent: [] });
@@ -167,7 +167,7 @@ describe('explore', { timeout: 10000 }, () => {
       const branch0 = Store.put('loli', [bangP, Store.put('monad', [a])]);
       const branch1 = Store.put('loli', [bangQ, Store.put('monad', [b])]);
       const pl = Store.put('oplus', [branch0, branch1]);
-      const alts = expandItem(pl);
+      const alts = expandChoiceItem(pl);
       assert.strictEqual(alts.length, 2);
       // Each branch is a loli fact (fired by matchLoli at runtime)
       assert.deepStrictEqual(alts[0], { linear: [branch0], persistent: [] });
@@ -184,7 +184,7 @@ describe('explore', { timeout: 10000 }, () => {
       const branch0 = Store.put('loli', [bangP, Store.put('monad', [a])]);
       const branch1 = Store.put('loli', [bangQ, Store.put('monad', [b])]);
       const w = Store.put('with', [branch0, branch1]);
-      const alts = expandItem(w);
+      const alts = expandChoiceItem(w);
       assert.strictEqual(alts.length, 2);
       // Each branch is a loli fact (fired by matchLoli at runtime)
       assert.deepStrictEqual(alts[0], { linear: [branch0], persistent: [] });
@@ -285,10 +285,10 @@ describe('explore', { timeout: 10000 }, () => {
       assert.strictEqual(tree.children[0].child.type, 'cycle');
     });
 
-    it('hashState produces deterministic strings', () => {
+    it('hashStateString produces deterministic strings', () => {
       const s1 = { linear: { 5: 2, 3: 1 }, persistent: { 7: true, 2: true } };
       const s2 = { linear: { 3: 1, 5: 2 }, persistent: { 2: true, 7: true } };
-      assert.strictEqual(hashState(s1), hashState(s2));
+      assert.strictEqual(hashStateString(s1), hashStateString(s2));
     });
   });
 

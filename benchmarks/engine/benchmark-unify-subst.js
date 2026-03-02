@@ -519,7 +519,7 @@ function createProver(unifyFn, applyFn) {
     return null;
   }
 
-  function getFirstArgCtor(hash) {
+  function getFirstArgHead(hash) {
     let h = hash, firstArg = null;
     while (h) {
       const node = Store.get(h);
@@ -537,7 +537,7 @@ function createProver(unifyFn, applyFn) {
   function getCandidates(idx, goalHash) {
     const head = getHead(goalHash);
     if (!head) return { types: [], clauses: [] };
-    const fa = getFirstArgCtor(goalHash) || '_';
+    const fa = getFirstArgHead(goalHash) || '_';
     const ti = idx.types[head] || {};
     const ci = idx.clauses[head] || {};
     return {

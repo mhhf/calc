@@ -59,15 +59,15 @@ describe('Manual Proof Flows (browser simulation)', () => {
       const newState = api.applyAction(state, loliL, {
         split: { premise1: [p1Hash], premise2: [] }
       });
-      assert.strictEqual(newState.premisses.length, 2);
+      assert.strictEqual(newState.premises.length, 2);
 
       // Premise 1: P |- P → id
-      const p1 = newState.premisses[0];
+      const p1 = newState.premises[0];
       const p1Actions = api.getApplicableActions(p1, { mode: 'unfocused' });
       assert.ok(findRule(p1Actions, 'id'), 'id on premise 1');
 
       // Premise 2: Q |- Q → id
-      const p2 = newState.premisses[1];
+      const p2 = newState.premises[1];
       const p2Actions = api.getApplicableActions(p2, { mode: 'unfocused' });
       assert.ok(findRule(p2Actions, 'id'), 'id on premise 2');
     });
@@ -80,10 +80,10 @@ describe('Manual Proof Flows (browser simulation)', () => {
       assert.ok(withR, 'with_r available');
 
       state = api.applyAction(state, withR);
-      assert.strictEqual(state.premisses.length, 2, 'with_r has 2 premises');
+      assert.strictEqual(state.premises.length, 2, 'with_r has 2 premises');
 
       // Both premises should be A |- A
-      for (const p of state.premisses) {
+      for (const p of state.premises) {
         const pActions = api.getApplicableActions(p, { mode: 'unfocused' });
         assert.ok(findRule(pActions, 'id'), 'id on premise');
       }
@@ -98,8 +98,8 @@ describe('Manual Proof Flows (browser simulation)', () => {
       assert.ok(tensorL, 'tensor_l available');
 
       state = api.applyAction(state, tensorL);
-      assert.strictEqual(state.premisses.length, 1);
-      const p1 = state.premisses[0];
+      assert.strictEqual(state.premises.length, 1);
+      const p1 = state.premises[0];
 
       // After tensor_l: P, Q |- Q * P
       let p1Actions = api.getApplicableActions(p1, { mode: 'unfocused' });
@@ -116,10 +116,10 @@ describe('Manual Proof Flows (browser simulation)', () => {
       assert.ok(loliR, 'loli_r available');
 
       state = api.applyAction(state, loliR);
-      assert.strictEqual(state.premisses.length, 1);
+      assert.strictEqual(state.premises.length, 1);
 
       // After loli_r: A |- A → id
-      const pActions = api.getApplicableActions(state.premisses[0], { mode: 'unfocused' });
+      const pActions = api.getApplicableActions(state.premises[0], { mode: 'unfocused' });
       assert.ok(findRule(pActions, 'id'), 'id available');
     });
 
@@ -149,7 +149,7 @@ describe('Manual Proof Flows (browser simulation)', () => {
       assert.ok(focusR, 'Focus_R available');
 
       state = api.applyAction(state, focusR);
-      const focused = state.premisses[0];
+      const focused = state.premises[0];
 
       // After focus: id should be available
       actions = api.getApplicableActions(focused, { mode: 'focused' });
@@ -169,17 +169,17 @@ describe('Manual Proof Flows (browser simulation)', () => {
       assert.ok(withR, 'with_r in inversion');
 
       state = api.applyAction(state, withR);
-      assert.strictEqual(state.premisses.length, 2);
+      assert.strictEqual(state.premises.length, 2);
 
       // Step 2: Both premises have loli_r (invertible on right)
       for (let pi = 0; pi < 2; pi++) {
-        let premise = state.premisses[pi];
+        let premise = state.premises[pi];
         actions = api.getApplicableActions(premise, { mode: 'focused' });
         const loliR = findRule(actions, 'loli_r');
         assert.ok(loliR, `loli_r on premise ${pi}`);
 
         premise = api.applyAction(premise, loliR);
-        const innerPremise = premise.premisses[0];
+        const innerPremise = premise.premises[0];
 
         // After loli_r: context has loli + P, succedent is Q or R
         // Inversion exhausted → Focus_L on loli
@@ -192,7 +192,7 @@ describe('Manual Proof Flows (browser simulation)', () => {
 
         // Apply Focus_L
         const afterFocus = api.applyAction(innerPremise, focusL);
-        const focusedChild = afterFocus.premisses[0];
+        const focusedChild = afterFocus.premises[0];
 
         // After focus: loli_l
         actions = api.getApplicableActions(focusedChild, { mode: 'focused' });
@@ -213,7 +213,7 @@ describe('Manual Proof Flows (browser simulation)', () => {
       assert.ok(focusL, 'Focus_L available');
 
       state = api.applyAction(state, focusL);
-      const focused = state.premisses[0];
+      const focused = state.premises[0];
 
       // After focus: with_l1 and with_l2
       actions = api.getApplicableActions(focused, { mode: 'focused' });
@@ -223,10 +223,10 @@ describe('Manual Proof Flows (browser simulation)', () => {
       // Apply with_l1
       const withL1 = findRule(actions, 'with_l1');
       const result = api.applyAction(focused, withL1);
-      assert.strictEqual(result.premisses.length, 1);
+      assert.strictEqual(result.premises.length, 1);
 
       // Premise: A |- A → Focus_R → id
-      const p = result.premisses[0];
+      const p = result.premises[0];
       actions = api.getApplicableActions(p, { mode: 'focused' });
       const focusR = findFocus(actions, 'R');
       assert.ok(focusR, 'Focus_R on A');
@@ -244,7 +244,7 @@ describe('Manual Proof Flows (browser simulation)', () => {
       assert.ok(focusR, 'Focus_R on A * B');
 
       state = api.applyAction(state, focusR);
-      const focused = state.premisses[0];
+      const focused = state.premises[0];
 
       actions = api.getApplicableActions(focused, { mode: 'focused' });
       const tensorR = findRule(actions, 'tensor_r');
@@ -273,7 +273,7 @@ describe('Manual Proof Flows (browser simulation)', () => {
 
       state = api.applyAction(state, bangL);
       // After dereliction: A |- A
-      const p = state.premisses[0];
+      const p = state.premises[0];
       actions = api.getApplicableActions(p, { mode: 'unfocused' });
       assert.ok(findRule(actions, 'id'), 'id after dereliction');
     });

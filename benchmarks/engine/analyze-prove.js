@@ -11,7 +11,7 @@ const { buildIndex } = require('../../lib/engine/prove');
 // Per-operation counters
 let opStats = {
   getHead: { calls: 0, gets: 0 },
-  getFirstArgCtor: { calls: 0, gets: 0 },
+  getFirstArgHead: { calls: 0, gets: 0 },
   freshenTerm: { calls: 0, gets: 0, interns: 0 },
   freshenClause: { calls: 0, gets: 0, interns: 0 },
   unify: { calls: 0, gets: 0 },
@@ -48,9 +48,9 @@ function getHead(hash) {
   return null;
 }
 
-function getFirstArgCtor(hash) {
-  currentOp = 'getFirstArgCtor';
-  opStats.getFirstArgCtor.calls++;
+function getFirstArgHead(hash) {
+  currentOp = 'getFirstArgHead';
+  opStats.getFirstArgHead.calls++;
   let h = hash, firstArg = null;
   while (h) {
     const node = Store.get(h);
@@ -65,7 +65,7 @@ function getFirstArgCtor(hash) {
   const argHead = getHead(firstArg);
   if (argHead) return argHead;
 
-  currentOp = 'getFirstArgCtor';
+  currentOp = 'getFirstArgHead';
   const node = Store.get(firstArg);
   currentOp = null;
   return (node && node.tag === 'freevar') ? '_' : null;
@@ -167,7 +167,7 @@ function instrumentedProve(goal, clauses, types, opts = {}) {
   function localGetCandidates(goalHash) {
     const head = getHead(goalHash);
     if (!head) return { types: [], clauses: [] };
-    const fa = getFirstArgCtor(goalHash) || '_';
+    const fa = getFirstArgHead(goalHash) || '_';
     const ti = idx.types[head] || {};
     const ci = idx.clauses[head] || {};
     return {

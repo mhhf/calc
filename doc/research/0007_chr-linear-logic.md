@@ -299,7 +299,7 @@ The oplus (internal choice) is the correct connective because the *system* decid
 
 Our engine already implements the CHR-v pattern:
 - Forward rules with `⊕` in consequents = CHR-v disjunctive bodies
-- `expandItem` treats `plus` by forking = CHR-v disjunction transition
+- `expandChoiceItem` treats `plus` by forking = CHR-v disjunction transition
 - Execution tree exploration = CHR-v search tree over choice points
 - Committed choice for rule selection + don't-know for disjunction = CHR-v semantics
 
@@ -498,14 +498,14 @@ Stéphan's proof-theoretical approach is arguably more natural for CALC than Bet
 |---|---|
 | Non-focused sequent (process goal) | `findAllMatches` / `run` loop |
 | Focused sequent (try rules on a constraint) | Strategy stack evaluation for one fact |
-| ⊗_L (split goal into head + tail) | `expandItem` decomposing tensor/plus |
+| ⊗_L (split goal into head + tail) | `expandChoiceItem` decomposing tensor/plus |
 | W (Weakening — skip a rule) | Rule doesn't match, try next |
 | F (Focusing — select constraint) | `matchFirstLoli` / `findMatch` picks a fact |
 | ↑ (Inactivate — store unchanged) | Fact stays in state (no rule fires on it) |
 | \⟺ (Apply — fire rule) | `applyMatch` / `mutateState` |
 | & between rules (committed choice) | `findMatch` returns first successful rule |
 | ω_l^⊗ (sequence store) | CALC's linear array ordering in `state.linear` |
-| Hidden Cut in ⊗_L | `expandItem` splitting resources between subgoals |
+| Hidden Cut in ⊗_L | `expandChoiceItem` splitting resources between subgoals |
 
 **Program as & (not ⊗ or !):** Stéphan's translation of the program as additive conjunction directly models CALC's committed-choice rule selection in `run()`. The strategy stack's first-match-wins behavior is exactly &L₁ vs &L₂: try rule 1, if it doesn't apply, try rule 2.
 

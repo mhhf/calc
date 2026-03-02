@@ -46,7 +46,7 @@ This document catalogs all primitive operations in CALC, analyzes their computat
 | **Copy** | `node.copy()` | O(n) | Deep recursive copy of entire subtree |
 | **Equality** | (implicit via toString) | O(n) | No direct equality — uses string comparison |
 | **toString** | `node.toString(style)` | O(n) | Serialize to ASCII/LaTeX/Isabelle format |
-| **isVar** | `node.isVar()` | O(1) | Check if node is a variable |
+| **isMetavar** | `isMetavar(hash)` | O(1) | Check if hash is a metavariable |
 | **isTermType** | `node.isTermType()` | O(1) | Check if Structure_Term_Formula |
 
 **Code location:** `lib/node.js:1-150`

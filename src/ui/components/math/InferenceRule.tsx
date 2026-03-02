@@ -22,9 +22,9 @@ function prettifyMetavars(latex: string): string {
 }
 
 /**
- * Parse rule string and extract premisses and conclusion
+ * Parse rule string and extract premises and conclusion
  */
-function parseRuleString(ruleStr: string): { premisses: string[]; conclusion: string } | null {
+function parseRuleString(ruleStr: string): { premises: string[]; conclusion: string } | null {
   // Rules are formatted like: "premise1, premise2 |- conclusion"
   // or multiple rules separated by ;
   const parts = ruleStr.split(/\s*;\s*/);
@@ -32,9 +32,9 @@ function parseRuleString(ruleStr: string): { premisses: string[]; conclusion: st
 
   // First part is usually the conclusion pattern
   const conclusion = parts[0];
-  const premisses = parts.slice(1);
+  const premises = parts.slice(1);
 
-  return { premisses, conclusion };
+  return { premises, conclusion };
 }
 
 export default function InferenceRule(props: InferenceRuleProps) {

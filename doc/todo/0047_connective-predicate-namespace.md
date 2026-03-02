@@ -35,9 +35,9 @@ Combined Option D (rename) with Option A (numeric boundary):
 - `lib/kernel/store.js` — pre-register `oplus`, export `PRED_BOUNDARY`
 - `lib/kernel/ast.js` — replace `NON_PRED_TAGS` Set with `isPredTag()` + boundary check
 - `lib/engine/convert.js` — `Store.put('oplus', ...)`
-- `lib/engine/compile.js` — `t === 'oplus'` in expandItem
+- `lib/engine/compile.js` — `t === 'oplus'` in expandChoiceItem
 - `lib/engine/forward.js` — `isPredTag()` in tryFFIDirect
-- `lib/engine/prove.js` — `isPredTag()` in getFirstArgCtor, getArgs
+- `lib/engine/prove.js` — `isPredTag()` in getFirstArgHead, getArgs
 - `lib/meta-parser/cst-to-ast.js` — `'expr_plus': 'oplus'`
 - Tests: explore.test.js, tree-sitter.js
 - `out/ill.json` — regenerated

@@ -12,7 +12,7 @@ const calculus = require('../lib/calculus');
 const { createProver, buildRuleSpecs } = require('../lib/prover/focused');
 const Seq = require('../lib/kernel/sequent');
 const { parseExpr } = require('../lib/engine/convert');
-const { compileRule, expandItem } = require('../lib/engine/compile');
+const { compileRule, expandChoiceItem } = require('../lib/engine/compile');
 const { createState } = require('../lib/engine/forward');
 const { resolveExistentials, tryMatch } = require('../lib/engine/match');
 
@@ -210,12 +210,12 @@ describe('Backward prover with quantifiers', () => {
 });
 
 describe('Forward engine with exists', () => {
-  it('expandItem opens exists binder', () => {
+  it('expandChoiceItem opens exists binder', () => {
     const b0 = Store.put('bound', [0n]);
     const pb = Store.put('p', [b0]);
     const ex = Store.put('exists', [pb]);
 
-    const alts = expandItem(ex);
+    const alts = expandChoiceItem(ex);
     assert.strictEqual(alts.length, 1);
     // Body should have a freevar (metavar) instead of bound(0)
     const linearFact = alts[0].linear[0];
@@ -224,14 +224,14 @@ describe('Forward engine with exists', () => {
     assert.strictEqual(Store.tag(arg), 'freevar');
   });
 
-  it('expandItem handles exists inside tensor', () => {
+  it('expandChoiceItem handles exists inside tensor', () => {
     const b0 = Store.put('bound', [0n]);
     const pb = Store.put('p', [b0]);
     const ex = Store.put('exists', [pb]);
     const q = Store.put('atom', ['q']);
     const tensor = Store.put('tensor', [ex, q]);
 
-    const alts = expandItem(tensor);
+    const alts = expandChoiceItem(tensor);
     assert.strictEqual(alts.length, 1);
     assert.strictEqual(alts[0].linear.length, 2);
   });
@@ -285,7 +285,7 @@ describe('Loli variables are NOT existential slots', () => {
     const loliBody = Store.put('monad', [rz]);
     const loli = Store.put('loli', [qz, loliBody]);
     const tensor = Store.put('tensor', [px, loli]);
-    // exists wraps the tensor — after expandItem, X becomes a fresh metavar
+    // exists wraps the tensor — after expandChoiceItem, X becomes a fresh metavar
     const ex = Store.put('exists', [tensor]);
     const monad = Store.put('monad', [ex]);
 

@@ -359,7 +359,7 @@ The `plus` predicate appears in multiple modes across EVM rules: `+ + -` (ADD: C
 
 ### 5.2 Relationship to the CLF Monad
 
-CALC's `{...}` in rule consequents implements the CLF monad `{A}` implicitly. `expandItem` performs monadic decomposition: ⊗ → split, ⊕ → fork, ⊸ → suspend, ! → persistent. The gap: ∃ is not handled. Adding ∃ completes the monadic decomposition. The implementation is incomplete, not incorrect.
+CALC's `{...}` in rule consequents implements the CLF monad `{A}` implicitly. `expandChoiceItem` performs monadic decomposition: ⊗ → split, ⊕ → fork, ⊸ → suspend, ! → persistent. The gap: ∃ is not handled. Adding ∃ completes the monadic decomposition. The implementation is incomplete, not incorrect.
 
 ### 5.3 ⊕ Semantics Beyond Exclusive Binary Guards
 

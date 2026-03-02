@@ -324,7 +324,7 @@ describe('v2 FocusedProver', () => {
 
       assert.ok(result.proofTree);
       assert.strictEqual(result.proofTree.rule, 'tensor_l');
-      assert.ok(result.proofTree.premisses.length > 0);
+      assert.ok(result.proofTree.premises.length > 0);
     });
   });
 

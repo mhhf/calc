@@ -38,7 +38,7 @@ export type Sequent = {
 
 export type ProofNode = {
   conclusion: Sequent;
-  premisses: ProofNode[];
+  premises: ProofNode[];
   rule: string | null;
   proven: boolean;
 };
@@ -57,7 +57,7 @@ export interface ApplicableRule {
 
 export interface ProofTreeNode {
   conclusion: Sequent;
-  premisses: ProofTreeNode[];
+  premises: ProofTreeNode[];
   type: string;  // Rule name or '???'
   proven: boolean;
   delta_in: Record<string, any>;
@@ -208,7 +208,7 @@ export function sequentToAscii(seq: Sequent, focusInfo?: FocusInfo): string {
 export function createProofTree(sequent: Sequent): ProofTreeNode {
   return {
     conclusion: sequent,
-    premisses: [],
+    premises: [],
     type: '???',
     proven: false,
     delta_in: {},
@@ -218,8 +218,8 @@ export function createProofTree(sequent: Sequent): ProofTreeNode {
 
 export function isProofComplete(pt: ProofTreeNode): boolean {
   if (pt.type === '???') return false;
-  if (pt.premisses.length === 0) return true;
-  return pt.premisses.every(isProofComplete);
+  if (pt.premises.length === 0) return true;
+  return pt.premises.every(isProofComplete);
 }
 
 export function countNodes(pt: ProofTreeNode): { proven: number; unproven: number } {
@@ -229,10 +229,10 @@ export function countNodes(pt: ProofTreeNode): { proven: number; unproven: numbe
   function traverse(node: ProofTreeNode) {
     if (node.type === '???') {
       unproven++;
-    } else if (node.premisses.length === 0) {
+    } else if (node.premises.length === 0) {
       proven++;
     }
-    node.premisses.forEach(traverse);
+    node.premises.forEach(traverse);
   }
 
   traverse(pt);
@@ -242,8 +242,8 @@ export function countNodes(pt: ProofTreeNode): { proven: number; unproven: numbe
 export function getNodeAtPath(pt: ProofTreeNode, path: number[]): ProofTreeNode | null {
   if (path.length === 0) return pt;
   const [head, ...tail] = path;
-  if (head >= pt.premisses.length) return null;
-  return getNodeAtPath(pt.premisses[head], tail);
+  if (head >= pt.premises.length) return null;
+  return getNodeAtPath(pt.premises[head], tail);
 }
 
 export function setNodeAtPath(
@@ -254,18 +254,18 @@ export function setNodeAtPath(
   if (path.length === 0) return newNode;
 
   const [head, ...tail] = path;
-  const newPremisses = root.premisses.map((p, i) =>
+  const newPremisses = root.premises.map((p, i) =>
     i === head ? setNodeAtPath(p, tail, newNode) : p
   );
 
-  return { ...root, premisses: newPremisses };
+  return { ...root, premises: newPremisses };
 }
 
 export function cloneProofTree(pt: ProofTreeNode): ProofTreeNode {
   const Seq = getSeqModule();
   return {
     conclusion: Seq.copy(pt.conclusion),
-    premisses: pt.premisses.map(cloneProofTree),
+    premises: pt.premises.map(cloneProofTree),
     type: pt.type,
     proven: pt.proven,
     delta_in: { ...pt.delta_in },
@@ -430,7 +430,7 @@ function proofStateToTreeNode(state: any): ProofTreeNode {
   }
   return {
     conclusion: state.conclusion,
-    premisses: (state.premisses || []).map(proofStateToTreeNode),
+    premises: (state.premises || []).map(proofStateToTreeNode),
     type: state.rule || '???',
     proven: state.proven,
     delta_in: deltaIn,
@@ -501,7 +501,7 @@ export function applyRuleWithSplit(
   });
 
   ptCopy.type = action.displayName || ruleName;
-  ptCopy.premisses = premises.map(createProofTree);
+  ptCopy.premises = premises.map(createProofTree);
 
   return ptCopy;
 }
@@ -538,7 +538,7 @@ export function previewSplitSubgoals(
   const testPt = createProofTree(seq);
   const result = applyRuleWithSplit(testPt, ruleName, position, split, apiAction);
   if (!result) return null;
-  return result.premisses.map(p => p.conclusion);
+  return result.premises.map(p => p.conclusion);
 }
 
 // =============================================================================
@@ -559,7 +559,7 @@ export async function autoProve(
 
   const convertTree = (raw: any): ProofTreeNode => ({
     conclusion: raw.conclusion,
-    premisses: (raw.premisses || []).map(convertTree),
+    premises: (raw.premises || []).map(convertTree),
     type: raw.rule || '???',
     proven: raw.proven,
     delta_in: {},
@@ -577,16 +577,16 @@ export async function autoProve(
 // =============================================================================
 
 export function collapseFocusSteps(pt: ProofTreeNode): ProofTreeNode {
-  if ((pt.type === 'Focus_L' || pt.type === 'Focus_R') && pt.premisses.length === 1) {
-    const child = collapseFocusSteps(pt.premisses[0]);
+  if ((pt.type === 'Focus_L' || pt.type === 'Focus_R') && pt.premises.length === 1) {
+    const child = collapseFocusSteps(pt.premises[0]);
     return {
       ...child,
       conclusion: pt.conclusion,
-      premisses: child.premisses.map(collapseFocusSteps),
+      premises: child.premises.map(collapseFocusSteps),
     };
   }
-  if (pt.premisses.length === 0) return pt;
-  return { ...pt, premisses: pt.premisses.map(collapseFocusSteps) };
+  if (pt.premises.length === 0) return pt;
+  return { ...pt, premises: pt.premises.map(collapseFocusSteps) };
 }
 
 // =============================================================================
@@ -611,11 +611,11 @@ export function ptToStructuredProof(
   step = 1,
   path: number[] = []
 ): StructuredStep {
-  const children = pt.premisses.map((p, i) =>
+  const children = pt.premises.map((p, i) =>
     ptToStructuredProof(p, level + 1, i + 1, [...path, i])
   );
 
-  const isLeaf = pt.premisses.length === 0;
+  const isLeaf = pt.premises.length === 0;
   const isProven = pt.type !== '???' && (isLeaf || children.every(c => c.isProven));
 
   return {
@@ -664,8 +664,8 @@ export interface SerializedProof {
 }
 
 function calculateDepth(pt: ProofTreeNode): number {
-  if (pt.premisses.length === 0) return 1;
-  return 1 + Math.max(...pt.premisses.map(calculateDepth));
+  if (pt.premises.length === 0) return 1;
+  return 1 + Math.max(...pt.premises.map(calculateDepth));
 }
 
 export function serializeProofTree(
@@ -686,8 +686,8 @@ export function serializeProofTree(
         ascii: sequentToAscii(node.conclusion, focusInfo),
         latex: sequentToLatex(node.conclusion, true, focusInfo),
       },
-      proven: node.type !== '???' && (node.premisses.length === 0 || node.proven),
-      premises: node.premisses.map(serializeNode),
+      proven: node.type !== '???' && (node.premises.length === 0 || node.proven),
+      premises: node.premises.map(serializeNode),
     };
   };
 
@@ -749,8 +749,8 @@ export function getRuleApplicationDetails(pt: ProofTreeNode): RuleApplicationDet
     actualConclusion: sequentToAscii(pt.conclusion),
     actualConclusionLatex: sequentToLatex(pt.conclusion),
     substitution: [],
-    instantiatedPremises: pt.premisses.map(p => sequentToAscii(p.conclusion)),
-    instantiatedPremisesLatex: pt.premisses.map(p => sequentToLatex(p.conclusion)),
+    instantiatedPremises: pt.premises.map(p => sequentToAscii(p.conclusion)),
+    instantiatedPremisesLatex: pt.premises.map(p => sequentToLatex(p.conclusion)),
   };
 }
 

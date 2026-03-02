@@ -198,7 +198,7 @@ describe('L1 Kernel - Proof Verification', () => {
         conclusion: s,
         rule: 'tensor_r',
         proven: true,
-        premisses: []
+        premises: []
       });
       const v = kernel.verifyTree(tree);
       assert.strictEqual(v.valid, false);

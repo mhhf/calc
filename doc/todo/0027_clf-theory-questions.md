@@ -29,7 +29,7 @@ CALC violates this restriction deliberately — guarded continuations like `!eq(
 
 ## Q2: Why `!P -o {Q}` and not `!P -o Q`?
 
-**Answered** (see TODO_0041 detailed analysis). The inner monad is syntactic, not semantic. After TODO_0041's fix (remove loli case from expandItem), both forms work identically. Recommendation: drop the inner monad braces after the fix.
+**Answered** (see TODO_0041 detailed analysis). The inner monad is syntactic, not semantic. After TODO_0041's fix (remove loli case from expandChoiceItem), both forms work identically. Recommendation: drop the inner monad braces after the fix.
 
 ## Q3: What IS `_tryFireLoli` theoretically?
 
@@ -52,7 +52,7 @@ After TODO_0041, `_tryFireLoli` is deleted and this becomes part of the unified 
 | Layer | What | Theory vs Optimization |
 |---|---|---|
 | Multiset rewriting | Facts consumed/produced | Pure theory (ILL forward chaining) |
-| Monadic decomposition (`expandItem`) | `{A}` → state updates | Theory (CLF monadic elimination) |
+| Monadic decomposition (`expandChoiceItem`) | `{A}` → state updates | Theory (CLF monadic elimination) |
 | Rule matching (`tryMatch`) | Find applicable rules | Theory (loli-left + bang elimination) |
 | Strategy stack (fingerprint, disc-tree) | Index rules for fast lookup | **Optimization** (focused proof search compiled to indexing) |
 | Mutation+undo | In-place state for DFS | **Optimization** (equivalent to copy-on-branch) |
@@ -60,9 +60,9 @@ After TODO_0041, `_tryFireLoli` is deleted and this becomes part of the unified 
 
 The strategy stack IS Andreoli focusing compiled into data structures (see theory doc Q4). Selectively disabling optimizations (fallback to linear scan, copy-on-branch) should yield identical results — this is a testable invariant.
 
-## Q5: Is `expandItem` theoretically clean?
+## Q5: Is `expandChoiceItem` theoretically clean?
 
-**Answered.** `expandItem` IS CLF's monadic decomposition — it's the elimination rule for `{A}`:
+**Answered.** `expandChoiceItem` IS CLF's monadic decomposition — it's the elimination rule for `{A}`:
 
 | Connective in `{C}` | Decomposition | CLF basis |
 |---|---|---|
@@ -73,6 +73,6 @@ The strategy stack IS Andreoli focusing compiled into data structures (see theor
 | `A & B` / `A + B` | alternatives | additive case split |
 | `A -o B` | **BUG** (was unsound) | Not in CLF (forbidden) |
 
-If the loli case is removed, `expandItem` becomes exactly CLF's monadic decomposition — correct by construction. The remaining connective cases are all standard elimination rules.
+If the loli case is removed, `expandChoiceItem` becomes exactly CLF's monadic decomposition — correct by construction. The remaining connective cases are all standard elimination rules.
 
-Note: `plus` and `with` in `expandItem` go beyond CLF (which excludes additives from the monad). This is CALC's extension — justified by CHR-disjunction soundness results (Betz & Fruhwirth 2013).
+Note: `plus` and `with` in `expandChoiceItem` go beyond CLF (which excludes additives from the monad). This is CALC's extension — justified by CHR-disjunction soundness results (Betz & Fruhwirth 2013).

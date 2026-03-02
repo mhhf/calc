@@ -268,7 +268,7 @@ describe('ManualProofAPI - Rule Suggestions', () => {
       assert.ok(focusAction, 'Focus_L on loli should be available');
 
       const afterFocus = api.applyAction(state, focusAction);
-      const childState = afterFocus.premisses[0];
+      const childState = afterFocus.premises[0];
       assert.ok(childState.focus, 'Child should have focus set');
 
       // After focus: only loli_l should be shown
@@ -292,7 +292,7 @@ describe('ManualProofAPI - Rule Suggestions', () => {
       assert.ok(focusAction, 'Focus_R on tensor should be available');
 
       const afterFocus = api.applyAction(state, focusAction);
-      const childState = afterFocus.premisses[0];
+      const childState = afterFocus.premises[0];
 
       const focusedActions = api.getApplicableActions(childState, { mode: 'focused' });
       const rnames = focusedActions.filter(a => a.type === 'rule').map(a => a.name);
@@ -312,7 +312,7 @@ describe('ManualProofAPI - Rule Suggestions', () => {
       assert.ok(focusAction, 'Focus_L on with should be available');
 
       const afterFocus = api.applyAction(state, focusAction);
-      const childState = afterFocus.premisses[0];
+      const childState = afterFocus.premises[0];
 
       const focusedActions = api.getApplicableActions(childState, { mode: 'focused' });
       const rnames = focusedActions.filter(a => a.type === 'rule').map(a => a.name).sort();
@@ -328,7 +328,7 @@ describe('ManualProofAPI - Rule Suggestions', () => {
       assert.ok(focusAction, 'Focus_R on atom');
 
       const afterFocus = api.applyAction(state, focusAction);
-      const childState = afterFocus.premisses[0];
+      const childState = afterFocus.premises[0];
 
       const focusedActions = api.getApplicableActions(childState, { mode: 'focused' });
       const rnames = focusedActions.filter(a => a.type === 'rule').map(a => a.name);
@@ -540,9 +540,9 @@ describe('ManualProofAPI - Rule Suggestions', () => {
       const newState = api.applyAction(state, focusAction);
 
       assert.strictEqual(newState.rule, 'Focus_L');
-      assert.strictEqual(newState.premisses.length, 1);
-      assert.ok(newState.premisses[0].focus, 'child has focus');
-      assert.strictEqual(newState.premisses[0].focus.position, 'L');
+      assert.strictEqual(newState.premises.length, 1);
+      assert.ok(newState.premises[0].focus, 'child has focus');
+      assert.strictEqual(newState.premises[0].focus.position, 'L');
     });
 
     it('applyAction with rule creates children', () => {
@@ -555,8 +555,8 @@ describe('ManualProofAPI - Rule Suggestions', () => {
       const newState = api.applyAction(state, loliR);
 
       assert.strictEqual(newState.rule, 'loli_r');
-      assert.strictEqual(newState.premisses.length, 1);
-      assert.strictEqual(newState.premisses[0].focus, null, 'no focus after rule');
+      assert.strictEqual(newState.premises.length, 1);
+      assert.strictEqual(newState.premises[0].focus, null, 'no focus after rule');
     });
 
     it('applyAction with id closes goal', () => {
@@ -568,7 +568,7 @@ describe('ManualProofAPI - Rule Suggestions', () => {
       const newState = api.applyAction(state, id);
 
       assert.strictEqual(newState.rule, 'id');
-      assert.strictEqual(newState.premisses.length, 0);
+      assert.strictEqual(newState.premises.length, 0);
       assert.strictEqual(newState.proven, true);
     });
   });

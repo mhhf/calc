@@ -24,7 +24,7 @@ describe('v2 ProofTree', () => {
       const pt = fromGoal(s);
       assert.strictEqual(pt.rule, null);
       assert.strictEqual(pt.proven, false);
-      assert.strictEqual(pt.premisses.length, 0);
+      assert.strictEqual(pt.premises.length, 0);
     });
 
     it('should create leaf (axiom)', () => {
@@ -48,7 +48,7 @@ describe('v2 ProofTree', () => {
       assert.strictEqual(pt.isGoal(), false);
     });
 
-    it('isLeaf should return true for no premisses', () => {
+    it('isLeaf should return true for no premises', () => {
       const s = Seq.fromArrays([AST.freevar('A')], [], AST.freevar('A'));
       const pt = leaf(s, 'id');
       assert.strictEqual(pt.isLeaf(), true);
@@ -62,7 +62,7 @@ describe('v2 ProofTree', () => {
 
       const pt = new ProofTree({
         conclusion: Seq.fromArrays([], [], AST.tensor(AST.freevar('A'), AST.freevar('B'))),
-        premisses: [p1, p2],
+        premises: [p1, p2],
         rule: 'tensor_r',
         proven: true
       });
@@ -101,7 +101,7 @@ describe('v2 ProofTree', () => {
 
       assert.strictEqual(json.rule, 'id');
       assert.strictEqual(json.proven, true);
-      assert.ok(Array.isArray(json.premisses));
+      assert.ok(Array.isArray(json.premises));
     });
 
     it('toString should produce readable output', () => {

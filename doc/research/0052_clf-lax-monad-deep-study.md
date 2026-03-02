@@ -430,7 +430,7 @@ evm/eq: ... -o { (stack SH 0 * !neq X Y) + (stack SH 1 * !eq X Y) }
 
 The inclusion of `oplus` in forward consequents corresponds to CHR-with-disjunction (Betz & Fruhwirth 2013). Their soundness theorem transfers: every CALC forward derivation corresponds to a valid ILL derivation.
 
-`oplus`-left is invertible — case-split eagerly. This is the standard treatment. In the forward engine, `expandItem` forks into alternatives, creating branches in the execution tree.
+`oplus`-left is invertible — case-split eagerly. This is the standard treatment. In the forward engine, `expandChoiceItem` forks into alternatives, creating branches in the execution tree.
 
 ### 8.4 Alternatives to the Monadic Approach
 
@@ -446,7 +446,7 @@ The inclusion of `oplus` in forward consequents corresponds to CHR-with-disjunct
 
 | CLF concept | CALC implementation | Notes |
 |---|---|---|
-| Monad `{S}` | `expandItem` in forward.js | Monadic decomposition |
+| Monad `{S}` | `expandChoiceItem` in forward.js | Monadic decomposition |
 | Monadic let | Sequential rule application | Implicit in the main loop |
 | Backward chaining | `prove.js` + FFI | Level 2 of persistent proving |
 | Forward chaining | `forward.js` main loop | Committed choice per step |

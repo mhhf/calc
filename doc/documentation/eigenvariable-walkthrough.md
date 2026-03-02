@@ -587,9 +587,9 @@ CALC's `{...}` in rule consequents IS the CLF monad, implemented implicitly:
 
 | CLF monad operation | CALC implementation |
 |---|---|
-| ⊗ decomposition | `expandItem` splits into individual facts |
+| ⊗ decomposition | `expandChoiceItem` splits into individual facts |
 | ∃ introduction | **Missing** — this is the gap ∃ fills |
-| ⊕ branching | `expandItem` forks into children |
+| ⊕ branching | `expandChoiceItem` forks into children |
 | ⊸ suspension | Loli stays in state, `matchLoli` fires when guard provable |
 | ! annotation | Fact added to `state.persistent` |
 
@@ -606,7 +606,7 @@ The EQ rule (evm.ill:186) fires, producing:
 { ((!neq 0 0 ⊸ { stack SH 0 }) ⊕ (!eq 0 0 ⊸ { stack SH 1 })) }
 ```
 
-`expandItem` hits ⊕, forks:
+`expandChoiceItem` hits ⊕, forks:
 
 **Branch L:** `!neq(0, 0) ⊸ { stack(0, 0) }`
 - `matchLoli` tries `neq(0, 0)` → FFI: 0 ≠ 0? **False.** Definitive failure.
@@ -661,7 +661,7 @@ For X=5: both guards succeed, both branches survive.
 ```
 traffic -o { (red ⊸ {stop}) ⊕ ((yellow ⊸ {slow}) ⊕ (green ⊸ {go})) }
 ```
-`expandItem` decomposes recursively: fork → left, right; right forks again → three branches.
+`expandChoiceItem` decomposes recursively: fork → left, right; right forks again → three branches.
 
 **Non-exhaustive guards:**
 ```
