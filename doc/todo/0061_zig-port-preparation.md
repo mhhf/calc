@@ -237,3 +237,24 @@ Once the Zig core is operational:
 4. **Test strategy**: run existing JS test suite against Zig FFI bridge — same inputs, same expected outputs
 
 Estimated post-port deletions: ~2,000 LOC JS (replaced by ~6,000 LOC Zig + ~200 LOC FFI bridge).
+
+## Completion Results (2026-03-02)
+
+All 5 stages implemented. 688 tests passing throughout.
+
+### Commits
+1. `6e86287` Stage 2: compilePersistentStep closure → spec struct
+2. `98ff462` Stage 3: tryMatch allocation pooling via Map pools
+3. `1685f8f` Stage 1: compilePatternMatch closure → instruction array
+4. `ae10aea` Stage 4: FactSet.snapshotBulk() — single allocation for terminal states
+5. `3581775` Stage 5: extract StringTable class in store.js
+
+### Benchmark (40 iterations, `bench:diff:symexec` vs pre-0061)
+
+| Benchmark | Before | After | Change |
+|---|---|---|---|
+| multisig | 1.26ms | 1.17ms | −6.9% |
+| solc_symbolic | 4.88ms | 4.94ms | ~neutral |
+| **geometric mean** | | | **−2.9%** |
+
+Full end-to-end solc_symbolic (load + decompose + explore): ~26ms median.
