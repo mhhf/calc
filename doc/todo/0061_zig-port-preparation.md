@@ -2,6 +2,7 @@
 title: "Zig Port Preparation — Closure Elimination and Allocation Reduction"
 created: 2026-03-02
 modified: 2026-03-02
+completed: 2026-03-02
 summary: "Systematic refactoring of JS engine code toward Zig-portable patterns: replace closures with dispatch structs, pool hot-path allocations, and document the porting order. Estimated 3,600 JS LOC → ~6,000 Zig LOC across kernel + engine layers."
 tags:
   - architecture
@@ -12,7 +13,7 @@ tags:
   - data-structures
   - arena-allocation
 type: design
-status: planning
+status: done
 priority: 4
 cluster: Performance
 depends_on: []
