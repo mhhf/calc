@@ -1,14 +1,14 @@
 ---
 title: "Commuting Match Reduction in Exhaustive Exploration"
 created: 2026-02-26
-modified: 2026-02-28
-summary: "Eliminate redundant tree branches caused by commuting matches — grounded in CLF definitional equality, Mazurkiewicz trace theory, and DPOR"
+modified: 2026-03-02
+summary: "Layers 1–2 done: state memoization (global visited set) + synchronous loli fusion. Tensor encoding (TODO_0055) superseded loli fusion for guard lolis. Layer 3 (DPOR) deferred — not needed for EVM (pc mutual exclusion)."
 tags: [symexec, forward-chaining, partial-order-reduction, loli, performance, theory, proof-nets, memoization, clf, concurrency]
 type: design
 cluster: Symexec
-status: in progress
+status: done
 priority: 9
-depends_on: [TODO_0041]
+depends_on: []
 required_by: [TODO_0042]
 ---
 
@@ -247,9 +247,17 @@ Each layer is independently correct. Together they cover all sources of redundan
 
 Layer 2 saves ~1.1ms in baseline JS (fewer nodes × 29µs/node). After TODO_0058 Phase 3 optimizations reduce per-node cost, the node savings contribute ~0.5ms. The primary value is tree correctness (1 STOP leaf instead of 64→2 after memo), not performance.
 
-## Also Blocked
+## Implementation Results (2026-02-28)
 
-This TODO blocks the **symbolic sender/storage benchmark**: with 64× duplication, timing comparisons with hevm are meaningless. Fix commuting matches first, then benchmark.
+**Layer 1 (State Memoization — Option E): DONE.** Commit `f3fbdc8`. Global visited set added to `go()`. Catches all state duplicates regardless of source. 64 identical STOP leaves → 2 (memo nodes for duplicates).
+
+**Layer 2 (Synchronous Loli Fusion — Option C): DONE.** Same commit. Persistent-trigger lolis resolved atomically with oplus expansion, restoring CLF monad boundary semantics.
+
+**Layer 2 superseded by TODO_0055.** The tensor-in-oplus encoding (commit `e167db7`) eliminated loli-in-oplus for guard lolis entirely. Guards are now asserted as persistent facts (tensor), not deferred as lolis. Loli fusion remains for non-guard lolis but the main source of commuting matches (guard lolis) is eliminated at the encoding level.
+
+**Structural memoization** (commit `f30d2e1`, opt-in via `structuralMemo: true`) further reduces the tree: 2125→477 nodes for symbolic multisig, based on control hash (PC, stack height).
+
+**Layer 3 (DPOR — Option B): DEFERRED.** Not needed for EVM programs — `pc` mutual exclusion prevents forward-vs-forward commuting. Would only be needed for non-EVM programs with genuinely concurrent independent transitions.
 
 ## References
 

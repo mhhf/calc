@@ -1,15 +1,15 @@
 ---
 title: Ephemeral Transit States and Basic Block Compilation
 created: 2026-02-28
-modified: 2026-02-28
-summary: Reduce symexec overhead by not materializing deterministic intermediate states, with a path toward composing rule sequences into aggregate transformations
+modified: 2026-03-02
+summary: "Level 1 (iterative chains) invalidated by V8 JIT — zero perf gain. Level 2 (deferred index) deferred. Level 3b (threaded code) = Opt_H in TODO_0058 — the only remaining actionable item. Level 3c (full composition) is research-level."
 tags:
   - symexec
   - optimization
   - forward-chaining
   - partial-evaluation
 type: design
-status: researching
+status: subsumed
 priority: 3
 cluster: Performance
 depends_on: []
@@ -17,6 +17,8 @@ required_by: []
 ---
 
 # TODO 0057: Ephemeral Transit States and Basic Block Compilation
+
+**Status: subsumed by [TODO_0058](0058_symexec-4ms-optimization.md).** Level 1 (iterative chains) invalidated — V8 JIT eliminates function call overhead, zero perf gain measured. Level 3b (threaded code / fingerprint prediction) is tracked as Opt_H in TODO_0058, the biggest remaining optimization (~1.7ms). Level 3c (full composition) remains as a research direction.
 
 ## Problem
 

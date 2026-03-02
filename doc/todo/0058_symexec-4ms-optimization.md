@@ -2,7 +2,7 @@
 title: "Symexec Sub-4ms: Per-Step Optimization Analysis"
 created: 2026-02-28
 modified: 2026-03-02
-summary: "Deep profiling of symbolic multisig explore(). TODO_0059 done (16.6→11.6ms). Opt_A done (11.6→9.2ms). Opt_G done (persistent steps: -32% matchIdx, -61% substitute, ~6-12% wall-clock). Next: Opt_E (skip solver) + Opt_H (threaded code)."
+summary: "Deep profiling of symbolic multisig explore(). TODO_0059 done (16.6→11.6ms). Opt_A done (11.6→9.2ms). Opt_G done (persistent steps: -32% matchIdx, -61% substitute). FFI-first proving done (swap proving order for EVM). Opt_E reverted (conditional solver skip — no measurable gain). Remaining: Opt_H (threaded code, biggest win)."
 tags:
   - symexec
   - optimization
@@ -118,11 +118,15 @@ The 3.5ms projection assumed:
 
 The "86% dispatch overhead in findAllMatches" finding remains valid — dispatch IS the bottleneck — but eliminating it requires staying within V8's IC monomorphism constraints. Per-rule closures violate this. Only the persistent proving path could be compiled (≤4 FFI types).
 
+### FFI-First Persistent Proving (DONE, 2026-03-02)
+
+Swapped proving order in `provePersistentGoals` from state lookup → FFI → clauses to **FFI → state lookup → clauses**. For EVM, persistent goals (inc, plus, neq, mul) are all FFI-backed and state lookup always misses — trying the state first added ~50ns per goal for a guaranteed miss. Also fixed `solc_symbolic` benchmark maxDepth 200→400 (actual tree depth is 387; old limit prevented structural memoization from activating).
+
+### ~~Opt_E: Skip solver for non-oplus rules~~ — REVERTED
+
+Attempted (commit `647583c`) and reverted (commit `266b7b5`). The conditional EqNeqSolver skip for non-oplus rules produced no measurable performance gain — solver checkpoint/restore is already ~0.5µs per call, negligible at 477 calls total.
+
 ## Remaining Optimizations
-
-### Opt_E: Skip solver for non-oplus rules (~0.3ms)
-
-Currently `explore()` checkpoints/restores the constraint solver on every node. For non-oplus rules (most rules), this is wasted. Simple 3-line conditional in `symexec.js`.
 
 ### Opt_H: Threaded code / fingerprint prediction (~1.7ms) — biggest remaining win
 
@@ -142,8 +146,9 @@ Subsumed by Opt_G for FFI predicates (inc, plus, neq, mul). Remaining value: non
 | **After TODO_0059** | FactSet migration (measured) | **11.6ms** | **1.43×** |
 | **After Opt_A** | FactSet snapshots (measured) | **~9.2ms** | **1.8×** |
 | **After Opt_G** | Persistent step fast path (measured) | **~8.3ms** | **2.0×** |
-| After Opt_E | Skip solver for non-oplus (−0.3ms) | ~8.0ms | 2.1× |
-| After Opt_H | Threaded code (−1.7ms) | ~6.3ms | 2.6× |
+| **After FFI-first** | FFI-first proving + maxDepth fix (measured) | **~8.1ms** | **2.0×** |
+| ~~After Opt_E~~ | ~~Skip solver~~ (reverted, no gain) | — | — |
+| After Opt_H | Threaded code (−1.7ms) | ~6.4ms | 2.6× |
 
 ## Key Insights
 
@@ -171,7 +176,7 @@ Subsumed by Opt_G for FFI predicates (inc, plus, neq, mul). Remaining value: non
 | undoMutate | 0.4ms | 3% | 476 | 0.8µs | → Arena undo (faster) |
 | makeChildCtx | 0.3ms | 2% | 476 | 0.6µs | **eliminated** (0059) |
 | drainPersistentLolis | 0.3ms | 2% | 476 | 0.6µs | ~similar |
-| solver (all ops) | 0.3ms | 2% | 520 | 0.5µs | ~similar (target: Opt_E) |
+| solver (all ops) | 0.3ms | 2% | 520 | 0.5µs | ~similar (Opt_E reverted — no gain) |
 | undoIndexChanges | 0.2ms | 1% | 476 | 0.4µs | **eliminated** (0059) |
 | computeControlHash | 0.1ms | 1% | 477 | 0.2µs | ~similar |
 | DFS overhead | 1.4ms | 10% | — | — | reduced |

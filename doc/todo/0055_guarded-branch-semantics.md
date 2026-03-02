@@ -8,7 +8,7 @@ type: design
 status: done
 priority: 10
 cluster: Theory
-depends_on: [TODO_0054]
+depends_on: []
 required_by: [TODO_0005, TODO_0042]
 starred: true
 ---

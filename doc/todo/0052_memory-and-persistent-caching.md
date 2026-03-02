@@ -8,7 +8,7 @@ type: implementation
 status: ready for implementation
 priority: 3
 cluster: Performance
-depends_on: [TODO_0049]
+depends_on: []
 required_by: []
 ---
 

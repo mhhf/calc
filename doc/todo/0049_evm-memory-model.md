@@ -2,7 +2,6 @@
 title: EVM Memory Model Design
 created: 2026-02-24
 modified: 2026-02-27
-required_by: [TODO_0051]
 summary: Design MLOAD/MSTORE memory model for CALC's EVM symbolic executor
 tags: [evm, memory-model, architecture, linear-logic, separation-logic, symexec, forward-chaining, McCarthy]
 type: design
