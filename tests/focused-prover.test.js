@@ -6,7 +6,8 @@
 const { describe, it, before } = require('node:test');
 const assert = require('node:assert');
 
-const { createProver, buildRuleSpecs } = require('../lib/prover/focused');
+const { createProver } = require('../lib/prover/focused');
+const { buildRuleSpecs } = require('../lib/prover/rule-interpreter');
 const Seq = require('../lib/kernel/sequent');
 const calculus = require('../lib/calculus');
 

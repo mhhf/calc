@@ -5,7 +5,8 @@
 const { describe, it, before } = require('node:test');
 const assert = require('node:assert');
 
-const { createGenericProver, buildRuleSpecs } = require('../lib/prover/generic');
+const { createGenericProver } = require('../lib/prover/generic');
+const { buildRuleSpecs } = require('../lib/prover/rule-interpreter');
 const Seq = require('../lib/kernel/sequent');
 const calculus = require('../lib/calculus');
 const Context = require('../lib/prover/context');
