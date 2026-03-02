@@ -135,7 +135,7 @@ async function runSymexec(iterations) {
     const state = mde.decomposeQuery(calc.queries.get('symex'));
     const calcCtx = { clauses: calc.clauses, types: calc.types };
     results['symexec.solc_symbolic'] = benchOne('solc_symbolic', state, calc.forwardRules, calcCtx,
-      { maxDepth: 200, calc: calcCtx, structuralMemo: true }, iterations);
+      { maxDepth: 400, calc: calcCtx, structuralMemo: true }, iterations);
   }
 
   return results;
