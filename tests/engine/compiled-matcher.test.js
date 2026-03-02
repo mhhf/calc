@@ -12,7 +12,7 @@ const Store = require('../../lib/kernel/store');
 const mde = require('../../lib/engine');
 const forward = require('../../lib/engine/forward');
 const {
-  compilePatternMatch, compilePersistentStep,
+  compilePatternMatch, executePatternMatch, compilePersistentStep,
 } = require('../../lib/engine/compile');
 const { tryMatch, executePersistentStep } = require('../../lib/engine/match');
 const { explore } = require('../../lib/engine/symexec');
@@ -30,14 +30,14 @@ describe('compilePatternMatch', () => {
     const pattern = Store.put('pred', [xVar, yVar]);
     const slots = { [xVar]: 0, [yVar]: 1 };
 
-    const matcher = compilePatternMatch(pattern, slots);
+    const instructions = compilePatternMatch(pattern, slots);
 
     const valA = Store.put('atom', ['a']);
     const valB = Store.put('atom', ['b']);
     const fact = Store.put('pred', [valA, valB]);
     const theta = new Array(2);
 
-    assert(matcher(fact, theta), 'should match');
+    assert(executePatternMatch(instructions, fact, theta), 'should match');
     assert.strictEqual(theta[0], valA, 'X bound to a');
     assert.strictEqual(theta[1], valB, 'Y bound to b');
   });
@@ -49,18 +49,18 @@ describe('compilePatternMatch', () => {
     const pattern = Store.put('pred', [xVar, ground]);
     const slots = { [xVar]: 0 };
 
-    const matcher = compilePatternMatch(pattern, slots);
+    const instructions = compilePatternMatch(pattern, slots);
 
     const valA = Store.put('atom', ['a']);
     const factOk = Store.put('pred', [valA, ground]);
     const factBad = Store.put('pred', [valA, Store.put('atom', ['c2'])]);
 
     const theta1 = new Array(1);
-    assert(matcher(factOk, theta1), 'should match with correct ground');
+    assert(executePatternMatch(instructions, factOk, theta1), 'should match with correct ground');
     assert.strictEqual(theta1[0], valA);
 
     const theta2 = new Array(1);
-    assert(!matcher(factBad, theta2), 'should not match wrong ground');
+    assert(!executePatternMatch(instructions, factBad, theta2), 'should not match wrong ground');
   });
 
   it('matches depth-1 compound pred(s(X))', () => {
@@ -71,14 +71,14 @@ describe('compilePatternMatch', () => {
     const pattern = Store.put('pred', [sX]);
     const slots = { [xVar]: 0 };
 
-    const matcher = compilePatternMatch(pattern, slots);
+    const instructions = compilePatternMatch(pattern, slots);
 
     const inner = Store.put('atom', ['e']);
     const sInner = Store.put('s', [inner]);
     const fact = Store.put('pred', [sInner]);
 
     const theta = new Array(1);
-    assert(matcher(fact, theta), 'should match s(e)');
+    assert(executePatternMatch(instructions, fact, theta), 'should match s(e)');
     assert.strictEqual(theta[0], inner, 'X bound to e');
   });
 
@@ -90,21 +90,21 @@ describe('compilePatternMatch', () => {
     const pattern = Store.put('pred', [ssX]);
     const slots = { [xVar]: 0 };
 
-    const matcher = compilePatternMatch(pattern, slots);
+    const instructions = compilePatternMatch(pattern, slots);
 
     const inner = Store.put('atom', ['e']);
     const ssInner = Store.put('s', [Store.put('s', [inner])]);
     const fact = Store.put('pred', [ssInner]);
 
     const theta = new Array(1);
-    assert(matcher(fact, theta), 'should match s(s(e))');
+    assert(executePatternMatch(instructions, fact, theta), 'should match s(s(e))');
     assert.strictEqual(theta[0], inner);
 
     // depth-1 should not match depth-2 pattern
     const sInner = Store.put('s', [inner]);
     const factShallow = Store.put('pred', [sInner]);
     const theta2 = new Array(1);
-    assert(!matcher(factShallow, theta2), 'depth-1 should not match depth-2 pattern');
+    assert(!executePatternMatch(instructions, factShallow, theta2), 'depth-1 should not match depth-2 pattern');
   });
 
   it('enforces metavar consistency (shared var)', () => {
@@ -113,7 +113,7 @@ describe('compilePatternMatch', () => {
     const pattern = Store.put('pred', [xVar, xVar]);
     const slots = { [xVar]: 0 };
 
-    const matcher = compilePatternMatch(pattern, slots);
+    const instructions = compilePatternMatch(pattern, slots);
 
     const valA = Store.put('atom', ['a']);
     const valB = Store.put('atom', ['b']);
@@ -121,10 +121,10 @@ describe('compilePatternMatch', () => {
     const factDiff = Store.put('pred', [valA, valB]);
 
     const theta1 = new Array(1);
-    assert(matcher(factSame, theta1), 'should match when both children equal');
+    assert(executePatternMatch(instructions, factSame, theta1), 'should match when both children equal');
 
     const theta2 = new Array(1);
-    assert(!matcher(factDiff, theta2), 'should not match when children differ');
+    assert(!executePatternMatch(instructions, factDiff, theta2), 'should not match when children differ');
   });
 
   it('rejects wrong tag', () => {
@@ -134,13 +134,13 @@ describe('compilePatternMatch', () => {
     const pattern = Store.put('pred', [xVar]);
     const slots = { [xVar]: 0 };
 
-    const matcher = compilePatternMatch(pattern, slots);
+    const instructions = compilePatternMatch(pattern, slots);
 
     const val = Store.put('atom', ['a']);
     const wrongTag = Store.put('other', [val]);
 
     const theta = new Array(1);
-    assert(!matcher(wrongTag, theta), 'should reject wrong tag');
+    assert(!executePatternMatch(instructions, wrongTag, theta), 'should reject wrong tag');
   });
 });
 
