@@ -14,7 +14,7 @@ const forward = require('../../lib/engine/forward');
 const {
   compilePatternMatch, compilePersistentStep,
 } = require('../../lib/engine/compile');
-const { tryMatch } = require('../../lib/engine/match');
+const { tryMatch, executePersistentStep } = require('../../lib/engine/match');
 const { explore } = require('../../lib/engine/symexec');
 const { countNodes, getAllLeaves } = require('../../lib/engine/tree-utils');
 
@@ -156,12 +156,12 @@ describe('compilePersistentStep', () => {
     const pattern = Store.put('inc', [xVar, yVar]);
     const slots = { [xVar]: 0, [yVar]: 1 };
 
-    const step = compilePersistentStep(pattern, slots);
-    assert(step, 'should compile inc');
+    const spec = compilePersistentStep(pattern, slots);
+    assert(spec, 'should compile inc');
 
     const input = Store.put('binlit', [5n]);
     const theta = [input, undefined];
-    const result = step(theta);
+    const result = executePersistentStep(spec, theta);
 
     assert.strictEqual(result, true, 'should succeed');
     // inc(5) = 6
@@ -177,13 +177,13 @@ describe('compilePersistentStep', () => {
     const pattern = Store.put('plus', [aVar, bVar, cVar]);
     const slots = { [aVar]: 0, [bVar]: 1, [cVar]: 2 };
 
-    const step = compilePersistentStep(pattern, slots);
-    assert(step, 'should compile plus');
+    const spec = compilePersistentStep(pattern, slots);
+    assert(spec, 'should compile plus');
 
     const a = Store.put('binlit', [3n]);
     const b = Store.put('binlit', [7n]);
     const theta = [a, b, undefined];
-    const result = step(theta);
+    const result = executePersistentStep(spec, theta);
 
     assert.strictEqual(result, true, 'should succeed');
     const expected = Store.put('binlit', [10n]);
@@ -197,12 +197,12 @@ describe('compilePersistentStep', () => {
     const pattern = Store.put('neq', [aVar, bVar]);
     const slots = { [aVar]: 0, [bVar]: 1 };
 
-    const step = compilePersistentStep(pattern, slots);
-    assert(step, 'should compile neq');
+    const spec = compilePersistentStep(pattern, slots);
+    assert(spec, 'should compile neq');
 
     const val = Store.put('binlit', [5n]);
     const theta = [val, val]; // equal values → definitive failure
-    const result = step(theta);
+    const result = executePersistentStep(spec, theta);
 
     assert.strictEqual(result, false, 'should return false (definitive)');
   });
