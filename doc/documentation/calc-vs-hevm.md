@@ -25,20 +25,20 @@ Both tools explore the same contract with symbolic sender + symbolic calldata ar
 | **Timestamp** | Symbolic (`Time` freevar) | Concrete (0) |
 | **Arithmetic** | FFI (ground) + existential variables (symbolic) | Symbolic expressions + SMT (z3) |
 
-## Results (2026-03-01, verified)
+## Results (2026-03-02, verified)
 
 | Metric | calc | calc (structural memo) | hevm (--sig) |
 |---|---|---|---|
-| **explore() only** | 57ms | 9ms | — |
-| **End-to-end** | 108ms | 61ms | 52ms |
+| **explore() only** | 21ms | 7ms | — |
+| **End-to-end** | 25ms | 9ms | 41ms |
 | **Branch nodes** | 30 oplus | 30 oplus | 30 ITE |
 | **Leaves** | 31 (18 STOP + 13 REVERT) | 11 (2 real + 9 memo) | 31 (18 Success + 13 Failure) |
 | **Total nodes** | 2125 | 477 | 61 |
 | **Behavioral outcomes** | 5 (×6 per member + 6 overflow) | 5 | 5 (×6 per member + 6 overflow) |
 
-Verified with hevm v0.54.2 `hevm symbolic --show-tree`.
+Verified with hevm v0.54.2, z3 4.15.1, same 1040-byte runtime bytecode.
 
-**Timing methodology**: hevm's 52ms is wall-clock for the full `hevm symbolic` invocation (process startup + z3 init + execution). calc's end-to-end includes `mde.load()` setup (51ms: file I/O, tree-sitter parse, AST conversion, rule compilation) + `explore()` execution. The setup cost is analogous to hevm's compiled-in EVM semantics — see [TODO_0060](../todo/0060_precompiled-sdk-loading.md) for precompilation plan to eliminate it.
+**Timing methodology**: hevm's 41ms is wall-clock for the full `hevm symbolic` process (startup + z3 init + execution). calc's end-to-end includes `mde.load()` setup (~4ms with synchronous parser) + `explore()`. Both measured as median of 10 runs.
 
 Both tools discover identical behavioral outcomes with identical leaf counts:
 
@@ -105,18 +105,17 @@ This gives calc a form of symbolic execution without an SMT solver — at the co
 
 | Setup | calc nodes | calc leaves | calc explore | calc e2e | hevm e2e |
 |---|---|---|---|---|---|
-| Concrete sender, nonce=0 | 280 | 1 (STOP) | 3.9ms | ~55ms | — |
-| Symbolic sender, nonce=0 | 1333 | 7 (6 STOP + 1 REVERT) | 22ms | ~73ms | — |
-| Symbolic sender + nonce | 2125 | 31 (18 STOP + 13 REVERT) | 57ms | ~108ms | 52ms |
-| Symbolic + structural memo | 477 | 2 + 9 memo | **9ms** | **61ms** | 52ms |
+| Concrete sender, nonce=0 | 280 | 1 (STOP) | 3ms | ~7ms | — |
+| Symbolic sender + nonce | 2125 | 31 (18 STOP + 13 REVERT) | 21ms | ~25ms | 41ms |
+| Symbolic + structural memo | 477 | 2 + 9 memo | **7ms** | **9ms** | 41ms |
 
-calc e2e = mde.load() setup (~51ms) + explore(). hevm e2e = full process wall-clock.
+calc e2e = mde.load() setup (~4ms) + explore(). hevm e2e = full process wall-clock (10-run median).
 
 ## Structural memoization
 
 calc's `structuralMemo` option detects structurally isomorphic subtrees using a control hash based on `(PC, SH)`. In the multisig, the 6 member paths through `getMemberBit` produce identical subtrees (same opcodes, same branch pattern) — only concrete values differ. Structural memo explores the first member body and skips the remaining 5.
 
-**Reduction**: 2125 → 477 nodes, 57ms → 9ms explore time. End-to-end (including 51ms setup) is 61ms vs hevm's 52ms. With precompiled SDK loading ([TODO_0060](../todo/0060_precompiled-sdk-loading.md)), setup drops to ~4ms, making calc end-to-end ~13ms — **4× faster** than hevm.
+**Reduction**: 2125 → 477 nodes, 21ms → 7ms explore time. End-to-end 9ms vs hevm's 41ms — **4.6× faster**.
 
 **Soundness**: The control hash is sound when branching depends only on symbolic values (evars/freevars), not on concrete argument values excluded from the hash. This holds for the multisig case (all body branching is on symbolic AND/ISZERO results). The option is opt-in for programs where this assumption may not hold.
 
@@ -153,10 +152,25 @@ ITE [caller == M6?]
 
 1. **Same behavioral outcomes**: Both tools discover identical results — 30 branches, 31 leaves, 5 outcome types × 6 members + 1 non-member. Neither tool merges per-member subtrees.
 
-2. **calc explore is faster, end-to-end is comparable**: explore() with structural memo is 9ms vs hevm's 52ms total. But calc's end-to-end (61ms) includes 51ms of setup (parsing, hashing, rule compilation) that hevm avoids by compiling EVM semantics into its binary. With precompiled SDK loading ([TODO_0060](../todo/0060_precompiled-sdk-loading.md)), calc end-to-end drops to ~13ms.
+2. **calc is 4.6× faster end-to-end**: explore() with structural memo is 7ms, end-to-end 9ms (including ~4ms setup). hevm takes 41ms total. calc's synchronous parser + precomputed rule tables keep setup minimal.
 
 3. **Node count difference is representation**: hevm's 61 nodes vs calc's 477 (with memo) reflects representation granularity, not exploration efficiency. hevm compresses 50 opcodes into one ITE node; calc makes each opcode explicit.
 
 4. **Structural memo is unique to calc**: calc's `(PC, SH)` control hash detects isomorphic member subtrees and skips 5 of 6. hevm has no equivalent — it fully explores all 6 member vote subtrees (producing 6 × 9 = 54 nodes). This is why calc has fewer leaves (11 vs 31).
 
 5. **No solver dependency**: calc requires no external tools. hevm requires z3 (or cvc5). This makes calc more portable and predictable (no SMT timeout variance).
+
+## Reproducing benchmarks
+
+```bash
+# CALC (solc_symbolic, structural memo, 10 runs)
+./tools/hevm-bench.sh --calc-only --ill calculus/ill/programs/multisig_nocall_solc_symbolic.ill --iterations 10
+
+# hevm (same 1040-byte runtime bytecode)
+./tools/hevm-bench.sh --hevm-only --bin calculus/ill/programs/multisig_nocall_solc.bin --iterations 10
+
+# Both together
+./tools/hevm-bench.sh --bin calculus/ill/programs/multisig_nocall_solc.bin --ill calculus/ill/programs/multisig_nocall_solc_symbolic.ill --iterations 10
+
+# Requires: nix shell nixpkgs#haskellPackages.hevm nixpkgs#z3 nixpkgs#solc
+```

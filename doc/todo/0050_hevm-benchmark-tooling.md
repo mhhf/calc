@@ -1,11 +1,11 @@
 ---
 title: hevm Benchmark Tooling
 created: 2026-02-24
-modified: 2026-02-24
+modified: 2026-03-02
 summary: Track 1:1 hevm vs CALC benchmark comparison tooling and results
 tags: [evm, benchmark, hevm, tooling]
 type: tooling
-status: in progress
+status: done
 priority: 5
 cluster: Performance
 depends_on: []
@@ -24,39 +24,26 @@ required_by: []
 
 ## Contracts Benchmarked
 
-### 1. Multisig (no-call variant)
+### 1. MultisigNoCall (solc 0.8.28, 1040 bytes)
 
-- **Bytecode**: `calculus/ill/programs/multisig_nocall.bin` (287 bytes)
-- **CALC query**: `calculus/ill/programs/multisig_nocall.ill`
-- **Modification**: CALL replaced with SSTORE(fired=1) + STOP
-- **Opcodes used**: PUSH1, PUSH20, JUMP, JUMPDEST, CALLDATASIZE, CALLDATACOPY, GT, JUMPI, CALLDATALOAD, DUP1, DUP3, SLOAD, EXP, AND, OR, NOT, SWAP1, SSTORE, SHA3, LT, TIMESTAMP, SUB, CALLER, EQ, CALLVALUE, GASLIMIT, ISZERO, ADD, STOP, INVALID
+- **Bytecode**: `calculus/ill/programs/multisig_nocall_solc.bin` (1040 bytes runtime)
+- **CALC query**: `calculus/ill/programs/multisig_nocall_solc_symbolic.ill`
+- **Function**: `confirmAndCheck(uint256,uint256,bytes32)`
+- **Setup**: symbolic sender, symbolic calldata args, symbolic nonce
 
-**Results (2026-02-24):**
+**Results (2026-03-02, 10-run median):**
 
 | Tool | Median | Notes |
 |------|--------|-------|
-| hevm 0.54.2 | ~44ms | Haskell + z3 solver |
-| CALC (warm) | ~8ms | 124 nodes, 11 leaves, depth 60 |
+| hevm 0.54.2 + z3 4.15.1 | 41ms | Process wall-clock |
+| CALC (explore, structural memo) | 7ms | 477 nodes, 11 leaves |
+| CALC (end-to-end) | 9ms | load + explore |
 
-**CALC is ~5x faster than hevm** on this 287-byte hand-crafted contract.
+**CALC is ~4.6x faster than hevm** on solc-compiled multisig with symbolic execution.
 
-Caveats: hevm does full SMT solving (z3) for path feasibility; CALC uses FFI arithmetic. hevm supports the full EVM; CALC only supports non-memory opcodes. Single contract, hand-crafted bytecode — results may differ for solc-compiled code.
-
-## Opcode Coverage
-
-### Supported (in evm.ill)
-
-STOP, ADD, MUL, SUB, DIV, MOD, EXP, LT, GT, EQ, ISZERO, AND, OR, NOT, SHL, SHR, SHA3, ADDRESS, BALANCE, CALLER, CALLVALUE, CALLDATALOAD, CALLDATASIZE, CALLDATACOPY, TIMESTAMP, GASLIMIT, POP, SLOAD, SSTORE, JUMP, JUMPI, GAS, JUMPDEST, PUSH0, PUSH1, PUSH2, PUSH4, PUSH20, PUSH32, DUP1, DUP2, DUP3, DUP4, DUP5, SWAP1, SWAP2, SWAP3, LOG4, CALL, RETURN, INVALID, REVERT
-
-### Blocking Next Contracts
-
-| Opcode | Needed for | Depends on |
-|--------|-----------|------------|
-| MLOAD (0x51) | All solc contracts | TODO_0049 (memory model) |
-| MSTORE (0x52) | All solc contracts | TODO_0049 (memory model) |
+See [calc-vs-hevm.md](../documentation/calc-vs-hevm.md) for full analysis.
 
 ## Next Targets
 
-1. **Simple solc contract** — after memory model (TODO_0049)
-2. **ERC20 token** — MLOAD/MSTORE + more stack ops
-3. **K-framework comparison** — future
+1. **ERC20 token** — MLOAD/MSTORE + more stack ops
+2. **K-framework comparison** — future

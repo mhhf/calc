@@ -5,19 +5,21 @@
 #   ./tools/hevm-bench.sh [options]
 #
 # Options:
-#   --bin <file>       Hex bytecode file for hevm (default: calculus/ill/programs/multisig_nocall.bin)
-#   --ill <files...>   CALC .ill files (default: multisig_nocall symexec query)
+#   --bin <file>       Hex bytecode file for hevm (default: multisig_nocall_solc.bin)
+#   --ill <files...>   CALC .ill files (default: multisig_nocall_solc_symbolic.ill)
+#   --sig <sig>        Solidity function signature for hevm (default: confirmAndCheck(uint256,uint256,bytes32))
 #   --iterations <n>   Number of iterations (default: 5)
 #   --hevm-only        Only run hevm
 #   --calc-only        Only run CALC
 #
-# Requires: hevm, z3 (install via: nix shell nixpkgs#haskellPackages.hevm nixpkgs#z3)
+# Requires: hevm, z3, solc (install via: nix shell nixpkgs#haskellPackages.hevm nixpkgs#z3 nixpkgs#solc)
 
 set -euo pipefail
 
 # Defaults
-BIN_FILE="calculus/ill/programs/multisig_nocall.bin"
-ILL_FILE="calculus/ill/programs/multisig_nocall.ill"
+BIN_FILE="calculus/ill/programs/multisig_nocall_solc.bin"
+ILL_FILE="calculus/ill/programs/multisig_nocall_solc_symbolic.ill"
+SIG="confirmAndCheck(uint256,uint256,bytes32)"
 ITERATIONS=5
 RUN_HEVM=true
 RUN_CALC=true
@@ -30,6 +32,7 @@ while [[ $# -gt 0 ]]; do
     --iterations) ITERATIONS="$2"; shift 2 ;;
     --hevm-only) RUN_CALC=false; shift ;;
     --calc-only) RUN_HEVM=false; shift ;;
+    --sig) SIG="$2"; shift 2 ;;
     *) echo "Unknown option: $1"; exit 1 ;;
   esac
 done
@@ -63,7 +66,7 @@ if $RUN_CALC; then
         const state = mde.decomposeQuery(query);
         const calcCtx = { clauses: calc.clauses, types: calc.types };
         const t0 = performance.now();
-        const tree = symexec.explore(state, calc.forwardRules, { maxDepth: 200, calc: calcCtx });
+        const tree = symexec.explore(state, calc.forwardRules, { maxDepth: 500, calc: calcCtx, structuralMemo: true });
         const elapsed = performance.now() - t0;
         const leaves = getAllLeaves(tree);
         const nodes = countNodes(tree);
@@ -106,7 +109,7 @@ if $RUN_HEVM; then
     hevm_times=()
     for i in $(seq 1 "$ITERATIONS"); do
       t_start=$(date +%s%N)
-      hevm symbolic --code "$BYTECODE" --solver z3 2>/dev/null || true
+      hevm symbolic --code "$BYTECODE" --sig "$SIG" --solver z3 2>/dev/null || true
       t_end=$(date +%s%N)
       elapsed_ns=$((t_end - t_start))
       elapsed_ms=$(echo "scale=2; $elapsed_ns / 1000000" | bc)
