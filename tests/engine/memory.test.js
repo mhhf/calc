@@ -252,11 +252,18 @@ describe('EVM Memory Integration', { timeout: 30000 }, () => {
     linear[await mde.parseExpr('mem empty_mem')] = 1;
     linear[await mde.parseExpr('memsize 0')] = 1;
 
-    // Code bytes — auto-converted to bytecode arrlit by forward.run/symexec.explore
-    for (const [addr, opcode] of Object.entries(bytecodeMap)) {
-      const h = await mde.parseExpr(`code ${addr} ${opcode}`);
-      linear[h] = (linear[h] || 0) + 1;
+    // Build bytecode arrlit from byte map, then apply bytesToSemantic
+    const maxAddr = Math.max(...Object.keys(bytecodeMap).map(Number));
+    const elems = [];
+    for (let i = 0; i <= maxAddr; i++) {
+      const v = bytecodeMap[i] || bytecodeMap[String(i)];
+      elems.push(v ? v : '0x00');
     }
+    const bcExpr = `bytecode [${elems.join(', ')}]`;
+    const bcHash = await mde.parseExpr(bcExpr);
+    // Apply bytesToSemantic to convert byte-level → semantic
+    const tmpState = mde.bytesToSemantic({ linear: { [bcHash]: 1 }, persistent: {} });
+    Object.assign(linear, tmpState.linear);
 
     // Standard persistent facts for inc
     for (let i = 0; i < 20; i++) {

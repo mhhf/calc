@@ -658,3 +658,123 @@ describe('arrlit - Stage 6: acons-over-arrlit normalization', () => {
     assert.equal(xVal, a);
   });
 });
+
+describe('arrlit - Stage 7: Bracket Syntax + bytesToSemantic', () => {
+  beforeEach(() => Store.clear());
+
+  // Build a parser with numbers + application + bracket syntax
+  function makeParser() {
+    const tables = { operators: [], nullary: {}, unaryPrefix: {},
+      numbers: true, application: true, multiCharFreevars: true };
+    return buildParserFromTables(tables);
+  }
+
+  describe('bracket syntax', () => {
+    it('parses empty []', () => {
+      const parse = makeParser();
+      const h = parse('[]');
+      assert.equal(Store.tag(h), 'arrlit');
+      assert.equal(Store.getArrayElements(h).length, 0);
+    });
+
+    it('parses [0x60, 0x40]', () => {
+      const parse = makeParser();
+      const h = parse('[0x60, 0x40]');
+      assert.equal(Store.tag(h), 'arrlit');
+      const elems = Store.getArrayElements(h);
+      assert.equal(elems.length, 2);
+      assert.equal(Store.child(elems[0], 0), 0x60n);
+      assert.equal(Store.child(elems[1], 0), 0x40n);
+    });
+
+    it('parses single-element [0x00]', () => {
+      const parse = makeParser();
+      const h = parse('[0x00]');
+      assert.equal(Store.tag(h), 'arrlit');
+      assert.equal(Store.getArrayElements(h).length, 1);
+      assert.equal(Store.child(Store.getArrayElements(h)[0], 0), 0n);
+    });
+
+    it('parses mixed elements with freevars', () => {
+      const parse = makeParser();
+      const h = parse('[0x60, 0x73, Member01, 0x33]');
+      assert.equal(Store.tag(h), 'arrlit');
+      const elems = Store.getArrayElements(h);
+      assert.equal(elems.length, 4);
+      assert.equal(Store.child(elems[0], 0), 0x60n);
+      assert.equal(Store.tag(elems[2]), 'freevar');
+      assert.equal(Store.child(elems[3], 0), 0x33n);
+    });
+
+    it('bracket syntax in application context: bytecode [0x00]', () => {
+      const parse = makeParser();
+      const h = parse('bytecode [0x00]');
+      assert.equal(Store.tag(h), 'bytecode');
+      const arr = Store.child(h, 0);
+      assert.equal(Store.tag(arr), 'arrlit');
+    });
+  });
+
+  describe('bytesToSemantic', () => {
+    const { bytesToSemantic } = require('../../lib/engine');
+
+    it('converts PUSH1 data into single value', () => {
+      const parse = makeParser();
+      // bytecode [0x60, 0x42, 0x00] → PUSH1 0x42, STOP
+      const bc = parse('bytecode [0x60, 0x42, 0x00]');
+      const state = { linear: { [bc]: 1 }, persistent: {} };
+      const result = bytesToSemantic(state);
+      // Should convert: [0] = 0x60, [1] = 0x42 (already single byte), [2] = 0x00
+      // PUSH1 data is 1 byte so it stays 0x42
+      const bcHash = Object.keys(result.linear).find(h =>
+        Store.tagId(Number(h)) === Store.TAG['bytecode']
+      );
+      const arr = Store.child(Number(bcHash), 0);
+      const elems = Store.getArrayElements(arr);
+      assert.equal(elems.length, 3);
+      assert.equal(Store.child(elems[1], 0), 0x42n);
+    });
+
+    it('groups PUSH4 data into single big-endian value', () => {
+      const parse = makeParser();
+      // bytecode [0x63, 0x9e, 0x31, 0x7f, 0x12, 0x14] → PUSH4, data, EQ
+      const bc = parse('bytecode [0x63, 0x9e, 0x31, 0x7f, 0x12, 0x14]');
+      const state = { linear: { [bc]: 1 }, persistent: {} };
+      const result = bytesToSemantic(state);
+      const bcHash = Object.keys(result.linear).find(h =>
+        Store.tagId(Number(h)) === Store.TAG['bytecode']
+      );
+      const arr = Store.child(Number(bcHash), 0);
+      const elems = Store.getArrayElements(arr);
+      assert.equal(elems.length, 6);
+      assert.equal(Store.child(elems[0], 0), 0x63n); // PUSH4 opcode
+      assert.equal(Store.child(elems[1], 0), 0x9e317f12n); // combined 4 bytes
+      assert.equal(Store.child(elems[2], 0), 0n); // gap
+      assert.equal(Store.child(elems[3], 0), 0n); // gap
+      assert.equal(Store.child(elems[4], 0), 0n); // gap
+      assert.equal(Store.child(elems[5], 0), 0x14n); // EQ opcode
+    });
+
+    it('no-op on already-semantic (non-byte-level) array', () => {
+      // Array with a value > 0xFF → already semantic
+      const big = Store.put('binlit', [0x1234n]);
+      const small = Store.put('binlit', [0x60n]);
+      const arr = Store.putArray([small, big]);
+      const bc = Store.put('bytecode', [arr]);
+      const state = { linear: { [bc]: 1 }, persistent: {} };
+      const result = bytesToSemantic(state);
+      // Should return unchanged
+      assert.equal(Object.keys(result.linear)[0], String(bc));
+    });
+
+    it('no-op on array with freevars', () => {
+      const fv = Store.put('freevar', ['_X']);
+      const small = Store.put('binlit', [0x60n]);
+      const arr = Store.putArray([small, fv]);
+      const bc = Store.put('bytecode', [arr]);
+      const state = { linear: { [bc]: 1 }, persistent: {} };
+      const result = bytesToSemantic(state);
+      assert.equal(Object.keys(result.linear)[0], String(bc));
+    });
+  });
+});

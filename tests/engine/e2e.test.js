@@ -55,13 +55,12 @@ describe('MDE End-to-End', { timeout: 10000 }, () => {
     });
 
     it('executes STOP instruction', async () => {
-      // Initial state: pc at 0, code[0] = STOP (0x00)
-      // code facts are auto-converted to bytecode arrlit by forward.run
+      // Initial state: pc at 0, bytecode [0x00] (STOP)
       const pc = await mde.parseExpr('pc 0');
-      const code = await mde.parseExpr('code 0 0x00');
+      const bytecode = await mde.parseExpr('bytecode [0x00]');
       const inc = await mde.parseExpr('inc 0 1');
 
-      const state = { linear: { [pc]: 1, [code]: 1 }, persistent: { [inc]: true } };
+      const state = { linear: { [pc]: 1, [bytecode]: 1 }, persistent: { [inc]: true } };
       const result = calc.exec(state, { trace: true });
 
       assert(result.quiescent, 'Should reach quiescence');
@@ -98,10 +97,10 @@ describe('MDE End-to-End', { timeout: 10000 }, () => {
       const calc = await mde.load(path.join(__dirname, '../../calculus/ill/programs/evm.ill'));
 
       const pc = await mde.parseExpr('pc 0');
-      const code = await mde.parseExpr('code 0 0x00');
+      const bytecode = await mde.parseExpr('bytecode [0x00]');
       const inc = await mde.parseExpr('inc 0 1');
 
-      const state = { linear: { [pc]: 1, [code]: 1 }, persistent: { [inc]: true } };
+      const state = { linear: { [pc]: 1, [bytecode]: 1 }, persistent: { [inc]: true } };
 
       const start = Date.now();
       for (let i = 0; i < 100; i++) {
