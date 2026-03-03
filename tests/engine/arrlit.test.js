@@ -4,6 +4,7 @@ const Store = require('../../lib/kernel/store');
 const { show } = require('../../lib/engine/show');
 const { isGround, collectMetavars, collectFreevars } = require('../../lib/engine/pattern-utils');
 const { serialize, deserialize } = require('../../lib/engine/store-binary');
+const { match, matchIndexed, undoSave, undoRestore, unify } = require('../../lib/kernel/unify');
 
 describe('arrlit - Stage 1: Store Infrastructure', () => {
   beforeEach(() => Store.clear());
@@ -199,6 +200,161 @@ describe('arrlit - Stage 1: Store Infrastructure', () => {
       assert.equal(Store.tag(arr), 'arrlit');
       const elems = Store.getArrayElements(arr);
       assert.equal(elems.length, 0);
+    });
+  });
+});
+
+describe('arrlit - Stage 2: Ephemeral Expansion', () => {
+  beforeEach(() => Store.clear());
+
+  describe('match (one-way)', () => {
+    it('match(acons(X, Y), arrlit([a,b,c])) → X=a, Y=arrlit([b,c])', () => {
+      const a = Store.put('binlit', [1n]);
+      const b = Store.put('binlit', [2n]);
+      const c = Store.put('binlit', [3n]);
+      const arr = Store.putArray([a, b, c]);
+      const X = Store.put('freevar', ['_X']);
+      const Y = Store.put('freevar', ['_Y']);
+      const pat = Store.put('acons', [X, Y]);
+      const theta = match(pat, arr);
+      assert.ok(theta !== null);
+      const xVal = theta.find(([v]) => v === X)?.[1];
+      const yVal = theta.find(([v]) => v === Y)?.[1];
+      assert.equal(xVal, a);
+      assert.equal(Store.tag(yVal), 'arrlit');
+      const tailElems = Store.getArrayElements(yVal);
+      assert.equal(tailElems.length, 2);
+      assert.equal(tailElems[0], b);
+      assert.equal(tailElems[1], c);
+    });
+
+    it('match(ae, arrlit([])) → success', () => {
+      const arr = Store.putArray([]);
+      const ae = Store.put('atom', ['ae']);
+      const theta = match(ae, arr);
+      assert.ok(theta !== null);
+    });
+
+    it('match(ae, arrlit([a])) → fail', () => {
+      const a = Store.put('binlit', [1n]);
+      const arr = Store.putArray([a]);
+      const ae = Store.put('atom', ['ae']);
+      assert.equal(match(ae, arr), null);
+    });
+
+    it('match(acons(X, ae), arrlit([a])) → X=a', () => {
+      const a = Store.put('binlit', [1n]);
+      const arr = Store.putArray([a]);
+      const X = Store.put('freevar', ['_X']);
+      const ae = Store.put('atom', ['ae']);
+      const pat = Store.put('acons', [X, ae]);
+      const theta = match(pat, arr);
+      assert.ok(theta !== null);
+      const xVal = theta.find(([v]) => v === X)?.[1];
+      assert.equal(xVal, a);
+    });
+
+    it('match(acons(X, acons(Y, Z)), arrlit([a,b,c])) → X=a, Y=b, Z=arrlit([c])', () => {
+      const a = Store.put('binlit', [1n]);
+      const b = Store.put('binlit', [2n]);
+      const c = Store.put('binlit', [3n]);
+      const arr = Store.putArray([a, b, c]);
+      const X = Store.put('freevar', ['_X']);
+      const Y = Store.put('freevar', ['_Y']);
+      const Z = Store.put('freevar', ['_Z']);
+      const inner = Store.put('acons', [Y, Z]);
+      const pat = Store.put('acons', [X, inner]);
+      const theta = match(pat, arr);
+      assert.ok(theta !== null);
+      const xVal = theta.find(([v]) => v === X)?.[1];
+      const yVal = theta.find(([v]) => v === Y)?.[1];
+      const zVal = theta.find(([v]) => v === Z)?.[1];
+      assert.equal(xVal, a);
+      assert.equal(yVal, b);
+      assert.equal(Store.tag(zVal), 'arrlit');
+      assert.equal(Store.getArrayElements(zVal).length, 1);
+      assert.equal(Store.getArrayElements(zVal)[0], c);
+    });
+  });
+
+  describe('unify (two-way)', () => {
+    it('unify(acons(X,Y), arrlit([a,b])) → theta', () => {
+      const a = Store.put('binlit', [1n]);
+      const b = Store.put('binlit', [2n]);
+      const arr = Store.putArray([a, b]);
+      const X = Store.put('freevar', ['_X']);
+      const Y = Store.put('freevar', ['_Y']);
+      const pat = Store.put('acons', [X, Y]);
+      const theta = unify(pat, arr);
+      assert.ok(theta !== null);
+      const xVal = theta.find(([v]) => v === X)?.[1];
+      assert.equal(xVal, a);
+    });
+
+    it('unify(arrlit([a,b]), arrlit([a,b])) → success', () => {
+      const a = Store.put('binlit', [1n]);
+      const b = Store.put('binlit', [2n]);
+      const arr = Store.putArray([a, b]);
+      // Same hash → trivially equal
+      const theta = unify(arr, arr);
+      assert.ok(theta !== null);
+    });
+
+    it('unify(arrlit([X,b]), arrlit([a,b])) → X=a', () => {
+      const a = Store.put('binlit', [1n]);
+      const b = Store.put('binlit', [2n]);
+      const X = Store.put('freevar', ['_X']);
+      const arr1 = Store.putArray([X, b]);
+      const arr2 = Store.putArray([a, b]);
+      const theta = unify(arr1, arr2);
+      assert.ok(theta !== null);
+      const xVal = theta.find(([v]) => v === X)?.[1];
+      assert.equal(xVal, a);
+    });
+
+    it('unify(arrlit([a]), arrlit([a,b])) → fail (length mismatch)', () => {
+      const a = Store.put('binlit', [1n]);
+      const b = Store.put('binlit', [2n]);
+      const arr1 = Store.putArray([a]);
+      const arr2 = Store.putArray([a, b]);
+      assert.equal(unify(arr1, arr2), null);
+    });
+  });
+
+  describe('matchIndexed', () => {
+    it('matchIndexed with acons over arrlit', () => {
+      const a = Store.put('binlit', [1n]);
+      const b = Store.put('binlit', [2n]);
+      const arr = Store.putArray([a, b]);
+      const X = Store.put('freevar', ['_X']);
+      const Y = Store.put('freevar', ['_Y']);
+      const pat = Store.put('acons', [X, Y]);
+      const slots = { [X]: 0, [Y]: 1 };
+      const theta = new Array(2);
+      const saved = undoSave();
+      const ok = matchIndexed(pat, arr, theta, slots);
+      assert.equal(ok, true);
+      assert.equal(theta[0], a);
+      assert.equal(Store.tag(theta[1]), 'arrlit');
+    });
+
+    it('matchIndexed ae vs empty arrlit', () => {
+      const arr = Store.putArray([]);
+      const ae = Store.put('atom', ['ae']);
+      const theta = new Array(0);
+      const slots = {};
+      const ok = matchIndexed(ae, arr, theta, slots);
+      assert.equal(ok, true);
+    });
+
+    it('matchIndexed ae vs non-empty arrlit → fail', () => {
+      const a = Store.put('binlit', [1n]);
+      const arr = Store.putArray([a]);
+      const ae = Store.put('atom', ['ae']);
+      const theta = new Array(0);
+      const slots = {};
+      const ok = matchIndexed(ae, arr, theta, slots);
+      assert.equal(ok, false);
     });
   });
 });
