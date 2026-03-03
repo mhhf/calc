@@ -639,92 +639,152 @@ Roughly equivalent. FFI call has slightly more overhead than a plain object prop
 
 ## Implementation stages
 
-### Stage 1: Store infrastructure (ground-only)
+### Stage 1: Store infrastructure (ground-only) — DONE
 
-- Register `arrlit` tag
-- Implement ARRAY_TABLE with offset-array structure
-- `Store.put('arrlit', [elements])` — creates from element hash array
-- **Ground assertion**: validate all elements are ground (`isGround()` check)
-- `Store.getArray(hash)` — retrieves array table entry
-- Content-addressing: hash incorporates all elements
-- Update `snapshot()`/`restore()` for ARRAY_TABLE
-- Update `store-binary.js` for ARRAY_TABLE serialization
-- Update `show.js` for arrlit display
+Commit `ea3fd10`. 50 tests.
 
-### Stage 2: Ephemeral expansion
+- `arrlit` tag pre-registered, ARRAY_TABLE with offset-array structure
+- `putArray(data)` / `getArrayElements(hash)` — O(1) create/lookup
+- Content-addressing incorporates all elements
+- `snapshot()`/`restore()` and `store-binary.js` serialization
+- `show.js` displays `[0x1, 0x2, ...]` with truncation for large arrays
 
-- `unifyArrlit()` in `unify.js` — matching `acons(H,T)`, `ae` against arrlit
-- Register `acons`, `ae` tags (or use atoms — decide on representation)
-- Test: pattern `acons(X, Y)` against `arrlit([a, b, c])` → X=a, Y=arrlit([b,c])
-- Test: pattern `ae` against `arrlit([])` → success
-- Test: nested `acons(X, acons(Y, Z))` against `arrlit([a, b, c])` → X=a, Y=b, Z=arrlit([c])
+### Stage 2: Ephemeral expansion — DONE
 
-### Stage 3: FFI
+Commit `bd7971e`. 45 tests.
 
-- `lib/engine/ffi/array.js` — `get`, `set`, `alen`
-- Register in FFI table
-- Backward clause definitions in `calculus/ill/prelude/types.ill` or new `arr.ill`
-- Test: `!get arrlit([a,b,c]) 1 X` → X = b
-- Test: `!set arrlit([a,b,c]) 1 d Y` → Y = arrlit([a,d,c])
+- `unifyArrlit()` in `unify.js` — `acons(H,T)` / `ae` matching against arrlit
+- `acons` registered as pre-registered tag, `ae` as atom
+- Offset-array O(1) decomposition (no copy on tail)
+- Integrated in `unify()`, `match()`, `matchIndexed()`
 
-### Stage 4: Hex-to-arrlit parser
+### Stage 3: FFI — DONE
 
-- Extend Pratt parser: long `0x...` strings → arrlit of byte-sized binlits
-- Threshold: > 64 hex chars → arrlit; ≤ 64 → binlit (backward compatible)
-- Or: explicit `bytes` keyword / type-directed parsing
-- Remove/deprecate `expandHexNotation` (hex.js)
-- Update `bytecode-to-ill.js` → single-line output
+Commit `df6ff81`. 25 tests.
 
-### Stage 5: EVM bytecode rules (ground-only arrlit)
+- `lib/engine/ffi/array.js` — `arr_get`, `arr_set`, `alen`, `read_bytes`
+- Backward clause definitions in `calculus/ill/prelude/arr.ill` (McCarthy axioms)
+- Modes: `arr_get(+,+,-)`, `arr_set(+,+,+,-)`, `alen(+,-)`, `read_bytes(+,+,+,-)`
 
-- Rewrite `evm.ill` rules to use `bytecode B * !get B PC OPCODE` pattern
-- Update bytecode .ill files to single-line hex
-- Fingerprint adaptation: update `compile.js` for `!get B PC GROUND` pattern
-- Benchmark: verify O(1) rule selection preserved
-- Stack remains as individual `stack H V` facts at this stage
+### Stage 4: Hex-to-arrlit parser + bracket syntax — DONE
 
-### Stage 6: Symbolic arrlit + acons normalization
+Commits `3de7fb2`, `8d26bdc`. 13 tests.
 
-- Remove ground assertion from `Store.put('arrlit', ...)`
-- Add `acons`-over-`arrlit` normalization in Store.put (fold to flat arrlit)
-- Add `acons`-over-`ae` normalization (fold to single-element arrlit)
-- Test: `Store.put('acons', [freevar_hash, arrlit_hash])` → new arrlit with freevar prepended
-- Test: nested normalization: `acons(v1, acons(v2, arrlit([v3])))` → `arrlit([v1, v2, v3])`
+- Long hex (> 64 hex chars) → arrlit of byte-sized binlits; short hex stays binlit
+- `[...]` bracket syntax: `bytecode [0x60, 0x80, ...]`
+- `expandHexNotation` removed from hot path
 
-### Stage 7: EVM stack as arrlit
+### Stage 5: EVM bytecode rules — DONE
 
-- Rewrite `stack` as arrlit: `stack S` instead of `stack H V`
+Commit `8804d09`. E2E + memory tests pass.
+
+- All 74 EVM rules rewritten: `code PC V` → `bytecode BC * !arr_get BC PC V`
+- Virtual fingerprint in `compile.js`: detects `!arr_get B PC GROUND` pattern
+- `codeToArrlit()` backward-compat conversion for old `.ill` files
+- `bytesToSemantic()` groups PUSHn data bytes into single values
+- Bytecode `.ill` files: 764 lines → 1 line each
+- Stack remains as individual `stack H V` facts (deferred to Stage 7)
+
+### Stage 6: Symbolic arrlit + acons normalization — DONE
+
+Commit `8d9113b`. 7 tests.
+
+- `acons(H, arrlit([...]))` → `arrlit([H, ...])` at `Store.put` time
+- `acons(H, ae)` → `arrlit([H])`
+- Cascading: `acons(v1, acons(v2, arrlit([v3])))` → `arrlit([v1, v2, v3])`
+- Works with symbolic elements (freevars, compound terms)
+
+### Stage 7: EVM stack as arrlit — NOT STARTED
+
+This is the largest remaining piece. Would provide:
+- Symexec cloning: ~8 stack facts + `sh` → 1 arrlit entry per branch
+- Simpler DUP/SWAP rules: `!arr_get S N V` / `!arr_set S N V S'` instead of nested `(s ...)` wrappers
+- Eliminates `sh` height counter entirely
+
+Work items:
+- Rewrite `stack` predicate: `stack S` (arrlit) instead of `stack H V`
 - Eliminate `sh` — use arrlit length via `!alen` or implicit in rules
-- Rewrite DUP/SWAP with `!get`/`!set`
+- Rewrite DUP/SWAP with `!arr_get`/`!arr_set`
 - Test with symbolic values: CALLDATALOAD pushes freevar onto arrlit stack
 - Test branching: JUMPI creates two branches with different symbolic stacks
 - Verify constraint solver interop (EqNeqSolver on values inside arrlits)
+- Update `computeControlHash` for arrlit stacks (hash PC + stack arrlit hash)
 
-### Stage 8: Cleanup
+### Stage 8: Cleanup — NOT STARTED
 
-- Remove `expandHexNotation` from convert.js pipeline
-- Update `bytecode-to-ill.js` for new format
-- Update structural memo (`computeControlHash`) for arrlit stacks
-- Update benchmarks
-- Update documentation
+- Update benchmark documentation with measured numbers
+- Remove dead code paths (old `code` fact handling if any remains)
+- Update `doc/documentation/` for arrlit architecture
 
-## Open questions
+## Measured benchmarks (solc_symbolic, 477 nodes / 11 leaves)
 
-1. **acons/ae as atoms or tags?** `binlit` uses `i`/`o`/`e` as registered tags. Should `acons`/`ae` be tags too? Tags enable faster dispatch in unify.js (switch on tag ID vs. string compare). Recommendation: register as tags.
+Comparing pre-arrlit (before `feature/arrlit`) vs current:
 
-2. **Sub-array deduplication**: Two sub-arrays `[b,c]` from `[a,b,c]` and `[b,c]` from `[x,b,c]` have the same elements but different backing arrays. Should we canonicalize? The content-address hash handles logical equality, but physical sharing differs. Accept this — the Store dedup map ensures identical arrays get the same hash regardless of physical layout.
+| Phase | Before | After | Delta |
+|---|---|---|---|
+| Uncached setup (load + parse) | ~29ms | ~29ms | ~0ms |
+| `decomposeQuery` | 1.53ms | 0.23ms | −85% |
+| `codeToArrlit` | 1.07ms | 0.20ms | −81% |
+| `bytesToSemantic` | — | 0.65ms | new |
+| **explore** | **20.2ms** | **8.8ms** | **−57%** |
 
-3. **arrlit of binlit vs. arrlit of raw bytes**: For bytecode, elements are single bytes (0-255). Storing as `binlit` hashes adds indirection. Alternative: a `byteslit` tag that stores raw `Uint8Array` directly (no per-element hashing). This is more efficient but less general (can't store symbolic values). Recommendation: start with arrlit-of-hashes (general), add byteslit optimization later if profiling demands it.
+End-to-end (multisig): 18ms → 2.7ms (−85%). Tree structure unchanged (477/11 and 84/2 nodes/leaves) — speedup is from reduced cloning and matching overhead.
 
-4. **PUSHn multi-byte data**: Currently `bytecode-to-ill.js` pre-packs multi-byte PUSH data into a single value at PC+1 (e.g., PUSH2 at PC 9 stores the 2-byte value at PC 10, skips PC 11). With raw bytecode arrlit, every byte is separate: `arr[9]=0x61, arr[10]=0x00, arr[11]=0x33`. This is a **semantic change** — the arrlit matches real EVM bytecode layout. PUSHn rules need FFI to read N bytes and combine:
-   - FFI `!read_bytes B OFFSET LEN V` — reads N contiguous bytes as a single binlit (big-endian)
-   - Alternative: PUSH1 can use `!get B PC' V` directly (1 byte = 1 value). Only PUSH2+ need `!read_bytes`.
-   - This is cleaner and more faithful to EVM spec. Backward clause: iterate N bytes via `!get`, shift-accumulate.
+## Compact buffer storage analysis — REJECTED
 
-5. **Compiled matcher adaptation**: The compiled matcher (`compile.js:compilePatternMatch`) currently expects facts in FactSet. With `!get` as a persistent pre-step, the compilation pipeline needs adjustment. The matcher should recognize `!get B PC GROUND` as a virtual fingerprint and generate appropriate dispatch code.
+**Question**: storing ~200 deduped binlit entries for bytecode bytes seems wasteful. Could a `bufflit(Uint8Array)` tag store raw bytes directly (like `binlit` stores BigInt) and expand lazily?
 
-6. **Normalization placement**: Should `acons`-over-`arrlit` folding happen in `Store.put` (global, always-on) or in a wrapper called from specific sites (parser, state-ops)? Store.put is cleaner but adds a branch to every put call. Recommendation: Store.put — the check is one tag comparison, negligible cost, and guarantees canonical form everywhere.
+**Findings** (profiled on solc_symbolic, 1040-byte bytecode):
 
-7. **Symbolic stack construction during substitution**: The substitution engine (`subApplyIdx` / `subCompiled`) constructs terms bottom-up. With normalization in Store.put, `acons(V, arrlit_tail)` automatically folds. Without it, we'd need the substitution engine to call a normalizing constructor. Store.put normalization is the cleanest path — zero changes to substitution code.
+Content-addressing deduplicates byte-level binlits: only ~200 unique entries (bytes 0x00–0xFF that actually appear), not 1040. Total Store cost: ~8KB (0.01% of capacity). The hex parser creates binlits once; `bytesToSemantic()` then creates ~200 more semantic binlits (combined PUSH values).
 
-8. **Mixed representation during transition**: During Stage 5 (bytecode-only), the system has arrlit bytecode but individual stack facts. Rules consume both representations. This is safe — each predicate (`bytecode`, `stack`) has its own type and matching logic. No cross-contamination.
+During `explore()`, bytecode is accessed via virtual fingerprint (`elems[Number(idx)]`) and `arr_get` FFI — both O(1) into the semantic `Uint32Array`. They read pre-existing hashes, never create new Store entries. A compact buffer would produce the same Uint32Array after semantic conversion.
+
+| Aspect | Savings | Cost |
+|---|---|---|
+| Load time | ~0.2ms (0.85ms → ~0.65ms) | New tag, side table, parser changes |
+| Explore time | 0ms | Dual code path in `bytesToSemantic()` |
+| Store entries | ~200 (0.005% of capacity) | Serialization in `store-binary.js` |
+
+**Verdict**: not worth the complexity. The 0.2ms load-time savings is negligible. If load time matters, the precompiled binary cache (`mde.load(file, { cache: true })`) skips parsing and semantic conversion entirely (~2.6ms total vs ~14ms uncached).
+
+## Resolved open questions
+
+1. **acons/ae as atoms or tags?** — RESOLVED: `acons` is a pre-registered tag. `ae` is an atom (used via `atom('ae')`). Tag dispatch for `acons` in unify.js; atom comparison for `ae`.
+
+2. **Sub-array deduplication** — RESOLVED: accepted. Content-address hash ensures logical equality. Physical sharing differs (different offsets into same backing data) but this is fine — dedup map handles it.
+
+3. **arrlit of binlit vs. raw bytes (byteslit/bufflit)** — RESOLVED: rejected. See "Compact buffer storage analysis" above. The ~200 deduped binlits cost ~8KB. Not worth a new tag.
+
+4. **PUSHn multi-byte data** — RESOLVED: implemented as `read_bytes` FFI in `ffi/array.js`. `bytesToSemantic()` pre-groups PUSH data at load time, so rules see single values at runtime. Both approaches coexist: raw byte access via `arr_get` and pre-grouped semantic access.
+
+5. **Compiled matcher adaptation** — RESOLVED: implemented as "virtual fingerprint" in `compile.js` (Phase B2). Detects `!arr_get B PC GROUND`, generates FFI dispatch. O(1) rule selection preserved.
+
+6. **Normalization placement** — RESOLVED: `Store.put` (one tag comparison per put call, negligible cost, canonical everywhere).
+
+7. **Symbolic stack construction** — RESOLVED: Store.put normalization handles it transparently. Zero changes to substitution engine.
+
+8. **Mixed representation during transition** — RESOLVED: currently in this state (bytecode = arrlit, stack = individual facts). Works correctly — each predicate has its own type.
+
+## Stage 7 assessment: is stack-as-arrlit worth doing?
+
+Profile data (solc_symbolic, 84-node tree, 2.36ms median explore):
+
+| Cost | Time | % |
+|---|---|---|
+| findAllMatches (strategy + disc-tree) | 2.93ms | 69% |
+| mutateState (FactSet add/remove) | 0.95ms | 22% |
+| undoState | 0.22ms | 5% |
+| other | 0.16ms | 4% |
+
+Within findAllMatches, actual pattern matching (unify.matchIdx) is only 12% — the other 88% is disc-tree traversal, dedup, and trigger verification overhead.
+
+**Stack-as-arrlit primarily helps mutateState** (fewer facts to add/remove per step). Reducing ~8 stack facts + `sh` to 1 arrlit entry saves ~7 FactSet operations per step × 84 nodes = ~588 operations. At ~120µs per mutateState call, the savings would be modest: perhaps 20-30% of the 0.95ms mutateState budget = **~0.2-0.3ms**.
+
+**The bigger wins are non-arrlit**: disc-tree query caching by control hash could eliminate 69% of explore time for repeated control states. This is tracked in the [forward optimization roadmap](../documentation/forward-optimization-roadmap.md).
+
+**Conclusion**: Stage 7 is primarily a **clarity win** (simpler rules, no `sh` counter, uniform representation) with a modest performance win (~0.2ms). The next large performance improvement comes from disc-tree query caching, not representation changes. Stage 7 is worth doing for code quality, but is not urgent for performance.
+
+## Remaining open questions
+
+1. **`computeControlHash` with arrlit stacks**: Currently hashes PC + SH (stack height). With arrlit stacks, should hash PC + stack arrlit hash. The arrlit hash already incorporates all element hashes (including symbolic freevars), making the structural memo more precise (distinct symbolic stack contents → distinct hashes). This is correct but may reduce memo hits if stacks diverge even when control flow is isomorphic. Needs investigation: would hashing just PC + arrlit length (= stack depth) preserve memo hits while benefiting from arrlit representation?
