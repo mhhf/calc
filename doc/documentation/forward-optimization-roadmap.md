@@ -24,10 +24,24 @@ Key files: `forward.js` (engine), `symexec.js` (tree exploration), `rule-analysi
 | 12 | Tensor-in-oplus encoding + EqNeqSolver (TODO_0055) | Enables branch pruning for symbolic values |
 | 13 | Single-survivor oplus collapsing (TODO_0055) | Eliminates fork nodes when solver prunes one alt |
 | 14 | Structural memoization via (PC, SH) control hash | 49ms → 11ms (4.4×) for symbolic multisig |
+| 15 | Arrlit bytecode representation | ~10ms → ~5.3ms (data representation, not per-step) |
+| 16 | Fingerprint prediction (Opt_H) | Skips findAllMatches for 87% of nodes (~3% improvement) |
 
-**Current stack:** `fingerprintLayer` (O(1) for ground-discriminated rules) → `discTreeLayer` (O(depth) catch-all) → `predicateLayer` (safety net, never activates).
+**Current stack:** `fingerprintLayer` (O(1) for ground-discriminated rules) → `discTreeLayer` (O(depth) catch-all) → `predicateLayer` (safety net, never activates). Fingerprint prediction skips the strategy stack entirely for predicted nodes.
 
-**Current bottleneck:** evenly distributed — no single dominant cost. 74 tryMatch calls for 63 nodes (strategy stack very effective). matchIndexed + substitute = 10%, state.linear access = ~20%, mutations/undo = ~15%, FFI = ~6%, DFS/alloc = ~10%, other overhead = ~40%.
+**Current bottleneck (solc_symbolic, 477 nodes, 5.3ms median, 11.1µs/node):**
+
+| Component | Est. time | % | Per-node | Notes |
+|---|---|---|---|---|
+| tryMatch | ~1.8ms | 34% | ~3.8µs × 468 | 415 prediction hits + 53 findAllMatches |
+| mutateState | ~1.3ms | 24% | ~2.8µs × 456 | consume + produce + tagId lookups |
+| other/overhead | ~1.2ms | 23% | | DFS frames, alloc, Set/Map ops |
+| undo | ~0.28ms | 5% | | Arena restore |
+| hashing | ~0.27ms | 5% | | stateHash + controlHash |
+| solver | ~0.17ms | 3% | | EqNeq checkpoint/restore |
+| drain+predict+snap | ~0.3ms | 6% | | Loli drain, prediction lookup, leaf snapshots |
+
+No single component dominates. Target: 4ms (8.4µs/node).
 
 ## Key Learnings
 
@@ -55,14 +69,22 @@ Key files: `forward.js` (engine), `symexec.js` (tree exploration), `rule-analysi
 
 ## What's Next
 
-Per-step optimizations (stages 1-11) are done at current scale. The next wave targets tree-level optimizations (structural memo, constraint solving, branch pruning) and scaling triggers:
+Per-step and tree-level optimizations are mature. The profile is flat — no single dominant cost. Remaining gains come from reducing per-node overhead across all components, or from scaling triggers for larger programs.
+
+### Closing the gap (5.3ms → 4ms target)
+
+| Optimization | Saves | Effort | Notes |
+|---|---|---|---|
+| Pooled match results | ~0.3-0.5ms | Low | See below |
+| Precomputed consequent tagIds | ~0.1-0.2ms | Low | See below |
+| Inline predicted step (skip tryMatch) | ~0.5-1.0ms | Medium | See below |
+
+### Scaling triggers (larger programs)
 
 | Optimization | Trigger | TODO |
 |-------------|---------|------|
-| Disc-tree query caching | Any DFS tree with repeated control states | See note below |
 | Configurable control predicates | Non-EVM programs with symmetric structure | See note below |
 | Constraint propagation (equality + FFI re-check) | Symbolic evar chains (3+ deep) | [TODO_0005](../todo/0005_symexec-simplification.md) |
-| Persistent proving order (FFI before state) | Mixed FFI + state predicates | See note below |
 | Delta-driven activation | 100+ rules | [TODO_0035](../todo/0035_forward-chaining-networks.md) |
 | Compiled matching (Maranget) | 1000+ rules | [TODO_0037](../todo/0037_compiled-pattern-matching.md) |
 | Semi-naive for linear logic | 100K+ facts | [TODO_0044](../todo/0044_semi-naive-linear-logic.md) |
@@ -73,42 +95,36 @@ Per-step optimizations (stages 1-11) are done at current scale. The next wave ta
 | Per-term read cache (L2) | 50+ branches sharing memory prefixes | [TODO_0052](../todo/0052_memory-and-persistent-caching.md) |
 | Indexed persistent predicates | 50+ persistent facts per predicate | [TODO_0052](../todo/0052_memory-and-persistent-caching.md) |
 
-### Disc-tree query caching
+### Pooled match results
 
-**Problem**: `findAllMatches()` calls the disc-tree's `getCandidateRules(state)` on every single node in the DFS tree. This is expensive — it flattens every fact into a trie path, queries the discrimination tree, deduplicates results, and verifies trigger predicates. Profiling shows this is 69% of explore time, and 88% of that is overhead (traversal, dedup, filtering), not actual pattern matching.
+tryMatch allocates on every success: `theta.slice()` (15-element array), `Map.forEach→{}` (consumed object), and the result object itself. With prediction, 415/468 calls succeed — the "rare path" comment is wrong. These ~1400 allocations per explore create GC pressure.
 
-**Insight**: which rules *can* fire depends on what predicates are present, not on the specific values inside those predicates. Two states at the same program counter with the same stack height have exactly the same set of candidate rules — the disc-tree would return the same list both times.
+Fix: return a pre-allocated pooled result for the prediction path. The result is consumed immediately by mutateState and never stored (only `m.rule.name` is kept in the children array). Reuse a single `{ rule, theta, slots, consumed, optimized }` object with a pre-allocated theta array and consumed Map (read directly instead of copying to object).
 
-**Example** — a simple program that checks 3 members:
+Constraint: findAllMatches can return multiple matches that coexist in an array. Pooling only works for the single-match prediction path. Could use a generation counter or separate pool for FAM results.
 
-```
-State A: pc=10, sh=3, stack=[alice, bob, carol]
-State B: pc=10, sh=3, stack=[dave, eve, frank]
-```
+### Precomputed consequent tagIds
 
-Both states have: `pc` fact, `bytecode` fact, `stack` facts at heights 0-2, `sh` fact. The disc-tree query walks all these facts and returns the same candidate rules (say, `evm/add`, `evm/push1`, `evm/jumpi`). Today we do this walk twice. With caching, the second call is a hash-map lookup.
+`produceLinear` and `producePersistent` call `Store.tagId(h)` per produced fact to determine the FactSet group for insertion. For compiled consequents with known structure, the tag ID can be precomputed at rule compile time and stored alongside the compiled substitution recipe.
 
-**How it works**:
+Similarly, `consumeLinear` iterates the consumed object and calls `Store.tagId(Number(hStr))` per entry. For predicted rules with known antecedent structure, the consumed facts' tag IDs are deterministic.
 
-```
-                       explore() DFS tree
-                            |
-                     node (pc=0, sh=0)
-                    /                  \
-            node (pc=5, sh=2)    node (pc=5, sh=2)   ← same control state!
-               /        \          /        \
-          (pc=10,sh=3) (pc=8,sh=1) ...      ...
-```
+### Inline predicted step (skip tryMatch entirely)
 
-1. Compute a "control hash" from the predicates that determine rule eligibility: `hash(pc_value, sh_value)`.
-2. Before calling `getCandidateRules(state)`, check a cache: `controlHash → candidateRules[]`.
-3. On cache hit, skip the disc-tree entirely. On miss, run the query and cache the result.
+For predicted nodes, we know the rule and the new PC value. The full tryMatch machinery (pool clear → theta fill → matchAllLinear → persistent proving → existential resolution → copy) is overkill. A compiled "step function" per rule could:
 
-**Why this is sound**: candidate rules depend on *which predicates exist* and *what ground discriminator values they contain* (e.g., opcode at PC). Two states with the same PC have the same opcode (bytecode is immutable), so the fingerprint + disc-tree produce the same candidate list. The actual *matching* (tryMatch) still runs per-node with the real state — only the candidate *filtering* is cached.
+1. Look up the 2-3 linear facts by tag (O(1) group access)
+2. Extract bindings via delta bypass (direct child extraction, no unification)
+3. Prove persistent goals via compiled FFI steps (already exist as `persistentSteps`)
+4. Write consumed/produced facts directly into state (no intermediate objects)
 
-**Expected impact**: In the symbolic multisig (477 nodes with memo, 84 without), there are ~15-20 unique (PC, SH) pairs but 84 nodes. Caching eliminates ~75% of disc-tree queries. At 2.93ms for findAllMatches, this could save ~1.5-2ms (targeting ~1ms explore).
+This merges tryMatch + mutateState into a single compiled step, eliminating both the match result allocation and the separate mutation pass. For 415 predicted calls at ~6.6µs combined (tryMatch + mutateState), even a 30% reduction saves ~0.8ms.
 
-**Implementation**: ~20 LOC in `symexec.js`. A `Map<bigint, Rule[]>` cleared per `explore()` call. The control hash already exists (`computeControlHash`). Main risk: if non-control predicates affect candidacy (e.g., a rule triggered by a predicate that appears/disappears mid-execution). Mitigation: only cache when all trigger predicates are "stable" (present throughout execution, like `bytecode`).
+Risk: high implementation complexity. Each rule has different antecedent/consequent shapes. Would need a per-rule compiled closure or a bytecode interpreter. The V8 megamorphic lesson (RES_0069: 59 closures → 25% regression) applies — must stay within IC threshold or use a single polymorphic dispatch.
+
+### ~~Disc-tree query caching~~ (obsolete)
+
+Originally proposed when findAllMatches was called on every node (69% of explore time). With fingerprint prediction (stage 16), findAllMatches is called on only 53/477 nodes (11%). The disc-tree is no longer the bottleneck. Caching those 53 calls would save <0.3ms — not worth the complexity.
 
 ### Configurable control predicates
 
@@ -155,8 +171,9 @@ However, FFI-first is only optimal when all persistent predicates are FFI-backed
 | Concrete (MEMBER1, nonce=0) | 280 | ~4ms | ~14μs | All oplus branches collapse (0 forks) |
 | Symbolic sender + nonce, no memo | 2125 | ~49ms | ~23μs | 31 leaves, 10 oplus forks |
 | Symbolic sender + nonce, memo | 477 | ~11ms | ~28μs | 9 memo hits, 2 real leaves |
+| Symbolic, memo + arrlit + prediction | 477 | ~5.3ms | ~11μs | Stages 15-16 |
 
-Per-node cost is 1.36× higher in symbolic vs concrete due to: more oplus alternatives explored per branch, constraint solver overhead (checkpoint/restore), and persistent goal failures on evars. The 2.3× total slowdown (11ms vs 4ms) comes primarily from 1.7× more nodes (477 vs 280), not per-node cost.
+Per-node cost is 1.36× higher in symbolic vs concrete due to: more oplus alternatives explored per branch, constraint solver overhead (checkpoint/restore), and persistent goal failures on evars. The arrlit representation change (stage 15) halved absolute cost from ~11ms to ~5.3ms by changing how bytecode is stored. Prediction (stage 16) skips findAllMatches for 87% of nodes but only saves ~3% because the per-call cost is small (~2µs).
 
 ## Zig Port Mapping
 
