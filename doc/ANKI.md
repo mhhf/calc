@@ -147,3 +147,27 @@ McCarthy axioms model word-addressable arrays: `select(store(a, i, v), i) = v`. 
 ## How does MCOPY (EIP-5656) work in the write-log model?
 
 An `mcopy(Dest, Src, Size, Prev)` term node in the write-log. Reading through it: if the read range `[R,R+32)` falls within `[Dest, Dest+Size)`, redirect to `[Src+(R-Dest), ...)` in the prior state (`Prev`). This is a pointer redirection within the log — pure ILL rule, no FFI. The source data is resolved by continuing traversal at the redirected offset.
+
+## What is the difference between quiescence and saturation in forward chaining?
+
+**Quiescence:** no rule can fire on the current state. Correct for linear logic (where facts are consumed). **Saturation:** no *new* facts can be derived (fixpoint of T_P). Correct for persistent/Datalog settings. Simmons & Pfenning (PEPM 2009): "saturation is more appropriate in the absence of linear propositions." With linear resources, saturation is ill-defined because the state is non-monotone.
+
+## Do CLF, LolliMon, SLS, and Ceptre allow lolis in the forward-chaining state?
+
+No. All standard systems restrict the forward-chaining state to atomic propositions (linear + persistent). CLF's monadic type grammar excludes loli (`-o`), with (`&`), and top from synchronous types. Rules are the program, separate from the state. CALC is unique in allowing loli-in-monad.
+
+## How does CHR handle the re-firing problem for propagation rules?
+
+CHR uses a **propagation history** — a set of `(rule, {constraint IDs})` tuples recording which combinations have fired. A propagation rule fires at most once per constraint combination. This achieves a form of saturation for propagation without consuming heads. Linear logic systems avoid this problem: linear consumption prevents re-fire by design.
+
+## Must dormant lolis be "drained" before declaring quiescence?
+
+No. A dormant loli `!G -o B` where G is not provable is a residual resource — a capability that was never triggered. Draining would require fabricating a proof of G (unsound). Linear resources are capabilities, not obligations. The loli remains in the final state as an unconsumed resource. This is analogous to an unused atom in the state.
+
+## What does Ceptre's `qui` predicate represent?
+
+A special token denoting quiescence of a stage. Stage transition rules take the form: upon `qui`, replace one stage resource with another. Quiescence means "no more rules in the current stage apply to the current program state." Stages give the ability to program with quiescence as a first-class control construct.
+
+## What is Datalog's termination guarantee and why doesn't it apply to linear logic?
+
+Datalog computes the least fixed point of T_P: `T_P^n(I) = T_P^{n+1}(I)`. This terminates because: (1) the domain is finite, (2) T_P is monotone (facts only grow). Linear logic breaks assumption (2): facts are consumed, so the state can shrink. No monotonicity means no fixed point guarantee — termination depends on program structure, not logic alone.
