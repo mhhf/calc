@@ -8,6 +8,7 @@
     "test:engine": "node --test tests/engine/convert.test.js tests/engine/forward.test.js tests/engine/e2e.test.js tests/engine/explore.test.js tests/engine/primitives.test.js tests/engine/memory.test.js tests/engine/constraint.test.js tests/engine/solc-benchmark.test.js tests/engine/fact-set.test.js tests/engine/store-binary.test.js tests/engine/compiled-matcher.test.js tests/engine/arrlit.test.js",
     "test:e2e": "node tests/e2e-solidjs.js",
     "test:all": "npm test && npm run test:engine",
+    "test:bare": "CALC_PROFILE=bare npm test -- --timeout 120000 && CALC_PROFILE=bare npm run test:engine -- --timeout 120000",
     "build:bundle": "node libexec/calc-bundle",
     "dev": "npm run build:bundle && vite --config src/ui/vite.config.ts",
     "build:ui": "npm run build:bundle && vite build --config src/ui/vite.config.ts",
