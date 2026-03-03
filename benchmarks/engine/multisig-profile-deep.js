@@ -1,7 +1,7 @@
 /**
  * Deep Profiler - Uses built-in profiling in forward.js
  *
- * Run with: CALC_PROFILE=1 node tests/mde/multisig-profile-deep.js
+ * Run with: CALC_PERF_PROFILE=1 node tests/mde/multisig-profile-deep.js
  */
 
 const mde = require('../../lib/engine');
@@ -19,9 +19,9 @@ function formatMs(ms) {
 }
 
 async function main() {
-  if (process.env.CALC_PROFILE !== '1') {
-    console.log('Run with CALC_PROFILE=1 to enable profiling');
-    console.log('  CALC_PROFILE=1 node tests/mde/multisig-profile-deep.js');
+  if (process.env.CALC_PERF_PROFILE !== '1') {
+    console.log('Run with CALC_PERF_PROFILE=1 to enable profiling');
+    console.log('  CALC_PERF_PROFILE=1 node tests/mde/multisig-profile-deep.js');
     process.exit(1);
   }
 
