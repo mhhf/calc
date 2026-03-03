@@ -6,6 +6,7 @@ const { isGround, collectMetavars, collectFreevars } = require('../../lib/engine
 const { serialize, deserialize } = require('../../lib/engine/store-binary');
 const { match, matchIndexed, undoSave, undoRestore, unify } = require('../../lib/kernel/unify');
 const { arr_get, arr_set, alen, read_bytes } = require('../../lib/engine/ffi/array');
+const { buildParserFromTables, computeParserTables } = require('../../lib/calculus/builders');
 
 describe('arrlit - Stage 1: Store Infrastructure', () => {
   beforeEach(() => Store.clear());
@@ -491,5 +492,60 @@ describe('arrlit - Stage 3: FFI', () => {
       const result = read_bytes([arr, offset, num, out]);
       assert.equal(result.success, false);
     });
+  });
+});
+
+describe('arrlit - Stage 4: Hex-to-arrlit Parser', () => {
+  beforeEach(() => Store.clear());
+
+  // Build a minimal parser with numbers + application enabled
+  function makeParser() {
+    const tables = { operators: [], nullary: {}, unaryPrefix: {},
+      numbers: true, application: true, binaryNormalization: true };
+    return buildParserFromTables(tables);
+  }
+
+  it('short hex stays binlit', () => {
+    const parse = makeParser();
+    const h = parse('0xFF');
+    assert.equal(Store.tag(h), 'binlit');
+    assert.equal(Store.child(h, 0), 0xFFn);
+  });
+
+  it('32-byte hex (64 chars) stays binlit', () => {
+    const parse = makeParser();
+    const hex64 = '0x' + 'ab'.repeat(32); // 64 hex chars
+    const h = parse(hex64);
+    assert.equal(Store.tag(h), 'binlit');
+  });
+
+  it('long hex (> 64 chars) → arrlit of byte binlits', () => {
+    const parse = makeParser();
+    // 66 hex chars = 33 bytes (> 32)
+    const hex = '0x' + '60'.repeat(33);
+    const h = parse(hex);
+    assert.equal(Store.tag(h), 'arrlit');
+    const elems = Store.getArrayElements(h);
+    assert.equal(elems.length, 33);
+    for (let i = 0; i < 33; i++) {
+      assert.equal(Store.child(elems[i], 0), 0x60n);
+    }
+  });
+
+  it('odd-length long hex → parse error', () => {
+    const parse = makeParser();
+    // 65 hex chars (odd, > 64) → should throw
+    assert.throws(() => parse('0x' + 'a'.repeat(65)), /odd-length hex/);
+  });
+
+  it('round-trip: hex → arrlit → elements match byte values', () => {
+    const parse = makeParser();
+    const hex = '0x' + '0102030405060708091011121314151617181920212223242526272829303132aa';
+    const h = parse(hex);
+    assert.equal(Store.tag(h), 'arrlit');
+    const elems = Store.getArrayElements(h);
+    assert.equal(elems.length, 33);
+    assert.equal(Store.child(elems[0], 0), 0x01n);
+    assert.equal(Store.child(elems[32], 0), 0xAAn);
   });
 });
