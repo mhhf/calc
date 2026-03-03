@@ -247,7 +247,7 @@ describe('EVM Memory Integration', { timeout: 30000 }, () => {
     const persistent = {};
 
     linear[await mde.parseExpr('pc 0')] = 1;
-    linear[await mde.parseExpr('sh ee')] = 1;
+    linear[await mde.parseExpr('stack ae')] = 1;
     linear[await mde.parseExpr('gas 0')] = 1;
     linear[await mde.parseExpr('mem empty_mem')] = 1;
     linear[await mde.parseExpr('memsize 0')] = 1;
@@ -305,7 +305,13 @@ describe('EVM Memory Integration', { timeout: 30000 }, () => {
         if (leaf.state && stackTagId !== undefined) {
           const grp = leaf.state.linear.group(stackTagId);
           for (let i = 0; i < grp.length; i++) {
-            if (binToInt(Store.child(grp[i], 1)) === 0x42n) found = true;
+            const arrHash = Store.child(grp[i], 0);
+            const elems = Store.getArrayElements(arrHash);
+            if (elems) {
+              for (let j = 0; j < elems.length; j++) {
+                if (binToInt(elems[j]) === 0x42n) found = true;
+              }
+            }
           }
         }
       }
@@ -343,7 +349,13 @@ describe('EVM Memory Integration', { timeout: 30000 }, () => {
         if (leaf.state && stackTagId2 !== undefined) {
           const grp = leaf.state.linear.group(stackTagId2);
           for (let i = 0; i < grp.length; i++) {
-            if (binToInt(Store.child(grp[i], 1)) === 0n) found = true;
+            const arrHash = Store.child(grp[i], 0);
+            const elems = Store.getArrayElements(arrHash);
+            if (elems) {
+              for (let j = 0; j < elems.length; j++) {
+                if (binToInt(elems[j]) === 0n) found = true;
+              }
+            }
           }
         }
       }
@@ -383,7 +395,13 @@ describe('EVM Memory Integration', { timeout: 30000 }, () => {
         if (leaf.state && stackTagId3 !== undefined) {
           const grp = leaf.state.linear.group(stackTagId3);
           for (let i = 0; i < grp.length; i++) {
-            if (binToInt(Store.child(grp[i], 1)) === 0xBBn) foundBB = true;
+            const arrHash = Store.child(grp[i], 0);
+            const elems = Store.getArrayElements(arrHash);
+            if (elems) {
+              for (let j = 0; j < elems.length; j++) {
+                if (binToInt(elems[j]) === 0xBBn) foundBB = true;
+              }
+            }
           }
         }
       }
@@ -421,7 +439,13 @@ describe('EVM Memory Integration', { timeout: 30000 }, () => {
         if (leaf.state && stackTagId4 !== undefined) {
           const grp = leaf.state.linear.group(stackTagId4);
           for (let i = 0; i < grp.length; i++) {
-            if (binToInt(Store.child(grp[i], 1)) === 32n) found = true;
+            const arrHash = Store.child(grp[i], 0);
+            const elems = Store.getArrayElements(arrHash);
+            if (elems) {
+              for (let j = 0; j < elems.length; j++) {
+                if (binToInt(elems[j]) === 32n) found = true;
+              }
+            }
           }
         }
       }
@@ -468,7 +492,13 @@ describe('EVM Memory Integration', { timeout: 30000 }, () => {
         if (leaf.state && stackTagId5 !== undefined) {
           const grp = leaf.state.linear.group(stackTagId5);
           for (let i = 0; i < grp.length; i++) {
-            stackValues.push(binToInt(Store.child(grp[i], 1)));
+            const arrHash = Store.child(grp[i], 0);
+            const elems = Store.getArrayElements(arrHash);
+            if (elems) {
+              for (let j = 0; j < elems.length; j++) {
+                stackValues.push(binToInt(elems[j]));
+              }
+            }
           }
         }
       }

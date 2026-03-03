@@ -67,7 +67,7 @@ describe('Rule Analysis', { timeout: 10000 }, () => {
       // Antecedent linear should have: pc, code, gas (at minimum)
       const antePreds = dump.anteLinear.map(p => p.pred);
       assert(antePreds.includes('pc'), `ante should have pc, got: ${antePreds}`);
-      assert(antePreds.includes('code'), `ante should have code, got: ${antePreds}`);
+      assert(antePreds.includes('bytecode'), `ante should have bytecode, got: ${antePreds}`);
 
       // Consequent linear should have: done (or similar terminal)
       assert(dump.conseqLinear.length > 0, 'Should have consequent patterns');
@@ -81,42 +81,38 @@ describe('Rule Analysis', { timeout: 10000 }, () => {
       const antePreds = dump.anteLinear.map(p => p.pred);
       const conseqPreds = dump.conseqLinear.map(p => p.pred);
 
-      // code should appear on both sides (preserved)
-      assert(antePreds.includes('code'), 'ante should have code');
-      assert(conseqPreds.includes('code'), 'conseq should have code');
+      // bytecode should appear on both sides (preserved)
+      assert(antePreds.includes('bytecode'), 'ante should have bytecode');
+      assert(conseqPreds.includes('bytecode'), 'conseq should have bytecode');
 
       // pc should appear on both sides (delta — arg changes via !inc)
       assert(antePreds.includes('pc'), 'ante should have pc');
       assert(conseqPreds.includes('pc'), 'conseq should have pc');
 
-      // sh should appear on both sides (preserved — same args)
-      assert(antePreds.includes('sh'), 'ante should have sh');
-      assert(conseqPreds.includes('sh'), 'conseq should have sh');
-
       // stack should appear on both sides (delta — args change)
       assert(antePreds.includes('stack'), 'ante should have stack');
       assert(conseqPreds.includes('stack'), 'conseq should have stack');
 
-      // persistent antecedents should include inc and plus
+      // persistent antecedents should include inc and arr_get
       const persistPreds = dump.antePersistent.map(p => p.pred);
       assert(persistPreds.includes('inc'), `persistent should have inc, got: ${persistPreds}`);
-      assert(persistPreds.includes('plus'), `persistent should have plus, got: ${persistPreds}`);
+      assert(persistPreds.includes('arr_get'), `persistent should have arr_get, got: ${persistPreds}`);
     });
 
     it('preserved predicates have identical hashes on both sides', () => {
       const rule = calc.forwardRules.find(r => r.name === 'evm/add');
       const dump = dumpRule(rule);
 
-      // code appears on both sides — if preserved, hashes should be identical
-      const anteCode = dump.anteLinear.find(p => p.pred === 'code');
-      const conseqCode = dump.conseqLinear.find(p => p.pred === 'code');
+      // bytecode appears on both sides — if preserved, hashes should be identical
+      const anteCode = dump.anteLinear.find(p => p.pred === 'bytecode');
+      const conseqCode = dump.conseqLinear.find(p => p.pred === 'bytecode');
 
-      assert(anteCode, 'ante should have code');
-      assert(conseqCode, 'conseq should have code');
+      assert(anteCode, 'ante should have bytecode');
+      assert(conseqCode, 'conseq should have bytecode');
 
       // Same hash means identical pattern (content-addressed)
       assert.strictEqual(anteCode.hash, conseqCode.hash,
-        'preserved predicate code should have same hash on both sides');
+        'preserved predicate bytecode should have same hash on both sides');
     });
 
     it('delta predicates have different hashes but same predicate head', () => {
@@ -684,23 +680,23 @@ describe('Rule Analysis', { timeout: 10000 }, () => {
         'preserved + produced should equal consequent (as multiset)');
     });
 
-    it('evm/add: only code is preserved (v1, no delta detection)', async () => {
+    it('evm/add: only bytecode is preserved (v1, no delta detection)', async () => {
       const calc = await mde.load(
         path.join(__dirname, '../../calculus/ill/programs/evm.ill'));
       const rule = calc.forwardRules.find(r => r.name === 'evm/add');
       const result = analyzeRule(rule);
 
-      // code has identical hash on both sides → preserved
+      // bytecode has identical hash on both sides → preserved
       const codeHash = rule.antecedent.linear.find(
-        h => getPredicateHead(h) === 'code');
-      assert(result.preserved.includes(codeHash), 'code should be preserved');
+        h => getPredicateHead(h) === 'bytecode');
+      assert(result.preserved.includes(codeHash), 'bytecode should be preserved');
 
-      // pc, sh, stack have different hashes → consumed/produced
-      assert.strictEqual(result.preserved.length, 1, 'only code is preserved in v1');
+      // pc, stack have different hashes → consumed/produced
+      assert.strictEqual(result.preserved.length, 1, 'only bytecode is preserved in v1');
 
-      // 4 consumed (pc, sh, stack, stack), 3 produced (pc', sh', stack')
-      assert.strictEqual(result.consumed.length, 4, '4 consumed');
-      assert.strictEqual(result.produced.length, 3, '3 produced');
+      // 2 consumed (pc, stack), 2 produced (pc', stack')
+      assert.strictEqual(result.consumed.length, 2, '2 consumed');
+      assert.strictEqual(result.produced.length, 2, '2 produced');
 
       // Verify multiset invariant
       const anteHashes = sortedHashes(rule.antecedent.linear);
@@ -714,14 +710,14 @@ describe('Rule Analysis', { timeout: 10000 }, () => {
       const rule = calc.forwardRules.find(r => r.name === 'evm/swap1');
       const result = analyzeRule(rule);
 
-      // Check if code is preserved (should be if same hash)
+      // Check if bytecode is preserved (should be if same hash)
       const anteCode = rule.antecedent.linear.find(
-        h => getPredicateHead(h) === 'code');
+        h => getPredicateHead(h) === 'bytecode');
       const conseqCode = rule.consequent.linear.find(
-        h => getPredicateHead(h) === 'code');
+        h => getPredicateHead(h) === 'bytecode');
 
       if (anteCode === conseqCode) {
-        assert(result.preserved.includes(anteCode), 'code preserved if same hash');
+        assert(result.preserved.includes(anteCode), 'bytecode preserved if same hash');
       }
 
       // Multiset invariant always holds
@@ -968,16 +964,16 @@ describe('Rule Analysis', { timeout: 10000 }, () => {
 
     // --- EVM rules ---
 
-    it('evm/add: pc, sh are deltas; stack has 2 consumed, 1 produced delta', async () => {
+    it('evm/add: pc, stack are deltas (no sh in arrlit version)', async () => {
       const calc = await mde.load(
         path.join(__dirname, '../../calculus/ill/programs/evm.ill'));
       const rule = calc.forwardRules.find(r => r.name === 'evm/add');
       const result = analyzeDeltas(rule);
 
-      // code is preserved (identical hash)
+      // bytecode is preserved (identical hash)
       const codeHash = rule.antecedent.linear.find(
-        h => getPredicateHead(h) === 'code');
-      assert(result.preserved.includes(codeHash), 'code preserved');
+        h => getPredicateHead(h) === 'bytecode');
+      assert(result.preserved.includes(codeHash), 'bytecode preserved');
 
       // Check delta predicates
       const deltaPreds = result.deltas.map(d => d.pred);
@@ -987,27 +983,26 @@ describe('Rule Analysis', { timeout: 10000 }, () => {
       const pcDelta = result.deltas.find(d => d.pred === 'pc');
       assert.deepStrictEqual(pcDelta.changedPositions, [0], 'pc: position 0 changes');
 
-      // sh should be a delta (SH → SH' — unwrap s() constructor)
-      assert(deltaPreds.includes('sh'), `sh should be delta, got: ${deltaPreds}`);
+      // stack should be a delta (acons pattern changes)
+      assert(deltaPreds.includes('stack'), `stack should be delta, got: ${deltaPreds}`);
 
       // evm/add does NOT have gas as a linear pattern (only eq, sload, etc. do)
       assert(!deltaPreds.includes('gas'), 'no gas in evm/add');
     });
 
-    it('evm/add: stack has delta and extra consumed (2 ante, 1 conseq)', async () => {
+    it('evm/add: stack is a delta (1 ante, 1 conseq, arrlit version)', async () => {
       const calc = await mde.load(
         path.join(__dirname, '../../calculus/ill/programs/evm.ill'));
       const rule = calc.forwardRules.find(r => r.name === 'evm/add');
       const result = analyzeDeltas(rule);
 
-      // stack: 2 consumed (pop X, Y), 1 produced (push X+Y)
-      // → 1 delta pair + 1 remaining consumed
+      // stack: 1 consumed, 1 produced → 1 delta pair, 0 remaining consumed
       const stackDeltas = result.deltas.filter(d => d.pred === 'stack');
       assert.strictEqual(stackDeltas.length, 1, '1 stack delta pair');
 
       const remainingConsumedStacks = result.consumed.filter(
         h => getPredicateHead(h) === 'stack');
-      assert.strictEqual(remainingConsumedStacks.length, 1, '1 stack remaining consumed');
+      assert.strictEqual(remainingConsumedStacks.length, 0, '0 stack remaining consumed');
     });
 
     it('multiset invariants hold for ALL EVM rules with deltas', async () => {
@@ -1125,18 +1120,17 @@ describe('Rule Analysis', { timeout: 10000 }, () => {
       const rule = calc.forwardRules.find(r => r.name === 'evm/add');
       const a = rule.analysis;
 
-      // code is preserved
+      // bytecode is preserved
       assert.strictEqual(a.preserved.length, 1, '1 preserved');
-      assert.strictEqual(getPredicateHead(a.preserved[0]), 'code');
+      assert.strictEqual(getPredicateHead(a.preserved[0]), 'bytecode');
 
-      // pc, sh, stack are deltas (3 total: pc, sh, 1 of 2 stacks)
+      // pc, stack are deltas (2 total, no sh in arrlit version)
       const deltaPreds = a.deltas.map(d => d.pred).sort();
-      assert.deepStrictEqual(deltaPreds, ['pc', 'sh', 'stack'],
-        'deltas: pc, sh, stack');
+      assert.deepStrictEqual(deltaPreds, ['pc', 'stack'],
+        'deltas: pc, stack');
 
-      // 1 remaining consumed (extra stack)
-      assert.strictEqual(a.consumed.length, 1, '1 remaining consumed');
-      assert.strictEqual(getPredicateHead(a.consumed[0]), 'stack');
+      // 0 remaining consumed (only 1 stack pattern now)
+      assert.strictEqual(a.consumed.length, 0, '0 remaining consumed');
 
       // 0 remaining produced
       assert.strictEqual(a.produced.length, 0, 'no remaining produced');

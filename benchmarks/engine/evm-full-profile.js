@@ -110,9 +110,7 @@ async function main() {
     const resources = [
       'pc e',
       'code e (i e)',  // ADD opcode
-      'sh (s (s ee))',
-      `stack (s ee) ${decToBin(tc.a)}`,
-      `stack ee ${decToBin(tc.b)}`,
+      `stack [${decToBin(tc.a)}, ${decToBin(tc.b)}]`,
     ];
     for (const r of resources) {
       const h = await mde.parseExpr(r);

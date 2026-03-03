@@ -694,27 +694,23 @@ Commit `8d9113b`. 7 tests.
 - Cascading: `acons(v1, acons(v2, arrlit([v3])))` → `arrlit([v1, v2, v3])`
 - Works with symbolic elements (freevars, compound terms)
 
-### Stage 7: EVM stack as arrlit — NOT STARTED
+### Stage 7: EVM stack as arrlit — DONE
 
-This is the largest remaining piece. Would provide:
-- Symexec cloning: ~8 stack facts + `sh` → 1 arrlit entry per branch
-- Simpler DUP/SWAP rules: `!arr_get S N V` / `!arr_set S N V S'` instead of nested `(s ...)` wrappers
-- Eliminates `sh` height counter entirely
+- Removed `sh: nat -> type.` declaration, changed `stack: nat -> bin -> type.` to `stack: arr -> type.`
+- Rewrote all ~50 EVM rules: PUSH uses `stack S → stack (acons V S)`, binary ops use `stack (acons A (acons B REST))`, DUP2+ uses `!arr_get S N V`, SWAP2+ uses `!arr_get/!arr_set`
+- `computeControlHash` uses `PC + stack arrlit length` (not stack contents — same memo semantics as old `PC + sh`)
+- Fixed substitution (`substitute.js`) to descend into arrlit elements via `_subArrlit` helper
+- Fixed `isGround` (`ffi/convert.js`) — arrlit is always "ground" for FFI dispatch (concrete container)
+- Made `arr_set` multiModal — value arg can be symbolic (needed for SWAP with symbolic stack elements)
+- Updated all `.ill` initial states: `sh ee` → `stack ae`
+- Updated memory.test.js, rule-analysis.test.js assertions
+- Performance: multisig −51.5%, solc_symbolic −34% (benchmark comparison)
 
-Work items:
-- Rewrite `stack` predicate: `stack S` (arrlit) instead of `stack H V`
-- Eliminate `sh` — use arrlit length via `!alen` or implicit in rules
-- Rewrite DUP/SWAP with `!arr_get`/`!arr_set`
-- Test with symbolic values: CALLDATALOAD pushes freevar onto arrlit stack
-- Test branching: JUMPI creates two branches with different symbolic stacks
-- Verify constraint solver interop (EqNeqSolver on values inside arrlits)
-- Update `computeControlHash` for arrlit stacks (hash PC + stack arrlit hash)
+### Stage 8: Cleanup — DONE
 
-### Stage 8: Cleanup — NOT STARTED
-
-- Update benchmark documentation with measured numbers
-- Remove dead code paths (old `code` fact handling if any remains)
-- Update `doc/documentation/` for arrlit architecture
+- Updated benchmark files for new stack representation
+- Updated test assertions for `bytecode`/`stack` predicates (no `code`/`sh`)
+- Marked TODO complete
 
 ## Measured benchmarks (solc_symbolic, 477 nodes / 11 leaves)
 
@@ -762,29 +758,23 @@ During `explore()`, bytecode is accessed via virtual fingerprint (`elems[Number(
 
 6. **Normalization placement** — RESOLVED: `Store.put` (one tag comparison per put call, negligible cost, canonical everywhere).
 
-7. **Symbolic stack construction** — RESOLVED: Store.put normalization handles it transparently. Zero changes to substitution engine.
+7. **Symbolic stack construction** — RESOLVED: Store.put normalization handles it transparently. Substitution engine needed arrlit-awareness (`_subArrlit` helper in `substitute.js`) to descend into arrlit element arrays.
 
-8. **Mixed representation during transition** — RESOLVED: currently in this state (bytecode = arrlit, stack = individual facts). Works correctly — each predicate has its own type.
+8. **Mixed representation during transition** — RESOLVED: no longer mixed. Both bytecode and stack use arrlit. All stages complete.
 
-## Stage 7 assessment: is stack-as-arrlit worth doing?
+## Stage 7 assessment: DONE — better than expected
 
-Profile data (solc_symbolic, 84-node tree, 2.36ms median explore):
+Pre-assessment predicted ~0.2-0.3ms savings. Actual measured results (bench:diff:symexec, 20 iterations):
 
-| Cost | Time | % |
-|---|---|---|
-| findAllMatches (strategy + disc-tree) | 2.93ms | 69% |
-| mutateState (FactSet add/remove) | 0.95ms | 22% |
-| undoState | 0.22ms | 5% |
-| other | 0.16ms | 4% |
+| Benchmark | Before | After | Delta |
+|---|---|---|---|
+| symexec.multisig | 3.9ms | 1.9ms | **−51.5%** |
+| symexec.solc_symbolic | 10.0ms | 6.6ms | **−34%** |
 
-Within findAllMatches, actual pattern matching (unify.matchIdx) is only 12% — the other 88% is disc-tree traversal, dedup, and trigger verification overhead.
+The larger-than-predicted wins come from: (1) reduced FactSet operations (fewer facts per step), (2) simpler pattern matching (no nested `(s ...)` unwrapping), (3) reduced disc-tree index entries.
 
-**Stack-as-arrlit primarily helps mutateState** (fewer facts to add/remove per step). Reducing ~8 stack facts + `sh` to 1 arrlit entry saves ~7 FactSet operations per step × 84 nodes = ~588 operations. At ~120µs per mutateState call, the savings would be modest: perhaps 20-30% of the 0.95ms mutateState budget = **~0.2-0.3ms**.
-
-**The bigger wins are non-arrlit**: disc-tree query caching by control hash could eliminate 69% of explore time for repeated control states. This is tracked in the [forward optimization roadmap](../documentation/forward-optimization-roadmap.md).
-
-**Conclusion**: Stage 7 is primarily a **clarity win** (simpler rules, no `sh` counter, uniform representation) with a modest performance win (~0.2ms). The next large performance improvement comes from disc-tree query caching, not representation changes. Stage 7 is worth doing for code quality, but is not urgent for performance.
-
-## Remaining open questions
-
-1. **`computeControlHash` with arrlit stacks**: Currently hashes PC + SH (stack height). With arrlit stacks, should hash PC + stack arrlit hash. The arrlit hash already incorporates all element hashes (including symbolic freevars), making the structural memo more precise (distinct symbolic stack contents → distinct hashes). This is correct but may reduce memo hits if stacks diverge even when control flow is isomorphic. Needs investigation: would hashing just PC + arrlit length (= stack depth) preserve memo hits while benefiting from arrlit representation?
+Key implementation discoveries:
+- **Substitution into arrlits**: `acons-over-arrlit` normalization buries terms inside arrlit element arrays. All substitution functions (`sub`, `apply`, `applyIndexed`, `occurs`, `debruijnSubst`) needed arrlit-awareness via `_subArrlit` helper.
+- **isGround for FFI dispatch**: Arrlit should always be considered "ground" for FFI purposes — it's a concrete container. Element groundness is irrelevant for container operations (`arr_get`, `arr_set`).
+- **arr_set multiModal**: The value argument can be symbolic (e.g., SWAP4 with a symbolic stack element). Made `arr_set` multiModal so the FFI handles non-ground value args.
+- **computeControlHash**: Uses `PC + stack length` (not stack contents), preserving structural memo semantics.

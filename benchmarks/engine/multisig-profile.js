@@ -39,7 +39,7 @@ async function main() {
   const state = { linear: {}, persistent: {} };
   const basicFacts = [
     'pc N_75',
-    'sh ee',
+    'stack ae',
     'gas N_ffff',
     'caller sender_addr',
     'sender member01',

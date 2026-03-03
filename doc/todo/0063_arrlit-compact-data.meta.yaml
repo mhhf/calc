@@ -1,10 +1,10 @@
 title: "arrlit — compact array literals"
 created: 2026-03-02
 modified: 2026-03-03
-summary: "Compact array literal (arrlit) with ephemeral expansion, replacing per-element code/stack facts with single flat-array Store nodes. Stages 1-6 done (bytecode), Stage 7 (stack-as-arrlit) remaining."
+summary: "Compact array literal (arrlit) with ephemeral expansion, replacing per-element code/stack facts with single flat-array Store nodes. All 8 stages complete."
 tags: [data-structures, performance, evm, content-addressing, store, forward-engine, symexec]
 type: design
-status: in progress
+status: done
 priority: 4
 cluster: Performance
 depends_on: []

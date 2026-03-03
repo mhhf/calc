@@ -24,8 +24,8 @@ const path = require('path');
 
   // Parse state
   const resources = [
-    'pc e', 'code e (i e)', 'sh (s (s ee))',
-    'stack (s ee) (i (i e))', 'stack ee (o (i e))',
+    'pc e', 'code e (i e)',
+    'stack [(i (i e)), (o (i e))]',
   ];
   const linearState = {};
   for (const r of resources) {

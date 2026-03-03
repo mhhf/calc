@@ -39,7 +39,7 @@ async function main() {
 
   // Setup state
   const state = { linear: {}, persistent: {} };
-  const basicFacts = ['pc N_75', 'sh ee', 'gas N_ffff', 'caller sender_addr', 'sender member01'];
+  const basicFacts = ['pc N_75', 'stack ae', 'gas N_ffff', 'caller sender_addr', 'sender member01'];
   for (const f of basicFacts) {
     const h = await mde.parseExpr(f);
     state.linear[h] = 1;

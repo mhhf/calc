@@ -59,15 +59,13 @@ function fmt(h) {
   const resources = [
     'pc e',                        // PC = 0
     'code e (i e)',                // code[0] = 0x01 (ADD opcode)
-    'sh (s (s ee))',               // stack height = 2
-    'stack (s ee) (i (i e))',      // stack[1] = 3 (top)
-    'stack ee (o (i e))',          // stack[0] = 2
+    'stack [(i (i e)), (o (i e))]', // stack = [3, 2] (TOS=3, arrlit)
   ];
 
   console.log("Initial state:");
   console.log("  PC = 0");
   console.log("  code[0] = 0x01 (ADD)");
-  console.log("  stack = [3, 2]  (3 on top)");
+  console.log("  stack = [3, 2]  (3 on top, arrlit)");
   console.log();
 
   const linearState = {};
@@ -95,19 +93,9 @@ function fmt(h) {
       if (s.startsWith('pc ')) {
         const val = s.slice(3);
         console.log(`  PC = ${binToDec(val)}`);
-      } else if (s.startsWith('sh ')) {
-        // sh (s ee) means height 1
-        const val = s.slice(3);
-        const height = val.split('(s').length - 1;
-        console.log(`  stack height = ${height}`);
       } else if (s.startsWith('stack ')) {
-        // stack ee (i (o (i e))) means stack[0] = 5
-        const parts = s.slice(6).split(' ');
-        const idx = parts[0].split('(s').length - 1;
-        const val = parts.slice(1).join(' ');
-        console.log(`  stack[${idx}] = ${binToDec(val)}`);
+        console.log(`  ${s}`);
       } else if (s.startsWith('code ')) {
-        // code e (i e) means code[0] = 1
         console.log(`  ${s}`);
       }
     }

@@ -3,7 +3,7 @@
 % Symbolic storage test — nonce is a symbolic variable
 #symex
   pc 0 *
-  sh ee *
+  stack ae *
   mem empty_mem * memsize 0 *
   gas 0 *
 

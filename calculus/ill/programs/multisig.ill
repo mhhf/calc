@@ -19,7 +19,7 @@ isNotMember/z:
 #symex
   % Execution state
   pc 0 *
-  sh ee *
+  stack ae *
   mem empty_mem * memsize 0 *
   gas 0 *
 

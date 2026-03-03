@@ -156,9 +156,7 @@ async function main() {
     const resources = [
       'pc e',
       'code e (i e)',  // ADD opcode = 0x01
-      'sh (s (s ee))',
-      `stack (s ee) ${bigintToBinStr(tc.a)}`,
-      `stack ee ${bigintToBinStr(tc.b)}`,
+      `stack [${bigintToBinStr(tc.a)}, ${bigintToBinStr(tc.b)}]`,
     ];
 
     Store.clear();
