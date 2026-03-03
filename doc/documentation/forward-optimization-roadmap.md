@@ -69,24 +69,25 @@ No single component dominates. Target: 4ms (8.4µs/node).
 
 12. **hevm's compactness is representation, not branching.** hevm and calc have identical branching: 30 branch points, 31 leaves, same 5 behavioral outcomes × 6 members. hevm's 61 total nodes vs calc's 477 (memo) / 2125 (no memo) reflects representation granularity: hevm collapses 50+ deterministic opcodes between JUMPIs into single ITE nodes with symbolic expressions; calc makes each opcode an explicit tree node. calc with structural memo is 2.4× faster (22ms vs 52ms) because memo skips 5 of 6 isomorphic member subtrees, something hevm does not do. Verified with hevm v0.54.2 `--show-tree` on MultisigNoCall.sol. See `doc/documentation/calc-vs-hevm.md`.
 
+13. **Fusing pipeline stages doesn't help when the irreducible work dominates.** The inline predicted step proposal (merge tryMatch + mutateState into one pass) was analyzed and rejected. The eliminable overhead — intermediate `consumed` object, `theta.slice()`, `for..in` coercion — totals ~0.3ms for 415 calls. But FactSet binary search, Zobrist updates, FFI calls, and `Store.put` are identical regardless of fusion. The savings are the same class as lesson #11 (micro-allocations). Meanwhile, fusion duplicates ~100-150 LOC across match.js and state-ops.js, violating the clean `strategy → matching → mutation` separation. **Lesson: when the profile is flat, collapsing abstraction boundaries for constant-factor savings trades architectural clarity for unmeasurable gain.**
+
 ## What's Next
 
 Per-step and tree-level optimizations are mature. The profile is flat — no single dominant cost. Remaining gains come from reducing per-node overhead across all components, or from scaling triggers for larger programs.
 
 ### Closing the gap (5.0ms → 4ms target)
 
-| Optimization | Saves | Effort | Notes |
-|---|---|---|---|
-| Inline predicted step (skip tryMatch) | ~0.5-1.0ms | Medium | See below |
+The profile is flat — no single component dominates. The remaining gap is "death by a thousand cuts" that incremental JS-level optimization likely cannot close. The Zig port (estimated 5-8×, dominated by BigInt → u256 elimination) is the realistic path to sub-1ms explore.
 
-#### Disproven (empirically tested, no measurable gain)
+#### Disproven (empirically tested or analytically rejected)
 
 | Optimization | Expected | Actual | Why |
 |---|---|---|---|
 | Pooled match results | ~0.3-0.5ms | 0ms (noise) | ~1245 tiny allocs cost <25µs total; pool cleanup overhead offsets |
 | Precomputed consequent tagIds | ~0.1-0.2ms | 0ms (noise) | `Store.tagId()` = `tags[h]` single array lookup, ~5ns; extra branches cost more |
+| Inline predicted step | ~0.5-1.0ms | ~0.3ms (est.) | Fuses tryMatch+mutateState; actual savings are intermediate allocs (~consumed object, theta.slice), not the irreducible matching/mutation work. Damages clean tryMatch→mutateState separation of concerns for marginal gain. See analysis below. |
 
-Tested on feature branch `opt/pool-and-precompute-tagids` with 3×200 interleaved samples. Baseline trimmed median: 5.02ms. Optimized: 5.14ms (+2.2%, within stdev 0.7-0.9ms). The profile is flat — V8 already optimizes these allocation patterns via nursery GC and inline caches. Per-operation micro-optimizations at this scale cannot produce measurable gains.
+Pooled match results and precomputed tagIds tested on feature branch `opt/pool-and-precompute-tagids` with 3×200 interleaved samples. Baseline trimmed median: 5.02ms. Optimized: 5.14ms (+2.2%, within stdev 0.7-0.9ms). The profile is flat — V8 already optimizes these allocation patterns via nursery GC and inline caches. Per-operation micro-optimizations at this scale cannot produce measurable gains.
 
 ### Scaling triggers (larger programs)
 
@@ -104,18 +105,25 @@ Tested on feature branch `opt/pool-and-precompute-tagids` with 3×200 interleave
 | Per-term read cache (L2) | 50+ branches sharing memory prefixes | [TODO_0052](../todo/0052_memory-and-persistent-caching.md) |
 | Indexed persistent predicates | 50+ persistent facts per predicate | [TODO_0052](../todo/0052_memory-and-persistent-caching.md) |
 
-### Inline predicted step (skip tryMatch entirely)
+### ~~Inline predicted step~~ (rejected — marginal gain, damages architecture)
 
-For predicted nodes, we know the rule and the new PC value. The full tryMatch machinery (pool clear → theta fill → matchAllLinear → persistent proving → existential resolution → copy) is overkill. A compiled "step function" per rule could:
+For predicted nodes, we know the rule and the new PC value. The idea was to merge tryMatch + mutateState into a single compiled step, eliminating intermediate allocations.
 
-1. Look up the 2-3 linear facts by tag (O(1) group access)
-2. Extract bindings via delta bypass (direct child extraction, no unification)
-3. Prove persistent goals via compiled FFI steps (already exist as `persistentSteps`)
-4. Write consumed/produced facts directly into state (no intermediate objects)
+**What it would save:** The `consumed` object copy (~150ns), `theta.slice()` (~150ns), `for..in + Number()` coercion in consumeLinear (~300ns), Map clear/setup (~40ns). Total: ~0.3ms for 415 predicted calls.
 
-This merges tryMatch + mutateState into a single compiled step, eliminating both the match result allocation and the separate mutation pass. For 415 predicted calls at ~6.6µs combined (tryMatch + mutateState), even a 30% reduction saves ~0.8ms.
+**What it would NOT save:** The irreducible work dominates — FactSet binary search + Zobrist updates in consume/produce, FFI calls for persistent proving, `matchIdx` unification, `Store.put` for compiled substitution. These costs are identical whether tryMatch and mutateState are separate or fused.
 
-Risk: high implementation complexity. Each rule has different antecedent/consequent shapes. Would need a per-rule compiled closure or a bytecode interpreter. The V8 megamorphic lesson (RES_0069: 59 closures → 25% regression) applies — must stay within IC threshold or use a single polymorphic dispatch.
+**Why rejected:**
+
+1. **Marginal gain.** Estimated ~0.3ms (5.6% of 5.3ms), same class of micro-allocation savings that lesson #11 proved unmeasurable for pooling. Needs empirical validation that may well show noise.
+
+2. **Damages separation of concerns.** The current `strategy → match.js (tryMatch) → state-ops.js (mutateState)` pipeline cleanly separates indexing, matching+proving, and state mutation. Fusing them creates ~100-150 LOC of duplicated logic. Any future change to matching, FactSet operations, preserved optimization, or persistent proving must be mirrored in two places.
+
+3. **Megamorphic constraint.** Per-rule closures are out (RES_0069: 59 closures → 25% regression). The only safe approach is a single defunctionalized function reading `rule` data fields — which ends up doing the same work as the separate functions, just in one pass.
+
+4. **EVM-only.** Prediction requires a fingerprint predicate + bytecode array. Non-EVM programs get zero benefit.
+
+5. **Fails the suckless test.** High complexity, low payoff, poor generality, damages a clean architecture.
 
 ### ~~Disc-tree query caching~~ (obsolete)
 

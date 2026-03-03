@@ -1,42 +1,43 @@
 tags:
   linear-logic: 44
   forward-chaining: 27
-  symexec: 25
-  performance: 24
-  research: 20
+  symexec: 26
+  performance: 25
+  research: 21
+  optimization: 20
+  architecture: 19
   chr: 18
-  optimization: 18
-  architecture: 17
-  clf: 17
-  proof-theory: 17
+  clf: 18
+  proof-theory: 18
+  evm: 13
+  implementation: 13
   symbolic-execution: 13
-  evm: 12
+  focusing: 12
   session-types: 12
-  focusing: 11
-  implementation: 10
+  forward-engine: 10
   ownership: 10
-  forward-engine: 9
   graded-types: 9
   memory-model: 9
   QTT: 9
   soundness: 9
   theory: 9
+  content-addressing: 8
+  dependent-types: 8
   hevm: 8
   tooling: 8
   verification: 8
+  adjoint-logic: 7
   authorization: 7
   benchmarking: 7
-  dependent-types: 7
+  data-structures: 7
   display-calculus: 7
   fixed-points: 7
+  lax-monad: 7
   metaproofs: 7
   sequent-calculus: 7
-  adjoint-logic: 6
   coinduction: 6
   consensus: 6
-  content-addressing: 6
-  data-structures: 6
-  lax-monad: 6
+  logical-framework: 6
   muMALL: 6
   oplus: 6
   CLP: 5
@@ -53,6 +54,7 @@ tags:
   semiring: 5
   accounting: 4
   bisimulation: 4
+  Ceptre: 4
   CHR: 4
   cut-elimination: 4
   cyclic-proofs: 4
@@ -62,7 +64,7 @@ tags:
   hash-consing: 4
   induction: 4
   invariants: 4
-  logical-framework: 4
+  lf: 4
   memoization: 4
   modalities: 4
   polymorphism: 4
@@ -71,13 +73,14 @@ tags:
   separation-logic: 4
   smt: 4
   store: 4
+  type-theory: 4
   unification: 4
   WAM: 4
   adjunction: 3
   arena-allocation: 3
   blockchain: 3
   category-theory: 3
-  Ceptre: 3
+  Celf: 3
   concurrency: 3
   DSL: 3
   ethereum: 3
@@ -86,7 +89,6 @@ tags:
   higher-order: 3
   incremental: 3
   indexing: 3
-  lf: 3
   matching: 3
   modal-logic: 3
   MPST: 3
@@ -97,7 +99,6 @@ tags:
   semi-naive: 3
   state-merging: 3
   termination: 3
-  type-theory: 3
   UI: 3
   angr: 2
   anti-unification: 2
@@ -106,7 +107,6 @@ tags:
   benchmark: 2
   branching: 2
   CEGAR: 2
-  Celf: 2
   completeness: 2
   connectives: 2
   constraint-propagation: 2
@@ -129,14 +129,17 @@ tags:
   generalization: 2
   Granule: 2
   HCP: 2
+  hereditary-substitution: 2
   HVM: 2
   hypersequents: 2
   Idris-2: 2
   interaction-nets: 2
   JavaScript: 2
   judgment: 2
+  kernel: 2
   KLEE: 2
   layers: 2
+  LCF: 2
   LEAPS: 2
   learning: 2
   linear-types: 2
@@ -157,7 +160,9 @@ tags:
   primitives: 2
   principals: 2
   process-algebra: 2
+  proof-assistants: 2
   proof-of-stake: 2
+  prover-architecture: 2
   residuation: 2
   resource-tracking: 2
   roadmap: 2
@@ -171,6 +176,7 @@ tags:
   term-representation: 2
   term-rewriting: 2
   TREAT: 2
+  type-checking: 2
   TypedArrays: 2
   union-find: 2
   v2: 2
@@ -196,6 +202,7 @@ tags:
   BDI: 1
   Belnap: 1
   bibliography: 1
+  bidirectional: 1
   binlit: 1
   BLL: 1
   buffers: 1
@@ -274,7 +281,6 @@ tags:
   HAMT: 1
   hash-tables: 1
   haskell: 1
-  hereditary-substitution: 1
   hypersequent: 1
   ILL: 1
   incremental-solving: 1
@@ -284,13 +290,11 @@ tags:
   interning: 1
   interval-tree: 1
   K-framework: 1
-  kernel: 1
   kevm: 1
   Knuth-Bendix: 1
   Kripke-structures: 1
   Lafont: 1
   Lamping: 1
-  LCF: 1
   LF: 1
   linear-negation: 1
   literature: 1
@@ -313,6 +317,7 @@ tags:
   milestones: 1
   mix-rule: 1
   mode-checking: 1
+  modularity: 1
   moggi: 1
   monad: 1
   mu-calculus: 1
@@ -343,7 +348,7 @@ tags:
   pos: 1
   production-systems: 1
   proof-as-process: 1
-  proof-assistants: 1
+  proof-certificates: 1
   proof-market: 1
   proof-of-authority: 1
   proof-systems: 1
@@ -351,7 +356,6 @@ tags:
   proofs: 1
   prototype: 1
   provenance: 1
-  prover-architecture: 1
   "Q&A": 1
   qchr: 1
   qol: 1
@@ -361,6 +365,7 @@ tags:
   quiescence: 1
   ranking-functions: 1
   reachability: 1
+  refactor: 1
   references: 1
   relational-e-matching: 1
   representation: 1
@@ -375,6 +380,7 @@ tags:
   says-modality: 1
   scheduling: 1
   security: 1
+  separation-of-concerns: 1
   sequent: 1
   size-change: 1
   Skolem: 1
@@ -410,7 +416,6 @@ tags:
   Triton: 1
   trusted-computation: 1
   tutorial: 1
-  type-checking: 1
   type-constructors: 1
   type-system: 1
   universal: 1

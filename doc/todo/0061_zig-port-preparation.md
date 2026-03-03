@@ -207,13 +207,15 @@ Each phase is independently testable via FFI bridge (Zig compiled to shared libr
 | Store.put | 0.3µs | 0.05µs | 6× | No GC, no Map overhead |
 | FactSet.insert | 0.15µs | 0.03µs | 5× | Binary search on raw memory |
 | matchAllLinear | 4µs | 0.8µs | 5× | No allocation, branch-free |
-| provePersistentGoals | 2µs | 0.5µs | 4× | FFI already near-native |
+| provePersistentGoals | 2µs | 0.15µs | **13×** | BigInt→u256 (20-40× for arithmetic), state lookup same |
 | mutateState | 1µs | 0.2µs | 5× | Arena insert is ~4 writes |
-| **explore() total** | **7ms** | **1.5ms** | **4.7×** | solc_symbolic, 477 nodes |
+| **explore() total** | **5.3ms** | **~0.7ms** | **~7.5×** | solc_symbolic, 477 nodes |
 
-Conservative estimate: **4–5× overall speedup** for symexec workloads.
+The provePersistentGoals speedup is higher than other components because V8 BigInt is heap-allocated with GC tracking (~100-200ns per arithmetic op) while Zig u256 is stack-allocated (`[4]u64`, ~5ns per op). All EVM persistent goals (inc, plus, neq, mul) are FFI arithmetic — this is where the Zig port gains most.
 
-Main wins: elimination of GC pauses (intermittent 2× spikes visible in current benchmarks), cache-friendly SoA iteration, branch-free matching dispatch.
+Conservative estimate: **5–8× overall speedup** for symexec workloads. The per-component table underestimates BigInt elimination: V8 BigInt arithmetic (~100-200ns/op, heap-allocated) → Zig u256 (`[4]u64`, stack-allocated, ~5ns/op) is 20-40× for FFI arithmetic alone (inc, plus, neq, mul). Since persistent proving is ~34% of explore time, the 4× estimate for `provePersistentGoals` should be 8-15×. Additionally, GC pause elimination removes the bimodal 2× variance, and SIMD group scanning could add another 2× within the Zig baseline.
+
+Main wins: BigInt → u256 elimination (dominant), GC pause elimination (intermittent 2× spikes visible in current benchmarks), cache-friendly SoA iteration, branch-free matching dispatch, deterministic performance (no JIT warmup/variance).
 
 ## V8 Deoptimization Learnings
 

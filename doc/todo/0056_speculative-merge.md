@@ -1,8 +1,8 @@
 ---
 title: Speculative State Merging via Anti-Unification
 created: 2026-02-27
-modified: 2026-02-27
-summary: Replace EVM-specific structural memo with general MSG-based state merging at oplus branch points
+modified: 2026-03-03
+summary: "Replace EVM-specific structural memo with general fingerprint-based control hash (~30 LOC, Phase 1). Speculation (Phases 2-3) analyzed and rejected for multisig pattern — adds ~21ms overhead with zero convergence. Phase 1 is the only actionable item: generalize computeControlHash to auto-detect control predicates from fingerprint config."
 tags:
   - symexec
   - optimization
@@ -11,8 +11,8 @@ tags:
   - forward-chaining
   - linear-logic
 type: design
-status: researching
-priority: 4
+status: backlogged
+priority: 3
 cluster: Symexec
 depends_on: []
 required_by: []

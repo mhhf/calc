@@ -1,3 +1,17 @@
+---
+title: "arrlit — Compact Array Literals"
+created: 2026-03-02
+modified: 2026-03-03
+summary: "Compact array representation for EVM bytecode and stack. Bytecode as single arrlit (764 facts → 1), stack as arrlit with ephemeral acons/ae expansion. All 8 stages complete. explore() −57%, multisig −51.5%."
+tags: [symexec, performance, optimization, data-structures, evm, content-addressing, forward-engine]
+type: implementation
+status: done
+priority: 7
+cluster: Performance
+depends_on: []
+required_by: []
+---
+
 # TODO_0063: arrlit — compact array literals
 
 ## Problem

@@ -2,7 +2,7 @@
 title: "Symexec Per-Step Optimization Analysis"
 created: 2026-02-28
 modified: 2026-03-03
-summary: "Deep profiling of symbolic multisig explore(). All JS-level optimizations exhausted: TODO_0059 (FactSet), Opt_A (snapshots), Opt_G (persistent steps), FFI-first proving. 16.6ms → ~8.1ms (2.0×). Only Opt_H (threaded code, ~1.7ms) remains open."
+summary: "Deep profiling of symbolic multisig explore(). All JS-level optimizations complete: TODO_0059 (FactSet), Opt_A (snapshots), Opt_G (persistent steps), FFI-first proving, Opt_H (fingerprint prediction). 16.6ms → 5.3ms (3.1×). Inline predicted step analyzed and rejected (marginal gain, damages architecture). JS-level optimization is exhausted; remaining gains require Zig port."
 tags:
   - symexec
   - optimization
@@ -11,12 +11,11 @@ tags:
   - profiling
   - evm
 type: design
-status: in progress
+status: done
 priority: 5
 cluster: Performance
 depends_on: []
 required_by: []
-starred: true
 ---
 
 # TODO 0058: Symexec Per-Step Optimization Analysis
@@ -25,12 +24,12 @@ starred: true
 
 MultisigNoCall.sol (solc 0.8.28, 1040 bytes), symbolic sender + nonce, `structuralMemo: true`.
 
-| Metric | Original | After 0059 | After Opt_A | After Opt_G + FFI-first | Current |
+| Metric | Original | After 0059 | After Opt_A | After Opt_G + FFI-first | + arrlit (0063) + Opt_H |
 |---|---|---|---|---|---|
-| Nodes | 689 | 689 | 689 | 689 | 689 |
-| Median time | **16.6ms** | **11.6ms** | **~9.2ms** | **~8.1ms** | **~8.1ms** |
-| Per-node cost | 24µs | 16.8µs | ~13.3µs | ~11.8µs | ~11.8µs |
-| vs original | — | 1.43× | 1.8× | 2.0× | 2.0× |
+| Nodes | 689 | 689 | 689 | 689 | 477 |
+| Median time | **16.6ms** | **11.6ms** | **~9.2ms** | **~8.1ms** | **~5.3ms** |
+| Per-node cost | 24µs | 16.8µs | ~13.3µs | ~11.8µs | ~11.1µs |
+| vs original | — | 1.43× | 1.8× | 2.0× | 3.1× |
 
 ## Completed Optimizations
 
@@ -85,19 +84,25 @@ Swapped proving order in `provePersistentGoals` from state lookup → FFI → cl
 
 Attempted (commit `647583c`) and reverted (commit `266b7b5`). The conditional EqNeqSolver skip for non-oplus rules produced no measurable performance gain — solver checkpoint/restore is already ~0.5µs per call, negligible at 477 calls total.
 
-## Remaining
+## Completed (post-arrlit)
 
-### Opt_H: Threaded code / fingerprint prediction (~1.7ms estimated)
+### Opt_H: Fingerprint prediction (DONE, stage 16 in roadmap)
 
-After applying a rule, the new PC value is known from the consequent → determines the next fingerprint and candidate rule. 670 predicted deterministic steps × ~2.5µs = ~1.7ms saved by skipping `findAllMatches` entirely.
+After applying a rule, the new PC value is known from the consequent → determines the next fingerprint and candidate rule. Skips `findAllMatches` for 87% of nodes. Measured ~3% improvement (per-call cost is small at ~2µs).
 
-Does NOT hit the megamorphic wall: prediction is a lookup table (PC → rule), not closure dispatch. The predicted rule uses the same monomorphic `tryMatch` path.
+Combined with TODO_0063 (arrlit), the benchmark moved from ~8.1ms (pre-arrlit, 689 nodes) to ~5.3ms (477 nodes, 11.1µs/node). The arrlit representation change halved absolute cost by reducing cloning and matching overhead.
 
-**Projected: ~8.1ms → ~6.4ms (2.6× vs original).**
+### ~~Inline predicted step~~ — REJECTED
+
+Analyzed and rejected (2026-03-03). Fusing tryMatch + mutateState into one pass saves only ~0.3ms (intermediate allocs), not the ~0.8ms originally estimated. Irreducible work (FactSet binary search, Zobrist, FFI, Store.put) dominates. Damages the clean `strategy → match → mutate` separation. See `doc/documentation/forward-optimization-roadmap.md` lesson #13.
 
 ### ~~Opt_C: Per-predicate persistent dispatch~~ — SUBSUMED
 
 Subsumed by Opt_G for all EVM persistent predicates (inc, plus, neq, mul). No remaining value for the current benchmark target.
+
+## JS-Level Optimization: Exhausted
+
+The profile is flat at ~5.3ms / 477 nodes (~11µs/node). No single component dominates. Micro-allocation optimizations (pooling, precomputed tagIds, inline predicted step) have all been tested or analyzed and shown to be below the noise floor. The remaining path to sub-1ms is the Zig port (estimated 5-8× overall speedup, dominated by BigInt → u256 elimination in FFI arithmetic).
 
 ## Key Insights
 
