@@ -1,6 +1,6 @@
 ---
 title: Prover Architecture (Lasagne)
-modified: 2026-02-23
+modified: 2026-03-03
 summary: Five-layer prover architecture separating verification, search, focusing, and strategy.
 tags: [architecture, prover, focusing, polarity, layers]
 ---
@@ -72,15 +72,30 @@ lib/prover/                      # Backward proof search
 └── index.js                     # convenience re-exports
 
 lib/engine/                      # Forward execution engine (L4c/L4d)
-├── match.js                     # pattern matching + indexing + persistent proving
-├── strategy.js                  # rule selection: fingerprint, disc-tree, predicate layers
+├── optimizer.js                 # profile-driven engine config (bare/fast/evm)
+├── match.js                     # pattern matching + persistent proving
+├── strategy.js                  # rule selection: strategy stack builder
 ├── forward.js                   # execution + committed-choice main loop
 ├── symexec.js                   # exhaustive DFS exploration + mutation/undo
+├── state-ops.js                 # state mutation: consume/produce/mutateState
 ├── compile.js                   # rule compilation (de Bruijn slots, metavar analysis)
 ├── rule-analysis.js             # pattern roles, compiled substitution recipes
+├── constraint.js                # EqNeqSolver (union-find with forbid list)
 ├── disc-tree.js                 # discrimination tree indexing
 ├── prove.js                     # backward chaining for persistent antecedents
 ├── ffi/                         # foreign function interface (arithmetic, etc.)
+├── opt/                         # extracted optimization modules (toggleable)
+│   ├── ffi.js                   # FFI-accelerated persistent proving
+│   ├── delta-bypass.js          # direct child extraction for flat patterns
+│   ├── preserved.js             # skip re-producing unchanged facts
+│   ├── compiled-sub.js          # precompiled substitution recipes
+│   ├── fingerprint.js           # fingerprint detection + layer factory
+│   ├── disc-tree-opt.js         # disc-tree layer factory
+│   ├── compiled-pers.js         # compiled persistent step dispatch
+│   ├── loli-drain.js            # persistent-trigger loli fusion
+│   ├── structural-memo.js       # control-hash subtree memoization
+│   ├── prediction.js            # threaded code dispatch (Opt_H)
+│   └── constraint.js            # solver integration (feed + SAT filter)
 ├── convert.js                   # .ill → content-addressed hashes
 ├── hex.js                       # hex/binary utilities
 └── index.js                     # loader + API
@@ -212,28 +227,37 @@ graph TB
     EXEC["<b>Execution</b> — forward.js<br/>applyMatch, run, createState"]
     STRAT["<b>Strategy</b> — strategy.js<br/>fingerprint → disc-tree → predicate"]
     MAT["<b>Matching</b> — match.js<br/>tryMatch, provePersistentGoals, matchLoli"]
+    OPT["<b>Optimizations</b> — opt/<br/>11 toggleable modules"]
+    OPTIM["<b>Optimizer</b> — optimizer.js<br/>profile → engine context"]
     COMP["<b>Compilation</b> — compile.js, rule-analysis.js<br/>De Bruijn slots, pattern roles, compiled sub"]
     STO["<b>Store</b> — lib/kernel/<br/>Content-addressed arena, matchIndexed"]
 
     EXP --> EXEC
     EXP --> STRAT
+    EXP --> OPT
     EXEC --> STRAT
     STRAT --> MAT
     MAT --> COMP
     MAT --> STO
     COMP --> STO
+    OPTIM --> STRAT
+    OPT --> MAT
 
     style MAT fill:#cce5ff,stroke:#004085
     style STRAT fill:#e2d5f1,stroke:#5a3d8a
     style EXEC fill:#d4edda,stroke:#155724
     style EXP fill:#fff3cd,stroke:#856404
+    style OPT fill:#fce4ec,stroke:#880e4f
+    style OPTIM fill:#fce4ec,stroke:#880e4f
 ```
+
+**Profile-driven optimization.** All engine optimizations live in `lib/engine/opt/` as independently toggleable modules. The `optimizer.js` resolves a profile (`bare`/`fast`/`evm`) into an engine context with the appropriate strategy stack at startup — no runtime branching in hot loops. The `bare` profile disables all optimizations and serves as the correctness baseline. See `doc/documentation/optimization-architecture.md`.
 
 **Program-aware indexing (auto-detected).** The strategy stack includes a fingerprint layer that detects dominant discriminating predicates from rule structure. For EVM, `code(PC, OPCODE)` is the discriminator — 40 of 44 rules have a ground opcode child. The fingerprint layer resolves these in O(1). This is auto-detected by `detectFingerprintConfig()` from rule patterns; no program-specific code exists. The disc-tree layer (general-purpose trie) handles all remaining rules. See `doc/documentation/strategy-layers.md`.
 
 **Persistent proving.** Persistent antecedents (`!C` in `A * B * !C -o { D }`) are resolved in two levels: (1) state lookup — check if the fact already exists in `state.persistent`, (2) backward prove — FFI as O(1) fast path, then clause resolution via `prove.js` as fallback. FFI handles arithmetic (inc, plus, neq, mul) and is conceptually an optimization within backward proving, not a separate mechanism.
 
-**Mutation+undo.** During DFS exploration, `state`, `stateIndex`, and `pathVisited` are mutated in-place and restored after each child subtree returns. Snapshots are taken only at terminal nodes. See `doc/documentation/symexec-optimizations.md`.
+**Mutation+undo.** During DFS exploration, state is mutated in-place via FactSet + Arena and restored after each child subtree returns. Snapshots are taken only at terminal nodes. See `doc/documentation/symexec-optimizations.md`.
 
 ## L5 — UI Layer
 

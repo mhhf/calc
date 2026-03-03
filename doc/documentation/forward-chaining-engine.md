@@ -1,7 +1,7 @@
 ---
 title: "Forward Chaining Engine — Architecture & Implementation"
 created: 2026-02-18
-modified: 2026-02-23
+modified: 2026-03-03
 summary: How the CALC forward chaining engine works — modules, data flow, matching, strategy, optimizations.
 tags: [implementation, forward-chaining, engine, architecture, CHR]
 ---
@@ -15,19 +15,39 @@ The forward engine executes ILL programs by multiset rewriting. A state (multise
 ```mermaid
 graph TB
     subgraph Compilation["Compile Time"]
-        COMPILE["<b>compile.js</b> (315 lines)<br/>Rule compilation:<br/>flatten, de Bruijn slots,<br/>discriminator detection"]
+        COMPILE["<b>compile.js</b> (534 lines)<br/>Rule compilation:<br/>flatten, de Bruijn slots,<br/>discriminator detection"]
         ANALYSIS["<b>rule-analysis.js</b> (285 lines)<br/>Pattern classification:<br/>preserved, delta, consumed,<br/>compiled substitution"]
     end
 
-    subgraph Runtime["Runtime"]
-        MATCH["<b>match.js</b> (730 lines)<br/>Pattern matching primitives:<br/>tryMatch, provePersistentGoals,<br/>matchLoli, state indexing"]
-        STRATEGY["<b>strategy.js</b> (237 lines)<br/>Rule selection:<br/>fingerprint, disc-tree, predicate<br/>findMatch, findAllMatches"]
-        FORWARD["<b>forward.js</b> (145 lines)<br/>Execution + main loop:<br/>applyMatch, run, createState"]
-        SYMEXEC["<b>symexec.js</b> (590 lines)<br/>Exhaustive exploration:<br/>explore, mutateState/undo,<br/>ExploreContext, tree utils"]
+    subgraph Config["Configuration"]
+        OPTIM["<b>optimizer.js</b> (132 lines)<br/>Profile resolution,<br/>engine creation,<br/>strategy stack assembly"]
+    end
+
+    subgraph Runtime["Runtime (core)"]
+        MATCH["<b>match.js</b> (758 lines)<br/>Pattern matching primitives:<br/>tryMatch, provePersistentGoals,<br/>matchLoli"]
+        STRATEGY["<b>strategy.js</b> (284 lines)<br/>Strategy stack builder:<br/>findMatch, findAllMatches"]
+        STATEOPS["<b>state-ops.js</b> (99 lines)<br/>mutateState, consume,<br/>produce linear/persistent"]
+        FORWARD["<b>forward.js</b> (128 lines)<br/>Execution + main loop:<br/>applyMatch, run, createState"]
+        SYMEXEC["<b>symexec.js</b> (333 lines)<br/>Exhaustive DFS exploration:<br/>explore, mutation+undo"]
+    end
+
+    subgraph Opt["opt/ — Toggleable Optimizations (641 lines)"]
+        OPT_FFI["ffi.js — FFI persistent proving"]
+        OPT_FP["fingerprint.js — O(1) discriminator"]
+        OPT_DT["disc-tree-opt.js — trie layer"]
+        OPT_DELTA["delta-bypass.js — flat pattern shortcut"]
+        OPT_PRES["preserved.js — skip unchanged facts"]
+        OPT_CSUB["compiled-sub.js — Store.put recipes"]
+        OPT_CPERS["compiled-pers.js — compiled steps"]
+        OPT_LOLI["loli-drain.js — eager loli fusion"]
+        OPT_MEMO["structural-memo.js — control hash"]
+        OPT_PRED["prediction.js — threaded code"]
+        OPT_CONS["constraint.js — solver integration"]
     end
 
     subgraph Support["Support"]
         DTREE["<b>disc-tree.js</b> (242 lines)<br/>Discrimination tree indexing"]
+        CONSTR["<b>constraint.js</b> (184 lines)<br/>EqNeqSolver"]
         PROVE["<b>prove.js</b> (350 lines)<br/>Backward chaining"]
         FFI["<b>ffi/</b><br/>Foreign function interface"]
         CONVERT["<b>convert.js</b> (403 lines)<br/>.ill → content-addressed hashes"]
@@ -39,6 +59,7 @@ graph TB
         SUBST["substitute.js — applyIndexed, subCompiled"]
     end
 
+    OPTIM --> STRATEGY
     COMPILE --> ANALYSIS
     MATCH --> UNIFY
     MATCH --> SUBST
@@ -51,7 +72,11 @@ graph TB
     FORWARD --> COMPILE
     SYMEXEC --> STRATEGY
     SYMEXEC --> MATCH
-    SYMEXEC --> SUBST
+    SYMEXEC --> STATEOPS
+    SYMEXEC --> Opt
+    STATEOPS --> SUBST
+    Opt --> MATCH
+    Opt --> STATEOPS
     PROVE --> FFI
     PROVE --> UNIFY
 
@@ -61,6 +86,8 @@ graph TB
     style SYMEXEC fill:#fff3cd,stroke:#856404
     style COMPILE fill:#e8e8e8,stroke:#666
     style ANALYSIS fill:#e8e8e8,stroke:#666
+    style OPTIM fill:#fce4ec,stroke:#880e4f
+    style Opt fill:#fce4ec,stroke:#880e4f
 ```
 
 ## Data Flow: .ill to Execution
@@ -205,36 +232,46 @@ while steps < maxSteps:
 
 ### Exhaustive: `symexec.explore()`
 
-DFS over all execution paths with mutation + undo:
+DFS over all execution paths with mutation + undo via FactSet Arena:
 
 ```mermaid
 flowchart TB
-    START["explore(state, rules)"] --> INIT["Create mutable state copy<br/>Build ExploreContext (index + hash)"]
+    START["explore(state, rules, {engine})"] --> INIT["Create mutable State (FactSet)<br/>Build strategy, solver, prediction"]
     INIT --> DFS
 
-    subgraph DFS["go(depth, ctx)"]
-        CYCLE{"cycle?<br/>hash in<br/>pathVisited"} --> |"yes"| CYCLENODE["CYCLE node"]
-        CYCLE --> |"no"| DEPTH{"depth<br/>limit?"}
+    subgraph DFS["go(depth, predicted)"]
+        CYCLE{"cycle?<br/>stateHash in<br/>pathVisited"} --> |"yes"| CYCLENODE["CYCLE node"]
+        CYCLE --> |"no"| MEMO{"memo?<br/>global or<br/>structural"}
+        MEMO --> |"yes"| MEMONODE["MEMO node"]
+        MEMO --> |"no"| DEPTH{"depth<br/>limit?"}
         DEPTH --> |"yes"| BOUNDNODE["BOUND node"]
-        DEPTH --> |"no"| FIND["findAllMatches()"]
+        DEPTH --> |"no"| PRED{"predicted<br/>rule?"}
+        PRED --> |"yes, verify"| TRYMATCH["tryMatch(predicted)"]
+        PRED --> |"no"| FIND["findAllMatches()"]
+        TRYMATCH --> |"hit"| FOREACH
+        TRYMATCH --> |"miss"| FIND
         FIND --> |"none"| LEAF["LEAF node<br/>(snapshot state)"]
-        FIND --> |"matches found"| FOREACH
+        FIND --> |"matches"| FOREACH
 
         subgraph FOREACH["For each match"]
-            MUTATE["mutateState()<br/>in-place + undo log"]
-            CHILD_CTX["makeChildCtx()<br/>incremental index + hash"]
-            RECURSE["go(depth+1, childCtx)"]
-            UNDO_IDX["undoIndexChanges()"]
-            UNDO_STATE["undoMutate()"]
+            CHECKPOINT["Arena checkpoint<br/>(linArena, perArena, solver)"]
+            MUTATE["mutateState()"]
+            DRAIN["drainPersistentLolis()"]
+            FEED["feedPersistent(solver)"]
+            PREDICT["predictNext(m)"]
+            RECURSE["go(depth+1, pred)"]
+            UNDO["Arena restore<br/>(undo all mutations)"]
 
-            MUTATE --> CHILD_CTX --> RECURSE --> UNDO_IDX --> UNDO_STATE
+            CHECKPOINT --> MUTATE --> DRAIN --> FEED --> PREDICT --> RECURSE --> UNDO
         end
     end
 
-    DFS --> TREE["Execution tree<br/>leaf / branch / bound / cycle"]
+    DFS --> TREE["Execution tree<br/>leaf / branch / bound /<br/>cycle / memo / dead"]
 ```
 
-**Core invariant:** When `go()` returns, state, stateIndex, and pathVisited are in their original state.
+**Core invariant:** When `go()` returns, state (FactSet) and solver are in their original state via Arena undo.
+
+Optimization modules called in the hot loop (`go`): `drainPersistentLolis` (opt/loli-drain.js), `feedPersistent` + `filterAltsBySAT` (opt/constraint.js), `predictNext` (opt/prediction.js), `computeControlHash` + `recordMemo` (opt/structural-memo.js). All imported directly — no runtime dispatch. See `doc/documentation/optimization-architecture.md`.
 
 ## Rule Compilation Pipeline
 
@@ -267,22 +304,25 @@ Guarded loli continuations (e.g. `!eq V 0 -o { stack SH 1 }`) become linear fact
 
 ## Optimization Summary
 
-| Stage | What | Speedup | Technique |
-|-------|------|---------|-----------|
-| Strategy stack | Rule selection | 12.7x | O(1) fingerprint + disc-tree vs O(R) scan |
-| Incremental context | State hashing + indexing | 1.7x | O(delta) XOR hash + incremental index |
-| Mutation + undo | State management | 1.8x | In-place mutation, undo log, snapshot only at terminals |
-| Index + Set undo | Index management | 1.25x | Mutable index + undo, mutable pathVisited |
-| Direct FFI bypass | Persistent proving | 1.2x | O(1) FFI call inside backward prove |
-| De Bruijn theta | Substitution lookup | 2.1x | Compile-time slot assignment, O(1) access |
-| Delta bypass | Linear matching | ~8% | Direct Store.child extraction for flat patterns |
-| Compiled substitution | Consequent production | ~8% | Store.put recipe vs generic applyIndexed |
-| Disc-tree | Catch-all rule selection | ~0% at 44 rules | Trie over preorder traversals |
-| Flat undo log | State undo | ~13% | Flat array vs object allocation |
-| Numeric tagId | Tag comparison | ~2% | Numeric comparison vs string |
-| Unified loli matching | Soundness fix | 62x | Dead branches → stuck leaves |
+All optimizations live in `lib/engine/opt/` as toggleable modules. See `doc/documentation/optimization-architecture.md` for the profile system and module details.
 
-Total: **181ms → ~1ms** median for the 210-node multisig execution tree (43 rules).
+| Stage | What | Speedup | Module |
+|-------|------|---------|--------|
+| Strategy stack | Rule selection | 12.7x | `opt/fingerprint.js`, `opt/disc-tree-opt.js` |
+| Mutation + undo | State management | 1.8x | Core (FactSet + Arena) |
+| Direct FFI bypass | Persistent proving | 1.2x | `opt/ffi.js` |
+| De Bruijn theta | Substitution lookup | 2.1x | Core (compile.js) |
+| Delta bypass | Linear matching | ~8% | `opt/delta-bypass.js` |
+| Compiled substitution | Consequent production | ~8% | `opt/compiled-sub.js` |
+| Preserved skip | Skip unchanged facts | ~6-16% | `opt/preserved.js` |
+| Disc-tree | Catch-all rule selection | ~0% at 44 rules | `opt/disc-tree-opt.js` |
+| Compiled persistent | Step dispatch closures | ~3% | `opt/compiled-pers.js` |
+| EqNeq solver | Branch pruning | ~10% (symbolic) | `opt/constraint.js` |
+| Structural memo | Isomorphic subtree reuse | 4.4x (symmetric) | `opt/structural-memo.js` |
+| Loli drain | Eager persistent-loli fusion | ~2% | `opt/loli-drain.js` |
+| Prediction (Opt_H) | Skip findAllMatches | ~3% | `opt/prediction.js` |
+
+Total: **181ms → ~5ms** for the symbolic multisig (477 nodes, memo enabled).
 
 ## CHR Correspondence
 
@@ -308,10 +348,12 @@ Soundness: Betz & Fruhwirth (2013) — every CHR derivation corresponds to a val
 
 **Strategy stack over Rete network.** Layered indexing auto-detected from rule structure. Each layer claims rules; unclaimed fall through.
 
-**Mutation + undo over immutable state.** DFS mutates one shared state in-place, restoring after each child. Only terminals snapshot.
+**Mutation + undo over immutable state.** DFS mutates one shared state in-place via FactSet + Arena, restoring after each child. Only terminals snapshot.
 
 **De Bruijn indexed theta.** Metavars get compile-time slot indices. Theta is a flat array.
 
 **State lookup before backward proving.** Check if a persistent fact is already known before attempting to prove it via FFI or clause resolution.
 
 **FFI as backward prove optimization.** FFI (arithmetic) is conceptually a fast path within backward proving, not a separate proving mechanism.
+
+**Optimizations as toggleable modules.** All 11 optimizations live in `lib/engine/opt/` and are controlled by profile flags resolved at engine creation. The `bare` profile (all off) serves as the correctness baseline. No runtime branching in hot loops — function pointers are resolved once. See `doc/documentation/optimization-architecture.md`.

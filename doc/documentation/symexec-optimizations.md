@@ -1,13 +1,13 @@
 ---
 title: Symexec DFS Mutation+Undo Pattern
-modified: 2026-02-15
+modified: 2026-03-03
 summary: Why explore() mutates state, index, and pathVisited in-place
 tags: [performance, symexec, architecture]
 ---
 
 # Symexec DFS Mutation+Undo Pattern
 
-The `explore()` function in `lib/prover/strategy/symexec.js` uses a mutation+undo
+The `explore()` function in `lib/engine/symexec.js` uses a mutation+undo
 pattern for three data structures during DFS traversal. This document explains
 why each exists and the invariant they maintain.
 
@@ -19,73 +19,49 @@ are in exactly the state they were when `go()` was called.**
 This is enforced by pairing every mutation with an undo operation after the child
 subtree returns.
 
-## 1. State mutation+undo
+## 1. State mutation+undo (FactSet + Arena)
 
 ```
-mutateState(state, consumed, theta, linear, persistent) → undo log
-  go(child)
-undoMutate(state, undo)
+linCp = linArena.checkpoint()
+perCp = perArena.checkpoint()
+mutateState(state, consumed, theta, linearPats, persistentPats, slots, rule, linArena, perArena)
+  go(depth + 1, pred)
+state.persistent.undo(perArena, perCp)
+state.linear.undo(linArena, linCp)
 ```
 
-**Why:** Creating `{ ...state.linear }` (178 keys) for each of 62 children would
-cost 62 × 46µs = 2.85ms — nearly the entire explore budget. Mutation+undo costs
-~4µs per step (for-in over 5–9 changed keys).
+**Why:** State is a FactSet (per-tag sorted Int32Array groups with incremental Zobrist hashing). Arena is a flat Int32Array undo log. Checkpoint/restore is O(delta) — only the changed entries are replayed. No object allocation, no cloning.
 
-**Undo log shape:** Flat array `[type, hash, oldValue, type, hash, oldValue, ...]` where `type=0` is linear, `type=1` is persistent. Read backward in triples during undo. Avoids object allocation.
+**Current implementation:** `state-ops.js:mutateState()` handles consume + produce. Arena records each insert/remove for automatic replay. FactSet maintains `stateHash` (Zobrist) incrementally.
 
-## 2. Index mutation+undo
+## 2. FactSet replaces stateIndex
 
-```
-makeChildCtx(ctx, state, undo) → { ctx: childCtx, indexUndo }
-  go(child)
-undoIndexChanges(ctx.stateIndex, indexUndo)
-```
-
-**Why:** The stateIndex groups facts by predicate for O(1) lookup during tryMatch.
-At branch points (nodes with multiple children), the previous approach cloned
-the entire index via `cloneIndex()`. This was dominated by copying the 173-entry
-`codeByPC` secondary index object (`{ ...codeByPC }` = 46µs per clone, 6 clones
-per explore = 278µs).
-
-With mutation+undo, the index is modified in-place (indexRemove/indexAdd for the
-~4 predicates that actually change per step), then reversed after the child returns.
-
-**Undo log shape:** Flat array `[hash1, wasRemoved1, hash2, wasRemoved2, ...]`
-where `wasRemoved=1` means "undo by adding back", `wasRemoved=0` means "undo by removing".
-
-**Why flat array:** Avoids object allocation. Pairs are read in reverse order
-during undo.
+The original `stateIndex` (plain object grouping facts by predicate) was replaced by FactSet, which IS the index. Per-tag sorted arrays provide O(log n) lookup by tag. The `state._byKey` secondary index is built only when fingerprint config requires it (controlled by the `fingerprint` profile flag in `opt/fingerprint.js`).
 
 ## 3. Mutable pathVisited Set
 
 ```
-pathVisited.add(ctx.stateHash)
+pathVisited.add(sh)
   go(child1)
   go(child2)
-pathVisited.delete(ctx.stateHash)
+pathVisited.delete(sh)
 ```
 
-**Why:** DFS processes children sequentially, not in parallel. The previous approach
-created `new Set(parent)` at each of 56 branch nodes (avg ~25 entries per copy =
-85µs total). Add/delete on a single Set is O(1) with zero allocation.
+**Why:** DFS processes children sequentially, not in parallel. Add/delete on a single Set is O(1) with zero allocation. Children undo their own additions before returning (recursive invariant).
 
-**Correctness:** Each child sees the same pathVisited contents because:
-- We add before any children
-- Children undo their own additions before returning (recursive invariant)
-- We delete after all children
+## 4. Constraint solver checkpoint/restore
 
-## Cost summary (EVM multisig benchmark, 63 nodes)
+```
+scp = solver.checkpoint()
+  mutateState(...)
+  feedPersistent(solver, perArena, perCp)    // opt/constraint.js
+  go(depth + 1)
+solver.restore(scp)
+```
 
-| Approach | Cost |
-|---|---|
-| State copy per child | 62 × 46µs = 2,852µs |
-| State mutation+undo | 62 × 4µs = 248µs |
-| Index clone at branches | 6 × 46µs = 278µs |
-| Index mutation+undo | 62 × ~1µs = 62µs |
-| Set copy per branch | 56 × 1.5µs = 85µs |
-| Mutable Set add/delete | 56 × ~0.02µs ≈ 1µs |
+The EqNeqSolver (union-find with forbid list) tracks eq/neq constraints from persistent facts. Checkpoint/restore wraps each subtree for backtracking. Multi-alt branches use `filterAltsBySAT()` to prune UNSAT alternatives before exploring.
 
-## 4. De Bruijn indexed theta (Stage 6)
+## 5. De Bruijn indexed theta (Stage 6)
 
 Each metavar in a rule gets a compile-time slot index (`metavarSlots`). Theta becomes
 `theta[slot] = value` (O(1) lookup) instead of linear scan. The undo stack (`_undoStack`
@@ -95,31 +71,24 @@ in unify.js) tracks which slots were written so they can be cleared on match fai
 every failure exit, `undoDiscard(saved)` on success exit. Without discard, `_undoLen`
 grows monotonically across calls, eventually overflowing the fixed-size undo buffer.
 
-## 5. Delta bypass + compiled substitution (Stage 7)
+## 6. Delta bypass + compiled substitution (Stage 7)
 
-**Delta bypass:** For flat delta patterns (children are metavars or ground), extract
-children directly via `Store.child(fact, pos)` instead of full `matchIndexed` decomposition.
-~140 match calls eliminated per run.
+**Delta bypass** (`opt/delta-bypass.js`): For flat delta patterns (children are metavars or ground), extract children directly via `Store.child(fact, pos)` instead of full `matchIndexed` decomposition.
 
-**Compiled substitution:** Precomputed recipes map consequent patterns to direct
-`Store.put(tag, [theta[slot0], theta[slot1]])` calls, bypassing recursive `applyIndexed`
-traversal. Recipe indices align with full consequent pattern list (not filtered).
+**Compiled substitution** (`opt/compiled-sub.js`): Precomputed recipes map consequent patterns to direct `Store.put(tag, [theta[slot0], theta[slot1]])` calls, bypassing recursive `applyIndexed` traversal.
 
-**mutateState integration:** When `rule` is passed to `mutateState`, it handles
-preserved-skip + compiled substitution together. This ensures recipe indices align
-with pattern indices. Multi-alt paths (with-connective choices) use external
-`filterPreserved` since alt patterns differ from the original consequent.
+**mutateState integration** (`state-ops.js`): When `rule` is passed to `mutateState`, it handles preserved-skip + compiled substitution together. Recipe indices align with full consequent pattern list. Multi-alt paths use external `filterPreserved` (`opt/preserved.js`).
+
+## 7. Optimization modules
+
+All optimizations called in the `go()` hot loop live in `lib/engine/opt/` as independently importable modules. Each is controlled by a profile flag in `optimizer.js`. See `doc/documentation/optimization-architecture.md` for the full module map, flag table, and V8 design constraints.
 
 ## When to be careful
 
-- **Adding new tree consumers**: Terminal nodes (leaf/bound/cycle) snapshot the state
-  via `snapshotState()`. Branch nodes have `state: null`. If a consumer needs branch
-  node states, the mutation+undo pattern means those states don't exist after traversal.
+- **Adding new tree consumers**: Terminal nodes (leaf/bound/cycle/memo) snapshot the state via `snapshotBulk()`. Branch nodes have `state: null`. The mutation+undo pattern means branch states don't exist after traversal.
 
-- **Parallel exploration**: This pattern is inherently sequential (DFS). If explore()
-  were ever parallelized (e.g., for multi-core), shared mutation would break.
-  Each worker would need its own copies.
+- **Parallel exploration**: This pattern is inherently sequential (DFS). If explore() were ever parallelized, each worker would need its own State + Arena copies.
 
-- **Index correctness**: `undoIndexChanges` must be called in the exact reverse order
-  of `makeChildCtx`. Skipping it (e.g., early return) would corrupt the index for
-  subsequent siblings.
+- **Arena ordering**: `state.persistent.undo()` must be called before `state.linear.undo()` to match the mutation order in `mutateState`. The solver must also be restored.
+
+- **Importing in opt/ modules**: Never pass core functions as parameters to opt/ modules — import them directly. V8 polymorphic call sites from function-as-parameter cause measurable regression (70% observed with `mutateState` passed to `drainPersistentLolis`).
