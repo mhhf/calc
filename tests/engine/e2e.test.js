@@ -42,7 +42,7 @@ describe('MDE End-to-End', { timeout: 10000 }, () => {
     it('loads types', () => {
       assert(calc.types.has('pc'), 'Should have pc type');
       assert(calc.types.has('stack'), 'Should have stack type');
-      assert(calc.types.has('code'), 'Should have code type');
+      assert(calc.types.has('bytecode'), 'Should have bytecode type');
     });
 
     it('loads forward rules', () => {
@@ -56,21 +56,17 @@ describe('MDE End-to-End', { timeout: 10000 }, () => {
 
     it('executes STOP instruction', async () => {
       // Initial state: pc at 0, code[0] = STOP (0x00)
+      // code facts are auto-converted to bytecode arrlit by forward.run
       const pc = await mde.parseExpr('pc 0');
       const code = await mde.parseExpr('code 0 0x00');
       const inc = await mde.parseExpr('inc 0 1');
 
-      const state = mde.createState(
-        { [pc]: 1, [code]: 1 },
-        { [inc]: true }
-      );
-
+      const state = { linear: { [pc]: 1, [code]: 1 }, persistent: { [inc]: true } };
       const result = calc.exec(state, { trace: true });
 
       assert(result.quiescent, 'Should reach quiescence');
       assert.strictEqual(result.steps, 1, 'Should take 1 step');
       assert(result.trace[0].includes('evm/stop'), 'Should fire evm/stop rule');
-      assert(result.state.linear[code], 'Should still have code');
     });
   });
 
@@ -105,10 +101,7 @@ describe('MDE End-to-End', { timeout: 10000 }, () => {
       const code = await mde.parseExpr('code 0 0x00');
       const inc = await mde.parseExpr('inc 0 1');
 
-      const state = mde.createState(
-        { [pc]: 1, [code]: 1 },
-        { [inc]: true }
-      );
+      const state = { linear: { [pc]: 1, [code]: 1 }, persistent: { [inc]: true } };
 
       const start = Date.now();
       for (let i = 0; i < 100; i++) {

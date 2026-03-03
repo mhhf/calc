@@ -25,16 +25,17 @@ arr_set/s2: arr_set (acons H T) (o X) V (acons H T')
 alen: arr -> bin -> type.
 alen/ae: alen ae e.
 alen/acons: alen (acons _ T) L
-  <- alen T L', inc L' L.
+  <- alen T L'
+  <- inc L' L.
 
 % read_bytes Array Offset NumBytes Value — big-endian byte combine
 read_bytes: arr -> bin -> bin -> bin -> type.
 read_bytes/1: read_bytes A Offset (i e) V
   <- arr_get A Offset V.
 read_bytes/s: read_bytes A Offset N V
-  <- arr_get A Offset Byte,
-     inc Offset Offset',
-     inc N' N,
-     read_bytes A Offset' N' Rest,
-     mul Rest 256 Shifted,
-     plus Shifted Byte V.
+  <- arr_get A Offset Byte
+  <- inc Offset Offset'
+  <- inc N' N
+  <- read_bytes A Offset' N' Rest
+  <- mul Rest 256 Shifted
+  <- plus Shifted Byte V.

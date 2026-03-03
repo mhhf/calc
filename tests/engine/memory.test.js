@@ -252,7 +252,7 @@ describe('EVM Memory Integration', { timeout: 30000 }, () => {
     linear[await mde.parseExpr('mem empty_mem')] = 1;
     linear[await mde.parseExpr('memsize 0')] = 1;
 
-    // Code bytes (linear — EVM rules consume and re-produce code facts)
+    // Code bytes — auto-converted to bytecode arrlit by forward.run/symexec.explore
     for (const [addr, opcode] of Object.entries(bytecodeMap)) {
       const h = await mde.parseExpr(`code ${addr} ${opcode}`);
       linear[h] = (linear[h] || 0) + 1;
