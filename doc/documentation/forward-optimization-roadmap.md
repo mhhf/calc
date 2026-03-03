@@ -59,6 +59,7 @@ Per-step optimizations (stages 1-11) are done at current scale. The next wave ta
 
 | Optimization | Trigger | TODO |
 |-------------|---------|------|
+| Disc-tree query caching | Any DFS tree with repeated control states | See note below |
 | Configurable control predicates | Non-EVM programs with symmetric structure | See note below |
 | Constraint propagation (equality + FFI re-check) | Symbolic evar chains (3+ deep) | [TODO_0005](../todo/0005_symexec-simplification.md) |
 | Persistent proving order (FFI before state) | Mixed FFI + state predicates | See note below |
@@ -71,6 +72,43 @@ Per-step optimizations (stages 1-11) are done at current scale. The next wave ta
 | Memoized mem_read cache (L1) | W > 50 writes per MLOAD | [TODO_0052](../todo/0052_memory-and-persistent-caching.md) |
 | Per-term read cache (L2) | 50+ branches sharing memory prefixes | [TODO_0052](../todo/0052_memory-and-persistent-caching.md) |
 | Indexed persistent predicates | 50+ persistent facts per predicate | [TODO_0052](../todo/0052_memory-and-persistent-caching.md) |
+
+### Disc-tree query caching
+
+**Problem**: `findAllMatches()` calls the disc-tree's `getCandidateRules(state)` on every single node in the DFS tree. This is expensive — it flattens every fact into a trie path, queries the discrimination tree, deduplicates results, and verifies trigger predicates. Profiling shows this is 69% of explore time, and 88% of that is overhead (traversal, dedup, filtering), not actual pattern matching.
+
+**Insight**: which rules *can* fire depends on what predicates are present, not on the specific values inside those predicates. Two states at the same program counter with the same stack height have exactly the same set of candidate rules — the disc-tree would return the same list both times.
+
+**Example** — a simple program that checks 3 members:
+
+```
+State A: pc=10, sh=3, stack=[alice, bob, carol]
+State B: pc=10, sh=3, stack=[dave, eve, frank]
+```
+
+Both states have: `pc` fact, `bytecode` fact, `stack` facts at heights 0-2, `sh` fact. The disc-tree query walks all these facts and returns the same candidate rules (say, `evm/add`, `evm/push1`, `evm/jumpi`). Today we do this walk twice. With caching, the second call is a hash-map lookup.
+
+**How it works**:
+
+```
+                       explore() DFS tree
+                            |
+                     node (pc=0, sh=0)
+                    /                  \
+            node (pc=5, sh=2)    node (pc=5, sh=2)   ← same control state!
+               /        \          /        \
+          (pc=10,sh=3) (pc=8,sh=1) ...      ...
+```
+
+1. Compute a "control hash" from the predicates that determine rule eligibility: `hash(pc_value, sh_value)`.
+2. Before calling `getCandidateRules(state)`, check a cache: `controlHash → candidateRules[]`.
+3. On cache hit, skip the disc-tree entirely. On miss, run the query and cache the result.
+
+**Why this is sound**: candidate rules depend on *which predicates exist* and *what ground discriminator values they contain* (e.g., opcode at PC). Two states with the same PC have the same opcode (bytecode is immutable), so the fingerprint + disc-tree produce the same candidate list. The actual *matching* (tryMatch) still runs per-node with the real state — only the candidate *filtering* is cached.
+
+**Expected impact**: In the symbolic multisig (477 nodes with memo, 84 without), there are ~15-20 unique (PC, SH) pairs but 84 nodes. Caching eliminates ~75% of disc-tree queries. At 2.93ms for findAllMatches, this could save ~1.5-2ms (targeting ~1ms explore).
+
+**Implementation**: ~20 LOC in `symexec.js`. A `Map<bigint, Rule[]>` cleared per `explore()` call. The control hash already exists (`computeControlHash`). Main risk: if non-control predicates affect candidacy (e.g., a rule triggered by a predicate that appears/disappears mid-execution). Mitigation: only cache when all trigger predicates are "stable" (present throughout execution, like `bytecode`).
 
 ### Configurable control predicates
 
