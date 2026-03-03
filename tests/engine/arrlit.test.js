@@ -549,3 +549,112 @@ describe('arrlit - Stage 4: Hex-to-arrlit Parser', () => {
     assert.equal(Store.child(elems[32], 0), 0xAAn);
   });
 });
+
+describe('arrlit - Stage 6: acons-over-arrlit normalization', () => {
+  beforeEach(() => Store.clear());
+
+  it('acons(H, arrlit([a,b])) normalizes to arrlit([H,a,b])', () => {
+    const a = Store.put('binlit', [1n]);
+    const b = Store.put('binlit', [2n]);
+    const h = Store.put('binlit', [3n]);
+    const arr = Store.putArray([a, b]);
+    const result = Store.put('acons', [h, arr]);
+    assert.equal(Store.tag(result), 'arrlit');
+    const elems = Store.getArrayElements(result);
+    assert.equal(elems.length, 3);
+    assert.equal(elems[0], h);
+    assert.equal(elems[1], a);
+    assert.equal(elems[2], b);
+  });
+
+  it('acons(H, ae) normalizes to arrlit([H])', () => {
+    const h = Store.put('binlit', [42n]);
+    const ae = Store.put('atom', ['ae']);
+    const result = Store.put('acons', [h, ae]);
+    assert.equal(Store.tag(result), 'arrlit');
+    const elems = Store.getArrayElements(result);
+    assert.equal(elems.length, 1);
+    assert.equal(elems[0], h);
+  });
+
+  it('nested acons normalizes: acons(v1, acons(v2, arrlit([v3]))) → arrlit([v1,v2,v3])', () => {
+    const v1 = Store.put('binlit', [1n]);
+    const v2 = Store.put('binlit', [2n]);
+    const v3 = Store.put('binlit', [3n]);
+    const arr = Store.putArray([v3]);
+    const inner = Store.put('acons', [v2, arr]); // → arrlit([v2, v3])
+    assert.equal(Store.tag(inner), 'arrlit');
+    const result = Store.put('acons', [v1, inner]); // → arrlit([v1, v2, v3])
+    assert.equal(Store.tag(result), 'arrlit');
+    const elems = Store.getArrayElements(result);
+    assert.equal(elems.length, 3);
+    assert.equal(elems[0], v1);
+    assert.equal(elems[1], v2);
+    assert.equal(elems[2], v3);
+  });
+
+  it('acons with freevar + arrlit normalizes to arrlit with freevar', () => {
+    const x = Store.put('freevar', ['_X']);
+    const a = Store.put('binlit', [1n]);
+    const arr = Store.putArray([a]);
+    const result = Store.put('acons', [x, arr]);
+    assert.equal(Store.tag(result), 'arrlit');
+    const elems = Store.getArrayElements(result);
+    assert.equal(elems.length, 2);
+    assert.equal(elems[0], x);
+    assert.equal(elems[1], a);
+  });
+
+  it('isGround on arrlit with freevar returns false', () => {
+    const x = Store.put('freevar', ['_X']);
+    const a = Store.put('binlit', [1n]);
+    const ae = Store.put('atom', ['ae']);
+    const result = Store.put('acons', [x, Store.put('acons', [a, ae])]);
+    assert.equal(Store.tag(result), 'arrlit');
+    assert.equal(isGround(result), false);
+  });
+
+  it('collectMetavars finds metavars inside normalized arrlit', () => {
+    const x = Store.put('freevar', ['_X']);
+    const y = Store.put('freevar', ['_Y']);
+    const ae = Store.put('atom', ['ae']);
+    const result = Store.put('acons', [x, Store.put('acons', [y, ae])]);
+    assert.equal(Store.tag(result), 'arrlit');
+    const vars = new Set();
+    collectMetavars(result, vars);
+    assert.ok(vars.has(x));
+    assert.ok(vars.has(y));
+  });
+
+  it('content-addressing: same elements → same hash regardless of construction', () => {
+    const a = Store.put('binlit', [1n]);
+    const b = Store.put('binlit', [2n]);
+    // Build via putArray
+    const direct = Store.putArray([a, b]);
+    // Build via acons normalization
+    const ae = Store.put('atom', ['ae']);
+    const via_acons = Store.put('acons', [a, Store.put('acons', [b, ae])]);
+    assert.equal(direct, via_acons, 'Same elements should produce same hash');
+  });
+
+  it('acons with non-arrlit, non-ae tail is NOT normalized', () => {
+    const h = Store.put('binlit', [1n]);
+    const y = Store.put('freevar', ['_Y']);
+    const result = Store.put('acons', [h, y]);
+    assert.equal(Store.tag(result), 'acons', 'Should remain acons when tail is freevar');
+  });
+
+  it('match works on normalized arrlit patterns', () => {
+    const a = Store.put('binlit', [1n]);
+    const arr = Store.putArray([a]);
+    const X = Store.put('freevar', ['_X']);
+    const ae = Store.put('atom', ['ae']);
+    // acons(X, ae) normalizes to arrlit([X])
+    const pat = Store.put('acons', [X, ae]);
+    assert.equal(Store.tag(pat), 'arrlit');
+    const theta = match(pat, arr);
+    assert.ok(theta !== null);
+    const xVal = theta.find(([v]) => v === X)?.[1];
+    assert.equal(xVal, a);
+  });
+});
