@@ -65,19 +65,28 @@ No single component dominates. Target: 4ms (8.4µs/node).
 
 10. **Structural memoization via control hash is cheap and effective for symmetric programs.** The EVM multisig checks 6 members with identical post-check logic. A hash of just `(PC, SH)` — O(1), two lookups — detects isomorphic subtrees and skips 5 of 6 member bodies. Savings: 2125→477 nodes, 49ms→11ms. Exact state memoization can't match because evars have unique hashes from a global counter; predicate histogram hashing can't match because `code` fact counts differ between member bodies (741, 739, ..., 733). The minimal control hash works precisely because it captures execution position without caring about concrete values.
 
-11. **hevm's compactness is representation, not branching.** hevm and calc have identical branching: 30 branch points, 31 leaves, same 5 behavioral outcomes × 6 members. hevm's 61 total nodes vs calc's 477 (memo) / 2125 (no memo) reflects representation granularity: hevm collapses 50+ deterministic opcodes between JUMPIs into single ITE nodes with symbolic expressions; calc makes each opcode an explicit tree node. calc with structural memo is 2.4× faster (22ms vs 52ms) because memo skips 5 of 6 isomorphic member subtrees, something hevm does not do. Verified with hevm v0.54.2 `--show-tree` on MultisigNoCall.sol. See `doc/documentation/calc-vs-hevm.md`.
+11. **Micro-allocation optimizations are invisible at ~5ms/477-node scale.** Pooling match result objects (skip `theta.slice()` + `consumed` copy, ~1245 allocs/explore) and precomputing `Store.tagId()` for consequent patterns (skip one array lookup per produce) were tested empirically: 0% improvement, 3×200 interleaved samples. V8's nursery GC handles short-lived <100-byte objects at ~10-20ns each. The total allocation cost is <25µs — unmeasurable against 5ms total. Adding pool-management branches actually trends slower (+2.2%). **Lesson: when the profile is flat and per-node cost is ~10µs, individual operation savings under ~50ns/call × ~500 calls = <25µs are permanently below the noise floor.**
+
+12. **hevm's compactness is representation, not branching.** hevm and calc have identical branching: 30 branch points, 31 leaves, same 5 behavioral outcomes × 6 members. hevm's 61 total nodes vs calc's 477 (memo) / 2125 (no memo) reflects representation granularity: hevm collapses 50+ deterministic opcodes between JUMPIs into single ITE nodes with symbolic expressions; calc makes each opcode an explicit tree node. calc with structural memo is 2.4× faster (22ms vs 52ms) because memo skips 5 of 6 isomorphic member subtrees, something hevm does not do. Verified with hevm v0.54.2 `--show-tree` on MultisigNoCall.sol. See `doc/documentation/calc-vs-hevm.md`.
 
 ## What's Next
 
 Per-step and tree-level optimizations are mature. The profile is flat — no single dominant cost. Remaining gains come from reducing per-node overhead across all components, or from scaling triggers for larger programs.
 
-### Closing the gap (5.3ms → 4ms target)
+### Closing the gap (5.0ms → 4ms target)
 
 | Optimization | Saves | Effort | Notes |
 |---|---|---|---|
-| Pooled match results | ~0.3-0.5ms | Low | See below |
-| Precomputed consequent tagIds | ~0.1-0.2ms | Low | See below |
 | Inline predicted step (skip tryMatch) | ~0.5-1.0ms | Medium | See below |
+
+#### Disproven (empirically tested, no measurable gain)
+
+| Optimization | Expected | Actual | Why |
+|---|---|---|---|
+| Pooled match results | ~0.3-0.5ms | 0ms (noise) | ~1245 tiny allocs cost <25µs total; pool cleanup overhead offsets |
+| Precomputed consequent tagIds | ~0.1-0.2ms | 0ms (noise) | `Store.tagId()` = `tags[h]` single array lookup, ~5ns; extra branches cost more |
+
+Tested on feature branch `opt/pool-and-precompute-tagids` with 3×200 interleaved samples. Baseline trimmed median: 5.02ms. Optimized: 5.14ms (+2.2%, within stdev 0.7-0.9ms). The profile is flat — V8 already optimizes these allocation patterns via nursery GC and inline caches. Per-operation micro-optimizations at this scale cannot produce measurable gains.
 
 ### Scaling triggers (larger programs)
 
@@ -94,20 +103,6 @@ Per-step and tree-level optimizations are mature. The profile is flat — no sin
 | Memoized mem_read cache (L1) | W > 50 writes per MLOAD | [TODO_0052](../todo/0052_memory-and-persistent-caching.md) |
 | Per-term read cache (L2) | 50+ branches sharing memory prefixes | [TODO_0052](../todo/0052_memory-and-persistent-caching.md) |
 | Indexed persistent predicates | 50+ persistent facts per predicate | [TODO_0052](../todo/0052_memory-and-persistent-caching.md) |
-
-### Pooled match results
-
-tryMatch allocates on every success: `theta.slice()` (15-element array), `Map.forEach→{}` (consumed object), and the result object itself. With prediction, 415/468 calls succeed — the "rare path" comment is wrong. These ~1400 allocations per explore create GC pressure.
-
-Fix: return a pre-allocated pooled result for the prediction path. The result is consumed immediately by mutateState and never stored (only `m.rule.name` is kept in the children array). Reuse a single `{ rule, theta, slots, consumed, optimized }` object with a pre-allocated theta array and consumed Map (read directly instead of copying to object).
-
-Constraint: findAllMatches can return multiple matches that coexist in an array. Pooling only works for the single-match prediction path. Could use a generation counter or separate pool for FAM results.
-
-### Precomputed consequent tagIds
-
-`produceLinear` and `producePersistent` call `Store.tagId(h)` per produced fact to determine the FactSet group for insertion. For compiled consequents with known structure, the tag ID can be precomputed at rule compile time and stored alongside the compiled substitution recipe.
-
-Similarly, `consumeLinear` iterates the consumed object and calls `Store.tagId(Number(hStr))` per entry. For predicted rules with known antecedent structure, the consumed facts' tag IDs are deterministic.
 
 ### Inline predicted step (skip tryMatch entirely)
 
