@@ -5,6 +5,7 @@ const { show } = require('../../lib/engine/show');
 const { isGround, collectMetavars, collectFreevars } = require('../../lib/engine/pattern-utils');
 const { serialize, deserialize } = require('../../lib/engine/store-binary');
 const { match, matchIndexed, undoSave, undoRestore, unify } = require('../../lib/kernel/unify');
+const { arr_get, arr_set, alen, read_bytes } = require('../../lib/engine/ffi/array');
 
 describe('arrlit - Stage 1: Store Infrastructure', () => {
   beforeEach(() => Store.clear());
@@ -355,6 +356,140 @@ describe('arrlit - Stage 2: Ephemeral Expansion', () => {
       const slots = {};
       const ok = matchIndexed(ae, arr, theta, slots);
       assert.equal(ok, false);
+    });
+  });
+});
+
+describe('arrlit - Stage 3: FFI', () => {
+  beforeEach(() => Store.clear());
+
+  describe('arr_get', () => {
+    it('retrieves element at index 0', () => {
+      const a = Store.put('binlit', [0x60n]);
+      const b = Store.put('binlit', [0x40n]);
+      const arr = Store.putArray([a, b]);
+      const idx = Store.put('binlit', [0n]);
+      const out = Store.put('freevar', ['_V']);
+      const result = arr_get([arr, idx, out]);
+      assert.equal(result.success, true);
+      assert.equal(result.theta[0][0], out);
+      assert.equal(result.theta[0][1], a);
+    });
+
+    it('retrieves element at index 1', () => {
+      const a = Store.put('binlit', [0x60n]);
+      const b = Store.put('binlit', [0x40n]);
+      const arr = Store.putArray([a, b]);
+      const idx = Store.put('binlit', [1n]);
+      const out = Store.put('freevar', ['_V']);
+      const result = arr_get([arr, idx, out]);
+      assert.equal(result.success, true);
+      assert.equal(result.theta[0][1], b);
+    });
+
+    it('fails on out-of-bounds index', () => {
+      const a = Store.put('binlit', [1n]);
+      const arr = Store.putArray([a]);
+      const idx = Store.put('binlit', [5n]);
+      const out = Store.put('freevar', ['_V']);
+      const result = arr_get([arr, idx, out]);
+      assert.equal(result.success, false);
+    });
+
+    it('fails on non-ground index', () => {
+      const a = Store.put('binlit', [1n]);
+      const arr = Store.putArray([a]);
+      const idx = Store.put('freevar', ['_I']);
+      const out = Store.put('freevar', ['_V']);
+      const result = arr_get([arr, idx, out]);
+      assert.equal(result.success, false);
+    });
+  });
+
+  describe('arr_set', () => {
+    it('replaces element at index', () => {
+      const a = Store.put('binlit', [1n]);
+      const b = Store.put('binlit', [2n]);
+      const arr = Store.putArray([a, b]);
+      const idx = Store.put('binlit', [0n]);
+      const newVal = Store.put('binlit', [99n]);
+      const out = Store.put('freevar', ['_R']);
+      const result = arr_set([arr, idx, newVal, out]);
+      assert.equal(result.success, true);
+      const newArr = result.theta[0][1];
+      const elems = Store.getArrayElements(newArr);
+      assert.equal(Store.child(elems[0], 0), 99n);
+      assert.equal(Store.child(elems[1], 0), 2n);
+    });
+  });
+
+  describe('alen', () => {
+    it('returns length of empty array', () => {
+      const arr = Store.putArray([]);
+      const out = Store.put('freevar', ['_L']);
+      const result = alen([arr, out]);
+      assert.equal(result.success, true);
+      assert.equal(Store.child(result.theta[0][1], 0), 0n);
+    });
+
+    it('returns length of non-empty array', () => {
+      const a = Store.put('binlit', [1n]);
+      const b = Store.put('binlit', [2n]);
+      const c = Store.put('binlit', [3n]);
+      const arr = Store.putArray([a, b, c]);
+      const out = Store.put('freevar', ['_L']);
+      const result = alen([arr, out]);
+      assert.equal(result.success, true);
+      assert.equal(Store.child(result.theta[0][1], 0), 3n);
+    });
+  });
+
+  describe('read_bytes', () => {
+    it('reads 1 byte', () => {
+      const b1 = Store.put('binlit', [0x60n]);
+      const b2 = Store.put('binlit', [0x40n]);
+      const arr = Store.putArray([b1, b2]);
+      const offset = Store.put('binlit', [0n]);
+      const num = Store.put('binlit', [1n]);
+      const out = Store.put('freevar', ['_V']);
+      const result = read_bytes([arr, offset, num, out]);
+      assert.equal(result.success, true);
+      assert.equal(Store.child(result.theta[0][1], 0), 0x60n);
+    });
+
+    it('reads 2 bytes big-endian', () => {
+      const b1 = Store.put('binlit', [0x60n]);
+      const b2 = Store.put('binlit', [0x40n]);
+      const arr = Store.putArray([b1, b2]);
+      const offset = Store.put('binlit', [0n]);
+      const num = Store.put('binlit', [2n]);
+      const out = Store.put('freevar', ['_V']);
+      const result = read_bytes([arr, offset, num, out]);
+      assert.equal(result.success, true);
+      assert.equal(Store.child(result.theta[0][1], 0), 0x6040n);
+    });
+
+    it('reads with offset', () => {
+      const b1 = Store.put('binlit', [0x10n]);
+      const b2 = Store.put('binlit', [0x20n]);
+      const b3 = Store.put('binlit', [0x30n]);
+      const arr = Store.putArray([b1, b2, b3]);
+      const offset = Store.put('binlit', [1n]);
+      const num = Store.put('binlit', [2n]);
+      const out = Store.put('freevar', ['_V']);
+      const result = read_bytes([arr, offset, num, out]);
+      assert.equal(result.success, true);
+      assert.equal(Store.child(result.theta[0][1], 0), 0x2030n);
+    });
+
+    it('fails on out-of-bounds', () => {
+      const b1 = Store.put('binlit', [1n]);
+      const arr = Store.putArray([b1]);
+      const offset = Store.put('binlit', [0n]);
+      const num = Store.put('binlit', [5n]);
+      const out = Store.put('freevar', ['_V']);
+      const result = read_bytes([arr, offset, num, out]);
+      assert.equal(result.success, false);
     });
   });
 });
