@@ -9,6 +9,7 @@
     "test:e2e": "node tests/e2e-solidjs.js",
     "test:all": "npm test && npm run test:engine",
     "test:bare": "CALC_PROFILE=bare npm test -- --timeout 120000 && CALC_PROFILE=bare npm run test:engine -- --timeout 120000",
+    "test:fast": "CALC_PROFILE=fast npm test && CALC_PROFILE=fast npm run test:engine",
     "build:bundle": "node libexec/calc-bundle",
     "dev": "npm run build:bundle && vite --config src/ui/vite.config.ts",
     "build:ui": "npm run build:bundle && vite build --config src/ui/vite.config.ts",
