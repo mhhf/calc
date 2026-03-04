@@ -1,75 +1,80 @@
 tags:
-  linear-logic: 44
-  forward-chaining: 27
+  linear-logic: 48
+  forward-chaining: 31
+  performance: 26
   symexec: 26
-  performance: 25
+  clf: 24
+  optimization: 21
   research: 21
-  optimization: 20
-  architecture: 19
-  chr: 18
-  clf: 18
-  proof-theory: 18
+  architecture: 20
+  chr: 20
+  proof-theory: 20
+  focusing: 16
+  implementation: 14
   evm: 13
-  implementation: 13
   symbolic-execution: 13
-  focusing: 12
+  lax-monad: 12
   session-types: 12
-  forward-engine: 10
+  theory: 12
+  forward-engine: 11
+  adjoint-logic: 10
   ownership: 10
+  soundness: 10
   graded-types: 9
   memory-model: 9
   QTT: 9
-  soundness: 9
-  theory: 9
   content-addressing: 8
   dependent-types: 8
   hevm: 8
   tooling: 8
   verification: 8
-  adjoint-logic: 7
   authorization: 7
   benchmarking: 7
+  Ceptre: 7
   data-structures: 7
   display-calculus: 7
   fixed-points: 7
-  lax-monad: 7
+  loli: 7
   metaproofs: 7
   sequent-calculus: 7
+  Celf: 6
+  CLP: 6
   coinduction: 6
   consensus: 6
   logical-framework: 6
   muMALL: 6
   oplus: 6
-  CLP: 5
+  polarity: 6
+  proof-search: 6
+  resource-semantics: 6
   compilation: 5
   confluence: 5
   Curry-Howard: 5
   eigenvariable: 5
+  exponentials: 5
   lnl: 5
-  loli: 5
   model-checking: 5
   MTDC: 5
   multimodal: 5
-  resource-semantics: 5
   semiring: 5
   accounting: 4
+  backward-chaining: 4
   bisimulation: 4
-  Ceptre: 4
   CHR: 4
   cut-elimination: 4
   cyclic-proofs: 4
   documentation: 4
-  exponentials: 4
   financial: 4
   hash-consing: 4
   induction: 4
   invariants: 4
   lf: 4
+  lollimon: 4
   memoization: 4
   modalities: 4
   polymorphism: 4
-  proof-search: 4
   prover: 4
+  quiescence: 4
   separation-logic: 4
   smt: 4
   store: 4
@@ -80,7 +85,7 @@ tags:
   arena-allocation: 3
   blockchain: 3
   category-theory: 3
-  Celf: 3
+  completeness: 3
   concurrency: 3
   DSL: 3
   ethereum: 3
@@ -92,10 +97,11 @@ tags:
   matching: 3
   modal-logic: 3
   MPST: 3
+  partial-evaluation: 3
   Petri-nets: 3
-  polarity: 3
   profiling: 3
   proof-nets: 3
+  residuation: 3
   semi-naive: 3
   state-merging: 3
   termination: 3
@@ -107,7 +113,6 @@ tags:
   benchmark: 2
   branching: 2
   CEGAR: 2
-  completeness: 2
   connectives: 2
   constraint-propagation: 2
   Crucible: 2
@@ -146,12 +151,13 @@ tags:
   llf: 2
   Maranget: 2
   metavariables: 2
+  monad: 2
   multiset: 2
   multiset-rewriting: 2
+  operational-semantics: 2
   oracles: 2
   pacioli-group: 2
   parallelism: 2
-  partial-evaluation: 2
   path-conditions: 2
   pattern-matching: 2
   persistent-data-structure: 2
@@ -163,7 +169,6 @@ tags:
   proof-assistants: 2
   proof-of-stake: 2
   prover-architecture: 2
-  residuation: 2
   resource-tracking: 2
   roadmap: 2
   second-order: 2
@@ -190,13 +195,13 @@ tags:
   agents: 1
   algorithms: 1
   anki: 1
+  asynchronous: 1
   atomic-swaps: 1
   attributed-variables: 1
   automation: 1
   Avron: 1
   backlinks: 1
   backward: 1
-  backward-chaining: 1
   backward-prover: 1
   bang-modality: 1
   BDI: 1
@@ -236,6 +241,7 @@ tags:
   debugging: 1
   decision-trees: 1
   decomposition: 1
+  definitional-equality: 1
   definitions: 1
   delta-tracking: 1
   design-space: 1
@@ -302,7 +308,6 @@ tags:
   location: 1
   logic-design: 1
   logics-survey: 1
-  lollimon: 1
   Ludics: 1
   manticore: 1
   manual-prover: 1
@@ -317,11 +322,13 @@ tags:
   milestones: 1
   mix-rule: 1
   mode-checking: 1
+  mode-theory: 1
   modularity: 1
   moggi: 1
-  monad: 1
+  monad-l: 1
   mu-calculus: 1
   multi-party: 1
+  multi-phase: 1
   multi-type: 1
   mythril: 1
   Nomos: 1
@@ -330,7 +337,6 @@ tags:
   novel-contributions: 1
   omega-l: 1
   open-problem: 1
-  operational-semantics: 1
   optimal-reduction: 1
   options: 1
   orthogonality: 1
@@ -362,7 +368,6 @@ tags:
   quality: 1
   quantifiers: 1
   questions: 1
-  quiescence: 1
   ranking-functions: 1
   reachability: 1
   refactor: 1
@@ -376,12 +381,14 @@ tags:
   round-robin: 1
   rule-selection: 1
   safety: 1
+  saturation: 1
   SAW: 1
   says-modality: 1
   scheduling: 1
   security: 1
   separation-of-concerns: 1
   sequent: 1
+  shifts: 1
   size-change: 1
   Skolem: 1
   slashing: 1
@@ -391,6 +398,7 @@ tags:
   specification: 1
   stages: 1
   STG: 1
+  stickiness: 1
   storage: 1
   storage-models: 1
   store-normalization: 1
@@ -398,6 +406,7 @@ tags:
   study-plan: 1
   subexponentials: 1
   subformula-property: 1
+  synchronous: 1
   tabling: 1
   tactics: 1
   tags: 1
@@ -417,11 +426,13 @@ tags:
   trusted-computation: 1
   tutorial: 1
   type-constructors: 1
+  type-stratification: 1
   type-system: 1
   universal: 1
   up-to: 1
   vision: 1
   walkthrough: 1
   why-not: 1
+  whynot: 1
   write-absorption: 1
   z3: 1

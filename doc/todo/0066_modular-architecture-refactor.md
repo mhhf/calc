@@ -2,7 +2,7 @@
 title: "Modular Architecture Refactor — Core/Optimization Separation"
 created: 2026-03-03
 modified: 2026-03-04
-summary: "Extract optimizations from core engine via hook system, make Lax monad explicit as 2-mode adjoint, enable multiple logics. Comprehensive plan with all deliberations."
+summary: "Extract optimizations from core engine via hook system, make Lax monad explicit as 2-mode adjoint, enable multiple logics. Comprehensive plan with all deliberations. Phase 2 reviewed: stickiness enforcement, kernel verification design-for-certificates, delta tracking, dormant loli semantics — all resolved."
 tags: [architecture, refactor, modularity, lax-monad, optimization, adjoint-logic, separation-of-concerns, proof-certificates, monad-l, multi-phase, mode-theory]
 type: design
 status: planning
@@ -744,11 +744,31 @@ monad_l: {
   arity: 1,
   invertible: false,            // negative + left = NOT invertible (requires focus)
   contextFlow: 'preserved',     // single premise, context passed through
-  premises: [{ linear: [0] }]  // child 0 goes into linear context
+  premises: [{ linear: [0] }], // child 0 goes into linear context
+  requiresMonadicSuccedent: true // STICKINESS: only applicable when succedent is monad(C)
 }
 ```
 
-**Stickiness:** In CLF's proof theory, monad_l's conclusion is always `C lax` (monadic). Once you open a monadic value, you stay in the monadic world. For CALC: the overall goal of any mixed-mode query must be `{S}` (monadic). Sub-goals may be pure backward (proving atoms) or monadic (triggering monad_r → forward). The backward prover's goal types naturally enforce this.
+**Stickiness enforcement (DECIDED).** In lax logic (Pfenning-Davies 2001), monadic elimination's conclusion is always `C lax`, never `C true`. Once you open a monadic value, you stay in the monadic world. Every system enforces this structurally:
+
+- **Pfenning-Davies:** Two judgments (`A true` / `A lax`), no rule converts `lax → true`
+- **CLF:** Syntactic stratification — monadic elimination only exists inside monadic expressions `{E}`
+- **Celf:** Dual focus functions — `leftFocus` errors on monadic hypotheses; `monLeftFocus` handles them only when the goal is monadic
+- **LolliMon:** Goal pattern match — monadic code path only entered when goal matches `Const "{}"`
+- **Adjoint logic:** Mode-indexed judgments with presupposition `k >= m`
+
+For CALC: the descriptor flag `requiresMonadicSuccedent: true` on monad_l, checked in `generic.js:applyRule()`:
+
+```javascript
+// In applyRule, ~3 LOC:
+if (ruleSpec.requiresMonadicSuccedent && Store.get(seq.succedent)?.tag !== 'monad') {
+  return null;  // monad_l only applicable when overall goal is monadic
+}
+```
+
+This mirrors adjoint logic's mode presupposition: the descriptor encodes the mode constraint. If CALC later moves to full mode-indexed judgments, the flag is derived from the mode theory automatically. Additionally, `chooseFocus` can filter monad_l early (Celf-style: don't even offer it as a focus option when the goal is non-monadic), but the canonical constraint lives in the descriptor.
+
+See RES_0083 for the full survey of stickiness enforcement across systems.
 
 **Cost: ~10 LOC.** monad_l is structurally identical to dereliction. The entire backward prover (focused.js, rule-interpreter.js, generic.js, kernel.js) is fully generic and polarity-driven. No code changes needed in any prover file. Only:
 - Add monad_l descriptor (in mode theory generation or `.rules`)
@@ -817,6 +837,32 @@ The mode switch bridge must return enough information for future certificates (c
   trace: executionTrace     // sequence of rule firings (for future certificate extraction)
 }
 ```
+
+**Kernel verification for monad_r — KNOWN LIMITATION, designed for future certificates.**
+
+`kernel.js:verifyStep` expects `makePremises` to return sub-sequents, then compares with actual premises. For monad_r, the "premise" is the forward engine's output — a fundamentally different type. The kernel cannot verify a monad_r step without either re-running the forward engine (nondeterministic) or trusting the bridge.
+
+**Current design (Phase 2):** `verifyStep` recognizes monad_r as a mode-switch rule and returns `{ valid: true, unverified: 'modeSwitch' }`. The step is trusted but flagged as unverified. This is sound for execution (the forward engine produced the result correctly) but means proof trees containing monad_r are not fully kernel-verified.
+
+**Future design (proof certificates, TODO_0008):** monad_r's proof tree node carries an `evidence` field containing the forward execution trace. The trace has per-step records:
+```javascript
+{
+  type: 'step',
+  rule: ruleName,
+  theta: substitution,
+  consumed: { hash: count },
+  produced: { hash: count },
+  persistent_proved: [{ goal, method: 'ffi'|'state'|'clause', evidence }],
+}
+```
+The kernel verifies each step in the trace: for each step, check that the rule's antecedent matches `consumed` under `theta`, that persistent goals are correctly proved, and that the consequent matches `produced`. This is a forward proof certificate — the "expert" supplies the rule choices and substitutions, the "clerk" checks them (Miller's FPC pattern, RES_0077 §4).
+
+**Design-for checklist:**
+- [ ] monad_r proof tree node has `evidence: null` field (populated by future certificate hook)
+- [ ] `verifyStep` has monad_r case returning `{ valid: true, unverified: 'modeSwitch' }` when `evidence` is null
+- [ ] `verifyStep` has monad_r case calling `verifyForwardTrace(evidence)` when `evidence` is non-null (future)
+- [ ] Bridge API's `trace` field has enough structure for certificate extraction (per-step `consumed`/`produced`/`theta`)
+- [ ] `provePersistentGoals` can return method+evidence alongside success/failure (hook point exists)
 
 #### Phase 2.5: Resolved Design Decisions
 
@@ -1106,9 +1152,9 @@ for (const shift of modeTheory.shifts) {
 }
 ```
 
-**L3 code modification (~20 LOC).**
+**L3 code modification (~25 LOC).**
 
-In `focused.js:applyAndRecurse` (line 101), after `applyRule()` returns, check for `modeSwitch`:
+In `focused.js:applyAndRecurse` (line 101), check for `modeSwitch` BEFORE calling `applyRule()` (since monad_r bypasses standard premise computation entirely):
 
 ```javascript
 const applyAndRecurse = (seq, rName, spec, position, index, state, searchFn, depth, delta) => {
@@ -1119,13 +1165,23 @@ const applyAndRecurse = (seq, rName, spec, position, index, state, searchFn, dep
       seq, index
     );
     const result = bridge.executeModeSwitch(modeSwitch, calc);
-    // ... wrap result as ProofTree node, return
+    if (!result) return null;
+    // delta_out = empty: ALL linear resources are consumed by the mode switch.
+    // The entire linear context enters the forward engine as initial state.
+    // From the backward prover's perspective, nothing remains.
+    const delta_out = Context.empty();
+    return PT.makeNode(rName, seq, [result.proofNode], delta_out);
   }
 
   // Existing code: standard rule application + recursion into premises
   const result = applyRule(seq, position, index, spec);
   // ...
 };
+```
+
+**Why ALL linear resources are consumed:** The CLF monad_r rule has one premise `Γ; Δ ⊢_fwd S` that takes the ENTIRE linear context Δ. The forward engine needs complete information — it scans the full state to find matching rules (committed choice). You cannot partially enter forward mode. This is the polarity shift: stop decomposing goals, start producing data, with ALL available data as initial state.
+
+**Committed choice is irrevocable.** Once monad_r fires and the bridge calls `forward.run()`, the result is final. L3 does NOT retry the mode switch on backtracking. This matches CLF semantics: committed choice means the forward execution path is fixed. If the overall backward proof fails after receiving the forward result, L3 backtracks to BEFORE the monad_r step (trying a different approach to prove `{S}`), not to inside the forward execution.
 ```
 
 The `bridge.executeModeSwitch()` call replaces the recursive `searchFn()` calls for premises. L3's inversion/focus/decomposition phases are completely unchanged.
@@ -1150,15 +1206,17 @@ if (src[pos] === '{') {
 
 This enables: `#query init -o { target }` (already works, loli handles it) and `#query { target }` (new, direct monadic goal).
 
-**monad_l: no prover changes needed.**
+**monad_l: no prover changes needed (except stickiness guard).**
 
 monad_l is structurally identical to dereliction (bang_l): arity 1, left, preserved contextFlow, not invertible. The entire backward prover is fully generic and polarity-driven:
 - `chooseFocus` already finds negative-polarity formulas on the left
 - `applyAndRecurse` handles arity-1 left rules generically via the descriptor
-- `verifyStep` in kernel.js verifies by spec lookup (no connective-specific code)
 - `rule-interpreter.js:buildMakePremises` generates the correct premise computation from the descriptor
 
-Only work: register the monad_l descriptor in mode theory generation (alongside monad_r):
+Only changes:
+1. Register monad_l descriptor with `requiresMonadicSuccedent: true` (stickiness, see above)
+2. Add ~3 LOC stickiness check in `generic.js:applyRule()`
+3. `verifyStep` in kernel.js handles monad_l via spec lookup (no connective-specific code needed — it's a standard arity-1 left rule)
 
 ```javascript
 // In modes.js — generate monad_l alongside monad_r:
@@ -1172,9 +1230,22 @@ for (const shift of modeTheory.shifts) {
     arity: 1,
     invertible: false,           // negative + left = NOT invertible (requires focus)
     contextFlow: 'preserved',
-    premises: [{ linear: [0] }] // child 0 enters linear context
+    premises: [{ linear: [0] }], // child 0 enters linear context
+    requiresMonadicSuccedent: true // stickiness: only when overall goal is monadic
   };
 }
+```
+
+**Polarity registration.** monad_r and monad_l are generated from mode theory, not from `.rules` files. The polarity inference in `focusing.js` only examines rules from `.rules`, so it won't see them. The mode theory initialization in `modes.js` explicitly sets polarity:
+
+```javascript
+// In modes.js — after generating shift rules:
+for (const shift of modeTheory.shifts) {
+  calculus.polarity[shift.connective] = shift.polarity;  // 'negative' for monad
+}
+```
+
+This ensures `ruleIsInvertible` in `generic.js` works correctly via its fallback chain: `calculus.invertible[name]` → polarity check → `negative + right = invertible`.
 ```
 
 **Reverse bridge (implicit monad_l).**
@@ -1203,6 +1274,21 @@ function convertResult(forwardResult, fromMode, toMode, calc) {
 ```
 
 L3 receives the atoms and continues backward search with them in context. If the original goal was `Γ; Δ ⊢ {S}` and forward produced facts F₁...Fₙ, L3 now has `Γ'; Δ', F₁...Fₙ ⊢ ...` for subsequent sub-goals.
+
+**Dormant lolis in the reverse bridge — DECIDED: return as-is.**
+
+When forward execution reaches quiescence with dormant lolis `!G -o {B}` in the linear state (guard G unprovable by the forward engine), the reverse bridge converts them to linear context entries as compound formulas. The backward prover can decompose them via loli_l. This is the ONLY sound design:
+
+- **Stripping is unsound:** Discarding a linear resource is weakening. ILL does not have weakening. Stripping dormant lolis silently destroys capabilities.
+- **Return as-is is sound:** The backward prover applying loli_l to a dormant loli is a standard, valid proof step. Forward quiescence means "no more forward steps possible," not "no more proof steps possible." The backward prover has more reasoning power (full focused search with backtracking, unrestricted clause resolution) and may succeed where forward's `provePersistentGoals` (FFI → state lookup → depth-limited clause resolution) failed.
+- **CHR analogy:** CHR embedded in Prolog has the same pattern — CHR reaches quiescence with residual constraints, Prolog can reason about them via `find_chr_constraint/1`. Residuals are part of the answer.
+- **Partial evaluation analogy:** A dormant loli is a residual computation: "if G becomes provable, produce B." The backward prover is the "runtime" where the dynamic input may become available.
+- **Re-entrant safety:** If a dormant loli's body is `{B}` (monadic), the backward prover firing loli_l encounters `{B}` and re-enters forward mode (backward → forward → backward → forward nesting). Each re-entry operates on a strictly smaller state (the loli is consumed), so termination is guaranteed for acyclic programs.
+- **In practice (EVM):** Does not arise. EVM loli guards are ground arithmetic (`!eq`, `!neq`, `!inc`, `!plus`), fully handled by FFI. If FFI fails, backward also fails. The power asymmetry only matters for recursive predicates (transitive closure, reachability, type checking).
+
+Implementation: no special code needed. `convertResult` converts ALL state facts (including compound formulas) uniformly. The backward prover receives loli formulas in its context and handles them via its existing generic focusing discipline.
+
+See RES_0082 for the full analysis.
 
 **Auto-registration of forward rules as backward clauses.**
 
@@ -1254,13 +1340,19 @@ This enables the backward prover to discover multi-phase sequencing through norm
 21. Multi-phase: forward Phase 1 → backward reasoning → forward Phase 2 (end-to-end)
 22. Reverse bridge: forward result atoms correctly enter backward context
 23. Backward discovers forward sequencing: backward prover plans across multiple monadic sub-goals via auto-registered clauses
-24. Stickiness: mixed-mode query must have monadic goal (pure non-monadic sub-goals within are OK)
+24. Stickiness enforcement: monad_l with non-monadic succedent → rejected (returns null)
+25. Stickiness positive: monad_l with monadic succedent → succeeds
+26. Dormant lolis: forward quiescence with dormant loli → loli returns to backward context as compound formula
+27. Dormant loli decomposition: backward prover successfully fires loli_l on returned dormant loli (when guard is backward-provable)
+28. Delta tracking: monad_r sets delta_out = empty (all linear resources consumed by mode switch)
+29. Kernel verification: monad_r step returns `{ valid: true, unverified: 'modeSwitch' }` (designed for future certificates)
+30. Committed choice: monad_r result is not retried on L3 backtracking
 
 **Regression tests:**
 
-25. All existing `npm run test:all` still pass (monad_r/monad_l don't interfere with existing backward proofs)
-26. All existing `npm run test:engine` still pass (forward engine unchanged)
-27. `npm run bench:diff -- HEAD --suite=symexec` shows < 2% regression
+31. All existing `npm run test:all` still pass (monad_r/monad_l don't interfere with existing backward proofs)
+32. All existing `npm run test:engine` still pass (forward engine unchanged)
+33. `npm run bench:diff -- HEAD --suite=symexec` shows < 2% regression
 
 ---
 
@@ -1353,6 +1445,8 @@ If context is cleared, read these files to rebuild understanding:
 - `doc/research/0079_clf-forward-backward-return-value.md` — What forward engines return to backward provers. CLF proof terms, Celf `Let'` constructors.
 - `doc/research/0080_quiescence-forward-chaining-linear-logic.md` — Quiescence vs saturation. Loli drain semantics. CHR comparison.
 - `doc/research/0081_clf-type-stratification-definitional-equality.md` — CLF type stratification, sync/async naming, definitional equality, nested monads (stub for deep study).
+- `doc/research/0082_dormant-lolis-reverse-bridge.md` — Dormant lolis returning to backward prover. Soundness analysis. CHR + partial evaluation analogies.
+- `doc/research/0083_stickiness-enforcement-across-systems.md` — Stickiness enforcement in Pfenning-Davies, CLF, Celf, LolliMon, adjoint logic.
 
 ### Code (engine hot path)
 - `lib/engine/symexec.js` — DFS exploration. `go()` is the hot loop (lines 310-482). All optimization entanglement here.
@@ -1394,6 +1488,8 @@ If context is cleared, read these files to rebuild understanding:
 - RES_0079 — CLF forward-backward return value (what forward returns to backward, proof terms)
 - RES_0080 — Quiescence in forward-chaining linear logic (quiescence vs saturation, loli drain)
 - RES_0081 — CLF Type Stratification, Definitional Equality (sync/async, nested monads, future deep study)
+- RES_0082 — Dormant Lolis in the Reverse Bridge (soundness analysis, CHR/partial-eval analogies)
+- RES_0083 — Stickiness Enforcement Across Systems (Pfenning-Davies, CLF, Celf, LolliMon, adjoint logic)
 
 ### Key External
 - Watkins et al. (2004) — CLF: Dependent Logical Framework
