@@ -1,0 +1,21 @@
+@formulas A, B, C
+
+id: ; A |- A
+  @pretty "Id"
+  @invertible true.
+
+and_r: G ; D, D' |- A & B
+  <- G ; D |- A
+  <- G ; D' |- B
+  @pretty "&R".
+
+and_l: G ; D, A & B |- C
+  <- G ; D, A, B |- C
+  @pretty "&L".
+
+true_r: G ; |- T
+  @pretty "TR".
+
+true_l: G ; D, T |- C
+  <- G ; D |- C
+  @pretty "TL".

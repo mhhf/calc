@@ -1,0 +1,23 @@
+% Minimal propositional calculus — no monad, no exponential, no implication
+% Used to test graceful degradation of role derivation.
+% Stand-alone: no @extends (no structural rules needed for role tests).
+
+@family prop.
+
+formula: type.
+
+% Multiplicative conjunction (positive, arity 2)
+prop_and: formula -> formula -> formula
+  @ascii "_ & _"
+  @prec 60 left
+  @category multiplicative
+  @polarity positive.
+
+% Multiplicative unit (arity 0)
+prop_true: formula
+  @ascii "T"
+  @category multiplicative.
+
+atom: string -> formula
+  @ascii "_"
+  @prec 100.

@@ -2,10 +2,10 @@
 title: "Modular Architecture Refactor — Core/Optimization Separation"
 created: 2026-03-03
 modified: 2026-03-04
-summary: "Extract optimizations from core engine via hook system, make Lax monad explicit as 2-mode adjoint, enable multiple logics. Phases 1-3 done. Phase 4 fully designed and audit-verified: connective roles derived from existing (category, arity, polarity) metadata — zero .calc changes. Forward engine parameterized by roles map (32 hardcoded refs across 8 files), graceful degradation when roles absent. Roles are syntactic dispatch targets; operational semantics come from mode theory. FFI advisory failure fixed (2026-03-04). ~115 production LOC."
+summary: "Extract optimizations from core engine via hook system, make Lax monad explicit as 2-mode adjoint, enable multiple logics. All 4 phases done. Phase 4 parameterized 32 hardcoded connective refs across 9 files via roles map derived from (category, arity, polarity) metadata. deriveRoles() in buildCalculus, DEFAULT_ROLES fallback, conditional monad injection. Two calculi can coexist. ~115 production LOC + 14 new tests."
 tags: [architecture, refactor, modularity, lax-monad, optimization, adjoint-logic, separation-of-concerns, proof-certificates, monad-l, multi-phase, mode-theory, multi-logic, connective-roles]
 type: design
-status: planning
+status: done
 priority: 10
 cluster: Theory
 depends_on: []
@@ -1673,7 +1673,15 @@ function deriveRoles(constructors, polarity) {
       roles.existential = name;
     }
   }
+  // Collision detection: warn if two connectives map to the same role
+  const seen = {};
+  for (const [role, tag] of Object.entries(roles)) {
+    if (role === '_connectives') continue;
+    if (seen[role]) console.warn(`deriveRoles: role '${role}' collision: '${seen[role]}' vs '${tag}'`);
+    seen[role] = tag;
+  }
   // Set of all connective tag names (for "is this a connective?" checks)
+  // Zig mapping: comptime bitmap or tag-ID bitset, not a heap-allocated Set
   roles._connectives = new Set(Object.keys(constructors));
   return roles;
 }
@@ -1685,6 +1693,8 @@ return { ...existing, roles };
 ```
 
 **Override at load time:** `mde.load('custom.ill', { roles: { product: 'times' } })` merges caller-supplied roles over derived ones.
+
+**Regression test (in tests/calculus.test.js):** Assert `deriveRoles(illConstructors, illPolarity)` produces the expected map (`{ product: 'tensor', implication: 'loli', unit: 'one', exponential: 'bang', computation: 'monad', 'internal-choice': 'oplus', 'external-choice': 'with', 'additive-zero': 'zero', existential: 'exists' }`). Guards against annotation regressions.
 
 ##### Step 3: Parameterize compile.js (~30 LOC changed)
 
@@ -1853,6 +1863,8 @@ function isAllPersistentAntecedent(h, roles = DEFAULT_ROLES) {
 }
 ```
 
+**loliDrain default-on:** In `optimizer.js:resolveProfile()`, when the calculus has an `implication` role, default `loliDrain: true` regardless of profile. This makes drain a calculus-capability-gated feature rather than a user-toggled optimization. ~3 LOC in `resolveProfile`.
+
 #### 4.7 FFI Isolation
 
 FFI metadata (`defaultMeta`) is currently global in `ffi/index.js`. For multi-logic:
@@ -1990,6 +2002,20 @@ These axes are independent: ILL + lax-monad mode theory + evm profile, or ILL + 
 - **ill.json bundle**: Currently precomputes ILL-specific data. Each calculus would have its own bundle. Browser.js loader already accepts arbitrary bundles.
 - **Cross-logic programs**: Programs mixing connectives from two logics. Research question (adjoint logic territory), not Phase 4 scope.
 - **`isPredTag` replacement**: Thread `calc.roles._connectives` to classify connectives vs predicates. Low-impact (~10 LOC), can be done opportunistically.
+
+#### 4.17 Pre-Implementation Audit Findings (2026-03-04)
+
+Five observations from pre-implementation theory + code audit. None blocking; three integrated into steps above.
+
+1. **Role collision warning (integrated → Step 2):** `deriveRoles` now warns if two connectives map to the same role. ~3 LOC. Cheap insurance for custom logics.
+
+2. **`_connectives` Set Zig mapping (integrated → Step 2 comment):** The `_connectives` Set maps to a comptime bitmap or tag-ID bitset in Zig, not a heap-allocated Set. Documented in code comment.
+
+3. **`deriveRoles` regression test (integrated → Step 2):** Explicit assertion that ILL derivation produces expected role map. Guards against annotation regressions.
+
+4. **loliDrain default-on (integrated → Step 9):** Default `loliDrain: true` when `implication` role is present. Makes drain a calculus-capability-gated feature.
+
+5. **Theory compliance for future logics (noted, not blocking):** CLL's why-not (`?`) and bounded LL's `!^n` need role overrides at load time. The derivation rule is sound for ILL/MALL; logics with novel exponentials or duplicate (category, arity, polarity) triples must use the override API. No code change needed — the override API exists.
 
 ---
 
