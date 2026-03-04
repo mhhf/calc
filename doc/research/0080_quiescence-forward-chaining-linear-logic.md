@@ -1,7 +1,7 @@
 ---
 title: "Quiescence in Forward-Chaining Linear Logic Systems"
 created: 2026-03-03
-modified: 2026-03-03
+modified: 2026-03-04
 summary: "Survey of quiescence definitions across CLF, LolliMon, SLS, Ceptre, CHR, and Datalog — distinguishing quiescence from saturation, and analyzing whether dormant lolis must be drained."
 tags: [quiescence, forward-chaining, linear-logic, clf, lollimon, chr, Ceptre, saturation, loli, theory]
 category: "Forward Chaining"

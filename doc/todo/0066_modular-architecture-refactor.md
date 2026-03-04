@@ -1,7 +1,7 @@
 ---
 title: "Modular Architecture Refactor — Core/Optimization Separation"
 created: 2026-03-03
-modified: 2026-03-03
+modified: 2026-03-04
 summary: "Extract optimizations from core engine via hook system, make Lax monad explicit as 2-mode adjoint, enable multiple logics. Comprehensive plan with all deliberations."
 tags: [architecture, refactor, modularity, lax-monad, optimization, adjoint-logic, separation-of-concerns, proof-certificates]
 type: design
@@ -710,28 +710,235 @@ The mode switch bridge must return enough information for future certificates:
 }
 ```
 
-#### Phase 2.5: Open questions (resolve before implementation)
+#### Phase 2.5: Resolved Design Decisions
 
-**Q2.1: Persistent context mapping — implicit vs explicit bang.**
-When L3's sequent enters forward mode, do ALL cartesian context facts become persistent? Or only those explicitly wrapped in `!`? Current CALC uses implicit (cartesian zone IS the persistence marker). CLF uses explicit `!A` constructors. These are equivalent in theory but differ in code. Likely: stick with implicit (matches current CALC, no constructor overhead). Must document.
+Research references for this section: RES_0078 (shift rule integration), RES_0079 (forward-backward return types), RES_0080 (quiescence theory). See also RES_0052 (CLF lax monad deep study) §6-8, TODO_0006 §4.
 
-**Q2.2: What does forward return to L3?**
-Options: (a) full execution tree for L1 verification (HIGH complexity), (b) just final state without verification (LOW), (c) defer verification to TODO_0008 — design bridge to carry data but don't verify now. Likely: (c).
+**D2.1: Persistent context mapping — implicit (zone-based). DECIDED.**
 
-**Q2.3: Quiescence types.**
-Forward mode can terminate via true quiescence (no rules fire), cycle detection, or depth bound. What does the backward prover see? Proposal: three return types — `{ type: 'terminal', state }`, `{ type: 'bound', state }`, `{ type: 'cycle', state }`. L3 decides policy.
+All cartesian context facts become persistent when entering forward mode. No explicit `!` wrapper needed. This matches adjoint logic's approach: structural rules (weakening, contraction) come from the mode, not from a constructor. CALC's cartesian zone IS the persistence mode. CLF's explicit `!A` is equivalent but adds constructor overhead.
 
-**Q2.4: Profile selection during mode switch.**
-When L3 invokes the forward engine, which optimization profile? Same as standalone exploration? Lighter "bounded" profile? User parameter? Proposal: pass `profile` to bridge, let the user decide at load time.
+Future-proof: adjoint logic parameterizes structural rules by mode. Zone-based persistence maps cleanly: `cartesian zone = unrestricted mode`, `linear zone = linear mode`. Adding affine/relevant modes later = adding new zones with different structural rules, not changing the zone-based design.
 
-**Q2.5: shift_r rule descriptor and L3 integration.**
-How does the mode-switch rule fit into focused.js? Is it a descriptor in ill.rules with a special "call forward engine" action? Or hardcoded in L3's focus phase? Needs ~40 LOC design for the descriptor format and how L3 plumbs results back.
+**D2.2: Forward engine return types — parametric by query mode. DECIDED.**
 
-**Q2.6: Sequent ↔ State bridge conversions.**
-The hard part. Concrete questions: (a) multiplicities — sequents don't track counts, FactSets do — assume each fact appears once? (b) succedent — is the goal `{S}` used as target or discarded after triggering the switch? (c) reverse direction — what does the final state become in sequent terms for L3 to continue?
+Support all three return modes, selected per invocation:
 
-**Q2.7: Loli drain at quiescence.**
-Should `drainPersistentLolis()` fire during mode-switched forward execution before returning to L3? Almost certainly yes (CLF semantics), but needs explicit decision.
+| Query mode | Returns | Use case |
+|---|---|---|
+| `'state'` | Final state only | `#run`-style queries, production forward execution |
+| `'trace'` | Final state + execution trace (rule sequence) | L3 mode switch bridge, future proof certificates |
+| `'tree'` | Full execution tree (all branches) | `symexec.explore()` exhaustive exploration |
+
+The forward engine internally tracks all information regardless. The `returnMode` parameter determines packaging.
+
+Research backing: LolliMon returns success/failure + bindings only (= `'state'`). Celf returns full proof terms in `#query` (= `'trace'`) and just state in `#exec`/`#trace` (= `'state'`). CALC supports both plus the exhaustive tree that neither CLF system has.
+
+```javascript
+// API:
+forward.run(state, rules, { returnMode: 'state' })   // → { state, quiescent }
+forward.run(state, rules, { returnMode: 'trace' })    // → { state, quiescent, trace }
+symexec.explore(state, rules, { ... })                 // → execution tree (always 'tree')
+
+// L3 bridge:
+bridge.runForward(state, rules, { returnMode: 'trace' })
+// → { state, quiescent, trace } — trace enables future certificate extraction
+```
+
+**D2.3: Quiescence types — two for committed choice, tree types for explore. DECIDED.**
+
+Committed choice (`run()` / L3 bridge):
+- `{ type: 'quiescent', state }` — normal: no rules fire (true quiescence per CLF)
+- `{ type: 'bound', state }` — step limit hit (practical approximation of non-termination)
+
+Exhaustive (`explore()`): existing tree node types: `leaf`, `bound`, `cycle`, `dead`.
+
+Research backing: CLF/LolliMon/Ceptre only define quiescence (no rules applicable). None have cycle detection or depth bounds — non-termination is simply possible. CALC's `bound` and `cycle` are practical extensions for exhaustive exploration (documented in THY_0001 §3). The committed choice mode inherits CLF's clean two-outcome model.
+
+**D2.4: Profile selection — per-program at load time. DECIDED.**
+
+Profile set at `mde.load()` time per program. No special handling for mode switch — the same profile applies whether the forward engine is called standalone or via L3 bridge. Each optimization knows what mode it helps in.
+
+```javascript
+const calc = mde.load('evm.ill', { profile: 'evm' });
+// Same profile used by standalone explore() AND by L3 mode switch bridge
+```
+
+**D2.5: Shift rule integration — mode theory + descriptor dispatch. DECIDED (design below).**
+
+This is the most architecturally significant decision. The design has four layers:
+
+**Layer 1: Mode theory as data.** The calculus object carries a mode theory defining all modes, their structural rules, and shifts between them:
+
+```javascript
+// lib/calculus/modes.js
+const modeTheory = {
+  modes: {
+    backward: {
+      structural: { weakening: true, contraction: true },
+      stateType: 'sequent',
+      search: 'focused'           // L3 focused.js
+    },
+    forward: {
+      structural: { weakening: false, contraction: false },
+      stateType: 'multiset',
+      search: 'committedChoice'   // forward.run()
+    }
+  },
+  shifts: [
+    {
+      connective: 'monad',        // the connective that triggers the shift
+      from: 'backward',           // source mode
+      to: 'forward',              // target mode
+      polarity: 'positive'        // monad is positive → invertible on right
+    }
+  ]
+};
+```
+
+**Layer 2: Shift as descriptor.** The monad's right rule is a regular descriptor with a `modeShift` field:
+
+```javascript
+// In ill.rules (or generated from mode theory):
+monad_r: {
+  connective: 'monad',
+  side: 'r',
+  arity: 1,
+  invertible: true,              // positive connective → right-rule is invertible
+  modeShift: { from: 'backward', to: 'forward' }
+}
+```
+
+The focusing discipline handles WHEN the rule fires (inversion phase, since invertible). The `modeShift` field tells the rule interpreter WHAT to do (call the bridge instead of recursive backward search).
+
+**Layer 3: Rule interpreter dispatch.** When `rule-interpreter.js` encounters a descriptor with `modeShift`, it generates a premise computation that calls the bridge:
+
+```javascript
+// In rule-interpreter.js:
+if (descriptor.modeShift) {
+  // Instead of generating sub-goals for backward search,
+  // call the mode switch bridge
+  return {
+    type: 'modeSwitch',
+    targetMode: descriptor.modeShift.to,
+    succedent: extractSuccedent(goal, descriptor)
+  };
+}
+```
+
+**Layer 4: Bridge execution.** The bridge converts state representations and calls the target mode's search strategy:
+
+```javascript
+// In lib/prover/bridge.js (new file, ~100 LOC):
+function executeModeSwitch(state, modeSwitch, calc) {
+  const { targetMode, succedent } = modeSwitch;
+  const mode = calc.modeTheory.modes[targetMode];
+
+  // 1. Convert sequent → target mode's state representation
+  const targetState = convertState(state, 'backward', targetMode, calc);
+
+  // 2. Run target mode's search strategy
+  const result = mode.search === 'committedChoice'
+    ? forward.run(targetState, calc.forwardRules, calc)
+    : /* future modes */ null;
+
+  // 3. Optionally check succedent against final state (see D2.6b)
+  if (succedent) checkSuccedent(result.state, succedent, calc);
+
+  // 4. Convert result back to source mode's representation
+  return convertResult(result, targetMode, 'backward', calc);
+}
+```
+
+**Why this design (tradeoff analysis):**
+
+| Option | Extensibility | Purity | Complexity | Chosen? |
+|---|---|---|---|---|
+| A: Hardcode in L3 | Poor — new case per shift | High — simple code | ~20 LOC | No |
+| B: Descriptor + executionMode | Good — new descriptors | Medium — L3 stays generic | ~80 LOC | Basis |
+| C: Full mode theory object | Best — modes are data | Highest — fully parametric | ~200 LOC | **Yes** |
+| D: Shifts as derived rules | Good — reuses rule interpreter | Low — overloads "premise" | ~100 LOC | No |
+
+Option C chosen because: (1) aligns with adjoint logic theory where modes and shifts are first-class, (2) adding new modes (affine, relevant, ownership) = adding entries to data, not new code paths, (3) the conversion functions are explicit and testable, (4) maps cleanly to Zig (mode theory = struct, shifts = array of structs).
+
+**Research backing:** Adjoint logic (Pruiksma et al. 2018) treats shifts as regular connectives with standard polarity: ↑ is negative (right-rule invertible), ↓ is positive (right-rule requires focus). The monad `{A} = ↑(↓A)` is a composed shift. In CALC, this means `monad_r` is invertible (fires eagerly in inversion phase) — exactly matching L3's existing inversion phase. See RES_0078 for how Celf hardcodes this in `solve` via pattern match on `TMonad S`, how LolliMon hardcodes it via `Const "{}"`, and how Ceptre uses a hybrid (user-defined stage transition rules + hardcoded quiescence detection). CALC's descriptor + mode theory approach is cleaner than any of these implementations.
+
+**Concrete example — how a new mode would be added later:**
+
+```javascript
+// 1. Add mode to theory
+calc.modeTheory.modes.affine = {
+  structural: { weakening: true, contraction: false },
+  stateType: 'multiset',
+  search: 'committedChoice'  // or 'focused' with affine structural rules
+};
+
+// 2. Add shift connective
+calc.modeTheory.shifts.push({
+  connective: 'affine_monad', from: 'backward', to: 'affine', polarity: 'positive'
+});
+
+// 3. Add descriptor (in .rules file or programmatically)
+// affine_monad_r: { connective: 'affine_monad', side: 'r', arity: 1,
+//   invertible: true, modeShift: { from: 'backward', to: 'affine' } }
+
+// 4. Add conversion function
+// convertState('backward', 'affine', ...) — like backward→forward but allows weakening
+```
+
+No new code paths in L3 or rule interpreter — just data.
+
+**D2.6: Sequent ↔ State bridge — parametric. DECIDED.**
+
+**(a) Multiplicities: FactSet counts are correct. No change needed.**
+
+The linear context Δ in sequent calculus IS a multiset — the same formula can appear multiple times. CALC's FactSet `{hash: count}` model handles this correctly. Celf tracks individual occurrences by position; CALC tracks by hash + count. Both are semantically equivalent for ground formulas, and CALC's forward engine only works with ground facts.
+
+**(b) Succedent: parametric — checked or unchecked. DECIDED.**
+
+Support both modes, selected per invocation:
+
+| Mode | What happens to S | Use case |
+|---|---|---|
+| `succedent: S` | After quiescence, check final state matches S (Celf `rightFocus`-style decomposition) | Theory-mode queries, mixed backward/forward programs |
+| `succedent: null` | Run to quiescence, return raw final state | EVM-style programs, symexec, Ceptre-style undirected execution |
+
+Research backing: In Celf, the succedent S is passed to `forwardChain` and checked via `rightFocus` after quiescence. `rightFocus` decomposes the synchronous type S against the final state: tensor splits the state multiplicatively, `1` requires empty linear state, `!A` checks persistent context, `exists x.S'` finds a witness. If the check fails, L3 backtracks. In `#exec`/`#trace` mode, Celf skips the check. CALC supports both. See RES_0079 for Celf source code analysis.
+
+When `succedent` is provided, the check is:
+```javascript
+// Decompose S against final state (rightFocus analog):
+// S = A * B → split state: some facts match A, rest match B
+// S = 1     → linear state must be empty
+// S = !A    → A must be in persistent state
+// S = ∃x.S' → find witness x in state, recurse with S'[x]
+```
+
+**(c) Reverse direction: parametric — raw state or decomposed. DECIDED.**
+
+Support both, matching (b):
+
+| When succedent = null | Return raw `{ linear: FactSet, persistent: FactSet }` |
+|---|---|
+| When succedent = S | Decompose via rightFocus: return the remaining context after S is matched, as sequent terms for L3 to continue |
+
+Implementation phasing: Start with `succedent: null` (return raw state). Add rightFocus decomposition when mixed backward/forward programs are needed. The bridge API supports both from day one — the decomposition is just initially unimplemented and returns an error if called.
+
+**D2.7: Loli drain at quiescence — yes, always drain. DECIDED.**
+
+Lolis that CAN fire MUST fire before declaring quiescence. The state is not quiescent if there's a dormant loli whose guard is provable. CALC's existing `drainPersistentLolis` handles this correctly.
+
+Dormant lolis that CANNOT fire (guard unprovable) are valid residual resources — they stay in the final state as unconsumed capabilities. This is sound: a loli `!G -o B` where G is not provable is simply an unused capability, like a coupon you never redeemed.
+
+Research backing: CLF forbids lolis inside the monad entirely, so this question doesn't arise in standard theory. CALC's extension (loli-in-monad, THY_0001 §1.2) requires the drain mechanism for correct quiescence. From the CHR perspective, CALC's drain is analogous to exhaustive propagation before declaring saturation. See RES_0080 for full analysis.
+
+Implementation: The L3 bridge calls `forward.run()`, which already uses `drainPersistentLolis` in its main loop. No additional work needed.
+
+#### Phase 2.6: Important distinctions for implementation
+
+**Modes ≠ principals/users.** Modes are finite, static categories of structural behavior (linear, affine, unrestricted). Principals/users are first-order terms — quantified over, dynamic, unbounded. In CALC, Ethereum addresses (uint160) are terms, not modes. Ownership `[P] resource(X)` uses principal P as a term variable in formulas; rules quantify universally over P. This scales to 2^160 addresses. See §5.2 (ownership modality) — it's formula-level, orthogonal to modes.
+
+**`!eq(X,Y)` as proposition vs substitution.** Persistent equality facts stay in state as propositions (not converted to substitutions) because: (1) they serve as path conditions readable in execution traces, (2) other rules pattern-match on them (e.g., `contra/eq_neq`), (3) the EqNeqSolver already tracks them as constraints via union-find for O(α(n)) queries, (4) rewriting all state hashes on every equality would be expensive. The solver IS the global substitution mechanism — it just doesn't rewrite state. The redundancy (fact in state + equation in solver) is intentional: state for rule matching, solver for constraint propagation.
 
 ---
 
@@ -819,6 +1026,9 @@ If context is cleared, read these files to rebuild understanding:
 
 ### External Research
 - `doc/research/0077_modular-proof-kernel-architectures.md` — LCF, FPC, Dedukti, Ceptre, Metamath Zero architectures. Eight named patterns.
+- `doc/research/0078_mode-switch-shift-focused-proof-search.md` — How Celf/LolliMon/Ceptre implement mode switching. Source code analysis.
+- `doc/research/0079_clf-forward-backward-return-value.md` — What forward engines return to backward provers. CLF proof terms, Celf `Let'` constructors.
+- `doc/research/0080_quiescence-forward-chaining-linear-logic.md` — Quiescence vs saturation. Loli drain semantics. CHR comparison.
 
 ### Code (engine hot path)
 - `lib/engine/symexec.js` — DFS exploration. `go()` is the hot loop (lines 310-482). All optimization entanglement here.
@@ -853,17 +1063,23 @@ If context is cleared, read these files to rebuild understanding:
 - THY_0001 — Exhaustive Forward Chaining theory
 - RES_0008 — CLF/Celf/Ceptre research
 - RES_0035 — Prover architecture (LCF model)
-- RES_0052 — CLF Lax Monad deep study
-- RES_0077 — Modular Proof Kernel Architectures (LCF, FPC, Dedukti, Ceptre, Metamath Zero)
+- RES_0052 — CLF Lax Monad deep study (§6 adjunction, §8 CALC's extensions)
 - RES_0074 — QTT, Graded Types, Adjoint Logic, MTDC
+- RES_0077 — Modular Proof Kernel Architectures (LCF, FPC, Dedukti, Ceptre, Metamath Zero)
+- RES_0078 — Mode-switch shift rule integration in focused provers (Celf/LolliMon/Ceptre source analysis)
+- RES_0079 — CLF forward-backward return value (what forward returns to backward, proof terms)
+- RES_0080 — Quiescence in forward-chaining linear logic (quiescence vs saturation, loli drain)
 
 ### Key External
 - Watkins et al. (2004) — CLF: Dependent Logical Framework
 - Lopez et al. (2005) — LolliMon: forward+backward via Lax monad
 - Pruiksma et al. (2018) — Adjoint Logic (mode preorder, shifts)
+- Pruiksma (2024) — Adjoint Logic with Applications (PhD thesis, CMU-CS-24-103)
 - Miller (2013) — Foundational Proof Certificates (clerk/expert)
 - Harrison (2009) — HOL Light kernel (~400 LOC, LCF model)
 - Digama (2019) — Metamath Zero (spec/proof separation)
+- Simmons & Pfenning (2009) — Linear Logical Approximations (quiescence vs saturation)
+- Betz & Frühwirth (2013) — CHR with Disjunction (soundness for additives in forward chaining)
 
 ### Relationship to Existing TODOs
 
