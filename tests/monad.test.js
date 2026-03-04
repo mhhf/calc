@@ -1,8 +1,8 @@
 /**
- * Tests for Lax Monad {A} — Phase 2
+ * Tests for Lax Monad {A} — Phase 2 + Phase 3 (rightFocus)
  *
  * Covers: parser, polarity/invertibility, stickiness, mode switch,
- * committed choice, kernel verification, bridge, integration.
+ * committed choice, kernel verification, bridge, rightFocus, integration.
  */
 
 const { describe, it, before } = require('node:test');
@@ -15,7 +15,7 @@ const { createGenericProver } = require('../lib/prover/generic');
 const { createKernel } = require('../lib/prover/kernel');
 const { createProver } = require('../lib/prover/focused');
 const { initRuleSpecs } = require('../lib/prover/rule-interpreter');
-const { sequentToState, stateToContext, executeModeSwitch } = require('../lib/prover/bridge');
+const { sequentToState, stateToContext, rightFocus, executeModeSwitch } = require('../lib/prover/bridge');
 const { compileRule } = require('../lib/engine/compile');
 
 let ill, AST, parse, render;
@@ -460,24 +460,292 @@ describe('Monad integration', () => {
     const { specs, alternatives } = initRuleSpecs(ill);
 
     const a = AST.atom('a');
-    const monadA = AST.monad(a);
-    // Rule that consumes a and produces nothing in monad
+    const b = AST.atom('b');
+    // Rule: a -o {b}
     const compiled = compileRule({
-      name: 'consume_a',
-      hash: AST.loli(a, AST.monad(AST.one())),
+      name: 'a_to_b_q',
+      hash: AST.loli(a, AST.monad(b)),
       antecedent: a,
-      consequent: AST.monad(AST.one())
+      consequent: AST.monad(b)
     });
 
-    const seq = Seq.fromArrays([a], [], monadA);
+    const seq = Seq.fromArrays([a], [], AST.monad(b));
     const result = focused.prove(seq, {
       rules: specs,
       alternatives,
       engineCalc: { forwardRules: [compiled] }
     });
 
-    // This should succeed — monad_r fires, forward engine runs
     assert.ok(result.success);
     assert.ok(result.proofTree.state.quiescent, 'forward engine should reach quiescence');
+  });
+});
+
+// =========================================================================
+// 9. rightFocus — succedent decomposition (Phase 3)
+// =========================================================================
+
+describe('rightFocus succedent decomposition', () => {
+  it('atom: single atom in state matches', () => {
+    const a = AST.atom('a');
+    const remaining = rightFocus({ [a]: 1 }, {}, a);
+    assert.ok(remaining !== null, 'should succeed');
+    assert.strictEqual(Object.keys(remaining).length, 0, 'remaining should be empty');
+  });
+
+  it('atom: missing resource fails', () => {
+    const a = AST.atom('a');
+    const b = AST.atom('b');
+    const remaining = rightFocus({ [b]: 1 }, {}, a);
+    assert.strictEqual(remaining, null, 'should fail — a not in state');
+  });
+
+  it('tensor: two atoms split correctly', () => {
+    const a = AST.atom('a');
+    const b = AST.atom('b');
+    const t = AST.tensor(a, b);
+    const remaining = rightFocus({ [a]: 1, [b]: 1 }, {}, t);
+    assert.ok(remaining !== null, 'should succeed');
+    assert.strictEqual(Object.keys(remaining).length, 0, 'remaining should be empty');
+  });
+
+  it('tensor: nested tensor decomposes correctly', () => {
+    const a = AST.atom('a');
+    const b = AST.atom('b');
+    const c = AST.atom('c');
+    const t = AST.tensor(AST.tensor(a, b), c);
+    const remaining = rightFocus({ [a]: 1, [b]: 1, [c]: 1 }, {}, t);
+    assert.ok(remaining !== null);
+    assert.strictEqual(Object.keys(remaining).length, 0);
+  });
+
+  it('tensor: duplicate atoms consumed multiplicatively', () => {
+    const a = AST.atom('a');
+    const t = AST.tensor(a, a);
+    // Need exactly 2 copies
+    const r1 = rightFocus({ [a]: 2 }, {}, t);
+    assert.ok(r1 !== null, 'should succeed with 2 copies');
+    assert.strictEqual(Object.keys(r1).length, 0);
+
+    // Only 1 copy → fail
+    const r2 = rightFocus({ [a]: 1 }, {}, t);
+    assert.strictEqual(r2, null, 'should fail with only 1 copy');
+  });
+
+  it('one: empty state matches', () => {
+    const one = AST.one();
+    const remaining = rightFocus({}, {}, one);
+    assert.ok(remaining !== null, 'should succeed on empty state');
+  });
+
+  it('one: non-empty state fails', () => {
+    const a = AST.atom('a');
+    const one = AST.one();
+    const remaining = rightFocus({ [a]: 1 }, {}, one);
+    assert.strictEqual(remaining, null, 'should fail — resources remain');
+  });
+
+  it('bang: atom in persistent state matches', () => {
+    const a = AST.atom('a');
+    const bangA = AST.bang(a);
+    const remaining = rightFocus({}, { [a]: 1 }, bangA);
+    assert.ok(remaining !== null, 'should succeed');
+  });
+
+  it('bang: missing from persistent fails', () => {
+    const a = AST.atom('a');
+    const b = AST.atom('b');
+    const bangA = AST.bang(a);
+    const remaining = rightFocus({}, { [b]: 1 }, bangA);
+    assert.strictEqual(remaining, null, 'should fail — a not in persistent');
+  });
+
+  it('bang: does not consume linear resources', () => {
+    const a = AST.atom('a');
+    const b = AST.atom('b');
+    const bangA = AST.bang(a);
+    const remaining = rightFocus({ [b]: 1 }, { [a]: 1 }, bangA);
+    assert.ok(remaining !== null);
+    assert.strictEqual(remaining[b], 1, 'linear b should remain untouched');
+  });
+
+  it('tensor + bang: mixed decomposition', () => {
+    const a = AST.atom('a');
+    const b = AST.atom('b');
+    // a * !b
+    const succ = AST.tensor(a, AST.bang(b));
+    const remaining = rightFocus({ [a]: 1 }, { [b]: 1 }, succ);
+    assert.ok(remaining !== null, 'should succeed');
+    assert.strictEqual(Object.keys(remaining).length, 0);
+  });
+
+  it('failure: leftover resources after decomposition', () => {
+    const a = AST.atom('a');
+    const b = AST.atom('b');
+    const c = AST.atom('c');
+    // Succedent asks for a * b, but state has a, b, c
+    const succ = AST.tensor(a, b);
+    const remaining = rightFocus({ [a]: 1, [b]: 1, [c]: 1 }, {}, succ);
+    // rightFocus itself succeeds (consumed a and b) but c remains
+    assert.ok(remaining !== null, 'rightFocus succeeds (partial)');
+    assert.strictEqual(remaining[c], 1, 'c should remain unconsumed');
+    // executeModeSwitch would reject this (linearEmpty check)
+  });
+
+  it('freevar in succedent fails', () => {
+    const fv = AST.freevar('X');
+    const remaining = rightFocus({}, {}, fv);
+    assert.strictEqual(remaining, null, 'freevar cannot be rightFocused');
+  });
+
+  it('predicate term consumes from linear', () => {
+    // Compound term like pc(5) — treated as ground fact
+    const pc5 = Store.put('pc', [Store.put('binlit', [5n])]);
+    const remaining = rightFocus({ [pc5]: 1 }, {}, pc5);
+    assert.ok(remaining !== null);
+    assert.strictEqual(Object.keys(remaining).length, 0);
+  });
+});
+
+// =========================================================================
+// 10. rightFocus integration (Phase 3)
+// =========================================================================
+
+describe('rightFocus integration', () => {
+  it('succedent match → proof succeeds', () => {
+    const focused = createProver(ill);
+    const { specs, alternatives } = initRuleSpecs(ill);
+
+    const a = AST.atom('a');
+    const b = AST.atom('b');
+    // Forward rule: a -o {b}
+    const compiled = compileRule({
+      name: 'rf_a_to_b',
+      hash: AST.loli(a, AST.monad(b)),
+      antecedent: a,
+      consequent: AST.monad(b)
+    });
+
+    // Prove: a |- {b}
+    const seq = Seq.fromArrays([a], [], AST.monad(b));
+    const result = focused.prove(seq, {
+      rules: specs,
+      alternatives,
+      engineCalc: { forwardRules: [compiled] }
+    });
+
+    assert.ok(result.success, 'forward produces b, succedent is {b} → match');
+  });
+
+  it('succedent mismatch → proof fails (L3 backtracks)', () => {
+    const focused = createProver(ill);
+    const { specs, alternatives } = initRuleSpecs(ill);
+
+    const a = AST.atom('a');
+    const b = AST.atom('b');
+    const c = AST.atom('c');
+    // Forward rule: a -o {b}
+    const compiled = compileRule({
+      name: 'rf_mismatch',
+      hash: AST.loli(a, AST.monad(b)),
+      antecedent: a,
+      consequent: AST.monad(b)
+    });
+
+    // Prove: a |- {c} — forward produces b, but succedent wants c
+    const seq = Seq.fromArrays([a], [], AST.monad(c));
+    const result = focused.prove(seq, {
+      rules: specs,
+      alternatives,
+      engineCalc: { forwardRules: [compiled] }
+    });
+
+    assert.strictEqual(result.success, false,
+      'forward produces b but succedent wants c → rightFocus fails');
+  });
+
+  it('leftover resources → proof fails', () => {
+    const focused = createProver(ill);
+    const { specs, alternatives } = initRuleSpecs(ill);
+
+    const a = AST.atom('a');
+    const b = AST.atom('b');
+    // Forward rule: a -o {a * b} (produces MORE than consumed)
+    const compiled = compileRule({
+      name: 'rf_extra',
+      hash: AST.loli(a, AST.monad(AST.tensor(a, b))),
+      antecedent: a,
+      consequent: AST.monad(AST.tensor(a, b))
+    });
+
+    // Prove: a |- {a} — forward produces a and b, but succedent only wants a
+    const seq = Seq.fromArrays([a], [], AST.monad(a));
+    const result = focused.prove(seq, {
+      rules: specs,
+      alternatives,
+      engineCalc: { forwardRules: [compiled] }
+    });
+
+    assert.strictEqual(result.success, false,
+      'forward produces {a, b} but succedent is {a} → leftover b → fail');
+  });
+
+  it('tensor succedent with multiple forward steps', () => {
+    const focused = createProver(ill);
+    const { specs, alternatives } = initRuleSpecs(ill);
+
+    const a = AST.atom('a');
+    const b = AST.atom('b');
+    const c = AST.atom('c');
+    // Rule 1: a -o {b}
+    const r1 = compileRule({
+      name: 'rf_chain1',
+      hash: AST.loli(a, AST.monad(b)),
+      antecedent: a,
+      consequent: AST.monad(b)
+    });
+    // Rule 2: b -o {c}
+    const r2 = compileRule({
+      name: 'rf_chain2',
+      hash: AST.loli(b, AST.monad(c)),
+      antecedent: b,
+      consequent: AST.monad(c)
+    });
+
+    // Prove: a |- {c} — forward chains a→b→c
+    const seq = Seq.fromArrays([a], [], AST.monad(c));
+    const result = focused.prove(seq, {
+      rules: specs,
+      alternatives,
+      engineCalc: { forwardRules: [r1, r2] }
+    });
+
+    assert.ok(result.success, 'forward chains a→b→c, succedent {c} matches');
+  });
+
+  it('tensor succedent decomposes against multi-fact state', () => {
+    const focused = createProver(ill);
+    const { specs, alternatives } = initRuleSpecs(ill);
+
+    const a = AST.atom('a');
+    const b = AST.atom('b');
+    const c = AST.atom('c');
+    // Rule: a -o {b * c} (one step producing two facts)
+    const compiled = compileRule({
+      name: 'rf_tensor_out',
+      hash: AST.loli(a, AST.monad(AST.tensor(b, c))),
+      antecedent: a,
+      consequent: AST.monad(AST.tensor(b, c))
+    });
+
+    // Prove: a |- {b * c}
+    const seq = Seq.fromArrays([a], [], AST.monad(AST.tensor(b, c)));
+    const result = focused.prove(seq, {
+      rules: specs,
+      alternatives,
+      engineCalc: { forwardRules: [compiled] }
+    });
+
+    assert.ok(result.success, 'forward produces {b, c}, rightFocus decomposes b * c');
   });
 });
