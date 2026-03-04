@@ -2,8 +2,8 @@
 title: "Modular Architecture Refactor — Core/Optimization Separation"
 created: 2026-03-03
 modified: 2026-03-04
-summary: "Extract optimizations from core engine via hook system, make Lax monad explicit as 2-mode adjoint, enable multiple logics. Comprehensive plan with all deliberations. Phase 2 reviewed: stickiness enforcement, kernel verification design-for-certificates, delta tracking, dormant loli semantics — all resolved."
-tags: [architecture, refactor, modularity, lax-monad, optimization, adjoint-logic, separation-of-concerns, proof-certificates, monad-l, multi-phase, mode-theory]
+summary: "Extract optimizations from core engine via hook system, make Lax monad explicit as 2-mode adjoint, enable multiple logics. Phases 1-3 done. Phase 4 fully designed and audit-verified: connective roles derived from existing (category, arity, polarity) metadata — zero .calc changes. Forward engine parameterized by roles map (32 hardcoded refs across 8 files), graceful degradation when roles absent. Roles are syntactic dispatch targets; operational semantics come from mode theory. FFI advisory failure fixed (2026-03-04). ~115 production LOC."
+tags: [architecture, refactor, modularity, lax-monad, optimization, adjoint-logic, separation-of-concerns, proof-certificates, monad-l, multi-phase, mode-theory, multi-logic, connective-roles]
 type: design
 status: planning
 priority: 10
@@ -93,9 +93,9 @@ Cannot disable one strategy without rewriting the function.
 - Level 1: FFI arithmetic (`tryFFIDirect`) — O(1) for inc, plus, neq, mul
 - Level 2: State lookup — scan `state.persistent.group(tagId)`
 - Level 3: Backward clause resolution (`prove.js`)
-Order and dispatch cannot be configured per-predicate. If FFI returns `{ success: false }`, it's definitive — no clause fallback. See `doc/documentation/forward-optimization-roadmap.md` "Persistent proving order" for analysis.
+Order and dispatch cannot be configured per-predicate. See `doc/documentation/forward-optimization-roadmap.md` "Persistent proving order" for analysis.
 
-**⚠ FFI definitive failure is a composability blocker.** This is not just an ordering issue — it's a semantic decision. When FFI is registered for a predicate and returns false, clause resolution never fires. The refactor should make this configurable per-predicate: FFI-definitive (current, fast) vs FFI-advisory (falls through to clauses on failure).
+**⚠ FFI definitive failure — FIXED (2026-03-04).** Previously, if FFI returned `{ success: false }`, it was definitive — no clause fallback. This violated the principle "FFI is optimization, theory is semantics." Fixed in `opt/ffi.js:89` and `match.js:556`: FFI failure is now advisory (falls through to state lookup → clause resolution). For ground arithmetic (inc, plus, neq, mul), FFI and clauses compute the same function, so clauses also fail — same result, negligible overhead (~12 extra clause lookups per explore, each failing fast). The architectural benefit: FFI is now truly optional — disabling it changes only performance, never correctness.
 
 **3. symexec.js:go() (lines 310-482)** — 170-line DFS function with ALL of these interleaved:
 - Cycle detection via `pathVisited` Set (core)
@@ -546,9 +546,9 @@ function createEngine(profile) {
     // Strategy / rule selection
     findCandidates: profile.fingerprint ? fpLookup : naiveScan,
 
-    // Persistent proving — FFI mode is per-predicate configurable:
-    //   'definitive' (current: FFI failure is terminal, fast)
-    //   'advisory'   (FFI failure falls through to clause resolution)
+    // Persistent proving — FFI is advisory (failure falls through to clauses).
+    // When FFI enabled: FFI → state lookup → clause resolution.
+    // When FFI disabled: state lookup → clause resolution.
     provePersistent: profile.ffi ? ffiFirst : clauseOnly,
 
     // Exploration hooks
@@ -1450,21 +1450,546 @@ function rightFocus(state, succedentHash, calc) {
 7. Integration: backward prover with `succedent: S`, forward produces matching state → proof succeeds
 8. Integration: backward prover with `succedent: S`, forward produces non-matching state → L3 backtracks
 
-### Phase 4: Multi-Logic Support (~200 LOC)
+### Phase 4: Multi-Logic Support (~110 production LOC + ~155 test/fixture LOC)
 
-**Goal:** Multiple calculus objects coexist. Each `.calc` + `.rules` file produces an independent calculus.
+**Goal:** Multiple calculus objects coexist. Each `.calc` + `.rules` file produces an independent calculus. The forward engine adapts to what the logic provides — if a logic has tensor and monad, forward execution works; if not, it gracefully degrades.
 
-**Depends on:** Phase 1 (clean separation means calculus-specific code is in opt/, not core).
+**Depends on:** Phase 1 (done), Phase 2 (done), Phase 3 (done).
 
-**Current blockers:**
-- Tag namespace is global (pre-registered tags 0-25, dynamic tags 26+)
-- Forward engine imports from calculus-specific files (e.g., `ffi/arithmetic.js`)
+---
 
-**Fixes:**
-- Store remains global (content-addressing benefits from sharing)
-- Tag registry becomes per-calculus or namespaced (`ill:tensor`, `cll:tensor`)
-- Calculus object carries all logic-specific data (already mostly true — `calc.forwardRules`, `calc.clauses`, `calc.types`)
-- FFI bindings are per-calculus (already true — `calc.ffi` object)
+#### 4.1 Design Principle: Connective Roles (Derived, Not Annotated)
+
+**Insight:** The forward engine doesn't hardcode ILL connectives — it hardcodes *connective roles*. `flattenTensor` doesn't need "tensor" specifically; it needs "the binary product tag." `expandChoiceItem` doesn't need "oplus" specifically; it needs "the internal choice tag." Every hardcoded tag name is really a syntactic dispatch target.
+
+A **role** is a syntactic dispatch target — which tag the engine should recognize at a specific point in a tree walk. Roles are **derived automatically** from existing `.calc` annotations (`@category`, `@polarity`) combined with arity. No new annotations needed.
+
+**Derivation rule:** The triple (category, arity, polarity) uniquely identifies each role:
+
+```
+multiplicative + arity 2 + positive  →  product      (tensor)
+multiplicative + arity 2 + negative  →  implication   (loli)
+multiplicative + arity 0             →  unit          (one)
+additive       + arity 2 + positive  →  internal-choice (oplus)
+additive       + arity 2 + negative  →  external-choice (with)
+additive       + arity 0             →  additive-zero   (zero)
+exponential    + arity 1             →  exponential   (bang)
+monad          + arity 1             →  computation   (monad)
+quantifier     + arity 1 + positive  →  existential   (exists)
+```
+
+All `.calc` connectives already have `@category`. Polarity is either explicit (`@polarity positive`) or inferred by `focusing.js` from rule descriptors. Arity comes from the type signature. **Zero new annotations required.**
+
+**Override:** If derivation is ambiguous or wrong for a custom logic, the caller can provide explicit roles at load time: `mde.load('custom.ill', { roles: { product: 'times' } })`.
+
+**Precedent:** Isabelle/Pure object logics declare constants and axioms within a shared meta-logic. Maude uses parameterized modules with theories defining interfaces. In all cases: the *framework* defines the slots, the *logic* fills them. CALC derives the mapping automatically from existing metadata.
+
+#### 4.2 What Roles Are (and Are Not)
+
+**Roles are syntactic dispatch targets, not semantic specifications.**
+
+A role tells the forward engine "which tag to recognize at this point in a tree walk." It does NOT tell the engine what to DO with that tag — the operational semantics are in the engine code.
+
+Example: `flattenProduct` encounters `bang(A)` and puts `A` into the `persistent` array. The role `exponential = 'bang'` tells the engine which tag triggers zone separation. But the meaning of "persistent" — unlimited reuse via weakening+contraction — comes from the **mode theory** (Decision 4), not from the role. In a different logic:
+
+- **Bounded linear logic**: `!_n(A)` would go into a counted pool, not an unlimited zone
+- **Light linear logic**: `§(A)` would go into a polynomial-bounded zone
+- **Affine logic**: `!(A)` would allow weakening but not contraction
+
+The engine's two-zone model (linear/persistent) is an ILL-specific operational choice, derived from having exactly two modes. A future generalization to N modes (TODO_0012) would produce N zones, driven by the mode theory. Roles would still identify tags; the zone logic would change.
+
+**Separation of concerns:**
+- **Roles** = which tag the engine recognizes (syntactic, from calculus definition)
+- **Mode theory** = what structural rules apply per zone (semantic, from mode declarations)
+- **Engine code** = how zones are implemented (operational, currently hardcoded to 2-zone ILL model)
+
+#### 4.2.1 Roles Table
+
+| Role | ILL Tag | Engine Operation | Code Location |
+|------|---------|-----------------|---------------|
+| `product` | `tensor` | Recurse into both children during tree flattening | compile.js: `flattenProduct`, `expandChoiceItem` |
+| `unit` | `one` | Empty-state check in succedent decomposition | bridge.js: `rightFocus` |
+| `exponential` | `bang` | Zone-separate: put child in secondary zone (ILL: persistent) | compile.js: `flattenProduct`, `expandChoiceItem`; bridge.js: `rightFocus` |
+| `implication` | `loli` | Continuation matching + drain identification | match.js: `matchLoli`; symexec.js: drain; compile.js: metavar collection |
+| `computation` | `monad` | Unwrap monad body, detect forward rules | compile.js: `unwrapMonad`; match.js: loli body unwrap; convert.js: `hasMonad` |
+| `internal-choice` | `oplus` | Branch into alternative consequents | compile.js: `expandChoiceItem` |
+| `external-choice` | `with` | Branch into alternative consequents | compile.js: `expandChoiceItem` |
+| `existential` | `exists` | Open binder with fresh metavar during expansion | compile.js: `expandChoiceItem` |
+| `additive-zero` | `zero` | (no forward engine operation currently) | — |
+
+#### 4.2.2 Graceful Degradation
+
+If a role is absent, the corresponding engine operation is silently disabled — no error, just no-op:
+
+- No `computation` → `hasMonad()` returns false → no forward rules detected → backward-only prover
+- No `product` → `flattenProduct()` returns single-element list → forward rules are atomic rewrites
+- No `exponential` → no zone separation (everything linear)
+- No `implication` → no loli continuation matching, no drain
+- No `internal-choice`/`external-choice` → no consequent choice expansion
+
+#### 4.2.3 Future: N-Zone Generalization
+
+The current engine hardcodes a 2-zone model. When N-mode adjoint logic (TODO_0012) is implemented:
+
+1. The mode theory defines N modes with different structural rules
+2. Each shift connective (not just `!`) identifies a zone boundary
+3. `flattenProduct` becomes `flattenProduct(h, modeTheory)` — walks the tree, uses shift connectives to assign facts to their target zone
+4. `rightFocus` becomes zone-aware — each zone has its own structural rules (consume vs reuse vs count)
+5. The `exponential` role generalizes to multiple shift roles, one per mode boundary
+
+This is a future engine change (mode-aware zone allocation), not a roles change. Roles continue to identify tags; the engine code changes to use modes instead of hardcoded linear/persistent.
+
+#### 4.3 Hardcoded Reference Audit (verified 2026-03-04)
+
+**32 connective-specific hardcoded tag references** across 8 files. Verified via `grep` — exact line numbers below.
+
+| File | Refs | Lines | Functions |
+|------|------|-------|-----------|
+| `compile.js` | 8 | 29,32,45,85,91,105,108,263 | `flattenTensor` (tensor,bang), `unwrapMonad` (monad), `expandChoiceItem` (with,oplus,tensor,bang,exists), metavar collection (loli) |
+| `bridge.js` | 7 | 57,64,68,75,76,77,78,79 | `rightFocus` switch cases (tensor,one,bang,freevar,loli,with,oplus,monad) |
+| `convert.js` | 5 | 148,162,173,265,268 | `hasMonad` (monad), `extractAntecedent`/`extractConsequent` (loli×2), persistent extraction (tensor,bang) |
+| `show.js` | 5 | 30,31,32,33,34 | Debug display (loli,bang,tensor,one,zero) — cosmetic only |
+| `match.js` | 2 | 637,727 | monad unwrap in `matchLoli`, loli tag lookup |
+| `opt/loli-drain.js` | 2 | 26,27 | `isAllPersistentAntecedent` (tensor,bang) |
+| `symexec.js` | 1 | 52 | `_TAG_LOLI = Store.TAG.loli` cache |
+| `strategy.js` | 1 | 263 | `loliTagId = Store.TAG.loli` cache |
+
+**Scoping:**
+- **compile.js, bridge.js, match.js, symexec.js, strategy.js, opt/loli-drain.js** → parameterize via `roles` map (Steps 3-5,9)
+- **convert.js** → only `hasMonad` (line 148) needs roles param (Step 7). Lines 162,173,265,268 are ILL-specific file loading code; a different logic uses its own loader. Deferred (§4.12).
+- **show.js** → cosmetic, use calculus renderer instead. Deferred (§4.12).
+
+**Files with zero connective references (already generic):**
+forward.js, state-ops.js, prove.js, constraint.js, disc-tree.js, fact-set.js, optimizer.js, rule-analysis.js, store-binary.js, all opt/ except loli-drain.js, all kernel/*, all prover/* except bridge.js.
+
+#### 4.4 Store TAG Registry — No Change Needed
+
+The Store remains global and shared. This is correct — content-addressing benefits from sharing (`tensor(a,b)` in logic A and logic B produces the same hash). The global TAG registry works as-is:
+
+- **Shared tags** (tensor, bang, etc.): Two logics using the same connective name get the same tag ID. Correct behavior — the term structure is identical, only the rules differ.
+- **Novel tags** (e.g., CLL's `par`): Get dynamic IDs ≥ PRED_BOUNDARY. This makes `isPredTag('par')` return true — technically wrong (it's a connective, not a predicate), but **harmless**: `isPredTag` is only used in `collectOutputVars` (FFI heuristic, no-op without FFI), `prove.js` (backward clause resolution, unaffected), and `opt/ffi.js` (FFI dispatch, no-op). No correctness issue.
+- **Proper fix (future, not blocking):** Replace `isPredTag(tag)` calls with `calc.roles._connectives.has(tag)` where classification matters. Threading calc context to those call sites is ~10 LOC.
+
+**Tag namespacing (`ill:tensor`) is NOT needed.** It would break content-addressing (same structural term, different tags = different hashes). Two logics that both have tensor SHOULD share the same Store representation.
+
+#### 4.5 Implementation Prerequisites (verified 2026-03-04)
+
+**All data for role derivation already exists — zero .calc changes needed.**
+
+The derivation inputs:
+
+1. **`@category`** (`calculus/ill/ill.calc`): Every ILL connective already has `@category` (multiplicative, additive, exponential, monad, quantifier). Parsed by `declarations.js:215-237`, stored as `constr.annotations.category`.
+
+2. **Polarity** (`lib/calculus/index.js:98-101`): Built from `@polarity` annotations (explicit on oplus, zero, monad, exists) + focusing inference from rule descriptors (tensor, loli, bang, with, one inferred). Stored in `calculus.polarity`.
+
+3. **Arity**: `constr.argTypes.length` — from type signature parsing. tensor=2, bang=1, one=0, etc.
+
+4. **Calculus builder loop** (`lib/calculus/index.js:98-101`): Already iterates `Object.entries(constructors)` reading `constr.annotations.polarity`. The `deriveRoles` call goes right after this loop (polarity map is computed, all inputs available).
+
+**Verification that derivation is unambiguous for ILL:**
+
+| Category | Arity | Polarity | Connective | Role |
+|----------|-------|----------|-----------|------|
+| multiplicative | 2 | positive (inferred) | tensor | product |
+| multiplicative | 2 | negative (inferred) | loli | implication |
+| multiplicative | 0 | — | one | unit |
+| additive | 2 | positive (explicit) | oplus | internal-choice |
+| additive | 2 | negative (inferred) | with | external-choice |
+| additive | 0 | positive (explicit) | zero | additive-zero |
+| exponential | 1 | — | bang | exponential |
+| monad | 1 | negative (explicit) | monad | computation |
+| quantifier | 1 | positive (explicit) | exists | existential |
+
+No ambiguity: each (category, arity, polarity) triple maps to exactly one connective.
+
+**Concrete test calculus for graceful degradation tests:**
+
+```calc
+% tests/fixtures/minimal-prop.calc — propositional fragment, no forward engine features
+% Tests: roles absent → features silently disabled
+
+prop_and: formula -> formula -> formula
+  @ascii "_ /\ _"
+  @prec 60 left
+  @category multiplicative
+  @polarity positive.
+
+prop_true: formula
+  @ascii "T"
+  @category multiplicative.
+
+% Derivation: prop_and = multiplicative + arity 2 + positive → product role
+% Derivation: prop_true = multiplicative + arity 0 → unit role
+% No monad category → no computation role → hasMonad() returns false → backward-only
+% No exponential category → no zone separation
+% No implication → no loli matching, no drain
+```
+
+Accompanying rules file (`tests/fixtures/minimal-prop.rules`) for basic conjunction intro/elim.
+
+This calculus tests:
+- Roles derived correctly from minimal annotations
+- Forward rules compile with only product + unit (atomic rewrites, no persistent facts)
+- Engine handles missing roles gracefully (no crash, disabled features)
+- Store sharing: load alongside ILL, verify same-structure terms share hashes
+- Two calculi coexist without interference
+
+#### 4.6 Implementation Steps
+
+##### Step 1: No .calc changes needed
+
+All ILL connectives already have `@category` annotations. Polarity is either explicit (`@polarity`) or inferred by `focusing.js`. Arity comes from the type signature. Roles are derived automatically.
+
+##### Step 2: deriveRoles in buildCalculus (~30 LOC)
+
+In `lib/calculus/index.js`, after building polarity map:
+
+```javascript
+/**
+ * Derive forward engine roles from (category, arity, polarity).
+ * Roles are syntactic dispatch targets — which tag the engine recognizes
+ * at each point in a tree walk. No @role annotations needed.
+ */
+function deriveRoles(constructors, polarity) {
+  const roles = {};
+  for (const [name, constr] of Object.entries(constructors)) {
+    const cat = constr.annotations.category;
+    const arity = constr.argTypes?.length ?? 0;
+    const pol = polarity[name];
+
+    if (cat === 'multiplicative') {
+      if (arity === 2 && pol === 'positive') roles.product = name;
+      else if (arity === 2 && pol === 'negative') roles.implication = name;
+      else if (arity === 0) roles.unit = name;
+    } else if (cat === 'additive') {
+      if (arity === 2 && pol === 'positive') roles['internal-choice'] = name;
+      else if (arity === 2 && pol === 'negative') roles['external-choice'] = name;
+      else if (arity === 0) roles['additive-zero'] = name;
+    } else if (cat === 'exponential' && arity === 1) {
+      roles.exponential = name;
+    } else if (cat === 'monad' && arity === 1) {
+      roles.computation = name;
+    } else if (cat === 'quantifier' && arity === 1 && pol === 'positive') {
+      roles.existential = name;
+    }
+  }
+  // Set of all connective tag names (for "is this a connective?" checks)
+  roles._connectives = new Set(Object.keys(constructors));
+  return roles;
+}
+
+// In buildCalculus, after polarity inference:
+const roles = deriveRoles(constructors, polarity);
+// ... add to return object:
+return { ...existing, roles };
+```
+
+**Override at load time:** `mde.load('custom.ill', { roles: { product: 'times' } })` merges caller-supplied roles over derived ones.
+
+##### Step 3: Parameterize compile.js (~30 LOC changed)
+
+```javascript
+// DEFAULT_ROLES for backward compatibility (tests that call compileRule directly)
+const DEFAULT_ROLES = {
+  product: 'tensor', exponential: 'bang', computation: 'monad',
+  'internal-choice': 'oplus', 'external-choice': 'with',
+  existential: 'exists', implication: 'loli'
+};
+
+function flattenProduct(h, roles = DEFAULT_ROLES) {
+  const linear = [], persistent = [];
+  function walk(hash) {
+    const t = Store.tag(hash);
+    if (!t) return;
+    if (roles.product && t === roles.product) {
+      walk(Store.child(hash, 0));
+      walk(Store.child(hash, 1));
+    } else if (roles.exponential && t === roles.exponential) {
+      persistent.push(Store.child(hash, 0));
+    } else {
+      linear.push(hash);
+    }
+  }
+  walk(h);
+  return { linear, persistent };
+}
+
+function unwrapMonad(h, roles = DEFAULT_ROLES) {
+  if (roles.computation && Store.tag(h) === roles.computation)
+    return Store.child(h, 0);
+  return h;
+}
+
+function expandChoiceItem(h, roles = DEFAULT_ROLES) {
+  const t = Store.tag(h);
+  if (!t) return [{ linear: [h], persistent: [] }];
+  const ec = roles['external-choice'], ic = roles['internal-choice'];
+  if ((ec && t === ec) || (ic && t === ic)) {
+    return [...expandChoiceItem(Store.child(h, 0), roles),
+            ...expandChoiceItem(Store.child(h, 1), roles)];
+  }
+  if (roles.product && t === roles.product) { /* cartesian of L×R */ }
+  if (roles.exponential && t === roles.exponential) { /* persistent */ }
+  if (roles.existential && t === roles.existential) { /* open binder */ }
+  return [{ linear: [h], persistent: [] }];
+}
+
+function compileRule(rule, opts = {}) {
+  const roles = opts.roles || DEFAULT_ROLES;
+  const anteFlat = flattenProduct(rule.antecedent, roles);
+  const conseqBody = unwrapMonad(rule.consequent, roles);
+  // ... pass roles through to expandConsequentChoices, etc.
+}
+```
+
+##### Step 4: Parameterize bridge.js rightFocus (~15 LOC changed)
+
+```javascript
+function rightFocus(linear, persistent, hash, roles = {}) {
+  if (!Store.isTerm(hash)) return null;
+  const tag = Store.tag(hash);
+
+  if (roles.product && tag === roles.product) {
+    const r1 = rightFocus(linear, persistent, Store.child(hash, 0), roles);
+    if (!r1) return null;
+    return rightFocus(r1, persistent, Store.child(hash, 1), roles);
+  }
+  if (roles.unit && tag === roles.unit) {
+    return linearEmpty(linear) ? linear : null;
+  }
+  if (roles.exponential && tag === roles.exponential) {
+    const inner = Store.child(hash, 0);
+    return (persistent[inner] > 0) ? linear : null;
+  }
+  // Any known connective that's not a sync role → can't decompose
+  if (roles._connectives && roles._connectives.has(tag)) return null;
+  // Atom/predicate: consume from linear state
+  const count = linear[hash] || 0;
+  if (count <= 0) return null;
+  const next = { ...linear };
+  if (count === 1) delete next[hash];
+  else next[hash] = count - 1;
+  return next;
+}
+```
+
+The `roles._connectives.has(tag)` check handles novel connectives from other logics — they correctly fail rightFocus without needing explicit case entries.
+
+##### Step 5: Parameterize symexec.js + match.js + strategy.js (~13 LOC changed)
+
+```javascript
+// symexec.js line 52: at explore() startup, resolve from roles
+const implTag = calc?.roles?.implication;
+const _TAG_IMPL = implTag ? Store.TAG[implTag] : null;
+// ... in quiescence check:
+if (pm && (!_TAG_IMPL || state.linear.group(_TAG_IMPL).length === 0)) { ... }
+
+// match.js line 637: matchLoli monad unwrap
+const compTag = calc?.roles?.computation;
+const bodyInner = compTag && Store.tag(body) === compTag
+  ? Store.child(body, 0) : body;
+
+// match.js line 727: loli tag lookup
+const loliTagId = calc?.roles?.implication ? Store.TAG[calc.roles.implication] : Store.TAG.loli;
+
+// strategy.js line 263: loli tag lookup
+const loliTagId = calc?.roles?.implication ? Store.TAG[calc.roles.implication] : Store.TAG.loli;
+```
+
+##### Step 6: Thread roles through engine loading (~15 LOC)
+
+In `mde._buildCalc`:
+```javascript
+const roles = calcRoles || DEFAULT_ROLES;
+const compiledRules = forwardRules.map(r => forward.compileRule(r, { roles }));
+```
+
+In `bridge.executeModeSwitch`:
+```javascript
+const roles = engineCalc?.roles || {};
+const remaining = rightFocus(state.linear, state.persistent, innerSucc, roles);
+```
+
+In `symexec.explore` and `forward.run`: pass `calc.roles` from the calc context (already threaded via `opts.calc`).
+
+##### Step 7: convert.js hasMonad — use roles (+5 LOC)
+
+```javascript
+// In convert.js loadFile: use calculus roles if available
+function hasMonad(hash, computationTag = 'monad') {
+  const node = Store.get(hash);
+  if (!node) return false;
+  if (node.tag === computationTag) return true;
+  for (const c of node.children) {
+    if (typeof c === 'number' && hasMonad(c, computationTag)) return true;
+  }
+  return false;
+}
+```
+
+##### Step 8: Modes.js — conditional injection (+5 LOC)
+
+In `buildCalculus`, only inject monad rules if the calculus has the computation role:
+
+```javascript
+if (roles.computation) {
+  const { generateMonadRules } = require('./modes');
+  const monadRules = generateMonadRules();
+  for (const [name, rule] of Object.entries(monadRules))
+    rules[name] = rule;
+}
+```
+
+##### Step 9: opt/loli-drain.js — parameterize (+5 LOC)
+
+```javascript
+function isAllPersistentAntecedent(h, roles = DEFAULT_ROLES) {
+  const t = Store.tag(h);
+  if (roles.product && t === roles.product)
+    return isAllPersistentAntecedent(Store.child(h, 0), roles) &&
+           isAllPersistentAntecedent(Store.child(h, 1), roles);
+  if (roles.exponential && t === roles.exponential) return true;
+  return false;
+}
+```
+
+#### 4.7 FFI Isolation
+
+FFI metadata (`defaultMeta`) is currently global in `ffi/index.js`. For multi-logic:
+
+- **FFI registry stays global** — FFI functions (arithmetic, memory) are logic-independent implementations. `plus(a,b)` works the same in ILL or CLL.
+- **FFI metadata becomes per-calculus.** Add `calc.ffiMeta` field populated from `@ffi` annotations in .ill files. The global `defaultMeta` is the fallback for ILL.
+- The `collectOutputVars` function in compile.js accepts `ffiMeta` from the calc context instead of importing the global default.
+
+This is ~15 LOC and non-blocking — ILL programs continue using `defaultMeta` transparently.
+
+#### 4.8 What Does NOT Change
+
+- **Store** — global, shared, content-addressed. No namespacing, no per-calculus stores.
+- **Kernel (L1)** — already parameterized via `contextStructure`. Copy rule uses calculus-provided zone names.
+- **Generic prover (L2)** — zero logic-specific code. Uses calculus object for rule specs.
+- **Focused prover (L3)** — zero logic-specific code. Uses calculus polarity map.
+- **Unify/substitute** — operate on content-addressed terms, logic-agnostic.
+- **FactSet/Arena** — data structures, logic-agnostic.
+- **Optimizer/profiles** — optimization flags, logic-agnostic. Profiles are per-program, not per-logic.
+- **Strategy stack** — auto-detected from rule structure, logic-agnostic.
+
+#### 4.9 Zig Portability
+
+The roles map is a plain struct with string fields — maps directly to Zig:
+
+```zig
+const Roles = struct {
+    product: ?[]const u8 = null,
+    exponential: ?[]const u8 = null,
+    computation: ?[]const u8 = null,
+    implication: ?[]const u8 = null,
+    internal_choice: ?[]const u8 = null,
+    external_choice: ?[]const u8 = null,
+    existential: ?[]const u8 = null,
+    unit: ?[]const u8 = null,
+    additive_zero: ?[]const u8 = null,
+};
+```
+
+Optional fields (`?[]const u8`) map to the "role absent → feature disabled" pattern. No closures, no dynamic dispatch — just field checks.
+
+For hot-path usage, roles resolve to tag IDs at engine creation time (once), not per-step:
+
+```zig
+const ResolvedRoles = struct {
+    product_tag: ?u8 = null,
+    exponential_tag: ?u8 = null,
+    // ... numeric tag IDs, resolved once from string names
+};
+```
+
+This is Model B (Decision 2) applied to roles: resolve once, use as direct comparisons in hot loops.
+
+#### 4.10 Performance
+
+Role checks add one comparison per connective-specific branch. In the hot path (`flattenProduct` called once per rule at compile time, not per match), this is negligible. `rightFocus` runs once per mode switch. `_TAG_IMPL` check in symexec is one comparison per quiescence check.
+
+No measurable regression expected. Benchmark with `npm run bench:diff -- HEAD~1 --suite=symexec --iterations=200` to verify.
+
+#### 4.11 Testing Strategy
+
+1. **Existing tests pass** — roles default to `DEFAULT_ROLES` (ILL), zero behavioral change. Run `npm run test:all`.
+2. **Role derivation tests** — `deriveRoles(constructors, polarity)` correctly derives from (category, arity, polarity). Verify `ill.roles.product === 'tensor'`, `ill.roles.computation === 'monad'`, etc. Test override: caller-supplied roles merge over derived. Extend existing `tests/calculus.test.js`.
+3. **Graceful degradation tests** — use `tests/fixtures/minimal-prop.calc` (defined in §4.5):
+   - Calculus with only `product` + `unit` + atoms → forward rules compile, no persistent facts
+   - No `computation` role → `hasMonad()` returns false → no forward rules detected → backward-only prover
+   - No `exponential` role → no persistent/linear separation, everything linear
+   - No `implication` role → no loli matching, no drain
+   - No `internal-choice`/`external-choice` → no consequent expansion
+4. **rightFocus with roles** — existing Phase 3 tests pass with roles parameter threaded through
+5. **Two calculi coexist** — load ILL and minimal-prop simultaneously, verify:
+   - Store sharing works (same-name terms share hashes)
+   - Each calculus has independent rules
+   - No interference between calculus objects
+6. **Benchmark** — `npm run bench:diff -- HEAD~1 --suite=symexec --iterations=200`, no regression on solc_symbolic
+
+#### 4.12 Files Summary
+
+| File | Change | LOC | Step |
+|---|---|---|---|
+| `lib/calculus/index.js` | `deriveRoles()` + conditional monad injection | +35 | 2, 8 |
+| `lib/engine/compile.js` | Parameterize flattenProduct, expandChoiceItem, unwrapMonad | ~30 | 3 |
+| `lib/prover/bridge.js` | Parameterize rightFocus | ~15 | 4 |
+| `lib/engine/symexec.js` | Parameterize loli tag check (line 52) | ~5 | 5 |
+| `lib/engine/match.js` | Parameterize monad unwrap (line 637) + loli tag (line 727) | ~5 | 5 |
+| `lib/engine/strategy.js` | Parameterize loli tag (line 263) | ~3 | 5 |
+| `lib/engine/index.js` | Thread roles through _buildCalc | ~10 | 6 |
+| `lib/engine/convert.js` | Parameterize hasMonad (line 148) | ~5 | 7 |
+| `lib/engine/opt/loli-drain.js` | Parameterize isAllPersistentAntecedent (lines 26-27) + TAG (line 13) | ~5 | 9 |
+| `tests/fixtures/minimal-prop.calc` | Minimal test calculus (no monad/loli/bang) | +15 | — |
+| `tests/fixtures/minimal-prop.rules` | Conjunction intro/elim rules | +10 | — |
+| `tests/multi-logic.test.js` | New test file | ~130 | — |
+
+**Total: ~115 production LOC + ~155 test/fixture LOC. Zero .calc file changes.**
+
+#### 4.13 loliDrain: Semantic Reduction, Not Pure Optimization
+
+`opt/loli-drain.js` is classified as an optimization but is actually a **semantic reduction** — it eagerly fires deterministic persistent-trigger lolis to reduce branching in `symexec.explore()`. Without it, explore finds the same results but with exponentially more branches.
+
+Classification nuance:
+- In `forward.run()` (committed choice): drain is **not needed** — lolis fire naturally via `matchFirstLoli` in the committed-choice loop.
+- In `symexec.explore()`: drain is **semantically required** for practical exhaustive exploration — prevents exponential blowup from deterministic branches.
+
+**Current status:** Lives in `opt/` with a profile flag (`loliDrain`). Phase 4 Step 9 parameterizes its hardcoded `tensor`/`bang` refs via roles. After Phase 4, assess whether to move from `opt/` to core engine — the profile flag should probably default to `true` whenever `implication` role is present, making it effectively a core feature gated by calculus capability rather than a user-toggleable optimization.
+
+#### 4.14 Backward-Only Calculus Support
+
+A calculus with no monad connective works correctly via graceful degradation (§4.2.2):
+
+1. `deriveRoles` finds no `monad` category → no `computation` role
+2. `hasMonad()` returns false → no forward rules detected
+3. The calculus loads as backward-only
+4. `forward.run()` and `symexec.explore()` are never called
+5. All backward prover infrastructure (L1-L3, focused search) works unchanged
+
+This covers: propositional logics, pure sequent calculi, Ceptre-like forward-only (if mode theory has only forward mode with no backward shift), and classical logics without the lax monad extension.
+
+#### 4.15 Three-Axis Architecture (Rationale)
+
+CALC uses three orthogonal axes for configuration — each addresses a separate concern:
+
+1. **Calculus definition** (`.calc` + `.rules` + `.family`) — connectives, inference rules, type syntax. Produces a calculus object with constructors, rules, polarity, and derived roles.
+2. **Mode theory** (`modes.js`) — modes (backward/forward/affine/...), structural rules per mode (weakening/contraction), shifts between modes. Determines operational behavior: which zones exist, which connectives trigger mode switches.
+3. **Optimization profiles** (`optimizer.js`) — boolean flags for performance tuning (FFI, fingerprint, disc-tree, prediction, memo, solver). Per-program, not per-calculus.
+
+These axes are independent: ILL + lax-monad mode theory + evm profile, or ILL + lax-monad + bare profile, or minimal-prop + no-mode-theory + bare profile.
+
+**Implementation selection** (which ILL? which mode theory?) is handled by the loader: `mde.load('evm.ill', { profile: 'evm' })` selects the file (axis 1), the file's `@extends` chain resolves the calculus family (axis 1), the mode theory is derived from the calculus's monad annotation (axis 2), and the profile is passed explicitly (axis 3).
+
+#### 4.16 Non-Blocking Deferred Items
+
+- **show.js display** (5 refs, lines 30-34): Hardcodes ILL connective formatting. Use calculus renderer instead. Cosmetic/debug only.
+- **convert.js file loader** (4 refs, lines 162,173,265,268): `extractAntecedent`/`extractConsequent` hardcode loli, `persistent extraction` hardcodes tensor/bang. These are ILL-specific file loading code — a different logic provides its own loader via its calculus-generated parser. No architectural change needed.
+- **convert.js parser tables**: Hardcodes `ILL_ENGINE_TABLES`. Same reasoning — per-logic file loader.
+- **ill.json bundle**: Currently precomputes ILL-specific data. Each calculus would have its own bundle. Browser.js loader already accepts arbitrary bundles.
+- **Cross-logic programs**: Programs mixing connectives from two logics. Research question (adjoint logic territory), not Phase 4 scope.
+- **`isPredTag` replacement**: Thread `calc.roles._connectives` to classify connectives vs predicates. Low-impact (~10 LOC), can be done opportunistically.
 
 ---
 
@@ -1499,7 +2024,7 @@ function rightFocus(state, succedentHash, calc) {
 6. Core engine (minus opt/) is readable — hook points are small and clear
 7. `kernel.js` copy rule is parameterized — context structure comes from calculus object
 8. Hook signatures are Zig-portable — explicit context params, no closures, no `this`
-9. FFI failure mode is configurable per-predicate (definitive vs advisory)
+9. FFI failure mode is advisory (falls through to clauses on failure) — DONE (2026-03-04)
 10. Backward prover can invoke forward engine via `{S}` goal (Phase 2, monad_r)
 11. Backward prover can decompose `{S}` in context (Phase 2, monad_l) and orchestrate multi-phase forward execution
 12. Stickiness enforced: monad_l only applicable when succedent is monadic (Phase 2)
