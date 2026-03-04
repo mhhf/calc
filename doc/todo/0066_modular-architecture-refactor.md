@@ -3,7 +3,7 @@ title: "Modular Architecture Refactor — Core/Optimization Separation"
 created: 2026-03-03
 modified: 2026-03-04
 summary: "Extract optimizations from core engine via hook system, make Lax monad explicit as 2-mode adjoint, enable multiple logics. Comprehensive plan with all deliberations."
-tags: [architecture, refactor, modularity, lax-monad, optimization, adjoint-logic, separation-of-concerns, proof-certificates]
+tags: [architecture, refactor, modularity, lax-monad, optimization, adjoint-logic, separation-of-concerns, proof-certificates, monad-l, multi-phase, mode-theory]
 type: design
 status: planning
 priority: 10
@@ -648,9 +648,9 @@ The **bare** profile is the theoretical core: naive linear scan matching, clause
 
 The **pragmatic** suite (`test:fast`) is the daily driver. It maps test groups to profiles: EVM integration tests use `evm` profile, arithmetic tests use `fast`, core prover tests use `bare`. This keeps the development loop fast while the full bare suite catches optimization-dependent bugs in CI.
 
-### Phase 2: Explicit Lax Monad as 2-Mode Adjoint (~500 LOC)
+### Phase 2: Explicit Lax Monad as 2-Mode Adjoint (~550 LOC)
 
-**Goal:** Implement TODO_0006 Option B with adjoint-ready design. When the backward prover encounters goal `{S}`, switch to forward mode.
+**Goal:** Implement TODO_0006 Option B with adjoint-ready design. When the backward prover encounters goal `{S}`, switch to forward mode. When `{S}` appears in the linear context, monad_l decomposes it. Multi-phase orchestration via backward reasoning between forward phases.
 
 **Depends on:** Phase 1 is recommended but not strictly blocking (see Phase 2.7 "Phase 1 dependency").
 
@@ -729,7 +729,78 @@ monad_r: {
 
 The `modeShift` field distinguishes this from regular rules. When `rule-interpreter.js` sees `modeShift`, it returns a bridge call instead of sub-goals (see D2.5 Layer 3).
 
-**monad_l: deferred.** The left elimination rule (`let {p} = e in E`) would decompose a monadic value in the linear context. It is NOT invertible (negative + left = requires focus). monad_l is needed only when programs produce monadic values as intermediate results in backward reasoning. This doesn't arise in current CALC programs. Deferred to Phase 3 or a separate TODO.
+**monad_l: included (reverse bridge + explicit focusing rule).**
+
+monad_l is the monadic elimination / let-binding. It decomposes `{S}` in the linear context, extracting the contents S into the context. It has two operational faces:
+
+**Face 1: Implicit monad_l (reverse bridge).** When monad_r fires and the forward engine returns, the bridge converts the result state back to sequent form. Linear facts → linear context atoms, persistent facts → cartesian context atoms. This reverse conversion IS monad_l applied implicitly. No literal `monad(S)` formula ever appears in the linear context. This is the primary mechanism for multi-phase orchestration.
+
+**Face 2: Explicit monad_l (focusing rule).** If `monad(S)` appears as a literal formula in the linear context (e.g., from a rule antecedent that takes a monadic type), the backward prover can focus on it (negative + left = requires focus). monad_l fires, extracting child 0 (S) into the linear context. This is structurally identical to `dereliction` (bang_l). The descriptor:
+
+```javascript
+monad_l: {
+  connective: 'monad',
+  side: 'l',
+  arity: 1,
+  invertible: false,            // negative + left = NOT invertible (requires focus)
+  contextFlow: 'preserved',     // single premise, context passed through
+  premises: [{ linear: [0] }]  // child 0 goes into linear context
+}
+```
+
+**Stickiness:** In CLF's proof theory, monad_l's conclusion is always `C lax` (monadic). Once you open a monadic value, you stay in the monadic world. For CALC: the overall goal of any mixed-mode query must be `{S}` (monadic). Sub-goals may be pure backward (proving atoms) or monadic (triggering monad_r → forward). The backward prover's goal types naturally enforce this.
+
+**Cost: ~10 LOC.** monad_l is structurally identical to dereliction. The entire backward prover (focused.js, rule-interpreter.js, generic.js, kernel.js) is fully generic and polarity-driven. No code changes needed in any prover file. Only:
+- Add monad_l descriptor (in mode theory generation or `.rules`)
+- Register monad's polarity as negative
+
+The code analysis confirms: `chooseFocus` already finds negative-polarity formulas on the left, `applyAndRecurse` handles arity-1 left rules generically, `verifyStep` in kernel.js verifies by spec lookup. Everything just works.
+
+**Multi-phase orchestration via monad_l.**
+
+monad_l enables backward reasoning BETWEEN forward phases. The pattern:
+
+```
+1. Forward Phase 1 → produces intermediate results
+2. monad_l (reverse bridge) → results enter backward context
+3. Backward reasoning → computes derived facts from Phase 1 results
+4. Forward Phase 2 → consumes Phase 1 results + backward-derived facts
+```
+
+Concrete example:
+
+```ill
+% Phase 1 forward rules: deploy a contract
+deploy/init : initcode(C) -o { bytecode(B) }.
+deploy/exec : bytecode(B) -o { deployed(Addr, Runtime) }.
+
+% Backward rule: analyze deployed code to compute calldata
+compute_calldata(Addr, Runtime) :- deployed(Addr, Runtime), analyze(Runtime, D),
+  calldata(D).
+
+% Phase 2 forward rules: call the contract
+call/exec : deployed(Addr, Runtime) * calldata(D) -o { result(R) }.
+```
+
+Query: `initcode(C) ⊢ { result(R) }`.
+
+Without monad_l: one monolithic forward phase. `compute_calldata` is backward-only, can't fire during forward execution. Must flatten everything into forward rules or use FFI.
+
+With monad_l: the backward prover orchestrates:
+1. Sub-goal: `initcode(C) ⊢ { deployed(Addr, Runtime) }` — monad_r fires, Phase 1 forward runs
+2. Reverse bridge: `deployed(Addr, Runtime)` enters backward context
+3. Backward: `compute_calldata` fires, producing `calldata(D)`
+4. Sub-goal: `deployed(Addr, Runtime) * calldata(D) ⊢ { result(R) }` — monad_r fires, Phase 2 forward runs
+
+Phase separation is natural: Phase 2 rules need `calldata(D)`, which only exists after backward reasoning. They can't fire during Phase 1.
+
+**How the backward prover discovers this sequencing:**
+
+Forward rules are automatically available to the backward prover as clauses with monadic succedent. The rule `call/exec : deployed(Addr, Runtime) * calldata(D) -o { result(R) }` has backward reading: "to prove `{ result(R) }`, need `deployed(Addr, Runtime)` and `calldata(D)` in context." The backward prover uses this for planning — it recognizes that `deployed(Addr, Runtime)` can come from `deploy/exec`, which has backward reading "to prove `{ deployed(Addr, Runtime) }`, need `bytecode(B)` in context."
+
+Implementation: at `mde.load()` time, auto-register each forward rule as a backward clause. The antecedent pattern becomes the clause body, the consequent `{S}` becomes the clause head wrapped in `monad()`. The backward prover searches these clauses normally. When it finds a match and the goal is monadic, monad_r fires and forward runs.
+
+This is how CLF/Celf works: forward rules are recognized by their monadic type, and the backward prover plans on their antecedents. CALC makes this explicit via auto-registration.
 
 **Nested monads: forbidden.** CLF's type stratification forbids `{S}` inside synchronous types S (i.e., `{ A * { B } }` is ill-formed). The only way `{S}` enters the synchronous fragment is through `!{S}`. CALC's existing loli-in-monad pattern (`{ A * (trigger -o { B }) }`) is a different CLF extension (loli-in-monad, THY_0001), not nested monads — the loli is treated as an opaque linear fact at runtime.
 
@@ -1079,34 +1150,117 @@ if (src[pos] === '{') {
 
 This enables: `#query init -o { target }` (already works, loli handles it) and `#query { target }` (new, direct monadic goal).
 
+**monad_l: no prover changes needed.**
+
+monad_l is structurally identical to dereliction (bang_l): arity 1, left, preserved contextFlow, not invertible. The entire backward prover is fully generic and polarity-driven:
+- `chooseFocus` already finds negative-polarity formulas on the left
+- `applyAndRecurse` handles arity-1 left rules generically via the descriptor
+- `verifyStep` in kernel.js verifies by spec lookup (no connective-specific code)
+- `rule-interpreter.js:buildMakePremises` generates the correct premise computation from the descriptor
+
+Only work: register the monad_l descriptor in mode theory generation (alongside monad_r):
+
+```javascript
+// In modes.js — generate monad_l alongside monad_r:
+for (const shift of modeTheory.shifts) {
+  // ... monad_r generation (see above) ...
+
+  const lName = `${shift.connective}_l`;
+  ruleSpecs[lName] = {
+    connective: shift.connective,
+    side: 'l',
+    arity: 1,
+    invertible: false,           // negative + left = NOT invertible (requires focus)
+    contextFlow: 'preserved',
+    premises: [{ linear: [0] }] // child 0 enters linear context
+  };
+}
+```
+
+**Reverse bridge (implicit monad_l).**
+
+When monad_r's forward execution completes and the bridge returns the result to L3, the conversion from multiset state back to sequent IS implicit monad_l. The bridge code:
+
+```javascript
+// In bridge.js — convertResult():
+function convertResult(forwardResult, fromMode, toMode, calc) {
+  const { state, quiescent, trace } = forwardResult;
+
+  // Reverse: multiset state → sequent context atoms
+  const linearAtoms = [];
+  state.linear.forEach((hash, count) => {
+    for (let i = 0; i < count; i++) linearAtoms.push(hash);
+  });
+
+  const cartesianAtoms = [];
+  state.persistent.forEach((hash, count) => {
+    for (let i = 0; i < count; i++) cartesianAtoms.push(hash);
+  });
+
+  // These atoms enter L3's context for continued backward search
+  return { linearAtoms, cartesianAtoms, quiescent, trace };
+}
+```
+
+L3 receives the atoms and continues backward search with them in context. If the original goal was `Γ; Δ ⊢ {S}` and forward produced facts F₁...Fₙ, L3 now has `Γ'; Δ', F₁...Fₙ ⊢ ...` for subsequent sub-goals.
+
+**Auto-registration of forward rules as backward clauses.**
+
+At `mde.load()` time, each forward rule is registered as a backward clause with monadic head:
+
+```javascript
+// In convert.js or modes.js — after forward rules are compiled:
+for (const [name, rule] of Object.entries(calc.forwardRules)) {
+  // Forward rule: A₁ * ... * Aₙ -o { S }
+  // Backward reading: to prove { S }, need A₁, ..., Aₙ in context
+  const backwardClause = {
+    head: Store.put('monad', [rule.consequent]),  // { S }
+    body: rule.antecedents,                        // [A₁, ..., Aₙ]
+    name: `fwd/${name}`                            // prefix to distinguish
+  };
+  calc.clauses.push(backwardClause);
+}
+```
+
+This enables the backward prover to discover multi-phase sequencing through normal search: "to prove `{ result(R) }`, I need `deployed(Addr, Runtime)` and `calldata(D)`. I can get `deployed` by proving `{ deployed(Addr, Runtime) }`, which requires `bytecode(B)`, which requires..." etc.
+
 #### Phase 2.8: Test plan
 
-**Unit tests (~15 tests):**
+**Unit tests (~20 tests):**
 
 1. Mode theory construction and validation
 2. monad_r descriptor generation from shift entry
-3. `findInvertible(seq)` finds `monad(S)` on the right
-4. `convertState` sequent → multiset (correct linear/persistent mapping)
-5. `convertState` multiset → sequent (reverse direction, for result return)
-6. Parser: standalone `{S}` expression
-7. Parser: `A -o {S}` (existing behavior preserved)
+3. monad_l descriptor generation from shift entry
+4. `findInvertible(seq)` finds `monad(S)` on the right (invertible)
+5. `chooseFocus(seq)` finds `monad(S)` on the left (focusable, not invertible)
+6. `convertState` sequent → multiset (correct linear/persistent mapping)
+7. `convertState` multiset → sequent (reverse bridge — correct atom recovery)
+8. Parser: standalone `{S}` expression
+9. Parser: `A -o {S}` (existing behavior preserved)
+10. Auto-registration: forward rules appear as backward clauses with monadic head
+11. monad_l descriptor is structurally equivalent to dereliction (bang_l)
 
-**Integration tests (~10 tests):**
+**Integration tests (~15 tests):**
 
-8. Simple backward→forward: `#query a -o { b }` where a forward rule converts `a` to `b`
-9. Quiescence detection: forward engine stops when no rules fire
-10. Bound detection: forward engine hits step limit
-11. Persistent context: cartesian facts available as persistent during forward mode
-12. Multiple forward rules: correct committed-choice selection
-13. Profile independence: same result with 'bare' and 'evm' profiles
-14. Return modes: 'state' vs 'trace' produce correct shapes
-15. Succedent check: when `succedent: S` provided, verify final state matches S
+12. Simple backward→forward: `#query a -o { b }` where a forward rule converts `a` to `b`
+13. Quiescence detection: forward engine stops when no rules fire
+14. Bound detection: forward engine hits step limit
+15. Persistent context: cartesian facts available as persistent during forward mode
+16. Multiple forward rules: correct committed-choice selection
+17. Profile independence: same result with 'bare' and 'evm' profiles
+18. Return modes: 'state' vs 'trace' produce correct shapes
+19. Succedent check: when `succedent: S` provided, verify final state matches S
+20. Explicit monad_l: `monad(a)` in linear context, focus decomposes to `a`
+21. Multi-phase: forward Phase 1 → backward reasoning → forward Phase 2 (end-to-end)
+22. Reverse bridge: forward result atoms correctly enter backward context
+23. Backward discovers forward sequencing: backward prover plans across multiple monadic sub-goals via auto-registered clauses
+24. Stickiness: mixed-mode query must have monadic goal (pure non-monadic sub-goals within are OK)
 
 **Regression tests:**
 
-16. All existing `npm run test:all` still pass (monad_r doesn't interfere with existing backward proofs)
-17. All existing `npm run test:engine` still pass (forward engine unchanged)
-18. `npm run bench:diff -- HEAD --suite=symexec` shows < 2% regression
+25. All existing `npm run test:all` still pass (monad_r/monad_l don't interfere with existing backward proofs)
+26. All existing `npm run test:engine` still pass (forward engine unchanged)
+27. `npm run bench:diff -- HEAD --suite=symexec` shows < 2% regression
 
 ---
 
@@ -1160,11 +1314,12 @@ This enables: `#query init -o { target }` (already works, loli handles it) and `
 7. `kernel.js` copy rule is parameterized — context structure comes from calculus object
 8. Hook signatures are Zig-portable — explicit context params, no closures, no `this`
 9. FFI failure mode is configurable per-predicate (definitive vs advisory)
-10. Backward prover can invoke forward engine via `{S}` goal (Phase 2, 2-mode adjoint)
-11. `{A}` design generalizes to N modes without rearchitecting (mode theory object)
-12. A second calculus can be loaded alongside ILL (Phase 3)
-13. Proof certificate hook points exist (though certificates themselves are deferred)
-14. No optimization notes found during refactoring are lost (captured in optimization TODOs)
+10. Backward prover can invoke forward engine via `{S}` goal (Phase 2, monad_r)
+11. Backward prover can decompose `{S}` in context (Phase 2, monad_l) and orchestrate multi-phase forward execution
+12. `{A}` design generalizes to N modes without rearchitecting (mode theory object)
+13. A second calculus can be loaded alongside ILL (Phase 3)
+14. Proof certificate hook points exist (though certificates themselves are deferred)
+15. No optimization notes found during refactoring are lost (captured in optimization TODOs)
 
 ---
 
@@ -1174,7 +1329,7 @@ This enables: `#query init -o { target }` (already works, loli handles it) and `
 - **New optimizations.** Organizing existing ones only. New ideas → optimization TODOs.
 - **Breaking API changes.** External API (`mde.load`, `symexec.explore`) stays the same.
 - **Proof certificates (implementation).** Deferred. Design-for only. See §5.5.
-- **Full adjoint logic.** Only 2-mode (backward/forward). N-mode generalization is Phase 3+ / TODO_0012.
+- **Full adjoint logic.** Only 2-mode (backward/forward) with monad_r + monad_l. N-mode generalization is Phase 3+ / TODO_0012.
 - **Ownership / graded modalities.** Orthogonal. Not blocked by this refactor. See §5.2-5.3.
 
 ---
@@ -1197,6 +1352,7 @@ If context is cleared, read these files to rebuild understanding:
 - `doc/research/0078_mode-switch-shift-focused-proof-search.md` — How Celf/LolliMon/Ceptre implement mode switching. Source code analysis.
 - `doc/research/0079_clf-forward-backward-return-value.md` — What forward engines return to backward provers. CLF proof terms, Celf `Let'` constructors.
 - `doc/research/0080_quiescence-forward-chaining-linear-logic.md` — Quiescence vs saturation. Loli drain semantics. CHR comparison.
+- `doc/research/0081_clf-type-stratification-definitional-equality.md` — CLF type stratification, sync/async naming, definitional equality, nested monads (stub for deep study).
 
 ### Code (engine hot path)
 - `lib/engine/symexec.js` — DFS exploration. `go()` is the hot loop (lines 310-482). All optimization entanglement here.
@@ -1237,6 +1393,7 @@ If context is cleared, read these files to rebuild understanding:
 - RES_0078 — Mode-switch shift rule integration in focused provers (Celf/LolliMon/Ceptre source analysis)
 - RES_0079 — CLF forward-backward return value (what forward returns to backward, proof terms)
 - RES_0080 — Quiescence in forward-chaining linear logic (quiescence vs saturation, loli drain)
+- RES_0081 — CLF Type Stratification, Definitional Equality (sync/async, nested monads, future deep study)
 
 ### Key External
 - Watkins et al. (2004) — CLF: Dependent Logical Framework
