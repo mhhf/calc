@@ -1054,13 +1054,13 @@ No new code paths in L3 or rule interpreter — just data.
 
 The linear context Δ in sequent calculus IS a multiset — the same formula can appear multiple times. CALC's FactSet `{hash: count}` model handles this correctly. Celf tracks individual occurrences by position; CALC tracks by hash + count. Both are semantically equivalent for ground formulas, and CALC's forward engine only works with ground facts.
 
-**(b) Succedent: `succedent: null` only in Phase 2. rightFocus decomposition deferred to Phase 4. DECIDED.**
+**(b) Succedent: `succedent: null` only in Phase 2. rightFocus decomposition deferred to Phase 3. DECIDED.**
 
 Phase 2 implements only `succedent: null` — run to quiescence, return raw final state. This covers all current use cases (EVM symexec, standalone forward, multi-phase orchestration via backward planning).
 
 The bridge API accepts `succedent: S` from day one but returns an error if called with a non-null succedent ("rightFocus decomposition not yet implemented"). This ensures the API is stable — Phase 4 fills in the implementation without changing signatures.
 
-See Phase 4 for the full rightFocus decomposition design (Celf-style succedent checking).
+See Phase 3 for the full rightFocus decomposition design (Celf-style succedent checking).
 
 **(c) Reverse direction: raw state only in Phase 2. DECIDED.**
 
@@ -1318,7 +1318,7 @@ This enables the backward prover to discover multi-phase sequencing through norm
 17. Profile independence: same result with 'bare' and 'evm' profiles
 18. Return modes: 'state' vs 'trace' produce correct shapes
 19. Succedent null: bridge with `succedent: null` returns raw state correctly
-20. Succedent non-null: bridge with `succedent: S` returns error ("not yet implemented", deferred to Phase 4)
+20. Succedent non-null: bridge with `succedent: S` returns error ("not yet implemented", deferred to Phase 3)
 21. Explicit monad_l: `monad(a)` in linear context, focus decomposes to `a`
 22. Multi-phase: forward Phase 1 → backward reasoning → forward Phase 2 (end-to-end)
 23. Reverse bridge: forward result atoms correctly enter backward context
@@ -1339,29 +1339,13 @@ This enables the backward prover to discover multi-phase sequencing through norm
 
 ---
 
-### Phase 3: Multi-Logic Support (~200 LOC)
-
-**Goal:** Multiple calculus objects coexist. Each `.calc` + `.rules` file produces an independent calculus.
-
-**Depends on:** Phase 1 (clean separation means calculus-specific code is in opt/, not core).
-
-**Current blockers:**
-- Tag namespace is global (pre-registered tags 0-25, dynamic tags 26+)
-- Forward engine imports from calculus-specific files (e.g., `ffi/arithmetic.js`)
-
-**Fixes:**
-- Store remains global (content-addressing benefits from sharing)
-- Tag registry becomes per-calculus or namespaced (`ill:tensor`, `cll:tensor`)
-- Calculus object carries all logic-specific data (already mostly true — `calc.forwardRules`, `calc.clauses`, `calc.types`)
-- FFI bindings are per-calculus (already true — `calc.ffi` object)
-
-### Phase 4: rightFocus Succedent Decomposition (~80 LOC)
+### Phase 3: rightFocus Succedent Decomposition (~80 LOC)
 
 **Goal:** When the backward prover invokes forward execution via monad_r with a specific succedent S, verify after quiescence that the forward engine's final state actually matches S. This is Celf's `rightFocus` mechanism — decomposing a synchronous type against the multiset state.
 
 **Depends on:** Phase 2 (mode switch bridge with `succedent` parameter).
 
-**Why deferred:** Phase 2 covers all current use cases with `succedent: null` (undirected execution, return raw state). rightFocus decomposition is needed for theory-mode queries where the backward prover must verify that forward produced a specific result — e.g., mixed backward/forward programs with typed goals. No current CALC program requires this.
+**Why separate from Phase 2:** Phase 2 covers all current use cases with `succedent: null` (undirected execution, return raw state). rightFocus decomposition is needed for theory-mode queries where the backward prover must verify that forward produced a specific result — e.g., mixed backward/forward programs with typed goals. Self-contained ~80 LOC addition to bridge.js.
 
 #### What rightFocus is
 
@@ -1455,7 +1439,7 @@ function rightFocus(state, succedentHash, calc) {
 }
 ```
 
-#### Phase 4 test plan
+#### Phase 3 test plan
 
 1. rightFocus atom: single atom in state, matches succedent → succeeds
 2. rightFocus tensor: two atoms in state, tensor succedent → succeeds
@@ -1465,6 +1449,22 @@ function rightFocus(state, succedentHash, calc) {
 6. rightFocus failure: missing resource → fails
 7. Integration: backward prover with `succedent: S`, forward produces matching state → proof succeeds
 8. Integration: backward prover with `succedent: S`, forward produces non-matching state → L3 backtracks
+
+### Phase 4: Multi-Logic Support (~200 LOC)
+
+**Goal:** Multiple calculus objects coexist. Each `.calc` + `.rules` file produces an independent calculus.
+
+**Depends on:** Phase 1 (clean separation means calculus-specific code is in opt/, not core).
+
+**Current blockers:**
+- Tag namespace is global (pre-registered tags 0-25, dynamic tags 26+)
+- Forward engine imports from calculus-specific files (e.g., `ffi/arithmetic.js`)
+
+**Fixes:**
+- Store remains global (content-addressing benefits from sharing)
+- Tag registry becomes per-calculus or namespaced (`ill:tensor`, `cll:tensor`)
+- Calculus object carries all logic-specific data (already mostly true — `calc.forwardRules`, `calc.clauses`, `calc.types`)
+- FFI bindings are per-calculus (already true — `calc.ffi` object)
 
 ---
 
@@ -1504,8 +1504,8 @@ function rightFocus(state, succedentHash, calc) {
 11. Backward prover can decompose `{S}` in context (Phase 2, monad_l) and orchestrate multi-phase forward execution
 12. Stickiness enforced: monad_l only applicable when succedent is monadic (Phase 2)
 13. `{A}` design generalizes to N modes without rearchitecting (mode theory object)
-14. A second calculus can be loaded alongside ILL (Phase 3)
-15. rightFocus succedent decomposition works for atom, tensor, one, bang (Phase 4)
+14. rightFocus succedent decomposition works for atom, tensor, one, bang (Phase 3)
+15. A second calculus can be loaded alongside ILL (Phase 4)
 16. Proof certificate hook points exist (though certificates themselves are deferred)
 17. No optimization notes found during refactoring are lost (captured in optimization TODOs)
 
