@@ -258,12 +258,12 @@ The **hard engineering** is mode-switching infrastructure (sequent↔multiset co
 // Mode theory — 2 modes for now, extensible to N
 const modes = {
   backward: { structural: { weakening: true, contraction: true } },
-  forward:  { structural: { weakening: false, contraction: false }, committedChoice: true }
+  forward:  { structural: { weakening: false, contraction: false } }
 };
 
 // Shifts — {A} is the first shift. Later: ownership, graded, etc.
 const shifts = [
-  { from: 'backward', to: 'forward', connective: 'lax', notation: '{A}' }
+  { from: 'backward', to: 'forward', connective: 'monad', polarity: 'negative' }
 ];
 ```
 
@@ -271,14 +271,14 @@ When adjoint modalities are added later:
 ```javascript
 const modes = {
   backward: { structural: { weakening: true, contraction: true } },
-  forward:  { structural: { weakening: false, contraction: false }, committedChoice: true },
+  forward:  { structural: { weakening: false, contraction: false } },
   affine:   { structural: { weakening: true, contraction: false } },
   relevant: { structural: { weakening: false, contraction: true } },
 };
 
 const shifts = [
-  { from: 'backward', to: 'forward', connective: 'lax', notation: '{A}' },
-  { from: 'affine', to: 'backward', connective: 'upshift_a_b', notation: '↑' },
+  { from: 'backward', to: 'forward', connective: 'monad', polarity: 'negative' },
+  { from: 'affine', to: 'backward', connective: 'upshift_a_b', polarity: 'negative' },
   // ... more adjoint pairs
 ];
 ```
@@ -652,61 +652,98 @@ The **pragmatic** suite (`test:fast`) is the daily driver. It maps test groups t
 
 **Goal:** Implement TODO_0006 Option B with adjoint-ready design. When the backward prover encounters goal `{S}`, switch to forward mode.
 
-**Depends on:** Phase 1 (hook system exists, core is clean enough to bridge).
+**Depends on:** Phase 1 is recommended but not strictly blocking (see Phase 2.7 "Phase 1 dependency").
 
 #### Phase 2.1: Mode theory infrastructure
 
+Mode theory is data, not code. Consistent with D2.5:
+
 ```javascript
 // lib/calculus/modes.js
-const defaultModes = {
-  backward: {
-    structural: { weakening: true, contraction: true },
-    searchStrategy: 'focused'  // Andreoli focusing
+const modeTheory = {
+  modes: {
+    backward: {
+      structural: { weakening: true, contraction: true },
+      stateType: 'sequent',       // Γ; Δ ⊢ C
+      search: 'focused'           // L3 focused.js
+    },
+    forward: {
+      structural: { weakening: false, contraction: false },
+      stateType: 'multiset',      // { linear: FactSet, persistent: FactSet }
+      search: 'committedChoice'   // forward.run()
+    }
   },
-  forward: {
-    structural: { weakening: false, contraction: false },
-    searchStrategy: 'committedChoice',  // forward.run()
-    committedChoice: true
-  }
+  shifts: [
+    {
+      connective: 'monad',        // the Store tag that triggers the shift
+      from: 'backward',           // source mode
+      to: 'forward',              // target mode
+      polarity: 'negative'        // negative → right-rule invertible (fires eagerly)
+    }
+  ]
 };
-
-const defaultShifts = [
-  { from: 'backward', to: 'forward', connective: 'lax', notation: '{A}' }
-];
 ```
 
 #### Phase 2.2: Mode switch in L3
 
-Add `shift_r` rule to `lib/prover/focused.js`:
+When the backward prover's inversion phase encounters a `monad(S)` succedent, `monad_r` fires (it is invertible because monad is negative). This triggers the mode switch:
+
 ```
-Goal = {S}
-1. shift_r fires (generalized from monad_r)
-2. Mode switch: { from: 'backward', to: 'forward' }
-3. Convert linear context Δ → forward engine initial state
-4. forward.run(state, rules, profile) until quiescence
-5. Return result to L3; backward chaining continues
+Γ; Δ ⊢ {S}
+1. findInvertible(seq) finds monad(S) as invertible right formula
+2. monad_r fires — descriptor has modeShift field
+3. rule-interpreter returns { type: 'modeSwitch', ... } instead of sub-goals
+4. L3's applyAndRecurse detects modeSwitch, calls bridge.executeModeSwitch()
+5. Bridge converts sequent → multiset state: Δ → linear FactSet, Γ → persistent FactSet
+6. forward.run(state, calc.forwardRules, profile) until quiescence
+7. Bridge returns result to L3; backward chaining continues
 ```
 
 **Key bridge code** (TODO_0006 §4.2): sequent `{ contexts: { linear, cartesian }, succedent }` ↔ multiset state `{ linear: FactSet, persistent: FactSet }`.
 
-#### Phase 2.3: Connective definition
+**L3 code change** (~20 LOC in `applyAndRecurse`): After `applyRule()`, check if result contains a `modeSwitch` instead of premises. If so, call `bridge.executeModeSwitch()` instead of recursing into premises. The rest of L3 (findInvertible, chooseFocus, search) is unchanged — monad_r is just another invertible rule from L3's perspective.
 
-Add `monad` / `lax` connective to `ill.calc`:
-- Parser: `{ A }` or `lax(A)` syntax
-- Polarity: positive (enters synchronous/forward phase) — per CLF §1.1
-- Rules in `ill.rules`: `monad_r` (introduction) + `monad_l` (elimination / let-binding)
+#### Phase 2.3: Connective and rule registration
+
+**`monad` tag already exists in Store.** The Pratt parser (`builders.js:182-188`) creates `monad(body)` for `{ body }` syntax after `-o`. The engine's `hasMonad()` (`convert.js:145-153`) classifies forward rules by detecting this tag. No Store changes needed.
+
+**Parser scope:** Currently `{ }` only parses after `-o` (loli-in-monad). For Phase 2, extend the parser to allow standalone `{S}` as a succedent in queries: `#query init -o { target }`. This lets the backward prover encounter `monad(target)` as a goal and trigger the mode switch. ~10 LOC in `builders.js`.
+
+**Polarity: NEGATIVE.** The monad's right rule is invertible (fires eagerly in inversion). Three independent confirmations:
+1. CLF type grammar: `{S}` is **asynchronous** (= negative), alongside loli, with, top
+2. Adjoint logic: `{A} = ↑(↓A)`, outer ↑ is negative → composite is negative
+3. CALC's focusing discipline: contextFlow = `preserved` → negative (single premise receives full context)
+
+**monad_r: structural rule generated from mode theory.** Like `copy` in `kernel.js`, monad_r is not a user-written rule in `.rules` files. It is generated programmatically from the mode theory's shift entry. The descriptor:
+
+```javascript
+monad_r: {
+  connective: 'monad',
+  side: 'r',
+  arity: 1,
+  invertible: true,             // negative connective → right-rule invertible
+  contextFlow: 'preserved',     // linear context passes intact to forward engine
+  modeShift: { from: 'backward', to: 'forward' }
+}
+```
+
+The `modeShift` field distinguishes this from regular rules. When `rule-interpreter.js` sees `modeShift`, it returns a bridge call instead of sub-goals (see D2.5 Layer 3).
+
+**monad_l: deferred.** The left elimination rule (`let {p} = e in E`) would decompose a monadic value in the linear context. It is NOT invertible (negative + left = requires focus). monad_l is needed only when programs produce monadic values as intermediate results in backward reasoning. This doesn't arise in current CALC programs. Deferred to Phase 3 or a separate TODO.
+
+**Nested monads: forbidden.** CLF's type stratification forbids `{S}` inside synchronous types S (i.e., `{ A * { B } }` is ill-formed). The only way `{S}` enters the synchronous fragment is through `!{S}`. CALC's existing loli-in-monad pattern (`{ A * (trigger -o { B }) }`) is a different CLF extension (loli-in-monad, THY_0001), not nested monads — the loli is treated as an opaque linear fact at runtime.
 
 **Subsumes:** TODO_0010 (Ceptre stages — backward chaining sequences forward phases via `phase1 -o {rules1}. phase2 -o {rules2}.`).
 
 #### Phase 2.4: Proof certificate hook point
 
-The mode switch bridge must return enough information for future certificates:
+The mode switch bridge must return enough information for future certificates (consistent with D2.2):
 ```javascript
-// Bridge returns:
+// Bridge returns (returnMode: 'trace'):
 {
-  result: finalState,       // forward engine's quiescent state
-  trace: executionTree,     // tree of rule firings (already produced by explore/run)
-  // Future: certificate entries extractable from trace
+  state: finalState,        // forward engine's quiescent state (FactSet-based)
+  quiescent: true|false,    // true = normal quiescence, false = bound/timeout
+  trace: executionTrace     // sequence of rule firings (for future certificate extraction)
 }
 ```
 
@@ -790,7 +827,7 @@ const modeTheory = {
       connective: 'monad',        // the connective that triggers the shift
       from: 'backward',           // source mode
       to: 'forward',              // target mode
-      polarity: 'positive'        // monad is positive → invertible on right
+      polarity: 'negative'        // negative → right-rule invertible (fires eagerly)
     }
   ]
 };
@@ -804,7 +841,8 @@ monad_r: {
   connective: 'monad',
   side: 'r',
   arity: 1,
-  invertible: true,              // positive connective → right-rule is invertible
+  invertible: true,              // negative connective → right-rule is invertible
+  contextFlow: 'preserved',      // linear context passes intact to forward engine
   modeShift: { from: 'backward', to: 'forward' }
 }
 ```
@@ -861,7 +899,12 @@ function executeModeSwitch(state, modeSwitch, calc) {
 
 Option C chosen because: (1) aligns with adjoint logic theory where modes and shifts are first-class, (2) adding new modes (affine, relevant, ownership) = adding entries to data, not new code paths, (3) the conversion functions are explicit and testable, (4) maps cleanly to Zig (mode theory = struct, shifts = array of structs).
 
-**Research backing:** Adjoint logic (Pruiksma et al. 2018) treats shifts as regular connectives with standard polarity: ↑ is negative (right-rule invertible), ↓ is positive (right-rule requires focus). The monad `{A} = ↑(↓A)` is a composed shift. In CALC, this means `monad_r` is invertible (fires eagerly in inversion phase) — exactly matching L3's existing inversion phase. See RES_0078 for how Celf hardcodes this in `solve` via pattern match on `TMonad S`, how LolliMon hardcodes it via `Const "{}"`, and how Ceptre uses a hybrid (user-defined stage transition rules + hardcoded quiescence detection). CALC's descriptor + mode theory approach is cleaner than any of these implementations.
+**Polarity justification (three independent sources):**
+1. **CLF grammar:** `{S}` is asynchronous (= negative), alongside loli, with, top (Watkins et al. 2004)
+2. **Adjoint logic:** `{A} = ↑(↓A)`, outer ↑ is negative → composite is negative (Pruiksma et al. 2018)
+3. **CALC focusing.js:** contextFlow `preserved` → negative polarity; negative + right = invertible
+
+**Research backing:** Adjoint logic treats shifts as regular connectives with standard polarity: ↑ is negative (right-rule invertible), ↓ is positive (right-rule requires focus). The monad `{A} = ↑(↓A)` is a composed shift. In CALC, this means `monad_r` is invertible (fires eagerly in inversion phase) — exactly matching L3's existing inversion phase. See RES_0078 for how Celf hardcodes this in `solve` via pattern match on `TMonad S`, how LolliMon hardcodes it via `Const "{}"`, and how Ceptre uses a hybrid (user-defined stage transition rules + hardcoded quiescence detection). CALC's descriptor + mode theory approach is cleaner than any of these implementations.
 
 **Concrete example — how a new mode would be added later:**
 
@@ -875,7 +918,7 @@ calc.modeTheory.modes.affine = {
 
 // 2. Add shift connective
 calc.modeTheory.shifts.push({
-  connective: 'affine_monad', from: 'backward', to: 'affine', polarity: 'positive'
+  connective: 'affine_monad', from: 'backward', to: 'affine', polarity: 'negative'
 });
 
 // 3. Add descriptor (in .rules file or programmatically)
@@ -939,6 +982,131 @@ Implementation: The L3 bridge calls `forward.run()`, which already uses `drainPe
 **Modes ≠ principals/users.** Modes are finite, static categories of structural behavior (linear, affine, unrestricted). Principals/users are first-order terms — quantified over, dynamic, unbounded. In CALC, Ethereum addresses (uint160) are terms, not modes. Ownership `[P] resource(X)` uses principal P as a term variable in formulas; rules quantify universally over P. This scales to 2^160 addresses. See §5.2 (ownership modality) — it's formula-level, orthogonal to modes.
 
 **`!eq(X,Y)` as proposition vs substitution.** Persistent equality facts stay in state as propositions (not converted to substitutions) because: (1) they serve as path conditions readable in execution traces, (2) other rules pattern-match on them (e.g., `contra/eq_neq`), (3) the EqNeqSolver already tracks them as constraints via union-find for O(α(n)) queries, (4) rewriting all state hashes on every equality would be expensive. The solver IS the global substitution mechanism — it just doesn't rewrite state. The redundancy (fact in state + equation in solver) is intentional: state for rule matching, solver for constraint propagation.
+
+#### Phase 2.7: Implementation details
+
+This section captures concrete implementation knowledge needed for Phase 2 coding.
+
+**Entry point: how does the backward prover encounter `{S}`?**
+
+Two paths:
+
+1. **Query-driven.** `#query init -o { target }` in a .ill file. The parser creates `loli(init, monad(target))`. The backward prover decomposes loli (loli_r), gets `monad(target)` as the succedent goal. `findInvertible(seq)` finds `monad(target)` on the right (invertible because negative). monad_r fires, triggering mode switch.
+
+2. **Programmatic.** `prover.prove(sequent)` where sequent has `monad(S)` as succedent. Same path as above but constructed in code.
+
+Note: `convert.js` sends queries to the `queries` map (line 209: `if (hasMonad(bodyHash))` classifies as forward rule), not to `forwardRules`. A query `#query init -o { target }` would correctly NOT be classified as a forward rule — it is a backward-mode query whose goal happens to contain `{S}`.
+
+**convertState preconditions.**
+
+When monad_r fires, the linear context should contain only **ground atomic facts** (predicates and atoms). This is guaranteed by the focusing discipline: before monad_r fires (in the inversion phase), all invertible left formulas have already been decomposed. After inversion, the linear context contains only atoms and focused (non-invertible) formulas. Focused formulas are negative connectives on the left — but `{S}` on the right fires before any left focus, so the context is fully inverted.
+
+The conversion `convertState(sequent, 'backward', 'forward')` maps:
+- `seq.contexts.linear` (array of ground atom hashes) → `State.linear` FactSet
+- `seq.contexts.cartesian` (array of ground atom hashes) → `State.persistent` FactSet
+
+**Which forward rules fire.**
+
+Only `calc.forwardRules` (compiled by `mde.load()`) fire during forward mode. These are rules whose consequent contains `monad(...)`. Backward-only rules (`calc.clauses`) are used by `prove.js` for persistent goal resolution during forward execution — they are not forward rules.
+
+**monad_r is a structural rule.**
+
+Like `copy` in `kernel.js` (lines 50-77), monad_r is **not** defined in `.rules` files. It is generated programmatically from the mode theory's shift entry. The generation happens at calculus load time:
+
+```javascript
+// In modes.js or rule-interpreter.js:
+for (const shift of modeTheory.shifts) {
+  const rName = `${shift.connective}_r`;
+  ruleSpecs[rName] = {
+    connective: shift.connective,
+    side: 'r',
+    arity: 1,
+    invertible: true,
+    contextFlow: 'preserved',
+    modeShift: shift,
+    // makePremises returns a modeSwitch object, not sub-sequents
+    makePremises: (formula, seq, idx) => ({
+      type: 'modeSwitch',
+      targetMode: shift.to,
+      body: Store.child(formula, 0),  // unwrap monad(S) → S
+      sequent: seq
+    })
+  };
+}
+```
+
+**L3 code modification (~20 LOC).**
+
+In `focused.js:applyAndRecurse` (line 101), after `applyRule()` returns, check for `modeSwitch`:
+
+```javascript
+const applyAndRecurse = (seq, rName, spec, position, index, state, searchFn, depth, delta) => {
+  // NEW: check for mode switch before standard applyRule
+  if (spec.modeShift) {
+    const modeSwitch = spec.makePremises(
+      position === 'R' ? seq.succedent : Seq.getContext(seq, 'linear')[index],
+      seq, index
+    );
+    const result = bridge.executeModeSwitch(modeSwitch, calc);
+    // ... wrap result as ProofTree node, return
+  }
+
+  // Existing code: standard rule application + recursion into premises
+  const result = applyRule(seq, position, index, spec);
+  // ...
+};
+```
+
+The `bridge.executeModeSwitch()` call replaces the recursive `searchFn()` calls for premises. L3's inversion/focus/decomposition phases are completely unchanged.
+
+**Phase 1 dependency.**
+
+Phase 2 does NOT strictly depend on Phase 1 (hook system extraction). The bridge calls `forward.run()` directly, which works regardless of whether optimizations are extracted to `opt/`. Phase 1 makes Phase 2 cleaner (the bridge uses the same hook-point API as standalone forward execution), but is not blocking. For fast iteration, Phase 2 can start with the current engine and migrate to hook-point API later.
+
+**Parser extension for standalone `{S}`.**
+
+Currently `{ }` only parses after `-o` in `builders.js:182-188`. For Phase 2, extend the parser to support `{S}` as a standalone expression:
+
+```javascript
+// In parseAtom(), add before the default case:
+if (src[pos] === '{') {
+  pos++; ws();
+  const body = parseExpr(0);
+  ws(); consume('}');
+  return Store.put('monad', [body]);
+}
+```
+
+This enables: `#query init -o { target }` (already works, loli handles it) and `#query { target }` (new, direct monadic goal).
+
+#### Phase 2.8: Test plan
+
+**Unit tests (~15 tests):**
+
+1. Mode theory construction and validation
+2. monad_r descriptor generation from shift entry
+3. `findInvertible(seq)` finds `monad(S)` on the right
+4. `convertState` sequent → multiset (correct linear/persistent mapping)
+5. `convertState` multiset → sequent (reverse direction, for result return)
+6. Parser: standalone `{S}` expression
+7. Parser: `A -o {S}` (existing behavior preserved)
+
+**Integration tests (~10 tests):**
+
+8. Simple backward→forward: `#query a -o { b }` where a forward rule converts `a` to `b`
+9. Quiescence detection: forward engine stops when no rules fire
+10. Bound detection: forward engine hits step limit
+11. Persistent context: cartesian facts available as persistent during forward mode
+12. Multiple forward rules: correct committed-choice selection
+13. Profile independence: same result with 'bare' and 'evm' profiles
+14. Return modes: 'state' vs 'trace' produce correct shapes
+15. Succedent check: when `succedent: S` provided, verify final state matches S
+
+**Regression tests:**
+
+16. All existing `npm run test:all` still pass (monad_r doesn't interfere with existing backward proofs)
+17. All existing `npm run test:engine` still pass (forward engine unchanged)
+18. `npm run bench:diff -- HEAD --suite=symexec` shows < 2% regression
 
 ---
 
