@@ -3,26 +3,27 @@ tags:
   forward-chaining: 31
   performance: 26
   symexec: 26
-  clf: 24
+  clf: 25
+  research: 22
+  architecture: 21
   optimization: 21
-  research: 21
-  architecture: 20
   chr: 20
   proof-theory: 20
   focusing: 16
-  implementation: 14
+  implementation: 15
   evm: 13
   symbolic-execution: 13
   lax-monad: 12
   session-types: 12
   theory: 12
+  adjoint-logic: 11
   forward-engine: 11
-  adjoint-logic: 10
   ownership: 10
   soundness: 10
   graded-types: 9
   memory-model: 9
   QTT: 9
+  Ceptre: 8
   content-addressing: 8
   dependent-types: 8
   hevm: 8
@@ -30,18 +31,17 @@ tags:
   verification: 8
   authorization: 7
   benchmarking: 7
-  Ceptre: 7
+  Celf: 7
   data-structures: 7
   display-calculus: 7
   fixed-points: 7
+  logical-framework: 7
   loli: 7
   metaproofs: 7
   sequent-calculus: 7
-  Celf: 6
   CLP: 6
   coinduction: 6
   consensus: 6
-  logical-framework: 6
   muMALL: 6
   oplus: 6
   polarity: 6
@@ -101,6 +101,7 @@ tags:
   Petri-nets: 3
   profiling: 3
   proof-nets: 3
+  prover-architecture: 3
   residuation: 3
   semi-naive: 3
   state-merging: 3
@@ -168,7 +169,6 @@ tags:
   process-algebra: 2
   proof-assistants: 2
   proof-of-stake: 2
-  prover-architecture: 2
   resource-tracking: 2
   roadmap: 2
   second-order: 2
@@ -327,6 +327,7 @@ tags:
   moggi: 1
   monad-l: 1
   mu-calculus: 1
+  multi-logic: 1
   multi-party: 1
   multi-phase: 1
   multi-type: 1
