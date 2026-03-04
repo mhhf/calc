@@ -97,6 +97,20 @@ bang: formula -> formula
   @category exponential.
 
 % =============================================================================
+% Monad
+% =============================================================================
+
+% Lax monad (computation): {A}
+% "A computation that produces A"
+% Polarity: negative (right-rule invertible, fires eagerly in inversion)
+monad: formula -> formula
+  @ascii "{ _ }"
+  @latex "\\{#1\\}"
+  @prec 90
+  @category monad
+  @polarity negative.
+
+% =============================================================================
 % Quantifiers
 % =============================================================================
 
