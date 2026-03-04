@@ -1036,6 +1036,7 @@ Given these characteristics:
 2. **AC-normalization at Store.put** — separate TODO. Maude's equational attributes approach. ~200 LOC. Independent of constraint propagation.
 3. **SMT export for leaf validation** — separate TODO. After full tree exploration, export leaf state constraints to Z3 for feasibility. Prunes impossible leaves.
 4. **CHR join ordering** — compilation optimization, not constraint propagation. Applies when CALC has 100+ rules. Separate TODO.
+5. **Eager equality substitution** — when `!eq(X, 0)` is produced, rewrite all state facts containing `X` to use `0`. Reduces symbolic values, potentially speeds matching. Tradeoff: expensive per step (rehash all affected facts in FactSet) vs. cheaper subsequent matching (fewer distinct terms). Currently the EqNeqSolver tracks equalities via union-find without rewriting state — the redundancy is intentional (state for rule matching, solver for constraint propagation). Companion rule `!neq X X -o { zero }` needed as defense-in-depth. Evaluate after profiling whether matching cost on symbolic terms dominates.
 
 ### Performance Projection
 
