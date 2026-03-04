@@ -1054,35 +1054,17 @@ No new code paths in L3 or rule interpreter — just data.
 
 The linear context Δ in sequent calculus IS a multiset — the same formula can appear multiple times. CALC's FactSet `{hash: count}` model handles this correctly. Celf tracks individual occurrences by position; CALC tracks by hash + count. Both are semantically equivalent for ground formulas, and CALC's forward engine only works with ground facts.
 
-**(b) Succedent: parametric — checked or unchecked. DECIDED.**
+**(b) Succedent: `succedent: null` only in Phase 2. rightFocus decomposition deferred to Phase 4. DECIDED.**
 
-Support both modes, selected per invocation:
+Phase 2 implements only `succedent: null` — run to quiescence, return raw final state. This covers all current use cases (EVM symexec, standalone forward, multi-phase orchestration via backward planning).
 
-| Mode | What happens to S | Use case |
-|---|---|---|
-| `succedent: S` | After quiescence, check final state matches S (Celf `rightFocus`-style decomposition) | Theory-mode queries, mixed backward/forward programs |
-| `succedent: null` | Run to quiescence, return raw final state | EVM-style programs, symexec, Ceptre-style undirected execution |
+The bridge API accepts `succedent: S` from day one but returns an error if called with a non-null succedent ("rightFocus decomposition not yet implemented"). This ensures the API is stable — Phase 4 fills in the implementation without changing signatures.
 
-Research backing: In Celf, the succedent S is passed to `forwardChain` and checked via `rightFocus` after quiescence. `rightFocus` decomposes the synchronous type S against the final state: tensor splits the state multiplicatively, `1` requires empty linear state, `!A` checks persistent context, `exists x.S'` finds a witness. If the check fails, L3 backtracks. In `#exec`/`#trace` mode, Celf skips the check. CALC supports both. See RES_0079 for Celf source code analysis.
+See Phase 4 for the full rightFocus decomposition design (Celf-style succedent checking).
 
-When `succedent` is provided, the check is:
-```javascript
-// Decompose S against final state (rightFocus analog):
-// S = A * B → split state: some facts match A, rest match B
-// S = 1     → linear state must be empty
-// S = !A    → A must be in persistent state
-// S = ∃x.S' → find witness x in state, recurse with S'[x]
-```
+**(c) Reverse direction: raw state only in Phase 2. DECIDED.**
 
-**(c) Reverse direction: parametric — raw state or decomposed. DECIDED.**
-
-Support both, matching (b):
-
-| When succedent = null | Return raw `{ linear: FactSet, persistent: FactSet }` |
-|---|---|
-| When succedent = S | Decompose via rightFocus: return the remaining context after S is matched, as sequent terms for L3 to continue |
-
-Implementation phasing: Start with `succedent: null` (return raw state). Add rightFocus decomposition when mixed backward/forward programs are needed. The bridge API supports both from day one — the decomposition is just initially unimplemented and returns an error if called.
+Phase 2 returns raw `{ linear: FactSet, persistent: FactSet }` converted to sequent atoms. The decomposed return (matching succedent S against final state, returning remaining context) is Phase 4.
 
 **D2.7: Loli drain at quiescence — yes, always drain. DECIDED.**
 
@@ -1335,24 +1317,25 @@ This enables the backward prover to discover multi-phase sequencing through norm
 16. Multiple forward rules: correct committed-choice selection
 17. Profile independence: same result with 'bare' and 'evm' profiles
 18. Return modes: 'state' vs 'trace' produce correct shapes
-19. Succedent check: when `succedent: S` provided, verify final state matches S
-20. Explicit monad_l: `monad(a)` in linear context, focus decomposes to `a`
-21. Multi-phase: forward Phase 1 → backward reasoning → forward Phase 2 (end-to-end)
-22. Reverse bridge: forward result atoms correctly enter backward context
-23. Backward discovers forward sequencing: backward prover plans across multiple monadic sub-goals via auto-registered clauses
-24. Stickiness enforcement: monad_l with non-monadic succedent → rejected (returns null)
-25. Stickiness positive: monad_l with monadic succedent → succeeds
-26. Dormant lolis: forward quiescence with dormant loli → loli returns to backward context as compound formula
-27. Dormant loli decomposition: backward prover successfully fires loli_l on returned dormant loli (when guard is backward-provable)
-28. Delta tracking: monad_r sets delta_out = empty (all linear resources consumed by mode switch)
-29. Kernel verification: monad_r step returns `{ valid: true, unverified: 'modeSwitch' }` (designed for future certificates)
-30. Committed choice: monad_r result is not retried on L3 backtracking
+19. Succedent null: bridge with `succedent: null` returns raw state correctly
+20. Succedent non-null: bridge with `succedent: S` returns error ("not yet implemented", deferred to Phase 4)
+21. Explicit monad_l: `monad(a)` in linear context, focus decomposes to `a`
+22. Multi-phase: forward Phase 1 → backward reasoning → forward Phase 2 (end-to-end)
+23. Reverse bridge: forward result atoms correctly enter backward context
+24. Backward discovers forward sequencing: backward prover plans across multiple monadic sub-goals via auto-registered clauses
+25. Stickiness enforcement: monad_l with non-monadic succedent → rejected (returns null)
+26. Stickiness positive: monad_l with monadic succedent → succeeds
+27. Dormant lolis: forward quiescence with dormant loli → loli returns to backward context as compound formula
+28. Dormant loli decomposition: backward prover successfully fires loli_l on returned dormant loli (when guard is backward-provable)
+29. Delta tracking: monad_r sets delta_out = empty (all linear resources consumed by mode switch)
+30. Kernel verification: monad_r step returns `{ valid: true, unverified: 'modeSwitch' }` (designed for future certificates)
+31. Committed choice: monad_r result is not retried on L3 backtracking
 
 **Regression tests:**
 
-31. All existing `npm run test:all` still pass (monad_r/monad_l don't interfere with existing backward proofs)
-32. All existing `npm run test:engine` still pass (forward engine unchanged)
-33. `npm run bench:diff -- HEAD --suite=symexec` shows < 2% regression
+32. All existing `npm run test:all` still pass (monad_r/monad_l don't interfere with existing backward proofs)
+33. All existing `npm run test:engine` still pass (forward engine unchanged)
+34. `npm run bench:diff -- HEAD --suite=symexec` shows < 2% regression
 
 ---
 
@@ -1371,6 +1354,117 @@ This enables the backward prover to discover multi-phase sequencing through norm
 - Tag registry becomes per-calculus or namespaced (`ill:tensor`, `cll:tensor`)
 - Calculus object carries all logic-specific data (already mostly true — `calc.forwardRules`, `calc.clauses`, `calc.types`)
 - FFI bindings are per-calculus (already true — `calc.ffi` object)
+
+### Phase 4: rightFocus Succedent Decomposition (~80 LOC)
+
+**Goal:** When the backward prover invokes forward execution via monad_r with a specific succedent S, verify after quiescence that the forward engine's final state actually matches S. This is Celf's `rightFocus` mechanism — decomposing a synchronous type against the multiset state.
+
+**Depends on:** Phase 2 (mode switch bridge with `succedent` parameter).
+
+**Why deferred:** Phase 2 covers all current use cases with `succedent: null` (undirected execution, return raw state). rightFocus decomposition is needed for theory-mode queries where the backward prover must verify that forward produced a specific result — e.g., mixed backward/forward programs with typed goals. No current CALC program requires this.
+
+#### What rightFocus is
+
+After the forward engine reaches quiescence, the final state is a multiset of linear + persistent facts. The succedent S is a synchronous type (CLF grammar: atoms, tensor, one, bang, exists). rightFocus decomposes S against the state:
+
+```
+rightFocus(state, S):
+  S = atom(P)    → P must be in state.linear (consume it, multiplicatively)
+  S = S₁ * S₂   → split state into two parts; rightFocus(part1, S₁) and rightFocus(part2, S₂)
+  S = 1          → state.linear must be empty (all resources consumed)
+  S = !A         → A must be in state.persistent (don't consume — persistent is reusable)
+  S = ∃x.S'      → find a witness x such that rightFocus(state, S'[x/x]) succeeds
+```
+
+If rightFocus succeeds, the succedent is satisfied — forward produced the right result. If it fails, the backward prover backtracks (tries a different approach to prove `{S}`).
+
+#### Example
+
+```ill
+bake : flour * egg -o { cake * crumbs }.
+#query flour * egg -o { cake * crumbs }
+```
+
+Forward runs, produces `{ linear: {cake: 1, crumbs: 1} }`. rightFocus decomposes the succedent `cake * crumbs`:
+1. `S = cake * crumbs` → tensor, split state
+2. `rightFocus({cake: 1}, cake)` → atom, cake is in state, consume it. Succeeds.
+3. `rightFocus({crumbs: 1}, crumbs)` → atom, crumbs is in state, consume it. Succeeds.
+4. Both parts consumed, nothing left. Proof succeeds.
+
+Now with leftover resources: same rule, but initial state `flour * egg * butter ⊢ {cake * crumbs}`. Forward produces `{cake: 1, crumbs: 1, butter: 1}`. rightFocus decomposes `cake * crumbs`: consumes cake and crumbs, but `butter` remains. The tensor split doesn't account for butter. rightFocus fails — linearity violation (unused resource).
+
+#### Why tensor splitting is the hard part
+
+`S₁ * S₂` requires *multiplicative* splitting: divide the linear state into two disjoint parts, one for S₁ and one for S₂. This is the same problem as context splitting in the backward prover (L2's `applicableRules` handles this). For ground atoms it's straightforward — each atom goes to exactly one side. For existential witnesses (`∃x.S'`), finding the right split may require backtracking.
+
+#### Research backing
+
+In Celf's `OpSem.sml`, `rightFocus` is a recursive function that pattern-matches on the synchronous type:
+- `TOne` → check linear state empty
+- `TDown A` (`!A`) → check A in persistent context
+- `TAffi A` → check A in affine context (CALC doesn't have affine yet)
+- `TExists(x, S')` → try all possible witnesses x from the state
+- `TTensor(S1, S2)` → try all splits of the linear state (exponential worst case, but states are small)
+- `TAtomic a` → check atom a in linear state
+
+CALC's unification + content-addressed hashing makes several of these simpler (atoms are hash-compared, O(1) lookup in FactSet). Tensor splitting is the only part that needs search.
+
+See RES_0079 for the full Celf source analysis.
+
+#### Implementation sketch
+
+```javascript
+// In bridge.js:
+function rightFocus(state, succedentHash, calc) {
+  const node = Store.get(succedentHash);
+  if (!node) return null;
+
+  switch (node.tag) {
+    case 'atom':  // or any predicate
+      return state.linear.has(succedentHash)
+        ? { remaining: state.linear.without(succedentHash) }
+        : null;
+
+    case 'tensor': {
+      // Try all multiplicative splits of state.linear
+      const [s1, s2] = node.children;
+      for (const [part1, part2] of allSplits(state.linear)) {
+        const r1 = rightFocus({ ...state, linear: part1 }, s1, calc);
+        if (!r1) continue;
+        const r2 = rightFocus({ ...state, linear: part2 }, s2, calc);
+        if (r2) return { remaining: mergeLinear(r1.remaining, r2.remaining) };
+      }
+      return null;
+    }
+
+    case 'one':
+      return state.linear.isEmpty()
+        ? { remaining: state.linear }
+        : null;
+
+    case 'bang': {
+      const inner = node.children[0];
+      return state.persistent.has(inner)
+        ? { remaining: state.linear }  // persistent not consumed
+        : null;
+    }
+
+    // 'exists' — future, requires witness search
+    default: return null;
+  }
+}
+```
+
+#### Phase 4 test plan
+
+1. rightFocus atom: single atom in state, matches succedent → succeeds
+2. rightFocus tensor: two atoms in state, tensor succedent → succeeds
+3. rightFocus one: empty linear state, `1` succedent → succeeds
+4. rightFocus bang: atom in persistent state, `!A` succedent → succeeds
+5. rightFocus failure: leftover resources after decomposition → fails
+6. rightFocus failure: missing resource → fails
+7. Integration: backward prover with `succedent: S`, forward produces matching state → proof succeeds
+8. Integration: backward prover with `succedent: S`, forward produces non-matching state → L3 backtracks
 
 ---
 
@@ -1408,10 +1502,12 @@ This enables the backward prover to discover multi-phase sequencing through norm
 9. FFI failure mode is configurable per-predicate (definitive vs advisory)
 10. Backward prover can invoke forward engine via `{S}` goal (Phase 2, monad_r)
 11. Backward prover can decompose `{S}` in context (Phase 2, monad_l) and orchestrate multi-phase forward execution
-12. `{A}` design generalizes to N modes without rearchitecting (mode theory object)
-13. A second calculus can be loaded alongside ILL (Phase 3)
-14. Proof certificate hook points exist (though certificates themselves are deferred)
-15. No optimization notes found during refactoring are lost (captured in optimization TODOs)
+12. Stickiness enforced: monad_l only applicable when succedent is monadic (Phase 2)
+13. `{A}` design generalizes to N modes without rearchitecting (mode theory object)
+14. A second calculus can be loaded alongside ILL (Phase 3)
+15. rightFocus succedent decomposition works for atom, tensor, one, bang (Phase 4)
+16. Proof certificate hook points exist (though certificates themselves are deferred)
+17. No optimization notes found during refactoring are lost (captured in optimization TODOs)
 
 ---
 
