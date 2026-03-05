@@ -17,7 +17,7 @@ starred: true
 
 ## 1. Goal
 
-Assign proof terms to every ILL derivation. A derivation of sequent `Γ; Δ ⊢ A` produces a term `t` such that `t : A`. The term is the computational content of the proof — it records *how* A was proved, not just *that* it was proved.
+Assign proof terms to every ILL derivation. A derivation of sequent `Gamma; Delta |- A` produces a term `t` such that `t : A`. The term is the computational content of the proof -- it records *how* A was proved, not just *that* it was proved.
 
 This is the standard Curry-Howard correspondence applied to CALC's intuitionistic linear logic with lax monad.
 
@@ -29,45 +29,45 @@ This is the standard Curry-Howard correspondence applied to CALC's intuitionisti
 - Experimentable: Layer 1 generic terms derived free from descriptors, Layer 2 interpretation maps give different computational readings (lambda, sessions, plans) without changing the engine
 
 **What this subsumes:**
-- TODO_0067 (proof certificates) — proof terms ARE certificates, but better: they compose, have computational meaning, and follow naturally from the logic instead of being bolted on
+- TODO_0067 (proof certificates) -- proof terms ARE certificates, but better: they compose, have computational meaning, and follow naturally from the logic instead of being bolted on
 
 ### 1.1 Two-Layer Architecture: Generic Terms + Interpretation
 
 Proof terms follow a two-layer design inspired by LF/Twelf (Harper-Honsell-Plotkin 1993):
 
-**Layer 1 — Generic terms (derived automatically from rule descriptors):**
+**Layer 1 -- Generic terms (derived automatically from rule descriptors):**
 
 The rule name IS the proof term constructor. No manual term definitions needed. The descriptor fields (`side`, `premises`, `binding`, `contextSplit`, `copyContext`) mechanically determine each constructor's arity and binding structure:
 
 ```
-genericTerm(rule) = rule_name(principal?, binding₁.subproof₁, ...)
+genericTerm(rule) = rule_name(principal?, binding1.subproof1, ...)
 ```
 
 Examples:
 ```
 tensor_l descriptor: { side:'l', premises:[{linear:[0,1]}] }
-→ tensor_l(z, x₀.x₁.u₀)
+-> tensor_l(z, x0.x1.u0)
 
 loli_r descriptor: { side:'r', premises:[{linear:[0], succedent:1}] }
-→ loli_r(x₀.u₀)
+-> loli_r(x0.u0)
 
 with_r descriptor: { side:'r', copyContext:true, premises:[{succedent:0},{succedent:1}] }
-→ with_r(u₀, u₁)
+-> with_r(u0, u1)
 ```
 
-This is exactly what LF does: one constructor per inference rule, adequacy guaranteed (bijection between proofs and well-typed terms). The existing `ProofTree` (with `rule` name + `premises`) is already 90% of a generic term — it just needs binding annotations, which the descriptor provides.
+This is exactly what LF does: one constructor per inference rule, adequacy guaranteed (bijection between proofs and well-typed terms). The existing `ProofTree` (with `rule` name + `premises`) is already 90% of a generic term -- it just needs binding annotations, which the descriptor provides.
 
-**Layer 2 — Interpretation maps (optional, swappable):**
+**Layer 2 -- Interpretation maps (optional, swappable):**
 
 A fold/catamorphism over generic terms that assigns computational meaning:
 
 ```
 Layer 1 (generic):     tensor_l(z, x.y.u)
-                            ↓  "lambda" interpretation
+                            v  "lambda" interpretation
 Layer 2a:              let (x, y) = z in [[u]]
-                            ↓  "session-type" interpretation
+                            v  "session-type" interpretation
 Layer 2b:              z?(x).z?(y).[[u]]
-                            ↓  "planning" interpretation
+                            v  "planning" interpretation
 Layer 2c:              decompose(z, x, y); [[u]]
 ```
 
@@ -75,7 +75,7 @@ This is the "zoo of term assignments" (Martens 2014): same logic, different comp
 
 **Why NOT define terms in `.calc`/`.rules`:** The generic approach avoids needing new Store tags, new parser declarations, or new `.calc` entries for proof terms. Generic terms reuse existing infrastructure (ProofTree, rule names, descriptors). Layer 2 interpretations are post-processing, not part of the proof engine.
 
-### 1.2 `.term` Files — Interpretation Maps
+### 1.2 `.term` Files -- Interpretation Maps
 
 Layer 2 interpretations are defined in `.term` files. Each `.term` file maps generic constructors to notation in a target language via pattern-based rendering templates:
 
@@ -83,22 +83,22 @@ Layer 2 interpretations are defined in `.term` files. Each `.term` file maps gen
 % ill-lambda.term
 @name "lambda-calculus".
 
-tensor_r(u₀, u₁)              => (u₀, u₁).
-tensor_l(z, x₀.x₁.u₀)        => let (x₀, x₁) = z in u₀.
-loli_r(x₀.u₀)                 => λx₀. u₀.
-loli_l(z, u₀, x₁.u₁)         => z u₀; x₁. u₁.
-with_r(u₀, u₁)                => ⟨u₀, u₁⟩.
-with_l1(z, x₀.u₀)             => let x₀ = fst z in u₀.
-with_l2(z, x₁.u₀)             => let x₁ = snd z in u₀.
-oplus_r1(u₀)                  => inl u₀.
-oplus_r2(u₀)                  => inr u₀.
-oplus_l(z, x₀.u₀, x₁.u₁)    => case z of inl x₀ ⇒ u₀ | inr x₁ ⇒ u₁.
+tensor_r(u0, u1)              => (u0, u1).
+tensor_l(z, x0.x1.u0)        => let (x0, x1) = z in u0.
+loli_r(x0.u0)                 => \x0. u0.
+loli_l(z, u0, x1.u1)         => z u0; x1. u1.
+with_r(u0, u1)                => <u0, u1>.
+with_l1(z, x0.u0)             => let x0 = fst z in u0.
+with_l2(z, x1.u0)             => let x1 = snd z in u0.
+oplus_r1(u0)                  => inl u0.
+oplus_r2(u0)                  => inr u0.
+oplus_l(z, x0.u0, x1.u1)    => case z of inl x0 => u0 | inr x1 => u1.
 one_r                          => ().
-one_l(z, u₀)                  => let () = z in u₀.
-bang_r(u₀)                     => !u₀.
-bang_l(z, y₀.u₀)              => let !y₀ = z in u₀.
-monad_r(u₀)                   => {u₀}.
-monad_l(z, x₀.u₀)            => let {x₀} = z in u₀.
+one_l(z, u0)                  => let () = z in u0.
+bang_r(u0)                     => !u0.
+bang_l(z, y0.u0)              => let !y0 = z in u0.
+monad_r(u0)                   => {u0}.
+monad_l(z, x0.u0)            => let {x0} = z in u0.
 ```
 
 A different `.term` file for the same logic:
@@ -107,27 +107,27 @@ A different `.term` file for the same logic:
 % ill-session.term
 @name "session-types".
 
-tensor_r(u₀, u₁)              => send u₀; u₁.
-tensor_l(z, x₀.x₁.u₀)        => (x₀, x₁) ← recv z; u₀.
-loli_r(x₀.u₀)                 => x₀ ← accept; u₀.
-with_r(u₀, u₁)                => offer { left: u₀, right: u₁ }.
-oplus_r1(u₀)                  => select left; u₀.
-oplus_l(z, x₀.u₀, x₁.u₁)    => branch z { left: x₀.u₀, right: x₁.u₁ }.
-bang_r(u₀)                     => accept!; u₀.
-monad_r(u₀)                   => spawn u₀.
+tensor_r(u0, u1)              => send u0; u1.
+tensor_l(z, x0.x1.u0)        => (x0, x1) <- recv z; u0.
+loli_r(x0.u0)                 => x0 <- accept; u0.
+with_r(u0, u1)                => offer { left: u0, right: u1 }.
+oplus_r1(u0)                  => select left; u0.
+oplus_l(z, x0.u0, x1.u1)    => branch z { left: x0.u0, right: x1.u1 }.
+bang_r(u0)                     => accept!; u0.
+monad_r(u0)                   => spawn u0.
 ```
 
 **Loading pipeline:**
 
 ```
-.calc → .rules → proof search → ProofTree
-                                     ↓
+.calc -> .rules -> proof search -> ProofTree
+                                     v
                                extractTerm()  [automatic from descriptors]
-                                     ↓
+                                     v
                                Generic proof term
-                                     ↓
-                  .term file → renderTerm()
-                                     ↓
+                                     v
+                  .term file -> renderTerm()
+                                     v
                                Rendered specific term
 ```
 
@@ -141,16 +141,16 @@ calc.interpretations = {
 // Rendering:
 const generic = extractTerm(proofTree, calc);
 const rendered = renderTerm(generic, calc.interpretations['lambda-calculus']);
-// → "λx. let (y, z) = x in (z, y)"
+// -> "\x. let (y, z) = x in (z, y)"
 ```
 
-`.term` files are **optional**. Without one, generic terms render as-is: `tensor_l(z, x₀.x₁.u₀)`. Multiple `.term` files = different views of the same proof. Rules not mentioned in a `.term` file fall back to generic rendering.
+`.term` files are **optional**. Without one, generic terms render as-is: `tensor_l(z, x0.x1.u0)`. Multiple `.term` files = different views of the same proof. Rules not mentioned in a `.term` file fall back to generic rendering.
 
 **What `.term` is NOT (yet):** A rendering specification, not a full target language type system. Does not define reduction rules or type-checking for the target language. Could be extended later (e.g., `.theory` files with beta-reduction for the lambda interpretation).
 
 ### 1.3 Role Removal
 
-The existing `deriveRoles()` function (`lib/calculus/builders.js`) maps `(category, arity, polarity) → semantic role name`. This indirection is used in `bridge.js` (rightFocus) and `compile.js` (flattenTensor, expandChoiceItem, etc.) to identify connective behavior.
+The existing `deriveRoles()` function (`lib/calculus/builders.js`) maps `(category, arity, polarity) -> semantic role name`. This indirection is used in `bridge.js` (rightFocus) and `compile.js` (flattenTensor, expandChoiceItem, etc.) to identify connective behavior.
 
 Roles should be removed: they are redundant middleware. The same information is available directly from the connective's descriptor annotations. Replace `tag === roles.product` with a direct lookup of the connective's `(category, arity, polarity)` triple:
 
@@ -166,7 +166,7 @@ if (info?.category === 'multiplicative' && info?.polarity === 'positive' && info
 if (calc.isProduct(tag)) { ... }
 ```
 
-The `connectiveInfo` table is already computable from `.calc` annotations — it's what `deriveRoles` reads from. Precompute boolean lookup tables (e.g., `isProduct[tagId]`, `isUnit[tagId]`) at calculus load time for O(1) hot-path checks. Same performance, no semantic naming layer.
+The `connectiveInfo` table is already computable from `.calc` annotations -- it's what `deriveRoles` reads from. Precompute boolean lookup tables (e.g., `isProduct[tagId]`, `isUnit[tagId]`) at calculus load time for O(1) hot-path checks. Same performance, no semantic naming layer.
 
 ---
 
@@ -175,234 +175,222 @@ The `connectiveInfo` table is already computable from `.calc` annotations — it
 Dual-context judgment (DILL, Barber-Plotkin 1996):
 
 ```
-Γ; Δ ⊢ t : A
+Gamma; Delta |- t : A
 ```
 
-- `Γ` = cartesian context (weakening + contraction), variables usable many times
-- `Δ` = linear context, each variable used exactly once
+- `Gamma` = cartesian context (weakening + contraction), variables usable many times
+- `Delta` = linear context, each variable used exactly once
 
 ### 2.1 Multiplicatives
 
-**Tensor (`A ⊗ B`):**
+**Tensor (`A * B`):**
 ```
-Γ; Δ₁ ⊢ t₁ : A    Γ; Δ₂ ⊢ t₂ : B
-───────────────────────────────────── ⊗R
-   Γ; Δ₁, Δ₂ ⊢ (t₁, t₂) : A ⊗ B
+Gamma; Delta1 |- t1 : A    Gamma; Delta2 |- t2 : B
+------------------------------------- *R
+   Gamma; Delta1, Delta2 |- (t1, t2) : A * B
 
-Γ; Δ₁ ⊢ t : A ⊗ B    Γ; Δ₂, x:A, y:B ⊢ u : C
-────────────────────────────────────────────────── ⊗L
-   Γ; Δ₁, Δ₂ ⊢ let (x, y) = t in u : C
+Gamma; Delta1 |- t : A * B    Gamma; Delta2, x:A, y:B |- u : C
+-------------------------------------------------- *L
+   Gamma; Delta1, Delta2 |- let (x, y) = t in u : C
 ```
 
 **One (`1`):**
 ```
-──────────────── 1R          Γ; Δ₁ ⊢ t : 1    Γ; Δ₂ ⊢ u : C
-Γ; · ⊢ () : 1               ─────────────────────────────────── 1L
-                              Γ; Δ₁, Δ₂ ⊢ let () = t in u : C
+---------------- 1R          Gamma; Delta1 |- t : 1    Gamma; Delta2 |- u : C
+Gamma; . |- () : 1               ----------------------------------- 1L
+                              Gamma; Delta1, Delta2 |- let () = t in u : C
 ```
 
-**Loli (`A ⊸ B`):**
+**Loli (`A -o B`):**
 ```
-Γ; Δ, x:A ⊢ t : B                     Γ; Δ₁ ⊢ t : A ⊸ B    Γ; Δ₂ ⊢ u : A
-───────────────────── ⊸R               ─────────────────────────────────────── ⊸L
-Γ; Δ ⊢ λx. t : A ⊸ B                   Γ; Δ₁, Δ₂ ⊢ t u : B
+Gamma; Delta, x:A |- t : B                     Gamma; Delta1 |- t : A -o B    Gamma; Delta2 |- u : A
+--------------------- -oR               --------------------------------------- -oL
+Gamma; Delta |- \x. t : A -o B                   Gamma; Delta1, Delta2 |- t u : B
 ```
 
 ### 2.2 Additives
 
 **With (`A & B`):**
 ```
-Γ; Δ ⊢ t₁ : A    Γ; Δ ⊢ t₂ : B
-────────────────────────────────── &R     (same Δ for both!)
-  Γ; Δ ⊢ ⟨t₁, t₂⟩ : A & B
+Gamma; Delta |- t1 : A    Gamma; Delta |- t2 : B
+---------------------------------- &R     (same Delta for both!)
+  Gamma; Delta |- <t1, t2> : A & B
 
 fst t : A    snd t : B                   (from t : A & B)
 ```
 
-**Oplus (`A ⊕ B`):**
+**Oplus (`A oplus B`):**
 ```
-  Γ; Δ ⊢ t : A                            Γ; Δ ⊢ t : B
-────────────────────── ⊕R₁              ────────────────────── ⊕R₂
-Γ; Δ ⊢ inl t : A ⊕ B                   Γ; Δ ⊢ inr t : A ⊕ B
+  Gamma; Delta |- t : A                            Gamma; Delta |- t : B
+---------------------- oplusR1              ---------------------- oplusR2
+Gamma; Delta |- inl t : A oplus B                   Gamma; Delta |- inr t : A oplus B
 
-Γ; Δ₁ ⊢ t : A ⊕ B    Γ; Δ₂, x:A ⊢ u₁ : C    Γ; Δ₂, y:B ⊢ u₂ : C
-───────────────────────────────────────────────────────────────────────── ⊕L
-       Γ; Δ₁, Δ₂ ⊢ case t of inl x ⇒ u₁ | inr y ⇒ u₂ : C
+Gamma; Delta1 |- t : A oplus B    Gamma; Delta2, x:A |- u1 : C    Gamma; Delta2, y:B |- u2 : C
+------------------------------------------------------------------------- oplusL
+       Gamma; Delta1, Delta2 |- case t of inl x => u1 | inr y => u2 : C
 ```
 
 **Zero (`0`):**
 ```
 No introduction.
 
-Γ; Δ ⊢ t : 0
-──────────────── 0L
-Γ; Δ ⊢ abort t : C
+Gamma; Delta |- t : 0
+---------------- 0L
+Gamma; Delta |- abort t : C
 ```
 
 ### 2.3 Exponential
 
 **Bang (`!A`):**
 ```
-Γ; · ⊢ t : A
-─────────────── !R    (empty linear context)
-Γ; · ⊢ !t : !A
+Gamma; . |- t : A
+--------------- !R    (empty linear context)
+Gamma; . |- !t : !A
 
-Γ; Δ₁ ⊢ t : !A    Γ, x:A; Δ₂ ⊢ u : C
-──────────────────────────────────────── !L    (x moves to cartesian)
-   Γ; Δ₁, Δ₂ ⊢ let !x = t in u : C
+Gamma; Delta1 |- t : !A    Gamma, x:A; Delta2 |- u : C
+---------------------------------------- !L    (x moves to cartesian)
+   Gamma; Delta1, Delta2 |- let !x = t in u : C
 ```
 
 ### 2.4 Lax Monad
 
 **Monad (`{A}`):**
 ```
-Γ; Δ ⊢_lax t : A
-────────────────────── {A}R
-Γ; Δ ⊢ {t} : {A}
+Gamma; Delta |-_lax t : A
+---------------------- {A}R
+Gamma; Delta |- {t} : {A}
 
-Γ; Δ₁ ⊢ t : {A}    Γ; Δ₂, x:A ⊢_lax u : C
-─────────────────────────────────────────────── {A}L
-     Γ; Δ₁, Δ₂ ⊢_lax let {x} = t in u : C
+Gamma; Delta1 |- t : {A}    Gamma; Delta2, x:A |-_lax u : C
+----------------------------------------------- {A}L
+     Gamma; Delta1, Delta2 |-_lax let {x} = t in u : C
 ```
 
-The `⊢_lax` judgment is **sticky**: once entered, you cannot return to `⊢`. This is the type-theoretic expression of the mode switch — backward proving enters `⊢_lax` via `monad_r`, and the forward engine operates entirely within `⊢_lax`.
+The `|-_lax` judgment is **sticky**: once entered, you cannot return to `|-`. This is the type-theoretic expression of the mode switch -- backward proving enters `|-_lax` via `monad_r`, and the forward engine operates entirely within `|-_lax`.
 
-Via Moggi's computational monad: `{t}` = `return t`, `let {x} = t in u` = `bind t (λx. u)`.
+Via Moggi's computational monad: `{t}` = `return t`, `let {x} = t in u` = `bind t (\x. u)`.
 
-Via Pfenning-Davies (2001): `⊢` = "A is true", `⊢_lax` = "A is achievable (through computation)".
+Via Pfenning-Davies (2001): `|-` = "A is true", `|-_lax` = "A is achievable (through computation)".
 
 ### 2.5 Quantifiers
 
-**Universal (`∀x.A`):**
+**Universal (`forallx.A`):**
 ```
-Γ; Δ ⊢ t : A[y/x]                          (y fresh — eigenvariable)
-──────────────────── ∀R
-Γ; Δ ⊢ Λy.t : ∀x.A
+Gamma; Delta |- t : A[y/x]                          (y fresh -- eigenvariable)
+-------------------- forallR
+Gamma; Delta |- \y.t : forallx.A
 
-Γ; Δ, u:A[s/x] ⊢ t : C
-──────────────────────── ∀L                  (instantiate with term s)
-Γ; Δ, u:∀x.A ⊢ t : C
-```
-
-Note on ∀L: The principal formula `∀x.A` is on the LEFT (antecedent) and is deconstructed to `A[s/x]`. The proof term `t` in the conclusion is the same as in the premise — the rule just substitutes `u` for the instantiated hypothesis. In the generic term view: `forall_l(u, s, t)` where `u` is the principal, `s` is the witness term, `t` is the continuation proof. Spined notation (RES_0086): `u[s] · t`.
-
-**Existential (`∃x.A`):**
-```
-Γ; Δ ⊢ t : A[s/x]
-──────────────────────── ∃R                  (witness s + proof t)
-Γ; Δ ⊢ pack(s, t) : ∃x.A
-
-Γ; Δ, y:A[a/x] ⊢ t : C                     (a fresh — eigenvariable)
-──────────────────────── ∃L
-Γ; Δ, u:∃x.A ⊢ t : C
+Gamma; Delta, u:A[s/x] |- t : C
+------------------------ forallL                  (instantiate with term s)
+Gamma; Delta, u:forallx.A |- t : C
 ```
 
-Note on ∃L: The principal formula `∃x.A` is on the LEFT and is deconstructed by opening the existential with fresh eigenvariable `a`. In the generic term view: `exists_l(u, a.t)`.
+Note on forallL: The principal formula `forallx.A` is on the LEFT (antecedent) and is deconstructed to `A[s/x]`. The proof term `t` in the conclusion is the same as in the premise -- the rule just substitutes `u` for the instantiated hypothesis. In the generic term view: `forall_l(u, s, t)` where `u` is the principal, `s` is the witness term, `t` is the continuation proof. Spined notation (RES_0086): `u[s] . t`.
 
-**Reading direction:** Sequent calculus rules are read bottom→top for proof search. The conclusion (bottom) ALWAYS has the complex connective. The premise (top) has simpler sub-formulas. Reading bottom→top, you DECONSTRUCT. Reading top→bottom (proof construction), you INTRODUCE. Both perspectives describe the same rule.
+**Existential (`existsx.A`):**
+```
+Gamma; Delta |- t : A[s/x]
+------------------------ existsR                  (witness s + proof t)
+Gamma; Delta |- pack(s, t) : existsx.A
 
-In CLF: ∃ is synchronous (inside the monad `{S}`), while ∀ (as `Π`) is asynchronous. Implementation deferred until quantifiers appear in forward programs. See TODO_0011 for the dependent case (`Πx:A.B`).
+Gamma; Delta, y:A[a/x] |- t : C                     (a fresh -- eigenvariable)
+------------------------ existsL
+Gamma; Delta, u:existsx.A |- t : C
+```
+
+Note on existsL: The principal formula `existsx.A` is on the LEFT and is deconstructed by opening the existential with fresh eigenvariable `a`. In the generic term view: `exists_l(u, a.t)`.
+
+**Reading direction:** Sequent calculus rules are read bottom->top for proof search. The conclusion (bottom) ALWAYS has the complex connective. The premise (top) has simpler sub-formulas. Reading bottom->top, you DECONSTRUCT. Reading top->bottom (proof construction), you INTRODUCE. Both perspectives describe the same rule.
+
+In CLF: exists is synchronous (inside the monad `{S}`), while forall (as `Pi`) is asynchronous. Implementation deferred until quantifiers appear in forward programs. See TODO_0011 for the dependent case (`Pix:A.B`).
 
 ### 2.6 Identity and Cut
 
 ```
-──────────── id               Γ; Δ₁ ⊢ t : A    Γ; Δ₂, x:A ⊢ u : C
-Γ; x:A ⊢ x : A               ──────────────────────────────────────── cut
-                                Γ; Δ₁, Δ₂ ⊢ u[t/x] : C
+------------ id               Gamma; Delta1 |- t : A    Gamma; Delta2, x:A |- u : C
+Gamma; x:A |- x : A               ---------------------------------------- cut
+                                Gamma; Delta1, Delta2 |- u[t/x] : C
 ```
 
-### 2.7 Generic Term Grammar (Layer 1 — Primary)
+### 2.7 Generic Term Grammar (Layer 1 -- Primary)
+
+Generic proof terms are the primary representation. Each rule name IS a constructor. Arity and bindings are derived from the rule's descriptor:
+
+- `side='l'` -> first arg is principal `z` (consumed from antecedent)
+- Each premise -> one sub-proof `ui`
+- `premises[i].linear` -> bound variables `xj` scoped over `ui` (dot notation: `xj.ui`)
+- `premises[i].cartesian` -> bound variables `yj` moved to Gamma
+- `binding='eigenvariable'` -> fresh variable bound in sub-proof
+- `binding='metavar'` -> witness term argument
+
+All constructors for ILL (pseudocode -- this is not a parsed grammar, just a catalog):
 
 ```
-t ::= x                              variable (de Bruijn: bound(n))
-    | rule_name(args...)              generic constructor
+id(x)                                   identity
+tensor_r(u0, u1)                        tensor-R (context split)
+tensor_l(z, x0.x1.u0)                  tensor-L (decompose, bind two)
+one_r()                                 one-R (empty context)
+one_l(z, u0)                            one-L
+loli_r(x0.u0)                           loli-R (bind argument)
+loli_l(z, u0, x1.u1)                    loli-L (apply, bind result)
+with_r(u0, u1)                          with-R (context copied)
+with_l1(z, x0.u0)                       with-L1 (first projection)
+with_l2(z, x1.u0)                       with-L2 (second projection)
+oplus_r1(u0)                            oplus-R1
+oplus_r2(u0)                            oplus-R2
+oplus_l(z, x0.u0, x1.u1)               oplus-L (case split)
+zero_l(z)                               zero-L (abort, discards context)
+bang_r(u0)                              bang-R (empty linear context)
+bang_l(z, y0.u0)                        bang-L (y0 moves to Gamma)
+monad_r(evidence)                       monad-R (mode switch)
+monad_l(z, x0.u0)                       monad-L
+forall_r(a.u0)                          forall-R (eigenvariable)
+forall_l(z, s, u0)                      forall-L (instantiate with s)
+exists_r(s, u0)                         exists-R (witness s)
+exists_l(z, a.u0)                       exists-L (eigenvariable)
+unreachable(reason)                     dead branch (unverified)
+ffi(name, args, result)                 FFI axiom (unverified)
 ```
 
-Constructor arity and bindings are derived from the rule's descriptor:
-- `side='l'` → first arg is principal `z` (consumed from antecedent)
-- Each premise → one sub-proof `uᵢ`
-- `premises[i].linear` → bound variables `xⱼ` scoped over `uᵢ` (dot notation: `xⱼ.uᵢ`)
-- `premises[i].cartesian` → bound variables `yⱼ` moved to Γ
-- `binding='eigenvariable'` → fresh variable bound in sub-proof
-- `binding='metavar'` → witness term argument
+### 2.8 Lambda Interpretation (Layer 2 -- from `ill-lambda.term`)
 
-Full generic grammar for ILL:
+ss2.1-2.5 above show typing rules using lambda notation. This notation is NOT built into the system -- it comes from a `.term` file. The `.term` file maps generic constructors to human-readable syntax (see ss1.2 for the full file format).
 
-```
-t ::= id(x)                                   identity
-    | tensor_r(u₀, u₁)                        ⊗R (context split)
-    | tensor_l(z, x₀.x₁.u₀)                  ⊗L (decompose, bind two)
-    | one_r()                                  1R (empty context)
-    | one_l(z, u₀)                             1L
-    | loli_r(x₀.u₀)                           ⊸R (bind argument)
-    | loli_l(z, u₀, x₁.u₁)                    ⊸L (apply, bind result)
-    | with_r(u₀, u₁)                          &R (context copied)
-    | with_l1(z, x₀.u₀)                       &L₁ (first projection)
-    | with_l2(z, x₁.u₀)                       &L₂ (second projection)
-    | oplus_r1(u₀) | oplus_r2(u₀)             ⊕R₁, ⊕R₂
-    | oplus_l(z, x₀.u₀, x₁.u₁)               ⊕L (case split)
-    | zero_l(z)                                0L (abort, discards context)
-    | bang_r(u₀)                               !R (empty linear context)
-    | bang_l(z, y₀.u₀)                         !L (y₀ moves to Γ)
-    | monad_r(evidence)                        {A}R (mode switch)
-    | monad_l(z, x₀.u₀)                       {A}L
-    | forall_r(a.u₀)                           ∀R (eigenvariable)
-    | forall_l(z, s, u₀)                       ∀L (instantiate with s)
-    | exists_r(s, u₀)                          ∃R (witness s)
-    | exists_l(z, a.u₀)                        ∃L (eigenvariable)
-    | unreachable(reason)                      dead branch (unverified)
-    | ffi(name, args, result)                  FFI axiom (unverified)
-```
-
-### 2.8 Lambda Interpretation Grammar (Layer 2 — from `ill-lambda.term`)
-
-§2.1–2.5 above show the typing rules using lambda notation. This notation is defined by the `ill-lambda.term` interpretation file, which maps generic constructors to human-readable syntax:
-
-```
-t ::= x | (t₁, t₂) | let (x,y) = t in u | () | let () = t in u
-    | λx. t | t u | ⟨t₁, t₂⟩ | fst t | snd t
-    | inl t | inr t | case t of inl x ⇒ u₁ | inr y ⇒ u₂
-    | abort t | !t | let !x = t in u
-    | {e} | let {x} = t in e
-    | Λx. t | u[s] | pack(s, t) | unpack u as (x, y) in t
-```
-
-This grammar is NOT built into the system — it comes from a `.term` file. Without a `.term` file, proofs render using the generic grammar (§2.7). With `@import "ill-lambda.term"` in a `.rules` file, rules can use this notation for term annotations. The `.term` file provides bidirectional mapping: parse (for `.rules` annotations) and render (for display).
+Without a `.term` file, proofs render using the generic grammar (ss2.7). With `@import "ill-lambda.term"` in a `.rules` file, rules can use lambda notation for term annotations. The `.term` file provides bidirectional mapping: parse (for `.rules` annotations) and render (for display).
 
 ---
 
 ## 3. Proof Terms in CALC's Two Modes
 
-### 3.1 Backward Prover → Natural Deduction Terms
+### 3.1 Backward Prover -> Natural Deduction Terms
 
 The backward prover (L2-L3) already builds proof trees. Each rule application maps to a generic proof term constructor (Layer 1). The right column shows the lambda interpretation (Layer 2, from `.term` file):
 
 | Rule name | Generic term | Lambda view |
 |---|---|---|
 | `id` | `id(x)` | `x` |
-| `tensor_r` | `tensor_r(u₀, u₁)` | `(u₀, u₁)` |
-| `tensor_l` | `tensor_l(z, x₀.x₁.u₀)` | `let (x₀, x₁) = z in u₀` |
-| `loli_r` | `loli_r(x₀.u₀)` | `λx₀. u₀` |
-| `loli_l` | `loli_l(z, u₀, x₁.u₁)` | `z u₀` (+ continuation) |
-| `with_r` | `with_r(u₀, u₁)` | `⟨u₀, u₁⟩` |
-| `with_l1` / `with_l2` | `with_l1(z, x₀.u₀)` | `fst z` / `snd z` |
-| `oplus_r1` / `oplus_r2` | `oplus_r1(u₀)` | `inl u₀` / `inr u₀` |
-| `oplus_l` | `oplus_l(z, x₀.u₀, x₁.u₁)` | `case z of ...` |
+| `tensor_r` | `tensor_r(u0, u1)` | `(u0, u1)` |
+| `tensor_l` | `tensor_l(z, x0.x1.u0)` | `let (x0, x1) = z in u0` |
+| `loli_r` | `loli_r(x0.u0)` | `\x0. u0` |
+| `loli_l` | `loli_l(z, u0, x1.u1)` | `z u0` (+ continuation) |
+| `with_r` | `with_r(u0, u1)` | `<u0, u1>` |
+| `with_l1` / `with_l2` | `with_l1(z, x0.u0)` | `fst z` / `snd z` |
+| `oplus_r1` / `oplus_r2` | `oplus_r1(u0)` | `inl u0` / `inr u0` |
+| `oplus_l` | `oplus_l(z, x0.u0, x1.u1)` | `case z of ...` |
 | `zero_l` | `zero_l(z)` | `abort z` |
 | `one_r` | `one_r()` | `()` |
-| `one_l` | `one_l(z, u₀)` | `let () = z in u₀` |
-| `bang_r` | `bang_r(u₀)` | `!u₀` |
-| `bang_l` | `bang_l(z, y₀.u₀)` | `let !y₀ = z in u₀` |
-| `copy` | `copy(z, y₀.u₀)` | = `bang_l` (moves `!A` to Γ) |
+| `one_l` | `one_l(z, u0)` | `let () = z in u0` |
+| `bang_r` | `bang_r(u0)` | `!u0` |
+| `bang_l` | `bang_l(z, y0.u0)` | `let !y0 = z in u0` |
+| `copy` | `copy(z, y0.u0)` | = `bang_l` (moves `!A` to Gamma) |
 | `monad_r` | `monad_r(evidence)` | `{e}` (delegates to forward engine) |
-| `monad_l` | `monad_l(z, x₀.u₀)` | `let {x₀} = z in u₀` |
+| `monad_l` | `monad_l(z, x0.u0)` | `let {x0} = z in u0` |
 
-### 3.2 Forward Engine → Monadic Let-Bindings (CLF)
+### 3.2 Forward Engine -> Monadic Let-Bindings (CLF)
 
-Each forward step IS a monadic let-binding. A forward rule `r : A₁ ⊗ A₂ ⊗ !P ⊸ {B₁ ⊗ B₂}` applied with θ produces:
+Each forward step IS a monadic let-binding. A forward rule `r : A1 * A2 * !P -o {B1 * B2}` applied with theta produces:
 
 ```
-let {(b₁, b₂)} = r (a₁, a₂, !p) in ...continuation...
+let {(b1, b2)} = r (a1, a2, !p) in ...continuation...
 ```
 
 This is exactly CLF's monadic expression (Watkins et al. 2004):
@@ -413,20 +401,20 @@ E ::= let {p} = R in E    -- forward step
 
 A full forward trace is a nested sequence of let-bindings:
 ```
-let {(b₁, b₂)} = r₁ (a₁, a₂) in
-let {c}         = r₂ (b₁, b₃) in
-(c, b₂)                              -- final state = return value
+let {(b1, b2)} = r1 (a1, a2) in
+let {c}         = r2 (b1, b3) in
+(c, b2)                              -- final state = return value
 ```
 
-**Loli continuations:** When state contains `f : A ⊸ {B}` and `a : A`, `matchFirstLoli` fires. This is loli elimination (function application): `f a : {B}`. In the monadic setting: `let {p} = (f a) in ...`. Same shape as any rule application — the loli IS the rule being applied.
+**Loli continuations:** When state contains `f : A -o {B}` and `a : A`, `matchFirstLoli` fires. This is loli elimination (function application): `f a : {B}`. In the monadic setting: `let {p} = (f a) in ...`. Same shape as any rule application -- the loli IS the rule being applied.
 
-### 3.3 rightFocus → Synchronous Decomposition Term
+### 3.3 rightFocus -> Synchronous Decomposition Term
 
 After quiescence, `rightFocus` decomposes the succedent against residual state. This produces a term built from tensor/one/bang/id constructors:
 
 ```
-rightFocus(state, A ⊗ B) = (rightFocus(Δ₁, A), rightFocus(Δ₂, B))
-rightFocus(·, 1)          = ()
+rightFocus(state, A * B) = (rightFocus(Delta1, A), rightFocus(Delta2, B))
+rightFocus(., 1)          = ()
 rightFocus(state, !A)     = !(id_persistent(A))
 rightFocus(state, atom)   = id_linear(atom)
 ```
@@ -439,19 +427,19 @@ Non-fork nodes map straightforwardly to proof term structure:
 |---|---|
 | `leaf` | Return value: rightFocus decomposition term |
 | `branch` child | `let {p} = r args in ...child_term...` |
-| `bound` | `⊥` (incomplete — no term) |
-| `cycle` | Back-edge reference (coinductive — future work, TODO_0009) |
+| `bound` | `_|_` (incomplete -- no term) |
+| `cycle` | Back-edge reference (coinductive -- future work, TODO_0009) |
 | `memo` | Pointer to previously computed term |
 
-### 3.5 Oplus Forks → Case Splits in Proof Terms
+### 3.5 Oplus Forks -> Case Splits in Proof Terms
 
-When a rule produces `A ⊕ B`, the explore tree forks. Each fork becomes an `oplus_l` (case split) in the proof term:
+When a rule produces `A oplus B`, the explore tree forks. Each fork becomes an `oplus_l` (case split) in the proof term:
 
 ```
-let {x} = evm_eq(args) in           -- x : S₁ ⊕ S₂
+let {x} = evm_eq(args) in           -- x : S1 oplus S2
   oplus_l(x,
-    a. ...continuation₁...,         -- eq branch
-    b. ...continuation₂...          -- neq branch
+    a. ...continuation1...,         -- eq branch
+    b. ...continuation2...          -- neq branch
   )
 ```
 
@@ -460,21 +448,21 @@ The explore tree IS the proof term tree:
 | Explore node | Proof term |
 |---|---|
 | `branch(rule, child)` | `let {p} = rule(args) in child_term` |
-| `fork(children)` | `oplus_l(x, a.child₁, b.child₂)` |
+| `fork(children)` | `oplus_l(x, a.child1, b.child2)` |
 | `leaf` | return value (rightFocus decomposition) |
-| `dead` | `unreachable(reason)` — see §3.6 |
-| `bound` | `⊥` (incomplete) |
+| `dead` | `unreachable(reason)` -- see ss3.6 |
+| `bound` | `_|_` (incomplete) |
 | `cycle` | back-edge (future work, TODO_0009) |
 | `memo` | shared sub-term reference |
 
-Nested forks = nested case splits. k nested binary forks → one proof term with k nested `oplus_l`, 2^k leaves. All paths are captured in a single term.
+Nested forks = nested case splits. k nested binary forks -> one proof term with k nested `oplus_l`, 2^k leaves. All paths are captured in a single term.
 
-**CLF extension:** CLF's monadic expression grammar is `E ::= let {p} = R in E | M`. We extend it with case analysis: `E ::= let {p} = R in E | oplus_l(x, a.E, b.E) | M`. CLF excluded oplus from `{S}` for committed-choice semantics. CALC's exhaustive exploration IS case analysis — we're not doing committed choice, we're computing both branches. The extension is proof-theoretically sound: oplus elimination inside the monad.
+**CLF extension:** CLF's monadic expression grammar is `E ::= let {p} = R in E | M`. We extend it with case analysis: `E ::= let {p} = R in E | oplus_l(x, a.E, b.E) | M`. CLF excluded oplus from `{S}` for committed-choice semantics. CALC's exhaustive exploration IS case analysis -- we're not doing committed choice, we're computing both branches. The extension is proof-theoretically sound: oplus elimination inside the monad.
 
-**Nested consequent choices:** `(A ⊕ B) ⊗ C` in a consequent decomposes via tensor then case:
+**Nested consequent choices:** `(A oplus B) * C` in a consequent decomposes via tensor then case:
 
 ```
-let {y} = rule(args) in             -- y : (A ⊕ B) ⊗ C
+let {y} = rule(args) in             -- y : (A oplus B) * C
   tensor_l(y, x.c.
     oplus_l(x,
       a. ...                         -- A, C world
@@ -485,41 +473,37 @@ let {y} = rule(args) in             -- y : (A ⊕ B) ⊗ C
 
 ### 3.6 Dead Branches
 
-With Option A (§3.5), dead branches NEED proof terms — the case split requires a term for every branch. Three options, in order of soundness:
+With Option A (ss3.5), dead branches NEED proof terms -- the case split requires a term for every branch.
 
-**Option 1 — Materialize the contradiction (fully verified):**
+**Decision:** Two-tier approach:
 
-CALC has `contra/eq_neq : !eq X Y * !neq X Y -o { zero }`. When the constraint solver detects `eq(X,Y) ∧ neq(X,Y)`, this rule WOULD fire and produce `zero`. The proof term fires it explicitly:
+**Primary -- Materialize the contradiction (fully verified):**
+
+CALC has `contra/eq_neq : !eq X Y * !neq X Y -o { zero }`. When the constraint solver detects UNSAT, fire the contradiction rule explicitly:
 
 ```
 oplus_l(x,
   a. ...normal continuation...,       -- live branch
   b. let {z} = contra_eq_neq(         -- dead branch: fire contradiction
        !eq_witness, !neq_witness       -- witnesses from persistent state
-     ) in zero_l(z)                    -- z : 0 → abort → any type
+     ) in zero_l(z)                    -- z : 0 -> abort -> any type
 )
 ```
 
-Fully sound. `zero_l(z) : C` for any C when `z : 0`. No trust needed. Requires finding the contradiction witnesses in the state (the constraint solver already knows them).
+Fully sound. `zero_l(z) : C` for any C when `z : 0`. The solver already tracks witnesses.
 
-**Option 2 — `unreachable(reason)` (unverified shortcut):**
+**Fallback -- `unreachable(reason)` for exotic UNSAT:**
+
+When no contradiction rule exists (complex union-find chains, transitive inequalities):
 
 ```
 oplus_l(x,
   a. ...normal continuation...,
-  b. unreachable("eq(X,Y) ∧ neq(X,Y)")    -- trusted axiom
+  b. unreachable("eq(X,Y) and neq(X,Y)")    -- trusted axiom
 )
 ```
 
-The checker accepts `unreachable(reason) : C` for any C, but flags `{ valid: true, unverified: 'constraintUNSAT' }`. Same pattern as current `unverified: 'modeSwitch'`. Practical, but the UNSAT claim is not verified by the type checker.
-
-**Option 3 — Collapse the case (prune dead branch):**
-
-Uses the isomorphism `A ⊕ 0 ≅ A`. If the dead branch would produce `0`, the case split is unnecessary — the live branch stands alone. But the pruning itself needs justification (why is the branch dead?), so this reduces to Option 1 or 2 for the justification.
-
-**Recommendation:** Option 1 when the UNSAT reason maps to an existing contradiction rule (covers `eq/neq`, the common case). Option 2 as fallback for exotic UNSAT (complex union-find chains, transitive inequalities without explicit contradiction rules). The constraint solver already tracks the reason for UNSAT — the term builder just needs to package it.
-
-Can't collapse via `A ⊕ 0 = A` without justification — we need to prove the branch is `0`, which is Option 1. There's no free lunch.
+Checker flags `{ valid: true, unverified: 'constraintUNSAT' }`. Same pattern as `unverified: 'modeSwitch'`.
 
 ---
 
@@ -531,44 +515,57 @@ A small, independent module that verifies `t : A`. This is the de Bruijn criteri
 
 ```javascript
 // lib/prover/check-term.js (~150 LOC, trusted)
-function checkTerm(gamma, delta, term, type) → { valid: boolean, error?: string }
+function checkTerm(gamma, delta, term, type) -> { valid: boolean, error?: string }
 ```
 
-Input: contexts, term, expected type — all as expanded term objects (not Store hashes). Store stays outside the trust boundary (same principle as TODO_0067 §4).
+Input: contexts, term, expected type -- all as expanded term objects (not Store hashes). Store stays outside the trust boundary (same principle as TODO_0067 ss4).
 
-### 4.2 What It Checks — Descriptor-Driven
+### 4.2 What It Checks -- Per-Rule Map Lookup
 
-The checker works on generic terms (Layer 1). It reads the rule's descriptor to know what to verify. There are ~5 structural patterns, not one case per connective:
+The checker uses a generated map from rule name to checking function. Each rule gets its own entry. The map is generated at calculus load time from descriptors -- no handwriting needed, but the runtime dispatch is a simple key lookup:
 
-| Descriptor pattern | Example rules | Check |
-|---|---|---|
-| `side='r'` + `contextSplit` | tensor_r | Goal = connective(A,B). Split Δ into Δ₁,Δ₂. Check u₀:A with Δ₁, u₁:B with Δ₂ |
-| `side='r'` + `copyContext` | with_r | Goal = connective(A,B). Check u₀:A with Δ, u₁:B with Δ (same context) |
-| `side='r'` + `emptyLinear` | bang_r | Goal = connective(A). Require Δ empty. Check u₀:A with · |
-| `side='r'` + single premise | oplus_r1, loli_r | Goal = connective(...). Check sub-proof against appropriate child |
-| `side='l'` | tensor_l, bang_l, loli_l | Principal z:F ∈ Δ. Remove z, add children per `premises[i].linear/cartesian`. Check sub-proof |
-| axiom | id | x:A ∈ Δ, goal = A. Check Δ = {x:A} (exactly one resource) |
-| special | unreachable, ffi | Accept with `unverified` flag |
+```javascript
+// Generated at load time from descriptors:
+const checkers = {
+  'tensor_r': (gamma, delta, term, type) => {
+    // type must be tensor(A, B)
+    // split delta by variable usage
+    // check term.children[0] : A with delta1
+    // check term.children[1] : B with delta2
+  },
+  'tensor_l': (gamma, delta, term, type) => {
+    // term.principal : tensor(A, B) in delta
+    // remove principal, add x0:A, x1:B
+    // check term.body : type with extended delta
+  },
+  'loli_r': (gamma, delta, term, type) => { ... },
+  'id':       (gamma, delta, term, type) => { ... },
+  'unreachable': () => ({ valid: true, unverified: 'constraintUNSAT' }),
+  'ffi':      (gamma, delta, term, type) => ({ valid: true, unverified: 'ffiAxiom' }),
+  // ...one entry per rule
+};
 
-**Walkthrough example:** Check `tensor_r(id(a), id(b)) : A ⊗ B` with `Δ = {a:A, b:B}`:
+// Runtime: simple map lookup, no pattern matching
+function checkTerm(gamma, delta, term, type) {
+  const check = checkers[term.rule];
+  if (!check) return { valid: false, error: 'unknown rule: ' + term.rule };
+  return check(gamma, delta, term, type);
+}
+```
+
+**Walkthrough:** Check `tensor_r(id(a), id(b)) : A * B` with `delta = {a:A, b:B}`:
 
 ```
-1. term.type = 'tensor_r' → look up descriptor:
-   { side:'r', contextSplit:true, premises:[{succedent:0}, {succedent:1}] }
-
-2. side='r' → goal type headed by 'tensor'. A⊗B → tag=tensor ✓
-
-3. contextSplit → split Δ by tracking variable usage:
-   - sub-proof 0 uses {a} → Δ₁ = {a:A}
-   - sub-proof 1 uses {b} → Δ₂ = {b:B}
-
-4. premises[0].succedent=0 → check id(a) : child₀(A⊗B) = A, with Δ₁ ✓
-5. premises[1].succedent=1 → check id(b) : child₁(A⊗B) = B, with Δ₂ ✓
+1. checkers['tensor_r'] -- direct map lookup
+2. type = tensor(A, B) -- verify tag
+3. split delta by variable usage: delta1={a:A}, delta2={b:B}
+4. checkers['id'](gamma, {a:A}, id(a), A) -- ok
+5. checkers['id'](gamma, {b:B}, id(b), B) -- ok
 ```
 
-The checker is ~150 LOC: structural recursion, descriptor lookup, ~5 patterns. No search, no backtracking, no unification. Deterministic, total, O(|term|). Any new connective with a standard descriptor is automatically checkable — no new checker code needed.
+~150 LOC total. The map is generated from descriptors (so new connectives get checkers automatically), but at runtime each rule has its own explicit function -- no descriptor interpretation at check time. Explicit, debuggable, no magic.
 
-**Context splitting is deterministic.** The term *determines* the split: track which variables each sub-term uses. Each variable used exactly once (linearity). No search needed — the checker walks the term and partitions variables as it goes.
+**Context splitting is deterministic.** The term determines the split: track which variables each sub-term uses. Each variable used exactly once (linearity). No search needed.
 
 ### 4.3 Trust Boundary
 
@@ -619,7 +616,7 @@ Variables use de Bruijn indices (via existing `bound(n)` nodes) for binding posi
 Extend `lib/prover/generic-term.js` (untrusted). Given a completed ProofTree, extract the corresponding generic proof term:
 
 ```javascript
-function extractTerm(proofTree, calculus) → genericTerm
+function extractTerm(proofTree, calculus) -> genericTerm
 ```
 
 Post-hoc extraction: the prover builds the proof tree as now, then `extractTerm` walks it and constructs a generic term using `genericTermShape` for binding structure. No changes to the prover itself. Returns a lightweight JS object tree, not Store hashes.
@@ -629,7 +626,7 @@ Post-hoc extraction: the prover builds the proof tree as now, then `extractTerm`
 Extend `forward.run()` and `explore()` to optionally record monadic terms. Opt-in via `{ terms: true }`:
 
 ```javascript
-// forward.js — when terms enabled
+// forward.js -- when terms enabled
 trace.push({ rule, theta, consumed, produced, termHash });
 
 // At quiescence: rightFocus produces decomposition term
@@ -643,23 +640,24 @@ Function pointer swap at entry (same pattern as TODO_0067): no branches in the h
 New module `lib/prover/check-term.js` (trusted). Works on generic term objects, no Store dependency:
 
 ```javascript
-function checkTerm(gamma, delta, term, type, calculus) {
-  const rule = calculus.rules[term.type];
-  const d = rule.descriptor;
-  // Generic checking: use descriptor to verify context handling,
-  // binding structure, and premise types
-  // One case per (side, contextSplit, copyContext) combination
+// lib/prover/check-term.js
+const checkers = buildCheckerMap(calculus);  // generated from descriptors
+
+function checkTerm(gamma, delta, term, type) {
+  const check = checkers[term.rule];
+  if (!check) return { valid: false, error: 'unknown rule: ' + term.rule };
+  return check(gamma, delta, term, type);
 }
 ```
 
-The checker is descriptor-driven, not per-constructor. A new connective with standard descriptor fields is automatically checkable. Only ~5 structural cases needed (right-split, right-copy, right-empty, left-split, left-single) rather than one case per connective.
+`buildCheckerMap` reads descriptors once at load time and generates one checking function per rule. At runtime, dispatch is a plain map lookup -- explicit, debuggable, no descriptor interpretation on the hot path. New connectives get checkers automatically via the generator.
 
 ### Phase 5: Bridge Integration (~30 LOC)
 
 Wire `monad_r` to produce and verify terms:
 
 ```javascript
-// bridge.js — executeModeSwitch
+// bridge.js -- executeModeSwitch
 if (opts.terms) {
   const monadicTerm = buildMonadicTerm(trace, rfTerm);
   // Type-check: monadicTerm : innerSuccedent
@@ -672,10 +670,10 @@ Kernel verification for monad_r changes from `{ valid: true, unverified: 'modeSw
 
 ### Phase 6: Tests (~80 LOC)
 
-- Term construction: each connective → correct term shape
+- Term construction: each connective -> correct term shape
 - Type checking: valid terms accepted, invalid rejected
-- Round-trip: backward proof → extract term → type-check → valid
-- Forward trace → monadic term → type-check → valid
+- Round-trip: backward proof -> extract term -> type-check -> valid
+- Forward trace -> monadic term -> type-check -> valid
 - Tampered terms rejected (wrong variable, missing resource, type mismatch)
 - Zero-overhead: `{ terms: false }` matches baseline performance
 
@@ -686,12 +684,12 @@ Kernel verification for monad_r changes from `{ valid: true, unverified: 'modeSw
 | TODO | Relationship |
 |---|---|
 | **TODO_0067** (proof certificates) | **Subsumed.** Proof terms are strictly more useful than ad-hoc certificates. Terms compose, have computational meaning, and follow standard theory. 0067 demoted to priority 3. |
-| **TODO_0045** (execution tree judgment) | **Consumer.** The tree `T` in `Σ; Δ ⊢_fwd T : A` is now a tree of monadic proof terms. |
+| **TODO_0045** (execution tree judgment) | **Consumer.** The tree `T` in `Sigma; Delta |-_fwd T : A` is now a tree of monadic proof terms. |
 | **TODO_0008** (metaproofs) | **Consumer.** Invariant witnesses become typed proof terms. Counterexample traces are well-typed monadic expressions. |
-| **TODO_0011** (CLF dependent types) | **Orthogonal.** Dependent types add `Πx:A.B` — proof terms depend on values. This TODO handles the non-dependent base case. |
-| **TODO_0009** (induction/coinduction) | **Future extension.** Fixed-point terms (μ/ν constructors) and cyclic proof terms extend this term language. |
+| **TODO_0011** (CLF dependent types) | **Orthogonal.** Dependent types add `Pix:A.B` -- proof terms depend on values. This TODO handles the non-dependent base case. |
+| **TODO_0009** (induction/coinduction) | **Future extension.** Fixed-point terms (mu/nu constructors) and cyclic proof terms extend this term language. |
 | **TODO_0066** (modular architecture) | **Aligns.** The architecture's hook points (certificateHook in explore, evidence in monad_r) are where terms get recorded. |
-| **TODO_0064** (higher-order extensions) | **Axis 1, Level 0→1.** This is the first step on the term-level type discipline axis. |
+| **TODO_0064** (higher-order extensions) | **Axis 1, Level 0->1.** This is the first step on the term-level type discipline axis. |
 
 ---
 
@@ -701,13 +699,13 @@ Kernel verification for monad_r changes from `{ valid: true, unverified: 'modeSw
 
 **Opt-in, zero overhead when off.** Same function-pointer-swap pattern as the existing `provePersistentWithFFI` / `provePersistentNaive` dispatch. No `if (terms)` in hot loops.
 
-**Store-free checker.** The type checker works on expanded ASTs, not hashes. Store is untrusted infrastructure. The checker is a pure function: `(contexts, term, type) → valid/invalid`.
+**Store-free checker.** The type checker works on expanded ASTs, not hashes. Store is untrusted infrastructure. The checker is a pure function: `(contexts, term, type) -> valid/invalid`.
 
-**No definitional equality (yet).** CLF identifies monadic expressions up to reordering of independent let-bindings. CALC doesn't need this — the forward engine commits to a specific execution order. If needed later (e.g., for confluence proofs), commuting conversions can be added to the checker.
+**No definitional equality (yet).** CLF identifies monadic expressions up to reordering of independent let-bindings. CALC doesn't need this -- the forward engine commits to a specific execution order. If needed later (e.g., for confluence proofs), commuting conversions can be added to the checker.
 
 **FFI as axiom (configurable).** Two modes for persistent goals when terms are enabled:
 1. **FFI axiom mode** (default, fast): FFI results produce axiom terms `ffi("plus", [3, 2, 5])`. The type checker validates by re-computing. Preserves FFI performance.
-2. **Clause resolution mode** (strict): FFI disabled, clause resolution produces full proof subtrees. Slower (~10-20× for arithmetic-heavy programs) but terms are self-contained.
+2. **Clause resolution mode** (strict): FFI disabled, clause resolution produces full proof subtrees. Slower (~10-20x for arithmetic-heavy programs) but terms are self-contained.
 
 Configurable alongside other profile settings (e.g., `{ terms: true, ffiAxioms: true }`). Same function-pointer-swap dispatch as existing FFI opt-in.
 
@@ -717,7 +715,7 @@ Configurable alongside other profile settings (e.g., `{ terms: true, ffiAxioms: 
 
 ### 8.1 Soundness
 
-If `checkTerm(Γ, Δ, t, A)` returns valid, then `Γ; Δ ⊢ t : A` is a valid ILL+lax derivation. Proof: each case of the checker corresponds to exactly one ILL inference rule. The checker is a direct implementation of the typing rules in §2.
+If `checkTerm(Gamma, Delta, t, A)` returns valid, then `Gamma; Delta |- t : A` is a valid ILL+lax derivation. Proof: each case of the checker corresponds to exactly one ILL inference rule. The checker is a direct implementation of the typing rules in ss2.
 
 ### 8.2 Adequacy
 
@@ -749,40 +747,40 @@ Captured here for later exploration, not part of initial implementation.
 
 6. **Lazy extraction:** For very large explore trees (10K+ nodes), extract terms only for paths the user inspects, not the full tree.
 
-7. **Store tag capacity:** Currently `tags = new Uint8Array(capacity)` limits tag values to 0-255. If Layer 2 interpretations ever need Store-resident terms (e.g., dependent types), upgrading to `Uint16Array` (65536 tags) is a one-line change. `STRING_CHILD_TAGS`/`BIGINT_CHILD_TAGS` lookup tables would grow from 256B to 64KB (still trivial). PRED_BOUNDARY (currently 28) is unrelated — it separates built-in tags from dynamic predicates. The generic Layer 1 approach avoids this concern entirely by keeping terms outside the Store.
+7. **Store tag capacity:** Currently `tags = new Uint8Array(capacity)` limits tag values to 0-255. If Layer 2 interpretations ever need Store-resident terms (e.g., dependent types), upgrading to `Uint16Array` (65536 tags) is a one-line change. `STRING_CHILD_TAGS`/`BIGINT_CHILD_TAGS` lookup tables would grow from 256B to 64KB (still trivial). PRED_BOUNDARY (currently 28) is unrelated -- it separates built-in tags from dynamic predicates. The generic Layer 1 approach avoids this concern entirely by keeping terms outside the Store.
 
 ---
 
 ## 10. References
 
 ### Foundational
-- Barber & Plotkin (1996) — "Dual Intuitionistic Linear Logic" (DILL). Dual-context judgment `Γ; Δ ⊢ M : A`
-- Benton (1995) — "A Mixed Linear and Non-Linear Logic" (LNL). Adjoint decomposition `!A = G(F(A))`
-- Bierman, Benton, de Paiva, Hyland (1992) — "Term Assignments for ILL". First complete term assignment
-- Girard (1987) — "Linear Logic" TCS 50(1). The logic itself
+- Barber & Plotkin (1996) -- "Dual Intuitionistic Linear Logic" (DILL). Dual-context judgment `Gamma; Delta |- M : A`
+- Benton (1995) -- "A Mixed Linear and Non-Linear Logic" (LNL). Adjoint decomposition `!A = G(F(A))`
+- Bierman, Benton, de Paiva, Hyland (1992) -- "Term Assignments for ILL". First complete term assignment
+- Girard (1987) -- "Linear Logic" TCS 50(1). The logic itself
 
 ### CLF and Logical Frameworks
-- Watkins, Cervesato, Pfenning, Walker (2004) — "CLF: A Concurrent Logical Framework". Monadic proof terms `let {p} = R in E`
-- Cervesato & Pfenning (2002) — "A Linear Logical Framework" (LLF). `λΠ⊸&⊤`
-- Harper, Honsell & Plotkin (1993) — "A Framework for Defining Logics" (LF). Canonical forms, adequacy
+- Watkins, Cervesato, Pfenning, Walker (2004) -- "CLF: A Concurrent Logical Framework". Monadic proof terms `let {p} = R in E`
+- Cervesato & Pfenning (2002) -- "A Linear Logical Framework" (LLF). `\Pi -o & T`
+- Harper, Honsell & Plotkin (1993) -- "A Framework for Defining Logics" (LF). Canonical forms, adequacy
 
 ### Lax Monad
-- Pfenning & Davies (2001) — "A Judgmental Reconstruction of Modal Logic". Lax modality as `⊢_lax`, terms = Moggi's monad
-- Moggi (1991) — "Notions of Computation and Monads". Computational monad = `{A}`
-- Fairtlough & Mendler (1997) — "Propositional Lax Logic"
+- Pfenning & Davies (2001) -- "A Judgmental Reconstruction of Modal Logic". Lax modality as `|-_lax`, terms = Moggi's monad
+- Moggi (1991) -- "Notions of Computation and Monads". Computational monad = `{A}`
+- Fairtlough & Mendler (1997) -- "Propositional Lax Logic"
 
 ### Session Types & Term Zoos
-- Caires & Pfenning (2010) — "Session Types as Intuitionistic Linear Propositions". Proofs = processes
-- Wadler (2014) — "Propositions as Sessions". Classical variant
-- Martens (2014) — "Zoo of Term Assignments for Linear Sequent Calculus". Same logic, different computational meanings (lambda terms, processes, plans)
+- Caires & Pfenning (2010) -- "Session Types as Intuitionistic Linear Propositions". Proofs = processes
+- Wadler (2014) -- "Propositions as Sessions". Classical variant
+- Martens (2014) -- "Zoo of Term Assignments for Linear Sequent Calculus". Same logic, different computational meanings (lambda terms, processes, plans)
 
 ### Internal
-- [TODO_0045](0045_execution-tree-judgment.md) — Execution tree judgment (consumer of proof terms)
-- [TODO_0067](0067_proof-certificates.md) — Proof certificates (subsumed, priority 3)
-- [TODO_0011](0011_clf-dependent-types.md) — CLF dependent types (orthogonal extension)
-- [TODO_0064](0064_higher-order-extensions-overview.md) — Higher-order extensions (Axis 1)
-- [RES_0052](../research/0052_clf-lax-monad-deep-study.md) — CLF lax monad deep study
-- [RES_0038](../research/0038_resource-term-semantics.md) — Resource term semantics
-- [RES_0077](../research/0077_modular-proof-kernel-architectures.md) — Proof kernel architectures
-- [RES_0086](../research/0086_quantifier-proof-terms.md) — Quantifier proof terms survey
-- `doc/documentation/lax-monad.md` — Mode switch & connective roles
+- [TODO_0045](0045_execution-tree-judgment.md) -- Execution tree judgment (consumer of proof terms)
+- [TODO_0067](0067_proof-certificates.md) -- Proof certificates (subsumed, priority 3)
+- [TODO_0011](0011_clf-dependent-types.md) -- CLF dependent types (orthogonal extension)
+- [TODO_0064](0064_higher-order-extensions-overview.md) -- Higher-order extensions (Axis 1)
+- [RES_0052](../research/0052_clf-lax-monad-deep-study.md) -- CLF lax monad deep study
+- [RES_0038](../research/0038_resource-term-semantics.md) -- Resource term semantics
+- [RES_0077](../research/0077_modular-proof-kernel-architectures.md) -- Proof kernel architectures
+- [RES_0086](../research/0086_quantifier-proof-terms.md) -- Quantifier proof terms survey
+- `doc/documentation/lax-monad.md` -- Mode switch & connective roles
