@@ -96,7 +96,9 @@ oplus_l(z, x0 -> u0, x1 -> u1) => case z of inl x0 => u0 | inr x1 => u1.
 one_r                            => ().
 one_l(z, u0)                    => let () = z in u0.
 bang_r(u0)                       => !u0.
-bang_l(z, y0 -> u0)              => let !y0 = z in u0.
+bang_l(z, x0 -> u0)              => let !x0 = z in u0.
+dereliction(z, x0 -> u0)        => let !x0 = z in u0.
+copy(u, x0 -> u0)               => copy u as x0 in u0.
 monad_r(u0)                     => {u0}.
 monad_l(z, x0 -> u0)            => let {x0} = z in u0.
 ```
@@ -187,56 +189,74 @@ Gamma; Delta |- t : A
 ```
 Gamma; Delta1 |- t1 : A    Gamma; Delta2 |- t2 : B
 ------------------------------------- *R
-   Gamma; Delta1, Delta2 |- (t1, t2) : A * B
+   Gamma; Delta1, Delta2 |- tensor_r(t1, t2) : A * B
 
-Gamma; Delta1 |- t : A * B    Gamma; Delta2, x:A, y:B |- u : C
--------------------------------------------------- *L
-   Gamma; Delta1, Delta2 |- let (x, y) = t in u : C
+Gamma; Delta, x:A, y:B |- t : C
+-------------------------------- *L
+Gamma; Delta, z:A*B |- tensor_l(z, x y -> t) : C
 ```
 
 **One (`1`):**
 ```
----------------- 1R          Gamma; Delta1 |- t : 1    Gamma; Delta2 |- u : C
-Gamma; . |- () : 1               ----------------------------------- 1L
-                              Gamma; Delta1, Delta2 |- let () = t in u : C
+-------------- 1R
+Gamma; . |- one_r() : 1
+
+Gamma; Delta |- t : C
+--------------------- 1L
+Gamma; Delta, z:1 |- one_l(z, t) : C
 ```
 
 **Loli (`A -o B`):**
 ```
-Gamma; Delta, x:A |- t : B                     Gamma; Delta1 |- t : A -o B    Gamma; Delta2 |- u : A
---------------------- -oR               --------------------------------------- -oL
-Gamma; Delta |- \x. t : A -o B                   Gamma; Delta1, Delta2 |- t u : B
+Gamma; Delta, x:A |- t : B
+--------------------------- -oR
+Gamma; Delta |- loli_r(x -> t) : A -o B
+
+Gamma; Delta1 |- t : A    Gamma; Delta2, x:B |- u : C
+------------------------------------------------------ -oL
+Gamma; Delta1, Delta2, z:A-oB |- loli_l(z, t, x -> u) : C
 ```
+
+Note on -oL: this is the one left rule with TWO premises. We must provide the argument (first premise proving A) and the continuation (second premise using the result B). The principal `z : A -o B` is consumed from the antecedent.
 
 ### 2.2 Additives
 
 **With (`A & B`):**
 ```
 Gamma; Delta |- t1 : A    Gamma; Delta |- t2 : B
----------------------------------- &R     (same Delta for both!)
-  Gamma; Delta |- <t1, t2> : A & B
+------------------------------------------------- &R     (same Delta for both!)
+Gamma; Delta |- with_r(t1, t2) : A & B
 
-fst t : A    snd t : B                   (from t : A & B)
+Gamma; Delta, x:A |- t : C
+--------------------------- &L1
+Gamma; Delta, z:A&B |- with_l1(z, x -> t) : C
+
+Gamma; Delta, x:B |- t : C
+--------------------------- &L2
+Gamma; Delta, z:A&B |- with_l2(z, x -> t) : C
 ```
 
 **Oplus (`A oplus B`):**
 ```
-  Gamma; Delta |- t : A                            Gamma; Delta |- t : B
----------------------- oplusR1              ---------------------- oplusR2
-Gamma; Delta |- inl t : A oplus B                   Gamma; Delta |- inr t : A oplus B
+Gamma; Delta |- t : A
+------------------------------ oplusR1
+Gamma; Delta |- oplus_r1(t) : A oplus B
 
-Gamma; Delta1 |- t : A oplus B    Gamma; Delta2, x:A |- u1 : C    Gamma; Delta2, y:B |- u2 : C
-------------------------------------------------------------------------- oplusL
-       Gamma; Delta1, Delta2 |- case t of inl x => u1 | inr y => u2 : C
+Gamma; Delta |- t : B
+------------------------------ oplusR2
+Gamma; Delta |- oplus_r2(t) : A oplus B
+
+Gamma; Delta, x:A |- t1 : C    Gamma; Delta, y:B |- t2 : C
+------------------------------------------------------------ oplusL
+Gamma; Delta, z:A oplus B |- oplus_l(z, x -> t1, y -> t2) : C
 ```
 
 **Zero (`0`):**
 ```
-No introduction.
+No introduction rule.
 
-Gamma; Delta |- t : 0
----------------- 0L
-Gamma; Delta |- abort t : C
+-------------- 0L    (no premises -- ex falso)
+Gamma; Delta, z:0 |- zero_l(z) : C
 ```
 
 ### 2.3 Exponential
@@ -244,71 +264,86 @@ Gamma; Delta |- abort t : C
 **Bang (`!A`):**
 ```
 Gamma; . |- t : A
---------------- !R    (empty linear context)
-Gamma; . |- !t : !A
+----------------------- !R    (empty linear context)
+Gamma; . |- bang_r(t) : !A
 
-Gamma; Delta1 |- t : !A    Gamma, x:A; Delta2 |- u : C
----------------------------------------- !L    (x moves to cartesian)
-   Gamma; Delta1, Delta2 |- let !x = t in u : C
+Gamma, x:A; Delta |- t : C
+--------------------------- !L / absorption    (x moves to cartesian)
+Gamma; Delta, z:!A |- bang_l(z, x -> t) : C
 ```
+
+**Dereliction (`!A`):**
+```
+Gamma; Delta, x:A |- t : C
+--------------------------- !D    (x stays linear)
+Gamma; Delta, z:!A |- dereliction(z, x -> t) : C
+```
+
+**Copy (structural):**
+```
+Gamma, u:A; Delta, x:A |- t : C
+-------------------------------- copy    (duplicate from Gamma to Delta)
+Gamma, u:A; Delta |- copy(u, x -> t) : C
+```
+
+Note: dereliction is admissible as absorption + copy (Barber 1996). CALC has all three for flexibility.
 
 ### 2.4 Lax Monad
 
 **Monad (`{A}`):**
 ```
 Gamma; Delta |-_lax t : A
----------------------- {A}R
-Gamma; Delta |- {t} : {A}
+-------------------------- {A}R
+Gamma; Delta |- monad_r(t) : {A}
 
-Gamma; Delta1 |- t : {A}    Gamma; Delta2, x:A |-_lax u : C
------------------------------------------------ {A}L
-     Gamma; Delta1, Delta2 |-_lax let {x} = t in u : C
+Gamma; Delta, x:A |-_lax t : C
+------------------------------- {A}L
+Gamma; Delta, z:{A} |-_lax monad_l(z, x -> t) : C
 ```
 
 The `|-_lax` judgment is **sticky**: once entered, you cannot return to `|-`. This is the type-theoretic expression of the mode switch -- backward proving enters `|-_lax` via `monad_r`, and the forward engine operates entirely within `|-_lax`.
 
-Via Moggi's computational monad: `{t}` = `return t`, `let {x} = t in u` = `bind t (\x. u)`.
+Via Moggi's computational monad: `monad_r(t)` = `return t`, `monad_l(z, x -> t)` = `bind z (\x. t)`.
 
 Via Pfenning-Davies (2001): `|-` = "A is true", `|-_lax` = "A is achievable (through computation)".
 
 ### 2.5 Quantifiers
 
-**Universal (`forallx.A`):**
+**Universal (`forall x.A`):**
 ```
-Gamma; Delta |- t : A[y/x]                          (y fresh -- eigenvariable)
--------------------- forallR
-Gamma; Delta |- \y.t : forallx.A
+Gamma; Delta |- t : A[y/x]                       (y fresh -- eigenvariable)
+------------------------------- forallR
+Gamma; Delta |- forall_r(y -> t) : forall x.A
 
-Gamma; Delta, u:A[s/x] |- t : C
------------------------- forallL                  (instantiate with term s)
-Gamma; Delta, u:forallx.A |- t : C
-```
-
-Note on forallL: The principal formula `forallx.A` is on the LEFT (antecedent) and is deconstructed to `A[s/x]`. The proof term `t` in the conclusion is the same as in the premise -- the rule just substitutes `u` for the instantiated hypothesis. In the generic term view: `forall_l(u, s, t)` where `u` is the principal, `s` is the witness term, `t` is the continuation proof. Spined notation (RES_0086): `u[s] . t`.
-
-**Existential (`existsx.A`):**
-```
-Gamma; Delta |- t : A[s/x]
------------------------- existsR                  (witness s + proof t)
-Gamma; Delta |- pack(s, t) : existsx.A
-
-Gamma; Delta, y:A[a/x] |- t : C                     (a fresh -- eigenvariable)
------------------------- existsL
-Gamma; Delta, u:existsx.A |- t : C
+Gamma; Delta, u:A[s/x] |- t : C                  (s = witness term)
+--------------------------------------- forallL
+Gamma; Delta, z:forall x.A |- forall_l(z, s, t) : C
 ```
 
-Note on existsL: The principal formula `existsx.A` is on the LEFT and is deconstructed by opening the existential with fresh eigenvariable `a`. In the generic term view: `exists_l(u, a -> t)`.
+**Existential (`exists x.A`):**
+```
+Gamma; Delta |- t : A[s/x]                       (s = witness term)
+------------------------------- existsR
+Gamma; Delta |- exists_r(s, t) : exists x.A
+
+Gamma; Delta, u:A[a/x] |- t : C                  (a fresh -- eigenvariable)
+--------------------------------------- existsL
+Gamma; Delta, z:exists x.A |- exists_l(z, a -> t) : C
+```
 
 **Reading direction:** Sequent calculus rules are read bottom->top for proof search. The conclusion (bottom) ALWAYS has the complex connective. The premise (top) has simpler sub-formulas. Reading bottom->top, you DECONSTRUCT. Reading top->bottom (proof construction), you INTRODUCE. Both perspectives describe the same rule.
 
-In CLF: exists is synchronous (inside the monad `{S}`), while forall (as `Pi`) is asynchronous. Implementation deferred until quantifiers appear in forward programs. See TODO_0011 for the dependent case (`Pix:A.B`).
+In CLF: exists is synchronous (inside the monad `{S}`), while forall (as `Pi`) is asynchronous. Implementation deferred until quantifiers appear in forward programs. See TODO_0011 for the dependent case (`Pi x:A.B`).
 
-### 2.6 Identity and Cut
+### 2.6 Identity, Cut, and Structural Rules
 
 ```
------------- id               Gamma; Delta1 |- t : A    Gamma; Delta2, x:A |- u : C
-Gamma; x:A |- x : A               ---------------------------------------- cut
-                                Gamma; Delta1, Delta2 |- u[t/x] : C
+------------- id
+Gamma; x:A |- id(x) : A
+
+Gamma; Delta1 |- t : A    Gamma; Delta2, x:A |- u : C
+------------------------------------------------------ cut
+Gamma; Delta1, Delta2 |- u[t/x] : C
 ```
 
 ### 2.7 Generic Term Grammar (Layer 1 -- Primary)
@@ -340,7 +375,9 @@ oplus_r2(u0)                            oplus-R2
 oplus_l(z, x0 -> u0, x1 -> u1)         oplus-L (case split)
 zero_l(z)                               zero-L (abort, discards context)
 bang_r(u0)                              bang-R (empty linear context)
-bang_l(z, y0 -> u0)                     bang-L (y0 moves to Gamma)
+bang_l(z, x0 -> u0)                     bang-L / absorption (x0 to Gamma)
+dereliction(z, x0 -> u0)               !D (x0 stays linear)
+copy(u, x0 -> u0)                      copy (structural, u from Gamma)
 monad_r(evidence)                       monad-R (mode switch)
 monad_l(z, x0 -> u0)                    monad-L
 forall_r(a -> u0)                       forall-R (eigenvariable)
@@ -353,7 +390,7 @@ ffi(name, args, result)                 FFI axiom (unverified)
 
 ### 2.8 Lambda Interpretation (Layer 2 -- from `ill-lambda.term`)
 
-ss2.1-2.5 above show typing rules using lambda notation. This notation is NOT built into the system -- it comes from a `.term` file. The `.term` file maps generic constructors to human-readable syntax (see ss1.2 for the full file format).
+ss2.1-2.5 above show typing rules using generic term constructors (Layer 1). The lambda notation in the `.term` file (ss1.2) maps these to human-readable syntax.
 
 Without a `.term` file, proofs render using the generic grammar (ss2.7). With `@import "ill-lambda.term"` in a `.rules` file, rules can use lambda notation for term annotations. The `.term` file provides bidirectional mapping: parse (for `.rules` annotations) and render (for display).
 
@@ -361,7 +398,7 @@ Without a `.term` file, proofs render using the generic grammar (ss2.7). With `@
 
 ## 3. Proof Terms in CALC's Two Modes
 
-### 3.1 Backward Prover -> Natural Deduction Terms
+### 3.1 Backward Prover -> Proof Terms
 
 The backward prover (L2-L3) already builds proof trees. Each rule application maps to a generic proof term constructor (Layer 1). The right column shows the lambda interpretation (Layer 2, from `.term` file):
 
@@ -371,17 +408,18 @@ The backward prover (L2-L3) already builds proof trees. Each rule application ma
 | `tensor_r` | `tensor_r(u0, u1)` | `(u0, u1)` |
 | `tensor_l` | `tensor_l(z, x0 x1 -> u0)` | `let (x0, x1) = z in u0` |
 | `loli_r` | `loli_r(x0 -> u0)` | `\x0. u0` |
-| `loli_l` | `loli_l(z, u0, x1 -> u1)` | `z u0` (+ continuation) |
+| `loli_l` | `loli_l(z, u0, x1 -> u1)` | `let x1 = z u0 in u1` |
 | `with_r` | `with_r(u0, u1)` | `<u0, u1>` |
-| `with_l1` / `with_l2` | `with_l1(z, x0 -> u0)` | `fst z` / `snd z` |
+| `with_l1` / `with_l2` | `with_l1(z, x0 -> u0)` | `let x0 = fst z in u0` |
 | `oplus_r1` / `oplus_r2` | `oplus_r1(u0)` | `inl u0` / `inr u0` |
 | `oplus_l` | `oplus_l(z, x0 -> u0, x1 -> u1)` | `case z of ...` |
 | `zero_l` | `zero_l(z)` | `abort z` |
 | `one_r` | `one_r()` | `()` |
 | `one_l` | `one_l(z, u0)` | `let () = z in u0` |
 | `bang_r` | `bang_r(u0)` | `!u0` |
-| `bang_l` | `bang_l(z, y0 -> u0)` | `let !y0 = z in u0` |
-| `copy` | `copy(z, y0 -> u0)` | = `bang_l` (moves `!A` to Gamma) |
+| `bang_l` | `bang_l(z, x0 -> u0)` | `let !x0 = z in u0` (x0 to Gamma) |
+| `dereliction` | `dereliction(z, x0 -> u0)` | `let !x0 = z in u0` (x0 stays linear) |
+| `copy` | `copy(u, x0 -> u0)` | structural (u from Gamma, x0 to Delta) |
 | `monad_r` | `monad_r(evidence)` | `{e}` (delegates to forward engine) |
 | `monad_l` | `monad_l(z, x0 -> u0)` | `let {x0} = z in u0` |
 
@@ -589,7 +627,8 @@ No new `.calc` declarations needed. Generic proof terms are derived directly fro
 New module `lib/prover/generic-term.js`:
 
 ```javascript
-function genericTermShape(rule) {
+// Computed once at load time -- the SIGNATURE (shape) for each rule's term
+function genericTermSignature(rule) {
   const d = rule.descriptor;
   const args = [];
   if (d.side === 'l') args.push('z');  // principal consumed from antecedent
@@ -605,11 +644,13 @@ function genericTermShape(rule) {
 }
 ```
 
-Generic terms are lightweight JS objects: `{ type: 'tensor_l', principal: hash, premises: [{ bindings: [...], body: subterm }] }`. No Store tags consumed, no FactSet impact, no binary cache invalidation.
+`genericTermSignature` returns the **shape** (arity, binding positions) -- computed once at load time. `extractTerm` (Phase 2) uses the signature to build concrete term instances.
+
+Generic terms are content-addressed in the Store using a single `proof` tag with the rule name as a string child: `Store.put({ tag: 'proof', children: [rule_name, principal, sub0, ...] })`. One tag, all constructors. Content-addressing gives sub-proof sharing for free. Serializable via existing `store-binary.js`. When `{ terms: false }`, no proof nodes are created -- zero overhead.
 
 Variables use de Bruijn indices (via existing `bound(n)` nodes) for binding positions. The descriptor's `premises[i].linear` array maps directly to binding indices.
 
-**What about Store/content-addressing?** Generic terms live OUTSIDE the Store. They annotate proofs, not participate in forward execution. If Layer 2 interpretations ever need Store representation (e.g., for dependent types where terms appear inside formulas), Store tags can be added then. But Layer 1 doesn't need them.
+Special cases outside the descriptor framework: `copy` (structural, no connective), `ffi` (axiom), `unreachable` (dead branch). These get hardcoded signatures.
 
 ### Phase 2: Backward Term Builder (~80 LOC)
 
@@ -619,7 +660,7 @@ Extend `lib/prover/generic-term.js` (untrusted). Given a completed ProofTree, ex
 function extractTerm(proofTree, calculus) -> genericTerm
 ```
 
-Post-hoc extraction: the prover builds the proof tree as now, then `extractTerm` walks it and constructs a generic term using `genericTermShape` for binding structure. No changes to the prover itself. Returns a lightweight JS object tree, not Store hashes.
+Post-hoc extraction: the prover builds the proof tree as now, then `extractTerm` walks it and constructs generic terms using `genericTermSignature` for binding structure. No changes to the prover itself. Terms are content-addressed in Store.
 
 ### Phase 3: Forward Term Builder (~60 LOC)
 
@@ -659,12 +700,14 @@ Wire `monad_r` to produce and verify terms:
 ```javascript
 // bridge.js -- executeModeSwitch
 if (opts.terms) {
-  const monadicTerm = buildMonadicTerm(trace, rfTerm);
-  // Type-check: monadicTerm : innerSuccedent
+  const monadicTerm = buildMonadicTerm(trace, rfTerm);  // Store hash
+  // Type-check: expand Store hashes to objects (checker doesn't trust Store)
   const check = checkTerm(gamma, delta, expand(monadicTerm), expand(innerSucc));
   evidence = { term: monadicTerm, verified: check.valid };
 }
 ```
+
+`expand()` walks a Store hash and recursively expands it to a plain JS object tree. The checker works on expanded objects -- Store is untrusted infrastructure.
 
 Kernel verification for monad_r changes from `{ valid: true, unverified: 'modeSwitch' }` to `{ valid: true }` when term verification succeeds.
 
@@ -719,15 +762,18 @@ If `checkTerm(Gamma, Delta, t, A)` returns valid, then `Gamma; Delta |- t : A` i
 
 ### 8.2 Adequacy
 
-The term assignment is **adequate** in the LF sense (Harper-Honsell-Plotkin 1993): there is a compositional bijection between ILL proofs and well-typed terms of the corresponding type.
+The term assignment is **adequate** in the LF sense (Harper-Honsell-Plotkin 1993) for Layer 1 (generic terms):
 
-- **Faithfulness (injectivity):** Different proofs produce different terms (each rule application produces a distinct constructor).
+- **Canonical forms:** Terms are built post-hoc from completed proofs. No redexes exist -- every term is in normal form. No hereditary substitution needed.
+- **Faithfulness (injectivity):** Different proofs produce different terms. One constructor per rule -- bijection by construction.
 - **Fullness (surjectivity):** Every well-typed term corresponds to a proof (the checker validates exactly the derivable judgments).
 - **Compositionality:** Term construction commutes with substitution: `extractTerm(D[s/x]) = extractTerm(D)[extractTerm(s)/x]`.
 
+For Layer 2 (lambda interpretation), adequacy is a separate question -- the mapping could be many-to-one (multiple generic terms mapping to the same lambda expression). But Layer 1 is adequate by construction.
+
 ### 8.3 Canonical Forms
 
-Generic proof terms (Layer 1) are lightweight JS objects. If needed, they can be content-addressed via Store (Layer 2 may require this for dependent types). The current system doesn't need beta-reduction because terms are constructed in normal form (post-hoc extraction from cut-free proofs).
+Generic proof terms (Layer 1) are content-addressed in the Store. No beta-reduction needed because terms are constructed in normal form (post-hoc extraction from cut-free proofs). Content-addressing gives sub-proof sharing for free.
 
 ---
 
