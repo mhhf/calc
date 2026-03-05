@@ -31,16 +31,6 @@ describe('deriveRoles', () => {
     assert.strictEqual(r['additive-zero'], 'zero');
   });
 
-  it('should include _connectives Set', () => {
-    const c = ill.roles._connectives;
-    assert.ok(c instanceof Set);
-    assert.ok(c.has('tensor'));
-    assert.ok(c.has('loli'));
-    assert.ok(c.has('bang'));
-    assert.ok(c.has('monad'));
-    assert.ok(c.has('atom'));
-  });
-
   it('should match DEFAULT_ROLES for ILL connectives', () => {
     for (const [role, name] of Object.entries(DEFAULT_ROLES)) {
       assert.strictEqual(ill.roles[role], name,
@@ -77,11 +67,6 @@ describe('minimal-prop calculus (graceful degradation)', () => {
     assert.strictEqual(monadRules.length, 0);
   });
 
-  it('should have _connectives Set', () => {
-    assert.ok(prop.roles._connectives.has('prop_and'));
-    assert.ok(prop.roles._connectives.has('prop_true'));
-    assert.ok(prop.roles._connectives.has('atom'));
-  });
 });
 
 describe('two calculi coexist', () => {

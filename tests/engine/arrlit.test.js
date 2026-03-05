@@ -713,6 +713,46 @@ describe('arrlit - Stage 7: Bracket Syntax + bytesToSemantic', () => {
       const arr = Store.child(h, 0);
       assert.equal(Store.tag(arr), 'arrlit');
     });
+
+    it('parses [A | REST] as acons(A, REST)', () => {
+      const parse = makeParser();
+      const h = parse('[V | REST]');
+      assert.equal(Store.tag(h), 'acons');
+      assert.equal(Store.tag(Store.child(h, 0)), 'freevar');
+      assert.equal(Store.child(Store.child(h, 0), 0), '_V');
+      assert.equal(Store.tag(Store.child(h, 1)), 'freevar');
+      assert.equal(Store.child(Store.child(h, 1), 0), '_REST');
+    });
+
+    it('parses [A, B | REST] as acons(A, acons(B, REST))', () => {
+      const parse = makeParser();
+      const h = parse('[A, B | REST]');
+      assert.equal(Store.tag(h), 'acons');
+      assert.equal(Store.child(Store.child(h, 0), 0), '_A');
+      const inner = Store.child(h, 1);
+      assert.equal(Store.tag(inner), 'acons');
+      assert.equal(Store.child(Store.child(inner, 0), 0), '_B');
+      assert.equal(Store.child(Store.child(inner, 1), 0), '_REST');
+    });
+
+    it('[A, B | ae] normalizes to arrlit via acons+ae normalization', () => {
+      const parse = makeParser();
+      const h = parse('[0x01, 0x02 | ae]');
+      // acons(1, acons(2, ae)) → acons(1, arrlit([2])) → arrlit([1, 2])
+      assert.equal(Store.tag(h), 'arrlit');
+      const elems = Store.getArrayElements(h);
+      assert.equal(elems.length, 2);
+      assert.equal(Store.child(elems[0], 0), 1n);
+      assert.equal(Store.child(elems[1], 0), 2n);
+    });
+
+    it('[compound expr | REST] works with application', () => {
+      const parse = makeParser();
+      const h = parse('[sha3 X | REST]');
+      assert.equal(Store.tag(h), 'acons');
+      const head = Store.child(h, 0);
+      assert.equal(Store.tag(head), 'sha3');
+    });
   });
 
   describe('bytesToSemantic', () => {

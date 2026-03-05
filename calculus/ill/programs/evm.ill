@@ -143,12 +143,12 @@ evm/add:
   pc PC *
   !arr_get BC PC 0x01 *
   !inc PC PC' *
-  stack (acons A (acons B REST))
+  stack [A, B | REST]
   -o {
     exists C. exists C'. (
       bytecode BC *
       pc PC' *
-      stack (acons C' REST) *
+      stack [C' | REST] *
       !plus A B C * !to256 C C')
   }.
 
@@ -157,12 +157,12 @@ evm/mul:
   pc PC *
   !arr_get BC PC 0x02 *
   !inc PC PC' *
-  stack (acons A (acons B REST))
+  stack [A, B | REST]
   -o {
     exists A'. exists B'. exists C. exists C'. (
       bytecode BC *
       pc PC' *
-      stack (acons C' REST) *
+      stack [C' | REST] *
       !trim A A' * !trim B B' * !mul A' B' C * !to256 C C')
   }.
 
@@ -171,12 +171,12 @@ evm/sub:
   pc PC *
   !arr_get BC PC 0x03 *
   !inc PC PC' *
-  stack (acons A (acons B REST))
+  stack [A, B | REST]
   -o {
     exists C. (
       bytecode BC *
       pc PC' *
-      stack (acons C REST) *
+      stack [C | REST] *
       !plus C B A)
   }.
 
@@ -185,14 +185,14 @@ evm/exp:
   pc PC *
   !arr_get BC PC 0x0a *
   !inc PC PC' *
-  stack (acons Base (acons Exponent REST))
+  stack [Base, Exponent | REST]
   -o {
     exists Base'. exists Exponent'. exists Result. exists Result'. (
       debug Base' *
       debug Exponent' *
       bytecode BC *
       pc PC' *
-      stack (acons Result' REST) *
+      stack [Result' | REST] *
       !trim Base Base' * !trim Exponent Exponent' * !exp Base' Exponent' Result * !to256 Result Result')
   }.
 
@@ -201,12 +201,12 @@ evm/div:
   pc PC *
   !arr_get BC PC 0x04 *
   !inc PC PC' *
-  stack (acons A (acons B REST))
+  stack [A, B | REST]
   -o {
     exists A'. exists B'. exists Q. exists Q'. (
       bytecode BC *
       pc PC' *
-      stack (acons Q' REST) *
+      stack [Q' | REST] *
       !trim A A' * !trim B B' * !div A' B' Q * !to256 Q Q')
   }.
 
@@ -215,12 +215,12 @@ evm/mod:
   pc PC *
   !arr_get BC PC 0x06 *
   !inc PC PC' *
-  stack (acons A (acons B REST))
+  stack [A, B | REST]
   -o {
     exists A'. exists B'. exists R. exists R'. (
       bytecode BC *
       pc PC' *
-      stack (acons R' REST) *
+      stack [R' | REST] *
       !trim A A' * !trim B B' * !mod A' B' R * !to256 R R')
   }.
 
@@ -233,13 +233,13 @@ evm/eq:
   !inc PC PC' *
   gas GAS *
   !plus 2 GAS GAS' * %10 = 2 *
-  stack (acons X (acons Y REST))
+  stack [X, Y | REST]
   -o {
     bytecode BC *
     pc PC' *
     gas GAS' *
-    ((!neq X Y * stack (acons 0 REST)) +
-     (!eq X Y * stack (acons 1 REST)))
+    ((!neq X Y * stack [0 | REST]) +
+     (!eq X Y * stack [1 | REST]))
   }.
 
 evm/iszero:
@@ -249,13 +249,13 @@ evm/iszero:
   !inc PC PC' *
   gas GAS *
   !inc GAS GAS' *
-  stack (acons V REST)
+  stack [V | REST]
   -o {
     bytecode BC *
     pc PC' *
     gas GAS' *
-    ((!eq V 0 * stack (acons 1 REST)) +
-     (!neq V 0 * stack (acons 0 REST)))
+    ((!eq V 0 * stack [1 | REST]) +
+     (!neq V 0 * stack [0 | REST]))
   }.
 
 evm/lt:
@@ -263,12 +263,12 @@ evm/lt:
   pc PC *
   !arr_get BC PC 0x10 *
   !inc PC PC' *
-  stack (acons X (acons Y REST))
+  stack [X, Y | REST]
   -o {
     exists Z. exists Z'. (
       bytecode BC *
       pc PC' *
-      stack (acons Z' REST) *
+      stack [Z' | REST] *
       !gt Y X 0 Z * !to256 Z Z')
   }.
 
@@ -277,12 +277,12 @@ evm/gt:
   pc PC *
   !arr_get BC PC 0x11 *
   !inc PC PC' *
-  stack (acons X (acons Y REST))
+  stack [X, Y | REST]
   -o {
     exists Z. exists Z'. (
       bytecode BC *
       pc PC' *
-      stack (acons Z' REST) *
+      stack [Z' | REST] *
       !gt X Y 0 Z * !to256 Z Z')
   }.
 
@@ -291,12 +291,12 @@ evm/slt:
   pc PC *
   !arr_get BC PC 0x12 *
   !inc PC PC' *
-  stack (acons X (acons Y REST))
+  stack [X, Y | REST]
   -o {
     exists Z. (
       bytecode BC *
       pc PC' *
-      stack (acons Z REST) *
+      stack [Z | REST] *
       !slt X Y Z)
   }.
 
@@ -305,12 +305,12 @@ evm/and:
   pc PC *
   !arr_get BC PC 0x16 *
   !inc PC PC' *
-  stack (acons X (acons Y REST))
+  stack [X, Y | REST]
   -o {
     exists Z. (
       bytecode BC *
       pc PC' *
-      stack (acons Z REST) *
+      stack [Z | REST] *
       !and X Y Z)
   }.
 
@@ -319,12 +319,12 @@ evm/or:
   pc PC *
   !arr_get BC PC 0x17 *
   !inc PC PC' *
-  stack (acons X (acons Y REST))
+  stack [X, Y | REST]
   -o {
     exists Z. (
       bytecode BC *
       pc PC' *
-      stack (acons Z REST) *
+      stack [Z | REST] *
       !or X Y Z)
   }.
 
@@ -333,12 +333,12 @@ evm/not:
   pc PC *
   !arr_get BC PC 0x19 *
   !inc PC PC' *
-  stack (acons X REST)
+  stack [X | REST]
   -o {
     exists Y. (
       bytecode BC *
       pc PC' *
-      stack (acons Y REST) *
+      stack [Y | REST] *
       !not X Y)
   }.
 
@@ -347,12 +347,12 @@ evm/shl:
   pc PC *
   !arr_get BC PC 0x1b *
   !inc PC PC' *
-  stack (acons Shift (acons Value REST))
+  stack [Shift, Value | REST]
   -o {
     exists Z. (
       bytecode BC *
       pc PC' *
-      stack (acons Z REST) *
+      stack [Z | REST] *
       !shl Shift Value Z)
   }.
 
@@ -361,12 +361,12 @@ evm/shr:
   pc PC *
   !arr_get BC PC 0x1c *
   !inc PC PC' *
-  stack (acons Shift (acons Value REST))
+  stack [Shift, Value | REST]
   -o {
     exists Z. (
       bytecode BC *
       pc PC' *
-      stack (acons Z REST) *
+      stack [Z | REST] *
       !shr Shift Value Z)
   }.
 
@@ -375,7 +375,7 @@ evm/shr:
 evm/sha3:
   bytecode BC * pc PC * !arr_get BC PC 0x20 * !inc PC PC' *
   gas GAS * !inc GAS GAS' *
-  stack (acons Offset (acons Size REST)) *
+  stack [Offset, Size | REST] *
   mem M * memsize S *
   !mem_expand S Offset Size S' *
   !plus Offset Size End
@@ -383,7 +383,7 @@ evm/sha3:
     bytecode BC * gas GAS' * memsize S' *
     sha3_reading Offset End 0 M *
     (sha3_done Bytes -o {
-      pc PC' * stack (acons (sha3 Bytes) REST) * mem M
+      pc PC' * stack [(sha3 Bytes) | REST] * mem M
     })
   }.
 
@@ -403,7 +403,7 @@ evm/address:
     pc PC' *
     gas GAS' *
     address A *
-    stack (acons A S)
+    stack [A | S]
   }.
 
 evm/balance:
@@ -413,13 +413,13 @@ evm/balance:
   !inc PC PC' *
   gas GAS *
   !plus 512 GAS GAS' *
-  stack (acons A REST) *
+  stack [A | REST] *
   balance A B
   -o {
     bytecode BC *
     pc PC' *
     gas GAS' *
-    stack (acons B REST) *
+    stack [B | REST] *
     balance A B
   }.
 
@@ -437,7 +437,7 @@ evm/caller:
     pc PC' *
     gas GAS' *
     sender SENDER *
-    stack (acons SENDER S)
+    stack [SENDER | S]
   }.
 
 evm/callvalue:
@@ -454,7 +454,7 @@ evm/callvalue:
     pc PC' *
     gas GAS' *
     callvalue Value *
-    stack (acons Value S)
+    stack [Value | S]
   }.
 
 % TODO
@@ -464,11 +464,11 @@ evm/calldataload:
   pc         PC         *
   !arr_get   BC PC 0x35 *
   !inc       PC    PC'  *
-  stack      (acons POS REST) *
+  stack      [POS | REST] *
   calldata   POS   Size V
   -o {
     bytecode BC *
-    stack (acons V REST) *
+    stack [V | REST] *
     pc PC' *
     calldata   POS   Size V
   }.
@@ -482,7 +482,7 @@ evm/calldatasize:
   stack S
   -o {
     bytecode BC *
-    stack (acons Size S) *
+    stack [Size | S] *
     calldatasize Size *
     pc PC'
   }.
@@ -510,7 +510,7 @@ evm/calldatacopy:
   pc PC *
   !arr_get BC PC 0x37 *
   !inc PC PC' *
-  stack (acons DestOffset (acons DataOffset (acons Size REST))) *
+  stack [DestOffset, DataOffset, Size | REST] *
   mem M * memsize S *
   !mem_expand S DestOffset Size S'
   -o {
@@ -544,7 +544,7 @@ evm/timestamp:
     pc PC' *
     gas GAS' *
     timestamp TS *
-    stack (acons TS S)
+    stack [TS | S]
   }.
 
 evm/gaslimit:
@@ -561,7 +561,7 @@ evm/gaslimit:
     pc PC' *
     gas GAS' *
     gaslimit TS *
-    stack (acons TS S)
+    stack [TS | S]
   }.
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%  50
@@ -571,7 +571,7 @@ evm/pop:
   pc PC *
   !arr_get BC PC 0x50 *
   !inc PC PC' *
-  stack (acons V REST)
+  stack [V | REST]
   -o {
     bytecode BC *
     pc PC' *
@@ -583,13 +583,13 @@ evm/mload:
   pc PC *
   !arr_get BC PC 0x51 *
   !inc PC PC' *
-  stack (acons Offset REST) *
+  stack [Offset | REST] *
   mem M * memsize S *
   !mem_expand S Offset 32 S' *
   !mem_read M Offset V
   -o {
     bytecode BC * pc PC' *
-    stack (acons V REST) *
+    stack [V | REST] *
     mem M * memsize S'
   }.
 
@@ -598,7 +598,7 @@ evm/mstore:
   pc PC *
   !arr_get BC PC 0x52 *
   !inc PC PC' *
-  stack (acons Offset (acons Value REST)) *
+  stack [Offset, Value | REST] *
   mem M * memsize S *
   !mem_expand S Offset 32 S'
   -o {
@@ -611,7 +611,7 @@ evm/mstore8:
   pc PC *
   !arr_get BC PC 0x53 *
   !inc PC PC' *
-  stack (acons Offset (acons Value REST)) *
+  stack [Offset, Value | REST] *
   mem M * memsize S *
   !mem_expand S Offset 1 S'
   -o {
@@ -630,7 +630,7 @@ evm/msize:
   memsize MS
   -o {
     bytecode BC * pc PC' *
-    stack (acons MS S) *
+    stack [MS | S] *
     memsize MS
   }.
 
@@ -670,7 +670,7 @@ sha3_iter/step:
   !plus Offset 32 Offset' *
   !mem_read M Offset V
   -o {
-    sha3_reading Offset' End (concat Acc V) M
+    sha3_reading Offset' End (Acc ++ V) M
   }.
 
 evm/sload:
@@ -680,13 +680,13 @@ evm/sload:
   !inc PC PC' *
   gas GAS *
   !plus 512 GAS GAS' *
-  stack (acons KEY REST) *
+  stack [KEY | REST] *
   storage KEY V
   -o {
     bytecode BC *
     pc PC' *
     gas GAS' *
-    stack (acons V REST) *
+    stack [V | REST] *
     storage KEY V
   }.
 
@@ -697,7 +697,7 @@ evm/sstore:
   !inc PC PC' *
   gas GAS *
   !inc GAS GAS' *          %simplified
-  stack (acons Pos (acons Val REST)) *
+  stack [Pos, Val | REST] *
   storage Pos Z
   -o {
     bytecode BC *
@@ -714,7 +714,7 @@ evm/jump:
   !arr_get BC PC 0x56 *
   gas GAS *
   !plus 8 GAS GAS' *
-  stack (acons V REST)
+  stack [V | REST]
   -o {
     bytecode BC *
     pc V *
@@ -729,7 +729,7 @@ evm/jumpi:
   !inc PC PC' *
   gas GAS *
   !plus 10 GAS GAS' *
-  stack (acons NPC (acons C REST))
+  stack [NPC, C | REST]
   -o {
     bytecode BC *
     stack REST *
@@ -750,7 +750,7 @@ evm/gas:
     bytecode BC *
     pc PC' *
     gas GAS' *
-    stack (acons GAS' S)
+    stack [GAS' | S]
   }.
 
 evm/jumpdest:
@@ -778,7 +778,7 @@ evm/push0:
     bytecode BC *
     pc PC' *
     gas GAS' *
-    stack (acons e S)
+    stack [e | S]
   }.
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%  60
@@ -797,7 +797,7 @@ evm/push1:
     bytecode BC *
     pc PC'' *
     gas GAS' *
-    stack (acons V S)
+    stack [V | S]
   }.
 
 evm/push2:
@@ -813,7 +813,7 @@ evm/push2:
   -o {
     bytecode BC *
     pc PC_Target *
-    stack (acons V S) *
+    stack [V | S] *
     gas GAS'
   }.
 
@@ -830,7 +830,7 @@ evm/push3:
   -o {
     bytecode BC *
     pc PC_Target *
-    stack (acons V S) *
+    stack [V | S] *
     gas GAS'
   }.
 
@@ -847,7 +847,7 @@ evm/push4:
   -o {
     bytecode BC *
     pc PC_Target *
-    stack (acons V S) *
+    stack [V | S] *
     gas GAS'
   }.
 
@@ -864,7 +864,7 @@ evm/push12:
   -o {
     bytecode BC *
     pc PC_Target *
-    stack (acons V S) *
+    stack [V | S] *
     gas GAS'
   }.
 
@@ -881,7 +881,7 @@ evm/push15:
   -o {
     bytecode BC *
     pc PC_Target *
-    stack (acons V S) *
+    stack [V | S] *
     gas GAS'
   }.
 
@@ -898,7 +898,7 @@ evm/push20:
   -o {
     bytecode BC *
     pc PC_Target *
-    stack (acons V S) *
+    stack [V | S] *
     gas GAS'
   }.
 
@@ -915,7 +915,7 @@ evm/push32:
   -o {
     bytecode BC *
     pc PC_Target *
-    stack (acons V S) *
+    stack [V | S] *
     gas GAS'
   }.
 
@@ -930,12 +930,12 @@ evm/dup1:
   !inc PC PC' *
   gas GAS *
   !plus 3 GAS GAS' * %11 = 3
-  stack (acons V REST)
+  stack [V | REST]
   -o {
     bytecode BC *
     pc PC' *
     gas GAS' *
-    stack (acons V (acons V REST))
+    stack [V, V | REST]
   }.
 
 evm/dup2:
@@ -951,7 +951,7 @@ evm/dup2:
     bytecode BC *
     pc PC' *
     gas GAS' *
-    stack (acons V S)
+    stack [V | S]
   }.
 
 evm/dup3:
@@ -967,7 +967,7 @@ evm/dup3:
     bytecode BC *
     pc PC' *
     gas GAS' *
-    stack (acons V S)
+    stack [V | S]
   }.
 
 evm/dup4:
@@ -983,7 +983,7 @@ evm/dup4:
     bytecode BC *
     pc PC' *
     gas GAS' *
-    stack (acons V S)
+    stack [V | S]
   }.
 
 evm/dup5:
@@ -999,7 +999,7 @@ evm/dup5:
     bytecode BC *
     pc PC' *
     gas GAS' *
-    stack (acons V S)
+    stack [V | S]
   }.
 
 evm/dup6:
@@ -1015,7 +1015,7 @@ evm/dup6:
     bytecode BC *
     pc PC' *
     gas GAS' *
-    stack (acons V S)
+    stack [V | S]
   }.
 
 evm/dup7:
@@ -1031,7 +1031,7 @@ evm/dup7:
     bytecode BC *
     pc PC' *
     gas GAS' *
-    stack (acons V S)
+    stack [V | S]
   }.
 
 evm/dup8:
@@ -1047,7 +1047,7 @@ evm/dup8:
     bytecode BC *
     pc PC' *
     gas GAS' *
-    stack (acons V S)
+    stack [V | S]
   }.
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%  90
@@ -1059,12 +1059,12 @@ evm/swap1:
   !inc PC PC' *
   gas GAS *
   !inc GAS GAS' *                  % simplified
-  stack (acons X (acons Y REST))
+  stack [X, Y | REST]
   -o {
     bytecode BC *
     pc PC' *
     gas GAS' *
-    stack (acons Y (acons X REST))
+    stack [Y, X | REST]
   }.
 
 evm/swap2:
@@ -1074,14 +1074,14 @@ evm/swap2:
   !inc PC PC' *
   gas GAS *
   !inc GAS GAS' *                  % simplified
-  stack (acons X REST) *
+  stack [X | REST] *
   !arr_get REST 1 Y *
   !arr_set REST 1 X REST'
   -o {
     bytecode BC *
     pc PC' *
     gas GAS' *
-    stack (acons Y REST')
+    stack [Y | REST']
   }.
 
 evm/swap3:
@@ -1091,14 +1091,14 @@ evm/swap3:
   !inc PC PC' *
   gas GAS *
   !inc GAS GAS' *                  % simplified
-  stack (acons X REST) *
+  stack [X | REST] *
   !arr_get REST 2 Y *
   !arr_set REST 2 X REST'
   -o {
     bytecode BC *
     pc PC' *
     gas GAS' *
-    stack (acons Y REST')
+    stack [Y | REST']
   }.
 
 evm/swap4:
@@ -1108,14 +1108,14 @@ evm/swap4:
   !inc PC PC' *
   gas GAS *
   !inc GAS GAS' *
-  stack (acons X REST) *
+  stack [X | REST] *
   !arr_get REST 3 Y *
   !arr_set REST 3 X REST'
   -o {
     bytecode BC *
     pc PC' *
     gas GAS' *
-    stack (acons Y REST')
+    stack [Y | REST']
   }.
 
 evm/swap5:
@@ -1125,14 +1125,14 @@ evm/swap5:
   !inc PC PC' *
   gas GAS *
   !inc GAS GAS' *
-  stack (acons X REST) *
+  stack [X | REST] *
   !arr_get REST 4 Y *
   !arr_set REST 4 X REST'
   -o {
     bytecode BC *
     pc PC' *
     gas GAS' *
-    stack (acons Y REST')
+    stack [Y | REST']
   }.
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%  a0
@@ -1144,7 +1144,7 @@ evm/log2:
   !inc PC PC' *
   gas GAS *
   !inc GAS GAS' *
-  stack (acons V0 (acons V1 (acons V2 (acons V3 REST))))
+  stack [V0, V1, V2, V3 | REST]
   -o {
     bytecode BC *
     pc PC' *
@@ -1160,7 +1160,7 @@ evm/log3:
   !inc PC PC' *
   gas GAS *
   !inc GAS GAS' *
-  stack (acons V0 (acons V1 (acons V2 (acons V3 (acons V4 REST)))))
+  stack [V0, V1, V2, V3, V4 | REST]
   -o {
     bytecode BC *
     pc PC' *
@@ -1176,7 +1176,7 @@ evm/log4:
   !inc PC PC' *
   gas GAS *
   !inc GAS GAS' *
-  stack (acons V0 (acons V1 (acons V2 (acons V3 (acons V4 (acons V5 REST))))))
+  stack [V0, V1, V2, V3, V4, V5 | REST]
   -o {
     bytecode BC *
     pc PC' *
@@ -1199,36 +1199,36 @@ evm/log4:
 evm/call:
   bytecode BC * pc PC * !arr_get BC PC 0xf1 * !inc PC PC' *
   gas GAS * !inc GAS GAS' *
-  stack (acons GAS_T (acons TO_T (acons VALUE_T (acons InOffset_T (acons InSize_T (acons OutOffset_T (acons OutSize_T REST))))))) *
+  stack [GAS_T, TO_T, VALUE_T, InOffset_T, InSize_T, OutOffset_T, OutSize_T | REST] *
   mem M * memsize S
   -o {
     bytecode BC * pc PC' * gas GAS' *
     mem M * memsize S *
-    (stack (acons 1 REST) + stack (acons 0 REST))
+    (stack [1 | REST] + stack [0 | REST])
   }.
 
 % Abstract DELEGATECALL — 6 args (no value), same fork pattern
 evm/delegatecall:
   bytecode BC * pc PC * !arr_get BC PC 0xf4 * !inc PC PC' *
   gas GAS * !inc GAS GAS' *
-  stack (acons GAS_T (acons TO_T (acons InOffset_T (acons InSize_T (acons OutOffset_T (acons OutSize_T REST)))))) *
+  stack [GAS_T, TO_T, InOffset_T, InSize_T, OutOffset_T, OutSize_T | REST] *
   mem M * memsize S
   -o {
     bytecode BC * pc PC' * gas GAS' *
     mem M * memsize S *
-    (stack (acons 1 REST) + stack (acons 0 REST))
+    (stack [1 | REST] + stack [0 | REST])
   }.
 
 % Abstract STATICCALL — 6 args (no value), same fork pattern
 evm/staticcall:
   bytecode BC * pc PC * !arr_get BC PC 0xfa * !inc PC PC' *
   gas GAS * !inc GAS GAS' *
-  stack (acons GAS_T (acons TO_T (acons InOffset_T (acons InSize_T (acons OutOffset_T (acons OutSize_T REST)))))) *
+  stack [GAS_T, TO_T, InOffset_T, InSize_T, OutOffset_T, OutSize_T | REST] *
   mem M * memsize S
   -o {
     bytecode BC * pc PC' * gas GAS' *
     mem M * memsize S *
-    (stack (acons 1 REST) + stack (acons 0 REST))
+    (stack [1 | REST] + stack [0 | REST])
   }.
 
 evm/return:
@@ -1236,7 +1236,7 @@ evm/return:
   pc PC *
   !arr_get BC PC 0xf3 *
   !inc PC PC' *
-  stack (acons Offset (acons Size REST))
+  stack [Offset, Size | REST]
   -o {
     bytecode BC *
     stack REST *

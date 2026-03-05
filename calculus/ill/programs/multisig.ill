@@ -37,7 +37,7 @@ isNotMember/z:
   !eq Sender Member01 *
 
   % Storage
-  storage ((sha3 (concat (concat (concat 0 Deadline) Target) Value))) 2 *
+  storage (sha3 (0 ++ Deadline ++ Target ++ Value)) 2 *
 
   % Transaction data
   calldata     0 32 Deadline *

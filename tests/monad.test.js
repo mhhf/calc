@@ -105,9 +105,9 @@ describe('Monad polarity and invertibility', () => {
 // =========================================================================
 
 describe('Monad stickiness', () => {
-  it('monad_l spec has requiresMonadicSuccedent flag', () => {
+  it('monad_l spec has requiresSuccedentTag flag', () => {
     const { specs } = initRuleSpecs(ill);
-    assert.strictEqual(specs.monad_l.requiresMonadicSuccedent, true);
+    assert.strictEqual(specs.monad_l.requiresSuccedentTag, 'monad');
   });
 
   it('monad_l is blocked when succedent is non-monadic', () => {

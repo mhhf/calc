@@ -24,6 +24,5 @@
   % Storage: fired = false (slot 0)
   storage 0 0 *
 
-  % Storage: nonces[proposalHash] — SYMBOLIC (matches hevm AbstractStore)
-  storage (sha3 (concat (concat 0 (sha3 (concat (concat (concat 0 Deadline) CallValue) DataHash))) 1)) Nonce
+  storage (sha3 (0 ++ sha3 (0 ++ Deadline ++ CallValue ++ DataHash) ++ 1)) Nonce
   .
