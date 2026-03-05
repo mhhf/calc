@@ -1,9 +1,9 @@
 #!/usr/bin/env node
 /**
- * Symexec tree inspector — run symbolic execution and display leaf analysis.
+ * Explore tree inspector — run symbolic execution and display leaf analysis.
  *
  * Usage:
- *   node tools/symexec-inspect.js [options] <files...>
+ *   node tools/explore-inspect.js [options] <files...>
  *
  * Options:
  *   --query <name>    Query directive name (default: symex)
@@ -13,9 +13,9 @@
  *   --all             Show all leaf states (not just summary)
  *
  * Examples:
- *   node tools/symexec-inspect.js calculus/ill/programs/multisig.ill
- *   node tools/symexec-inspect.js --leaf 2 calculus/ill/programs/multisig.ill
- *   node tools/symexec-inspect.js --all --exclude code,calldata,storage calculus/ill/programs/multisig.ill
+ *   node tools/explore-inspect.js calculus/ill/programs/multisig.ill
+ *   node tools/explore-inspect.js --leaf 2 calculus/ill/programs/multisig.ill
+ *   node tools/explore-inspect.js --all --exclude code,calldata,storage calculus/ill/programs/multisig.ill
  */
 
 const path = require('path');
@@ -34,13 +34,13 @@ for (let i = 0; i < args.length; i++) {
 }
 
 if (files.length === 0) {
-  console.error('Usage: node tools/symexec-inspect.js [options] <files...>');
+  console.error('Usage: node tools/explore-inspect.js [options] <files...>');
   process.exit(1);
 }
 
 (async () => {
   const mde = require('../lib/engine');
-  const symexec = require('../lib/engine/symexec');
+  const { explore } = require('../lib/engine/explore');
   const { getAllLeaves, countNodes, maxDepth } = require('../lib/engine/tree-utils');
   const { classifyLeaf, showInteresting } = require('../lib/engine/show');
 
@@ -55,7 +55,7 @@ if (files.length === 0) {
   const calcCtx = { clauses: calc.clauses, types: calc.types };
 
   const t0 = performance.now();
-  const tree = symexec.explore(state, calc.forwardRules, { maxDepth: opts.depth, calc: calcCtx });
+  const tree = explore(state, calc.forwardRules, { maxDepth: opts.depth, calc: calcCtx });
   const elapsed = performance.now() - t0;
 
   const leaves = getAllLeaves(tree);

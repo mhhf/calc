@@ -15,7 +15,7 @@ const {
   compilePatternMatch, executePatternMatch, compilePersistentStep,
 } = require('../../lib/engine/compile');
 const { tryMatch, executePersistentStep } = require('../../lib/engine/match');
-const { explore } = require('../../lib/engine/symexec');
+const { explore } = require('../../lib/engine/explore');
 const { countNodes, getAllLeaves } = require('../../lib/engine/tree-utils');
 
 // ─── compilePatternMatch ─────────────────────────────────────────────

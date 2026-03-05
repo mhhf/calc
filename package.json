@@ -30,13 +30,13 @@
     "profile:engine": "node --expose-gc benchmarks/mde/run.js --profile",
     "profile:multisig": "CALC_PERF_PROFILE=1 node benchmarks/engine/multisig-profile-deep.js",
     "bench:multisig": "node benchmarks/engine/multisig-bench.js",
-    "bench:symexec": "node benchmarks/engine/symexec-bench.js",
-    "bench:symexec:save": "node benchmarks/engine/symexec-bench.js --save",
-    "bench:symexec:compare": "node benchmarks/engine/symexec-bench.js --compare",
-    "profile:symexec": "CALC_PERF_PROFILE=1 node benchmarks/engine/symexec-bench.js --profile",
+    "bench:explore": "node benchmarks/engine/explore-bench.js",
+    "bench:explore:save": "node benchmarks/engine/explore-bench.js --save",
+    "bench:explore:compare": "node benchmarks/engine/explore-bench.js --compare",
+    "profile:explore": "CALC_PERF_PROFILE=1 node benchmarks/engine/explore-bench.js --profile",
     "bench:diff": "node --expose-gc tools/bench-compare.js",
     "bench:diff:engine": "node --expose-gc tools/bench-compare.js --suite=engine",
-    "bench:diff:symexec": "node --expose-gc tools/bench-compare.js --suite=symexec"
+    "bench:diff:explore": "node --expose-gc tools/bench-compare.js --suite=explore"
   },
   "author": "",
   "license": "ISC",

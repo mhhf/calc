@@ -10,7 +10,7 @@ const {
   createNode, insert, flattenPattern, flattenFact,
   subtreeSize, queryFlat, collectAll, makeDiscTreeLayer
 } = require('../../lib/engine/disc-tree');
-const { explore } = require('../../lib/engine/symexec');
+const { explore } = require('../../lib/engine/explore');
 const {
   countNodes, countLeaves, maxDepth, getAllLeaves
 } = require('../../lib/engine/tree-utils');

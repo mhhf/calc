@@ -6,7 +6,7 @@
  * using git worktrees for isolation.
  *
  * Usage:
- *   node --expose-gc tools/bench-compare.js [commit] [--suite=proof|engine|symexec] [--iterations=N]
+ *   node --expose-gc tools/bench-compare.js [commit] [--suite=proof|engine|explore] [--iterations=N]
  *
  * Defaults: commit=HEAD~1, suite=proof, iterations=20
  *

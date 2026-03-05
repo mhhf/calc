@@ -9,7 +9,7 @@ const mde = require('../../lib/engine');
 const {
   explore,
   expandChoiceItem, expandConsequentChoices, hashStateString
-} = require('../../lib/engine/symexec');
+} = require('../../lib/engine/explore');
 const {
   countLeaves, getAllLeaves, maxDepth, countNodes, toDot
 } = require('../../lib/engine/tree-utils');

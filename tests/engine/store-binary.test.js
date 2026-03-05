@@ -325,10 +325,10 @@ describe('Store Binary Format', () => {
       }
     });
 
-    it('precompiled symexec produces same tree as source load', () => {
-      const symexec = require('../../lib/engine/symexec');
+    it('precompiled explore produces same tree as source load', () => {
+      const { explore } = require('../../lib/engine/explore');
       const treeUtils = require('../../lib/engine/tree-utils');
-      const tmpFile = path.join(os.tmpdir(), `store-binary-symexec-${Date.now()}.bin`);
+      const tmpFile = path.join(os.tmpdir(), `store-binary-explore-${Date.now()}.bin`);
       try {
         const msPath = path.join(__dirname, '../../calculus/ill/programs/multisig.ill');
 
@@ -336,7 +336,7 @@ describe('Store Binary Format', () => {
         Store.clear();
         const calcSrc = mde.load(msPath, { cache: false });
         const stateSrc = mde.decomposeQuery(calcSrc.queries.get('symex'));
-        const treeSrc = symexec.explore(stateSrc, calcSrc.forwardRules, {
+        const treeSrc = explore(stateSrc, calcSrc.forwardRules, {
           maxDepth: 200,
           calc: { clauses: calcSrc.clauses, types: calcSrc.types }
         });
@@ -347,7 +347,7 @@ describe('Store Binary Format', () => {
         Store.clear();
         const calcBin = mde.loadPrecompiled(tmpFile);
         const stateBin = mde.decomposeQuery(calcBin.queries.get('symex'));
-        const treeBin = symexec.explore(stateBin, calcBin.forwardRules, {
+        const treeBin = explore(stateBin, calcBin.forwardRules, {
           maxDepth: 200,
           calc: { clauses: calcBin.clauses, types: calcBin.types }
         });
@@ -519,8 +519,8 @@ describe('Store Binary Format', () => {
       assert.strictEqual(calc2.types.size, calc1.types.size);
     });
 
-    it('auto-cached symexec produces same tree as fresh', () => {
-      const symexec = require('../../lib/engine/symexec');
+    it('auto-cached explore produces same tree as fresh', () => {
+      const { explore } = require('../../lib/engine/explore');
       const treeUtils = require('../../lib/engine/tree-utils');
       const msPath = path.join(__dirname, '../../calculus/ill/programs/multisig.ill');
 
@@ -528,7 +528,7 @@ describe('Store Binary Format', () => {
       Store.clear();
       const calcFresh = mde.load(msPath, { cache: false });
       const stateFresh = mde.decomposeQuery(calcFresh.queries.get('symex'));
-      const treeFresh = symexec.explore(stateFresh, calcFresh.forwardRules, {
+      const treeFresh = explore(stateFresh, calcFresh.forwardRules, {
         maxDepth: 200,
         calc: { clauses: calcFresh.clauses, types: calcFresh.types }
       });
@@ -537,7 +537,7 @@ describe('Store Binary Format', () => {
       Store.clear();
       const calcCached = mde.load(msPath, { cacheDir: tmpDir });
       const stateCached = mde.decomposeQuery(calcCached.queries.get('symex'));
-      const treeCached = symexec.explore(stateCached, calcCached.forwardRules, {
+      const treeCached = explore(stateCached, calcCached.forwardRules, {
         maxDepth: 200,
         calc: { clauses: calcCached.clauses, types: calcCached.types }
       });

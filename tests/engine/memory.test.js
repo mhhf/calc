@@ -7,7 +7,7 @@ const assert = require('node:assert');
 const path = require('path');
 const mde = require('../../lib/engine');
 const backward = require('../../lib/engine/prove');
-const { explore } = require('../../lib/engine/symexec');
+const { explore } = require('../../lib/engine/explore');
 const { getAllLeaves, countNodes } = require('../../lib/engine/tree-utils');
 const Store = require('../../lib/kernel/store');
 const { apply: subApply } = require('../../lib/kernel/substitute');
@@ -522,7 +522,7 @@ describe('EVM Memory Integration', { timeout: 30000 }, () => {
     });
   });
 
-  describe('Multisig no-call symexec baseline', () => {
+  describe('Multisig no-call explore baseline', () => {
     let tree, allLeaves;
 
     it('explores to exact expected tree shape', async () => {

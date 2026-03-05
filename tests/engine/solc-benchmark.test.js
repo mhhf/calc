@@ -7,12 +7,12 @@ const { describe, it, before } = require('node:test');
 const assert = require('node:assert');
 const path = require('path');
 const mde = require('../../lib/engine');
-const { explore } = require('../../lib/engine/symexec');
+const { explore } = require('../../lib/engine/explore');
 const { getAllLeaves, countNodes } = require('../../lib/engine/tree-utils');
 const { classifyLeaf } = require('../../lib/engine/show');
 const Store = require('../../lib/kernel/store');
 
-describe('Solc multisig symexec', { timeout: 30000 }, () => {
+describe('Solc multisig explore', { timeout: 30000 }, () => {
   let tree, allLeaves, classes;
 
   before(async () => {

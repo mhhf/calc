@@ -1,16 +1,16 @@
 #!/usr/bin/env node
 /**
- * Symexec Tree Benchmark — Multisig EVM
+ * Explore Tree Benchmark — Multisig EVM
  *
  * Measures full symbolic execution tree exploration for the multisig contract.
  * Records baseline JSON for comparison across optimizations.
  *
  * Usage:
- *   node benchmarks/engine/symexec-bench.js              # run benchmark
- *   node benchmarks/engine/symexec-bench.js --save       # save baseline
- *   node benchmarks/engine/symexec-bench.js --compare    # compare to baseline
- *   node benchmarks/engine/symexec-bench.js --profile    # detailed function breakdown
- *   CALC_PROFILE=1 node benchmarks/engine/symexec-bench.js --profile  # with forward internals
+ *   node benchmarks/engine/explore-bench.js              # run benchmark
+ *   node benchmarks/engine/explore-bench.js --save       # save baseline
+ *   node benchmarks/engine/explore-bench.js --compare    # compare to baseline
+ *   node benchmarks/engine/explore-bench.js --profile    # detailed function breakdown
+ *   CALC_PROFILE=1 node benchmarks/engine/explore-bench.js --profile  # with forward internals
  */
 
 const path = require('path');
@@ -18,12 +18,12 @@ const fs = require('fs');
 const { performance } = require('perf_hooks');
 const mde = require('../../lib/engine');
 const Store = require('../../lib/kernel/store');
-const symexec = require('../../lib/engine/symexec');
+const { explore, findAllMatches, mutateState } = require('../../lib/engine/explore');
 const match = require('../../lib/engine/match');
 const { detectStrategy } = require('../../lib/engine/strategy');
 const treeUtils = require('../../lib/engine/tree-utils');
 
-const BASELINE_PATH = path.join(__dirname, 'symexec-baseline.json');
+const BASELINE_PATH = path.join(__dirname, 'explore-baseline.json');
 const WARMUP = 3;
 const RUNS = 10;
 
@@ -131,7 +131,7 @@ function instrumentedExplore(initialState, rules, calcCtx, maxDepth) {
     }
 
     t0 = performance.now();
-    const matches = symexec.findAllMatches(state, indexedRules, calcCtx, strategy);
+    const matches = findAllMatches(state, indexedRules, calcCtx, strategy);
     timers.findAllMatches.time += performance.now() - t0;
     timers.findAllMatches.calls++;
 
@@ -158,7 +158,7 @@ function instrumentedExplore(initialState, rules, calcCtx, maxDepth) {
         const perCp = perArena.checkpoint();
 
         t0 = performance.now();
-        symexec.mutateState(state, m.consumed, m.theta,
+        mutateState(state, m.consumed, m.theta,
           m.rule.consequent.linear || [], m.rule.consequent.persistent || [],
           m.slots, m.optimized ? m.rule : null, linArena, perArena);
         timers.mutateState.time += performance.now() - t0;
@@ -179,7 +179,7 @@ function instrumentedExplore(initialState, rules, calcCtx, maxDepth) {
           const perCp = perArena.checkpoint();
 
           t0 = performance.now();
-          symexec.mutateState(state, m.consumed, m.theta,
+          mutateState(state, m.consumed, m.theta,
             alts[i].linear, alts[i].persistent, m.slots, null, linArena, perArena);
           timers.mutateState.time += performance.now() - t0;
           timers.mutateState.calls++;
@@ -279,7 +279,7 @@ async function runBenchmark(doProfile) {
 
   for (let i = 0; i < WARMUP + RUNS; i++) {
     const t0 = performance.now();
-    const tree = symexec.explore(state, calc.forwardRules, {
+    const tree = explore(state, calc.forwardRules, {
       maxDepth: 200,
       calc: calcCtx
     });
@@ -323,7 +323,7 @@ async function runBenchmark(doProfile) {
     facts: linearCount,
     rules: ruleCount,
     tree: {
-      nodes: treeUtils.countNodes(symexec.explore(state, calc.forwardRules, { maxDepth: 200, calc: calcCtx })),
+      nodes: treeUtils.countNodes(explore(state, calc.forwardRules, { maxDepth: 200, calc: calcCtx })),
     },
     timing: {
       mean: s.mean,

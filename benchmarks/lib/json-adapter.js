@@ -8,7 +8,7 @@
  * Usage:
  *   node --expose-gc benchmarks/lib/json-adapter.js --suite=proof [--iterations=20]
  *   node --expose-gc benchmarks/lib/json-adapter.js --suite=engine [--iterations=20]
- *   node --expose-gc benchmarks/lib/json-adapter.js --suite=symexec [--iterations=10]
+ *   node --expose-gc benchmarks/lib/json-adapter.js --suite=explore [--iterations=10]
  */
 
 const START_MARKER = '---BENCH-JSON---';
@@ -82,22 +82,22 @@ async function runEngine(iterations) {
   return results;
 }
 
-// ─── Suite: symexec ──────────────────────────────────────────────────────────
+// ─── Suite: explore ──────────────────────────────────────────────────────────
 
 function benchOne(label, state, forwardRules, calcCtx, exploreOpts, iterations) {
   const { performance } = require('perf_hooks');
-  const symexec = require('../../lib/engine/symexec');
+  const explore = require('../../lib/engine/explore');
   const WARMUP = 3;
 
   for (let i = 0; i < WARMUP; i++) {
-    symexec.explore(state, forwardRules, exploreOpts);
+    explore.explore(state, forwardRules, exploreOpts);
   }
   if (global.gc) global.gc();
 
   const times = [];
   for (let i = 0; i < iterations; i++) {
     const t0 = performance.now();
-    symexec.explore(state, forwardRules, exploreOpts);
+    explore.explore(state, forwardRules, exploreOpts);
     times.push(performance.now() - t0);
   }
   times.sort((a, b) => a - b);
@@ -110,7 +110,7 @@ function benchOne(label, state, forwardRules, calcCtx, exploreOpts, iterations) 
   };
 }
 
-async function runSymexec(iterations) {
+async function runExplore(iterations) {
   const path = require('path');
   const mde = require('../../lib/engine');
 
@@ -123,7 +123,7 @@ async function runSymexec(iterations) {
     );
     const state = mde.decomposeQuery(calc.queries.get('symex'));
     const calcCtx = { clauses: calc.clauses, types: calc.types };
-    results['symexec.multisig'] = benchOne('multisig', state, calc.forwardRules, calcCtx,
+    results['explore.multisig'] = benchOne('multisig', state, calc.forwardRules, calcCtx,
       { maxDepth: 200, calc: calcCtx }, iterations);
   }
 
@@ -134,7 +134,7 @@ async function runSymexec(iterations) {
     );
     const state = mde.decomposeQuery(calc.queries.get('symex'));
     const calcCtx = { clauses: calc.clauses, types: calc.types };
-    results['symexec.solc_symbolic'] = benchOne('solc_symbolic', state, calc.forwardRules, calcCtx,
+    results['explore.solc_symbolic'] = benchOne('solc_symbolic', state, calc.forwardRules, calcCtx,
       { maxDepth: 400, calc: calcCtx, structuralMemo: true }, iterations);
   }
 
@@ -146,7 +146,7 @@ async function runSymexec(iterations) {
 async function main() {
   const { suite, iterations } = parseArgs();
 
-  const suites = { proof: runProof, engine: runEngine, symexec: runSymexec };
+  const suites = { proof: runProof, engine: runEngine, explore: runExplore };
 
   if (!suites[suite]) {
     console.error(`Unknown suite: ${suite}. Available: ${Object.keys(suites).join(', ')}`);
