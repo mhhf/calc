@@ -311,30 +311,63 @@ In CLF: ∃ is synchronous (inside the monad `{S}`), while ∀ (as `Π`) is asyn
                                 Γ; Δ₁, Δ₂ ⊢ u[t/x] : C
 ```
 
-### 2.7 Term Grammar Summary
+### 2.7 Generic Term Grammar (Layer 1 — Primary)
 
 ```
-t ::= x                                    variable
-    | (t₁, t₂)                             tensor intro
-    | let (x, y) = t in u                   tensor elim
-    | ()                                    one intro
-    | let () = t in u                       one elim
-    | λx. t                                 loli intro
-    | t u                                   loli elim
-    | ⟨t₁, t₂⟩                             with intro
-    | fst t | snd t                         with elim
-    | inl t | inr t                         oplus intro
-    | case t of inl x ⇒ u₁ | inr y ⇒ u₂   oplus elim
-    | abort t                               zero elim
-    | !t                                    bang intro
-    | let !x = t in u                       bang elim
-    | {e}                                   monad intro
-    | let {x} = t in e                      monad elim (inside ⊢_lax)
-    | Λx. t                                 forall-right (eigenvariable abstraction)
-    | u[s]                                   forall-left (instantiation of hypothesis)
-    | pack(s, t)                             exists-right (witness + proof)
-    | unpack u as (x, y) in t               exists-left (open existential)
+t ::= x                              variable (de Bruijn: bound(n))
+    | rule_name(args...)              generic constructor
 ```
+
+Constructor arity and bindings are derived from the rule's descriptor:
+- `side='l'` → first arg is principal `z` (consumed from antecedent)
+- Each premise → one sub-proof `uᵢ`
+- `premises[i].linear` → bound variables `xⱼ` scoped over `uᵢ` (dot notation: `xⱼ.uᵢ`)
+- `premises[i].cartesian` → bound variables `yⱼ` moved to Γ
+- `binding='eigenvariable'` → fresh variable bound in sub-proof
+- `binding='metavar'` → witness term argument
+
+Full generic grammar for ILL:
+
+```
+t ::= id(x)                                   identity
+    | tensor_r(u₀, u₁)                        ⊗R (context split)
+    | tensor_l(z, x₀.x₁.u₀)                  ⊗L (decompose, bind two)
+    | one_r()                                  1R (empty context)
+    | one_l(z, u₀)                             1L
+    | loli_r(x₀.u₀)                           ⊸R (bind argument)
+    | loli_l(z, u₀, x₁.u₁)                    ⊸L (apply, bind result)
+    | with_r(u₀, u₁)                          &R (context copied)
+    | with_l1(z, x₀.u₀)                       &L₁ (first projection)
+    | with_l2(z, x₁.u₀)                       &L₂ (second projection)
+    | oplus_r1(u₀) | oplus_r2(u₀)             ⊕R₁, ⊕R₂
+    | oplus_l(z, x₀.u₀, x₁.u₁)               ⊕L (case split)
+    | zero_l(z)                                0L (abort, discards context)
+    | bang_r(u₀)                               !R (empty linear context)
+    | bang_l(z, y₀.u₀)                         !L (y₀ moves to Γ)
+    | monad_r(evidence)                        {A}R (mode switch)
+    | monad_l(z, x₀.u₀)                       {A}L
+    | forall_r(a.u₀)                           ∀R (eigenvariable)
+    | forall_l(z, s, u₀)                       ∀L (instantiate with s)
+    | exists_r(s, u₀)                          ∃R (witness s)
+    | exists_l(z, a.u₀)                        ∃L (eigenvariable)
+    | unreachable(reason)                      dead branch (unverified)
+    | ffi(name, args, result)                  FFI axiom (unverified)
+```
+
+### 2.8 Lambda Interpretation Grammar (Layer 2 — from `ill-lambda.term`)
+
+§2.1–2.5 above show the typing rules using lambda notation. This notation is defined by the `ill-lambda.term` interpretation file, which maps generic constructors to human-readable syntax:
+
+```
+t ::= x | (t₁, t₂) | let (x,y) = t in u | () | let () = t in u
+    | λx. t | t u | ⟨t₁, t₂⟩ | fst t | snd t
+    | inl t | inr t | case t of inl x ⇒ u₁ | inr y ⇒ u₂
+    | abort t | !t | let !x = t in u
+    | {e} | let {x} = t in e
+    | Λx. t | u[s] | pack(s, t) | unpack u as (x, y) in t
+```
+
+This grammar is NOT built into the system — it comes from a `.term` file. Without a `.term` file, proofs render using the generic grammar (§2.7). With `@import "ill-lambda.term"` in a `.rules` file, rules can use this notation for term annotations. The `.term` file provides bidirectional mapping: parse (for `.rules` annotations) and render (for display).
 
 ---
 
@@ -410,53 +443,83 @@ Non-fork nodes map straightforwardly to proof term structure:
 | `cycle` | Back-edge reference (coinductive — future work, TODO_0009) |
 | `memo` | Pointer to previously computed term |
 
-### 3.5 OPEN QUESTION: Oplus Forks and Proof Terms
+### 3.5 Oplus Forks → Case Splits in Proof Terms
 
-**This is an unresolved research question that needs dedicated investigation before implementation.**
-
-When a rule produces `A ⊕ B`, the explore tree forks via `expandConsequentChoices`. How should this fork relate to proof terms?
-
-**Option A — One proof term with case splits:**
-
-The explore tree maps to a SINGLE proof term. Each fork becomes an oplus_l (case) constructor:
+When a rule produces `A ⊕ B`, the explore tree forks. Each fork becomes an `oplus_l` (case split) in the proof term:
 
 ```
 let {x} = evm_eq(args) in           -- x : S₁ ⊕ S₂
-  case x of
-    inl a ⇒ ...continuation₁...     -- eq branch
-    inr b ⇒ ...continuation₂...     -- neq branch
+  oplus_l(x,
+    a. ...continuation₁...,         -- eq branch
+    b. ...continuation₂...          -- neq branch
+  )
 ```
 
-Nested forks = nested cases. The explore tree IS the term structure. One proof term captures all possible executions.
+The explore tree IS the proof term tree:
 
-**Option B — N proof terms, one per path:**
+| Explore node | Proof term |
+|---|---|
+| `branch(rule, child)` | `let {p} = rule(args) in child_term` |
+| `fork(children)` | `oplus_l(x, a.child₁, b.child₂)` |
+| `leaf` | return value (rightFocus decomposition) |
+| `dead` | `unreachable(reason)` — see §3.6 |
+| `bound` | `⊥` (incomplete) |
+| `cycle` | back-edge (future work, TODO_0009) |
+| `memo` | shared sub-term reference |
 
-Each root-to-leaf path through the explore tree is a SEPARATE proof term. Forks are meta-level (the explorer branching), not object-level (no case in the term). k nested binary forks → up to 2^k proof terms.
+Nested forks = nested case splits. k nested binary forks → one proof term with k nested `oplus_l`, 2^k leaves. All paths are captured in a single term.
+
+**CLF extension:** CLF's monadic expression grammar is `E ::= let {p} = R in E | M`. We extend it with case analysis: `E ::= let {p} = R in E | oplus_l(x, a.E, b.E) | M`. CLF excluded oplus from `{S}` for committed-choice semantics. CALC's exhaustive exploration IS case analysis — we're not doing committed choice, we're computing both branches. The extension is proof-theoretically sound: oplus elimination inside the monad.
+
+**Nested consequent choices:** `(A ⊕ B) ⊗ C` in a consequent decomposes via tensor then case:
 
 ```
-Path 1: let {s} = evm_eq(args) in ...T₁...    (inl world)
-Path 2: let {s} = evm_eq(args) in ...T₂...    (inr world)
+let {y} = rule(args) in             -- y : (A ⊕ B) ⊗ C
+  tensor_l(y, x.c.
+    oplus_l(x,
+      a. ...                         -- A, C world
+      b. ...                         -- B, C world
+    )
+  )
 ```
-
-**Key considerations:**
-
-1. **CLF excludes oplus from the monad** (`{S}` uses `∃, ⊗, 1, !` — no `⊕`). This is deliberate: CLF uses committed-choice semantics. Case analysis (requiring both branches) contradicts committed choice.
-
-2. **CALC's explore IS exhaustive.** It explores both branches, unlike CLF's committed choice. So Option A (case splits) is proof-theoretically valid for CALC — the explore tree corresponds to a derivation that includes both cases.
-
-3. **Typing of the result.** With Option A, the proof term has type `{C}` where C is the overall goal. The case split is well-typed: `x : A ⊕ B`, each branch proves C. With Option B, each path's term independently has type `{C}`.
-
-4. **Dead branches.** Option A: dead branches need a term — either `abort` (if we treat UNSAT as 0-introduction) or some special `⊥` marker. Option B: dead paths just have no term. See §3.6.
-
-5. **Practical use.** For symbolic execution (CALC's main use), are users more interested in "one big term showing all branches" (Option A) or "a list of individual execution traces" (Option B)? For verification, Option A is natural (prove a property holds in all branches). For debugging, Option B is natural (inspect one path).
-
-6. **Relationship to .term interpretations.** Option A places `case` inside the monadic term. Different .term files would render it differently (lambda: `case`, session: `branch`, etc.). Option B has no case construct at all — the fork only exists in the explore tree metadata.
-
-**This needs standalone research:** How do other exhaustive exploration systems (model checkers, symbolic executors, game trees) handle proof term extraction at branch points? Is there a standard approach? Does the choice affect what properties we can prove about explore trees (TODO_0045)?
 
 ### 3.6 Dead Branches
 
-Dead ≠ zero (additive unit). Dead means the constraint solver proved UNSAT (no derivation exists), not that `0` was introduced. A `0L` rule produces `abort t`, but dead branches have no derivation at all — no proof was possible. Open question: could dead branches carry refutation witnesses? What is the proof-theoretic status of constraint solver UNSAT? Tied to the oplus question (§3.5) — with Option A, dead branches need terms; with Option B, they don't.
+With Option A (§3.5), dead branches NEED proof terms — the case split requires a term for every branch. Three options, in order of soundness:
+
+**Option 1 — Materialize the contradiction (fully verified):**
+
+CALC has `contra/eq_neq : !eq X Y * !neq X Y -o { zero }`. When the constraint solver detects `eq(X,Y) ∧ neq(X,Y)`, this rule WOULD fire and produce `zero`. The proof term fires it explicitly:
+
+```
+oplus_l(x,
+  a. ...normal continuation...,       -- live branch
+  b. let {z} = contra_eq_neq(         -- dead branch: fire contradiction
+       !eq_witness, !neq_witness       -- witnesses from persistent state
+     ) in zero_l(z)                    -- z : 0 → abort → any type
+)
+```
+
+Fully sound. `zero_l(z) : C` for any C when `z : 0`. No trust needed. Requires finding the contradiction witnesses in the state (the constraint solver already knows them).
+
+**Option 2 — `unreachable(reason)` (unverified shortcut):**
+
+```
+oplus_l(x,
+  a. ...normal continuation...,
+  b. unreachable("eq(X,Y) ∧ neq(X,Y)")    -- trusted axiom
+)
+```
+
+The checker accepts `unreachable(reason) : C` for any C, but flags `{ valid: true, unverified: 'constraintUNSAT' }`. Same pattern as current `unverified: 'modeSwitch'`. Practical, but the UNSAT claim is not verified by the type checker.
+
+**Option 3 — Collapse the case (prune dead branch):**
+
+Uses the isomorphism `A ⊕ 0 ≅ A`. If the dead branch would produce `0`, the case split is unnecessary — the live branch stands alone. But the pruning itself needs justification (why is the branch dead?), so this reduces to Option 1 or 2 for the justification.
+
+**Recommendation:** Option 1 when the UNSAT reason maps to an existing contradiction rule (covers `eq/neq`, the common case). Option 2 as fallback for exotic UNSAT (complex union-find chains, transitive inequalities without explicit contradiction rules). The constraint solver already tracks the reason for UNSAT — the term builder just needs to package it.
+
+Can't collapse via `A ⊕ 0 = A` without justification — we need to prove the branch is `0`, which is Option 1. There's no free lunch.
 
 ---
 
@@ -473,24 +536,39 @@ function checkTerm(gamma, delta, term, type) → { valid: boolean, error?: strin
 
 Input: contexts, term, expected type — all as expanded term objects (not Store hashes). Store stays outside the trust boundary (same principle as TODO_0067 §4).
 
-### 4.2 What It Checks
+### 4.2 What It Checks — Descriptor-Driven
 
-For each term constructor, one clause:
+The checker works on generic terms (Layer 1). It reads the rule's descriptor to know what to verify. There are ~5 structural patterns, not one case per connective:
 
-| Term | Check |
-|---|---|
-| `x` | `x ∈ Δ` with type A, or `x ∈ Γ` |
-| `(t₁, t₂) : A ⊗ B` | Split Δ into Δ₁, Δ₂; check `t₁ : A` with Δ₁, `t₂ : B` with Δ₂ |
-| `let (x,y) = t in u` | Check `t : A ⊗ B`, check `u : C` with Δ extended by x:A, y:B |
-| `λx. t : A ⊸ B` | Check `t : B` with Δ extended by x:A |
-| `t u : B` | Check `t : A ⊸ B`, check `u : A` |
-| `{e} : {A}` | Check `e : A` in lax mode |
-| `let {x} = t in e` | Check `t : {A}`, check `e : C` with Δ extended by x:A (lax mode) |
-| ... | (one clause per constructor) |
+| Descriptor pattern | Example rules | Check |
+|---|---|---|
+| `side='r'` + `contextSplit` | tensor_r | Goal = connective(A,B). Split Δ into Δ₁,Δ₂. Check u₀:A with Δ₁, u₁:B with Δ₂ |
+| `side='r'` + `copyContext` | with_r | Goal = connective(A,B). Check u₀:A with Δ, u₁:B with Δ (same context) |
+| `side='r'` + `emptyLinear` | bang_r | Goal = connective(A). Require Δ empty. Check u₀:A with · |
+| `side='r'` + single premise | oplus_r1, loli_r | Goal = connective(...). Check sub-proof against appropriate child |
+| `side='l'` | tensor_l, bang_l, loli_l | Principal z:F ∈ Δ. Remove z, add children per `premises[i].linear/cartesian`. Check sub-proof |
+| axiom | id | x:A ∈ Δ, goal = A. Check Δ = {x:A} (exactly one resource) |
+| special | unreachable, ffi | Accept with `unverified` flag |
 
-The checker is ~150 LOC: structural recursion on the term, one case per constructor. No search, no backtracking, no unification. Deterministic, total, O(|term|).
+**Walkthrough example:** Check `tensor_r(id(a), id(b)) : A ⊗ B` with `Δ = {a:A, b:B}`:
 
-**Context splitting is deterministic.** For tensor `(t₁, t₂) : A ⊗ B`, the checker must split Δ into Δ₁ and Δ₂. In general this is exponential (searching for the right split). But the term *determines* the split: track which variables each sub-term uses. Each variable used exactly once (linearity). No search needed — the checker just walks the term and partitions variables as it goes.
+```
+1. term.type = 'tensor_r' → look up descriptor:
+   { side:'r', contextSplit:true, premises:[{succedent:0}, {succedent:1}] }
+
+2. side='r' → goal type headed by 'tensor'. A⊗B → tag=tensor ✓
+
+3. contextSplit → split Δ by tracking variable usage:
+   - sub-proof 0 uses {a} → Δ₁ = {a:A}
+   - sub-proof 1 uses {b} → Δ₂ = {b:B}
+
+4. premises[0].succedent=0 → check id(a) : child₀(A⊗B) = A, with Δ₁ ✓
+5. premises[1].succedent=1 → check id(b) : child₁(A⊗B) = B, with Δ₂ ✓
+```
+
+The checker is ~150 LOC: structural recursion, descriptor lookup, ~5 patterns. No search, no backtracking, no unification. Deterministic, total, O(|term|). Any new connective with a standard descriptor is automatically checkable — no new checker code needed.
+
+**Context splitting is deterministic.** The term *determines* the split: track which variables each sub-term uses. Each variable used exactly once (linearity). No search needed — the checker walks the term and partitions variables as it goes.
 
 ### 4.3 Trust Boundary
 
