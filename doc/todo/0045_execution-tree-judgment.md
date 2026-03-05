@@ -1,14 +1,14 @@
 ---
 title: "Formalize Execution Tree Judgment"
 created: 2026-02-19
-modified: 2026-02-23
+modified: 2026-03-05
 summary: "Formalize the execution tree as a proof-theoretic judgment — the central theoretical contribution of CALC's exhaustive forward chaining"
 tags: [theory, execution-tree, judgment, proof-theory, formalization, focusing, chr, omega-l, qchr]
 type: research
 cluster: Theory
 status: planning
 priority: 7
-depends_on: []
+depends_on: [TODO_0068]
 required_by: [TODO_0042]
 starred: true
 ---

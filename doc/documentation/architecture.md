@@ -303,11 +303,16 @@ ProofState = {
 
 See `doc/documentation/forward-optimization-roadmap.md` for profiling history (181ms → ~1ms).
 
+## Lax Monad `{A}` — Backward/Forward Mode Switch
+
+The monadic type `{S}` bridges backward (L3) and forward (engine) chaining via a mode switch in `lib/prover/bridge.js`. When L3's inversion phase encounters `{S}` as succedent, `monad_r` transfers all linear resources to the forward engine, which runs to quiescence. `rightFocus` then decomposes the succedent against the residual state. Connective roles (`lib/calculus/builders.js:deriveRoles`) parameterize all engine tag dispatch for multi-logic support.
+
+See `doc/documentation/lax-monad.md` for full details.
+
 ## Open Research
 
 | Question | Notes |
 |---|---|
-| Lax monad `{A}` as backward/forward mode switch | CLF/Celf/LolliMon integrate via monad. May restructure L2/L4c boundary |
 | Metaproofs over execution trees | Property verification: conservation, safety, reachability, deadlock-freedom |
 | Generic structural interpreter per family | Different families (LNL, display, adjoint) need parameterized interpreter |
 | Ceptre stages | Named rule subsets running to quiescence with inter-stage transitions |

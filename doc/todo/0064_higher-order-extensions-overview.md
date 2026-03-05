@@ -1,7 +1,7 @@
 ---
 title: "Higher-Order Extensions Overview — Polymorphism, Dependent Types, Fixed Points, Multimodality"
 created: 2026-03-02
-modified: 2026-03-03
+modified: 2026-03-04
 summary: "Master plan for extending CALC beyond first-order ILL: what to implement, what to defer, how features interrelate across four orthogonal axes"
 tags: [dependent-types, polymorphism, fixed-points, muMALL, QTT, adjoint-logic, MTDC, lax-monad, clf, graded-types, higher-order, linear-logic, proof-theory, architecture, roadmap]
 type: design
@@ -9,7 +9,7 @@ status: researching
 priority: 9
 cluster: Theory
 depends_on: []
-required_by: [TODO_0006, TODO_0009, TODO_0010, TODO_0011, TODO_0012, TODO_0013, TODO_0014]
+required_by: [TODO_0009, TODO_0011, TODO_0012, TODO_0013, TODO_0014]
 starred: true
 ---
 
@@ -73,12 +73,12 @@ How the two proof search modes interact.
 
 | Level | What | Cost | Example |
 |---|---|---|---|
-| 0 | Separate systems | **Done** | CALC now |
+| 0 | Separate systems | **Done** | CALC before monad |
 | 1 | Predicate stratification | ~100 LOC | Ad-hoc rule ordering |
-| 2 | Lax monad {A} | ~500 LOC | Backward → forward mode switch |
+| 2 | Lax monad {A} | **Done** | `goal -o { forward rules }` |
 | 3 | Nested modes (SLS-style) | ~1000 LOC | Forward within backward within forward |
 
-The lax monad {A} is the sweet spot — it bridges the two halves of CALC and subsumes simple stages.
+The lax monad {A} is **implemented** (TODO_0006 done). It bridges the two halves of CALC and subsumes simple stages. The remaining gap: backward LINEAR reasoning between forward phases (consuming/producing linear facts via backtracking between two forward runs). This requires splitting linear context across sub-phases — a hard problem, not solvable by simple clause registration. No current CALC program needs this; all inter-phase reasoning is via persistent predicates (handled by `provePersistentGoals`).
 
 ---
 
@@ -124,9 +124,9 @@ Key reading: an arrow A → B means "A subsumes B." No path = orthogonal. The fo
 
 | TODO | Description | Axis | Minimum Extension | Recommended | Phase |
 |---|---|---|---|---|---|
-| TODO_0063 | arrlit compact arrays | Eng. | None | None (∀ later) | 1 |
-| TODO_0006 | Lax monad {A} | 4 | {A} connective + mode switch | Option B (500 LOC) | 2 |
-| TODO_0010 | Ceptre stages | 4 | Subsumed by TODO_0006 | Defer to monad | 2 |
+| TODO_0063 | arrlit compact arrays | Eng. | None | None (∀ later) | ~~1~~ **Done** |
+| TODO_0006 | Lax monad {A} | 4 | {A} connective + mode switch | Option B (500 LOC) | ~~2~~ **Done** |
+| TODO_0010 | Ceptre stages | 4 | Subsumed by TODO_0006 | Defer to monad | ~~2~~ **Subsumed** |
 | TODO_0011 | CLF dependent types | 1 | Stages 1-3 (sorts → indexed) | Defer Stage 4 (Π) | 3-4 |
 | TODO_0012 | Proper MTDC | 2 | Type-uniform sequents | Bridge rules | 3 |
 | TODO_0013 | Generalized MTDC | 2 | Extends TODO_0012 | After TODO_0012 | 3+ |
@@ -165,22 +165,23 @@ Key reading: an arrow A → B means "A subsumes B." No path = orthogonal. The fo
 - **Payoff:** Basic staging without new proof theory
 - Subsumed by lax monad (TODO_0006) — stopgap only
 
-**A4. arrlit** (~500+ LOC, 8 stages)
-- Already fully designed in TODO_0063
-- Pure engineering: Store infrastructure, FFI, parser, EVM rules
-- No type theory changes required
+**A4. arrlit** — **DONE** (TODO_0063)
+- Store infrastructure, FFI, parser, EVM rules all implemented
+- Bracket syntax `[A, B, C]` for ground arrays, `[A, B | REST]` for cons patterns
+- Infix `++` for `concat` (binary concatenation)
+- EVM rules rewritten from `stack (acons A (acons B REST))` to `stack [A, B | REST]`
+- Storage keys from `sha3 (concat (concat 0 X) Y)` to `sha3 (0 ++ X ++ Y)`
 
 ### TODO_0064.Class_B — Medium (months, established theory, careful design)
 
-**B1. Lax Monad {A}** (~500 LOC) — TODO_0006.Option_B
-- New connective in `ill.calc` and `ill.rules`
-- Mode-switch rule in L3 `focused.js`: goal `{S}` → forward engine
-- Bridge: sequent representation ↔ multiset state conversion
-- Forward engine returns proof tree node verifiable by L1 kernel
-- **Key challenge:** Linear context transfer between prover and engine
-- **Payoff:** Mixed-mode programs, principled staging, formal forward/backward bridge
-- Subsumes TODO_0010 (stages), partially subsumes TODO_0009 (phases)
-- Theory: CLF (Watkins 2004), LolliMon (Lopez 2005), SLS (Simmons 2012)
+**B1. Lax Monad {A}** — **DONE** (TODO_0006)
+- `{A}` connective: negative polarity, invertible right rule, sticky left rule
+- `lib/calculus/modes.js` generates monad_r/monad_l descriptors
+- `lib/prover/bridge.js` bridges sequent ↔ multiset state (sequentToState → forward.run → rightFocus)
+- `lib/calculus/builders.js:deriveRoles()` maps (category, arity, polarity) → semantic roles
+- Stickiness via `requiresSuccedentTag: 'monad'` on descriptor (general mechanism)
+- Kernel: `verifyStep` returns `{ valid: true, unverified: 'modeSwitch' }` (certificate placeholder)
+- Multi-logic support: connective roles for with/oplus/tensor succedent decomposition
 
 **B2. Cyclic Proofs** (~200 LOC) — TODO_0009.Phase_3
 - Add `back-edge(target)` node type to proof trees
@@ -268,31 +269,31 @@ Key reading: an arrow A → B means "A subsumes B." No path = orthogonal. The fo
 
 ## 5. Recommended Phased Roadmap
 
-### Phase 1 — Immediate Value (1-2 months, ~980 LOC)
+### Phase 1 — Immediate Value (**partially done**)
 
-| Item | LOC | Value | Axis |
-|---|---|---|---|
-| arrlit (TODO_0063) | ~500 | Very High (performance) | Eng. |
-| Tabling (TODO_0009.P1) | ~80 | High (perf + coinduction) | 3 |
-| ∀X.A polymorphism | ~300 | Medium (generic rules) | 1 |
-| Pred. stratification | ~100 | Low (stopgap for stages) | 4 |
+| Item | LOC | Value | Axis | Status |
+|---|---|---|---|---|
+| arrlit (TODO_0063) | ~500 | Very High (performance) | Eng. | **Done** |
+| Bracket syntax `[A, B \| REST]` | ~20 | High (readability) | Eng. | **Done** |
+| Infix `++` for concat | ~5 | Medium (readability) | Eng. | **Done** |
+| Tabling (TODO_0009.P1) | ~80 | High (perf + coinduction) | 3 | Pending |
+| ∀X.A polymorphism | ~300 | Medium (generic rules) | 1 | Pending |
+| Pred. stratification | ~100 | Low (stopgap for stages) | 4 | Pending (subsumed by lax monad) |
 
-**Rationale:** All items are well-understood, bounded, independent. arrlit is the highest-impact engineering task. Tabling gives immediate speedup and lays the foundation for Phase 2. Polymorphism opens generic programming. Stratification is a cheap staging stopgap.
+**Rationale:** arrlit and syntax improvements are done. Tabling and polymorphism remain as the next high-value items. Stratification is largely unnecessary now that the lax monad provides principled staging.
 
-**Dependencies:** None — all items are independent of each other and of later phases.
+### Phase 2 — Core Extensions (**partially done**)
 
-### Phase 2 — Core Extensions (3-6 months, ~1800 LOC)
+| Item | LOC | Value | Axis | Status |
+|---|---|---|---|---|
+| Lax monad {A} (TODO_0006) | ~500 | Very High (unifies system) | 4 | **Done** |
+| Cyclic proofs (TODO_0009.P3) | ~200 | High (induction) | 3 | Pending |
+| Sort system + arity (TODO_0011.S1-2) | ~500 | Medium (error catching) | 1 | Pending |
+| Indexed modalities (TODO_0014) | ~600 | Medium (ownership) | 2 | Pending |
 
-| Item | LOC | Value | Axis |
-|---|---|---|---|
-| Lax monad {A} (TODO_0006.B) | ~500 | Very High (unifies system) | 4 |
-| Cyclic proofs (TODO_0009.P3) | ~200 | High (induction) | 3 |
-| Sort system + arity (TODO_0011.S1-2) | ~500 | Medium (error catching) | 1 |
-| Indexed modalities (TODO_0014) | ~600 | Medium (ownership) | 2 |
+**Rationale:** The lax monad is done — CALC now has principled backward→forward mode switching via `{A}`. Remaining items: cyclic proofs (builds on tabling from Phase 1), sort system (error catching), indexed modalities (financial logic).
 
-**Rationale:** The lax monad is the most architecturally significant extension — it bridges CALC's two halves and subsumes staging. Cyclic proofs build on Phase 1's tabling. Sort system catches errors. Indexed modalities enable the financial logic vision.
-
-**Dependencies:** Cyclic proofs benefit from tabling (Phase 1). Lax monad is independent. Sort system is independent. Indexed modalities require parser work (TODO_0033).
+**Dependencies:** Cyclic proofs benefit from tabling (Phase 1). Sort system is independent. Indexed modalities require parser work (TODO_0033).
 
 ### Phase 3 — Power Features (6-12 months, ~2200 LOC)
 
@@ -324,35 +325,36 @@ Key reading: an arrow A → B means "A subsumes B." No path = orthogonal. The fo
 
 ## 6. What CALC Would Look Like After Each Phase
 
-### After Phase 1: "ILL with generic arrays and fast exploration"
+### Current: "ILL with arrays, lax monad, and exhaustive exploration"
 
 ```ill
-% Polymorphic list operations
-forall X. reverse : list(X) -o list(X) -o list(X).
+% Compact array syntax with cons patterns
+evm/add:
+  bytecode BC * pc PC * !arr_get BC PC 0x01 * !inc PC PC' *
+  stack [A, B | REST]
+  -o { bytecode BC * pc PC' *
+       stack [C' | REST] * !plus A B C * !to256 C C' }.
 
-% Compact bytecode (1 line, not 764)
-bytecode 0x6080604052...
+% Infix concat for readable storage keys
+storage (sha3 (0 ++ sha3 (0 ++ Deadline ++ CallValue ++ DataHash) ++ 1)) Nonce
 
-% Tabling: memoized exploration (100x faster for cyclic programs)
-% Predicate stratification: basic rule ordering
+% Lax monad bridges backward → forward
+goal -o { forward rules fire until quiescence }.
 ```
 
-### After Phase 2: "Mixed-mode ILL with ownership and induction"
+### Next milestone: "ILL with tabling, polymorphism, and induction"
 
 ```ill
-% Backward computes gas, forward executes
-main : init -o { optimal_gas(G) * execute(G) }.
+% Polymorphic list operations (Phase 1 remaining)
+forall X. reverse : list(X) -o list(X) -o list(X).
 
-% Lax monad sequences phases
-phase1 : init -o { ... setup rules ... }.
-phase2 : setup_done(X) -o { ... execute rules ... }.
+% Tabling: memoized exploration (100x faster for cyclic programs)
 
-% Ownership modalities
+% Ownership modalities (Phase 2 remaining)
 [Alice] token(eth, 100) * (Alice says transfer(Bob, 50))
   -o { [Alice] token(eth, 50) * [Bob] token(eth, 50) }.
 
-% Cyclic proof closes back-edge for induction
-% "every execution eventually reaches STOP"
+% Cyclic proof closes back-edge for induction (Phase 2 remaining)
 ```
 
 ### After Phase 3: "muMALL with proper multimodal"
@@ -472,14 +474,14 @@ CALC's unique position: **forward engine + exhaustive exploration + content-addr
 
 | TODO | Status | Disposition |
 |---|---|---|
-| TODO_0010 (Stages) | researching | Subsumed by Phase 2 (lax monad) |
+| TODO_0010 (Stages) | **done** | Subsumed by TODO_0006 (lax monad). Research → RES_0085 |
 | TODO_0033 (Parser) | planning | Subsumed by Phase 2 (indexed modalities) |
 
 ### Informed by This Document
 
 | TODO | Relationship |
 |---|---|
-| TODO_0006 | Phase 2 — lax monad is Option B |
+| TODO_0006 | **Done** — lax monad implemented |
 | TODO_0008 | Phases 1-3 — tabling → cyclic → muMALL |
 | TODO_0009 | Phases 1-3 — bottom-up: tabling → cyclic → muMALL |
 | TODO_0011 | Phase 2 (sorts), Phase 3 (indexed), Phase 4 (Π) |
@@ -487,7 +489,7 @@ CALC's unique position: **forward engine + exhaustive exploration + content-addr
 | TODO_0013 | Phase 3+ — extends TODO_0012 |
 | TODO_0014 | Phase 2 — indexed modalities |
 | TODO_0034 | Phase 2+ — examples after TODO_0014 |
-| TODO_0063 | Phase 1 — arrlit is pure engineering |
+| TODO_0063 | **Done** — arrlit + bracket syntax + cons patterns + `++` infix |
 
 ---
 
@@ -507,7 +509,7 @@ SLS (Simmons 2012)     ordered linear lax logic, formalized focusing
 Ceptre (Martens 2015)  forward only, stages replace monad boundary
 ```
 
-CALC's forward engine (forward.js) + backward prover (prove.js) with `-o { ... }` forward rules is exactly LolliMon's architecture. The `{ ... }` syntax IS LolliMon's monadic bracket. CALC goes beyond LolliMon in one dimension: exhaustive exploration (symexec.js) vs committed choice.
+CALC's forward engine (forward.js) + backward prover (prove.js) with `-o { ... }` forward rules is exactly LolliMon's architecture. The `{ ... }` syntax IS LolliMon's monadic bracket, now explicit as a first-class connective with `monad_r`/`monad_l` rules (TODO_0006 done). CALC goes beyond LolliMon in two dimensions: exhaustive exploration (explore.js) via don't-know nondeterminism, and the bridge.js mode-switch mechanism connecting backward proof search to forward execution.
 
 Ceptre dropped the backward-chaining outer layer entirely and replaced the monad boundary with explicit stages + quiescence detection (`qui` predicate).
 
@@ -593,24 +595,21 @@ let state = runMode(initialState, 'play', rules);   // ↓_play, quiescence → 
 state = runMode(state, 'scoring', rules);             // ↓_scoring, quiescence → ↑
 ```
 
-### 10.5 Lax Monad: We Have It Implicitly, Three Paths to Explicit
+### 10.5 Lax Monad: **Implemented** (TODO_0006 done)
 
-CALC already does what the lax monad does — the boundary is just hardcoded:
+The lax monad is now an explicit first-class connective:
 
-| CLF concept | CALC current | Mechanism |
+| CLF concept | CALC implementation | Mechanism |
 |-------------|-------------|-----------|
 | Backward chaining (outside `{...}`) | prove.js | Persistent predicates, clause resolution |
 | Forward chaining (inside `{...}`) | forward.js | Linear matching, committed choice |
-| `{A}` monad boundary | Rule compilation | `hasMonad` flag in declarations.js |
-| Monadic sequencing | forward.run loop | Fire rules until quiescence |
+| `{A}` monad connective | `lib/calculus/modes.js` | `monad_r`/`monad_l` descriptors, negative polarity |
+| Mode switch boundary | `lib/prover/bridge.js` | `sequentToState` → `forward.run` → `rightFocus` |
+| Stickiness (left rule only fires in monad) | descriptor mechanism | `requiresSuccedentTag: 'monad'` |
+| Kernel certificate | `verifyStep` | `{ valid: true, unverified: 'modeSwitch' }` |
+| Succedent decomposition | `deriveRoles()` | Connective roles for with/oplus/tensor in consequent |
 
-Three paths to making it explicit:
-
-**Path A: Minimal lax monad (~500 LOC)** — new connective + mode switch. Only two modes (backward/forward). Clean, direct CLF theory.
-
-**Path B: 2-mode adjoint (~800 LOC)** — implement lax monad as `↑(↓A)` within a general adjoint framework. Same result, but extensible to N modes. Recommended.
-
-**Path C: Full N-mode adjoint (~1200 LOC)** — arbitrary modes with arbitrary adjunctions. Gets stages, ownership modes, etc. Future-proof but significant upfront investment.
+**Next step for mode infrastructure:** Generalize to adjoint logic (2-mode or N-mode) — the monad becomes `↑(↓A)`, enabling typed mode transitions and per-mode structural rules.
 
 ### 10.6 Higher-Order Linear Logic: Why HOL Didn't Develop for LL
 

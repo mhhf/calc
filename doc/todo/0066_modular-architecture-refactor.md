@@ -9,7 +9,7 @@ status: done
 priority: 10
 cluster: Theory
 depends_on: []
-required_by: [TODO_0006, TODO_0008, TODO_0010, TODO_0012, TODO_0064]
+required_by: [TODO_0006, TODO_0008, TODO_0012, TODO_0064]
 starred: true
 ---
 

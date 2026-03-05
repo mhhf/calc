@@ -1,15 +1,15 @@
 ---
 title: "Lax Monad {A} — Backward/Forward Integration"
 created: 2026-02-18
-modified: 2026-02-23
+modified: 2026-03-04
 summary: "Integrate forward and backward chaining via CLF lax monad"
 tags: [architecture, clf, lax-monad, forward-backward, focusing, polarity, adjoint-logic]
 type: research
 cluster: CLF
-status: researching
+status: done
 priority: 8
 depends_on: []
-required_by: [TODO_0010, TODO_0011]
+required_by: [TODO_0011]
 starred: false
 ---
 
@@ -387,9 +387,11 @@ The monad makes this cleanly expressible: a single `run()` produces one monadic 
 
 - [x] Study CLF, Celf, LolliMon lax monad semantics in depth — see [RES_0052](../research/0052_clf-lax-monad-deep-study.md)
 - [x] Understand relationship to Ceptre stages — see [TODO_0010](0010_ceptre-stages.md)
-- [ ] Design how `{A}` integrates with the prover lasagne layers (Option B)
-- [ ] Prototype the sequent ↔ multiset state conversion (mode switch bridge)
-- [ ] Add `monad` connective to `ill.calc` with `@mode_switch forward`
-- [ ] Add `monad_r` rule to L3 focused prover
-- [ ] Implement forward→backward callback for persistent goals within monadic block
-- [ ] Write integration tests: backward goal triggers forward execution to quiescence
+- [x] Design how `{A}` integrates with the prover lasagne layers (Option B) — `lib/prover/bridge.js`
+- [x] Prototype the sequent ↔ multiset state conversion (mode switch bridge) — `sequentToState`/`stateToContext`
+- [x] Add `monad` connective to `ill.calc` with `@category monad`, `@polarity negative`
+- [x] Add `monad_r` rule to L3 focused prover — `lib/calculus/modes.js`, `lib/prover/focused.js`
+- [x] Implement forward→backward callback for persistent goals within monadic block — pre-existing `provePersistentGoals`
+- [x] Write integration tests — `tests/monad.test.js` (25+ tests), `tests/multi-logic.test.js`
+- [x] Add rightFocus succedent decomposition — `bridge.js:rightFocus()`
+- [x] Add connective roles for multi-logic support — `deriveRoles()` in `builders.js`

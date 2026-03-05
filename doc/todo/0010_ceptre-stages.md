@@ -1,12 +1,13 @@
 ---
 title: "Ceptre Stages"
 created: 2026-02-18
-modified: 2026-02-23
+modified: 2026-03-04
 summary: "Named rule subsets running to quiescence with inter-stage transitions"
 tags: [Ceptre, stages, forward-engine, focusing, CLF, quiescence]
 type: research
 cluster: CLF
-status: researching
+status: done
+subsumed_by: TODO_0006
 priority: 2
 depends_on: [TODO_0006]
 required_by: []
@@ -14,15 +15,11 @@ required_by: []
 
 # Ceptre Stages
 
-Named rule subsets running to quiescence with inter-stage transitions.
+**Status: Subsumed by TODO_0006 (lax monad).**
 
-## Status: Deferred (research complete)
+The lax monad provides principled staging: backward chaining orchestrates forward phases, quiescence is implicit (`forward.run()` returns when no rules fire). Ceptre-style declared stages are unnecessary.
 
-Stages feel theoretically unsatisfying --- more like an operational hack than a principled contribution. They impose control structure *outside* the logic rather than deriving it from the logic itself. We want to find the right theory/ontology before implementing them.
-
-The SHA3 helper pattern (which motivated stages as a potential solution) already works via loli continuations --- the `concatMemory` recursive helper runs to completion, then `unblockConcatMemory(Z)` fires the dormant loli. This is a direct application of loli-left on linear state, not an ad-hoc staging mechanism.
-
-**Verdict after deep research:** Stages are *not* proof-theoretically justified. They are an extra-logical control mechanism that cannot be derived from linear logic connectives or focusing. However, several principled alternatives exist (see Section 5).
+Research extracted to [RES_0085](../research/0085_stages-proof-theoretic-status.md).
 
 ---
 
@@ -334,6 +331,14 @@ This is exactly what session-typed linear logic already does.
 - Baillot, P. and Terui, K. (2014). An Abstract Approach to Stratification in Linear Logic. [Paper](https://arxiv.org/abs/1206.6504)
 - Fruhwirth, T. (2009). Constraint Handling Rules. [Survey](https://arxiv.org/pdf/0906.4474)
 
+## 7. Auto-Registration of Forward Rules as Backward Clauses
+
+Now that TODO_0006/0066 implemented the lax monad `{A}` with mode switch bridge, the principled staging mechanism from CLF is available: backward prover plans over forward phases via auto-registered clauses.
+
+**Mechanism:** At `mde.load()` time, each forward rule `A₁ * ... * Aₙ -o { S }` is registered as a backward clause with monadic head `{ S }` and body `[A₁, ..., Aₙ]`. The backward prover searches these clauses normally — "to prove `{ result(R) }`, I need `deployed(Addr, Runtime)` and `calldata(D)`. I can get `deployed` by proving `{ deployed(Addr, Runtime) }`, which requires `bytecode(B)`..." etc.
+
+This is how CLF/Celf works and subsumes Ceptre-style stages without extra-logical machinery. See TODO_0066 §2.7 for the full design.
+
 ## Tasks
 
 - [x] Study Ceptre stage semantics
@@ -341,5 +346,6 @@ This is exactly what session-typed linear logic already does.
 - [ ] Prototype automatic predicate stratification on existing rule sets
 - [ ] Evaluate whether loli continuations cover all practical staging needs
 - [ ] Design stage syntax for .calc/.rules (only if justified beyond stratification)
+- [ ] Implement auto-registration of forward rules as backward clauses (from TODO_0066 §2.7)
 
 See: `doc/research/0008_clf-celf-ceptre.md`
