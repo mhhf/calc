@@ -40,16 +40,16 @@ Proof terms follow a two-layer design inspired by LF/Twelf (Harper-Honsell-Plotk
 The rule name IS the proof term constructor. No manual term definitions needed. The descriptor fields (`side`, `premises`, `binding`, `contextSplit`, `copyContext`) mechanically determine each constructor's arity and binding structure:
 
 ```
-genericTerm(rule) = rule_name(principal?, binding1.subproof1, ...)
+genericTerm(rule) = rule_name(principal?, bindings -> subproof, ...)
 ```
 
 Examples:
 ```
 tensor_l descriptor: { side:'l', premises:[{linear:[0,1]}] }
--> tensor_l(z, x0.x1.u0)
+-> tensor_l(z, x0 x1 -> u0)
 
 loli_r descriptor: { side:'r', premises:[{linear:[0], succedent:1}] }
--> loli_r(x0.u0)
+-> loli_r(x0 -> u0)
 
 with_r descriptor: { side:'r', copyContext:true, premises:[{succedent:0},{succedent:1}] }
 -> with_r(u0, u1)
@@ -62,7 +62,7 @@ This is exactly what LF does: one constructor per inference rule, adequacy guara
 A fold/catamorphism over generic terms that assigns computational meaning:
 
 ```
-Layer 1 (generic):     tensor_l(z, x.y.u)
+Layer 1 (generic):     tensor_l(z, x y -> u)
                             v  "lambda" interpretation
 Layer 2a:              let (x, y) = z in [[u]]
                             v  "session-type" interpretation
@@ -83,22 +83,22 @@ Layer 2 interpretations are defined in `.term` files. Each `.term` file maps gen
 % ill-lambda.term
 @name "lambda-calculus".
 
-tensor_r(u0, u1)              => (u0, u1).
-tensor_l(z, x0.x1.u0)        => let (x0, x1) = z in u0.
-loli_r(x0.u0)                 => \x0. u0.
-loli_l(z, u0, x1.u1)         => z u0; x1. u1.
-with_r(u0, u1)                => <u0, u1>.
-with_l1(z, x0.u0)             => let x0 = fst z in u0.
-with_l2(z, x1.u0)             => let x1 = snd z in u0.
-oplus_r1(u0)                  => inl u0.
-oplus_r2(u0)                  => inr u0.
-oplus_l(z, x0.u0, x1.u1)    => case z of inl x0 => u0 | inr x1 => u1.
-one_r                          => ().
-one_l(z, u0)                  => let () = z in u0.
-bang_r(u0)                     => !u0.
-bang_l(z, y0.u0)              => let !y0 = z in u0.
-monad_r(u0)                   => {u0}.
-monad_l(z, x0.u0)            => let {x0} = z in u0.
+tensor_r(u0, u1)                => (u0, u1).
+tensor_l(z, x0 x1 -> u0)       => let (x0, x1) = z in u0.
+loli_r(x0 -> u0)                => \x0. u0.
+loli_l(z, u0, x1 -> u1)        => z u0; x1. u1.
+with_r(u0, u1)                  => <u0, u1>.
+with_l1(z, x0 -> u0)            => let x0 = fst z in u0.
+with_l2(z, x1 -> u0)            => let x1 = snd z in u0.
+oplus_r1(u0)                    => inl u0.
+oplus_r2(u0)                    => inr u0.
+oplus_l(z, x0 -> u0, x1 -> u1) => case z of inl x0 => u0 | inr x1 => u1.
+one_r                            => ().
+one_l(z, u0)                    => let () = z in u0.
+bang_r(u0)                       => !u0.
+bang_l(z, y0 -> u0)              => let !y0 = z in u0.
+monad_r(u0)                     => {u0}.
+monad_l(z, x0 -> u0)            => let {x0} = z in u0.
 ```
 
 A different `.term` file for the same logic:
@@ -107,14 +107,14 @@ A different `.term` file for the same logic:
 % ill-session.term
 @name "session-types".
 
-tensor_r(u0, u1)              => send u0; u1.
-tensor_l(z, x0.x1.u0)        => (x0, x1) <- recv z; u0.
-loli_r(x0.u0)                 => x0 <- accept; u0.
-with_r(u0, u1)                => offer { left: u0, right: u1 }.
-oplus_r1(u0)                  => select left; u0.
-oplus_l(z, x0.u0, x1.u1)    => branch z { left: x0.u0, right: x1.u1 }.
-bang_r(u0)                     => accept!; u0.
-monad_r(u0)                   => spawn u0.
+tensor_r(u0, u1)                => send u0; u1.
+tensor_l(z, x0 x1 -> u0)       => (x0, x1) <- recv z; u0.
+loli_r(x0 -> u0)                => x0 <- accept; u0.
+with_r(u0, u1)                  => offer { left: u0, right: u1 }.
+oplus_r1(u0)                    => select left; u0.
+oplus_l(z, x0 -> u0, x1 -> u1) => branch z { left: x0.u0, right: x1.u1 }.
+bang_r(u0)                       => accept!; u0.
+monad_r(u0)                     => spawn u0.
 ```
 
 **Loading pipeline:**
@@ -144,7 +144,7 @@ const rendered = renderTerm(generic, calc.interpretations['lambda-calculus']);
 // -> "\x. let (y, z) = x in (z, y)"
 ```
 
-`.term` files are **optional**. Without one, generic terms render as-is: `tensor_l(z, x0.x1.u0)`. Multiple `.term` files = different views of the same proof. Rules not mentioned in a `.term` file fall back to generic rendering.
+`.term` files are **optional**. Without one, generic terms render as-is: `tensor_l(z, x0 x1 -> u0)`. Multiple `.term` files = different views of the same proof. Rules not mentioned in a `.term` file fall back to generic rendering.
 
 **What `.term` is NOT (yet):** A rendering specification, not a full target language type system. Does not define reduction rules or type-checking for the target language. Could be extended later (e.g., `.theory` files with beta-reduction for the lambda interpretation).
 
@@ -297,7 +297,7 @@ Gamma; Delta, y:A[a/x] |- t : C                     (a fresh -- eigenvariable)
 Gamma; Delta, u:existsx.A |- t : C
 ```
 
-Note on existsL: The principal formula `existsx.A` is on the LEFT and is deconstructed by opening the existential with fresh eigenvariable `a`. In the generic term view: `exists_l(u, a.t)`.
+Note on existsL: The principal formula `existsx.A` is on the LEFT and is deconstructed by opening the existential with fresh eigenvariable `a`. In the generic term view: `exists_l(u, a -> t)`.
 
 **Reading direction:** Sequent calculus rules are read bottom->top for proof search. The conclusion (bottom) ALWAYS has the complex connective. The premise (top) has simpler sub-formulas. Reading bottom->top, you DECONSTRUCT. Reading top->bottom (proof construction), you INTRODUCE. Both perspectives describe the same rule.
 
@@ -317,7 +317,7 @@ Generic proof terms are the primary representation. Each rule name IS a construc
 
 - `side='l'` -> first arg is principal `z` (consumed from antecedent)
 - Each premise -> one sub-proof `ui`
-- `premises[i].linear` -> bound variables `xj` scoped over `ui` (dot notation: `xj.ui`)
+- `premises[i].linear` -> bound variables `xj` scoped over `ui` (arrow notation: `xj -> ui`)
 - `premises[i].cartesian` -> bound variables `yj` moved to Gamma
 - `binding='eigenvariable'` -> fresh variable bound in sub-proof
 - `binding='metavar'` -> witness term argument
@@ -327,26 +327,26 @@ All constructors for ILL (pseudocode -- this is not a parsed grammar, just a cat
 ```
 id(x)                                   identity
 tensor_r(u0, u1)                        tensor-R (context split)
-tensor_l(z, x0.x1.u0)                  tensor-L (decompose, bind two)
+tensor_l(z, x0 x1 -> u0)               tensor-L (decompose, bind two)
 one_r()                                 one-R (empty context)
 one_l(z, u0)                            one-L
-loli_r(x0.u0)                           loli-R (bind argument)
-loli_l(z, u0, x1.u1)                    loli-L (apply, bind result)
+loli_r(x0 -> u0)                        loli-R (bind argument)
+loli_l(z, u0, x1 -> u1)                loli-L (apply, bind result)
 with_r(u0, u1)                          with-R (context copied)
-with_l1(z, x0.u0)                       with-L1 (first projection)
-with_l2(z, x1.u0)                       with-L2 (second projection)
+with_l1(z, x0 -> u0)                    with-L1 (first projection)
+with_l2(z, x1 -> u0)                    with-L2 (second projection)
 oplus_r1(u0)                            oplus-R1
 oplus_r2(u0)                            oplus-R2
-oplus_l(z, x0.u0, x1.u1)               oplus-L (case split)
+oplus_l(z, x0 -> u0, x1 -> u1)         oplus-L (case split)
 zero_l(z)                               zero-L (abort, discards context)
 bang_r(u0)                              bang-R (empty linear context)
-bang_l(z, y0.u0)                        bang-L (y0 moves to Gamma)
+bang_l(z, y0 -> u0)                     bang-L (y0 moves to Gamma)
 monad_r(evidence)                       monad-R (mode switch)
-monad_l(z, x0.u0)                       monad-L
-forall_r(a.u0)                          forall-R (eigenvariable)
+monad_l(z, x0 -> u0)                    monad-L
+forall_r(a -> u0)                       forall-R (eigenvariable)
 forall_l(z, s, u0)                      forall-L (instantiate with s)
 exists_r(s, u0)                         exists-R (witness s)
-exists_l(z, a.u0)                       exists-L (eigenvariable)
+exists_l(z, a -> u0)                    exists-L (eigenvariable)
 unreachable(reason)                     dead branch (unverified)
 ffi(name, args, result)                 FFI axiom (unverified)
 ```
@@ -369,21 +369,21 @@ The backward prover (L2-L3) already builds proof trees. Each rule application ma
 |---|---|---|
 | `id` | `id(x)` | `x` |
 | `tensor_r` | `tensor_r(u0, u1)` | `(u0, u1)` |
-| `tensor_l` | `tensor_l(z, x0.x1.u0)` | `let (x0, x1) = z in u0` |
-| `loli_r` | `loli_r(x0.u0)` | `\x0. u0` |
-| `loli_l` | `loli_l(z, u0, x1.u1)` | `z u0` (+ continuation) |
+| `tensor_l` | `tensor_l(z, x0 x1 -> u0)` | `let (x0, x1) = z in u0` |
+| `loli_r` | `loli_r(x0 -> u0)` | `\x0. u0` |
+| `loli_l` | `loli_l(z, u0, x1 -> u1)` | `z u0` (+ continuation) |
 | `with_r` | `with_r(u0, u1)` | `<u0, u1>` |
-| `with_l1` / `with_l2` | `with_l1(z, x0.u0)` | `fst z` / `snd z` |
+| `with_l1` / `with_l2` | `with_l1(z, x0 -> u0)` | `fst z` / `snd z` |
 | `oplus_r1` / `oplus_r2` | `oplus_r1(u0)` | `inl u0` / `inr u0` |
-| `oplus_l` | `oplus_l(z, x0.u0, x1.u1)` | `case z of ...` |
+| `oplus_l` | `oplus_l(z, x0 -> u0, x1 -> u1)` | `case z of ...` |
 | `zero_l` | `zero_l(z)` | `abort z` |
 | `one_r` | `one_r()` | `()` |
 | `one_l` | `one_l(z, u0)` | `let () = z in u0` |
 | `bang_r` | `bang_r(u0)` | `!u0` |
-| `bang_l` | `bang_l(z, y0.u0)` | `let !y0 = z in u0` |
-| `copy` | `copy(z, y0.u0)` | = `bang_l` (moves `!A` to Gamma) |
+| `bang_l` | `bang_l(z, y0 -> u0)` | `let !y0 = z in u0` |
+| `copy` | `copy(z, y0 -> u0)` | = `bang_l` (moves `!A` to Gamma) |
 | `monad_r` | `monad_r(evidence)` | `{e}` (delegates to forward engine) |
-| `monad_l` | `monad_l(z, x0.u0)` | `let {x0} = z in u0` |
+| `monad_l` | `monad_l(z, x0 -> u0)` | `let {x0} = z in u0` |
 
 ### 3.2 Forward Engine -> Monadic Let-Bindings (CLF)
 
@@ -438,8 +438,8 @@ When a rule produces `A oplus B`, the explore tree forks. Each fork becomes an `
 ```
 let {x} = evm_eq(args) in           -- x : S1 oplus S2
   oplus_l(x,
-    a. ...continuation1...,         -- eq branch
-    b. ...continuation2...          -- neq branch
+    a -> ...continuation1...,       -- eq branch
+    b -> ...continuation2...        -- neq branch
   )
 ```
 
@@ -448,7 +448,7 @@ The explore tree IS the proof term tree:
 | Explore node | Proof term |
 |---|---|
 | `branch(rule, child)` | `let {p} = rule(args) in child_term` |
-| `fork(children)` | `oplus_l(x, a.child1, b.child2)` |
+| `fork(children)` | `oplus_l(x, a -> child1, b -> child2)` |
 | `leaf` | return value (rightFocus decomposition) |
 | `dead` | `unreachable(reason)` -- see ss3.6 |
 | `bound` | `_|_` (incomplete) |
@@ -457,16 +457,16 @@ The explore tree IS the proof term tree:
 
 Nested forks = nested case splits. k nested binary forks -> one proof term with k nested `oplus_l`, 2^k leaves. All paths are captured in a single term.
 
-**CLF extension:** CLF's monadic expression grammar is `E ::= let {p} = R in E | M`. We extend it with case analysis: `E ::= let {p} = R in E | oplus_l(x, a.E, b.E) | M`. CLF excluded oplus from `{S}` for committed-choice semantics. CALC's exhaustive exploration IS case analysis -- we're not doing committed choice, we're computing both branches. The extension is proof-theoretically sound: oplus elimination inside the monad.
+**CLF extension:** CLF's monadic expression grammar is `E ::= let {p} = R in E | M`. We extend it with case analysis: `E ::= let {p} = R in E | oplus_l(x, a -> E, b -> E) | M`. CLF excluded oplus from `{S}` for committed-choice semantics. CALC's exhaustive exploration IS case analysis -- we're not doing committed choice, we're computing both branches. The extension is proof-theoretically sound: oplus elimination inside the monad.
 
 **Nested consequent choices:** `(A oplus B) * C` in a consequent decomposes via tensor then case:
 
 ```
 let {y} = rule(args) in             -- y : (A oplus B) * C
-  tensor_l(y, x.c.
+  tensor_l(y, x c ->
     oplus_l(x,
-      a. ...                         -- A, C world
-      b. ...                         -- B, C world
+      a -> ...                       -- A, C world
+      b -> ...                       -- B, C world
     )
   )
 ```
@@ -599,7 +599,7 @@ function genericTermShape(rule) {
       ...(p.cartesian || []).map(idx => `y${idx}`)
     ];
     const sub = `u${i}`;
-    args.push(bindings.length ? `${bindings.join('.')}.${sub}` : sub);
+    args.push(bindings.length ? `${bindings.join(' ')} -> ${sub}` : sub);
   });
   return { constructor: rule.name, args };
 }
