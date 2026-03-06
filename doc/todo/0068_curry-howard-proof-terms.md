@@ -317,7 +317,7 @@ Gamma; Delta |- forall_r(y -> t) : forall x.A
 
 Gamma; Delta, u:A[s/x] |- t : C                  (s = witness term)
 --------------------------------------- forallL
-Gamma; Delta, z:forall x.A |- forall_l(z, s, t) : C
+Gamma; Delta, z:forall x.A |- forall_l(z, s, u -> t) : C
 ```
 
 **Existential (`exists x.A`):**
@@ -381,7 +381,7 @@ copy(u, x0 -> u0)                      copy (structural, u from Gamma)
 monad_r(evidence)                       monad-R (mode switch)
 monad_l(z, x0 -> u0)                    monad-L
 forall_r(a -> u0)                       forall-R (eigenvariable)
-forall_l(z, s, u0)                      forall-L (instantiate with s)
+forall_l(z, s, u -> u0)                 forall-L (u:A[s/x] bound over u0)
 exists_r(s, u0)                         exists-R (witness s)
 exists_l(z, a -> u0)                    exists-L (eigenvariable)
 unreachable(reason)                     dead branch (unverified)
