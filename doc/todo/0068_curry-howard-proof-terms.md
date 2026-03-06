@@ -1,7 +1,7 @@
 ---
 title: "Curry-Howard Proof Terms for ILL"
 created: 2026-03-05
-modified: 2026-03-05
+modified: 2026-03-06
 summary: "Assign proof terms to all ILL connectives via the Curry-Howard correspondence. Two-layer design: Layer 1 generic terms derived from rule descriptors (rule name = constructor), Layer 2 optional interpretation maps (lambda, session types, etc.). Subsumes TODO_0067."
 tags: [proof-theory, clf, linear-logic, curry-howard, lax-monad, architecture, verification, soundness, logical-framework]
 type: design
@@ -121,10 +121,10 @@ one_r: term
 one_l: term -> term -> term
   @ascii "let () = #1 in #2".
 
-bang_r: term -> term
+promotion: term -> term
   @ascii "!#1".
 
-bang_l: term -> term -> term -> term
+absorption: term -> term -> term -> term
   @ascii "let !#2 = #1 in #3".
 
 dereliction: term -> term -> term -> term
@@ -166,7 +166,7 @@ oplus_r1: term -> term
 oplus_l: term -> term -> term -> term -> term -> term
   @ascii "branch #1 { left: #2.#3, right: #4.#5 }".
 
-bang_r: term -> term
+promotion: term -> term
   @ascii "accept!; #1".
 
 monad_r: term -> term
@@ -179,7 +179,7 @@ monad_r: term -> term
 - **Type signature = flattened arity.** Binding args are flattened: `tensor_l(z, x y -> u)` has 4 flattened args, so `term -> term -> term -> term -> term`.
 - **`#N` holes** (1-based) reference flattened args, same convention as `@latex` in `.calc`. Reordering is natural: `tensor_l` args are `[z, x, y, u]`, template `let (#2, #3) = #1 in #4` = `let (x, y) = z in u`.
 - **Rendering only** -- templates produce display strings, not parsed as expressions. Input always uses generic notation (`tensor_l(z, x y -> u)`). No mixfix parsing needed.
-- **`@interpretation` header** tells the loader to extract rendering templates, not register Store tags.
+- **`@interpretation` header** tells the loader to extract rendering templates, not register Store tags. The `.calc` parser (`declarations.js`) already handles `@key` directive syntax; `loader.js:extractDeclarations()` needs a small extension (~5 lines) to recognize `@interpretation` alongside `@family`/`@extends`/`@metavar`/`@schema`.
 
 **Loading pipeline:**
 
@@ -327,11 +327,11 @@ Gamma; Delta, z:0 |- zero_l(z) : C
 ```
 Gamma; . |- t : A
 ----------------------- !R    (empty linear context)
-Gamma; . |- bang_r(t) : !A
+Gamma; . |- promotion(t) : !A
 
 Gamma, x:A; Delta |- t : C
 --------------------------- !L / absorption    (x moves to cartesian)
-Gamma; Delta, z:!A |- bang_l(z, x -> t) : C
+Gamma; Delta, z:!A |- absorption(z, x -> t) : C
 ```
 
 **Dereliction (`!A`):**
@@ -436,8 +436,8 @@ oplus_r1(u0)                            oplus-R1
 oplus_r2(u0)                            oplus-R2
 oplus_l(z, x0 -> u0, x1 -> u1)         oplus-L (case split)
 zero_l(z)                               zero-L (abort, discards context)
-bang_r(u0)                              bang-R (empty linear context)
-bang_l(z, x0 -> u0)                     bang-L / absorption (x0 to Gamma)
+promotion(u0)                           !R (empty linear context)
+absorption(z, x0 -> u0)                !L (x0 to Gamma)
 dereliction(z, x0 -> u0)               !D (x0 stays linear)
 copy(u, x0 -> u0)                      copy (structural, u from Gamma)
 monad_r(evidence)                       monad-R (mode switch)
@@ -478,8 +478,8 @@ The backward prover (L2-L3) already builds proof trees. Each rule application ma
 | `zero_l` | `zero_l(z)` | `abort z` |
 | `one_r` | `one_r()` | `()` |
 | `one_l` | `one_l(z, u0)` | `let () = z in u0` |
-| `bang_r` | `bang_r(u0)` | `!u0` |
-| `bang_l` | `bang_l(z, x0 -> u0)` | `let !x0 = z in u0` (x0 to Gamma) |
+| `promotion` | `promotion(u0)` | `!u0` |
+| `absorption` | `absorption(z, x0 -> u0)` | `let !x0 = z in u0` (x0 to Gamma) |
 | `dereliction` | `dereliction(z, x0 -> u0)` | `let !x0 = z in u0` (x0 stays linear) |
 | `copy` | `copy(u, x0 -> u0)` | structural (u from Gamma, x0 to Delta) |
 | `monad_r` | `monad_r(evidence)` | `{e}` (delegates to forward engine) |
@@ -535,13 +535,13 @@ Program-level constructors are NOT in the ss2.7 catalog (that lists ILL connecti
 
 ### 3.3 rightFocus -> Synchronous Decomposition Term
 
-After quiescence, `rightFocus` decomposes the succedent against residual state. This produces a term built from tensor/one/bang/id constructors:
+After quiescence, `rightFocus` decomposes the succedent against residual state. This produces a term built from tensor/one/promotion/id constructors:
 
 ```
 rightFocus(state, A * B) = tensor_r(rightFocus(Delta1, A), rightFocus(Delta2, B))
 rightFocus(., 1)          = one_r()
-rightFocus(state, !A)     = bang_r(id(u))         -- u:A from Gamma (persistent)
-rightFocus(state, atom)   = id(x)                 -- x:atom from Delta (linear)
+rightFocus(state, !A)     = promotion(id(u))       -- u:A from Gamma (persistent)
+rightFocus(state, atom)   = id(x)                  -- x:atom from Delta (linear)
 ```
 
 ### 3.4 Explore Tree and Proof Terms
@@ -745,9 +745,11 @@ function genericTermSignature(rule) {
 
 `genericTermSignature` returns the **shape** (arity, binding positions) -- computed once at load time. `extractTerm` (Phase 2) uses the signature to build concrete term instances.
 
-Descriptor fields used for term shape: `side` (principal), `binding` (eigenvariable/metavar for quantifiers), `premises[i].linear` (bound variables added to Delta), `premises[i].cartesian` (bound variables moved to Gamma). Other descriptor fields (`contextFlow`, `modeShift`, `arity`, `connective`, `emptyLinear`, `requiresSuccedentTag`) are for rule application/focusing, not term shape.
+Descriptor fields used for term shape: `side` (principal), `binding` (eigenvariable/metavar for quantifiers), `premises[i].linear` (bound variables added to Delta), `premises[i].cartesian` (bound variables moved to Gamma), `premises[i].succedent` (sub-proof conclusion type, e.g. `loli_r`), `discardsContext` (computed for zero-premise left rules like `zero_l` -- no sub-proof, context abandoned). Other descriptor fields (`contextFlow`, `modeShift`, `arity`, `connective`, `emptyLinear`, `requiresSuccedentTag`) are for rule application/focusing, not term shape.
 
-Generic terms are content-addressed in the Store using a single `proof` tag with the rule name as a string child: `Store.put({ tag: 'proof', children: [rule_name, principal, sub0, ...] })`. One tag, all constructors. Content-addressing gives sub-proof sharing for free. Serializable via existing `store-binary.js`. When `{ terms: false }`, no proof nodes are created -- zero overhead.
+Generic terms are content-addressed in the Store using **one tag per constructor**: each rule name (`tensor_r`, `tensor_l`, `loli_r`, ...) is registered as a Store tag. A proof term is then `Store.put('tensor_r', [sub0, sub1])`, `Store.put('tensor_l', [principal, sub0])`, etc. All children are term indices -- no mixed string/term children, fully compatible with `STRING_CHILD_TAGS` discrimination. Content-addressing gives sub-proof sharing for free. Serializable via existing `store-binary.js`. When `{ terms: false }`, no proof nodes are created -- zero overhead.
+
+This adds ~25 tags (one per ILL rule). Currently 28 pre-registered tags, well within the 256-tag `Uint8Array` limit. If capacity is ever needed, upgrading to `Uint16Array` is a one-line change (see ss9).
 
 Variables use de Bruijn indices (via existing `bound(n)` nodes) for binding positions. The descriptor's `premises[i].linear` array maps directly to binding indices.
 
@@ -775,7 +777,9 @@ trace.push({ rule, theta, consumed, produced, termHash });
 const rfTerm = buildRightFocusTerm(residualState, succedent);
 ```
 
-Function pointer swap at entry (same pattern as TODO_0067): no branches in the hot path when terms are disabled.
+Note: the current trace (`forward.js`) records string-only entries (`[step] rule_name`). Term-enabled mode replaces this with structured entries carrying the full match context. The `trace` option already exists; the structured format is new.
+
+Function pointer swap at entry (same pattern as the existing `provePersistentWithFFI` / `provePersistentNaive` dispatch in `match.js`): no branches in the hot path when terms are disabled.
 
 ### Phase 4: Type Checker (~150 LOC)
 
@@ -832,7 +836,7 @@ Kernel verification for monad_r changes from `{ valid: true, unverified: 'modeSw
 | **TODO_0008** (metaproofs) | **Consumer.** Invariant witnesses become typed proof terms. Counterexample traces are well-typed monadic expressions. |
 | **TODO_0011** (CLF dependent types) | **Orthogonal.** Dependent types add `Pix:A.B` -- proof terms depend on values. This TODO handles the non-dependent base case. |
 | **TODO_0009** (induction/coinduction) | **Future extension.** Fixed-point terms (mu/nu constructors) and cyclic proof terms extend this term language. |
-| **TODO_0066** (modular architecture) | **Aligns.** The architecture's hook points (certificateHook in explore, evidence in monad_r) are where terms get recorded. |
+| **TODO_0066** (modular architecture) | **Aligns.** The planned hook points (certificateHook in explore per TODO_0066's design, `evidence` field in `kernel.js` monad_r -- currently `null`) are where terms get recorded. |
 | **TODO_0064** (higher-order extensions) | **Axis 1, Level 0->1.** This is the first step on the term-level type discipline axis. |
 
 ---
@@ -894,7 +898,7 @@ Captured here for later exploration, not part of initial implementation.
 
 6. **Lazy extraction:** For very large explore trees (10K+ nodes), extract terms only for paths the user inspects, not the full tree.
 
-7. **Store tag capacity:** Currently `tags = new Uint8Array(capacity)` limits tag values to 0-255. Layer 1 uses a single `proof` tag (no capacity concern). If Layer 2 interpretations ever need additional Store-resident tags (e.g., dependent types), upgrading to `Uint16Array` (65536 tags) is a one-line change. `STRING_CHILD_TAGS`/`BIGINT_CHILD_TAGS` lookup tables would grow from 256B to 64KB (still trivial). PRED_BOUNDARY is unrelated -- it separates built-in tags from dynamic predicates.
+7. **Store tag capacity:** Currently `tags = new Uint8Array(capacity)` limits tag values to 0-255. Layer 1 adds ~25 tags (one per ILL rule constructor). With 28 pre-registered tags, this brings the total to ~53 -- well within the 256 limit. If capacity is ever needed (e.g., dependent types, multi-logic), upgrading to `Uint16Array` (65536 tags) is a one-line change. `STRING_CHILD_TAGS`/`BIGINT_CHILD_TAGS` lookup tables would grow from 256B to 64KB (still trivial). PRED_BOUNDARY is unrelated -- it separates built-in tags from dynamic predicates.
 
 ---
 
