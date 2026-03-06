@@ -41,7 +41,7 @@ evm/iszero: ... -o {
 }.
 ```
 
-A loli `A -o B` in the state is a **latent rule** / **continuation** — it fires when its trigger becomes available (matched in state or proved via backward chaining). This is theoretically the loli-left rule applied to facts in state. See [TODO_0041](../todo/0041_unified-rule-matching.md) for the implementation unification.
+A loli `A -o B` in the state is a **latent rule** / **continuation** — it fires when its trigger becomes available (matched in state or proved via backward chaining). This is theoretically the loli-left rule applied to facts in state. See TODO_0041 for the implementation unification.
 
 **Why CLF forbids this:** lolis in the monad create "dormant rules" needing a separate scheduling/firing mechanism. CLF avoids this complexity. Monadic let (`{A} tensor (A -o {B}) -o {B}`) provides sequencing between rules, making in-monad lolis redundant for sequencing. But CALC needs them for **conditional production** — "if guard holds, produce these facts" — which monadic let doesn't express within a single rule's consequent.
 
@@ -165,7 +165,7 @@ Key points:
 - `⊕` in consequent = CHR∨ disjunction `(B₁ ; B₂)^L = B₁^L ⊕ B₂^L`
 - Loli-in-monad = dynamic simpagation rule (sound via loli-left + per-step induction)
 - EVM rules are confluent for ground execution (deterministic opcode dispatch)
-- See [TODO_0043](../todo/0043_chr-linear-logic-mapping.md) for full analysis
+- See TODO_0043 for full analysis
 
 ### Q4: Relationship to Focusing (Partially Resolved)
 

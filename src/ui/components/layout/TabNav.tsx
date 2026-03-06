@@ -13,7 +13,6 @@ const docTabs = [
   { path: '/theory', label: 'Theory' },
   { path: '/docs', label: 'Docs' },
   { path: '/def', label: 'Def' },
-  { path: '/todo', label: 'Todo' },
 ];
 
 function isActive(tab: { path: string }, pathname: string) {

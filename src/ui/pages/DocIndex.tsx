@@ -13,7 +13,6 @@ const FOLDER_LABELS: Record<string, string> = {
   research: 'Research',
   dev: 'Development',
   docs: 'Documentation',
-  todo: 'Todo',
 };
 
 /** Extract the 4-digit doc number from slug like "0007_chr-..." */

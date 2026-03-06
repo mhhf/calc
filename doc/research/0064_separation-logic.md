@@ -259,7 +259,7 @@ If a rule only touches the stack region, the memory region's index doesn't need 
 3. Execute callee in the fresh fragment
 4. On RETURN: restore saved state, compose callee's effects via frame rule
 
-**Where in CALC:** `doc/todo/0049_evm-memory-model.md` already declares `saved_mem`/`saved_memsize` for this. SL gives the formal framework for correctness: the callee's post-heap is *separate* from the caller's saved heap.
+**Where in CALC:** TODO_0049 already declares `saved_mem`/`saved_memsize` for this. SL gives the formal framework for correctness: the callee's post-heap is *separate* from the caller's saved heap.
 
 ### 7.7 Abstract Predicates for State Abstraction
 

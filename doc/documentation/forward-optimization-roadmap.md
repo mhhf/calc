@@ -94,16 +94,16 @@ Pooled match results and precomputed tagIds tested on feature branch `opt/pool-a
 | Optimization | Trigger | TODO |
 |-------------|---------|------|
 | Configurable control predicates | Non-EVM programs with symmetric structure | See note below |
-| Constraint propagation (equality + FFI re-check) | Symbolic evar chains (3+ deep) | [TODO_0005](../todo/0005_symexec-simplification.md) |
-| Delta-driven activation | 100+ rules | [TODO_0035](../todo/0035_forward-chaining-networks.md) |
-| Compiled matching (Maranget) | 1000+ rules | [TODO_0037](../todo/0037_compiled-pattern-matching.md) |
-| Semi-naive for linear logic | 100K+ facts | [TODO_0044](../todo/0044_semi-naive-linear-logic.md) |
-| Join ordering | 4+ antecedent rules | [TODO_0035](../todo/0035_forward-chaining-networks.md) |
-| DPOR (Partial Order Reduction) | Forward-vs-forward commuting matches | [TODO_0054](../todo/0054_commuting-match-reduction.md) |
-| Path-based nested access | depth 4+ terms | [TODO_0022](../todo/0022_forward-optimization-research.md) |
-| Memoized mem_read cache (L1) | W > 50 writes per MLOAD | [TODO_0052](../todo/0052_memory-and-persistent-caching.md) |
-| Per-term read cache (L2) | 50+ branches sharing memory prefixes | [TODO_0052](../todo/0052_memory-and-persistent-caching.md) |
-| Indexed persistent predicates | 50+ persistent facts per predicate | [TODO_0052](../todo/0052_memory-and-persistent-caching.md) |
+| Constraint propagation (equality + FFI re-check) | Symbolic evar chains (3+ deep) | TODO_0005 |
+| Delta-driven activation | 100+ rules | TODO_0035 |
+| Compiled matching (Maranget) | 1000+ rules | TODO_0037 |
+| Semi-naive for linear logic | 100K+ facts | TODO_0044 |
+| Join ordering | 4+ antecedent rules | TODO_0035 |
+| DPOR (Partial Order Reduction) | Forward-vs-forward commuting matches | TODO_0054 |
+| Path-based nested access | depth 4+ terms | TODO_0022 |
+| Memoized mem_read cache (L1) | W > 50 writes per MLOAD | TODO_0052 |
+| Per-term read cache (L2) | 50+ branches sharing memory prefixes | TODO_0052 |
+| Indexed persistent predicates | 50+ persistent facts per predicate | TODO_0052 |
 
 ### ~~Inline predicted step~~ (rejected — marginal gain, damages architecture)
 

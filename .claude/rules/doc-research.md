@@ -53,6 +53,6 @@ Assign one of these categories (or create a new one if none fits):
 - **Numbered filenames.** All files must follow the `NNNN_kebab-title.md` convention.
 - Keep documents focused on surveying external work. Novel contributions belong in `doc/theory/`.
 - CALC-specific implementation documentation belongs in `doc/documentation/`.
-- Design deliberations, open questions, and planned work belong in `doc/todo/`.
-- If a file contains both external research and CALC-specific content, split it: external parts stay in research/, CALC parts go to theory/documentation/todo/ as appropriate.
+- Design deliberations, open questions, and planned work belong in TODOs (managed in `~/src/os_data/todo/`).
+- If a file contains both external research and CALC-specific content, split it: external parts stay in research/, CALC parts go to theory/documentation as appropriate.
 - When referencing other documents, use the numbered prefix (e.g., RES_0001, THY_0001, TODO_0001, DEF_0001).

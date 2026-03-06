@@ -103,10 +103,11 @@ out/                     # Generated outputs
 | `doc/research/` | **External knowledge** — literature surveys, paper summaries, technique catalogs sourced from existing work | `NNNN_title.md` + `meta.yaml` | `0007_chr-linear-logic.md` |
 | `doc/theory/` | **Our original contributions** — novel theorems, proof sketches, design frameworks unique to CALC | `NNNN_title.md` + `meta.yaml` | `0001_exhaustive-forward-chaining.md` |
 | `doc/documentation/` | **How CALC works NOW** — system architecture, data-flow docs, reference material | free-form | `architecture.md`, `content-addressed-store.md` |
-| `doc/todo/` | **Numbered task specs** — planned work, bugs, research tasks | `NNNN_title.md` + `meta.yaml` | `0041_unified-rule-matching.md` |
 | `doc/def/` | **Atomic definitions** — one concept per file, encyclopedia of terms | `NNNN_title.md` + `meta.yaml` | `0005_internal-vs-external-choice.md` |
 
-**Decision heuristic:** "Did we invent it?" → `theory/`. "Did someone else write about it?" → `research/`. "Does it describe the system as-is?" → `documentation/`. "Is it a concrete task to do?" → `todo/`. "Is it a single concept/term to define?" → `def/`.
+**Decision heuristic:** "Did we invent it?" → `theory/`. "Did someone else write about it?" → `research/`. "Does it describe the system as-is?" → `documentation/`. "Is it a single concept/term to define?" → `def/`.
+
+**TODOs** are managed externally in `~/src/os_data/todo/`, not in this repo. Reference them by identifier (e.g., `TODO_0068`) — don't create `doc/todo/` here.
 
 ## Diagrams
 

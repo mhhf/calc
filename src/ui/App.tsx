@@ -12,7 +12,6 @@ const ManualProof = lazy(() => import('./pages/ManualProof'));
 const DocIndex = lazy(() => import('./pages/DocIndex'));
 const DocPage = lazy(() => import('./pages/DocPage'));
 const ResearchIndex = lazy(() => import('./pages/ResearchIndex'));
-const TodoIndex = lazy(() => import('./pages/TodoIndex'));
 
 // Root layout wrapper for all routes
 export function RootLayout(props: ParentProps) {
@@ -43,6 +42,4 @@ export const routes = [
   { path: '/theory/:slug', component: DocPage },
   { path: '/def', component: ResearchIndex },
   { path: '/def/:slug', component: DocPage },
-  { path: '/todo', component: TodoIndex },
-  { path: '/todo/:slug', component: DocPage },
 ];

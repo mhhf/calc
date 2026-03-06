@@ -9,7 +9,7 @@ category: "Symbolic Execution"
 
 # Equational Completion for Arithmetic in ILL
 
-**Status:** Theoretical analysis. Applies only if expression constructors (`plus_expr`, etc.) are adopted (approaches R1, R3-R5). The alternative — keeping all computation in backward chaining via loli-freeze (T6) and eigenvariables (R2) — avoids expression terms entirely and does not require equational completion. See `doc/todo/0002_symexec-expression-decision.md` for the decision checkpoint.
+**Status:** Theoretical analysis. Applies only if expression constructors (`plus_expr`, etc.) are adopted (approaches R1, R3-R5). The alternative — keeping all computation in backward chaining via loli-freeze (T6) and eigenvariables (R2) — avoids expression terms entirely and does not require equational completion. See TODO_0002 for the decision checkpoint.
 
 ## What Is Equational Completion?
 

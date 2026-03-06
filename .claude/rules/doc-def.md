@@ -60,4 +60,4 @@ references: []      # papers, books, URLs
 - **Atomic.** A definition should not grow into a survey or tutorial. If it exceeds ~40 lines of body text, split it.
 - **Stable.** Definitions describe what something IS, not how it changed. No status updates.
 - **Cross-reference via `see_also`**, not inline prose. Keep each file self-contained.
-- **No duplication with `doc/todo/`.** Definitions describe concepts; TODOs describe work to do.
+- **No duplication with TODOs** (managed in `~/src/os_data/todo/`). Definitions describe concepts; TODOs describe work to do.
