@@ -506,7 +506,32 @@ let {c}         = r2 (b1, b3) in
 (c, b2)                              -- final state = return value
 ```
 
-**Loli continuations:** When state contains `f : A -o {B}` and `a : A`, `matchFirstLoli` fires. This is loli elimination (function application): `f a : {B}`. In the monadic setting: `let {p} = (f a) in ...`. Same shape as any rule application -- the loli IS the rule being applied.
+**Head terms (`R` in `let {p} = R in E`):** In CLF, the rule name IS the term constructor (a signature constant applied to arguments). No wrapper like `forward_step(name, args)`. The rule name itself is the head of the atomic term.
+
+Two kinds of head terms:
+
+*Calculus-level (from ILL rules, same for every program):*
+```
+loli_apply(f, a)        -- loli elimination (f : A -o {B}, a : A)
+```
+
+*Program-level (from .ill forward rules, domain-specific):*
+```
+evm_add(x, y, w)        -- x:num, y:num, w:!plus (consumed + persistent)
+evm_jumpi(pc, cond)      -- conditional jump
+transfer(from, to, amt)  -- user-defined rule
+```
+
+Full forward trace example:
+```
+let {z}   = evm_add(num_3, num_5, !plus_3_5_8) in    -- program rule
+let {w}   = loli_apply(f, z) in                       -- loli elimination
+tensor_r(w, ...)                                       -- rightFocus return
+```
+
+Program-level constructors are NOT in the ss2.7 catalog (that lists ILL connective constructors). They are part of the signature -- each `.ill` file's forward rules define its own head terms. The checker validates them as axioms: `{ valid: true, unverified: 'forwardRule' }` (or fully verified if clause resolution mode is on).
+
+**Loli continuations:** When state contains `f : A -o {B}` and `a : A`, `matchFirstLoli` fires. This is loli elimination: `let {p} = loli_apply(f, a) in ...`. Same shape as any rule application -- the loli IS the rule being applied.
 
 ### 3.3 rightFocus -> Synchronous Decomposition Term
 
@@ -615,10 +640,12 @@ A small, independent module that verifies `t : A`. This is the de Bruijn criteri
 
 ```javascript
 // lib/prover/check-term.js (~150 LOC, trusted)
-function checkTerm(gamma, delta, term, type) -> { valid: boolean, error?: string }
+function checkTerm(gamma, delta, term, type, lax = false) -> { valid: boolean, error?: string }
 ```
 
 Input: contexts, term, expected type -- all as expanded term objects (not Store hashes). Store stays outside the trust boundary (same principle as TODO_0067 ss4).
+
+The `lax` parameter tracks `|-` vs `|-_lax` mode (Pfenning-Davies 2001). It is a monotonic boolean: starts `false`, `monad_r` sets it to `true`, nothing resets it. `monad_l` is rejected when `lax === false`.
 
 ### 4.2 What It Checks -- Per-Rule Map Lookup
 
@@ -645,11 +672,18 @@ const checkers = {
   // ...one entry per rule
 };
 
-// Runtime: simple map lookup, no pattern matching
-function checkTerm(gamma, delta, term, type) {
+// Runtime: simple map lookup + monotonic lax flag
+function checkTerm(gamma, delta, term, type, lax = false) {
+  if (term.rule === 'monad_r' && !lax) {
+    return checkTerm(gamma, delta, term.children[0], unwrapMonad(type), true);
+  }
+  if (term.rule === 'monad_l') {
+    if (!lax) return { valid: false, error: 'monad_l outside lax mode' };
+    // stay in lax mode for continuation
+  }
   const check = checkers[term.rule];
   if (!check) return { valid: false, error: 'unknown rule: ' + term.rule };
-  return check(gamma, delta, term, type);
+  return check(gamma, delta, term, type, lax);
 }
 ```
 
