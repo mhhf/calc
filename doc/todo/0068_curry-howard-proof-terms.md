@@ -75,49 +75,111 @@ This is the "zoo of term assignments" (Martens 2014): same logic, different comp
 
 **Why NOT define terms in `.calc`/`.rules`:** The generic approach avoids needing new Store tags, new parser declarations, or new `.calc` entries for proof terms. Generic terms reuse existing infrastructure (ProofTree, rule names, descriptors). Layer 2 interpretations are post-processing, not part of the proof engine.
 
-### 1.2 `.term` Files -- Interpretation Maps
+### 1.2 Interpretation Files -- Rendering Maps
 
-Layer 2 interpretations are defined in `.term` files. Each `.term` file maps generic constructors to notation in a target language via pattern-based rendering templates:
-
-```
-% ill-lambda.term
-@name "lambda-calculus".
-
-tensor_r(u0, u1)                => (u0, u1).
-tensor_l(z, x0 x1 -> u0)       => let (x0, x1) = z in u0.
-loli_r(x0 -> u0)                => \x0. u0.
-loli_l(z, u0, x1 -> u1)        => z u0; x1. u1.
-with_r(u0, u1)                  => <u0, u1>.
-with_l1(z, x0 -> u0)            => let x0 = fst z in u0.
-with_l2(z, x1 -> u0)            => let x1 = snd z in u0.
-oplus_r1(u0)                    => inl u0.
-oplus_r2(u0)                    => inr u0.
-oplus_l(z, x0 -> u0, x1 -> u1) => case z of inl x0 => u0 | inr x1 => u1.
-one_r                            => ().
-one_l(z, u0)                    => let () = z in u0.
-bang_r(u0)                       => !u0.
-bang_l(z, x0 -> u0)              => let !x0 = z in u0.
-dereliction(z, x0 -> u0)        => let !x0 = z in u0.
-copy(u, x0 -> u0)               => copy u as x0 in u0.
-monad_r(u0)                     => {u0}.
-monad_l(z, x0 -> u0)            => let {x0} = z in u0.
-```
-
-A different `.term` file for the same logic:
+Layer 2 interpretations reuse `.calc` declaration syntax. Each interpretation file has an `@interpretation` header and declares rendering templates for generic proof-term constructors:
 
 ```
-% ill-session.term
-@name "session-types".
+% ill-lambda.calc
+@interpretation "lambda-calculus".
 
-tensor_r(u0, u1)                => send u0; u1.
-tensor_l(z, x0 x1 -> u0)       => (x0, x1) <- recv z; u0.
-loli_r(x0 -> u0)                => x0 <- accept; u0.
-with_r(u0, u1)                  => offer { left: u0, right: u1 }.
-oplus_r1(u0)                    => select left; u0.
-oplus_l(z, x0 -> u0, x1 -> u1) => branch z { left: x0.u0, right: x1.u1 }.
-bang_r(u0)                       => accept!; u0.
-monad_r(u0)                     => spawn u0.
+term: type.
+
+tensor_r: term -> term -> term
+  @ascii "(#1, #2)".
+
+tensor_l: term -> term -> term -> term -> term
+  @ascii "let (#2, #3) = #1 in #4".
+
+loli_r: term -> term -> term
+  @ascii "\\#1. #2".
+
+loli_l: term -> term -> term -> term -> term
+  @ascii "let #3 = #1 #2 in #4".
+
+with_r: term -> term -> term
+  @ascii "<#1, #2>".
+
+with_l1: term -> term -> term -> term
+  @ascii "let #2 = fst #1 in #3".
+
+with_l2: term -> term -> term -> term
+  @ascii "let #2 = snd #1 in #3".
+
+oplus_r1: term -> term
+  @ascii "inl #1".
+
+oplus_r2: term -> term
+  @ascii "inr #1".
+
+oplus_l: term -> term -> term -> term -> term -> term
+  @ascii "case #1 of inl #2 => #3 | inr #4 => #5".
+
+one_r: term
+  @ascii "()".
+
+one_l: term -> term -> term
+  @ascii "let () = #1 in #2".
+
+bang_r: term -> term
+  @ascii "!#1".
+
+bang_l: term -> term -> term -> term
+  @ascii "let !#2 = #1 in #3".
+
+dereliction: term -> term -> term -> term
+  @ascii "let !#2 = #1 in #3".
+
+copy: term -> term -> term -> term
+  @ascii "copy #1 as #2 in #3".
+
+monad_r: term -> term
+  @ascii "{#1}".
+
+monad_l: term -> term -> term -> term
+  @ascii "let {#2} = #1 in #3".
 ```
+
+A different interpretation for the same logic:
+
+```
+% ill-session.calc
+@interpretation "session-types".
+
+term: type.
+
+tensor_r: term -> term -> term
+  @ascii "send #1; #2".
+
+tensor_l: term -> term -> term -> term -> term
+  @ascii "(#2, #3) <- recv #1; #4".
+
+loli_r: term -> term -> term
+  @ascii "#1 <- accept; #2".
+
+with_r: term -> term -> term
+  @ascii "offer { left: #1, right: #2 }".
+
+oplus_r1: term -> term
+  @ascii "select left; #1".
+
+oplus_l: term -> term -> term -> term -> term -> term
+  @ascii "branch #1 { left: #2.#3, right: #4.#5 }".
+
+bang_r: term -> term
+  @ascii "accept!; #1".
+
+monad_r: term -> term
+  @ascii "spawn #1".
+```
+
+**How it works:**
+
+- **Declaration name = generic constructor name.** No extra linking annotation needed -- `tensor_r` in the interpretation file maps directly to the `tensor_r` generic proof term.
+- **Type signature = flattened arity.** Binding args are flattened: `tensor_l(z, x y -> u)` has 4 flattened args, so `term -> term -> term -> term -> term`.
+- **`#N` holes** (1-based) reference flattened args, same convention as `@latex` in `.calc`. Reordering is natural: `tensor_l` args are `[z, x, y, u]`, template `let (#2, #3) = #1 in #4` = `let (x, y) = z in u`.
+- **Rendering only** -- templates produce display strings, not parsed as expressions. Input always uses generic notation (`tensor_l(z, x y -> u)`). No mixfix parsing needed.
+- **`@interpretation` header** tells the loader to extract rendering templates, not register Store tags.
 
 **Loading pipeline:**
 
@@ -128,16 +190,16 @@ monad_r(u0)                     => spawn u0.
                                      v
                                Generic proof term
                                      v
-                  .term file -> renderTerm()
+              @interpretation .calc -> renderTerm()
                                      v
-                               Rendered specific term
+                               Rendered string
 ```
 
 ```javascript
-// Calculus object includes interpretations:
+// Interpretation loaded by existing .calc parser:
 calc.interpretations = {
-  'lambda-calculus': loadTermFile('ill-lambda.term'),
-  'session-types':   loadTermFile('ill-session.term'),
+  'lambda-calculus': loadInterpretation('ill-lambda.calc'),
+  'session-types':   loadInterpretation('ill-session.calc'),
 };
 
 // Rendering:
@@ -146,9 +208,9 @@ const rendered = renderTerm(generic, calc.interpretations['lambda-calculus']);
 // -> "\x. let (y, z) = x in (z, y)"
 ```
 
-`.term` files are **optional**. Without one, generic terms render as-is: `tensor_l(z, x0 x1 -> u0)`. Multiple `.term` files = different views of the same proof. Rules not mentioned in a `.term` file fall back to generic rendering.
+Interpretation files are **optional**. Without one, generic terms render as-is: `tensor_l(z, x0 x1 -> u0)`. Multiple interpretation files = different views of the same proof. Constructors not declared in an interpretation file fall back to generic rendering.
 
-**What `.term` is NOT (yet):** A rendering specification, not a full target language type system. Does not define reduction rules or type-checking for the target language. Could be extended later (e.g., `.theory` files with beta-reduction for the lambda interpretation).
+**What interpretation files are NOT:** A target language type system. No reduction rules, no type-checking for the target language. Could be extended later (e.g., beta-reduction rules for the lambda interpretation).
 
 ### 1.3 Role Removal
 
@@ -388,11 +450,11 @@ unreachable(reason)                     dead branch (unverified)
 ffi(name, args, result)                 FFI axiom (unverified)
 ```
 
-### 2.8 Lambda Interpretation (Layer 2 -- from `ill-lambda.term`)
+### 2.8 Lambda Interpretation (Layer 2 -- from `ill-lambda.calc`)
 
-ss2.1-2.5 above show typing rules using generic term constructors (Layer 1). The lambda notation in the `.term` file (ss1.2) maps these to human-readable syntax.
+ss2.1-2.5 above show typing rules using generic term constructors (Layer 1). The interpretation file (ss1.2) maps these to human-readable lambda notation via `@ascii` rendering templates.
 
-Without a `.term` file, proofs render using the generic grammar (ss2.7). With `@import "ill-lambda.term"` in a `.rules` file, rules can use lambda notation for term annotations. The `.term` file provides bidirectional mapping: parse (for `.rules` annotations) and render (for display).
+Without an interpretation file, proofs render using the generic grammar (ss2.7). With an `@interpretation` `.calc` file loaded, `renderTerm()` produces lambda-style output. The interpretation is render-only -- input always uses generic constructors.
 
 ---
 
@@ -400,7 +462,7 @@ Without a `.term` file, proofs render using the generic grammar (ss2.7). With `@
 
 ### 3.1 Backward Prover -> Proof Terms
 
-The backward prover (L2-L3) already builds proof trees. Each rule application maps to a generic proof term constructor (Layer 1). The right column shows the lambda interpretation (Layer 2, from `.term` file):
+The backward prover (L2-L3) already builds proof trees. Each rule application maps to a generic proof term constructor (Layer 1). The right column shows the lambda interpretation (Layer 2, from `@interpretation` file):
 
 | Rule name | Generic term | Lambda view |
 |---|---|---|
