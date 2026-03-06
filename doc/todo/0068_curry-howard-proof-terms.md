@@ -390,7 +390,7 @@ Gamma; Delta |- exists_r(s, t) : exists x.A
 
 Gamma; Delta, u:A[a/x] |- t : C                  (a fresh -- eigenvariable)
 --------------------------------------- existsL
-Gamma; Delta, z:exists x.A |- exists_l(z, a -> t) : C
+Gamma; Delta, z:exists x.A |- exists_l(z, a u -> t) : C
 ```
 
 **Reading direction:** Sequent calculus rules are read bottom->top for proof search. The conclusion (bottom) ALWAYS has the complex connective. The premise (top) has simpler sub-formulas. Reading bottom->top, you DECONSTRUCT. Reading top->bottom (proof construction), you INTRODUCE. Both perspectives describe the same rule.
@@ -445,7 +445,7 @@ monad_l(z, x0 -> u0)                    monad-L
 forall_r(a -> u0)                       forall-R (eigenvariable)
 forall_l(z, s, u -> u0)                 forall-L (u:A[s/x] bound over u0)
 exists_r(s, u0)                         exists-R (witness s)
-exists_l(z, a -> u0)                    exists-L (eigenvariable)
+exists_l(z, a u -> u0)                  exists-L (eigenvariable + value)
 unreachable(reason)                     dead branch (unverified)
 ffi(name, args, result)                 FFI axiom (unverified)
 ```
@@ -513,15 +513,15 @@ let {c}         = r2 (b1, b3) in
 After quiescence, `rightFocus` decomposes the succedent against residual state. This produces a term built from tensor/one/bang/id constructors:
 
 ```
-rightFocus(state, A * B) = (rightFocus(Delta1, A), rightFocus(Delta2, B))
-rightFocus(., 1)          = ()
-rightFocus(state, !A)     = !(id_persistent(A))
-rightFocus(state, atom)   = id_linear(atom)
+rightFocus(state, A * B) = tensor_r(rightFocus(Delta1, A), rightFocus(Delta2, B))
+rightFocus(., 1)          = one_r()
+rightFocus(state, !A)     = bang_r(id(u))         -- u:A from Gamma (persistent)
+rightFocus(state, atom)   = id(x)                 -- x:atom from Delta (linear)
 ```
 
 ### 3.4 Explore Tree and Proof Terms
 
-Non-fork nodes map straightforwardly to proof term structure:
+Explore nodes map straightforwardly to proof term structure:
 
 | Node type | Term fragment |
 |---|---|
@@ -547,15 +547,15 @@ The explore tree IS the proof term tree:
 
 | Explore node | Proof term |
 |---|---|
-| `branch(rule, child)` | `let {p} = rule(args) in child_term` |
-| `fork(children)` | `oplus_l(x, a -> child1, b -> child2)` |
+| `branch` (single child) | `let {p} = rule(args) in child_term` |
+| `branch` (multiple `choice` children) | `oplus_l(x, a -> child1, b -> child2)` |
 | `leaf` | return value (rightFocus decomposition) |
 | `dead` | `unreachable(reason)` -- see ss3.6 |
 | `bound` | `_|_` (incomplete) |
 | `cycle` | back-edge (future work, TODO_0009) |
 | `memo` | shared sub-term reference |
 
-Nested forks = nested case splits. k nested binary forks -> one proof term with k nested `oplus_l`, 2^k leaves. All paths are captured in a single term.
+In the explore tree, multi-alt branching (oplus) is a `branch` node with multiple children, each having a `choice` field. Nested multi-alt branches = nested case splits. k nested binary choices -> one proof term with k nested `oplus_l`, 2^k leaves.
 
 **CLF extension:** CLF's monadic expression grammar is `E ::= let {p} = R in E | M`. We extend it with case analysis: `E ::= let {p} = R in E | oplus_l(x, a -> E, b -> E) | M`. CLF excluded oplus from `{S}` for committed-choice semantics. CALC's exhaustive exploration IS case analysis -- we're not doing committed choice, we're computing both branches. The extension is proof-theoretically sound: oplus elimination inside the monad.
 
@@ -583,10 +583,10 @@ CALC has `contra/eq_neq : !eq X Y * !neq X Y -o { zero }`. When the constraint s
 
 ```
 oplus_l(x,
-  a. ...normal continuation...,       -- live branch
-  b. let {z} = contra_eq_neq(         -- dead branch: fire contradiction
-       !eq_witness, !neq_witness       -- witnesses from persistent state
-     ) in zero_l(z)                    -- z : 0 -> abort -> any type
+  a -> ...normal continuation...,      -- live branch
+  b -> let {z} = contra_eq_neq(        -- dead branch: fire contradiction
+         !eq_witness, !neq_witness      -- witnesses from persistent state
+       ) in zero_l(z)                   -- z : 0 -> abort -> any type
 )
 ```
 
@@ -598,8 +598,8 @@ When no contradiction rule exists (complex union-find chains, transitive inequal
 
 ```
 oplus_l(x,
-  a. ...normal continuation...,
-  b. unreachable("eq(X,Y) and neq(X,Y)")    -- trusted axiom
+  a -> ...normal continuation...,
+  b -> unreachable("eq(X,Y) and neq(X,Y)")  -- trusted axiom
 )
 ```
 
@@ -694,6 +694,9 @@ function genericTermSignature(rule) {
   const d = rule.descriptor;
   const args = [];
   if (d.side === 'l') args.push('z');  // principal consumed from antecedent
+  // Quantifier binding: eigenvariable or witness before premises
+  if (d.binding === 'eigenvariable') args.push('a');  // fresh eigenvariable
+  if (d.binding === 'metavar') args.push('s');         // witness term
   d.premises.forEach((p, i) => {
     const bindings = [
       ...(p.linear || []).map(idx => `x${idx}`),
@@ -707,6 +710,8 @@ function genericTermSignature(rule) {
 ```
 
 `genericTermSignature` returns the **shape** (arity, binding positions) -- computed once at load time. `extractTerm` (Phase 2) uses the signature to build concrete term instances.
+
+Descriptor fields used for term shape: `side` (principal), `binding` (eigenvariable/metavar for quantifiers), `premises[i].linear` (bound variables added to Delta), `premises[i].cartesian` (bound variables moved to Gamma). Other descriptor fields (`contextFlow`, `modeShift`, `arity`, `connective`, `emptyLinear`, `requiresSuccedentTag`) are for rule application/focusing, not term shape.
 
 Generic terms are content-addressed in the Store using a single `proof` tag with the rule name as a string child: `Store.put({ tag: 'proof', children: [rule_name, principal, sub0, ...] })`. One tag, all constructors. Content-addressing gives sub-proof sharing for free. Serializable via existing `store-binary.js`. When `{ terms: false }`, no proof nodes are created -- zero overhead.
 
@@ -855,7 +860,7 @@ Captured here for later exploration, not part of initial implementation.
 
 6. **Lazy extraction:** For very large explore trees (10K+ nodes), extract terms only for paths the user inspects, not the full tree.
 
-7. **Store tag capacity:** Currently `tags = new Uint8Array(capacity)` limits tag values to 0-255. If Layer 2 interpretations ever need Store-resident terms (e.g., dependent types), upgrading to `Uint16Array` (65536 tags) is a one-line change. `STRING_CHILD_TAGS`/`BIGINT_CHILD_TAGS` lookup tables would grow from 256B to 64KB (still trivial). PRED_BOUNDARY (currently 28) is unrelated -- it separates built-in tags from dynamic predicates. The generic Layer 1 approach avoids this concern entirely by keeping terms outside the Store.
+7. **Store tag capacity:** Currently `tags = new Uint8Array(capacity)` limits tag values to 0-255. Layer 1 uses a single `proof` tag (no capacity concern). If Layer 2 interpretations ever need additional Store-resident tags (e.g., dependent types), upgrading to `Uint16Array` (65536 tags) is a one-line change. `STRING_CHILD_TAGS`/`BIGINT_CHILD_TAGS` lookup tables would grow from 256B to 64KB (still trivial). PRED_BOUNDARY is unrelated -- it separates built-in tags from dynamic predicates.
 
 ---
 
