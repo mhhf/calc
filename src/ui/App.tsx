@@ -11,7 +11,6 @@ const MetaOverview = lazy(() => import('./pages/MetaOverview'));
 const ManualProof = lazy(() => import('./pages/ManualProof'));
 const DocIndex = lazy(() => import('./pages/DocIndex'));
 const DocPage = lazy(() => import('./pages/DocPage'));
-const ResearchIndex = lazy(() => import('./pages/ResearchIndex'));
 
 // Root layout wrapper for all routes
 export function RootLayout(props: ParentProps) {
@@ -34,12 +33,6 @@ export const routes = [
   { path: '/calculus', component: CalculusOverview },
   { path: '/health', component: CalculusHealth },
   { path: '/meta', component: MetaOverview },
-  { path: '/research', component: ResearchIndex },
-  { path: '/research/:slug', component: DocPage },
   { path: '/docs', component: DocIndex },
   { path: '/docs/:slug', component: DocPage },
-  { path: '/theory', component: ResearchIndex },
-  { path: '/theory/:slug', component: DocPage },
-  { path: '/def', component: ResearchIndex },
-  { path: '/def/:slug', component: DocPage },
 ];
