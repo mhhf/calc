@@ -8,6 +8,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - Keep the root directory clean (only CLAUDE.md and README.md). All documents go in `doc/` — see **doc/ Placement Rule** below
 - Don't write 'status update' documents or other verbose documents unless its told expricitly. Keep all documents descriptive of what IS not how it changed. Keep it VERY short and concise
 - rather then simply recognizing an error and fixing it - think always how to isolate it and test it in isolation - e.g. via unit and integration tests. If its not possible then how to encapsule it (e.g. via logs), then either testing the failed state via unit tests or testing your hypothesis via verifying the logs. only after you verified the fail and isolated the error, you should think about fixing it
+- Prefer reusable tools in the repo (tools/) before writing one-off /tmp scripts
 
 
 ## ANKI
@@ -22,7 +23,7 @@ answer
 
 ## Project Overview
 
-CALC is an experimental proof calculus system for linear logic, inspired by the [calculus toolbox](https://goodlyrottenapple.github.io/calculus-toolbox/doc/introduction.html). It implements a proof search engine with forward/backward chaining rules, dynamic parser generation, and multi-format output.
+CALC is a proof calculus system for Intuitionistic Linear Logic (ILL), inspired by the [calculus toolbox](https://goodlyrottenapple.github.io/calculus-toolbox/doc/introduction.html). It implements backward proof search (Andreoli focusing), forward execution (multiset rewriting), and exhaustive symbolic exploration — all generated from declarative rule definitions.
 
 ## Build & Development Commands
 
@@ -33,66 +34,108 @@ npm run build:bundle  # Regenerate out/ill.json from calculus specs
 npm test              # Core tests (431)
 npm run test:engine   # Engine tests (338)
 npm run test:all      # All tests (769)
+npm run bench:diff    # Cross-commit benchmark comparison (use this when asked to benchmark)
 ```
+
+## Architecture
+
+**Backward prover** (L1-L4): kernel.js → generic.js → focused.js → strategy/ (manual, auto)
+**Forward engine**: compile.js → match.js → strategy.js → forward.js / explore.js
+**Lax monad** `{A}`: bridges backward (L3) ↔ forward (engine) via `lib/prover/bridge.js`
+**Content-addressed store**: formulas are hashes (numbers), O(1) equality via `lib/kernel/store.js`
+
+See `doc/documentation/architecture.md` for the full prover lasagne (L1-L5).
+See `doc/documentation/parser-pipeline.md` for the three parser paths (one shared Pratt parser).
+
+**Web UI:** SolidJS + TypeScript + Tailwind CSS + Vite. Source: `src/ui/`, Build: `out/ui/`
 
 ## Directory Structure
 
 ```
-lib/                     # Core library
+lib/
 ├── kernel/              # Content-addressed AST: store, sequent, unify, substitute, ast
-├── prover/              # Proof search engine (5-layer architecture)
+├── prover/              # Backward proof search (5-layer architecture)
 │   ├── kernel.js        # L1: proof verification
 │   ├── generic.js       # L2: search primitives
 │   ├── focused.js       # L3: Andreoli focusing
 │   ├── strategy/        # L4: manual, auto
-│   ├── rule-interpreter.js  # descriptor → premise computation
-│   ├── context.js       # multiset operations
-│   ├── state.js         # proof state
-│   └── pt.js            # proof trees
+│   ├── bridge.js        # Lax monad mode switch (backward ↔ forward)
+│   └── rule-interpreter.js  # descriptor → premise computation
 ├── calculus/            # Calculus loader (from .calc/.rules files)
+│   └── builders.js      # Shared Pratt parser, deriveRoles()
 ├── engine/              # Forward/backward execution engine
-│   ├── match.js         # Pattern matching + indexing + persistent proving
+│   ├── match.js         # Pattern matching + persistent proving
 │   ├── strategy.js      # Rule selection: fingerprint, disc-tree, predicate layers
-│   ├── forward.js       # Execution + committed-choice main loop
+│   ├── forward.js       # Committed-choice main loop
 │   ├── explore.js       # Exhaustive DFS exploration + mutation/undo
 │   ├── compile.js       # Rule compilation (de Bruijn slots, metavar analysis)
+│   ├── fact-set.js      # FactSet (sorted typed-array groups) + Arena (undo log)
+│   ├── prove.js         # Backward chaining for persistent antecedents
 │   ├── convert.js       # .ill → content-addressed hashes
-│   ├── prove.js         # backward chaining
-│   └── ffi/             # foreign function interface
+│   ├── ffi/             # Foreign function interface (arithmetic, memory)
+│   └── opt/             # Toggleable optimization modules
 ├── meta-parser/         # Meta-level parser (@extends chain resolution)
-│   └── loader.js        # .calc/.family file loading
 ├── parser/              # Pratt parser + sequent parser
 ├── rules/               # .rules file parser (sequent notation → descriptors)
 ├── browser.js           # Browser-compatible API (loads from ill.json bundle)
-├── index.js             # Node.js API entry point
-└── hash.js              # Content-addressing hash functions
+└── index.js             # Node.js API entry point
 
 calculus/ill/            # ILL calculus definition
 ├── ill.calc             # Connective definitions
 ├── ill.rules            # Inference rules (sequent notation)
-├── lnl.family           # Family infrastructure
-├── prelude/types.ill    # Type bounds, booleans
-└── programs/            # Real programs (EVM, binary arithmetic, multisig)
+├── lnl.family           # Family infrastructure (LNL structural framework)
+├── prelude/             # Type bounds, booleans, arrays
+└── programs/            # EVM model, binary arithmetic, multisig contracts
 
-src/ui/                  # SolidJS frontend
-├── lib/calculus.ts      # Calculus API for browser
-├── lib/proofLogic.ts    # Proof logic adapter
-├── pages/               # Route pages
-└── components/          # UI components
-
-tests/                   # Test suite
-├── engine/              # Engine tests + fixtures
-└── *.test.js            # Core prover tests
-
-benchmarks/              # Performance benchmarks
-├── engine/              # Engine benchmarks & profiles
-├── proof/               # Proof search benchmarks
-└── micro/               # Micro-benchmarks
-
-out/                     # Generated outputs
-├── ill.json             # Bundled calculus for browser
-└── ui/                  # Built SolidJS app
+tests/                   # Test suite (core: *.test.js, engine: engine/)
+benchmarks/              # Performance benchmarks (engine/, proof/, micro/)
+tools/                   # CLI utilities (bench-compare.js, explore-inspect.js)
+out/                     # Generated: ill.json (bundled calculus), ui/ (built app)
 ```
+
+## ILL Connectives
+
+| Connective | ASCII | Polarity | Notes |
+|---|---|---|---|
+| tensor | `*` | positive | multiplicative conjunction |
+| loli | `-o` | negative | linear implication |
+| one | `I` | positive | multiplicative unit |
+| with | `&` | negative | additive conjunction (external choice) |
+| oplus | `+` | positive | additive disjunction (internal choice) — renamed from `plus` |
+| zero | `0` | positive | additive false — `zero_l` discards linear context |
+| bang | `!` | positive | exponential (reusable resource) |
+| monad | `{ _ }` | negative | lax monad (invertible right, sticky left) |
+| exists | `exists` | positive | existential |
+| forall | `forall` | negative | universal |
+
+Precedence: loli 50 < tensor 60 < oplus 65 < with 70 < bang 80
+
+## FFI Principle
+
+FFI is optimization, theory is semantics. Every FFI predicate MUST have backward clause definitions. FFI off → clause resolution takes over (slower but correct).
+
+- `provePersistentGoals` (match.js): FFI → state lookup → clause resolution
+- FFI failure is advisory: `{ success: false }` falls through to clause resolution
+- FFI-only (no clause fallback): `mem_expand`, `mod`
+
+## Common Gotchas
+
+- `Store.tagId()` returns 0 for both invalid IDs and `atom` tag — use `isTerm()` first
+- Atoms share tag 0, predicates have tag >= `PRED_BOUNDARY` (26) — use `hasPredicate`/`groupForPred`
+- Nullary constructors (e.g. `empty_mem`) are `atom('empty_mem')` not tag — use helpers
+- `code` facts are **linear** in EVM rules (consumed and re-produced)
+- `linearMeta.persistentDeps` (Set) needs Array↔Set conversion for JSON serialization
+- Per-rule compiled matchers were attempted and reverted — 59 closures → V8 megamorphic → ~25% regression (RES_0069). `compilePersistentStep` works: only ~4 closure types stays within V8 polymorphic IC threshold.
+- Manual prover: `getApplicableActions(state, { mode: 'focused' })` (default) vs `{ mode: 'unfocused' }`
+- Focus action names: `Focus_L` / `Focus_R` (not just `Focus`)
+
+## Tooling
+
+- `tools/bench-compare.js` — cross-commit benchmark comparison via git worktrees
+- `tools/explore-inspect.js` — `node tools/explore-inspect.js [--leaf N] [--all] <files...>`
+- `lib/engine/show.js` — `show(hash)`, `classifyLeaf(state)`, `showInteresting(state)`
+- `out/ill.json` precomputes: parserTables, rendererFormats, ruleSpecMeta, connectivesByType
+- `lib/engine/store-binary.js` — binary serialize/deserialize for precompiled SDK loading
 
 ## doc/ Placement Rule
 
@@ -109,15 +152,4 @@ out/                     # Generated outputs
 
 ## Diagrams
 
-Use ` ```mermaid` fenced code blocks for all diagrams in documentation. Both ` ```mermaid` (standard) and ` ```{mermaid}` (legacy) are supported by the markdown renderer. Renders as SVG via [Beautiful Mermaid](https://agents.craft.do/mermaid).
-
-## Architecture
-
-See `doc/documentation/architecture.md` for the full prover lasagne (L1-L5).
-See `doc/documentation/parser-pipeline.md` for the three parser paths.
-
-**Web UI (SolidJS):**
-- Tech: SolidJS + TypeScript + Tailwind CSS + Vite
-- Source: `src/ui/`
-- Build: `out/ui/`
-- Imports `lib/` directly (CommonJS modules)
+Use ` ```mermaid` fenced code blocks for all diagrams in documentation. Renders as SVG via [Beautiful Mermaid](https://agents.craft.do/mermaid).
