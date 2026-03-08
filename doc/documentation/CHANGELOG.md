@@ -744,4 +744,18 @@ Implemented content-addressed hashing for O(1) equality and structural sharing.
 
 ---
 
-*Last updated: 2026-02-01*
+---
+
+## Path Changes (post-CHANGELOG)
+
+Historical paths referenced above have since been reorganized:
+- `dev/research/` → `doc/research/`
+- `dev/FFI-IMPLEMENTATION-PLAN.md` → removed (completed)
+- `lib/mde/` → `lib/engine/` (consolidated)
+- `lib/v2/prover/forward.js` → `lib/engine/forward.js`
+- `lib/tree-sitter-mde/` → removed (TODO_0060: replaced with Pratt parser)
+- `lib/meta-parser/cst-to-ast.js` → removed (tree-sitter CST no longer used)
+- Tree-sitter WASM build → removed (all loaders now synchronous)
+- `@ffi`/`@mode` annotation parsing → not implemented (FFI registered programmatically)
+
+*Last updated: 2026-03-08*

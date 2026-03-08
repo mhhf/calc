@@ -28,7 +28,7 @@ graph TB
         STRATEGY["<b>strategy.js</b> (284 lines)<br/>Strategy stack builder:<br/>findMatch, findAllMatches"]
         STATEOPS["<b>state-ops.js</b> (99 lines)<br/>mutateState, consume,<br/>produce linear/persistent"]
         FORWARD["<b>forward.js</b> (128 lines)<br/>Execution + main loop:<br/>applyMatch, run, createState"]
-        SYMEXEC["<b>symexec.js</b> (333 lines)<br/>Exhaustive DFS exploration:<br/>explore, mutation+undo"]
+        SYMEXEC["<b>explore.js</b> (333 lines)<br/>Exhaustive DFS exploration:<br/>explore, mutation+undo"]
     end
 
     subgraph Opt["opt/ — Toggleable Optimizations (641 lines)"]
@@ -106,7 +106,7 @@ flowchart LR
     IDX --> CIDX["clause index"]
 
     COMPILED --> RUN["forward.run()"]
-    COMPILED --> EXPLORE["symexec.explore()"]
+    COMPILED --> EXPLORE["explore.explore()"]
     CIDX --> RUN
     CIDX --> EXPLORE
 ```
@@ -206,7 +206,7 @@ flowchart TB
 
     subgraph Selection["Selection Modes"]
         COMMITTED["<b>findMatch</b><br/>First match (committed choice)<br/>Used by forward.run()"]
-        EXHAUSTIVE["<b>findAllMatches</b><br/>All matches + loli scan<br/>Used by symexec.explore()"]
+        EXHAUSTIVE["<b>findAllMatches</b><br/>All matches + loli scan<br/>Used by explore.explore()"]
     end
 
     FPLAYER --> Selection
@@ -230,7 +230,7 @@ while steps < maxSteps:
   state = applyMatch(state, m)           // immutable: new state
 ```
 
-### Exhaustive: `symexec.explore()`
+### Exhaustive: `explore.explore()`
 
 DFS over all execution paths with mutation + undo via FactSet Arena:
 
@@ -338,7 +338,7 @@ The forward engine implements a fragment of CHR (Constraint Handling Rules):
 | Propagation history | N/A (lolis are self-deleting linear facts) |
 | omega_r occurrence iteration | Strategy stack (fingerprint → disc-tree → predicate) |
 | Committed choice | `forward.run()` |
-| CHR-v backtracking search | `symexec.explore()` with mutation + undo |
+| CHR-v backtracking search | `explore.explore()` with mutation + undo |
 
 Soundness: Betz & Fruhwirth (2013) — every CHR derivation corresponds to a valid ILL proof.
 

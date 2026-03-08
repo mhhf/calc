@@ -29,4 +29,4 @@ step(evm/add, {PC↦0,A↦3,B↦5},
 
 ## In CALC
 
-Implemented by `symexec.js:explore()`. Tree nodes are `{type, state, children}` objects. The judgment's soundness follows from Betz/Frühwirth Theorem 4.8 (per-step) composed with CHR∨ soundness (⊕ forks). The most promising unified formalization maps to QCHR's ω_l^{∃∀} system (Theorem 5.1). See TODO_0045.
+Implemented by `explore.js:explore()`. Tree nodes are `{type, state, children}` objects. The judgment's soundness follows from Betz/Frühwirth Theorem 4.8 (per-step) composed with CHR∨ soundness (⊕ forks). The most promising unified formalization maps to QCHR's ω_l^{∃∀} system (Theorem 5.1). See TODO_0045.

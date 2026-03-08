@@ -8,7 +8,7 @@ tags: [architecture, optimization, forward-engine, performance, implementation]
 
 # Optimization Architecture
 
-The forward engine accumulated ~12 optimizations over 16 stages (see `forward-optimization-roadmap.md`). These were originally interleaved directly in `match.js`, `symexec.js`, `strategy.js`, and `state-ops.js` — making the core logic hard to read, test, or toggle independently.
+The forward engine accumulated ~12 optimizations over 16 stages (see `forward-optimization-roadmap.md`). These were originally interleaved directly in `match.js`, `explore.js`, `strategy.js`, and `state-ops.js` — making the core logic hard to read, test, or toggle independently.
 
 Phase 1 of TODO_0066 extracted all optimizations into `lib/engine/opt/` modules, controlled by a profile system in `optimizer.js`. Optimizations are resolved as function pointers at engine creation time — no runtime branching in hot loops.
 
@@ -20,7 +20,7 @@ Phase 1 of TODO_0066 extracted all optimizations into `lib/engine/opt/` modules,
 
 **Closures over context objects.** When a module needs captured state (e.g., prediction needs `bytecodeElems` and `discIndex`), return a closure that captures the values directly. Property lookups on context objects in hot loops are measurably slower than closed-over variables. The prediction module (`createPredictNext`) returns `function(m) { ... }` or `null`, not `{ predict(m) { this.discIndex[...] } }`.
 
-**Core stays readable.** After extraction, `symexec.js` dropped from ~500 to 333 lines. The `go()` function reads as a clean DFS algorithm — cycle check, memo check, match, branch — with optimizations delegated to imported functions.
+**Core stays readable.** After extraction, `explore.js` dropped from ~500 to 333 lines. The `go()` function reads as a clean DFS algorithm — cycle check, memo check, match, branch — with optimizations delegated to imported functions.
 
 ## Module Map
 
@@ -30,7 +30,7 @@ lib/engine/
 ├── match.js              # Core matching (758 lines)
 ├── strategy.js           # Strategy stack builder (284 lines)
 ├── forward.js            # Single-path execution (128 lines)
-├── symexec.js            # DFS exploration (333 lines)
+├── explore.js            # DFS exploration (333 lines)
 ├── state-ops.js          # State mutation: consume/produce/mutateState (99 lines)
 ├── compile.js            # Rule compilation (534 lines)
 ├── constraint.js         # EqNeqSolver data structure (184 lines)

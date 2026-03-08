@@ -20,7 +20,7 @@ Stored on `compiled.limits` (plain numbers, JSON-serializable).
 
 ### Flat theta (`[v0, t0, v1, t1, ...]`)
 
-The hot path (forward.js, symexec.js) uses **flat interleaved theta** instead of pair arrays `[[v,t],...]`. This eliminates ~1,500 pair allocations per symexec run.
+The hot path (forward.js, explore.js) uses **flat interleaved theta** instead of pair arrays `[[v,t],...]`. This eliminates ~1,500 pair allocations per symexec run.
 
 - `match()` in unify.js: pushes `theta.push(p, t)`, scans `theta[ti]` stepping by 2
 - `applyFlat()` in substitute.js: scans `theta[i]` stepping by 2

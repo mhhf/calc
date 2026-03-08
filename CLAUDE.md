@@ -30,9 +30,9 @@ CALC is an experimental proof calculus system for linear logic, inspired by the 
 npm run dev           # Development server (http://localhost:3000)
 npm run build:ui      # Production build to out/ui/
 npm run build:bundle  # Regenerate out/ill.json from calculus specs
-npm test              # Run core tests (417 tests)
-npm run test:engine   # Run engine tests (107 tests)
-npm run test:all      # Run everything
+npm test              # Core tests (431)
+npm run test:engine   # Engine tests (338)
+npm run test:all      # All tests (769)
 ```
 
 ## Directory Structure
@@ -44,7 +44,7 @@ lib/                     # Core library
 │   ├── kernel.js        # L1: proof verification
 │   ├── generic.js       # L2: search primitives
 │   ├── focused.js       # L3: Andreoli focusing
-│   ├── strategy/        # L4: manual, auto, forward, symexec
+│   ├── strategy/        # L4: manual, auto
 │   ├── rule-interpreter.js  # descriptor → premise computation
 │   ├── context.js       # multiset operations
 │   ├── state.js         # proof state
@@ -54,17 +54,15 @@ lib/                     # Core library
 │   ├── match.js         # Pattern matching + indexing + persistent proving
 │   ├── strategy.js      # Rule selection: fingerprint, disc-tree, predicate layers
 │   ├── forward.js       # Execution + committed-choice main loop
-│   ├── symexec.js       # Exhaustive DFS exploration + mutation/undo
+│   ├── explore.js       # Exhaustive DFS exploration + mutation/undo
 │   ├── compile.js       # Rule compilation (de Bruijn slots, metavar analysis)
 │   ├── convert.js       # .ill → content-addressed hashes
 │   ├── prove.js         # backward chaining
 │   └── ffi/             # foreign function interface
-├── meta-parser/         # Meta-level parser (tree-sitter CST → AST)
-│   ├── cst-to-ast.js    # CST → structured AST
-│   └── loader.js        # @extends chain resolution
-├── parser/              # Sequent string parser
+├── meta-parser/         # Meta-level parser (@extends chain resolution)
+│   └── loader.js        # .calc/.family file loading
+├── parser/              # Pratt parser + sequent parser
 ├── rules/               # .rules file parser (sequent notation → descriptors)
-├── tree-sitter-mde/     # Tree-sitter grammar (shared by meta-parser + engine)
 ├── browser.js           # Browser-compatible API (loads from ill.json bundle)
 ├── index.js             # Node.js API entry point
 └── hash.js              # Content-addressing hash functions

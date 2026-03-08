@@ -19,7 +19,7 @@ graph TB
         subgraph L4Detail["L4 Strategy Layer"]
             direction LR
             L4B["<b>Backward</b><br/>manual.js<br/>auto.js"]
-            L4F["<b>Forward</b><br/>forward.js<br/>symexec.js"]
+            L4F["<b>Forward</b><br/>forward.js<br/>explore.js"]
         end
 
         L3["<b>L3 Focused</b> — focused.js"]
@@ -76,7 +76,7 @@ lib/engine/                      # Forward execution engine (L4c/L4d)
 ├── match.js                     # pattern matching + persistent proving
 ├── strategy.js                  # rule selection: strategy stack builder
 ├── forward.js                   # execution + committed-choice main loop
-├── symexec.js                   # exhaustive DFS exploration + mutation/undo
+├── explore.js                   # exhaustive DFS exploration + mutation/undo
 ├── state-ops.js                 # state mutation: consume/produce/mutateState
 ├── compile.js                   # rule compilation (de Bruijn slots, metavar analysis)
 ├── rule-analysis.js             # pattern roles, compiled substitution recipes
@@ -223,7 +223,7 @@ The forward engine has its own internal layered architecture, separate from the 
 
 ```mermaid
 graph TB
-    EXP["<b>Exploration</b> — symexec.js<br/>DFS, mutation+undo, branching"]
+    EXP["<b>Exploration</b> — explore.js<br/>DFS, mutation+undo, branching"]
     EXEC["<b>Execution</b> — forward.js<br/>applyMatch, run, createState"]
     STRAT["<b>Strategy</b> — strategy.js<br/>fingerprint → disc-tree → predicate"]
     MAT["<b>Matching</b> — match.js<br/>tryMatch, provePersistentGoals, matchLoli"]
@@ -257,7 +257,7 @@ graph TB
 
 **Persistent proving.** Persistent antecedents (`!C` in `A * B * !C -o { D }`) are resolved in two levels: (1) state lookup — check if the fact already exists in `state.persistent`, (2) backward prove — FFI as O(1) fast path, then clause resolution via `prove.js` as fallback. FFI handles arithmetic (inc, plus, neq, mul) and is conceptually an optimization within backward proving, not a separate mechanism.
 
-**Mutation+undo.** During DFS exploration, state is mutated in-place via FactSet + Arena and restored after each child subtree returns. Snapshots are taken only at terminal nodes. See `doc/documentation/symexec-optimizations.md`.
+**Mutation+undo.** During DFS exploration, state is mutated in-place via FactSet + Arena and restored after each child subtree returns. Snapshots are taken only at terminal nodes. See `doc/documentation/explore-optimizations.md`.
 
 ## L5 — UI Layer
 

@@ -1,13 +1,13 @@
 ---
-title: Symexec DFS Mutation+Undo Pattern
+title: Explore DFS Mutation+Undo Pattern
 modified: 2026-03-03
 summary: Why explore() mutates state, index, and pathVisited in-place
 tags: [performance, symexec, architecture]
 ---
 
-# Symexec DFS Mutation+Undo Pattern
+# Explore DFS Mutation+Undo Pattern
 
-The `explore()` function in `lib/engine/symexec.js` uses a mutation+undo
+The `explore()` function in `lib/engine/explore.js` uses a mutation+undo
 pattern for three data structures during DFS traversal. This document explains
 why each exists and the invariant they maintain.
 

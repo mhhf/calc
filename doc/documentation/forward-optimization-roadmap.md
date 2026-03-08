@@ -4,7 +4,7 @@
 
 Forward chaining: rules `A * B * !C -o { D * E }` consume linear facts, produce new ones. Persistent facts (`!C`) proved via backward chaining / FFI. Execution proceeds until quiescence.
 
-Key files: `forward.js` (engine), `symexec.js` (tree exploration), `rule-analysis.js` (compile-time analysis), `disc-tree.js` (discrimination tree indexing), `unify.js` (matching), `substitute.js` (substitution), `store.js` (content-addressed terms).
+Key files: `forward.js` (engine), `explore.js` (tree exploration), `rule-analysis.js` (compile-time analysis), `disc-tree.js` (discrimination tree indexing), `unify.js` (matching), `substitute.js` (substitution), `store.js` (content-addressed terms).
 
 ## Completed Stages
 
@@ -139,7 +139,7 @@ The concept generalizes: any program with symmetric structure (checking against 
 @control pc sh.
 ```
 
-The engine reads the annotation and auto-computes the control hash from those predicates. Programs without `@control` get no structural memo (no overhead). Implementation: ~30 LOC in `symexec.js` (read annotation, generalize `computeControlHash` to iterate over declared predicates) + grammar support for `@control` annotation.
+The engine reads the annotation and auto-computes the control hash from those predicates. Programs without `@control` get no structural memo (no overhead). Implementation: ~30 LOC in `explore.js` (read annotation, generalize `computeControlHash` to iterate over declared predicates) + grammar support for `@control` annotation.
 
 **Soundness condition:** the declared control predicates must fully determine the subtree branching structure. Branching on concrete values excluded from the hash would cause unsound memoization. For EVM, this holds because all oplus branching is on symbolic evars/freevars, not on concrete member-specific values like `bitPos`.
 
