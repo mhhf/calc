@@ -618,7 +618,6 @@
       "Bash(for * in *; do *; done*)",
       "Bash(while *; do *; done*)",
       "Bash(if *; then *; fi*)",
-      "Bash(case * in *) *;; esac*)",
       
       "Bash(* &)",
       "Bash(nohup * &)",
@@ -668,10 +667,8 @@
       "Bash(docker network create *)",
       "Bash(docker network rm *)",
       
-      "Bash(curl -f http://localhost:*/health*)",
-      "Bash(curl -f http://localhost:*/api/health*)",
-      "Bash(curl -f http://localhost:*/metrics*)",
-      "Bash(wget -O- http://localhost:*/health*)",
+      "Bash(curl -f http://localhost:*)",
+      "Bash(wget -O- http://localhost:*)",
       
       "Bash(git remote show origin*)",
       "Bash(git ls-remote *)",
@@ -754,7 +751,6 @@
       "WebFetch(domain:gmktec-k9)",
       "WebFetch(domain:api.openai.com)",
       "WebFetch(domain:api.anthropic.com)",
-      "WebSearch(**)",
       
       "Bash(aws *)",
       "Bash(aws s3 *)",
@@ -829,7 +825,7 @@
       "Bash(heroku domains*)",
       "Bash(heroku releases*)",
       
-      "TodoRead()",
+      "TodoRead(**)",
       "TodoWrite(**)",
       
       "Task(**)",
@@ -849,7 +845,6 @@
       "Bash(fdisk*)",
       "Bash(parted*)",
       
-      "Bash(:(){ :|:& };:*)",
       "Bash(*fork*bomb*)",
       
       "Bash(> /dev/sda*)",
