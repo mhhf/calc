@@ -1,0 +1,22 @@
+// Spike 05: Cross-namespace bus balance
+// Tests Q2: Does plonky3-composite support bus balance across namespaces?
+// Pattern: Main sends (key, value), ROM namespace receives them.
+// Uses $ [...] in [...] syntax which gets auto-converted to bus interactions
+// when using --linker-mode bus.
+
+let N: int = 8;
+
+// ROM namespace: fixed lookup table
+namespace ROM(N);
+    col fixed KEY = [10, 20, 30, 40, 50, 60, 70, 80];
+    col fixed VALUE = [11, 22, 33, 44, 55, 66, 77, 88];
+
+// Main namespace: looks up values from ROM
+namespace Main(N);
+    col fixed KEY = [10, 20, 30, 40, 50, 60, 70, 80];
+    col witness VALUE;
+
+    // Every row performs a lookup into ROM
+    // This creates a bus send in Main and bus receive in ROM
+    // when compiled with --linker-mode bus
+    [KEY, VALUE] in [ROM::KEY, ROM::VALUE];
