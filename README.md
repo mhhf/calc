@@ -20,7 +20,7 @@ npm run test:all      # All tests (769)
 
 **Backward proof search** — Given a sequent (goal), find a proof. Uses a five-layer architecture: L1 kernel (verification) → L2 generic search → L3 Andreoli focusing → L4 strategy (manual/auto). Adding a new connective requires only `.calc` + `.rules` changes; all layers pick it up automatically.
 
-**Forward execution** — Multiset rewriting: consume resources, produce new ones, repeat until quiescence. Rules compile to indexed matchers with fingerprint/discrimination-tree strategy stacks. Persistent predicates resolve via FFI (arithmetic) or backward clause resolution.
+**Forward execution** — Committed-choice strategy for the monadic fragment: same ILL derivation rules as the backward prover, but without search. Operates as multiset rewriting — consume resources, produce new ones, repeat until quiescence. Rules compile to indexed matchers with fingerprint/discrimination-tree strategy stacks. Persistent predicates resolve via FFI (arithmetic) or backward clause resolution.
 
 **Symbolic exploration** — Exhaustive DFS over all possible forward executions, building execution trees. Handles nondeterminism (which rule fires) and additive choice (internal branching). Used for model checking and program verification.
 
@@ -77,6 +77,6 @@ See `doc/` for detailed documentation:
 - `doc/documentation/content-addressed-store.md` — Store & term architecture
 - `doc/documentation/parser-pipeline.md` — Three parser paths from one Pratt parser
 - `doc/documentation/forward-chaining-engine.md` — Forward engine modules and data flow
-- `doc/documentation/lax-monad.md` — `{A}` monad bridging backward/forward
+- `doc/documentation/lax-monad.md` — `{A}` monad: polarity shift, execution profiles, connective roles
 - `doc/theory/0001_exhaustive-forward-chaining.md` — Theoretical foundations
 - `doc/theory/0002_motivation.md` — Vision and research directions

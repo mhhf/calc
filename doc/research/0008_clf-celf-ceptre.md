@@ -130,7 +130,7 @@ Celf uses **Andreoli's focusing** (same as CALC v2!) but with two phases:
 1. **Inversion phase:** Apply invertible rules eagerly
 2. **Focus phase:** Choose formula, decompose until blur
 
-The key difference: Celf's focusing spans BOTH backward and forward modes.
+The key difference: Celf's focusing spans BOTH backward and forward modes. This confirms the Chaudhuri-Pfenning (2006) insight: forward and backward chaining are two polarities of one focused proof search framework, not two separate proof systems. CALC's architecture reflects this — both live at L4 (strategy layer), implementing the same ILL derivation rules with different search strategies.
 
 ### 2.4 Query Directives
 

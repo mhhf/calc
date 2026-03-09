@@ -4,26 +4,14 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Principles
 - Rather then guessing, lying or faking confidence, admit you don't know or have incomplete information - ask me questions or tell me how i can support you, i'm happy to help.
-- always keep the git repository clean. On the end of a task, stash and commit with the correct message - keep it short. For a big chunk of work that will require iteration, user feedback, multiple commits, potentially sessions over multiple days - create a feature-branch, then rebase once you are done
 - Keep the root directory clean (only CLAUDE.md and README.md). All documents go in `doc/` — see **doc/ Placement Rule** below
 - Don't write 'status update' documents or other verbose documents unless its told expricitly. Keep all documents descriptive of what IS not how it changed. Keep it VERY short and concise
 - rather then simply recognizing an error and fixing it - think always how to isolate it and test it in isolation - e.g. via unit and integration tests. If its not possible then how to encapsule it (e.g. via logs), then either testing the failed state via unit tests or testing your hypothesis via verifying the logs. only after you verified the fail and isolated the error, you should think about fixing it
 - Prefer reusable tools in the repo (tools/) before writing one-off /tmp scripts
 
-
-## ANKI
-
-I want to create an anki deck where I learn potential concepts. Whenever I tell you or once we have research results (with my approval) - write new discoveries as flashcards of the style Q:A to doc/ANKI.md. They should have the style of mdanki
-```
-## questions
-
-answer
-```
-
-
 ## Project Overview
 
-CALC is a proof calculus system for Intuitionistic Linear Logic (ILL), inspired by the [calculus toolbox](https://goodlyrottenapple.github.io/calculus-toolbox/doc/introduction.html). It implements backward proof search (Andreoli focusing), forward execution (multiset rewriting), and exhaustive symbolic exploration — all generated from declarative rule definitions.
+CALC is a proof calculus system for experimenting with sequent-calculi with an implementation for Intuitionistic Linear Logic (ILL). Its inspired by the [calculus toolbox](https://goodlyrottenapple.github.io/calculus-toolbox/doc/introduction.html). It implements backward proof search (Andreoli focusing), forward execution (multiset rewriting), and exhaustive symbolic exploration — all generated from declarative rule definitions.
 
 ## Build & Development Commands
 
@@ -40,8 +28,8 @@ npm run bench:diff    # Cross-commit benchmark comparison (use this when asked t
 ## Architecture
 
 **Backward prover** (L1-L4): kernel.js → generic.js → focused.js → strategy/ (manual, auto)
-**Forward engine**: compile.js → match.js → strategy.js → forward.js / explore.js
-**Lax monad** `{A}`: bridges backward (L3) ↔ forward (engine) via `lib/prover/bridge.js`
+**Forward engine** (L4): compile.js → match.js → strategy.js → forward.js / explore.js — same ILL derivation rules as backward, committed-choice strategy that eliminates search
+**Lax monad** `{A}`: polarity shift (async→sync) at `lib/prover/bridge.js`. Three execution profiles: `'full'` (default, opaque), `'guided'` (oracle + verified ILL terms), `'off'` (pure backward)
 **Content-addressed store**: formulas are hashes (numbers), O(1) equality via `lib/kernel/store.js`
 
 See `doc/documentation/architecture.md` for the full prover lasagne (L1-L5).
@@ -141,14 +129,15 @@ FFI is optimization, theory is semantics. Every FFI predicate MUST have backward
 
 | Subdirectory | What goes there | Naming | Examples |
 |---|---|---|---|
-| `doc/research/` | **External knowledge** — literature surveys, paper summaries, technique catalogs sourced from existing work | `NNNN_title.md` + `meta.yaml` | `0007_chr-linear-logic.md` |
 | `doc/theory/` | **Our original contributions** — novel theorems, proof sketches, design frameworks unique to CALC | `NNNN_title.md` + `meta.yaml` | `0001_exhaustive-forward-chaining.md` |
 | `doc/documentation/` | **How CALC works NOW** — system architecture, data-flow docs, reference material | free-form | `architecture.md`, `content-addressed-store.md` |
 | `doc/def/` | **Atomic definitions** — one concept per file, encyclopedia of terms | `NNNN_title.md` + `meta.yaml` | `0005_internal-vs-external-choice.md` |
 
 **Decision heuristic:** "Did we invent it?" → `theory/`. "Did someone else write about it?" → `research/`. "Does it describe the system as-is?" → `documentation/`. "Is it a single concept/term to define?" → `def/`.
 
-**TODOs** are managed externally in `~/src/os_data/todo/`, not in this repo. Reference them by identifier (e.g., `TODO_0068`) — don't create `doc/todo/` here.
+**Research** documents live in `doc/research/`. They only contain **External knowledge** — literature surveys, paper summaries, technique catalogs sourced from existing work - named via `NNNN_title.md` e.g. `0007_chr-linear-logic.md`
+
+**TODOs** are managed externally in `~/src/hq/todo/`, not in this repo. Reference them by identifier (e.g., `TODO_0068`) — don't create `doc/todo/` here. When referencing TODOs from calc docs (research, theory, documentation), use the identifier only: `TODO_0068`. Do not create links to local files. Use the tools in `~/src/hq/bin` to work with todos: create, validate, tag, getNewId, update deps, etc
 
 ## Diagrams
 

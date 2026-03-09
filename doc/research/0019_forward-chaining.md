@@ -129,6 +129,8 @@ Chaudhuri and Pfenning (2006) showed that the choice of polarity for atoms deter
 
 This provides a structural explanation for forward/backward chaining: they are two polarities of the same focused proof search framework.
 
+**Consequence for proof terms:** Since forward and backward implement the same proof calculus, every forward step corresponds to a sequence of ILL inference rules. A forward rule firing decomposes as: `copy` (persistent clause from gamma) → `forall_l`× (instantiate quantifiers) → `loli_l` (consume antecedent) → `tensor_r` (assemble consumed resources) → `monad_l` (unwrap monadic result). The forward engine knows *which* derivation to pick without searching — it is an oracle/strategy that eliminates combinatorial search over rule selection and context splitting. The proof is the same ILL proof either way. This means the boundary between forward and backward is an optimization boundary, not a trust boundary — proof terms can be made complete across it (see TODO_0068 §10.5).
+
 ## 6. Lolis as Continuations in Forward Chaining
 
 When a loli `A ⊸ B` appears as a fact in the linear state, it acts as a **one-shot continuation**: it waits for `A` to become available, then fires, consuming both itself and `A`, producing `B`.

@@ -90,7 +90,11 @@ or false X X.
 not true false.
 not false true.
 
-% === Contradiction Axiom (defense-in-depth) ===
-% If contradictory eq/neq persist, produce zero (dead branch).
+% === Contradiction Axioms (defense-in-depth) ===
 % Redundant with constraint solver but serves as safety net.
+
+% Contradictory eq/neq for the same pair -> dead branch.
 contra/eq_neq: !eq X Y * !neq X Y -o { zero }.
+
+% Reflexivity: neq(X,X) is itself contradictory.
+contra/neq_refl: !neq X X -o { zero }.

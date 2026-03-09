@@ -1,6 +1,8 @@
-# Lax Monad `{A}` — Mode Switch & Connective Roles
+# Lax Monad `{A}` — Polarity Shift & Execution Profiles
 
-The monadic type `{S}` (CLF, Watkins et al. 2004) bridges backward and forward chaining. Outside the monad: goal-directed backward search with backtracking (L3 focused prover). Inside: data-driven forward chaining with committed choice (engine). The monad is a polarity shift — negative (async) to positive (sync).
+The monadic type `{S}` (CLF, Watkins et al. 2004) is a polarity shift — negative (async) to positive (sync). It marks where goal-directed backward search (L3 focused prover) meets data-driven forward execution (engine).
+
+The monad is a genuine logical connective, not an implementation artifact. But the decision to hand control to a separate forward engine at this boundary is a **strategy choice** — the forward engine implements the same ILL derivation rules as the backward prover (`copy` → `forall_l` → `loli_l` → `tensor_r` → `monad_l`), just without search. Three execution profiles control how the monadic fragment is handled (see Execution Profiles below).
 
 ## Rules
 
@@ -31,7 +33,19 @@ bridge.executeModeSwitch(seq, engineCalc, opts)
 
 Committed choice is irrevocable. If the overall backward proof fails, L3 backtracks to *before* `monad_r`, not inside the forward execution.
 
-Kernel verification: `verifyStep` returns `{ valid: true, unverified: 'modeSwitch' }` — structural check only, full certificate verification deferred (TODO_0008).
+Kernel verification: `verifyStep` returns `{ valid: true, unverified: 'modeSwitch' }` in `'full'` mode — structural check only. In `'guided'` mode, the monadic term decomposes into standard ILL inference steps and is fully verified by `check-term.js`.
+
+## Execution Profiles
+
+`opts.forward` controls how the monadic fragment is handled:
+
+| Profile | Forward engine role | Proof terms | Performance | Use case |
+|---------|-------------------|-------------|-------------|----------|
+| `'full'` (default) | Runs fully, backward sees opaque leaf | Opaque monadic let-chain | Maximum | Production, explore |
+| `'guided'` | Runs as oracle, enhanced trace guides ILL proof term construction | Complete ILL terms, every step verified | ~2-5× slower in monadic fragment | Proof export, verification |
+| `'off'` | Not used; backward prover searches inside monad | Complete ILL terms, pure backward | Intractable for large programs | Theoretical experiments |
+
+The profiles are a single flag checked at the `monad_r` mode-switch point. Everything upstream (inversion, focus, identity, copy) is identical. The `'full'` default has zero code path changes. See TODO_0068 §10.5 for implementation details.
 
 ## rightFocus Succedent Decomposition
 

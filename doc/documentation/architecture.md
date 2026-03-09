@@ -51,7 +51,7 @@ graph TB
     style L4F fill:#cce5ff,stroke:#004085
 ```
 
-The backward prover (L1-L3) and forward engine (L4c/d) share the content-addressed substrate but have independent architectures. See:
+The backward prover (L1-L3) and forward engine (L4c/d) share the content-addressed substrate and implement the same ILL derivation rules with different search strategies. The forward engine is a committed-choice strategy that eliminates search; the backward prover explores alternatives with backtracking. Both are strategies within one focused proof calculus (Chaudhuri & Pfenning 2006). See:
 - `doc/documentation/backward-prover.md` — backward prover layers
 - `doc/documentation/forward-chaining-engine.md` — forward engine modules
 
@@ -293,21 +293,30 @@ ProofState = {
 
 ## Backward vs Forward
 
+The backward prover and forward engine implement the same ILL proof calculus with different search strategies. Every forward step (consume linear facts, prove persistent goals, produce results) corresponds to a sequence of ILL inference rules: `copy` → `forall_l`× → `loli_l` → `tensor_r` → `monad_l`. The forward engine eliminates the combinatorial search over which derivation to pick — it is an oracle/strategy, not a separate proof system.
+
+This follows from Chaudhuri & Pfenning (2006): forward and backward chaining are two polarities of the same focused proof search framework. The polarity assignment determines which strategy handles which fragment. CALC's architecture reflects this — both live at L4 (strategy layer).
+
 | | Backward (L1–L3) | Forward (L4c/L4d) |
 |---|---|---|
 | **State** | Sequent `{ contexts, succedent }` | Flat multiset `{ linear: {h: count}, persistent: {h: true} }` |
 | **Matching** | Unification (bidirectional) | Pattern matching (one-way, matchIndexed) |
 | **Execution** | Proof tree construction | Multiset rewriting (consume/produce facts) |
 | **Indexing** | Rule enumeration from sequent | Strategy stack (fingerprint → disc-tree → predicate) |
+| **Derivation rules** | All ILL connectives | Same rules, search-free (committed choice) |
 | **Shared** | Store, unify.js, substitute.js | Store, unify.js, substitute.js |
+
+The difference is operational, not logical: the forward engine's flat multiset state is a sequent without succedent tracking (the monad commits), its one-way matching is unification where all terms are ground, and its multiset rewriting produces proof trees whose shape is determined (no search needed).
 
 See `doc/documentation/forward-optimization-roadmap.md` for profiling history (181ms → ~1ms).
 
-## Lax Monad `{A}` — Backward/Forward Mode Switch
+## Lax Monad `{A}` — Optimization Boundary
 
-The monadic type `{S}` bridges backward (L3) and forward (engine) chaining via a mode switch in `lib/prover/bridge.js`. When L3's inversion phase encounters `{S}` as succedent, `monad_r` transfers all linear resources to the forward engine, which runs to quiescence. `rightFocus` then decomposes the succedent against the residual state. Connective roles (`lib/calculus/builders.js:deriveRoles`) parameterize all engine tag dispatch for multi-logic support.
+The monadic type `{S}` marks an **optimization boundary** in `lib/prover/bridge.js`. When L3's inversion phase encounters `{S}` as succedent, `monad_r` fires. By default (`opts.forward = 'full'`), all linear resources transfer to the forward engine, which runs to quiescence as a committed-choice strategy. `rightFocus` then decomposes the succedent against the residual state.
 
-See `doc/documentation/lax-monad.md` for full details.
+The monad itself is a genuine logical connective (CLF, Watkins et al. 2004) — a polarity shift from negative (async) to positive (sync). But the decision to hand execution to a separate engine at this boundary is a strategy choice, not a logical necessity. With `opts.forward = 'guided'`, the forward engine runs as an oracle and the proof term decomposes into standard ILL inference steps. With `opts.forward = 'off'`, the backward prover handles the monadic fragment directly (intractable for large programs, but theoretically equivalent).
+
+Connective roles (`lib/calculus/builders.js:deriveRoles`) parameterize all engine tag dispatch for multi-logic support. See `doc/documentation/lax-monad.md` for full details.
 
 ## Open Research
 
@@ -323,4 +332,5 @@ See `doc/documentation/lax-monad.md` for full details.
 - Isabelle layering: kernel → tactics → Sledgehammer ([Paulson](https://arxiv.org/pdf/1907.02836))
 - Foundational Proof Certificates: focusing as proof format ([Miller](https://dl.acm.org/doi/10.1145/2503887.2503894))
 - Hodas-Miller lazy splitting ([1994](https://www.sciencedirect.com/science/article/pii/S0890540184710364))
+- Chaudhuri-Pfenning: forward/backward as polarities of one focused framework ([2006](https://www.cs.cmu.edu/~kchaudhuri/papers/ffb-ijcar06.pdf))
 - Sterling-Harper proof refinement logics ([2017](https://arxiv.org/abs/1703.05215))
