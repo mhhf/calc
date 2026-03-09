@@ -47,6 +47,26 @@ Kernel verification: `verifyStep` returns `{ valid: true, unverified: 'modeSwitc
 
 The profiles are a single flag checked at the `monad_r` mode-switch point. Everything upstream (inversion, focus, identity, copy) is identical. The `'full'` default has zero code path changes. See TODO_0068 §10.5 for implementation details.
 
+## Guided Term Construction
+
+In `'guided'` mode, each forward step maps to a sequence of ILL inference rules — the forward engine IS the backward prover, just without search. Every step produces:
+
+```
+copy(ruleHash,                           — from persistent gamma
+  loli_l(groundLoli,                     — focused 2-subterm variant
+    antecedentProof,                     — tensor_r/id/promotion tree
+    monad_l(groundMonadic,               — unwrap monadic consequent
+      consequentDecomp(continuation))))  — tensor_l/bang_l/one_l chain
+```
+
+**Pipeline:** `forward.run()` with `evidence: true` → enriched trace (theta, slots, persistentEvidence per step) → `buildGuidedTerm()` folds trace right-to-left → `monad_r(evidence: fullILLTerm)` → `check-term.js` verifies the complete term.
+
+**Antecedent proof** (`buildAntecedentProof`): Walks the Store formula tree of the antecedent pattern. `tensor` → `tensor_r(left, right)`, `bang` → `promotion(evidenceTerm)`, `one` → `one_r()`, atom → `id(groundHash)`.
+
+**Consequent decomposition** (`buildConsequentDecomp`): After `monad_l` adds the body to delta, decomposes tensors and absorbs banged parts. `tensor` → `tensor_l(ground, recurse)`, `bang` → `bang_l(ground, cont)`, `one` → `one_l(ground, cont)`.
+
+**Evidence collection**: `provePersistentGoals` threads a mutable `evidenceOut` array recording how each persistent antecedent was resolved (state lookup, FFI, or clause resolution). This feeds `buildAntecedentProof`'s promotion terms.
+
 ## rightFocus Succedent Decomposition
 
 After quiescence, `rightFocus` verifies the forward engine produced what the backward prover requested by decomposing a synchronous type against the residual state:

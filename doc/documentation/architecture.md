@@ -69,6 +69,9 @@ lib/prover/                      # Backward proof search
 ├── state.js                     # shared: FocusedProofState class
 ├── pt.js                        # shared: ProofTree class
 ├── rule-interpreter.js          # shared: builds rule specs from .rules descriptors
+├── generic-term.js              # proof term extraction from backward proof trees
+├── guided-term.js               # forward trace → complete ILL proof terms
+├── check-term.js                # proof term type checker (trusted kernel extension)
 └── index.js                     # convenience re-exports
 
 lib/engine/                      # Forward execution engine (L4c/L4d)
@@ -155,6 +158,8 @@ createKernel(calculus) → {
 ```
 
 Rule verification uses `rule-interpreter.js` to compute expected premises from the rule descriptor, then compares against the actual premises.
+
+**Proof term checker** (`check-term.js`): Trusted kernel extension for Curry-Howard proof terms. Verifies `Gamma; Delta |- t : A` via per-rule checker map generated from descriptors at load time. Includes focused loli_l (2-subterm) for guided execution terms. See `doc/documentation/proof-terms.md`.
 
 ## L2 — Generic Prover (Search Primitives)
 
