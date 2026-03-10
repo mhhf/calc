@@ -1,0 +1,15 @@
+[workspace]
+members = ["ill-checker"]
+resolver = "2"
+
+[workspace.dependencies]
+openvm-stark-backend = { git = "https://github.com/openvm-org/stark-backend.git", tag = "v1.3.0" }
+openvm-stark-sdk = { git = "https://github.com/openvm-org/stark-backend.git", tag = "v1.3.0" }
+
+p3-air = "=0.4.1"
+p3-field = "=0.4.1"
+p3-matrix = "=0.4.1"
+p3-baby-bear = "=0.4.1"
+p3-goldilocks = "=0.4.1"
+
+rand = { version = "0.9", default-features = false, features = ["std_rng"] }
