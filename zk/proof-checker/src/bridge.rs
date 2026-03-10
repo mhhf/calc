@@ -27,6 +27,9 @@ use serde::Deserialize;
 use crate::chips::{
     discard::DiscardChip,
     dup::DupChip,
+    flat_final::FlatFinalChip,
+    flat_init::FlatInitChip,
+    flat_step::FlatStepChip,
     formula_rom::FormulaRomAir,
     gamma_rom::GammaRomAir,
     init::InitChip,
@@ -183,9 +186,81 @@ pub fn prove_witness(witness: &WitnessJson) -> Result<(), String> {
         .map_err(|e| format!("STARK verification failed: {e:?}"))
 }
 
-/// Parse a JSON string and prove it.
+/// Flat witness format produced by `lib/zk/flat-witness.js`.
+///
+/// Uses only CONTEXT_BUS + GAMMA_BUS. No obligations, no formula
+/// decomposition. Chips: FlatInitChip + FlatStepChip + FlatFinalChip + GammaRomAir.
+#[derive(Deserialize, Debug)]
+pub struct FlatWitnessJson {
+    pub format: String,
+    pub chips: HashMap<String, Vec<Vec<u32>>>,
+    pub gamma_rom: Vec<Vec<u32>>,
+}
+
+/// Prove a flat witness, returning Ok(()) on success.
+pub fn prove_flat_witness(witness: &FlatWitnessJson) -> Result<(), String> {
+    let min_rows = 4;
+
+    let mut airs: Vec<AirRef<_>> = Vec::new();
+    let mut traces: Vec<RowMajorMatrix<BabyBear>> = Vec::new();
+    let mut pis: Vec<Vec<BabyBear>> = Vec::new();
+
+    // 1. FlatInitChip
+    let init_rows = witness.chips.get("flat_init").ok_or("missing flat_init chip")?;
+    airs.push(Arc::new(FlatInitChip) as AirRef<_>);
+    traces.push(if init_rows.is_empty() {
+        empty_trace(2, min_rows)
+    } else {
+        build_trace(init_rows, 2, min_rows)
+    });
+    pis.push(vec![]);
+
+    // 2. FlatStepChip
+    let step_rows = witness.chips.get("flat_step").ok_or("missing flat_step chip")?;
+    airs.push(Arc::new(FlatStepChip) as AirRef<_>);
+    traces.push(if step_rows.is_empty() {
+        empty_trace(crate::chips::flat_step::WIDTH, min_rows)
+    } else {
+        build_trace(step_rows, crate::chips::flat_step::WIDTH, min_rows)
+    });
+    pis.push(vec![]);
+
+    // 3. FlatFinalChip
+    let final_rows = witness.chips.get("flat_final").ok_or("missing flat_final chip")?;
+    airs.push(Arc::new(FlatFinalChip) as AirRef<_>);
+    traces.push(if final_rows.is_empty() {
+        empty_trace(2, min_rows)
+    } else {
+        build_trace(final_rows, 2, min_rows)
+    });
+    pis.push(vec![]);
+
+    // 4. GammaRomAir
+    airs.push(Arc::new(GammaRomAir) as AirRef<_>);
+    traces.push(if witness.gamma_rom.is_empty() {
+        empty_trace(3, min_rows)
+    } else {
+        build_trace(&witness.gamma_rom, 3, min_rows)
+    });
+    pis.push(vec![]);
+
+    BabyBearPoseidon2Engine::run_simple_test_fast(airs, traces, pis)
+        .map(|_| ())
+        .map_err(|e| format!("STARK verification failed: {e:?}"))
+}
+
+/// Parse a JSON string and prove it. Dispatches based on `format` field.
 pub fn prove_json(json: &str) -> Result<(), String> {
-    let witness: WitnessJson = serde_json::from_str(json)
+    let value: serde_json::Value = serde_json::from_str(json)
         .map_err(|e| format!("JSON parse error: {e}"))?;
-    prove_witness(&witness)
+
+    if value.get("format").and_then(|v| v.as_str()) == Some("flat") {
+        let witness: FlatWitnessJson = serde_json::from_value(value)
+            .map_err(|e| format!("Flat witness parse error: {e}"))?;
+        prove_flat_witness(&witness)
+    } else {
+        let witness: WitnessJson = serde_json::from_value(value)
+            .map_err(|e| format!("Tree witness parse error: {e}"))?;
+        prove_witness(&witness)
+    }
 }

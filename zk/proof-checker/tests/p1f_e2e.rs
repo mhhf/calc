@@ -91,3 +91,8 @@ fn e2e_nested_loli_tensor() {
 fn e2e_solc_forward() {
     prove_json(&load_fixture("solc_forward")).expect("solc_forward: 279-step EVM symbolic execution");
 }
+
+#[test]
+fn e2e_solc_flat() {
+    prove_json(&load_fixture("solc_flat")).expect("solc_flat: 279-step flat rewriting certificate");
+}

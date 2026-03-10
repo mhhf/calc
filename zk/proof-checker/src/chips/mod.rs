@@ -1,5 +1,8 @@
 pub mod discard;
 pub mod dup;
+pub mod flat_final;
+pub mod flat_init;
+pub mod flat_step;
 pub mod formula_rom;
 pub mod gamma_rom;
 pub mod init;
