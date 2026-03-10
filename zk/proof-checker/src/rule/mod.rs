@@ -128,9 +128,11 @@ impl ColumnLayout {
         let active = col;
         col += 1;
 
-        // hash: principal formula hash, identity principal, gamma key, or context resource
+        // hash: principal formula hash, identity principal, gamma key, context resource,
+        // or obligation goal (oblig_receive needs hash for bus interaction)
         let needs_hash = spec.tag.is_some() || spec.is_identity || spec.gamma_lookup
-            || spec.ctx_receive || spec.ctx_sends.iter().any(|s| matches!(s, CtxSend::Hash));
+            || spec.ctx_receive || spec.oblig_receive
+            || spec.ctx_sends.iter().any(|s| matches!(s, CtxSend::Hash));
         let hash = if needs_hash {
             let c = col;
             col += 1;

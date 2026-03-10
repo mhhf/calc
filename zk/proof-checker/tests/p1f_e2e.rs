@@ -86,3 +86,8 @@ fn e2e_copy() {
 fn e2e_nested_loli_tensor() {
     prove_json(&load_fixture("nested_loli_tensor")).expect("nested: (A⊗B)⊸C, A, B ⊢ C");
 }
+
+#[test]
+fn e2e_solc_forward() {
+    prove_json(&load_fixture("solc_forward")).expect("solc_forward: 279-step EVM symbolic execution");
+}

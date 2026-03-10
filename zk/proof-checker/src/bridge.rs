@@ -30,6 +30,7 @@ use crate::chips::{
     formula_rom::FormulaRomAir,
     gamma_rom::GammaRomAir,
     init::InitChip,
+    subst::SubstChip,
     zero_l::ZeroLChip,
 };
 use crate::rule::{RuleChip, RuleSpec};
@@ -50,14 +51,14 @@ pub struct WitnessJson {
 }
 
 /// Known special chip names that are NOT generic RuleChips.
-const SPECIAL_CHIPS: &[&str] = &["init", "dup", "zero_l", "discard"];
+const SPECIAL_CHIPS: &[&str] = &["init", "dup", "zero_l", "discard", "subst"];
 
 /// Build a padded RowMajorMatrix from dynamic-width rows.
 fn build_trace(rows: &[Vec<u32>], width: usize, min_rows: usize) -> RowMajorMatrix<BabyBear> {
     let n = rows.len().max(min_rows).next_power_of_two();
     let mut data = Vec::with_capacity(n * width);
-    for row in rows {
-        assert_eq!(row.len(), width, "row width mismatch: expected {width}, got {}", row.len());
+    for (i, row) in rows.iter().enumerate() {
+        assert_eq!(row.len(), width, "row {i} width mismatch: expected {width}, got {}", row.len());
         for &v in row {
             data.push(BabyBear::from_u32(v));
         }
@@ -123,7 +124,16 @@ pub fn prove_witness(witness: &WitnessJson) -> Result<(), String> {
     });
     pis.push(vec![]);
 
-    // 5. Generic RuleChips — specs read from witness (fully generic)
+    // 5. SubstChip (substitution bridge for loli bodies with freevars)
+    let subst_rows = witness.chips.get("subst");
+    airs.push(Arc::new(SubstChip) as AirRef<_>);
+    traces.push(match subst_rows {
+        Some(rows) if !rows.is_empty() => build_trace(rows, 3, min_rows),
+        _ => empty_trace(3, min_rows),
+    });
+    pis.push(vec![]);
+
+    // 6. Generic RuleChips — specs read from witness (fully generic)
     let mut rule_names: Vec<String> = witness.chips.keys()
         .filter(|name| !SPECIAL_CHIPS.contains(&name.as_str()))
         .cloned()
@@ -137,6 +147,9 @@ pub fn prove_witness(witness: &WitnessJson) -> Result<(), String> {
         let chip = RuleChip::new(spec);
         let width = chip.layout.width;
         let rows = witness.chips.get(name).unwrap();
+        if !rows.is_empty() && rows[0].len() != width {
+            panic!("chip '{}': layout width={} but first row has {} columns", name, width, rows[0].len());
+        }
         airs.push(Arc::new(chip) as AirRef<_>);
         traces.push(if rows.is_empty() {
             empty_trace(width, min_rows)

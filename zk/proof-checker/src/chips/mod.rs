@@ -3,4 +3,5 @@ pub mod dup;
 pub mod formula_rom;
 pub mod gamma_rom;
 pub mod init;
+pub mod subst;
 pub mod zero_l;
