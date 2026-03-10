@@ -18,7 +18,7 @@ const { createProver } = require('../lib/prover/focused');
 const { buildRuleSpecs } = require('../lib/prover/rule-interpreter');
 const { extractTerm } = require('../lib/prover/generic-term');
 const { createChecker } = require('../lib/prover/check-term');
-const { generateWitness, ZK_TAGS } = require('../lib/zk/witness');
+const { generateWitness, deriveZkTags } = require('../lib/zk/witness');
 
 let calc;
 let seqParser;
@@ -26,6 +26,7 @@ let prover;
 let checker;
 let ruleSpecs;
 let alternatives;
+let ZK_TAGS;
 
 const FIXTURE_DIR = path.join(__dirname, '..', 'zk', 'ill-checker', 'tests', 'fixtures');
 
@@ -57,7 +58,7 @@ function proveAndWitness(sequentStr, name) {
     `term should be valid: ${checkResult.error || ''}`);
 
   // Generate witness
-  const witness = generateWitness(term, seq);
+  const witness = generateWitness(term, seq, { calculus: calc });
 
   // Save fixture for Rust integration tests
   if (name) saveFixture(name, witness);
@@ -77,7 +78,7 @@ function proveAndWitnessCart(linear, cartesian, succ, name) {
   const checkResult = checker.check(term, seq);
   assert.strictEqual(checkResult.valid, true,
     `term should be valid: ${checkResult.error || ''}`);
-  const witness = generateWitness(term, seq);
+  const witness = generateWitness(term, seq, { calculus: calc });
   if (name) saveFixture(name, witness);
   return { term, witness, seq };
 }
@@ -90,6 +91,7 @@ before(async () => {
   const built = buildRuleSpecs(calc);
   ruleSpecs = built.specs;
   alternatives = built.alternatives;
+  ZK_TAGS = deriveZkTags(calc);
 });
 
 describe('ZK Witness Generator', () => {

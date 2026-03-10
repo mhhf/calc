@@ -29,6 +29,15 @@ async function main() {
   const ruleSpecMeta = computeRuleSpecMeta(ill.rules);
   const connectivesByType = computeConnectivesByType(ill.constructors);
 
+  // ZK tag mapping — assigns a unique integer to each formula connective.
+  // Used by the FORMULA_BUS in STARK circuits. Derived from definition order
+  // in .calc (excluding 'atom' which is structural, not a connective).
+  const zkTags = {};
+  connectivesByType.formula
+    .filter(name => name !== 'atom')
+    .forEach((name, i) => { zkTags[name] = i + 1; });
+  console.log(`ZK tags: ${JSON.stringify(zkTags)}`);
+
   // Extract the data we need for browser use
   // (everything except functions which can't be serialized)
   const bundle = {
@@ -46,7 +55,8 @@ async function main() {
     parserTables,
     rendererFormats,
     ruleSpecMeta,
-    connectivesByType
+    connectivesByType,
+    zkTags
   };
 
   // Ensure output directory exists

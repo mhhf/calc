@@ -9,6 +9,10 @@
 //! rows this zero_l application authorizes. LookupBus ensures the
 //! total discard count matches exactly.
 //!
+//! The zero_tag is parameterized — read from the witness JSON's tag
+//! mapping rather than hardcoded, so the chip adapts when connective
+//! definitions change.
+//!
 //! Columns (width 6): [hash, is_active, nonce_in, lax, goal, num_discards]
 
 use openvm_stark_backend::{
@@ -20,7 +24,6 @@ use openvm_stark_backend::{
 };
 
 use crate::buses::{CONTEXT_BUS, DISCARD_BUS, FORMULA_BUS, OBLIG_BUS};
-use crate::tags;
 
 pub const COL_HASH: usize = 0;
 pub const COL_IS_ACTIVE: usize = 1;
@@ -30,7 +33,15 @@ pub const COL_GOAL: usize = 4;
 pub const COL_NUM_DISCARDS: usize = 5;
 pub const WIDTH: usize = 6;
 
-pub struct ZeroLChip;
+pub struct ZeroLChip {
+    pub zero_tag: u32,
+}
+
+impl ZeroLChip {
+    pub fn new(zero_tag: u32) -> Self {
+        Self { zero_tag }
+    }
+}
 
 impl<F> BaseAir<F> for ZeroLChip {
     fn width(&self) -> usize {
@@ -66,8 +77,8 @@ impl<AB: InteractionBuilder> Air<AB> for ZeroLChip {
         // Consume zero formula from context
         CONTEXT_BUS.receive(builder, [hash.clone()], is_active.clone());
 
-        // Verify formula is actually zero
-        let tag = AB::Expr::from_u32(tags::ZERO);
+        // Verify formula is actually zero (tag from witness, not hardcoded)
+        let tag = AB::Expr::from_u32(self.zero_tag);
         FORMULA_BUS.lookup_key(
             builder,
             [hash, tag, AB::Expr::ZERO, AB::Expr::ZERO],
@@ -75,7 +86,6 @@ impl<AB: InteractionBuilder> Air<AB> for ZeroLChip {
         );
 
         // Authorize discards: provide permits on DISCARD_BUS
-        // Each DiscardChip row must look up this nonce_in as its permit.
         DISCARD_BUS.add_key_with_lookups(
             builder,
             [nonce_in],

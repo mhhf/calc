@@ -1,4 +1,16 @@
 {
+  "tags": {
+    "tensor": 1,
+    "loli": 2,
+    "one": 3,
+    "zero": 4,
+    "with": 5,
+    "oplus": 6,
+    "bang": 7,
+    "monad": 8,
+    "exists": 9,
+    "forall": 10
+  },
   "chips": {
     "init": [
       [
@@ -36,7 +48,7 @@
   "formula_rom": [
     [
       87,
-      4,
+      6,
       79,
       82,
       1,

@@ -3,6 +3,12 @@
 //! Deserializes the JSON output of `lib/zk/witness.js` into typed
 //! trace matrices for each AIR chip, then runs the STARK prover.
 //! This is the JS → Rust integration layer for Phase 1f.
+//!
+//! The witness JSON is self-describing: it carries a `tags` field
+//! with the connective→integer mapping derived from the calculus
+//! definition. The bridge reads this and uses it when constructing
+//! RuleChips, so the Rust verifier adapts automatically when
+//! connective definitions change.
 
 use std::collections::HashMap;
 use std::sync::Arc;
@@ -32,13 +38,16 @@ use crate::rule::{ill, RuleChip, RuleSpec};
 /// JSON witness format produced by `lib/zk/witness.js`.
 #[derive(Deserialize, Debug)]
 pub struct WitnessJson {
+    /// Connective name → ZK tag integer, derived from the calculus definition.
+    pub tags: HashMap<String, u32>,
     pub chips: HashMap<String, Vec<Vec<u32>>>,
     pub formula_rom: Vec<Vec<u32>>,
     pub gamma_rom: Vec<Vec<u32>>,
 }
 
-/// Map from chip name (as used in JSON) to RuleSpec.
-fn rule_spec_by_name(name: &str) -> Option<RuleSpec> {
+/// Get the base RuleSpec (structural layout) for a rule name.
+/// Tags are overridden from the witness — these are just for structure.
+fn base_rule_spec(name: &str) -> Option<RuleSpec> {
     match name {
         "id" => Some(ill::ID),
         "tensor_r" => Some(ill::TENSOR_R),
@@ -67,6 +76,32 @@ fn rule_spec_by_name(name: &str) -> Option<RuleSpec> {
     }
 }
 
+/// Map from rule name to the connective it operates on.
+fn connective_for_rule(name: &str) -> Option<&str> {
+    match name {
+        "tensor_r" | "tensor_l" => Some("tensor"),
+        "loli_r" | "loli_l" => Some("loli"),
+        "with_r" | "with_l1" | "with_l2" => Some("with"),
+        "oplus_r1" | "oplus_r2" | "oplus_l" => Some("oplus"),
+        "bang_r" | "bang_l" | "absorption" => Some("bang"),
+        "monad_r" | "monad_l" => Some("monad"),
+        "one_r" | "one_l" => Some("one"),
+        "exists_r" | "exists_l" => Some("exists"),
+        "forall_r" | "forall_l" => Some("forall"),
+        // id, copy — no connective tag
+        _ => None,
+    }
+}
+
+/// Build a RuleSpec for a rule name, overriding the tag from the witness's tag mapping.
+fn rule_spec_with_tags(name: &str, tags: &HashMap<String, u32>) -> Option<RuleSpec> {
+    let mut spec = base_rule_spec(name)?;
+    if let Some(conn) = connective_for_rule(name) {
+        spec.tag = tags.get(conn).copied();
+    }
+    Some(spec)
+}
+
 /// Known special chip names that are NOT generic RuleChips.
 const SPECIAL_CHIPS: &[&str] = &["init", "dup", "zero_l", "discard"];
 
@@ -80,7 +115,6 @@ fn build_trace(rows: &[Vec<u32>], width: usize, min_rows: usize) -> RowMajorMatr
             data.push(BabyBear::from_u32(v));
         }
     }
-    // Pad with zeros
     for _ in rows.len()..n {
         for _ in 0..width {
             data.push(BabyBear::ZERO);
@@ -99,6 +133,11 @@ fn empty_trace(width: usize, min_rows: usize) -> RowMajorMatrix<BabyBear> {
 /// Prove a witness JSON, returning Ok(()) on success or Err on verification failure.
 pub fn prove_witness(witness: &WitnessJson) -> Result<(), String> {
     let min_rows = 4; // stark-backend minimum
+    let tags = &witness.tags;
+
+    // Resolve the zero tag from the witness for ZeroLChip
+    let zero_tag = tags.get("zero").copied()
+        .ok_or("missing 'zero' tag in witness")?;
 
     let mut airs: Vec<AirRef<_>> = Vec::new();
     let mut traces: Vec<RowMajorMatrix<BabyBear>> = Vec::new();
@@ -119,9 +158,9 @@ pub fn prove_witness(witness: &WitnessJson) -> Result<(), String> {
     });
     pis.push(vec![]);
 
-    // 3. ZeroLChip (always present, may be empty)
+    // 3. ZeroLChip (parameterized with the zero tag from the witness)
     let zero_rows = witness.chips.get("zero_l");
-    airs.push(Arc::new(ZeroLChip) as AirRef<_>);
+    airs.push(Arc::new(ZeroLChip::new(zero_tag)) as AirRef<_>);
     traces.push(match zero_rows {
         Some(rows) if !rows.is_empty() => build_trace(rows, 6, min_rows),
         _ => empty_trace(6, min_rows),
@@ -137,7 +176,7 @@ pub fn prove_witness(witness: &WitnessJson) -> Result<(), String> {
     });
     pis.push(vec![]);
 
-    // 5. Generic RuleChips — one per chip name in the witness
+    // 5. Generic RuleChips — tags overridden from the witness
     let mut rule_names: Vec<String> = witness.chips.keys()
         .filter(|name| !SPECIAL_CHIPS.contains(&name.as_str()))
         .cloned()
@@ -145,7 +184,7 @@ pub fn prove_witness(witness: &WitnessJson) -> Result<(), String> {
     rule_names.sort(); // deterministic order
 
     for name in &rule_names {
-        let spec = rule_spec_by_name(name)
+        let spec = rule_spec_with_tags(name, tags)
             .ok_or_else(|| format!("unknown rule chip: {name}"))?;
         let chip = RuleChip::new(spec);
         let width = chip.layout.width;

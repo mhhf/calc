@@ -163,7 +163,7 @@ fn p2_zero_l_simple() {
     BabyBearPoseidon2Engine::run_simple_test_fast(
         vec![
             Arc::new(InitChip) as AirRef<_>,
-            Arc::new(ZeroLChip) as AirRef<_>,
+            Arc::new(ZeroLChip::new(tags::ZERO)) as AirRef<_>,
             Arc::new(FormulaRomAir) as AirRef<_>,
             Arc::new(DiscardChip) as AirRef<_>,
         ],
@@ -210,7 +210,7 @@ fn p2_zero_l_with_discard() {
     BabyBearPoseidon2Engine::run_simple_test_fast(
         vec![
             Arc::new(InitChip) as AirRef<_>,
-            Arc::new(ZeroLChip) as AirRef<_>,
+            Arc::new(ZeroLChip::new(tags::ZERO)) as AirRef<_>,
             Arc::new(DiscardChip) as AirRef<_>,
             Arc::new(FormulaRomAir) as AirRef<_>,
         ],
