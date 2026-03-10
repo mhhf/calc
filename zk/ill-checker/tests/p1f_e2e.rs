@@ -46,3 +46,43 @@ fn e2e_with_r() {
 fn e2e_one_r() {
     prove_json(&load_fixture("one_r")).expect("one_r: ⊢ I");
 }
+
+#[test]
+fn e2e_loli_l() {
+    prove_json(&load_fixture("loli_l")).expect("loli_l: P, P ⊸ Q ⊢ Q");
+}
+
+#[test]
+fn e2e_oplus_r1() {
+    prove_json(&load_fixture("oplus_r1")).expect("oplus_r1: A ⊢ A ⊕ B");
+}
+
+#[test]
+fn e2e_with_l1() {
+    prove_json(&load_fixture("with_l1")).expect("with_l1: A & B ⊢ A");
+}
+
+#[test]
+fn e2e_one_l() {
+    prove_json(&load_fixture("one_l")).expect("one_l: I, A ⊢ A");
+}
+
+#[test]
+fn e2e_zero_l() {
+    prove_json(&load_fixture("zero_l")).expect("zero_l: 0 ⊢ C");
+}
+
+#[test]
+fn e2e_bang_dereliction() {
+    prove_json(&load_fixture("bang_dereliction")).expect("bang_l: !A ⊢ A");
+}
+
+#[test]
+fn e2e_copy() {
+    prove_json(&load_fixture("copy")).expect("copy: ; A ⊢ A");
+}
+
+#[test]
+fn e2e_nested_loli_tensor() {
+    prove_json(&load_fixture("nested_loli_tensor")).expect("nested: (A⊗B)⊸C, A, B ⊢ C");
+}

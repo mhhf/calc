@@ -12,6 +12,7 @@ const path = require('path');
 const fs = require('fs');
 
 const calculus = require('../lib/calculus');
+const Seq = require('../lib/kernel/sequent');
 const { createSequentParser } = require('../lib/parser/sequent-parser');
 const { createProver } = require('../lib/prover/focused');
 const { buildRuleSpecs } = require('../lib/prover/rule-interpreter');
@@ -61,6 +62,23 @@ function proveAndWitness(sequentStr, name) {
   // Save fixture for Rust integration tests
   if (name) saveFixture(name, witness);
 
+  return { term, witness, seq };
+}
+
+function proveAndWitnessCart(linear, cartesian, succ, name) {
+  const lf = linear.map(f => typeof f === 'string' ? calc.parse(f) : f);
+  const cf = cartesian.map(f => typeof f === 'string' ? calc.parse(f) : f);
+  const sf = typeof succ === 'string' ? calc.parse(succ) : succ;
+  const seq = Seq.fromArrays(lf, cf, sf);
+  const result = prover.prove(seq, { rules: ruleSpecs, alternatives });
+  assert.strictEqual(result.success, true, `proof should succeed`);
+  const term = extractTerm(result.proofTree, calc);
+  assert.ok(term, 'term extraction should succeed');
+  const checkResult = checker.check(term, seq);
+  assert.strictEqual(checkResult.valid, true,
+    `term should be valid: ${checkResult.error || ''}`);
+  const witness = generateWitness(term, seq);
+  if (name) saveFixture(name, witness);
   return { term, witness, seq };
 }
 
@@ -165,12 +183,113 @@ describe('ZK Witness Generator', () => {
     });
   });
 
+  describe('loli_l', () => {
+    it('P, P -o Q |- Q (modus ponens)', () => {
+      const { witness } = proveAndWitness('P, P -o Q |- Q', 'loli_l');
+
+      assert.ok(witness.chips.loli_l, 'should have loli_l rows');
+      assert.strictEqual(witness.chips.loli_l.length, 1, '1 loli_l row');
+      assert.ok(witness.chips.id.length >= 2, 'should have 2 id rows');
+      assert.strictEqual(witness.formula_rom.length, 1, '1 formula ROM entry (P-oQ)');
+
+      const rom = witness.formula_rom[0];
+      assert.strictEqual(rom[1], ZK_TAGS.loli, 'tag=LOLI');
+    });
+  });
+
+  describe('oplus', () => {
+    it('A |- A + B (oplus_r1)', () => {
+      const { witness } = proveAndWitness('A |- A + B', 'oplus_r1');
+
+      assert.ok(witness.chips.oplus_r1, 'should have oplus_r1 rows');
+      assert.strictEqual(witness.chips.oplus_r1.length, 1, '1 oplus_r1 row');
+      assert.ok(witness.chips.id.length >= 1, 'should have id row');
+      assert.strictEqual(witness.formula_rom.length, 1, '1 formula ROM entry');
+
+      const rom = witness.formula_rom[0];
+      assert.strictEqual(rom[1], ZK_TAGS.oplus, 'tag=OPLUS');
+    });
+  });
+
+  describe('with_l', () => {
+    it('A & B |- A (with_l1)', () => {
+      const { witness } = proveAndWitness('A & B |- A', 'with_l1');
+
+      assert.ok(witness.chips.with_l1, 'should have with_l1 rows');
+      assert.strictEqual(witness.chips.with_l1.length, 1, '1 with_l1 row');
+      assert.ok(witness.chips.id.length >= 1, 'should have id row');
+      assert.strictEqual(witness.formula_rom.length, 1, '1 formula ROM entry');
+
+      const rom = witness.formula_rom[0];
+      assert.strictEqual(rom[1], ZK_TAGS.with, 'tag=WITH');
+    });
+  });
+
+  describe('one_l', () => {
+    it('I, A |- A (one_l)', () => {
+      const { witness } = proveAndWitness('I, A |- A', 'one_l');
+
+      assert.ok(witness.chips.one_l, 'should have one_l rows');
+      assert.strictEqual(witness.chips.one_l.length, 1, '1 one_l row');
+      assert.ok(witness.chips.id.length >= 1, 'should have id row');
+    });
+  });
+
+  describe('zero_l', () => {
+    it('zero |- C (ex falso)', () => {
+      const { witness } = proveAndWitness('zero |- C', 'zero_l');
+
+      assert.ok(witness.chips.zero_l.length >= 1, 'should have zero_l rows');
+      // zero_l consumes the obligation — no id rows needed
+      assert.strictEqual(witness.formula_rom.length, 1, '1 formula ROM entry');
+
+      const rom = witness.formula_rom[0];
+      assert.strictEqual(rom[1], ZK_TAGS.zero, 'tag=ZERO');
+    });
+  });
+
+  describe('bang', () => {
+    it('!A |- A (dereliction)', () => {
+      const { witness } = proveAndWitness('!A |- A', 'bang_dereliction');
+
+      assert.ok(witness.chips.bang_l, 'should have bang_l rows');
+      assert.strictEqual(witness.chips.bang_l.length, 1, '1 bang_l row');
+      assert.ok(witness.chips.id.length >= 1, 'should have id row');
+      assert.strictEqual(witness.formula_rom.length, 1, '1 formula ROM entry');
+
+      const rom = witness.formula_rom[0];
+      assert.strictEqual(rom[1], ZK_TAGS.bang, 'tag=BANG');
+    });
+  });
+
+  describe('copy (cartesian)', () => {
+    it('; A |- A (copy from gamma)', () => {
+      const { witness } = proveAndWitnessCart([], ['A'], 'A', 'copy');
+
+      assert.ok(witness.chips.copy, 'should have copy rows');
+      assert.strictEqual(witness.chips.copy.length, 1, '1 copy row');
+      assert.ok(witness.chips.id.length >= 1, 'should have id row');
+      assert.strictEqual(witness.formula_rom.length, 0, 'no formula ROM');
+      assert.strictEqual(witness.gamma_rom.length, 1, '1 gamma ROM entry');
+    });
+  });
+
+  describe('nested', () => {
+    it('(A * B) -o C, A, B |- C (loli_l + tensor_r)', () => {
+      const { witness } = proveAndWitness('(A * B) -o C, A, B |- C', 'nested_loli_tensor');
+
+      assert.ok(witness.chips.loli_l, 'should have loli_l rows');
+      assert.ok(witness.chips.tensor_r, 'should have tensor_r rows');
+      assert.ok(witness.chips.id.length >= 2, 'should have 2+ id rows');
+      assert.strictEqual(witness.formula_rom.length, 2, '2 formula ROM entries');
+    });
+  });
+
   describe('fixture generation', () => {
     it('saves all fixtures', () => {
-      // Just verify the fixtures directory was created and files exist
       ensureFixtureDir();
       const files = fs.readdirSync(FIXTURE_DIR).filter(f => f.endsWith('.json'));
-      assert.ok(files.length >= 5, `should have >= 5 fixtures, got ${files.length}`);
+      assert.ok(files.length >= 13, `should have >= 13 fixtures, got ${files.length}`);
     });
   });
 });
