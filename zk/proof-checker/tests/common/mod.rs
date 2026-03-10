@@ -2,8 +2,8 @@
 
 use std::collections::HashMap;
 
-use ill_checker::bridge::WitnessJson;
-use ill_checker::rule::RuleSpec;
+use proof_checker::bridge::WitnessJson;
+use proof_checker::rule::RuleSpec;
 use openvm_stark_backend::p3_matrix::dense::RowMajorMatrix;
 use p3_baby_bear::BabyBear;
 use p3_field::PrimeCharacteristicRing;

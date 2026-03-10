@@ -5,7 +5,7 @@
 //! + verifier pipeline. This validates that the JS witness generator
 //! produces valid traces for the Rust AIR chips.
 
-use ill_checker::bridge::prove_json;
+use proof_checker::bridge::prove_json;
 
 fn load_fixture(name: &str) -> String {
     let path = format!(

@@ -8,7 +8,7 @@ mod common;
 
 use std::sync::Arc;
 
-use ill_checker::{
+use proof_checker::{
     chips::{
         dup::DupChip,
         formula_rom::FormulaRomAir,

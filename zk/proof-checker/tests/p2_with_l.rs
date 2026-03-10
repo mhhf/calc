@@ -6,7 +6,7 @@ mod common;
 
 use std::sync::Arc;
 
-use ill_checker::{
+use proof_checker::{
     chips::{formula_rom::FormulaRomAir, init::InitChip},
     rule::RuleChip,
 };
