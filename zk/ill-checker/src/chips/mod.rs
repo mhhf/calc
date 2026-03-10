@@ -1,6 +1,9 @@
 pub mod binary_r;
+pub mod discard;
 pub mod dup;
 pub mod formula_rom;
+pub mod gamma_rom;
 pub mod identity;
 pub mod init;
 pub mod tensor_l;
+pub mod zero_l;
