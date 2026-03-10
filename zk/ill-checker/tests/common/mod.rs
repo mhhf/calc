@@ -1,5 +1,9 @@
 //! Shared test utilities for proof term verifier integration tests.
 
+use std::collections::HashMap;
+
+use ill_checker::bridge::WitnessJson;
+use ill_checker::rule::RuleSpec;
 use openvm_stark_backend::p3_matrix::dense::RowMajorMatrix;
 use p3_baby_bear::BabyBear;
 use p3_field::PrimeCharacteristicRing;
@@ -26,4 +30,14 @@ pub fn padded_trace<const W: usize>(
         }
     }
     RowMajorMatrix::new(data, W)
+}
+
+/// Load rule specs and tags from a fixture JSON file.
+///
+/// Every fixture contains the full set of rule_specs and tags
+/// (derived from the calculus definition), so any fixture works.
+pub fn load_test_specs() -> (HashMap<String, u32>, HashMap<String, RuleSpec>) {
+    let json = include_str!("../fixtures/identity.json");
+    let w: WitnessJson = serde_json::from_str(json).unwrap();
+    (w.tags, w.rule_specs)
 }

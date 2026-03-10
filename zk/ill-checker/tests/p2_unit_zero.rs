@@ -15,8 +15,7 @@ use ill_checker::{
         init::InitChip,
         zero_l::ZeroLChip,
     },
-    rule::{ill, RuleChip},
-    tags,
+    rule::RuleChip,
 };
 use openvm_stark_backend::AirRef;
 use openvm_stark_sdk::{
@@ -52,11 +51,12 @@ const H_A_TENSOR_ONE: u32 = 1001; // hash(A ⊗ I)
 
 #[test]
 fn p2_one_r_basic() {
+    let (tags, specs) = common::load_test_specs();
     // ⊢ I
     // Proof: one_r
     // one_r: consume oblig (0, I, 0), formula lookup (I, ONE, 0, 0)
 
-    let one_r_chip = RuleChip::new(ill::one_r());
+    let one_r_chip = RuleChip::new(specs["one_r"].clone());
     // one_r layout: [active=0, hash=1, nonce_in=2, lax=3]
     assert_eq!(one_r_chip.layout.width, 4);
 
@@ -67,7 +67,7 @@ fn p2_one_r_basic() {
     let one_r_trace = dyn_trace(&[&[1, H_ONE, 0, 0]], 4, 4);
 
     // ROM: I is a nullary connective (tag=ONE, children=0,0)
-    let rom_trace = padded_trace(&[[H_ONE, tags::ONE, 0, 0, 1, 1]], 4);
+    let rom_trace = padded_trace(&[[H_ONE, tags["one"], 0, 0, 1, 1]], 4);
 
     BabyBearPoseidon2Engine::run_simple_test_fast(
         vec![
@@ -87,15 +87,16 @@ fn p2_one_r_basic() {
 
 #[test]
 fn p2_tensor_one_left() {
+    let (tags, specs) = common::load_test_specs();
     // A ⊗ I ⊢ A
     // Proof: tensor_l(one_l, id(A))
     //   tensor_l: ctx receive A⊗I, ctx send A, ctx send I
     //   one_l:    ctx receive I (removed)
     //   id:       oblig receive (0, A, 0), ctx receive A
 
-    let tensor_l_chip = RuleChip::new(ill::tensor_l());
-    let one_l_chip = RuleChip::new(ill::one_l());
-    let id_chip = RuleChip::new(ill::id());
+    let tensor_l_chip = RuleChip::new(specs["tensor_l"].clone());
+    let one_l_chip = RuleChip::new(specs["one_l"].clone());
+    let id_chip = RuleChip::new(specs["id"].clone());
 
     // one_l layout: [active=0, hash=1] width=2
     assert_eq!(one_l_chip.layout.width, 2);
@@ -115,8 +116,8 @@ fn p2_tensor_one_left() {
     // ROM: A⊗I and I
     let rom_trace = padded_trace(
         &[
-            [H_A_TENSOR_ONE, tags::TENSOR, H_A, H_ONE, 1, 1],
-            [H_ONE, tags::ONE, 0, 0, 1, 1],
+            [H_A_TENSOR_ONE, tags["tensor"], H_A, H_ONE, 1, 1],
+            [H_ONE, tags["one"], 0, 0, 1, 1],
         ],
         4,
     );
@@ -141,6 +142,7 @@ fn p2_tensor_one_left() {
 
 #[test]
 fn p2_zero_l_simple() {
+    let (tags, _specs) = common::load_test_specs();
     // 0 ⊢ B
     // Proof: zero_l
     // zero_l: oblig receive (0, B, 0), ctx receive 0, formula lookup
@@ -155,7 +157,7 @@ fn p2_zero_l_simple() {
     );
 
     // ROM: 0 is a nullary connective
-    let rom_trace = padded_trace(&[[H_ZERO, tags::ZERO, 0, 0, 1, 1]], 4);
+    let rom_trace = padded_trace(&[[H_ZERO, tags["zero"], 0, 0, 1, 1]], 4);
 
     // No DiscardChip needed (no extra context)
     let discard_trace = padded_trace::<3>(&[], 4);
@@ -163,7 +165,7 @@ fn p2_zero_l_simple() {
     BabyBearPoseidon2Engine::run_simple_test_fast(
         vec![
             Arc::new(InitChip) as AirRef<_>,
-            Arc::new(ZeroLChip::new(tags::ZERO)) as AirRef<_>,
+            Arc::new(ZeroLChip::new(tags["zero"])) as AirRef<_>,
             Arc::new(FormulaRomAir) as AirRef<_>,
             Arc::new(DiscardChip) as AirRef<_>,
         ],
@@ -179,6 +181,7 @@ fn p2_zero_l_simple() {
 
 #[test]
 fn p2_zero_l_with_discard() {
+    let (tags, _specs) = common::load_test_specs();
     // 0, A ⊢ B
     // Proof: zero_l (discards A)
     //   zero_l: oblig receive (0, B, 0), ctx receive 0, formula lookup,
@@ -205,12 +208,12 @@ fn p2_zero_l_with_discard() {
         4,
     );
 
-    let rom_trace = padded_trace(&[[H_ZERO, tags::ZERO, 0, 0, 1, 1]], 4);
+    let rom_trace = padded_trace(&[[H_ZERO, tags["zero"], 0, 0, 1, 1]], 4);
 
     BabyBearPoseidon2Engine::run_simple_test_fast(
         vec![
             Arc::new(InitChip) as AirRef<_>,
-            Arc::new(ZeroLChip::new(tags::ZERO)) as AirRef<_>,
+            Arc::new(ZeroLChip::new(tags["zero"])) as AirRef<_>,
             Arc::new(DiscardChip) as AirRef<_>,
             Arc::new(FormulaRomAir) as AirRef<_>,
         ],
@@ -227,6 +230,7 @@ fn p2_zero_l_with_discard() {
 #[test]
 #[should_panic]
 fn p2_discard_without_zero_l_fails() {
+    let (_tags, specs) = common::load_test_specs();
     // Try to discard A without zero_l — DISCARD_BUS unbalanced
     let init_trace = padded_trace(
         &[
@@ -236,7 +240,7 @@ fn p2_discard_without_zero_l_fails() {
         4,
     );
 
-    let id_chip = RuleChip::new(ill::id());
+    let id_chip = RuleChip::new(specs["id"].clone());
     let id_trace = dyn_trace(&[&[1, H_A, 0, 0]], 4, 4);
 
     // Try to discard B without any zero_l authorization
@@ -261,8 +265,9 @@ fn p2_discard_without_zero_l_fails() {
 #[test]
 #[should_panic]
 fn p2_one_r_nonempty_context_fails() {
+    let (tags, specs) = common::load_test_specs();
     // A ⊢ I — should fail because A is unconsumed (bus imbalance)
-    let one_r_chip = RuleChip::new(ill::one_r());
+    let one_r_chip = RuleChip::new(specs["one_r"].clone());
 
     let init_trace = padded_trace(
         &[[H_A, 1, H_ONE, 1, 0, 0]], // ctx=A, oblig=(0, I, 0)
@@ -270,7 +275,7 @@ fn p2_one_r_nonempty_context_fails() {
     );
 
     let one_r_trace = dyn_trace(&[&[1, H_ONE, 0, 0]], 4, 4);
-    let rom_trace = padded_trace(&[[H_ONE, tags::ONE, 0, 0, 1, 1]], 4);
+    let rom_trace = padded_trace(&[[H_ONE, tags["one"], 0, 0, 1, 1]], 4);
 
     BabyBearPoseidon2Engine::run_simple_test_fast(
         vec![

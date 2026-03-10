@@ -10,8 +10,7 @@ use std::sync::Arc;
 
 use ill_checker::{
     chips::{formula_rom::FormulaRomAir, init::InitChip},
-    rule::{ill, RuleChip},
-    tags,
+    rule::RuleChip,
 };
 use openvm_stark_backend::AirRef;
 use openvm_stark_sdk::{
@@ -43,6 +42,7 @@ const H_MONAD_A: u32 = 600; // hash({A})
 
 #[test]
 fn p2_monad_roundtrip() {
+    let (tags, specs) = common::load_test_specs();
     // {A} ⊢ {A}
     // Proof: monad_l({A}, monad_r(id(A)))
     //
@@ -53,9 +53,9 @@ fn p2_monad_roundtrip() {
     //            formula lookup ({A}, MONAD, A, 0)
     //   id:      oblig receive (1, A, 1), ctx receive A
 
-    let monad_l_chip = RuleChip::new(ill::monad_l());
-    let monad_r_chip = RuleChip::new(ill::monad_r());
-    let id_chip = RuleChip::new(ill::id());
+    let monad_l_chip = RuleChip::new(specs["monad_l"].clone());
+    let monad_r_chip = RuleChip::new(specs["monad_r"].clone());
+    let id_chip = RuleChip::new(specs["id"].clone());
 
     // monad_l layout: [active=0, hash=1, child0=2] width=3
     assert_eq!(monad_l_chip.layout.width, 3);
@@ -78,7 +78,7 @@ fn p2_monad_roundtrip() {
 
     // ROM: {A} — looked up twice (monad_l + monad_r both do formula lookup)
     let rom_trace = padded_trace(
-        &[[H_MONAD_A, tags::MONAD, H_A, 0, 1, 2]],
+        &[[H_MONAD_A, tags["monad"], H_A, 0, 1, 2]],
         4,
     );
 
@@ -103,10 +103,11 @@ fn p2_monad_roundtrip() {
 #[test]
 #[should_panic]
 fn p2_monad_r_lax_mismatch_fails() {
+    let (tags, specs) = common::load_test_specs();
     // monad_r produces lax=1, but id tries to consume with lax=0
-    let monad_l_chip = RuleChip::new(ill::monad_l());
-    let monad_r_chip = RuleChip::new(ill::monad_r());
-    let id_chip = RuleChip::new(ill::id());
+    let monad_l_chip = RuleChip::new(specs["monad_l"].clone());
+    let monad_r_chip = RuleChip::new(specs["monad_r"].clone());
+    let id_chip = RuleChip::new(specs["id"].clone());
 
     let init_trace = padded_trace(&[[H_MONAD_A, 1, H_MONAD_A, 1, 0, 0]], 4);
     let ml_trace = dyn_trace(&[&[1, H_MONAD_A, H_A]], 3, 4);
@@ -116,7 +117,7 @@ fn p2_monad_r_lax_mismatch_fails() {
     let id_trace = dyn_trace(&[&[1, H_A, 1, 0]], 4, 4);
 
     let rom_trace = padded_trace(
-        &[[H_MONAD_A, tags::MONAD, H_A, 0, 1, 2]],
+        &[[H_MONAD_A, tags["monad"], H_A, 0, 1, 2]],
         4,
     );
 

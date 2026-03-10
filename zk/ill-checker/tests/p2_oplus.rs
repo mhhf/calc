@@ -10,8 +10,7 @@ use std::sync::Arc;
 
 use ill_checker::{
     chips::{formula_rom::FormulaRomAir, init::InitChip},
-    rule::{ill, RuleChip},
-    tags,
+    rule::RuleChip,
 };
 use openvm_stark_backend::AirRef;
 use openvm_stark_sdk::{
@@ -45,6 +44,7 @@ const H_B_OPLUS_A: u32 = 401;
 
 #[test]
 fn p2_oplus_swap() {
+    let (tags, specs) = common::load_test_specs();
     // A ⊕ B ⊢ B ⊕ A
     // Proof: oplus_l(A⊕B, oplus_r2(id(A)), oplus_r1(id(B)))
     //
@@ -62,10 +62,10 @@ fn p2_oplus_swap() {
     //   id(A):    oblig receive (3, A, 0), ctx receive A
     //   id(B):    oblig receive (4, B, 0), ctx receive B
 
-    let oplus_l_chip = RuleChip::new(ill::oplus_l());
-    let oplus_r2_chip = RuleChip::new(ill::oplus_r2());
-    let oplus_r1_chip = RuleChip::new(ill::oplus_r1());
-    let id_chip = RuleChip::new(ill::id());
+    let oplus_l_chip = RuleChip::new(specs["oplus_l"].clone());
+    let oplus_r2_chip = RuleChip::new(specs["oplus_r2"].clone());
+    let oplus_r1_chip = RuleChip::new(specs["oplus_r1"].clone());
+    let id_chip = RuleChip::new(specs["id"].clone());
 
     // oplus_l: [active=0, hash=1, c0=2, c1=3, nonce_in=4, lax=5, nonce_out0=6, nonce_out1=7, goal=8]
     assert_eq!(oplus_l_chip.layout.width, 9);
@@ -105,8 +105,8 @@ fn p2_oplus_swap() {
     // ROM: A⊕B and B⊕A (B⊕A looked up twice: by oplus_r2 and oplus_r1)
     let rom_trace = padded_trace(
         &[
-            [H_A_OPLUS_B, tags::OPLUS, H_A, H_B, 1, 1],
-            [H_B_OPLUS_A, tags::OPLUS, H_B, H_A, 1, 2], // looked up 2×
+            [H_A_OPLUS_B, tags["oplus"], H_A, H_B, 1, 1],
+            [H_B_OPLUS_A, tags["oplus"], H_B, H_A, 1, 2], // looked up 2×
         ],
         4,
     );
@@ -132,11 +132,12 @@ fn p2_oplus_swap() {
 
 #[test]
 fn p2_oplus_r1_simple() {
+    let (tags, specs) = common::load_test_specs();
     // A ⊢ A ⊕ B
     // Proof: oplus_r1(id(A))
 
-    let oplus_r1_chip = RuleChip::new(ill::oplus_r1());
-    let id_chip = RuleChip::new(ill::id());
+    let oplus_r1_chip = RuleChip::new(specs["oplus_r1"].clone());
+    let id_chip = RuleChip::new(specs["id"].clone());
 
     let init_trace = padded_trace(&[[H_A, 1, H_A_OPLUS_B, 1, 0, 0]], 4);
 
@@ -149,7 +150,7 @@ fn p2_oplus_r1_simple() {
     let id_trace = dyn_trace(&[&[1, H_A, 1, 0]], 4, 4);
 
     let rom_trace = padded_trace(
-        &[[H_A_OPLUS_B, tags::OPLUS, H_A, H_B, 1, 1]],
+        &[[H_A_OPLUS_B, tags["oplus"], H_A, H_B, 1, 1]],
         4,
     );
 
@@ -173,9 +174,10 @@ fn p2_oplus_r1_simple() {
 #[test]
 #[should_panic]
 fn p2_oplus_r1_wrong_child_fails() {
+    let (tags, specs) = common::load_test_specs();
     // Try to prove A ⊕ B by providing B (should use oplus_r2)
-    let oplus_r1_chip = RuleChip::new(ill::oplus_r1());
-    let id_chip = RuleChip::new(ill::id());
+    let oplus_r1_chip = RuleChip::new(specs["oplus_r1"].clone());
+    let id_chip = RuleChip::new(specs["id"].clone());
 
     let init_trace = padded_trace(&[[H_B, 1, H_A_OPLUS_B, 1, 0, 0]], 4);
 
@@ -189,7 +191,7 @@ fn p2_oplus_r1_wrong_child_fails() {
     let id_trace = dyn_trace(&[&[1, H_A, 1, 0]], 4, 4);
 
     let rom_trace = padded_trace(
-        &[[H_A_OPLUS_B, tags::OPLUS, H_A, H_B, 1, 1]],
+        &[[H_A_OPLUS_B, tags["oplus"], H_A, H_B, 1, 1]],
         4,
     );
 

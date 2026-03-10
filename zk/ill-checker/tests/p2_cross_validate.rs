@@ -14,8 +14,7 @@ use ill_checker::{
         formula_rom::FormulaRomAir,
         init::InitChip,
     },
-    rule::{ill, RuleChip},
-    tags,
+    rule::RuleChip,
 };
 use openvm_stark_backend::AirRef;
 use openvm_stark_sdk::{
@@ -56,8 +55,9 @@ fn dyn_trace(rows: &[&[u32]], width: usize, min_rows: usize) -> openvm_stark_bac
 
 #[test]
 fn p2_xval_identity() {
+    let (_tags, specs) = common::load_test_specs();
     // A ⊢ A using generic RuleChip(ID)
-    let id_chip = RuleChip::new(ill::id());
+    let id_chip = RuleChip::new(specs["id"].clone());
     let id_w = id_chip.layout.width;
     // Layout: [active=0, hash=1, nonce_in=2, lax=3]
     assert_eq!(id_w, 4);
@@ -85,8 +85,9 @@ fn p2_xval_identity() {
 
 #[test]
 fn p2_xval_tensor_r() {
-    let tr_chip = RuleChip::new(ill::tensor_r());
-    let id_chip = RuleChip::new(ill::id());
+    let (tags, specs) = common::load_test_specs();
+    let tr_chip = RuleChip::new(specs["tensor_r"].clone());
+    let id_chip = RuleChip::new(specs["id"].clone());
     // tensor_r layout: [active=0, hash=1, c0=2, c1=3, nonce_in=4, lax=5, nonce_out0=6, nonce_out1=7]
     assert_eq!(tr_chip.layout.width, 8);
 
@@ -111,7 +112,7 @@ fn p2_xval_tensor_r() {
     );
 
     let rom_trace = padded_trace(
-        &[[H_A_TENSOR_B, tags::TENSOR, H_A, H_B, 1, 1]],
+        &[[H_A_TENSOR_B, tags["tensor"], H_A, H_B, 1, 1]],
         4,
     );
 
@@ -134,9 +135,10 @@ fn p2_xval_tensor_r() {
 
 #[test]
 fn p2_xval_tensor_swap() {
-    let tl_chip = RuleChip::new(ill::tensor_l());
-    let tr_chip = RuleChip::new(ill::tensor_r());
-    let id_chip = RuleChip::new(ill::id());
+    let (tags, specs) = common::load_test_specs();
+    let tl_chip = RuleChip::new(specs["tensor_l"].clone());
+    let tr_chip = RuleChip::new(specs["tensor_r"].clone());
+    let id_chip = RuleChip::new(specs["id"].clone());
 
     // tensor_l layout: [active=0, hash=1, c0=2, c1=3] width=4
     assert_eq!(tl_chip.layout.width, 4);
@@ -162,8 +164,8 @@ fn p2_xval_tensor_swap() {
 
     let rom_trace = padded_trace(
         &[
-            [H_A_TENSOR_B, tags::TENSOR, H_A, H_B, 1, 1],
-            [H_B_TENSOR_A, tags::TENSOR, H_B, H_A, 1, 1],
+            [H_A_TENSOR_B, tags["tensor"], H_A, H_B, 1, 1],
+            [H_B_TENSOR_A, tags["tensor"], H_B, H_A, 1, 1],
         ],
         4,
     );
@@ -188,8 +190,9 @@ fn p2_xval_tensor_swap() {
 
 #[test]
 fn p2_xval_with_r() {
-    let wr_chip = RuleChip::new(ill::with_r());
-    let id_chip = RuleChip::new(ill::id());
+    let (tags, specs) = common::load_test_specs();
+    let wr_chip = RuleChip::new(specs["with_r"].clone());
+    let id_chip = RuleChip::new(specs["id"].clone());
 
     // with_r has same layout as tensor_r (both are binary right rules)
     assert_eq!(wr_chip.layout.width, 8);
@@ -209,7 +212,7 @@ fn p2_xval_with_r() {
     );
 
     let rom_trace = padded_trace(
-        &[[H_A_WITH_A, tags::WITH, H_A, H_A, 1, 1]],
+        &[[H_A_WITH_A, tags["with"], H_A, H_A, 1, 1]],
         4,
     );
 

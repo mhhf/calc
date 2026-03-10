@@ -13,8 +13,7 @@ use ill_checker::{
         gamma_rom::GammaRomAir,
         init::InitChip,
     },
-    rule::{ill, RuleChip},
-    tags,
+    rule::RuleChip,
 };
 use openvm_stark_backend::AirRef;
 use openvm_stark_sdk::{
@@ -38,7 +37,6 @@ fn dyn_trace(rows: &[&[u32]], width: usize, min_rows: usize) -> openvm_stark_bac
 }
 
 const H_A: u32 = 42;
-const H_B: u32 = 99;
 const H_BANG_A: u32 = 500; // hash(!A)
 const H_A_TENSOR_A: u32 = 501; // hash(A ⊗ A)
 
@@ -48,13 +46,14 @@ const H_A_TENSOR_A: u32 = 501; // hash(A ⊗ A)
 
 #[test]
 fn p2_bang_l_basic() {
+    let (tags, specs) = common::load_test_specs();
     // !A ⊢ A
     // Proof: bang_l(!A, id(A))
     //   bang_l: ctx receive !A, ctx send A, formula lookup
     //   id: oblig receive (0, A, 0), ctx receive A
 
-    let bang_l_chip = RuleChip::new(ill::bang_l());
-    let id_chip = RuleChip::new(ill::id());
+    let bang_l_chip = RuleChip::new(specs["bang_l"].clone());
+    let id_chip = RuleChip::new(specs["id"].clone());
 
     // bang_l layout: [active=0, hash=1, child0=2] width=3
     assert_eq!(bang_l_chip.layout.width, 3);
@@ -68,7 +67,7 @@ fn p2_bang_l_basic() {
     let id_trace = dyn_trace(&[&[1, H_A, 0, 0]], 4, 4);
 
     // ROM: !A
-    let rom_trace = padded_trace(&[[H_BANG_A, tags::BANG, H_A, 0, 1, 1]], 4);
+    let rom_trace = padded_trace(&[[H_BANG_A, tags["bang"], H_A, 0, 1, 1]], 4);
 
     BabyBearPoseidon2Engine::run_simple_test_fast(
         vec![
@@ -89,6 +88,7 @@ fn p2_bang_l_basic() {
 
 #[test]
 fn p2_absorption_copy() {
+    let (tags, specs) = common::load_test_specs();
     // !A ⊢ A ⊗ A
     // Proof: absorption(!A), copy(A), copy(A), tensor_r(id(A), id(A))
     //
@@ -101,10 +101,10 @@ fn p2_absorption_copy() {
     //               formula lookup
     //   id×2:       consume obligations and context
 
-    let absorption_chip = RuleChip::new(ill::absorption());
-    let copy_chip = RuleChip::new(ill::copy());
-    let tensor_r_chip = RuleChip::new(ill::tensor_r());
-    let id_chip = RuleChip::new(ill::id());
+    let absorption_chip = RuleChip::new(specs["absorption"].clone());
+    let copy_chip = RuleChip::new(specs["copy"].clone());
+    let tensor_r_chip = RuleChip::new(specs["tensor_r"].clone());
+    let id_chip = RuleChip::new(specs["id"].clone());
 
     // absorption layout: [active=0, hash=1, child0=2] width=3
     assert_eq!(absorption_chip.layout.width, 3);
@@ -134,8 +134,8 @@ fn p2_absorption_copy() {
     // Formula ROM: !A, A⊗A
     let fom_trace = padded_trace(
         &[
-            [H_BANG_A, tags::BANG, H_A, 0, 1, 1],
-            [H_A_TENSOR_A, tags::TENSOR, H_A, H_A, 1, 1],
+            [H_BANG_A, tags["bang"], H_A, 0, 1, 1],
+            [H_A_TENSOR_A, tags["tensor"], H_A, H_A, 1, 1],
         ],
         4,
     );
@@ -166,9 +166,10 @@ fn p2_absorption_copy() {
 #[test]
 #[should_panic]
 fn p2_copy_without_gamma_fails() {
+    let (_tags, specs) = common::load_test_specs();
     // Try to copy A without it being in gamma — GAMMA_BUS unbalanced
-    let copy_chip = RuleChip::new(ill::copy());
-    let id_chip = RuleChip::new(ill::id());
+    let copy_chip = RuleChip::new(specs["copy"].clone());
+    let id_chip = RuleChip::new(specs["id"].clone());
 
     // No absorption, no gamma entry, but try to copy
     let init_trace = padded_trace(&[[0, 0, H_A, 1, 0, 0]], 4);

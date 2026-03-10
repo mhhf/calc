@@ -10,8 +10,7 @@ use std::sync::Arc;
 
 use ill_checker::{
     chips::{formula_rom::FormulaRomAir, init::InitChip},
-    rule::{ill, RuleChip},
-    tags,
+    rule::RuleChip,
 };
 use openvm_stark_backend::AirRef;
 use openvm_stark_sdk::{
@@ -60,13 +59,14 @@ const H_A_LOLI_A: u32 = 160; // hash(A ⊸ A)
 
 #[test]
 fn p2_loli_r_basic() {
+    let (tags, specs) = common::load_test_specs();
     // ⊢ A ⊸ A
     // Proof: loli_r(id(A))
     // loli_r: consume oblig (0, A⊸A, 0), add A to context, produce oblig (1, A, 0)
     // id: consume oblig (1, A, 0), consume A from context
 
-    let loli_r_chip = RuleChip::new(ill::loli_r());
-    let id_chip = RuleChip::new(ill::id());
+    let loli_r_chip = RuleChip::new(specs["loli_r"].clone());
+    let id_chip = RuleChip::new(specs["id"].clone());
     // loli_r layout: [active=0, hash=1, c0=2, c1=3, nonce_in=4, lax=5, nonce_out0=6]
     assert_eq!(loli_r_chip.layout.width, 7);
 
@@ -87,7 +87,7 @@ fn p2_loli_r_basic() {
 
     // ROM: A ⊸ A decomposes as (A, A)
     let rom_trace = padded_trace(
-        &[[H_A_LOLI_A, tags::LOLI, H_A, H_A, 1, 1]],
+        &[[H_A_LOLI_A, tags["loli"], H_A, H_A, 1, 1]],
         4,
     );
 
@@ -110,6 +110,7 @@ fn p2_loli_r_basic() {
 
 #[test]
 fn p2_loli_l_basic() {
+    let (tags, specs) = common::load_test_specs();
     // A ⊸ B, A ⊢ B
     // Proof: loli_l(A⊸B, id(A), id(B))
     //
@@ -120,8 +121,8 @@ fn p2_loli_l_basic() {
     // id(A): consume oblig (1, A, 0), consume A from context
     // id(B): consume oblig (2, B, 0), consume B from context
 
-    let loli_l_chip = RuleChip::new(ill::loli_l());
-    let id_chip = RuleChip::new(ill::id());
+    let loli_l_chip = RuleChip::new(specs["loli_l"].clone());
+    let id_chip = RuleChip::new(specs["id"].clone());
 
     // loli_l layout: [active=0, hash=1, c0=2, c1=3, nonce_in=4, lax=5, nonce_out0=6, nonce_out1=7, goal=8]
     assert_eq!(loli_l_chip.layout.width, 9);
@@ -149,7 +150,7 @@ fn p2_loli_l_basic() {
 
     // ROM: A ⊸ B
     let rom_trace = padded_trace(
-        &[[H_A_LOLI_B, tags::LOLI, H_A, H_B, 1, 1]],
+        &[[H_A_LOLI_B, tags["loli"], H_A, H_B, 1, 1]],
         4,
     );
 
@@ -169,9 +170,10 @@ fn p2_loli_l_basic() {
 #[test]
 #[should_panic]
 fn p2_loli_l_wrong_goal_fails() {
+    let (tags, specs) = common::load_test_specs();
     // loli_l with mismatched goal — obligation type doesn't match
-    let loli_l_chip = RuleChip::new(ill::loli_l());
-    let id_chip = RuleChip::new(ill::id());
+    let loli_l_chip = RuleChip::new(specs["loli_l"].clone());
+    let id_chip = RuleChip::new(specs["id"].clone());
 
     let init_trace = padded_trace(
         &[
@@ -193,7 +195,7 @@ fn p2_loli_l_wrong_goal_fails() {
     );
 
     let rom_trace = padded_trace(
-        &[[H_A_LOLI_B, tags::LOLI, H_A, H_B, 1, 1]],
+        &[[H_A_LOLI_B, tags["loli"], H_A, H_B, 1, 1]],
         4,
     );
 

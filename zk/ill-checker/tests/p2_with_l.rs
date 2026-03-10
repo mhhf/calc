@@ -8,8 +8,7 @@ use std::sync::Arc;
 
 use ill_checker::{
     chips::{formula_rom::FormulaRomAir, init::InitChip},
-    rule::{ill, RuleChip},
-    tags,
+    rule::RuleChip,
 };
 use openvm_stark_backend::AirRef;
 use openvm_stark_sdk::{
@@ -42,13 +41,14 @@ const H_A_WITH_B: u32 = 300; // hash(A & B)
 
 #[test]
 fn p2_with_l1_basic() {
+    let (tags, specs) = common::load_test_specs();
     // A & B ⊢ A
     // Proof: with_l1(A&B, id(A))
     //   with_l1: ctx receive A&B, ctx send A (child0), formula lookup
     //   id:      oblig receive (0, A, 0), ctx receive A
 
-    let with_l1_chip = RuleChip::new(ill::with_l1());
-    let id_chip = RuleChip::new(ill::id());
+    let with_l1_chip = RuleChip::new(specs["with_l1"].clone());
+    let id_chip = RuleChip::new(specs["id"].clone());
 
     // with_l1 layout: [active=0, hash=1, c0=2, c1=3] width=4
     assert_eq!(with_l1_chip.layout.width, 4);
@@ -62,7 +62,7 @@ fn p2_with_l1_basic() {
     let id_trace = dyn_trace(&[&[1, H_A, 0, 0]], 4, 4);
 
     // ROM: A & B
-    let rom_trace = padded_trace(&[[H_A_WITH_B, tags::WITH, H_A, H_B, 1, 1]], 4);
+    let rom_trace = padded_trace(&[[H_A_WITH_B, tags["with"], H_A, H_B, 1, 1]], 4);
 
     BabyBearPoseidon2Engine::run_simple_test_fast(
         vec![
@@ -83,13 +83,14 @@ fn p2_with_l1_basic() {
 
 #[test]
 fn p2_with_l2_basic() {
+    let (tags, specs) = common::load_test_specs();
     // A & B ⊢ B
     // Proof: with_l2(A&B, id(B))
     //   with_l2: ctx receive A&B, ctx send B (child1), formula lookup
     //   id:      oblig receive (0, B, 0), ctx receive B
 
-    let with_l2_chip = RuleChip::new(ill::with_l2());
-    let id_chip = RuleChip::new(ill::id());
+    let with_l2_chip = RuleChip::new(specs["with_l2"].clone());
+    let id_chip = RuleChip::new(specs["id"].clone());
 
     // with_l2 layout: [active=0, hash=1, c0=2, c1=3] width=4
     assert_eq!(with_l2_chip.layout.width, 4);
@@ -103,7 +104,7 @@ fn p2_with_l2_basic() {
     let id_trace = dyn_trace(&[&[1, H_B, 0, 0]], 4, 4);
 
     // ROM: A & B
-    let rom_trace = padded_trace(&[[H_A_WITH_B, tags::WITH, H_A, H_B, 1, 1]], 4);
+    let rom_trace = padded_trace(&[[H_A_WITH_B, tags["with"], H_A, H_B, 1, 1]], 4);
 
     BabyBearPoseidon2Engine::run_simple_test_fast(
         vec![
@@ -125,9 +126,10 @@ fn p2_with_l2_basic() {
 #[test]
 #[should_panic]
 fn p2_with_l1_wrong_projection_fails() {
+    let (tags, specs) = common::load_test_specs();
     // with_l1 should send child0=A, but id expects B — bus imbalance
-    let with_l1_chip = RuleChip::new(ill::with_l1());
-    let id_chip = RuleChip::new(ill::id());
+    let with_l1_chip = RuleChip::new(specs["with_l1"].clone());
+    let id_chip = RuleChip::new(specs["id"].clone());
 
     // Init: ctx=A&B, oblig=(0, B, 0) — expect B but with_l1 provides A
     let init_trace = padded_trace(&[[H_A_WITH_B, 1, H_B, 1, 0, 0]], 4);
@@ -136,7 +138,7 @@ fn p2_with_l1_wrong_projection_fails() {
     // id consumes A (what with_l1 provides), but obligation says B
     let id_trace = dyn_trace(&[&[1, H_A, 0, 0]], 4, 4);
 
-    let rom_trace = padded_trace(&[[H_A_WITH_B, tags::WITH, H_A, H_B, 1, 1]], 4);
+    let rom_trace = padded_trace(&[[H_A_WITH_B, tags["with"], H_A, H_B, 1, 1]], 4);
 
     BabyBearPoseidon2Engine::run_simple_test_fast(
         vec![

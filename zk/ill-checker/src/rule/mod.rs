@@ -12,8 +12,6 @@
 //! column index bookkeeping. The layout assigns columns in a fixed
 //! order: [is_active, hash, child0, child1, nonce_in, lax, nonce_outs..., goal].
 
-pub mod ill;
-
 use openvm_stark_backend::{
     interaction::InteractionBuilder,
     p3_air::{Air, BaseAir},
