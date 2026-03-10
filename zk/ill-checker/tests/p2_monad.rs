@@ -53,9 +53,9 @@ fn p2_monad_roundtrip() {
     //            formula lookup ({A}, MONAD, A, 0)
     //   id:      oblig receive (1, A, 1), ctx receive A
 
-    let monad_l_chip = RuleChip::new(ill::MONAD_L);
-    let monad_r_chip = RuleChip::new(ill::MONAD_R);
-    let id_chip = RuleChip::new(ill::ID);
+    let monad_l_chip = RuleChip::new(ill::monad_l());
+    let monad_r_chip = RuleChip::new(ill::monad_r());
+    let id_chip = RuleChip::new(ill::id());
 
     // monad_l layout: [active=0, hash=1, child0=2] width=3
     assert_eq!(monad_l_chip.layout.width, 3);
@@ -104,9 +104,9 @@ fn p2_monad_roundtrip() {
 #[should_panic]
 fn p2_monad_r_lax_mismatch_fails() {
     // monad_r produces lax=1, but id tries to consume with lax=0
-    let monad_l_chip = RuleChip::new(ill::MONAD_L);
-    let monad_r_chip = RuleChip::new(ill::MONAD_R);
-    let id_chip = RuleChip::new(ill::ID);
+    let monad_l_chip = RuleChip::new(ill::monad_l());
+    let monad_r_chip = RuleChip::new(ill::monad_r());
+    let id_chip = RuleChip::new(ill::id());
 
     let init_trace = padded_trace(&[[H_MONAD_A, 1, H_MONAD_A, 1, 0, 0]], 4);
     let ml_trace = dyn_trace(&[&[1, H_MONAD_A, H_A]], 3, 4);

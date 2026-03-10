@@ -47,8 +47,8 @@ fn p2_with_l1_basic() {
     //   with_l1: ctx receive A&B, ctx send A (child0), formula lookup
     //   id:      oblig receive (0, A, 0), ctx receive A
 
-    let with_l1_chip = RuleChip::new(ill::WITH_L1);
-    let id_chip = RuleChip::new(ill::ID);
+    let with_l1_chip = RuleChip::new(ill::with_l1());
+    let id_chip = RuleChip::new(ill::id());
 
     // with_l1 layout: [active=0, hash=1, c0=2, c1=3] width=4
     assert_eq!(with_l1_chip.layout.width, 4);
@@ -88,8 +88,8 @@ fn p2_with_l2_basic() {
     //   with_l2: ctx receive A&B, ctx send B (child1), formula lookup
     //   id:      oblig receive (0, B, 0), ctx receive B
 
-    let with_l2_chip = RuleChip::new(ill::WITH_L2);
-    let id_chip = RuleChip::new(ill::ID);
+    let with_l2_chip = RuleChip::new(ill::with_l2());
+    let id_chip = RuleChip::new(ill::id());
 
     // with_l2 layout: [active=0, hash=1, c0=2, c1=3] width=4
     assert_eq!(with_l2_chip.layout.width, 4);
@@ -126,8 +126,8 @@ fn p2_with_l2_basic() {
 #[should_panic]
 fn p2_with_l1_wrong_projection_fails() {
     // with_l1 should send child0=A, but id expects B — bus imbalance
-    let with_l1_chip = RuleChip::new(ill::WITH_L1);
-    let id_chip = RuleChip::new(ill::ID);
+    let with_l1_chip = RuleChip::new(ill::with_l1());
+    let id_chip = RuleChip::new(ill::id());
 
     // Init: ctx=A&B, oblig=(0, B, 0) — expect B but with_l1 provides A
     let init_trace = padded_trace(&[[H_A_WITH_B, 1, H_B, 1, 0, 0]], 4);

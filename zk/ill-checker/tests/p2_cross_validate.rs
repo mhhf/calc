@@ -57,7 +57,7 @@ fn dyn_trace(rows: &[&[u32]], width: usize, min_rows: usize) -> openvm_stark_bac
 #[test]
 fn p2_xval_identity() {
     // A ⊢ A using generic RuleChip(ID)
-    let id_chip = RuleChip::new(ill::ID);
+    let id_chip = RuleChip::new(ill::id());
     let id_w = id_chip.layout.width;
     // Layout: [active=0, hash=1, nonce_in=2, lax=3]
     assert_eq!(id_w, 4);
@@ -85,8 +85,8 @@ fn p2_xval_identity() {
 
 #[test]
 fn p2_xval_tensor_r() {
-    let tr_chip = RuleChip::new(ill::TENSOR_R);
-    let id_chip = RuleChip::new(ill::ID);
+    let tr_chip = RuleChip::new(ill::tensor_r());
+    let id_chip = RuleChip::new(ill::id());
     // tensor_r layout: [active=0, hash=1, c0=2, c1=3, nonce_in=4, lax=5, nonce_out0=6, nonce_out1=7]
     assert_eq!(tr_chip.layout.width, 8);
 
@@ -134,9 +134,9 @@ fn p2_xval_tensor_r() {
 
 #[test]
 fn p2_xval_tensor_swap() {
-    let tl_chip = RuleChip::new(ill::TENSOR_L);
-    let tr_chip = RuleChip::new(ill::TENSOR_R);
-    let id_chip = RuleChip::new(ill::ID);
+    let tl_chip = RuleChip::new(ill::tensor_l());
+    let tr_chip = RuleChip::new(ill::tensor_r());
+    let id_chip = RuleChip::new(ill::id());
 
     // tensor_l layout: [active=0, hash=1, c0=2, c1=3] width=4
     assert_eq!(tl_chip.layout.width, 4);
@@ -188,8 +188,8 @@ fn p2_xval_tensor_swap() {
 
 #[test]
 fn p2_xval_with_r() {
-    let wr_chip = RuleChip::new(ill::WITH_R);
-    let id_chip = RuleChip::new(ill::ID);
+    let wr_chip = RuleChip::new(ill::with_r());
+    let id_chip = RuleChip::new(ill::id());
 
     // with_r has same layout as tensor_r (both are binary right rules)
     assert_eq!(wr_chip.layout.width, 8);

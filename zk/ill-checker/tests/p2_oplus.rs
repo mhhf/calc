@@ -62,10 +62,10 @@ fn p2_oplus_swap() {
     //   id(A):    oblig receive (3, A, 0), ctx receive A
     //   id(B):    oblig receive (4, B, 0), ctx receive B
 
-    let oplus_l_chip = RuleChip::new(ill::OPLUS_L);
-    let oplus_r2_chip = RuleChip::new(ill::OPLUS_R2);
-    let oplus_r1_chip = RuleChip::new(ill::OPLUS_R1);
-    let id_chip = RuleChip::new(ill::ID);
+    let oplus_l_chip = RuleChip::new(ill::oplus_l());
+    let oplus_r2_chip = RuleChip::new(ill::oplus_r2());
+    let oplus_r1_chip = RuleChip::new(ill::oplus_r1());
+    let id_chip = RuleChip::new(ill::id());
 
     // oplus_l: [active=0, hash=1, c0=2, c1=3, nonce_in=4, lax=5, nonce_out0=6, nonce_out1=7, goal=8]
     assert_eq!(oplus_l_chip.layout.width, 9);
@@ -135,8 +135,8 @@ fn p2_oplus_r1_simple() {
     // A ⊢ A ⊕ B
     // Proof: oplus_r1(id(A))
 
-    let oplus_r1_chip = RuleChip::new(ill::OPLUS_R1);
-    let id_chip = RuleChip::new(ill::ID);
+    let oplus_r1_chip = RuleChip::new(ill::oplus_r1());
+    let id_chip = RuleChip::new(ill::id());
 
     let init_trace = padded_trace(&[[H_A, 1, H_A_OPLUS_B, 1, 0, 0]], 4);
 
@@ -174,8 +174,8 @@ fn p2_oplus_r1_simple() {
 #[should_panic]
 fn p2_oplus_r1_wrong_child_fails() {
     // Try to prove A ⊕ B by providing B (should use oplus_r2)
-    let oplus_r1_chip = RuleChip::new(ill::OPLUS_R1);
-    let id_chip = RuleChip::new(ill::ID);
+    let oplus_r1_chip = RuleChip::new(ill::oplus_r1());
+    let id_chip = RuleChip::new(ill::id());
 
     let init_trace = padded_trace(&[[H_B, 1, H_A_OPLUS_B, 1, 0, 0]], 4);
 

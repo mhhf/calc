@@ -49,8 +49,8 @@ fn p2_exists_r_basic() {
     //   exists_r: oblig receive (0, ∃A, 0), formula lookup, oblig send (1, A, 0)
     //   id:       oblig receive (1, A, 0), ctx receive A
 
-    let exists_r_chip = RuleChip::new(ill::EXISTS_R);
-    let id_chip = RuleChip::new(ill::ID);
+    let exists_r_chip = RuleChip::new(ill::exists_r());
+    let id_chip = RuleChip::new(ill::id());
 
     // exists_r layout: [active=0, hash=1, c0=2, nonce_in=3, lax=4, nonce_out0=5] width=6
     assert_eq!(exists_r_chip.layout.width, 6);
@@ -90,8 +90,8 @@ fn p2_exists_l_basic() {
     //   exists_l: ctx receive ∃A, ctx send A (child0), formula lookup
     //   id:       oblig receive (0, A, 0), ctx receive A
 
-    let exists_l_chip = RuleChip::new(ill::EXISTS_L);
-    let id_chip = RuleChip::new(ill::ID);
+    let exists_l_chip = RuleChip::new(ill::exists_l());
+    let id_chip = RuleChip::new(ill::id());
 
     // exists_l: context-only left, [active=0, hash=1, c0=2] width=3
     assert_eq!(exists_l_chip.layout.width, 3);
@@ -129,8 +129,8 @@ fn p2_forall_r_basic() {
     // A ⊢ ∀x.A  (vacuous; A doesn't depend on x)
     // Proof: forall_r(id(A))
 
-    let forall_r_chip = RuleChip::new(ill::FORALL_R);
-    let id_chip = RuleChip::new(ill::ID);
+    let forall_r_chip = RuleChip::new(ill::forall_r());
+    let id_chip = RuleChip::new(ill::id());
 
     // forall_r layout: [active=0, hash=1, c0=2, nonce_in=3, lax=4, nonce_out0=5] width=6
     assert_eq!(forall_r_chip.layout.width, 6);
@@ -168,8 +168,8 @@ fn p2_forall_l_basic() {
     // ∀x.A ⊢ A
     // Proof: forall_l(∀A, id(A))
 
-    let forall_l_chip = RuleChip::new(ill::FORALL_L);
-    let id_chip = RuleChip::new(ill::ID);
+    let forall_l_chip = RuleChip::new(ill::forall_l());
+    let id_chip = RuleChip::new(ill::id());
 
     // forall_l: context-only left, [active=0, hash=1, c0=2] width=3
     assert_eq!(forall_l_chip.layout.width, 3);
@@ -207,9 +207,9 @@ fn p2_exists_roundtrip() {
     // ∃x.A ⊢ ∃x.A
     // Proof: exists_l(∃A, exists_r(id(A)))
 
-    let exists_l_chip = RuleChip::new(ill::EXISTS_L);
-    let exists_r_chip = RuleChip::new(ill::EXISTS_R);
-    let id_chip = RuleChip::new(ill::ID);
+    let exists_l_chip = RuleChip::new(ill::exists_l());
+    let exists_r_chip = RuleChip::new(ill::exists_r());
+    let id_chip = RuleChip::new(ill::id());
 
     let init_trace = padded_trace(&[[H_EXISTS_A, 1, H_EXISTS_A, 1, 0, 0]], 4);
 

@@ -65,8 +65,8 @@ fn p2_loli_r_basic() {
     // loli_r: consume oblig (0, A⊸A, 0), add A to context, produce oblig (1, A, 0)
     // id: consume oblig (1, A, 0), consume A from context
 
-    let loli_r_chip = RuleChip::new(ill::LOLI_R);
-    let id_chip = RuleChip::new(ill::ID);
+    let loli_r_chip = RuleChip::new(ill::loli_r());
+    let id_chip = RuleChip::new(ill::id());
     // loli_r layout: [active=0, hash=1, c0=2, c1=3, nonce_in=4, lax=5, nonce_out0=6]
     assert_eq!(loli_r_chip.layout.width, 7);
 
@@ -120,8 +120,8 @@ fn p2_loli_l_basic() {
     // id(A): consume oblig (1, A, 0), consume A from context
     // id(B): consume oblig (2, B, 0), consume B from context
 
-    let loli_l_chip = RuleChip::new(ill::LOLI_L);
-    let id_chip = RuleChip::new(ill::ID);
+    let loli_l_chip = RuleChip::new(ill::loli_l());
+    let id_chip = RuleChip::new(ill::id());
 
     // loli_l layout: [active=0, hash=1, c0=2, c1=3, nonce_in=4, lax=5, nonce_out0=6, nonce_out1=7, goal=8]
     assert_eq!(loli_l_chip.layout.width, 9);
@@ -170,8 +170,8 @@ fn p2_loli_l_basic() {
 #[should_panic]
 fn p2_loli_l_wrong_goal_fails() {
     // loli_l with mismatched goal — obligation type doesn't match
-    let loli_l_chip = RuleChip::new(ill::LOLI_L);
-    let id_chip = RuleChip::new(ill::ID);
+    let loli_l_chip = RuleChip::new(ill::loli_l());
+    let id_chip = RuleChip::new(ill::id());
 
     let init_trace = padded_trace(
         &[

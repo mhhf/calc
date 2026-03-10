@@ -53,8 +53,8 @@ fn p2_bang_l_basic() {
     //   bang_l: ctx receive !A, ctx send A, formula lookup
     //   id: oblig receive (0, A, 0), ctx receive A
 
-    let bang_l_chip = RuleChip::new(ill::BANG_L);
-    let id_chip = RuleChip::new(ill::ID);
+    let bang_l_chip = RuleChip::new(ill::bang_l());
+    let id_chip = RuleChip::new(ill::id());
 
     // bang_l layout: [active=0, hash=1, child0=2] width=3
     assert_eq!(bang_l_chip.layout.width, 3);
@@ -101,10 +101,10 @@ fn p2_absorption_copy() {
     //               formula lookup
     //   id×2:       consume obligations and context
 
-    let absorption_chip = RuleChip::new(ill::ABSORPTION);
-    let copy_chip = RuleChip::new(ill::COPY);
-    let tensor_r_chip = RuleChip::new(ill::TENSOR_R);
-    let id_chip = RuleChip::new(ill::ID);
+    let absorption_chip = RuleChip::new(ill::absorption());
+    let copy_chip = RuleChip::new(ill::copy());
+    let tensor_r_chip = RuleChip::new(ill::tensor_r());
+    let id_chip = RuleChip::new(ill::id());
 
     // absorption layout: [active=0, hash=1, child0=2] width=3
     assert_eq!(absorption_chip.layout.width, 3);
@@ -167,8 +167,8 @@ fn p2_absorption_copy() {
 #[should_panic]
 fn p2_copy_without_gamma_fails() {
     // Try to copy A without it being in gamma — GAMMA_BUS unbalanced
-    let copy_chip = RuleChip::new(ill::COPY);
-    let id_chip = RuleChip::new(ill::ID);
+    let copy_chip = RuleChip::new(ill::copy());
+    let id_chip = RuleChip::new(ill::id());
 
     // No absorption, no gamma entry, but try to copy
     let init_trace = padded_trace(&[[0, 0, H_A, 1, 0, 0]], 4);

@@ -2,13 +2,12 @@
 //!
 //! Deserializes the JSON output of `lib/zk/witness.js` into typed
 //! trace matrices for each AIR chip, then runs the STARK prover.
-//! This is the JS → Rust integration layer for Phase 1f.
 //!
-//! The witness JSON is self-describing: it carries a `tags` field
-//! with the connective→integer mapping derived from the calculus
-//! definition. The bridge reads this and uses it when constructing
-//! RuleChips, so the Rust verifier adapts automatically when
-//! connective definitions change.
+//! The witness JSON is fully self-describing: it carries `tags` (connective
+//! tag mapping) and `rule_specs` (per-rule chip structure), both derived
+//! from the calculus definition. The bridge reads these and constructs
+//! chips entirely at runtime — zero calculus-specific code. The same Rust
+//! binary verifies proofs from any calculus defined in CALC.
 
 use std::collections::HashMap;
 use std::sync::Arc;
@@ -33,73 +32,21 @@ use crate::chips::{
     init::InitChip,
     zero_l::ZeroLChip,
 };
-use crate::rule::{ill, RuleChip, RuleSpec};
+use crate::rule::{RuleChip, RuleSpec};
 
 /// JSON witness format produced by `lib/zk/witness.js`.
+///
+/// Fully self-describing: `tags` and `rule_specs` are derived from the
+/// calculus definition, so the Rust verifier adapts automatically.
 #[derive(Deserialize, Debug)]
 pub struct WitnessJson {
     /// Connective name → ZK tag integer, derived from the calculus definition.
     pub tags: HashMap<String, u32>,
+    /// Rule name → ZK RuleSpec, derived from the calculus rule descriptors.
+    pub rule_specs: HashMap<String, RuleSpec>,
     pub chips: HashMap<String, Vec<Vec<u32>>>,
     pub formula_rom: Vec<Vec<u32>>,
     pub gamma_rom: Vec<Vec<u32>>,
-}
-
-/// Get the base RuleSpec (structural layout) for a rule name.
-/// Tags are overridden from the witness — these are just for structure.
-fn base_rule_spec(name: &str) -> Option<RuleSpec> {
-    match name {
-        "id" => Some(ill::ID),
-        "tensor_r" => Some(ill::TENSOR_R),
-        "tensor_l" => Some(ill::TENSOR_L),
-        "loli_r" => Some(ill::LOLI_R),
-        "loli_l" => Some(ill::LOLI_L),
-        "with_r" => Some(ill::WITH_R),
-        "with_l1" => Some(ill::WITH_L1),
-        "with_l2" => Some(ill::WITH_L2),
-        "oplus_r1" => Some(ill::OPLUS_R1),
-        "oplus_r2" => Some(ill::OPLUS_R2),
-        "oplus_l" => Some(ill::OPLUS_L),
-        "one_r" => Some(ill::ONE_R),
-        "one_l" => Some(ill::ONE_L),
-        "bang_r" => Some(ill::BANG_R),
-        "bang_l" => Some(ill::BANG_L),
-        "absorption" => Some(ill::ABSORPTION),
-        "copy" => Some(ill::COPY),
-        "monad_r" => Some(ill::MONAD_R),
-        "monad_l" => Some(ill::MONAD_L),
-        "exists_r" => Some(ill::EXISTS_R),
-        "exists_l" => Some(ill::EXISTS_L),
-        "forall_r" => Some(ill::FORALL_R),
-        "forall_l" => Some(ill::FORALL_L),
-        _ => None,
-    }
-}
-
-/// Map from rule name to the connective it operates on.
-fn connective_for_rule(name: &str) -> Option<&str> {
-    match name {
-        "tensor_r" | "tensor_l" => Some("tensor"),
-        "loli_r" | "loli_l" => Some("loli"),
-        "with_r" | "with_l1" | "with_l2" => Some("with"),
-        "oplus_r1" | "oplus_r2" | "oplus_l" => Some("oplus"),
-        "bang_r" | "bang_l" | "absorption" => Some("bang"),
-        "monad_r" | "monad_l" => Some("monad"),
-        "one_r" | "one_l" => Some("one"),
-        "exists_r" | "exists_l" => Some("exists"),
-        "forall_r" | "forall_l" => Some("forall"),
-        // id, copy — no connective tag
-        _ => None,
-    }
-}
-
-/// Build a RuleSpec for a rule name, overriding the tag from the witness's tag mapping.
-fn rule_spec_with_tags(name: &str, tags: &HashMap<String, u32>) -> Option<RuleSpec> {
-    let mut spec = base_rule_spec(name)?;
-    if let Some(conn) = connective_for_rule(name) {
-        spec.tag = tags.get(conn).copied();
-    }
-    Some(spec)
 }
 
 /// Known special chip names that are NOT generic RuleChips.
@@ -176,7 +123,7 @@ pub fn prove_witness(witness: &WitnessJson) -> Result<(), String> {
     });
     pis.push(vec![]);
 
-    // 5. Generic RuleChips — tags overridden from the witness
+    // 5. Generic RuleChips — specs read from witness (fully generic)
     let mut rule_names: Vec<String> = witness.chips.keys()
         .filter(|name| !SPECIAL_CHIPS.contains(&name.as_str()))
         .cloned()
@@ -184,8 +131,9 @@ pub fn prove_witness(witness: &WitnessJson) -> Result<(), String> {
     rule_names.sort(); // deterministic order
 
     for name in &rule_names {
-        let spec = rule_spec_with_tags(name, tags)
-            .ok_or_else(|| format!("unknown rule chip: {name}"))?;
+        let spec = witness.rule_specs.get(name)
+            .ok_or_else(|| format!("chip '{}' has no matching rule_spec in witness", name))?
+            .clone();
         let chip = RuleChip::new(spec);
         let width = chip.layout.width;
         let rows = witness.chips.get(name).unwrap();

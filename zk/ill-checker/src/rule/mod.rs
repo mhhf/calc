@@ -5,8 +5,8 @@
 //! moves, which formula lookups it performs. The `RuleChip` implements
 //! the Air trait by reading the spec and emitting appropriate constraints.
 //!
-//! Adding a new rule = adding a `RuleSpec` constant.
-//! Adding a new calculus = adding a new rule table module (like `ill`).
+//! Adding a new rule = adding a `RuleSpec` value.
+//! Adding a new calculus = deriving rule specs from `.rules` descriptors.
 //!
 //! Column layout is computed automatically from the spec — no manual
 //! column index bookkeeping. The layout assigns columns in a fixed
@@ -21,6 +21,7 @@ use openvm_stark_backend::{
     p3_matrix::Matrix,
     rap::{BaseAirWithPublicValues, PartitionedBaseAir},
 };
+use serde::Deserialize;
 
 use crate::buses::{CONTEXT_BUS, FORMULA_BUS, GAMMA_BUS, OBLIG_BUS};
 
@@ -29,7 +30,7 @@ use crate::buses::{CONTEXT_BUS, FORMULA_BUS, GAMMA_BUS, OBLIG_BUS};
 // ---------------------------------------------------------------------------
 
 /// How a premise references a type for its obligation output.
-#[derive(Clone, Copy, Debug, PartialEq)]
+#[derive(Clone, Copy, Debug, PartialEq, Deserialize)]
 pub enum TypeRef {
     /// Use child[i] of the principal formula.
     Child(u8),
@@ -38,7 +39,7 @@ pub enum TypeRef {
 }
 
 /// What gets sent to CONTEXT_BUS.
-#[derive(Clone, Copy, Debug, PartialEq)]
+#[derive(Clone, Copy, Debug, PartialEq, Deserialize)]
 pub enum CtxSend {
     /// Send child[i] of the principal formula.
     Child(u8),
@@ -47,7 +48,7 @@ pub enum CtxSend {
 }
 
 /// A premise that creates a new obligation on OBLIG_BUS.
-#[derive(Clone, Copy, Debug, PartialEq)]
+#[derive(Clone, Copy, Debug, PartialEq, Deserialize)]
 pub struct PremiseSpec {
     /// What type to assign to the produced obligation.
     pub succedent: TypeRef,
@@ -61,9 +62,12 @@ pub struct PremiseSpec {
 /// The generic `RuleChip` reads this spec and emits appropriate
 /// AIR constraints. No code generation needed — just instantiate
 /// with different specs.
-#[derive(Clone, Copy, Debug)]
+///
+/// Specs can be constructed statically (see `ill` module) or
+/// deserialized from the witness JSON for fully generic verification.
+#[derive(Clone, Debug, Deserialize)]
 pub struct RuleSpec {
-    pub name: &'static str,
+    pub name: String,
     /// Connective tag for FORMULA_BUS lookup (None for id, copy).
     pub tag: Option<u32>,
     /// Number of children of the principal formula (0, 1, or 2).
@@ -73,13 +77,13 @@ pub struct RuleSpec {
     /// OBLIG_BUS.receive — consume an obligation.
     pub oblig_receive: bool,
     /// OBLIG_BUS.send per premise — produce new obligations.
-    pub premises: &'static [PremiseSpec],
+    pub premises: Vec<PremiseSpec>,
 
     // -- Context bus --
     /// CONTEXT_BUS.receive — consume principal from linear context.
     pub ctx_receive: bool,
     /// CONTEXT_BUS.send — introduce elements to context.
-    pub ctx_sends: &'static [CtxSend],
+    pub ctx_sends: Vec<CtxSend>,
 
     // -- Formula bus --
     /// FORMULA_BUS.lookup_key — verify connective decomposition.
@@ -173,7 +177,7 @@ impl ColumnLayout {
 
         // nonce_outs: one per premise
         let mut nonce_outs = Vec::with_capacity(spec.premises.len());
-        for _ in spec.premises {
+        for _ in &spec.premises {
             nonce_outs.push(col);
             col += 1;
         }
@@ -214,7 +218,7 @@ impl ColumnLayout {
 ///
 /// Usage:
 /// ```ignore
-/// let chip = RuleChip::new(ill::TENSOR_R);
+/// let chip = RuleChip::new(ill::tensor_r());
 /// // chip.width() == 8, same bus interactions as hand-written BinaryRChip
 /// ```
 pub struct RuleChip {
@@ -231,8 +235,8 @@ impl RuleChip {
     }
 
     /// The spec's name (for debug/display).
-    pub fn name(&self) -> &'static str {
-        self.spec.name
+    pub fn name(&self) -> &str {
+        &self.spec.name
     }
 }
 
@@ -312,7 +316,7 @@ impl<AB: InteractionBuilder> Air<AB> for RuleChip {
         }
 
         // --- CONTEXT_BUS.send ---
-        for send in spec.ctx_sends {
+        for send in &spec.ctx_sends {
             let val = match send {
                 CtxSend::Child(0) => col!(layout.child0.unwrap()),
                 CtxSend::Child(1) => col!(layout.child1.unwrap()),

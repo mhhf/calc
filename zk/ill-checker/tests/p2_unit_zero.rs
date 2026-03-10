@@ -56,7 +56,7 @@ fn p2_one_r_basic() {
     // Proof: one_r
     // one_r: consume oblig (0, I, 0), formula lookup (I, ONE, 0, 0)
 
-    let one_r_chip = RuleChip::new(ill::ONE_R);
+    let one_r_chip = RuleChip::new(ill::one_r());
     // one_r layout: [active=0, hash=1, nonce_in=2, lax=3]
     assert_eq!(one_r_chip.layout.width, 4);
 
@@ -93,9 +93,9 @@ fn p2_tensor_one_left() {
     //   one_l:    ctx receive I (removed)
     //   id:       oblig receive (0, A, 0), ctx receive A
 
-    let tensor_l_chip = RuleChip::new(ill::TENSOR_L);
-    let one_l_chip = RuleChip::new(ill::ONE_L);
-    let id_chip = RuleChip::new(ill::ID);
+    let tensor_l_chip = RuleChip::new(ill::tensor_l());
+    let one_l_chip = RuleChip::new(ill::one_l());
+    let id_chip = RuleChip::new(ill::id());
 
     // one_l layout: [active=0, hash=1] width=2
     assert_eq!(one_l_chip.layout.width, 2);
@@ -236,7 +236,7 @@ fn p2_discard_without_zero_l_fails() {
         4,
     );
 
-    let id_chip = RuleChip::new(ill::ID);
+    let id_chip = RuleChip::new(ill::id());
     let id_trace = dyn_trace(&[&[1, H_A, 0, 0]], 4, 4);
 
     // Try to discard B without any zero_l authorization
@@ -262,7 +262,7 @@ fn p2_discard_without_zero_l_fails() {
 #[should_panic]
 fn p2_one_r_nonempty_context_fails() {
     // A ⊢ I — should fail because A is unconsumed (bus imbalance)
-    let one_r_chip = RuleChip::new(ill::ONE_R);
+    let one_r_chip = RuleChip::new(ill::one_r());
 
     let init_trace = padded_trace(
         &[[H_A, 1, H_ONE, 1, 0, 0]], // ctx=A, oblig=(0, I, 0)
