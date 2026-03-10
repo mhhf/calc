@@ -1,2 +1,6 @@
-// Chip implementations for ILL proof checking
-// Phase 1a' spikes validate the stark-backend API
+pub mod binary_r;
+pub mod dup;
+pub mod formula_rom;
+pub mod identity;
+pub mod init;
+pub mod tensor_l;
