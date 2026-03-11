@@ -259,14 +259,17 @@ pub fn prove_witness(witness: &WitnessJson) -> Result<(), String> {
 
 /// Flat witness format produced by `lib/zk/flat-witness.js`.
 ///
-/// Phase 3b: uses CONTEXT_BUS + GAMMA_BUS + FORMULA_BUS (3 buses).
-/// Chips: FlatInitChip + FlatStepChip + FlatFinalChip + FormulaRomAir + GammaRomAir.
+/// Phase 3b.7: uses CONTEXT_BUS + GAMMA_BUS + FORMULA_BUS + SUBST_TREE_BUS + FREEVAR_BUS.
+/// Chips: FlatInitChip + FlatStepChip + FlatFinalChip + FormulaRomAir + GammaRomAir
+///        + SubstChip (optional) + FreevarRomAir (optional).
 #[derive(Deserialize, Debug)]
 pub struct FlatWitnessJson {
     pub format: String,
     pub chips: HashMap<String, Vec<Vec<u32>>>,
     pub formula_rom: Vec<Vec<u32>>,
     pub gamma_rom: Vec<Vec<u32>>,
+    #[serde(default)]
+    pub freevar_rom: Vec<Vec<u32>>,
     /// Connective name → ZK tag integer (needed for FlatStepChip struct fields).
     pub tags: HashMap<String, u32>,
     /// Constants: { one_hash: Store.put('one', []) }.
@@ -337,6 +340,23 @@ pub fn prove_flat_witness(witness: &FlatWitnessJson) -> Result<(), String> {
         build_trace_1col(&gamma_lookups, min_rows)
     });
     pis.push(vec![]);
+
+    // 6. SubstChip (optional — present when loli matches exist)
+    let subst_rows = witness.chips.get("subst");
+    airs.push(Arc::new(SubstChip) as AirRef<_>);
+    traces.push(match subst_rows {
+        Some(rows) if !rows.is_empty() => build_trace(rows, crate::chips::subst::WIDTH, min_rows),
+        _ => empty_trace(crate::chips::subst::WIDTH, min_rows),
+    });
+    pis.push(vec![]);
+
+    // 7. FreevarRomAir (optional — present when loli matches have freevars)
+    if !witness.freevar_rom.is_empty() {
+        let (freevar_entries, freevar_lookups) = split_freevar_rom(&witness.freevar_rom);
+        airs.push(Arc::new(FreevarRomAir { entries: freevar_entries, min_rows }) as AirRef<_>);
+        traces.push(build_trace_1col(&freevar_lookups, min_rows));
+        pis.push(vec![]);
+    }
 
     // FlatStepChip has degree-4 constraints (spine boundary checks), requiring
     // log_blowup >= 2 so the LDE has enough evaluations for the quotient domain.

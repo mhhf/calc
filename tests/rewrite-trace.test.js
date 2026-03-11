@@ -224,8 +224,8 @@ describe('rewrite-trace: solc forward integration', { timeout: 60000 }, () => {
     for (const row of witness.chips.flat_init) {
       assert.strictEqual(row.length, 2, 'flat_init width');
     }
-    // Width 39: 3 header + 2*MAX_CONSUMED + 2*MAX_PRODUCED + spine columns + 1 compiled aux
-    const stepWidth = 3 + 2 * MAX_CONSUMED + 2 * MAX_PRODUCED + 1 + (MAX_CONSUMED - 2) + 1 + (MAX_PRODUCED - 2) + 1 + 1;
+    // Width 54: 3 header + 2*MAX_CONSUMED + 2*MAX_PRODUCED + spine columns + 1 compiled aux + 3 loli + MAX_PRODUCED body_leaf + MAX_PRODUCED body_diff
+    const stepWidth = 3 + 2 * MAX_CONSUMED + 2 * MAX_PRODUCED + 1 + (MAX_CONSUMED - 2) + 1 + (MAX_PRODUCED - 2) + 1 + 1 + 3 + 2 * MAX_PRODUCED;
     for (const row of witness.chips.flat_step) {
       assert.strictEqual(row.length, stepWidth, 'flat_step width');
     }
@@ -247,10 +247,28 @@ describe('rewrite-trace: solc forward integration', { timeout: 60000 }, () => {
     assert.ok(witness.constants, 'should have constants');
     assert.ok(witness.constants.one_hash, 'should have one_hash constant');
 
+    // Verify SubstChip rows (present when loli matches exist)
+    if (witness.chips.subst) {
+      assert.ok(witness.chips.subst.length > 0, 'subst rows should be non-empty when present');
+      for (const row of witness.chips.subst) {
+        assert.strictEqual(row.length, 15, 'subst row width');
+      }
+      console.log(`  subst: ${witness.chips.subst.length} rows`);
+    }
+
+    // Verify freevar_rom
+    if (witness.freevar_rom.length > 0) {
+      for (const row of witness.freevar_rom) {
+        assert.strictEqual(row.length, 5, 'freevar_rom width');
+      }
+      console.log(`  freevar_rom: ${witness.freevar_rom.length} entries`);
+    }
+
     // Summary
     const totalRows = witness.chips.flat_init.length +
       witness.chips.flat_step.length +
-      witness.chips.flat_final.length;
+      witness.chips.flat_final.length +
+      (witness.chips.subst ? witness.chips.subst.length : 0);
     console.log(`  flat_init: ${witness.chips.flat_init.length} rows`);
     console.log(`  flat_step: ${witness.chips.flat_step.length} rows`);
     console.log(`  flat_final: ${witness.chips.flat_final.length} rows`);
