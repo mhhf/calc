@@ -56,6 +56,30 @@ describe('rewrite-trace: unit tests', () => {
     assert.strictEqual(flat[0].name, 'test_rule');
   });
 
+  it('buildRewriteTrace preserves consumed multiplicity', () => {
+    Store.clear();
+    const a = Store.put('atom', ['a']);
+    const b = Store.put('atom', ['b']);
+
+    // Rule: a * a -o { b } — consumes 2 copies of a
+    const mockTrace = [{
+      rule: {
+        name: 'dup_consume',
+        hash: 999,
+        consequent: { linear: [b] },
+      },
+      consumed: { [a]: 2 },
+      theta: [],
+      slots: {},
+      persistentEvidence: [],
+      loliHash: null,
+    }];
+
+    const flat = buildRewriteTrace(mockTrace);
+    assert.deepStrictEqual(flat[0].consumed, [a, a],
+      'should expand count=2 to two entries');
+  });
+
   it('checkRewriteTrace verifies resource accounting', () => {
     Store.clear();
     const a = Store.put('atom', ['a']);
@@ -189,7 +213,7 @@ describe('rewrite-trace: solc forward integration', { timeout: 60000 }, () => {
     const sequent = Seq.fromArrays(linearCtx, cartesianCtx, monadSucc);
 
     const t0 = performance.now();
-    const witness = generateFlatWitness(flatTrace, sequent);
+    const witness = generateFlatWitness(flatTrace, sequent, { calculus: illCalc });
     const dt = performance.now() - t0;
 
     assert.strictEqual(witness.format, 'flat');
@@ -200,13 +224,28 @@ describe('rewrite-trace: solc forward integration', { timeout: 60000 }, () => {
     for (const row of witness.chips.flat_init) {
       assert.strictEqual(row.length, 2, 'flat_init width');
     }
-    const stepWidth = 3 + 2 * MAX_CONSUMED + 2 * MAX_PRODUCED;
+    // Width 39: 3 header + 2*MAX_CONSUMED + 2*MAX_PRODUCED + spine columns + 1 compiled aux
+    const stepWidth = 3 + 2 * MAX_CONSUMED + 2 * MAX_PRODUCED + 1 + (MAX_CONSUMED - 2) + 1 + (MAX_PRODUCED - 2) + 1 + 1;
     for (const row of witness.chips.flat_step) {
       assert.strictEqual(row.length, stepWidth, 'flat_step width');
     }
     for (const row of witness.chips.flat_final) {
       assert.strictEqual(row.length, 2, 'flat_final width');
     }
+
+    // Verify formula_rom is present (Phase 3b: tensor spine verification)
+    assert.ok(witness.formula_rom.length > 0, 'should have formula_rom entries');
+    for (const row of witness.formula_rom) {
+      assert.strictEqual(row.length, 6, 'formula_rom width');
+    }
+
+    // Verify tags and constants are present
+    assert.ok(witness.tags, 'should have tags');
+    assert.ok(witness.tags.loli, 'should have loli tag');
+    assert.ok(witness.tags.monad, 'should have monad tag');
+    assert.ok(witness.tags.tensor, 'should have tensor tag');
+    assert.ok(witness.constants, 'should have constants');
+    assert.ok(witness.constants.one_hash, 'should have one_hash constant');
 
     // Summary
     const totalRows = witness.chips.flat_init.length +
@@ -215,6 +254,7 @@ describe('rewrite-trace: solc forward integration', { timeout: 60000 }, () => {
     console.log(`  flat_init: ${witness.chips.flat_init.length} rows`);
     console.log(`  flat_step: ${witness.chips.flat_step.length} rows`);
     console.log(`  flat_final: ${witness.chips.flat_final.length} rows`);
+    console.log(`  formula_rom: ${witness.formula_rom.length} entries`);
     console.log(`  gamma_rom: ${witness.gamma_rom.length} entries`);
     console.log(`  total rows: ${totalRows} (vs ~6267 tree-based)`);
     console.log(`  witness generation: ${dt.toFixed(0)}ms`);

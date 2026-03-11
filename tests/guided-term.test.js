@@ -62,7 +62,7 @@ describe('Guided Proof Terms (TODO_0068 §10.5)', () => {
       const rfTerm = { rule: 'id', principal: b, subterms: [] };
 
       const trace = [{
-        rule: { name: 'test', hash: loli, antecedent: { linear: [a], persistent: [] } },
+        rule: { name: 'test', hash: loli, antecedent: { linear: [a], persistent: [] }, consequent: { linear: [b] } },
         consumed: { [a]: 1 },
         theta: [],
         slots: {},
@@ -106,7 +106,7 @@ describe('Guided Proof Terms (TODO_0068 §10.5)', () => {
       const rfTerm = { rule: 'id', principal: c, subterms: [] };
 
       const trace = [{
-        rule: { name: 'test', hash: loli },
+        rule: { name: 'test', hash: loli, consequent: { linear: [c] } },
         consumed: { [a]: 1, [b]: 1 },
         theta: [],
         slots: {},
@@ -138,7 +138,7 @@ describe('Guided Proof Terms (TODO_0068 §10.5)', () => {
       const rfTerm = { rule: 'id', principal: q, subterms: [] };
 
       const trace = [{
-        rule: { name: 'test', hash: loli },
+        rule: { name: 'test', hash: loli, consequent: { linear: [q] } },
         consumed: {},
         theta: [],
         slots: {},
@@ -168,7 +168,7 @@ describe('Guided Proof Terms (TODO_0068 §10.5)', () => {
       const rfTerm = { rule: 'id', principal: b, subterms: [] };
 
       const trace = [{
-        rule: { name: 'test', hash: loli },
+        rule: { name: 'test', hash: loli, consequent: { linear: [b] } },
         consumed: { [a]: 1 },
         theta: [],
         slots: {},
@@ -199,7 +199,7 @@ describe('Guided Proof Terms (TODO_0068 §10.5)', () => {
       const rfTerm = { rule: 'one_r', principal: null, subterms: [] };
 
       const trace = [{
-        rule: { name: 'test', hash: loli },
+        rule: { name: 'test', hash: loli, consequent: { linear: [b, c] } },
         consumed: { [a]: 1 },
         theta: [],
         slots: {},
@@ -219,8 +219,8 @@ describe('Guided Proof Terms (TODO_0068 §10.5)', () => {
       assert.strictEqual(tensorL.principal, tensorBC);
     });
 
-    it('builds loli_l without copy for loli match', () => {
-      // Loli fact: a -o { b } (linear, no copy)
+    it('builds loli_match for linear loli consumption', () => {
+      // Loli fact: a -o { b } (linear, consumed from context — no copy)
       const a = Store.put('atom', ['a']);
       const b = Store.put('atom', ['b']);
       const monadB = Store.put('monad', [b]);
@@ -229,7 +229,7 @@ describe('Guided Proof Terms (TODO_0068 §10.5)', () => {
       const rfTerm = { rule: 'id', principal: b, subterms: [] };
 
       const trace = [{
-        rule: { name: 'loli:a', hash: null },  // synthetic loli rule
+        rule: { name: 'loli:a', hash: null, consequent: { linear: [b] } },
         consumed: { [loli]: 1, [a]: 1 },
         theta: [],
         slots: {},
@@ -239,8 +239,8 @@ describe('Guided Proof Terms (TODO_0068 §10.5)', () => {
 
       const term = buildGuidedTerm(trace, rfTerm);
 
-      // No copy — starts directly with loli_l
-      assert.strictEqual(term.rule, 'loli_l');
+      // Linear loli → loli_match (not copy+loli_l, since it's consumed not copied)
+      assert.strictEqual(term.rule, 'loli_match');
       assert.strictEqual(term.principal, loli);
       assert.strictEqual(term.subterms.length, 2);
       assert.strictEqual(term.subterms[0].rule, 'id');
@@ -262,12 +262,12 @@ describe('Guided Proof Terms (TODO_0068 §10.5)', () => {
 
       const trace = [
         {
-          rule: { name: 'step1', hash: loli1 },
+          rule: { name: 'step1', hash: loli1, consequent: { linear: [b] } },
           consumed: { [a]: 1 }, theta: [], slots: {},
           persistentEvidence: [], loliHash: null
         },
         {
-          rule: { name: 'step2', hash: loli2 },
+          rule: { name: 'step2', hash: loli2, consequent: { linear: [c] } },
           consumed: { [b]: 1 }, theta: [], slots: {},
           persistentEvidence: [], loliHash: null
         }
@@ -302,7 +302,7 @@ describe('Guided Proof Terms (TODO_0068 §10.5)', () => {
       const rfTerm = { rule: 'id', principal: resultVal, subterms: [] };
 
       const trace = [{
-        rule: { name: 'test', hash: loli },
+        rule: { name: 'test', hash: loli, consequent: { linear: [resultX] } },
         consumed: { [dataVal]: 1 },
         theta: [val],     // slot 0 = val
         slots: { [X]: 0 },
