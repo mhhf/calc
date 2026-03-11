@@ -9,11 +9,7 @@ mod common;
 use std::sync::Arc;
 
 use proof_checker::{
-    chips::{
-        dup::DupChip,
-        formula_rom::FormulaRomAir,
-        init::InitChip,
-    },
+    chips::dup::DupChip,
     rule::RuleChip,
 };
 use openvm_stark_backend::AirRef;
@@ -21,7 +17,7 @@ use openvm_stark_sdk::{
     config::baby_bear_poseidon2::BabyBearPoseidon2Engine, engine::StarkFriEngine,
 };
 
-use common::padded_trace;
+use common::{make_init, make_formula_rom};
 
 // Hash constants
 const H_A: u32 = 42;
@@ -63,14 +59,14 @@ fn p2_xval_identity() {
     assert_eq!(id_w, 4);
 
     // InitChip: [ctx_hash, ctx_active, oblig_hash, oblig_active, nonce, lax]
-    let init_trace = padded_trace(&[[H_A, 1, H_A, 1, 0, 0]], 4);
+    let (init_chip, init_trace) = make_init(&[[H_A, 1, H_A, 1, 0, 0]], 4);
 
     // RuleChip(ID): [active, hash, nonce_in, lax]
     let id_trace = dyn_trace(&[&[1, H_A, 0, 0]], id_w, 4);
 
     BabyBearPoseidon2Engine::run_simple_test_fast(
         vec![
-            Arc::new(InitChip) as AirRef<_>,
+            Arc::new(init_chip) as AirRef<_>,
             Arc::new(id_chip) as AirRef<_>,
         ],
         vec![init_trace, id_trace],
@@ -91,7 +87,7 @@ fn p2_xval_tensor_r() {
     // tensor_r layout: [active=0, hash=1, c0=2, c1=3, nonce_in=4, lax=5, nonce_out0=6, nonce_out1=7]
     assert_eq!(tr_chip.layout.width, 8);
 
-    let init_trace = padded_trace(
+    let (init_chip, init_trace) = make_init(
         &[
             [H_A, 1, H_A_TENSOR_B, 1, 0, 0],
             [H_B, 1, 0, 0, 0, 0],
@@ -111,17 +107,17 @@ fn p2_xval_tensor_r() {
         4, 4,
     );
 
-    let rom_trace = padded_trace(
+    let (rom_chip, rom_trace) = make_formula_rom(
         &[[H_A_TENSOR_B, tags["tensor"], H_A, H_B, 1, 1]],
         4,
     );
 
     BabyBearPoseidon2Engine::run_simple_test_fast(
         vec![
-            Arc::new(InitChip) as AirRef<_>,
+            Arc::new(init_chip) as AirRef<_>,
             Arc::new(tr_chip) as AirRef<_>,
             Arc::new(id_chip) as AirRef<_>,
-            Arc::new(FormulaRomAir) as AirRef<_>,
+            Arc::new(rom_chip) as AirRef<_>,
         ],
         vec![init_trace, tr_trace, id_trace, rom_trace],
         vec![vec![], vec![], vec![], vec![]],
@@ -143,7 +139,7 @@ fn p2_xval_tensor_swap() {
     // tensor_l layout: [active=0, hash=1, c0=2, c1=3] width=4
     assert_eq!(tl_chip.layout.width, 4);
 
-    let init_trace = padded_trace(
+    let (init_chip, init_trace) = make_init(
         &[[H_A_TENSOR_B, 1, H_B_TENSOR_A, 1, 0, 0]],
         4,
     );
@@ -162,7 +158,7 @@ fn p2_xval_tensor_swap() {
         4, 4,
     );
 
-    let rom_trace = padded_trace(
+    let (rom_chip, rom_trace) = make_formula_rom(
         &[
             [H_A_TENSOR_B, tags["tensor"], H_A, H_B, 1, 1],
             [H_B_TENSOR_A, tags["tensor"], H_B, H_A, 1, 1],
@@ -172,11 +168,11 @@ fn p2_xval_tensor_swap() {
 
     BabyBearPoseidon2Engine::run_simple_test_fast(
         vec![
-            Arc::new(InitChip) as AirRef<_>,
+            Arc::new(init_chip) as AirRef<_>,
             Arc::new(tl_chip) as AirRef<_>,
             Arc::new(tr_chip) as AirRef<_>,
             Arc::new(id_chip) as AirRef<_>,
-            Arc::new(FormulaRomAir) as AirRef<_>,
+            Arc::new(rom_chip) as AirRef<_>,
         ],
         vec![init_trace, tl_trace, tr_trace, id_trace, rom_trace],
         vec![vec![], vec![], vec![], vec![], vec![]],
@@ -197,8 +193,8 @@ fn p2_xval_with_r() {
     // with_r has same layout as tensor_r (both are binary right rules)
     assert_eq!(wr_chip.layout.width, 8);
 
-    let init_trace = padded_trace(&[[H_A, 1, H_A_WITH_A, 1, 0, 0]], 4);
-    let dup_trace = padded_trace(&[[H_A, 1]], 4);
+    let (init_chip, init_trace) = make_init(&[[H_A, 1, H_A_WITH_A, 1, 0, 0]], 4);
+    let dup_trace = common::padded_trace(&[[H_A, 1]], 4);
 
     // RuleChip(WITH_R): [active, hash, c0, c1, nonce_in, lax, nonce_out0, nonce_out1]
     let wr_trace = dyn_trace(
@@ -211,18 +207,18 @@ fn p2_xval_with_r() {
         4, 4,
     );
 
-    let rom_trace = padded_trace(
+    let (rom_chip, rom_trace) = make_formula_rom(
         &[[H_A_WITH_A, tags["with"], H_A, H_A, 1, 1]],
         4,
     );
 
     BabyBearPoseidon2Engine::run_simple_test_fast(
         vec![
-            Arc::new(InitChip) as AirRef<_>,
+            Arc::new(init_chip) as AirRef<_>,
             Arc::new(DupChip) as AirRef<_>,
             Arc::new(wr_chip) as AirRef<_>,
             Arc::new(id_chip) as AirRef<_>,
-            Arc::new(FormulaRomAir) as AirRef<_>,
+            Arc::new(rom_chip) as AirRef<_>,
         ],
         vec![init_trace, dup_trace, wr_trace, id_trace, rom_trace],
         vec![vec![], vec![], vec![], vec![], vec![]],

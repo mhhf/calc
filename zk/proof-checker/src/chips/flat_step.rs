@@ -1,25 +1,33 @@
-//! FlatStepChip: per-step resource accounting for flat rewriting certificates.
+//! FlatStepChip: per-step resource accounting + rule verification for flat
+//! rewriting certificates.
 //!
 //! Each row represents one forward execution step. Consumed facts are
 //! received from CONTEXT_BUS, produced facts are sent to CONTEXT_BUS.
-//! For compiled rules (is_loli=0), ground_loli is looked up in GAMMA_BUS
-//! to verify the rule is a valid persistent clause.
+//! For compiled rules (is_loli=0), ground_loli is looked up in GAMMA_BUS.
+//! For loli matches (is_loli=1), ground_loli is consumed from CONTEXT_BUS.
 //!
-//! Verification model:
-//!   - Resource consistency: CONTEXT_BUS balance (sound)
-//!   - Rule membership: GAMMA_BUS lookup (sound with committed gamma)
-//!   - Rule application: NOT verified in circuit — JS checkRewriteTrace
-//!     handles full pattern matching. Adding tensor decomposition via
-//!     FORMULA_BUS is a planned enhancement (see TODO_0084 §Phase 3).
+//! Phase 3b: FORMULA_BUS tensor spine verification for compiled rules.
+//! For compiled rules: ground_loli = loli(ant_hash, monad(cons_hash)) and
+//! ant_hash/cons_hash are right-associated tensor trees matching the
+//! consumed/produced slots.
+//! For loli matches: ant_hash/cons_hash/monad_hash come from the original
+//! loli's Store decomposition (spine verification is skipped since the
+//! original loli's antecedent may contain metavariables).
 //!
-//! Layout (width 27):
-//!   [0]     active           — boolean, row is active
-//!   [1]     is_loli          — boolean, 1 = loli match (no gamma lookup)
-//!   [2]     ground_loli      — ground loli hash for gamma lookup
-//!   [3..8]  consumed_0..5    — consumed fact hashes (0 = unused)
+//! Layout (width 39):
+//!   [0]     active
+//!   [1]     is_loli          — 1 = loli match (consume from ctx, no gamma)
+//!   [2]     ground_loli      — ground loli hash
+//!   [3..8]  consumed_0..5    — consumed fact hashes (trigger facts only)
 //!   [9..14] consumed_active  — per-slot boolean flags
-//!   [15..20] produced_0..5   — produced fact hashes (0 = unused)
+//!   [15..20] produced_0..5   — produced fact hashes
 //!   [21..26] produced_active — per-slot boolean flags
+//!   [27]    ant_hash         — antecedent tensor tree root
+//!   [28..31] ant_i1..ant_i4  — antecedent spine intermediates
+//!   [32]    cons_hash        — consequent tensor tree root
+//!   [33..36] cons_i1..cons_i4 — consequent spine intermediates
+//!   [37]    monad_hash       — monad(cons_hash)
+//!   [38]    compiled         — active * (1 - is_loli), auxiliary for degree reduction
 
 use openvm_stark_backend::{
     interaction::InteractionBuilder,
@@ -29,7 +37,7 @@ use openvm_stark_backend::{
     rap::{BaseAirWithPublicValues, PartitionedBaseAir},
 };
 
-use crate::buses::{CONTEXT_BUS, GAMMA_BUS};
+use crate::buses::{CONTEXT_BUS, FORMULA_BUS, GAMMA_BUS};
 
 pub const MAX_CONSUMED: usize = 6;
 pub const MAX_PRODUCED: usize = 6;
@@ -38,12 +46,24 @@ const COL_ACTIVE: usize = 0;
 const COL_IS_LOLI: usize = 1;
 const COL_GROUND_LOLI: usize = 2;
 const COL_CONSUMED: usize = 3;
-const COL_CONSUMED_ACTIVE: usize = COL_CONSUMED + MAX_CONSUMED;
-const COL_PRODUCED: usize = COL_CONSUMED_ACTIVE + MAX_CONSUMED;
-const COL_PRODUCED_ACTIVE: usize = COL_PRODUCED + MAX_PRODUCED;
-pub const WIDTH: usize = COL_PRODUCED_ACTIVE + MAX_PRODUCED; // 27
+const COL_CONSUMED_ACTIVE: usize = COL_CONSUMED + MAX_CONSUMED;     // 9
+const COL_PRODUCED: usize = COL_CONSUMED_ACTIVE + MAX_CONSUMED;     // 15
+const COL_PRODUCED_ACTIVE: usize = COL_PRODUCED + MAX_PRODUCED;     // 21
+const COL_ANT_HASH: usize = COL_PRODUCED_ACTIVE + MAX_PRODUCED;     // 27
+const COL_ANT_I1: usize = COL_ANT_HASH + 1;                        // 28
+const COL_CONS_HASH: usize = COL_ANT_I1 + (MAX_CONSUMED - 2);      // 32
+const COL_CONS_I1: usize = COL_CONS_HASH + 1;                       // 33
+const COL_MONAD_HASH: usize = COL_CONS_I1 + (MAX_PRODUCED - 2);     // 37
+const COL_COMPILED: usize = COL_MONAD_HASH + 1;                     // 38
+pub const WIDTH: usize = COL_COMPILED + 1;                           // 39
 
-pub struct FlatStepChip;
+/// FlatStepChip with tag constants for FORMULA_BUS lookups.
+pub struct FlatStepChip {
+    pub loli_tag: u32,
+    pub monad_tag: u32,
+    pub tensor_tag: u32,
+    pub one_hash: u32,
+}
 
 impl<F> BaseAir<F> for FlatStepChip {
     fn width(&self) -> usize {
@@ -62,29 +82,199 @@ impl<AB: InteractionBuilder> Air<AB> for FlatStepChip {
         let active: AB::Expr = local[COL_ACTIVE].clone().into();
         let is_loli: AB::Expr = local[COL_IS_LOLI].clone().into();
         let ground_loli: AB::Expr = local[COL_GROUND_LOLI].clone().into();
+        let ant_hash: AB::Expr = local[COL_ANT_HASH].clone().into();
+        let cons_hash: AB::Expr = local[COL_CONS_HASH].clone().into();
+        let monad_hash: AB::Expr = local[COL_MONAD_HASH].clone().into();
+
+        let compiled: AB::Expr = local[COL_COMPILED].clone().into();
+
+        let loli_tag: AB::Expr = AB::Expr::from_u32(self.loli_tag);
+        let monad_tag: AB::Expr = AB::Expr::from_u32(self.monad_tag);
+        let tensor_tag: AB::Expr = AB::Expr::from_u32(self.tensor_tag);
+        let one_hash: AB::Expr = AB::Expr::from_u32(self.one_hash);
 
         // Boolean constraints
         builder.assert_zero(active.clone() * (active.clone() - AB::Expr::ONE));
         builder.assert_zero(is_loli.clone() * (is_loli.clone() - AB::Expr::ONE));
+        // `compiled` is a product of two booleans, so already boolean by construction.
+        // Explicit check retained as defense-in-depth against witness generation bugs.
+        builder.assert_zero(compiled.clone() * (compiled.clone() - AB::Expr::ONE));
 
-        // Consumed facts: receive from CONTEXT_BUS
+        // compiled = active * (1 - is_loli): stored as a trace column to keep max
+        // constraint degree at 4 (vs 5 if computed inline in spine boundary checks)
+        builder.assert_zero(
+            compiled.clone() - active.clone() * (AB::Expr::ONE - is_loli.clone()),
+        );
+
+        // Read consumed/produced slots + actives
+        let mut c = Vec::with_capacity(MAX_CONSUMED);
+        let mut ca = Vec::with_capacity(MAX_CONSUMED);
         for i in 0..MAX_CONSUMED {
-            let fact: AB::Expr = local[COL_CONSUMED + i].clone().into();
+            c.push(local[COL_CONSUMED + i].clone().into());
             let slot_active: AB::Expr = local[COL_CONSUMED_ACTIVE + i].clone().into();
             builder.assert_zero(slot_active.clone() * (slot_active.clone() - AB::Expr::ONE));
-            CONTEXT_BUS.receive(builder, [fact], active.clone() * slot_active);
+            ca.push(slot_active);
         }
+
+        let mut p = Vec::with_capacity(MAX_PRODUCED);
+        let mut pa = Vec::with_capacity(MAX_PRODUCED);
+        for i in 0..MAX_PRODUCED {
+            p.push(local[COL_PRODUCED + i].clone().into());
+            let slot_active: AB::Expr = local[COL_PRODUCED_ACTIVE + i].clone().into();
+            builder.assert_zero(slot_active.clone() * (slot_active.clone() - AB::Expr::ONE));
+            pa.push(slot_active);
+        }
+
+        // Read spine intermediates
+        let mut ant_intermediates: Vec<AB::Expr> = Vec::with_capacity(MAX_CONSUMED - 2);
+        for i in 0..(MAX_CONSUMED - 2) {
+            ant_intermediates.push(local[COL_ANT_I1 + i].clone().into());
+        }
+        let mut cons_intermediates: Vec<AB::Expr> = Vec::with_capacity(MAX_PRODUCED - 2);
+        for i in 0..(MAX_PRODUCED - 2) {
+            cons_intermediates.push(local[COL_CONS_I1 + i].clone().into());
+        }
+
+        // --- CONTEXT_BUS interactions ---
+
+        // Consumed facts: receive from CONTEXT_BUS (trigger facts only)
+        for i in 0..MAX_CONSUMED {
+            CONTEXT_BUS.receive(builder, [c[i].clone()], active.clone() * ca[i].clone());
+        }
+
+        // Loli match: consume the loli itself from context (separate from consumed slots)
+        CONTEXT_BUS.receive(builder, [ground_loli.clone()], active.clone() * is_loli.clone());
 
         // Produced facts: send to CONTEXT_BUS
         for i in 0..MAX_PRODUCED {
-            let fact: AB::Expr = local[COL_PRODUCED + i].clone().into();
-            let slot_active: AB::Expr = local[COL_PRODUCED_ACTIVE + i].clone().into();
-            builder.assert_zero(slot_active.clone() * (slot_active.clone() - AB::Expr::ONE));
-            CONTEXT_BUS.send(builder, [fact], active.clone() * slot_active);
+            CONTEXT_BUS.send(builder, [p[i].clone()], active.clone() * pa[i].clone());
         }
 
-        // Rule lookup: GAMMA_BUS for compiled rules (is_loli=0)
-        let rule_mult = active * (AB::Expr::ONE - is_loli);
-        GAMMA_BUS.lookup_key(builder, [ground_loli], rule_mult);
+        // --- GAMMA_BUS: compiled rules only ---
+        GAMMA_BUS.lookup_key(builder, [ground_loli.clone()], compiled.clone());
+
+        // --- FORMULA_BUS: rule structure verification ---
+
+        // 1. Loli decomposition: ground_loli = loli(ant_hash, monad_hash)
+        //    Fires for ALL active rows. For compiled rules, ant_hash/monad_hash are
+        //    computed from consumed/produced. For loli matches, they come from the
+        //    original loli's Store decomposition.
+        FORMULA_BUS.lookup_key(
+            builder,
+            [ground_loli, loli_tag, ant_hash.clone(), monad_hash.clone()],
+            active.clone(),
+        );
+
+        // 2. Monad unwrap: monad_hash = monad(cons_hash, 0)
+        FORMULA_BUS.lookup_key(
+            builder,
+            [monad_hash, monad_tag, cons_hash.clone(), AB::Expr::ZERO],
+            active.clone(),
+        );
+
+        // 3. Antecedent tensor spine verification — COMPILED RULES ONLY
+        //    (Loli matches skip spine verification since the original loli's
+        //    antecedent may contain metavariables that don't match ground triggers.)
+
+        // When consumed_count == 0: ant_hash must equal one_hash
+        builder.assert_zero(
+            compiled.clone() * (AB::Expr::ONE - ca[0].clone()) * (ant_hash.clone() - one_hash.clone()),
+        );
+        // When consumed_count == 1: ant_hash must equal c0
+        builder.assert_zero(
+            compiled.clone() * ca[0].clone() * (AB::Expr::ONE - ca[1].clone()) * (ant_hash.clone() - c[0].clone()),
+        );
+        // Spine lookups for consumed_count >= 2:
+        FORMULA_BUS.lookup_key(
+            builder,
+            [ant_hash, tensor_tag.clone(), c[0].clone(), ant_intermediates[0].clone()],
+            compiled.clone() * ca[1].clone(),
+        );
+        FORMULA_BUS.lookup_key(
+            builder,
+            [ant_intermediates[0].clone(), tensor_tag.clone(), c[1].clone(), ant_intermediates[1].clone()],
+            compiled.clone() * ca[2].clone(),
+        );
+        FORMULA_BUS.lookup_key(
+            builder,
+            [ant_intermediates[1].clone(), tensor_tag.clone(), c[2].clone(), ant_intermediates[2].clone()],
+            compiled.clone() * ca[3].clone(),
+        );
+        FORMULA_BUS.lookup_key(
+            builder,
+            [ant_intermediates[2].clone(), tensor_tag.clone(), c[3].clone(), ant_intermediates[3].clone()],
+            compiled.clone() * ca[4].clone(),
+        );
+        FORMULA_BUS.lookup_key(
+            builder,
+            [ant_intermediates[3].clone(), tensor_tag.clone(), c[4].clone(), c[5].clone()],
+            compiled.clone() * ca[5].clone(),
+        );
+        // Boundary equality: last intermediate = last consumed fact
+        builder.assert_zero(
+            compiled.clone() * ca[1].clone() * (AB::Expr::ONE - ca[2].clone())
+                * (ant_intermediates[0].clone() - c[1].clone()),
+        );
+        builder.assert_zero(
+            compiled.clone() * ca[2].clone() * (AB::Expr::ONE - ca[3].clone())
+                * (ant_intermediates[1].clone() - c[2].clone()),
+        );
+        builder.assert_zero(
+            compiled.clone() * ca[3].clone() * (AB::Expr::ONE - ca[4].clone())
+                * (ant_intermediates[2].clone() - c[3].clone()),
+        );
+        builder.assert_zero(
+            compiled.clone() * ca[4].clone() * (AB::Expr::ONE - ca[5].clone())
+                * (ant_intermediates[3].clone() - c[4].clone()),
+        );
+
+        // 4. Consequent tensor spine verification — COMPILED RULES ONLY
+        builder.assert_zero(
+            compiled.clone() * (AB::Expr::ONE - pa[0].clone()) * (cons_hash.clone() - one_hash),
+        );
+        builder.assert_zero(
+            compiled.clone() * pa[0].clone() * (AB::Expr::ONE - pa[1].clone()) * (cons_hash.clone() - p[0].clone()),
+        );
+        FORMULA_BUS.lookup_key(
+            builder,
+            [cons_hash, tensor_tag.clone(), p[0].clone(), cons_intermediates[0].clone()],
+            compiled.clone() * pa[1].clone(),
+        );
+        FORMULA_BUS.lookup_key(
+            builder,
+            [cons_intermediates[0].clone(), tensor_tag.clone(), p[1].clone(), cons_intermediates[1].clone()],
+            compiled.clone() * pa[2].clone(),
+        );
+        FORMULA_BUS.lookup_key(
+            builder,
+            [cons_intermediates[1].clone(), tensor_tag.clone(), p[2].clone(), cons_intermediates[2].clone()],
+            compiled.clone() * pa[3].clone(),
+        );
+        FORMULA_BUS.lookup_key(
+            builder,
+            [cons_intermediates[2].clone(), tensor_tag.clone(), p[3].clone(), cons_intermediates[3].clone()],
+            compiled.clone() * pa[4].clone(),
+        );
+        FORMULA_BUS.lookup_key(
+            builder,
+            [cons_intermediates[3].clone(), tensor_tag.clone(), p[4].clone(), p[5].clone()],
+            compiled.clone() * pa[5].clone(),
+        );
+        builder.assert_zero(
+            compiled.clone() * pa[1].clone() * (AB::Expr::ONE - pa[2].clone())
+                * (cons_intermediates[0].clone() - p[1].clone()),
+        );
+        builder.assert_zero(
+            compiled.clone() * pa[2].clone() * (AB::Expr::ONE - pa[3].clone())
+                * (cons_intermediates[1].clone() - p[2].clone()),
+        );
+        builder.assert_zero(
+            compiled.clone() * pa[3].clone() * (AB::Expr::ONE - pa[4].clone())
+                * (cons_intermediates[2].clone() - p[3].clone()),
+        );
+        builder.assert_zero(
+            compiled * pa[4].clone() * (AB::Expr::ONE - pa[5].clone())
+                * (cons_intermediates[3].clone() - p[4].clone()),
+        );
     }
 }

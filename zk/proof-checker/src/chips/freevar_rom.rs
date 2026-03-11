@@ -1,12 +1,11 @@
-//! GammaRomAir: cartesian zone (Γ) membership ROM for GAMMA_BUS.
+//! FreevarRomAir: free variable consistency ROM for FREEVAR_BUS.
 //!
-//! Stores formulas available in the cartesian/gamma zone. The copy rule
-//! looks up membership to verify a formula can be freely duplicated.
+//! Stores (subst_id, freevar_hash, ground_value) entries that define
+//! the substitution mapping for each SubstChip instance. Freevar-leaf
+//! rows in SubstChip look up their (subst_id, freevar_hash) to verify
+//! that the ground value is consistent across all occurrences.
 //!
-//! Phase 3b: preprocessed columns (committed at keygen via Poseidon2).
-//! ROM data is immutable — only num_lookups is witness-dependent.
-//!
-//! Preprocessed (width 2): [hash, is_active]
+//! Preprocessed (width 4): [subst_id, freevar_hash, ground_value, is_active]
 //! Main trace (width 1): [num_lookups]
 
 use openvm_stark_backend::{
@@ -17,25 +16,24 @@ use openvm_stark_backend::{
     rap::{BaseAirWithPublicValues, PartitionedBaseAir},
 };
 
-use crate::buses::GAMMA_BUS;
+use crate::buses::FREEVAR_BUS;
 
 /// Width of the main trace (witness-dependent): just num_lookups.
 pub const WIDTH: usize = 1;
 
 /// Width of the preprocessed trace (committed at keygen).
-pub const PREP_WIDTH: usize = 2;
+pub const PREP_WIDTH: usize = 4;
 
-/// GammaRomAir with data committed at keygen.
+/// FreevarRomAir with data committed at keygen.
 ///
-/// `entries` contains [hash, is_active] per row.
+/// `entries` contains [subst_id, freevar_hash, ground_value, is_active] per row.
 /// The main trace carries only `num_lookups` (1 column).
-/// `min_rows` ensures preprocessed trace height matches main trace height.
-pub struct GammaRomAir {
-    pub entries: Vec<[u32; 2]>,
+pub struct FreevarRomAir {
+    pub entries: Vec<[u32; 4]>,
     pub min_rows: usize,
 }
 
-impl<F: Field> BaseAir<F> for GammaRomAir {
+impl<F: Field> BaseAir<F> for FreevarRomAir {
     fn width(&self) -> usize {
         WIDTH
     }
@@ -57,24 +55,30 @@ impl<F: Field> BaseAir<F> for GammaRomAir {
     }
 }
 
-impl<F: Field> BaseAirWithPublicValues<F> for GammaRomAir {}
-impl<F: Field> PartitionedBaseAir<F> for GammaRomAir {}
+impl<F: Field> BaseAirWithPublicValues<F> for FreevarRomAir {}
+impl<F: Field> PartitionedBaseAir<F> for FreevarRomAir {}
 
-impl<AB: InteractionBuilder + PairBuilder> Air<AB> for GammaRomAir
+impl<AB: InteractionBuilder + PairBuilder> Air<AB> for FreevarRomAir
 where
     AB::F: Field,
 {
     fn eval(&self, builder: &mut AB) {
         let prep = builder.preprocessed();
         let prep_local = prep.row_slice(0).unwrap();
-        let hash: AB::Expr = prep_local[0].clone().into();
-        let is_active: AB::Expr = prep_local[1].clone().into();
+        let subst_id: AB::Expr = prep_local[0].clone().into();
+        let freevar_hash: AB::Expr = prep_local[1].clone().into();
+        let ground_value: AB::Expr = prep_local[2].clone().into();
+        let is_active: AB::Expr = prep_local[3].clone().into();
 
         let main = builder.main();
         let local = main.row_slice(0).unwrap();
         let num_lookups: AB::Expr = local[0].clone().into();
 
-        // Provide gamma zone entries with multiplicity
-        GAMMA_BUS.add_key_with_lookups(builder, [hash], is_active * num_lookups);
+        // Provide freevar mapping entries with multiplicity
+        FREEVAR_BUS.add_key_with_lookups(
+            builder,
+            [subst_id, freevar_hash, ground_value],
+            is_active * num_lookups,
+        );
     }
 }

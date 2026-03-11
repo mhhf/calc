@@ -1,57 +1,80 @@
 //! InitChip: introduces the initial context and root obligation.
 //!
-//! Each row independently controls whether it sends on CONTEXT_BUS
-//! and/or OBLIG_BUS. This allows the initial sequent's context
-//! elements and obligation to use different hashes.
+//! Phase 3b: sequent data in preprocessed columns (committed at keygen).
+//! Only nonce remains as main trace (proof-specific: nonce assignment
+//! varies per proof term).
 //!
-//! Example: for A, B ⊢ A⊗B (2 context elements, 1 obligation):
-//!   Row 0: ctx_hash=A, ctx_active=1, oblig_hash=A⊗B, oblig_active=1, nonce=0, lax=0
-//!   Row 1: ctx_hash=B, ctx_active=1, oblig_hash=0,   oblig_active=0, nonce=0, lax=0
-//!
-//! Columns (width 6): [ctx_hash, ctx_active, oblig_hash, oblig_active, nonce, lax]
+//! Preprocessed (width 5): [ctx_hash, ctx_active, oblig_hash, oblig_active, lax]
+//! Main trace (width 1): [nonce]
 
 use openvm_stark_backend::{
     interaction::InteractionBuilder,
-    p3_air::{Air, BaseAir},
-    p3_field::PrimeCharacteristicRing,
-    p3_matrix::Matrix,
+    p3_air::{Air, BaseAir, PairBuilder},
+    p3_field::{Field, PrimeCharacteristicRing},
+    p3_matrix::{dense::RowMajorMatrix, Matrix},
     rap::{BaseAirWithPublicValues, PartitionedBaseAir},
 };
 
 use crate::buses::{CONTEXT_BUS, OBLIG_BUS};
 
-pub const COL_CTX_HASH: usize = 0;
-pub const COL_CTX_ACTIVE: usize = 1;
-pub const COL_OBLIG_HASH: usize = 2;
-pub const COL_OBLIG_ACTIVE: usize = 3;
-pub const COL_NONCE: usize = 4;
-pub const COL_LAX: usize = 5;
-pub const WIDTH: usize = 6;
+/// Width of the main trace: just nonce.
+pub const WIDTH: usize = 1;
 
-pub struct InitChip;
+/// Width of the preprocessed trace.
+pub const PREP_WIDTH: usize = 5;
 
-impl<F> BaseAir<F> for InitChip {
+/// InitChip with sequent data committed at keygen.
+///
+/// `rows` contains [ctx_hash, ctx_active, oblig_hash, oblig_active, lax] per row.
+/// The main trace carries only `nonce` (1 column).
+/// `min_rows` ensures preprocessed trace height matches main trace height.
+pub struct InitChip {
+    pub rows: Vec<[u32; 5]>,
+    pub min_rows: usize,
+}
+
+impl<F: Field> BaseAir<F> for InitChip {
     fn width(&self) -> usize {
         WIDTH
     }
+
+    fn preprocessed_trace(&self) -> Option<RowMajorMatrix<F>> {
+        let n = self.rows.len().max(self.min_rows).next_power_of_two();
+        let mut data = Vec::with_capacity(n * PREP_WIDTH);
+        for row in &self.rows {
+            for &v in row {
+                data.push(F::from_u32(v));
+            }
+        }
+        for _ in self.rows.len()..n {
+            for _ in 0..PREP_WIDTH {
+                data.push(F::ZERO);
+            }
+        }
+        Some(RowMajorMatrix::new(data, PREP_WIDTH))
+    }
 }
 
-impl<F> BaseAirWithPublicValues<F> for InitChip {}
-impl<F> PartitionedBaseAir<F> for InitChip {}
+impl<F: Field> BaseAirWithPublicValues<F> for InitChip {}
+impl<F: Field> PartitionedBaseAir<F> for InitChip {}
 
-impl<AB: InteractionBuilder> Air<AB> for InitChip {
+impl<AB: InteractionBuilder + PairBuilder> Air<AB> for InitChip
+where
+    AB::F: Field,
+{
     fn eval(&self, builder: &mut AB) {
+        let prep = builder.preprocessed();
+        let p = prep.row_slice(0).unwrap();
+        let ctx_hash: AB::Expr = p[0].clone().into();
+        let ctx_active: AB::Expr = p[1].clone().into();
+        let oblig_hash: AB::Expr = p[2].clone().into();
+        let oblig_active: AB::Expr = p[3].clone().into();
+        let lax: AB::Expr = p[4].clone().into();
+
         let main = builder.main();
-        let local = main.row_slice(0).unwrap();
+        let nonce: AB::Expr = main.row_slice(0).unwrap()[0].clone().into();
 
-        let ctx_hash: AB::Expr = local[COL_CTX_HASH].clone().into();
-        let ctx_active: AB::Expr = local[COL_CTX_ACTIVE].clone().into();
-        let oblig_hash: AB::Expr = local[COL_OBLIG_HASH].clone().into();
-        let oblig_active: AB::Expr = local[COL_OBLIG_ACTIVE].clone().into();
-        let nonce: AB::Expr = local[COL_NONCE].clone().into();
-        let lax: AB::Expr = local[COL_LAX].clone().into();
-
-        // Boolean constraints
+        // Boolean constraints on preprocessed data
         builder.assert_zero(ctx_active.clone() * (ctx_active.clone() - AB::Expr::ONE));
         builder.assert_zero(oblig_active.clone() * (oblig_active.clone() - AB::Expr::ONE));
 

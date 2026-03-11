@@ -1,5 +1,9 @@
 //! Shared bus definitions for the proof term verifier.
 //!
+//! Buses are the composability primitive: chips are swappable, buses are
+//! the stable contract. The tree path (13 chips) and flat path (5 chips)
+//! both balance on the same bus definitions — see bridge.rs for dispatch.
+//!
 //! Universal buses (any sequent calculus):
 //!   OBLIG_BUS   — type obligation tracking (produce/consume)
 //!   FORMULA_BUS — formula decomposition lookups
@@ -8,6 +12,13 @@
 //!   CONTEXT_BUS — linear resource tracking (send/receive)
 //!   GAMMA_BUS   — cartesian zone membership (exponential/bang)
 //!   DISCARD_BUS — zero_l discard permits (links zero_l to DiscardChip)
+//!
+//! Soundness: PermutationCheckBus enforces multiset equality via LogUp.
+//! LookupBus enforces that every demand has a matching supply entry.
+//! False positive ≤ n/|F_ext| where F_ext is quartic BabyBear (~2^124).
+//!
+//! Tree path: all 5 buses.
+//! Flat path: CONTEXT_BUS + GAMMA_BUS + FORMULA_BUS (3 of 5).
 
 use openvm_stark_backend::interaction::{LookupBus, PermutationCheckBus};
 
@@ -31,3 +42,13 @@ pub const DISCARD_BUS: LookupBus = LookupBus::new(3);
 /// Gamma (cartesian) zone bus. GammaRomAir provides (hash) entries;
 /// copy rule looks up membership to verify formula is in gamma zone.
 pub const GAMMA_BUS: LookupBus = LookupBus::new(4);
+
+/// Substitution tree bus. Links parent SubstChip rows to child rows:
+/// parent demands child verification, child supplies it.
+/// Tuple: (subst_id, old_hash, new_hash)
+pub const SUBST_TREE_BUS: PermutationCheckBus = PermutationCheckBus::new(5);
+
+/// Free variable consistency bus. FreevarRomAir provides (subst_id, freevar_hash)
+/// → ground_value entries; SubstChip freevar-leaf rows look up to verify that
+/// the same freevar maps to the same ground value within a substitution instance.
+pub const FREEVAR_BUS: LookupBus = LookupBus::new(6);

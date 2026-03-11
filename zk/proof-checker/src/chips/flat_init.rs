@@ -1,40 +1,69 @@
 //! FlatInitChip: introduces initial linear context for flat certificates.
 //!
-//! Each row sends one fact hash on CONTEXT_BUS. Simpler than InitChip —
-//! no OBLIG_BUS interaction (flat certificates don't use obligations).
+//! Phase 3b: context data in preprocessed columns (committed at keygen).
+//! Main trace is width 1 (dummy — OpenVM requires width ≥ 1).
 //!
-//! Columns (width 2): [is_active, hash]
+//! Preprocessed (width 2): [is_active, hash]
+//! Main trace (width 1): [dummy]
 
 use openvm_stark_backend::{
     interaction::InteractionBuilder,
-    p3_air::{Air, BaseAir},
-    p3_field::PrimeCharacteristicRing,
-    p3_matrix::Matrix,
+    p3_air::{Air, BaseAir, PairBuilder},
+    p3_field::{Field, PrimeCharacteristicRing},
+    p3_matrix::{dense::RowMajorMatrix, Matrix},
     rap::{BaseAirWithPublicValues, PartitionedBaseAir},
 };
 
 use crate::buses::CONTEXT_BUS;
 
-pub const WIDTH: usize = 2;
+/// Width of the main trace (dummy column).
+pub const WIDTH: usize = 1;
 
-pub struct FlatInitChip;
+/// Width of the preprocessed trace.
+pub const PREP_WIDTH: usize = 2;
 
-impl<F> BaseAir<F> for FlatInitChip {
+/// FlatInitChip with context data committed at keygen.
+///
+/// `ctx_hashes` contains the initial linear context fact hashes.
+/// The main trace carries only a dummy column (always 0).
+/// `min_rows` ensures preprocessed trace height matches main trace height.
+pub struct FlatInitChip {
+    pub ctx_hashes: Vec<u32>,
+    pub min_rows: usize,
+}
+
+impl<F: Field> BaseAir<F> for FlatInitChip {
     fn width(&self) -> usize {
         WIDTH
     }
+
+    fn preprocessed_trace(&self) -> Option<RowMajorMatrix<F>> {
+        let n = self.ctx_hashes.len().max(self.min_rows).next_power_of_two();
+        let mut data = Vec::with_capacity(n * PREP_WIDTH);
+        for &h in &self.ctx_hashes {
+            data.push(F::ONE);          // is_active
+            data.push(F::from_u32(h));  // hash
+        }
+        for _ in self.ctx_hashes.len()..n {
+            data.push(F::ZERO); // is_active = 0
+            data.push(F::ZERO); // hash = 0
+        }
+        Some(RowMajorMatrix::new(data, PREP_WIDTH))
+    }
 }
 
-impl<F> BaseAirWithPublicValues<F> for FlatInitChip {}
-impl<F> PartitionedBaseAir<F> for FlatInitChip {}
+impl<F: Field> BaseAirWithPublicValues<F> for FlatInitChip {}
+impl<F: Field> PartitionedBaseAir<F> for FlatInitChip {}
 
-impl<AB: InteractionBuilder> Air<AB> for FlatInitChip {
+impl<AB: InteractionBuilder + PairBuilder> Air<AB> for FlatInitChip
+where
+    AB::F: Field,
+{
     fn eval(&self, builder: &mut AB) {
-        let main = builder.main();
-        let local = main.row_slice(0).unwrap();
-
-        let is_active: AB::Expr = local[0].clone().into();
-        let hash: AB::Expr = local[1].clone().into();
+        let prep = builder.preprocessed();
+        let p = prep.row_slice(0).unwrap();
+        let is_active: AB::Expr = p[0].clone().into();
+        let hash: AB::Expr = p[1].clone().into();
 
         builder.assert_zero(is_active.clone() * (is_active.clone() - AB::Expr::ONE));
         CONTEXT_BUS.send(builder, [hash], is_active);

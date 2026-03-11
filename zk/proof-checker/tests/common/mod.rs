@@ -3,6 +3,11 @@
 use std::collections::HashMap;
 
 use proof_checker::bridge::WitnessJson;
+use proof_checker::chips::{
+    formula_rom::FormulaRomAir,
+    gamma_rom::GammaRomAir,
+    init::InitChip,
+};
 use proof_checker::rule::RuleSpec;
 use openvm_stark_backend::p3_matrix::dense::RowMajorMatrix;
 use p3_baby_bear::BabyBear;
@@ -30,6 +35,45 @@ pub fn padded_trace<const W: usize>(
         }
     }
     RowMajorMatrix::new(data, W)
+}
+
+/// Build an InitChip + its width-1 main trace from old-style rows.
+///
+/// Input rows: `[ctx_hash, ctx_active, oblig_hash, oblig_active, nonce, lax]`
+/// Preprocessed (in struct): `[ctx_hash, ctx_active, oblig_hash, oblig_active, lax]`
+/// Main trace: `[nonce]`
+pub fn make_init(rows: &[[u32; 6]], min_rows: usize) -> (InitChip, RowMajorMatrix<BabyBear>) {
+    let prep: Vec<[u32; 5]> = rows
+        .iter()
+        .map(|r| [r[0], r[1], r[2], r[3], r[5]])
+        .collect();
+    let main: Vec<[u32; 1]> = rows.iter().map(|r| [r[4]]).collect();
+    (InitChip { rows: prep, min_rows }, padded_trace(&main, min_rows))
+}
+
+/// Build a FormulaRomAir + its width-1 main trace from old-style rows.
+///
+/// Input rows: `[hash, tag, c0, c1, is_active, num_lookups]`
+/// Preprocessed (in struct): `[hash, tag, c0, c1, is_active]`
+/// Main trace: `[num_lookups]`
+pub fn make_formula_rom(rows: &[[u32; 6]], min_rows: usize) -> (FormulaRomAir, RowMajorMatrix<BabyBear>) {
+    let prep: Vec<[u32; 5]> = rows
+        .iter()
+        .map(|r| [r[0], r[1], r[2], r[3], r[4]])
+        .collect();
+    let main: Vec<[u32; 1]> = rows.iter().map(|r| [r[5]]).collect();
+    (FormulaRomAir { entries: prep, min_rows }, padded_trace(&main, min_rows))
+}
+
+/// Build a GammaRomAir + its width-1 main trace from old-style rows.
+///
+/// Input rows: `[hash, is_active, num_lookups]`
+/// Preprocessed (in struct): `[hash, is_active]`
+/// Main trace: `[num_lookups]`
+pub fn make_gamma_rom(rows: &[[u32; 3]], min_rows: usize) -> (GammaRomAir, RowMajorMatrix<BabyBear>) {
+    let prep: Vec<[u32; 2]> = rows.iter().map(|r| [r[0], r[1]]).collect();
+    let main: Vec<[u32; 1]> = rows.iter().map(|r| [r[2]]).collect();
+    (GammaRomAir { entries: prep, min_rows }, padded_trace(&main, min_rows))
 }
 
 /// Load rule specs and tags from a fixture JSON file.

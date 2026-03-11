@@ -9,7 +9,8 @@
     "bang": 7,
     "monad": 8,
     "exists": 9,
-    "forall": 10
+    "forall": 10,
+    "freevar": 11
   },
   "rule_specs": {
     "id": {
@@ -36,6 +37,18 @@
       ],
       "formula_lookup": false,
       "gamma_lookup": true,
+      "is_identity": false
+    },
+    "ffi": {
+      "name": "ffi",
+      "tag": null,
+      "arity": 0,
+      "oblig_receive": true,
+      "premises": [],
+      "ctx_receive": false,
+      "ctx_sends": [],
+      "formula_lookup": false,
+      "gamma_lookup": false,
       "is_identity": false
     },
     "tensor_r": {
@@ -430,6 +443,25 @@
       "formula_lookup": true,
       "gamma_lookup": false,
       "is_identity": false
+    },
+    "loli_l_inv": {
+      "name": "loli_l_inv",
+      "tag": 2,
+      "arity": 2,
+      "oblig_receive": false,
+      "premises": [],
+      "ctx_receive": true,
+      "ctx_sends": [
+        {
+          "Child": 0
+        },
+        {
+          "Child": 1
+        }
+      ],
+      "formula_lookup": true,
+      "gamma_lookup": false,
+      "is_identity": false
     }
   },
   "chips": {
@@ -488,5 +520,6 @@
       1
     ]
   ],
-  "gamma_rom": []
+  "gamma_rom": [],
+  "freevar_rom": []
 }

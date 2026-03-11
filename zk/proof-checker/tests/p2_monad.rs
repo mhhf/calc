@@ -8,16 +8,13 @@ mod common;
 
 use std::sync::Arc;
 
-use proof_checker::{
-    chips::{formula_rom::FormulaRomAir, init::InitChip},
-    rule::RuleChip,
-};
+use proof_checker::rule::RuleChip;
 use openvm_stark_backend::AirRef;
 use openvm_stark_sdk::{
     config::baby_bear_poseidon2::BabyBearPoseidon2Engine, engine::StarkFriEngine,
 };
 
-use common::padded_trace;
+use common::{make_init, make_formula_rom};
 
 fn dyn_trace(rows: &[&[u32]], width: usize, min_rows: usize) -> openvm_stark_backend::p3_matrix::dense::RowMajorMatrix<p3_baby_bear::BabyBear> {
     use p3_field::PrimeCharacteristicRing;
@@ -43,52 +40,29 @@ const H_MONAD_A: u32 = 600; // hash({A})
 #[test]
 fn p2_monad_roundtrip() {
     let (tags, specs) = common::load_test_specs();
-    // {A} ⊢ {A}
-    // Proof: monad_l({A}, monad_r(id(A)))
-    //
-    // Bus flow:
-    //   Init:    ctx={A}, oblig=(0, {A}, 0)
-    //   monad_l: ctx receive {A}, ctx send A, formula lookup
-    //   monad_r: oblig receive (0, {A}, 0), oblig send (1, A, lax=1),
-    //            formula lookup ({A}, MONAD, A, 0)
-    //   id:      oblig receive (1, A, 1), ctx receive A
-
     let monad_l_chip = RuleChip::new(specs["monad_l"].clone());
     let monad_r_chip = RuleChip::new(specs["monad_r"].clone());
     let id_chip = RuleChip::new(specs["id"].clone());
 
-    // monad_l layout: [active=0, hash=1, child0=2] width=3
     assert_eq!(monad_l_chip.layout.width, 3);
-    // monad_r layout: [active=0, hash=1, child0=2, nonce_in=3, lax=4, nonce_out0=5] width=6
     assert_eq!(monad_r_chip.layout.width, 6);
 
-    // Init: ctx={A}, oblig=(0, {A}, 0)
-    let init_trace = padded_trace(&[[H_MONAD_A, 1, H_MONAD_A, 1, 0, 0]], 4);
-
-    // monad_l: [active, hash, child0]
+    let (init_chip, init_trace) = make_init(&[[H_MONAD_A, 1, H_MONAD_A, 1, 0, 0]], 4);
     let ml_trace = dyn_trace(&[&[1, H_MONAD_A, H_A]], 3, 4);
-
-    // monad_r: [active, hash, child0, nonce_in, lax, nonce_out0]
-    // Input lax=0, but output lax is overridden to 1
     let mr_trace = dyn_trace(&[&[1, H_MONAD_A, H_A, 0, 0, 1]], 6, 4);
-
-    // id: [active, hash, nonce_in, lax]
-    // Must receive with lax=1 (monad_r forced lax=1)
     let id_trace = dyn_trace(&[&[1, H_A, 1, 1]], 4, 4);
-
-    // ROM: {A} — looked up twice (monad_l + monad_r both do formula lookup)
-    let rom_trace = padded_trace(
+    let (rom_chip, rom_trace) = make_formula_rom(
         &[[H_MONAD_A, tags["monad"], H_A, 0, 1, 2]],
         4,
     );
 
     BabyBearPoseidon2Engine::run_simple_test_fast(
         vec![
-            Arc::new(InitChip) as AirRef<_>,
+            Arc::new(init_chip) as AirRef<_>,
             Arc::new(monad_l_chip) as AirRef<_>,
             Arc::new(monad_r_chip) as AirRef<_>,
             Arc::new(id_chip) as AirRef<_>,
-            Arc::new(FormulaRomAir) as AirRef<_>,
+            Arc::new(rom_chip) as AirRef<_>,
         ],
         vec![init_trace, ml_trace, mr_trace, id_trace, rom_trace],
         vec![vec![], vec![], vec![], vec![], vec![]],
@@ -104,30 +78,29 @@ fn p2_monad_roundtrip() {
 #[should_panic]
 fn p2_monad_r_lax_mismatch_fails() {
     let (tags, specs) = common::load_test_specs();
-    // monad_r produces lax=1, but id tries to consume with lax=0
     let monad_l_chip = RuleChip::new(specs["monad_l"].clone());
     let monad_r_chip = RuleChip::new(specs["monad_r"].clone());
     let id_chip = RuleChip::new(specs["id"].clone());
 
-    let init_trace = padded_trace(&[[H_MONAD_A, 1, H_MONAD_A, 1, 0, 0]], 4);
+    let (init_chip, init_trace) = make_init(&[[H_MONAD_A, 1, H_MONAD_A, 1, 0, 0]], 4);
     let ml_trace = dyn_trace(&[&[1, H_MONAD_A, H_A]], 3, 4);
     let mr_trace = dyn_trace(&[&[1, H_MONAD_A, H_A, 0, 0, 1]], 6, 4);
 
     // WRONG: lax=0 instead of lax=1
     let id_trace = dyn_trace(&[&[1, H_A, 1, 0]], 4, 4);
 
-    let rom_trace = padded_trace(
+    let (rom_chip, rom_trace) = make_formula_rom(
         &[[H_MONAD_A, tags["monad"], H_A, 0, 1, 2]],
         4,
     );
 
     BabyBearPoseidon2Engine::run_simple_test_fast(
         vec![
-            Arc::new(InitChip) as AirRef<_>,
+            Arc::new(init_chip) as AirRef<_>,
             Arc::new(monad_l_chip) as AirRef<_>,
             Arc::new(monad_r_chip) as AirRef<_>,
             Arc::new(id_chip) as AirRef<_>,
-            Arc::new(FormulaRomAir) as AirRef<_>,
+            Arc::new(rom_chip) as AirRef<_>,
         ],
         vec![init_trace, ml_trace, mr_trace, id_trace, rom_trace],
         vec![vec![], vec![], vec![], vec![], vec![]],
