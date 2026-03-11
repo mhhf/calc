@@ -244,3 +244,98 @@ fn s4_preprocessed_columns_via_keygen() {
     engine.prove_then_verify(&pk, ctx)
         .expect("S4: preprocessed ROM via keygen pipeline");
 }
+
+// --- Test: can run_simple_test_fast handle preprocessed columns? ---
+//
+// PrepRomAirModule is defined at module level (outside test fn) so it can be
+// used in both the inline test and a separate variant.
+struct PrepRomAirModule {
+    entries: Vec<[u32; 5]>, // [hash, tag, child0, child1, is_active]
+}
+
+impl<F: Field> BaseAir<F> for PrepRomAirModule {
+    fn width(&self) -> usize { 1 } // witness: num_lookups only
+
+    fn preprocessed_trace(&self) -> Option<RowMajorMatrix<F>> {
+        let n = self.entries.len().next_power_of_two();
+        let mut data = Vec::with_capacity(n * 5);
+        for row in &self.entries {
+            for &v in row {
+                data.push(F::from_u32(v));
+            }
+        }
+        for _ in self.entries.len()..n {
+            data.extend([F::ZERO; 5]);
+        }
+        Some(RowMajorMatrix::new(data, 5))
+    }
+}
+impl<F: Field> BaseAirWithPublicValues<F> for PrepRomAirModule {}
+impl<F: Field> PartitionedBaseAir<F> for PrepRomAirModule {}
+
+impl<AB: InteractionBuilder + PairBuilder> Air<AB> for PrepRomAirModule
+where
+    AB::F: Field,
+{
+    fn eval(&self, builder: &mut AB) {
+        let prep = builder.preprocessed();
+        let prep_local = prep.row_slice(0).unwrap();
+        let hash: AB::Expr = prep_local[0].clone().into();
+        let tag: AB::Expr = prep_local[1].clone().into();
+        let child0: AB::Expr = prep_local[2].clone().into();
+        let child1: AB::Expr = prep_local[3].clone().into();
+        let is_active: AB::Expr = prep_local[4].clone().into();
+
+        let main = builder.main();
+        let local = main.row_slice(0).unwrap();
+        let num_lookups: AB::Expr = local[0].clone().into();
+
+        FORMULA_BUS.add_key_with_lookups(
+            builder,
+            [hash, tag, child0, child1],
+            is_active * num_lookups,
+        );
+    }
+}
+
+/// Spike: does run_simple_test_fast handle AIRs with preprocessed_trace()?
+///
+/// run_simple_test_fast calls run_test_impl which calls keygen_builder.generate_pk().
+/// During keygen, air.preprocessed_trace() is called and committed.
+/// At prove time, only the main witness trace is needed via AirProofInput::simple.
+/// This test verifies the full path works end-to-end.
+#[test]
+fn s4_preprocessed_via_run_simple_test_fast() {
+    // ROM witness: 2 rows (one per active entry), each looked up once.
+    // The preprocessed trace (5 columns: hash, tag, child0, child1, is_active)
+    // is committed during keygen from PrepRomAirModule::preprocessed_trace().
+    // The main trace (1 column: num_lookups) is passed as the simple witness here.
+    let rom = PrepRomAirModule {
+        entries: vec![
+            [100, 1, 42, 43, 1],
+            [200, 2, 42, 43, 1],
+        ],
+    };
+
+    // Main witness: num_lookups per row (2 rows, padded to power-of-two = 2)
+    let rom_main_trace = RowMajorMatrix::new(
+        vec![BabyBear::from_u32(1), BabyBear::from_u32(1)],
+        1,
+    );
+
+    // CheckerAir: 2 rows looking up hash=100 and hash=200
+    let checker_trace = RowMajorMatrix::new(
+        vec![100, 1, 42, 43, 1, 200, 2, 42, 43, 1]
+            .into_iter()
+            .map(BabyBear::from_u32)
+            .collect::<Vec<_>>(),
+        5,
+    );
+
+    BabyBearPoseidon2Engine::run_simple_test_fast(
+        vec![Arc::new(rom) as AirRef<_>, Arc::new(CheckerAir) as AirRef<_>],
+        vec![rom_main_trace, checker_trace],
+        vec![vec![], vec![]],
+    )
+    .expect("S4: run_simple_test_fast should handle preprocessed columns");
+}
