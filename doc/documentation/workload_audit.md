@@ -988,6 +988,468 @@ explicitly opt-in.
 - **Ephemeral expansion**: No established precedent in Twelf/Celf/Ceptre. Closest analog is CLP(FD) constraint arithmetic where native integers coexist with relational spec via oracle pattern.
 - **Iterative traversal**: Explicit stack is standard for JS/Node.js (no TCO). Trampoline is 2-5x slower due to closure allocation. Hybrid (iterative freevar chase + recursive term walk) is optimal for our use case.
 
+---
+
+## Zig friendliness analysis
+
+### Zig stack model and recursion
+
+Zig uses OS thread stacks (default 8MB on Linux). Deep recursion causes
+**segfault** (not a caught panic) — there is no safe stack overflow detection
+at runtime. Zig's long-term plan ([issue #1006](https://github.com/ziglang/zig/issues/1006),
+[issue #1639](https://github.com/ziglang/zig/issues/1639)) is:
+
+1. **Compile-time recursion detection**: the compiler performs call-graph
+   analysis and emits errors for recursive call cycles. You must annotate
+   recursive functions with a maximum recursion depth, and the compiler
+   multiplies the stack frame size by that limit to compute worst-case
+   stack usage.
+
+2. **Async/coroutines**: recursive functions that might be unbounded should
+   use stackless coroutines that grow heap memory instead of stack memory.
+   This is the "correct" solution for unbounded recursion in Zig.
+
+3. **Explicit tail calls**: `@call(.always_tail, fn, args)` reuses the
+   current stack frame, but only works when the `@call` is the operand of
+   a `return` statement and there are no `defer` statements. Not general
+   enough for post-order tree traversal.
+
+**Implications for our code:**
+
+- **Bounded recursion** (term structure walks: `_normalizeBin`, `_resolveValue`,
+  `isGround`, `show`, `binToInt`): Zig can handle these with a compile-time
+  depth annotation. Term depth is bounded by the calculus (max arity 4,
+  binary numbers ≤ 256 bits, typical nesting < 20). These are safe as
+  recursive functions in Zig with `@setRuntimeSafety(true)` and a sensible
+  max-depth annotation (e.g., 512).
+
+- **Unbounded recursion** (freevar theta chains, proof search depth): these
+  MUST be iterative in Zig. The `_chaseFreevar` approach (iterative chain
+  following) is the correct pattern. The `_resolveHash` iterative conversion
+  (C6) was necessary for JS but would also be necessary in Zig. However,
+  the C6-ALT hybrid approach (iterative freevar chase + recursive term walk)
+  would be the **natural Zig idiom**: bounded recursion for the structural
+  part, explicit iteration for the unbounded part.
+
+- **The backward prover `search()`**: this is unbounded recursion
+  (`maxDepth: 20000`). In Zig, this would need to be iterative or use
+  async/coroutines. The current JS implementation uses the call stack
+  implicitly — a Zig port would need an explicit work stack.
+
+### Zig InternPool as precedent
+
+The Zig compiler's own [`InternPool`](https://github.com/ziglang/zig/blob/master/src/InternPool.zig)
+is directly analogous to our content-addressed store:
+
+| Feature | Our `store.js` | Zig `InternPool` |
+|---------|----------------|-------------------|
+| Layout | SoA TypedArrays (`tags[]`, `child0[]`, ...) | SoA via `MultiArrayList` |
+| Identity | Sequential `u32` IDs | Sequential `Index` (u32) |
+| Dedup | FNV-1a 32-bit → `Map<u32, u32>` | Wyhash → sharded hash table |
+| Children | Side tables (STRING, BIGINT, ARRAY) | Tagged union `Key` enum |
+| Thread safety | Single-threaded (module-level state) | Sharded for multi-threaded sema |
+
+Key differences and what we can learn:
+
+1. **Hash function**: Zig's InternPool uses **Wyhash** (64-bit), not FNV-1a.
+   Wyhash is faster AND has 64-bit output — collision probability drops from
+   ~1/77K (32-bit) to ~1/5×10⁹ (64-bit). Our C1 linear probing is a stopgap;
+   switching to Wyhash or xxHash64 is the proper fix (see C1-ALT).
+
+2. **Sharded hash table**: InternPool uses sharding for thread safety.
+   Irrelevant for our single-threaded JS engine, but relevant for a future
+   Zig port that might parallelize compilation.
+
+3. **`MultiArrayList`**: Zig's `MultiArrayList(T)` is the idiomatic SoA
+   container. Our `tags[]`, `child0[]`, `child1[]`, etc. TypedArrays are
+   essentially a manual MultiArrayList. A Zig port would use
+   `MultiArrayList(struct { tag: u8, arity: u8, c0: u32, c1: u32, c2: u32, c3: u32 })`.
+
+4. **Tagged union for children**: InternPool uses a `Key` union(enum) to
+   represent all possible interned values. Our side-table dispatch
+   (`STRING_CHILD_TAGS[t]`, etc.) would become a Zig `union(enum)` with
+   comptime dispatch — cleaner and type-safe.
+
+### Recursive vs iterative: the Zig verdict
+
+**Recursive is cleaner and should be preferred when depth is bounded.**
+
+In Zig, the compile-time call-graph analysis means recursive functions have
+explicit depth budgets. This is actually BETTER than JS, where the stack
+limit is implicit and discovered at runtime via crash. The Zig compiler
+itself uses recursive AST walking extensively for bounded-depth traversals.
+
+**Iterative is required when depth is unbounded** (freevar chains, proof
+search). The pattern is an explicit `ArrayList`-based work stack with a
+state machine loop — the same pattern as our C6 iterative `_resolveHash`.
+
+**Our recommendation for the JS codebase**: adopt the C6-ALT hybrid for
+`_resolveHash` (recursive term walk + iterative freevar chase). This is:
+- The natural Zig idiom (bounded recursion ok, unbounded needs iteration)
+- Cleaner than the full iterative version
+- Equally safe (term depth is bounded)
+- Easier to verify
+
+For `_normalizeBin`, `_resolveValue`, `isGround`, `binToInt`: keep recursive.
+These walk term structure (depth ≤ 256 for binary, ≤ 20 for typical terms).
+Converting them to iterative would hurt readability for no safety benefit.
+
+---
+
+## Generalization opportunities
+
+### G1 — Store-entry normalization (eliminate runtime normalization)
+
+There are **three representation dualities** in the store, each handled
+differently:
+
+| Duality | Compact | Structural | Where normalized |
+|---------|---------|-----------|-----------------|
+| Binary numbers | `binlit(N)` | `i(o(i(e)))` | Parser (builders.js), post-hoc (`_normalizeBin` in match.js) |
+| Arrays | `arrlit([...])` | `acons(H, acons(H2, ae))` | **Store.put** (eagerly at write time) |
+| Strings | `strlit("...")` | `cons(charlit(c), ...)` | **Nowhere** (only unify expansion) |
+
+The array case is the gold standard: `Store.put('acons', ...)` eagerly
+normalizes to `arrlit`. No runtime normalization needed. No matching edge
+cases.
+
+**Proposal G1**: do the same for binary in `Store.put`:
+
+```javascript
+// In Store.put(), before hashing:
+if (tagName === 'i' && children.length === 1) {
+  const c = children[0];
+  if (typeof c === 'number' && c >= 1 && c < nextId) {
+    if (tags[c] === TAG.binlit) {
+      return put('binlit', [getBigInt(child0[c]) * 2n + 1n]);
+    }
+    if (tags[c] === TAG.atom && stringTable.get(child0[c]) === 'e') {
+      return put('binlit', [1n]);
+    }
+  }
+}
+if (tagName === 'o' && children.length === 1) {
+  const c = children[0];
+  if (typeof c === 'number' && c >= 1 && c < nextId) {
+    if (tags[c] === TAG.binlit) {
+      return put('binlit', [getBigInt(child0[c]) * 2n]);
+    }
+  }
+}
+```
+
+This eliminates:
+- **C8 `_normalizeBin`** entirely — never needed if structural binary can't
+  exist in the store
+- **C3 reverse ephemeral expansion** — never triggers if pattern side is
+  always `binlit`
+- **C2 bound-slot comparison** — `binlit(5)` vs `i(o(i(e)))` can't happen
+  if the latter is normalized to `binlit(5)` on entry
+
+**Impact on clause resolution**: clause premises like `plus/s1: plus (o M) (o N) (o R)`
+pattern-match on structural `o(M)`. With store-entry normalization, the
+backward prover's `unify` would need to expand `binlit(N)` to match `o(M)`.
+This already works via the existing forward ephemeral expansion in `unify`.
+So clause resolution is unaffected.
+
+**Impact on `getFirstArgHead`**: this function already handles `binlit` by
+returning `'i'`/`'o'`/`'e'` based on parity — it simulates the structural
+form for indexing. So the backward index continues to work.
+
+**String normalization (G1-STR)**: similarly, `Store.put('cons', [charlit, strlit])` could
+normalize to `strlit`. Lower priority since strings are rare in EVM programs.
+
+### G2 — General `termMap` / term visitor
+
+**11+ functions** in the codebase follow the same recursive pattern:
+
+```javascript
+function walkTerm(h) {
+  if (!Store.isTerm(h)) return h;
+  const tag = Store.tag(h);
+  if (isLeaf(tag)) return leafHandler(h, tag);
+  if (tag === 'arrlit') { /* walk elements */ }
+  const arity = Store.arity(h);
+  for (let i = 0; i < arity; i++) {
+    const c = Store.child(h, i);
+    if (Store.isTermChild(c)) walkTerm(c);
+  }
+}
+```
+
+Instances: `_normalizeBin`, `_resolveHash`, `_resolveValue`, `isGround`,
+`freeVars`, `collectMetavars`, `show`, `formatTerm`, `binToInt`,
+`flattenPattern`, `collectFreevars`.
+
+**Proposal G2**: extract a reusable `termMap(h, visitor)`:
+
+```javascript
+// termMap: walk a term, calling visitor on each node, bottom-up.
+// visitor(h, tag, mappedChildren) → newH
+// Returns the (possibly new) root term.
+function termMap(h, visitor) {
+  if (!Store.isTerm(h)) return visitor(h, null, null);
+  const tag = Store.tag(h);
+  const tagId = Store.tagId(h);
+  if (LEAF_TAG_SET[tagId]) return visitor(h, tag, null);
+  if (tagId === TAG_ARRLIT) {
+    const elems = Store.getArrayElements(h);
+    let changed = false;
+    const mapped = new Uint32Array(elems.length);
+    for (let i = 0; i < elems.length; i++) {
+      mapped[i] = termMap(elems[i], visitor);
+      if (mapped[i] !== elems[i]) changed = true;
+    }
+    return visitor(changed ? Store.putArray(mapped) : h, tag, mapped);
+  }
+  const arity = Store.arity(h);
+  let changed = false;
+  const mc = new Array(arity);
+  for (let i = 0; i < arity; i++) {
+    const c = Store.child(h, i);
+    if (Store.isTermChild(c)) {
+      mc[i] = termMap(c, visitor);
+      if (mc[i] !== c) changed = true;
+    } else {
+      mc[i] = c;
+    }
+  }
+  return visitor(changed ? Store.put(tag, mc) : h, tag, mc);
+}
+```
+
+Then `_normalizeBin` becomes:
+
+```javascript
+const _normalizeBin = h => termMap(h, (node, tag) => {
+  if (tag === 'i' || tag === 'o') {
+    const v = binToInt(node);
+    if (v !== null) return intToBin(v);
+  }
+  return node;
+});
+```
+
+**Zig translation**: in Zig, this would be a `fn termMap(comptime Visitor: type, h: TermId, ctx: *Visitor) TermId`
+using comptime generics for zero-cost abstraction.
+
+**Tradeoff**: the generic version allocates `new Array(arity)` per node.
+The specialized versions can avoid this (e.g., `isGround` returns `bool`,
+doesn't build new terms). So `termMap` is best for transformations, not
+queries. For queries, a `termFold(h, init, combine)` or `termWalk(h, visit)`
+(void visitor, side-effecting) would be better.
+
+### G3 — Leaf tag classification
+
+The pattern `tag === 'atom' || tag === 'binlit' || tag === 'strlit' || tag === 'charlit'`
+appears 3+ times with slight variations (`freevar` included or not, `arrlit`
+included or not). Each instance uses `Store.tag()` which allocates a string.
+
+**Proposal G3**: a precomputed bitset:
+
+```javascript
+// In store.js:
+const LEAF_TAGS = new Uint8Array(256);
+LEAF_TAGS[TAG.atom] = 1;
+LEAF_TAGS[TAG.binlit] = 1;
+LEAF_TAGS[TAG.strlit] = 1;
+LEAF_TAGS[TAG.charlit] = 1;
+// freevar is a "variable leaf" — callers choose whether to include it
+
+function isLeaf(tagId) { return LEAF_TAGS[tagId]; }
+```
+
+This replaces 4 string comparisons + string allocations with a single
+`u8` array lookup. In Zig: `const is_leaf = leaf_tags[@intFromEnum(tag)]`.
+
+### G4 — Avoid `Store.tag()` string allocation in hot paths
+
+The new code uses `Store.tag(h)` (returns string, allocates via
+`TAG_NAMES[tags[h]]`) in several hot-path locations:
+
+| Location | Calls `Store.tag()` | Could use `Store.tagId()` |
+|----------|--------------------|-----------------------|
+| `_chaseFreevar` (prove.js:232) | `Store.tag(v) !== 'freevar'` | `Store.tagId(v) !== TAG.freevar` |
+| `_resolveHash` (prove.js:254,258,262,263,293) | 5 calls per frame | All replaceable with tagId |
+| `_normalizeBin` (match.js:40,42,46) | 3 calls per node | All replaceable with tagId |
+| `_resolveValue` (match.js:406,407,412) | 3 calls per node | All replaceable with tagId |
+
+**Proposal G4**: replace all `Store.tag()` calls in hot paths with
+`Store.tagId()` + numeric `TAG.*` comparisons. This eliminates string
+allocation and enables integer comparison (single CPU instruction) instead
+of string comparison (loop over chars).
+
+**Estimated impact**: in tight loops (e.g., normalizing a 256-bit binary),
+this eliminates ~256 × 3 = ~768 unnecessary string allocations per
+normalization pass. With V8's generational GC, these short-lived strings
+are cheap but not free.
+
+### G5 — Incremental `deepApply` Map
+
+Currently `deepApply` rebuilds the entire `Map` from the theta array when
+`theta.length` changes:
+
+```javascript
+if (_thetaMapLen !== th.length) {
+  _thetaMap = new Map();
+  for (let i = 0; i < th.length; i++) _thetaMap.set(th[i][0], th[i][1]);
+  _thetaMapLen = th.length;
+}
+```
+
+For a proof of depth D with average branching B, this rebuilds the Map
+D times with growing size. Total: O(Σ(i=1..D) i) = O(D²/2).
+
+**Proposal G5**: incremental append:
+
+```javascript
+function deepApply(h, th) {
+  if (th.length === 0) return h;
+  if (_thetaMap === null) { _thetaMap = new Map(); _thetaMapLen = 0; }
+  // Append only new entries
+  for (let i = _thetaMapLen; i < th.length; i++) {
+    _thetaMap.set(th[i][0], th[i][1]);
+  }
+  _thetaMapLen = th.length;
+  return _resolveHash(h);
+}
+```
+
+This reduces Map construction from O(D²/2) to O(|theta|) total — each
+entry is added exactly once.
+
+**Caveat**: path compression in `_chaseFreevar` writes to `_thetaMap`,
+potentially overwriting entries. This is fine — path compression values
+are always refinements (more resolved) of the original, so no information
+is lost. But the `_thetaMapLen` tracking assumes entries are only added
+by `deepApply`, not by path compression. Since path compression only
+overwrites existing keys (never adds new ones), this is safe.
+
+### G6 — `_resolveBackwardTheta` fixpoint → topological sort
+
+The current fixpoint loop is O(|theta|²) worst case:
+
+```javascript
+let changed = true;
+while (changed) {
+  changed = false;
+  for (const [v, val] of resolved) {
+    const newVal = _resolveValue(val, resolved);
+    if (newVal !== val) { resolved.set(v, newVal); changed = true; }
+  }
+}
+```
+
+**Proposal G6**: topological sort over the dependency graph:
+
+1. Build a dependency graph: for each `[v, val]` entry, record which
+   freevars appear in `val`.
+2. Process entries in reverse topological order (leaves first).
+3. Single pass: O(|theta| × avg_term_size).
+
+This is what `deepApply` effectively does via path compression — it resolves
+lazily on demand and memoizes. So the real fix is **C10-DEDUP**: use the same
+Map+resolve approach for both prove.js and match.js, eliminating the separate
+fixpoint loop entirely.
+
+### G7 — Store-entry normalization for cons/strlit
+
+Like G1 for binary, `Store.put('cons', [charlit_h, strlit_h])` could
+normalize to `strlit(char + rest)`. This would close the strlit matching
+gap (currently `match`/`matchIndexed` don't handle strlit expansion, only
+`unify` does).
+
+Lower priority — strings are rare in EVM programs. But for
+completeness and Zig-friendliness (unified normalization layer), it's
+worth having.
+
+---
+
+## Performance optimization opportunities
+
+### P-OPT-1: Store.tag() → Store.tagId() in hot paths
+
+See G4. Eliminates ~768 string allocations per binary normalization pass.
+Simple mechanical change.
+
+### P-OPT-2: Pre-allocated frame arrays in iterative _resolveHash
+
+The iterative `_resolveHash` allocates `[hash, -1, null, false]` frame
+arrays on each stack push. For a term with arity 2 and depth 10, this is
+~20 array allocations per call.
+
+**Fix**: use a pre-allocated frame pool (circular buffer of fixed-size
+frames). Reset on each `_resolveHash` entry. Eliminates GC pressure.
+
+In Zig: stack-allocated fixed-size buffer with fallback to heap allocator.
+
+### P-OPT-3: binToInt fast path for already-binlit
+
+`_normalizeBin` calls `binToInt(h)` for every `i`/`o` node. `binToInt`
+first checks `tag === 'binlit'` (string comparison). If the child is already
+`binlit`, the entire chain collapses in one step. But if the child is
+structural, `binToInt` recurses through the whole chain.
+
+**Optimization**: check if the immediate child is `binlit` first (O(1)),
+avoiding the full recursive walk when the chain is short:
+
+```javascript
+if (tag === 'i' || tag === 'o') {
+  const childId = Store.rawChild(h, 0);  // no reconstruction
+  const childTag = Store.tagId(childId);
+  if (childTag === TAG.binlit) {
+    // Single-level: i(binlit(N)) → binlit(2N+1)
+    const val = getBigInt(Store.rawChild(childId, 0));
+    return intToBin(tag === 'i' ? val * 2n + 1n : val * 2n);
+  }
+  // Fall through to full binToInt
+}
+```
+
+### P-OPT-4: Avoid Store.get() in _tryBackwardCache
+
+`_tryBackwardCache` calls `Store.get(goal)` which allocates a
+`{ tag, children }` object. It then reads `node.children`. This allocation
+can be avoided by using `Store.arity()` + `Store.child()` directly:
+
+```javascript
+const arity = Store.arity(goal);
+const args = [];
+for (let i = 0; i < arity; i++) args.push(Store.child(goal, i));
+```
+
+Or better: use `Store.rawChild()` and only reconstruct when needed.
+
+---
+
+## Summary of generalizations
+
+| ID | Description | Eliminates | Effort |
+|----|-------------|-----------|--------|
+| G1 | Store-entry binary normalization | C2, C3, C8 | Medium |
+| G2 | Generic `termMap` / term visitor | Code duplication in 11+ functions | Medium |
+| G3 | Leaf tag bitset (`LEAF_TAGS[]`) | String comparisons in hot paths | Small |
+| G4 | `Store.tag()` → `Store.tagId()` in hot paths | String allocations | Small |
+| G5 | Incremental `deepApply` Map | O(D²) rebuild overhead | Small |
+| G6 | Topological sort for theta resolution | O(|theta|²) fixpoint loop | Medium (or merge with C10-DEDUP) |
+| G7 | Store-entry string normalization | strlit matching gap | Low priority |
+
+### Zig port readiness
+
+| Component | Zig-friendly? | Notes |
+|-----------|--------------|-------|
+| Store (SoA layout) | Excellent | Direct `MultiArrayList` translation |
+| Side tables | Good | `union(enum)` for child types |
+| Hash function | Needs upgrade | FNV-1a 32-bit → Wyhash 64-bit (Zig stdlib) |
+| Dedup table | Good | `std.HashMap` with custom context |
+| `matchIndexed` (iterative worklist) | Excellent | Stack-allocated fixed buffer |
+| `_chaseFreevar` (iterative) | Excellent | Simple while loop |
+| `_resolveHash` (full iterative) | Over-engineered | Hybrid (recursive term + iterative freevar) is the Zig idiom |
+| `_normalizeBin` (recursive) | Fine | Bounded depth (≤ 256), use `@setRuntimeSafety` |
+| `search()` in prove.js (recursive, depth 20K) | **Needs rewrite** | Must be iterative explicit stack in Zig |
+| Module-level mutable state | **Anti-pattern** | Zig uses explicit context/allocator threading |
+| `_backwardCache` (Map) | Good | `std.HashMap` with custom key |
+
 ## Benchmark plan
 
 ```bash
