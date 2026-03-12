@@ -2183,3 +2183,337 @@ First-argument indexing is the WAM/Twelf standard for clause selection. The code
 | P1 | TH-13: Naming pass (batch rename per table above) | None | Medium |
 | P2 | TH-14: Mode-checking pass for backward prover | Low | Medium |
 | P2 | TH-8: Unify substitution representation (Map vs union-find) | Medium | Large |
+
+---
+
+## Systems & Performance Engineering Audit
+
+Audit of the kernel and engine code from the perspective of low-level systems engineering, compiler construction, and performance engineering. Informed by V8 internals, WAM (Warren Abstract Machine) optimization techniques, modern theorem prover implementations (Lean 4, Coq, E-prover), arena allocation patterns, and the upcoming Zig port.
+
+### SYS-1: `Store.put()` Children Array — Dominant GC Pressure Source
+
+**Code**: Every `Store.put(tag, children)` call site (match.js, substitute.js, compile.js, unify.js) allocates a fresh JS array for `children`. In `subCompiled` (substitute.js:274), the arity-1 and arity-2 fast paths allocate `[v0]` and `[v0, v1]` array literals per call.
+
+**Impact**: In a typical EVM forward execution with 2000 steps, each step produces ~3 consequent facts via `subCompiled` → `Store.put`. That's ~6000 short-lived array allocations per run. V8's generational GC handles these reasonably (nursery collection), but this is the single largest source of GC pressure in the forward engine hot path.
+
+**V8-specific**: Array literals `[v0, v1]` in a monomorphic call site are optimized by V8's TurboFan — they use a "fast elements" backing store with known length. But the array is still heap-allocated and must be GC'd.
+
+**Fix (JS)**: Introduce `Store.put2(tag, c0, c1)` and `Store.put1(tag, c0)` that take children as direct arguments, avoiding array allocation entirely. The implementation writes directly to `child0[id]`, `child1[id]` without intermediary. This is the pattern used by WAM implementations: `MK_STRUCT(tag, arg0, arg1)` with fixed-arity specializations.
+
+**Fix (Zig port)**: `pub fn put2(tag: u8, c0: u32, c1: u32) u32` — no allocator involved. The SoA arrays are `[]u32` slices over arena memory. Zero allocation per put.
+
+**Estimated impact**: 30-50% reduction in GC pressure for forward.run, ~10-15% wall-clock speedup on arithmetic-heavy workloads.
+
+### SYS-2: `hashCombine` Variadic Allocation
+
+**Code**: `lib/hash.js:56` — `function hashCombine(...hashes)` uses rest parameters. Every call allocates an arguments array. Called from `computeHash` on every `Store.put`.
+
+**V8-specific**: Rest parameters (`...hashes`) force V8 to allocate an `Arguments` object even in TurboFan-compiled code. The `for...of` loop over the rest array also creates an iterator.
+
+**Fix (JS)**: Replace with a 2-argument version `hashCombine2(h1, h2)` that returns `Math.imul((h1 ^ h2) ^ ((h1 ^ h2) >>> 16), FNV_PRIME) >>> 0`. The existing `computeHash` already loops over children — inline the hash accumulation there instead of calling `hashCombine` per child. Remove the variadic version.
+
+**Fix (Zig port)**: `fn hashCombine(a: u32, b: u32) u32` — single instruction sequence, no allocation.
+
+### SYS-3: Forward.run State Cloning — O(groups) Allocations Per Step
+
+**Code**: `forward.js:35` — `applyMatch` calls `state.clone()` → `state.snapshot()` which allocates one `Int32Array` per non-empty group (30-40 allocations). The old state is then GC'd.
+
+**Contrast with explore.js**: The explore engine uses mutation+undo via Arena — zero allocation per step. `mutateState` modifies in-place; `FactSet.undo(arena, checkpoint)` restores in O(changed-facts) time.
+
+**Analysis**: `forward.run` uses clone-per-step because it predates the Arena abstraction. The committed-choice semantics of `forward.run` (no backtracking) mean undo is never needed — but neither is cloning. Instead, mutate in-place with no arena at all, since each step is irrevocable.
+
+**Fix**: Replace `applyMatch` with `mutateStateInPlace` that calls `consumeLinear`, `produceLinear`, `producePersistent` directly on the current state with `arena=null`. Remove `state.clone()` entirely. The only reason to keep the old state is for trace recording — snapshot only when `trace=true`.
+
+**Estimated impact**: Eliminates ~30-40 TypedArray allocations per forward step. On a 2000-step EVM execution, this removes ~60,000-80,000 allocations. Expected 15-25% wall-clock speedup on forward.run.
+
+### SYS-4: `FactSet.insert/remove` — O(n) Shift Operations
+
+**Code**: `fact-set.js:109-131` — inserting into a sorted `Int32Array` group requires shifting all elements after the insertion point right by one. For a group with k elements, this is O(k) per insert. Similarly for remove.
+
+**Impact**: For predicates with large fact populations (e.g., `mem` facts in EVM with 256+ entries), each insert/remove pays O(256) element copies. With ~4 bytes per element, this is 1KB of memmove per operation — not terrible, but adds up.
+
+**WAM comparison**: WAM uses unsorted linked lists for clause chains. Insertion is O(1) (prepend). But lookup is O(n). The sorted array trades O(1) lookup (binary search) for O(n) mutation.
+
+**Alternative**: **Unrolled B-tree** with Int32Array leaf nodes of 64 elements. Insert/remove at leaf is O(64) worst case (same as now for small groups), but for groups > 64, splits amortize to O(log n) per operation. Leaf nodes are cache-line-aligned (64 * 4 = 256 bytes = 4 cache lines).
+
+**Zig alternative**: Use `std.ArrayList(u32)` with sorted insert, or `std.ArrayHashMap(u32, u32)` for O(1) insert + O(1) lookup. Since content-addressed hashes are unique, a hash set is sufficient for has/count queries. For ordered iteration (Zobrist hash update), maintain a sorted view lazily.
+
+**Priority**: Medium — only matters for predicates with large populations (>64 facts). Most predicates in typical ILL programs have <10 facts.
+
+### SYS-5: BigInt Arithmetic in E-Unification Hot Path
+
+**Code**: `unify.js:687-695` — when matching `binlit(n)` against `i(X)` or `o(X)`, computes `value / 2n` and `value % 2n`. Both are BigInt operations. `Store.put('binlit', [value / 2n])` also hashes the BigInt via `hashBigInt` (hash.js:33) which iterates byte-by-byte with `val >>= 8n` and `Number(val & 0xFFn)`.
+
+**V8-specific**: BigInt operations in V8 are not JIT-compiled — they go through a C++ runtime call. Each `value / 2n` is ~50-100x slower than a regular integer division. The byte-iteration in `hashBigInt` creates temporary BigInts on every shift/mask.
+
+**Impact**: In EVM execution, nearly every arithmetic result goes through binlit normalization and matching. With 256-bit values (32 bytes), `hashBigInt` iterates 32 times per hash, each iteration allocating a temporary BigInt for the shift.
+
+**Fix (JS)**: Pre-convert BigInts to `Uint8Array` representations at `Store.put` time. Store the byte array in a side table alongside the BigInt. Hash the byte array directly (no BigInt arithmetic needed). For the i/o pattern matching, use `value >> 1n` instead of `value / 2n` (bit shift is faster than division even for BigInts) and `value & 1n` instead of `value % 2n`.
+
+**Fix (Zig port)**: Use `u256` (Zig supports arbitrary-width integers up to 65535 bits). Bit shift is a single instruction on x86-64 (SSE or pair of 64-bit shifts). Hash via direct memory cast: `@ptrCast(*[32]u8, &value)`. Zero allocation.
+
+**Estimated impact**: 2-5x speedup on arithmetic-heavy backward proving (inc, shl, shr predicates). Moderate impact on forward engine (binlit normalization).
+
+### SYS-6: Backward Prover Allocation Storm
+
+**Code**: `prove.js:search()` — per recursion level:
+1. `[...theta, ...newTheta]` — array spread creates new theta (O(|theta|))
+2. `freshenTerm(typeHash, ...)` — creates `renamed: Map`, walks term recursively
+3. `unifyUF(head, goalInst)` — creates `new UnionFind()` with `parent: Map`
+4. `getCandidates()` — `[...(ti[fa]||[]), ...(ti['_']||[])]` — two array spreads
+
+**Impact**: For a depth-5 proof search with 10 candidate clauses per level, this is: 50 Map allocations (UnionFind) + 50 Map allocations (freshen) + 250 array spreads (theta, getCandidates). Total: ~350 allocations per successful proof.
+
+In the forward engine, `provePersistentNaive` calls `backward.prove()` for each persistent goal that can't be resolved via state lookup or tabling. On a complex EVM rule with 5 persistent goals, this is ~1750 allocations per rule firing.
+
+**Fix (JS, incremental)**:
+1. `getCandidates`: return a view (offset+length into pre-indexed array) instead of spreading. The index is already built by `buildIndex`.
+2. `freshenTerm`: use a pre-allocated `Uint32Array(maxFreshVars)` renaming table indexed by fresh counter range, instead of a Map.
+3. `theta`: use indexed theta (like the forward engine) instead of pair-list. Avoid spread — append in-place and truncate on backtrack.
+4. `UnionFind`: pool and reuse. Clear the parent Map between unification attempts instead of creating new instances.
+
+**Fix (Zig port)**: Arena allocator per search depth. Each recursion level gets a bump allocator region. On backtrack, reset the arena pointer — all per-level allocations freed in O(1). This is the standard pattern in Lean 4's elaborator and Coq's tactic engine.
+
+**Estimated impact**: 5-10x speedup on backward proving for complex predicates. Marginal impact on forward engine hot path (backward proving is already behind state-lookup and tabling caches).
+
+### SYS-7: `for...in` Object Key Enumeration in `consumeLinear`
+
+**Code**: `state-ops.js:21` — `for (const hStr in consumed)` iterates object keys as strings. Each key requires `Number(hStr)` conversion.
+
+**V8-specific**: `for...in` over plain objects triggers V8's enum cache. If the object was created with `consumed[hash] = count` where `hash` is a numeric uint32, V8 stores it as a "fast elements" integer-keyed property. But `for...in` converts all keys to strings regardless. The `Number(hStr)` conversion back to a number is an additional string-to-number parse per key.
+
+**Fix (JS)**: Use a `Map<number, number>` for `consumed` instead of a plain object. Then iterate with `consumed.forEach((count, hash) => ...)`. Map iteration is numeric-typed — no string conversion. Alternatively, since consumed facts are always a small set (typically 1-4 entries), use two parallel arrays: `consumedHashes: Uint32Array(8)`, `consumedCounts: Uint8Array(8)`, `consumedLen: number`.
+
+**Fix (Zig port)**: `consumed: [4]struct { hash: u32, count: u8 }` — stack-allocated fixed array. Iteration is a tight `for` loop over contiguous memory.
+
+### SYS-8: `_poolConsumed.clear()` Cost in `tryMatch`
+
+**Code**: `match.js` — `_poolConsumed`, `_poolReserved`, `_poolPreservedCount` are module-level `Map` instances cleared on every `tryMatch` call. `Map.clear()` in V8 is O(n) where n is the number of entries — it must walk the backing store and delete entries.
+
+**Impact**: `tryMatch` is called for every candidate rule in every forward step. With 100 rules and fingerprint narrowing to ~5 candidates, that's 5 `Map.clear()` calls per step × 3 maps = 15 clears. If previous matches filled the maps with 3-5 entries, each clear touches 3-5 hash table slots.
+
+**Fix (JS)**: Replace Maps with generation-counted arrays. Use `_poolConsumedGen: number` that increments on each `tryMatch` call. Store `{value, gen}` pairs. Lookup checks `gen === _poolConsumedGen`. "Clearing" is just incrementing the generation counter — O(1). This is the standard "generation stamp" technique from RETE engines.
+
+**Alternative**: Since consumed typically has ≤4 entries, use parallel `Uint32Array(8)` buffers with a length counter. Clear is setting `len = 0` — O(1).
+
+### SYS-9: Content-Addressed Store SoA Cache Locality
+
+**Code**: `store.js:164-176` — six parallel TypedArrays (`tags`, `arities`, `child0`, `child1`, `child2`, `child3`), each 4M entries. Accessing a single node requires reads from 6 different memory locations (potentially 6 different cache lines for random access patterns).
+
+**Analysis**: For sequential access (building indexes, serialization), the SoA layout is excellent — each array is a contiguous block, and iterating one array at a time maximizes spatial locality. But for random access (unification, matching, substitution), each `Store.tag(id)` + `Store.child(id, 0)` + `Store.child(id, 1)` hits 3 different arrays at the same offset, which are at least `4M * 1byte + 4M * 1byte + 4M * 4bytes = 20MB` apart in memory. These are almost certainly in different cache lines and possibly different pages.
+
+**Impact**: On a modern CPU with 64-byte cache lines and 32KB L1d, the 6 arrays for 4M entries consume: `4M * (1+1+4+4+4+4) = 72MB` total. Random access patterns during unification trigger cache misses proportional to the number of distinct term IDs accessed per match.
+
+**Lean 4 comparison**: Lean stores terms as tagged pointers with inline children — AoS (Array of Structures) layout. Each term access touches one contiguous cache line containing tag + all children. For terms with arity ≤ 3, one cache line (64 bytes) covers everything.
+
+**Fix (Zig port)**: Use an AoS layout with packed structs:
+```zig
+const Term = packed struct {
+    tag: u8,
+    arity: u8,
+    _pad: u16,
+    children: [4]u32,
+};
+// sizeof(Term) = 20 bytes → 3.2 terms per cache line
+```
+This keeps tag + children contiguous. For sequential iteration, use SIMD to process 4 terms at a time.
+
+**Alternative (hybrid)**: Keep SoA for `tags` and `arities` (used for filtering: "find all terms with tag X") but use AoS for children (used for structural access: "read all children of term X"). This gives best of both worlds.
+
+**Priority for JS**: Not actionable (V8 TypedArrays don't support struct layouts). Important for Zig port architecture.
+
+### SYS-10: Discrimination Tree — Allocation in `getCandidateRules`
+
+**Code**: `disc-tree.js:199-235` — `getCandidateRules` allocates `results = []` and `seen = new Set()` on every call, plus `filtered = []`. In `explore.js`, this is called once per DFS node.
+
+**Impact**: For an explore tree with 500 nodes, that's 500 array + 500 Set + 500 filtered-array allocations. The Set is used for deduplication — same rule can match via multiple facts.
+
+**Fix (JS)**: Use a generation-stamped dedup. Each rule gets a `lastSeenGen: number` field. Increment `_queryGen` on each `getCandidateRules` call. Check `rule.lastSeenGen !== _queryGen` instead of `seen.has(r)`. This eliminates the Set allocation entirely. For `results` and `filtered`, use module-level pre-allocated arrays with length counters.
+
+**E-prover comparison**: E uses timestamp-based dedup for clause selection — the exact same "generation stamp" pattern. It's standard in production theorem provers.
+
+### SYS-11: `matchIndexed` Worklist — Array(64) vs Uint32Array
+
+**Code**: `unify.js` — `_Gp` and `_Gt` are regular `Array(64)` holding term hashes (uint32 values). In V8, regular arrays store numbers as boxed `HeapNumber` objects in the worst case, or as 31-bit Smis in the best case. Term hashes are uint32 — they exceed the Smi range (which is -2^30 to 2^30-1 on 64-bit) when > 1,073,741,823.
+
+**V8-specific**: V8's Smi range on 64-bit is [-2^31, 2^31-1] (implementation-dependent, typically uses pointer tagging). Values in the Smi range are stored inline (no allocation). Values outside Smi range are boxed as `HeapNumber` — each box is a heap allocation. Content-addressed store IDs are sequential starting from 1, so they stay in Smi range until ~2 billion terms. Safe for practical use.
+
+**Fix (Zig port)**: `_Gp: [64]u32` — stack-allocated array, zero overhead.
+
+### SYS-12: Theta Pair-List in Backward Prover vs Indexed Theta
+
+**Code**: The forward engine uses `theta: Array(slotCount)` with `slots: { hash → index }` for O(1) lookup. The backward prover (prove.js) uses a pair-list `theta = [[var0, val0], [var1, val1], ...]` with O(n) linear scan per lookup.
+
+**Impact**: The backward prover's `apply(term, theta)` does `for (let i = 0; i < theta.length; i += 2) if (theta[i] === hash)` — a linear scan per term node visited. With 20 bindings and a term tree of 50 nodes, that's 1000 comparisons per `apply` call. The forward engine's indexed version does 50 hash lookups — effectively O(50).
+
+**WAM comparison**: WAM bindings are in registers or on the stack — binding lookup is a single array index (like the forward engine's indexed theta). No Prolog implementation uses linear scan for substitutions.
+
+**Fix (JS)**: Port the backward prover to indexed theta. This requires assigning slots to clause variables at clause-compilation time (like `compileRule` does for forward rules). `buildIndex` should pre-assign slot tables per clause. The `search()` function then uses `theta[slot]` instead of pair-list scan.
+
+**Estimated impact**: 5-20x speedup on deep backward proofs (10+ bindings, depth 5+). This is the single highest-ROI optimization for backward proving.
+
+### SYS-13: `_resolveHash` — Iterative Post-Order with Per-Node Frame Allocation
+
+**Code**: `prove.js:241` — `_resolveHash` uses an explicit stack `[[hash, childIndex, childResults, changed], ...]`. Each frame is a 4-element array allocated per compound node visited. For a term tree with 30 compound nodes, that's 30 array allocations.
+
+**Fix (JS)**: Use pre-allocated frame arrays. Maintain a module-level `_resolveStack: Array(128)` where each slot is a pre-allocated `[0, 0, null, false]` frame. Reset frames on use instead of allocating. The stack depth is bounded by term depth (typically <20).
+
+**Alternative**: Convert to a recursive implementation with depth guard. Term depth is typically 3-8 for ILL predicates. Stack overflow occurs at depth ~10,000 (V8 default). Recursion avoids all frame allocation.
+
+**Note**: The iterative version was introduced specifically to fix stack overflow on deep theta chains (conversation context mentions `RangeError: Maximum call stack size exceeded`). The solution should keep the iterative structure but pre-allocate frames.
+
+### SYS-14: DEDUP Map — JS Map vs Open-Addressing Hash Table
+
+**Code**: `store.js:182` — `DEDUP = new Map()` maps content hash (uint32) to term index (uint32). V8's `Map` implementation uses a hash table with chaining. Each entry stores key, value, and a link pointer — ~24 bytes per entry on 64-bit.
+
+**Impact**: With 10K terms, DEDUP uses ~240KB. This is fine. But V8's Map has overhead: hash computation for the Map key (redundant — our content hash IS the key), bucket lookup, chain traversal.
+
+**Fix (JS)**: Use a TypedArray-based open-addressing hash table:
+```javascript
+const DEDUP_KEYS = new Uint32Array(capacity);   // content hash
+const DEDUP_VALS = new Uint32Array(capacity);   // term index
+const DEDUP_USED = new Uint8Array(capacity);     // occupancy flag
+```
+Lookup: linear probe on `DEDUP_KEYS[(hash + probe) & mask]`. Cache-friendly (keys are contiguous). No chaining overhead. Load factor 0.7 gives ~1.5 probes average.
+
+**Zig port**: `std.AutoHashMap(u32, u32)` — open addressing with Robin Hood hashing. Or a custom hash table with the content hash as the key directly (no re-hashing needed since the key IS a hash).
+
+**Estimated impact**: ~20-30% speedup on `Store.put()` hot path. Store.put is only hot during term construction (not during matching), so overall impact is moderate.
+
+### SYS-15: `snapshot()/snapshotBulk()` — Copy-on-Write Opportunity
+
+**Code**: `fact-set.js:232-275` — `snapshot()` copies each group's backing array. `snapshotBulk()` copies all groups into one buffer.
+
+**Alternative**: **Copy-on-write (CoW)** groups. Each group is a `{ data: Int32Array, owned: bool }`. On `snapshot()`, create a new FactSet sharing the same data references with `owned = false`. On first mutation (`insert`/`remove`), if `!owned`, copy the backing array and set `owned = true`.
+
+**Impact**: For explore.js where most groups are unchanged between parent and child states, CoW avoids copying unmodified groups entirely. Only the 1-3 groups that actually change get copied.
+
+**Lean 4 comparison**: Lean 4's RC-based FBIP (Functional But In-Place) does exactly this — if the reference count is 1, mutate in place; otherwise copy. CoW is the manual equivalent.
+
+**Priority**: Medium — explore.js already uses mutation+undo (better than CoW). This mainly benefits forward.run, which should switch to in-place mutation (SYS-3) anyway.
+
+### SYS-16: `Store.child()` — Reconstructs String/BigInt on Every Call
+
+**Code**: `store.js:407-411` — `child(id, i)` calls `reconstructChild(id, i)` which dispatches on tag type. For string-child tags (atom, freevar, strlit), it calls `stringTable.get(raw)` — a Map lookup returning a string. For BigInt-child tags (binlit, evar, bound), it calls `getBigInt(raw)` — an array index returning a BigInt.
+
+**Hot-path concern**: In `matchIndexed` (unify.js:662), `Store.child(p, i)` is called for every child of every compound node in the worklist. If the child is a string (e.g., atom name), this triggers a Map lookup per call. In the worklist loop, the same atom children may be accessed multiple times (once during pattern flattening, once during structural comparison).
+
+**V8 note**: `stringTable.get(raw)` returns a reference to an interned string — the string itself is not reallocated. The Map lookup is O(1) with integer key. This is acceptable.
+
+**Fix (Zig port)**: Store a union directly in the child slots:
+```zig
+const Child = union(enum) { term: u32, string: u32, bigint: u32 };
+```
+No dispatch needed — the union tag is checked once. Or use the current approach (tag determines child interpretation) with `@intToEnum` at the call site.
+
+### SYS-17: Tabling Key — String Concatenation
+
+**Code**: `match.js:106` — backward cache key is built via `key = head` then `key += ':' + args[i]` per input argument. This creates intermediate strings on every cache lookup.
+
+**Fix (JS)**: For predicates with ≤4 arguments (all current FFI predicates), use a numeric composite key:
+```javascript
+key = head_hash ^ (args[0] * 2654435761) ^ (args[1] * 2246822519);
+```
+Use the same Zobrist-style mixing as `hashFactEntry`. Collisions are acceptable for a cache (false miss → reprove, not unsound).
+
+**Fix (Zig port)**: `key: u64 = @as(u64, head_hash) << 32 | hash_combine(input_args)`. Single comparison, no allocation.
+
+### SYS-18: `explore.go()` Tree Node Allocation
+
+**Code**: `explore.js:234` — each DFS step allocates `{ rule: m.rule.name, child }` and pushes to `children = []`. For multi-alt rules, additional `{ rule, choice, child }` objects. The final return is `{ type: 'branch', state: null, children }`.
+
+**Impact**: An explore tree with 1000 nodes allocates ~1000 tree node objects + ~1000 children arrays + ~3000 `{rule, child}` edge objects = ~5000 allocations for tree construction alone.
+
+**Fix (JS, if tree size is a problem)**: Encode the tree in flat arrays:
+```javascript
+const nodeTypes = new Uint8Array(maxNodes);    // 0=leaf, 1=branch, ...
+const nodeStates = new Array(maxNodes);         // state snapshots (only for leaves)
+const childStart = new Uint32Array(maxNodes);   // index into edges array
+const childCount = new Uint16Array(maxNodes);   // number of children
+const edgeRule = new Array(totalEdges);          // rule name per edge
+const edgeTarget = new Uint32Array(totalEdges); // child node index
+```
+This replaces ~5000 objects with 6 pre-allocated arrays. Iteration is contiguous and cache-friendly.
+
+**Priority**: Low for JS (tree construction is not the bottleneck — matching is). High for Zig port where flat arrays are natural and GC pressure doesn't exist.
+
+### SYS-19: `Store.put()` — Linear Probing Collision vs Robin Hood
+
+**Code**: `store.js:301-306` — on hash collision, linear probes up to 64 slots. The `matchesEntry` verification at each probe allocates a `[child0, child1, child2, child3]` array (line 256) per probe.
+
+**Fix (JS)**: Inline the matching check without array allocation:
+```javascript
+function matchesEntry(id, tagName, c0, c1, c2, c3, arity) {
+  if (tags[id] !== TAG[tagName] || arities[id] !== arity) return false;
+  if (arity > 0 && child0[id] !== c0) return false;
+  if (arity > 1 && child1[id] !== c1) return false;
+  // ...
+}
+```
+Pass children as individual arguments, matching the `put1`/`put2` specializations from SYS-1.
+
+**Zig port**: Robin Hood hashing (used by `std.HashMap`) gives better worst-case probe lengths than linear probing. For the content-addressed store, the key IS the hash — so use identity-hash with open addressing. Expected probe length: 1.0 at load factor 0.5, 2.0 at 0.7.
+
+### SYS-20: Forward Engine Architecture — Zig Port Blueprint
+
+Summary of architectural decisions for the Zig port, drawing from all findings:
+
+**Memory layout**:
+- AoS term storage: `Term = packed struct { tag: u8, arity: u8, pad: u16, children: [4]u32 }` (20 bytes, fits in L1 with 3.2 terms/cache-line)
+- Open-addressing hash table for DEDUP (identity-hash on content hash)
+- Arena allocator for backward prover (per-search-depth regions, O(1) bulk free on backtrack)
+- Stack-allocated theta arrays (comptime-known max slot count per rule)
+- FactSet as `std.ArrayList(u32)` per tag, sorted
+
+**Term operations**:
+- `put2(tag, c0, c1) u32` — zero-allocation term construction
+- Child access: `terms[id].children[i]` — single cache line
+- Tag comparison: `terms[id].tag == TAG.binlit` — single byte compare
+
+**Matching**:
+- Worklist: `[64]struct { p: u32, t: u32 }` on stack (no heap allocation)
+- Undo: `[32]u8` on stack for slot indices
+- Theta: `[max_slots]?u32` on stack — null-initialized, O(1) slot access
+
+**Forward engine**:
+- In-place mutation with no undo (committed choice)
+- `comptime` rule specialization: each compiled rule generates a specialized match function at compile time via Zig's comptime
+- SIMD for binary search in FactSet groups: `@Vector(8, i32)` comparison against search key
+
+**Backward prover**:
+- Region-based allocation per recursion depth
+- Indexed theta (pre-assigned slot tables per clause at compile time)
+- `comptime` clause indexing: first-argument dispatch tables generated at compile time
+
+**Explore**:
+- Arena + undo log (same as current JS, but with zero-allocation Arena backed by `FixedBufferAllocator`)
+- Generation-stamped cycle/memo detection (avoid Set allocations)
+- Flat tree encoding (SYS-18)
+
+### Execution Roadmap (Systems Engineering)
+
+| Priority | Item | Speedup Est. | Risk | Size |
+|---|---|---|---|---|
+| P0 | SYS-3: In-place mutation for forward.run | 15-25% | Low | Small |
+| P0 | SYS-1: `Store.put1/put2` arity specialization | 10-15% | Low | Small |
+| P0 | SYS-2: Inline `hashCombine`, remove variadic | 5% | None | Tiny |
+| P1 | SYS-12: Indexed theta for backward prover | 5-20x (backward) | Medium | Medium |
+| P1 | SYS-5: Byte-array BigInt hashing | 2-5x (arith) | Low | Small |
+| P1 | SYS-6: Pre-allocated frames in prove.js | 2-5x (backward) | Low | Medium |
+| P1 | SYS-8: Generation-stamped pools in tryMatch | 5-10% | Low | Small |
+| P1 | SYS-10: Generation-stamped dedup in disc-tree | 5% (explore) | Low | Small |
+| P1 | SYS-7: Consumed as typed buffer, not string-keyed object | 3-5% | Low | Small |
+| P2 | SYS-14: TypedArray DEDUP table | 20-30% (put) | Medium | Medium |
+| P2 | SYS-17: Numeric tabling key | 5% | Low | Tiny |
+| P2 | SYS-19: Inline matchesEntry, remove array alloc | 3% | None | Tiny |
+| P3 | SYS-4: Unrolled B-tree for large FactSet groups | Marginal | High | Large |
+| P3 | SYS-15: CoW FactSet groups | Marginal | Medium | Medium |
+| P3 | SYS-18: Flat tree encoding for explore | Marginal (JS) | Medium | Large |
+
+**Recommended execution order** (JS, before Zig port):
+1. SYS-3 + SYS-1 + SYS-2 (three small changes, cumulative 25-40% on forward.run)
+2. SYS-8 + SYS-10 + SYS-7 (generation stamps + typed buffers, reduce per-step allocation overhead)
+3. SYS-12 + SYS-6 (backward prover modernization — indexed theta + pooled frames)
+4. SYS-5 (BigInt optimization — important for arithmetic-heavy workloads)
+
+**Zig port priorities**: SYS-9 (AoS layout), SYS-20 (architecture blueprint), then backport learnings to JS where applicable.
