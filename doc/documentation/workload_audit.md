@@ -1985,3 +1985,201 @@ Several concepts have multiple names:
 2. SE-2 + SE-3 (context object + DI — fixes C11, improves testability)
 3. SE-1 + SE-4 (match.js decomposition + unified persistent pipeline)
 4. SE-5, SE-7, SE-8 (generalization and cleanup)
+
+---
+
+## Proof-Theoretic Audit (Pfenning Lens)
+
+Audit of the forward engine from the perspective of proof theory and logical frameworks. Focuses on naming fidelity, theoretical justification, and correspondence between code and established literature (CLF, Andreoli focusing, Twelf mode declarations, SLD resolution).
+
+### TH-1: Variable Taxonomy Conflation
+
+**Code**: `lib/kernel/store.js` uses a single `freevar` tag for two proof-theoretically distinct species. `lib/kernel/unify.js:156` distinguishes them at runtime by name convention (`name.startsWith('_')`).
+
+**Theory**: Proof theory carefully separates:
+- **Metavariables** (schematic variables, unification variables) — stand for unknown terms during search; get instantiated by unification. In CLF/Twelf: capital letters, declared in signatures.
+- **Parameters** (eigenvariables, Skolem constants) — introduced by quantifier rules (∀R, ∃L); must remain free in the proof. In CLF: lowercase, fresh per rule application.
+
+`fresh.js` correctly generates distinct forms: `freshEvar()` → `evar(N)` (BigInt-indexed eigenvariables), `freshMetavar()` → `freevar('_mN')` (metavariables). But `evar` has its own tag while metavariables reuse the `freevar` tag — the naming underscore convention is a runtime hack layered over a store that doesn't distinguish them.
+
+**Recommendation**: Introduce a `metavar` tag in the store, eliminating the `isMetavar` name-prefix check. This makes the proof-theoretic distinction structural rather than nominal. The `freevar` tag then exclusively represents parameters/eigenvariables (rule-level bound variables opened during compilation).
+
+### TH-2: "Ephemeral Expansion" Is E-Unification
+
+**Code**: `lib/kernel/unify.js` lines 680–730 perform what comments call "ephemeral expansion" — when a `binlit` (compact binary literal) meets a structural binary term (`i(o(e))`), the unifier expands the binlit into structural form and unifies structurally.
+
+**Theory**: This is **E-unification modulo a convergent term rewriting system (TRS)**. The TRS has a single rule schema: `binlit(n) →* structural(n)` where `structural(n)` is the i/o/e-chain encoding of `n`. Because the TRS is convergent (confluent + terminating), E-unification reduces to: normalize both sides, then syntactic unification. The `_normalizeBin` function in `match.js:38` is precisely the normalization step (rewrite to canonical binlit form).
+
+**Current naming**: "ephemeral expansion" obscures the theoretical basis and makes it sound ad-hoc.
+
+**Recommendation**: Rename to "equational normalization" or "TRS normalization". Document the convergent TRS in a comment: `// E-unification: binlit ↔ structural binary is a convergent TRS; normalize before syntactic unification`.
+
+### TH-3: Backward Prover = SLD Resolution on !-Fragment
+
+**Code**: `lib/engine/prove.js:search()` (line 358) implements depth-first search with clause selection, unification, and backtracking. `getCandidates()` (line 71) performs first-argument indexing.
+
+**Theory**: This is textbook **SLD resolution** (Selective Linear Definite clause resolution) restricted to the unrestricted (!) fragment of the linear logic context. The key theoretical properties:
+1. **Soundness**: Each resolution step corresponds to a cut on a !-clause — consuming no linear resources.
+2. **Completeness**: Depth-first is incomplete in general (loops on recursive clauses), but the `maxDepth` bound makes it a bounded-depth iterative search, which is fair for finite search spaces.
+3. **First-argument indexing**: Standard Prolog optimization (WAM, Twelf). `getCandidates` groups clauses by first-argument head symbol — this is sound because the first argument is sufficient for discrimination (though not for full unification).
+
+**Naming issue**: The function `search()` is generic to the point of being opaque. In Twelf/CLF literature, this would be called `solve` or `prove_unrestricted`.
+
+**Bug note (C5)**: `getCandidates` can return duplicates when the first argument is a freevar — it concatenates the freevar-headed bucket with the specific-head bucket, but doesn't dedup. This is a performance bug (redundant proof attempts), not a soundness bug (duplicate solutions are idempotent in the !-fragment).
+
+### TH-4: Forward Engine = CLF Monadic Forward Chaining
+
+**Code**: `forward.js:run()` implements the main loop; `applyMatch()` (line 35) performs state transitions.
+
+**Theory**: The forward engine implements **CLF monadic forward chaining** (Cervesato, Pfenning, Simmons). The correspondence:
+- **State** `(Γ; Δ)` = `(state.persistent; state.linear)` — unrestricted and linear contexts
+- **Rule firing** = monadic let-binding: `let {p} = M in N` where `M` matches antecedent and `N` produces consequent
+- **`applyMatch`** = the CLF transition: `Γ; Δ → Γ'; Δ'` where consumed linear resources are removed from Δ and produced resources are added
+- **Committed choice** = `strategy.findMatch` returns the *first* matching rule, implementing the CLF "don't-care nondeterminism" of forward chaining (vs. `findAllMatches` in `explore.js` which gives "don't-know nondeterminism")
+
+**Naming**: `applyMatch` is reasonable but could be `applyTransition` or `fireRule` to emphasize the state-transition reading. The `consumed` map correctly implements multiplicative resource accounting — each linear fact is consumed exactly once.
+
+### TH-5: `_normalizeBin` = Canonical Form Enforcement
+
+**Code**: `match.js:38` — after every forward step that produces new terms, `_normalizeBin` rewrites structural binary terms (i/o/e chains) to compact `binlit` form.
+
+**Theory**: In CLF, all terms are **canonical** (β-normal, η-long). The content-addressed store (hash-consing) guarantees α-equivalence by construction. `_normalizeBin` extends this to **equational canonical forms** — ensuring that the binlit/structural binary equivalence class has a unique representative. Without this, the same number could appear as both `binlit(5)` and `i(o(i(e)))`, breaking O(1) equality checks.
+
+**Theoretical justification**: This is a normalization-by-evaluation step for the equational theory of binary representation. It preserves the invariant: `∀t. Store.put(normalize(t)) = Store.put(normalize(t'))` whenever `t =_E t'`.
+
+### TH-6: Tabling Soundness via Monotonicity of Γ
+
+**Code**: `match.js:94` — `_tryBackwardCache` memoizes backward proof results keyed by `(predicate, input_args)`.
+
+**Theory**: Tabling (memoization of proof search results) is sound for the !-fragment because:
+1. Persistent context Γ is **monotonically growing** during forward chaining — facts are added, never removed
+2. A successful proof at time t remains valid at time t' > t (monotonicity)
+3. A failed proof at time t may become provable at time t' > t if new facts are added
+
+**Soundness concern**: The current implementation caches both successes and failures (`null` = no solution). Caching failures is **unsound in general** for a monotonically growing context — a goal unprovable now may become provable after new persistent facts are produced. The cache is only sound if:
+- (a) It is cleared between forward steps, OR
+- (b) Negative cache entries are invalidated when relevant persistent facts are added
+
+Current code clears `_backwardCache` between forward steps (verified via `resetBackwardCache()` calls), so (a) holds. But this should be documented as a critical invariant.
+
+**Naming**: `_backwardCache` → `_tabling` or `_memo` would connect to the tabling literature (XSB Prolog, tabled resolution).
+
+### TH-7: `resolveExistentials` = ∃R with Most General Witness
+
+**Code**: `match.js:546` — when a rule fires and its consequent contains existentially quantified variables, `resolveExistentials` attempts to find witnesses.
+
+**Theory**: In focused proof search, ∃R (existential right) requires providing a witness term. The implementation has a three-level fallback:
+1. **State lookup**: witness already exists as a persistent fact (analogous to looking up a definition)
+2. **Backward proof**: compute witness via SLD resolution on !-fragment
+3. **Fresh eigenvariable**: `freshEvar()` generates a Skolem constant as a "most general witness" — the existential is left open as a constraint
+
+Level 3 is theoretically interesting: it corresponds to the proof-theoretic technique of **delaying witness selection** (used in uniform proofs, Miller et al.). The `freshEvar` is essentially a placeholder saying "∃x. P(x) is satisfied by some x to be determined later." This is sound in a forward-chaining context because the existential variable will be constrained by subsequent rule firings.
+
+**Naming**: `resolveExistentials` is clear. The `freshEvar` fallback could use a comment explaining the delayed-witness interpretation.
+
+### TH-8: `deepApply` = Explicit Substitution Composition
+
+**Code**: `prove.js:347` — `deepApply(term, theta)` applies a substitution to a term, walking the term structure and replacing bound variables.
+
+**Theory**: This is **hereditary substitution** in the CLF sense — applying a substitution to a canonical form produces a canonical form (because the store normalizes on `put()`). The Map-based theta representation is an **explicit substitution** in the sense of Abadi et al., though without the full explicit substitution calculus.
+
+The current implementation rebuilds the Map on every theta extension (creating a new Map from the pair-list theta). This is O(n) per extension. The theoretical alternative is a **union-find** structure (as in `_chaseFreevar`), which gives amortized O(α(n)) lookup.
+
+**Note**: `_chaseFreevar` (prove.js:227) already implements iterative path compression — this IS a union-find chase. The duality between `_chaseFreevar` (union-find) and `deepApply` (Map walk) reflects two competing substitution representations coexisting in the same module.
+
+### TH-9: "types" vs "clauses" — Naming Mismatch
+
+**Code**: Throughout the engine, `calc.types` refers to backward clause definitions indexed by predicate name, and `calc.clauses` refers to the raw clause list. In `prove.js:getCandidates()`, we see `const typeDef = types[head]` where `typeDef` is actually a clause definition.
+
+**Theory**: In Twelf/CLF, **types** and **clauses** have precise meanings:
+- A **type** is a classifier: `nat : type`, `plus : nat → nat → nat → type`
+- A **clause** is a definition: `plus_z : plus z N N` (a term inhabiting a type)
+- The "type" of a predicate is its kind signature; the "clauses" are its defining terms
+
+Using `types` to mean "clause definitions grouped by predicate" conflates two levels of the logical framework. This would confuse any LF/Twelf reader.
+
+**Recommendation**: Rename `calc.types` → `calc.definitions` or `calc.clauseIndex` (an index from predicate names to their defining clauses).
+
+### TH-10: `matchAllLinear` = Focusing Protocol
+
+**Code**: `match.js:752` implements a two-phase loop: Phase 1 matches linear patterns (consuming resources), Phase 2 proves persistent goals.
+
+**Theory**: This directly implements the **Andreoli focusing discipline**:
+- **Phase 1 (synchronous/focusing)**: Decompose the linear antecedent — matching patterns against the linear context Δ. Each match is deterministic (no backtracking within a pattern match). Patterns with unresolved dependencies are **deferred** — this corresponds to the focusing discipline's requirement that synchronous decomposition only proceeds when all inputs are determined.
+- **Phase 2 (asynchronous/inversion)**: Prove persistent goals via backward chaining on Γ. This is the "blur" rule — switching from the focused (linear matching) phase to the unfocused (persistent proving) phase.
+- **Iteration**: The loop re-enters Phase 1 after Phase 2 makes progress, because persistent proving may bind metavariables needed by deferred linear patterns. This interleaving is the **focus-blur-focus** cycle.
+
+The `deferredLen` mechanism (lines 771–798) is the key insight: it's not just optimization, it's **the focusing protocol's requirement** that synchronous rules only fire when their inputs are ground. The dependency tracking via `meta.persistentDeps` is the mode-checking equivalent — ensuring input arguments are determined before matching proceeds.
+
+**Naming**: `matchAllLinear` undersells this function. It could be `focusedMatch` or `focusingProtocol` to reflect its theoretical role.
+
+### TH-11: `consumed` Map = Multiplicative Accounting
+
+**Code**: The `consumed` object tracks which linear facts have been matched, preventing double-consumption.
+
+**Theory**: This is the **multiplicative resource accounting** that distinguishes linear logic from classical logic. Each linear proposition can be used exactly once. The `consumed` map is the runtime implementation of the proof-theoretic constraint that in a sequent `Γ; Δ ⊢ C`, each formula in Δ appears in exactly one premise of a multiplicative rule.
+
+The `reserved` mechanism (for preserved facts that should not be consumed) implements the **principality** condition: when a rule preserves a linear fact (produces the same fact it consumes), the matching should not consume the preserved copy.
+
+### TH-12: `applyMatch` = CLF Monadic Let-Binding
+
+**Code**: `forward.js:35` — `applyMatch(state, { rule, theta, slots, consumed })`:
+```
+consumeLinear(newState.linear, consumed, null);
+produceLinear(newState.linear, rule.consequent.linear, theta, slots, rule, ...);
+producePersistent(newState.persistent, rule.consequent.persistent, theta, slots, rule, ...);
+```
+
+**Theory**: In CLF, a forward step is a monadic let-binding:
+```
+let {Δ'} = [σ]R in ...
+```
+where `σ` is the substitution (theta), `R` is the rule, `Δ'` is the produced linear context. The three operations correspond exactly to the CLF transition judgment:
+
+1. `consumeLinear` = remove matched resources from Δ (antecedent consumption)
+2. `produceLinear` = add [σ]C_lin to Δ (linear consequent production)
+3. `producePersistent` = add [σ]C_pers to Γ (persistent consequent production)
+
+The fact that persistent facts are only added (never removed) is the proof-theoretic guarantee of **weakening** in the !-fragment.
+
+### TH-13: Comprehensive Naming Recommendations
+
+Based on the analysis above, the following renamings would align the codebase with established proof-theoretic terminology:
+
+| Current | Proposed | Justification |
+|---|---|---|
+| `freevar` (for metavars) | `metavar` | Distinct store tag; proof-theoretic clarity (TH-1) |
+| `_normalizeBin` | `normalizeTRS` or `canonicalize` | Reflects equational theory (TH-2, TH-5) |
+| `search()` in prove.js | `sldResolve()` | Standard name for the algorithm (TH-3) |
+| `calc.types` | `calc.definitions` or `calc.clauseIndex` | Avoid type/clause conflation (TH-9) |
+| `_backwardCache` | `_persistentMemo` or `_tabling` | Tabling literature (TH-6) |
+| `matchAllLinear` | `focusedMatch` | Andreoli focusing protocol (TH-10) |
+| "ephemeral expansion" | "equational normalization" | E-unification literature (TH-2) |
+| `deepApply` | `hereditarySub` or `applySubst` | CLF hereditary substitution (TH-8) |
+| `provePersistentNaive` | `proveUnrestricted` | CLF terminology: persistent = unrestricted (TH-3) |
+| `resolveExistentials` | keep (already clear) | — |
+| `applyMatch` | `fireTransition` or keep | CLF monadic let (TH-12) |
+
+### TH-14: Mode Declarations and First-Argument Indexing
+
+**Code**: `ffi/index.js:94` defines `defaultMeta` with mode strings like `'+ + -'`. `prove.js:getCandidates()` uses first-argument head-symbol indexing.
+
+**Theory**: Mode declarations originate from **Twelf** (Pfenning, Schürmann). A mode `+ + -` means "input, input, output" — the first two arguments must be ground (determined) before the predicate is called, and the third is computed. This is a **moding discipline** that ensures:
+1. **Termination**: if all input positions are ground, and the clause definitions are well-moded, then resolution terminates
+2. **Determinism**: in many cases, well-moded predicates are functional (unique output for given inputs)
+
+First-argument indexing is the WAM/Twelf standard for clause selection. The code's `getCandidates` groups clauses by first-argument tag — this is the same as Twelf's `%mode` + indexing.
+
+**Gap**: The mode declarations in `defaultMeta` are only used for FFI dispatch and caching, not for mode-checking the backward prover. Adding a mode-checking pass (as Twelf does) would catch bugs where predicates are called with insufficient inputs.
+
+### Execution Roadmap (Proof-Theoretic)
+
+| Priority | Item | Risk | Size |
+|---|---|---|---|
+| P0 | TH-1: Introduce `metavar` store tag | Medium (store-wide) | Medium |
+| P0 | TH-9: Rename `calc.types` → `calc.definitions` | None | Small |
+| P1 | TH-6: Document tabling soundness invariant (cache clearing) | None | Tiny |
+| P1 | TH-2: Rename ephemeral expansion → equational normalization | None | Small |
+| P1 | TH-13: Naming pass (batch rename per table above) | None | Medium |
+| P2 | TH-14: Mode-checking pass for backward prover | Low | Medium |
+| P2 | TH-8: Unify substitution representation (Map vs union-find) | Medium | Large |
