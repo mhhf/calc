@@ -338,7 +338,8 @@ describe('Store Binary Format', () => {
         const stateSrc = mde.decomposeQuery(calcSrc.queries.get('symex'));
         const treeSrc = explore(stateSrc, calcSrc.forwardRules, {
           maxDepth: 200,
-          calc: { clauses: calcSrc.clauses, types: calcSrc.types }
+          calc: { clauses: calcSrc.clauses, types: calcSrc.types },
+          dangerouslyUseFFI: true
         });
 
         // Precompile + load + explore
@@ -349,7 +350,8 @@ describe('Store Binary Format', () => {
         const stateBin = mde.decomposeQuery(calcBin.queries.get('symex'));
         const treeBin = explore(stateBin, calcBin.forwardRules, {
           maxDepth: 200,
-          calc: { clauses: calcBin.clauses, types: calcBin.types }
+          calc: { clauses: calcBin.clauses, types: calcBin.types },
+          dangerouslyUseFFI: true
         });
 
         // Same tree structure
@@ -530,7 +532,8 @@ describe('Store Binary Format', () => {
       const stateFresh = mde.decomposeQuery(calcFresh.queries.get('symex'));
       const treeFresh = explore(stateFresh, calcFresh.forwardRules, {
         maxDepth: 200,
-        calc: { clauses: calcFresh.clauses, types: calcFresh.types }
+        calc: { clauses: calcFresh.clauses, types: calcFresh.types },
+        dangerouslyUseFFI: true
       });
 
       // Auto-cached load (first call = miss + write)
@@ -539,7 +542,8 @@ describe('Store Binary Format', () => {
       const stateCached = mde.decomposeQuery(calcCached.queries.get('symex'));
       const treeCached = explore(stateCached, calcCached.forwardRules, {
         maxDepth: 200,
-        calc: { clauses: calcCached.clauses, types: calcCached.types }
+        calc: { clauses: calcCached.clauses, types: calcCached.types },
+        dangerouslyUseFFI: true
       });
 
       assert.strictEqual(treeUtils.countNodes(treeCached), treeUtils.countNodes(treeFresh));

@@ -15,7 +15,7 @@ const Seq = require('../lib/kernel/sequent');
 const { parseExpr } = require('../lib/engine/convert');
 const { compileRule, expandChoiceItem } = require('../lib/engine/compile');
 const { createState } = require('../lib/engine/forward');
-const { resolveExistentials, tryMatch } = require('../lib/engine/match');
+const { resolveExistentials, tryMatch, setNoFFI } = require('../lib/engine/match');
 
 describe('Quantifier Store operations', () => {
   it('exists(body) creates arity-1 node', () => {
@@ -324,7 +324,8 @@ describe('resolveExistentials three-level fallback', () => {
     assert.strictEqual(Store.tag(theta[slot]), 'evar', 'unresolvable slot gets freshEvar');
   });
 
-  it('resolves via FFI when inputs are ground', async () => {
+  it('resolves via FFI when inputs are ground (dangerouslyUseFFI)', async () => {
+    setNoFFI(false); // Enable FFI for this test
     // Rule: a X Y -o { exists Z. (b Z * !plus X Y Z) }
     // After matching a(3,4): X=3, Y=4 → FFI resolves Z=7
     const { parseExpr } = require('../lib/engine/convert');
@@ -351,6 +352,7 @@ describe('resolveExistentials three-level fallback', () => {
       if (match.theta[slot] === seven) foundSeven = true;
     }
     assert.ok(foundSeven, 'existential Z should be resolved to 7 via FFI');
+    setNoFFI(true); // Reset to default
   });
 });
 

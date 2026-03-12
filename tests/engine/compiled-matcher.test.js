@@ -327,7 +327,8 @@ describe('E2E persistent step correctness', { timeout: 30000 }, () => {
 
     const tree = explore(state, calc.forwardRules, {
       maxDepth: 2000,
-      calc: { clauses: calc.clauses, types: calc.types }
+      calc: { clauses: calc.clauses, types: calc.types },
+      dangerouslyUseFFI: true // Testing compiled matchers, not adversarial soundness
     });
 
     assert.strictEqual(countNodes(tree), 280, 'Expected 280 nodes');
@@ -345,7 +346,8 @@ describe('E2E persistent step correctness', { timeout: 30000 }, () => {
     const treeFull = explore(state, calc.forwardRules, {
       maxDepth: 500,
       calc: { clauses: calc.clauses, types: calc.types },
-      structuralMemo: false
+      structuralMemo: false,
+      dangerouslyUseFFI: true // Testing structural memo, not adversarial soundness
     });
     assert.strictEqual(countNodes(treeFull), 2125, 'Full: expected 2125 nodes');
     assert.strictEqual(getAllLeaves(treeFull).length, 31, 'Full: expected 31 leaves');
@@ -354,7 +356,8 @@ describe('E2E persistent step correctness', { timeout: 30000 }, () => {
     const treeMemo = explore(state, calc.forwardRules, {
       maxDepth: 500,
       calc: { clauses: calc.clauses, types: calc.types },
-      structuralMemo: true
+      structuralMemo: true,
+      dangerouslyUseFFI: true
     });
     assert(countNodes(treeMemo) < 500, `Memo: expected <500 nodes, got ${countNodes(treeMemo)}`);
   });
