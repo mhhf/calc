@@ -1486,3 +1486,502 @@ node -e "
   // Build index, query with freevar first arg, verify no duplicates
 "
 ```
+
+---
+
+## Software Engineering & Architecture Audit
+
+Independent audit of the engine code from a purely software engineering perspective.
+Covers: modularity, coupling, duplication, design patterns, abstraction boundaries,
+file organization, and actionable refactoring proposals.
+
+---
+
+### SE-1: `match.js` is a god module (1050 lines, 10 responsibilities)
+
+`match.js` handles:
+1. FFI control (`setNoFFI`, `clearBackwardCache`)
+2. Binary normalization (`_normalizeBin`)
+3. Backward proof caching (`_tryBackwardCache`)
+4. Backward theta resolution (`_resolveBackwardTheta`, `_resolveValue`)
+5. Profiling instrumentation
+6. Rule indexing (`buildDiscriminatorIndex`, `detectFingerprintConfig`, `findFingerprintValue`)
+7. Persistent proving — two implementations (`provePersistentGoals`, `provePersistentNaive`)
+8. Existential resolution (`resolveExistentials`)
+9. Pattern matching (`tryMatch`, `matchOnePattern`, `matchAllLinear`)
+10. Loli matching (`matchLoli`, `matchFirstLoli`)
+
+**Diagnosis**: Single Responsibility Principle violation. The file is hard to navigate,
+hard to test in isolation, and changes to one concern (e.g., caching) risk
+destabilizing another (e.g., pattern matching).
+
+**Proposed split**:
+
+```
+match.js           → core pattern matching only (tryMatch, matchOnePattern, matchAllLinear)
+persistent.js      → provePersistentGoals/Naive, state lookup, backward dispatch
+backward-cache.js  → _tryBackwardCache, _resolveBackwardTheta, _resolveValue
+normalize.js       → _normalizeBin (+ future normalizers for arrlit, strlit)
+indexing.js        → buildDiscriminatorIndex, detectFingerprintConfig, findFingerprintValue
+```
+
+The `indexing.js` functions are already almost standalone — they have no dependency
+on `_noFFI` or `_backwardCache`. Extraction is zero-risk.
+
+`persistent.js` would unify `provePersistentWithFFI` (currently in `opt/ffi.js`)
+and `provePersistentNaive` (currently in `match.js`) into a single configurable
+pipeline — see SE-4.
+
+**Effort**: Medium. No behavioral change, pure file restructuring + re-exports.
+
+---
+
+### SE-2: Module-level mutable state (`_noFFI`, `_backwardCache`)
+
+**Current pattern**:
+```javascript
+// match.js
+let _noFFI = false;
+function setNoFFI(v) { _noFFI = !!v; }
+
+// forward.js
+match.setNoFFI(opts.noFFI || false);
+// ... run() exits without resetting _noFFI (C11 bug)
+```
+
+**Problems**:
+- **Temporal coupling**: caller must set before use and reset after. The C11 bug
+  (flag not reset) is a direct consequence.
+- **Non-composable**: can't run two concurrent executions with different settings.
+- **Untestable**: tests must manually manage global state between cases.
+- **Anti-pattern for Zig port**: Zig uses explicit context/allocator threading;
+  module-level mutable state doesn't translate.
+
+**Fix — Context object pattern**:
+```javascript
+// Execution context threaded through the call chain
+function createExecContext(opts = {}) {
+  return {
+    noFFI: !!opts.noFFI,
+    backwardCache: opts.noFFI ? new Map() : null,
+    calc: opts.calc || null,
+    backward: require('./prove'),
+  };
+}
+
+// forward.js
+function run(inputState, rules, opts) {
+  const ctx = createExecContext(opts);
+  // ... pass ctx to matchAllLinear, provePersistent, etc.
+}
+```
+
+This eliminates `setNoFFI`, `clearBackwardCache`, and the C11 bug entirely.
+Each call to `run()` or `explore()` gets its own context, which is discarded
+when the function returns. No cleanup needed.
+
+**Effort**: Medium. Threading `ctx` through match.js functions is mechanical but
+touches many call sites. Can be done incrementally — pass `ctx` alongside existing
+params, then remove the globals once all callers use `ctx`.
+
+---
+
+### SE-3: Circular dependency (match.js ↔ prove.js)
+
+Five lazy `require('./prove')` calls exist in the engine, all inside function
+bodies to break circular dependencies:
+
+| File | Line | Inside |
+|------|------|--------|
+| `match.js` | 152 | `_tryBackwardCache` |
+| `match.js` | 489 | `provePersistentNaive` |
+| `forward.js` | 73 | `run()` |
+| `explore.js` | 98 | `explore()` |
+| `opt/ffi.js` | 152 | `provePersistentWithFFI` |
+
+The root cause: `prove.js` is a backward chaining engine that knows nothing about
+the forward engine, but the forward engine needs backward proving for persistent
+goals. The lazy require avoids the circular dependency at module load time.
+
+**Fix — Dependency Injection**:
+```javascript
+// In forward.js run() or explore():
+const backward = require('./prove');
+const ctx = createExecContext({ ...opts, backward });
+
+// In persistent.js:
+function provePersistent(patterns, ..., ctx) {
+  const result = ctx.backward.prove(goal, ...);
+}
+```
+
+The backward prover becomes an explicit dependency injected via the execution
+context. No more lazy requires. This also enables testing persistent proving
+with a mock backward prover.
+
+**Effort**: Small. Only the injection site and 5 usage sites change.
+
+---
+
+### SE-4: `provePersistentWithFFI` / `provePersistentNaive` duplication
+
+These two functions (`opt/ffi.js:94` and `match.js:440`) share nearly identical
+state-lookup code (20+ lines). The only difference is the pipeline order:
+
+| Step | `provePersistentWithFFI` | `provePersistentNaive` |
+|------|--------------------------|------------------------|
+| 1 | FFI | State lookup |
+| 2 | State lookup | Backward cache (optional) |
+| 3 | Clause resolution | Clause resolution |
+
+**Fix — Unified pipeline with configurable phases**:
+```javascript
+function provePersistent(patterns, startIdx, theta, slots, state, ctx, evidenceOut) {
+  let idx = startIdx;
+  while (idx < patterns.length) {
+    const goal = subApplyIdx(patterns[idx], theta, slots);
+    let proved = false;
+
+    for (const phase of ctx.persistentPipeline) {
+      const result = phase(goal, patterns[idx], theta, slots, state, ctx, evidenceOut);
+      if (result === 'proved') { proved = true; break; }
+      if (result === 'failed') break;
+      // result === 'skip' → try next phase
+    }
+
+    if (!proved) break;
+    idx++;
+  }
+  return idx;
+}
+```
+
+Pipeline configuration:
+```javascript
+// FFI mode (default)
+ctx.persistentPipeline = [phaseFFI, phaseStateLookup, phaseClauseResolution];
+
+// noFFI mode
+ctx.persistentPipeline = [phaseStateLookup, phaseBackwardCache, phaseClauseResolution];
+```
+
+This eliminates the duplication, makes the pipeline composable, and allows
+easy experimentation with different phase orders. Each phase is a pure function
+with a simple contract: `(goal, ...) → 'proved' | 'failed' | 'skip'`.
+
+**Effort**: Medium. Factor out phases, wire up pipeline in `createExecContext`.
+
+---
+
+### SE-5: 22+ duplicated term-walking functions
+
+The recursive pattern of tag-dispatch + arrlit-guard + arity-loop over
+`Store.child()` appears in at least 22 functions across the codebase:
+
+**lib/kernel/substitute.js** (5):
+`sub`, `apply::go`, `occurs`, `debruijnSubst::go`, `applyIndexed::go`
+
+**lib/engine/pattern-utils.js** (3):
+`isGround`, `collectMetavars`, `collectFreevars::walk`
+
+**lib/engine/match.js** (2):
+`_normalizeBin`, `_resolveValue`
+
+**lib/engine/prove.js** (3):
+`_resolveHash` (iterative), `makeFreshener::freshen`, `formatTerm`
+
+**lib/engine/compile.js** (3):
+`flattenTensor::walk`, `expandChoiceItem`, `compilePatternMatch::emit`
+
+**lib/engine/disc-tree.js** (2):
+`flattenPattern::walk`, `flattenFact::walk`
+
+**lib/engine/ffi/convert.js** (1):
+`isGround` — **exact duplicate** of `pattern-utils.js:isGround`
+
+**lib/prover/** (3):
+`check-term.js:expand`, `generic-term.js:collectVarHashes::visit`,
+`guided-term.js:buildAntecedentProof`
+
+**lib/zk/** (2):
+`witness.js:emitSubstTree`, `flat-witness.js:emitSubstTree` — **near-duplicates**
+
+All share the same skeleton:
+```javascript
+function walk(h) {
+  const tag = Store.tag(h);
+  if (tag === 'arrlit') { /* handle array elements */ }
+  const a = Store.arity(h);
+  for (let i = 0; i < a; i++) {
+    const c = Store.child(h, i);
+    if (Store.isTermChild(c)) { /* recurse */ }
+  }
+}
+```
+
+**Proposed abstraction — `termMap` and `termFold`** (in `lib/kernel/store.js`):
+
+```javascript
+/** Map over term children, returning new term if any changed. */
+function termMap(h, fn) {
+  if (!isTerm(h)) return h;
+  const tid = tagId(h);
+  if (ARRAY_CHILD_TAGS[tid]) {
+    const elems = getArrayElements(h);
+    if (!elems || elems.length === 0) return h;
+    let changed = false;
+    const ne = new Uint32Array(elems.length);
+    for (let i = 0; i < elems.length; i++) {
+      ne[i] = fn(elems[i]);
+      if (ne[i] !== elems[i]) changed = true;
+    }
+    return changed ? putArray(ne) : h;
+  }
+  const a = arities[h];
+  if (a === 0) return h;
+  let changed = false;
+  const nc = [];
+  for (let i = 0; i < a; i++) {
+    const c = reconstructChild(h, i);
+    if (typeof c === 'number' && c >= 1 && c < nextId) {
+      const r = fn(c);
+      nc.push(r);
+      if (r !== c) changed = true;
+    } else nc.push(c);
+  }
+  return changed ? put(TAG_NAMES[tid], nc) : h;
+}
+```
+
+With `termMap`, many walkers become one-liners:
+```javascript
+// _normalizeBin:
+function normalizeBin(h) {
+  const tag = Store.tag(h);
+  if (tag === 'i' || tag === 'o') {
+    const v = binToInt(h); if (v !== null) return intToBin(v);
+  }
+  return Store.termMap(h, normalizeBin);
+}
+```
+
+**Tradeoffs**:
+- Pro: eliminates ~200 lines of duplicated boilerplate
+- Pro: arrlit/compound handling centralized — one place to fix/extend
+- Pro: new literal types automatically handled
+- Con: small overhead from callback dispatch (~5-10% on micro-benchmarks)
+- Con: hot-path functions (`applyIndexed`, `matchIndexed`) should keep inline code
+
+**Recommendation**: Introduce `termMap`/`termFold` in Store, use in cold/warm
+paths (normalization, metavar collection, formatting, ZK witness), keep inline
+code in the 3-4 hottest functions.
+
+**Effort**: Medium. Add 30 lines to Store, rewrite 10-15 functions.
+
+---
+
+### SE-6: `isGround` — exact duplicate across modules
+
+`lib/engine/pattern-utils.js:isGround` (line 10) and `lib/engine/ffi/convert.js:isGround`
+(line 90) are duplicates. The convert.js version is re-exported and used by
+`opt/ffi.js` and match.js. The pattern-utils version is used by compile.js and
+rule-analysis.js.
+
+**Fix**: Delete the convert.js duplicate, import from pattern-utils.js.
+
+**Effort**: Tiny — 1 line change + test verification.
+
+---
+
+### SE-7: Three theta representations
+
+The engine uses three different substitution representations:
+
+| Representation | Used by | Lookup | Insert |
+|---|---|---|---|
+| `[[var, val], ...]` pairs | prove.js backward prover | O(n) scan | O(1) push |
+| `theta[slot] = val` indexed | match.js forward engine | O(1) | O(1) |
+| `UnionFind` (Map) | unify.js | O(α(n)) | O(α(n)) |
+
+**Problem**: The backward prover returns pair-list theta, but the forward engine
+needs indexed theta. Translation requires `_resolveBackwardTheta` (match.js:383),
+which does an O(|theta|²) fixpoint loop because pair-list theta is not idempotent
+(values contain internal freevars resolved by later entries).
+
+**Root cause**: `UnionFind.toTheta()` dumps the parent map without resolving chains.
+
+**Fix — make `toTheta()` return resolved pairs**:
+```javascript
+toTheta() {
+  const theta = [];
+  for (const [v] of this.parent) {
+    const root = this.find(v);
+    if (root !== v) theta.push([v, root]);
+  }
+  return theta;
+}
+```
+
+Wait — `find()` already resolves to the root. The issue is that the root may be
+a compound term containing other variables that also have bindings. `find()` only
+follows the parent chain for freevars, it doesn't recursively substitute inside
+compound terms. This is inherent to union-find: the data structure tracks variable
+equivalences, not full term resolution.
+
+The real fix is to post-process theta pairs with a single-pass substitution:
+walk each value, replacing any freevar that has a binding. This is what
+`_resolveBackwardTheta` does, but it needs a fixpoint loop because pairs are
+processed in arbitrary order. Processing in reverse order (bindings closer to
+leaves first) would make it single-pass.
+
+**Recommendation**: Sort theta pairs in reverse-dependency order (topological
+sort on the dependency DAG), then do a single forward pass. This eliminates the
+fixpoint loop. Fall back to fixpoint only if cycles exist (shouldn't happen in
+unification, but defensive).
+
+**Effort**: Small-medium. Change `_resolveBackwardTheta` to topo-sort + single pass.
+
+---
+
+### SE-8: `deepApply` Map rebuilt on every theta growth
+
+`prove.js:350`:
+```javascript
+if (_thetaMapLen !== th.length) {
+  _thetaMap = new Map();
+  for (let i = 0; i < th.length; i++) _thetaMap.set(th[i][0], th[i][1]);
+  _thetaMapLen = th.length;
+}
+```
+
+Every time a new binding is added to theta, the entire Map is rebuilt from scratch.
+
+**Fix — Incremental update with shrink detection**:
+```javascript
+if (th.length < _thetaMapLen) {
+  _thetaMap = new Map();
+  _thetaMapLen = 0;
+}
+for (let i = _thetaMapLen; i < th.length; i++) {
+  _thetaMap.set(th[i][0], th[i][1]);
+}
+_thetaMapLen = th.length;
+```
+
+**Caveat**: `search()` creates `currentTheta = [...theta, ...newTheta]`, so
+`th` is always a new array. The length comparison detects when a different
+branch is being explored (shorter theta = backtracked). Full rebuild on shrink
+is correct.
+
+**Effort**: Small. ~5 lines.
+
+---
+
+### SE-9: `opt/` directory — misleading name
+
+Half the modules in `lib/engine/opt/` are always-on (not optional):
+`compiled-sub.js`, `constraint.js`, `delta-bypass.js`, `loli-drain.js`, `preserved.js`.
+
+**Recommendation**: Merge non-optional modules into their parent files, or
+rename `opt/` to clarify its meaning.
+
+**Effort**: Small.
+
+---
+
+### SE-10: `prove.js` mixes backward search with proof term construction
+
+`prove.js` has three distinct concerns: backward chaining search, proof term
+construction (`buildTensorRSpine`, `buildClauseTerm`), and first-argument
+indexing (`buildIndex`, `getCandidates`). These could be separate files.
+
+**Effort**: Small.
+
+---
+
+### SE-11: `Store.get()` allocations in warm paths
+
+`Store.get(h)` allocates `{ tag, children }` on every call. Several warm-path
+functions still use it:
+
+- `prove.js:getFirstArgHead` (line 20) — called per goal in backward search
+- `prove.js:makeFreshener` (line 450) — called per clause candidate
+- `prove.js:tryFFI` → `getArgs()` (line 117) — allocates array
+- `match.js:_tryBackwardCache` (line 101) — `Store.get(goal)`
+
+**Fix**: Replace with `Store.tag()` / `Store.child()` / `Store.arity()` directly.
+
+**Effort**: Tiny.
+
+---
+
+### SE-12: Missing invariant assertions
+
+| Buffer | Size | Max in practice | Risk |
+|--------|------|----------------|------|
+| `_undoStack` | 32 bytes | ~20 | Silent overflow |
+| `_poolTheta` | 64 slots | ~32 | Out-of-bounds |
+| `_psArgs` | 4 slots | 4 | Checked at load |
+| `child0..child3` | 4 columns | 3 | Silent drop |
+
+**Fix**: Add debug-mode assertions at critical points.
+
+**Effort**: Tiny.
+
+---
+
+### SE-13: `buildFingerprintIndex` duplicated 3 times
+
+The fingerprint index building code appears in:
+1. `forward.js:143` (`buildFingerprintIndex`)
+2. `forward.js:87` (inline rebuild in main loop)
+3. `strategy.js:197` (inline rebuild in `findMatch`)
+
+**Fix**: Single source of truth, called from one place.
+
+**Effort**: Small.
+
+---
+
+### SE-14: Naming inconsistencies
+
+Several concepts have multiple names:
+
+| Concept | Names used |
+|---------|-----------|
+| Apply substitution | `deepApply`, `subApply`, `applyIndexed`, `subCompiled` |
+| Resolve theta | `_resolveHash`, `_resolveValue`, `_resolveBackwardTheta` |
+| Prove persistent | `provePersistentGoals`, `provePersistentNaive`, `provePersistentWithFFI` |
+| Content hash | `hash`, `h`, `goalInst`, `goal`, `fact` |
+
+**Recommendation**: Adopt consistent naming:
+- `applyTheta*` for all substitution application
+- `resolveTheta*` for all theta resolution
+- `provePersistent` (unified, pipeline-based — SE-4)
+
+---
+
+### SE-15: Proposed priority
+
+| Priority | ID | Description | Risk | Effort |
+|---|---|---|---|---|
+| P0 | SE-6 | Remove `isGround` duplicate | None | Tiny |
+| P0 | SE-12 | Debug assertions for overflows | None | Tiny |
+| P0 | SE-11 | Replace `Store.get()` in warm paths | None | Tiny |
+| P1 | SE-2 | Context object (fixes C11 bug) | None | Medium |
+| P1 | SE-1 | Split match.js into focused modules | Low | Medium |
+| P1 | SE-4 | Unified persistent proving pipeline | Low | Medium |
+| P1 | SE-3 | Dependency injection for backward prover | Low | Small |
+| P2 | SE-5 | `termMap`/`termFold` abstraction | Low | Medium |
+| P2 | SE-7 | Idempotent theta from unifier | Low | Small |
+| P2 | SE-8 | Incremental `deepApply` Map | Low | Small |
+| P3 | SE-9 | Reorganize `opt/` directory | None | Small |
+| P3 | SE-10 | Extract proof terms from prove.js | None | Small |
+| P3 | SE-13 | Centralize fingerprint index | Low | Small |
+| P3 | SE-14 | Naming consistency pass | None | Small |
+
+**Recommended execution order**:
+1. SE-6, SE-12, SE-11 (tiny, zero-risk wins)
+2. SE-2 + SE-3 (context object + DI — fixes C11, improves testability)
+3. SE-1 + SE-4 (match.js decomposition + unified persistent pipeline)
+4. SE-5, SE-7, SE-8 (generalization and cleanup)
