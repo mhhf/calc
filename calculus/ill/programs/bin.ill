@@ -63,6 +63,84 @@ mul/s2: mul (i X) Y Z'
   <- plus Y Z Z'.
 
 
+% Direct binary subtraction: sub A B C = A - B (assumes A >= B).
+% EVM wrapping (mod 2^256) handled at call site via to256.
+sub: bin -> bin -> bin -> type.
+sub/zl: sub e e e.
+sub/zr: sub X e X.
+sub/oo: sub (o X) (o Y) (o Z) <- sub X Y Z.
+sub/ii: sub (i X) (i Y) (o Z) <- sub X Y Z.
+sub/io: sub (i X) (o Y) (i Z) <- sub X Y Z.
+sub/oi: sub (o X) (i Y) (i Z) <- sub_b X Y Z.
+
+% Decrement: dec X Y means Y = X - 1
+dec: bin -> bin -> type.
+dec/one: dec (i e) e.
+dec/even: dec (i X) (o X).
+dec/odd: dec (o X) (i Y) <- dec X Y.
+
+% Subtraction with borrow: sub_b X Y Z means Z = X - Y - 1
+sub_b: bin -> bin -> bin -> type.
+sub_b/zr: sub_b X e Z <- dec X Z.
+sub_b/oo: sub_b (o X) (o Y) (i Z) <- sub_b X Y Z.
+sub_b/ii: sub_b (i X) (i Y) (i Z) <- sub_b X Y Z.
+sub_b/io: sub_b (i X) (o Y) (o Z) <- sub X Y Z.
+sub_b/oi: sub_b (o X) (i Y) (o Z) <- sub_b X Y Z.
+sub/sat: sub A B e <- gt B A e (i e).
+
+lt: bin -> bin -> type.
+lt/z: lt A B <- gt B A e (i e).
+
+le: bin -> bin -> type.
+le/lt: le A B <- gt B A e (i e).
+le/eq: le A A.
+
+shr: bin -> bin -> bin -> type.
+shr/z: shr e V V.
+shr/ze: shr (o e) V V.
+shr/e: shr S e e.
+% Odd shift (2S+1): drop one bit, then shift by 2S
+shr/ii: shr (i S) (i X) R <- shr (o S) X R.
+shr/io: shr (i S) (o X) R <- shr (o S) X R.
+% Even shift (2S, S>0): shift by S twice — O(log shift) depth
+shr/o: shr (o S) V R <- shr S V V' <- shr S V' R.
+
+shl: bin -> bin -> bin -> type.
+shl/z: shl e V V.
+shl/ze: shl (o e) V V.
+shl/e: shl S e e.
+% Odd shift (2S+1): prepend 0 bit (multiply by 2), then shift by 2S
+shl/i: shl (i S) V R <- shl (o S) (o V) R.
+% Even shift (2S, S>0): shift by S twice — O(log shift) depth
+shl/o: shl (o S) V R <- shl S V V' <- shl S V' R.
+
+slt: bin -> bin -> bin -> type.
+slt/neg_pos: slt A B (i e)
+  <- gt A B e (i e)
+  <- shr 255 A (i e)
+  <- shr 255 B e.
+slt/pos_neg: slt A B e
+  <- shr 255 A e
+  <- shr 255 B (i e).
+slt/same_sign: slt A B Z
+  <- shr 255 A Sign
+  <- shr 255 B Sign
+  <- gt B A e R
+  <- eq R Z.
+
+div: bin -> bin -> bin -> type.
+mod: bin -> bin -> bin -> type.
+
+divmod: bin -> bin -> bin -> bin -> type.
+divmod/z: divmod A B e A <- gt B A e (i e).
+divmod/s: divmod A B Q R
+  <- sub A B C
+  <- divmod C B Q' R
+  <- inc Q' Q.
+
+div/z: div A B Q <- divmod A B Q R.
+mod/z: mod A B R <- divmod A B Q R.
+
 %   X      Y      ass.   res.
 gt: bin -> bin -> bin -> bin -> type.
 
@@ -140,6 +218,25 @@ not/si: not (i X) (o Y)
 not/so: not (o X) (i Y)
   <- not X Y.
 
+% 256-bit NOT: ~X mod 2^256
+% Uses XOR with max_uint256 (2^256 - 1).
+not256: bin -> bin -> type.
+not256/z: not256 X Y
+  <- xor X 0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff Y.
+
+% XOR: bitwise exclusive-or
+xor: bin -> bin -> bin -> type.
+xor/zl: xor e Y Y.
+xor/zr: xor X e X.
+xor/sii: xor (i X) (i Y) (o Z)
+  <- xor X Y Z.
+xor/soi: xor (o X) (i Y) (i Z)
+  <- xor X Y Z.
+xor/sio: xor (i X) (o Y) (i Z)
+  <- xor X Y Z.
+xor/soo: xor (o X) (o Y) (o Z)
+  <- xor X Y Z.
+
 % to256Helper: bin -> bin -> bin -> type.
 %
 %to256Helper/z: to256Helper e N
@@ -179,8 +276,9 @@ length/so: length (o X) (s Y)
 %reverse/z: reverse e e.
 %reverse/s1: reverse (i X)
 
+% to256: truncate to 256 bits (mod 2^256) via AND with max_uint256.
 to256/z: to256 X Y
-  <- or X (o (o (o (o (o (o (o (o (o (o (o (o (o (o (o (o (o (o (o (o (o (o (o (o (o (o (o (o (o (o (o (o (o (o (o (o (o (o (o (o (o (o (o (o (o (o (o (o (o (o (o (o (o (o (o (o (o (o (o (o (o (o (o (o (o (o (o (o (o (o (o (o (o (o (o (o (o (o (o (o (o (o (o (o (o (o (o (o (o (o (o (o (o (o (o (o (o (o (o (o (o (o (o (o (o (o (o (o (o (o (o (o (o (o (o (o (o (o (o (o (o (o (o (o (o (o (o (o (o (o (o (o (o (o (o (o (o (o (o (o (o (o (o (o (o (o (o (o (o (o (o (o (o (o (o (o (o (o (o (o (o (o (o (o (o (o (o (o (o (o (o (o (o (o (o (o (o (o (o (o (o (o (o (o (o (o (o (o (o (o (o (o (o (o (o (o (o (o (o (o (o (o (o (o (o (o (o (o (o (o (o (o (o (o (o (o (o (o (o (o (o (o (o (o (o (o (o (o (o (o (o (o (o (o (o (o (o (o (o (o (o (o (o (o (o (o (o (o (o (o (o (o (o (o (o (o e)))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))) Y.
+  <- and X 0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff Y.
 
 
 reverse: bin -> bin -> type.

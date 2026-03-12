@@ -5,28 +5,35 @@ arr: type.
 ae: arr.
 acons: bin -> arr -> arr.
 
-% arr_get Array Index Value — O(1) via FFI
+% arr_get Array Index Value — O(1) via FFI, O(N) via clauses
+% Uses counting-up: increment counter K until K=N (target index).
 arr_get: arr -> bin -> bin -> type.
-arr_get/z: arr_get [V | T] e V.
-arr_get/s: arr_get [_ | T] (i X) V
-  <- arr_get T X V.
-arr_get/s2: arr_get [_ | T] (o X) V
-  <- arr_get T X V.
+arr_get/go: arr_get A N V <- arr_idx A e N V.
+
+arr_idx: arr -> bin -> bin -> bin -> type.
+arr_idx/hit: arr_idx [V | W] K K V.
+arr_idx/skip: arr_idx [X | T] K N V <- inc K J <- arr_idx T J N V.
 
 % arr_set Array Index Value Result — returns new array
+% Uses explicit decrement (arr_dec) to avoid non-canonical zeros from reverse-inc.
+% arr_dec handles the 1→0 boundary explicitly, producing canonical 'e'.
 arr_set: arr -> bin -> bin -> arr -> type.
-arr_set/z: arr_set [_ | T] e V [V | T].
-arr_set/s: arr_set [H | T] (i X) V [H | T']
-  <- arr_set T X V T'.
-arr_set/s2: arr_set [H | T] (o X) V [H | T']
-  <- arr_set T X V T'.
+arr_set/hit: arr_set [X | T] e V [V | T].
+arr_set/skip: arr_set [H | T] N V [H | U] <- arr_dec N N2 <- arr_set T N2 V U.
+
+% arr_dec: proper decrement that produces canonical zeros
+% Unlike reverse-inc, handles the 1→0 boundary to avoid o(e)/o(binlit(0)).
+arr_dec: bin -> bin -> type.
+arr_dec/one: arr_dec (i e) e.
+arr_dec/odd: arr_dec (o X) (i Y) <- arr_dec X Y.
+arr_dec/even: arr_dec (i X) (o X).
 
 % alen Array Length — array length
 alen: arr -> bin -> type.
 alen/ae: alen ae e.
-alen/acons: alen [_ | T] L
-  <- alen T L'
-  <- inc L' L.
+alen/acons: alen [X | T] L
+  <- alen T L2
+  <- inc L2 L.
 
 % read_bytes Array Offset NumBytes Value — big-endian byte combine
 read_bytes: arr -> bin -> bin -> bin -> type.
@@ -34,8 +41,8 @@ read_bytes/1: read_bytes A Offset (i e) V
   <- arr_get A Offset V.
 read_bytes/s: read_bytes A Offset N V
   <- arr_get A Offset Byte
-  <- inc Offset Offset'
-  <- inc N' N
-  <- read_bytes A Offset' N' Rest
+  <- inc Offset Offset2
+  <- inc N2 N
+  <- read_bytes A Offset2 N2 Rest
   <- mul Rest 256 Shifted
   <- plus Shifted Byte V.

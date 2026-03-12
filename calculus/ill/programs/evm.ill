@@ -117,11 +117,32 @@ sha3_reading: bin -> bin -> bin -> bin -> type.
 sha3_done: bin -> type.
 timestamp: bin -> type.
 gaslimit: bin -> type.
-shr: bin -> bin -> bin -> type.
-shl: bin -> bin -> bin -> type.
-slt: bin -> bin -> bin -> type.
+% shr, shl, slt: type declarations and clauses in bin.ill
 concat: bin -> bin -> bin.
 sha3: bin -> bin.
+
+% mem_expand OldSize Offset AccessLen NewSize
+% NewSize = max(OldSize, ceil_32(Offset + AccessLen))
+mem_expand: bin -> bin -> bin -> bin -> type.
+
+% Zero-length access: no expansion
+mem_expand/zero: mem_expand S Offset e S.
+
+% Non-zero access where ceil_32(End) > OldSize → grow
+mem_expand/grow: mem_expand OldSize Offset Len NewSize
+  <- plus Offset Len End
+  <- plus 31 End EndP
+  <- div EndP 32 Words
+  <- mul Words 32 NewSize
+  <- gt NewSize OldSize e (i e).
+
+% Non-zero access where ceil_32(End) <= OldSize → keep
+mem_expand/keep: mem_expand OldSize Offset Len OldSize
+  <- plus Offset Len End
+  <- plus 31 End EndP
+  <- div EndP 32 Words
+  <- mul Words 32 Required
+  <- le Required OldSize.
 
 
 
@@ -177,7 +198,7 @@ evm/sub:
       bytecode BC *
       pc PC' *
       stack [C | REST] *
-      !plus C B A)
+      !sub A B C)
   }.
 
 evm/exp:
@@ -339,7 +360,7 @@ evm/not:
       bytecode BC *
       pc PC' *
       stack [Y | REST] *
-      !not X Y)
+      !not256 X Y)
   }.
 
 evm/shl:
@@ -649,16 +670,17 @@ mem_read/write8_miss: mem_read (write8 Addr Byte Rest) R Result
 
 mem_read/zero: mem_read empty_mem R 0.
 
-% no_overlap — disjoint range check via plus in subtraction mode
-% R+Rs <= W  ⟺  ∃D. W = (R+Rs) + D
+% no_overlap — disjoint range check
+% Either R+Rs <= W (left ends before write starts)
+% or W+Ws <= R (write ends before read starts)
 
 no_overlap/left: no_overlap R Rs W Ws
   <- plus R Rs REnd
-  <- plus REnd D W.
+  <- le REnd W.
 
 no_overlap/right: no_overlap R Rs W Ws
   <- plus W Ws WEnd
-  <- plus WEnd D R.
+  <- le WEnd R.
 
 sha3_iter/done:
   sha3_reading Offset Offset Acc M
