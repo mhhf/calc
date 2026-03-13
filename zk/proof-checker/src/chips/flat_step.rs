@@ -6,20 +6,20 @@
 //! For compiled rules (is_loli=0), ground_loli is looked up in GAMMA_BUS.
 //! For loli matches (is_loli=1), ground_loli is consumed from CONTEXT_BUS.
 //!
-//! Phase 3b: FORMULA_BUS tensor spine verification for compiled rules.
+//! Phase 3b: FORMULA_BUS tensor spine verification for all active rules.
 //! For compiled rules: ground_loli = loli(ant_hash, monad(cons_hash)) and
 //! ant_hash/cons_hash are right-associated tensor trees matching the
 //! consumed/produced slots.
 //! For loli matches: ant_hash/cons_hash are the original loli's pattern
 //! (may have metavariables). The antecedent uses ground_ant (right-associated
 //! tensor of consumed) with spine verification + SUBST_TREE_BUS demand.
-//! The body uses per-leaf SUBST_TREE_BUS demands: each produced fact is
-//! paired with its corresponding body leaf pattern (from flattening the
-//! consHash tensor tree). body_diff[i] gates each demand; when body_diff=0,
-//! body_leaf[i] must equal p[i] (enforced by constraint, preventing
-//! suppression of verification for differing leaves).
+//! The body uses a single SUBST_TREE_BUS demand from a preprocessed
+//! canon_cons_hash (right-associated canonical form of the body pattern)
+//! to ground_cons (right-associated tensor of produced facts, verified
+//! by the cons spine). This eliminates the per-leaf body_diff mechanism
+//! and its suppression attack surface.
 //!
-//! Layout (width 54):
+//! Layout (main width 42):
 //!   [0]     active
 //!   [1]     is_loli          — 1 = loli match (consume from ctx, no gamma)
 //!   [2]     ground_loli      — ground loli hash
@@ -34,16 +34,17 @@
 //!   [37]    monad_hash       — monad(cons_hash)
 //!   [38]    compiled         — active * (1 - is_loli), auxiliary for degree reduction
 //!   [39]    ground_ant       — ground antecedent hash = tensor(consumed slots)
-//!   [40]    ground_cons      — ground consequent hash (reserved, currently unused)
+//!   [40]    ground_cons      — ground consequent hash = tensor(produced slots)
 //!   [41]    subst_id         — substitution instance ID for SUBST_TREE_BUS
-//!   [42..47] body_leaf_0..5  — body leaf pattern hashes for per-leaf SubstChip verification
-//!   [48..53] body_diff_0..5  — boolean: 1 when body_leaf differs from produced AND structurally compatible
+//!
+//! Preprocessed (width 1):
+//!   [0]     canon_cons       — right-associated canonical form of body pattern (loli only)
 
 use openvm_stark_backend::{
     interaction::InteractionBuilder,
-    p3_air::{Air, BaseAir},
-    p3_field::PrimeCharacteristicRing,
-    p3_matrix::Matrix,
+    p3_air::{Air, BaseAir, PairBuilder},
+    p3_field::{Field, PrimeCharacteristicRing},
+    p3_matrix::{dense::RowMajorMatrix, Matrix},
     rap::{BaseAirWithPublicValues, PartitionedBaseAir},
 };
 
@@ -68,31 +69,55 @@ const COL_COMPILED: usize = COL_MONAD_HASH + 1;                     // 38
 const COL_GROUND_ANT: usize = COL_COMPILED + 1;                     // 39
 const COL_GROUND_CONS: usize = COL_GROUND_ANT + 1;                  // 40
 const COL_SUBST_ID: usize = COL_GROUND_CONS + 1;                    // 41
-const COL_BODY_LEAF: usize = COL_SUBST_ID + 1;                      // 42
-const COL_BODY_DIFF: usize = COL_BODY_LEAF + MAX_PRODUCED;          // 48
-pub const WIDTH: usize = COL_BODY_DIFF + MAX_PRODUCED;               // 54
+pub const WIDTH: usize = COL_SUBST_ID + 1;                          // 42
 
-/// FlatStepChip with tag constants for FORMULA_BUS lookups.
+/// Preprocessed width: [canon_cons]
+pub const PREP_WIDTH: usize = 1;
+
+/// FlatStepChip with tag constants and preprocessed canonical body hashes.
 pub struct FlatStepChip {
     pub loli_tag: u32,
     pub monad_tag: u32,
     pub tensor_tag: u32,
     pub one_hash: u32,
+    /// Per-step canonical cons hash (right-associated form of body pattern).
+    /// For compiled rules: 0 (unused). For loli matches: buildRightTensor(flattenTensor(consHash)).
+    pub canon_cons: Vec<u32>,
+    pub min_rows: usize,
 }
 
-impl<F> BaseAir<F> for FlatStepChip {
+impl<F: Field> BaseAir<F> for FlatStepChip {
     fn width(&self) -> usize {
         WIDTH
     }
+
+    fn preprocessed_trace(&self) -> Option<RowMajorMatrix<F>> {
+        let n = self.canon_cons.len().max(self.min_rows).next_power_of_two();
+        let mut data = Vec::with_capacity(n * PREP_WIDTH);
+        for &v in &self.canon_cons {
+            data.push(F::from_u32(v));
+        }
+        for _ in self.canon_cons.len()..n {
+            data.push(F::ZERO);
+        }
+        Some(RowMajorMatrix::new(data, PREP_WIDTH))
+    }
 }
 
-impl<F> BaseAirWithPublicValues<F> for FlatStepChip {}
-impl<F> PartitionedBaseAir<F> for FlatStepChip {}
+impl<F: Field> BaseAirWithPublicValues<F> for FlatStepChip {}
+impl<F: Field> PartitionedBaseAir<F> for FlatStepChip {}
 
-impl<AB: InteractionBuilder> Air<AB> for FlatStepChip {
+impl<AB: InteractionBuilder + PairBuilder> Air<AB> for FlatStepChip
+where
+    AB::F: Field,
+{
     fn eval(&self, builder: &mut AB) {
         let main = builder.main();
         let local = main.row_slice(0).unwrap();
+
+        let prep = builder.preprocessed();
+        let prep_local = prep.row_slice(0).unwrap();
+        let canon_cons: AB::Expr = prep_local[0].clone().into();
 
         let active: AB::Expr = local[COL_ACTIVE].clone().into();
         let is_loli: AB::Expr = local[COL_IS_LOLI].clone().into();
@@ -103,7 +128,7 @@ impl<AB: InteractionBuilder> Air<AB> for FlatStepChip {
 
         let compiled: AB::Expr = local[COL_COMPILED].clone().into();
         let ground_ant: AB::Expr = local[COL_GROUND_ANT].clone().into();
-        let _ground_cons: AB::Expr = local[COL_GROUND_CONS].clone().into();
+        let ground_cons: AB::Expr = local[COL_GROUND_CONS].clone().into();
         let subst_id: AB::Expr = local[COL_SUBST_ID].clone().into();
 
         let loli_tag: AB::Expr = AB::Expr::from_u32(self.loli_tag);
@@ -186,7 +211,7 @@ impl<AB: InteractionBuilder> Air<AB> for FlatStepChip {
         // 2. Monad unwrap: monad_hash = monad(cons_hash, 0)
         FORMULA_BUS.lookup_key(
             builder,
-            [monad_hash, monad_tag, cons_hash.clone(), AB::Expr::ZERO],
+            [monad_hash, monad_tag, cons_hash, AB::Expr::ZERO],
             active.clone(),
         );
 
@@ -246,59 +271,62 @@ impl<AB: InteractionBuilder> Air<AB> for FlatStepChip {
                 * (ant_intermediates[3].clone() - c[4].clone()),
         );
 
-        // 4. Consequent tensor spine verification — COMPILED RULES ONLY
+        // 4. Consequent tensor spine verification — ALL ACTIVE ROWS
+        //    Verifies ground_cons = right-associated tensor of produced facts.
+        //    For compiled rules: ground_cons = cons_hash (both right-associated).
+        //    For loli matches: ground_cons = buildRightTensor(produced).
         builder.assert_zero(
-            compiled.clone() * (AB::Expr::ONE - pa[0].clone()) * (cons_hash.clone() - one_hash.clone()),
+            active.clone() * (AB::Expr::ONE - pa[0].clone()) * (ground_cons.clone() - one_hash.clone()),
         );
         builder.assert_zero(
-            compiled.clone() * pa[0].clone() * (AB::Expr::ONE - pa[1].clone()) * (cons_hash.clone() - p[0].clone()),
+            active.clone() * pa[0].clone() * (AB::Expr::ONE - pa[1].clone()) * (ground_cons.clone() - p[0].clone()),
         );
         FORMULA_BUS.lookup_key(
             builder,
-            [cons_hash.clone(), tensor_tag.clone(), p[0].clone(), cons_intermediates[0].clone()],
-            compiled.clone() * pa[1].clone(),
+            [ground_cons.clone(), tensor_tag.clone(), p[0].clone(), cons_intermediates[0].clone()],
+            active.clone() * pa[1].clone(),
         );
         FORMULA_BUS.lookup_key(
             builder,
             [cons_intermediates[0].clone(), tensor_tag.clone(), p[1].clone(), cons_intermediates[1].clone()],
-            compiled.clone() * pa[2].clone(),
+            active.clone() * pa[2].clone(),
         );
         FORMULA_BUS.lookup_key(
             builder,
             [cons_intermediates[1].clone(), tensor_tag.clone(), p[2].clone(), cons_intermediates[2].clone()],
-            compiled.clone() * pa[3].clone(),
+            active.clone() * pa[3].clone(),
         );
         FORMULA_BUS.lookup_key(
             builder,
             [cons_intermediates[2].clone(), tensor_tag.clone(), p[3].clone(), cons_intermediates[3].clone()],
-            compiled.clone() * pa[4].clone(),
+            active.clone() * pa[4].clone(),
         );
         FORMULA_BUS.lookup_key(
             builder,
             [cons_intermediates[3].clone(), tensor_tag.clone(), p[4].clone(), p[5].clone()],
-            compiled.clone() * pa[5].clone(),
+            active.clone() * pa[5].clone(),
         );
         builder.assert_zero(
-            compiled.clone() * pa[1].clone() * (AB::Expr::ONE - pa[2].clone())
+            active.clone() * pa[1].clone() * (AB::Expr::ONE - pa[2].clone())
                 * (cons_intermediates[0].clone() - p[1].clone()),
         );
         builder.assert_zero(
-            compiled.clone() * pa[2].clone() * (AB::Expr::ONE - pa[3].clone())
+            active.clone() * pa[2].clone() * (AB::Expr::ONE - pa[3].clone())
                 * (cons_intermediates[1].clone() - p[2].clone()),
         );
         builder.assert_zero(
-            compiled.clone() * pa[3].clone() * (AB::Expr::ONE - pa[4].clone())
+            active.clone() * pa[3].clone() * (AB::Expr::ONE - pa[4].clone())
                 * (cons_intermediates[2].clone() - p[3].clone()),
         );
         builder.assert_zero(
-            compiled.clone() * pa[4].clone() * (AB::Expr::ONE - pa[5].clone())
+            active.clone() * pa[4].clone() * (AB::Expr::ONE - pa[5].clone())
                 * (cons_intermediates[3].clone() - p[4].clone()),
         );
 
         // 5. Loli antecedent spine: ground_ant = tensor(c[0], tensor(c[1], ...))
-        //    Same pattern as compiled spine (sections 3-4) but:
+        //    Same pattern as compiled spine (section 3) but:
         //    - Gated on loli_active instead of compiled
-        //    - Targets ground_ant/ground_cons instead of ant_hash/cons_hash
+        //    - Targets ground_ant instead of ant_hash
         //    Uses (active - compiled) = active * is_loli without adding a column.
         let loli_active = active.clone() - compiled;
 
@@ -351,45 +379,24 @@ impl<AB: InteractionBuilder> Air<AB> for FlatStepChip {
                 * (ant_intermediates[3].clone() - c[4].clone()),
         );
 
-        // 6. Loli body verification: per-leaf SUBST_TREE_BUS demands.
-        //    Each produced fact is paired with its corresponding body leaf pattern
-        //    (extracted by flattening the consHash tensor tree in the witness).
-        //    body_diff[i] is 1 when body_leaf[i] differs from p[i] AND is
-        //    structurally compatible for SubstChip verification.
-        let mut body_leaf: Vec<AB::Expr> = Vec::with_capacity(MAX_PRODUCED);
-        let mut body_diff: Vec<AB::Expr> = Vec::with_capacity(MAX_PRODUCED);
-        for i in 0..MAX_PRODUCED {
-            body_leaf.push(local[COL_BODY_LEAF + i].clone().into());
-            let bd: AB::Expr = local[COL_BODY_DIFF + i].clone().into();
-            builder.assert_zero(bd.clone() * (bd.clone() - AB::Expr::ONE));
-            body_diff.push(bd);
-        }
-
-        // 6b. Anti-suppression: when body_diff=0, body_leaf MUST equal produced.
-        //     Prevents adversary from setting body_diff=0 to skip verification
-        //     when body_leaf actually differs from produced.
-        for i in 0..MAX_PRODUCED {
-            builder.assert_zero(
-                loli_active.clone() * pa[i].clone()
-                    * (AB::Expr::ONE - body_diff[i].clone())
-                    * (body_leaf[i].clone() - p[i].clone()),
-            );
-        }
-
-        // 7. SUBST_TREE_BUS: demand matching verification for loli rows.
+        // 6. SUBST_TREE_BUS: demand matching verification for loli rows.
         //    Antecedent: single demand for ant_hash → ground_ant.
         SUBST_TREE_BUS.send(
             builder,
             [subst_id.clone(), ant_hash, ground_ant],
             loli_active.clone(),
         );
-        //    Body: per-leaf demands, gated by body_diff (only when structurally verifiable).
-        for i in 0..MAX_PRODUCED {
-            SUBST_TREE_BUS.send(
-                builder,
-                [subst_id.clone(), body_leaf[i].clone(), p[i].clone()],
-                loli_active.clone() * body_diff[i].clone(),
-            );
-        }
+        //    Body: single demand for canon_cons → ground_cons.
+        //    canon_cons is preprocessed (committed at keygen): the right-associated
+        //    canonical form of the body pattern. ground_cons is the right-associated
+        //    tensor of produced facts, verified by the cons spine (section 4).
+        //    SubstChip walks both trees (same structure) and verifies freevar
+        //    consistency via FREEVAR_BUS. Since canon_cons is preprocessed, the
+        //    adversary cannot substitute a different body pattern.
+        SUBST_TREE_BUS.send(
+            builder,
+            [subst_id, canon_cons, ground_cons],
+            loli_active,
+        );
     }
 }

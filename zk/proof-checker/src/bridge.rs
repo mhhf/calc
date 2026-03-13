@@ -189,7 +189,7 @@ pub fn prove_witness(witness: &WitnessJson) -> Result<(), String> {
     });
     pis.push(vec![]);
 
-    // 5. SubstChip (width 15 — FORMULA_BUS lookups for same-tag verification)
+    // 5. SubstChip (width 16 — FORMULA_BUS lookups + unwrap rows)
     let subst_rows = witness.chips.get("subst");
     airs.push(Arc::new(SubstChip) as AirRef<_>);
     traces.push(match subst_rows {
@@ -266,6 +266,9 @@ pub fn prove_witness(witness: &WitnessJson) -> Result<(), String> {
 pub struct FlatWitnessJson {
     pub format: String,
     pub chips: HashMap<String, Vec<Vec<u32>>>,
+    /// Preprocessed per-step data for FlatStepChip: canon_cons (canonical body hash).
+    #[serde(default)]
+    pub flat_step_prep: Vec<u32>,
     pub formula_rom: Vec<Vec<u32>>,
     pub gamma_rom: Vec<Vec<u32>>,
     #[serde(default)]
@@ -301,13 +304,18 @@ pub fn prove_flat_witness(witness: &FlatWitnessJson) -> Result<(), String> {
     traces.push(empty_trace(1, init_rows.len().max(min_rows)));
     pis.push(vec![]);
 
-    // 2. FlatStepChip (data-carrying, with tag constants)
+    // 2. FlatStepChip (data-carrying, with tag constants + preprocessed canon_cons)
     let step_rows = witness.chips.get("flat_step").ok_or("missing flat_step chip")?;
-    airs.push(Arc::new(FlatStepChip { loli_tag, monad_tag, tensor_tag, one_hash }) as AirRef<_>);
+    let step_min = step_rows.len().max(min_rows);
+    airs.push(Arc::new(FlatStepChip {
+        loli_tag, monad_tag, tensor_tag, one_hash,
+        canon_cons: witness.flat_step_prep.clone(),
+        min_rows: step_min,
+    }) as AirRef<_>);
     traces.push(if step_rows.is_empty() {
         empty_trace(crate::chips::flat_step::WIDTH, min_rows)
     } else {
-        build_trace(step_rows, crate::chips::flat_step::WIDTH, min_rows)
+        build_trace(step_rows, crate::chips::flat_step::WIDTH, step_min)
     });
     pis.push(vec![]);
 

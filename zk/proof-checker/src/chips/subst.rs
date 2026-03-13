@@ -16,12 +16,17 @@
 //! Row types:
 //! - **Root row** (is_root=1): CONTEXT_BUS receive old, send new.
 //!   FORMULA_BUS decomposes both. Only c0 (antecedent) gets tree-verified.
-//! - **Non-root internal** (is_root=0, is_freevar=0): FORMULA_BUS decompose
-//!   both sides (same tag), SUBST_TREE_BUS for all differing children.
+//! - **Non-root internal** (is_root=0, is_freevar=0, is_unwrap=0):
+//!   FORMULA_BUS decompose both sides (same tag), SUBST_TREE_BUS for all
+//!   differing children.
 //! - **Freevar leaf** (is_freevar=1): FORMULA_BUS verify old is freevar,
 //!   FREEVAR_BUS lookup for consistency.
+//! - **Unwrap leaf** (is_unwrap=1): handles tag mismatches where
+//!   new = wrapper(old, ...). FORMULA_BUS decomposes new side only,
+//!   constrains c0_new == hash_old. No recursion into children.
+//!   Used for bang-wrapped persistent facts and loli-wrapped rules.
 //!
-//! Columns (width 15):
+//! Columns (width 16):
 //!   [0]  is_active
 //!   [1]  hash_old
 //!   [2]  hash_new
@@ -35,8 +40,9 @@
 //!   [10] c1_new
 //!   [11] c0_eq
 //!   [12] c1_eq
-//!   [13] is_internal     — precomputed: is_active * (1 - is_freevar)
+//!   [13] is_internal     — precomputed: is_active * (1 - is_freevar) * (1 - is_unwrap)
 //!   [14] non_root_int    — precomputed: is_internal * (1 - is_root)
+//!   [15] is_unwrap
 
 use openvm_stark_backend::{
     interaction::InteractionBuilder,
@@ -48,7 +54,7 @@ use openvm_stark_backend::{
 
 use crate::buses::{CONTEXT_BUS, FORMULA_BUS, FREEVAR_BUS, SUBST_TREE_BUS};
 
-pub const WIDTH: usize = 15;
+pub const WIDTH: usize = 16;
 
 const COL_ACTIVE: usize = 0;
 const COL_HASH_OLD: usize = 1;
@@ -65,6 +71,7 @@ const COL_C0_EQ: usize = 11;
 const COL_C1_EQ: usize = 12;
 const COL_IS_INTERNAL: usize = 13;
 const COL_NON_ROOT_INT: usize = 14;
+const COL_IS_UNWRAP: usize = 15;
 
 pub struct SubstChip;
 
@@ -97,6 +104,7 @@ impl<AB: InteractionBuilder> Air<AB> for SubstChip {
         let c1_eq: AB::Expr = local[COL_C1_EQ].clone().into();
         let is_internal: AB::Expr = local[COL_IS_INTERNAL].clone().into();
         let non_root_int: AB::Expr = local[COL_NON_ROOT_INT].clone().into();
+        let is_unwrap: AB::Expr = local[COL_IS_UNWRAP].clone().into();
 
         // Boolean constraints
         builder.assert_zero(is_active.clone() * (is_active.clone() - AB::Expr::ONE));
@@ -106,14 +114,20 @@ impl<AB: InteractionBuilder> Air<AB> for SubstChip {
         builder.assert_zero(c1_eq.clone() * (c1_eq.clone() - AB::Expr::ONE));
         builder.assert_zero(is_internal.clone() * (is_internal.clone() - AB::Expr::ONE));
         builder.assert_zero(non_root_int.clone() * (non_root_int.clone() - AB::Expr::ONE));
+        builder.assert_zero(is_unwrap.clone() * (is_unwrap.clone() - AB::Expr::ONE));
 
         // Mutual exclusions
         builder.assert_zero(is_root.clone() * is_freevar.clone());
+        builder.assert_zero(is_unwrap.clone() * is_root.clone());
+        builder.assert_zero(is_unwrap.clone() * is_freevar.clone());
 
         // Precomputed column correctness
-        // is_internal = is_active * (1 - is_freevar)
+        // is_internal = is_active * (1 - is_freevar) * (1 - is_unwrap)
         builder.assert_zero(
-            is_internal.clone() - is_active.clone() * (AB::Expr::ONE - is_freevar.clone()),
+            is_internal.clone()
+                - is_active.clone()
+                    * (AB::Expr::ONE - is_freevar.clone())
+                    * (AB::Expr::ONE - is_unwrap.clone()),
         );
         // non_root_int = is_internal * (1 - is_root)
         builder.assert_zero(
@@ -161,20 +175,39 @@ impl<AB: InteractionBuilder> Air<AB> for SubstChip {
         // Internal nodes: both old and new must decompose with the same tag
         FORMULA_BUS.lookup_key(
             builder,
-            [hash_old.clone(), tag.clone(), c0_old, c1_old],
+            [hash_old.clone(), tag.clone(), c0_old.clone(), c1_old.clone()],
             is_internal.clone(),
         );
         FORMULA_BUS.lookup_key(
             builder,
-            [hash_new.clone(), tag.clone(), c0_new, c1_new],
+            [hash_new.clone(), tag.clone(), c0_new.clone(), c1_new.clone()],
             is_internal,
         );
 
         // Freevar leaf: verify old_hash is a freevar in FORMULA_BUS
         FORMULA_BUS.lookup_key(
             builder,
-            [hash_old.clone(), tag, local[COL_C0_OLD].clone().into(), AB::Expr::ZERO],
+            [
+                hash_old.clone(),
+                tag.clone(),
+                local[COL_C0_OLD].clone().into(),
+                AB::Expr::ZERO,
+            ],
             is_active.clone() * is_freevar.clone(),
+        );
+
+        // --- Unwrap leaf: tag mismatch where new wraps old (new.c0 == old) ---
+        // Decompose new side only via FORMULA_BUS
+        FORMULA_BUS.lookup_key(
+            builder,
+            [hash_new.clone(), tag, c0_new, c1_new],
+            is_active.clone() * is_unwrap.clone(),
+        );
+        // Constraint: c0_new == hash_old (old is the first child of new)
+        builder.assert_zero(
+            is_active.clone()
+                * is_unwrap.clone()
+                * (local[COL_C0_NEW].clone() - local[COL_HASH_OLD].clone()),
         );
 
         // --- FREEVAR_BUS: consistency check ---
