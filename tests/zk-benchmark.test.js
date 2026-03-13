@@ -80,6 +80,7 @@ describe('ZK benchmark: solc forward execution', { timeout: 60000 }, () => {
       maxSteps: 2000,
       trace: true,
       evidence: true,
+      dangerouslyUseFFI: true,  // FFI mode: ~6K rows, 840KB fixture (noFFI: ~5M rows, 440MB)
     });
     const dt = performance.now() - t0;
 
