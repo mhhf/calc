@@ -5,6 +5,7 @@ use std::collections::HashMap;
 use proof_checker::bridge::WitnessJson;
 use proof_checker::chips::{
     formula_rom::FormulaRomAir,
+    freevar_rom::FreevarRomAir,
     gamma_rom::GammaRomAir,
     init::InitChip,
 };
@@ -74,6 +75,17 @@ pub fn make_gamma_rom(rows: &[[u32; 3]], min_rows: usize) -> (GammaRomAir, RowMa
     let prep: Vec<[u32; 2]> = rows.iter().map(|r| [r[0], r[1]]).collect();
     let main: Vec<[u32; 1]> = rows.iter().map(|r| [r[2]]).collect();
     (GammaRomAir { entries: prep, min_rows }, padded_trace(&main, min_rows))
+}
+
+/// Build a FreevarRomAir + its width-1 main trace from rows.
+///
+/// Input rows: `[subst_id, freevar_hash, ground_value, is_active, num_lookups]`
+/// Preprocessed (in struct): `[subst_id, freevar_hash, ground_value, is_active]`
+/// Main trace: `[num_lookups]`
+pub fn make_freevar_rom(rows: &[[u32; 5]], min_rows: usize) -> (FreevarRomAir, RowMajorMatrix<BabyBear>) {
+    let prep: Vec<[u32; 4]> = rows.iter().map(|r| [r[0], r[1], r[2], r[3]]).collect();
+    let main: Vec<[u32; 1]> = rows.iter().map(|r| [r[4]]).collect();
+    (FreevarRomAir { entries: prep, min_rows }, padded_trace(&main, min_rows))
 }
 
 /// Load rule specs and tags from a fixture JSON file.

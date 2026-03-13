@@ -287,11 +287,34 @@ describe('ZK Witness Generator', () => {
     });
   });
 
+  describe('copy + tensor (cartesian)', () => {
+    it('; A |- A * A (copy + copy + tensor_r + id)', () => {
+      const { witness } = proveAndWitnessCart([], ['A'], 'A * A', 'copy_tensor');
+
+      assert.ok(witness.chips.copy, 'should have copy rows');
+      assert.ok(witness.chips.tensor_r, 'should have tensor_r rows');
+      assert.ok(witness.chips.id.length >= 2, 'should have 2+ id rows');
+      assert.ok(witness.gamma_rom.length >= 1, 'should have gamma ROM');
+      assert.strictEqual(witness.formula_rom.length, 1, '1 formula ROM entry (A*A)');
+    });
+  });
+
+  describe('bang_r (promotion)', () => {
+    it('; A |- !A (bang_r + copy + id)', () => {
+      const { witness } = proveAndWitnessCart([], ['A'], '!A', 'bang_r_promotion');
+
+      assert.ok(witness.chips.bang_r, 'should have bang_r rows');
+      assert.ok(witness.chips.copy, 'should have copy rows');
+      assert.ok(witness.chips.id.length >= 1, 'should have id rows');
+      assert.ok(witness.gamma_rom.length >= 1, 'should have gamma ROM');
+    });
+  });
+
   describe('fixture generation', () => {
     it('saves all fixtures', () => {
       ensureFixtureDir();
       const files = fs.readdirSync(FIXTURE_DIR).filter(f => f.endsWith('.json'));
-      assert.ok(files.length >= 13, `should have >= 13 fixtures, got ${files.length}`);
+      assert.ok(files.length >= 18, `should have >= 18 fixtures, got ${files.length}`);
     });
   });
 });

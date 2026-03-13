@@ -96,3 +96,13 @@ fn e2e_solc_forward() {
 fn e2e_solc_flat() {
     prove_json(&load_fixture("solc_flat")).expect("solc_flat: 279-step flat rewriting certificate");
 }
+
+#[test]
+fn e2e_copy_tensor() {
+    prove_json(&load_fixture("copy_tensor")).expect("copy_tensor: ; A ⊢ A ⊗ A");
+}
+
+#[test]
+fn e2e_bang_r_promotion() {
+    prove_json(&load_fixture("bang_r_promotion")).expect("bang_r: ; A ⊢ !A");
+}

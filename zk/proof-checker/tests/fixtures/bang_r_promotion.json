@@ -1,0 +1,524 @@
+{
+  "tags": {
+    "tensor": 1,
+    "loli": 2,
+    "one": 3,
+    "zero": 4,
+    "with": 5,
+    "oplus": 6,
+    "bang": 7,
+    "monad": 8,
+    "exists": 9,
+    "forall": 10,
+    "freevar": 11
+  },
+  "rule_specs": {
+    "id": {
+      "name": "id",
+      "tag": null,
+      "arity": 0,
+      "oblig_receive": true,
+      "premises": [],
+      "ctx_receive": true,
+      "ctx_sends": [],
+      "formula_lookup": false,
+      "gamma_lookup": false,
+      "is_identity": true
+    },
+    "copy": {
+      "name": "copy",
+      "tag": null,
+      "arity": 0,
+      "oblig_receive": false,
+      "premises": [],
+      "ctx_receive": false,
+      "ctx_sends": [
+        "Hash"
+      ],
+      "formula_lookup": false,
+      "gamma_lookup": true,
+      "is_identity": false
+    },
+    "ffi": {
+      "name": "ffi",
+      "tag": null,
+      "arity": 0,
+      "oblig_receive": true,
+      "premises": [],
+      "ctx_receive": false,
+      "ctx_sends": [],
+      "formula_lookup": false,
+      "gamma_lookup": false,
+      "is_identity": false
+    },
+    "tensor_r": {
+      "name": "tensor_r",
+      "tag": 1,
+      "arity": 2,
+      "oblig_receive": true,
+      "premises": [
+        {
+          "succedent": {
+            "Child": 0
+          },
+          "lax": null
+        },
+        {
+          "succedent": {
+            "Child": 1
+          },
+          "lax": null
+        }
+      ],
+      "ctx_receive": false,
+      "ctx_sends": [],
+      "formula_lookup": true,
+      "gamma_lookup": false,
+      "is_identity": false
+    },
+    "tensor_l": {
+      "name": "tensor_l",
+      "tag": 1,
+      "arity": 2,
+      "oblig_receive": false,
+      "premises": [],
+      "ctx_receive": true,
+      "ctx_sends": [
+        {
+          "Child": 0
+        },
+        {
+          "Child": 1
+        }
+      ],
+      "formula_lookup": true,
+      "gamma_lookup": false,
+      "is_identity": false
+    },
+    "loli_r": {
+      "name": "loli_r",
+      "tag": 2,
+      "arity": 2,
+      "oblig_receive": true,
+      "premises": [
+        {
+          "succedent": {
+            "Child": 1
+          },
+          "lax": null
+        }
+      ],
+      "ctx_receive": false,
+      "ctx_sends": [
+        {
+          "Child": 0
+        }
+      ],
+      "formula_lookup": true,
+      "gamma_lookup": false,
+      "is_identity": false
+    },
+    "loli_l": {
+      "name": "loli_l",
+      "tag": 2,
+      "arity": 2,
+      "oblig_receive": true,
+      "premises": [
+        {
+          "succedent": {
+            "Child": 0
+          },
+          "lax": null
+        },
+        {
+          "succedent": "Inherited",
+          "lax": null
+        }
+      ],
+      "ctx_receive": true,
+      "ctx_sends": [
+        {
+          "Child": 1
+        }
+      ],
+      "formula_lookup": true,
+      "gamma_lookup": false,
+      "is_identity": false
+    },
+    "with_r": {
+      "name": "with_r",
+      "tag": 5,
+      "arity": 2,
+      "oblig_receive": true,
+      "premises": [
+        {
+          "succedent": {
+            "Child": 0
+          },
+          "lax": null
+        },
+        {
+          "succedent": {
+            "Child": 1
+          },
+          "lax": null
+        }
+      ],
+      "ctx_receive": false,
+      "ctx_sends": [],
+      "formula_lookup": true,
+      "gamma_lookup": false,
+      "is_identity": false
+    },
+    "with_l1": {
+      "name": "with_l1",
+      "tag": 5,
+      "arity": 2,
+      "oblig_receive": false,
+      "premises": [],
+      "ctx_receive": true,
+      "ctx_sends": [
+        {
+          "Child": 0
+        }
+      ],
+      "formula_lookup": true,
+      "gamma_lookup": false,
+      "is_identity": false
+    },
+    "with_l2": {
+      "name": "with_l2",
+      "tag": 5,
+      "arity": 2,
+      "oblig_receive": false,
+      "premises": [],
+      "ctx_receive": true,
+      "ctx_sends": [
+        {
+          "Child": 1
+        }
+      ],
+      "formula_lookup": true,
+      "gamma_lookup": false,
+      "is_identity": false
+    },
+    "oplus_r1": {
+      "name": "oplus_r1",
+      "tag": 6,
+      "arity": 2,
+      "oblig_receive": true,
+      "premises": [
+        {
+          "succedent": {
+            "Child": 0
+          },
+          "lax": null
+        }
+      ],
+      "ctx_receive": false,
+      "ctx_sends": [],
+      "formula_lookup": true,
+      "gamma_lookup": false,
+      "is_identity": false
+    },
+    "oplus_r2": {
+      "name": "oplus_r2",
+      "tag": 6,
+      "arity": 2,
+      "oblig_receive": true,
+      "premises": [
+        {
+          "succedent": {
+            "Child": 1
+          },
+          "lax": null
+        }
+      ],
+      "ctx_receive": false,
+      "ctx_sends": [],
+      "formula_lookup": true,
+      "gamma_lookup": false,
+      "is_identity": false
+    },
+    "oplus_l": {
+      "name": "oplus_l",
+      "tag": 6,
+      "arity": 2,
+      "oblig_receive": true,
+      "premises": [
+        {
+          "succedent": "Inherited",
+          "lax": null
+        },
+        {
+          "succedent": "Inherited",
+          "lax": null
+        }
+      ],
+      "ctx_receive": true,
+      "ctx_sends": [
+        {
+          "Child": 0
+        },
+        {
+          "Child": 1
+        }
+      ],
+      "formula_lookup": true,
+      "gamma_lookup": false,
+      "is_identity": false
+    },
+    "exists_r": {
+      "name": "exists_r",
+      "tag": 9,
+      "arity": 1,
+      "oblig_receive": true,
+      "premises": [
+        {
+          "succedent": {
+            "Child": 0
+          },
+          "lax": null
+        }
+      ],
+      "ctx_receive": false,
+      "ctx_sends": [],
+      "formula_lookup": true,
+      "gamma_lookup": false,
+      "is_identity": false
+    },
+    "exists_l": {
+      "name": "exists_l",
+      "tag": 9,
+      "arity": 1,
+      "oblig_receive": false,
+      "premises": [],
+      "ctx_receive": true,
+      "ctx_sends": [
+        {
+          "Child": 0
+        }
+      ],
+      "formula_lookup": true,
+      "gamma_lookup": false,
+      "is_identity": false
+    },
+    "forall_r": {
+      "name": "forall_r",
+      "tag": 10,
+      "arity": 1,
+      "oblig_receive": true,
+      "premises": [
+        {
+          "succedent": {
+            "Child": 0
+          },
+          "lax": null
+        }
+      ],
+      "ctx_receive": false,
+      "ctx_sends": [],
+      "formula_lookup": true,
+      "gamma_lookup": false,
+      "is_identity": false
+    },
+    "forall_l": {
+      "name": "forall_l",
+      "tag": 10,
+      "arity": 1,
+      "oblig_receive": false,
+      "premises": [],
+      "ctx_receive": true,
+      "ctx_sends": [
+        {
+          "Child": 0
+        }
+      ],
+      "formula_lookup": true,
+      "gamma_lookup": false,
+      "is_identity": false
+    },
+    "one_r": {
+      "name": "one_r",
+      "tag": 3,
+      "arity": 0,
+      "oblig_receive": true,
+      "premises": [],
+      "ctx_receive": false,
+      "ctx_sends": [],
+      "formula_lookup": true,
+      "gamma_lookup": false,
+      "is_identity": false
+    },
+    "one_l": {
+      "name": "one_l",
+      "tag": 3,
+      "arity": 0,
+      "oblig_receive": false,
+      "premises": [],
+      "ctx_receive": true,
+      "ctx_sends": [],
+      "formula_lookup": true,
+      "gamma_lookup": false,
+      "is_identity": false
+    },
+    "bang_r": {
+      "name": "bang_r",
+      "tag": 7,
+      "arity": 1,
+      "oblig_receive": true,
+      "premises": [
+        {
+          "succedent": {
+            "Child": 0
+          },
+          "lax": null
+        }
+      ],
+      "ctx_receive": false,
+      "ctx_sends": [],
+      "formula_lookup": true,
+      "gamma_lookup": false,
+      "is_identity": false
+    },
+    "bang_l": {
+      "name": "bang_l",
+      "tag": 7,
+      "arity": 1,
+      "oblig_receive": false,
+      "premises": [],
+      "ctx_receive": true,
+      "ctx_sends": [
+        {
+          "Child": 0
+        }
+      ],
+      "formula_lookup": true,
+      "gamma_lookup": false,
+      "is_identity": false
+    },
+    "absorption": {
+      "name": "absorption",
+      "tag": 7,
+      "arity": 1,
+      "oblig_receive": false,
+      "premises": [],
+      "ctx_receive": true,
+      "ctx_sends": [],
+      "formula_lookup": true,
+      "gamma_lookup": false,
+      "is_identity": false
+    },
+    "monad_r": {
+      "name": "monad_r",
+      "tag": 8,
+      "arity": 1,
+      "oblig_receive": true,
+      "premises": [
+        {
+          "succedent": {
+            "Child": 0
+          },
+          "lax": 1
+        }
+      ],
+      "ctx_receive": false,
+      "ctx_sends": [],
+      "formula_lookup": true,
+      "gamma_lookup": false,
+      "is_identity": false
+    },
+    "monad_l": {
+      "name": "monad_l",
+      "tag": 8,
+      "arity": 1,
+      "oblig_receive": false,
+      "premises": [],
+      "ctx_receive": true,
+      "ctx_sends": [
+        {
+          "Child": 0
+        }
+      ],
+      "formula_lookup": true,
+      "gamma_lookup": false,
+      "is_identity": false
+    },
+    "loli_l_inv": {
+      "name": "loli_l_inv",
+      "tag": 2,
+      "arity": 2,
+      "oblig_receive": false,
+      "premises": [],
+      "ctx_receive": true,
+      "ctx_sends": [
+        {
+          "Child": 0
+        },
+        {
+          "Child": 1
+        }
+      ],
+      "formula_lookup": true,
+      "gamma_lookup": false,
+      "is_identity": false
+    }
+  },
+  "chips": {
+    "init": [
+      [
+        0,
+        0,
+        92,
+        1,
+        0,
+        0
+      ]
+    ],
+    "dup": [],
+    "zero_l": [],
+    "discard": [],
+    "bang_r": [
+      [
+        1,
+        92,
+        79,
+        0,
+        0,
+        1
+      ]
+    ],
+    "copy": [
+      [
+        1,
+        79
+      ]
+    ],
+    "id": [
+      [
+        1,
+        79,
+        1,
+        0
+      ]
+    ]
+  },
+  "formula_rom": [
+    [
+      92,
+      7,
+      79,
+      0,
+      1,
+      1
+    ]
+  ],
+  "gamma_rom": [
+    [
+      79,
+      1,
+      1
+    ]
+  ],
+  "freevar_rom": []
+}
