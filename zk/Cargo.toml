@@ -15,3 +15,8 @@ p3-goldilocks = "=0.4.1"
 rand = { version = "0.9", default-features = false, features = ["std_rng"] }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
+
+# Phase 4a: openvm-native-recursion for STARK-in-STARK verification
+# Using openvm-org (not powdr-labs fork) — same stark-backend v1.3.0 + p3 =0.4.1
+openvm-native-recursion = { git = "https://github.com/openvm-org/openvm.git", tag = "v1.5.0", default-features = false, features = ["test-utils"] }
+openvm-native-compiler = { git = "https://github.com/openvm-org/openvm.git", tag = "v1.5.0", default-features = false }

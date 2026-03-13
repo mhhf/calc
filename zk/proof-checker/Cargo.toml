@@ -14,3 +14,7 @@ p3-goldilocks = { workspace = true }
 rand = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
+
+[dev-dependencies]
+openvm-native-recursion = { workspace = true }
+openvm-native-compiler = { workspace = true }

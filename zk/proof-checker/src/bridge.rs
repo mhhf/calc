@@ -21,8 +21,8 @@ use openvm_stark_backend::{
     AirRef,
 };
 use openvm_stark_sdk::{
-    config::{baby_bear_poseidon2::BabyBearPoseidon2Engine, FriParameters},
-    engine::StarkFriEngine,
+    config::{baby_bear_poseidon2::{BabyBearPoseidon2Config, BabyBearPoseidon2Engine}, FriParameters},
+    engine::{StarkFriEngine, VerificationDataWithFriParams},
 };
 use p3_baby_bear::BabyBear;
 use p3_field::PrimeCharacteristicRing;
@@ -144,8 +144,8 @@ fn split_init_rows(rows: &[Vec<u32>]) -> (Vec<[u32; 5]>, Vec<u32>) {
     (prep, nonces)
 }
 
-/// Prove a witness JSON, returning Ok(()) on success or Err on verification failure.
-pub fn prove_witness(witness: &WitnessJson) -> Result<(), String> {
+/// Build AIRs, traces, and PIs from a tree witness (shared by prove and vdata paths).
+fn build_witness_inputs(witness: &WitnessJson) -> Result<(Vec<AirRef<BabyBearPoseidon2Config>>, Vec<RowMajorMatrix<BabyBear>>, Vec<Vec<BabyBear>>), String> {
     let min_rows = 4;
     let tags = &witness.tags;
 
@@ -252,8 +252,22 @@ pub fn prove_witness(witness: &WitnessJson) -> Result<(), String> {
         pis.push(vec![]);
     }
 
+    Ok((airs, traces, pis))
+}
+
+/// Prove a witness JSON, returning Ok(()) on success or Err on verification failure.
+pub fn prove_witness(witness: &WitnessJson) -> Result<(), String> {
+    let (airs, traces, pis) = build_witness_inputs(witness)?;
     BabyBearPoseidon2Engine::run_simple_test_fast(airs, traces, pis)
         .map(|_| ())
+        .map_err(|e| format!("STARK verification failed: {e:?}"))
+}
+
+/// Prove a tree witness, returning the full verification data (proof + VK + FRI params).
+/// Phase 4a: needed for recursive verification and IVC.
+pub fn prove_witness_vdata(witness: &WitnessJson) -> Result<VerificationDataWithFriParams<BabyBearPoseidon2Config>, String> {
+    let (airs, traces, pis) = build_witness_inputs(witness)?;
+    BabyBearPoseidon2Engine::run_simple_test_fast(airs, traces, pis)
         .map_err(|e| format!("STARK verification failed: {e:?}"))
 }
 
@@ -280,8 +294,8 @@ pub struct FlatWitnessJson {
     pub constants: HashMap<String, u32>,
 }
 
-/// Prove a flat witness, returning Ok(()) on success.
-pub fn prove_flat_witness(witness: &FlatWitnessJson) -> Result<(), String> {
+/// Build AIRs, traces, and PIs from a flat witness (shared by prove and vdata paths).
+fn build_flat_witness_inputs(witness: &FlatWitnessJson) -> Result<(Vec<AirRef<BabyBearPoseidon2Config>>, Vec<RowMajorMatrix<BabyBear>>, Vec<Vec<BabyBear>>), String> {
     let min_rows = 4;
 
     let loli_tag = witness.tags.get("loli").copied().unwrap_or(0);
@@ -366,6 +380,12 @@ pub fn prove_flat_witness(witness: &FlatWitnessJson) -> Result<(), String> {
         pis.push(vec![]);
     }
 
+    Ok((airs, traces, pis))
+}
+
+/// Prove a flat witness, returning Ok(()) on success.
+pub fn prove_flat_witness(witness: &FlatWitnessJson) -> Result<(), String> {
+    let (airs, traces, pis) = build_flat_witness_inputs(witness)?;
     // FlatStepChip has degree-4 constraints (spine boundary checks), requiring
     // log_blowup >= 2 so the LDE has enough evaluations for the quotient domain.
     let engine = BabyBearPoseidon2Engine::new(
@@ -373,6 +393,17 @@ pub fn prove_flat_witness(witness: &FlatWitnessJson) -> Result<(), String> {
     );
     StarkFriEngine::run_simple_test_impl(&engine, airs, traces, pis)
         .map(|_| ())
+        .map_err(|e| format!("STARK verification failed: {e:?}"))
+}
+
+/// Prove a flat witness, returning the full verification data.
+/// Phase 4a: needed for recursive verification and IVC.
+pub fn prove_flat_witness_vdata(witness: &FlatWitnessJson) -> Result<VerificationDataWithFriParams<BabyBearPoseidon2Config>, String> {
+    let (airs, traces, pis) = build_flat_witness_inputs(witness)?;
+    let engine = BabyBearPoseidon2Engine::new(
+        FriParameters::standard_with_100_bits_security(2),
+    );
+    StarkFriEngine::run_simple_test_impl(&engine, airs, traces, pis)
         .map_err(|e| format!("STARK verification failed: {e:?}"))
 }
 
