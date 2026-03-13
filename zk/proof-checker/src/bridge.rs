@@ -1,8 +1,8 @@
 //! Bridge: JSON witness → STARK trace matrices → prover.
 //!
 //! Two verification paths, selected by `format` field in witness JSON:
-//!   - Tree (default): full ILL derivation, 13 chips, 5 buses
-//!   - Flat ("flat"):  forward-only rewriting certificate, 5 chips, 3 buses
+//!   - Tree (default): full ILL derivation, 13 chips, 7 buses
+//!   - Flat ("flat"):  forward-only rewriting certificate, 5–7 chips, 5 buses
 //!
 //! Phase 3b: ROM chips and init chips are data-carrying structs with
 //! preprocessed columns committed at keygen. `run_simple_test_fast`
@@ -189,7 +189,7 @@ pub fn prove_witness(witness: &WitnessJson) -> Result<(), String> {
     });
     pis.push(vec![]);
 
-    // 5. SubstChip (width 8 — FORMULA_BUS lookups for same-tag verification)
+    // 5. SubstChip (width 15 — FORMULA_BUS lookups for same-tag verification)
     let subst_rows = witness.chips.get("subst");
     airs.push(Arc::new(SubstChip) as AirRef<_>);
     traces.push(match subst_rows {

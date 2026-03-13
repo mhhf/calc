@@ -15,10 +15,11 @@
 //! tensor of consumed) with spine verification + SUBST_TREE_BUS demand.
 //! The body uses per-leaf SUBST_TREE_BUS demands: each produced fact is
 //! paired with its corresponding body leaf pattern (from flattening the
-//! consHash tensor tree). This avoids tensor association mismatches since
-//! body leaves and produced facts always have matching tree structure.
+//! consHash tensor tree). body_diff[i] gates each demand; when body_diff=0,
+//! body_leaf[i] must equal p[i] (enforced by constraint, preventing
+//! suppression of verification for differing leaves).
 //!
-//! Layout (width 48):
+//! Layout (width 54):
 //!   [0]     active
 //!   [1]     is_loli          — 1 = loli match (consume from ctx, no gamma)
 //!   [2]     ground_loli      — ground loli hash
@@ -33,7 +34,7 @@
 //!   [37]    monad_hash       — monad(cons_hash)
 //!   [38]    compiled         — active * (1 - is_loli), auxiliary for degree reduction
 //!   [39]    ground_ant       — ground antecedent hash = tensor(consumed slots)
-//!   [40]    ground_cons      — (unused for loli, used for compiled spine)
+//!   [40]    ground_cons      — ground consequent hash (reserved, currently unused)
 //!   [41]    subst_id         — substitution instance ID for SUBST_TREE_BUS
 //!   [42..47] body_leaf_0..5  — body leaf pattern hashes for per-leaf SubstChip verification
 //!   [48..53] body_diff_0..5  — boolean: 1 when body_leaf differs from produced AND structurally compatible
@@ -362,6 +363,17 @@ impl<AB: InteractionBuilder> Air<AB> for FlatStepChip {
             let bd: AB::Expr = local[COL_BODY_DIFF + i].clone().into();
             builder.assert_zero(bd.clone() * (bd.clone() - AB::Expr::ONE));
             body_diff.push(bd);
+        }
+
+        // 6b. Anti-suppression: when body_diff=0, body_leaf MUST equal produced.
+        //     Prevents adversary from setting body_diff=0 to skip verification
+        //     when body_leaf actually differs from produced.
+        for i in 0..MAX_PRODUCED {
+            builder.assert_zero(
+                loli_active.clone() * pa[i].clone()
+                    * (AB::Expr::ONE - body_diff[i].clone())
+                    * (body_leaf[i].clone() - p[i].clone()),
+            );
         }
 
         // 7. SUBST_TREE_BUS: demand matching verification for loli rows.

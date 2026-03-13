@@ -1,7 +1,7 @@
 //! Shared bus definitions for the proof term verifier.
 //!
 //! Buses are the composability primitive: chips are swappable, buses are
-//! the stable contract. The tree path (13 chips) and flat path (5 chips)
+//! the stable contract. The tree path (13 chips) and flat path (5–7 chips)
 //! both balance on the same bus definitions — see bridge.rs for dispatch.
 //!
 //! Universal buses (any sequent calculus):
@@ -13,12 +13,16 @@
 //!   GAMMA_BUS   — cartesian zone membership (exponential/bang)
 //!   DISCARD_BUS — zero_l discard permits (links zero_l to DiscardChip)
 //!
+//! Substitution buses (freevar resolution):
+//!   SUBST_TREE_BUS — per-node tree matching demands
+//!   FREEVAR_BUS    — freevar consistency (ROM-backed)
+//!
 //! Soundness: PermutationCheckBus enforces multiset equality via LogUp.
 //! LookupBus enforces that every demand has a matching supply entry.
 //! False positive ≤ n/|F_ext| where F_ext is quartic BabyBear (~2^124).
 //!
-//! Tree path: all 5 buses.
-//! Flat path: CONTEXT_BUS + GAMMA_BUS + FORMULA_BUS (3 of 5).
+//! Tree path: OBLIG + CONTEXT + FORMULA + DISCARD + GAMMA + SUBST_TREE + FREEVAR (7 buses).
+//! Flat path: CONTEXT + GAMMA + FORMULA + SUBST_TREE + FREEVAR (5 of 7).
 
 use openvm_stark_backend::interaction::{LookupBus, PermutationCheckBus};
 

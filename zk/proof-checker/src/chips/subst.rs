@@ -21,7 +21,7 @@
 //! - **Freevar leaf** (is_freevar=1): FORMULA_BUS verify old is freevar,
 //!   FREEVAR_BUS lookup for consistency.
 //!
-//! Columns (width 16):
+//! Columns (width 15):
 //!   [0]  is_active
 //!   [1]  hash_old
 //!   [2]  hash_new

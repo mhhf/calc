@@ -9,13 +9,13 @@ tags:
   symbolic-execution: 12
   optimization: 11
   performance: 11
+  implementation: 10
   lax-monad: 10
   session-types: 10
   logical-framework: 9
   research: 9
   adjoint-logic: 8
   Ceptre: 8
-  implementation: 8
   ownership: 8
   QTT: 8
   sequent-calculus: 8
@@ -23,6 +23,7 @@ tags:
   Curry-Howard: 7
   dependent-types: 7
   graded-types: 7
+  verification: 7
   display-calculus: 6
   hevm: 6
   polarity: 6
@@ -40,13 +41,14 @@ tags:
   lnl: 5
   memory-model: 5
   soundness: 5
-  verification: 5
   accounting: 4
   backward-chaining: 4
+  blockchain: 4
   CLP: 4
   content-addressing: 4
   data-structures: 4
   eigenvariable: 4
+  ethereum: 4
   hash-consing: 4
   lollimon: 4
   muMALL: 4
@@ -59,20 +61,19 @@ tags:
   unification: 4
   adjunction: 3
   bisimulation: 3
-  blockchain: 3
   category-theory: 3
   CHR: 3
   compilation: 3
   confluence: 3
   cut-elimination: 3
   cyclic-proofs: 3
-  ethereum: 3
   induction: 3
   loli: 3
   memoization: 3
   modal-logic: 3
   model-checking: 3
   multimodal: 3
+  plonky3: 3
   polymorphism: 3
   prover-architecture: 3
   residuation: 3
@@ -105,6 +106,7 @@ tags:
   hypersequents: 2
   Idris-2: 2
   interaction-nets: 2
+  ivc: 2
   JavaScript: 2
   kernel: 2
   KLEE: 2
@@ -133,10 +135,12 @@ tags:
   proof-assistants: 2
   proof-nets: 2
   proof-of-stake: 2
+  proof-systems: 2
   quantifiers: 2
   resource-tracking: 2
   second-order: 2
   semantics: 2
+  stark: 2
   state-merging: 2
   substitution: 2
   supercompilation: 2
@@ -150,6 +154,7 @@ tags:
   v2: 2
   validators: 2
   with: 2
+  zk: 2
   AARA: 1
   abstract-interpretation: 1
   AC-normalization: 1
@@ -162,6 +167,7 @@ tags:
   atomic-swaps: 1
   attributed-variables: 1
   automation: 1
+  babybear: 1
   backward: 1
   bang-modality: 1
   BDI: 1
@@ -240,6 +246,7 @@ tags:
   geometry-of-interaction: 1
   ghost: 1
   Girard: 1
+  groth16: 1
   grothendieck-group: 1
   HAMT: 1
   hash-tables: 1
@@ -306,18 +313,19 @@ tags:
   pi-types: 1
   planning: 1
   polynomial-time: 1
+  poseidon2: 1
   primitives: 1
   production-systems: 1
   profiling: 1
   proof-as-process: 1
   proof-market: 1
   proof-of-authority: 1
-  proof-systems: 1
   proof-terms: 1
   proofs: 1
   provenance: 1
   "Q&A": 1
   questions: 1
+  recursion: 1
   references: 1
   relational-e-matching: 1
   residuated-lattices: 1
@@ -382,3 +390,4 @@ tags:
   write-absorption: 1
   WSTS: 1
   z3: 1
+  zk-proofs: 1
