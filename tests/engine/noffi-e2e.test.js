@@ -15,6 +15,10 @@ const { run } = require('../../lib/engine/forward');
 const { countNodes, getAllLeaves } = require('../../lib/engine/tree-utils');
 const { classifyLeaf } = require('../../lib/engine/show');
 const { setNoFFI } = require('../../lib/engine/match');
+const { toObject } = require('../../lib/engine/fact-set');
+const { buildGuidedTerm } = require('../../lib/prover/guided-term');
+const { rightFocusTerm } = require('../../lib/prover/bridge');
+const { buildRightTensor } = require('../../lib/kernel/ast');
 
 describe('noFFI e2e: solc multisig (clause-only resolution)', { timeout: 120000 }, () => {
   let treeNoFFI, treeFFI;
@@ -162,5 +166,79 @@ describe('noFFI e2e: dangerouslyUseFFI flag resets correctly', () => {
       }
     }
     assert.strictEqual(ffiCount, 0, 'Flag should reset — no FFI after dangerouslyUseFFI run');
+  });
+});
+
+// ─── Symbolic Explore: Full Guided Term Pipeline ────────────────────
+
+const ILL_ROLES = {
+  product: 'tensor', unit: 'one', exponential: 'bang',
+  implication: 'loli', 'external-choice': 'with',
+  'internal-choice': 'oplus', computation: 'monad'
+};
+
+describe('noFFI e2e: symbolic explore → guided terms', { timeout: 300000 }, () => {
+  let leaves, tree;
+
+  before(async () => {
+    Store.clear();
+    const calc = await mde.load(
+      path.join(__dirname, '../../calculus/ill/programs/multisig_nocall_solc_symbolic.ill')
+    );
+    const state = mde.decomposeQuery(calc.queries.get('symex'));
+    tree = explore(state, calc.forwardRules, {
+      maxDepth: 2000,
+      calc: { clauses: calc.clauses, types: calc.types },
+      evidence: true
+    });
+    leaves = getAllLeaves(tree);
+  });
+
+  it('explore produces expected tree shape', () => {
+    assert.strictEqual(countNodes(tree), 2125);
+    assert.strictEqual(leaves.length, 31);
+  });
+
+  it('all leaves have evidence traces', () => {
+    for (let i = 0; i < leaves.length; i++) {
+      assert.ok(leaves[i].trace, `Leaf ${i} missing trace`);
+      assert.ok(leaves[i].trace.length > 0, `Leaf ${i} has empty trace`);
+    }
+  });
+
+  it('all leaves classify as STOP or REVERT', () => {
+    for (let i = 0; i < leaves.length; i++) {
+      const type = classifyLeaf(leaves[i].state);
+      assert.ok(type === 'STOP' || type === 'REVERT',
+        `Leaf ${i}: expected STOP or REVERT, got ${type}`);
+    }
+  });
+
+  it('rightFocusTerm succeeds for all leaves', () => {
+    for (let i = 0; i < leaves.length; i++) {
+      const plain = toObject(leaves[i].state);
+      const hashes = [];
+      for (const [h, count] of Object.entries(plain.linear)) {
+        for (let j = 0; j < count; j++) hashes.push(Number(h));
+      }
+      const succFormula = buildRightTensor(hashes);
+      const rf = rightFocusTerm(plain.linear, plain.persistent, succFormula, ILL_ROLES);
+      assert.ok(rf, `Leaf ${i}: rightFocusTerm returned null`);
+    }
+  });
+
+  it('buildGuidedTerm succeeds for all leaves', () => {
+    for (let i = 0; i < leaves.length; i++) {
+      const plain = toObject(leaves[i].state);
+      const hashes = [];
+      for (const [h, count] of Object.entries(plain.linear)) {
+        for (let j = 0; j < count; j++) hashes.push(Number(h));
+      }
+      const succFormula = buildRightTensor(hashes);
+      const rf = rightFocusTerm(plain.linear, plain.persistent, succFormula, ILL_ROLES);
+      const term = buildGuidedTerm(leaves[i].trace, rf.term);
+      assert.ok(term, `Leaf ${i}: buildGuidedTerm returned null`);
+      assert.ok(term.rule, `Leaf ${i}: guided term has no rule`);
+    }
   });
 });
