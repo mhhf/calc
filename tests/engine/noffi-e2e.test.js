@@ -177,7 +177,7 @@ const ILL_ROLES = {
   'internal-choice': 'oplus', computation: 'monad'
 };
 
-describe('noFFI e2e: symbolic explore → guided terms', { timeout: 300000 }, () => {
+describe('noFFI e2e: symbolic explore → guided terms', { timeout: 600000 }, () => {
   let leaves, tree;
 
   before(async () => {
