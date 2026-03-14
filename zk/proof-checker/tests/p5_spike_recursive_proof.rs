@@ -6,11 +6,12 @@
 //! Test progression:
 //! 1. p5_recursive_proof_single_chunk — prove a single-proof verifier program
 //! 2. p5_recursive_proof_composition — prove the multi-chunk composition program
-//! 3. p5_composition_committed_pvs — composition with committed public values (Phase 5-1)
+//! 3. p5_composition_full_commitment — full commitment: init PVs + final PVs + VK identity (Phase 5-2)
 
 use openvm_circuit::utils::air_test_impl;
 use openvm_native_circuit::{test_native_config, NativeConfig, NativeCpuBuilder};
 use openvm_native_compiler::{conversion::CompilerOptions, prelude::*};
+use openvm_native_compiler::ir::DIGEST_SIZE;
 use openvm_native_recursion::{
     challenger::duplex::DuplexChallengerVariable,
     fri::TwoAdicFriPcsVariable,
@@ -50,6 +51,9 @@ fn load_fixture(name: &str) -> String {
 /// 2. Checks PV continuity: chunk[i].final_pvs == chunk[i+1].init_pvs
 /// 3. Commits chunk[0].init_pvs as public values (initial context)
 /// 4. Commits chunk[N-1].final_pvs as public values (final context)
+/// 5. Commits VK pre_hash (DIGEST_SIZE=8 elements) as program identity
+///
+/// PV layout: [init_pvs..., final_pvs..., vk_pre_hash[0..8]]
 ///
 /// Returns (program, witness_stream, n_committed_pvs).
 fn build_composition_with_pvs(
@@ -62,7 +66,8 @@ fn build_composition_with_pvs(
 
     let n_init_pvs = results[0].data.proof.per_air[0].public_values.len();
     let n_final_pvs = results[0].data.proof.per_air[2].public_values.len();
-    let n_committed = n_init_pvs + n_final_pvs;
+    let vk_hash: [BabyBear; DIGEST_SIZE] = vk.pre_hash.clone().into();
+    let n_committed = n_init_pvs + n_final_pvs + DIGEST_SIZE;
 
     let m_advice = new_from_inner_multi_vk(vk);
     let mut builder = Builder::<InnerConfig>::default();
@@ -124,6 +129,11 @@ fn build_composition_with_pvs(
     builder.commit_public_values(&first_init);
     // Final context (last chunk's final PVs)
     builder.commit_public_values(&prev_final);
+    // Program identity (VK pre_hash — 8 BabyBear field elements)
+    for &h in &vk_hash {
+        let val: Felt<BabyBear> = builder.constant(h);
+        builder.commit_public_value(val);
+    }
 
     builder.halt();
 
@@ -256,17 +266,22 @@ fn p5_recursive_proof_composition() {
 }
 
 // ---------------------------------------------------------------------------
-// Phase 5-1: Committed public values in composition
+// Phase 5-2: Full commitment — init PVs + final PVs + VK pre_hash
 // ---------------------------------------------------------------------------
 
-/// Composition with committed PVs: the recursive proof carries initial/final context
-/// as public values, making it externally verifiable.
+/// Composition with full commitment: the recursive proof carries:
+/// - chunk[0].init_pvs (initial context)
+/// - chunk[N-1].final_pvs (final context)
+/// - VK pre_hash[0..8] (program identity)
 ///
-/// The recursive proof's PVs = [chunk[0].init_pvs..., chunk[N-1].final_pvs...]
-/// An external verifier can check: "this proof certifies ctx_in → ctx_out"
+/// PV layout: [init_pvs..., final_pvs..., vk_pre_hash[0..8]]
+///
+/// An external verifier can check:
+///   "this proof certifies ctx_in → ctx_out under program P"
+/// where P = VK pre_hash identifies the specific ILL program.
 #[test]
-#[ignore] // ~2-5 min — run with: cargo test --release -- --ignored p5_composition_committed_pvs
-fn p5_composition_committed_pvs() {
+#[ignore] // ~2-5 min — run with: cargo test --release -- --ignored p5_composition_full_commitment
+fn p5_composition_full_commitment() {
     let json = load_fixture("multisig_chunked");
     let chunks: Vec<FlatWitnessJson> = serde_json::from_str(&json).expect("parse");
 
@@ -278,15 +293,17 @@ fn p5_composition_committed_pvs() {
         .iter().map(|v| v.as_canonical_u32()).collect();
     let expected_final: Vec<u32> = results.last().unwrap().data.proof.per_air[2].public_values
         .iter().map(|v| v.as_canonical_u32()).collect();
+    let vk_hash: [BabyBear; DIGEST_SIZE] = results[0].data.vk.pre_hash.clone().into();
+    let expected_vk: Vec<u32> = vk_hash.iter().map(|v| v.as_canonical_u32()).collect();
     let n_init = expected_init.len();
     let n_final = expected_final.len();
-    println!("  init PVs: {n_init}, final PVs: {n_final}");
+    println!("  init PVs: {n_init}, final PVs: {n_final}, VK hash: {DIGEST_SIZE} elements");
 
-    // Step 2: Build composition program with PV commitment
-    println!("  step 2: building composition with committed PVs...");
+    // Step 2: Build composition program with full commitment
+    println!("  step 2: building composition with full commitment...");
     let (program, input_stream, n_committed) = build_composition_with_pvs(&results);
     println!("    {} instructions, {} committed PVs", program.defined_instructions().len(), n_committed);
-    assert_eq!(n_committed, n_init + n_final);
+    assert_eq!(n_committed, n_init + n_final + DIGEST_SIZE);
 
     // Step 3: Generate recursive STARK proof with PV-aware config
     println!("  step 3: generating recursive STARK proof...");
@@ -299,9 +316,9 @@ fn p5_composition_committed_pvs() {
         input_stream,
         1,
         true,
-    ).expect("recursive proof with committed PVs should succeed");
+    ).expect("recursive proof with full commitment should succeed");
 
-    // Step 4: Verify committed PVs in the recursive proof
+    // Step 4: Verify all committed PVs in the recursive proof
     assert_eq!(vdata_vec.len(), 1, "single segment expected");
     let vdata = &vdata_vec[0];
 
@@ -329,6 +346,16 @@ fn p5_composition_committed_pvs() {
         assert_eq!(actual, expected, "final PV[{k}] mismatch: {actual} != {expected}");
     }
 
-    println!("  all {} committed PVs verified! (init: {n_init}, final: {n_final})", n_committed);
-    println!("  recursive proof externally verifiable: ctx_in → ctx_out");
+    // Check VK pre_hash (last DIGEST_SIZE entries)
+    let vk_offset = n_init + n_final;
+    for (k, &expected) in expected_vk.iter().enumerate() {
+        let actual = pvs[vk_offset + k].as_canonical_u32();
+        assert_eq!(actual, expected, "VK hash[{k}] mismatch: {actual} != {expected}");
+    }
+
+    println!("  all {} committed PVs verified!", n_committed);
+    println!("    init context: {n_init} PVs");
+    println!("    final context: {n_final} PVs");
+    println!("    program identity: {DIGEST_SIZE} PVs (VK pre_hash)");
+    println!("  recursive proof externally verifiable: ctx_in → ctx_out under program P");
 }
