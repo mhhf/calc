@@ -424,6 +424,21 @@ pub fn prove_flat_witness_vdata(witness: &FlatWitnessJson) -> Result<Verificatio
         .map_err(|e| format!("STARK verification failed: {e:?}"))
 }
 
+/// Prove a chunked flat witness (array of FlatWitnessJson), returning
+/// verification data for each chunk. Each chunk is proved independently.
+/// Phase 4a-4: per-chunk proving for batch recursive composition.
+pub fn prove_chunked_flat_witness(
+    chunks: &[FlatWitnessJson],
+) -> Result<Vec<VerificationDataWithFriParams<BabyBearPoseidon2Config>>, String> {
+    let mut results = Vec::with_capacity(chunks.len());
+    for (i, chunk) in chunks.iter().enumerate() {
+        let vdata = prove_flat_witness_vdata(chunk)
+            .map_err(|e| format!("chunk {i} failed: {e}"))?;
+        results.push(vdata);
+    }
+    Ok(results)
+}
+
 /// Parse a JSON string and prove it. Dispatches based on `format` field.
 pub fn prove_json(json: &str) -> Result<(), String> {
     let value: serde_json::Value = serde_json::from_str(json)
