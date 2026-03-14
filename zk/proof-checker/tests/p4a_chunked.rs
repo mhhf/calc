@@ -33,7 +33,10 @@ fn p4a_chunked_prove_each_chunk() {
 
     assert_eq!(results.len(), chunks.len());
     for (i, vdata) in results.iter().enumerate() {
-        println!("  chunk {i}: {} AIRs", vdata.data.vk.inner.per_air.len());
+        let n_airs = vdata.data.vk.inner.per_air.len();
+        println!("  chunk {i}: {n_airs} AIRs");
+        // All chunks should have 7 AIRs (FreevarRomAir always included)
+        assert_eq!(n_airs, 7, "chunk {i} should have 7 AIRs");
     }
 }
 

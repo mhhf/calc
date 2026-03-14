@@ -389,13 +389,21 @@ fn build_flat_witness_inputs(witness: &FlatWitnessJson) -> Result<(Vec<AirRef<Ba
     });
     pis.push(vec![]);
 
-    // 7. FreevarRomAir (optional — present when loli matches have freevars)
-    if !witness.freevar_rom.is_empty() {
-        let (freevar_entries, freevar_lookups) = split_freevar_rom(&witness.freevar_rom);
-        airs.push(Arc::new(FreevarRomAir { entries: freevar_entries, min_rows }) as AirRef<_>);
-        traces.push(build_trace_1col(&freevar_lookups, min_rows));
-        pis.push(vec![]);
-    }
+    // 7. FreevarRomAir (always present — empty when no loli freevars)
+    // Unconditional inclusion ensures constant AIR count across all chunks,
+    // reducing VK variation to PV sizes only (Phase 4a-4 finding 12).
+    let (freevar_entries, freevar_lookups) = if !witness.freevar_rom.is_empty() {
+        split_freevar_rom(&witness.freevar_rom)
+    } else {
+        (vec![], vec![])
+    };
+    airs.push(Arc::new(FreevarRomAir { entries: freevar_entries, min_rows }) as AirRef<_>);
+    traces.push(if freevar_lookups.is_empty() {
+        empty_trace(1, min_rows)
+    } else {
+        build_trace_1col(&freevar_lookups, min_rows)
+    });
+    pis.push(vec![]);
 
     Ok((airs, traces, pis))
 }
