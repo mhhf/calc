@@ -18,3 +18,4 @@ serde_json = { workspace = true }
 [dev-dependencies]
 openvm-native-recursion = { workspace = true }
 openvm-native-compiler = { workspace = true }
+openvm-native-circuit = { workspace = true }
