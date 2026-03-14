@@ -32,6 +32,7 @@ use crate::chips::{
     canon_cons_rom::CanonConsRomAir,
     discard::DiscardChip,
     dup::DupChip,
+    fact_rom::FactRomAir,
     flat_final::FlatFinalChip,
     flat_init::FlatInitChip,
     flat_step::FlatStepChip,
@@ -54,6 +55,10 @@ pub struct WitnessJson {
     pub gamma_rom: Vec<Vec<u32>>,
     #[serde(default)]
     pub freevar_rom: Vec<Vec<u32>>,
+    /// Phase 6-4: verified fact ROM [goal_hash, is_active, num_lookups].
+    /// Contains predicate hashes for custom-chip-verified facts (arr_get, inc, etc.).
+    #[serde(default)]
+    pub fact_rom: Vec<Vec<u32>>,
 }
 
 /// Known special chip names that are NOT generic RuleChips.
@@ -279,6 +284,16 @@ fn build_witness_inputs(witness: &WitnessJson) -> Result<(Vec<AirRef<BabyBearPos
         let (freevar_entries, freevar_lookups) = split_freevar_rom(&witness.freevar_rom);
         airs.push(Arc::new(FreevarRomAir { entries: freevar_entries, min_rows }) as AirRef<_>);
         traces.push(build_trace_1col(&freevar_lookups, min_rows));
+        pis.push(vec![]);
+    }
+
+    // 10. FactRomAir (Phase 6-4: custom chip verified facts)
+    // Always present when fact_rom is non-empty; absent when empty
+    // (backward compat: old fixtures without fact_rom still work).
+    if !witness.fact_rom.is_empty() {
+        let (fact_entries, fact_lookups) = split_gamma_rom(&witness.fact_rom);
+        airs.push(Arc::new(FactRomAir { entries: fact_entries, min_rows }) as AirRef<_>);
+        traces.push(build_trace_1col(&fact_lookups, min_rows));
         pis.push(vec![]);
     }
 

@@ -51,6 +51,19 @@
       "gamma_lookup": false,
       "is_identity": false
     },
+    "fact_axiom": {
+      "name": "fact_axiom",
+      "tag": null,
+      "arity": 0,
+      "oblig_receive": true,
+      "premises": [],
+      "ctx_receive": false,
+      "ctx_sends": [],
+      "formula_lookup": false,
+      "gamma_lookup": false,
+      "fact_lookup": true,
+      "is_identity": false
+    },
     "tensor_r": {
       "name": "tensor_r",
       "tag": 1,
@@ -505,5 +518,6 @@
     ]
   ],
   "gamma_rom": [],
-  "freevar_rom": []
+  "freevar_rom": [],
+  "fact_rom": []
 }

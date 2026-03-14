@@ -21,7 +21,7 @@ use openvm_stark_backend::{
 };
 use serde::Deserialize;
 
-use crate::buses::{CONTEXT_BUS, FORMULA_BUS, GAMMA_BUS, OBLIG_BUS};
+use crate::buses::{CONTEXT_BUS, FACT_BUS, FORMULA_BUS, GAMMA_BUS, OBLIG_BUS};
 
 // ---------------------------------------------------------------------------
 // Spec types
@@ -90,6 +90,12 @@ pub struct RuleSpec {
     // -- Gamma bus --
     /// GAMMA_BUS.lookup_key — look up gamma zone membership (copy rule).
     pub gamma_lookup: bool,
+
+    // -- Fact bus --
+    /// FACT_BUS.lookup_key — verify fact ROM membership (custom chip axiom).
+    /// Phase 6-4: replaces clause proof subtrees with ROM-backed verification.
+    #[serde(default)]
+    pub fact_lookup: bool,
 
     // -- Special flags --
     /// Identity rule: principal = obligation type = context resource.
@@ -341,7 +347,12 @@ impl<AB: InteractionBuilder> Air<AB> for RuleChip {
 
         // --- GAMMA_BUS.lookup_key ---
         if spec.gamma_lookup {
-            GAMMA_BUS.lookup_key(builder, [col!(layout.hash.unwrap())], active);
+            GAMMA_BUS.lookup_key(builder, [col!(layout.hash.unwrap())], active.clone());
+        }
+
+        // --- FACT_BUS.lookup_key ---
+        if spec.fact_lookup {
+            FACT_BUS.lookup_key(builder, [oblig_type], active);
         }
     }
 }
