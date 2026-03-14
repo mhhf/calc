@@ -307,16 +307,25 @@ fn build_flat_witness_inputs(witness: &FlatWitnessJson) -> Result<(Vec<AirRef<Ba
     let mut traces: Vec<RowMajorMatrix<BabyBear>> = Vec::new();
     let mut pis: Vec<Vec<BabyBear>> = Vec::new();
 
-    // 1. FlatInitChip (data-carrying, preprocessed)
+    // 1. FlatInitChip (Phase 4a: main trace + public values, no preprocessed)
     let init_rows = witness.chips.get("flat_init").ok_or("missing flat_init chip")?;
     let ctx_hashes: Vec<u32> = init_rows.iter()
         .filter(|r| r.len() >= 2 && r[0] == 1) // is_active=1
         .map(|r| r[1])
         .collect();
-    airs.push(Arc::new(FlatInitChip { ctx_hashes, min_rows }) as AirRef<_>);
-    // Main trace: dummy column (width 1), all zeros
-    traces.push(empty_trace(1, init_rows.len().max(min_rows)));
-    pis.push(vec![]);
+    let max_ctx_size = ctx_hashes.len();
+    airs.push(Arc::new(FlatInitChip { ctx_hashes: ctx_hashes.clone(), max_ctx_size, min_rows }) as AirRef<_>);
+    // Main trace: [is_active, hash] (was dummy width-1 column before Phase 4a)
+    traces.push(if init_rows.is_empty() {
+        empty_trace(2, min_rows)
+    } else {
+        build_trace(init_rows, 2, init_rows.len().max(min_rows))
+    });
+    // Public values: context hashes padded to max_ctx_size
+    let init_pis: Vec<BabyBear> = ctx_hashes.iter()
+        .map(|&h| BabyBear::from_u32(h))
+        .collect();
+    pis.push(init_pis);
 
     // 2. FlatStepChip (data-carrying, with tag constants + preprocessed canon_cons)
     let step_rows = witness.chips.get("flat_step").ok_or("missing flat_step chip")?;
@@ -333,15 +342,23 @@ fn build_flat_witness_inputs(witness: &FlatWitnessJson) -> Result<(Vec<AirRef<Ba
     });
     pis.push(vec![]);
 
-    // 3. FlatFinalChip (remains main-trace only — final context is proof-specific)
+    // 3. FlatFinalChip (Phase 4a: with public values for final context)
     let final_rows = witness.chips.get("flat_final").ok_or("missing flat_final chip")?;
-    airs.push(Arc::new(FlatFinalChip) as AirRef<_>);
+    let final_hashes: Vec<u32> = final_rows.iter()
+        .filter(|r| r.len() >= 2 && r[0] == 1)
+        .map(|r| r[1])
+        .collect();
+    let final_max_ctx = final_hashes.len();
+    airs.push(Arc::new(FlatFinalChip { max_ctx_size: final_max_ctx }) as AirRef<_>);
     traces.push(if final_rows.is_empty() {
         empty_trace(2, min_rows)
     } else {
         build_trace(final_rows, 2, min_rows)
     });
-    pis.push(vec![]);
+    let final_pis: Vec<BabyBear> = final_hashes.iter()
+        .map(|&h| BabyBear::from_u32(h))
+        .collect();
+    pis.push(final_pis);
 
     // 4. FormulaRomAir (data-carrying, preprocessed)
     let (formula_entries, formula_lookups) = split_formula_rom(&witness.formula_rom);

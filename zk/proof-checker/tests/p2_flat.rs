@@ -63,8 +63,8 @@ fn run_flat_test(
     formula_rom: &[[u32; 6]],
     gamma_rom: &[[u32; 3]],
 ) {
-    let init = FlatInitChip { ctx_hashes: init_hashes.to_vec(), min_rows: MIN };
-    let init_trace = padded_trace::<1>(&[[0u32; 1]; 0], init_hashes.len().max(MIN));
+    let init = FlatInitChip { ctx_hashes: init_hashes.to_vec(), max_ctx_size: 0, min_rows: MIN };
+    let init_trace = padded_trace::<2>(&init_hashes.iter().map(|&h| [1u32, h]).collect::<Vec<_>>(), init_hashes.len().max(MIN));
 
     let step_min = step_rows.len().max(MIN);
     let step_chip = FlatStepChip {
@@ -86,7 +86,7 @@ fn run_flat_test(
     let airs: Vec<AirRef<_>> = vec![
         Arc::new(init),
         Arc::new(step_chip),
-        Arc::new(FlatFinalChip),
+        Arc::new(FlatFinalChip { max_ctx_size: 0 }),
         Arc::new(rom_chip),
         Arc::new(gamma_chip),
         Arc::new(SubstChip),

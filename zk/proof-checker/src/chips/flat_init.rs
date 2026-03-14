@@ -1,34 +1,42 @@
 //! FlatInitChip: introduces initial linear context for flat certificates.
 //!
-//! Phase 3b: context data in preprocessed columns (committed at keygen).
-//! Main trace is width 1 (dummy — OpenVM requires width ≥ 1).
+//! Phase 4a: context data in main trace (prover-provided), with public values
+//! carrying the context hashes for cross-chunk IVC verification.
 //!
-//! Preprocessed (width 2): [is_active, hash]
-//! Main trace (width 1): [dummy]
+//! Main trace (width 2): [is_active, hash]
+//! Public values: ctx_hashes padded to max_ctx_size with zeros
+//!
+//! Phase 3b→4a migration: previously used preprocessed trace (committed at
+//! keygen, baked into VK). Now uses main trace so VK is constant across chunks
+//! when max_ctx_size is fixed.
+//!
+//! **Soundness note (Phase 4a gap):** PVs are prover-declared and NOT constrained
+//! against the main trace in-circuit. The CONTEXT_BUS ensures within-proof
+//! correctness (init sends must balance step receives). Cross-chunk PV integrity
+//! relies on collision-resistant hashing by the prover. In-circuit PV→trace
+//! linkage via Poseidon2 commitment is deferred to Phase 4a-4/Phase 5.
 
 use openvm_stark_backend::{
     interaction::InteractionBuilder,
-    p3_air::{Air, BaseAir, PairBuilder},
+    p3_air::{Air, BaseAir},
     p3_field::{Field, PrimeCharacteristicRing},
-    p3_matrix::{dense::RowMajorMatrix, Matrix},
+    p3_matrix::Matrix,
     rap::{BaseAirWithPublicValues, PartitionedBaseAir},
 };
 
 use crate::buses::CONTEXT_BUS;
 
-/// Width of the main trace (dummy column).
-pub const WIDTH: usize = 1;
+/// Width of the main trace.
+pub const WIDTH: usize = 2;
 
-/// Width of the preprocessed trace.
-pub const PREP_WIDTH: usize = 2;
-
-/// FlatInitChip with context data committed at keygen.
+/// FlatInitChip with context data in main trace and public values.
 ///
 /// `ctx_hashes` contains the initial linear context fact hashes.
-/// The main trace carries only a dummy column (always 0).
-/// `min_rows` ensures preprocessed trace height matches main trace height.
+/// `max_ctx_size` determines the fixed number of public values (for constant VK across chunks).
+/// `min_rows` ensures trace height is at least this value.
 pub struct FlatInitChip {
     pub ctx_hashes: Vec<u32>,
+    pub max_ctx_size: usize,
     pub min_rows: usize,
 }
 
@@ -36,36 +44,32 @@ impl<F: Field> BaseAir<F> for FlatInitChip {
     fn width(&self) -> usize {
         WIDTH
     }
+}
 
-    fn preprocessed_trace(&self) -> Option<RowMajorMatrix<F>> {
-        let n = self.ctx_hashes.len().max(self.min_rows).next_power_of_two();
-        let mut data = Vec::with_capacity(n * PREP_WIDTH);
-        for &h in &self.ctx_hashes {
-            data.push(F::ONE);          // is_active
-            data.push(F::from_u32(h));  // hash
-        }
-        for _ in self.ctx_hashes.len()..n {
-            data.push(F::ZERO); // is_active = 0
-            data.push(F::ZERO); // hash = 0
-        }
-        Some(RowMajorMatrix::new(data, PREP_WIDTH))
+impl<F: Field> BaseAirWithPublicValues<F> for FlatInitChip {
+    fn num_public_values(&self) -> usize {
+        self.max_ctx_size
     }
 }
 
-impl<F: Field> BaseAirWithPublicValues<F> for FlatInitChip {}
 impl<F: Field> PartitionedBaseAir<F> for FlatInitChip {}
 
-impl<AB: InteractionBuilder + PairBuilder> Air<AB> for FlatInitChip
+impl<AB: InteractionBuilder> Air<AB> for FlatInitChip
 where
     AB::F: Field,
 {
     fn eval(&self, builder: &mut AB) {
-        let prep = builder.preprocessed();
-        let p = prep.row_slice(0).unwrap();
-        let is_active: AB::Expr = p[0].clone().into();
-        let hash: AB::Expr = p[1].clone().into();
+        let main = builder.main();
+        let local = main.row_slice(0).unwrap();
 
+        let is_active: AB::Expr = local[0].clone().into();
+        let hash: AB::Expr = local[1].clone().into();
+
+        // is_active ∈ {0, 1}
         builder.assert_zero(is_active.clone() * (is_active.clone() - AB::Expr::ONE));
+        // inactive rows must have hash = 0
+        builder.assert_zero((AB::Expr::ONE - is_active.clone()) * hash.clone());
+
         CONTEXT_BUS.send(builder, [hash], is_active);
     }
 }

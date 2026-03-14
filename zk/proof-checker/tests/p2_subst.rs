@@ -59,8 +59,8 @@ fn run_subst_test(
     formula_rom: &[[u32; 6]],
     freevar_rom: &[[u32; 5]],
 ) {
-    let init = FlatInitChip { ctx_hashes: vec![ctx_old], min_rows: MIN };
-    let init_trace = padded_trace::<1>(&[[0]], MIN); // dummy main trace
+    let init = FlatInitChip { ctx_hashes: vec![ctx_old], max_ctx_size: 0, min_rows: MIN };
+    let init_trace = padded_trace::<2>(&[[1, ctx_old]], MIN);
 
     let final_trace = padded_trace::<2>(&[[1, ctx_new]], MIN);
 
@@ -70,7 +70,7 @@ fn run_subst_test(
 
     let mut airs: Vec<AirRef<_>> = vec![
         Arc::new(init),
-        Arc::new(FlatFinalChip),
+        Arc::new(FlatFinalChip { max_ctx_size: 0 }),
         Arc::new(SubstChip),
         Arc::new(rom_chip),
     ];
@@ -295,8 +295,8 @@ fn p2_subst_stray_row_fails() {
 
     // No FlatInit/FlatFinal needed (no root → no CONTEXT_BUS interaction)
     // But we still need the chips for the engine — use empty init
-    let init = FlatInitChip { ctx_hashes: vec![], min_rows: MIN };
-    let init_trace = padded_trace::<1>(&[], MIN);
+    let init = FlatInitChip { ctx_hashes: vec![], max_ctx_size: 0, min_rows: MIN };
+    let init_trace = padded_trace::<2>(&[], MIN);
     let final_trace = padded_trace::<2>(&[], MIN);
     let subst_trace = padded_trace::<16>(&subst_rows, MIN);
     let (rom_chip, rom_trace) = make_formula_rom(&formula_rom, MIN);
@@ -304,7 +304,7 @@ fn p2_subst_stray_row_fails() {
     BabyBearPoseidon2Engine::run_simple_test_fast(
         vec![
             Arc::new(init) as AirRef<_>,
-            Arc::new(FlatFinalChip) as AirRef<_>,
+            Arc::new(FlatFinalChip { max_ctx_size: 0 }) as AirRef<_>,
             Arc::new(SubstChip) as AirRef<_>,
             Arc::new(rom_chip) as AirRef<_>,
         ],
