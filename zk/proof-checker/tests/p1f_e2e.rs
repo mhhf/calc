@@ -116,6 +116,13 @@ fn e2e_clause_copy_loli() {
         .expect("clause_copy_loli: noFFI 2-step forward execution with inc clause resolution");
 }
 
+// Phase 6-3: pure linear forward execution (no clause resolution, no persistent preconditions)
+#[test]
+fn e2e_pure_linear() {
+    prove_json(&load_fixture("pure_linear"))
+        .expect("pure_linear: 2-step forward execution, zero clause resolution");
+}
+
 // Phase 6-2: verify sequent identity is exposed as public values on InitChip (AIR 0)
 #[test]
 fn e2e_identity_public_values() {

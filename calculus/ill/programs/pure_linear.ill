@@ -1,0 +1,10 @@
+% Pure linear: no persistent preconditions, no clause resolution.
+% 2-step forward execution using only linear resources.
+% Validates baseline: ZK witness has zero clause-resolution evidence.
+
+step1: a X * b Y -o { mid X Y }.
+step2: mid X Y -o { done X Y }.
+
+#symex
+  a e * b e
+  .
