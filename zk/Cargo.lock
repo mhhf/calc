@@ -1848,6 +1848,7 @@ dependencies = [
 name = "proof-checker"
 version = "0.1.0"
 dependencies = [
+ "openvm-native-circuit",
  "openvm-native-compiler",
  "openvm-native-recursion",
  "openvm-stark-backend",
