@@ -1,0 +1,15 @@
+% Minimal program for noFFI ZK e2e testing.
+% 2 forward steps, each with a persistent precondition
+% resolved via clause resolution (no FFI).
+%
+% Step 1: inc e X → X = i e (1 clause step: inc/z2)
+% Step 2: inc (i e) Y → Y = o (i e) (2 clause steps: inc/s → inc/z2)
+
+#import(bin.ill)
+
+step1: go * !inc e X -o { mid X }.
+step2: mid X * !inc X Y -o { done Y }.
+
+#symex
+  go
+  .

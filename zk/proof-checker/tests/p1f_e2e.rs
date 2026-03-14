@@ -106,3 +106,10 @@ fn e2e_copy_tensor() {
 fn e2e_bang_r_promotion() {
     prove_json(&load_fixture("bang_r_promotion")).expect("bang_r: ; A ⊢ !A");
 }
+
+// Phase 6-1: noFFI clause proof — copy/loli_l/monad_l chains from clause resolution
+#[test]
+fn e2e_clause_copy_loli() {
+    prove_json(&load_fixture("clause_copy_loli"))
+        .expect("clause_copy_loli: noFFI 2-step forward execution with inc clause resolution");
+}
