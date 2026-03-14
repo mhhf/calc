@@ -68,7 +68,7 @@ describe('chunked flat witness: unit', () => {
     assert.deepStrictEqual(chunks[0].chips.flat_init, single.chips.flat_init);
     assert.deepStrictEqual(chunks[0].chips.flat_step, single.chips.flat_step);
     assert.deepStrictEqual(chunks[0].chips.flat_final, single.chips.flat_final);
-    assert.deepStrictEqual(chunks[0].flat_step_prep, single.flat_step_prep);
+    assert.deepStrictEqual(chunks[0].canon_cons_rom, single.canon_cons_rom);
   });
 
   it('splits 3-step trace into 2 chunks at maxRowsPerChunk=2', () => {
@@ -219,6 +219,36 @@ describe('chunked flat witness: unit', () => {
       'at least one chunk should have formula ROM entries with 0 lookups');
   });
 
+  it('all chunks have identical canon_cons_rom preprocessed entries', () => {
+    const trace = [
+      mockStep(a, b),
+      mockStep(b, c),
+      mockStep(c, d),
+    ];
+    const seq = makeSequent([a]);
+    const chunks = generateChunkedFlatWitness(trace, seq, {
+      maxRowsPerChunk: 2,
+    });
+    // For compiled steps, canon_cons_rom is empty (no loli matches)
+    // but the arrays should still be identical across chunks
+    const prep0 = chunks[0].canon_cons_rom.map(r => JSON.stringify(r.slice(0, 3)));
+    const prep1 = chunks[1].canon_cons_rom.map(r => JSON.stringify(r.slice(0, 3)));
+    assert.deepStrictEqual(prep0, prep1,
+      'canon_cons_rom preprocessed entries should be identical across chunks');
+  });
+
+  it('step rows include canon_cons column (width 43)', () => {
+    const trace = [mockStep(a, b)];
+    const seq = makeSequent([a]);
+    const w = generateFlatWitness(trace, seq, {});
+    // Each step row should be width 43 (42 + canon_cons)
+    assert.strictEqual(w.chips.flat_step[0].length, 43,
+      'step row should have 43 columns');
+    // For compiled steps, canon_cons (last column) should be 0
+    assert.strictEqual(w.chips.flat_step[0][42], 0,
+      'compiled step canon_cons should be 0');
+  });
+
   it('all chunks have same max_ctx_size (PV normalization)', () => {
     // Context grows: a→b→c→d across 2 chunks. Init/final sizes differ
     // but max_ctx_size must be uniform for constant VK.
@@ -354,13 +384,12 @@ describe('chunked flat witness: solc integration', { timeout: 60000 }, () => {
       assert.ok(chunk.chips.flat_step.length <= 100, `chunk ${i} should have <= 100 steps`);
       assert.ok(chunk.formula_rom.length > 0, `chunk ${i} should have formula ROM`);
       assert.ok(chunk.gamma_rom.length > 0, `chunk ${i} should have gamma ROM`);
-      assert.ok(chunk.flat_step_prep, `chunk ${i} should have flat_step_prep`);
-      assert.strictEqual(chunk.flat_step_prep.length, chunk.chips.flat_step.length,
-        `chunk ${i} prep length should match step count`);
+      assert.ok(chunk.canon_cons_rom, `chunk ${i} should have canon_cons_rom`);
 
       console.log(`  chunk ${i}: ${chunk.chips.flat_step.length} steps, ` +
         `${chunk.chips.flat_init.length} init, ${chunk.chips.flat_final.length} final, ` +
-        `${chunk.formula_rom.length} formula, ${chunk.gamma_rom.length} gamma` +
+        `${chunk.formula_rom.length} formula, ${chunk.gamma_rom.length} gamma, ` +
+        `${chunk.canon_cons_rom.length} canon_cons` +
         (chunk.chips.subst ? `, ${chunk.chips.subst.length} subst` : ''));
     }
   });

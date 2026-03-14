@@ -56,3 +56,8 @@ pub const SUBST_TREE_BUS: PermutationCheckBus = PermutationCheckBus::new(5);
 /// → ground_value entries; SubstChip freevar-leaf rows look up to verify that
 /// the same freevar maps to the same ground value within a substitution instance.
 pub const FREEVAR_BUS: LookupBus = LookupBus::new(6);
+
+/// Canon-cons bus. CanonConsRomAir provides (cons_hash, canon_cons) entries;
+/// FlatStepChip loli rows look up to verify the canonical body form is correct.
+/// Phase 4a-5: moved from FlatStepChip preprocessed trace to ROM for constant VK.
+pub const CANON_CONS_BUS: LookupBus = LookupBus::new(7);

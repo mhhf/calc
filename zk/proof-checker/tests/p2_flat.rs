@@ -9,9 +9,11 @@ mod common;
 use std::sync::Arc;
 
 use proof_checker::chips::{
+    canon_cons_rom::CanonConsRomAir,
     flat_final::FlatFinalChip,
     flat_init::FlatInitChip,
     flat_step::FlatStepChip,
+    freevar_rom::FreevarRomAir,
     subst::SubstChip,
 };
 use openvm_stark_backend::AirRef;
@@ -37,8 +39,9 @@ const ONE_HASH: u32 = 5;
 const MIN: usize = 4;
 
 /// Build a flat step row for a compiled rule with 1 consumed, 1 produced.
-fn compiled_step(consumed: u32, produced: u32, loli: u32, monad: u32) -> [u32; 42] {
-    let mut row = [0u32; 42];
+/// Width 43 (Phase 4a-5: includes canon_cons at index 42).
+fn compiled_step(consumed: u32, produced: u32, loli: u32, monad: u32) -> [u32; 43] {
+    let mut row = [0u32; 43];
     row[0] = 1;               // active
     row[1] = 0;               // is_loli=0 (compiled)
     row[2] = loli;            // ground_loli
@@ -51,14 +54,14 @@ fn compiled_step(consumed: u32, produced: u32, loli: u32, monad: u32) -> [u32; 4
     row[37] = monad;          // monad_hash
     row[38] = 1;              // compiled = active * (1 - is_loli)
     row[40] = produced;       // ground_cons
+    // row[42] = 0             // canon_cons (unused for compiled)
     row
 }
 
 /// Run flat path test with FlatStepChip (requires log_blowup=2 for degree-4 constraints).
 fn run_flat_test(
     init_hashes: &[u32],
-    step_rows: &[[u32; 42]],
-    step_prep: &[u32],
+    step_rows: &[[u32; 43]],
     final_rows: &[[u32; 2]],
     formula_rom: &[[u32; 6]],
     gamma_rom: &[[u32; 3]],
@@ -66,14 +69,11 @@ fn run_flat_test(
     let init = FlatInitChip { ctx_hashes: init_hashes.to_vec(), max_ctx_size: 0, min_rows: MIN };
     let init_trace = padded_trace::<2>(&init_hashes.iter().map(|&h| [1u32, h]).collect::<Vec<_>>(), init_hashes.len().max(MIN));
 
-    let step_min = step_rows.len().max(MIN);
     let step_chip = FlatStepChip {
         loli_tag: TAG_LOLI, monad_tag: TAG_MONAD, tensor_tag: TAG_TENSOR,
         one_hash: ONE_HASH,
-        canon_cons: step_prep.to_vec(),
-        min_rows: step_min,
     };
-    let step_trace = padded_trace::<42>(step_rows, step_min);
+    let step_trace = padded_trace::<43>(step_rows, MIN);
 
     let final_trace = padded_trace::<2>(final_rows, MIN);
 
@@ -83,6 +83,12 @@ fn run_flat_test(
     // SubstChip always present (even if empty)
     let subst_trace = padded_trace::<16>(&[], MIN);
 
+    // FreevarRomAir always present (empty)
+    let freevar_trace = padded_trace::<1>(&[], MIN);
+
+    // CanonConsRomAir always present (empty for compiled-only tests)
+    let cc_trace = padded_trace::<1>(&[], MIN);
+
     let airs: Vec<AirRef<_>> = vec![
         Arc::new(init),
         Arc::new(step_chip),
@@ -90,9 +96,11 @@ fn run_flat_test(
         Arc::new(rom_chip),
         Arc::new(gamma_chip),
         Arc::new(SubstChip),
+        Arc::new(FreevarRomAir { entries: vec![], min_rows: MIN }),
+        Arc::new(CanonConsRomAir { entries: vec![], min_rows: MIN }),
     ];
-    let traces = vec![init_trace, step_trace, final_trace, rom_trace, gamma_trace, subst_trace];
-    let pis = vec![vec![]; 6];
+    let traces = vec![init_trace, step_trace, final_trace, rom_trace, gamma_trace, subst_trace, freevar_trace, cc_trace];
+    let pis = vec![vec![]; 8];
 
     let engine = BabyBearPoseidon2Engine::new(
         FriParameters::standard_with_100_bits_security(2),
@@ -112,7 +120,6 @@ fn p2_flat_compiled_basic() {
     run_flat_test(
         &[H_CONSUMED],
         &[step],
-        &[0], // canon_cons=0 (unused for compiled)
         &[[1, H_PRODUCED]], // final receives produced
         &[
             [H_LOLI, TAG_LOLI, H_CONSUMED, H_MONAD_P, 1, 1],
@@ -139,7 +146,6 @@ fn p2_flat_wrong_consumed_fails() {
     run_flat_test(
         &[H_CONSUMED], // init sends the REAL hash
         &[step],       // step consumes the WRONG hash
-        &[0],
         &[[1, H_PRODUCED]],
         &[
             [H_LOLI_W, TAG_LOLI, H_WRONG, H_MONAD_W, 1, 1],
@@ -167,7 +173,6 @@ fn p2_flat_wrong_produced_fails() {
     run_flat_test(
         &[H_CONSUMED],
         &[step],
-        &[0],
         &[[1, H_PRODUCED]], // final expects H_PRODUCED (but step sends H_WRONG)
         &[
             [H_LOLI_W, TAG_LOLI, H_CONSUMED, H_MONAD_W, 1, 1],

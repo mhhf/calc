@@ -224,8 +224,8 @@ describe('rewrite-trace: solc forward integration', { timeout: 60000 }, () => {
     for (const row of witness.chips.flat_init) {
       assert.strictEqual(row.length, 2, 'flat_init width');
     }
-    // Width 42: 3 header + 2*MAX_CONSUMED + 2*MAX_PRODUCED + spine columns + 1 compiled aux + 3 (ground_ant, ground_cons, subst_id)
-    const stepWidth = 3 + 2 * MAX_CONSUMED + 2 * MAX_PRODUCED + 1 + (MAX_CONSUMED - 2) + 1 + (MAX_PRODUCED - 2) + 1 + 1 + 3;
+    // Width 43: 3 header + 2*MAX_CONSUMED + 2*MAX_PRODUCED + spine columns + 1 compiled aux + 3 (ground_ant, ground_cons, subst_id) + 1 canon_cons
+    const stepWidth = 3 + 2 * MAX_CONSUMED + 2 * MAX_PRODUCED + 1 + (MAX_CONSUMED - 2) + 1 + (MAX_PRODUCED - 2) + 1 + 1 + 3 + 1;
     for (const row of witness.chips.flat_step) {
       assert.strictEqual(row.length, stepWidth, 'flat_step width');
     }
@@ -239,10 +239,12 @@ describe('rewrite-trace: solc forward integration', { timeout: 60000 }, () => {
       assert.strictEqual(row.length, 6, 'formula_rom width');
     }
 
-    // Verify preprocessed data
-    assert.ok(witness.flat_step_prep, 'should have flat_step_prep');
-    assert.strictEqual(witness.flat_step_prep.length, witness.chips.flat_step.length,
-      'flat_step_prep length should match flat_step rows');
+    // Verify canon_cons_rom (Phase 4a-5: extracted from flat_step_prep)
+    assert.ok(witness.canon_cons_rom, 'should have canon_cons_rom');
+    assert.ok(witness.canon_cons_rom.length > 0, 'canon_cons_rom should have entries');
+    for (const row of witness.canon_cons_rom) {
+      assert.strictEqual(row.length, 4, 'canon_cons_rom row width [cons_hash, canon_cons, is_active, num_lookups]');
+    }
 
     // Verify tags and constants are present
     assert.ok(witness.tags, 'should have tags');

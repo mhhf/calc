@@ -29,6 +29,7 @@ use p3_field::PrimeCharacteristicRing;
 use serde::Deserialize;
 
 use crate::chips::{
+    canon_cons_rom::CanonConsRomAir,
     discard::DiscardChip,
     dup::DupChip,
     flat_final::FlatFinalChip,
@@ -128,6 +129,18 @@ fn split_freevar_rom(rows: &[Vec<u32>]) -> (Vec<[u32; 4]>, Vec<u32>) {
     for row in rows {
         entries.push([row[0], row[1], row[2], row[3]]);
         lookups.push(row[4]);
+    }
+    (entries, lookups)
+}
+
+/// Split canon_cons ROM rows [cons_hash, canon_cons, is_active, num_lookups]
+/// into preprocessed entries [cons_hash, canon_cons, is_active] and lookups [num_lookups].
+fn split_canon_cons_rom(rows: &[Vec<u32>]) -> (Vec<[u32; 3]>, Vec<u32>) {
+    let mut entries = Vec::with_capacity(rows.len());
+    let mut lookups = Vec::with_capacity(rows.len());
+    for row in rows {
+        entries.push([row[0], row[1], row[2]]);
+        lookups.push(row[3]);
     }
     (entries, lookups)
 }
@@ -280,13 +293,14 @@ pub fn prove_witness_vdata(witness: &WitnessJson) -> Result<VerificationDataWith
 pub struct FlatWitnessJson {
     pub format: String,
     pub chips: HashMap<String, Vec<Vec<u32>>>,
-    /// Preprocessed per-step data for FlatStepChip: canon_cons (canonical body hash).
-    #[serde(default)]
-    pub flat_step_prep: Vec<u32>,
     pub formula_rom: Vec<Vec<u32>>,
     pub gamma_rom: Vec<Vec<u32>>,
     #[serde(default)]
     pub freevar_rom: Vec<Vec<u32>>,
+    /// Canon-cons ROM: [cons_hash, canon_cons, is_active, num_lookups].
+    /// Phase 4a-5: extracted from FlatStepChip preprocessed trace.
+    #[serde(default)]
+    pub canon_cons_rom: Vec<Vec<u32>>,
     /// Connective name → ZK tag integer (needed for FlatStepChip struct fields).
     pub tags: HashMap<String, u32>,
     /// Constants: { one_hash: Store.put('one', []) }.
@@ -333,18 +347,15 @@ fn build_flat_witness_inputs(witness: &FlatWitnessJson) -> Result<(Vec<AirRef<Ba
     init_pis.resize(max_ctx_size, BabyBear::ZERO);
     pis.push(init_pis);
 
-    // 2. FlatStepChip (data-carrying, with tag constants + preprocessed canon_cons)
+    // 2. FlatStepChip (tag constants only — no preprocessed trace since Phase 4a-5)
     let step_rows = witness.chips.get("flat_step").ok_or("missing flat_step chip")?;
-    let step_min = step_rows.len().max(min_rows);
     airs.push(Arc::new(FlatStepChip {
         loli_tag, monad_tag, tensor_tag, one_hash,
-        canon_cons: witness.flat_step_prep.clone(),
-        min_rows: step_min,
     }) as AirRef<_>);
     traces.push(if step_rows.is_empty() {
         empty_trace(crate::chips::flat_step::WIDTH, min_rows)
     } else {
-        build_trace(step_rows, crate::chips::flat_step::WIDTH, step_min)
+        build_trace(step_rows, crate::chips::flat_step::WIDTH, min_rows)
     });
     pis.push(vec![]);
 
@@ -409,6 +420,21 @@ fn build_flat_witness_inputs(witness: &FlatWitnessJson) -> Result<(Vec<AirRef<Ba
         empty_trace(1, min_rows)
     } else {
         build_trace_1col(&freevar_lookups, min_rows)
+    });
+    pis.push(vec![]);
+
+    // 8. CanonConsRomAir (always present — empty when no loli matches)
+    // Phase 4a-5: extracted from FlatStepChip preprocessed trace.
+    let (cc_entries, cc_lookups) = if !witness.canon_cons_rom.is_empty() {
+        split_canon_cons_rom(&witness.canon_cons_rom)
+    } else {
+        (vec![], vec![])
+    };
+    airs.push(Arc::new(CanonConsRomAir { entries: cc_entries, min_rows }) as AirRef<_>);
+    traces.push(if cc_lookups.is_empty() {
+        empty_trace(1, min_rows)
+    } else {
+        build_trace_1col(&cc_lookups, min_rows)
     });
     pis.push(vec![]);
 

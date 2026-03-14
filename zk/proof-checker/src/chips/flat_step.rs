@@ -13,13 +13,15 @@
 //! For loli matches: ant_hash/cons_hash are the original loli's pattern
 //! (may have metavariables). The antecedent uses ground_ant (right-associated
 //! tensor of consumed) with spine verification + SUBST_TREE_BUS demand.
-//! The body uses a single SUBST_TREE_BUS demand from a preprocessed
-//! canon_cons_hash (right-associated canonical form of the body pattern)
-//! to ground_cons (right-associated tensor of produced facts, verified
-//! by the cons spine). This eliminates the per-leaf body_diff mechanism
-//! and its suppression attack surface.
+//! The body uses a single SUBST_TREE_BUS demand from a canon_cons
+//! (right-associated canonical form of the body pattern, verified via
+//! CANON_CONS_BUS lookup) to ground_cons (right-associated tensor of
+//! produced facts, verified by the cons spine).
 //!
-//! Layout (main width 42):
+//! Phase 4a-5: canon_cons moved from preprocessed trace to main trace +
+//! CANON_CONS_BUS ROM lookup for program-static VK across chunks.
+//!
+//! Layout (main width 43):
 //!   [0]     active
 //!   [1]     is_loli          — 1 = loli match (consume from ctx, no gamma)
 //!   [2]     ground_loli      — ground loli hash
@@ -36,19 +38,17 @@
 //!   [39]    ground_ant       — ground antecedent hash = tensor(consumed slots)
 //!   [40]    ground_cons      — ground consequent hash = tensor(produced slots)
 //!   [41]    subst_id         — substitution instance ID for SUBST_TREE_BUS
-//!
-//! Preprocessed (width 1):
-//!   [0]     canon_cons       — right-associated canonical form of body pattern (loli only)
+//!   [42]    canon_cons       — canonical body form (verified via CANON_CONS_BUS)
 
 use openvm_stark_backend::{
     interaction::InteractionBuilder,
-    p3_air::{Air, BaseAir, PairBuilder},
+    p3_air::{Air, BaseAir},
     p3_field::{Field, PrimeCharacteristicRing},
-    p3_matrix::{dense::RowMajorMatrix, Matrix},
+    p3_matrix::Matrix,
     rap::{BaseAirWithPublicValues, PartitionedBaseAir},
 };
 
-use crate::buses::{CONTEXT_BUS, FORMULA_BUS, GAMMA_BUS, SUBST_TREE_BUS};
+use crate::buses::{CANON_CONS_BUS, CONTEXT_BUS, FORMULA_BUS, GAMMA_BUS, SUBST_TREE_BUS};
 
 pub const MAX_CONSUMED: usize = 6;
 pub const MAX_PRODUCED: usize = 6;
@@ -69,55 +69,36 @@ const COL_COMPILED: usize = COL_MONAD_HASH + 1;                     // 38
 const COL_GROUND_ANT: usize = COL_COMPILED + 1;                     // 39
 const COL_GROUND_CONS: usize = COL_GROUND_ANT + 1;                  // 40
 const COL_SUBST_ID: usize = COL_GROUND_CONS + 1;                    // 41
-pub const WIDTH: usize = COL_SUBST_ID + 1;                          // 42
+const COL_CANON_CONS: usize = COL_SUBST_ID + 1;                     // 42
+pub const WIDTH: usize = COL_CANON_CONS + 1;                        // 43
 
-/// Preprocessed width: [canon_cons]
-pub const PREP_WIDTH: usize = 1;
-
-/// FlatStepChip with tag constants and preprocessed canonical body hashes.
+/// FlatStepChip with tag constants.
+///
+/// Phase 4a-5: no preprocessed trace. canon_cons is now a main trace column
+/// verified via CANON_CONS_BUS lookup against a preprocessed ROM.
 pub struct FlatStepChip {
     pub loli_tag: u32,
     pub monad_tag: u32,
     pub tensor_tag: u32,
     pub one_hash: u32,
-    /// Per-step canonical cons hash (right-associated form of body pattern).
-    /// For compiled rules: 0 (unused). For loli matches: buildRightTensor(flattenTensor(consHash)).
-    pub canon_cons: Vec<u32>,
-    pub min_rows: usize,
 }
 
 impl<F: Field> BaseAir<F> for FlatStepChip {
     fn width(&self) -> usize {
         WIDTH
     }
-
-    fn preprocessed_trace(&self) -> Option<RowMajorMatrix<F>> {
-        let n = self.canon_cons.len().max(self.min_rows).next_power_of_two();
-        let mut data = Vec::with_capacity(n * PREP_WIDTH);
-        for &v in &self.canon_cons {
-            data.push(F::from_u32(v));
-        }
-        for _ in self.canon_cons.len()..n {
-            data.push(F::ZERO);
-        }
-        Some(RowMajorMatrix::new(data, PREP_WIDTH))
-    }
 }
 
 impl<F: Field> BaseAirWithPublicValues<F> for FlatStepChip {}
 impl<F: Field> PartitionedBaseAir<F> for FlatStepChip {}
 
-impl<AB: InteractionBuilder + PairBuilder> Air<AB> for FlatStepChip
+impl<AB: InteractionBuilder> Air<AB> for FlatStepChip
 where
     AB::F: Field,
 {
     fn eval(&self, builder: &mut AB) {
         let main = builder.main();
         let local = main.row_slice(0).unwrap();
-
-        let prep = builder.preprocessed();
-        let prep_local = prep.row_slice(0).unwrap();
-        let canon_cons: AB::Expr = prep_local[0].clone().into();
 
         let active: AB::Expr = local[COL_ACTIVE].clone().into();
         let is_loli: AB::Expr = local[COL_IS_LOLI].clone().into();
@@ -130,6 +111,7 @@ where
         let ground_ant: AB::Expr = local[COL_GROUND_ANT].clone().into();
         let ground_cons: AB::Expr = local[COL_GROUND_CONS].clone().into();
         let subst_id: AB::Expr = local[COL_SUBST_ID].clone().into();
+        let canon_cons: AB::Expr = local[COL_CANON_CONS].clone().into();
 
         let loli_tag: AB::Expr = AB::Expr::from_u32(self.loli_tag);
         let monad_tag: AB::Expr = AB::Expr::from_u32(self.monad_tag);
@@ -211,7 +193,7 @@ where
         // 2. Monad unwrap: monad_hash = monad(cons_hash, 0)
         FORMULA_BUS.lookup_key(
             builder,
-            [monad_hash, monad_tag, cons_hash, AB::Expr::ZERO],
+            [monad_hash, monad_tag, cons_hash.clone(), AB::Expr::ZERO],
             active.clone(),
         );
 
@@ -328,7 +310,7 @@ where
         //    - Gated on loli_active instead of compiled
         //    - Targets ground_ant instead of ant_hash
         //    Uses (active - compiled) = active * is_loli without adding a column.
-        let loli_active = active.clone() - compiled;
+        let loli_active = active - compiled;
 
         // Antecedent spine boundary + lookups (loli rows)
         builder.assert_zero(
@@ -387,15 +369,19 @@ where
             loli_active.clone(),
         );
         //    Body: single demand for canon_cons → ground_cons.
-        //    canon_cons is preprocessed (committed at keygen): the right-associated
-        //    canonical form of the body pattern. ground_cons is the right-associated
-        //    tensor of produced facts, verified by the cons spine (section 4).
-        //    SubstChip walks both trees (same structure) and verifies freevar
-        //    consistency via FREEVAR_BUS. Since canon_cons is preprocessed, the
-        //    adversary cannot substitute a different body pattern.
+        //    canon_cons verified via CANON_CONS_BUS lookup (Phase 4a-5).
         SUBST_TREE_BUS.send(
             builder,
-            [subst_id, canon_cons, ground_cons],
+            [subst_id, canon_cons.clone(), ground_cons],
+            loli_active.clone(),
+        );
+
+        // 7. CANON_CONS_BUS: verify canon_cons matches the ROM entry for cons_hash.
+        //    The ROM is preprocessed (committed at keygen), ensuring the adversary
+        //    cannot substitute a different body pattern.
+        CANON_CONS_BUS.lookup_key(
+            builder,
+            [cons_hash, canon_cons],
             loli_active,
         );
     }

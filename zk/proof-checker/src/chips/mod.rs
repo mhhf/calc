@@ -1,3 +1,4 @@
+pub mod canon_cons_rom;
 pub mod discard;
 pub mod dup;
 pub mod flat_final;
