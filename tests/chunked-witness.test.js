@@ -164,7 +164,7 @@ describe('chunked flat witness: unit', () => {
     assert.deepStrictEqual(final1, [c, e].sort());
   });
 
-  it('each chunk has its own formula ROM scoped to its steps', () => {
+  it('all chunks have identical formula ROM preprocessed entries', () => {
     const trace = [
       mockStep(a, b),
       mockStep(b, c),
@@ -174,13 +174,17 @@ describe('chunked flat witness: unit', () => {
     const chunks = generateChunkedFlatWitness(trace, seq, {
       maxRowsPerChunk: 2,
     });
-    // Each chunk's formula_rom should only contain entries for that chunk's steps
-    // Chunk 0 has 2 steps, chunk 1 has 1 step — different formula lookups
-    assert.ok(chunks[0].formula_rom.length > 0, 'chunk 0 should have formula ROM');
-    assert.ok(chunks[1].formula_rom.length > 0, 'chunk 1 should have formula ROM');
+    assert.ok(chunks[0].formula_rom.length > 0, 'should have formula ROM entries');
+    // Preprocessed part (without num_lookups) must be identical across chunks
+    const prep0 = chunks[0].formula_rom.map(r => JSON.stringify(r.slice(0, 5)));
+    const prep1 = chunks[1].formula_rom.map(r => JSON.stringify(r.slice(0, 5)));
+    assert.deepStrictEqual(prep0, prep1,
+      'formula ROM preprocessed entries should be identical across chunks');
+    // Union should be >= any individual chunk's original entry count
+    assert.strictEqual(chunks[0].formula_rom.length, chunks[1].formula_rom.length);
   });
 
-  it('each chunk has its own gamma ROM scoped to its steps', () => {
+  it('all chunks have identical gamma ROM preprocessed entries', () => {
     const trace = [
       mockStep(a, b),
       mockStep(b, c),
@@ -190,8 +194,29 @@ describe('chunked flat witness: unit', () => {
     const chunks = generateChunkedFlatWitness(trace, seq, {
       maxRowsPerChunk: 2,
     });
-    assert.ok(chunks[0].gamma_rom.length > 0, 'chunk 0 should have gamma ROM');
-    assert.ok(chunks[1].gamma_rom.length > 0, 'chunk 1 should have gamma ROM');
+    assert.ok(chunks[0].gamma_rom.length > 0, 'should have gamma ROM entries');
+    const prep0 = chunks[0].gamma_rom.map(r => JSON.stringify(r.slice(0, 2)));
+    const prep1 = chunks[1].gamma_rom.map(r => JSON.stringify(r.slice(0, 2)));
+    assert.deepStrictEqual(prep0, prep1,
+      'gamma ROM preprocessed entries should be identical across chunks');
+  });
+
+  it('union ROM has lookups=0 for entries not used by a chunk', () => {
+    const trace = [
+      mockStep(a, b),
+      mockStep(b, c),
+      mockStep(c, d),
+    ];
+    const seq = makeSequent([a]);
+    const chunks = generateChunkedFlatWitness(trace, seq, {
+      maxRowsPerChunk: 2,
+    });
+    // Some formula ROM entries should have lookups=0 in at least one chunk
+    // (since chunk 0 uses formulas that chunk 1 doesn't, and vice versa)
+    const hasZeroLookups0 = chunks[0].formula_rom.some(r => r[5] === 0);
+    const hasZeroLookups1 = chunks[1].formula_rom.some(r => r[5] === 0);
+    assert.ok(hasZeroLookups0 || hasZeroLookups1,
+      'at least one chunk should have formula ROM entries with 0 lookups');
   });
 
   it('all chunks have same max_ctx_size (PV normalization)', () => {
