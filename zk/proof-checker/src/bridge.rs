@@ -292,6 +292,11 @@ pub struct FlatWitnessJson {
     /// Constants: { one_hash: Store.put('one', []) }.
     #[serde(default)]
     pub constants: HashMap<String, u32>,
+    /// Max context size for PV normalization (Phase 4a-5).
+    /// When set, FlatInitChip and FlatFinalChip pad PVs to this size,
+    /// ensuring constant PV count across chunks → constant VK contribution.
+    #[serde(default)]
+    pub max_ctx_size: Option<usize>,
 }
 
 /// Build AIRs, traces, and PIs from a flat witness (shared by prove and vdata paths).
@@ -313,7 +318,7 @@ fn build_flat_witness_inputs(witness: &FlatWitnessJson) -> Result<(Vec<AirRef<Ba
         .filter(|r| r.len() >= 2 && r[0] == 1) // is_active=1
         .map(|r| r[1])
         .collect();
-    let max_ctx_size = ctx_hashes.len();
+    let max_ctx_size = witness.max_ctx_size.unwrap_or(ctx_hashes.len());
     airs.push(Arc::new(FlatInitChip { ctx_hashes: ctx_hashes.clone(), max_ctx_size, min_rows }) as AirRef<_>);
     // Main trace: [is_active, hash] (was dummy width-1 column before Phase 4a)
     traces.push(if init_rows.is_empty() {
@@ -321,10 +326,11 @@ fn build_flat_witness_inputs(witness: &FlatWitnessJson) -> Result<(Vec<AirRef<Ba
     } else {
         build_trace(init_rows, 2, init_rows.len().max(min_rows))
     });
-    // Public values: context hashes padded to max_ctx_size
-    let init_pis: Vec<BabyBear> = ctx_hashes.iter()
+    // Public values: context hashes padded to max_ctx_size with zeros
+    let mut init_pis: Vec<BabyBear> = ctx_hashes.iter()
         .map(|&h| BabyBear::from_u32(h))
         .collect();
+    init_pis.resize(max_ctx_size, BabyBear::ZERO);
     pis.push(init_pis);
 
     // 2. FlatStepChip (data-carrying, with tag constants + preprocessed canon_cons)
@@ -348,16 +354,17 @@ fn build_flat_witness_inputs(witness: &FlatWitnessJson) -> Result<(Vec<AirRef<Ba
         .filter(|r| r.len() >= 2 && r[0] == 1)
         .map(|r| r[1])
         .collect();
-    let final_max_ctx = final_hashes.len();
+    let final_max_ctx = witness.max_ctx_size.unwrap_or(final_hashes.len());
     airs.push(Arc::new(FlatFinalChip { max_ctx_size: final_max_ctx }) as AirRef<_>);
     traces.push(if final_rows.is_empty() {
         empty_trace(2, min_rows)
     } else {
         build_trace(final_rows, 2, min_rows)
     });
-    let final_pis: Vec<BabyBear> = final_hashes.iter()
+    let mut final_pis: Vec<BabyBear> = final_hashes.iter()
         .map(|&h| BabyBear::from_u32(h))
         .collect();
+    final_pis.resize(final_max_ctx, BabyBear::ZERO);
     pis.push(final_pis);
 
     // 4. FormulaRomAir (data-carrying, preprocessed)

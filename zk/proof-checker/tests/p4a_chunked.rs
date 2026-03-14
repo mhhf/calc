@@ -80,21 +80,31 @@ fn p4a_chunked_context_continuity() {
 }
 
 #[test]
-fn p4a_chunked_vks_differ() {
-    // Verify that VKs actually differ across chunks (variable context size)
+fn p4a_chunked_pvs_normalized() {
+    // After PV normalization: all chunks have identical PV counts
     let json = load_fixture("multisig_chunked");
     let chunks: Vec<FlatWitnessJson> = serde_json::from_str(&json).expect("parse chunked fixture");
 
     let results = prove_chunked_flat_witness(&chunks)
         .expect("all chunks should prove and verify");
 
-    // Init PV counts should differ (context grows: 18 → 126 → 220)
-    let pv_counts: Vec<usize> = results.iter()
+    // Init PV counts (per_air[0] = FlatInitChip) should all be the same
+    let init_pv_counts: Vec<usize> = results.iter()
         .map(|r| r.data.proof.per_air[0].public_values.len())
         .collect();
-    println!("  init PV counts: {:?}", pv_counts);
+    println!("  init PV counts: {:?}", init_pv_counts);
+    assert!(init_pv_counts.windows(2).all(|w| w[0] == w[1]),
+        "all chunks should have same init PV count after normalization");
 
-    // At least two chunks should have different PV counts
-    let all_same = pv_counts.windows(2).all(|w| w[0] == w[1]);
-    assert!(!all_same, "VKs should differ due to variable context sizes");
+    // Final PV counts (per_air[2] = FlatFinalChip) should all be the same
+    let final_pv_counts: Vec<usize> = results.iter()
+        .map(|r| r.data.proof.per_air[2].public_values.len())
+        .collect();
+    println!("  final PV counts: {:?}", final_pv_counts);
+    assert!(final_pv_counts.windows(2).all(|w| w[0] == w[1]),
+        "all chunks should have same final PV count after normalization");
+
+    // Init and final should have the same max_ctx_size
+    assert_eq!(init_pv_counts[0], final_pv_counts[0],
+        "init and final PV counts should match (same max_ctx_size)");
 }

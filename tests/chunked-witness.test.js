@@ -194,6 +194,46 @@ describe('chunked flat witness: unit', () => {
     assert.ok(chunks[1].gamma_rom.length > 0, 'chunk 1 should have gamma ROM');
   });
 
+  it('all chunks have same max_ctx_size (PV normalization)', () => {
+    // Context grows: a→b→c→d across 2 chunks. Init/final sizes differ
+    // but max_ctx_size must be uniform for constant VK.
+    const trace = [
+      mockStep(a, b),
+      mockStep(b, c),
+      mockStep(c, d),
+    ];
+    const seq = makeSequent([a, e]); // init has 2 facts
+    const chunks = generateChunkedFlatWitness(trace, seq, {
+      maxRowsPerChunk: 2,
+    });
+    assert.strictEqual(chunks.length, 2);
+
+    // All chunks must have the same max_ctx_size
+    const sizes = chunks.map(c => c.max_ctx_size);
+    assert.ok(sizes.every(s => s === sizes[0]),
+      `all chunks should have same max_ctx_size, got ${sizes}`);
+
+    // max_ctx_size must be >= every chunk's init and final row count
+    for (let i = 0; i < chunks.length; i++) {
+      assert.ok(chunks[i].max_ctx_size >= chunks[i].chips.flat_init.length,
+        `chunk ${i}: max_ctx_size should >= init row count`);
+      assert.ok(chunks[i].max_ctx_size >= chunks[i].chips.flat_final.length,
+        `chunk ${i}: max_ctx_size should >= final row count`);
+    }
+  });
+
+  it('single chunk has max_ctx_size field', () => {
+    const trace = [mockStep(a, b)];
+    const seq = makeSequent([a]);
+    const chunks = generateChunkedFlatWitness(trace, seq, {
+      maxRowsPerChunk: 100,
+    });
+    assert.strictEqual(chunks.length, 1);
+    assert.ok(chunks[0].max_ctx_size != null, 'single chunk should have max_ctx_size');
+    assert.strictEqual(chunks[0].max_ctx_size,
+      Math.max(chunks[0].chips.flat_init.length, chunks[0].chips.flat_final.length));
+  });
+
   it('each chunk has tags and constants', () => {
     const trace = [mockStep(a, b), mockStep(b, c)];
     const seq = makeSequent([a]);
