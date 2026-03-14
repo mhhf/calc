@@ -1,0 +1,329 @@
+/**
+ * Tests for chunked flat witness generation (Phase 4a-3).
+ *
+ * Validates that generateChunkedFlatWitness correctly splits long traces
+ * into multiple chunk witnesses with proper context continuity.
+ */
+
+const { describe, it, before } = require('node:test');
+const assert = require('node:assert');
+const path = require('path');
+
+const Store = require('../lib/kernel/store');
+const Seq = require('../lib/kernel/sequent');
+const { generateFlatWitness, generateChunkedFlatWitness } = require('../lib/zk/flat-witness');
+
+// ---------------------------------------------------------------------------
+// Unit tests with mock traces
+// ---------------------------------------------------------------------------
+
+describe('chunked flat witness: unit', () => {
+  let a, b, c, d, e;
+
+  before(() => {
+    Store.clear();
+    a = Store.put('atom', ['a']);
+    b = Store.put('atom', ['b']);
+    c = Store.put('atom', ['c']);
+    d = Store.put('atom', ['d']);
+    e = Store.put('atom', ['e']);
+  });
+
+  /** Build a mock compiled-rule step: consumes [src], produces [dst]. */
+  function mockStep(src, dst, name = 'test_rule') {
+    return {
+      consumed: [src],
+      produced: [dst],
+      ruleHash: 999,
+      loliHash: null,
+      name,
+    };
+  }
+
+  function makeSequent(linear) {
+    const monadSucc = Store.put('monad', [Store.put('one', [])]);
+    return Seq.fromArrays(linear, [], monadSucc);
+  }
+
+  it('returns single-element array when all steps fit in one chunk', () => {
+    const trace = [mockStep(a, b)];
+    const seq = makeSequent([a]);
+    const chunks = generateChunkedFlatWitness(trace, seq, {
+      maxRowsPerChunk: 100,
+    });
+    assert.strictEqual(chunks.length, 1);
+    assert.strictEqual(chunks[0].format, 'flat');
+    assert.ok(chunks[0].chips.flat_step.length === 1);
+  });
+
+  it('single chunk matches generateFlatWitness output', () => {
+    const trace = [mockStep(a, b)];
+    const seq = makeSequent([a]);
+    const single = generateFlatWitness(trace, seq, {});
+    const chunks = generateChunkedFlatWitness(trace, seq, {
+      maxRowsPerChunk: 100,
+    });
+    assert.strictEqual(chunks.length, 1);
+    assert.deepStrictEqual(chunks[0].chips.flat_init, single.chips.flat_init);
+    assert.deepStrictEqual(chunks[0].chips.flat_step, single.chips.flat_step);
+    assert.deepStrictEqual(chunks[0].chips.flat_final, single.chips.flat_final);
+    assert.deepStrictEqual(chunks[0].flat_step_prep, single.flat_step_prep);
+  });
+
+  it('splits 3-step trace into 2 chunks at maxRowsPerChunk=2', () => {
+    // a → b → c → d (3 steps, chunk at 2)
+    const trace = [
+      mockStep(a, b),
+      mockStep(b, c),
+      mockStep(c, d),
+    ];
+    const seq = makeSequent([a]);
+    const chunks = generateChunkedFlatWitness(trace, seq, {
+      maxRowsPerChunk: 2,
+    });
+    assert.strictEqual(chunks.length, 2);
+    assert.strictEqual(chunks[0].chips.flat_step.length, 2);
+    assert.strictEqual(chunks[1].chips.flat_step.length, 1);
+  });
+
+  it('chunk context continuity: final[i] hashes == init[i+1] hashes', () => {
+    const trace = [
+      mockStep(a, b),
+      mockStep(b, c),
+      mockStep(c, d),
+    ];
+    const seq = makeSequent([a]);
+    const chunks = generateChunkedFlatWitness(trace, seq, {
+      maxRowsPerChunk: 2,
+    });
+
+    // Extract hash sets from init/final rows
+    const finalHashes0 = chunks[0].chips.flat_final.map(r => r[1]).sort();
+    const initHashes1 = chunks[1].chips.flat_init.map(r => r[1]).sort();
+    assert.deepStrictEqual(finalHashes0, initHashes1,
+      'chunk 0 final context should equal chunk 1 init context');
+  });
+
+  it('first chunk init matches original sequent context', () => {
+    const trace = [
+      mockStep(a, b),
+      mockStep(b, c),
+    ];
+    const seq = makeSequent([a]);
+    const chunks = generateChunkedFlatWitness(trace, seq, {
+      maxRowsPerChunk: 1,
+    });
+    assert.strictEqual(chunks.length, 2);
+    // First chunk init should be [a]
+    assert.deepStrictEqual(
+      chunks[0].chips.flat_init.map(r => r[1]),
+      [a],
+    );
+  });
+
+  it('last chunk final matches overall final context', () => {
+    const trace = [
+      mockStep(a, b),
+      mockStep(b, c),
+    ];
+    const seq = makeSequent([a]);
+    const chunked = generateChunkedFlatWitness(trace, seq, {
+      maxRowsPerChunk: 1,
+    });
+    const single = generateFlatWitness(trace, seq, {});
+
+    const chunkedFinal = chunked[chunked.length - 1].chips.flat_final.map(r => r[1]).sort();
+    const singleFinal = single.chips.flat_final.map(r => r[1]).sort();
+    assert.deepStrictEqual(chunkedFinal, singleFinal,
+      'last chunk final should match unchunked final');
+  });
+
+  it('preserves untouched context across chunks', () => {
+    // Init: [a, e]. Steps: a→b, b→c. e is never consumed.
+    const trace = [
+      mockStep(a, b),
+      mockStep(b, c),
+    ];
+    const seq = makeSequent([a, e]);
+    const chunks = generateChunkedFlatWitness(trace, seq, {
+      maxRowsPerChunk: 1,
+    });
+    assert.strictEqual(chunks.length, 2);
+
+    // Chunk 0 final should have [b, e] (a consumed, b produced, e untouched)
+    const final0 = chunks[0].chips.flat_final.map(r => r[1]).sort();
+    assert.deepStrictEqual(final0, [b, e].sort());
+
+    // Chunk 1 init should have [b, e]
+    const init1 = chunks[1].chips.flat_init.map(r => r[1]).sort();
+    assert.deepStrictEqual(init1, [b, e].sort());
+
+    // Chunk 1 final should have [c, e]
+    const final1 = chunks[1].chips.flat_final.map(r => r[1]).sort();
+    assert.deepStrictEqual(final1, [c, e].sort());
+  });
+
+  it('each chunk has its own formula ROM scoped to its steps', () => {
+    const trace = [
+      mockStep(a, b),
+      mockStep(b, c),
+      mockStep(c, d),
+    ];
+    const seq = makeSequent([a]);
+    const chunks = generateChunkedFlatWitness(trace, seq, {
+      maxRowsPerChunk: 2,
+    });
+    // Each chunk's formula_rom should only contain entries for that chunk's steps
+    // Chunk 0 has 2 steps, chunk 1 has 1 step — different formula lookups
+    assert.ok(chunks[0].formula_rom.length > 0, 'chunk 0 should have formula ROM');
+    assert.ok(chunks[1].formula_rom.length > 0, 'chunk 1 should have formula ROM');
+  });
+
+  it('each chunk has its own gamma ROM scoped to its steps', () => {
+    const trace = [
+      mockStep(a, b),
+      mockStep(b, c),
+      mockStep(c, d),
+    ];
+    const seq = makeSequent([a]);
+    const chunks = generateChunkedFlatWitness(trace, seq, {
+      maxRowsPerChunk: 2,
+    });
+    assert.ok(chunks[0].gamma_rom.length > 0, 'chunk 0 should have gamma ROM');
+    assert.ok(chunks[1].gamma_rom.length > 0, 'chunk 1 should have gamma ROM');
+  });
+
+  it('each chunk has tags and constants', () => {
+    const trace = [mockStep(a, b), mockStep(b, c)];
+    const seq = makeSequent([a]);
+    const chunks = generateChunkedFlatWitness(trace, seq, {
+      maxRowsPerChunk: 1,
+    });
+    for (const chunk of chunks) {
+      assert.ok(chunk.tags, 'chunk should have tags');
+      assert.ok(chunk.constants, 'chunk should have constants');
+      assert.ok(chunk.constants.one_hash, 'chunk should have one_hash');
+    }
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Integration: chunked solc witness
+// ---------------------------------------------------------------------------
+
+describe('chunked flat witness: solc integration', { timeout: 60000 }, () => {
+  let flatTrace, sequent, illCalc;
+
+  before(async () => {
+    Store.clear();
+    const mde = require('../lib/engine');
+    const calculus = require('../lib/calculus');
+    const { buildRewriteTrace } = require('../lib/prover/rewrite-trace');
+
+    const engineCalc = await mde.load(
+      path.join(__dirname, '../calculus/ill/programs/multisig_nocall_solc.ill')
+    );
+    illCalc = await calculus.loadILL();
+    const state = mde.decomposeQuery(engineCalc.queries.get('symex'));
+
+    const forwardResult = engineCalc.exec(state, {
+      maxSteps: 2000, trace: true, evidence: true,
+    });
+    flatTrace = buildRewriteTrace(forwardResult.trace);
+
+    // Build sequent
+    const linearCtx = [];
+    for (const [h, count] of Object.entries(state.linear || {})) {
+      for (let i = 0; i < Number(count); i++) linearCtx.push(Number(h));
+    }
+    const cartesianCtx = [];
+    for (const h of Object.keys(state.persistent || {})) {
+      cartesianCtx.push(Number(h));
+    }
+    const hashes = [];
+    for (const [h, count] of Object.entries(forwardResult.state.linear || {})) {
+      for (let i = 0; i < Number(count); i++) hashes.push(Number(h));
+    }
+    let succHash;
+    if (hashes.length === 0) succHash = Store.put('one', []);
+    else if (hashes.length === 1) succHash = hashes[0];
+    else {
+      succHash = hashes[hashes.length - 1];
+      for (let i = hashes.length - 2; i >= 0; i--) {
+        succHash = Store.put('tensor', [hashes[i], succHash]);
+      }
+    }
+    const monadSucc = Store.put('monad', [succHash]);
+    sequent = Seq.fromArrays(linearCtx, cartesianCtx, monadSucc);
+  });
+
+  it('chunks 279-step solc trace with maxRowsPerChunk=100', () => {
+    const chunks = generateChunkedFlatWitness(flatTrace, sequent, {
+      calculus: illCalc,
+      maxRowsPerChunk: 100,
+    });
+
+    assert.ok(chunks.length >= 3, `expected >= 3 chunks, got ${chunks.length}`);
+    console.log(`  ${flatTrace.length} steps → ${chunks.length} chunks`);
+
+    // Total step count across chunks should equal original
+    const totalSteps = chunks.reduce((s, c) => s + c.chips.flat_step.length, 0);
+    assert.strictEqual(totalSteps, flatTrace.length,
+      'total steps across chunks should equal original trace length');
+
+    // Context continuity across all chunk boundaries
+    for (let i = 0; i < chunks.length - 1; i++) {
+      const finalHashes = chunks[i].chips.flat_final.map(r => r[1]).sort();
+      const initHashes = chunks[i + 1].chips.flat_init.map(r => r[1]).sort();
+      assert.deepStrictEqual(finalHashes, initHashes,
+        `chunk ${i} final should equal chunk ${i + 1} init`);
+    }
+
+    // Each chunk should have valid structure
+    for (let i = 0; i < chunks.length; i++) {
+      const chunk = chunks[i];
+      assert.strictEqual(chunk.format, 'flat', `chunk ${i} format`);
+      assert.ok(chunk.chips.flat_init.length > 0, `chunk ${i} should have init rows`);
+      assert.ok(chunk.chips.flat_step.length > 0, `chunk ${i} should have step rows`);
+      assert.ok(chunk.chips.flat_step.length <= 100, `chunk ${i} should have <= 100 steps`);
+      assert.ok(chunk.formula_rom.length > 0, `chunk ${i} should have formula ROM`);
+      assert.ok(chunk.gamma_rom.length > 0, `chunk ${i} should have gamma ROM`);
+      assert.ok(chunk.flat_step_prep, `chunk ${i} should have flat_step_prep`);
+      assert.strictEqual(chunk.flat_step_prep.length, chunk.chips.flat_step.length,
+        `chunk ${i} prep length should match step count`);
+
+      console.log(`  chunk ${i}: ${chunk.chips.flat_step.length} steps, ` +
+        `${chunk.chips.flat_init.length} init, ${chunk.chips.flat_final.length} final, ` +
+        `${chunk.formula_rom.length} formula, ${chunk.gamma_rom.length} gamma` +
+        (chunk.chips.subst ? `, ${chunk.chips.subst.length} subst` : ''));
+    }
+  });
+
+  it('first chunk init matches unchunked init', () => {
+    const single = generateFlatWitness(flatTrace, sequent, { calculus: illCalc });
+    const chunks = generateChunkedFlatWitness(flatTrace, sequent, {
+      calculus: illCalc,
+      maxRowsPerChunk: 100,
+    });
+
+    assert.deepStrictEqual(
+      chunks[0].chips.flat_init.map(r => r[1]).sort(),
+      single.chips.flat_init.map(r => r[1]).sort(),
+      'first chunk init should match unchunked init',
+    );
+  });
+
+  it('last chunk final matches unchunked final', () => {
+    const single = generateFlatWitness(flatTrace, sequent, { calculus: illCalc });
+    const chunks = generateChunkedFlatWitness(flatTrace, sequent, {
+      calculus: illCalc,
+      maxRowsPerChunk: 100,
+    });
+
+    const lastFinal = chunks[chunks.length - 1].chips.flat_final.map(r => r[1]).sort();
+    const singleFinal = single.chips.flat_final.map(r => r[1]).sort();
+    assert.deepStrictEqual(lastFinal, singleFinal,
+      'last chunk final should match unchunked final',
+    );
+  });
+});
