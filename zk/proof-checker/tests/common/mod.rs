@@ -49,7 +49,7 @@ pub fn make_init(rows: &[[u32; 6]], min_rows: usize) -> (InitChip, RowMajorMatri
         .map(|r| [r[0], r[1], r[2], r[3], r[5]])
         .collect();
     let main: Vec<[u32; 1]> = rows.iter().map(|r| [r[4]]).collect();
-    (InitChip { rows: prep, min_rows }, padded_trace(&main, min_rows))
+    (InitChip { rows: prep, min_rows, num_pvs: 0 }, padded_trace(&main, min_rows))
 }
 
 /// Build a FormulaRomAir + its width-1 main trace from old-style rows.

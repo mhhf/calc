@@ -168,12 +168,29 @@ fn build_witness_inputs(witness: &WitnessJson) -> Result<(Vec<AirRef<BabyBearPos
     let mut traces: Vec<RowMajorMatrix<BabyBear>> = Vec::new();
     let mut pis: Vec<Vec<BabyBear>> = Vec::new();
 
-    // 1. InitChip (data-carrying, preprocessed sequent)
+    // 1. InitChip (data-carrying, preprocessed sequent, with sequent identity PVs)
     let init_rows = witness.chips.get("init").ok_or("missing init chip")?;
     let (init_prep, init_nonces) = split_init_rows(init_rows);
-    airs.push(Arc::new(InitChip { rows: init_prep, min_rows }) as AirRef<_>);
+
+    // Extract sequent components for PVs: [ctx_hash_1..n, succedent_hash, lax]
+    let mut ctx_hashes: Vec<u32> = Vec::new();
+    let mut succedent_hash: u32 = 0;
+    let mut lax_flag: u32 = 0;
+    for row in &init_prep {
+        // row = [ctx_hash, ctx_active, oblig_hash, oblig_active, lax]
+        if row[1] == 1 { ctx_hashes.push(row[0]); }
+        if row[3] == 1 { succedent_hash = row[2]; lax_flag = row[4]; }
+    }
+    let max_ctx_size = ctx_hashes.len();
+    let num_pvs = max_ctx_size + 2; // ctx hashes + succedent + lax
+    let mut init_pis: Vec<BabyBear> = ctx_hashes.iter()
+        .map(|&h| BabyBear::from_u32(h)).collect();
+    init_pis.push(BabyBear::from_u32(succedent_hash));
+    init_pis.push(BabyBear::from_u32(lax_flag));
+
+    airs.push(Arc::new(InitChip { rows: init_prep, min_rows, num_pvs }) as AirRef<_>);
     traces.push(build_trace_1col(&init_nonces, min_rows));
-    pis.push(vec![]);
+    pis.push(init_pis);
 
     // 2. DupChip (always present, may be empty)
     let dup_rows = witness.chips.get("dup");

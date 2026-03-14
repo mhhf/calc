@@ -5,7 +5,9 @@
 //! + verifier pipeline. This validates that the JS witness generator
 //! produces valid traces for the Rust AIR chips.
 
-use proof_checker::bridge::prove_json;
+use proof_checker::bridge::{prove_json, prove_witness_vdata, WitnessJson};
+use p3_baby_bear::BabyBear;
+use p3_field::PrimeCharacteristicRing;
 
 fn load_fixture(name: &str) -> String {
     let path = format!(
@@ -112,4 +114,73 @@ fn e2e_bang_r_promotion() {
 fn e2e_clause_copy_loli() {
     prove_json(&load_fixture("clause_copy_loli"))
         .expect("clause_copy_loli: noFFI 2-step forward execution with inc clause resolution");
+}
+
+// Phase 6-2: verify sequent identity is exposed as public values on InitChip (AIR 0)
+#[test]
+fn e2e_identity_public_values() {
+    let json = load_fixture("identity");
+    let witness: WitnessJson = serde_json::from_str(&json).unwrap();
+
+    // Extract expected PVs from init rows
+    let init_rows = witness.chips.get("init").unwrap();
+    let mut expected_ctx: Vec<u32> = Vec::new();
+    let mut expected_succedent: u32 = 0;
+    let mut expected_lax: u32 = 0;
+    for row in init_rows {
+        // [ctx_hash, ctx_active, oblig_hash, oblig_active, nonce, lax]
+        if row[1] == 1 { expected_ctx.push(row[0]); }
+        if row[3] == 1 { expected_succedent = row[2]; expected_lax = row[5]; }
+    }
+
+    // Prove and get verification data
+    let vdata = prove_witness_vdata(&witness)
+        .expect("identity proof should succeed");
+
+    // InitChip is AIR index 0 — its PVs should be [ctx_hash_1..n, succedent_hash, lax]
+    let init_pvs = &vdata.data.proof.per_air[0].public_values;
+    let num_pvs = expected_ctx.len() + 2;
+    assert_eq!(init_pvs.len(), num_pvs, "PV count mismatch");
+
+    // Verify ctx hashes
+    for (i, &ctx_hash) in expected_ctx.iter().enumerate() {
+        assert_eq!(init_pvs[i], BabyBear::from_u32(ctx_hash),
+            "ctx_hash[{i}] mismatch");
+    }
+    // Verify succedent hash
+    assert_eq!(init_pvs[num_pvs - 2], BabyBear::from_u32(expected_succedent),
+        "succedent_hash mismatch");
+    // Verify lax flag
+    assert_eq!(init_pvs[num_pvs - 1], BabyBear::from_u32(expected_lax),
+        "lax_flag mismatch");
+}
+
+// Phase 6-2: verify PVs on a multi-context proof (loli_l: P, P⊸Q ⊢ Q — 2 ctx entries)
+#[test]
+fn e2e_loli_l_public_values() {
+    let json = load_fixture("loli_l");
+    let witness: WitnessJson = serde_json::from_str(&json).unwrap();
+
+    let init_rows = witness.chips.get("init").unwrap();
+    let mut expected_ctx: Vec<u32> = Vec::new();
+    let mut expected_succedent: u32 = 0;
+    let mut expected_lax: u32 = 0;
+    for row in init_rows {
+        if row[1] == 1 { expected_ctx.push(row[0]); }
+        if row[3] == 1 { expected_succedent = row[2]; expected_lax = row[5]; }
+    }
+    assert!(expected_ctx.len() >= 2, "loli_l should have at least 2 context entries");
+
+    let vdata = prove_witness_vdata(&witness)
+        .expect("loli_l proof should succeed");
+
+    let init_pvs = &vdata.data.proof.per_air[0].public_values;
+    let num_pvs = expected_ctx.len() + 2;
+    assert_eq!(init_pvs.len(), num_pvs);
+
+    for (i, &ctx_hash) in expected_ctx.iter().enumerate() {
+        assert_eq!(init_pvs[i], BabyBear::from_u32(ctx_hash));
+    }
+    assert_eq!(init_pvs[num_pvs - 2], BabyBear::from_u32(expected_succedent));
+    assert_eq!(init_pvs[num_pvs - 1], BabyBear::from_u32(expected_lax));
 }

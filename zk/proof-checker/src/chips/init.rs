@@ -4,6 +4,13 @@
 //! Only nonce remains as main trace (proof-specific: nonce assignment
 //! varies per proof term).
 //!
+//! Phase 6-2: public values expose the sequent identity so external verifiers
+//! can determine WHAT sequent the proof certifies:
+//!   PV layout: [ctx_hash_1, ..., ctx_hash_max, succedent_hash, lax_flag]
+//!   - ctx hashes: initial linear context (padded with 0 to max_ctx_size)
+//!   - succedent_hash: the root obligation formula hash
+//!   - lax_flag: 1 if proving {C} (monadic), 0 if proving C
+//!
 //! Preprocessed (width 5): [ctx_hash, ctx_active, oblig_hash, oblig_active, lax]
 //! Main trace (width 1): [nonce]
 
@@ -28,9 +35,11 @@ pub const PREP_WIDTH: usize = 5;
 /// `rows` contains [ctx_hash, ctx_active, oblig_hash, oblig_active, lax] per row.
 /// The main trace carries only `nonce` (1 column).
 /// `min_rows` ensures preprocessed trace height matches main trace height.
+/// `num_pvs` controls PV count: max_ctx_size + 2 (ctx hashes + succedent + lax).
 pub struct InitChip {
     pub rows: Vec<[u32; 5]>,
     pub min_rows: usize,
+    pub num_pvs: usize,
 }
 
 impl<F: Field> BaseAir<F> for InitChip {
@@ -55,7 +64,11 @@ impl<F: Field> BaseAir<F> for InitChip {
     }
 }
 
-impl<F: Field> BaseAirWithPublicValues<F> for InitChip {}
+impl<F: Field> BaseAirWithPublicValues<F> for InitChip {
+    fn num_public_values(&self) -> usize {
+        self.num_pvs
+    }
+}
 impl<F: Field> PartitionedBaseAir<F> for InitChip {}
 
 impl<AB: InteractionBuilder + PairBuilder> Air<AB> for InitChip
