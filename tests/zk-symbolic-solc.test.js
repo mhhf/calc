@@ -80,8 +80,11 @@ describe('ZK symbolic solc: 31-path witness generation', { timeout: 1800000 }, (
     tree = explore(initialState, engineCalc.forwardRules, {
       maxDepth: 500,
       evidence: true,
+      dangerouslyUseFFI: true,
       calc: { clauses: engineCalc.clauses, types: engineCalc.types },
-      // NO dangerouslyUseFFI — need clause proofs for ZK-sound witnesses
+      // FFI is safe here: custom chips discard clause proof subtrees anyway.
+      // fact_axiom intercepts ALL copy(loli(_, monad(_))) — the subtree content
+      // (clause proofs vs ffi stubs) is never walked.
     });
     const dt = performance.now() - t0;
 
