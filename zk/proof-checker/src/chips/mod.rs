@@ -1,6 +1,7 @@
 pub mod canon_cons_rom;
 pub mod discard;
 pub mod dup;
+pub mod fact_axiom;
 pub mod fact_rom;
 pub mod flat_final;
 pub mod flat_init;

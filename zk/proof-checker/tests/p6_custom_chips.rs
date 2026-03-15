@@ -35,6 +35,16 @@ fn p6_custom_chip_inc_baseline() {
 }
 
 // ---------------------------------------------------------------------------
+// Solc-scale: custom chips for all EVM predicates
+// ---------------------------------------------------------------------------
+
+#[test]
+fn p6_custom_chip_solc_baseline() {
+    prove_json(&load_fixture("solc_custom_chips"))
+        .expect("solc_custom_chips baseline should pass");
+}
+
+// ---------------------------------------------------------------------------
 // Forgery: tamper fact_rom goal_hash → FACT_BUS imbalance
 // ---------------------------------------------------------------------------
 

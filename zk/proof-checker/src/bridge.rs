@@ -32,6 +32,7 @@ use crate::chips::{
     canon_cons_rom::CanonConsRomAir,
     discard::DiscardChip,
     dup::DupChip,
+    fact_axiom::FactAxiomChip,
     fact_rom::FactRomAir,
     flat_final::FlatFinalChip,
     flat_init::FlatInitChip,
@@ -62,7 +63,7 @@ pub struct WitnessJson {
 }
 
 /// Known special chip names that are NOT generic RuleChips.
-const SPECIAL_CHIPS: &[&str] = &["init", "dup", "zero_l", "discard", "subst"];
+const SPECIAL_CHIPS: &[&str] = &["init", "dup", "zero_l", "discard", "subst", "fact_axiom"];
 
 /// Build a padded RowMajorMatrix from dynamic-width rows.
 fn build_trace(rows: &[Vec<u32>], width: usize, min_rows: usize) -> RowMajorMatrix<BabyBear> {
@@ -233,7 +234,17 @@ fn build_witness_inputs(witness: &WitnessJson) -> Result<(Vec<AirRef<BabyBearPos
     });
     pis.push(vec![]);
 
-    // 6. Generic RuleChips — specs read from witness (fully generic)
+    // 6. FactAxiomChip (Phase 6-4: custom chip for clause proof replacement)
+    // Always present (like other special chips) to maintain constant AIR count.
+    let fact_axiom_rows = witness.chips.get("fact_axiom");
+    airs.push(Arc::new(FactAxiomChip) as AirRef<_>);
+    traces.push(match fact_axiom_rows {
+        Some(rows) if !rows.is_empty() => build_trace(rows, crate::chips::fact_axiom::WIDTH, min_rows),
+        _ => empty_trace(crate::chips::fact_axiom::WIDTH, min_rows),
+    });
+    pis.push(vec![]);
+
+    // 7. Generic RuleChips — specs read from witness (fully generic)
     let mut rule_names: Vec<String> = witness.chips.keys()
         .filter(|name| !SPECIAL_CHIPS.contains(&name.as_str()))
         .cloned()

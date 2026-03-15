@@ -194,11 +194,14 @@ describe('ZK custom chip: fact_axiom replaces clause proofs', { timeout: 30000 }
     console.log(`  baseline: ${totalBaseline} → custom: ${totalCustom} (${((1 - totalCustom/totalBaseline) * 100).toFixed(1)}% reduction)`);
     assert.ok(totalCustom < totalBaseline, `Custom (${totalCustom}) must have fewer rows than baseline (${totalBaseline})`);
 
-    // fact_axiom rows should have correct format: [active, goal_hash, nonce_in, lax]
+    // fact_axiom rows: [active, goal, nonce_in, lax, goal_out, nonce_out,
+    //   c0..c5, ca0..ca5, p0..p5, pa0..pa5]
     for (const row of witnessCustom.chips.fact_axiom) {
-      assert.strictEqual(row.length, 4, 'fact_axiom row must have 4 columns');
+      assert.strictEqual(row.length, 30, 'fact_axiom row must have 30 columns');
       assert.strictEqual(row[0], 1, 'fact_axiom active must be 1');
       assert.ok(row[1] > 0, 'fact_axiom goal_hash must be nonzero');
+      assert.ok(row[4] > 0, 'fact_axiom goal_out must be nonzero');
+      assert.ok(row[5] > 0, 'fact_axiom nonce_out must be nonzero');
     }
 
     // rule_specs should include fact_axiom with fact_lookup=true
