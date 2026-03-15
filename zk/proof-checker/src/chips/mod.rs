@@ -3,6 +3,7 @@ pub mod discard;
 pub mod dup;
 pub mod fact_axiom;
 pub mod fact_rom;
+pub mod pred_rom;
 pub mod flat_final;
 pub mod flat_init;
 pub mod flat_step;

@@ -546,5 +546,6 @@
     ]
   ],
   "freevar_rom": [],
-  "fact_rom": []
+  "fact_rom": [],
+  "pred_rom": []
 }

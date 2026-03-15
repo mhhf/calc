@@ -34,6 +34,7 @@ use crate::chips::{
     dup::DupChip,
     fact_axiom::FactAxiomChip,
     fact_rom::FactRomAir,
+    pred_rom::PredicateRomAir,
     flat_final::FlatFinalChip,
     flat_init::FlatInitChip,
     flat_step::FlatStepChip,
@@ -60,6 +61,11 @@ pub struct WitnessJson {
     /// Contains predicate hashes for custom-chip-verified facts (arr_get, inc, etc.).
     #[serde(default)]
     pub fact_rom: Vec<Vec<u32>>,
+    /// Phase 6-6a: predicate verification ROM.
+    /// [pred_hash, is_active, num_lookups, is_plus, is_mul, is_inc, arg0, arg1, arg2]
+    /// PredicateRomAir constrains arithmetic semantics in preprocessed trace.
+    #[serde(default)]
+    pub pred_rom: Vec<Vec<u32>>,
 }
 
 /// Known special chip names that are NOT generic RuleChips.
@@ -147,6 +153,19 @@ fn split_canon_cons_rom(rows: &[Vec<u32>]) -> (Vec<[u32; 3]>, Vec<u32>) {
     for row in rows {
         entries.push([row[0], row[1], row[2]]);
         lookups.push(row[3]);
+    }
+    (entries, lookups)
+}
+
+/// Split predicate ROM rows [pred_hash, is_active, num_lookups, is_plus, is_mul, is_inc, arg0, arg1, arg2]
+/// into preprocessed entries [pred_hash, is_active, is_plus, is_mul, is_inc, arg0, arg1, arg2]
+/// and lookups [num_lookups].
+fn split_pred_rom(rows: &[Vec<u32>]) -> (Vec<[u32; 8]>, Vec<u32>) {
+    let mut entries = Vec::with_capacity(rows.len());
+    let mut lookups = Vec::with_capacity(rows.len());
+    for row in rows {
+        entries.push([row[0], row[1], row[3], row[4], row[5], row[6], row[7], row[8]]);
+        lookups.push(row[2]); // num_lookups is at index 2
     }
     (entries, lookups)
 }
@@ -305,6 +324,17 @@ fn build_witness_inputs(witness: &WitnessJson) -> Result<(Vec<AirRef<BabyBearPos
         let (fact_entries, fact_lookups) = split_gamma_rom(&witness.fact_rom);
         airs.push(Arc::new(FactRomAir { entries: fact_entries, min_rows }) as AirRef<_>);
         traces.push(build_trace_1col(&fact_lookups, min_rows));
+        pis.push(vec![]);
+    }
+
+    // 11. PredicateRomAir (Phase 6-6a: in-circuit predicate verification)
+    // Always present when pred_rom is non-empty. Constrains arithmetic
+    // semantics (plus, mul, inc) in preprocessed trace. Absent when empty
+    // (backward compat: old fixtures without pred_rom still work).
+    if !witness.pred_rom.is_empty() {
+        let (pred_entries, pred_lookups) = split_pred_rom(&witness.pred_rom);
+        airs.push(Arc::new(PredicateRomAir { entries: pred_entries, min_rows }) as AirRef<_>);
+        traces.push(build_trace_1col(&pred_lookups, min_rows));
         pis.push(vec![]);
     }
 

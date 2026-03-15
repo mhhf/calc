@@ -195,13 +195,27 @@ describe('ZK custom chip: fact_axiom replaces clause proofs', { timeout: 30000 }
     assert.ok(totalCustom < totalBaseline, `Custom (${totalCustom}) must have fewer rows than baseline (${totalBaseline})`);
 
     // fact_axiom rows: [active, goal, nonce_in, lax, goal_out, nonce_out,
-    //   c0..c5, ca0..ca5, p0..p5, pa0..pa5]
+    //   c0..c5, ca0..ca5, p0..p5, pa0..pa5, pred_hash, pred_active]
     for (const row of witnessCustom.chips.fact_axiom) {
-      assert.strictEqual(row.length, 30, 'fact_axiom row must have 30 columns');
+      assert.strictEqual(row.length, 32, 'fact_axiom row must have 32 columns');
       assert.strictEqual(row[0], 1, 'fact_axiom active must be 1');
       assert.ok(row[1] > 0, 'fact_axiom goal_hash must be nonzero');
       assert.ok(row[4] > 0, 'fact_axiom goal_out must be nonzero');
       assert.ok(row[5] > 0, 'fact_axiom nonce_out must be nonzero');
+      assert.ok(row[30] > 0, 'fact_axiom pred_hash must be nonzero');
+      assert.strictEqual(row[31], 1, 'fact_axiom pred_active must be 1');
+    }
+
+    // Phase 6-6a: pred_rom must have entries for verified predicates
+    assert.ok(witnessCustom.pred_rom.length > 0, 'pred_rom must have entries');
+    for (const entry of witnessCustom.pred_rom) {
+      assert.strictEqual(entry.length, 9, 'pred_rom entry must have 9 columns');
+      assert.ok(entry[0] > 0, 'pred_rom pred_hash must be nonzero');
+      assert.strictEqual(entry[1], 1, 'pred_rom is_active must be 1');
+      assert.ok(entry[2] > 0, 'pred_rom num_lookups must be > 0');
+      // At least one selector must be set for inc predicates
+      const hasSelector = entry[3] + entry[4] + entry[5] > 0;
+      assert.ok(hasSelector, 'pred_rom must have a predicate selector (is_plus/is_mul/is_inc)');
     }
 
     // rule_specs should include fact_axiom with fact_lookup=true

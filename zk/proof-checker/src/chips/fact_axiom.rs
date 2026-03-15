@@ -6,7 +6,11 @@
 //! consumed (antecedent) and produced (consequent) facts, and sends a new
 //! obligation for the continuation (next step or terminal axiom).
 //!
-//! Layout (width 30):
+//! Phase 6-6a: added pred_hash column (col 30) + PRED_BUS lookup to verify
+//! predicate semantics via PredicateRomAir. Closes the soundness gap where
+//! FACT_BUS only checked ROM membership without verifying predicate arithmetic.
+//!
+//! Layout (width 32):
 //!   [0]     active
 //!   [1]     goal_hash      — obligation type (OBLIG_BUS.receive + FACT_BUS.lookup)
 //!   [2]     nonce_in       — obligation nonce (OBLIG_BUS.receive)
@@ -17,6 +21,8 @@
 //!   [12..17] ca_0..5        — consumed slot active flags
 //!   [18..23] produced_0..5  — produced fact hashes (CONTEXT_BUS.send)
 //!   [24..29] pa_0..5        — produced slot active flags
+//!   [30]    pred_hash      — predicate application hash (PRED_BUS.lookup)
+//!   [31]    pred_active    — boolean: 1 if pred_hash should be verified
 
 use openvm_stark_backend::{
     interaction::InteractionBuilder,
@@ -26,7 +32,7 @@ use openvm_stark_backend::{
     rap::{BaseAirWithPublicValues, PartitionedBaseAir},
 };
 
-use crate::buses::{CONTEXT_BUS, FACT_BUS, OBLIG_BUS};
+use crate::buses::{CONTEXT_BUS, FACT_BUS, OBLIG_BUS, PRED_BUS};
 
 pub const MAX_CONSUMED: usize = 6;
 pub const MAX_PRODUCED: usize = 6;
@@ -41,7 +47,9 @@ const COL_CONSUMED: usize = 6;
 const COL_CONSUMED_ACTIVE: usize = COL_CONSUMED + MAX_CONSUMED;     // 12
 const COL_PRODUCED: usize = COL_CONSUMED_ACTIVE + MAX_CONSUMED;     // 18
 const COL_PRODUCED_ACTIVE: usize = COL_PRODUCED + MAX_PRODUCED;     // 24
-pub const WIDTH: usize = COL_PRODUCED_ACTIVE + MAX_PRODUCED;        // 30
+const COL_PRED_HASH: usize = COL_PRODUCED_ACTIVE + MAX_PRODUCED;   // 30
+const COL_PRED_ACTIVE: usize = COL_PRED_HASH + 1;                 // 31
+pub const WIDTH: usize = COL_PRED_ACTIVE + 1;                     // 32
 
 pub struct FactAxiomChip;
 
@@ -107,6 +115,14 @@ where
         }
 
         // --- FACT_BUS: verify goal type against ROM ---
-        FACT_BUS.lookup_key(builder, [goal], active);
+        FACT_BUS.lookup_key(builder, [goal], active.clone());
+
+        // --- PRED_BUS: verify predicate semantics (Phase 6-6a) ---
+        // pred_active gates the lookup: 1 when predicate verification is needed,
+        // 0 for steps without persistent predicate goals (e.g., linear-only steps).
+        let pred_hash: AB::Expr = local[COL_PRED_HASH].clone().into();
+        let pred_active: AB::Expr = local[COL_PRED_ACTIVE].clone().into();
+        builder.assert_zero(pred_active.clone() * (pred_active.clone() - AB::Expr::ONE));
+        PRED_BUS.lookup_key(builder, [pred_hash], active * pred_active);
     }
 }

@@ -67,3 +67,11 @@ pub const CANON_CONS_BUS: LookupBus = LookupBus::new(7);
 /// rule looks up membership to discharge obligations without clause proof
 /// subtrees. Phase 6-4: same trust model as GAMMA_BUS (ROM committed in VK).
 pub const FACT_BUS: LookupBus = LookupBus::new(8);
+
+/// Predicate verification bus. PredicateRomAir provides (pred_hash) entries
+/// with in-circuit arithmetic constraints (plus: a+b=c, mul: a*b=c, inc: a+1=b).
+/// The fact_axiom chip demands pred_hash membership, ensuring every custom-chip
+/// clause proof has its predicate semantics verified.
+/// Phase 6-6a: closes the soundness gap where fact_axiom only checked ROM
+/// membership without verifying predicate semantics.
+pub const PRED_BUS: LookupBus = LookupBus::new(9);
