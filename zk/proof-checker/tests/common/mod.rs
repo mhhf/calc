@@ -38,17 +38,17 @@ pub fn padded_trace<const W: usize>(
     RowMajorMatrix::new(data, W)
 }
 
-/// Build an InitChip + its width-1 main trace from old-style rows.
+/// Build an InitChip + its width-2 main trace from old-style rows.
 ///
 /// Input rows: `[ctx_hash, ctx_active, oblig_hash, oblig_active, nonce, lax]`
 /// Preprocessed (in struct): `[ctx_hash, ctx_active, oblig_hash, oblig_active, lax]`
-/// Main trace: `[nonce]`
+/// Main trace: `[is_active, nonce]`
 pub fn make_init(rows: &[[u32; 6]], min_rows: usize) -> (InitChip, RowMajorMatrix<BabyBear>) {
     let prep: Vec<[u32; 5]> = rows
         .iter()
         .map(|r| [r[0], r[1], r[2], r[3], r[5]])
         .collect();
-    let main: Vec<[u32; 1]> = rows.iter().map(|r| [r[4]]).collect();
+    let main: Vec<[u32; 2]> = rows.iter().map(|r| [1, r[4]]).collect();
     (InitChip { rows: prep, min_rows, num_pvs: 0 }, padded_trace(&main, min_rows))
 }
 

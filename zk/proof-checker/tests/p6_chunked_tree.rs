@@ -3,6 +3,8 @@
 //! Validates that:
 //! 1. Each chunk proves independently via STARK verification
 //! 2. PV continuity holds across chunk boundaries (obligation + context)
+//! 3. All chunks produce identical VK (constant VK prerequisite for IVC)
+//! 4. PV counts are normalized across chunks
 
 use p3_field::PrimeField32;
 
@@ -114,4 +116,54 @@ fn p6_chunked_tree_ctx_continuity() {
             println!("  chunk {i}→{}: ctx continuity OK ({} facts)", i + 1, cur_final.len());
         }
     }
+}
+
+// ---------------------------------------------------------------------------
+// Test: all chunks produce identical VK (constant VK for IVC)
+// ---------------------------------------------------------------------------
+
+#[test]
+fn p6_chunked_tree_constant_vk() {
+    let chunks = load_chunked_fixture();
+    let results = prove_chunked_tree_witness(&chunks)
+        .expect("all chunks should verify");
+
+    let vk0 = &results[0].data.vk;
+    for (i, vdata) in results.iter().enumerate().skip(1) {
+        assert_eq!(
+            vk0.pre_hash, vdata.data.vk.pre_hash,
+            "chunk {i} VK pre_hash should equal chunk 0 VK pre_hash"
+        );
+        println!("  chunk 0 == chunk {i}: VK pre_hash match");
+    }
+    println!("  pre_hash: {:?}", vk0.pre_hash);
+}
+
+// ---------------------------------------------------------------------------
+// Test: PV counts normalized across chunks
+// ---------------------------------------------------------------------------
+
+#[test]
+fn p6_chunked_tree_pvs_normalized() {
+    let chunks = load_chunked_fixture();
+    let results = prove_chunked_tree_witness(&chunks)
+        .expect("all chunks should verify");
+
+    // All chunks should have the same number of AIRs
+    let n_airs_0 = results[0].data.vk.inner.per_air.len();
+    for (i, vdata) in results.iter().enumerate().skip(1) {
+        let n_airs = vdata.data.vk.inner.per_air.len();
+        assert_eq!(n_airs_0, n_airs, "chunk {i} AIR count mismatch: {n_airs} vs {n_airs_0}");
+    }
+    println!("  all chunks: {n_airs_0} AIRs");
+
+    // PV counts per AIR should be identical across chunks
+    for air_idx in 0..n_airs_0 {
+        let pv_counts: Vec<usize> = results.iter()
+            .map(|r| r.data.proof.per_air[air_idx].public_values.len())
+            .collect();
+        assert!(pv_counts.windows(2).all(|w| w[0] == w[1]),
+            "AIR {air_idx}: PV counts differ across chunks: {:?}", pv_counts);
+    }
+    println!("  PV counts consistent across all AIRs");
 }

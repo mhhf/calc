@@ -195,16 +195,21 @@ fn split_pred_rom(rows: &[Vec<u32>]) -> (Vec<[u32; 13]>, Vec<u32>) {
     (entries, lookups)
 }
 
-/// Split init chip rows [ctx_hash, ctx_active, oblig_hash, oblig_active, nonce, lax]
-/// into preprocessed [ctx_hash, ctx_active, oblig_hash, oblig_active, lax] and main [nonce].
-fn split_init_rows(rows: &[Vec<u32>]) -> (Vec<[u32; 5]>, Vec<u32>) {
+/// Split init chip rows into preprocessed [ctx_hash, ctx_active, oblig_hash, oblig_active, lax]
+/// and main [is_active, nonce].
+///
+/// Accepts two formats:
+/// - Legacy (6 cols): [ctx_hash, ctx_active, oblig_hash, oblig_active, nonce, lax] → is_active=1
+/// - New (7 cols):    [ctx_hash, ctx_active, oblig_hash, oblig_active, nonce, lax, is_active]
+fn split_init_rows(rows: &[Vec<u32>]) -> (Vec<[u32; 5]>, Vec<Vec<u32>>) {
     let mut prep = Vec::with_capacity(rows.len());
-    let mut nonces = Vec::with_capacity(rows.len());
+    let mut main = Vec::with_capacity(rows.len());
     for row in rows {
         prep.push([row[0], row[1], row[2], row[3], row[5]]); // lax is col 5
-        nonces.push(row[4]); // nonce is col 4
+        let is_active = if row.len() >= 7 { row[6] } else { 1 };
+        main.push(vec![is_active, row[4]]); // [is_active, nonce]
     }
-    (prep, nonces)
+    (prep, main)
 }
 
 /// Build AIRs, traces, and PIs from a tree witness (shared by prove and vdata paths).
@@ -220,7 +225,7 @@ fn build_witness_inputs(witness: &WitnessJson) -> Result<(Vec<AirRef<BabyBearPos
 
     // 1. InitChip (data-carrying, preprocessed sequent, with sequent identity PVs)
     let init_rows = witness.chips.get("init").ok_or("missing init chip")?;
-    let (init_prep, init_nonces) = split_init_rows(init_rows);
+    let (init_prep, init_main) = split_init_rows(init_rows);
 
     // Extract sequent components for PVs: [ctx_hash_1..n, succedent_hash, lax]
     let mut ctx_hashes: Vec<u32> = Vec::new();
@@ -239,7 +244,11 @@ fn build_witness_inputs(witness: &WitnessJson) -> Result<(Vec<AirRef<BabyBearPos
     init_pis.push(BabyBear::from_u32(lax_flag));
 
     airs.push(Arc::new(InitChip { rows: init_prep, min_rows, num_pvs }) as AirRef<_>);
-    traces.push(build_trace_1col(&init_nonces, min_rows));
+    traces.push(if init_main.is_empty() {
+        empty_trace(crate::chips::init::WIDTH, min_rows)
+    } else {
+        build_trace(&init_main, crate::chips::init::WIDTH, min_rows)
+    });
     pis.push(init_pis);
 
     // 2. DupChip (always present, may be empty)

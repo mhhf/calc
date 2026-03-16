@@ -24,8 +24,8 @@ use openvm_stark_backend::{
 
 use crate::buses::{CONTEXT_BUS, OBLIG_BUS};
 
-/// Width of the main trace: just nonce.
-pub const WIDTH: usize = 1;
+/// Width of the main trace: [is_active, nonce].
+pub const WIDTH: usize = 2;
 
 /// Width of the preprocessed trace.
 pub const PREP_WIDTH: usize = 5;
@@ -85,16 +85,18 @@ where
         let lax: AB::Expr = p[4].clone().into();
 
         let main = builder.main();
-        let nonce: AB::Expr = main.row_slice(0).unwrap()[0].clone().into();
+        let m = main.row_slice(0).unwrap();
+        let is_active: AB::Expr = m[0].clone().into();
+        let nonce: AB::Expr = m[1].clone().into();
 
-        // Boolean constraints on preprocessed data
+        // Boolean constraints
         builder.assert_zero(ctx_active.clone() * (ctx_active.clone() - AB::Expr::ONE));
         builder.assert_zero(oblig_active.clone() * (oblig_active.clone() - AB::Expr::ONE));
+        builder.assert_zero(is_active.clone() * (is_active.clone() - AB::Expr::ONE));
 
-        // Introduce context element on CONTEXT_BUS (when ctx_active=1)
-        CONTEXT_BUS.send(builder, [ctx_hash], ctx_active);
-
-        // Produce obligation on OBLIG_BUS (when oblig_active=1)
-        OBLIG_BUS.send(builder, [nonce, oblig_hash, lax], oblig_active);
+        // Gate bus sends by is_active (constant VK: preprocessed identical across chunks,
+        // is_active=1 in chunk 0, is_active=0 in other chunks)
+        CONTEXT_BUS.send(builder, [ctx_hash], ctx_active * is_active.clone());
+        OBLIG_BUS.send(builder, [nonce, oblig_hash, lax], oblig_active * is_active);
     }
 }
