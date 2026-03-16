@@ -80,3 +80,17 @@ pub const PRED_BUS: LookupBus = LookupBus::new(9);
 /// Uint256ArithChip looks up each limb to prove it lies in [0, 256).
 /// Phase 6-6b: supports 256-bit arithmetic verification.
 pub const BYTE_CHECK_BUS: LookupBus = LookupBus::new(10);
+
+/// Obligation PV value binding bus. LogUp multiset equality ensures
+/// PV obligation values match actual trace values. Prevents declaring
+/// one set of obligations in PVs while transferring a different set.
+/// Tuple: (discriminator, goal_hash, lax) — discriminator 0=init, 1=final.
+/// Phase 6-7: closes PV→trace binding gap for ObligBoundaryChip.
+pub const OBLIG_PV_BIND_BUS: PermutationCheckBus = PermutationCheckBus::new(11);
+
+/// Context PV value binding bus. LogUp multiset equality ensures
+/// PV context hashes match actual trace values. Same pattern as
+/// OBLIG_PV_BIND_BUS but for CtxBoundaryChip.
+/// Tuple: (discriminator, hash) — discriminator 0=init, 1=final.
+/// Phase 6-7: closes PV→trace binding gap for CtxBoundaryChip.
+pub const CTX_PV_BIND_BUS: PermutationCheckBus = PermutationCheckBus::new(12);

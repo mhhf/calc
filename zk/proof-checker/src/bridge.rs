@@ -478,7 +478,7 @@ fn build_witness_inputs(witness: &WitnessJson) -> Result<(Vec<AirRef<BabyBearPos
         let mut oblig_trace_data = Vec::with_capacity(n * width);
         let mut acc_send: u32 = 0;
         let mut acc_recv: u32 = 0;
-        for row in oblig_rows {
+        for (i, row) in oblig_rows.iter().enumerate() {
             let is_active = row[0];
             let is_send = row[1];
             if is_active == 1 {
@@ -488,6 +488,7 @@ fn build_witness_inputs(witness: &WitnessJson) -> Result<(Vec<AirRef<BabyBearPos
             for &v in row { oblig_trace_data.push(BabyBear::from_u32(v)); }
             oblig_trace_data.push(BabyBear::from_u32(acc_send));
             oblig_trace_data.push(BabyBear::from_u32(acc_recv));
+            oblig_trace_data.push(if i == 0 { BabyBear::ONE } else { BabyBear::ZERO }); // is_first
         }
         let final_acc_send = BabyBear::from_u32(acc_send);
         let final_acc_recv = BabyBear::from_u32(acc_recv);
@@ -495,6 +496,7 @@ fn build_witness_inputs(witness: &WitnessJson) -> Result<(Vec<AirRef<BabyBearPos
             for _ in 0..5 { oblig_trace_data.push(BabyBear::ZERO); } // is_active..lax = 0
             oblig_trace_data.push(final_acc_send);
             oblig_trace_data.push(final_acc_recv);
+            oblig_trace_data.push(BabyBear::ZERO); // is_first = 0
         }
 
         airs.push(Arc::new(ObligBoundaryChip { max_oblig_count }) as AirRef<_>);
@@ -541,7 +543,7 @@ fn build_witness_inputs(witness: &WitnessJson) -> Result<(Vec<AirRef<BabyBearPos
         let mut ctx_trace_data = Vec::with_capacity(n * width);
         let mut acc_send: u32 = 0;
         let mut acc_recv: u32 = 0;
-        for row in ctx_rows {
+        for (i, row) in ctx_rows.iter().enumerate() {
             let is_active = row[0];
             let is_send = row[1];
             if is_active == 1 {
@@ -551,6 +553,7 @@ fn build_witness_inputs(witness: &WitnessJson) -> Result<(Vec<AirRef<BabyBearPos
             for &v in row { ctx_trace_data.push(BabyBear::from_u32(v)); }
             ctx_trace_data.push(BabyBear::from_u32(acc_send));
             ctx_trace_data.push(BabyBear::from_u32(acc_recv));
+            ctx_trace_data.push(if i == 0 { BabyBear::ONE } else { BabyBear::ZERO }); // is_first
         }
         let final_acc_send = BabyBear::from_u32(acc_send);
         let final_acc_recv = BabyBear::from_u32(acc_recv);
@@ -558,6 +561,7 @@ fn build_witness_inputs(witness: &WitnessJson) -> Result<(Vec<AirRef<BabyBearPos
             for _ in 0..3 { ctx_trace_data.push(BabyBear::ZERO); } // is_active..hash = 0
             ctx_trace_data.push(final_acc_send);
             ctx_trace_data.push(final_acc_recv);
+            ctx_trace_data.push(BabyBear::ZERO); // is_first = 0
         }
 
         airs.push(Arc::new(CtxBoundaryChip { max_ctx_size: max_ctx }) as AirRef<_>);
