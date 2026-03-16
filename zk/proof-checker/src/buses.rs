@@ -75,3 +75,8 @@ pub const FACT_BUS: LookupBus = LookupBus::new(8);
 /// Phase 6-6a: closes the soundness gap where fact_axiom only checked ROM
 /// membership without verifying predicate semantics.
 pub const PRED_BUS: LookupBus = LookupBus::new(9);
+
+/// Byte range-check bus. ByteCheckRomAir provides entries [0..255];
+/// Uint256ArithChip looks up each limb to prove it lies in [0, 256).
+/// Phase 6-6b: supports 256-bit arithmetic verification.
+pub const BYTE_CHECK_BUS: LookupBus = LookupBus::new(10);

@@ -1,3 +1,4 @@
+pub mod byte_check_rom;
 pub mod canon_cons_rom;
 pub mod discard;
 pub mod dup;
@@ -12,4 +13,5 @@ pub mod freevar_rom;
 pub mod gamma_rom;
 pub mod init;
 pub mod subst;
+pub mod uint256_arith;
 pub mod zero_l;
