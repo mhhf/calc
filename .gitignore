@@ -2,10 +2,6 @@ out/
 *.*~
 node_modules/
 
-# Claude Code
-.claude/settings.local.json
-.claude/projects/
-
 # Nix/direnv
 .direnv/
 result
@@ -26,3 +22,41 @@ lib/tree-sitter-mde/bindings/
 
 # Benchmark comparison worktrees
 .bench-compare/
+
+# Rust build artifacts
+zk/target/
+zk/spike/output/
+
+# Claude Code sandbox bind-mount stubs
+# The sandbox creates empty 444 files as mount points for ro bind mounts.
+# They persist after session exit. Can't be deleted while session is active.
+.bash_profile
+.bashrc
+.gitconfig
+.gitmodules
+.profile
+.zprofile
+.zshrc
+.ripgreprc
+.mcp.json
+/HEAD
+/config
+/hooks
+/objects
+/refs
+zk/HEAD
+zk/config
+zk/hooks
+zk/objects
+zk/refs
+
+# Claude Code config
+.claude/settings.local.json
+.claude/projects/
+.claude/agents
+.claude/commands
+.claude/skills
+
+# IDE (also sandbox stubs)
+.idea
+.vscode

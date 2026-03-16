@@ -18,9 +18,8 @@
           version = "2.0.0";
           src = ./.;
 
-          # IMPORTANT: Update this hash when dependencies change
-          # Run: nix run .#update-npm-hash
-          npmDepsHash = "sha256-pUWIAd5AXaPZTzCVVIrjJBf1jLqJLbHrQZE4n9fK7ZM=";
+          npmDeps = pkgs.importNpmLock { npmRoot = ./.; };
+          npmConfigHook = pkgs.importNpmLock.npmConfigHook;
 
           nativeBuildInputs = [ pkgs.jq pkgs.makeWrapper ];
 
@@ -192,33 +191,6 @@
         };
 
         apps = {
-          # Helper to update npmDepsHash
-          update-npm-hash = {
-            type = "app";
-            program = toString (pkgs.writeShellScript "update-npm-hash" ''
-              set -euo pipefail
-              echo "Building to get new npm dependencies hash..."
-
-              BUILD_OUTPUT=$(nix build .#web 2>&1 || true)
-
-              if echo "$BUILD_OUTPUT" | grep -q "got:"; then
-                NEW_HASH=$(echo "$BUILD_OUTPUT" | grep "got:" | ${pkgs.gawk}/bin/awk '{print $NF}')
-              elif echo "$BUILD_OUTPUT" | grep -q "specified:.*sha256-"; then
-                NEW_HASH=$(echo "$BUILD_OUTPUT" | ${pkgs.gnugrep}/bin/grep "specified:.*sha256-" | ${pkgs.gnused}/bin/sed 's/.*\(sha256-[A-Za-z0-9+/=]*\).*/\1/')
-              else
-                echo "Could not extract hash from build output"
-                echo "$BUILD_OUTPUT"
-                exit 1
-              fi
-
-              echo "Found hash: $NEW_HASH"
-              ${pkgs.gnused}/bin/sed -i "s|npmDepsHash = \"sha256-[^\"]*\";|npmDepsHash = \"$NEW_HASH\";|" flake.nix
-              echo "Updated flake.nix"
-
-              nix build .#web && echo "Build successful!"
-            '');
-          };
-
           # Development server
           dev = {
             type = "app";
@@ -265,7 +237,7 @@
             echo "  npm run build        # Build production server"
             echo "  npm test             # Run tests"
             echo "  nix run .#serve      # Build and run production server"
-            echo "  nix run .#update-npm-hash  # Update npm hash"
+            echo "  nix build                  # Build package"
             echo ""
           '';
 
