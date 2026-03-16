@@ -206,16 +206,17 @@ describe('ZK custom chip: fact_axiom replaces clause proofs', { timeout: 30000 }
       assert.strictEqual(row[31], 1, 'fact_axiom pred_active must be 1');
     }
 
-    // Phase 6-6a: pred_rom must have entries for verified predicates
+    // Phase 6-6c/d: pred_rom must have entries for verified predicates
     assert.ok(witnessCustom.pred_rom.length > 0, 'pred_rom must have entries');
     for (const entry of witnessCustom.pred_rom) {
-      assert.strictEqual(entry.length, 9, 'pred_rom entry must have 9 columns');
+      assert.strictEqual(entry.length, 14, 'pred_rom entry must have 14 columns');
       assert.ok(entry[0] > 0, 'pred_rom pred_hash must be nonzero');
       assert.strictEqual(entry[1], 1, 'pred_rom is_active must be 1');
       assert.ok(entry[2] > 0, 'pred_rom num_lookups must be > 0');
-      // At least one selector must be set for inc predicates
-      const hasSelector = entry[3] + entry[4] + entry[5] > 0;
-      assert.ok(hasSelector, 'pred_rom must have a predicate selector (is_plus/is_mul/is_inc)');
+      // At least one selector must be set
+      // [3]=is_plus [4]=is_mul [5]=is_inc [6]=is_arr_get [7]=is_arr_set [8]=is_mem_read [9]=is_mem_expand
+      const hasSelector = entry[3] + entry[4] + entry[5] + entry[6] + entry[7] + entry[8] + entry[9] > 0;
+      assert.ok(hasSelector, 'pred_rom must have a predicate selector');
     }
 
     // rule_specs should include fact_axiom with fact_lookup=true

@@ -157,14 +157,31 @@ fn split_canon_cons_rom(rows: &[Vec<u32>]) -> (Vec<[u32; 3]>, Vec<u32>) {
     (entries, lookups)
 }
 
-/// Split predicate ROM rows [pred_hash, is_active, num_lookups, is_plus, is_mul, is_inc, arg0, arg1, arg2]
-/// into preprocessed entries [pred_hash, is_active, is_plus, is_mul, is_inc, arg0, arg1, arg2]
+/// Split predicate ROM rows
+/// [pred_hash, is_active, num_lookups, is_plus, is_mul, is_inc,
+///  is_arr_get, is_arr_set, is_mem_read, is_mem_expand, arg0, arg1, arg2, arg3]
+/// into preprocessed entries [pred_hash, is_active, is_plus, is_mul, is_inc,
+///  is_arr_get, is_arr_set, is_mem_read, is_mem_expand, arg0, arg1, arg2, arg3]
 /// and lookups [num_lookups].
-fn split_pred_rom(rows: &[Vec<u32>]) -> (Vec<[u32; 8]>, Vec<u32>) {
+fn split_pred_rom(rows: &[Vec<u32>]) -> (Vec<[u32; 13]>, Vec<u32>) {
     let mut entries = Vec::with_capacity(rows.len());
     let mut lookups = Vec::with_capacity(rows.len());
     for row in rows {
-        entries.push([row[0], row[1], row[3], row[4], row[5], row[6], row[7], row[8]]);
+        entries.push([
+            row[0],  // pred_hash
+            row[1],  // is_active
+            row[3],  // is_plus
+            row[4],  // is_mul
+            row[5],  // is_inc
+            row[6],  // is_arr_get
+            row[7],  // is_arr_set
+            row[8],  // is_mem_read
+            row[9],  // is_mem_expand
+            row[10], // arg0
+            row[11], // arg1
+            row[12], // arg2
+            row[13], // arg3
+        ]);
         lookups.push(row[2]); // num_lookups is at index 2
     }
     (entries, lookups)

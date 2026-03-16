@@ -97,12 +97,13 @@ fn p6_custom_chip_remove_fact_rom_fails() {
 #[should_panic]
 fn p6_pred_rom_tamper_arg_fails() {
     let json = tamper_fixture("custom_chip_inc", |v| {
-        // pred_rom[0] = [pred_hash, is_active, num_lookups, is_plus, is_mul, is_inc, arg0, arg1, arg2]
-        // Tamper arg1 (inc result b) — breaks a+1=b constraint
+        // pred_rom[0] = [pred_hash, is_active, num_lookups, is_plus, is_mul, is_inc,
+        //   is_arr_get, is_arr_set, is_mem_read, is_mem_expand, arg0, arg1, arg2, arg3]
+        // Tamper arg1 (inc result b) at index 11 — breaks a+1=b constraint
         let rows = v["pred_rom"].as_array_mut().unwrap();
         if let Some(row) = rows.first_mut() {
             let arr = row.as_array_mut().unwrap();
-            arr[7] = serde_json::json!(99); // arg1 = 99 (wrong inc result)
+            arr[11] = serde_json::json!(99); // arg1 = 99 (wrong inc result)
         }
     });
     prove_json(&json).expect("should fail: tampered pred_rom arg");

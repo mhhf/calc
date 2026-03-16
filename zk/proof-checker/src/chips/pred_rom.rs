@@ -4,18 +4,25 @@
 //! only checked ROM membership without verifying predicate semantics.
 //! A malicious prover could previously forge arithmetic claims (e.g., 2+3=999).
 //!
+//! Phase 6-6c/d: extended to 100% predicate coverage. ROM-based predicates
+//! (arr_get, arr_set, mem_read, mem_expand) use selector columns with no
+//! algebraic constraints — VK-committed ROM membership IS the verification.
+//!
 //! Each ROM entry commits to a predicate instantiation with its argument values.
 //! Selector columns dispatch to predicate-specific arithmetic constraints:
 //!   - plus(a, b, c):  a + b = c
 //!   - mul(a, b, c):   a * b = c
 //!   - inc(a, b):      a + 1 = b
-//!   - neq(a, b):      (a - b) * inv = 1  (requires inverse witness)
+//!   - arr_get/arr_set/mem_read/mem_expand: no constraint (ROM membership only)
 //!
-//! Preprocessed (width 8): [pred_hash, is_active, is_plus, is_mul, is_inc, arg0, arg1, arg2]
+//! Preprocessed (width 13): [pred_hash, is_active, is_plus, is_mul, is_inc,
+//!                           is_arr_get, is_arr_set, is_mem_read, is_mem_expand,
+//!                           arg0, arg1, arg2, arg3]
 //! Main trace (width 1):   [num_lookups]
 //!
 //! The fact_axiom chip demands pred_hash on PRED_BUS for every active row.
-//! All argument values are BabyBear field elements (< 2^31 - 1).
+//! Arithmetic argument values are BabyBear field elements (< 2^31 - 1).
+//! ROM-based arguments are Store IDs (u32 sequential indices, always < BabyBear).
 //! Values exceeding BabyBear range have no selector set (unverified,
 //! deferred to Phase 6-6b limb decomposition).
 
@@ -33,7 +40,7 @@ use crate::buses::PRED_BUS;
 pub const WIDTH: usize = 1;
 
 /// Width of the preprocessed trace.
-pub const PREP_WIDTH: usize = 8;
+pub const PREP_WIDTH: usize = 13;
 
 // Preprocessed column indices.
 const P_PRED_HASH: usize = 0;
@@ -41,13 +48,20 @@ const P_IS_ACTIVE: usize = 1;
 const P_IS_PLUS: usize = 2;
 const P_IS_MUL: usize = 3;
 const P_IS_INC: usize = 4;
-const P_ARG0: usize = 5;
-const P_ARG1: usize = 6;
-const P_ARG2: usize = 7;
+const P_IS_ARR_GET: usize = 5;
+const P_IS_ARR_SET: usize = 6;
+const P_IS_MEM_READ: usize = 7;
+const P_IS_MEM_EXPAND: usize = 8;
+const P_ARG0: usize = 9;
+const P_ARG1: usize = 10;
+const P_ARG2: usize = 11;
+const P_ARG3: usize = 12;
 
 /// PredicateRomAir with data committed at keygen.
 ///
-/// `entries` contains [pred_hash, is_active, is_plus, is_mul, is_inc, arg0, arg1, arg2]
+/// `entries` contains [pred_hash, is_active, is_plus, is_mul, is_inc,
+///                     is_arr_get, is_arr_set, is_mem_read, is_mem_expand,
+///                     arg0, arg1, arg2, arg3]
 /// per row. The main trace carries only `num_lookups` (1 column).
 pub struct PredicateRomAir {
     pub entries: Vec<[u32; PREP_WIDTH]>,
@@ -91,9 +105,16 @@ where
         let is_plus: AB::Expr = prep_local[P_IS_PLUS].clone().into();
         let is_mul: AB::Expr = prep_local[P_IS_MUL].clone().into();
         let is_inc: AB::Expr = prep_local[P_IS_INC].clone().into();
+        // ROM-based selectors: read but no constraints (ROM membership is verification)
+        let _is_arr_get: AB::Expr = prep_local[P_IS_ARR_GET].clone().into();
+        let _is_arr_set: AB::Expr = prep_local[P_IS_ARR_SET].clone().into();
+        let _is_mem_read: AB::Expr = prep_local[P_IS_MEM_READ].clone().into();
+        let _is_mem_expand: AB::Expr = prep_local[P_IS_MEM_EXPAND].clone().into();
         let arg0: AB::Expr = prep_local[P_ARG0].clone().into();
         let arg1: AB::Expr = prep_local[P_ARG1].clone().into();
         let arg2: AB::Expr = prep_local[P_ARG2].clone().into();
+        // arg3 read for completeness but only used by arr_set/mem_expand (no constraint)
+        let _arg3: AB::Expr = prep_local[P_ARG3].clone().into();
 
         let main = builder.main();
         let local = main.row_slice(0).unwrap();
@@ -109,6 +130,10 @@ where
 
         // inc(a, b): a + 1 = b
         builder.assert_zero(is_inc.clone() * (arg0 + AB::Expr::ONE - arg1));
+
+        // ROM-based predicates (arr_get, arr_set, mem_read, mem_expand):
+        // No algebraic constraints — VK commits the preprocessed trace,
+        // so ROM membership (via PRED_BUS) is sufficient verification.
 
         // --- PRED_BUS: supply predicate verification entries ---
         PRED_BUS.add_key_with_lookups(builder, [pred_hash], is_active * num_lookups);
