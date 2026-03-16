@@ -29,6 +29,7 @@ use p3_field::PrimeCharacteristicRing;
 use serde::Deserialize;
 
 use crate::chips::{
+    byte_check_rom::ByteCheckRomAir,
     canon_cons_rom::CanonConsRomAir,
     ctx_boundary::CtxBoundaryChip,
     discard::DiscardChip,
@@ -45,6 +46,7 @@ use crate::chips::{
     oblig_boundary::ObligBoundaryChip,
     pred_rom::PredicateRomAir,
     subst::SubstChip,
+    uint256_arith::Uint256ArithChip,
     zero_l::ZeroLChip,
 };
 use crate::rule::{RuleChip, RuleSpec};
@@ -68,6 +70,16 @@ pub struct WitnessJson {
     /// PredicateRomAir constrains arithmetic semantics in preprocessed trace.
     #[serde(default)]
     pub pred_rom: Vec<Vec<u32>>,
+    /// Phase 6-6b: 256-bit arithmetic verification rows.
+    /// Each row is 133 columns: [prep (100 cols), main (33 cols)].
+    /// Prep: [pred_hash, is_active, is_plus_256, is_inc_256, a_limbs(32), b_limbs(32), c_limbs(32)]
+    /// Main: [num_lookups, carries(32)]
+    #[serde(default)]
+    pub uint256_arith: Vec<Vec<u32>>,
+    /// Phase 6-6b: byte range check lookup counts.
+    /// 256 entries: byte_check_rom[i] = num_lookups for byte value i.
+    #[serde(default)]
+    pub byte_check_rom: Vec<u32>,
     /// Phase 6-7: max obligation count for boundary chip PV normalization.
     #[serde(default)]
     pub max_oblig_count: Option<usize>,
@@ -193,6 +205,23 @@ fn split_pred_rom(rows: &[Vec<u32>]) -> (Vec<[u32; 13]>, Vec<u32>) {
         lookups.push(row[2]); // num_lookups is at index 2
     }
     (entries, lookups)
+}
+
+/// Split uint256_arith rows (133 cols each) into:
+/// - Preprocessed (100 cols): [pred_hash, is_active, is_plus_256, is_inc_256, a_0..31, b_0..31, c_0..31]
+/// - Main (33 cols): [num_lookups, carry_0..31]
+fn split_uint256_arith(rows: &[Vec<u32>]) -> (Vec<Vec<u32>>, Vec<Vec<u32>>) {
+    let prep_width = crate::chips::uint256_arith::PREP_WIDTH; // 100
+    let main_width = crate::chips::uint256_arith::WIDTH;      // 33
+    let mut prep = Vec::with_capacity(rows.len());
+    let mut main = Vec::with_capacity(rows.len());
+    for row in rows {
+        assert_eq!(row.len(), prep_width + main_width,
+            "uint256_arith row width mismatch: expected {}, got {}", prep_width + main_width, row.len());
+        prep.push(row[..prep_width].to_vec());
+        main.push(row[prep_width..].to_vec());
+    }
+    (prep, main)
 }
 
 /// Split init chip rows into preprocessed [ctx_hash, ctx_active, oblig_hash, oblig_active, lax]
@@ -372,7 +401,28 @@ fn build_witness_inputs(witness: &WitnessJson) -> Result<(Vec<AirRef<BabyBearPos
         pis.push(vec![]);
     }
 
-    // 12. ObligBoundaryChip (Phase 6-7: tree path chunking)
+    // 12. ByteCheckRomAir + Uint256ArithChip (Phase 6-6b: 256-bit arithmetic)
+    // Present when uint256_arith is non-empty. ByteCheckRomAir must come first
+    // (supplies BYTE_CHECK_BUS that Uint256ArithChip demands).
+    if !witness.uint256_arith.is_empty() {
+        // ByteCheckRomAir: 256 entries [0..255], main trace = [num_lookups]
+        let byte_min = 256usize.max(min_rows); // at least 256 rows
+        airs.push(Arc::new(ByteCheckRomAir { min_rows: byte_min }) as AirRef<_>);
+        traces.push(if witness.byte_check_rom.is_empty() {
+            empty_trace(1, byte_min)
+        } else {
+            build_trace_1col(&witness.byte_check_rom, byte_min)
+        });
+        pis.push(vec![]);
+
+        // Uint256ArithChip: preprocessed + main from split
+        let (u256_prep, u256_main) = split_uint256_arith(&witness.uint256_arith);
+        airs.push(Arc::new(Uint256ArithChip { entries: u256_prep, min_rows }) as AirRef<_>);
+        traces.push(build_trace(&u256_main, crate::chips::uint256_arith::WIDTH, min_rows));
+        pis.push(vec![]);
+    }
+
+    // 13. ObligBoundaryChip (Phase 6-7: tree path chunking)
     // Present when oblig_boundary chip data exists (chunked tree witnesses).
     if witness.chips.contains_key("oblig_boundary") {
         let max_oblig_count = witness.max_oblig_count.unwrap_or(1);
