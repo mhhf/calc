@@ -435,18 +435,21 @@ fn build_witness_inputs(witness: &WitnessJson) -> Result<(Vec<AirRef<BabyBearPos
 }
 
 /// Prove a witness JSON, returning Ok(()) on success or Err on verification failure.
+///
+/// Respects `OPENVM_FAST_TEST=1` for insecure-but-fast FRI parameters.
+/// Without it, uses 100-bit provable security (193 queries + 20-bit PoW).
 pub fn prove_witness(witness: &WitnessJson) -> Result<(), String> {
-    let (airs, traces, pis) = build_witness_inputs(witness)?;
-    BabyBearPoseidon2Engine::run_simple_test_fast(airs, traces, pis)
-        .map(|_| ())
-        .map_err(|e| format!("STARK verification failed: {e:?}"))
+    prove_witness_vdata(witness).map(|_| ())
 }
 
 /// Prove a tree witness, returning the full verification data (proof + VK + FRI params).
 /// Phase 4a: needed for recursive verification and IVC.
+///
+/// Respects `OPENVM_FAST_TEST=1` for insecure-but-fast FRI parameters.
 pub fn prove_witness_vdata(witness: &WitnessJson) -> Result<VerificationDataWithFriParams<BabyBearPoseidon2Config>, String> {
     let (airs, traces, pis) = build_witness_inputs(witness)?;
-    BabyBearPoseidon2Engine::run_simple_test_fast(airs, traces, pis)
+    let engine = BabyBearPoseidon2Engine::new(FriParameters::new_for_testing(1));
+    StarkFriEngine::run_simple_test_impl(&engine, airs, traces, pis)
         .map_err(|e| format!("STARK verification failed: {e:?}"))
 }
 
@@ -623,24 +626,21 @@ fn build_flat_witness_inputs(witness: &FlatWitnessJson) -> Result<(Vec<AirRef<Ba
 }
 
 /// Prove a flat witness, returning Ok(()) on success.
+///
+/// FlatStepChip has degree-4 constraints requiring log_blowup >= 2.
+/// Respects `OPENVM_FAST_TEST=1` for insecure-but-fast FRI parameters.
 pub fn prove_flat_witness(witness: &FlatWitnessJson) -> Result<(), String> {
-    let (airs, traces, pis) = build_flat_witness_inputs(witness)?;
-    // FlatStepChip has degree-4 constraints (spine boundary checks), requiring
-    // log_blowup >= 2 so the LDE has enough evaluations for the quotient domain.
-    let engine = BabyBearPoseidon2Engine::new(
-        FriParameters::standard_with_100_bits_security(2),
-    );
-    StarkFriEngine::run_simple_test_impl(&engine, airs, traces, pis)
-        .map(|_| ())
-        .map_err(|e| format!("STARK verification failed: {e:?}"))
+    prove_flat_witness_vdata(witness).map(|_| ())
 }
 
 /// Prove a flat witness, returning the full verification data.
 /// Phase 4a: needed for recursive verification and IVC.
 pub fn prove_flat_witness_vdata(witness: &FlatWitnessJson) -> Result<VerificationDataWithFriParams<BabyBearPoseidon2Config>, String> {
     let (airs, traces, pis) = build_flat_witness_inputs(witness)?;
+    // FlatStepChip has degree-4 constraints (spine boundary checks), requiring
+    // log_blowup >= 2 so the LDE has enough evaluations for the quotient domain.
     let engine = BabyBearPoseidon2Engine::new(
-        FriParameters::standard_with_100_bits_security(2),
+        FriParameters::new_for_testing(2),
     );
     StarkFriEngine::run_simple_test_impl(&engine, airs, traces, pis)
         .map_err(|e| format!("STARK verification failed: {e:?}"))
