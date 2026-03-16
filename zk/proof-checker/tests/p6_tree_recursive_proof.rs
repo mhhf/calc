@@ -90,10 +90,10 @@ fn p6_tree_recursive_proof_full_commitment() {
     let expected_init: Vec<u32> = results[0].data.proof.per_air[init_air_idx].public_values
         .iter().map(|v| v.as_canonical_u32()).collect();
     let expected_final_oblig: Vec<u32> = results.last().unwrap()
-        .data.proof.per_air[oblig_air_idx].public_values[n_final_oblig..]
+        .data.proof.per_air[oblig_air_idx].public_values[n_final_oblig..max_oblig * 4]
         .iter().map(|v| v.as_canonical_u32()).collect();
     let expected_final_ctx: Vec<u32> = results.last().unwrap()
-        .data.proof.per_air[ctx_air_idx].public_values[n_final_ctx..]
+        .data.proof.per_air[ctx_air_idx].public_values[n_final_ctx..max_ctx * 2]
         .iter().map(|v| v.as_canonical_u32()).collect();
     let expected_vk: Vec<u32> = vk_hash.iter().map(|v| v.as_canonical_u32()).collect();
 

@@ -53,7 +53,7 @@ fn p6_chunked_tree_oblig_continuity() {
     // Find ObligBoundaryChip PVs by expected PV length.
     // max_oblig_count=1 → 4 PVs: [init_goal, init_lax, final_goal, final_lax]
     let max_oblig = chunks[0].max_oblig_count.unwrap_or(1);
-    let expected_pv_len = max_oblig * 4;
+    let expected_pv_len = max_oblig * 4 + 2;
 
     for i in 0..results.len() - 1 {
         let cur_oblig_pvs = results[i].data.proof.per_air.iter()
@@ -88,7 +88,7 @@ fn p6_chunked_tree_ctx_continuity() {
 
     let max_ctx = chunks[0].max_boundary_ctx_size.unwrap_or(0);
     if max_ctx == 0 { return; }
-    let expected_pv_len = max_ctx * 2;
+    let expected_pv_len = max_ctx * 2 + 2;
 
     for i in 0..results.len() - 1 {
         let cur_ctx_pvs = results[i].data.proof.per_air.iter()

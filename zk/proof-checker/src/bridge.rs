@@ -446,6 +446,8 @@ fn build_witness_inputs(witness: &WitnessJson) -> Result<(Vec<AirRef<BabyBearPos
         // Extract PVs: init obligs (is_send=1) and final obligs (is_send=0)
         let mut init_obligs: Vec<BabyBear> = Vec::new();
         let mut final_obligs: Vec<BabyBear> = Vec::new();
+        let mut send_count: u32 = 0;
+        let mut recv_count: u32 = 0;
         for row in oblig_rows {
             if row[0] == 1 { // is_active
                 let goal = BabyBear::from_u32(row[3]);
@@ -453,9 +455,11 @@ fn build_witness_inputs(witness: &WitnessJson) -> Result<(Vec<AirRef<BabyBearPos
                 if row[1] == 1 { // is_send (init)
                     init_obligs.push(goal);
                     init_obligs.push(lax);
+                    send_count += 1;
                 } else { // receive (final)
                     final_obligs.push(goal);
                     final_obligs.push(lax);
+                    recv_count += 1;
                 }
             }
         }
@@ -464,30 +468,62 @@ fn build_witness_inputs(witness: &WitnessJson) -> Result<(Vec<AirRef<BabyBearPos
         final_obligs.resize(max_oblig_count * 2, BabyBear::ZERO);
         let mut oblig_pvs = init_obligs;
         oblig_pvs.extend(final_obligs);
+        oblig_pvs.push(BabyBear::from_u32(send_count));
+        oblig_pvs.push(BabyBear::from_u32(recv_count));
+
+        // Custom trace building: add acc_send_count + acc_recv_count columns,
+        // padding rows carry forward final accumulated values.
+        let width = crate::chips::oblig_boundary::WIDTH;
+        let n = oblig_rows.len().max(min_rows).next_power_of_two();
+        let mut oblig_trace_data = Vec::with_capacity(n * width);
+        let mut acc_send: u32 = 0;
+        let mut acc_recv: u32 = 0;
+        for row in oblig_rows {
+            let is_active = row[0];
+            let is_send = row[1];
+            if is_active == 1 {
+                if is_send == 1 { acc_send += 1; }
+                else { acc_recv += 1; }
+            }
+            for &v in row { oblig_trace_data.push(BabyBear::from_u32(v)); }
+            oblig_trace_data.push(BabyBear::from_u32(acc_send));
+            oblig_trace_data.push(BabyBear::from_u32(acc_recv));
+        }
+        let final_acc_send = BabyBear::from_u32(acc_send);
+        let final_acc_recv = BabyBear::from_u32(acc_recv);
+        for _ in oblig_rows.len()..n {
+            for _ in 0..5 { oblig_trace_data.push(BabyBear::ZERO); } // is_active..lax = 0
+            oblig_trace_data.push(final_acc_send);
+            oblig_trace_data.push(final_acc_recv);
+        }
 
         airs.push(Arc::new(ObligBoundaryChip { max_oblig_count }) as AirRef<_>);
         traces.push(if oblig_rows.is_empty() {
-            empty_trace(crate::chips::oblig_boundary::WIDTH, min_rows)
+            empty_trace(width, min_rows)
         } else {
-            build_trace(oblig_rows, crate::chips::oblig_boundary::WIDTH, min_rows)
+            RowMajorMatrix::new(oblig_trace_data, width)
         });
         pis.push(oblig_pvs);
     }
 
-    // 13. CtxBoundaryChip (Phase 6-7: tree path chunking)
+    // 14. CtxBoundaryChip (Phase 6-7: tree path chunking)
     if witness.chips.contains_key("ctx_boundary") {
         let max_ctx = witness.max_boundary_ctx_size.unwrap_or(0);
         let ctx_rows = witness.chips.get("ctx_boundary").unwrap();
 
         let mut init_ctx: Vec<BabyBear> = Vec::new();
         let mut final_ctx: Vec<BabyBear> = Vec::new();
+        let mut send_count: u32 = 0;
+        let mut recv_count: u32 = 0;
         for row in ctx_rows {
             if row[0] == 1 { // is_active
                 let hash = BabyBear::from_u32(row[2]);
                 if row[1] == 1 { // is_send (init)
                     init_ctx.push(hash);
+                    send_count += 1;
                 } else {
                     final_ctx.push(hash);
+                    recv_count += 1;
                 }
             }
         }
@@ -495,12 +531,40 @@ fn build_witness_inputs(witness: &WitnessJson) -> Result<(Vec<AirRef<BabyBearPos
         final_ctx.resize(max_ctx, BabyBear::ZERO);
         let mut ctx_pvs = init_ctx;
         ctx_pvs.extend(final_ctx);
+        ctx_pvs.push(BabyBear::from_u32(send_count));
+        ctx_pvs.push(BabyBear::from_u32(recv_count));
+
+        // Custom trace building: add acc_send_count + acc_recv_count columns,
+        // padding rows carry forward final accumulated values.
+        let width = crate::chips::ctx_boundary::WIDTH;
+        let n = ctx_rows.len().max(min_rows).next_power_of_two();
+        let mut ctx_trace_data = Vec::with_capacity(n * width);
+        let mut acc_send: u32 = 0;
+        let mut acc_recv: u32 = 0;
+        for row in ctx_rows {
+            let is_active = row[0];
+            let is_send = row[1];
+            if is_active == 1 {
+                if is_send == 1 { acc_send += 1; }
+                else { acc_recv += 1; }
+            }
+            for &v in row { ctx_trace_data.push(BabyBear::from_u32(v)); }
+            ctx_trace_data.push(BabyBear::from_u32(acc_send));
+            ctx_trace_data.push(BabyBear::from_u32(acc_recv));
+        }
+        let final_acc_send = BabyBear::from_u32(acc_send);
+        let final_acc_recv = BabyBear::from_u32(acc_recv);
+        for _ in ctx_rows.len()..n {
+            for _ in 0..3 { ctx_trace_data.push(BabyBear::ZERO); } // is_active..hash = 0
+            ctx_trace_data.push(final_acc_send);
+            ctx_trace_data.push(final_acc_recv);
+        }
 
         airs.push(Arc::new(CtxBoundaryChip { max_ctx_size: max_ctx }) as AirRef<_>);
         traces.push(if ctx_rows.is_empty() {
-            empty_trace(crate::chips::ctx_boundary::WIDTH, min_rows)
+            empty_trace(width, min_rows)
         } else {
-            build_trace(ctx_rows, crate::chips::ctx_boundary::WIDTH, min_rows)
+            RowMajorMatrix::new(ctx_trace_data, width)
         });
         pis.push(ctx_pvs);
     }

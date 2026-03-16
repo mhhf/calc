@@ -7,6 +7,7 @@
 //! Soundness: also verifies InitChip's `init_active_count` PV == 0 for chunks > 0,
 //! preventing re-injection of the initial context/obligations.
 
+use openvm_native_circuit::NativeCpuBuilder;
 use openvm_native_compiler::{conversion::CompilerOptions, prelude::*};
 use openvm_native_recursion::{
     challenger::duplex::DuplexChallengerVariable,
@@ -17,7 +18,7 @@ use openvm_native_recursion::{
     utils::const_fri_config,
     vars::StarkProofVariable,
 };
-use openvm_stark_sdk::config::baby_bear_poseidon2::BabyBearPoseidon2Config;
+use openvm_stark_sdk::config::baby_bear_poseidon2::{BabyBearPoseidon2Config, BabyBearPoseidon2Engine};
 use openvm_stark_backend::proof::Proof;
 use p3_baby_bear::BabyBear;
 use p3_field::{PrimeCharacteristicRing, PrimeField32};
@@ -83,8 +84,8 @@ fn p6_tree_composition_verify_and_continuity() {
     let oblig_air_idx = n_airs - 2;
     let ctx_air_idx = n_airs - 1;
     let n_init_pvs = results[0].data.proof.per_air[init_air_idx].public_values.len();
-    let n_oblig_pvs = max_oblig * 4;
-    let n_ctx_pvs = max_ctx * 2;
+    let n_oblig_pvs = max_oblig * 4 + 2;
+    let n_ctx_pvs = max_ctx * 2 + 2;
 
     // Verify PV sizes match expectations
     assert_eq!(results[0].data.proof.per_air[oblig_air_idx].public_values.len(), n_oblig_pvs,
@@ -198,8 +199,28 @@ fn p6_tree_composition_verify_and_continuity() {
         <Vec<Proof<BabyBearPoseidon2Config>> as Hintable<InnerConfig>>::write(&proofs);
     println!("  witness stream: {} chunks", input_stream.len());
 
-    openvm_native_circuit::execute_program(program, input_stream);
-    println!("  composition executed — {} tree proofs verified with shared VK", proofs.len());
+    // Run the composition program via metered interpreter.
+    // Cannot use execute_program() because it asserts segments.len()==1,
+    // but the boundary PV additions push execution past the single-segment limit.
+    // The metered interpreter runs the full program; completion = success.
+    {
+        use openvm_stark_sdk::{config::FriParameters, engine::StarkFriEngine};
+        use openvm_circuit::arch::{instructions::exe::VmExe, Streams, VirtualMachine};
+
+        let mut config = openvm_native_circuit::test_native_config();
+        config.system.num_public_values = 4;
+        let engine = BabyBearPoseidon2Engine::new(FriParameters::new_for_testing(1));
+        let exe = VmExe::new(program);
+        let (vm, _) = VirtualMachine::<_, NativeCpuBuilder>::new_with_keygen(
+            engine, NativeCpuBuilder, config,
+        ).unwrap();
+        let ctx = vm.build_metered_ctx(&exe);
+        let (segments, _) = vm
+            .metered_interpreter(&exe).unwrap()
+            .execute_metered(Streams::from(input_stream), ctx).unwrap();
+        println!("  composition executed in {} segment(s) — {} tree proofs verified with shared VK",
+            segments.len(), proofs.len());
+    }
 }
 
 /// Soundness tamper test: set is_active=1 on a non-first chunk's init rows.
