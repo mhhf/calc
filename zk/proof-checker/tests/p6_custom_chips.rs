@@ -88,3 +88,53 @@ fn p6_custom_chip_remove_fact_rom_fails() {
     });
     prove_json(&json).expect("should fail: missing fact_rom");
 }
+
+// ---------------------------------------------------------------------------
+// Phase 6-6a soundness: tamper pred_rom arg → arithmetic constraint violation
+// ---------------------------------------------------------------------------
+
+#[test]
+#[should_panic]
+fn p6_pred_rom_tamper_arg_fails() {
+    let json = tamper_fixture("custom_chip_inc", |v| {
+        // pred_rom[0] = [pred_hash, is_active, num_lookups, is_plus, is_mul, is_inc, arg0, arg1, arg2]
+        // Tamper arg1 (inc result b) — breaks a+1=b constraint
+        let rows = v["pred_rom"].as_array_mut().unwrap();
+        if let Some(row) = rows.first_mut() {
+            let arr = row.as_array_mut().unwrap();
+            arr[7] = serde_json::json!(99); // arg1 = 99 (wrong inc result)
+        }
+    });
+    prove_json(&json).expect("should fail: tampered pred_rom arg");
+}
+
+// ---------------------------------------------------------------------------
+// Phase 6-6a soundness: remove pred_rom → PRED_BUS demand without supply
+// ---------------------------------------------------------------------------
+
+#[test]
+#[should_panic]
+fn p6_pred_rom_remove_fails() {
+    let json = tamper_fixture("custom_chip_inc", |v| {
+        v["pred_rom"] = serde_json::json!([]);
+    });
+    prove_json(&json).expect("should fail: empty pred_rom");
+}
+
+// ---------------------------------------------------------------------------
+// Phase 6-6a soundness: tamper pred_hash → PRED_BUS key mismatch
+// ---------------------------------------------------------------------------
+
+#[test]
+#[should_panic]
+fn p6_pred_rom_tamper_hash_fails() {
+    let json = tamper_fixture("custom_chip_inc", |v| {
+        // Tamper pred_hash in pred_rom → PRED_BUS key won't match fact_axiom demand
+        let rows = v["pred_rom"].as_array_mut().unwrap();
+        if let Some(row) = rows.first_mut() {
+            let arr = row.as_array_mut().unwrap();
+            arr[0] = serde_json::json!(77777); // wrong pred_hash
+        }
+    });
+    prove_json(&json).expect("should fail: tampered pred_hash");
+}
