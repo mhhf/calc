@@ -144,9 +144,9 @@ fn e2e_identity_public_values() {
     let vdata = prove_witness_vdata(&witness)
         .expect("identity proof should succeed");
 
-    // InitChip is AIR index 0 — its PVs should be [ctx_hash_1..n, succedent_hash, lax]
+    // InitChip is AIR index 0 — its PVs should be [ctx_hash_1..n, succedent_hash, lax, init_active_count]
     let init_pvs = &vdata.data.proof.per_air[0].public_values;
-    let num_pvs = expected_ctx.len() + 2;
+    let num_pvs = expected_ctx.len() + 3; // +3: succedent + lax + init_active_count
     assert_eq!(init_pvs.len(), num_pvs, "PV count mismatch");
 
     // Verify ctx hashes
@@ -155,11 +155,14 @@ fn e2e_identity_public_values() {
             "ctx_hash[{i}] mismatch");
     }
     // Verify succedent hash
-    assert_eq!(init_pvs[num_pvs - 2], BabyBear::from_u32(expected_succedent),
+    assert_eq!(init_pvs[num_pvs - 3], BabyBear::from_u32(expected_succedent),
         "succedent_hash mismatch");
     // Verify lax flag
-    assert_eq!(init_pvs[num_pvs - 1], BabyBear::from_u32(expected_lax),
+    assert_eq!(init_pvs[num_pvs - 2], BabyBear::from_u32(expected_lax),
         "lax_flag mismatch");
+    // Verify init_active_count > 0 (non-chunked: all init rows are active)
+    assert_ne!(init_pvs[num_pvs - 1], BabyBear::ZERO,
+        "init_active_count should be > 0 for non-chunked proof");
 }
 
 // Phase 6-2: verify PVs on a multi-context proof (loli_l: P, P⊸Q ⊢ Q — 2 ctx entries)
@@ -182,12 +185,12 @@ fn e2e_loli_l_public_values() {
         .expect("loli_l proof should succeed");
 
     let init_pvs = &vdata.data.proof.per_air[0].public_values;
-    let num_pvs = expected_ctx.len() + 2;
+    let num_pvs = expected_ctx.len() + 3; // +3: succedent + lax + init_active_count
     assert_eq!(init_pvs.len(), num_pvs);
 
     for (i, &ctx_hash) in expected_ctx.iter().enumerate() {
         assert_eq!(init_pvs[i], BabyBear::from_u32(ctx_hash));
     }
-    assert_eq!(init_pvs[num_pvs - 2], BabyBear::from_u32(expected_succedent));
-    assert_eq!(init_pvs[num_pvs - 1], BabyBear::from_u32(expected_lax));
+    assert_eq!(init_pvs[num_pvs - 3], BabyBear::from_u32(expected_succedent));
+    assert_eq!(init_pvs[num_pvs - 2], BabyBear::from_u32(expected_lax));
 }

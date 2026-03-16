@@ -44,7 +44,7 @@ fn p2_bang_l_basic() {
     let id_chip = RuleChip::new(specs["id"].clone());
     assert_eq!(bang_l_chip.layout.width, 3);
 
-    let (init_chip, init_trace) = make_init(&[[H_BANG_A, 1, H_A, 1, 0, 0]], 4);
+    let (init_chip, init_trace, init_pis) = make_init(&[[H_BANG_A, 1, H_A, 1, 0, 0]], 4);
     let bang_l_trace = dyn_trace(&[&[1, H_BANG_A, H_A]], 3, 4);
     let id_trace = dyn_trace(&[&[1, H_A, 0, 0]], 4, 4);
     let (rom_chip, rom_trace) = make_formula_rom(&[[H_BANG_A, tags["bang"], H_A, 0, 1, 1]], 4);
@@ -57,7 +57,7 @@ fn p2_bang_l_basic() {
             Arc::new(rom_chip) as AirRef<_>,
         ],
         vec![init_trace, bang_l_trace, id_trace, rom_trace],
-        vec![vec![], vec![], vec![], vec![]],
+        vec![init_pis, vec![], vec![], vec![]],
     )
     .expect("bang_l: !A ⊢ A");
 }
@@ -77,7 +77,7 @@ fn p2_absorption_copy() {
     assert_eq!(absorption_chip.layout.width, 3);
     assert_eq!(copy_chip.layout.width, 2);
 
-    let (init_chip, init_trace) = make_init(&[[H_BANG_A, 1, H_A_TENSOR_A, 1, 0, 0]], 4);
+    let (init_chip, init_trace, init_pis) = make_init(&[[H_BANG_A, 1, H_A_TENSOR_A, 1, 0, 0]], 4);
     let abs_trace = dyn_trace(&[&[1, H_BANG_A, H_A]], 3, 4);
     let copy_trace = dyn_trace(&[&[1, H_A], &[1, H_A]], 2, 4);
 
@@ -114,7 +114,7 @@ fn p2_absorption_copy() {
             Arc::new(gamma_chip) as AirRef<_>,
         ],
         vec![init_trace, abs_trace, copy_trace, tr_trace, id_trace, fom_trace, gamma_trace],
-        vec![vec![], vec![], vec![], vec![], vec![], vec![], vec![]],
+        vec![init_pis, vec![], vec![], vec![], vec![], vec![], vec![]],
     )
     .expect("absorption + copy: !A ⊢ A ⊗ A");
 }
@@ -130,7 +130,7 @@ fn p2_copy_without_gamma_fails() {
     let copy_chip = RuleChip::new(specs["copy"].clone());
     let id_chip = RuleChip::new(specs["id"].clone());
 
-    let (init_chip, init_trace) = make_init(&[[0, 0, H_A, 1, 0, 0]], 4);
+    let (init_chip, init_trace, init_pis) = make_init(&[[0, 0, H_A, 1, 0, 0]], 4);
     let copy_trace = dyn_trace(&[&[1, H_A]], 2, 4);
     let id_trace = dyn_trace(&[&[1, H_A, 0, 0]], 4, 4);
     let (gamma_chip, gamma_trace) = make_gamma_rom(&[], 4); // empty gamma
@@ -143,7 +143,7 @@ fn p2_copy_without_gamma_fails() {
             Arc::new(gamma_chip) as AirRef<_>,
         ],
         vec![init_trace, copy_trace, id_trace, gamma_trace],
-        vec![vec![], vec![], vec![], vec![]],
+        vec![init_pis, vec![], vec![], vec![]],
     )
     .expect("should fail: copy without gamma");
 }

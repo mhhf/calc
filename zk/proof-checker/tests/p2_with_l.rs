@@ -43,7 +43,7 @@ fn p2_with_l1_basic() {
     let id_chip = RuleChip::new(specs["id"].clone());
     assert_eq!(with_l1_chip.layout.width, 4);
 
-    let (init_chip, init_trace) = make_init(&[[H_A_WITH_B, 1, H_A, 1, 0, 0]], 4);
+    let (init_chip, init_trace, init_pis) = make_init(&[[H_A_WITH_B, 1, H_A, 1, 0, 0]], 4);
     let wl1_trace = dyn_trace(&[&[1, H_A_WITH_B, H_A, H_B]], 4, 4);
     let id_trace = dyn_trace(&[&[1, H_A, 0, 0]], 4, 4);
     let (rom_chip, rom_trace) = make_formula_rom(&[[H_A_WITH_B, tags["with"], H_A, H_B, 1, 1]], 4);
@@ -56,7 +56,7 @@ fn p2_with_l1_basic() {
             Arc::new(rom_chip) as AirRef<_>,
         ],
         vec![init_trace, wl1_trace, id_trace, rom_trace],
-        vec![vec![], vec![], vec![], vec![]],
+        vec![init_pis, vec![], vec![], vec![]],
     )
     .expect("with_l1: A & B ⊢ A");
 }
@@ -72,7 +72,7 @@ fn p2_with_l2_basic() {
     let id_chip = RuleChip::new(specs["id"].clone());
     assert_eq!(with_l2_chip.layout.width, 4);
 
-    let (init_chip, init_trace) = make_init(&[[H_A_WITH_B, 1, H_B, 1, 0, 0]], 4);
+    let (init_chip, init_trace, init_pis) = make_init(&[[H_A_WITH_B, 1, H_B, 1, 0, 0]], 4);
     let wl2_trace = dyn_trace(&[&[1, H_A_WITH_B, H_A, H_B]], 4, 4);
     let id_trace = dyn_trace(&[&[1, H_B, 0, 0]], 4, 4);
     let (rom_chip, rom_trace) = make_formula_rom(&[[H_A_WITH_B, tags["with"], H_A, H_B, 1, 1]], 4);
@@ -85,7 +85,7 @@ fn p2_with_l2_basic() {
             Arc::new(rom_chip) as AirRef<_>,
         ],
         vec![init_trace, wl2_trace, id_trace, rom_trace],
-        vec![vec![], vec![], vec![], vec![]],
+        vec![init_pis, vec![], vec![], vec![]],
     )
     .expect("with_l2: A & B ⊢ B");
 }
@@ -102,7 +102,7 @@ fn p2_with_l1_wrong_projection_fails() {
     let id_chip = RuleChip::new(specs["id"].clone());
 
     // Init: ctx=A&B, oblig=(0, B, 0) — expect B but with_l1 provides A
-    let (init_chip, init_trace) = make_init(&[[H_A_WITH_B, 1, H_B, 1, 0, 0]], 4);
+    let (init_chip, init_trace, init_pis) = make_init(&[[H_A_WITH_B, 1, H_B, 1, 0, 0]], 4);
     let wl1_trace = dyn_trace(&[&[1, H_A_WITH_B, H_A, H_B]], 4, 4);
 
     // id consumes A (what with_l1 provides), but obligation says B
@@ -118,7 +118,7 @@ fn p2_with_l1_wrong_projection_fails() {
             Arc::new(rom_chip) as AirRef<_>,
         ],
         vec![init_trace, wl1_trace, id_trace, rom_trace],
-        vec![vec![], vec![], vec![], vec![]],
+        vec![init_pis, vec![], vec![], vec![]],
     )
     .expect("should fail: with_l1 wrong projection");
 }

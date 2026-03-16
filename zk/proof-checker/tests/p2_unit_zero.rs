@@ -53,7 +53,7 @@ fn p2_one_r_basic() {
     let one_r_chip = RuleChip::new(specs["one_r"].clone());
     assert_eq!(one_r_chip.layout.width, 4);
 
-    let (init_chip, init_trace) = make_init(&[[0, 0, H_ONE, 1, 0, 0]], 4);
+    let (init_chip, init_trace, init_pis) = make_init(&[[0, 0, H_ONE, 1, 0, 0]], 4);
     let one_r_trace = dyn_trace(&[&[1, H_ONE, 0, 0]], 4, 4);
     let (rom_chip, rom_trace) = make_formula_rom(&[[H_ONE, tags["one"], 0, 0, 1, 1]], 4);
 
@@ -64,7 +64,7 @@ fn p2_one_r_basic() {
             Arc::new(rom_chip) as AirRef<_>,
         ],
         vec![init_trace, one_r_trace, rom_trace],
-        vec![vec![], vec![], vec![]],
+        vec![init_pis, vec![], vec![]],
     )
     .expect("one_r: ⊢ I");
 }
@@ -81,7 +81,7 @@ fn p2_tensor_one_left() {
     let id_chip = RuleChip::new(specs["id"].clone());
     assert_eq!(one_l_chip.layout.width, 2);
 
-    let (init_chip, init_trace) = make_init(&[[H_A_TENSOR_ONE, 1, H_A, 1, 0, 0]], 4);
+    let (init_chip, init_trace, init_pis) = make_init(&[[H_A_TENSOR_ONE, 1, H_A, 1, 0, 0]], 4);
     let tl_trace = dyn_trace(&[&[1, H_A_TENSOR_ONE, H_A, H_ONE]], 4, 4);
     let one_l_trace = dyn_trace(&[&[1, H_ONE]], 2, 4);
     let id_trace = dyn_trace(&[&[1, H_A, 0, 0]], 4, 4);
@@ -103,7 +103,7 @@ fn p2_tensor_one_left() {
             Arc::new(rom_chip) as AirRef<_>,
         ],
         vec![init_trace, tl_trace, one_l_trace, id_trace, rom_trace],
-        vec![vec![], vec![], vec![], vec![], vec![]],
+        vec![init_pis, vec![], vec![], vec![], vec![]],
     )
     .expect("one_l: A ⊗ I ⊢ A");
 }
@@ -116,7 +116,7 @@ fn p2_tensor_one_left() {
 fn p2_zero_l_simple() {
     let (tags, _specs) = common::load_test_specs();
 
-    let (init_chip, init_trace) = make_init(&[[H_ZERO, 1, H_B, 1, 0, 0]], 4);
+    let (init_chip, init_trace, init_pis) = make_init(&[[H_ZERO, 1, H_B, 1, 0, 0]], 4);
 
     // ZeroLChip: [hash, is_active, nonce_in, lax, goal, num_discards]
     let zero_l_trace = padded_trace(
@@ -137,7 +137,7 @@ fn p2_zero_l_simple() {
             Arc::new(DiscardChip) as AirRef<_>,
         ],
         vec![init_trace, zero_l_trace, rom_trace, discard_trace],
-        vec![vec![], vec![], vec![], vec![]],
+        vec![init_pis, vec![], vec![], vec![]],
     )
     .expect("zero_l: 0 ⊢ B");
 }
@@ -150,7 +150,7 @@ fn p2_zero_l_simple() {
 fn p2_zero_l_with_discard() {
     let (tags, _specs) = common::load_test_specs();
 
-    let (init_chip, init_trace) = make_init(
+    let (init_chip, init_trace, init_pis) = make_init(
         &[
             [H_ZERO, 1, H_B, 1, 0, 0], // ctx=0, oblig=(0, B, 0)
             [H_A, 1, 0, 0, 0, 0],       // ctx=A
@@ -180,7 +180,7 @@ fn p2_zero_l_with_discard() {
             Arc::new(rom_chip) as AirRef<_>,
         ],
         vec![init_trace, zero_l_trace, discard_trace, rom_trace],
-        vec![vec![], vec![], vec![], vec![]],
+        vec![init_pis, vec![], vec![], vec![]],
     )
     .expect("zero_l: 0, A ⊢ B with discard");
 }
@@ -194,7 +194,7 @@ fn p2_zero_l_with_discard() {
 fn p2_discard_without_zero_l_fails() {
     let (_tags, specs) = common::load_test_specs();
 
-    let (init_chip, init_trace) = make_init(
+    let (init_chip, init_trace, init_pis) = make_init(
         &[
             [H_A, 1, H_A, 1, 0, 0],
             [H_B, 1, 0, 0, 0, 0],
@@ -215,7 +215,7 @@ fn p2_discard_without_zero_l_fails() {
             Arc::new(DiscardChip) as AirRef<_>,
         ],
         vec![init_trace, id_trace, discard_trace],
-        vec![vec![], vec![], vec![]],
+        vec![init_pis, vec![], vec![]],
     )
     .expect("should fail: unauthorized discard");
 }
@@ -230,7 +230,7 @@ fn p2_one_r_nonempty_context_fails() {
     let (tags, specs) = common::load_test_specs();
     let one_r_chip = RuleChip::new(specs["one_r"].clone());
 
-    let (init_chip, init_trace) = make_init(
+    let (init_chip, init_trace, init_pis) = make_init(
         &[[H_A, 1, H_ONE, 1, 0, 0]], // ctx=A, oblig=(0, I, 0)
         4,
     );
@@ -245,7 +245,7 @@ fn p2_one_r_nonempty_context_fails() {
             Arc::new(rom_chip) as AirRef<_>,
         ],
         vec![init_trace, one_r_trace, rom_trace],
-        vec![vec![], vec![], vec![]],
+        vec![init_pis, vec![], vec![]],
     )
     .expect("should fail: one_r with non-empty context");
 }

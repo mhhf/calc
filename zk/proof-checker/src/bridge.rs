@@ -230,15 +230,17 @@ fn split_uint256_arith(rows: &[Vec<u32>]) -> (Vec<Vec<u32>>, Vec<Vec<u32>>) {
 /// Accepts two formats:
 /// - Legacy (6 cols): [ctx_hash, ctx_active, oblig_hash, oblig_active, nonce, lax] → is_active=1
 /// - New (7 cols):    [ctx_hash, ctx_active, oblig_hash, oblig_active, nonce, lax, is_active]
-fn split_init_rows(rows: &[Vec<u32>]) -> (Vec<[u32; 5]>, Vec<Vec<u32>>) {
+fn split_init_rows(rows: &[Vec<u32>]) -> (Vec<[u32; 5]>, Vec<Vec<u32>>, u32) {
     let mut prep = Vec::with_capacity(rows.len());
     let mut main = Vec::with_capacity(rows.len());
+    let mut acc: u32 = 0;
     for row in rows {
         prep.push([row[0], row[1], row[2], row[3], row[5]]); // lax is col 5
         let is_active = if row.len() >= 7 { row[6] } else { 1 };
-        main.push(vec![is_active, row[4]]); // [is_active, nonce]
+        acc += is_active;
+        main.push(vec![is_active, row[4], acc]); // [is_active, nonce, acc_active]
     }
-    (prep, main)
+    (prep, main, acc)
 }
 
 /// Build AIRs, traces, and PIs from a tree witness (shared by prove and vdata paths).
@@ -254,9 +256,9 @@ fn build_witness_inputs(witness: &WitnessJson) -> Result<(Vec<AirRef<BabyBearPos
 
     // 1. InitChip (data-carrying, preprocessed sequent, with sequent identity PVs)
     let init_rows = witness.chips.get("init").ok_or("missing init chip")?;
-    let (init_prep, init_main) = split_init_rows(init_rows);
+    let (init_prep, init_main, init_active_count) = split_init_rows(init_rows);
 
-    // Extract sequent components for PVs: [ctx_hash_1..n, succedent_hash, lax]
+    // Extract sequent components for PVs: [ctx_hash_1..n, succedent_hash, lax, init_active_count]
     let mut ctx_hashes: Vec<u32> = Vec::new();
     let mut succedent_hash: u32 = 0;
     let mut lax_flag: u32 = 0;
@@ -266,17 +268,30 @@ fn build_witness_inputs(witness: &WitnessJson) -> Result<(Vec<AirRef<BabyBearPos
         if row[3] == 1 { succedent_hash = row[2]; lax_flag = row[4]; }
     }
     let max_ctx_size = ctx_hashes.len();
-    let num_pvs = max_ctx_size + 2; // ctx hashes + succedent + lax
+    let num_pvs = max_ctx_size + 3; // ctx hashes + succedent + lax + init_active_count
     let mut init_pis: Vec<BabyBear> = ctx_hashes.iter()
         .map(|&h| BabyBear::from_u32(h)).collect();
     init_pis.push(BabyBear::from_u32(succedent_hash));
     init_pis.push(BabyBear::from_u32(lax_flag));
+    init_pis.push(BabyBear::from_u32(init_active_count));
 
     airs.push(Arc::new(InitChip { rows: init_prep, min_rows, num_pvs }) as AirRef<_>);
-    traces.push(if init_main.is_empty() {
-        empty_trace(crate::chips::init::WIDTH, min_rows)
-    } else {
-        build_trace(&init_main, crate::chips::init::WIDTH, min_rows)
+    // Build init main trace with acc_active padding (can't use build_trace — padding
+    // rows need acc_active = final_sum, not 0, to satisfy running-sum constraint)
+    traces.push({
+        let w = crate::chips::init::WIDTH;
+        let n = init_main.len().max(min_rows).next_power_of_two();
+        let mut data = Vec::with_capacity(n * w);
+        for row in &init_main {
+            for &v in row { data.push(BabyBear::from_u32(v)); }
+        }
+        let final_acc = BabyBear::from_u32(init_active_count);
+        for _ in init_main.len()..n {
+            data.push(BabyBear::ZERO); // is_active = 0
+            data.push(BabyBear::ZERO); // nonce = 0
+            data.push(final_acc);       // acc_active = final_sum (carry forward)
+        }
+        RowMajorMatrix::new(data, w)
     });
     pis.push(init_pis);
 

@@ -38,18 +38,40 @@ pub fn padded_trace<const W: usize>(
     RowMajorMatrix::new(data, W)
 }
 
-/// Build an InitChip + its width-2 main trace from old-style rows.
+/// Build an InitChip + its width-3 main trace + PVs from old-style rows.
 ///
 /// Input rows: `[ctx_hash, ctx_active, oblig_hash, oblig_active, nonce, lax]`
 /// Preprocessed (in struct): `[ctx_hash, ctx_active, oblig_hash, oblig_active, lax]`
-/// Main trace: `[is_active, nonce]`
-pub fn make_init(rows: &[[u32; 6]], min_rows: usize) -> (InitChip, RowMajorMatrix<BabyBear>) {
+/// Main trace: `[is_active, nonce, acc_active]`
+///
+/// All rows are is_active=1 (non-chunked). PV = [init_active_count].
+pub fn make_init(rows: &[[u32; 6]], min_rows: usize) -> (InitChip, RowMajorMatrix<BabyBear>, Vec<BabyBear>) {
     let prep: Vec<[u32; 5]> = rows
         .iter()
         .map(|r| [r[0], r[1], r[2], r[3], r[5]])
         .collect();
-    let main: Vec<[u32; 2]> = rows.iter().map(|r| [1, r[4]]).collect();
-    (InitChip { rows: prep, min_rows, num_pvs: 0 }, padded_trace(&main, min_rows))
+    let init_active_count = rows.len() as u32;
+    let num_pvs = 1; // just init_active_count (no ctx identity PVs in unit tests)
+    let pis = vec![BabyBear::from_u32(init_active_count)];
+
+    // Build trace manually — padding rows need acc_active = final_sum (not 0)
+    let n = rows.len().max(min_rows).next_power_of_two();
+    let w = 3; // WIDTH
+    let mut data = Vec::with_capacity(n * w);
+    for (i, r) in rows.iter().enumerate() {
+        data.push(BabyBear::from_u32(1));           // is_active = 1
+        data.push(BabyBear::from_u32(r[4]));        // nonce
+        data.push(BabyBear::from_u32((i + 1) as u32)); // acc_active (running sum)
+    }
+    let final_acc = BabyBear::from_u32(init_active_count);
+    for _ in rows.len()..n {
+        data.push(BabyBear::ZERO);  // is_active = 0
+        data.push(BabyBear::ZERO);  // nonce = 0
+        data.push(final_acc);        // acc_active = final_sum
+    }
+    let trace = RowMajorMatrix::new(data, w);
+
+    (InitChip { rows: prep, min_rows, num_pvs }, trace, pis)
 }
 
 /// Build a FormulaRomAir + its width-1 main trace from old-style rows.

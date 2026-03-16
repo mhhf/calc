@@ -47,7 +47,7 @@ fn p2_monad_roundtrip() {
     assert_eq!(monad_l_chip.layout.width, 3);
     assert_eq!(monad_r_chip.layout.width, 6);
 
-    let (init_chip, init_trace) = make_init(&[[H_MONAD_A, 1, H_MONAD_A, 1, 0, 0]], 4);
+    let (init_chip, init_trace, init_pis) = make_init(&[[H_MONAD_A, 1, H_MONAD_A, 1, 0, 0]], 4);
     let ml_trace = dyn_trace(&[&[1, H_MONAD_A, H_A]], 3, 4);
     let mr_trace = dyn_trace(&[&[1, H_MONAD_A, H_A, 0, 0, 1]], 6, 4);
     let id_trace = dyn_trace(&[&[1, H_A, 1, 1]], 4, 4);
@@ -65,7 +65,7 @@ fn p2_monad_roundtrip() {
             Arc::new(rom_chip) as AirRef<_>,
         ],
         vec![init_trace, ml_trace, mr_trace, id_trace, rom_trace],
-        vec![vec![], vec![], vec![], vec![], vec![]],
+        vec![init_pis, vec![], vec![], vec![], vec![]],
     )
     .expect("monad: {A} ⊢ {A}");
 }
@@ -82,7 +82,7 @@ fn p2_monad_r_lax_mismatch_fails() {
     let monad_r_chip = RuleChip::new(specs["monad_r"].clone());
     let id_chip = RuleChip::new(specs["id"].clone());
 
-    let (init_chip, init_trace) = make_init(&[[H_MONAD_A, 1, H_MONAD_A, 1, 0, 0]], 4);
+    let (init_chip, init_trace, init_pis) = make_init(&[[H_MONAD_A, 1, H_MONAD_A, 1, 0, 0]], 4);
     let ml_trace = dyn_trace(&[&[1, H_MONAD_A, H_A]], 3, 4);
     let mr_trace = dyn_trace(&[&[1, H_MONAD_A, H_A, 0, 0, 1]], 6, 4);
 
@@ -103,7 +103,7 @@ fn p2_monad_r_lax_mismatch_fails() {
             Arc::new(rom_chip) as AirRef<_>,
         ],
         vec![init_trace, ml_trace, mr_trace, id_trace, rom_trace],
-        vec![vec![], vec![], vec![], vec![], vec![]],
+        vec![init_pis, vec![], vec![], vec![], vec![]],
     )
     .expect("should fail: lax mismatch in monad_r");
 }

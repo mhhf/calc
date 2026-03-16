@@ -522,6 +522,8 @@
   "freevar_rom": [],
   "fact_rom": [],
   "pred_rom": [],
+  "uint256_arith": [],
+  "byte_check_rom": [],
   "chipSegments": {
     "init": [
       0

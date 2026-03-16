@@ -47,7 +47,7 @@ fn p2_loli_r_basic() {
     let id_chip = RuleChip::new(specs["id"].clone());
     assert_eq!(loli_r_chip.layout.width, 7);
 
-    let (init_chip, init_trace) = make_init(
+    let (init_chip, init_trace, init_pis) = make_init(
         &[[0, 0, H_A_LOLI_A, 1, 0, 0]],
         4,
     );
@@ -72,7 +72,7 @@ fn p2_loli_r_basic() {
             Arc::new(rom_chip) as AirRef<_>,
         ],
         vec![init_trace, loli_r_trace, id_trace, rom_trace],
-        vec![vec![], vec![], vec![], vec![]],
+        vec![init_pis, vec![], vec![], vec![]],
     )
     .expect("loli_r: ⊢ A ⊸ A");
 }
@@ -88,7 +88,7 @@ fn p2_loli_l_basic() {
     let id_chip = RuleChip::new(specs["id"].clone());
     assert_eq!(loli_l_chip.layout.width, 9);
 
-    let (init_chip, init_trace) = make_init(
+    let (init_chip, init_trace, init_pis) = make_init(
         &[
             [H_A_LOLI_B, 1, H_B, 1, 0, 0], // ctx=A⊸B, oblig=(0, B, 0)
             [H_A, 1, 0, 0, 0, 0],            // ctx=A
@@ -119,7 +119,7 @@ fn p2_loli_l_basic() {
             Arc::new(rom_chip) as AirRef<_>,
         ],
         vec![init_trace, loli_l_trace, id_trace, rom_trace],
-        vec![vec![], vec![], vec![], vec![]],
+        vec![init_pis, vec![], vec![], vec![]],
     )
     .expect("loli_l: A ⊸ B, A ⊢ B");
 }
@@ -131,7 +131,7 @@ fn p2_loli_l_wrong_goal_fails() {
     let loli_l_chip = RuleChip::new(specs["loli_l"].clone());
     let id_chip = RuleChip::new(specs["id"].clone());
 
-    let (init_chip, init_trace) = make_init(
+    let (init_chip, init_trace, init_pis) = make_init(
         &[
             [H_A_LOLI_B, 1, H_B, 1, 0, 0],
             [H_A, 1, 0, 0, 0, 0],
@@ -163,7 +163,7 @@ fn p2_loli_l_wrong_goal_fails() {
             Arc::new(rom_chip) as AirRef<_>,
         ],
         vec![init_trace, loli_l_trace, id_trace, rom_trace],
-        vec![vec![], vec![], vec![], vec![]],
+        vec![init_pis, vec![], vec![], vec![]],
     )
     .expect("should fail: wrong goal in loli_l");
 }

@@ -45,7 +45,7 @@ fn p2_exists_r_basic() {
     let id_chip = RuleChip::new(specs["id"].clone());
     assert_eq!(exists_r_chip.layout.width, 6);
 
-    let (init_chip, init_trace) = make_init(&[[H_A, 1, H_EXISTS_A, 1, 0, 0]], 4);
+    let (init_chip, init_trace, init_pis) = make_init(&[[H_A, 1, H_EXISTS_A, 1, 0, 0]], 4);
     let er_trace = dyn_trace(&[&[1, H_EXISTS_A, H_A, 0, 0, 1]], 6, 4);
     let id_trace = dyn_trace(&[&[1, H_A, 1, 0]], 4, 4);
     let (rom_chip, rom_trace) = make_formula_rom(&[[H_EXISTS_A, tags["exists"], H_A, 0, 1, 1]], 4);
@@ -58,7 +58,7 @@ fn p2_exists_r_basic() {
             Arc::new(rom_chip) as AirRef<_>,
         ],
         vec![init_trace, er_trace, id_trace, rom_trace],
-        vec![vec![], vec![], vec![], vec![]],
+        vec![init_pis, vec![], vec![], vec![]],
     )
     .expect("exists_r: A ⊢ ∃x.A");
 }
@@ -74,7 +74,7 @@ fn p2_exists_l_basic() {
     let id_chip = RuleChip::new(specs["id"].clone());
     assert_eq!(exists_l_chip.layout.width, 3);
 
-    let (init_chip, init_trace) = make_init(&[[H_EXISTS_A, 1, H_A, 1, 0, 0]], 4);
+    let (init_chip, init_trace, init_pis) = make_init(&[[H_EXISTS_A, 1, H_A, 1, 0, 0]], 4);
     let el_trace = dyn_trace(&[&[1, H_EXISTS_A, H_A]], 3, 4);
     let id_trace = dyn_trace(&[&[1, H_A, 0, 0]], 4, 4);
     let (rom_chip, rom_trace) = make_formula_rom(&[[H_EXISTS_A, tags["exists"], H_A, 0, 1, 1]], 4);
@@ -87,7 +87,7 @@ fn p2_exists_l_basic() {
             Arc::new(rom_chip) as AirRef<_>,
         ],
         vec![init_trace, el_trace, id_trace, rom_trace],
-        vec![vec![], vec![], vec![], vec![]],
+        vec![init_pis, vec![], vec![], vec![]],
     )
     .expect("exists_l: ∃x.A ⊢ A");
 }
@@ -103,7 +103,7 @@ fn p2_forall_r_basic() {
     let id_chip = RuleChip::new(specs["id"].clone());
     assert_eq!(forall_r_chip.layout.width, 6);
 
-    let (init_chip, init_trace) = make_init(&[[H_A, 1, H_FORALL_A, 1, 0, 0]], 4);
+    let (init_chip, init_trace, init_pis) = make_init(&[[H_A, 1, H_FORALL_A, 1, 0, 0]], 4);
     let fr_trace = dyn_trace(&[&[1, H_FORALL_A, H_A, 0, 0, 1]], 6, 4);
     let id_trace = dyn_trace(&[&[1, H_A, 1, 0]], 4, 4);
     let (rom_chip, rom_trace) = make_formula_rom(&[[H_FORALL_A, tags["forall"], H_A, 0, 1, 1]], 4);
@@ -116,7 +116,7 @@ fn p2_forall_r_basic() {
             Arc::new(rom_chip) as AirRef<_>,
         ],
         vec![init_trace, fr_trace, id_trace, rom_trace],
-        vec![vec![], vec![], vec![], vec![]],
+        vec![init_pis, vec![], vec![], vec![]],
     )
     .expect("forall_r: A ⊢ ∀x.A");
 }
@@ -132,7 +132,7 @@ fn p2_forall_l_basic() {
     let id_chip = RuleChip::new(specs["id"].clone());
     assert_eq!(forall_l_chip.layout.width, 3);
 
-    let (init_chip, init_trace) = make_init(&[[H_FORALL_A, 1, H_A, 1, 0, 0]], 4);
+    let (init_chip, init_trace, init_pis) = make_init(&[[H_FORALL_A, 1, H_A, 1, 0, 0]], 4);
     let fl_trace = dyn_trace(&[&[1, H_FORALL_A, H_A]], 3, 4);
     let id_trace = dyn_trace(&[&[1, H_A, 0, 0]], 4, 4);
     let (rom_chip, rom_trace) = make_formula_rom(&[[H_FORALL_A, tags["forall"], H_A, 0, 1, 1]], 4);
@@ -145,7 +145,7 @@ fn p2_forall_l_basic() {
             Arc::new(rom_chip) as AirRef<_>,
         ],
         vec![init_trace, fl_trace, id_trace, rom_trace],
-        vec![vec![], vec![], vec![], vec![]],
+        vec![init_pis, vec![], vec![], vec![]],
     )
     .expect("forall_l: ∀x.A ⊢ A");
 }
@@ -161,7 +161,7 @@ fn p2_exists_roundtrip() {
     let exists_r_chip = RuleChip::new(specs["exists_r"].clone());
     let id_chip = RuleChip::new(specs["id"].clone());
 
-    let (init_chip, init_trace) = make_init(&[[H_EXISTS_A, 1, H_EXISTS_A, 1, 0, 0]], 4);
+    let (init_chip, init_trace, init_pis) = make_init(&[[H_EXISTS_A, 1, H_EXISTS_A, 1, 0, 0]], 4);
     let el_trace = dyn_trace(&[&[1, H_EXISTS_A, H_A]], 3, 4);
     let er_trace = dyn_trace(&[&[1, H_EXISTS_A, H_A, 0, 0, 1]], 6, 4);
     let id_trace = dyn_trace(&[&[1, H_A, 1, 0]], 4, 4);
@@ -177,7 +177,7 @@ fn p2_exists_roundtrip() {
             Arc::new(rom_chip) as AirRef<_>,
         ],
         vec![init_trace, el_trace, er_trace, id_trace, rom_trace],
-        vec![vec![], vec![], vec![], vec![], vec![]],
+        vec![init_pis, vec![], vec![], vec![], vec![]],
     )
     .expect("exists roundtrip: ∃x.A ⊢ ∃x.A");
 }

@@ -65,14 +65,14 @@ fn p6_pure_linear_public_values() {
         .expect("pure_linear proof should succeed");
 
     let init_pvs = &vdata.data.proof.per_air[0].public_values;
-    let num_pvs = expected_ctx.len() + 2;
+    let num_pvs = expected_ctx.len() + 3; // +3: succedent + lax + init_active_count
     assert_eq!(init_pvs.len(), num_pvs, "PV count mismatch");
 
     for (i, &ctx_hash) in expected_ctx.iter().enumerate() {
         assert_eq!(init_pvs[i], BabyBear::from_u32(ctx_hash));
     }
-    assert_eq!(init_pvs[num_pvs - 2], BabyBear::from_u32(expected_succedent));
-    assert_eq!(init_pvs[num_pvs - 1], BabyBear::from_u32(expected_lax));
+    assert_eq!(init_pvs[num_pvs - 3], BabyBear::from_u32(expected_succedent));
+    assert_eq!(init_pvs[num_pvs - 2], BabyBear::from_u32(expected_lax));
 }
 
 // ---------------------------------------------------------------------------

@@ -59,7 +59,7 @@ fn p2_xval_identity() {
     assert_eq!(id_w, 4);
 
     // InitChip: [ctx_hash, ctx_active, oblig_hash, oblig_active, nonce, lax]
-    let (init_chip, init_trace) = make_init(&[[H_A, 1, H_A, 1, 0, 0]], 4);
+    let (init_chip, init_trace, init_pis) = make_init(&[[H_A, 1, H_A, 1, 0, 0]], 4);
 
     // RuleChip(ID): [active, hash, nonce_in, lax]
     let id_trace = dyn_trace(&[&[1, H_A, 0, 0]], id_w, 4);
@@ -70,7 +70,7 @@ fn p2_xval_identity() {
             Arc::new(id_chip) as AirRef<_>,
         ],
         vec![init_trace, id_trace],
-        vec![vec![], vec![]],
+        vec![init_pis, vec![]],
     )
     .expect("cross-validate: A ⊢ A with generic ID");
 }
@@ -87,7 +87,7 @@ fn p2_xval_tensor_r() {
     // tensor_r layout: [active=0, hash=1, c0=2, c1=3, nonce_in=4, lax=5, nonce_out0=6, nonce_out1=7]
     assert_eq!(tr_chip.layout.width, 8);
 
-    let (init_chip, init_trace) = make_init(
+    let (init_chip, init_trace, init_pis) = make_init(
         &[
             [H_A, 1, H_A_TENSOR_B, 1, 0, 0],
             [H_B, 1, 0, 0, 0, 0],
@@ -120,7 +120,7 @@ fn p2_xval_tensor_r() {
             Arc::new(rom_chip) as AirRef<_>,
         ],
         vec![init_trace, tr_trace, id_trace, rom_trace],
-        vec![vec![], vec![], vec![], vec![]],
+        vec![init_pis, vec![], vec![], vec![]],
     )
     .expect("cross-validate: A, B ⊢ A ⊗ B with generic chips");
 }
@@ -139,7 +139,7 @@ fn p2_xval_tensor_swap() {
     // tensor_l layout: [active=0, hash=1, c0=2, c1=3] width=4
     assert_eq!(tl_chip.layout.width, 4);
 
-    let (init_chip, init_trace) = make_init(
+    let (init_chip, init_trace, init_pis) = make_init(
         &[[H_A_TENSOR_B, 1, H_B_TENSOR_A, 1, 0, 0]],
         4,
     );
@@ -175,7 +175,7 @@ fn p2_xval_tensor_swap() {
             Arc::new(rom_chip) as AirRef<_>,
         ],
         vec![init_trace, tl_trace, tr_trace, id_trace, rom_trace],
-        vec![vec![], vec![], vec![], vec![], vec![]],
+        vec![init_pis, vec![], vec![], vec![], vec![]],
     )
     .expect("cross-validate: A ⊗ B ⊢ B ⊗ A with generic chips");
 }
@@ -193,7 +193,7 @@ fn p2_xval_with_r() {
     // with_r has same layout as tensor_r (both are binary right rules)
     assert_eq!(wr_chip.layout.width, 8);
 
-    let (init_chip, init_trace) = make_init(&[[H_A, 1, H_A_WITH_A, 1, 0, 0]], 4);
+    let (init_chip, init_trace, init_pis) = make_init(&[[H_A, 1, H_A_WITH_A, 1, 0, 0]], 4);
     let dup_trace = common::padded_trace(&[[H_A, 1]], 4);
 
     // RuleChip(WITH_R): [active, hash, c0, c1, nonce_in, lax, nonce_out0, nonce_out1]
@@ -221,7 +221,7 @@ fn p2_xval_with_r() {
             Arc::new(rom_chip) as AirRef<_>,
         ],
         vec![init_trace, dup_trace, wr_trace, id_trace, rom_trace],
-        vec![vec![], vec![], vec![], vec![], vec![]],
+        vec![init_pis, vec![], vec![], vec![], vec![]],
     )
     .expect("cross-validate: A ⊢ A & A with generic chips");
 }

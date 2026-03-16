@@ -50,7 +50,7 @@ fn p2_oplus_swap() {
     assert_eq!(oplus_l_chip.layout.width, 9);
     assert_eq!(oplus_r1_chip.layout.width, 7);
 
-    let (init_chip, init_trace) = make_init(
+    let (init_chip, init_trace, init_pis) = make_init(
         &[[H_A_OPLUS_B, 1, H_B_OPLUS_A, 1, 0, 0]],
         4,
     );
@@ -94,7 +94,7 @@ fn p2_oplus_swap() {
             Arc::new(rom_chip) as AirRef<_>,
         ],
         vec![init_trace, oplus_l_trace, oplus_r2_trace, oplus_r1_trace, id_trace, rom_trace],
-        vec![vec![], vec![], vec![], vec![], vec![], vec![]],
+        vec![init_pis, vec![], vec![], vec![], vec![], vec![]],
     )
     .expect("oplus: A ⊕ B ⊢ B ⊕ A");
 }
@@ -109,7 +109,7 @@ fn p2_oplus_r1_simple() {
     let oplus_r1_chip = RuleChip::new(specs["oplus_r1"].clone());
     let id_chip = RuleChip::new(specs["id"].clone());
 
-    let (init_chip, init_trace) = make_init(&[[H_A, 1, H_A_OPLUS_B, 1, 0, 0]], 4);
+    let (init_chip, init_trace, init_pis) = make_init(&[[H_A, 1, H_A_OPLUS_B, 1, 0, 0]], 4);
 
     let oplus_r1_trace = dyn_trace(
         &[&[1, H_A_OPLUS_B, H_A, H_B, 0, 0, 1]],
@@ -131,7 +131,7 @@ fn p2_oplus_r1_simple() {
             Arc::new(rom_chip) as AirRef<_>,
         ],
         vec![init_trace, oplus_r1_trace, id_trace, rom_trace],
-        vec![vec![], vec![], vec![], vec![]],
+        vec![init_pis, vec![], vec![], vec![]],
     )
     .expect("oplus_r1: A ⊢ A ⊕ B");
 }
@@ -147,7 +147,7 @@ fn p2_oplus_r1_wrong_child_fails() {
     let oplus_r1_chip = RuleChip::new(specs["oplus_r1"].clone());
     let id_chip = RuleChip::new(specs["id"].clone());
 
-    let (init_chip, init_trace) = make_init(&[[H_B, 1, H_A_OPLUS_B, 1, 0, 0]], 4);
+    let (init_chip, init_trace, init_pis) = make_init(&[[H_B, 1, H_A_OPLUS_B, 1, 0, 0]], 4);
 
     let oplus_r1_trace = dyn_trace(
         &[&[1, H_A_OPLUS_B, H_A, H_B, 0, 0, 1]],
@@ -169,7 +169,7 @@ fn p2_oplus_r1_wrong_child_fails() {
             Arc::new(rom_chip) as AirRef<_>,
         ],
         vec![init_trace, oplus_r1_trace, id_trace, rom_trace],
-        vec![vec![], vec![], vec![], vec![]],
+        vec![init_pis, vec![], vec![], vec![]],
     )
     .expect("should fail: wrong injection in oplus_r1");
 }
