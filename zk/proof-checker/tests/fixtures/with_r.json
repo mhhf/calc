@@ -536,5 +536,24 @@
   "gamma_rom": [],
   "freevar_rom": [],
   "fact_rom": [],
-  "pred_rom": []
+  "pred_rom": [],
+  "chipSegments": {
+    "init": [
+      0
+    ],
+    "dup": [
+      0
+    ],
+    "with_r": [
+      0
+    ],
+    "id": [
+      0,
+      0
+    ]
+  },
+  "boundaryDeltas": [
+    {}
+  ],
+  "faCount": 0
 }

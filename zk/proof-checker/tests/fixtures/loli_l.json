@@ -540,5 +540,22 @@
   "gamma_rom": [],
   "freevar_rom": [],
   "fact_rom": [],
-  "pred_rom": []
+  "pred_rom": [],
+  "chipSegments": {
+    "init": [
+      0,
+      0
+    ],
+    "loli_l": [
+      0
+    ],
+    "id": [
+      0,
+      0
+    ]
+  },
+  "boundaryDeltas": [
+    {}
+  ],
+  "faCount": 0
 }

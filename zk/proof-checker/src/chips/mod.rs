@@ -1,5 +1,7 @@
 pub mod byte_check_rom;
 pub mod canon_cons_rom;
+pub mod ctx_boundary;
+pub mod oblig_boundary;
 pub mod discard;
 pub mod dup;
 pub mod fact_axiom;

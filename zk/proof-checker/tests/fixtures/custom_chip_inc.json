@@ -637,5 +637,26 @@
       0,
       0
     ]
-  ]
+  ],
+  "chipSegments": {
+    "init": [
+      0
+    ],
+    "monad_r": [
+      0
+    ],
+    "fact_axiom": [
+      0,
+      1
+    ],
+    "id": [
+      2
+    ]
+  },
+  "boundaryDeltas": [
+    {},
+    {},
+    {}
+  ],
+  "faCount": 2
 }

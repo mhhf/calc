@@ -30,11 +30,11 @@ use serde::Deserialize;
 
 use crate::chips::{
     canon_cons_rom::CanonConsRomAir,
+    ctx_boundary::CtxBoundaryChip,
     discard::DiscardChip,
     dup::DupChip,
     fact_axiom::FactAxiomChip,
     fact_rom::FactRomAir,
-    pred_rom::PredicateRomAir,
     flat_final::FlatFinalChip,
     flat_init::FlatInitChip,
     flat_step::FlatStepChip,
@@ -42,6 +42,8 @@ use crate::chips::{
     freevar_rom::FreevarRomAir,
     gamma_rom::GammaRomAir,
     init::InitChip,
+    oblig_boundary::ObligBoundaryChip,
+    pred_rom::PredicateRomAir,
     subst::SubstChip,
     zero_l::ZeroLChip,
 };
@@ -66,10 +68,16 @@ pub struct WitnessJson {
     /// PredicateRomAir constrains arithmetic semantics in preprocessed trace.
     #[serde(default)]
     pub pred_rom: Vec<Vec<u32>>,
+    /// Phase 6-7: max obligation count for boundary chip PV normalization.
+    #[serde(default)]
+    pub max_oblig_count: Option<usize>,
+    /// Phase 6-7: max context size for boundary chip PV normalization.
+    #[serde(default)]
+    pub max_boundary_ctx_size: Option<usize>,
 }
 
 /// Known special chip names that are NOT generic RuleChips.
-const SPECIAL_CHIPS: &[&str] = &["init", "dup", "zero_l", "discard", "subst", "fact_axiom"];
+const SPECIAL_CHIPS: &[&str] = &["init", "dup", "zero_l", "discard", "subst", "fact_axiom", "oblig_boundary", "ctx_boundary"];
 
 /// Build a padded RowMajorMatrix from dynamic-width rows.
 fn build_trace(rows: &[Vec<u32>], width: usize, min_rows: usize) -> RowMajorMatrix<BabyBear> {
@@ -355,6 +363,74 @@ fn build_witness_inputs(witness: &WitnessJson) -> Result<(Vec<AirRef<BabyBearPos
         pis.push(vec![]);
     }
 
+    // 12. ObligBoundaryChip (Phase 6-7: tree path chunking)
+    // Present when oblig_boundary chip data exists (chunked tree witnesses).
+    if witness.chips.contains_key("oblig_boundary") {
+        let max_oblig_count = witness.max_oblig_count.unwrap_or(1);
+        let oblig_rows = witness.chips.get("oblig_boundary").unwrap();
+
+        // Extract PVs: init obligs (is_send=1) and final obligs (is_send=0)
+        let mut init_obligs: Vec<BabyBear> = Vec::new();
+        let mut final_obligs: Vec<BabyBear> = Vec::new();
+        for row in oblig_rows {
+            if row[0] == 1 { // is_active
+                let goal = BabyBear::from_u32(row[3]);
+                let lax = BabyBear::from_u32(row[4]);
+                if row[1] == 1 { // is_send (init)
+                    init_obligs.push(goal);
+                    init_obligs.push(lax);
+                } else { // receive (final)
+                    final_obligs.push(goal);
+                    final_obligs.push(lax);
+                }
+            }
+        }
+        // Pad to max_oblig_count * 2
+        init_obligs.resize(max_oblig_count * 2, BabyBear::ZERO);
+        final_obligs.resize(max_oblig_count * 2, BabyBear::ZERO);
+        let mut oblig_pvs = init_obligs;
+        oblig_pvs.extend(final_obligs);
+
+        airs.push(Arc::new(ObligBoundaryChip { max_oblig_count }) as AirRef<_>);
+        traces.push(if oblig_rows.is_empty() {
+            empty_trace(crate::chips::oblig_boundary::WIDTH, min_rows)
+        } else {
+            build_trace(oblig_rows, crate::chips::oblig_boundary::WIDTH, min_rows)
+        });
+        pis.push(oblig_pvs);
+    }
+
+    // 13. CtxBoundaryChip (Phase 6-7: tree path chunking)
+    if witness.chips.contains_key("ctx_boundary") {
+        let max_ctx = witness.max_boundary_ctx_size.unwrap_or(0);
+        let ctx_rows = witness.chips.get("ctx_boundary").unwrap();
+
+        let mut init_ctx: Vec<BabyBear> = Vec::new();
+        let mut final_ctx: Vec<BabyBear> = Vec::new();
+        for row in ctx_rows {
+            if row[0] == 1 { // is_active
+                let hash = BabyBear::from_u32(row[2]);
+                if row[1] == 1 { // is_send (init)
+                    init_ctx.push(hash);
+                } else {
+                    final_ctx.push(hash);
+                }
+            }
+        }
+        init_ctx.resize(max_ctx, BabyBear::ZERO);
+        final_ctx.resize(max_ctx, BabyBear::ZERO);
+        let mut ctx_pvs = init_ctx;
+        ctx_pvs.extend(final_ctx);
+
+        airs.push(Arc::new(CtxBoundaryChip { max_ctx_size: max_ctx }) as AirRef<_>);
+        traces.push(if ctx_rows.is_empty() {
+            empty_trace(crate::chips::ctx_boundary::WIDTH, min_rows)
+        } else {
+            build_trace(ctx_rows, crate::chips::ctx_boundary::WIDTH, min_rows)
+        });
+        pis.push(ctx_pvs);
+    }
+
     Ok((airs, traces, pis))
 }
 
@@ -372,6 +448,21 @@ pub fn prove_witness_vdata(witness: &WitnessJson) -> Result<VerificationDataWith
     let (airs, traces, pis) = build_witness_inputs(witness)?;
     BabyBearPoseidon2Engine::run_simple_test_fast(airs, traces, pis)
         .map_err(|e| format!("STARK verification failed: {e:?}"))
+}
+
+/// Prove a chunked tree witness (array of WitnessJson), returning
+/// verification data for each chunk. Each chunk is proved independently.
+/// Phase 6-7: per-chunk proving for tree path batch recursive composition.
+pub fn prove_chunked_tree_witness(
+    chunks: &[WitnessJson],
+) -> Result<Vec<VerificationDataWithFriParams<BabyBearPoseidon2Config>>, String> {
+    let mut results = Vec::with_capacity(chunks.len());
+    for (i, chunk) in chunks.iter().enumerate() {
+        let vdata = prove_witness_vdata(chunk)
+            .map_err(|e| format!("tree chunk {i} failed: {e}"))?;
+        results.push(vdata);
+    }
+    Ok(results)
 }
 
 /// Flat witness format produced by `lib/zk/flat-witness.js`.
