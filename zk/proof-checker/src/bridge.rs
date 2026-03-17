@@ -19,7 +19,10 @@ use std::sync::Arc;
 use rayon::prelude::*;
 
 use openvm_stark_backend::{
+    engine::StarkEngine,
     p3_matrix::dense::RowMajorMatrix,
+    prover::hal::DeviceDataTransporter,
+    prover::types::{AirProvingContext, ProvingContext},
     AirRef,
 };
 use openvm_stark_sdk::{
@@ -610,6 +613,333 @@ pub fn prove_chunked_tree_witness(
                 .map_err(|e| format!("tree chunk {i} failed: {e}"))
         })
         .collect()
+}
+
+// ---------------------------------------------------------------------------
+// ROM + Init normalization for shared VK across multiple tree witnesses
+// ---------------------------------------------------------------------------
+
+/// Normalize all preprocessed data across tree witnesses so they share
+/// an identical VK. This enables shared keygen (prove once, verify many)
+/// and is the prerequisite for IVC recursive composition of symbolic paths.
+///
+/// What gets normalized:
+/// - init chip rows: union of all preprocessed rows, per-witness is_active
+/// - formula_rom, gamma_rom, freevar_rom, fact_rom, pred_rom: union entries
+/// - uint256_arith + byte_check_rom: union entries
+/// - rule chips: union of all rule chip names (empty for missing)
+///
+/// All witnesses must share the same `tags` and `rule_specs`.
+pub fn normalize_tree_witnesses(witnesses: &mut [WitnessJson]) {
+    if witnesses.is_empty() { return; }
+
+    // --- Normalize rule chip set ---
+    // Collect all rule chip names across witnesses
+    let mut all_rule_names: std::collections::BTreeSet<String> = std::collections::BTreeSet::new();
+    for w in witnesses.iter() {
+        for name in w.chips.keys() {
+            if !SPECIAL_CHIPS.contains(&name.as_str()) {
+                all_rule_names.insert(name.clone());
+            }
+        }
+    }
+    // Add empty entries for missing rule chips
+    for w in witnesses.iter_mut() {
+        for name in &all_rule_names {
+            w.chips.entry(name.clone()).or_insert_with(Vec::new);
+        }
+    }
+
+    // --- Normalize init chip rows ---
+    // Key: full preprocessed tuple (ctx_hash, ctx_active, oblig_hash, oblig_active, lax)
+    // is_active and nonce are main-trace (not committed)
+    normalize_init_rows(witnesses);
+
+    // --- Normalize ROMs ---
+    normalize_rom_2col(witnesses, |w| &w.gamma_rom, |w| &mut w.gamma_rom);
+    normalize_rom_2col(witnesses, |w| &w.fact_rom, |w| &mut w.fact_rom);
+    normalize_formula_rom(witnesses);
+    normalize_freevar_rom(witnesses);
+    normalize_pred_rom(witnesses);
+    normalize_uint256(witnesses);
+}
+
+/// Normalize init chip rows across witnesses.
+/// Union all preprocessed rows. Per-witness main trace marks owned rows active.
+fn normalize_init_rows(witnesses: &mut [WitnessJson]) {
+    use std::collections::BTreeMap;
+
+    // Collect all unique preprocessed rows and per-witness main-trace data
+    // Key: (ctx_hash, ctx_active, oblig_hash, oblig_active, lax)
+    // Value per witness: (nonce, is_active) or None if not present
+    let mut union: BTreeMap<[u32; 5], Vec<Option<(u32, u32)>>> = BTreeMap::new();
+
+    for (wi, w) in witnesses.iter().enumerate() {
+        let init_rows = match w.chips.get("init") {
+            Some(rows) => rows,
+            None => continue,
+        };
+        for row in init_rows {
+            let key = [row[0], row[1], row[2], row[3], row[5]]; // ctx_hash, ctx_active, oblig_hash, oblig_active, lax
+            let nonce = row[4];
+            let is_active = if row.len() >= 7 { row[6] } else { 1 };
+
+            let entry = union.entry(key).or_insert_with(|| vec![None; witnesses.len()]);
+            entry[wi] = Some((nonce, is_active));
+        }
+    }
+
+    let union_keys: Vec<[u32; 5]> = union.keys().cloned().collect();
+
+    // Rebuild each witness's init rows with the full union
+    for (wi, w) in witnesses.iter_mut().enumerate() {
+        let mut new_rows: Vec<Vec<u32>> = Vec::with_capacity(union_keys.len());
+        for key in &union_keys {
+            let per_witness = &union[key];
+            let (nonce, is_active) = per_witness[wi].unwrap_or((0, 0));
+            // Format: [ctx_hash, ctx_active, oblig_hash, oblig_active, nonce, lax, is_active]
+            new_rows.push(vec![key[0], key[1], key[2], key[3], nonce, key[4], is_active]);
+        }
+        w.chips.insert("init".to_string(), new_rows);
+    }
+}
+
+/// Normalize a 2-column ROM (hash, is_active, num_lookups) — used for gamma_rom and fact_rom.
+fn normalize_rom_2col(
+    witnesses: &mut [WitnessJson],
+    get: impl Fn(&WitnessJson) -> &Vec<Vec<u32>>,
+    set: impl Fn(&mut WitnessJson) -> &mut Vec<Vec<u32>>,
+) {
+    use std::collections::BTreeMap;
+
+    // Union entries by hash. Preprocessed: [hash, is_active=1], main: [num_lookups]
+    let mut union: BTreeMap<u32, ()> = BTreeMap::new();
+    let mut lookups_per: Vec<BTreeMap<u32, u32>> = Vec::with_capacity(witnesses.len());
+    for w in witnesses.iter() {
+        let rows = get(w);
+        let mut lm = BTreeMap::new();
+        for row in rows {
+            union.insert(row[0], ());
+            lm.insert(row[0], row[2]);
+        }
+        lookups_per.push(lm);
+    }
+
+    let keys: Vec<u32> = union.keys().cloned().collect();
+
+    for (wi, w) in witnesses.iter_mut().enumerate() {
+        let rom = set(w);
+        *rom = keys.iter().map(|&h| {
+            vec![h, 1, lookups_per[wi].get(&h).copied().unwrap_or(0)]
+        }).collect();
+    }
+}
+
+/// Normalize formula_rom: [hash, tag, c0, c1, is_active, num_lookups]
+fn normalize_formula_rom(witnesses: &mut [WitnessJson]) {
+    use std::collections::BTreeMap;
+
+    let mut union: BTreeMap<u32, [u32; 5]> = BTreeMap::new();
+    let mut lookups_per: Vec<BTreeMap<u32, u32>> = Vec::with_capacity(witnesses.len());
+    for w in witnesses.iter() {
+        let mut lm = BTreeMap::new();
+        for row in &w.formula_rom {
+            union.entry(row[0]).or_insert([row[0], row[1], row[2], row[3], row[4]]);
+            lm.insert(row[0], row[5]);
+        }
+        lookups_per.push(lm);
+    }
+
+    let keys: Vec<u32> = union.keys().cloned().collect();
+
+    for (wi, w) in witnesses.iter_mut().enumerate() {
+        w.formula_rom = keys.iter().map(|&h| {
+            let entry = union[&h];
+            vec![entry[0], entry[1], entry[2], entry[3], entry[4],
+                 lookups_per[wi].get(&h).copied().unwrap_or(0)]
+        }).collect();
+    }
+}
+
+/// Normalize freevar_rom: [subst_id, freevar_hash, ground_value, is_active, num_lookups]
+/// Key: (subst_id, freevar_hash, ground_value)
+fn normalize_freevar_rom(witnesses: &mut [WitnessJson]) {
+    use std::collections::BTreeMap;
+
+    let mut union: BTreeMap<(u32,u32,u32), [u32; 4]> = BTreeMap::new();
+    let mut lookups_per: Vec<BTreeMap<(u32,u32,u32), u32>> = Vec::with_capacity(witnesses.len());
+    for w in witnesses.iter() {
+        let mut lm = BTreeMap::new();
+        for row in &w.freevar_rom {
+            let key = (row[0], row[1], row[2]);
+            union.entry(key).or_insert([row[0], row[1], row[2], row[3]]);
+            lm.insert(key, row[4]);
+        }
+        lookups_per.push(lm);
+    }
+
+    if union.is_empty() { return; }
+
+    let keys: Vec<(u32,u32,u32)> = union.keys().cloned().collect();
+
+    for (wi, w) in witnesses.iter_mut().enumerate() {
+        w.freevar_rom = keys.iter().map(|k| {
+            let entry = union[k];
+            vec![entry[0], entry[1], entry[2], entry[3],
+                 lookups_per[wi].get(k).copied().unwrap_or(0)]
+        }).collect();
+    }
+}
+
+/// Normalize pred_rom: [pred_hash, is_active, num_lookups, is_plus..is_mem_expand, arg0..arg3]
+/// Key: pred_hash. Preprocessed: all columns except num_lookups (index 2).
+fn normalize_pred_rom(witnesses: &mut [WitnessJson]) {
+    use std::collections::BTreeMap;
+
+    let mut union: BTreeMap<u32, Vec<u32>> = BTreeMap::new();
+    let mut lookups_per: Vec<BTreeMap<u32, u32>> = Vec::with_capacity(witnesses.len());
+    for w in witnesses.iter() {
+        let mut lm = BTreeMap::new();
+        for row in &w.pred_rom {
+            let hash = row[0];
+            union.entry(hash).or_insert_with(|| row.clone());
+            lm.insert(hash, row[2]); // num_lookups at index 2
+        }
+        lookups_per.push(lm);
+    }
+
+    if union.is_empty() { return; }
+
+    let keys: Vec<u32> = union.keys().cloned().collect();
+
+    for (wi, w) in witnesses.iter_mut().enumerate() {
+        w.pred_rom = keys.iter().map(|&h| {
+            let mut row = union[&h].clone();
+            row[2] = lookups_per[wi].get(&h).copied().unwrap_or(0); // per-witness num_lookups
+            row
+        }).collect();
+    }
+}
+
+/// Normalize uint256_arith + byte_check_rom.
+/// If any witness has uint256_arith, all get it (with zero-lookup entries for missing).
+fn normalize_uint256(witnesses: &mut [WitnessJson]) {
+    use std::collections::BTreeMap;
+
+    // Check if any witness has uint256_arith
+    let has_any = witnesses.iter().any(|w| !w.uint256_arith.is_empty());
+    if !has_any { return; }
+
+    let prep_width = crate::chips::uint256_arith::PREP_WIDTH; // 100
+    let main_width = crate::chips::uint256_arith::WIDTH;      // 33
+
+    // Union by preprocessed columns (first prep_width columns)
+    let mut union: BTreeMap<Vec<u32>, Vec<u32>> = BTreeMap::new();
+    let mut main_per: Vec<BTreeMap<Vec<u32>, Vec<u32>>> = Vec::with_capacity(witnesses.len());
+    for w in witnesses.iter() {
+        let mut mm = BTreeMap::new();
+        for row in &w.uint256_arith {
+            let prep = row[..prep_width].to_vec();
+            let main = row[prep_width..].to_vec();
+            union.entry(prep.clone()).or_insert_with(|| row.clone());
+            mm.insert(prep, main);
+        }
+        main_per.push(mm);
+    }
+
+    let keys: Vec<Vec<u32>> = union.keys().cloned().collect();
+    let zero_main = vec![0u32; main_width];
+
+    for (wi, w) in witnesses.iter_mut().enumerate() {
+        w.uint256_arith = keys.iter().map(|prep| {
+            let main = main_per[wi].get(prep).unwrap_or(&zero_main);
+            let mut row = prep.clone();
+            row.extend_from_slice(main);
+            row
+        }).collect();
+
+        // Ensure byte_check_rom is present (256 entries)
+        if w.byte_check_rom.is_empty() {
+            w.byte_check_rom = vec![0u32; 256];
+        }
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Shared-keygen proving for normalized witnesses
+// ---------------------------------------------------------------------------
+
+/// Prove multiple tree witnesses with shared keygen.
+///
+/// Prerequisites: call `normalize_tree_witnesses` first to ensure all witnesses
+/// have identical preprocessed traces (same AIR set, same ROM entries, same init rows).
+///
+/// Returns verification data per witness. All share the same VK.
+pub fn prove_witnesses_shared_keygen(
+    witnesses: &[WitnessJson],
+) -> Result<Vec<VerificationDataWithFriParams<BabyBearPoseidon2Config>>, String> {
+    if witnesses.is_empty() {
+        return Ok(vec![]);
+    }
+
+    let fri_params = FriParameters::new_for_testing(1);
+    let engine = BabyBearPoseidon2Engine::new(fri_params);
+
+    // Build AIRs from witness[0] for keygen (all witnesses have identical preprocessed data)
+    #[allow(unused_variables)]
+    let (airs, traces0, pis0) = build_witness_inputs(&witnesses[0])?;
+    let air_ids: Vec<usize> = (0..airs.len()).collect();
+
+    // Keygen once
+    let mut keygen_builder = engine.keygen_builder();
+    engine.set_up_keygen_builder(&mut keygen_builder, &airs);
+    let pk = keygen_builder.generate_pk();
+    let vk = pk.get_vk();
+
+    // Debug-check constraints with witness[0]
+    #[cfg(debug_assertions)]
+    {
+        let proof_inputs: Vec<_> = traces0.iter().zip(pis0.iter()).map(|(trace, pvs)| {
+            openvm_stark_backend::prover::types::AirProofRawInput {
+                cached_mains: vec![],
+                common_main: Some(Arc::new(trace.clone())),
+                public_values: pvs.clone(),
+            }
+        }).collect();
+        engine.debug(&airs, &pk.per_air, &proof_inputs);
+    }
+
+    // Prove all witnesses in parallel, sharing the PK
+    let results: Result<Vec<_>, String> = witnesses.par_iter().enumerate()
+        .map(|(i, witness)| {
+            let (_, traces, pis) = build_witness_inputs(witness)
+                .map_err(|e| format!("witness {i} build failed: {e}"))?;
+
+            let ctx = ProvingContext::new(
+                air_ids.iter().zip(traces.into_iter().zip(pis.into_iter()))
+                    .map(|(&id, (trace, pvs))| {
+                        let arc_trace = Arc::new(trace);
+                        let device_trace = engine.device()
+                            .transport_matrix_to_device(&arc_trace);
+                        (id, AirProvingContext::simple(device_trace, pvs))
+                    })
+                    .collect()
+            );
+
+            let proof = engine.prove_then_verify(&pk, ctx)
+                .map_err(|e| format!("witness {i} STARK failed: {e:?}"))?;
+
+            Ok(VerificationDataWithFriParams {
+                data: openvm_stark_backend::engine::VerificationData {
+                    vk: vk.clone(),
+                    proof,
+                },
+                fri_params,
+            })
+        })
+        .collect();
+
+    results
 }
 
 /// Flat witness format produced by `lib/zk/flat-witness.js`.
