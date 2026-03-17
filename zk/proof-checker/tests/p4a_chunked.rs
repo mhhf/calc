@@ -6,10 +6,17 @@
 //! 3. Verify each proof with its own VK
 //! 4. Check context continuity: chunk[i].final_pvs == chunk[i+1].init_pvs
 //! 5. Assert VK identity: all chunks produce the same verifier key (constant VK)
+//! 6. PV value tampering caught by FLAT_PV_BIND_BUS (init + final)
 
-use p3_field::PrimeField32;
+use p3_baby_bear::BabyBear;
+use p3_field::{PrimeCharacteristicRing, PrimeField32};
 
-use proof_checker::bridge::{prove_chunked_flat_witness, FlatWitnessJson};
+use openvm_stark_sdk::{
+    config::{baby_bear_poseidon2::BabyBearPoseidon2Engine, FriParameters},
+    engine::StarkFriEngine,
+};
+
+use proof_checker::bridge::{build_flat_witness_inputs, prove_chunked_flat_witness, FlatWitnessJson};
 
 fn load_fixture(name: &str) -> String {
     let path = format!(
@@ -131,4 +138,56 @@ fn p4a_chunked_constant_vk() {
         println!("  chunk 0 == chunk {i}: VK pre_hash match");
     }
     println!("  pre_hash: {:?}", vk0.pre_hash);
+}
+
+// ---------------------------------------------------------------------------
+// Forgery: tamper FlatInit hash PV → FLAT_PV_BIND_BUS rejection
+// ---------------------------------------------------------------------------
+
+#[test]
+#[should_panic]
+fn p4a_chunked_tamper_flat_init_pv_fails() {
+    let json = load_fixture("multisig_chunked");
+    let chunks: Vec<FlatWitnessJson> = serde_json::from_str(&json).expect("parse fixture");
+
+    // Use chunk 0 (always has init context)
+    let chunk = &chunks[0];
+    let (airs, traces, mut pis) = build_flat_witness_inputs(chunk)
+        .expect("build_flat_witness_inputs should succeed");
+
+    // FlatInitChip is AIR index 0, PVs = [hash_0, ..., hash_{max-1}, active_count]
+    assert!(!pis[0].is_empty(), "FlatInitChip should have PVs");
+
+    // Tamper hash_0 (first context hash PV) — breaks FLAT_PV_BIND_BUS multiset equality
+    pis[0][0] = BabyBear::from_u32(77777);
+
+    let engine = BabyBearPoseidon2Engine::new(FriParameters::new_for_testing(2));
+    StarkFriEngine::run_simple_test_impl(&engine, airs, traces, pis)
+        .expect("should not reach — STARK should reject tampered init PV");
+}
+
+// ---------------------------------------------------------------------------
+// Forgery: tamper FlatFinal hash PV → FLAT_PV_BIND_BUS rejection
+// ---------------------------------------------------------------------------
+
+#[test]
+#[should_panic]
+fn p4a_chunked_tamper_flat_final_pv_fails() {
+    let json = load_fixture("multisig_chunked");
+    let chunks: Vec<FlatWitnessJson> = serde_json::from_str(&json).expect("parse fixture");
+
+    // Use last chunk (always has final context to absorb)
+    let chunk = chunks.last().unwrap();
+    let (airs, traces, mut pis) = build_flat_witness_inputs(chunk)
+        .expect("build_flat_witness_inputs should succeed");
+
+    // FlatFinalChip is AIR index 2, PVs = [hash_0, ..., hash_{max-1}, active_count]
+    assert!(!pis[2].is_empty(), "FlatFinalChip should have PVs");
+
+    // Tamper hash_0 (first context hash PV) — breaks FLAT_PV_BIND_BUS multiset equality
+    pis[2][0] = BabyBear::from_u32(66666);
+
+    let engine = BabyBearPoseidon2Engine::new(FriParameters::new_for_testing(2));
+    StarkFriEngine::run_simple_test_impl(&engine, airs, traces, pis)
+        .expect("should not reach — STARK should reject tampered final PV");
 }

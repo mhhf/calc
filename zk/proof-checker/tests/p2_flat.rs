@@ -8,6 +8,8 @@ mod common;
 
 use std::sync::Arc;
 
+use p3_baby_bear::BabyBear;
+use openvm_stark_backend::{p3_field::PrimeCharacteristicRing, p3_matrix::dense::RowMajorMatrix, AirRef};
 use proof_checker::chips::{
     canon_cons_rom::CanonConsRomAir,
     flat_final::FlatFinalChip,
@@ -16,7 +18,6 @@ use proof_checker::chips::{
     freevar_rom::FreevarRomAir,
     subst::SubstChip,
 };
-use openvm_stark_backend::AirRef;
 use openvm_stark_sdk::{
     config::{baby_bear_poseidon2::BabyBearPoseidon2Engine, FriParameters},
     engine::StarkFriEngine,
@@ -58,6 +59,28 @@ fn compiled_step(consumed: u32, produced: u32, loli: u32, monad: u32) -> [u32; 4
     row
 }
 
+/// Build a width-4 flat trace: [is_active, hash, acc_active, is_first]
+fn build_flat_boundary_trace(rows: &[[u32; 2]], min_rows: usize) -> (RowMajorMatrix<BabyBear>, u32) {
+    let n = rows.len().max(min_rows).next_power_of_two();
+    let mut data = Vec::with_capacity(n * 4);
+    let mut acc: u32 = 0;
+    for (i, row) in rows.iter().enumerate() {
+        if row[0] == 1 { acc += 1; }
+        data.push(BabyBear::from_u32(row[0]));
+        data.push(BabyBear::from_u32(row[1]));
+        data.push(BabyBear::from_u32(acc));
+        data.push(if i == 0 { BabyBear::ONE } else { BabyBear::ZERO });
+    }
+    let final_acc = BabyBear::from_u32(acc);
+    for _ in rows.len()..n {
+        data.push(BabyBear::ZERO);
+        data.push(BabyBear::ZERO);
+        data.push(final_acc);
+        data.push(BabyBear::ZERO);
+    }
+    (RowMajorMatrix::new(data, 4), acc)
+}
+
 /// Run flat path test with FlatStepChip (requires log_blowup=2 for degree-4 constraints).
 fn run_flat_test(
     init_hashes: &[u32],
@@ -66,8 +89,16 @@ fn run_flat_test(
     formula_rom: &[[u32; 6]],
     gamma_rom: &[[u32; 3]],
 ) {
-    let init = FlatInitChip { ctx_hashes: init_hashes.to_vec(), max_ctx_size: 0, min_rows: MIN };
-    let init_trace = padded_trace::<2>(&init_hashes.iter().map(|&h| [1u32, h]).collect::<Vec<_>>(), init_hashes.len().max(MIN));
+    let max_ctx_size = init_hashes.len();
+    let init = FlatInitChip { ctx_hashes: init_hashes.to_vec(), max_ctx_size, min_rows: MIN };
+    let init_row_data: Vec<[u32; 2]> = init_hashes.iter().map(|&h| [1u32, h]).collect();
+    let (init_trace, init_active_count) = build_flat_boundary_trace(&init_row_data, MIN);
+
+    // Init PVs: [hash_0, ..., hash_{max-1}, active_count]
+    let mut init_pis: Vec<BabyBear> = init_hashes.iter()
+        .map(|&h| BabyBear::from_u32(h)).collect();
+    init_pis.resize(max_ctx_size, BabyBear::ZERO);
+    init_pis.push(BabyBear::from_u32(init_active_count));
 
     let step_chip = FlatStepChip {
         loli_tag: TAG_LOLI, monad_tag: TAG_MONAD, tensor_tag: TAG_TENSOR,
@@ -75,7 +106,17 @@ fn run_flat_test(
     };
     let step_trace = padded_trace::<43>(step_rows, MIN);
 
-    let final_trace = padded_trace::<2>(final_rows, MIN);
+    let final_max_ctx = final_rows.iter().filter(|r| r[0] == 1).count();
+    let final_max = final_max_ctx.max(max_ctx_size);
+    let (final_trace, final_active_count) = build_flat_boundary_trace(final_rows, MIN);
+
+    // Final PVs: [hash_0, ..., hash_{max-1}, active_count]
+    let final_hashes: Vec<u32> = final_rows.iter()
+        .filter(|r| r[0] == 1).map(|r| r[1]).collect();
+    let mut final_pis: Vec<BabyBear> = final_hashes.iter()
+        .map(|&h| BabyBear::from_u32(h)).collect();
+    final_pis.resize(final_max, BabyBear::ZERO);
+    final_pis.push(BabyBear::from_u32(final_active_count));
 
     let (rom_chip, rom_trace) = make_formula_rom(formula_rom, MIN);
     let (gamma_chip, gamma_trace) = make_gamma_rom(gamma_rom, MIN);
@@ -92,7 +133,7 @@ fn run_flat_test(
     let airs: Vec<AirRef<_>> = vec![
         Arc::new(init),
         Arc::new(step_chip),
-        Arc::new(FlatFinalChip { max_ctx_size: 0 }),
+        Arc::new(FlatFinalChip { max_ctx_size: final_max }),
         Arc::new(rom_chip),
         Arc::new(gamma_chip),
         Arc::new(SubstChip),
@@ -100,7 +141,7 @@ fn run_flat_test(
         Arc::new(CanonConsRomAir { entries: vec![], min_rows: MIN }),
     ];
     let traces = vec![init_trace, step_trace, final_trace, rom_trace, gamma_trace, subst_trace, freevar_trace, cc_trace];
-    let pis = vec![vec![]; 8];
+    let pis = vec![init_pis, vec![], final_pis, vec![], vec![], vec![], vec![], vec![]];
 
     let engine = BabyBearPoseidon2Engine::new(
         FriParameters::standard_with_100_bits_security(2),

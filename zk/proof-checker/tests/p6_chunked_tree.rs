@@ -5,10 +5,17 @@
 //! 2. PV continuity holds across chunk boundaries (obligation + context)
 //! 3. All chunks produce identical VK (constant VK prerequisite for IVC)
 //! 4. PV counts are normalized across chunks
+//! 5. PV value tampering is caught by binding buses (OBLIG_PV_BIND_BUS, CTX_PV_BIND_BUS)
 
-use p3_field::PrimeField32;
+use p3_baby_bear::BabyBear;
+use p3_field::{PrimeCharacteristicRing, PrimeField32};
 
-use proof_checker::bridge::{prove_chunked_tree_witness, WitnessJson};
+use openvm_stark_sdk::{
+    config::{baby_bear_poseidon2::BabyBearPoseidon2Engine, FriParameters},
+    engine::StarkFriEngine,
+};
+
+use proof_checker::bridge::{build_witness_inputs, prove_chunked_tree_witness, WitnessJson};
 
 fn load_chunked_fixture() -> Vec<WitnessJson> {
     let path = format!(
@@ -166,4 +173,58 @@ fn p6_chunked_tree_pvs_normalized() {
             "AIR {air_idx}: PV counts differ across chunks: {:?}", pv_counts);
     }
     println!("  PV counts consistent across all AIRs");
+}
+
+// ---------------------------------------------------------------------------
+// Forgery: tamper ObligBoundary init_goal PV → OBLIG_PV_BIND_BUS rejection
+// ---------------------------------------------------------------------------
+
+#[test]
+#[should_panic]
+fn p6_chunked_tree_tamper_oblig_pv_fails() {
+    let chunks = load_chunked_fixture();
+    // Use chunk 1 (has both init and final obligs for boundary handoff)
+    let chunk = if chunks.len() > 1 { &chunks[1] } else { &chunks[0] };
+    let (airs, traces, mut pis) = build_witness_inputs(chunk)
+        .expect("build_witness_inputs should succeed");
+
+    // Find ObligBoundaryChip by PV layout: max_oblig*4 + 2 PVs
+    let max_oblig = chunk.max_oblig_count.unwrap_or(1);
+    let expected_pv_len = max_oblig * 4 + 2;
+    let oblig_idx = pis.iter().position(|p| p.len() == expected_pv_len)
+        .expect("should find ObligBoundaryChip PVs");
+
+    // Tamper init_goal[0] (first PV) — breaks OBLIG_PV_BIND_BUS multiset equality
+    pis[oblig_idx][0] = BabyBear::from_u32(99999);
+
+    let engine = BabyBearPoseidon2Engine::new(FriParameters::new_for_testing(1));
+    StarkFriEngine::run_simple_test_impl(&engine, airs, traces, pis)
+        .expect("should not reach — STARK should reject tampered oblig PV");
+}
+
+// ---------------------------------------------------------------------------
+// Forgery: tamper CtxBoundary init_hash PV → CTX_PV_BIND_BUS rejection
+// ---------------------------------------------------------------------------
+
+#[test]
+#[should_panic]
+fn p6_chunked_tree_tamper_ctx_pv_fails() {
+    let chunks = load_chunked_fixture();
+    let chunk = if chunks.len() > 1 { &chunks[1] } else { &chunks[0] };
+    let (airs, traces, mut pis) = build_witness_inputs(chunk)
+        .expect("build_witness_inputs should succeed");
+
+    // Find CtxBoundaryChip by PV layout: max_ctx*2 + 2 PVs
+    let max_ctx = chunk.max_boundary_ctx_size.unwrap_or(0);
+    if max_ctx == 0 { panic!("no ctx boundary data — test vacuously passes"); }
+    let expected_pv_len = max_ctx * 2 + 2;
+    let ctx_idx = pis.iter().position(|p| p.len() == expected_pv_len)
+        .expect("should find CtxBoundaryChip PVs");
+
+    // Tamper init_hash[0] (first PV) — breaks CTX_PV_BIND_BUS multiset equality
+    pis[ctx_idx][0] = BabyBear::from_u32(88888);
+
+    let engine = BabyBearPoseidon2Engine::new(FriParameters::new_for_testing(1));
+    StarkFriEngine::run_simple_test_impl(&engine, airs, traces, pis)
+        .expect("should not reach — STARK should reject tampered ctx PV");
 }

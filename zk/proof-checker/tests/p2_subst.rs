@@ -12,17 +12,48 @@ mod common;
 
 use std::sync::Arc;
 
+use p3_baby_bear::BabyBear;
+use openvm_stark_backend::{p3_field::PrimeCharacteristicRing, p3_matrix::dense::RowMajorMatrix, AirRef};
 use proof_checker::chips::{
     flat_final::FlatFinalChip,
     flat_init::FlatInitChip,
     subst::SubstChip,
 };
-use openvm_stark_backend::AirRef;
 use openvm_stark_sdk::{
     config::baby_bear_poseidon2::BabyBearPoseidon2Engine, engine::StarkFriEngine,
 };
 
 use common::{make_formula_rom, make_freevar_rom, padded_trace};
+
+/// Build a width-4 flat boundary trace: [is_active, hash, acc_active, is_first]
+fn build_flat_boundary_trace(rows: &[[u32; 2]], min_rows: usize) -> (RowMajorMatrix<BabyBear>, u32) {
+    let n = rows.len().max(min_rows).next_power_of_two();
+    let mut data = Vec::with_capacity(n * 4);
+    let mut acc: u32 = 0;
+    for (i, row) in rows.iter().enumerate() {
+        if row[0] == 1 { acc += 1; }
+        data.push(BabyBear::from_u32(row[0]));
+        data.push(BabyBear::from_u32(row[1]));
+        data.push(BabyBear::from_u32(acc));
+        data.push(if i == 0 { BabyBear::ONE } else { BabyBear::ZERO });
+    }
+    let final_acc = BabyBear::from_u32(acc);
+    for _ in rows.len()..n {
+        data.push(BabyBear::ZERO);
+        data.push(BabyBear::ZERO);
+        data.push(final_acc);
+        data.push(BabyBear::ZERO);
+    }
+    (RowMajorMatrix::new(data, 4), acc)
+}
+
+/// Build PVs for a flat boundary chip: [hash_0, ..., hash_{max-1}, active_count]
+fn build_flat_pvs(hashes: &[u32], max_ctx_size: usize, active_count: u32) -> Vec<BabyBear> {
+    let mut pvs: Vec<BabyBear> = hashes.iter().map(|&h| BabyBear::from_u32(h)).collect();
+    pvs.resize(max_ctx_size, BabyBear::ZERO);
+    pvs.push(BabyBear::from_u32(active_count));
+    pvs
+}
 
 // Tag constants (from identity.json fixture)
 const TAG_TENSOR: u32 = 1;
@@ -59,10 +90,13 @@ fn run_subst_test(
     formula_rom: &[[u32; 6]],
     freevar_rom: &[[u32; 5]],
 ) {
-    let init = FlatInitChip { ctx_hashes: vec![ctx_old], max_ctx_size: 0, min_rows: MIN };
-    let init_trace = padded_trace::<2>(&[[1, ctx_old]], MIN);
+    let max_ctx = 1;
+    let init = FlatInitChip { ctx_hashes: vec![ctx_old], max_ctx_size: max_ctx, min_rows: MIN };
+    let (init_trace, init_count) = build_flat_boundary_trace(&[[1, ctx_old]], MIN);
+    let init_pis = build_flat_pvs(&[ctx_old], max_ctx, init_count);
 
-    let final_trace = padded_trace::<2>(&[[1, ctx_new]], MIN);
+    let (final_trace, final_count) = build_flat_boundary_trace(&[[1, ctx_new]], MIN);
+    let final_pis = build_flat_pvs(&[ctx_new], max_ctx, final_count);
 
     let subst_trace = padded_trace::<16>(subst_rows, MIN);
 
@@ -70,12 +104,12 @@ fn run_subst_test(
 
     let mut airs: Vec<AirRef<_>> = vec![
         Arc::new(init),
-        Arc::new(FlatFinalChip { max_ctx_size: 0 }),
+        Arc::new(FlatFinalChip { max_ctx_size: max_ctx }),
         Arc::new(SubstChip),
         Arc::new(rom_chip),
     ];
     let mut traces = vec![init_trace, final_trace, subst_trace, rom_trace];
-    let mut pis = vec![vec![], vec![], vec![], vec![]];
+    let mut pis = vec![init_pis, final_pis, vec![], vec![]];
 
     if !freevar_rom.is_empty() {
         let (fv_chip, fv_trace) = make_freevar_rom(freevar_rom, MIN);
@@ -295,21 +329,24 @@ fn p2_subst_stray_row_fails() {
 
     // No FlatInit/FlatFinal needed (no root → no CONTEXT_BUS interaction)
     // But we still need the chips for the engine — use empty init
-    let init = FlatInitChip { ctx_hashes: vec![], max_ctx_size: 0, min_rows: MIN };
-    let init_trace = padded_trace::<2>(&[], MIN);
-    let final_trace = padded_trace::<2>(&[], MIN);
+    let max_ctx = 1; // need at least 1 for num_pvs
+    let init = FlatInitChip { ctx_hashes: vec![], max_ctx_size: max_ctx, min_rows: MIN };
+    let (init_trace, init_count) = build_flat_boundary_trace(&[], MIN);
+    let init_pis = build_flat_pvs(&[], max_ctx, init_count);
+    let (final_trace, final_count) = build_flat_boundary_trace(&[], MIN);
+    let final_pis = build_flat_pvs(&[], max_ctx, final_count);
     let subst_trace = padded_trace::<16>(&subst_rows, MIN);
     let (rom_chip, rom_trace) = make_formula_rom(&formula_rom, MIN);
 
     BabyBearPoseidon2Engine::run_simple_test_fast(
         vec![
             Arc::new(init) as AirRef<_>,
-            Arc::new(FlatFinalChip { max_ctx_size: 0 }) as AirRef<_>,
+            Arc::new(FlatFinalChip { max_ctx_size: max_ctx }) as AirRef<_>,
             Arc::new(SubstChip) as AirRef<_>,
             Arc::new(rom_chip) as AirRef<_>,
         ],
         vec![init_trace, final_trace, subst_trace, rom_trace],
-        vec![vec![], vec![], vec![], vec![]],
+        vec![init_pis, final_pis, vec![], vec![]],
     )
     .expect("should fail: stray non-root row");
 }

@@ -244,7 +244,8 @@ fn split_init_rows(rows: &[Vec<u32>]) -> (Vec<[u32; 5]>, Vec<Vec<u32>>, u32) {
 }
 
 /// Build AIRs, traces, and PIs from a tree witness (shared by prove and vdata paths).
-fn build_witness_inputs(witness: &WitnessJson) -> Result<(Vec<AirRef<BabyBearPoseidon2Config>>, Vec<RowMajorMatrix<BabyBear>>, Vec<Vec<BabyBear>>), String> {
+/// Public for tamper testing: tests can call this, modify PIs, and re-prove.
+pub fn build_witness_inputs(witness: &WitnessJson) -> Result<(Vec<AirRef<BabyBearPoseidon2Config>>, Vec<RowMajorMatrix<BabyBear>>, Vec<Vec<BabyBear>>), String> {
     let min_rows = 4;
     let tags = &witness.tags;
 
@@ -640,7 +641,8 @@ pub struct FlatWitnessJson {
 }
 
 /// Build AIRs, traces, and PIs from a flat witness (shared by prove and vdata paths).
-fn build_flat_witness_inputs(witness: &FlatWitnessJson) -> Result<(Vec<AirRef<BabyBearPoseidon2Config>>, Vec<RowMajorMatrix<BabyBear>>, Vec<Vec<BabyBear>>), String> {
+/// Public for tamper testing: tests can call this, modify PIs, and re-prove.
+pub fn build_flat_witness_inputs(witness: &FlatWitnessJson) -> Result<(Vec<AirRef<BabyBearPoseidon2Config>>, Vec<RowMajorMatrix<BabyBear>>, Vec<Vec<BabyBear>>), String> {
     let min_rows = 4;
 
     let loli_tag = witness.tags.get("loli").copied().unwrap_or(0);
@@ -659,18 +661,37 @@ fn build_flat_witness_inputs(witness: &FlatWitnessJson) -> Result<(Vec<AirRef<Ba
         .map(|r| r[1])
         .collect();
     let max_ctx_size = witness.max_ctx_size.unwrap_or(ctx_hashes.len());
+    let init_active_count = ctx_hashes.len() as u32;
     airs.push(Arc::new(FlatInitChip { ctx_hashes: ctx_hashes.clone(), max_ctx_size, min_rows }) as AirRef<_>);
-    // Main trace: [is_active, hash] (was dummy width-1 column before Phase 4a)
-    traces.push(if init_rows.is_empty() {
-        empty_trace(2, min_rows)
-    } else {
-        build_trace(init_rows, 2, init_rows.len().max(min_rows))
+    // Custom trace building: [is_active, hash, acc_active, is_first]
+    traces.push({
+        let width = crate::chips::flat_init::WIDTH;
+        let n = init_rows.len().max(min_rows).next_power_of_two();
+        let mut data = Vec::with_capacity(n * width);
+        let mut acc: u32 = 0;
+        for (i, row) in init_rows.iter().enumerate() {
+            let is_active = row[0];
+            if is_active == 1 { acc += 1; }
+            data.push(BabyBear::from_u32(row[0])); // is_active
+            data.push(BabyBear::from_u32(row[1])); // hash
+            data.push(BabyBear::from_u32(acc));     // acc_active
+            data.push(if i == 0 { BabyBear::ONE } else { BabyBear::ZERO }); // is_first
+        }
+        let final_acc = BabyBear::from_u32(acc);
+        for _ in init_rows.len()..n {
+            data.push(BabyBear::ZERO); // is_active
+            data.push(BabyBear::ZERO); // hash
+            data.push(final_acc);       // acc_active (carry forward)
+            data.push(BabyBear::ZERO); // is_first
+        }
+        RowMajorMatrix::new(data, width)
     });
-    // Public values: context hashes padded to max_ctx_size with zeros
+    // Public values: context hashes padded to max_ctx_size + active_count
     let mut init_pis: Vec<BabyBear> = ctx_hashes.iter()
         .map(|&h| BabyBear::from_u32(h))
         .collect();
     init_pis.resize(max_ctx_size, BabyBear::ZERO);
+    init_pis.push(BabyBear::from_u32(init_active_count));
     pis.push(init_pis);
 
     // 2. FlatStepChip (tag constants only — no preprocessed trace since Phase 4a-5)
@@ -692,16 +713,36 @@ fn build_flat_witness_inputs(witness: &FlatWitnessJson) -> Result<(Vec<AirRef<Ba
         .map(|r| r[1])
         .collect();
     let final_max_ctx = witness.max_ctx_size.unwrap_or(final_hashes.len());
+    let final_active_count = final_hashes.len() as u32;
     airs.push(Arc::new(FlatFinalChip { max_ctx_size: final_max_ctx }) as AirRef<_>);
-    traces.push(if final_rows.is_empty() {
-        empty_trace(2, min_rows)
-    } else {
-        build_trace(final_rows, 2, min_rows)
+    // Custom trace building: [is_active, hash, acc_active, is_first]
+    traces.push({
+        let width = crate::chips::flat_final::WIDTH;
+        let n = final_rows.len().max(min_rows).next_power_of_two();
+        let mut data = Vec::with_capacity(n * width);
+        let mut acc: u32 = 0;
+        for (i, row) in final_rows.iter().enumerate() {
+            let is_active = row[0];
+            if is_active == 1 { acc += 1; }
+            data.push(BabyBear::from_u32(row[0])); // is_active
+            data.push(BabyBear::from_u32(row[1])); // hash
+            data.push(BabyBear::from_u32(acc));     // acc_active
+            data.push(if i == 0 { BabyBear::ONE } else { BabyBear::ZERO }); // is_first
+        }
+        let final_acc = BabyBear::from_u32(acc);
+        for _ in final_rows.len()..n {
+            data.push(BabyBear::ZERO); // is_active
+            data.push(BabyBear::ZERO); // hash
+            data.push(final_acc);       // acc_active (carry forward)
+            data.push(BabyBear::ZERO); // is_first
+        }
+        RowMajorMatrix::new(data, width)
     });
     let mut final_pis: Vec<BabyBear> = final_hashes.iter()
         .map(|&h| BabyBear::from_u32(h))
         .collect();
     final_pis.resize(final_max_ctx, BabyBear::ZERO);
+    final_pis.push(BabyBear::from_u32(final_active_count));
     pis.push(final_pis);
 
     // 4. FormulaRomAir (data-carrying, preprocessed)

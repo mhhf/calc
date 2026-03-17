@@ -25,19 +25,48 @@ use proof_checker::chips::{
     flat_final::FlatFinalChip,
 };
 
-use common::padded_trace;
+use openvm_stark_backend::p3_matrix::dense::RowMajorMatrix;
+
+/// Build a width-4 flat boundary trace: [is_active, hash, acc_active, is_first]
+fn build_flat_boundary_trace(rows: &[[u32; 2]], min_rows: usize) -> (RowMajorMatrix<BabyBear>, u32) {
+    let n = rows.len().max(min_rows).next_power_of_two();
+    let mut data = Vec::with_capacity(n * 4);
+    let mut acc: u32 = 0;
+    for (i, row) in rows.iter().enumerate() {
+        if row[0] == 1 { acc += 1; }
+        data.push(BabyBear::from_u32(row[0]));
+        data.push(BabyBear::from_u32(row[1]));
+        data.push(BabyBear::from_u32(acc));
+        data.push(if i == 0 { BabyBear::ONE } else { BabyBear::ZERO });
+    }
+    let final_acc = BabyBear::from_u32(acc);
+    for _ in rows.len()..n {
+        data.push(BabyBear::ZERO);
+        data.push(BabyBear::ZERO);
+        data.push(final_acc);
+        data.push(BabyBear::ZERO);
+    }
+    (RowMajorMatrix::new(data, 4), acc)
+}
+
+/// Build PVs for a flat boundary chip: [hash_0, ..., hash_{max-1}, active_count]
+fn build_flat_pvs(hashes: &[u32], max_ctx_size: usize, active_count: u32) -> Vec<BabyBear> {
+    let mut pvs: Vec<BabyBear> = hashes.iter().map(|&h| BabyBear::from_u32(h)).collect();
+    pvs.resize(max_ctx_size, BabyBear::ZERO);
+    pvs.push(BabyBear::from_u32(active_count));
+    pvs
+}
 
 /// Helper: build a FlatInit+FlatFinal pair with PVs for a given context hash.
 fn flat_init_final_with_pvs(h: u32) -> (
     Vec<AirRef<openvm_stark_sdk::config::baby_bear_poseidon2::BabyBearPoseidon2Config>>,
-    Vec<openvm_stark_backend::p3_matrix::dense::RowMajorMatrix<BabyBear>>,
+    Vec<RowMajorMatrix<BabyBear>>,
     Vec<Vec<BabyBear>>,
 ) {
     let init = FlatInitChip { ctx_hashes: vec![h], max_ctx_size: 1, min_rows: 4 };
-    let init_trace = padded_trace::<2>(&[[1, h]], 4);
+    let (init_trace, init_count) = build_flat_boundary_trace(&[[1, h]], 4);
 
-    let final_rows: Vec<[u32; 2]> = vec![[1, h]];
-    let final_trace = padded_trace::<2>(&final_rows, 4);
+    let (final_trace, final_count) = build_flat_boundary_trace(&[[1, h]], 4);
 
     let airs: Vec<AirRef<_>> = vec![
         Arc::new(init),
@@ -45,30 +74,32 @@ fn flat_init_final_with_pvs(h: u32) -> (
     ];
     let traces = vec![init_trace, final_trace];
     let pis = vec![
-        vec![BabyBear::from_u32(h)],   // init PVs
-        vec![BabyBear::from_u32(h)],   // final PVs
+        build_flat_pvs(&[h], 1, init_count),
+        build_flat_pvs(&[h], 1, final_count),
     ];
     (airs, traces, pis)
 }
 
-/// Helper: build a FlatInit+FlatFinal pair WITHOUT PVs (legacy mode, max_ctx_size=0).
+/// Helper: build a FlatInit+FlatFinal pair with minimal PVs (max_ctx_size=1).
 fn flat_init_final_no_pvs(h: u32) -> (
     Vec<AirRef<openvm_stark_sdk::config::baby_bear_poseidon2::BabyBearPoseidon2Config>>,
-    Vec<openvm_stark_backend::p3_matrix::dense::RowMajorMatrix<BabyBear>>,
+    Vec<RowMajorMatrix<BabyBear>>,
     Vec<Vec<BabyBear>>,
 ) {
-    let init = FlatInitChip { ctx_hashes: vec![h], max_ctx_size: 0, min_rows: 4 };
-    let init_trace = padded_trace::<2>(&[[1, h]], 4);
+    let init = FlatInitChip { ctx_hashes: vec![h], max_ctx_size: 1, min_rows: 4 };
+    let (init_trace, init_count) = build_flat_boundary_trace(&[[1, h]], 4);
 
-    let final_rows: Vec<[u32; 2]> = vec![[1, h]];
-    let final_trace = padded_trace::<2>(&final_rows, 4);
+    let (final_trace, final_count) = build_flat_boundary_trace(&[[1, h]], 4);
 
     let airs: Vec<AirRef<_>> = vec![
         Arc::new(init),
-        Arc::new(FlatFinalChip { max_ctx_size: 0 }),
+        Arc::new(FlatFinalChip { max_ctx_size: 1 }),
     ];
     let traces = vec![init_trace, final_trace];
-    let pis = vec![vec![], vec![]];
+    let pis = vec![
+        build_flat_pvs(&[h], 1, init_count),
+        build_flat_pvs(&[h], 1, final_count),
+    ];
     (airs, traces, pis)
 }
 
@@ -105,8 +136,11 @@ fn p4a_separate_prove_verify() {
 fn p4a_pis_rejected_when_not_declared_by_air() {
     let (airs, traces, _) = flat_init_final_no_pvs(42);
 
-    // Override PIs: pass 1 PI to init chip that declares num_public_values=0
-    let pis = vec![vec![BabyBear::new(42)], vec![]];
+    // Override PIs: pass 3 PIs to init chip that declares num_public_values=2
+    let pis = vec![
+        vec![BabyBear::new(42), BabyBear::new(1), BabyBear::new(99)],
+        vec![BabyBear::new(42), BabyBear::new(1), BabyBear::new(99)],
+    ];
 
     BabyBearPoseidon2Engine::run_simple_test_fast(airs, traces, pis)
         .expect("should fail: PIs not declared");
@@ -180,14 +214,15 @@ fn p4a_init_with_public_values() {
         airs, traces, pis
     ).expect("proof with PVs should verify");
 
-    // PVs should be present in the proof
+    // PVs should be present in the proof: [hash_0, active_count]
     let init_pvs = &vdata.data.proof.per_air[0].public_values;
     let final_pvs = &vdata.data.proof.per_air[1].public_values;
 
-    assert_eq!(init_pvs.len(), 1, "init should have 1 PV");
-    assert_eq!(final_pvs.len(), 1, "final should have 1 PV");
-    assert_eq!(init_pvs[0].as_canonical_u32(), h, "init PV should be context hash");
-    assert_eq!(final_pvs[0].as_canonical_u32(), h, "final PV should be context hash");
+    assert_eq!(init_pvs.len(), 2, "init should have 2 PVs (hash + active_count)");
+    assert_eq!(final_pvs.len(), 2, "final should have 2 PVs (hash + active_count)");
+    assert_eq!(init_pvs[0].as_canonical_u32(), h, "init PV[0] should be context hash");
+    assert_eq!(init_pvs[1].as_canonical_u32(), 1, "init PV[1] should be active_count=1");
+    assert_eq!(final_pvs[0].as_canonical_u32(), h, "final PV[0] should be context hash");
 }
 
 /// Multiple context entries produce multiple PVs.
@@ -199,9 +234,8 @@ fn p4a_multi_context_public_values() {
         max_ctx_size: 3,
         min_rows: 4,
     };
-    let init_trace = padded_trace::<2>(&[[1, 100], [1, 200], [1, 300]], 4);
-
-    let final_trace = padded_trace::<2>(&[[1, 100], [1, 200], [1, 300]], 4);
+    let (init_trace, init_count) = build_flat_boundary_trace(&[[1, 100], [1, 200], [1, 300]], 4);
+    let (final_trace, final_count) = build_flat_boundary_trace(&[[1, 100], [1, 200], [1, 300]], 4);
 
     let airs: Vec<AirRef<_>> = vec![
         Arc::new(init),
@@ -209,8 +243,8 @@ fn p4a_multi_context_public_values() {
     ];
     let traces = vec![init_trace, final_trace];
     let pis = vec![
-        hashes.iter().map(|&h| BabyBear::from_u32(h)).collect(),
-        hashes.iter().map(|&h| BabyBear::from_u32(h)).collect(),
+        build_flat_pvs(&hashes, 3, init_count),
+        build_flat_pvs(&hashes, 3, final_count),
     ];
 
     let vdata = BabyBearPoseidon2Engine::run_simple_test_fast(
@@ -218,10 +252,11 @@ fn p4a_multi_context_public_values() {
     ).expect("multi-context PVs should verify");
 
     let init_pvs = &vdata.data.proof.per_air[0].public_values;
-    assert_eq!(init_pvs.len(), 3);
+    assert_eq!(init_pvs.len(), 4, "3 hashes + active_count");
     for (i, &h) in hashes.iter().enumerate() {
         assert_eq!(init_pvs[i].as_canonical_u32(), h, "PV[{i}] should match");
     }
+    assert_eq!(init_pvs[3].as_canonical_u32(), 3, "active_count should be 3");
 }
 
 /// Build a recursive verifier from a proof WITH public values.

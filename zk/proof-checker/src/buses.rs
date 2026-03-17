@@ -94,3 +94,9 @@ pub const OBLIG_PV_BIND_BUS: PermutationCheckBus = PermutationCheckBus::new(11);
 /// Tuple: (discriminator, hash) — discriminator 0=init, 1=final.
 /// Phase 6-7: closes PV→trace binding gap for CtxBoundaryChip.
 pub const CTX_PV_BIND_BUS: PermutationCheckBus = PermutationCheckBus::new(12);
+
+/// Flat path PV value binding bus. LogUp multiset equality ensures
+/// FlatInitChip/FlatFinalChip PV context hashes match actual trace values.
+/// Tuple: (discriminator, hash) — discriminator 0=init, 1=final.
+/// Phase 4a→6-7: closes PV→trace binding gap for flat path.
+pub const FLAT_PV_BIND_BUS: PermutationCheckBus = PermutationCheckBus::new(13);
