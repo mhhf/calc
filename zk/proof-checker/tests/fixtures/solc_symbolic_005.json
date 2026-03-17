@@ -15342,6 +15342,8 @@
       0
     ]
   ],
+  "uint256_arith": [],
+  "byte_check_rom": [],
   "chipSegments": {
     "init": [
       0,
