@@ -23,7 +23,7 @@ const { buildGuidedTerm } = require('../lib/prover/guided-term');
 const { rightFocusTerm } = require('../lib/prover/bridge');
 const { generateWitness } = require('../lib/zk/witness');
 
-const FIXTURE_DIR = path.join(__dirname, '..', 'zk', 'proof-checker', 'tests', 'fixtures');
+const FIXTURE_DIR = path.join(__dirname, '..', 'zk', 'sequent-certifier', 'tests', 'fixtures');
 
 function ensureFixtureDir() {
   if (!fs.existsSync(FIXTURE_DIR)) {

@@ -120,7 +120,7 @@ lib/prover/
 ### Rust (STARK verifier)
 
 ```
-zk/proof-checker/
+zk/sequent-certifier/
 ├── Cargo.toml
 ├── src/
 │   ├── lib.rs              # Re-exports
@@ -153,7 +153,7 @@ zk/proof-checker/
 ### Test fixtures
 
 ```
-zk/proof-checker/tests/fixtures/
+zk/sequent-certifier/tests/fixtures/
 ├── identity.json           # A ⊢ A
 ├── tensor_r.json           # A, B ⊢ A ⊗ B
 ├── tensor_swap.json        # A ⊗ B ⊢ B ⊗ A
@@ -203,7 +203,7 @@ const witness = generateFlatWitness(trace, sequent, { calculus });
 ### Verify in Rust
 
 ```rust
-use proof_checker::bridge::prove_json;
+use sequent_certifier::bridge::prove_json;
 
 let json = std::fs::read_to_string("witness.json").unwrap();
 prove_json(&json).expect("STARK verification");

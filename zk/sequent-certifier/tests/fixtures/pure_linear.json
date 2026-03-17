@@ -1,0 +1,692 @@
+{
+  "tags": {
+    "tensor": 1,
+    "loli": 2,
+    "one": 3,
+    "zero": 4,
+    "with": 5,
+    "oplus": 6,
+    "bang": 7,
+    "monad": 8,
+    "exists": 9,
+    "forall": 10,
+    "freevar": 11
+  },
+  "rule_specs": {
+    "id": {
+      "name": "id",
+      "tag": null,
+      "arity": 0,
+      "oblig_receive": true,
+      "premises": [],
+      "ctx_receive": true,
+      "ctx_sends": [],
+      "formula_lookup": false,
+      "gamma_lookup": false,
+      "is_identity": true
+    },
+    "copy": {
+      "name": "copy",
+      "tag": null,
+      "arity": 0,
+      "oblig_receive": false,
+      "premises": [],
+      "ctx_receive": false,
+      "ctx_sends": [
+        "Hash"
+      ],
+      "formula_lookup": false,
+      "gamma_lookup": true,
+      "is_identity": false
+    },
+    "ffi": {
+      "name": "ffi",
+      "tag": null,
+      "arity": 0,
+      "oblig_receive": true,
+      "premises": [],
+      "ctx_receive": false,
+      "ctx_sends": [],
+      "formula_lookup": false,
+      "gamma_lookup": false,
+      "is_identity": false
+    },
+    "fact_axiom": {
+      "name": "fact_axiom",
+      "tag": null,
+      "arity": 0,
+      "oblig_receive": true,
+      "premises": [],
+      "ctx_receive": false,
+      "ctx_sends": [],
+      "formula_lookup": false,
+      "gamma_lookup": false,
+      "fact_lookup": true,
+      "is_identity": false
+    },
+    "tensor_r": {
+      "name": "tensor_r",
+      "tag": 1,
+      "arity": 2,
+      "oblig_receive": true,
+      "premises": [
+        {
+          "succedent": {
+            "Child": 0
+          },
+          "lax": null
+        },
+        {
+          "succedent": {
+            "Child": 1
+          },
+          "lax": null
+        }
+      ],
+      "ctx_receive": false,
+      "ctx_sends": [],
+      "formula_lookup": true,
+      "gamma_lookup": false,
+      "is_identity": false
+    },
+    "tensor_l": {
+      "name": "tensor_l",
+      "tag": 1,
+      "arity": 2,
+      "oblig_receive": false,
+      "premises": [],
+      "ctx_receive": true,
+      "ctx_sends": [
+        {
+          "Child": 0
+        },
+        {
+          "Child": 1
+        }
+      ],
+      "formula_lookup": true,
+      "gamma_lookup": false,
+      "is_identity": false
+    },
+    "loli_r": {
+      "name": "loli_r",
+      "tag": 2,
+      "arity": 2,
+      "oblig_receive": true,
+      "premises": [
+        {
+          "succedent": {
+            "Child": 1
+          },
+          "lax": null
+        }
+      ],
+      "ctx_receive": false,
+      "ctx_sends": [
+        {
+          "Child": 0
+        }
+      ],
+      "formula_lookup": true,
+      "gamma_lookup": false,
+      "is_identity": false
+    },
+    "loli_l": {
+      "name": "loli_l",
+      "tag": 2,
+      "arity": 2,
+      "oblig_receive": true,
+      "premises": [
+        {
+          "succedent": {
+            "Child": 0
+          },
+          "lax": null
+        },
+        {
+          "succedent": "Inherited",
+          "lax": null
+        }
+      ],
+      "ctx_receive": true,
+      "ctx_sends": [
+        {
+          "Child": 1
+        }
+      ],
+      "formula_lookup": true,
+      "gamma_lookup": false,
+      "is_identity": false
+    },
+    "with_r": {
+      "name": "with_r",
+      "tag": 5,
+      "arity": 2,
+      "oblig_receive": true,
+      "premises": [
+        {
+          "succedent": {
+            "Child": 0
+          },
+          "lax": null
+        },
+        {
+          "succedent": {
+            "Child": 1
+          },
+          "lax": null
+        }
+      ],
+      "ctx_receive": false,
+      "ctx_sends": [],
+      "formula_lookup": true,
+      "gamma_lookup": false,
+      "is_identity": false
+    },
+    "with_l1": {
+      "name": "with_l1",
+      "tag": 5,
+      "arity": 2,
+      "oblig_receive": false,
+      "premises": [],
+      "ctx_receive": true,
+      "ctx_sends": [
+        {
+          "Child": 0
+        }
+      ],
+      "formula_lookup": true,
+      "gamma_lookup": false,
+      "is_identity": false
+    },
+    "with_l2": {
+      "name": "with_l2",
+      "tag": 5,
+      "arity": 2,
+      "oblig_receive": false,
+      "premises": [],
+      "ctx_receive": true,
+      "ctx_sends": [
+        {
+          "Child": 1
+        }
+      ],
+      "formula_lookup": true,
+      "gamma_lookup": false,
+      "is_identity": false
+    },
+    "oplus_r1": {
+      "name": "oplus_r1",
+      "tag": 6,
+      "arity": 2,
+      "oblig_receive": true,
+      "premises": [
+        {
+          "succedent": {
+            "Child": 0
+          },
+          "lax": null
+        }
+      ],
+      "ctx_receive": false,
+      "ctx_sends": [],
+      "formula_lookup": true,
+      "gamma_lookup": false,
+      "is_identity": false
+    },
+    "oplus_r2": {
+      "name": "oplus_r2",
+      "tag": 6,
+      "arity": 2,
+      "oblig_receive": true,
+      "premises": [
+        {
+          "succedent": {
+            "Child": 1
+          },
+          "lax": null
+        }
+      ],
+      "ctx_receive": false,
+      "ctx_sends": [],
+      "formula_lookup": true,
+      "gamma_lookup": false,
+      "is_identity": false
+    },
+    "oplus_l": {
+      "name": "oplus_l",
+      "tag": 6,
+      "arity": 2,
+      "oblig_receive": true,
+      "premises": [
+        {
+          "succedent": "Inherited",
+          "lax": null
+        },
+        {
+          "succedent": "Inherited",
+          "lax": null
+        }
+      ],
+      "ctx_receive": true,
+      "ctx_sends": [
+        {
+          "Child": 0
+        },
+        {
+          "Child": 1
+        }
+      ],
+      "formula_lookup": true,
+      "gamma_lookup": false,
+      "is_identity": false
+    },
+    "exists_r": {
+      "name": "exists_r",
+      "tag": 9,
+      "arity": 1,
+      "oblig_receive": true,
+      "premises": [
+        {
+          "succedent": {
+            "Child": 0
+          },
+          "lax": null
+        }
+      ],
+      "ctx_receive": false,
+      "ctx_sends": [],
+      "formula_lookup": true,
+      "gamma_lookup": false,
+      "is_identity": false
+    },
+    "exists_l": {
+      "name": "exists_l",
+      "tag": 9,
+      "arity": 1,
+      "oblig_receive": false,
+      "premises": [],
+      "ctx_receive": true,
+      "ctx_sends": [
+        {
+          "Child": 0
+        }
+      ],
+      "formula_lookup": true,
+      "gamma_lookup": false,
+      "is_identity": false
+    },
+    "forall_r": {
+      "name": "forall_r",
+      "tag": 10,
+      "arity": 1,
+      "oblig_receive": true,
+      "premises": [
+        {
+          "succedent": {
+            "Child": 0
+          },
+          "lax": null
+        }
+      ],
+      "ctx_receive": false,
+      "ctx_sends": [],
+      "formula_lookup": true,
+      "gamma_lookup": false,
+      "is_identity": false
+    },
+    "forall_l": {
+      "name": "forall_l",
+      "tag": 10,
+      "arity": 1,
+      "oblig_receive": false,
+      "premises": [],
+      "ctx_receive": true,
+      "ctx_sends": [
+        {
+          "Child": 0
+        }
+      ],
+      "formula_lookup": true,
+      "gamma_lookup": false,
+      "is_identity": false
+    },
+    "one_r": {
+      "name": "one_r",
+      "tag": 3,
+      "arity": 0,
+      "oblig_receive": true,
+      "premises": [],
+      "ctx_receive": false,
+      "ctx_sends": [],
+      "formula_lookup": true,
+      "gamma_lookup": false,
+      "is_identity": false
+    },
+    "one_l": {
+      "name": "one_l",
+      "tag": 3,
+      "arity": 0,
+      "oblig_receive": false,
+      "premises": [],
+      "ctx_receive": true,
+      "ctx_sends": [],
+      "formula_lookup": true,
+      "gamma_lookup": false,
+      "is_identity": false
+    },
+    "bang_r": {
+      "name": "bang_r",
+      "tag": 7,
+      "arity": 1,
+      "oblig_receive": true,
+      "premises": [
+        {
+          "succedent": {
+            "Child": 0
+          },
+          "lax": null
+        }
+      ],
+      "ctx_receive": false,
+      "ctx_sends": [],
+      "formula_lookup": true,
+      "gamma_lookup": false,
+      "is_identity": false
+    },
+    "bang_l": {
+      "name": "bang_l",
+      "tag": 7,
+      "arity": 1,
+      "oblig_receive": false,
+      "premises": [],
+      "ctx_receive": true,
+      "ctx_sends": [
+        {
+          "Child": 0
+        }
+      ],
+      "formula_lookup": true,
+      "gamma_lookup": false,
+      "is_identity": false
+    },
+    "absorption": {
+      "name": "absorption",
+      "tag": 7,
+      "arity": 1,
+      "oblig_receive": false,
+      "premises": [],
+      "ctx_receive": true,
+      "ctx_sends": [],
+      "formula_lookup": true,
+      "gamma_lookup": false,
+      "is_identity": false
+    },
+    "monad_r": {
+      "name": "monad_r",
+      "tag": 8,
+      "arity": 1,
+      "oblig_receive": true,
+      "premises": [
+        {
+          "succedent": {
+            "Child": 0
+          },
+          "lax": 1
+        }
+      ],
+      "ctx_receive": false,
+      "ctx_sends": [],
+      "formula_lookup": true,
+      "gamma_lookup": false,
+      "is_identity": false
+    },
+    "monad_l": {
+      "name": "monad_l",
+      "tag": 8,
+      "arity": 1,
+      "oblig_receive": false,
+      "premises": [],
+      "ctx_receive": true,
+      "ctx_sends": [
+        {
+          "Child": 0
+        }
+      ],
+      "formula_lookup": true,
+      "gamma_lookup": false,
+      "is_identity": false
+    },
+    "loli_l_inv": {
+      "name": "loli_l_inv",
+      "tag": 2,
+      "arity": 2,
+      "oblig_receive": false,
+      "premises": [],
+      "ctx_receive": true,
+      "ctx_sends": [
+        {
+          "Child": 0
+        },
+        {
+          "Child": 1
+        }
+      ],
+      "formula_lookup": true,
+      "gamma_lookup": false,
+      "is_identity": false
+    }
+  },
+  "chips": {
+    "init": [
+      [
+        17,
+        1,
+        22,
+        1,
+        0,
+        0,
+        1
+      ],
+      [
+        18,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    ],
+    "dup": [],
+    "zero_l": [],
+    "discard": [],
+    "monad_r": [
+      [
+        1,
+        22,
+        21,
+        0,
+        0,
+        1
+      ]
+    ],
+    "copy": [
+      [
+        1,
+        25
+      ],
+      [
+        1,
+        23
+      ]
+    ],
+    "loli_l": [
+      [
+        1,
+        25,
+        19,
+        24,
+        1,
+        1,
+        2,
+        3,
+        21
+      ],
+      [
+        1,
+        23,
+        20,
+        22,
+        3,
+        1,
+        6,
+        7,
+        21
+      ]
+    ],
+    "tensor_r": [
+      [
+        1,
+        19,
+        17,
+        18,
+        2,
+        1,
+        4,
+        5
+      ]
+    ],
+    "id": [
+      [
+        1,
+        17,
+        4,
+        1
+      ],
+      [
+        1,
+        18,
+        5,
+        1
+      ],
+      [
+        1,
+        20,
+        6,
+        1
+      ],
+      [
+        1,
+        21,
+        7,
+        1
+      ]
+    ],
+    "monad_l": [
+      [
+        1,
+        24,
+        20
+      ],
+      [
+        1,
+        22,
+        21
+      ]
+    ]
+  },
+  "formula_rom": [
+    [
+      22,
+      8,
+      21,
+      0,
+      1,
+      2
+    ],
+    [
+      25,
+      2,
+      19,
+      24,
+      1,
+      1
+    ],
+    [
+      19,
+      1,
+      17,
+      18,
+      1,
+      1
+    ],
+    [
+      24,
+      8,
+      20,
+      0,
+      1,
+      1
+    ],
+    [
+      23,
+      2,
+      20,
+      22,
+      1,
+      1
+    ]
+  ],
+  "gamma_rom": [
+    [
+      25,
+      1,
+      1
+    ],
+    [
+      23,
+      1,
+      1
+    ]
+  ],
+  "freevar_rom": [],
+  "fact_rom": [],
+  "pred_rom": [],
+  "uint256_arith": [],
+  "byte_check_rom": [],
+  "chipSegments": {
+    "init": [
+      0,
+      0
+    ],
+    "monad_r": [
+      0
+    ],
+    "copy": [
+      0,
+      0
+    ],
+    "loli_l": [
+      0,
+      0
+    ],
+    "tensor_r": [
+      0
+    ],
+    "id": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "monad_l": [
+      0,
+      0
+    ]
+  },
+  "boundaryDeltas": [
+    {}
+  ],
+  "faCount": 0
+}

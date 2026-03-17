@@ -11,7 +11,7 @@ category: "Implementation"
 
 Research question: can folding schemes (Nova / HyperNova / SuperNova / ProtoStar) replace our STARK-in-STARK recursion (~37 s per step via `openvm-native-recursion`) with lower-latency composition?
 
-Current stack: Plonky3 `=0.4.1` + `openvm-stark-backend` v1.3.0 + BabyBear field + Poseidon2 hash. Our recursion is implemented in `zk/proof-checker/tests/p5_spike_recursive_proof.rs` using `openvm-native-recursion`; it executes a BabyBear-native STARK verifier program (`NativeCpuBuilder`) and then STARK-proves that verifier execution.
+Current stack: Plonky3 `=0.4.1` + `openvm-stark-backend` v1.3.0 + BabyBear field + Poseidon2 hash. Our recursion is implemented in `zk/sequent-certifier/tests/p5_spike_recursive_proof.rs` using `openvm-native-recursion`; it executes a BabyBear-native STARK verifier program (`NativeCpuBuilder`) and then STARK-proves that verifier execution.
 
 ---
 

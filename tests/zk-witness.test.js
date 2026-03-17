@@ -28,7 +28,7 @@ let ruleSpecs;
 let alternatives;
 let ZK_TAGS;
 
-const FIXTURE_DIR = path.join(__dirname, '..', 'zk', 'proof-checker', 'tests', 'fixtures');
+const FIXTURE_DIR = path.join(__dirname, '..', 'zk', 'sequent-certifier', 'tests', 'fixtures');
 
 function ensureFixtureDir() {
   if (!fs.existsSync(FIXTURE_DIR)) {

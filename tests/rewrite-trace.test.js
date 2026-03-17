@@ -19,7 +19,7 @@ const { DEFAULT_ROLES } = require('../lib/engine/compile');
 const { buildRewriteTrace, checkRewriteTrace } = require('../lib/prover/rewrite-trace');
 const { generateFlatWitness, MAX_CONSUMED, MAX_PRODUCED } = require('../lib/zk/flat-witness');
 
-const FIXTURE_DIR = path.join(__dirname, '..', 'zk', 'proof-checker', 'tests', 'fixtures');
+const FIXTURE_DIR = path.join(__dirname, '..', 'zk', 'sequent-certifier', 'tests', 'fixtures');
 
 function saveFixture(name, data) {
   if (!fs.existsSync(FIXTURE_DIR)) fs.mkdirSync(FIXTURE_DIR, { recursive: true });

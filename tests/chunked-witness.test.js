@@ -428,7 +428,7 @@ describe('chunked flat witness: solc integration', { timeout: 60000 }, () => {
       maxRowsPerChunk: 100,
     });
 
-    const FIXTURE_DIR = path.join(__dirname, '..', 'zk', 'proof-checker', 'tests', 'fixtures');
+    const FIXTURE_DIR = path.join(__dirname, '..', 'zk', 'sequent-certifier', 'tests', 'fixtures');
     if (!fs.existsSync(FIXTURE_DIR)) fs.mkdirSync(FIXTURE_DIR, { recursive: true });
     const filepath = path.join(FIXTURE_DIR, 'multisig_chunked.json');
     fs.writeFileSync(filepath, JSON.stringify(chunks));

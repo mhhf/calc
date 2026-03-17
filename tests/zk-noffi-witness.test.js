@@ -21,7 +21,7 @@ const { rightFocusTerm } = require('../lib/prover/bridge');
 const { createChecker } = require('../lib/prover/check-term');
 const { generateWitness } = require('../lib/zk/witness');
 
-const FIXTURE_DIR = path.join(__dirname, '..', 'zk', 'proof-checker', 'tests', 'fixtures');
+const FIXTURE_DIR = path.join(__dirname, '..', 'zk', 'sequent-certifier', 'tests', 'fixtures');
 
 function ensureFixtureDir() {
   if (!fs.existsSync(FIXTURE_DIR)) {
@@ -119,6 +119,7 @@ describe('ZK noFFI witness: noffi_tiny (2-step clause resolution)', { timeout: 3
     guidedTerm = {
       rule: 'monad_r',
       principal: null,
+      evidence: innerTerm,   // monad_r checker uses .evidence, not .subterms[0]
       subterms: [innerTerm]
     };
 
@@ -141,31 +142,26 @@ describe('ZK noFFI witness: noffi_tiny (2-step clause resolution)', { timeout: 3
     console.log(`  rules used: ${[...rules].sort().join(', ')}`);
   });
 
-  // TODO: checkTerm requires full gamma (ground rule lolis + clause lolis),
-  // but the guided term pipeline doesn't track which gamma entries are needed.
-  // The ZK proof works without this — gamma_rom provides the entries directly.
-  // Fix requires collecting copy principals and building gamma from them.
-  it.todo('checkTerm validates the proof term', () => {
-    // Build sequent with gamma = copy principals from proof term
-    // (forward rule lolis + clause lolis are ground instances, not in initial state.persistent)
+  it('checkTerm validates the proof term', () => {
+    // Build sequent with gamma = copy principals collected from proof term.
+    // Forward rule lolis + clause lolis are ground instances synthesized at
+    // proof-term-build time — not in initial state.persistent. We must walk
+    // the proof term to discover them.
     const linearCtx = [];
     for (const [h, count] of Object.entries(state.linear || {})) {
       for (let i = 0; i < Number(count); i++) linearCtx.push(Number(h));
     }
-    const cartesianCtx = [];
-    // Collect all copy principals — these are the gamma entries the proof needs
+    const cartesianCtx = new Set();
     function collectGamma(t) {
       if (t == null) return;
-      if (t.rule === 'copy') cartesianCtx.push(t.principal);
+      if (t.rule === 'copy') cartesianCtx.add(t.principal);
       if (t.subterms) for (const s of t.subterms) collectGamma(s);
     }
     collectGamma(guidedTerm);
-    // Deduplicate
-    const uniqueGamma = [...new Set(cartesianCtx)];
 
     const succFormula = buildSuccedentFromState(forwardResult.state);
     const monadSucc = Store.put('monad', [succFormula]);
-    const sequent = Seq.fromArrays(linearCtx, uniqueGamma, monadSucc);
+    const sequent = Seq.fromArrays(linearCtx, [...cartesianCtx], monadSucc);
 
     const checker = createChecker(illCalc);
     const result = checker.check(guidedTerm, sequent);

@@ -3,7 +3,7 @@
  *
  * Tests the JS-side uint256 predicate extraction and witness generation.
  * The Rust side (Uint256ArithChip + ByteCheckRomAir) is tested standalone
- * in zk/proof-checker/tests/p6_uint256.rs.
+ * in zk/sequent-certifier/tests/p6_uint256.rs.
  */
 
 const { describe, it, before } = require('node:test');
@@ -20,7 +20,7 @@ const {
   computeMultiplicationCarries,
 } = require('../lib/zk/witness');
 
-const FIXTURE_DIR = path.join(__dirname, '..', 'zk', 'proof-checker', 'tests', 'fixtures');
+const FIXTURE_DIR = path.join(__dirname, '..', 'zk', 'sequent-certifier', 'tests', 'fixtures');
 
 function ensureFixtureDir() {
   if (!fs.existsSync(FIXTURE_DIR)) {

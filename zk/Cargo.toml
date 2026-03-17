@@ -1,5 +1,5 @@
 [workspace]
-members = ["proof-checker"]
+members = ["sequent-certifier"]
 resolver = "2"
 
 [workspace.dependencies]
