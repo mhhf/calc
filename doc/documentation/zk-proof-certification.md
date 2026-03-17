@@ -2,254 +2,115 @@
 
 CALC proofs can be verified in zero knowledge using STARK proofs. The ZK subsystem takes a proof term (from the backward prover or forward engine) and produces a cryptographic proof that the term is valid — without revealing the proof itself.
 
-## What It Is
+The core insight: the ZK circuit verifies `checkTerm(proofTerm, sequent)` — proof term type-checking. It does NOT replicate the forward engine or backward prover. Those are strategies for *finding* proof terms. The circuit only certifies that a *found* term is valid.
 
-Two verification models:
-- **Tree path**: a STARK proof that `checkTerm(proofTerm, sequent)` succeeds — full ILL derivation verification.
-- **Flat path**: a STARK proof that a forward execution trace conserves resources and uses valid rules — no proof term, just resource accounting.
+The architecture is **calculus-agnostic**. The Rust verifier contains zero ILL-specific code. Tags, rule specs, and witness data are derived from `.calc`/`.rules` descriptors at witness generation time. The same compiled binary verifies proofs from any calculus defined in CALC.
 
-Both produce a ~200KB STARK proof verifiable in milliseconds. The prover (JS) generates a witness trace, the verifier (Rust) checks it via polynomial constraints over BabyBear (31-bit prime field).
+## Technology Stack
 
-## When It's Useful
+| Component | Choice |
+|---|---|
+| STARK toolkit | Plonky3 v0.4.1 |
+| Multi-chip framework | OpenVM stark-backend v1.3.0 (Cantina audit, Feb 2026) |
+| Recursive verifier | openvm-native-recursion v1.5.0 |
+| Field | BabyBear (31-bit prime, quartic extension ~2^124) |
+| Language | Rust (verifier/prover), JS (witness generation) |
 
-- **On-chain verification**: post a STARK proof (or Groth16 wrap, ~260 bytes) that a computation followed declared rules
-- **Trustless certification**: a third party can verify a proof without trusting the prover software
-- **EVM symbolic execution**: the 279-step `multisig_nocall_solc` benchmark produces a verifiable certificate that the execution trace is valid
+## Two Verification Paths
 
-## Architecture
-
-Two verification paths coexist, selected by a `format` field in the witness JSON:
-
-```
-                  ┌─── Tree path ──────────────────────────┐
-                  │  ILL proof term → 13 chips, 7 buses    │
-Proof term ──→ JS witness ──→ JSON ──→ Rust STARK prover ──→ proof
-                  │  Flat certificate → 5–7 chips, 5 buses │
-                  └─── Flat path ──────────────────────────┘
-```
-
-**Tree path**: verifies full ILL derivation trees. Handles backward proofs, forward proofs, mixed. 13 chips across 7 buses verify obligation threading, formula decomposition, linear resource tracking, rule membership, and substitution correctness.
-
-**Flat path**: verifies forward execution traces only. Each step records consumed/produced facts + rule identity. 5–7 chips across 5 buses verify resource conservation, rule membership, formula structure (tensor spine), and substitution correctness for loli matches. 10x fewer rows, 32x smaller witness.
-
-### Technology Stack
-
-| Component | Choice | Why |
-|---|---|---|
-| STARK toolkit | Plonky3 (v0.4.1) | Most active, BabyBear native |
-| Multi-chip framework | OpenVM stark-backend (v1.3.0, audited) | LogUp buses, per-chip AIR |
-| Field | BabyBear (31-bit, quartic ext ~2^124) | Standard for Plonky3 |
-| Language | Rust (verifier), JS (witness) | Rust for constraints, JS for existing prover |
-
-## Two Certificate Paths
-
-### Tree-Based (ILL Proof Terms)
-
-Produced by the backward prover, forward engine (via `buildGuidedTerm`), or manual prover. Each proof term node maps to one chip row in DFS pre-order.
-
-**Buses** (7):
-
-| Bus | Type | Tuple | Role |
-|---|---|---|---|
-| OBLIG_BUS | PermutationCheck | (nonce, type, lax) | Obligation produce/consume |
-| CONTEXT_BUS | PermutationCheck | (hash) | Linear resource tracking |
-| FORMULA_BUS | Lookup | (hash, tag, child0, child1) | Formula decomposition |
-| DISCARD_BUS | Lookup | (nonce) | zero_l discard permits |
-| GAMMA_BUS | Lookup | (hash) | Persistent zone membership |
-| SUBST_TREE_BUS | PermutationCheck | (subst_id, old_hash, new_hash) | Per-node tree matching |
-| FREEVAR_BUS | Lookup | (subst_id, freevar_hash, ground_value) | Freevar consistency |
-
-**Chips** (13 for ILL): InitChip, DupChip, ZeroLChip, DiscardChip, SubstChip (width 15), FreevarRomAir, FormulaRomAir, GammaRomAir, + generic RuleChip instances (one per rule family: tensor_r, loli_l, with_r, oplus_r1, etc.)
-
-**Soundness**: LogUp bus balance enforces multiset equality — every obligation produced is consumed exactly once, every linear resource introduced is consumed exactly once. False positive probability ≤ n/|F_ext| where F_ext ~2^124.
-
-### Flat (Rewriting Certificates)
-
-Produced by the forward engine via `buildRewriteTrace`. Each forward step (rule application) maps to one row. Forward-only — does not apply to backward proofs.
-
-**Buses** (5): CONTEXT_BUS + GAMMA_BUS + FORMULA_BUS + SUBST_TREE_BUS + FREEVAR_BUS.
-
-**Chips** (5–7):
-
-| Chip | Main width | Preprocessed | Role |
-|---|---|---|---|
-| FlatInitChip | 1 (dummy) | 2 | Send initial linear context to CONTEXT_BUS |
-| FlatStepChip | 54 | — | Receive consumed, send produced, verify rule structure + substitution |
-| FlatFinalChip | 2 | — | Receive remaining context from CONTEXT_BUS |
-| FormulaRomAir | 1 | 5 | Formula decomposition supply for FORMULA_BUS |
-| GammaRomAir | 1 | 2 | Persistent clause supply for GAMMA_BUS |
-| SubstChip | 15 | — | Per-node loli body substitution verification (SUBST_TREE_BUS) |
-| FreevarRomAir | 1 | 3 | Freevar→ground binding supply for FREEVAR_BUS |
-
-FlatStepChip row layout (width 54): `[active, is_loli, ground_loli, consumed_0..5, consumed_active_0..5, produced_0..5, produced_active_0..5, ant_hash, ant_i1..4, cons_hash, cons_i1..4, monad_hash, compiled, ground_ant, ground_cons, subst_id, body_leaf_0..5, body_diff_0..5]`
-
-For compiled rules (`is_loli=0`): ant_hash/cons_hash are right-associated tensor trees matching consumed/produced slots. FORMULA_BUS lookups verify the tensor spine decomposition. GAMMA_BUS verifies rule membership.
-
-For loli matches (`is_loli=1`): ant_hash/cons_hash come from the original loli's Store decomposition (may contain metavariables). Antecedent verification via ground_ant + SUBST_TREE_BUS demand to SubstChip. Body verification via per-leaf SUBST_TREE_BUS demands gated by body_diff columns. Anti-suppression constraint: `(1 - body_diff[i]) * (body_leaf[i] - p[i]) = 0` ensures body_diff can only be 0 when body_leaf equals produced.
-
-The `compiled` column stores `active * (1 - is_loli)` as a trace value to keep max constraint degree at 4 (requiring `log_blowup=2`). Without it, spine boundary constraints would be degree 5 (requiring `log_blowup=3`, doubling LDE memory).
-
-**Inter-derivability**: flat certificates and ILL proof terms are inter-derivable for the forward fragment. `buildGuidedTerm` converts flat→ILL. `buildRewriteTrace` converts ILL→flat (trivially, by extracting consumed/produced per step). See TODO_0084 for the soundness proof.
-
-## Calculus-Agnostic Design
-
-The Rust verifier contains zero ILL-specific code. Everything is derived from the calculus definition at witness generation time:
-
-1. **Tags**: `deriveZkTags(calculus)` assigns integer IDs to connectives from `.calc` definitions
-2. **Rule specs**: `deriveZkRuleSpecs(calculus, tags)` maps `.rules` descriptors to `RuleSpec` structs
-3. **Witness JSON**: carries `tags` and `rule_specs` — the Rust bridge reads them at runtime
-
-The same compiled Rust binary verifies proofs from any calculus defined in CALC.
-
-## File Structure
-
-### JS (witness generation)
-
-```
-lib/zk/
-├── witness.js              # Tree-based: generateWitness(term, sequent, opts)
-│                           #   deriveZkTags(calculus), deriveZkRuleSpecs(calculus, tags)
-└── flat-witness.js         # Flat: generateFlatWitness(trace, sequent, opts)
-
-lib/prover/
-├── rewrite-trace.js        # buildRewriteTrace(trace), checkRewriteTrace(delta0, trace)
-├── guided-term.js          # buildGuidedTerm(trace, rfTerm) — forward trace → ILL proof term
-└── check-term.js           # checkTerm(term, sequent) — proof term type-checker
+```mermaid
+graph LR
+    BP[Backward prover] --> PT[Proof term]
+    FE[Forward engine] --> GT[buildGuidedTerm] --> PT
+    PT --> TW[Tree witness]
+    FE --> RT[buildRewriteTrace] --> FW[Flat witness]
+    TW --> JSON
+    FW --> JSON
+    JSON --> RP[Rust STARK prover]
+    RP --> STARK[STARK proof ~200KB]
 ```
 
-### Rust (STARK verifier)
+### Tree Path (ILL Proof Terms)
 
-```
-zk/sequent-certifier/
-├── Cargo.toml
-├── src/
-│   ├── lib.rs              # Re-exports
-│   ├── bridge.rs           # JSON → trace matrices → STARK prover
-│   │                       #   prove_json() dispatches by format field
-│   │                       #   prove_witness() — tree path
-│   │                       #   prove_flat_witness() — flat path
-│   ├── buses.rs            # 7 bus definitions (OBLIG, CONTEXT, FORMULA, DISCARD, GAMMA, SUBST_TREE, FREEVAR)
-│   ├── rule/
-│   │   └── mod.rs          # RuleSpec, ColumnLayout, generic RuleChip AIR impl
-│   └── chips/
-│       ├── init.rs         # InitChip (tree, main 1 + prep 5)
-│       ├── dup.rs          # DupChip (additive context copy, width 2)
-│       ├── zero_l.rs       # ZeroLChip (ex falso, width 6)
-│       ├── discard.rs      # DiscardChip (discard permits, width 3)
-│       ├── subst.rs        # SubstChip (freevar bridge, width 15)
-│       ├── formula_rom.rs  # FormulaRomAir (formula decomposition, main 1 + prep 5)
-│       ├── gamma_rom.rs    # GammaRomAir (persistent clause supply, main 1 + prep 2)
-│       ├── freevar_rom.rs  # FreevarRomAir (freevar consistency, main 1 + prep 3)
-│       ├── flat_init.rs    # FlatInitChip (flat, main 1 + prep 2)
-│       ├── flat_step.rs    # FlatStepChip (flat, width 54)
-│       └── flat_final.rs   # FlatFinalChip (flat, width 2)
-└── tests/
-    ├── common/mod.rs       # Test helpers
-    ├── p1f_e2e.rs          # 16 e2e tests (JS fixtures → STARK)
-    ├── p2_*.rs             # Generic RuleChip tests (per-rule family)
-    └── s1-s5_*.rs          # Infrastructure spike tests
-```
+Verifies full derivation trees: `checkTerm(term, sequent)`. Produced by backward prover, forward engine (via `buildGuidedTerm`), or manual prover. Each proof term node maps to one chip row in DFS pre-order.
 
-### Test fixtures
+- NOT IVC-compatible (obligation nonce threading crosses subtree boundaries)
+- Chunked via ObligBoundaryChip + CtxBoundaryChip at obligation-depth boundaries
+- Best for backward proofs (search IS tree construction)
 
-```
-zk/sequent-certifier/tests/fixtures/
-├── identity.json           # A ⊢ A
-├── tensor_r.json           # A, B ⊢ A ⊗ B
-├── tensor_swap.json        # A ⊗ B ⊢ B ⊗ A
-├── loli_r.json             # ⊢ A ⊸ A
-├── loli_l.json             # P, P ⊸ Q ⊢ Q
-├── with_r.json             # A ⊢ A & A
-├── with_l1.json            # A & B ⊢ A
-├── oplus_r1.json           # A ⊢ A ⊕ B
-├── one_r.json              # ⊢ I
-├── one_l.json              # I, A ⊢ A
-├── zero_l.json             # 0 ⊢ C
-├── bang_dereliction.json   # !A ⊢ A
-├── copy.json               # ; A ⊢ A
-├── nested_loli_tensor.json # (A⊗B)⊸C, A, B ⊢ C
-├── solc_forward.json       # 279-step EVM (tree, 858KB)
-└── solc_flat.json          # 279-step EVM (flat, 27KB)
-```
+### Flat Path (Rewriting Certificates)
 
-## Usage
+Verifies forward execution traces: each step records (rule, consumed facts, produced facts). Resource accounting only — no derivation tree structure.
 
-### Generate a tree-based witness (JS)
+- IVC-compatible (each step is self-contained, chunk at any step boundary)
+- 10x fewer rows, 32x smaller witness than tree path
+- Forward-only — does not apply to backward proofs
 
-```javascript
-const { generateWitness, deriveZkTags, deriveZkRuleSpecs } = require('./lib/zk/witness');
+### Coexistence
 
-const tags = deriveZkTags(calculus);
-const ruleSpecs = deriveZkRuleSpecs(calculus, tags);
-const witness = generateWitness(proofTerm, sequent, { tags, ruleSpecs });
-// witness = { tags, rule_specs, chips, formula_rom, gamma_rom }
-```
+Both paths share the same STARK infrastructure (buses, prover, verifier). The `format` field in the witness JSON dispatches at runtime. The monad boundary (`monad_r`) is the natural seam: backward proof above (tree-path STARK) + forward certificate below (flat-path IVC). A complete proof of `Γ; Δ ⊢ {A}` can use both.
 
-### Generate a flat witness (JS)
+### Custom Chips (Performance Optimization)
 
-```javascript
-const { buildRewriteTrace, checkRewriteTrace } = require('./lib/prover/rewrite-trace');
-const { generateFlatWitness } = require('./lib/zk/flat-witness');
+Custom chips replace O(clause_depth) backward clause proof subtrees with O(1) lookups for specific predicates. For the 279-step solc benchmark: 1.74M → 338 active rows (99.98% reduction).
 
-const trace = buildRewriteTrace(forwardTrace);
-const check = checkRewriteTrace(initialContext, trace);
-assert(check.valid);
+| Mechanism | What it does |
+|---|---|
+| FactRomAir + FACT_BUS | ROM membership for all predicate facts |
+| PredicateRomAir + PRED_BUS | In-circuit arithmetic verification (plus/mul/inc) |
+| Uint256ArithChip + BYTE_CHECK_BUS | 256-bit arithmetic (8-limb decomposition, carry propagation) |
+| FactAxiomChip (width 32) | Replaces clause proof subtrees — variable-width CONTEXT_BUS |
 
-const witness = generateFlatWitness(trace, sequent, { calculus });
-// witness = { format: 'flat', chips: { flat_init, flat_step, flat_final },
-//             formula_rom, gamma_rom, tags, constants }
-```
+Custom chips are opt-in (`customChips` set in witness generation). Without them, the noFFI general path works for any calculus, any predicates — it just produces more rows.
 
-### Verify in Rust
+## Bus Architecture (14 Buses)
 
-```rust
-use sequent_certifier::bridge::prove_json;
+All inter-chip communication goes through LogUp buses. Two types: `PermutationCheckBus` (multiset equality — both sides must balance) and `LookupBus` (every demand must have a matching supply in a ROM).
 
-let json = std::fs::read_to_string("witness.json").unwrap();
-prove_json(&json).expect("STARK verification");
-// prove_json dispatches to tree or flat path based on format field
-```
+### Universal Buses (any sequent calculus)
 
-### Run tests
+| ID | Name | Type | Tuple | Purpose |
+|---|---|---|---|---|
+| 0 | OBLIG_BUS | PermCheck | (nonce, type_hash, lax) | Obligation produce/consume — every proof step gets/fulfills goals |
+| 2 | FORMULA_BUS | Lookup | (hash, tag, child0, child1) | Formula decomposition — ROM prevents forged connective tags |
 
-```bash
-# JS witness tests
-npm test -- --grep "zk"
+### Structural Buses (substructural logics)
 
-# Rust STARK tests (all 63)
-cd zk && cargo test --release
+| ID | Name | Type | Tuple | Purpose |
+|---|---|---|---|---|
+| 1 | CONTEXT_BUS | PermCheck | (hash) | Linear resource tracking — multiset equality enforces linearity |
+| 3 | DISCARD_BUS | Lookup | (nonce) | zero_l discard authorization — prevents unauthorized resource discarding |
+| 4 | GAMMA_BUS | Lookup | (hash) | Cartesian zone membership — unlimited copies for persistent facts |
 
-# Just e2e (JS fixtures → STARK)
-cd zk && cargo test --release --test p1f_e2e
-```
+### Pattern Matching Buses
 
-## Benchmarks (279-step EVM symbolic execution)
+| ID | Name | Type | Tuple | Purpose |
+|---|---|---|---|---|
+| 5 | SUBST_TREE_BUS | PermCheck | (subst_id, old_hash, new_hash) | Links SubstChip parent→child rows during loli pattern matching |
+| 6 | FREEVAR_BUS | Lookup | (subst_id, freevar_hash, ground_value) | Freevar consistency — each freevar maps to exactly one ground value |
 
-| Metric | Tree path | Flat path |
-|---|---|---|
-| Total trace rows | 6,267 | 596 |
-| Witness size | 858 KB | 27 KB |
-| Chips | 13 | 5 |
-| Buses | 5 | 3 |
-| STARK proving (release) | 2.56s | 2.81s |
-| Rust tests | 63 pass | included above |
+### Custom Chip Buses
 
-Proving time is comparable because STARK fixed overhead (FRI, Poseidon) dominates at these trace sizes. The flat path's advantage is witness compactness and architectural simplicity.
+| ID | Name | Type | Tuple | Purpose |
+|---|---|---|---|---|
+| 7 | CANON_CONS_BUS | Lookup | (cons_hash, canon_cons) | Canonical loli body form (flat path) |
+| 8 | FACT_BUS | Lookup | (goal_hash) | Verified predicate fact membership |
+| 9 | PRED_BUS | Lookup | (pred_hash) | Predicate semantic verification (arithmetic) |
+| 10 | BYTE_CHECK_BUS | Lookup | (byte_value) | 8-bit range check for 256-bit limbs |
 
-### Scaling budget
+### PV Binding Buses (cryptographic PV→trace anchoring)
 
-Single STARK proof budget: ~4M rows per chip before needing degree tiers or continuations.
+| ID | Name | Type | Tuple | Purpose |
+|---|---|---|---|---|
+| 11 | OBLIG_PV_BIND_BUS | PermCheck | (discriminator, goal_hash, lax) | Binds obligation PVs to trace |
+| 12 | CTX_PV_BIND_BUS | PermCheck | (discriminator, hash) | Binds context PVs to trace |
+| 13 | FLAT_PV_BIND_BUS | PermCheck | (discriminator, hash) | Binds flat-path PVs to trace |
 
-| Path | Rows for solc_symbolic | Headroom to 4M |
-|---|---|---|
-| Tree | 6,267 | ~640x |
-| Flat | 596 | ~14,000x |
+## Chip Inventory
 
-## Key Data Structures
+### Generic RuleChip (auto-generated from RuleSpec)
 
-### RuleSpec (Rust + JSON)
-
-Describes one inference rule's bus interactions declaratively:
+A single parameterized AIR chip handles 23/24 ILL rules. `RuleSpec` describes bus interactions declaratively; `ColumnLayout::compute(spec)` auto-computes column indices. Adding a rule = adding a RuleSpec. Adding a calculus = deriving specs from `.rules` descriptors.
 
 ```rust
 pub struct RuleSpec {
@@ -262,57 +123,314 @@ pub struct RuleSpec {
     pub ctx_sends: Vec<CtxSend>,    // send to CONTEXT_BUS
     pub formula_lookup: bool,       // look up in FORMULA_BUS?
     pub gamma_lookup: bool,         // look up in GAMMA_BUS?
+    pub fact_lookup: bool,          // look up in FACT_BUS?
     pub is_identity: bool,          // hash serves both OBLIG and CONTEXT
 }
 ```
 
-The generic `RuleChip` reads this spec and emits polynomial constraints. Column layout is computed automatically — no manual index bookkeeping. Adding a rule = adding a `RuleSpec` value. Adding a calculus = deriving specs from `.rules` descriptors.
+Example instances (widths vary 2–9): `id` (4), `tensor_r`/`with_r` (8), `tensor_l` (4), `loli_r` (7), `loli_l`/`oplus_l` (9), `one_r` (4), `copy` (2), `bang_r`/`monad_r` (6).
 
-### WitnessJson (Rust)
+### Specialized Chips
 
-```rust
-pub struct WitnessJson {
-    pub tags: HashMap<String, u32>,           // connective → tag integer
-    pub rule_specs: HashMap<String, RuleSpec>, // rule → chip spec
-    pub chips: HashMap<String, Vec<Vec<u32>>>, // chip name → rows
-    pub formula_rom: Vec<Vec<u32>>,
-    pub gamma_rom: Vec<Vec<u32>>,
-}
+| Chip | Width | Purpose |
+|---|---|---|
+| InitChip | 3 main + 5 prep | Initial sequent: context + root obligation. PVs bind the proof to a specific sequent. |
+| DupChip | 2 | Additive context duplication (with_r, oplus_l branching). Receive 1, send 2. |
+| ZeroLChip | 6 | Ex falso quodlibet. Authorizes `num_discards` via DISCARD_BUS. |
+| DiscardChip | 3 | Consumes one linear resource with DISCARD_BUS authorization. |
+| SubstChip | 16 | Loli pattern matching: tree-walk verification via SUBST_TREE_BUS + FREEVAR_BUS. Handles root/internal/freevar/unwrap row types. |
+| FactAxiomChip | 32 | Custom chip: replaces clause proof subtrees. Variable-width CONTEXT_BUS (0–6 consumed + 0–6 produced). |
+| Uint256ArithChip | 65 main + 101 prep | 256-bit arithmetic: 32-limb (8-bit) decomposition, carry propagation, BYTE_CHECK_BUS range checks. |
+
+### ROM Chips (preprocessed, VK-committed)
+
+| Chip | Prep width | Bus | Purpose |
+|---|---|---|---|
+| FormulaRomAir | 5 | FORMULA_BUS | Formula decomposition supply (hash, tag, c0, c1, is_active) |
+| GammaRomAir | 2 | GAMMA_BUS | Persistent zone membership |
+| FreevarRomAir | 4 | FREEVAR_BUS | Freevar→ground binding (chunk-local) |
+| FactRomAir | 3 | FACT_BUS | Verified predicate fact membership |
+| PredicateRomAir | 13 | PRED_BUS | Arithmetic constraints: `is_plus*(a+b-c)=0`, `is_mul*(a*b-c)=0`, `is_inc*(a+1-b)=0` |
+| ByteCheckRomAir | 1 | BYTE_CHECK_BUS | 256-entry [0..255] range check |
+| CanonConsRomAir | 3 | CANON_CONS_BUS | Loli body canonical form (flat path) |
+
+### Flat-Path Chips
+
+| Chip | Width | Purpose |
+|---|---|---|
+| FlatInitChip | 4 | Send initial linear context to CONTEXT_BUS. PV binding via FLAT_PV_BIND_BUS. |
+| FlatStepChip | 43 | Per forward step: consume/produce facts, verify rule structure + substitution. Degree-4 constraints (needs log_blowup=2). |
+| FlatFinalChip | 4 | Receive remaining context from CONTEXT_BUS. PV binding via FLAT_PV_BIND_BUS. |
+
+### Boundary Chips (tree-path chunking)
+
+| Chip | Width | Purpose |
+|---|---|---|
+| ObligBoundaryChip | 8 | Inter-chunk obligation handoff. Running-sum PV→trace binding via OBLIG_PV_BIND_BUS. |
+| CtxBoundaryChip | 6 | Inter-chunk context handoff. Running-sum + per-element PV binding via CTX_PV_BIND_BUS. |
+
+## Witness Generation Pipeline (JS)
+
+### Tree Path
+
+```javascript
+const { generateWitness, deriveZkTags, deriveZkRuleSpecs } = require('./lib/zk/witness');
+
+const tags = deriveZkTags(calculus);        // connective → integer from .calc definition order
+const ruleSpecs = deriveZkRuleSpecs(calculus, tags);  // .rules descriptors → RuleSpec structs
+const witness = generateWitness(proofTerm, sequent, {
+  calculus,
+  customChips: new Set(['inc', 'plus', 'arr_get', ...])  // optional, enables FactAxiomChip
+});
+// → { tags, rule_specs, chips: { init, id, tensor_r, ... }, formula_rom, gamma_rom, ... }
 ```
 
-### FlatWitnessJson (Rust)
+**Algorithm**: iterative DFS walk (trampoline) of the proof term. At each node: determine rule → emit one chip row to the appropriate accumulator → update live delta (linear context) → advance nonce counter. Special handling for additive branching (DupChip rows), zero_l (DiscardChip rows), loli matches (SubstChip rows), custom chips (FactAxiomChip rows).
 
-```rust
-pub struct FlatWitnessJson {
-    pub format: String,                        // "flat"
-    pub chips: HashMap<String, Vec<Vec<u32>>>, // flat_init, flat_step, flat_final
-    pub formula_rom: Vec<Vec<u32>>,            // formula decomposition entries
-    pub gamma_rom: Vec<Vec<u32>>,              // persistent clause entries
-    pub tags: HashMap<String, u32>,            // connective → tag integer
-    pub constants: HashMap<String, u32>,       // e.g. { one_hash: ... }
-}
+### Flat Path
+
+```javascript
+const { generateFlatWitness, generateChunkedFlatWitness } = require('./lib/zk/flat-witness');
+
+const witness = generateFlatWitness(trace, sequent, { calculus });
+// → { format: 'flat', chips: { flat_init, flat_step, flat_final, subst }, formula_rom, gamma_rom, ... }
+
+// For IVC chunking:
+const chunks = generateChunkedFlatWitness(trace, sequent, { calculus, maxRowsPerChunk: 1 << 20 });
 ```
 
-## Future Extensions
+**Algorithm**: one FlatStepChip row per forward step. Tensor spine intermediates computed for FORMULA_BUS verification. Loli matches emit SubstChip rows. ROMs normalized across chunks for constant VK.
 
-**Degree tiers**: compile the circuit at multiple degrees (2^10, 2^14, 2^18, 2^22). Auto-select the smallest that fits. Same constraints, different padding. Reduces proving time for small proofs.
+### Tag Derivation
 
-**Public input binding (3b.2)**: formula ROM, gamma ROM, init sequent, and flat init context are preprocessed columns committed at keygen via Poseidon2. The next step is exposing a public input hash binding the proof to a specific sequent.
+`deriveZkTags(calculus)` assigns 1-indexed integers to formula connectives in `.calc` definition order (excluding `atom`). `freevar` is appended as `maxTag + 1` (Store built-in, not a calculus connective). Example for ILL: tensor=1, loli=2, one=3, zero=4, with=5, oplus=6, bang=7, monad=8, exists=9, forall=10, freevar=11.
 
-**Binary serialization**: replace JSON witness bridge with bincode for faster JS→Rust transfer.
+### Rule Spec Derivation
 
-**On-chain verification**: STARK → Groth16 wrap via gnark → Solidity verifier (~270k gas). Same production pipeline as SP1.
+`deriveZkRuleSpecs(calculus, tags)` maps `.rules` descriptors to RuleSpec structs. Same source of truth as the backward prover and forward engine. Hard-coded special rules: `id`, `copy`, `ffi`, `fact_axiom`, `loli_l_inv`.
 
-**Multimodalities**: flat certificates extend — add zone tag per fact, one CONTEXT_BUS per zone.
+## Proving Pipeline (Rust)
 
-**muMALL (fixed points)**: certificate structure unchanged — μ-unfolding happens at match time, not in the rewriting structure.
+### Entry Point
 
-**Dependent types**: resource accounting is orthogonal to type dependency. FlatStepChip gets wider (type witnesses), but the one-row-per-step structure is the same.
+```rust
+use sequent_certifier::bridge::prove_json;
+
+let json = std::fs::read_to_string("witness.json").unwrap();
+prove_json(&json);  // dispatches on format field: "flat" → flat path, else → tree path
+```
+
+### Bridge Flow (`bridge.rs`, 1191 lines)
+
+1. Deserialize witness JSON → `WitnessJson` or `FlatWitnessJson`
+2. Read `tags` map (runtime, no hardcoded ILL knowledge)
+3. Read `rule_specs` → construct `RuleChip::new(spec)` instances
+4. For each chip section: deserialize rows → `RowMajorMatrix<BabyBear>` padded to next power of 2
+5. Construct ROM chips: split preprocessed columns from main trace (num_lookups)
+6. Push all `Arc<dyn AnyRap<_>>` + trace matrices into vectors
+7. Call `BabyBearPoseidon2Engine::run_simple_test_fast(chips, traces)` → keygen + prove + verify
+
+### Key Bridge Functions
+
+| Function | Purpose |
+|---|---|
+| `prove_json(json)` | Format dispatch |
+| `prove_witness(w)` | Tree-path prove+verify |
+| `prove_flat_witness(w)` | Flat-path prove+verify |
+| `prove_chunked_tree_witness(chunks)` | Parallel tree chunk proving |
+| `prove_chunked_flat_witness(chunks)` | Parallel flat chunk proving |
+| `normalize_tree_witnesses(ws)` | Union all preprocessed data for shared VK |
+| `prove_witnesses_shared_keygen(ws)` | Single keygen + rayon parallel proving |
+
+### Shared Keygen Protocol
+
+For N witnesses to share one VK (IVC, symbolic paths), all preprocessed traces must be identical. `normalize_tree_witnesses` unions:
+- Rule chip names (missing ones get empty rows)
+- Init chip rows (per-witness `is_active` stays in main trace)
+- All ROM entries (formula, gamma, fact, freevar, pred, uint256) — per-witness `num_lookups` varies in main trace only
+
+### Recursive Composition
+
+Uses `openvm-native-recursion` DSL to verify chunk STARKs inside a recursive STARK:
+
+1. Build `MultiStarkVerificationAdvice` from shared VK
+2. `VerifierProgram::build(advice, fri_params)` → compilation to BabyBear program
+3. Execute via OpenVM metered interpreter
+4. The composition program checks: each chunk STARK valid + PV continuity (`ctx_out[i] == ctx_in[i+1]`) + obligation continuity + VK identity
+5. Outer recursive STARK commits: init PVs + final boundary PVs + VK hash
+
+## Soundness Model
+
+### What Each Bus Enforces
+
+| Layer | Bus(es) | Guarantee |
+|---|---|---|
+| Universal | OBLIG_BUS | Every obligation produced is consumed exactly once with matching (nonce, type, lax) |
+| Universal | FORMULA_BUS | Formula decompositions match VK-committed ROM — no forged tags or children |
+| Structural | CONTEXT_BUS | Multiset equality: every linear resource introduced is consumed the right number of times |
+| Structural | DISCARD_BUS | Only zero_l can authorize discarding linear resources |
+| Structural | GAMMA_BUS | Copy can only use facts actually in the persistent zone |
+| Matching | SUBST_TREE + FREEVAR | Substitution is structurally correct (same tags) and consistent (each freevar has one ground value) |
+| Custom | FACT_BUS + PRED_BUS | Predicate facts are ROM-committed; arithmetic predicates satisfy field constraints |
+| Binding | PV_BIND buses | Public values are cryptographically anchored to trace via LogUp multiset equality |
+
+### Cryptographic Parameters
+
+- LogUp extension field: BabyBear quartic (~2^124). False positive per bus: ≤ n/|F_ext|.
+- FRI: configurable. Currently `new_for_testing(3)` (fast, insecure). Production: ~100-bit security (TODO_0118).
+- ROM commitments: preprocessed columns committed via Poseidon2 at keygen → part of VK.
+
+### Trust Boundaries
+
+- **VK-committed**: formula ROM, gamma ROM, fact ROM, pred ROM, freevar ROM, init chip sequent data → prover cannot forge after keygen
+- **Custom chip soundness**: FactAxiomChip trusts ROM entries. PredicateRomAir verifies arithmetic in-circuit. Array/memory predicates rely on ROM membership (VK-committed).
+- **noFFI default**: all persistent goals produce backward clause proof terms verified by standard RuleChips. Zero trusted axioms. Full adversarial soundness.
+
+## Performance
+
+### Solc Benchmark (279-step EVM, MultisigNoCall)
+
+| Metric | Tree path | Flat path |
+|---|---|---|
+| Trace rows | 6,267 | 596 |
+| Witness size | 858 KB | 27 KB |
+| Active chips | 13 | 5–7 |
+| STARK prove+verify (release) | 2.56s | 2.81s |
+
+### Custom Chip Impact (Tree Path)
+
+| Configuration | Active rows |
+|---|---|
+| noFFI (clause proofs expanded) | ~1.74M |
+| With custom chips | 338 |
+| Reduction | 99.98% |
+
+### 31-Path Symbolic Pipeline (8 cores, release)
+
+| Stage | Time |
+|---|---|
+| Exploration (FFI) | 65ms |
+| Witness generation (31 fixtures) | 320ms |
+| STARK proving (shared keygen) | 81s wall (~2.6s avg/path) |
+| Recursive composition (3 chunks) | ~110s |
+| **Total** | **~195s (~3.3 min)** |
+
+Production FRI estimate: 3–5x slowdown → ~10–15 min total.
+
+### Scaling Characteristics
+
+- Release vs debug: 67x speedup for STARK proving
+- Shared keygen vs independent: 22x speedup (ROM normalization eliminates structural variance)
+- STARK proving: O(N log N) in trace rows
+- Recursive composition: ~37s per verified proof (bottleneck at >200 paths)
+- Custom chips: fact_axiom rows are 75–81% of all rows across symbolic paths
+
+## File Structure
+
+### JS (witness generation)
+
+```
+lib/zk/
+├── witness.js           # Tree: generateWitness, deriveZkTags, deriveZkRuleSpecs,
+│                        #   generateChunkedTreeWitness, extractUint256PredMeta
+└── flat-witness.js      # Flat: generateFlatWitness, generateChunkedFlatWitness
+
+lib/prover/
+├── guided-term.js       # buildGuidedTerm — forward trace → ILL proof term (with custom chip annotations)
+├── rewrite-trace.js     # buildRewriteTrace, checkRewriteTrace
+└── check-term.js        # checkTerm — proof term type-checker (reference implementation)
+```
+
+### Rust (STARK verifier)
+
+```
+zk/sequent-certifier/
+├── src/
+│   ├── lib.rs           # Re-exports: bridge, buses, chips, rule
+│   ├── bridge.rs        # JSON → trace matrices → STARK prover (1191 lines)
+│   │                    #   prove_json, prove_witness, prove_flat_witness,
+│   │                    #   normalize_tree_witnesses, prove_witnesses_shared_keygen
+│   ├── buses.rs         # 14 bus constants (IDs 0–13)
+│   ├── rule/mod.rs      # RuleSpec, ColumnLayout, generic RuleChip AIR (359 lines)
+│   └── chips/
+│       ├── init.rs            # InitChip (tree, width 3+5prep)
+│       ├── dup.rs             # DupChip (additive duplication, width 2)
+│       ├── zero_l.rs          # ZeroLChip (ex falso, width 6)
+│       ├── discard.rs         # DiscardChip (DISCARD_BUS lookup, width 3)
+│       ├── subst.rs           # SubstChip (pattern matching, width 16)
+│       ├── fact_axiom.rs      # FactAxiomChip (custom chip, width 32)
+│       ├── uint256_arith.rs   # Uint256ArithChip (256-bit ops, width 65+101prep)
+│       ├── formula_rom.rs     # FormulaRomAir (1+5prep)
+│       ├── simple_rom.rs      # SimpleRomAir (generic ROM base, 1+2prep)
+│       ├── gamma_rom.rs       # GammaRomAir (= SimpleRomAir on GAMMA_BUS)
+│       ├── fact_rom.rs        # FactRomAir (= SimpleRomAir on FACT_BUS)
+│       ├── freevar_rom.rs     # FreevarRomAir (chunk-local, 1+4prep)
+│       ├── pred_rom.rs        # PredicateRomAir (arithmetic constraints, 1+13prep)
+│       ├── byte_check_rom.rs  # ByteCheckRomAir (256-entry range check)
+│       ├── canon_cons_rom.rs  # CanonConsRomAir (loli body canonical form, 1+3prep)
+│       ├── flat_init.rs       # FlatInitChip (flat path, width 4)
+│       ├── flat_step.rs       # FlatStepChip (flat path, width 43)
+│       ├── flat_final.rs      # FlatFinalChip (flat path, width 4)
+│       ├── oblig_boundary.rs  # ObligBoundaryChip (tree chunking, width 8)
+│       └── ctx_boundary.rs    # CtxBoundaryChip (tree chunking, width 6)
+├── src/bin/
+│   └── prove_symbolic.rs      # CLI: shared keygen + parallel proving
+└── tests/
+    ├── fixtures/              # 57 JSON witness fixtures
+    ├── s1–s5_*.rs             # Infrastructure spike tests
+    ├── p1f_e2e.rs             # E2E fixture tests (16)
+    ├── p2_*.rs                # Per-rule tests (flat, loli, monad, oplus, with, exponential, etc.)
+    ├── p3_forgery.rs          # Tamper/forgery rejection tests
+    ├── p4a_*.rs               # Chunking + composition tests
+    ├── p5_spike_recursive_proof.rs  # Recursive STARK proof test
+    └── p6_*.rs                # Phase 6: soundness, shared keygen, symbolic e2e, custom chips,
+                               #   uint256, chunked tree, tree composition, tree recursive proof,
+                               #   symbolic composition
+```
+
+## Usage
+
+### Generate and verify (tree path)
+
+```javascript
+// JS: generate witness
+const witness = generateWitness(proofTerm, sequent, { calculus });
+fs.writeFileSync('witness.json', JSON.stringify(witness));
+```
+
+```rust
+// Rust: verify
+let json = std::fs::read_to_string("witness.json").unwrap();
+prove_json(&json);
+```
+
+### Generate and verify (flat path)
+
+```javascript
+const witness = generateFlatWitness(trace, sequent, { calculus });
+fs.writeFileSync('witness.json', JSON.stringify(witness));
+```
+
+### Symbolic multi-path proving
+
+```bash
+# Prove 31 symbolic execution paths with shared keygen + parallel proving
+cargo run --bin prove_symbolic --release -- fixtures/solc_symbolic_*.json
+```
+
+### Run tests
+
+```bash
+npm test -- --grep "zk"                    # JS witness tests
+cd zk && cargo test --release              # All Rust STARK tests
+cd zk && cargo test --release --test p6_symbolic_e2e  # Symbolic e2e only
+```
 
 ## References
 
-- TODO_0084: full design document with soundness proofs, phase history, and architectural insights
+- TODO_0084: full design history with soundness proofs, findings, and phase details
 - TODO_0086: zone-agnostic bus architecture (generalizing structural buses beyond ILL's two-zone shape)
+- TODO_0118: on-chain verification pipeline (production FRI, Groth16 wrapper, Solidity verifier)
 - Plonky3: github.com/Plonky3/Plonky3
 - OpenVM stark-backend: github.com/openvm-org/stark-backend
 - ZKSMT (Luick et al., USENIX Security 2024): IVC for SMT proof checking
