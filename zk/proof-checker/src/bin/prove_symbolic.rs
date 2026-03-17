@@ -4,12 +4,13 @@
 //!   cargo run --bin prove_symbolic --release -- fixtures/*.json
 //!   cargo run --bin prove_symbolic --release -- tests/fixtures/solc_symbolic_*.json
 //!
-//! Uses rayon par_iter to prove all fixtures in parallel.
-//! Each fixture is independently proved via `prove_json` (no shared state).
+//! Uses `normalize_tree_witnesses` + `prove_witnesses_shared_keygen` for
+//! single keygen, constant VK, and parallel proving across all fixtures.
 
 use std::time::Instant;
-use rayon::prelude::*;
-use proof_checker::bridge::prove_json;
+use proof_checker::bridge::{
+    normalize_tree_witnesses, prove_witnesses_shared_keygen, WitnessJson,
+};
 
 fn main() {
     let args: Vec<String> = std::env::args().skip(1).collect();
@@ -18,45 +19,51 @@ fn main() {
         std::process::exit(1);
     }
 
-    eprintln!("Proving {} fixtures in parallel ({} threads)...",
-        args.len(), rayon::current_num_threads());
+    eprintln!("Loading {} fixtures...", args.len());
 
-    let t0 = Instant::now();
+    let names: Vec<String> = args.iter().map(|path| {
+        std::path::Path::new(path)
+            .file_stem()
+            .map(|s| s.to_string_lossy().to_string())
+            .unwrap_or_else(|| path.clone())
+    }).collect();
 
-    let results: Vec<(String, Result<f64, String>)> = args.par_iter()
-        .map(|path| {
-            let name = std::path::Path::new(path)
-                .file_stem()
-                .map(|s| s.to_string_lossy().to_string())
-                .unwrap_or_else(|| path.clone());
-
-            let json = match std::fs::read_to_string(path) {
-                Ok(j) => j,
-                Err(e) => return (name, Err(format!("read error: {e}"))),
-            };
-
-            let t = Instant::now();
-            match prove_json(&json) {
-                Ok(()) => (name, Ok(t.elapsed().as_secs_f64())),
-                Err(e) => (name, Err(e)),
+    let mut witnesses: Vec<WitnessJson> = Vec::with_capacity(args.len());
+    for (i, path) in args.iter().enumerate() {
+        let json = match std::fs::read_to_string(path) {
+            Ok(j) => j,
+            Err(e) => {
+                eprintln!("  FAIL {}: read error: {e}", names[i]);
+                std::process::exit(1);
             }
-        })
-        .collect();
-
-    let total = t0.elapsed().as_secs_f64();
-    let mut ok = 0;
-    let mut fail = 0;
-
-    for (name, result) in &results {
-        match result {
-            Ok(secs) => { eprintln!("  OK  {name} ({secs:.2}s)"); ok += 1; }
-            Err(e)   => { eprintln!("  FAIL {name}: {e}"); fail += 1; }
+        };
+        match serde_json::from_str::<WitnessJson>(&json) {
+            Ok(w) => witnesses.push(w),
+            Err(e) => {
+                eprintln!("  FAIL {}: parse error: {e}", names[i]);
+                std::process::exit(1);
+            }
         }
     }
 
-    eprintln!("\n{ok}/{} passed, {fail} failed, {total:.2}s wall time", results.len());
+    let t0 = Instant::now();
+    normalize_tree_witnesses(&mut witnesses);
+    eprintln!("Normalized {} fixtures in {:.2}s", witnesses.len(), t0.elapsed().as_secs_f64());
 
-    if fail > 0 {
-        std::process::exit(1);
+    eprintln!("Proving with shared keygen ({} threads)...", rayon::current_num_threads());
+    let t1 = Instant::now();
+    match prove_witnesses_shared_keygen(&witnesses) {
+        Ok(results) => {
+            let total = t1.elapsed().as_secs_f64();
+            for (i, _r) in results.iter().enumerate() {
+                eprintln!("  OK  {}", names[i]);
+            }
+            eprintln!("\n{}/{} passed, 0 failed, {total:.2}s wall time ({:.2}s avg)",
+                results.len(), results.len(), total / results.len() as f64);
+        }
+        Err(e) => {
+            eprintln!("  FAIL: {e}");
+            std::process::exit(1);
+        }
     }
 }
