@@ -17,6 +17,7 @@ const {
   bigintToLimbs,
   computeAdditionCarries,
   computeIncrementCarries,
+  computeMultiplicationCarries,
 } = require('../lib/zk/witness');
 
 const FIXTURE_DIR = path.join(__dirname, '..', 'zk', 'proof-checker', 'tests', 'fixtures');
@@ -144,7 +145,8 @@ describe('extractUint256PredMeta', () => {
     assert.strictEqual(meta.a_limbs.length, 32);
     assert.strictEqual(meta.b_limbs.length, 32);
     assert.strictEqual(meta.c_limbs.length, 32);
-    assert.strictEqual(meta.carries.length, 32);
+    assert.strictEqual(meta.carries_lo.length, 32);
+    assert.strictEqual(meta.carries_hi.length, 32);
 
     // Verify limbs match
     assert.deepStrictEqual(meta.a_limbs, bigintToLimbs(bigA));
@@ -202,26 +204,31 @@ describe('uint256 fixture generation', { timeout: 30000 }, () => {
     const aLimbs = bigintToLimbs(bigA);
     const bLimbs = bigintToLimbs(bigB);
     const cLimbs = bigintToLimbs(bigC);
-    const carries = computeAdditionCarries(aLimbs, bLimbs);
+    const carries_lo = computeAdditionCarries(aLimbs, bLimbs);
+    const carries_hi = new Array(32).fill(0);
 
-    // Build uint256_arith row: [prep (100 cols), main (33 cols)]
+    // Build uint256_arith row: [prep (101 cols), main (65 cols)]
     const row = [
       999999, // pred_hash (synthetic — not in fact_axiom, so num_lookups=0)
       1,      // is_active
       1,      // is_plus_256
       0,      // is_inc_256
+      0,      // is_mul_256
       ...aLimbs, ...bLimbs, ...cLimbs,
       0,      // num_lookups = 0 (no PRED_BUS connection)
-      ...carries,
+      ...carries_lo,
+      ...carries_hi,
     ];
-    assert.strictEqual(row.length, 133, 'uint256_arith row should be 133 cols');
+    assert.strictEqual(row.length, 166, 'uint256_arith row should be 166 cols');
 
-    // Compute byte_check_rom counts
+    // Compute byte_check_rom counts (a, b, c limbs + carry_lo + carry_hi)
     const byteCounts = new Array(256).fill(0);
     for (let i = 0; i < 32; i++) {
       byteCounts[aLimbs[i]]++;
       byteCounts[bLimbs[i]]++;
       byteCounts[cLimbs[i]]++;
+      byteCounts[carries_lo[i]]++;
+      byteCounts[carries_hi[i]]++;
     }
 
     // Add to base fixture
@@ -236,7 +243,7 @@ describe('uint256 fixture generation', { timeout: 30000 }, () => {
     // Verify the saved fixture has the right structure
     const saved = JSON.parse(fs.readFileSync(outPath, 'utf8'));
     assert.strictEqual(saved.uint256_arith.length, 1);
-    assert.strictEqual(saved.uint256_arith[0].length, 133);
+    assert.strictEqual(saved.uint256_arith[0].length, 166);
     assert.strictEqual(saved.byte_check_rom.length, 256);
   });
 });

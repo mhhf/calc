@@ -28,7 +28,7 @@ fn p6_uint256_e2e_bridge_integration() {
 
     // Verify fixture has uint256 entries
     assert!(!witness.uint256_arith.is_empty(), "fixture should have uint256_arith entries");
-    assert_eq!(witness.uint256_arith[0].len(), 133, "uint256_arith row should be 133 cols");
+    assert_eq!(witness.uint256_arith[0].len(), 166, "uint256_arith row should be 166 cols (101 prep + 65 main)");
     assert_eq!(witness.byte_check_rom.len(), 256, "byte_check_rom should have 256 entries");
 
     // Prove through full bridge path
