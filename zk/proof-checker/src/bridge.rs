@@ -16,6 +16,8 @@
 use std::collections::HashMap;
 use std::sync::Arc;
 
+use rayon::prelude::*;
+
 use openvm_stark_backend::{
     p3_matrix::dense::RowMajorMatrix,
     AirRef,
@@ -602,13 +604,12 @@ pub fn prove_witness_vdata(witness: &WitnessJson) -> Result<VerificationDataWith
 pub fn prove_chunked_tree_witness(
     chunks: &[WitnessJson],
 ) -> Result<Vec<VerificationDataWithFriParams<BabyBearPoseidon2Config>>, String> {
-    let mut results = Vec::with_capacity(chunks.len());
-    for (i, chunk) in chunks.iter().enumerate() {
-        let vdata = prove_witness_vdata(chunk)
-            .map_err(|e| format!("tree chunk {i} failed: {e}"))?;
-        results.push(vdata);
-    }
-    Ok(results)
+    chunks.par_iter().enumerate()
+        .map(|(i, chunk)| {
+            prove_witness_vdata(chunk)
+                .map_err(|e| format!("tree chunk {i} failed: {e}"))
+        })
+        .collect()
 }
 
 /// Flat witness format produced by `lib/zk/flat-witness.js`.
@@ -835,13 +836,12 @@ pub fn prove_flat_witness_vdata(witness: &FlatWitnessJson) -> Result<Verificatio
 pub fn prove_chunked_flat_witness(
     chunks: &[FlatWitnessJson],
 ) -> Result<Vec<VerificationDataWithFriParams<BabyBearPoseidon2Config>>, String> {
-    let mut results = Vec::with_capacity(chunks.len());
-    for (i, chunk) in chunks.iter().enumerate() {
-        let vdata = prove_flat_witness_vdata(chunk)
-            .map_err(|e| format!("chunk {i} failed: {e}"))?;
-        results.push(vdata);
-    }
-    Ok(results)
+    chunks.par_iter().enumerate()
+        .map(|(i, chunk)| {
+            prove_flat_witness_vdata(chunk)
+                .map_err(|e| format!("chunk {i} failed: {e}"))
+        })
+        .collect()
 }
 
 /// Parse a JSON string and prove it. Dispatches based on `format` field.
