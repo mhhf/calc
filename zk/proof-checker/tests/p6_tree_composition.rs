@@ -200,15 +200,15 @@ fn p6_tree_composition_verify_and_continuity() {
     println!("  witness stream: {} chunks", input_stream.len());
 
     // Run the composition program via metered interpreter.
-    // Cannot use execute_program() because it asserts segments.len()==1,
-    // but the boundary PV additions push execution past the single-segment limit.
-    // The metered interpreter runs the full program; completion = success.
+    // Uses NativeConfig::aggregation to avoid OpenVM debug_assert bug in metered memory:
+    // test_native_config() allocates PUBLIC_VALUES_AS with num_cells>0 (U8 space, align_bits=2),
+    // but chunk_bits=0 from initial_block_size=1. apply_height_updates passes chunk_bits as
+    // size_bits → debug_assert!(2 <= 0) fails. aggregation() only allocates NATIVE_AS (align_bits=0).
     {
         use openvm_stark_sdk::{config::FriParameters, engine::StarkFriEngine};
         use openvm_circuit::arch::{instructions::exe::VmExe, Streams, VirtualMachine};
 
-        let mut config = openvm_native_circuit::test_native_config();
-        config.system.num_public_values = 4;
+        let config = openvm_native_circuit::NativeConfig::aggregation(4, 3);
         let engine = BabyBearPoseidon2Engine::new(FriParameters::new_for_testing(1));
         let exe = VmExe::new(program);
         let (vm, _) = VirtualMachine::<_, NativeCpuBuilder>::new_with_keygen(

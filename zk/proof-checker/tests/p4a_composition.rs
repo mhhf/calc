@@ -8,6 +8,7 @@
 //! This is the core IVC composition test — proves that a single VK suffices
 //! for verifying arbitrary chunk counts from the same program.
 
+use openvm_native_circuit::NativeCpuBuilder;
 use openvm_native_compiler::{conversion::CompilerOptions, prelude::*};
 use openvm_native_recursion::{
     challenger::duplex::DuplexChallengerVariable,
@@ -18,8 +19,13 @@ use openvm_native_recursion::{
     utils::const_fri_config,
     vars::StarkProofVariable,
 };
-use openvm_stark_sdk::config::baby_bear_poseidon2::BabyBearPoseidon2Config;
+use openvm_stark_sdk::{
+    config::baby_bear_poseidon2::{BabyBearPoseidon2Config, BabyBearPoseidon2Engine},
+    config::FriParameters,
+    engine::StarkFriEngine,
+};
 use openvm_stark_backend::proof::Proof;
+use openvm_circuit::arch::{instructions::exe::VmExe, Streams, VirtualMachine};
 use p3_baby_bear::BabyBear;
 
 use proof_checker::bridge::{prove_chunked_flat_witness, FlatWitnessJson};
@@ -44,6 +50,15 @@ fn load_fixture(name: &str) -> String {
 /// Continuity: chunk[i].final_pvs[k] == chunk[i+1].init_pvs[k] for all k.
 #[test]
 fn p4a_composition_verify_and_continuity() {
+    // Spawn with 64MB stack — metered interpreter uses deep recursion in debug mode.
+    let handle = std::thread::Builder::new()
+        .stack_size(64 * 1024 * 1024)
+        .spawn(p4a_composition_verify_and_continuity_inner)
+        .unwrap();
+    handle.join().unwrap();
+}
+
+fn p4a_composition_verify_and_continuity_inner() {
     // --- 1. Prove all chunks ---
     let json = load_fixture("multisig_chunked");
     let chunks: Vec<FlatWitnessJson> = serde_json::from_str(&json).expect("parse chunked fixture");
@@ -133,6 +148,24 @@ fn p4a_composition_verify_and_continuity() {
         <Vec<Proof<BabyBearPoseidon2Config>> as Hintable<InnerConfig>>::write(&proofs);
     println!("  witness stream: {} chunks", input_stream.len());
 
-    openvm_native_circuit::execute_program(program, input_stream);
-    println!("  composition executed successfully — {} proofs verified with shared VK", proofs.len());
+    // Use NativeConfig::aggregation to avoid OpenVM debug_assert bug:
+    // test_native_config() allocates PUBLIC_VALUES_AS with num_cells>0 (U8 address space,
+    // min_block_size=4, align_bits=2), but chunk_bits=0 from initial_block_size=1.
+    // apply_height_updates passes chunk_bits as size_bits to update_adapter_heights_batch,
+    // triggering debug_assert!(align_bits <= size_bits) → "align_bits (2) must be <= size_bits (0)".
+    // aggregation() only allocates NATIVE_AS (align_bits=0), avoiding the assert.
+    {
+        let config = openvm_native_circuit::NativeConfig::aggregation(4, 3);
+        let engine = BabyBearPoseidon2Engine::new(FriParameters::new_for_testing(1));
+        let exe = VmExe::new(program);
+        let (vm, _) = VirtualMachine::<_, NativeCpuBuilder>::new_with_keygen(
+            engine, NativeCpuBuilder, config,
+        ).unwrap();
+        let ctx = vm.build_metered_ctx(&exe);
+        let (segments, _) = vm
+            .metered_interpreter(&exe).unwrap()
+            .execute_metered(Streams::from(input_stream), ctx).unwrap();
+        println!("  composition executed in {} segment(s) — {} proofs verified with shared VK",
+            segments.len(), proofs.len());
+    }
 }
