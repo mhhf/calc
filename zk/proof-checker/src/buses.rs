@@ -63,7 +63,7 @@ pub const FREEVAR_BUS: LookupBus = LookupBus::new(6);
 pub const CANON_CONS_BUS: LookupBus = LookupBus::new(7);
 
 /// Verified fact bus. FactRomAir provides (goal_hash) entries for predicates
-/// verified by custom chips (arr_get, plus, inc, mul, neq). The fact_axiom
+/// verified by custom chips (arr_get, arr_set, mem_read, mem_expand, plus, inc, mul). The fact_axiom
 /// rule looks up membership to discharge obligations without clause proof
 /// subtrees. Phase 6-4: same trust model as GAMMA_BUS (ROM committed in VK).
 pub const FACT_BUS: LookupBus = LookupBus::new(8);

@@ -35,13 +35,13 @@ use crate::chips::{
     discard::DiscardChip,
     dup::DupChip,
     fact_axiom::FactAxiomChip,
-    fact_rom::FactRomAir,
+    fact_rom::fact_rom_air,
     flat_final::FlatFinalChip,
     flat_init::FlatInitChip,
     flat_step::FlatStepChip,
     formula_rom::FormulaRomAir,
     freevar_rom::FreevarRomAir,
-    gamma_rom::GammaRomAir,
+    gamma_rom::gamma_rom_air,
     init::InitChip,
     oblig_boundary::ObligBoundaryChip,
     pred_rom::PredicateRomAir,
@@ -71,9 +71,9 @@ pub struct WitnessJson {
     #[serde(default)]
     pub pred_rom: Vec<Vec<u32>>,
     /// Phase 6-6b: 256-bit arithmetic verification rows.
-    /// Each row is 133 columns: [prep (100 cols), main (33 cols)].
-    /// Prep: [pred_hash, is_active, is_plus_256, is_inc_256, a_limbs(32), b_limbs(32), c_limbs(32)]
-    /// Main: [num_lookups, carries(32)]
+    /// Each row is 166 columns: [prep (101 cols), main (65 cols)].
+    /// Prep: [pred_hash, is_active, is_plus_256, is_inc_256, is_mul_256, a_limbs(32), b_limbs(32), c_limbs(32)]
+    /// Main: [num_lookups, carry_lo(32), carry_hi(32)]
     #[serde(default)]
     pub uint256_arith: Vec<Vec<u32>>,
     /// Phase 6-6b: byte range check lookup counts.
@@ -368,7 +368,7 @@ pub fn build_witness_inputs(witness: &WitnessJson) -> Result<(Vec<AirRef<BabyBea
         pis.push(vec![]);
     }
 
-    // 7. FormulaRomAir (data-carrying, preprocessed)
+    // 8. FormulaRomAir (data-carrying, preprocessed)
     let (formula_entries, formula_lookups) = split_formula_rom(&witness.formula_rom);
     airs.push(Arc::new(FormulaRomAir { entries: formula_entries, min_rows }) as AirRef<_>);
     traces.push(if formula_lookups.is_empty() {
@@ -378,9 +378,9 @@ pub fn build_witness_inputs(witness: &WitnessJson) -> Result<(Vec<AirRef<BabyBea
     });
     pis.push(vec![]);
 
-    // 8. GammaRomAir (data-carrying, preprocessed)
+    // 9. GammaRomAir (data-carrying, preprocessed)
     let (gamma_entries, gamma_lookups) = split_gamma_rom(&witness.gamma_rom);
-    airs.push(Arc::new(GammaRomAir { entries: gamma_entries, min_rows }) as AirRef<_>);
+    airs.push(Arc::new(gamma_rom_air(gamma_entries, min_rows)) as AirRef<_>);
     traces.push(if gamma_lookups.is_empty() {
         empty_trace(1, min_rows)
     } else {
@@ -388,7 +388,7 @@ pub fn build_witness_inputs(witness: &WitnessJson) -> Result<(Vec<AirRef<BabyBea
     });
     pis.push(vec![]);
 
-    // 9. FreevarRomAir (data-carrying, preprocessed)
+    // 10. FreevarRomAir (data-carrying, preprocessed)
     if !witness.freevar_rom.is_empty() {
         let (freevar_entries, freevar_lookups) = split_freevar_rom(&witness.freevar_rom);
         airs.push(Arc::new(FreevarRomAir { entries: freevar_entries, min_rows }) as AirRef<_>);
@@ -396,17 +396,17 @@ pub fn build_witness_inputs(witness: &WitnessJson) -> Result<(Vec<AirRef<BabyBea
         pis.push(vec![]);
     }
 
-    // 10. FactRomAir (Phase 6-4: custom chip verified facts)
+    // 11. FactRomAir (Phase 6-4: custom chip verified facts)
     // Always present when fact_rom is non-empty; absent when empty
     // (backward compat: old fixtures without fact_rom still work).
     if !witness.fact_rom.is_empty() {
         let (fact_entries, fact_lookups) = split_gamma_rom(&witness.fact_rom);
-        airs.push(Arc::new(FactRomAir { entries: fact_entries, min_rows }) as AirRef<_>);
+        airs.push(Arc::new(fact_rom_air(fact_entries, min_rows)) as AirRef<_>);
         traces.push(build_trace_1col(&fact_lookups, min_rows));
         pis.push(vec![]);
     }
 
-    // 11. PredicateRomAir (Phase 6-6a: in-circuit predicate verification)
+    // 12. PredicateRomAir (Phase 6-6a: in-circuit predicate verification)
     // Always present when pred_rom is non-empty. Constrains arithmetic
     // semantics (plus, mul, inc) in preprocessed trace. Absent when empty
     // (backward compat: old fixtures without pred_rom still work).
@@ -417,7 +417,7 @@ pub fn build_witness_inputs(witness: &WitnessJson) -> Result<(Vec<AirRef<BabyBea
         pis.push(vec![]);
     }
 
-    // 12. ByteCheckRomAir + Uint256ArithChip (Phase 6-6b: 256-bit arithmetic)
+    // 13. ByteCheckRomAir + Uint256ArithChip (Phase 6-6b: 256-bit arithmetic)
     // Present when uint256_arith is non-empty. ByteCheckRomAir must come first
     // (supplies BYTE_CHECK_BUS that Uint256ArithChip demands).
     if !witness.uint256_arith.is_empty() {
@@ -438,7 +438,7 @@ pub fn build_witness_inputs(witness: &WitnessJson) -> Result<(Vec<AirRef<BabyBea
         pis.push(vec![]);
     }
 
-    // 13. ObligBoundaryChip (Phase 6-7: tree path chunking)
+    // 14. ObligBoundaryChip (Phase 6-7: tree path chunking)
     // Present when oblig_boundary chip data exists (chunked tree witnesses).
     if witness.chips.contains_key("oblig_boundary") {
         let max_oblig_count = witness.max_oblig_count.unwrap_or(1);
@@ -509,7 +509,7 @@ pub fn build_witness_inputs(witness: &WitnessJson) -> Result<(Vec<AirRef<BabyBea
         pis.push(oblig_pvs);
     }
 
-    // 14. CtxBoundaryChip (Phase 6-7: tree path chunking)
+    // 15. CtxBoundaryChip (Phase 6-7: tree path chunking)
     if witness.chips.contains_key("ctx_boundary") {
         let max_ctx = witness.max_boundary_ctx_size.unwrap_or(0);
         let ctx_rows = witness.chips.get("ctx_boundary").unwrap();
@@ -757,7 +757,7 @@ pub fn build_flat_witness_inputs(witness: &FlatWitnessJson) -> Result<(Vec<AirRe
 
     // 5. GammaRomAir (data-carrying, preprocessed)
     let (gamma_entries, gamma_lookups) = split_gamma_rom(&witness.gamma_rom);
-    airs.push(Arc::new(GammaRomAir { entries: gamma_entries, min_rows }) as AirRef<_>);
+    airs.push(Arc::new(gamma_rom_air(gamma_entries, min_rows)) as AirRef<_>);
     traces.push(if gamma_lookups.is_empty() {
         empty_trace(1, min_rows)
     } else {

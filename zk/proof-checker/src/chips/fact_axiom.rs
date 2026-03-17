@@ -123,6 +123,9 @@ where
         let pred_hash: AB::Expr = local[COL_PRED_HASH].clone().into();
         let pred_active: AB::Expr = local[COL_PRED_ACTIVE].clone().into();
         builder.assert_zero(pred_active.clone() * (pred_active.clone() - AB::Expr::ONE));
+        // Defense-in-depth: pred_hash must be 0 when pred_active=0
+        // (prevents adversary from setting arbitrary values in inactive slots)
+        builder.assert_zero((AB::Expr::ONE - pred_active.clone()) * pred_hash.clone());
         PRED_BUS.lookup_key(builder, [pred_hash], active * pred_active);
     }
 }

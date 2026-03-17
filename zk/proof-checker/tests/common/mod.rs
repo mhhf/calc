@@ -6,7 +6,7 @@ use proof_checker::bridge::WitnessJson;
 use proof_checker::chips::{
     formula_rom::FormulaRomAir,
     freevar_rom::FreevarRomAir,
-    gamma_rom::GammaRomAir,
+    gamma_rom::{GammaRomAir, gamma_rom_air},
     init::InitChip,
 };
 use proof_checker::rule::RuleSpec;
@@ -96,7 +96,7 @@ pub fn make_formula_rom(rows: &[[u32; 6]], min_rows: usize) -> (FormulaRomAir, R
 pub fn make_gamma_rom(rows: &[[u32; 3]], min_rows: usize) -> (GammaRomAir, RowMajorMatrix<BabyBear>) {
     let prep: Vec<[u32; 2]> = rows.iter().map(|r| [r[0], r[1]]).collect();
     let main: Vec<[u32; 1]> = rows.iter().map(|r| [r[2]]).collect();
-    (GammaRomAir { entries: prep, min_rows }, padded_trace(&main, min_rows))
+    (gamma_rom_air(prep, min_rows), padded_trace(&main, min_rows))
 }
 
 /// Build a FreevarRomAir + its width-1 main trace from rows.

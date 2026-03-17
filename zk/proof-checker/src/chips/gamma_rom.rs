@@ -3,78 +3,17 @@
 //! Stores formulas available in the cartesian/gamma zone. The copy rule
 //! looks up membership to verify a formula can be freely duplicated.
 //!
-//! Phase 3b: preprocessed columns (committed at keygen via Poseidon2).
-//! ROM data is immutable — only num_lookups is witness-dependent.
-//!
-//! Preprocessed (width 2): [hash, is_active]
-//! Main trace (width 1): [num_lookups]
-
-use openvm_stark_backend::{
-    interaction::InteractionBuilder,
-    p3_air::{Air, BaseAir, PairBuilder},
-    p3_field::Field,
-    p3_matrix::{dense::RowMajorMatrix, Matrix},
-    rap::{BaseAirWithPublicValues, PartitionedBaseAir},
-};
+//! Now a type alias for SimpleRomAir. Use `gamma_rom_air()` to construct.
 
 use crate::buses::GAMMA_BUS;
+use super::simple_rom::SimpleRomAir;
 
-/// Width of the main trace (witness-dependent): just num_lookups.
-pub const WIDTH: usize = 1;
+pub use super::simple_rom::{WIDTH, PREP_WIDTH};
 
-/// Width of the preprocessed trace (committed at keygen).
-pub const PREP_WIDTH: usize = 2;
+/// Type alias — GammaRomAir is a SimpleRomAir wired to GAMMA_BUS.
+pub type GammaRomAir = SimpleRomAir;
 
-/// GammaRomAir with data committed at keygen.
-///
-/// `entries` contains [hash, is_active] per row.
-/// The main trace carries only `num_lookups` (1 column).
-/// `min_rows` ensures preprocessed trace height matches main trace height.
-pub struct GammaRomAir {
-    pub entries: Vec<[u32; 2]>,
-    pub min_rows: usize,
-}
-
-impl<F: Field> BaseAir<F> for GammaRomAir {
-    fn width(&self) -> usize {
-        WIDTH
-    }
-
-    fn preprocessed_trace(&self) -> Option<RowMajorMatrix<F>> {
-        let n = self.entries.len().max(self.min_rows).next_power_of_two();
-        let mut data = Vec::with_capacity(n * PREP_WIDTH);
-        for row in &self.entries {
-            for &v in row {
-                data.push(F::from_u32(v));
-            }
-        }
-        for _ in self.entries.len()..n {
-            for _ in 0..PREP_WIDTH {
-                data.push(F::ZERO);
-            }
-        }
-        Some(RowMajorMatrix::new(data, PREP_WIDTH))
-    }
-}
-
-impl<F: Field> BaseAirWithPublicValues<F> for GammaRomAir {}
-impl<F: Field> PartitionedBaseAir<F> for GammaRomAir {}
-
-impl<AB: InteractionBuilder + PairBuilder> Air<AB> for GammaRomAir
-where
-    AB::F: Field,
-{
-    fn eval(&self, builder: &mut AB) {
-        let prep = builder.preprocessed();
-        let prep_local = prep.row_slice(0).unwrap();
-        let hash: AB::Expr = prep_local[0].clone().into();
-        let is_active: AB::Expr = prep_local[1].clone().into();
-
-        let main = builder.main();
-        let local = main.row_slice(0).unwrap();
-        let num_lookups: AB::Expr = local[0].clone().into();
-
-        // Provide gamma zone entries with multiplicity
-        GAMMA_BUS.add_key_with_lookups(builder, [hash], is_active * num_lookups);
-    }
+/// Convenience constructor: creates a SimpleRomAir wired to GAMMA_BUS.
+pub fn gamma_rom_air(entries: Vec<[u32; 2]>, min_rows: usize) -> GammaRomAir {
+    SimpleRomAir { bus: GAMMA_BUS, entries, min_rows }
 }
