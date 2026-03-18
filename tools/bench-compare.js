@@ -48,11 +48,11 @@ function resolveCommit(ref) {
 }
 
 function resolveFullCommit(ref) {
-  return execSync(`git rev-parse ${ref}`, { cwd: ROOT, encoding: 'utf8' }).trim();
+  return execSync(`git rev-parse "${ref}"`, { cwd: ROOT, encoding: 'utf8' }).trim();
 }
 
 function commitSubject(ref) {
-  return execSync(`git log -1 --format=%s ${ref}`, { cwd: ROOT, encoding: 'utf8' }).trim();
+  return execSync(`git log -1 --format=%s "${ref}" --`, { cwd: ROOT, encoding: 'utf8' }).trim();
 }
 
 // ─── Run adapter in a directory ──────────────────────────────────────────────
