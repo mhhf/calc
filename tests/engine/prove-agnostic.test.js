@@ -323,6 +323,69 @@ describe('Backward Prover — Calculus Agnostic', () => {
     });
   });
 
+  describe('Compiled premise construction (PUT instructions)', () => {
+    // These tests exercise the _executePut path for different premise shapes:
+    // simple predicates, nested compounds, multi-premise clauses, and
+    // ground sub-trees mixed with metavar slots.
+
+    it('simple pred(X, Y) premise — both args from slots', () => {
+      // rel(X, Y) :- link(X, Z), link(Z, Y)
+      const SPEC = [
+        ['rel', pred('rel', metavar('X'), metavar('Y')),
+          pred('link', metavar('X'), metavar('Z')),
+          pred('link', metavar('Z'), metavar('Y'))],
+        ['l/ab', pred('link', atom('a'), atom('b'))],
+        ['l/bc', pred('link', atom('b'), atom('c'))],
+      ];
+      const r = proveGoal(pred('rel', atom('a'), metavar('R')), SPEC);
+      assert(r.success);
+      assert.strictEqual(r.theta['R'], atom('c'));
+    });
+
+    it('nested compound premise — succ(succ(X))', () => {
+      Store.registerTag('succ');
+      // double(X, Y) :- step(X, Z), step(Z, Y)
+      // step(succ(N), N)  [type: peels one succ]
+      const SPEC = [
+        ['double', pred('double', metavar('X'), metavar('Y')),
+          pred('step', metavar('X'), metavar('Z')),
+          pred('step', metavar('Z'), metavar('Y'))],
+        ['step', pred('step', pred('succ', metavar('N')), metavar('N'))],
+      ];
+      const two = pred('succ', pred('succ', atom('zero')));
+      const r = proveGoal(pred('double', two, metavar('R')), SPEC);
+      assert(r.success);
+      assert.strictEqual(r.theta['R'], atom('zero'));
+    });
+
+    it('ground sub-tree in premise preserved', () => {
+      // check(X) :- valid(X, ground_tag)
+      const SPEC = [
+        ['check', pred('check', metavar('X')),
+          pred('valid', metavar('X'), atom('ok'))],
+        ['v/a', pred('valid', atom('a'), atom('ok'))],
+      ];
+      const r = proveGoal(pred('check', atom('a')), SPEC);
+      assert(r.success);
+    });
+
+    it('three-premise clause with shared variables', () => {
+      // chain(A, D) :- hop(A, B), hop(B, C), hop(C, D)
+      const SPEC = [
+        ['chain', pred('chain', metavar('A'), metavar('D')),
+          pred('hop', metavar('A'), metavar('B')),
+          pred('hop', metavar('B'), metavar('C')),
+          pred('hop', metavar('C'), metavar('D'))],
+        ['h/12', pred('hop', atom('1'), atom('2'))],
+        ['h/23', pred('hop', atom('2'), atom('3'))],
+        ['h/34', pred('hop', atom('3'), atom('4'))],
+      ];
+      const r = proveGoal(pred('chain', atom('1'), metavar('R')), SPEC);
+      assert(r.success);
+      assert.strictEqual(r.theta['R'], atom('4'));
+    });
+  });
+
   describe('Trace output', () => {
     const SPEC = [
       ['anc/base', pred('ancestor', metavar('A'), metavar('B')),
