@@ -175,4 +175,123 @@ describe('MDE Convert', { timeout: 10000 }, () => {
       assert(!mde.hasMonad(h), 'Should not detect monad');
     });
   });
+
+  describe('decomposeQuery — explicit quantifiers', () => {
+    const { decomposeQuery } = require('../../lib/engine/convert');
+
+    it('forall X. f(X) — X becomes freevar (eigenvariable)', () => {
+      const h = mde.parseExpr('forall X. f X');
+      const { linear } = decomposeQuery(h);
+      const keys = Object.keys(linear).map(Number);
+      assert.strictEqual(keys.length, 1);
+      const fact = keys[0];
+      assert.strictEqual(Store.tag(fact), 'f');
+      assert.strictEqual(Store.tag(Store.child(fact, 0)), 'freevar',
+        'forall-bound variable should become freevar (eigenvariable)');
+    });
+
+    it('exists X. f(X) — X stays as metavar (witness variable)', () => {
+      const h = mde.parseExpr('exists X. f X');
+      const { linear } = decomposeQuery(h);
+      const keys = Object.keys(linear).map(Number);
+      assert.strictEqual(keys.length, 1);
+      const fact = keys[0];
+      assert.strictEqual(Store.tag(fact), 'f');
+      assert.strictEqual(Store.tag(Store.child(fact, 0)), 'metavar',
+        'exists-bound variable should stay as metavar (witness)');
+    });
+
+    it('mixed forall/exists: forall A. exists B. f(A, B)', () => {
+      const h = mde.parseExpr('forall A. exists B. f A B');
+      const { linear } = decomposeQuery(h);
+      const keys = Object.keys(linear).map(Number);
+      assert.strictEqual(keys.length, 1);
+      const fact = keys[0];
+      assert.strictEqual(Store.tag(fact), 'f');
+      assert.strictEqual(Store.tag(Store.child(fact, 0)), 'freevar',
+        'forall A → freevar');
+      assert.strictEqual(Store.tag(Store.child(fact, 1)), 'metavar',
+        'exists B → metavar');
+    });
+
+    it('forall distributes over tensor: forall X. f(X) * g(X)', () => {
+      const h = mde.parseExpr('forall X. f X * g X');
+      const { linear } = decomposeQuery(h);
+      const keys = Object.keys(linear).map(Number);
+      assert.strictEqual(keys.length, 2);
+      for (const k of keys) {
+        const arg = Store.child(k, 0);
+        assert.strictEqual(Store.tag(arg), 'freevar',
+          'both tensor branches should have freevar for X');
+      }
+    });
+
+    it('forall with bang: forall X. !eq(X, 0) * f(X)', () => {
+      const h = mde.parseExpr('forall X. !eq X 0 * f X');
+      const { linear, persistent } = decomposeQuery(h);
+      const linKeys = Object.keys(linear).map(Number);
+      const perKeys = Object.keys(persistent).map(Number);
+      assert.strictEqual(linKeys.length, 1);
+      assert.strictEqual(perKeys.length, 1);
+      // Both should reference the same freevar for X
+      assert.strictEqual(Store.tag(Store.child(linKeys[0], 0)), 'freevar');
+      assert.strictEqual(Store.tag(Store.child(perKeys[0], 0)), 'freevar');
+    });
+
+    it('nested forall: forall X. forall Y. f(X, Y)', () => {
+      const h = mde.parseExpr('forall X. forall Y. f X Y');
+      const { linear } = decomposeQuery(h);
+      const keys = Object.keys(linear).map(Number);
+      assert.strictEqual(keys.length, 1);
+      const fact = keys[0];
+      assert.strictEqual(Store.tag(Store.child(fact, 0)), 'freevar');
+      assert.strictEqual(Store.tag(Store.child(fact, 1)), 'freevar');
+    });
+
+    it('multi-var shorthand: forall X Y. f(X, Y)', () => {
+      const h = mde.parseExpr('forall X Y. f X Y');
+      const { linear } = decomposeQuery(h);
+      const keys = Object.keys(linear).map(Number);
+      assert.strictEqual(keys.length, 1);
+      const fact = keys[0];
+      assert.strictEqual(Store.tag(Store.child(fact, 0)), 'freevar');
+      assert.strictEqual(Store.tag(Store.child(fact, 1)), 'freevar');
+    });
+
+    it('concrete query (no variables) works without quantifiers', () => {
+      const h = mde.parseExpr('f 0 * g 1');
+      const { linear } = decomposeQuery(h);
+      const keys = Object.keys(linear).map(Number);
+      assert.strictEqual(keys.length, 2);
+      // No metavars → no error
+    });
+
+    it('unbound variables throw error', () => {
+      const h = mde.parseExpr('f X * g Y');
+      assert.throws(
+        () => decomposeQuery(h),
+        /unbound.*variable/i,
+        'Should throw on unbound variables'
+      );
+    });
+
+    it('partially bound variables throw error', () => {
+      const h = mde.parseExpr('forall X. f X * g Y');
+      assert.throws(
+        () => decomposeQuery(h),
+        /unbound.*variable.*Y/i,
+        'Should throw for Y but not X'
+      );
+    });
+
+    it('same freevar hash for same forall variable in different positions', () => {
+      const h = mde.parseExpr('forall X. f X * g X');
+      const { linear } = decomposeQuery(h);
+      const keys = Object.keys(linear).map(Number);
+      const arg0 = Store.child(keys[0], 0);
+      const arg1 = Store.child(keys[1], 0);
+      assert.strictEqual(arg0, arg1,
+        'same forall var should produce same freevar hash (content-addressed)');
+    });
+  });
 });

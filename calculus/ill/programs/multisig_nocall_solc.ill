@@ -4,7 +4,7 @@
 % Symbolic execution of execute(uint256,uint256,bytes32)
 % Selector: 0xcd68b367
 
-#symex
+#symex [Contract_Address Time Gaslimit V Deadline CallValue DataHash]
   % Execution state
   pc 0 *
   stack ae *

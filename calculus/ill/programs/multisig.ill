@@ -16,7 +16,7 @@ isNotMember/z:
     !neq Agent Member06
   }.
 
-#symex
+#symex [Contract_Address Sender Time Gaslimit WB Member01 Member02 Member03 Member04 Member05 Member06 Deadline Target Value V]
   % Execution state
   pc 0 *
   stack ae *

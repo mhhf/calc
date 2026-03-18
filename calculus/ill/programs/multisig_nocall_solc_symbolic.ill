@@ -1,7 +1,7 @@
 #import(evm.ill)
 
 % Symbolic storage test — nonce is a symbolic variable
-#symex
+#symex [Contract_Address Sender Time Gaslimit V Deadline CallValue DataHash Nonce]
   pc 0 *
   stack ae *
   mem empty_mem * memsize 0 *
