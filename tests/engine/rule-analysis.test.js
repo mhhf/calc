@@ -133,23 +133,25 @@ describe('Rule Analysis', { timeout: 10000 }, () => {
         'delta predicate should have same pred head');
     });
 
-    it('22 of 44 EVM rules have multi-match predicates', () => {
-      // Multi-match is the NORM, not an edge case.
-      // stack: pop N values → push result (add, sub, mul, swap, dup, log4, call...)
-      // code: push1/push20 read opcode + operand (2 code facts)
-      let multiCount = 0;
+    it('EVM rules use array-packed stacks (1 stack fact per rule)', () => {
+      // With array syntax stack([A | [B | REST]]), each rule has exactly 1 stack
+      // in the antecedent and 1 in the consequent.
       for (const rule of calc.forwardRules) {
         const dump = dumpRule(rule);
-        const antePreds = dump.anteLinear.map(p => p.pred);
-        const conseqPreds = dump.conseqLinear.map(p => p.pred);
-        const anteDups = antePreds.filter((p, i) => antePreds.indexOf(p) !== i);
-        const conseqDups = conseqPreds.filter((p, i) => conseqPreds.indexOf(p) !== i);
-        if (anteDups.length > 0 || conseqDups.length > 0) multiCount++;
+        const anteStacks = dump.anteLinear.filter(p => p.pred === 'stack');
+        const conseqStacks = dump.conseqLinear.filter(p => p.pred === 'stack');
+        if (anteStacks.length > 0) {
+          assert.strictEqual(anteStacks.length, 1,
+            `${rule.name}: expected 1 stack in ante, got ${anteStacks.length}`);
+        }
+        if (conseqStacks.length > 0) {
+          assert.strictEqual(conseqStacks.length, 1,
+            `${rule.name}: expected 1 stack in conseq, got ${conseqStacks.length}`);
+        }
       }
-      assert(multiCount >= 20, `expected >=20 multi-match rules, got ${multiCount}`);
     });
 
-    it('evm/swap1 has 2 stacks on both sides (true N:M multi-match)', () => {
+    it('evm/swap1 has 1 stack on each side (array-packed)', () => {
       const rule = calc.forwardRules.find(r => r.name === 'evm/swap1');
       assert(rule, 'evm/swap1 should exist');
 
@@ -157,15 +159,15 @@ describe('Rule Analysis', { timeout: 10000 }, () => {
       const anteStacks = dump.anteLinear.filter(p => p.pred === 'stack');
       const conseqStacks = dump.conseqLinear.filter(p => p.pred === 'stack');
 
-      assert.strictEqual(anteStacks.length, 2, '2 stacks consumed');
-      assert.strictEqual(conseqStacks.length, 2, '2 stacks produced');
+      assert.strictEqual(anteStacks.length, 1, '1 stack consumed (array-packed)');
+      assert.strictEqual(conseqStacks.length, 1, '1 stack produced (array-packed)');
 
-      // The stacks should have different hashes (different metavar args)
-      assert.notStrictEqual(anteStacks[0].hash, anteStacks[1].hash,
-        'ante stacks should differ (different stack heights/values)');
+      // Ante and conseq stack should have different hashes (args swapped)
+      assert.notStrictEqual(anteStacks[0].hash, conseqStacks[0].hash,
+        'stack hashes should differ (args swapped)');
     });
 
-    it('evm/dup1 has 1 stack in, 2 stacks out (split-like)', () => {
+    it('evm/dup1 has 1 stack in, 1 stack out (array-packed)', () => {
       const rule = calc.forwardRules.find(r => r.name === 'evm/dup1');
       assert(rule, 'evm/dup1 should exist');
 
@@ -174,7 +176,7 @@ describe('Rule Analysis', { timeout: 10000 }, () => {
       const conseqStacks = dump.conseqLinear.filter(p => p.pred === 'stack');
 
       assert.strictEqual(anteStacks.length, 1, '1 stack consumed');
-      assert.strictEqual(conseqStacks.length, 2, '2 stacks produced');
+      assert.strictEqual(conseqStacks.length, 1, '1 stack produced (dup adds to array)');
     });
 
     it('delta predicates share a metavar with persistent antecedents', () => {
@@ -190,9 +192,9 @@ describe('Rule Analysis', { timeout: 10000 }, () => {
       const conseqArg = Store.child(conseqPc.hash, 0);
       assert.notStrictEqual(anteArg, conseqArg, 'pc args should be different metavars');
 
-      // Both should be freevars (metavars)
-      assert.strictEqual(Store.tag(anteArg), 'freevar', 'ante pc arg should be freevar');
-      assert.strictEqual(Store.tag(conseqArg), 'freevar', 'conseq pc arg should be freevar');
+      // Both should be metavars (pattern variables)
+      assert.strictEqual(Store.tag(anteArg), 'metavar', 'ante pc arg should be metavar');
+      assert.strictEqual(Store.tag(conseqArg), 'metavar', 'conseq pc arg should be metavar');
 
       // There should be a persistent inc(_PC, _PC') linking them
       const incPat = dump.antePersistent.find(p => p.pred === 'inc');

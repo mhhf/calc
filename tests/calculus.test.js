@@ -211,11 +211,11 @@ describe('v2 Calculus (generated from spec)', () => {
       assert.strictEqual(Store.child(body, 0), 1n); // Y is one level out
     });
 
-    it('should parse multi-char freevars with _ prefix', () => {
+    it('should parse multi-char uppercase as metavar', () => {
       const Store = require('../lib/kernel/store');
       const ast = extParse('Sender');
-      assert.strictEqual(Store.tag(ast), 'freevar');
-      assert.strictEqual(Store.child(ast, 0), '_Sender');
+      assert.strictEqual(Store.tag(ast), 'metavar');
+      assert.strictEqual(Store.child(ast, 0), 'Sender');
     });
 
     it('should parse number literals', () => {
@@ -241,12 +241,12 @@ describe('v2 Calculus (generated from spec)', () => {
       assert.strictEqual(Store.tag(body), 'tensor');
     });
 
-    it('unbound uppercase stays freevar (not bound)', () => {
+    it('unbound uppercase stays metavar (not bound)', () => {
       const Store = require('../lib/kernel/store');
       const ast = extParse('exists X. Y');
       const body = Store.child(ast, 0);
-      assert.strictEqual(Store.tag(body), 'freevar');
-      assert.strictEqual(Store.child(body, 0), '_Y');
+      assert.strictEqual(Store.tag(body), 'metavar');
+      assert.strictEqual(Store.child(body, 0), 'Y');
     });
   });
 
@@ -271,8 +271,8 @@ describe('v2 Calculus (generated from spec)', () => {
       const ast = engineParse('inc X Y');
       assert.strictEqual(Store.tag(ast), 'inc');
       assert.strictEqual(Store.arity(ast), 2);
-      assert.strictEqual(Store.tag(Store.child(ast, 0)), 'freevar');
-      assert.strictEqual(Store.tag(Store.child(ast, 1)), 'freevar');
+      assert.strictEqual(Store.tag(Store.child(ast, 0)), 'metavar');
+      assert.strictEqual(Store.tag(Store.child(ast, 1)), 'metavar');
     });
 
     it('should parse nested application: stack (s SH) A', () => {

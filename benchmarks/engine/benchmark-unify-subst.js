@@ -294,9 +294,9 @@ function buildTestCases() {
   const cases = {};
 
   // Case 1: Small unification (3 vars)
-  const X = Store.put('freevar', ['_X']);
-  const Y = Store.put('freevar', ['_Y']);
-  const Z = Store.put('freevar', ['_Z']);
+  const X = Store.put('metavar', ['X']);
+  const Y = Store.put('metavar', ['Y']);
+  const Z = Store.put('metavar', ['Z']);
   cases.smallUnify = {
     pattern: buildApp(plus, X, Y, Z),
     ground: buildApp(plus, buildNested(3), buildNested(4), buildNested(5)),
@@ -304,7 +304,7 @@ function buildTestCases() {
   };
 
   // Case 2: Medium unification (6 vars)
-  const vars6 = Array.from({length: 6}, (_, i) => Store.put('freevar', ['_V' + i]));
+  const vars6 = Array.from({length: 6}, (_, i) => Store.put('metavar', ['V' + i]));
   cases.mediumUnify = {
     pattern: buildApp(f, ...vars6),
     ground: buildApp(f, ...vars6.map((_, i) => buildNested(3 + i))),
@@ -312,7 +312,7 @@ function buildTestCases() {
   };
 
   // Case 3: Large unification (12 vars)
-  const vars12 = Array.from({length: 12}, (_, i) => Store.put('freevar', ['_W' + i]));
+  const vars12 = Array.from({length: 12}, (_, i) => Store.put('metavar', ['W' + i]));
   cases.largeUnify = {
     pattern: buildApp(f, ...vars12),
     ground: buildApp(f, ...vars12.map((_, i) => buildNested(2 + (i % 5)))),

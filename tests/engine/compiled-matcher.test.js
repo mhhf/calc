@@ -25,8 +25,8 @@ describe('compilePatternMatch', () => {
 
   it('matches flat pred(X, Y) binding both vars', () => {
     Store.registerTag('pred');
-    const xVar = Store.put('freevar', ['_X']);
-    const yVar = Store.put('freevar', ['_Y']);
+    const xVar = Store.put('metavar', ['X']);
+    const yVar = Store.put('metavar', ['Y']);
     const pattern = Store.put('pred', [xVar, yVar]);
     const slots = { [xVar]: 0, [yVar]: 1 };
 
@@ -44,7 +44,7 @@ describe('compilePatternMatch', () => {
 
   it('checks ground child (pred(X, ground))', () => {
     Store.registerTag('pred');
-    const xVar = Store.put('freevar', ['_X']);
+    const xVar = Store.put('metavar', ['X']);
     const ground = Store.put('atom', ['c1']);
     const pattern = Store.put('pred', [xVar, ground]);
     const slots = { [xVar]: 0 };
@@ -66,7 +66,7 @@ describe('compilePatternMatch', () => {
   it('matches depth-1 compound pred(s(X))', () => {
     Store.registerTag('pred');
     Store.registerTag('s');
-    const xVar = Store.put('freevar', ['_X']);
+    const xVar = Store.put('metavar', ['X']);
     const sX = Store.put('s', [xVar]);
     const pattern = Store.put('pred', [sX]);
     const slots = { [xVar]: 0 };
@@ -85,7 +85,7 @@ describe('compilePatternMatch', () => {
   it('matches depth-2 compound pred(s(s(X)))', () => {
     Store.registerTag('pred');
     Store.registerTag('s');
-    const xVar = Store.put('freevar', ['_X']);
+    const xVar = Store.put('metavar', ['X']);
     const ssX = Store.put('s', [Store.put('s', [xVar])]);
     const pattern = Store.put('pred', [ssX]);
     const slots = { [xVar]: 0 };
@@ -109,7 +109,7 @@ describe('compilePatternMatch', () => {
 
   it('enforces metavar consistency (shared var)', () => {
     Store.registerTag('pred');
-    const xVar = Store.put('freevar', ['_X']);
+    const xVar = Store.put('metavar', ['X']);
     const pattern = Store.put('pred', [xVar, xVar]);
     const slots = { [xVar]: 0 };
 
@@ -130,7 +130,7 @@ describe('compilePatternMatch', () => {
   it('rejects wrong tag', () => {
     Store.registerTag('pred');
     Store.registerTag('other');
-    const xVar = Store.put('freevar', ['_X']);
+    const xVar = Store.put('metavar', ['X']);
     const pattern = Store.put('pred', [xVar]);
     const slots = { [xVar]: 0 };
 
@@ -151,8 +151,8 @@ describe('compilePersistentStep', () => {
 
   it('compiles inc FFI fast path', () => {
     Store.registerTag('inc');
-    const xVar = Store.put('freevar', ['_X']);
-    const yVar = Store.put('freevar', ['_Y']);
+    const xVar = Store.put('metavar', ['X']);
+    const yVar = Store.put('metavar', ['Y']);
     const pattern = Store.put('inc', [xVar, yVar]);
     const slots = { [xVar]: 0, [yVar]: 1 };
 
@@ -171,9 +171,9 @@ describe('compilePersistentStep', () => {
 
   it('compiles plus FFI fast path', () => {
     Store.registerTag('plus');
-    const aVar = Store.put('freevar', ['_A']);
-    const bVar = Store.put('freevar', ['_B']);
-    const cVar = Store.put('freevar', ['_C']);
+    const aVar = Store.put('metavar', ['A']);
+    const bVar = Store.put('metavar', ['B']);
+    const cVar = Store.put('metavar', ['C']);
     const pattern = Store.put('plus', [aVar, bVar, cVar]);
     const slots = { [aVar]: 0, [bVar]: 1, [cVar]: 2 };
 
@@ -192,8 +192,8 @@ describe('compilePersistentStep', () => {
 
   it('returns false for definitive neq failure', () => {
     Store.registerTag('neq');
-    const aVar = Store.put('freevar', ['_A']);
-    const bVar = Store.put('freevar', ['_B']);
+    const aVar = Store.put('metavar', ['A']);
+    const bVar = Store.put('metavar', ['B']);
     const pattern = Store.put('neq', [aVar, bVar]);
     const slots = { [aVar]: 0, [bVar]: 1 };
 
@@ -209,7 +209,7 @@ describe('compilePersistentStep', () => {
 
   it('returns null for unknown predicates (no FFI)', () => {
     Store.registerTag('unknown_pred');
-    const xVar = Store.put('freevar', ['_X']);
+    const xVar = Store.put('metavar', ['X']);
     const pattern = Store.put('unknown_pred', [xVar]);
     const slots = { [xVar]: 0 };
 

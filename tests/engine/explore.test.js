@@ -421,7 +421,7 @@ describe('explore', { timeout: 10000 }, () => {
     });
 
     it('fires loli with parameterized linear trigger', () => {
-      const X = Store.put('freevar', ['_X']);
+      const X = Store.put('metavar', ['X']);
       // Predicates use tag-as-name, not atom wrapper
       const triggerPattern = Store.put('data', [X]);
       const bodyPattern = Store.put('processed', [X]);

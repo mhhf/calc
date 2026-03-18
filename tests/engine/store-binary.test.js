@@ -30,13 +30,13 @@ describe('Store Binary Format', () => {
       assert.deepStrictEqual(Store.children(b), ['bar']);
     });
 
-    it('round-trips freevars', () => {
-      const v = Store.put('freevar', ['_X']);
+    it('round-trips metavars', () => {
+      const v = Store.put('metavar', ['X']);
       const snap = Store.snapshot();
       Store.clear();
       Store.restore(snap);
-      assert.strictEqual(Store.tag(v), 'freevar');
-      assert.deepStrictEqual(Store.children(v), ['_X']);
+      assert.strictEqual(Store.tag(v), 'metavar');
+      assert.deepStrictEqual(Store.children(v), ['X']);
     });
 
     it('round-trips bigints (binlit)', () => {
@@ -66,7 +66,7 @@ describe('Store Binary Format', () => {
     });
 
     it('round-trips dynamic tags (predicates)', () => {
-      const args = [Store.put('freevar', ['_X']), Store.put('freevar', ['_Y'])];
+      const args = [Store.put('metavar', ['X']), Store.put('metavar', ['Y'])];
       const p = Store.put('myPredicate', args);
 
       const snap = Store.snapshot();

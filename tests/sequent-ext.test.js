@@ -123,9 +123,10 @@ describe('v2 Sequent (generic arrays)', () => {
     it('should rename variables to unique names', () => {
       const s = Seq.fromArrays([AST.freevar('A')], [], AST.freevar('A'));
       const { seq: s2, theta } = Seq.renameVars(s);
-      const vars = Seq.freeVars(s2);
-      assert.strictEqual(vars.length, 1);
-      assert.ok(vars[0].startsWith('_V'));
+      // Renamed vars are metavars (unification variables)
+      assert.strictEqual(theta.length, 1);
+      assert.strictEqual(Store.tag(theta[0][1]), 'metavar');
+      assert.ok(Store.child(theta[0][1], 0).startsWith('V'));
     });
   });
 });

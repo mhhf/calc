@@ -38,7 +38,7 @@ describe('Guided Proof Terms (TODO_0068 §10.5)', () => {
     });
 
     it('peels forall wrapper', () => {
-      const X = Store.put('freevar', ['_X']);
+      const X = Store.put('metavar', ['X']);
       const body = Store.put('monad', [X]);
       const loli = Store.put('loli', [X, body]);
       const fa = Store.put('forall', [loli]);
@@ -289,7 +289,7 @@ describe('Guided Proof Terms (TODO_0068 §10.5)', () => {
 
     it('handles metavar substitution in antecedent', () => {
       // Rule: data(X) -o { result(X) }
-      const X = Store.put('freevar', ['_X']);
+      const X = Store.put('metavar', ['X']);
       const dataX = Store.put('data', [X]);
       const resultX = Store.put('result', [X]);
       const monad = Store.put('monad', [resultX]);

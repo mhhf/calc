@@ -178,7 +178,7 @@ describe('Ephemeral Unification', { timeout: 10000 }, () => {
 
     it('unifies binlit(10n) with o(X)', () => {
       const ten = Store.put('binlit', [10n]);
-      const X = Store.put('freevar', ['_X']);
+      const X = Store.put('metavar', ['X']);
       const oX = Store.put('o', [X]);
 
       const result = unify(oX, ten);
@@ -194,7 +194,7 @@ describe('Ephemeral Unification', { timeout: 10000 }, () => {
 
     it('fails to unify binlit(10n) with i(X)', () => {
       const ten = Store.put('binlit', [10n]);
-      const X = Store.put('freevar', ['_X']);
+      const X = Store.put('metavar', ['X']);
       const iX = Store.put('i', [X]);
 
       const result = unify(iX, ten);
@@ -203,7 +203,7 @@ describe('Ephemeral Unification', { timeout: 10000 }, () => {
 
     it('unifies binlit(7n) with i(X)', () => {
       const seven = Store.put('binlit', [7n]);
-      const X = Store.put('freevar', ['_X']);
+      const X = Store.put('metavar', ['X']);
       const iX = Store.put('i', [X]);
 
       const result = unify(iX, seven);
@@ -219,7 +219,7 @@ describe('Ephemeral Unification', { timeout: 10000 }, () => {
 
     it('fails to unify binlit(0n) with o(X)', () => {
       const zero = Store.put('binlit', [0n]);
-      const X = Store.put('freevar', ['_X']);
+      const X = Store.put('metavar', ['X']);
       const oX = Store.put('o', [X]);
 
       const result = unify(oX, zero);
@@ -251,8 +251,8 @@ describe('Ephemeral Unification', { timeout: 10000 }, () => {
 
     it('fails to unify strlit("") with cons(H, T)', () => {
       const empty = Store.put('strlit', ['']);
-      const H = Store.put('freevar', ['_H']);
-      const T = Store.put('freevar', ['_T']);
+      const H = Store.put('metavar', ['H']);
+      const T = Store.put('metavar', ['T']);
       const consHT = Store.put('cons', [H, T]);
 
       const result = unify(consHT, empty);
@@ -261,8 +261,8 @@ describe('Ephemeral Unification', { timeout: 10000 }, () => {
 
     it('unifies strlit("hello") with cons(H, T)', () => {
       const hello = Store.put('strlit', ['hello']);
-      const H = Store.put('freevar', ['_H']);
-      const T = Store.put('freevar', ['_T']);
+      const H = Store.put('metavar', ['H']);
+      const T = Store.put('metavar', ['T']);
       const consHT = Store.put('cons', [H, T]);
 
       const result = unify(consHT, hello);
@@ -336,7 +336,7 @@ describe('FFI Operations', { timeout: 10000 }, () => {
       const d = intToBin(18n);
       const a = intToBin(1_500_000_000_000_000_000n);
       const b = intToBin(2_000_000_000_000_000_000n);
-      const c = Store.put('freevar', ['_C']);
+      const c = Store.put('metavar', ['C']);
 
       const result = arithmetic.fixed_mul([d, a, b, c]);
       assert(result.success);
@@ -350,7 +350,7 @@ describe('FFI Operations', { timeout: 10000 }, () => {
       const d = intToBin(2n);
       const a = intToBin(150n);
       const b = intToBin(200n);
-      const c = Store.put('freevar', ['_C']);
+      const c = Store.put('metavar', ['C']);
 
       const result = arithmetic.fixed_mul([d, a, b, c]);
       assert(result.success);
@@ -368,7 +368,7 @@ describe('FFI Operations', { timeout: 10000 }, () => {
       const d = intToBin(18n);
       const a = intToBin(3_000_000_000_000_000_000n);
       const b = intToBin(2_000_000_000_000_000_000n);
-      const c = Store.put('freevar', ['_C']);
+      const c = Store.put('metavar', ['C']);
 
       const result = arithmetic.fixed_div([d, a, b, c]);
       assert(result.success);
@@ -381,7 +381,7 @@ describe('FFI Operations', { timeout: 10000 }, () => {
       const d = intToBin(2n);
       const a = intToBin(100n);
       const b = intToBin(0n);
-      const c = Store.put('freevar', ['_C']);
+      const c = Store.put('metavar', ['C']);
 
       const result = arithmetic.fixed_div([d, a, b, c]);
       assert(!result.success);
@@ -393,7 +393,7 @@ describe('FFI Operations', { timeout: 10000 }, () => {
     it('concatenates strings', () => {
       const a = strToHash('hello');
       const b = strToHash(' world');
-      const c = Store.put('freevar', ['_C']);
+      const c = Store.put('metavar', ['C']);
 
       const result = arithmetic.string_concat([a, b, c]);
       assert(result.success);
@@ -405,7 +405,7 @@ describe('FFI Operations', { timeout: 10000 }, () => {
     it('handles empty strings', () => {
       const a = strToHash('test');
       const b = strToHash('');
-      const c = Store.put('freevar', ['_C']);
+      const c = Store.put('metavar', ['C']);
 
       const result = arithmetic.string_concat([a, b, c]);
       assert(result.success);
@@ -418,7 +418,7 @@ describe('FFI Operations', { timeout: 10000 }, () => {
   describe('string_length', () => {
     it('returns correct length', () => {
       const s = strToHash('hello');
-      const len = Store.put('freevar', ['_Len']);
+      const len = Store.put('metavar', ['Len']);
 
       const result = arithmetic.string_length([s, len]);
       assert(result.success);
@@ -429,7 +429,7 @@ describe('FFI Operations', { timeout: 10000 }, () => {
 
     it('returns 0 for empty string', () => {
       const s = strToHash('');
-      const len = Store.put('freevar', ['_Len']);
+      const len = Store.put('metavar', ['Len']);
 
       const result = arithmetic.string_length([s, len]);
       assert(result.success);
@@ -443,7 +443,7 @@ describe('FFI Operations', { timeout: 10000 }, () => {
     it('plus works with binlit', () => {
       const a = intToBin(100n);
       const b = intToBin(200n);
-      const c = Store.put('freevar', ['_C']);
+      const c = Store.put('metavar', ['C']);
 
       const result = arithmetic.plus([a, b, c]);
       assert(result.success);
@@ -455,7 +455,7 @@ describe('FFI Operations', { timeout: 10000 }, () => {
     it('mul works with binlit', () => {
       const a = intToBin(10n);
       const b = intToBin(20n);
-      const c = Store.put('freevar', ['_C']);
+      const c = Store.put('metavar', ['C']);
 
       const result = arithmetic.mul([a, b, c]);
       assert(result.success);

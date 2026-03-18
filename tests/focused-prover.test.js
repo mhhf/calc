@@ -95,8 +95,8 @@ describe('v2 FocusedProver', () => {
     });
 
     it('should unify metavars', () => {
-      // Metavars (starting with _) are unification variables
-      const s = seq([AST.freevar('_X')], AST.freevar('_Y'));
+      // Metavars are unification variables (dedicated tag)
+      const s = seq([AST.metavar('X')], AST.metavar('Y'));
       const result = prover.tryIdentity(s, 'R', -1);
       assert.ok(result?.success);
       assert.ok(result.theta.length > 0);

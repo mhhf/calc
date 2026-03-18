@@ -80,14 +80,14 @@ describe('v2 Kernel', () => {
     });
 
     it('should unify metavar with term', () => {
-      // Metavars (starting with _) are unification variables
-      const theta = unify(AST.freevar('_A'), AST.atom('p'));
+      // Metavars are unification variables (dedicated tag)
+      const theta = unify(AST.metavar('A'), AST.atom('p'));
       assert.ok(theta !== null);
       assert.strictEqual(theta.length, 1);
     });
 
     it('should unify nested terms with metavar', () => {
-      const t1 = AST.tensor(AST.freevar('_A'), AST.atom('q'));
+      const t1 = AST.tensor(AST.metavar('A'), AST.atom('q'));
       const t2 = AST.tensor(AST.atom('p'), AST.atom('q'));
       const theta = unify(t1, t2);
       assert.ok(theta !== null);
@@ -118,14 +118,14 @@ describe('v2 Kernel', () => {
 
   describe('match', () => {
     it('should match metavar to term', () => {
-      const theta = match(AST.freevar('_A'), AST.atom('p'));
+      const theta = match(AST.metavar('A'), AST.atom('p'));
       assert.ok(theta !== null);
       // Paired theta: [[var, val], ...] — 1 binding = length 1
       assert.strictEqual(theta.length, 1);
     });
 
     it('should check consistent bindings', () => {
-      const pattern = AST.tensor(AST.freevar('_A'), AST.freevar('_A'));
+      const pattern = AST.tensor(AST.metavar('A'), AST.metavar('A'));
       assert.ok(match(pattern, AST.tensor(AST.atom('p'), AST.atom('p'))) !== null);
       assert.strictEqual(match(pattern, AST.tensor(AST.atom('p'), AST.atom('q'))), null);
     });
@@ -133,8 +133,8 @@ describe('v2 Kernel', () => {
 
   describe('isMetavar', () => {
     it('should identify metavars (not regular freevars)', () => {
-      assert.strictEqual(isMetavar(AST.freevar('_X')), true);
-      assert.strictEqual(isMetavar(AST.freevar('A')), false);  // A is ground
+      assert.strictEqual(isMetavar(AST.metavar('X')), true);
+      assert.strictEqual(isMetavar(AST.freevar('A')), false);  // eigenvariable, not metavar
       assert.strictEqual(isMetavar(AST.atom('p')), false);
     });
   });

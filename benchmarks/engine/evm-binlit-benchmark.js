@@ -93,7 +93,7 @@ async function main() {
     Store.clear();
     const aBinlit = intToBin(tc.a);
     const bBinlit = intToBin(tc.b);
-    const cBinlit = Store.put('freevar', ['_C']);
+    const cBinlit = Store.put('metavar', ['C']);
 
     // Warmup
     for (let i = 0; i < 100; i++) {
@@ -112,7 +112,7 @@ async function main() {
     Store.clear();
     const aRecursive = intToBinRecursive(tc.a);
     const bRecursive = intToBinRecursive(tc.b);
-    const cRecursive = Store.put('freevar', ['_C']);
+    const cRecursive = Store.put('metavar', ['C']);
 
     // Warmup
     for (let i = 0; i < 100; i++) {

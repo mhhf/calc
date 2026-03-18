@@ -105,7 +105,7 @@ describe('arrlit - Stage 1: Store Infrastructure', () => {
     });
 
     it('arrlit with metavar → false', () => {
-      const mv = Store.put('freevar', ['_X']);
+      const mv = Store.put('metavar', ['X']);
       const arr = Store.putArray([mv]);
       assert.equal(isGround(arr), false);
     });
@@ -118,7 +118,7 @@ describe('arrlit - Stage 1: Store Infrastructure', () => {
 
   describe('collectMetavars', () => {
     it('finds metavars inside arrlit', () => {
-      const mv = Store.put('freevar', ['_X']);
+      const mv = Store.put('metavar', ['X']);
       const a = Store.put('binlit', [1n]);
       const arr = Store.putArray([a, mv]);
       const out = new Set();
@@ -215,8 +215,8 @@ describe('arrlit - Stage 2: Ephemeral Expansion', () => {
       const b = Store.put('binlit', [2n]);
       const c = Store.put('binlit', [3n]);
       const arr = Store.putArray([a, b, c]);
-      const X = Store.put('freevar', ['_X']);
-      const Y = Store.put('freevar', ['_Y']);
+      const X = Store.put('metavar', ['X']);
+      const Y = Store.put('metavar', ['Y']);
       const pat = Store.put('acons', [X, Y]);
       const theta = match(pat, arr);
       assert.ok(theta !== null);
@@ -247,7 +247,7 @@ describe('arrlit - Stage 2: Ephemeral Expansion', () => {
     it('match(acons(X, ae), arrlit([a])) → X=a', () => {
       const a = Store.put('binlit', [1n]);
       const arr = Store.putArray([a]);
-      const X = Store.put('freevar', ['_X']);
+      const X = Store.put('metavar', ['X']);
       const ae = Store.put('atom', ['ae']);
       const pat = Store.put('acons', [X, ae]);
       const theta = match(pat, arr);
@@ -261,9 +261,9 @@ describe('arrlit - Stage 2: Ephemeral Expansion', () => {
       const b = Store.put('binlit', [2n]);
       const c = Store.put('binlit', [3n]);
       const arr = Store.putArray([a, b, c]);
-      const X = Store.put('freevar', ['_X']);
-      const Y = Store.put('freevar', ['_Y']);
-      const Z = Store.put('freevar', ['_Z']);
+      const X = Store.put('metavar', ['X']);
+      const Y = Store.put('metavar', ['Y']);
+      const Z = Store.put('metavar', ['Z']);
       const inner = Store.put('acons', [Y, Z]);
       const pat = Store.put('acons', [X, inner]);
       const theta = match(pat, arr);
@@ -284,8 +284,8 @@ describe('arrlit - Stage 2: Ephemeral Expansion', () => {
       const a = Store.put('binlit', [1n]);
       const b = Store.put('binlit', [2n]);
       const arr = Store.putArray([a, b]);
-      const X = Store.put('freevar', ['_X']);
-      const Y = Store.put('freevar', ['_Y']);
+      const X = Store.put('metavar', ['X']);
+      const Y = Store.put('metavar', ['Y']);
       const pat = Store.put('acons', [X, Y]);
       const theta = unify(pat, arr);
       assert.ok(theta !== null);
@@ -305,7 +305,7 @@ describe('arrlit - Stage 2: Ephemeral Expansion', () => {
     it('unify(arrlit([X,b]), arrlit([a,b])) → X=a', () => {
       const a = Store.put('binlit', [1n]);
       const b = Store.put('binlit', [2n]);
-      const X = Store.put('freevar', ['_X']);
+      const X = Store.put('metavar', ['X']);
       const arr1 = Store.putArray([X, b]);
       const arr2 = Store.putArray([a, b]);
       const theta = unify(arr1, arr2);
@@ -328,8 +328,8 @@ describe('arrlit - Stage 2: Ephemeral Expansion', () => {
       const a = Store.put('binlit', [1n]);
       const b = Store.put('binlit', [2n]);
       const arr = Store.putArray([a, b]);
-      const X = Store.put('freevar', ['_X']);
-      const Y = Store.put('freevar', ['_Y']);
+      const X = Store.put('metavar', ['X']);
+      const Y = Store.put('metavar', ['Y']);
       const pat = Store.put('acons', [X, Y]);
       const slots = { [X]: 0, [Y]: 1 };
       const theta = new Array(2);
@@ -370,7 +370,7 @@ describe('arrlit - Stage 3: FFI', () => {
       const b = Store.put('binlit', [0x40n]);
       const arr = Store.putArray([a, b]);
       const idx = Store.put('binlit', [0n]);
-      const out = Store.put('freevar', ['_V']);
+      const out = Store.put('metavar', ['V']);
       const result = arr_get([arr, idx, out]);
       assert.equal(result.success, true);
       assert.equal(result.theta[0][0], out);
@@ -382,7 +382,7 @@ describe('arrlit - Stage 3: FFI', () => {
       const b = Store.put('binlit', [0x40n]);
       const arr = Store.putArray([a, b]);
       const idx = Store.put('binlit', [1n]);
-      const out = Store.put('freevar', ['_V']);
+      const out = Store.put('metavar', ['V']);
       const result = arr_get([arr, idx, out]);
       assert.equal(result.success, true);
       assert.equal(result.theta[0][1], b);
@@ -392,7 +392,7 @@ describe('arrlit - Stage 3: FFI', () => {
       const a = Store.put('binlit', [1n]);
       const arr = Store.putArray([a]);
       const idx = Store.put('binlit', [5n]);
-      const out = Store.put('freevar', ['_V']);
+      const out = Store.put('metavar', ['V']);
       const result = arr_get([arr, idx, out]);
       assert.equal(result.success, false);
     });
@@ -400,8 +400,8 @@ describe('arrlit - Stage 3: FFI', () => {
     it('fails on non-ground index', () => {
       const a = Store.put('binlit', [1n]);
       const arr = Store.putArray([a]);
-      const idx = Store.put('freevar', ['_I']);
-      const out = Store.put('freevar', ['_V']);
+      const idx = Store.put('metavar', ['I']);
+      const out = Store.put('metavar', ['V']);
       const result = arr_get([arr, idx, out]);
       assert.equal(result.success, false);
     });
@@ -414,7 +414,7 @@ describe('arrlit - Stage 3: FFI', () => {
       const arr = Store.putArray([a, b]);
       const idx = Store.put('binlit', [0n]);
       const newVal = Store.put('binlit', [99n]);
-      const out = Store.put('freevar', ['_R']);
+      const out = Store.put('metavar', ['R']);
       const result = arr_set([arr, idx, newVal, out]);
       assert.equal(result.success, true);
       const newArr = result.theta[0][1];
@@ -427,7 +427,7 @@ describe('arrlit - Stage 3: FFI', () => {
   describe('alen', () => {
     it('returns length of empty array', () => {
       const arr = Store.putArray([]);
-      const out = Store.put('freevar', ['_L']);
+      const out = Store.put('metavar', ['L']);
       const result = alen([arr, out]);
       assert.equal(result.success, true);
       assert.equal(Store.child(result.theta[0][1], 0), 0n);
@@ -438,7 +438,7 @@ describe('arrlit - Stage 3: FFI', () => {
       const b = Store.put('binlit', [2n]);
       const c = Store.put('binlit', [3n]);
       const arr = Store.putArray([a, b, c]);
-      const out = Store.put('freevar', ['_L']);
+      const out = Store.put('metavar', ['L']);
       const result = alen([arr, out]);
       assert.equal(result.success, true);
       assert.equal(Store.child(result.theta[0][1], 0), 3n);
@@ -452,7 +452,7 @@ describe('arrlit - Stage 3: FFI', () => {
       const arr = Store.putArray([b1, b2]);
       const offset = Store.put('binlit', [0n]);
       const num = Store.put('binlit', [1n]);
-      const out = Store.put('freevar', ['_V']);
+      const out = Store.put('metavar', ['V']);
       const result = read_bytes([arr, offset, num, out]);
       assert.equal(result.success, true);
       assert.equal(Store.child(result.theta[0][1], 0), 0x60n);
@@ -464,7 +464,7 @@ describe('arrlit - Stage 3: FFI', () => {
       const arr = Store.putArray([b1, b2]);
       const offset = Store.put('binlit', [0n]);
       const num = Store.put('binlit', [2n]);
-      const out = Store.put('freevar', ['_V']);
+      const out = Store.put('metavar', ['V']);
       const result = read_bytes([arr, offset, num, out]);
       assert.equal(result.success, true);
       assert.equal(Store.child(result.theta[0][1], 0), 0x6040n);
@@ -477,7 +477,7 @@ describe('arrlit - Stage 3: FFI', () => {
       const arr = Store.putArray([b1, b2, b3]);
       const offset = Store.put('binlit', [1n]);
       const num = Store.put('binlit', [2n]);
-      const out = Store.put('freevar', ['_V']);
+      const out = Store.put('metavar', ['V']);
       const result = read_bytes([arr, offset, num, out]);
       assert.equal(result.success, true);
       assert.equal(Store.child(result.theta[0][1], 0), 0x2030n);
@@ -488,7 +488,7 @@ describe('arrlit - Stage 3: FFI', () => {
       const arr = Store.putArray([b1]);
       const offset = Store.put('binlit', [0n]);
       const num = Store.put('binlit', [5n]);
-      const out = Store.put('freevar', ['_V']);
+      const out = Store.put('metavar', ['V']);
       const result = read_bytes([arr, offset, num, out]);
       assert.equal(result.success, false);
     });
@@ -594,7 +594,7 @@ describe('arrlit - Stage 6: acons-over-arrlit normalization', () => {
   });
 
   it('acons with freevar + arrlit normalizes to arrlit with freevar', () => {
-    const x = Store.put('freevar', ['_X']);
+    const x = Store.put('metavar', ['X']);
     const a = Store.put('binlit', [1n]);
     const arr = Store.putArray([a]);
     const result = Store.put('acons', [x, arr]);
@@ -606,7 +606,7 @@ describe('arrlit - Stage 6: acons-over-arrlit normalization', () => {
   });
 
   it('isGround on arrlit with freevar returns false', () => {
-    const x = Store.put('freevar', ['_X']);
+    const x = Store.put('metavar', ['X']);
     const a = Store.put('binlit', [1n]);
     const ae = Store.put('atom', ['ae']);
     const result = Store.put('acons', [x, Store.put('acons', [a, ae])]);
@@ -615,8 +615,8 @@ describe('arrlit - Stage 6: acons-over-arrlit normalization', () => {
   });
 
   it('collectMetavars finds metavars inside normalized arrlit', () => {
-    const x = Store.put('freevar', ['_X']);
-    const y = Store.put('freevar', ['_Y']);
+    const x = Store.put('metavar', ['X']);
+    const y = Store.put('metavar', ['Y']);
     const ae = Store.put('atom', ['ae']);
     const result = Store.put('acons', [x, Store.put('acons', [y, ae])]);
     assert.equal(Store.tag(result), 'arrlit');
@@ -639,7 +639,7 @@ describe('arrlit - Stage 6: acons-over-arrlit normalization', () => {
 
   it('acons with non-arrlit, non-ae tail is NOT normalized', () => {
     const h = Store.put('binlit', [1n]);
-    const y = Store.put('freevar', ['_Y']);
+    const y = Store.put('metavar', ['Y']);
     const result = Store.put('acons', [h, y]);
     assert.equal(Store.tag(result), 'acons', 'Should remain acons when tail is freevar');
   });
@@ -647,7 +647,7 @@ describe('arrlit - Stage 6: acons-over-arrlit normalization', () => {
   it('match works on normalized arrlit patterns', () => {
     const a = Store.put('binlit', [1n]);
     const arr = Store.putArray([a]);
-    const X = Store.put('freevar', ['_X']);
+    const X = Store.put('metavar', ['X']);
     const ae = Store.put('atom', ['ae']);
     // acons(X, ae) normalizes to arrlit([X])
     const pat = Store.put('acons', [X, ae]);
@@ -702,7 +702,7 @@ describe('arrlit - Stage 7: Bracket Syntax + bytesToSemantic', () => {
       const elems = Store.getArrayElements(h);
       assert.equal(elems.length, 4);
       assert.equal(Store.child(elems[0], 0), 0x60n);
-      assert.equal(Store.tag(elems[2]), 'freevar');
+      assert.equal(Store.tag(elems[2]), 'metavar');
       assert.equal(Store.child(elems[3], 0), 0x33n);
     });
 
@@ -718,21 +718,21 @@ describe('arrlit - Stage 7: Bracket Syntax + bytesToSemantic', () => {
       const parse = makeParser();
       const h = parse('[V | REST]');
       assert.equal(Store.tag(h), 'acons');
-      assert.equal(Store.tag(Store.child(h, 0)), 'freevar');
-      assert.equal(Store.child(Store.child(h, 0), 0), '_V');
-      assert.equal(Store.tag(Store.child(h, 1)), 'freevar');
-      assert.equal(Store.child(Store.child(h, 1), 0), '_REST');
+      assert.equal(Store.tag(Store.child(h, 0)), 'metavar');
+      assert.equal(Store.child(Store.child(h, 0), 0), 'V');
+      assert.equal(Store.tag(Store.child(h, 1)), 'metavar');
+      assert.equal(Store.child(Store.child(h, 1), 0), 'REST');
     });
 
     it('parses [A, B | REST] as acons(A, acons(B, REST))', () => {
       const parse = makeParser();
       const h = parse('[A, B | REST]');
       assert.equal(Store.tag(h), 'acons');
-      assert.equal(Store.child(Store.child(h, 0), 0), '_A');
+      assert.equal(Store.child(Store.child(h, 0), 0), 'A');
       const inner = Store.child(h, 1);
       assert.equal(Store.tag(inner), 'acons');
-      assert.equal(Store.child(Store.child(inner, 0), 0), '_B');
-      assert.equal(Store.child(Store.child(inner, 1), 0), '_REST');
+      assert.equal(Store.child(Store.child(inner, 0), 0), 'B');
+      assert.equal(Store.child(Store.child(inner, 1), 0), 'REST');
     });
 
     it('[A, B | ae] normalizes to arrlit via acons+ae normalization', () => {
@@ -808,7 +808,7 @@ describe('arrlit - Stage 7: Bracket Syntax + bytesToSemantic', () => {
     });
 
     it('no-op on array with freevars', () => {
-      const fv = Store.put('freevar', ['_X']);
+      const fv = Store.put('metavar', ['X']);
       const small = Store.put('binlit', [0x60n]);
       const arr = Store.putArray([small, fv]);
       const bc = Store.put('bytecode', [arr]);

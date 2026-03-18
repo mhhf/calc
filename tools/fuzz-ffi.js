@@ -91,7 +91,7 @@ for (const pred of preds) {
   for (let trial = 0; trial < COUNT; trial++) {
     const inputs = config.gen();
     const inputHashes = inputs.map(v => Store.put('binlit', [v]));
-    const outputFvs = config.outputs.map((_, i) => Store.put('freevar', ['_out' + i]));
+    const outputFvs = config.outputs.map((_, i) => Store.put('metavar', ['out' + i]));
     const allArgs = [...inputHashes, ...outputFvs];
 
     // FFI path

@@ -39,7 +39,7 @@ describe('Evidence collection (TODO_0068 §10.5)', () => {
     it('collects FFI evidence for arithmetic', () => {
       // inc(X, Y) with X ground should resolve via FFI
       const val3 = Store.put('binlit', [3n]);
-      const X = Store.put('freevar', ['_X']);
+      const X = Store.put('metavar', ['X']);
       const pattern = Store.put('inc', [val3, X]);
       const state = forward.createState({}, {});
 
@@ -82,7 +82,7 @@ describe('Evidence collection (TODO_0068 §10.5)', () => {
     beforeEach(() => { Store.clear(); });
 
     it('returns real theta/slots when evidence requested', () => {
-      const X = Store.put('freevar', ['_X']);
+      const X = Store.put('metavar', ['X']);
       const triggerPattern = Store.put('data', [X]);
       const bodyPattern = Store.put('result', [X]);
       const body = Store.put('monad', [bodyPattern]);

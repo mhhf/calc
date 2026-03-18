@@ -26,7 +26,7 @@ describe('Memory FFI', () => {
       const old = intToBin(32n);
       const off = intToBin(100n);
       const len = intToBin(0n);
-      const out = Store.put('freevar', ['_Out']);
+      const out = Store.put('metavar', ['Out']);
       const r = memory.mem_expand([old, off, len, out]);
       assert(r.success);
       // Should return oldSize unchanged
@@ -37,7 +37,7 @@ describe('Memory FFI', () => {
       const old = intToBin(0n);
       const off = intToBin(0n);
       const len = intToBin(32n);
-      const out = Store.put('freevar', ['_Out']);
+      const out = Store.put('metavar', ['Out']);
       const r = memory.mem_expand([old, off, len, out]);
       assert(r.success);
       assert.strictEqual(binToInt(r.theta[0][1]), 32n);
@@ -47,7 +47,7 @@ describe('Memory FFI', () => {
       const old = intToBin(0n);
       const off = intToBin(0n);
       const len = intToBin(1n);
-      const out = Store.put('freevar', ['_Out']);
+      const out = Store.put('metavar', ['Out']);
       const r = memory.mem_expand([old, off, len, out]);
       assert(r.success);
       assert.strictEqual(binToInt(r.theta[0][1]), 32n);
@@ -57,7 +57,7 @@ describe('Memory FFI', () => {
       const old = intToBin(128n);
       const off = intToBin(0n);
       const len = intToBin(32n);
-      const out = Store.put('freevar', ['_Out']);
+      const out = Store.put('metavar', ['Out']);
       const r = memory.mem_expand([old, off, len, out]);
       assert(r.success);
       assert.strictEqual(binToInt(r.theta[0][1]), 128n);
@@ -67,7 +67,7 @@ describe('Memory FFI', () => {
       const old = intToBin(0n);
       const off = intToBin(16n);
       const len = intToBin(32n);
-      const out = Store.put('freevar', ['_Out']);
+      const out = Store.put('metavar', ['Out']);
       const r = memory.mem_expand([old, off, len, out]);
       assert(r.success);
       // ceil((16 + 32) / 32) * 32 = ceil(48/32) * 32 = 2 * 32 = 64
@@ -148,7 +148,7 @@ describe('Memory Backward Clauses', { timeout: 30000 }, () => {
   /** Prove and extract freevar V from result */
   async function proveAndExtract(expr, varName = 'V') {
     const goal = await mde.parseExpr(expr);
-    const vHash = Store.put('freevar', ['_' + varName]);
+    const vHash = Store.put('metavar', ['' + varName]);
     const result = backward.prove(goal, calc.clauses, calc.types, {
       useFFI: false,
       maxDepth: 100,

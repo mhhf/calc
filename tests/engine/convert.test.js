@@ -17,24 +17,24 @@ describe('MDE Convert', { timeout: 10000 }, () => {
 
     it('converts variable', async () => {
       const h = await mde.parseExpr('X');
-      assert.strictEqual(Store.tag(h), 'freevar');
-      // MDE uppercase variables get _ prefix to become metavars
-      assert.deepStrictEqual(Store.children(h), ['_X']);
+      assert.strictEqual(Store.tag(h), 'metavar');
+      // MDE uppercase variables become metavar tag (no _ prefix)
+      assert.deepStrictEqual(Store.children(h), ['X']);
     });
 
     it('converts tensor', async () => {
       const h = await mde.parseExpr('A * B');
       assert.strictEqual(Store.tag(h), 'tensor');
       const [a, b] = Store.children(h);
-      assert.strictEqual(Store.tag(a), 'freevar');
-      assert.strictEqual(Store.tag(b), 'freevar');
+      assert.strictEqual(Store.tag(a), 'metavar');
+      assert.strictEqual(Store.tag(b), 'metavar');
     });
 
     it('converts bang', async () => {
       const h = await mde.parseExpr('!A');
       assert.strictEqual(Store.tag(h), 'bang');
       const [inner] = Store.children(h);
-      assert.strictEqual(Store.tag(inner), 'freevar');
+      assert.strictEqual(Store.tag(inner), 'metavar');
     });
 
     it('converts double bang', async () => {

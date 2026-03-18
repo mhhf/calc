@@ -222,7 +222,7 @@ describe('Forward engine with exists', () => {
     const linearFact = alts[0].linear[0];
     assert.strictEqual(Store.tag(linearFact), 'p');
     const arg = Store.child(linearFact, 0);
-    assert.strictEqual(Store.tag(arg), 'freevar');
+    assert.strictEqual(Store.tag(arg), 'metavar');
   });
 
   it('expandChoiceItem handles exists inside tensor', () => {
@@ -257,7 +257,7 @@ describe('Loli variables are NOT existential slots', () => {
   it('compileRule excludes loli-trigger variables from existentialSlots', () => {
     // Simulate sha3-like rule: a -o { b * (c Z -o { d Z }) }
     // Z only appears in the loli — it should NOT be an existential slot.
-    const z = Store.put('freevar', ['_Z']);
+    const z = Store.put('metavar', ['Z']);
     const a = Store.put('atom', ['a']);
     const b = Store.put('atom', ['b']);
     const cz = Store.put('c', [z]);
@@ -277,8 +277,8 @@ describe('Loli variables are NOT existential slots', () => {
 
   it('mixed: exists X in body + Z in loli → only X is existential', () => {
     // a -o { exists X. (p X * (q Z -o { r Z })) }
-    const x = Store.put('freevar', ['_ex0']);
-    const z = Store.put('freevar', ['_Z']);
+    const x = Store.put('metavar', ['ex0']);
+    const z = Store.put('metavar', ['Z']);
     const a = Store.put('atom', ['a']);
     const px = Store.put('p', [x]);
     const qz = Store.put('q', [z]);

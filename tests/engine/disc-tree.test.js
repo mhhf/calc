@@ -30,7 +30,7 @@ describe('disc-tree', () => {
     });
 
     it('flattens metavar to WILDCARD', () => {
-      const mv = Store.put('freevar', ['_X']);
+      const mv = Store.put('metavar', ['X']);
       const code = Store.put('code', [mv, mv]);
       const len = flattenPattern(code);
       // code(_X, _X) → [code, WILDCARD, WILDCARD]
@@ -38,7 +38,7 @@ describe('disc-tree', () => {
     });
 
     it('handles mixed ground and metavar', () => {
-      const mv = Store.put('freevar', ['_X']);
+      const mv = Store.put('metavar', ['X']);
       const e = Store.put('atom', ['e']);
       const code = Store.put('code', [mv, e]);
       const len = flattenPattern(code);
@@ -107,7 +107,7 @@ describe('disc-tree', () => {
 
     it('wildcard pattern matches any fact with same head', () => {
       const root = createNode();
-      const mv = Store.put('freevar', ['_X']);
+      const mv = Store.put('metavar', ['X']);
       const e = Store.put('atom', ['e']);
       const pattern = Store.put('code', [mv, e]);
       const fact = Store.put('code', [e, e]);
@@ -124,7 +124,7 @@ describe('disc-tree', () => {
 
     it('wildcard skips deep subtrees', () => {
       const root = createNode();
-      const mv = Store.put('freevar', ['_X']);
+      const mv = Store.put('metavar', ['X']);
       const e = Store.put('atom', ['e']);
       // Pattern: code(_X, e) — _X matches any subtree
       const pattern = Store.put('code', [mv, e]);
@@ -160,7 +160,7 @@ describe('disc-tree', () => {
     it('multiple rules with different patterns', () => {
       const root = createNode();
       const e = Store.put('atom', ['e']);
-      const mv = Store.put('freevar', ['_X']);
+      const mv = Store.put('metavar', ['X']);
       const i_e = Store.put('i', [e]);
 
       // Rule 1: code(i(e), _X)
@@ -169,7 +169,7 @@ describe('disc-tree', () => {
       insert(root, p1, r1);
 
       // Rule 2: code(_X, _X)
-      const mv2 = Store.put('freevar', ['_Y']);
+      const mv2 = Store.put('metavar', ['Y']);
       const p2 = Store.put('code', [mv, mv2]);
       const r2 = { name: 'r2', antecedent: { linear: [p2] }, triggerPreds: ['code'] };
       insert(root, p2, r2);
@@ -186,8 +186,8 @@ describe('disc-tree', () => {
 
     it('all-wildcard pattern matches everything with same arity', () => {
       const root = createNode();
-      const mv1 = Store.put('freevar', ['_A']);
-      const mv2 = Store.put('freevar', ['_B']);
+      const mv1 = Store.put('metavar', ['A']);
+      const mv2 = Store.put('metavar', ['B']);
       const pattern = Store.put('code', [mv1, mv2]);
       const rule = { name: 'any', antecedent: { linear: [pattern] }, triggerPreds: ['code'] };
       insert(root, pattern, rule);
@@ -205,7 +205,7 @@ describe('disc-tree', () => {
     it('collects rules from entire subtree', () => {
       const root = createNode();
       const e = Store.put('atom', ['e']);
-      const mv = Store.put('freevar', ['_X']);
+      const mv = Store.put('metavar', ['X']);
 
       // Insert two rules at different depths
       const p1 = Store.put('code', [e, e]);
@@ -231,7 +231,7 @@ describe('disc-tree', () => {
 
     it('builds and queries correctly', () => {
       const e = Store.put('atom', ['e']);
-      const mv = Store.put('freevar', ['_X']);
+      const mv = Store.put('metavar', ['X']);
       const pattern = Store.put('code', [mv, e]);
       const rule = {
         name: 'test',
@@ -251,7 +251,7 @@ describe('disc-tree', () => {
 
     it('filters by trigger predicates', () => {
       const e = Store.put('atom', ['e']);
-      const mv = Store.put('freevar', ['_X']);
+      const mv = Store.put('metavar', ['X']);
       const pattern = Store.put('code', [mv, e]);
       const rule = {
         name: 'test',
@@ -277,7 +277,7 @@ describe('disc-tree', () => {
 
     it('deduplicates results from multiple facts', () => {
       const e = Store.put('atom', ['e']);
-      const mv = Store.put('freevar', ['_X']);
+      const mv = Store.put('metavar', ['X']);
       const pattern = Store.put('code', [mv, e]);
       const rule = {
         name: 'test',
