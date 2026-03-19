@@ -80,15 +80,15 @@ describe('MDE Convert', { timeout: 10000 }, () => {
     it('loads bin.mde', async () => {
       const calc = await mde.load(path.join(__dirname, '../../calculus/ill/programs/bin.ill'));
 
-      assert(calc.types.size > 0, 'Should have types');
+      assert(calc.definitions.size > 0, 'Should have types');
       assert(calc.clauses.size > 0, 'Should have clauses');
-      assert(calc.types.has('bin'), 'Should have bin type');
+      assert(calc.definitions.has('bin'), 'Should have bin type');
     });
 
     it('loads evm.mde with forward rules', async () => {
       const calc = await mde.load(path.join(__dirname, '../../calculus/ill/programs/evm.ill'));
 
-      assert(calc.types.size > 0, 'Should have types');
+      assert(calc.definitions.size > 0, 'Should have types');
       assert(calc.forwardRules.length > 0, 'Should have forward rules');
     });
   });

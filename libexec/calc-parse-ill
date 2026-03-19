@@ -15,10 +15,10 @@ if (!file) {
 
 mde.load(file).then(calc => {
   console.log(JSON.stringify({
-    types: calc.types.size,
+    types: calc.definitions.size,
     clauses: calc.clauses.size,
     forwardRules: calc.forwardRules.length,
-    typeNames: [...calc.types.keys()].slice(0, 20),
+    typeNames: [...calc.definitions.keys()].slice(0, 20),
     clauseNames: [...calc.clauses.keys()].slice(0, 20),
     ruleNames: calc.forwardRules.slice(0, 20).map(r => r.name)
   }, null, 2));

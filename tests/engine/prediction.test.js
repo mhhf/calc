@@ -88,7 +88,7 @@ describe('fingerprint prediction (Opt_H)', { timeout: 30000 }, () => {
       const state = mde.decomposeQuery(calc.queries.get('symex'));
       const opts = {
         maxDepth: 2000,
-        calc: { clauses: calc.clauses, types: calc.types },
+        calc: { clauses: calc.clauses, definitions: calc.definitions },
         dangerouslyUseFFI: true
       };
 
@@ -120,7 +120,7 @@ describe('fingerprint prediction (Opt_H)', { timeout: 30000 }, () => {
       treeMemo = explore(state, calc.forwardRules, {
         maxDepth: 500,
         structuralMemo: true,
-        calc: { clauses: calc.clauses, types: calc.types },
+        calc: { clauses: calc.clauses, definitions: calc.definitions },
         dangerouslyUseFFI: true
       });
     });

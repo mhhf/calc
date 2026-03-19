@@ -206,7 +206,7 @@ describe('arrlit - Stage 1: Store Infrastructure', () => {
   });
 });
 
-describe('arrlit - Stage 2: Ephemeral Expansion', () => {
+describe('arrlit - Stage 2: Equational Normalization', () => {
   beforeEach(() => Store.clear());
 
   describe('match (one-way)', () => {

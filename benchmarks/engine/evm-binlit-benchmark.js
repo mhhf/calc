@@ -39,7 +39,7 @@ async function main() {
     path.join(__dirname, '../../calculus/ill/programs/evm.ill')
   );
 
-  const backwardIndex = prove.buildIndex(calc.clauses, calc.types);
+  const backwardIndex = prove.buildIndex(calc.clauses, calc.definitions);
 
   // Test cases with different bit sizes
   const testCases = [
@@ -172,7 +172,7 @@ async function main() {
       const state = forward.createState({ ...linearState }, {});
       forward.run(state, calc.forwardRules, {
         maxSteps: 1,
-        calc: { clauses: calc.clauses, types: calc.types, backwardIndex }
+        calc: { clauses: calc.clauses, definitions: calc.definitions, backwardIndex }
       });
     }
 
@@ -185,7 +185,7 @@ async function main() {
       const t0 = performance.now();
       forward.run(state, calc.forwardRules, {
         maxSteps: 1,
-        calc: { clauses: calc.clauses, types: calc.types, backwardIndex }
+        calc: { clauses: calc.clauses, definitions: calc.definitions, backwardIndex }
       });
       totalTime += performance.now() - t0;
     }
@@ -221,7 +221,7 @@ async function main() {
 
     // Warmup
     for (let i = 0; i < 10; i++) {
-      prove.prove(goal, calc.clauses, calc.types, { maxDepth: 100, index: backwardIndex });
+      prove.prove(goal, calc.clauses, calc.definitions, { maxDepth: 100, index: backwardIndex });
     }
 
     // Benchmark
@@ -231,7 +231,7 @@ async function main() {
 
     for (let i = 0; i < iterations; i++) {
       const t0 = performance.now();
-      const result = prove.prove(goal, calc.clauses, calc.types, { maxDepth: 100, index: backwardIndex });
+      const result = prove.prove(goal, calc.clauses, calc.definitions, { maxDepth: 100, index: backwardIndex });
       totalTime += performance.now() - t0;
 
       // Verify result

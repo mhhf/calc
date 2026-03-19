@@ -39,7 +39,7 @@ async function main() {
   }
 
   // Build backward index once
-  const backwardIndex = prove.buildIndex(calc.clauses, calc.types);
+  const backwardIndex = prove.buildIndex(calc.clauses, calc.definitions);
 
   const testCases = [
     { name: 'plus 3 2', a: 3, b: 2, expected: 5 },
@@ -58,7 +58,7 @@ async function main() {
 
     // Warmup
     for (let i = 0; i < 10; i++) {
-      prove.prove(goal, calc.clauses, calc.types, { maxDepth: 100, index: backwardIndex });
+      prove.prove(goal, calc.clauses, calc.definitions, { maxDepth: 100, index: backwardIndex });
     }
 
     // Benchmark
@@ -74,7 +74,7 @@ async function main() {
       };
 
       const t0 = performance.now();
-      const result = prove.prove(goal, calc.clauses, calc.types, {
+      const result = prove.prove(goal, calc.clauses, calc.definitions, {
         maxDepth: 100,
         index: backwardIndex
       });
@@ -122,7 +122,7 @@ async function main() {
       const state = forward.createState({ ...linearState }, {});
       forward.run(state, calc.forwardRules, {
         maxSteps: 1,
-        calc: { clauses: calc.clauses, types: calc.types, backwardIndex }
+        calc: { clauses: calc.clauses, definitions: calc.definitions, backwardIndex }
       });
     }
 
@@ -136,7 +136,7 @@ async function main() {
       const t0 = performance.now();
       forward.run(state, calc.forwardRules, {
         maxSteps: 1,
-        calc: { clauses: calc.clauses, types: calc.types, backwardIndex }
+        calc: { clauses: calc.clauses, definitions: calc.definitions, backwardIndex }
       });
       totalTime += performance.now() - t0;
     }
@@ -163,7 +163,7 @@ async function main() {
   const goal = await mde.parseExpr(goalStr);
 
   // Profile with trace
-  const result = prove.prove(goal, calc.clauses, calc.types, {
+  const result = prove.prove(goal, calc.clauses, calc.definitions, {
     maxDepth: 100,
     index: backwardIndex,
     trace: true

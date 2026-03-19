@@ -24,7 +24,7 @@ describe('Solc multisig explore', { timeout: 30000 }, () => {
 
     tree = explore(state, calc.forwardRules, {
       maxDepth: 2000,
-      calc: { clauses: calc.clauses, types: calc.types },
+      calc: { clauses: calc.clauses, definitions: calc.definitions },
       dangerouslyUseFFI: true // Benchmark test
     });
 
@@ -80,7 +80,7 @@ describe('Solc multisig explore', { timeout: 30000 }, () => {
     const t0 = performance.now();
     explore(state, calc.forwardRules, {
       maxDepth: 2000,
-      calc: { clauses: calc.clauses, types: calc.types },
+      calc: { clauses: calc.clauses, definitions: calc.definitions },
       dangerouslyUseFFI: true
     });
     const dt = performance.now() - t0;
@@ -98,7 +98,7 @@ describe('Solc multisig symbolic (structural memo)', { timeout: 30000 }, () => {
       path.join(__dirname, '../../calculus/ill/programs/multisig_nocall_solc_symbolic.ill')
     );
     const state = mde.decomposeQuery(calc.queries.get('symex'));
-    const opts = { maxDepth: 500, calc: { clauses: calc.clauses, types: calc.types }, dangerouslyUseFFI: true };
+    const opts = { maxDepth: 500, calc: { clauses: calc.clauses, definitions: calc.definitions }, dangerouslyUseFFI: true };
 
     treeFull = explore(state, calc.forwardRules, { ...opts, structuralMemo: false });
     treeMemo = explore(state, calc.forwardRules, { ...opts, structuralMemo: true });
@@ -144,7 +144,7 @@ describe('Solc multisig symbolic (structural memo)', { timeout: 30000 }, () => {
     explore(state, calc.forwardRules, {
       maxDepth: 500,
       structuralMemo: true,
-      calc: { clauses: calc.clauses, types: calc.types },
+      calc: { clauses: calc.clauses, definitions: calc.definitions },
       dangerouslyUseFFI: true
     });
     const dt = performance.now() - t0;

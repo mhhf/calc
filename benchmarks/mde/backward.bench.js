@@ -106,12 +106,12 @@ async function runBenchmarks(opts = {}) {
 
   // Load calculus
   const calc = await mde.load(path.join(__dirname, '../../calculus/ill/programs/bin.ill'));
-  const idx = prove.buildIndex(calc.clauses, calc.types);
+  const idx = prove.buildIndex(calc.clauses, calc.definitions);
 
   console.log('='.repeat(70));
   console.log('MDE BACKWARD CHAINING BENCHMARK');
   console.log('='.repeat(70));
-  console.log(`Clauses: ${calc.clauses.size}, Types: ${calc.types.size}`);
+  console.log(`Clauses: ${calc.clauses.size}, Types: ${calc.definitions.size}`);
   console.log(`Iterations: ${iterations}, Warmup: ${warmup}`);
   console.log(`Categories: ${categories.join(', ')}\n`);
 
@@ -131,7 +131,7 @@ async function runBenchmarks(opts = {}) {
 
       // Warmup
       for (let i = 0; i < warmup; i++) {
-        prove.prove(goal, calc.clauses, calc.types, { maxDepth: 200, index: idx });
+        prove.prove(goal, calc.clauses, calc.definitions, { maxDepth: 200, index: idx });
       }
 
       // Force GC if available
@@ -143,7 +143,7 @@ async function runBenchmarks(opts = {}) {
 
       for (let i = 0; i < iterations; i++) {
         const start = performance.now();
-        lastResult = prove.prove(goal, calc.clauses, calc.types, { maxDepth: 200, index: idx });
+        lastResult = prove.prove(goal, calc.clauses, calc.definitions, { maxDepth: 200, index: idx });
         times.push(performance.now() - start);
       }
 
@@ -198,7 +198,7 @@ async function profileBenchmark(query, desc, opts = {}) {
   const { iterations = 10 } = opts;
 
   const calc = await mde.load(path.join(__dirname, '../../calculus/ill/programs/bin.ill'));
-  const idx = prove.buildIndex(calc.clauses, calc.types);
+  const idx = prove.buildIndex(calc.clauses, calc.definitions);
   const goal = await mde.parseExpr(query);
 
   console.log('='.repeat(70));
@@ -216,7 +216,7 @@ async function profileBenchmark(query, desc, opts = {}) {
   };
 
   // Run with trace to count operations
-  const traceResult = prove.prove(goal, calc.clauses, calc.types, {
+  const traceResult = prove.prove(goal, calc.clauses, calc.definitions, {
     maxDepth: 200,
     index: idx,
     trace: true,
@@ -243,7 +243,7 @@ async function profileBenchmark(query, desc, opts = {}) {
   const times = [];
   for (let i = 0; i < iterations; i++) {
     const start = performance.now();
-    prove.prove(goal, calc.clauses, calc.types, { maxDepth: 200, index: idx });
+    prove.prove(goal, calc.clauses, calc.definitions, { maxDepth: 200, index: idx });
     times.push(performance.now() - start);
   }
 

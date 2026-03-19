@@ -46,7 +46,7 @@ async function main() {
   const result = await mde.precompile(files, outputPath);
   const elapsed = performance.now() - t0;
 
-  console.log(`  Types:        ${result.types.size}`);
+  console.log(`  Types:        ${result.definitions.size}`);
   console.log(`  Clauses:      ${result.clauses.size}`);
   console.log(`  Forward rules: ${result.forwardRules.length}`);
   console.log(`  Store entries: ${mde.Store.size()}`);

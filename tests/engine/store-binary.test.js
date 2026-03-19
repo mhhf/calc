@@ -288,12 +288,12 @@ describe('Store Binary Format', () => {
         Store.clear();
         const calc = mde.loadPrecompiled(tmpFile);
 
-        assert.strictEqual(calc.types.size > 0, true);
+        assert.strictEqual(calc.definitions.size > 0, true);
         assert.strictEqual(calc.clauses.size > 0, true);
 
         // Verify a known type exists
-        assert.ok(calc.types.has('nat'));
-        const natHash = calc.types.get('nat');
+        assert.ok(calc.definitions.has('nat'));
+        const natHash = calc.definitions.get('nat');
         assert.ok(Store.isTerm(natHash));
       } finally {
         try { fs.unlinkSync(tmpFile); } catch {}
@@ -308,7 +308,7 @@ describe('Store Binary Format', () => {
         // Load from source (no caching)
         Store.clear();
         const calcTS = mde.load(binPath, { cache: false });
-        const tsTypes = new Map(calcTS.types);
+        const tsTypes = new Map(calcTS.definitions);
 
         // Precompile and reload
         Store.clear();
@@ -317,7 +317,7 @@ describe('Store Binary Format', () => {
         const calcBin = mde.loadPrecompiled(tmpFile);
 
         // Same type count
-        assert.strictEqual(calcBin.types.size, tsTypes.size);
+        assert.strictEqual(calcBin.definitions.size, tsTypes.size);
         // Same clause count
         assert.strictEqual(calcBin.clauses.size, calcTS.clauses.size);
       } finally {
@@ -338,7 +338,7 @@ describe('Store Binary Format', () => {
         const stateSrc = mde.decomposeQuery(calcSrc.queries.get('symex'));
         const treeSrc = explore(stateSrc, calcSrc.forwardRules, {
           maxDepth: 200,
-          calc: { clauses: calcSrc.clauses, types: calcSrc.types },
+          calc: { clauses: calcSrc.clauses, definitions: calcSrc.definitions },
           dangerouslyUseFFI: true
         });
 
@@ -350,7 +350,7 @@ describe('Store Binary Format', () => {
         const stateBin = mde.decomposeQuery(calcBin.queries.get('symex'));
         const treeBin = explore(stateBin, calcBin.forwardRules, {
           maxDepth: 200,
-          calc: { clauses: calcBin.clauses, types: calcBin.types },
+          calc: { clauses: calcBin.clauses, definitions: calcBin.definitions },
           dangerouslyUseFFI: true
         });
 
@@ -381,7 +381,7 @@ describe('Store Binary Format', () => {
 
       // First load: miss, writes cache
       const calc1 = mde.load(binPath, { cacheDir: tmpDir });
-      const typeCount = calc1.types.size;
+      const typeCount = calc1.definitions.size;
       assert.ok(typeCount > 0);
       const cacheFiles = fs.readdirSync(tmpDir).filter(f => f.endsWith('.bin'));
       assert.ok(cacheFiles.length > 0, 'Cache file(s) should be written');
@@ -389,8 +389,8 @@ describe('Store Binary Format', () => {
       // Second load: full cache hit
       Store.clear();
       const calc2 = mde.load(binPath, { cacheDir: tmpDir });
-      assert.strictEqual(calc2.types.size, typeCount);
-      assert.ok(calc2.types.has('nat'));
+      assert.strictEqual(calc2.definitions.size, typeCount);
+      assert.ok(calc2.definitions.has('nat'));
     });
 
     it('invalidates cache when source changes', () => {
@@ -399,8 +399,8 @@ describe('Store Binary Format', () => {
 
       // First load: writes cache
       const calc1 = mde.load(tmpFile, { cacheDir: tmpDir });
-      assert.strictEqual(calc1.types.size, 1);
-      assert.ok(calc1.types.has('mytype'));
+      assert.strictEqual(calc1.definitions.size, 1);
+      assert.ok(calc1.definitions.has('mytype'));
 
       // Modify source
       fs.writeFileSync(tmpFile, 'mytype: type.\nmytype2: type.');
@@ -408,8 +408,8 @@ describe('Store Binary Format', () => {
       // Second load: hash changed → cache miss → new cache
       Store.clear();
       const calc2 = mde.load(tmpFile, { cacheDir: tmpDir });
-      assert.strictEqual(calc2.types.size, 2);
-      assert.ok(calc2.types.has('mytype2'));
+      assert.strictEqual(calc2.definitions.size, 2);
+      assert.ok(calc2.definitions.has('mytype2'));
     });
 
     it('cache:imports restores SDK and parses top file fresh', () => {
@@ -420,8 +420,8 @@ describe('Store Binary Format', () => {
 
       // First load: miss, writes imports cache
       const calc1 = mde.load(mainFile, { cache: 'imports', cacheDir: tmpDir });
-      assert.ok(calc1.types.has('nat'));
-      assert.ok(calc1.types.has('myfact'));
+      assert.ok(calc1.definitions.has('nat'));
+      assert.ok(calc1.definitions.has('myfact'));
 
       // Modify top file only
       fs.writeFileSync(mainFile, '#import(lib.ill)\nmyfact2: nat.');
@@ -429,9 +429,9 @@ describe('Store Binary Format', () => {
       // Second load: imports cache hit, top file parsed fresh
       Store.clear();
       const calc2 = mde.load(mainFile, { cache: 'imports', cacheDir: tmpDir });
-      assert.ok(calc2.types.has('nat'), 'SDK types still present');
-      assert.ok(calc2.types.has('myfact2'), 'New top-file type present');
-      assert.ok(!calc2.types.has('myfact'), 'Old top-file type gone');
+      assert.ok(calc2.definitions.has('nat'), 'SDK types still present');
+      assert.ok(calc2.definitions.has('myfact2'), 'New top-file type present');
+      assert.ok(!calc2.definitions.has('myfact'), 'Old top-file type gone');
     });
 
     it('cache:false writes no cache files', () => {
@@ -454,10 +454,10 @@ describe('Store Binary Format', () => {
       Store.clear();
       const calcCached = mde.load(binPath, { cacheDir: tmpDir });
 
-      assert.strictEqual(calcCached.types.size, calcFresh.types.size);
+      assert.strictEqual(calcCached.definitions.size, calcFresh.definitions.size);
       assert.strictEqual(calcCached.clauses.size, calcFresh.clauses.size);
-      for (const [name] of calcFresh.types) {
-        assert.ok(calcCached.types.has(name), `Missing type: ${name}`);
+      for (const [name] of calcFresh.definitions) {
+        assert.ok(calcCached.definitions.has(name), `Missing type: ${name}`);
       }
     });
 
@@ -466,7 +466,7 @@ describe('Store Binary Format', () => {
 
       // First load: writes cache
       const calc1 = mde.load(binPath, { cacheDir: tmpDir });
-      const typeCount = calc1.types.size;
+      const typeCount = calc1.definitions.size;
 
       // Corrupt all cache files
       for (const f of fs.readdirSync(tmpDir).filter(f => f.endsWith('.bin'))) {
@@ -479,7 +479,7 @@ describe('Store Binary Format', () => {
       // Second load: corrupted → fallback to fresh parse
       Store.clear();
       const calc2 = mde.load(binPath, { cacheDir: tmpDir });
-      assert.strictEqual(calc2.types.size, typeCount);
+      assert.strictEqual(calc2.definitions.size, typeCount);
     });
 
     it('file with no imports uses single-tier cache', () => {
@@ -488,8 +488,8 @@ describe('Store Binary Format', () => {
 
       // First load: writes one cache file (full only)
       const calc = mde.load(tmpFile, { cacheDir: tmpDir });
-      assert.ok(calc.types.has('mytype'));
-      assert.ok(calc.types.has('val'));
+      assert.ok(calc.definitions.has('mytype'));
+      assert.ok(calc.definitions.has('val'));
 
       const cacheFiles = fs.readdirSync(tmpDir).filter(f => f.endsWith('.bin'));
       assert.strictEqual(cacheFiles.length, 1, 'Only full-tier cache file');
@@ -497,8 +497,8 @@ describe('Store Binary Format', () => {
       // Second load: hits full cache
       Store.clear();
       const calc2 = mde.load(tmpFile, { cacheDir: tmpDir });
-      assert.ok(calc2.types.has('mytype'));
-      assert.ok(calc2.types.has('val'));
+      assert.ok(calc2.definitions.has('mytype'));
+      assert.ok(calc2.definitions.has('val'));
     });
 
     it('cache:imports with real EVM files', () => {
@@ -506,7 +506,7 @@ describe('Store Binary Format', () => {
 
       // First load: miss, writes imports cache
       const calc1 = mde.load(msPath, { cache: 'imports', cacheDir: tmpDir });
-      assert.ok(calc1.types.has('nat'), 'has SDK type');
+      assert.ok(calc1.definitions.has('nat'), 'has SDK type');
       assert.ok(calc1.queries.has('symex'), 'has symex query');
 
       // Only imports cache (not full)
@@ -516,9 +516,9 @@ describe('Store Binary Format', () => {
       // Second load: imports cache hit, top file parsed fresh
       Store.clear();
       const calc2 = mde.load(msPath, { cache: 'imports', cacheDir: tmpDir });
-      assert.ok(calc2.types.has('nat'));
+      assert.ok(calc2.definitions.has('nat'));
       assert.ok(calc2.queries.has('symex'));
-      assert.strictEqual(calc2.types.size, calc1.types.size);
+      assert.strictEqual(calc2.definitions.size, calc1.definitions.size);
     });
 
     it('auto-cached explore produces same tree as fresh', () => {
@@ -532,7 +532,7 @@ describe('Store Binary Format', () => {
       const stateFresh = mde.decomposeQuery(calcFresh.queries.get('symex'));
       const treeFresh = explore(stateFresh, calcFresh.forwardRules, {
         maxDepth: 200,
-        calc: { clauses: calcFresh.clauses, types: calcFresh.types },
+        calc: { clauses: calcFresh.clauses, definitions: calcFresh.definitions },
         dangerouslyUseFFI: true
       });
 
@@ -542,7 +542,7 @@ describe('Store Binary Format', () => {
       const stateCached = mde.decomposeQuery(calcCached.queries.get('symex'));
       const treeCached = explore(stateCached, calcCached.forwardRules, {
         maxDepth: 200,
-        calc: { clauses: calcCached.clauses, types: calcCached.types },
+        calc: { clauses: calcCached.clauses, definitions: calcCached.definitions },
         dangerouslyUseFFI: true
       });
 
@@ -562,7 +562,7 @@ describe('Store Binary Format', () => {
       // Second load: full cache hit
       Store.clear();
       const calc2 = mde.load(msPath, { cacheDir: tmpDir });
-      assert.strictEqual(calc2.types.size, calc1.types.size);
+      assert.strictEqual(calc2.definitions.size, calc1.definitions.size);
       assert.strictEqual(calc2.clauses.size, calc1.clauses.size);
     });
   });

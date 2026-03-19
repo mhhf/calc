@@ -78,7 +78,7 @@ function fmt(h) {
   const result = forward.run(state, calc.forwardRules, {
     maxSteps: 1,
     trace: true,
-    calc: { clauses: calc.clauses, types: calc.types }
+    calc: { clauses: calc.clauses, definitions: calc.definitions }
   });
 
   console.log(`Executed: ${result.trace.join(', ')}`);

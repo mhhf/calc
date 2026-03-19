@@ -71,10 +71,10 @@ async function main() {
 
   // Build backward prover index once
   const { buildIndex: buildBackwardIndex } = require('../../lib/engine/prove');
-  const backwardIndex = buildBackwardIndex(calc.clauses, calc.types);
+  const backwardIndex = buildBackwardIndex(calc.clauses, calc.definitions);
   const calcWithIndex = {
     clauses: calc.clauses,
-    types: calc.types,
+    definitions: calc.definitions,
     backwardIndex
   };
 

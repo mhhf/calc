@@ -81,7 +81,7 @@ describe('ZK symbolic solc: 31-path witness generation', { timeout: 1800000 }, (
       maxDepth: 500,
       evidence: true,
       dangerouslyUseFFI: true,
-      calc: { clauses: engineCalc.clauses, types: engineCalc.types },
+      calc: { clauses: engineCalc.clauses, definitions: engineCalc.definitions },
       // FFI is safe here: custom chips discard clause proof subtrees anyway.
       // fact_axiom intercepts ALL copy(loli(_, monad(_))) — the subtree content
       // (clause proofs vs ffi stubs) is never walked.

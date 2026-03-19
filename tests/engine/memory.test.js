@@ -138,7 +138,7 @@ describe('Memory Backward Clauses', { timeout: 30000 }, () => {
   /** Prove a goal via backward clauses only, return result */
   async function proveNoFFI(expr, opts = {}) {
     const goal = await mde.parseExpr(expr);
-    return backward.prove(goal, calc.clauses, calc.types, {
+    return backward.prove(goal, calc.clauses, calc.definitions, {
       useFFI: false,
       maxDepth: opts.maxDepth || 100,
       trace: opts.trace || false,
@@ -149,7 +149,7 @@ describe('Memory Backward Clauses', { timeout: 30000 }, () => {
   async function proveAndExtract(expr, varName = 'V') {
     const goal = await mde.parseExpr(expr);
     const vHash = Store.put('metavar', ['' + varName]);
-    const result = backward.prove(goal, calc.clauses, calc.types, {
+    const result = backward.prove(goal, calc.clauses, calc.definitions, {
       useFFI: false,
       maxDepth: 100,
     });
@@ -292,7 +292,7 @@ describe('EVM Memory Integration', { timeout: 30000 }, () => {
 
       const tree = explore(state, calc.forwardRules, {
         maxDepth: 100,
-        calc: { clauses: calc.clauses, types: calc.types },
+        calc: { clauses: calc.clauses, definitions: calc.definitions },
         dangerouslyUseFFI: true // Testing EVM execution, not adversarial soundness
       });
 
@@ -337,7 +337,7 @@ describe('EVM Memory Integration', { timeout: 30000 }, () => {
 
       const tree = explore(state, calc.forwardRules, {
         maxDepth: 100,
-        calc: { clauses: calc.clauses, types: calc.types },
+        calc: { clauses: calc.clauses, definitions: calc.definitions },
         dangerouslyUseFFI: true // Testing EVM execution, not adversarial soundness
       });
 
@@ -384,7 +384,7 @@ describe('EVM Memory Integration', { timeout: 30000 }, () => {
 
       const tree = explore(state, calc.forwardRules, {
         maxDepth: 200,
-        calc: { clauses: calc.clauses, types: calc.types },
+        calc: { clauses: calc.clauses, definitions: calc.definitions },
         dangerouslyUseFFI: true // Testing EVM execution, not adversarial soundness
       });
 
@@ -429,7 +429,7 @@ describe('EVM Memory Integration', { timeout: 30000 }, () => {
 
       const tree = explore(state, calc.forwardRules, {
         maxDepth: 50,
-        calc: { clauses: calc.clauses, types: calc.types },
+        calc: { clauses: calc.clauses, definitions: calc.definitions },
         dangerouslyUseFFI: true // Testing EVM execution, not adversarial soundness
       });
 
@@ -482,7 +482,7 @@ describe('EVM Memory Integration', { timeout: 30000 }, () => {
 
       const tree = explore(state, calc.forwardRules, {
         maxDepth: 100,
-        calc: { clauses: calc.clauses, types: calc.types },
+        calc: { clauses: calc.clauses, definitions: calc.definitions },
         dangerouslyUseFFI: true // Testing EVM execution, not adversarial soundness
       });
 
@@ -540,7 +540,7 @@ describe('EVM Memory Integration', { timeout: 30000 }, () => {
 
       tree = explore(state, msCalc.forwardRules, {
         maxDepth: 200,
-        calc: { clauses: msCalc.clauses, types: msCalc.types },
+        calc: { clauses: msCalc.clauses, definitions: msCalc.definitions },
         dangerouslyUseFFI: true
       });
 
@@ -579,7 +579,7 @@ describe('EVM Memory Integration', { timeout: 30000 }, () => {
 
       tree = explore(state, msCalc.forwardRules, {
         maxDepth: 300,
-        calc: { clauses: msCalc.clauses, types: msCalc.types },
+        calc: { clauses: msCalc.clauses, definitions: msCalc.definitions },
         dangerouslyUseFFI: true
       });
 

@@ -86,7 +86,7 @@ async function main() {
     // Find matching rule
     const match = forward.findMatch(currentState, calc.forwardRules, {
       clauses: calc.clauses,
-      types: calc.types
+      definitions: calc.definitions
     });
 
     const t2 = performance.now();

@@ -16,15 +16,15 @@ describe('MDE End-to-End', { timeout: 10000 }, () => {
     });
 
     it('loads types', () => {
-      assert(calc.types.has('bin'), 'Should have bin type');
-      assert(calc.types.has('nat'), 'Should have nat type');
+      assert(calc.definitions.has('bin'), 'Should have bin type');
+      assert(calc.definitions.has('nat'), 'Should have nat type');
     });
 
     it('loads clauses', () => {
       // plus/z1 has no premises, so it's a type/axiom
       // plus/s1 has premises, so it's a clause
       assert(calc.clauses.has('plus/s1'), 'Should have plus/s1');
-      assert(calc.types.has('plus/z1'), 'plus/z1 is an axiom (no premises)');
+      assert(calc.definitions.has('plus/z1'), 'plus/z1 is an axiom (no premises)');
     });
 
     it('has no forward rules', () => {
@@ -40,9 +40,9 @@ describe('MDE End-to-End', { timeout: 10000 }, () => {
     });
 
     it('loads types', () => {
-      assert(calc.types.has('pc'), 'Should have pc type');
-      assert(calc.types.has('stack'), 'Should have stack type');
-      assert(calc.types.has('bytecode'), 'Should have bytecode type');
+      assert(calc.definitions.has('pc'), 'Should have pc type');
+      assert(calc.definitions.has('stack'), 'Should have stack type');
+      assert(calc.definitions.has('bytecode'), 'Should have bytecode type');
     });
 
     it('loads forward rules', () => {
@@ -75,7 +75,7 @@ describe('MDE End-to-End', { timeout: 10000 }, () => {
       const evm = await mde.load(path.join(__dirname, '../../calculus/ill/programs/evm.ill'));
 
       // Store is shared - interning works across files
-      const binType = bin.types.get('bin');
+      const binType = bin.definitions.get('bin');
       const binFromEvm = await mde.parseExpr('bin');
 
       assert(Store.get(binType), 'bin from bin.mde should be in store');

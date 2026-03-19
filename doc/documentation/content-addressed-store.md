@@ -177,7 +177,7 @@ The `UnionFind` class provides:
 - No occurs check needed
 - O(m) where m = pattern size
 
-### Ephemeral Expansion
+### Equational Normalization
 
 Compact primitives (`binlit`, `strlit`) can be pattern-matched against their structural equivalents without materializing the full tree:
 
@@ -299,7 +299,7 @@ Structure: `{ [hash: number]: count: number }`
 lib/kernel/
   store.js        — Store: put, get, tag, children, eq
   substitute.js   — sub, apply (simultaneous), occurs
-  unify.js        — unify (union-find), match, ephemeral expansion
+  unify.js        — unify (union-find), match, equational normalization
   ast.js          — freeVars, mapChildren, fold, isAtomic
   ast-hash.js     — hashAST (identity function, backwards compat)
   sequent.js      — sequent construction, hashing, operations

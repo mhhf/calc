@@ -40,7 +40,7 @@ const path = require('path');
     const state = forward.createState({ ...linearState }, {});
     forward.run(state, calc.forwardRules, {
       maxSteps: 1,
-      calc: { clauses: calc.clauses, types: calc.types }
+      calc: { clauses: calc.clauses, definitions: calc.definitions }
     });
   }
 
@@ -53,7 +53,7 @@ const path = require('path');
     const start = performance.now();
     forward.run(state, calc.forwardRules, {
       maxSteps: 1,
-      calc: { clauses: calc.clauses, types: calc.types }
+      calc: { clauses: calc.clauses, definitions: calc.definitions }
     });
     fullTotal += performance.now() - start;
   }
@@ -107,7 +107,7 @@ const path = require('path');
   let incTotal = 0;
   for (let i = 0; i < iterations; i++) {
     const start = performance.now();
-    prove.prove(incGoal, calc.clauses, calc.types, { maxDepth: 50 });
+    prove.prove(incGoal, calc.clauses, calc.definitions, { maxDepth: 50 });
     incTotal += performance.now() - start;
   }
   const incTime = incTotal / iterations;
@@ -115,7 +115,7 @@ const path = require('path');
   let plusTotal = 0;
   for (let i = 0; i < iterations; i++) {
     const start = performance.now();
-    prove.prove(plusGoal, calc.clauses, calc.types, { maxDepth: 50 });
+    prove.prove(plusGoal, calc.clauses, calc.definitions, { maxDepth: 50 });
     plusTotal += performance.now() - start;
   }
   const plusTime = plusTotal / iterations;
@@ -153,7 +153,7 @@ const path = require('path');
   cache.clear();
   for (let i = 0; i < iterations; i++) {
     const start = performance.now();
-    memoizedProve(plusGoal, calc.clauses, calc.types, { maxDepth: 50 });
+    memoizedProve(plusGoal, calc.clauses, calc.definitions, { maxDepth: 50 });
     memoTotal += performance.now() - start;
   }
   const memoTime = memoTotal / iterations;

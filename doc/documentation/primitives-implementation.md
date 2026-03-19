@@ -233,7 +233,7 @@ function hashToStr(h) {
 
 ```javascript
 /**
- * Unify constructor pattern with binlit term (ephemeral expansion)
+ * Unify constructor pattern with binlit term (equational normalization)
  *
  * binlit(10n) vs (o X) → X = binlit(5n)
  * binlit(0n) vs e → success
@@ -283,7 +283,7 @@ function unifyBinlit(pattern, term, G, theta) {
 }
 
 /**
- * Unify constructor pattern with strlit term (ephemeral expansion)
+ * Unify constructor pattern with strlit term (equational normalization)
  *
  * strlit("hello") vs cons(H, T) → H = charlit('h'), T = strlit("ello")
  * strlit("") vs nil → success
@@ -329,7 +329,7 @@ function unifyStrlit(pattern, term, G, theta) {
 
 // In main unify loop, add cases:
 
-// strlit: equality or ephemeral pattern matching
+// strlit: equality or equational normalization
 if (n0.tag === 'strlit' || n1.tag === 'strlit') {
   if (n0.tag === 'strlit' && n1.tag === 'strlit') {
     if (n0.children[0] !== n1.children[0]) return null;
@@ -340,7 +340,7 @@ if (n0.tag === 'strlit' || n1.tag === 'strlit') {
   continue;
 }
 
-// binlit: equality or ephemeral pattern matching
+// binlit: equality or equational normalization
 if (n0.tag === 'binlit' || n1.tag === 'binlit') {
   if (n0.tag === 'binlit' && n1.tag === 'binlit') {
     if (n0.children[0] !== n1.children[0]) return null;

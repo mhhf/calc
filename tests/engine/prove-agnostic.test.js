@@ -3,7 +3,7 @@
  *
  * Exercises the slot-indexed theta + trail backtracking prover
  * using synthetic clauses with no ILL-specific connectives.
- * Validates: matching, backtracking, recursion, ephemeral expansion,
+ * Validates: matching, backtracking, recursion, equational normalization,
  * metavar binding, multi-premise clauses, and proof term output.
  */
 
@@ -261,7 +261,7 @@ describe('Backward Prover — Calculus Agnostic', () => {
     });
   });
 
-  describe('Ephemeral expansion: binlit ↔ o/i/e', () => {
+  describe('Equational normalization: binlit ↔ o/i/e', () => {
     // Uses binary structural patterns with binlit compact form
     // inc(e, i(e)).  inc(i(X), o(s(X))). inc(o(X), i(X)).
     // (simplified: inc(0, 1). inc via structural binary)
@@ -272,7 +272,7 @@ describe('Backward Prover — Calculus Agnostic', () => {
         // plus_z: plus(e, Y, Y). — zero + Y = Y
         ['plus/z', pred('plus', e, metavar('Y'), metavar('Y'))],
       ];
-      // plus(0, 5, ?Z) should match via ephemeral expansion (0 = e)
+      // plus(0, 5, ?Z) should match via equational normalization (0 = e)
       const r = proveGoal(
         pred('plus', Store.put1('binlit', 0n), Store.put1('binlit', 5n), metavar('Z')),
         SPEC
@@ -282,7 +282,7 @@ describe('Backward Prover — Calculus Agnostic', () => {
     });
   });
 
-  describe('Ephemeral expansion: arrlit ↔ acons/ae', () => {
+  describe('Equational normalization: arrlit ↔ acons/ae', () => {
     it('matches arrlit against acons pattern', () => {
       const ae = atom('ae');
       const SPEC = [

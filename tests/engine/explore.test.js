@@ -31,7 +31,7 @@ describe('explore', { timeout: 10000 }, () => {
 
       const tree = explore(state, calc.forwardRules, {
         maxDepth: 10,
-        calc: { clauses: calc.clauses, types: calc.types }
+        calc: { clauses: calc.clauses, definitions: calc.definitions }
       });
 
       assert.strictEqual(tree.type, 'leaf');
@@ -56,7 +56,7 @@ describe('explore', { timeout: 10000 }, () => {
 
       const tree = explore(state, calc.forwardRules, {
         maxDepth: 5,
-        calc: { clauses: calc.clauses, types: calc.types }
+        calc: { clauses: calc.clauses, definitions: calc.definitions }
       });
 
       if (tree.type === 'branch') {
@@ -79,7 +79,7 @@ describe('explore', { timeout: 10000 }, () => {
 
       const tree = explore(state, calc.forwardRules, {
         maxDepth: 3,
-        calc: { clauses: calc.clauses, types: calc.types }
+        calc: { clauses: calc.clauses, definitions: calc.definitions }
       });
 
       assert(maxDepth(tree) <= 3);
@@ -231,7 +231,7 @@ describe('explore', { timeout: 10000 }, () => {
 
       const tree = explore(state, calc.forwardRules, {
         maxDepth: 5,
-        calc: { clauses: calc.clauses, types: calc.types }
+        calc: { clauses: calc.clauses, definitions: calc.definitions }
       });
 
       // Root should branch — the 'choose' rule produces left & right
@@ -258,7 +258,7 @@ describe('explore', { timeout: 10000 }, () => {
 
       const tree = explore(state, calc.forwardRules, {
         maxDepth: 5,
-        calc: { clauses: calc.clauses, types: calc.types }
+        calc: { clauses: calc.clauses, definitions: calc.definitions }
       });
 
       assert.strictEqual(tree.type, 'branch');

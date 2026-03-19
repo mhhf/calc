@@ -52,7 +52,7 @@ if (files.length === 0) {
   }
 
   const state = mde.decomposeQuery(query);
-  const calcCtx = { clauses: calc.clauses, types: calc.types };
+  const calcCtx = { clauses: calc.clauses, definitions: calc.definitions };
 
   const t0 = performance.now();
   const tree = explore(state, calc.forwardRules, { maxDepth: opts.depth, calc: calcCtx });

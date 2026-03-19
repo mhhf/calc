@@ -208,7 +208,7 @@ async function runBenchmark(doProfile) {
   const { calc, state } = await setupState();
   const calcCtx = {
     clauses: calc.clauses,
-    types: calc.types,
+    definitions: calc.definitions,
   };
 
   const linearCount = Object.keys(state.linear).length;

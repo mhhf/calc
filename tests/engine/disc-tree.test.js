@@ -310,7 +310,7 @@ describe('disc-tree', () => {
       // disc-tree strategy (default via detectStrategy)
       const tree = explore(state, calc.forwardRules, {
         maxDepth: 200,
-        calc: { clauses: calc.clauses, types: calc.types },
+        calc: { clauses: calc.clauses, definitions: calc.definitions },
         dangerouslyUseFFI: true
       });
 

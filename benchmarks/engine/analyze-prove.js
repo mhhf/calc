@@ -209,7 +209,7 @@ function instrumentedProve(goal, clauses, types, opts = {}) {
 
 async function main() {
   const calc = await mde.load([path.join(__dirname, '../../calculus/ill/programs/bin.ill')]);
-  const idx = buildIndex(calc.clauses, calc.types);
+  const idx = buildIndex(calc.clauses, calc.definitions);
 
   // Reset
   Object.keys(opStats).forEach(k => {
@@ -223,7 +223,7 @@ async function main() {
   console.log('Proving: plus 20 118 X');
   console.log('');
 
-  const result = instrumentedProve(goal, calc.clauses, calc.types, { index: idx, maxDepth: 100 });
+  const result = instrumentedProve(goal, calc.clauses, calc.definitions, { index: idx, maxDepth: 100 });
 
   console.log('Success:', result.success);
   console.log('');

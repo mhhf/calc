@@ -163,7 +163,7 @@ describe('Convert Functions', { timeout: 10000 }, () => {
   });
 });
 
-describe('Ephemeral Unification', { timeout: 10000 }, () => {
+describe('Equational Normalization in Unification', { timeout: 10000 }, () => {
   beforeEach(() => {
     Store.clear();
   });

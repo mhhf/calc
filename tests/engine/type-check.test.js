@@ -364,7 +364,7 @@ describe('checkAll with real ILL', { timeout: 15000 }, () => {
     const mde = require('../../lib/engine');
     Store.clear();
     const calc = mde.load('calculus/ill/programs/multisig.ill', { cache: false });
-    const result = checkAll(calc.types, calc.forwardRules, calc.clauses);
+    const result = checkAll(calc.definitions, calc.forwardRules, calc.clauses);
     if (result.errors.length > 0) {
       console.error('Sort check errors:', result.errors.slice(0, 10));
     }

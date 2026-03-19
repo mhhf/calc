@@ -407,7 +407,7 @@ async function runProofBenchmarks(implementations) {
 
   // Load calc
   const calc = await mde.load([path.join(__dirname, '../../calculus/ill/programs/bin.ill')]);
-  const idx = buildIndex(calc.clauses, calc.types);
+  const idx = buildIndex(calc.clauses, calc.definitions);
 
   const proofCases = [
     { expr: 'plus (i (i e)) (i e) X', desc: 'plus 3 1 X (small)' },
@@ -424,7 +424,7 @@ async function runProofBenchmarks(implementations) {
       const iters = pc.desc.includes('small') ? ITERATIONS.small : ITERATIONS.large;
       const r = benchmark(
         `proof/${pc.desc}/${implName}`,
-        () => impl.prove(goal, calc.clauses, calc.types, { index: idx }),
+        () => impl.prove(goal, calc.clauses, calc.definitions, { index: idx }),
         iters
       );
       results.push({ case: pc.desc, impl: implName, ...r });

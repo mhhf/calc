@@ -275,7 +275,7 @@ describe('3b.5: Clause Proof Terms', () => {
       const clauses = new Map([['pq_clause', { hash: q, premises: [p] }]]);
       const backwardIndex = backward.buildIndex(clauses, types);
 
-      const calc = { clauses, types, backwardIndex };
+      const calc = { clauses, definitions: types, backwardIndex };
       const state = forward.createState({}, {});
 
       const theta = new Array(1);
@@ -301,7 +301,7 @@ describe('3b.5: Clause Proof Terms', () => {
       const types = new Map([['p_type', p]]);
       const clauses = new Map([['pq_clause', { hash: q, premises: [p] }]]);
       const backwardIndex = backward.buildIndex(clauses, types);
-      const calc = { clauses, types, backwardIndex };
+      const calc = { clauses, definitions: types, backwardIndex };
       const state = forward.createState({}, {});
 
       const theta = new Array(1);

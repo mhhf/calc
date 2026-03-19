@@ -1286,7 +1286,7 @@ describe('Rule Analysis', { timeout: 10000 }, () => {
 
       const initState = mde.decomposeQuery(calc.queries.get('symex'));
 
-      const calcCtx = { types: calc.types, clauses: calc.clauses };
+      const calcCtx = { definitions: calc.definitions, clauses: calc.clauses };
 
       const r1 = forward.run(
         { linear: { ...initState.linear }, persistent: { ...initState.persistent } },

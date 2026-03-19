@@ -44,7 +44,7 @@ describe('FFI Integration', () => {
     it('proves plus 0 0 C', async () => {
       const goal = await mde.parseExpr('plus e e C');
 
-      const result = backward.prove(goal, calc.clauses, calc.types, { useFFI: true });
+      const result = backward.prove(goal, calc.clauses, calc.definitions, { useFFI: true });
 
       assert(result.success, 'Should succeed with FFI');
       // Check result value directly
@@ -59,7 +59,7 @@ describe('FFI Integration', () => {
     it('proves plus 3 2 C = 5', async () => {
       const goal = await mde.parseExpr('plus (i (i e)) (o (i e)) C');  // 3 + 2
 
-      const result = backward.prove(goal, calc.clauses, calc.types, { useFFI: true });
+      const result = backward.prove(goal, calc.clauses, calc.definitions, { useFFI: true });
 
       assert(result.success, 'Should succeed with FFI');
       const cHash = result.theta.find(([v]) => {
@@ -73,7 +73,7 @@ describe('FFI Integration', () => {
     it('proves plus 255 1 C = 256', async () => {
       const goal = await mde.parseExpr('plus (i (i (i (i (i (i (i (i e)))))))) (i e) C');
 
-      const result = backward.prove(goal, calc.clauses, calc.types, { useFFI: true });
+      const result = backward.prove(goal, calc.clauses, calc.definitions, { useFFI: true });
 
       assert(result.success, 'Should succeed with FFI');
       const cHash = result.theta.find(([v]) => {
@@ -87,7 +87,7 @@ describe('FFI Integration', () => {
     it('also works without FFI (slower)', async () => {
       const goal = await mde.parseExpr('plus (i (i e)) (o (i e)) C');  // 3 + 2
 
-      const result = backward.prove(goal, calc.clauses, calc.types, { useFFI: false });
+      const result = backward.prove(goal, calc.clauses, calc.definitions, { useFFI: false });
 
       assert(result.success, 'Should succeed without FFI');
 
@@ -111,7 +111,7 @@ describe('FFI Integration', () => {
     it('proves inc 0 C = 1', async () => {
       const goal = await mde.parseExpr('inc e C');
 
-      const result = backward.prove(goal, calc.clauses, calc.types, { useFFI: true });
+      const result = backward.prove(goal, calc.clauses, calc.definitions, { useFFI: true });
 
       assert(result.success);
       const cHash = result.theta.find(([v]) => {
@@ -124,7 +124,7 @@ describe('FFI Integration', () => {
     it('proves inc 255 C = 256', async () => {
       const goal = await mde.parseExpr('inc (i (i (i (i (i (i (i (i e)))))))) C');
 
-      const result = backward.prove(goal, calc.clauses, calc.types, { useFFI: true });
+      const result = backward.prove(goal, calc.clauses, calc.definitions, { useFFI: true });
 
       assert(result.success);
       const cHash = result.theta.find(([v]) => {
@@ -151,7 +151,7 @@ describe('FFI Integration', () => {
       // FFI is skipped but clauses still work
       const goal = await mde.parseExpr('inc e B');  // succ(0) = B
 
-      const result = backward.prove(goal, calc.clauses, calc.types, {
+      const result = backward.prove(goal, calc.clauses, calc.definitions, {
         useFFI: true,
         trace: true
       });
@@ -165,7 +165,7 @@ describe('FFI Integration', () => {
       // Now test with non-ground first arg
       const goal2 = await mde.parseExpr('inc A (i e)');  // succ(A) = 1
 
-      const result2 = backward.prove(goal2, calc.clauses, calc.types, {
+      const result2 = backward.prove(goal2, calc.clauses, calc.definitions, {
         useFFI: true,
         trace: true,
         maxDepth: 5
@@ -187,7 +187,7 @@ describe('FFI Performance', function() {
 
   before(async () => {
     calc = await mde.load([path.join(__dirname, '../../calculus/ill/programs/bin.ill')]);
-    backwardIndex = backward.buildIndex(calc.clauses, calc.types);
+    backwardIndex = backward.buildIndex(calc.clauses, calc.definitions);
   });
 
   it('FFI is faster than clause search for plus 255 1', async () => {
@@ -197,26 +197,26 @@ describe('FFI Performance', function() {
 
     // Warmup
     for (let i = 0; i < 5; i++) {
-      backward.prove(goal, calc.clauses, calc.types, { useFFI: true, index: backwardIndex });
+      backward.prove(goal, calc.clauses, calc.definitions, { useFFI: true, index: backwardIndex });
     }
 
     // Benchmark with FFI
     const startFFI = performance.now();
     for (let i = 0; i < iterations; i++) {
-      const result = backward.prove(goal, calc.clauses, calc.types, { useFFI: true, index: backwardIndex });
+      const result = backward.prove(goal, calc.clauses, calc.definitions, { useFFI: true, index: backwardIndex });
       assert(result.success);
     }
     const ffiTime = (performance.now() - startFFI) / iterations;
 
     // Warmup without FFI
     for (let i = 0; i < 5; i++) {
-      backward.prove(goal, calc.clauses, calc.types, { useFFI: false, index: backwardIndex });
+      backward.prove(goal, calc.clauses, calc.definitions, { useFFI: false, index: backwardIndex });
     }
 
     // Benchmark without FFI
     const startNoFFI = performance.now();
     for (let i = 0; i < iterations; i++) {
-      const result = backward.prove(goal, calc.clauses, calc.types, { useFFI: false, index: backwardIndex });
+      const result = backward.prove(goal, calc.clauses, calc.definitions, { useFFI: false, index: backwardIndex });
       assert(result.success);
     }
     const noFFITime = (performance.now() - startNoFFI) / iterations;
@@ -242,14 +242,14 @@ describe('FFI Performance', function() {
       // Benchmark with FFI
       const startFFI = performance.now();
       for (let i = 0; i < iterations; i++) {
-        backward.prove(goal, calc.clauses, calc.types, { useFFI: true, index: backwardIndex });
+        backward.prove(goal, calc.clauses, calc.definitions, { useFFI: true, index: backwardIndex });
       }
       const ffiTime = (performance.now() - startFFI) / iterations;
 
       // Benchmark without FFI
       const startNoFFI = performance.now();
       for (let i = 0; i < iterations; i++) {
-        backward.prove(goal, calc.clauses, calc.types, { useFFI: false, index: backwardIndex });
+        backward.prove(goal, calc.clauses, calc.definitions, { useFFI: false, index: backwardIndex });
       }
       const noFFITime = (performance.now() - startNoFFI) / iterations;
 

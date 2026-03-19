@@ -11,7 +11,7 @@ const path = require('path');
     path.join(__dirname, '../../calculus/ill/programs/evm.ill')
   );
 
-  const idx = prove.buildIndex(calc.clauses, calc.types);
+  const idx = prove.buildIndex(calc.clauses, calc.definitions);
 
   console.log('=== INDEX STRUCTURE ===\n');
   console.log('Types index:');
@@ -27,7 +27,7 @@ const path = require('path');
   }
 
   // Total counts
-  const totalTypes = Array.from(calc.types).length;
+  const totalTypes = Array.from(calc.definitions).length;
   const totalClauses = Array.from(calc.clauses).length;
   console.log(`\nTotal: ${totalTypes} types, ${totalClauses} clauses = ${totalTypes + totalClauses} items\n`);
 
@@ -50,7 +50,7 @@ const path = require('path');
   console.log('\n=== BENCHMARK: WITH vs WITHOUT INDEXING ===\n');
 
   // Without indexing (iterate all)
-  const allTypes = Array.from(calc.types);
+  const allTypes = Array.from(calc.definitions);
   const allClauses = Array.from(calc.clauses);
 
   const iterations = 50;
@@ -58,14 +58,14 @@ const path = require('path');
 
   // Warm up
   for (let i = 0; i < 5; i++) {
-    prove.prove(testGoal, calc.clauses, calc.types, { maxDepth: 50 });
+    prove.prove(testGoal, calc.clauses, calc.definitions, { maxDepth: 50 });
   }
 
   // With indexing (default now)
   let indexedTime = 0;
   for (let i = 0; i < iterations; i++) {
     const start = performance.now();
-    prove.prove(testGoal, calc.clauses, calc.types, { maxDepth: 50 });
+    prove.prove(testGoal, calc.clauses, calc.definitions, { maxDepth: 50 });
     indexedTime += performance.now() - start;
   }
   indexedTime /= iterations;

@@ -64,7 +64,7 @@ if $RUN_CALC; then
         const calc = await mde.load(path.resolve('${ILL_FILE}'));
         const query = calc.queries.get('symex');
         const state = mde.decomposeQuery(query);
-        const calcCtx = { clauses: calc.clauses, types: calc.types };
+        const calcCtx = { clauses: calc.clauses, definitions: calc.definitions };
         const t0 = performance.now();
         const tree = symexec.explore(state, calc.forwardRules, { maxDepth: 500, calc: calcCtx, structuralMemo: true });
         const elapsed = performance.now() - t0;

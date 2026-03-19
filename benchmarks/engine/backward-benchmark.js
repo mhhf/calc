@@ -278,7 +278,7 @@ function instrumentedProve(goal, clauses, types, opts = {}) {
     path.join(__dirname, '../../calculus/ill/programs/evm.ill')
   );
 
-  console.log(`Loaded: ${calc.clauses.size} clauses, ${calc.types.size} types\n`);
+  console.log(`Loaded: ${calc.clauses.size} clauses, ${calc.definitions.size} types\n`);
 
   // Test cases - uppercase = free variable (X parses to freevar)
   const testCases = {
@@ -317,20 +317,20 @@ function instrumentedProve(goal, clauses, types, opts = {}) {
 
       // Warm up
       for (let i = 0; i < 3; i++) {
-        prove.prove(goal, calc.clauses, calc.types, { maxDepth: 100 });
+        prove.prove(goal, calc.clauses, calc.definitions, { maxDepth: 100 });
       }
 
       // Benchmark standard prove
       let stdTotal = 0;
       for (let i = 0; i < iterations; i++) {
         const start = performance.now();
-        prove.prove(goal, calc.clauses, calc.types, { maxDepth: 100 });
+        prove.prove(goal, calc.clauses, calc.definitions, { maxDepth: 100 });
         stdTotal += performance.now() - start;
       }
       const stdTime = stdTotal / iterations;
 
       // Get detailed metrics with instrumented version (once)
-      const detailed = instrumentedProve(goal, calc.clauses, calc.types, { maxDepth: 100 });
+      const detailed = instrumentedProve(goal, calc.clauses, calc.definitions, { maxDepth: 100 });
 
       // Extract solution from theta (find X binding and fully resolve)
       let solution = '?';

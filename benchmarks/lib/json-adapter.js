@@ -122,7 +122,7 @@ async function runExplore(iterations) {
       path.join(__dirname, '../../calculus/ill/programs/multisig.ill')
     );
     const state = mde.decomposeQuery(calc.queries.get('symex'));
-    const calcCtx = { clauses: calc.clauses, types: calc.types };
+    const calcCtx = { clauses: calc.clauses, definitions: calc.definitions };
     results['explore.multisig'] = benchOne('multisig', state, calc.forwardRules, calcCtx,
       { maxDepth: 200, calc: calcCtx }, iterations);
   }
@@ -133,7 +133,7 @@ async function runExplore(iterations) {
       path.join(__dirname, '../../calculus/ill/programs/multisig_nocall_solc_symbolic.ill')
     );
     const state = mde.decomposeQuery(calc.queries.get('symex'));
-    const calcCtx = { clauses: calc.clauses, types: calc.types };
+    const calcCtx = { clauses: calc.clauses, definitions: calc.definitions };
     results['explore.solc_symbolic'] = benchOne('solc_symbolic', state, calc.forwardRules, calcCtx,
       { maxDepth: 400, calc: calcCtx, structuralMemo: true }, iterations);
   }

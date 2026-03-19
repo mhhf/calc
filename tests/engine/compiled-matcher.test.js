@@ -285,14 +285,14 @@ describe('persistent step integration', { timeout: 10000 }, () => {
 
       // Run with persistent steps
       const resultWith = tryMatch(rule, state, {
-        clauses: calc.clauses, types: calc.types
+        clauses: calc.clauses, definitions: calc.definitions
       }, { optimizePreserved: true });
 
       // Temporarily disable persistent steps and run generic path
       const saved = rule.persistentSteps;
       rule.persistentSteps = null;
       const resultWithout = tryMatch(rule, state, {
-        clauses: calc.clauses, types: calc.types
+        clauses: calc.clauses, definitions: calc.definitions
       }, { optimizePreserved: true });
       rule.persistentSteps = saved;
 
@@ -327,7 +327,7 @@ describe('E2E persistent step correctness', { timeout: 30000 }, () => {
 
     const tree = explore(state, calc.forwardRules, {
       maxDepth: 2000,
-      calc: { clauses: calc.clauses, types: calc.types },
+      calc: { clauses: calc.clauses, definitions: calc.definitions },
       dangerouslyUseFFI: true // Testing compiled matchers, not adversarial soundness
     });
 
@@ -345,7 +345,7 @@ describe('E2E persistent step correctness', { timeout: 30000 }, () => {
     // Full exploration
     const treeFull = explore(state, calc.forwardRules, {
       maxDepth: 500,
-      calc: { clauses: calc.clauses, types: calc.types },
+      calc: { clauses: calc.clauses, definitions: calc.definitions },
       structuralMemo: false,
       dangerouslyUseFFI: true // Testing structural memo, not adversarial soundness
     });
@@ -355,7 +355,7 @@ describe('E2E persistent step correctness', { timeout: 30000 }, () => {
     // With structural memo
     const treeMemo = explore(state, calc.forwardRules, {
       maxDepth: 500,
-      calc: { clauses: calc.clauses, types: calc.types },
+      calc: { clauses: calc.clauses, definitions: calc.definitions },
       structuralMemo: true,
       dangerouslyUseFFI: true
     });
