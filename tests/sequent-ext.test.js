@@ -143,7 +143,7 @@ describe('v2 focused/context (multiset)', () => {
     it('should create multiset from array', () => {
       const arr = [AST.freevar('A'), AST.freevar('B'), AST.freevar('A')];
       const ms = Context.fromArray(arr);
-      assert.strictEqual(Object.keys(ms).length, 2);
+      assert.strictEqual(Context.entries(ms).length, 2);
     });
 
     it('should count duplicates', () => {
