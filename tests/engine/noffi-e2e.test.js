@@ -14,7 +14,6 @@ const { explore } = require('../../lib/engine/explore');
 const { run } = require('../../lib/engine/forward');
 const { countNodes, getAllLeaves } = require('../../lib/engine/tree-utils');
 const { classifyLeaf } = require('../../lib/engine/show');
-const { setNoFFI } = require('../../lib/engine/match');
 const { toObject } = require('../../lib/engine/fact-set');
 const { buildGuidedTerm } = require('../../lib/prover/guided-term');
 const { rightFocusTerm } = require('../../lib/prover/bridge');
