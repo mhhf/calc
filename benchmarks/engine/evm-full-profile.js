@@ -8,7 +8,7 @@ const mde = require('../../lib/engine');
 const forward = require('../../lib/engine/forward');
 const Store = require('../../lib/kernel/store');
 const path = require('path');
-const prove = require('../../lib/engine/prove');
+const prove = require('../../lib/engine/backchain');
 const { match } = require('../../lib/kernel/unify');
 const { apply: subApply } = require('../../lib/kernel/substitute');
 

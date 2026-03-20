@@ -12,7 +12,7 @@
 const mde = require('../../lib/engine');
 const forward = require('../../lib/engine/forward');
 const Store = require('../../lib/kernel/store');
-const prove = require('../../lib/engine/prove');
+const prove = require('../../lib/engine/backchain');
 const path = require('path');
 const { intToBin, intToBinRecursive, binToInt } = require('../../lib/engine/ffi/convert');
 

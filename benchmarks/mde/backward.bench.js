@@ -9,7 +9,7 @@
  */
 
 const mde = require('../../lib/engine');
-const prove = require('../../lib/engine/prove');
+const prove = require('../../lib/engine/backchain');
 const Store = require('../../lib/kernel/store');
 const { performance } = require('perf_hooks');
 const path = require('path');

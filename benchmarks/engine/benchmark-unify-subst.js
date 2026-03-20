@@ -31,7 +31,7 @@ let legacyUnify, legacyApply;
 function loadModules() {
   Store = require('../../lib/kernel/store');
   mde = require('../../lib/engine');
-  const prove = require('../../lib/engine/prove');
+  const prove = require('../../lib/engine/backchain');
   buildIndex = prove.buildIndex;
 
   const unifyMod = require('../../lib/kernel/unify');

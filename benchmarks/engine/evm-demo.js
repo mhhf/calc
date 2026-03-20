@@ -8,7 +8,7 @@
 
 const mde = require('../../lib/engine');
 const forward = require('../../lib/engine/forward');
-const prove = require('../../lib/engine/prove');
+const prove = require('../../lib/engine/backchain');
 const path = require('path');
 
 // Convert binary representation to decimal

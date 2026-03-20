@@ -94,7 +94,6 @@ lib/engine/                      # Forward execution engine (L4c/L4d)
 │   ├── compiled-sub.js          # precompiled substitution recipes
 │   ├── fingerprint.js           # fingerprint detection + layer factory
 │   ├── disc-tree-opt.js         # disc-tree layer factory
-│   ├── compiled-pers.js         # compiled persistent step dispatch
 │   ├── loli-drain.js            # persistent-trigger loli fusion
 │   ├── structural-memo.js       # control-hash subtree memoization
 │   ├── prediction.js            # threaded code dispatch (Opt_H)

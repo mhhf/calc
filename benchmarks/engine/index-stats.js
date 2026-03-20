@@ -2,7 +2,7 @@
  * Show index statistics and candidate reduction
  */
 const mde = require('../../lib/engine');
-const prove = require('../../lib/engine/prove');
+const prove = require('../../lib/engine/backchain');
 const Store = require('../../lib/kernel/store');
 const path = require('path');
 

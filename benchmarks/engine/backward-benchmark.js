@@ -11,7 +11,7 @@ const mde = require('../../lib/engine');
 const Store = require('../../lib/kernel/store');
 const { unify, match } = require('../../lib/kernel/unify');
 const { apply: subApply } = require('../../lib/kernel/substitute');
-const prove = require('../../lib/engine/prove');
+const prove = require('../../lib/engine/backchain');
 const path = require('path');
 
 // Binary representation helpers

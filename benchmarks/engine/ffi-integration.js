@@ -6,7 +6,7 @@
 
 const assert = require('assert');
 const mde = require('../../lib/engine');
-const backward = require('../../lib/engine/prove');
+const backward = require('../../lib/engine/backchain');
 const { binToInt } = require('../../lib/engine/ffi/convert');
 const path = require('path');
 const Store = require('../../lib/kernel/store');

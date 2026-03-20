@@ -70,7 +70,7 @@ async function main() {
   const indexedRules = { rules: calc.forwardRules, opcodeIndex };
 
   // Build backward prover index once
-  const { buildIndex: buildBackwardIndex } = require('../../lib/engine/prove');
+  const { buildIndex: buildBackwardIndex } = require('../../lib/engine/backchain');
   const backchainIndex = buildBackwardIndex(calc.clauses, calc.definitions);
   const calcWithIndex = {
     clauses: calc.clauses,

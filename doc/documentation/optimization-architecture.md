@@ -44,7 +44,6 @@ lib/engine/
     ├── preserved.js      # Skip re-producing unchanged facts (42 lines)
     ├── fingerprint.js    # Fingerprint detection + layer factory (32 lines)
     ├── compiled-sub.js   # Precompiled substitution recipes (31 lines)
-    ├── compiled-pers.js  # Compiled persistent step dispatch (18 lines)
     └── disc-tree-opt.js  # Disc-tree layer factory (11 lines)
 ```
 
@@ -66,7 +65,7 @@ const PROFILES = {
   bare: { ffi: false, discTree: false, ... },
   fast: { ffi: true,  compiledSub: true, preserved: true, ... },
   evm:  { ffi: true,  discTree: true, deltaBypass: true, preserved: true,
-           compiledSub: true, fingerprint: true, compiledPersistent: true,
+           compiledSub: true, fingerprint: true,
            loliDrain: true, structuralMemo: true, prediction: true, solver: true },
 };
 ```
@@ -81,7 +80,6 @@ const PROFILES = {
 | `preserved` | `opt/preserved.js` | Skip consuming and re-producing facts that appear unchanged in consequent. |
 | `compiledSub` | `opt/compiled-sub.js` | Precompiled `Store.put` recipes for consequent instantiation. Bypasses recursive `applyIndexed`. |
 | `fingerprint` | `opt/fingerprint.js` | O(1) fingerprint layer in strategy stack. Auto-detects discriminating predicates from rule structure. |
-| `compiledPersistent` | `opt/compiled-pers.js` | Pre-compiled closure dispatch for persistent step proving. |
 | `loliDrain` | `opt/loli-drain.js` | Eagerly fires persistent-trigger lolis before DFS continuation. Safe because they consume only themselves. |
 | `structuralMemo` | `opt/structural-memo.js` | Control-hash memoization: `hash(PC, SH)` detects isomorphic subtrees. |
 | `prediction` | `opt/prediction.js` | Threaded code dispatch. Predicts next rule from substitution, skips `findAllMatches`. |

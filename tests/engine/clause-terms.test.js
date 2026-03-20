@@ -11,7 +11,7 @@
 const { describe, it, beforeEach } = require('node:test');
 const assert = require('node:assert/strict');
 const Store = require('../../lib/kernel/store');
-const backward = require('../../lib/engine/prove');
+const backward = require('../../lib/engine/backchain');
 const { provePersistentWithFFI } = require('../../lib/engine/opt/ffi');
 const forward = require('../../lib/engine/forward');
 const { buildGuidedTerm } = require('../../lib/prover/guided-term');

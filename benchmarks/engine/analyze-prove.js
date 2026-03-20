@@ -6,7 +6,7 @@ const path = require('path');
 const Store = require('../../lib/kernel/store');
 const { unify: originalUnify } = require('../../lib/kernel/unify');
 const { apply: originalSubApply } = require('../../lib/kernel/substitute');
-const { buildIndex } = require('../../lib/engine/prove');
+const { buildIndex } = require('../../lib/engine/backchain');
 
 // Per-operation counters
 let opStats = {

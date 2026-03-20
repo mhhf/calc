@@ -57,7 +57,7 @@ if $RUN_CALC; then
     # Use node to run symexec and capture time + stats
     result=$(node -e "
       const mde = require('./lib/engine');
-      const symexec = require('./lib/engine/symexec');
+      const { explore } = require('./lib/engine/explore');
       const { getAllLeaves, countNodes, maxDepth } = require('./lib/engine/tree-utils');
       const path = require('path');
       (async () => {
@@ -66,7 +66,7 @@ if $RUN_CALC; then
         const state = mde.decomposeQuery(query);
         const calcCtx = { clauses: calc.clauses, definitions: calc.definitions };
         const t0 = performance.now();
-        const tree = symexec.explore(state, calc.forwardRules, { maxDepth: 500, calc: calcCtx, structuralMemo: true });
+        const tree = explore(state, calc.forwardRules, { maxDepth: 500, calc: calcCtx, structuralMemo: true });
         const elapsed = performance.now() - t0;
         const leaves = getAllLeaves(tree);
         const nodes = countNodes(tree);

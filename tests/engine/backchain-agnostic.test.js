@@ -10,7 +10,7 @@
 const { describe, it } = require('node:test');
 const assert = require('node:assert/strict');
 const Store = require('../../lib/kernel/store');
-const { prove } = require('../../lib/engine/prove');
+const { prove } = require('../../lib/engine/backchain');
 
 // ── Helpers ──────────────────────────────────────────────────────────
 

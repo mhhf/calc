@@ -38,7 +38,6 @@ graph TB
         OPT_DELTA["delta-bypass.js — flat pattern shortcut"]
         OPT_PRES["preserved.js — skip unchanged facts"]
         OPT_CSUB["compiled-sub.js — Store.put recipes"]
-        OPT_CPERS["compiled-pers.js — compiled steps"]
         OPT_LOLI["loli-drain.js — eager loli fusion"]
         OPT_MEMO["structural-memo.js — control hash"]
         OPT_PRED["prediction.js — threaded code"]
@@ -316,7 +315,6 @@ All optimizations live in `lib/engine/opt/` as toggleable modules. See `doc/docu
 | Compiled substitution | Consequent production | ~8% | `opt/compiled-sub.js` |
 | Preserved skip | Skip unchanged facts | ~6-16% | `opt/preserved.js` |
 | Disc-tree | Catch-all rule selection | ~0% at 44 rules | `opt/disc-tree-opt.js` |
-| Compiled persistent | Step dispatch closures | ~3% | `opt/compiled-pers.js` |
 | EqNeq solver | Branch pruning | ~10% (symbolic) | `opt/constraint.js` |
 | Structural memo | Isomorphic subtree reuse | 4.4x (symmetric) | `opt/structural-memo.js` |
 | Loli drain | Eager persistent-loli fusion | ~2% | `opt/loli-drain.js` |

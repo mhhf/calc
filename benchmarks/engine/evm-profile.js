@@ -9,7 +9,7 @@ const forward = require('../../lib/engine/forward');
 const Store = require('../../lib/kernel/store');
 const { match } = require('../../lib/kernel/unify');
 const { apply: subApply } = require('../../lib/kernel/substitute');
-const prove = require('../../lib/engine/prove');
+const prove = require('../../lib/engine/backchain');
 const path = require('path');
 
 (async () => {
