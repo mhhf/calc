@@ -337,5 +337,5 @@ Connective roles (`lib/calculus/builders.js:deriveRoles`) parameterize all engin
 - Isabelle layering: kernel → tactics → Sledgehammer ([Paulson](https://arxiv.org/pdf/1907.02836))
 - Foundational Proof Certificates: focusing as proof format ([Miller](https://dl.acm.org/doi/10.1145/2503887.2503894))
 - Hodas-Miller lazy splitting ([1994](https://www.sciencedirect.com/science/article/pii/S0890540184710364))
-- Chaudhuri-Pfenning: forward/backward as polarities of one focused framework ([2006](https://www.cs.cmu.edu/~kchaudhuri/papers/ffb-ijcar06.pdf))
+- Chaudhuri, Pfenning & Price: A Logical Characterization of Forward and Backward Chaining in the Inverse Method ([IJCAR 2006](https://www.cs.cmu.edu/~fp/papers/ijcar06.pdf))
 - Sterling-Harper proof refinement logics ([2017](https://arxiv.org/abs/1703.05215))

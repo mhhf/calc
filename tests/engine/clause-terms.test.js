@@ -273,9 +273,9 @@ describe('3b.5: Clause Proof Terms', () => {
 
       const types = new Map([['p_type', p]]);
       const clauses = new Map([['pq_clause', { hash: q, premises: [p] }]]);
-      const backwardIndex = backward.buildIndex(clauses, types);
+      const backchainIndex = backward.buildIndex(clauses, types);
 
-      const calc = { clauses, definitions: types, backwardIndex };
+      const calc = { clauses, definitions: types, backchainIndex };
       const state = forward.createState({}, {});
 
       const theta = new Array(1);
@@ -300,8 +300,8 @@ describe('3b.5: Clause Proof Terms', () => {
       const q = Store.put('atom', ['testQ']);
       const types = new Map([['p_type', p]]);
       const clauses = new Map([['pq_clause', { hash: q, premises: [p] }]]);
-      const backwardIndex = backward.buildIndex(clauses, types);
-      const calc = { clauses, definitions: types, backwardIndex };
+      const backchainIndex = backward.buildIndex(clauses, types);
+      const calc = { clauses, definitions: types, backchainIndex };
       const state = forward.createState({}, {});
 
       const theta = new Array(1);

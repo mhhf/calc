@@ -183,11 +183,11 @@ describe('FFI Performance', function() {
   this.timeout(30000);
 
   let calc;
-  let backwardIndex;
+  let backchainIndex;
 
   before(async () => {
     calc = await mde.load([path.join(__dirname, '../../calculus/ill/programs/bin.ill')]);
-    backwardIndex = backward.buildIndex(calc.clauses, calc.definitions);
+    backchainIndex = backward.buildIndex(calc.clauses, calc.definitions);
   });
 
   it('FFI is faster than clause search for plus 255 1', async () => {
@@ -197,26 +197,26 @@ describe('FFI Performance', function() {
 
     // Warmup
     for (let i = 0; i < 5; i++) {
-      backward.prove(goal, calc.clauses, calc.definitions, { useFFI: true, index: backwardIndex });
+      backward.prove(goal, calc.clauses, calc.definitions, { useFFI: true, index: backchainIndex });
     }
 
     // Benchmark with FFI
     const startFFI = performance.now();
     for (let i = 0; i < iterations; i++) {
-      const result = backward.prove(goal, calc.clauses, calc.definitions, { useFFI: true, index: backwardIndex });
+      const result = backward.prove(goal, calc.clauses, calc.definitions, { useFFI: true, index: backchainIndex });
       assert(result.success);
     }
     const ffiTime = (performance.now() - startFFI) / iterations;
 
     // Warmup without FFI
     for (let i = 0; i < 5; i++) {
-      backward.prove(goal, calc.clauses, calc.definitions, { useFFI: false, index: backwardIndex });
+      backward.prove(goal, calc.clauses, calc.definitions, { useFFI: false, index: backchainIndex });
     }
 
     // Benchmark without FFI
     const startNoFFI = performance.now();
     for (let i = 0; i < iterations; i++) {
-      const result = backward.prove(goal, calc.clauses, calc.definitions, { useFFI: false, index: backwardIndex });
+      const result = backward.prove(goal, calc.clauses, calc.definitions, { useFFI: false, index: backchainIndex });
       assert(result.success);
     }
     const noFFITime = (performance.now() - startNoFFI) / iterations;
@@ -242,14 +242,14 @@ describe('FFI Performance', function() {
       // Benchmark with FFI
       const startFFI = performance.now();
       for (let i = 0; i < iterations; i++) {
-        backward.prove(goal, calc.clauses, calc.definitions, { useFFI: true, index: backwardIndex });
+        backward.prove(goal, calc.clauses, calc.definitions, { useFFI: true, index: backchainIndex });
       }
       const ffiTime = (performance.now() - startFFI) / iterations;
 
       // Benchmark without FFI
       const startNoFFI = performance.now();
       for (let i = 0; i < iterations; i++) {
-        backward.prove(goal, calc.clauses, calc.definitions, { useFFI: false, index: backwardIndex });
+        backward.prove(goal, calc.clauses, calc.definitions, { useFFI: false, index: backchainIndex });
       }
       const noFFITime = (performance.now() - startNoFFI) / iterations;
 
