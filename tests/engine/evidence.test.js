@@ -10,7 +10,7 @@ const { describe, it, beforeEach } = require('node:test');
 const assert = require('node:assert/strict');
 const Store = require('../../lib/kernel/store');
 const forward = require('../../lib/engine/forward');
-const { matchLoli, matchFirstLoli } = require('../../lib/engine/match');
+const { matchLoli } = require('../../lib/engine/match');
 const { provePersistentWithFFI } = require('../../lib/engine/opt/ffi');
 const { drainPersistentLolis } = require('../../lib/engine/opt/loli-drain');
 const { Arena } = require('../../lib/engine/fact-set');
@@ -179,7 +179,7 @@ describe('Evidence collection (TODO_0068 §10.5)', () => {
     });
   });
 
-  describe('matchFirstLoli evidence', () => {
+  describe('matchLoli evidence', () => {
     beforeEach(() => { Store.clear(); });
 
     it('forwards evidence option to matchLoli', () => {
@@ -193,7 +193,7 @@ describe('Evidence collection (TODO_0068 §10.5)', () => {
         {}
       );
 
-      const m = matchFirstLoli(state, { roles: {} }, { evidence: true });
+      const m = matchLoli(loli, state, { roles: {} }, { evidence: true });
       assert(m, 'should find a match');
       assert(Array.isArray(m.persistentEvidence), 'should have persistentEvidence');
     });
