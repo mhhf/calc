@@ -4,7 +4,12 @@
 const { describe, it, beforeEach } = require('node:test');
 const assert = require('node:assert');
 const Store = require('../../lib/kernel/store');
-const { unify, unifyBinlit, unifyStrlit } = require('../../lib/kernel/unify');
+const { unify, unifyBinlit, unifyStrlit, setTheories } = require('../../lib/kernel/unify');
+const { defaultTheories } = require('../../lib/kernel/eq-theory');
+const { binlitTheory } = require('../../lib/engine/ill/binlit-theory');
+
+// Register binlitTheory so unify() can handle binlit ↔ i/o/e cross-tag matching
+setTheories([...defaultTheories, binlitTheory]);
 const {
   binToInt,
   intToBin,
@@ -166,6 +171,12 @@ describe('Convert Functions', { timeout: 10000 }, () => {
 describe('Equational Normalization in Unification', { timeout: 10000 }, () => {
   beforeEach(() => {
     Store.clear();
+    // Re-register dynamic o/i tags (needed by binlitTheory.rewrite)
+    const e = Store.put('atom', ['e']);
+    Store.put('o', [e]);
+    Store.put('i', [e]);
+    // Re-register theories (Store.clear() resets TAG IDs)
+    setTheories([...defaultTheories, binlitTheory]);
   });
 
   describe('binlit patterns', () => {
