@@ -12,7 +12,7 @@ const Store = require('../../lib/kernel/store');
 const forward = require('../../lib/engine/forward');
 const { matchLoli } = require('../../lib/engine/match');
 const { provePersistentWithFFI } = require('../../lib/engine/opt/ffi');
-const { drainPersistentLolis } = require('../../lib/engine/opt/loli-drain');
+const { drainPersistentLolis } = require('../../lib/engine/ill/loli-drain');
 const { Arena } = require('../../lib/engine/fact-set');
 
 describe('Evidence collection (TODO_0068 §10.5)', () => {
