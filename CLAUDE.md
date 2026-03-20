@@ -28,9 +28,13 @@ npm run bench:diff    # Cross-commit benchmark comparison (use this when asked t
 ## Architecture
 
 **Backward prover** (L1-L4): kernel.js → generic.js → focused.js → strategy/ (manual, auto)
-**Forward engine** (L4): compile.js → match.js → strategy.js → forward.js / explore.js — same ILL derivation rules as backward, committed-choice strategy that eliminates search
+**Forward engine** (L4): Three-layer lego architecture:
+- **Generic core**: match.js → strategy.js → forward.js / explore.js — pattern matching, rule selection, committed-choice/exhaustive execution. Configurable via `matchOpts` callbacks.
+- **LNL layer** (`lnl/`): persistent goal proving, loli (dynamic rule) matching, existential resolution. Adds the linear/persistent distinction.
+- **ILL layer** (`ill/`): binary arithmetic theories, ILL-specific backchainer defaults, loli drain. Plugged in via equational theories and `matchOpts` composition.
 **Lax monad** `{A}`: polarity shift (async→sync) at `lib/prover/bridge.js`. Three execution profiles: `'full'` (default, opaque), `'guided'` (oracle + verified ILL terms), `'off'` (pure backward)
 **Content-addressed store**: formulas are hashes (numbers), O(1) equality via `lib/kernel/store.js`
+**Equational theories** (`kernel/eq-theory.js`): pluggable cross-tag matching. O(1) dispatch via `_rewriteFromTag[tagId]` lookup. Built-in: strlit. Calculus-registered: binlit (ILL).
 
 See `doc/documentation/architecture.md` for the full prover lasagne (L1-L5).
 See `doc/documentation/parser-pipeline.md` for the three parser paths (one shared Pratt parser).
@@ -41,7 +45,7 @@ See `doc/documentation/parser-pipeline.md` for the three parser paths (one share
 
 ```
 lib/
-├── kernel/              # Content-addressed AST: store, sequent, unify, substitute, ast
+├── kernel/              # Content-addressed AST: store, sequent, unify, substitute, ast, eq-theory
 ├── prover/              # Backward proof search (5-layer architecture)
 │   ├── kernel.js        # L1: proof verification
 │   ├── generic.js       # L2: search primitives
@@ -51,15 +55,23 @@ lib/
 │   └── rule-interpreter.js  # descriptor → premise computation
 ├── calculus/            # Calculus loader (from .calc/.rules files)
 │   └── builders.js      # Shared Pratt parser, deriveRoles()
-├── engine/              # Forward/backward execution engine
-│   ├── match.js         # Pattern matching + persistent proving
-│   ├── strategy.js      # Rule selection: fingerprint, disc-tree, predicate layers
-│   ├── forward.js       # Committed-choice main loop
-│   ├── explore.js       # Exhaustive DFS exploration + mutation/undo
-│   ├── compile.js       # Rule compilation (de Bruijn slots, metavar analysis)
-│   ├── fact-set.js      # FactSet (sorted typed-array groups) + Arena (undo log)
-│   ├── prove.js         # Backward chaining for persistent antecedents
+├── engine/              # Forward/backward execution engine (3-layer lego)
+│   ├── match.js         # Generic: pattern matching + tryMatch pipeline
+│   ├── strategy.js      # Generic: rule selection (fingerprint, disc-tree, dynamic rules)
+│   ├── forward.js       # Generic: committed-choice main loop
+│   ├── explore.js       # Generic: exhaustive DFS exploration + mutation/undo
+│   ├── compile.js       # Generic: rule compilation (de Bruijn slots, metavar analysis)
+│   ├── backchain.js     # Generic: backward chaining (SLD-style, renamed from prove.js)
+│   ├── fact-set.js      # Generic: FactSet (sorted typed-array groups) + Arena (undo log)
 │   ├── convert.js       # .ill → content-addressed hashes
+│   ├── lnl/             # LNL layer: linear/persistent distinction
+│   │   ├── persistent.js  # Persistent goal proving (state → cache → backchain)
+│   │   ├── loli.js        # Dynamic rule matching (linear implications)
+│   │   └── existential.js # ∃-variable resolution
+│   ├── ill/             # ILL layer: ILL-specific logic
+│   │   ├── backchain-ill.js # ILL defaults for backchainer
+│   │   ├── binlit-theory.js # Equational theory: binlit ↔ i/o/e
+│   │   └── loli-drain.js   # Loli drain optimization
 │   ├── ffi/             # Foreign function interface (arithmetic, memory)
 │   └── opt/             # Toggleable optimization modules
 ├── meta-parser/         # Meta-level parser (@extends chain resolution)
