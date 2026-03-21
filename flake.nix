@@ -43,8 +43,9 @@
 
             mkdir -p $out/{bin,lib}
 
-            # Copy server and built UI assets
+            # Copy server, runtime deps, and built UI assets
             cp server.js $out/lib/
+            cp -r node_modules $out/lib/node_modules
             mkdir -p $out/lib/out
             cp -r out/ui $out/lib/out/ui
 
