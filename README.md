@@ -1,5 +1,6 @@
 # CALC
 
+
 **CALC** (Calculus for Accountable Linear Computations) is a proof calculus system for [Intuitionistic Linear Logic](https://en.wikipedia.org/wiki/Linear_logic) (ILL). It implements backward proof search (Andreoli focusing), forward execution (multiset rewriting), and exhaustive symbolic exploration — all generated from declarative rule definitions.
 
 The driving insight: double-entry bookkeeping is applied linear logic. Resources are tracked exactly, consumed on use, and never duplicated — the same discipline accountants have followed since Pacioli (1494). CALC makes this connection formal and computational.
