@@ -13,7 +13,8 @@ const fs = require('fs');
 const path = require('path');
 
 const app = new Hono();
-const port = parseInt(process.argv.find((_, i, a) => a[i-1] === '--port') || '3000', 10);
+const port = parseInt(process.argv.find((_, i, a) => a[i-1] === '--port') || process.env.PORT || '3000', 10);
+const host = process.env.HOST || '0.0.0.0';
 
 // API routes (proof engine state goes here)
 app.get('/api/health', (c) => c.json({ status: 'ok' }));
@@ -79,6 +80,6 @@ app.use('/*', serveStatic({ root: './out/ui' }));
 // SPA fallback: serve index.html for all non-file routes
 app.use('/*', serveStatic({ root: './out/ui', path: 'index.html' }));
 
-serve({ fetch: app.fetch, port }, () => {
-  console.log(`CALC server running on http://localhost:${port}`);
+serve({ fetch: app.fetch, port, hostname: host }, () => {
+  console.log(`CALC server running on http://${host}:${port}`);
 });

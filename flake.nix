@@ -37,23 +37,23 @@
           # Build the SolidStart SSR app
           npmBuildScript = "build";
 
-          # Install the built server app
+          # Install the Hono server + built UI + docs
           installPhase = ''
             runHook preInstall
 
-            # Create output directory structure
             mkdir -p $out/{bin,lib}
 
-            # Copy the server output
-            cp -r .output/* $out/lib/
+            # Copy server and built UI assets
+            cp server.js $out/lib/
+            mkdir -p $out/lib/out
+            cp -r out/ui $out/lib/out/ui
 
-            # Copy research docs (needed at runtime for SSR)
-            mkdir -p $out/lib/dev/research
-            cp -r dev/research/*.md $out/lib/dev/research/
+            # Copy documentation (served via /api/docs)
+            cp -r doc $out/lib/doc
 
-            # Create wrapper script that sets working directory
+            # Create wrapper script
             makeWrapper ${nodejs}/bin/node $out/bin/calc-web \
-              --add-flags "$out/lib/server/index.mjs" \
+              --add-flags "$out/lib/server.js" \
               --set NODE_ENV production \
               --chdir $out/lib
 
@@ -187,7 +187,6 @@
         packages = {
           default = calcWeb;
           web = calcWeb;
-          research = researchDocs;
         };
 
         apps = {
