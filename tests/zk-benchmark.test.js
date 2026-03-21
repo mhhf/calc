@@ -18,7 +18,6 @@ const mde = require('../lib/engine');
 const Store = require('../lib/kernel/store');
 const Seq = require('../lib/kernel/sequent');
 const calculus = require('../lib/calculus');
-const { DEFAULT_ROLES } = require('../lib/engine/compile');
 const { buildGuidedTerm } = require('../lib/prover/guided-term');
 const { rightFocusTerm } = require('../lib/prover/bridge');
 const { generateWitness } = require('../lib/zk/witness');
@@ -62,7 +61,6 @@ function buildSuccedentFromState(finalState) {
 
 describe('ZK benchmark: solc forward execution', { timeout: 60000 }, () => {
   let engineCalc, illCalc, state, forwardResult, guidedTerm, witness;
-  let roles;
 
   before(async () => {
     Store.clear();
@@ -71,7 +69,6 @@ describe('ZK benchmark: solc forward execution', { timeout: 60000 }, () => {
     );
     illCalc = await calculus.loadILL();
     state = mde.decomposeQuery(engineCalc.queries.get('symex'));
-    roles = DEFAULT_ROLES;
   });
 
   it('runs forward execution with evidence', () => {
@@ -100,7 +97,7 @@ describe('ZK benchmark: solc forward execution', { timeout: 60000 }, () => {
     // Decompose final state against succedent
     const linear = forwardResult.state.linear || {};
     const persistent = forwardResult.state.persistent || {};
-    const rfResult = rightFocusTerm(linear, persistent, succFormula, roles);
+    const rfResult = rightFocusTerm(linear, persistent, succFormula, illCalc.roles);
     assert.ok(rfResult, 'rightFocusTerm should succeed');
 
     // Build guided term from trace + rf decomposition

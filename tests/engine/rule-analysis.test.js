@@ -12,12 +12,13 @@ const { getPredicateHead } = require('../../lib/kernel/ast');
 const { analyzeRule, analyzeDeltas } = require('../../lib/engine/rule-analysis');
 const mde = require('../../lib/engine');
 const Store = require('../../lib/kernel/store');
+const { ILL_CONNECTIVES } = require('../../lib/engine/ill/connectives');
 
 // Helper: parse a lollipop rule string and compile it
 async function makeRule(name, expr) {
   const h = await mde.parseExpr(expr);
   const [ante, conseq] = Store.children(h);
-  return forward.compileRule({ name, hash: h, antecedent: ante, consequent: conseq });
+  return forward.compileRule({ name, hash: h, antecedent: ante, consequent: conseq }, { connectives: ILL_CONNECTIVES });
 }
 
 // Helper: dump a compiled rule's structure for inspection

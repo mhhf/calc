@@ -10,6 +10,9 @@ const {
   explore,
   expandChoiceItem, expandConsequentChoices, hashStateString
 } = require('../../lib/engine/explore');
+const { ILL_CONNECTIVES } = require('../../lib/engine/ill/connectives');
+const { resolveConnectives } = require('../../lib/engine/compile');
+const ILL_RC = resolveConnectives(ILL_CONNECTIVES);
 const {
   countLeaves, getAllLeaves, maxDepth, countNodes, toDot
 } = require('../../lib/engine/tree-utils');
@@ -91,7 +94,7 @@ describe('explore', { timeout: 10000 }, () => {
 
     it('leaf returns single alternative', () => {
       const h = Store.put('atom', ['foo']);
-      const alts = expandChoiceItem(h);
+      const alts = expandChoiceItem(h, ILL_RC);
       assert.strictEqual(alts.length, 1);
       assert.deepStrictEqual(alts[0], { linear: [h], persistent: [] });
     });
@@ -100,7 +103,7 @@ describe('explore', { timeout: 10000 }, () => {
       const a = Store.put('atom', ['a']);
       const b = Store.put('atom', ['b']);
       const w = Store.put('with', [a, b]);
-      const alts = expandChoiceItem(w);
+      const alts = expandChoiceItem(w, ILL_RC);
       assert.strictEqual(alts.length, 2);
       assert.deepStrictEqual(alts[0], { linear: [a], persistent: [] });
       assert.deepStrictEqual(alts[1], { linear: [b], persistent: [] });
@@ -112,7 +115,7 @@ describe('explore', { timeout: 10000 }, () => {
       const c = Store.put('atom', ['c']);
       const w = Store.put('with', [b, c]);
       const t = Store.put('tensor', [a, w]);
-      const alts = expandChoiceItem(t);
+      const alts = expandChoiceItem(t, ILL_RC);
       assert.strictEqual(alts.length, 2);
       assert.deepStrictEqual(alts[0].linear, [a, b]);
       assert.deepStrictEqual(alts[1].linear, [a, c]);
@@ -124,14 +127,14 @@ describe('explore', { timeout: 10000 }, () => {
       const c = Store.put('atom', ['c']);
       const w1 = Store.put('with', [a, b]);
       const w2 = Store.put('with', [w1, c]);
-      const alts = expandChoiceItem(w2);
+      const alts = expandChoiceItem(w2, ILL_RC);
       assert.strictEqual(alts.length, 3);
     });
 
     it('bang(A) returns persistent alternative', () => {
       const a = Store.put('atom', ['a']);
       const bang = Store.put('bang', [a]);
-      const alts = expandChoiceItem(bang);
+      const alts = expandChoiceItem(bang, ILL_RC);
       assert.strictEqual(alts.length, 1);
       assert.deepStrictEqual(alts[0], { linear: [], persistent: [a] });
     });
@@ -142,7 +145,7 @@ describe('explore', { timeout: 10000 }, () => {
       const bangP = Store.put('bang', [p]);
       const monadQ = Store.put('monad', [q]);
       const loli = Store.put('loli', [bangP, monadQ]);
-      const alts = expandChoiceItem(loli);
+      const alts = expandChoiceItem(loli, ILL_RC);
       assert.strictEqual(alts.length, 1);
       assert.deepStrictEqual(alts[0], { linear: [loli], persistent: [] });
     });
@@ -151,7 +154,7 @@ describe('explore', { timeout: 10000 }, () => {
       const a = Store.put('atom', ['a']);
       const b = Store.put('atom', ['b']);
       const p = Store.put('oplus', [a, b]);
-      const alts = expandChoiceItem(p);
+      const alts = expandChoiceItem(p, ILL_RC);
       assert.strictEqual(alts.length, 2);
       assert.deepStrictEqual(alts[0], { linear: [a], persistent: [] });
       assert.deepStrictEqual(alts[1], { linear: [b], persistent: [] });
@@ -167,7 +170,7 @@ describe('explore', { timeout: 10000 }, () => {
       const branch0 = Store.put('loli', [bangP, Store.put('monad', [a])]);
       const branch1 = Store.put('loli', [bangQ, Store.put('monad', [b])]);
       const pl = Store.put('oplus', [branch0, branch1]);
-      const alts = expandChoiceItem(pl);
+      const alts = expandChoiceItem(pl, ILL_RC);
       assert.strictEqual(alts.length, 2);
       // Each branch is a loli fact (fired by matchLoli at runtime)
       assert.deepStrictEqual(alts[0], { linear: [branch0], persistent: [] });
@@ -184,7 +187,7 @@ describe('explore', { timeout: 10000 }, () => {
       const branch0 = Store.put('loli', [bangP, Store.put('monad', [a])]);
       const branch1 = Store.put('loli', [bangQ, Store.put('monad', [b])]);
       const w = Store.put('with', [branch0, branch1]);
-      const alts = expandChoiceItem(w);
+      const alts = expandChoiceItem(w, ILL_RC);
       assert.strictEqual(alts.length, 2);
       // Each branch is a loli fact (fired by matchLoli at runtime)
       assert.deepStrictEqual(alts[0], { linear: [branch0], persistent: [] });
@@ -197,7 +200,7 @@ describe('explore', { timeout: 10000 }, () => {
 
     it('no choice returns single alternative', () => {
       const a = Store.put('atom', ['a']);
-      const alts = expandConsequentChoices({ linear: [a], persistent: [] });
+      const alts = expandConsequentChoices({ linear: [a], persistent: [] }, ILL_RC);
       assert.strictEqual(alts.length, 1);
       assert.deepStrictEqual(alts[0].linear, [a]);
     });
@@ -206,14 +209,14 @@ describe('explore', { timeout: 10000 }, () => {
       const a = Store.put('atom', ['a']);
       const b = Store.put('atom', ['b']);
       const w = Store.put('with', [a, b]);
-      const alts = expandConsequentChoices({ linear: [w], persistent: [] });
+      const alts = expandConsequentChoices({ linear: [w], persistent: [] }, ILL_RC);
       assert.strictEqual(alts.length, 2);
     });
 
     it('preserves original persistent items', () => {
       const a = Store.put('atom', ['a']);
       const p = Store.put('atom', ['p']);
-      const alts = expandConsequentChoices({ linear: [a], persistent: [p] });
+      const alts = expandConsequentChoices({ linear: [a], persistent: [p] }, ILL_RC);
       assert.strictEqual(alts.length, 1);
       assert(alts[0].persistent.includes(p));
     });
@@ -274,7 +277,7 @@ describe('explore', { timeout: 10000 }, () => {
       Store.clear();
       const a = Store.put('atom', ['loop_token']);
       const loli = Store.put('loli', [a, Store.put('monad', [a])]);
-      const rule = forward.compileRule({ name: 'loop', hash: loli, antecedent: a, consequent: Store.put('monad', [a]) });
+      const rule = forward.compileRule({ name: 'loop', hash: loli, antecedent: a, consequent: Store.put('monad', [a]) }, { connectives: ILL_CONNECTIVES });
 
       const state = forward.createState({ [a]: 1 }, {});
       const tree = explore(state, [rule], { maxDepth: 10 });
@@ -413,7 +416,7 @@ describe('explore', { timeout: 10000 }, () => {
         { [loli]: 1, [trigger]: 1 },
         {}
       );
-      const m = matchLoli(loli, state, null);
+      const m = matchLoli(loli, state, null, { connectives: ILL_RC });
       assert(m, 'matchLoli should return a match');
       assert.strictEqual(m.consumed[loli], 1);
       assert.strictEqual(m.consumed[trigger], 1);
@@ -435,7 +438,7 @@ describe('explore', { timeout: 10000 }, () => {
         { [loli]: 1, [triggerFact]: 1 },
         {}
       );
-      const m = matchLoli(loli, state, null);
+      const m = matchLoli(loli, state, null, { connectives: ILL_RC });
       assert(m, 'matchLoli should return a match');
       assert.strictEqual(m.consumed[loli], 1);
       assert.strictEqual(m.consumed[triggerFact], 1);
@@ -455,7 +458,7 @@ describe('explore', { timeout: 10000 }, () => {
         { [loli]: 1 },
         { [guard]: true }  // Guard is provable via state
       );
-      const m = matchLoli(loli, state, null);
+      const m = matchLoli(loli, state, null, { connectives: ILL_RC });
       assert(m, 'matchLoli should fire when guard is in persistent state');
       assert.strictEqual(m.consumed[loli], 1);
       assert(m.rule.consequent.linear.includes(result));
@@ -472,7 +475,7 @@ describe('explore', { timeout: 10000 }, () => {
         { [loli]: 1 },
         {}  // Guard NOT in state
       );
-      const m = matchLoli(loli, state, null);
+      const m = matchLoli(loli, state, null, { connectives: ILL_RC });
       assert.strictEqual(m, null, 'matchLoli should return null when guard fails');
     });
 
@@ -486,7 +489,7 @@ describe('explore', { timeout: 10000 }, () => {
         { [loli]: 1 },  // trigger NOT in state
         {}
       );
-      const m = matchLoli(loli, state, null);
+      const m = matchLoli(loli, state, null, { connectives: ILL_RC });
       assert.strictEqual(m, null, 'matchLoli should return null when trigger absent');
     });
 
@@ -504,7 +507,7 @@ describe('explore', { timeout: 10000 }, () => {
         { [loli]: 1, [linTrigger]: 1 },
         { [guard]: true }
       );
-      const m = matchLoli(loli, state, null);
+      const m = matchLoli(loli, state, null, { connectives: ILL_RC });
       assert(m, 'matchLoli should fire with mixed trigger');
       assert.strictEqual(m.consumed[loli], 1);
       assert.strictEqual(m.consumed[linTrigger], 1);
@@ -523,7 +526,7 @@ describe('explore', { timeout: 10000 }, () => {
         { [loli]: 1, [trigger]: 1 },
         {}
       );
-      const m = matchLoli(loli, state, null);
+      const m = matchLoli(loli, state, null, { connectives: ILL_RC });
       assert(m, 'matchLoli should fire');
       assert.strictEqual(m.rule.consequentAlts.length, 2, 'should have 2 alternatives from oplus');
     });
@@ -550,7 +553,7 @@ describe('explore', { timeout: 10000 }, () => {
         hash: 0,
         antecedent: start,
         consequent: Store.put('monad', [conseq])
-      });
+      }, { connectives: ILL_CONNECTIVES });
 
       // Guard is provable, noguard is NOT
       const state = forward.createState(

@@ -14,7 +14,7 @@ const forward = require('../../lib/engine/forward');
 const Store = require('../../lib/kernel/store');
 const prove = require('../../lib/engine/backchain');
 const path = require('path');
-const { intToBin, intToBinRecursive, binToInt } = require('../../lib/engine/ffi/convert');
+const { intToBin, intToBinRecursive, binToInt } = require('../../lib/engine/ill/ffi/convert');
 
 function formatMs(ms) {
   if (ms < 0.001) return `${(ms * 1000000).toFixed(0)}ns`;
@@ -85,7 +85,7 @@ async function main() {
   console.log('FFI PERFORMANCE (direct calls):');
   console.log('-'.repeat(70));
 
-  const ffi = require('../../lib/engine/ffi');
+  const ffi = require('../../lib/engine/ill/ffi');
   const ffiResults = [];
 
   for (const tc of testCases) {

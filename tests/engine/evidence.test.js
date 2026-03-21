@@ -13,6 +13,9 @@ const forward = require('../../lib/engine/forward');
 const { matchLoli } = require('../../lib/engine/match');
 const { provePersistentWithFFI } = require('../../lib/engine/opt/ffi');
 const { drainPersistentLolis } = require('../../lib/engine/ill/loli-drain');
+const { ILL_CONNECTIVES } = require('../../lib/engine/ill/connectives');
+const { resolveConnectives } = require('../../lib/engine/compile');
+const ILL_RC = resolveConnectives(ILL_CONNECTIVES);
 const { Arena } = require('../../lib/engine/fact-set');
 
 describe('Evidence collection (TODO_0068 §10.5)', () => {
@@ -96,7 +99,7 @@ describe('Evidence collection (TODO_0068 §10.5)', () => {
         {}
       );
 
-      const m = matchLoli(loli, state, null, { evidence: true });
+      const m = matchLoli(loli, state, null, { evidence: true, connectives: ILL_RC });
       assert(m, 'should match');
       // With evidence, theta and slots should be populated (not empty)
       assert(Object.keys(m.slots).length > 0, 'slots should be non-empty with evidence');
@@ -114,7 +117,7 @@ describe('Evidence collection (TODO_0068 §10.5)', () => {
         {}
       );
 
-      const m = matchLoli(loli, state, null);
+      const m = matchLoli(loli, state, null, { connectives: ILL_RC });
       assert(m, 'should match');
       assert.deepStrictEqual(m.theta, [], 'theta should be empty without evidence');
       assert.deepStrictEqual(m.slots, {}, 'slots should be empty without evidence');
@@ -133,7 +136,7 @@ describe('Evidence collection (TODO_0068 §10.5)', () => {
         { [guard]: true }
       );
 
-      const m = matchLoli(loli, state, null, { evidence: true });
+      const m = matchLoli(loli, state, null, { evidence: true, connectives: ILL_RC });
       assert(m, 'should match');
       assert(Array.isArray(m.persistentEvidence), 'should have persistentEvidence array');
       assert.strictEqual(m.persistentEvidence.length, 1, 'should have 1 persistent goal evidence');
@@ -155,7 +158,7 @@ describe('Evidence collection (TODO_0068 §10.5)', () => {
         { [guard]: true }
       );
 
-      const m = matchLoli(loli, state, null, { evidence: true });
+      const m = matchLoli(loli, state, null, { evidence: true, connectives: ILL_RC });
       assert(m, 'should match');
       assert.strictEqual(m.persistentEvidence.length, 1);
       assert.strictEqual(m.persistentEvidence[0].method, 'state');
@@ -172,7 +175,7 @@ describe('Evidence collection (TODO_0068 §10.5)', () => {
         {}
       );
 
-      const m = matchLoli(loli, state, null, { evidence: true });
+      const m = matchLoli(loli, state, null, { evidence: true, connectives: ILL_RC });
       assert(m, 'should match');
       assert(Array.isArray(m.persistentEvidence));
       assert.strictEqual(m.persistentEvidence.length, 0, 'no persistent goals = empty evidence');
@@ -193,7 +196,7 @@ describe('Evidence collection (TODO_0068 §10.5)', () => {
         {}
       );
 
-      const m = matchLoli(loli, state, { roles: {} }, { evidence: true });
+      const m = matchLoli(loli, state, { connectives: ILL_CONNECTIVES }, { evidence: true, connectives: ILL_RC });
       assert(m, 'should find a match');
       assert(Array.isArray(m.persistentEvidence), 'should have persistentEvidence');
     });
@@ -219,7 +222,7 @@ describe('Evidence collection (TODO_0068 §10.5)', () => {
       const perArena = new Arena(256);
       const evidenceOut = [];
 
-      drainPersistentLolis(state, linArena, perArena, { roles: {} }, evidenceOut);
+      drainPersistentLolis(state, linArena, perArena, { connectives: ILL_CONNECTIVES }, evidenceOut, { connectives: ILL_RC });
 
       assert.strictEqual(evidenceOut.length, 1, 'should have 1 drain firing');
       assert.strictEqual(evidenceOut[0].loliHash, loli);
@@ -243,8 +246,8 @@ describe('Evidence collection (TODO_0068 §10.5)', () => {
       const perArena = new Arena(256);
 
       // Should not throw when evidenceOut is null/undefined
-      drainPersistentLolis(state, linArena, perArena, { roles: {} }, null);
-      drainPersistentLolis(state, linArena, perArena, { roles: {} });
+      drainPersistentLolis(state, linArena, perArena, { connectives: ILL_CONNECTIVES }, null, { connectives: ILL_RC });
+      drainPersistentLolis(state, linArena, perArena, { connectives: ILL_CONNECTIVES }, undefined, { connectives: ILL_RC });
     });
 
     it('collects multiple drain firings', () => {
@@ -269,7 +272,7 @@ describe('Evidence collection (TODO_0068 §10.5)', () => {
       const perArena = new Arena(256);
       const evidenceOut = [];
 
-      drainPersistentLolis(state, linArena, perArena, { roles: {} }, evidenceOut);
+      drainPersistentLolis(state, linArena, perArena, { connectives: ILL_CONNECTIVES }, evidenceOut, { connectives: ILL_RC });
 
       assert.strictEqual(evidenceOut.length, 2, 'should drain both lolis');
     });

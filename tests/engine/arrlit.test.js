@@ -5,7 +5,7 @@ const { show } = require('../../lib/engine/show');
 const { isGround, collectMetavars, collectFreevars } = require('../../lib/engine/pattern-utils');
 const { serialize, deserialize } = require('../../lib/engine/store-binary');
 const { match, matchIndexed, undoSave, undoRestore, unify } = require('../../lib/kernel/unify');
-const { arr_get, arr_set, alen, read_bytes } = require('../../lib/engine/ffi/array');
+const { arr_get, arr_set, alen, read_bytes } = require('../../lib/engine/ill/ffi/array');
 const { buildParserFromTables, computeParserTables } = require('../../lib/calculus/builders');
 
 describe('arrlit - Stage 1: Store Infrastructure', () => {

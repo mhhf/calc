@@ -4,7 +4,7 @@
 const { describe, it, beforeEach } = require('node:test');
 const assert = require('node:assert');
 const Store = require('../../lib/kernel/store');
-const { unify, unifyBinlit, unifyStrlit, setTheories } = require('../../lib/kernel/unify');
+const { unify, setTheories } = require('../../lib/kernel/unify');
 const { defaultTheories } = require('../../lib/kernel/eq-theory');
 const { binlitTheory } = require('../../lib/engine/ill/binlit-theory');
 
@@ -17,8 +17,8 @@ const {
   hashToStr,
   charToHash,
   hashToChar
-} = require('../../lib/engine/ffi/convert');
-const arithmetic = require('../../lib/engine/ffi/arithmetic');
+} = require('../../lib/engine/ill/ffi/convert');
+const arithmetic = require('../../lib/engine/ill/ffi/arithmetic');
 
 describe('Primitive Storage', { timeout: 10000 }, () => {
   beforeEach(() => {

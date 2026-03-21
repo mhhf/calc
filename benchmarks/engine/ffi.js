@@ -3,8 +3,8 @@
  */
 
 const assert = require('assert');
-const ffi = require('../../lib/engine/ffi');
-const { binToInt, intToBin, isGround } = require('../../lib/engine/ffi/convert');
+const ffi = require('../../lib/engine/ill/ffi');
+const { binToInt, intToBin, isGround } = require('../../lib/engine/ill/ffi/convert');
 const Store = require('../../lib/kernel/store');
 
 describe('FFI Convert', () => {

@@ -11,8 +11,8 @@ const { explore } = require('../../lib/engine/explore');
 const { getAllLeaves, countNodes } = require('../../lib/engine/tree-utils');
 const Store = require('../../lib/kernel/store');
 const { apply: subApply } = require('../../lib/kernel/substitute');
-const { intToBin, binToInt } = require('../../lib/engine/ffi/convert');
-const memory = require('../../lib/engine/ffi/memory');
+const { intToBin, binToInt } = require('../../lib/engine/ill/ffi/convert');
+const memory = require('../../lib/engine/ill/ffi/memory');
 
 // ============================================================================
 // FFI Unit Tests

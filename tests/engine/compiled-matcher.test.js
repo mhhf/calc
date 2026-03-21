@@ -12,9 +12,9 @@ const Store = require('../../lib/kernel/store');
 const mde = require('../../lib/engine');
 const forward = require('../../lib/engine/forward');
 const {
-  compilePatternMatch, executePatternMatch, compilePersistentStep,
+  compilePatternMatch, executePatternMatch,
 } = require('../../lib/engine/compile');
-const { tryMatch, executePersistentStep } = require('../../lib/engine/match');
+const { tryMatch, executePersistentStep, compilePersistentStep } = require('../../lib/engine/match');
 const { explore } = require('../../lib/engine/explore');
 const { countNodes, getAllLeaves } = require('../../lib/engine/tree-utils');
 

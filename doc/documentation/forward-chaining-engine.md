@@ -32,7 +32,7 @@ graph TB
     end
 
     subgraph Opt["opt/ — Toggleable Optimizations (641 lines)"]
-        OPT_FFI["ffi.js — FFI persistent proving"]
+        OPT_FFI["ffi.js — FFI persistent proving + compiled steps"]
         OPT_FP["fingerprint.js — O(1) discriminator"]
         OPT_DT["disc-tree-opt.js — trie layer"]
         OPT_DELTA["delta-bypass.js — flat pattern shortcut"]
@@ -47,8 +47,8 @@ graph TB
     subgraph Support["Support"]
         DTREE["<b>disc-tree.js</b> (242 lines)<br/>Discrimination tree indexing"]
         CONSTR["<b>constraint.js</b> (184 lines)<br/>EqNeqSolver"]
-        PROVE["<b>prove.js</b> (350 lines)<br/>Backward chaining"]
-        FFI["<b>ffi/</b><br/>Foreign function interface"]
+        PROVE["<b>backchain.js</b><br/>Backward chaining"]
+        FFI["<b>ill/ffi/</b><br/>Foreign function interface"]
         CONVERT["<b>convert.js</b> (403 lines)<br/>.ill → content-addressed hashes"]
     end
 
@@ -101,7 +101,7 @@ flowchart LR
     FWRULES --> COMP["compileRule()"]
     COMP --> COMPILED["compiled rules<br/>slots, triggers,<br/>pattern roles,<br/>compiled sub"]
 
-    CLAUSES --> IDX["prove.buildIndex()"]
+    CLAUSES --> IDX["backchain.buildIndex()"]
     IDX --> CIDX["clause index"]
 
     COMPILED --> RUN["forward.run()"]
@@ -167,7 +167,7 @@ flowchart TB
         BACKWARD["prove(goal)"]
         FFI_CHECK{"FFI available<br/>for predicate?"}
         FFI["<b>2a. FFI</b><br/>O(1) arithmetic<br/>(inc, plus, neq, ...)"]
-        CLAUSES["<b>2b. Clause resolution</b><br/>Backward chaining<br/>via prove.js"]
+        CLAUSES["<b>2b. Clause resolution</b><br/>Backward chaining<br/>via backchain.js"]
 
         BACKWARD --> FFI_CHECK
         FFI_CHECK --> |"yes"| FFI
@@ -280,7 +280,7 @@ Optimization modules called in the hot loop (`go`): `drainPersistentLolis` (opt/
 flowchart LR
     RAW["Raw rule<br/>{name, hash,<br/>antecedent,<br/>consequent}"]
 
-    RAW --> F1["flattenTensor<br/>→ linear[] + persistent[]"]
+    RAW --> F1["flattenAntecedent<br/>→ linear[] + persistent[]"]
     F1 --> F2["Extract triggers<br/>+ discriminator"]
     F2 --> F3["Collect persistent<br/>output vars"]
     F3 --> F4["De Bruijn slot<br/>assignment"]
@@ -296,7 +296,7 @@ flowchart LR
 
 Guarded loli continuations (e.g. `!eq V 0 -o { stack SH 1 }`) become linear facts in state. `matchLoli` uses the same persistent proving pipeline as `tryMatch`:
 
-1. Extract trigger → `flattenTensor` → linear + persistent components
+1. Extract trigger → `flattenAntecedent` → linear + persistent components
 2. Match linear triggers against state (via matchIndexed)
 3. Prove persistent triggers (state lookup → backward prove [FFI | clauses])
 4. Guard succeeds → loli fires, body produced. Guard fails → null (stuck leaf).

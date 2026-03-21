@@ -17,7 +17,6 @@ const mde = require('../lib/engine');
 const Store = require('../lib/kernel/store');
 const Seq = require('../lib/kernel/sequent');
 const calculus = require('../lib/calculus');
-const { DEFAULT_ROLES } = require('../lib/engine/compile');
 const { buildGuidedTerm } = require('../lib/prover/guided-term');
 const { rightFocusTerm } = require('../lib/prover/bridge');
 const { generateWitness } = require('../lib/zk/witness');
@@ -68,7 +67,6 @@ function countRule(t, ruleName) {
 describe('ZK custom chip: fact_axiom replaces clause proofs', { timeout: 30000 }, () => {
   let calc, illCalc, state, forwardResult, guidedTerm;
   let witnessBaseline, witnessCustom;
-  const roles = DEFAULT_ROLES;
 
   before(async () => {
     Store.clear();
@@ -92,7 +90,7 @@ describe('ZK custom chip: fact_axiom replaces clause proofs', { timeout: 30000 }
     const succFormula = buildSuccedentFromState(forwardResult.state);
     const linear = forwardResult.state.linear || {};
     const persistent = forwardResult.state.persistent || {};
-    const rfResult = rightFocusTerm(linear, persistent, succFormula, roles);
+    const rfResult = rightFocusTerm(linear, persistent, succFormula, illCalc.roles);
     assert.ok(rfResult, 'rightFocusTerm should succeed');
 
     const innerTerm = buildGuidedTerm(forwardResult.trace, rfResult.term);

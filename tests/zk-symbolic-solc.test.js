@@ -22,7 +22,6 @@ const { classifyLeaf } = require('../lib/engine/show');
 const Store = require('../lib/kernel/store');
 const Seq = require('../lib/kernel/sequent');
 const calculus = require('../lib/calculus');
-const { DEFAULT_ROLES } = require('../lib/engine/compile');
 const { buildGuidedTerm } = require('../lib/prover/guided-term');
 const { rightFocusTerm } = require('../lib/prover/bridge');
 const { generateWitness } = require('../lib/zk/witness');
@@ -63,7 +62,6 @@ const ALL_CUSTOM_CHIPS = new Set([
 
 describe('ZK symbolic solc: 31-path witness generation', { timeout: 1800000 }, () => {
   let engineCalc, illCalc, initialState, tree, leaves;
-  const roles = DEFAULT_ROLES;
   const witnesses = [];
 
   before(async () => {
@@ -126,7 +124,7 @@ describe('ZK symbolic solc: 31-path witness generation', { timeout: 1800000 }, (
       const succFormula = buildSuccedentFromState(plainState);
       const linear = plainState.linear || {};
       const persistent = plainState.persistent || {};
-      const rfResult = rightFocusTerm(linear, persistent, succFormula, roles);
+      const rfResult = rightFocusTerm(linear, persistent, succFormula, illCalc.roles);
       assert.ok(rfResult, `rightFocusTerm should succeed for leaf ${i}`);
 
       // Build guided proof term

@@ -97,7 +97,7 @@ Semantic roles map to concrete tag names via `deriveRoles(constructors, polarity
 | `computation` | monad | 1 | — | monad |
 | `existential` | quantifier | 1 | positive | exists |
 
-Engine files dispatch on `calc?.roles?.X || 'default'` instead of hardcoded tag names. This lets multiple logics coexist — each with its own connective names filling the same role slots.
+Engine files dispatch on `calc?.connectives?.X || 'default'` instead of hardcoded tag names. The ILL connective configuration lives in `ill/connectives.js`. This lets multiple logics coexist — each with its own connective names filling the same structural slots.
 
 **Graceful degradation:** absent roles silently disable features. No `computation` → backward-only prover. No `product` → atomic rewrites only. No `implication` → no loli matching.
 

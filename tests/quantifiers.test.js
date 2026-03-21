@@ -13,7 +13,9 @@ const { createProver } = require('../lib/prover/focused');
 const { buildRuleSpecs } = require('../lib/prover/rule-interpreter');
 const Seq = require('../lib/kernel/sequent');
 const { parseExpr } = require('../lib/engine/convert');
-const { compileRule, expandChoiceItem } = require('../lib/engine/compile');
+const { resolveConnectives, compileRule, expandChoiceItem } = require('../lib/engine/compile');
+const { ILL_CONNECTIVES } = require('../lib/engine/ill/connectives');
+const ILL_RC = resolveConnectives(ILL_CONNECTIVES);
 const { createState } = require('../lib/engine/forward');
 const { resolveExistentials, tryMatch, provePersistentGoals } = require('../lib/engine/match');
 
@@ -216,7 +218,7 @@ describe('Forward engine with exists', () => {
     const pb = Store.put('p', [b0]);
     const ex = Store.put('exists', [pb]);
 
-    const alts = expandChoiceItem(ex);
+    const alts = expandChoiceItem(ex, ILL_RC);
     assert.strictEqual(alts.length, 1);
     // Body should have a freevar (metavar) instead of bound(0)
     const linearFact = alts[0].linear[0];
@@ -232,7 +234,7 @@ describe('Forward engine with exists', () => {
     const q = Store.put('atom', ['q']);
     const tensor = Store.put('tensor', [ex, q]);
 
-    const alts = expandChoiceItem(tensor);
+    const alts = expandChoiceItem(tensor, ILL_RC);
     assert.strictEqual(alts.length, 1);
     assert.strictEqual(alts[0].linear.length, 2);
   });
@@ -247,7 +249,7 @@ describe('Forward engine with exists', () => {
     const loli = Store.put('loli', [a, monad]);
 
     const rule = { name: 'test', hash: loli, antecedent: a, consequent: monad };
-    const compiled = compileRule(rule);
+    const compiled = compileRule(rule, { connectives: ILL_CONNECTIVES });
 
     assert.ok(compiled.existentialSlots.length > 0, 'should have existential slots');
   });
@@ -268,7 +270,7 @@ describe('Loli variables are NOT existential slots', () => {
     const monad = Store.put('monad', [body]);
 
     const rule = { name: 'test_loli', hash: Store.put('loli', [a, monad]), antecedent: a, consequent: monad };
-    const compiled = compileRule(rule);
+    const compiled = compileRule(rule, { connectives: ILL_CONNECTIVES });
 
     // Z should NOT be in existentialSlots — it's a loli pattern variable
     assert.strictEqual(compiled.existentialSlots.length, 0,
@@ -291,7 +293,7 @@ describe('Loli variables are NOT existential slots', () => {
     const monad = Store.put('monad', [ex]);
 
     const rule = { name: 'test_mixed', hash: Store.put('loli', [a, monad]), antecedent: a, consequent: monad };
-    const compiled = compileRule(rule);
+    const compiled = compileRule(rule, { connectives: ILL_CONNECTIVES });
 
     // Should have exactly 1 existential slot (for the exists-opened X), not 2
     assert.strictEqual(compiled.existentialSlots.length, 1,
@@ -311,7 +313,7 @@ describe('resolveExistentials three-level fallback', () => {
 
     resetMetavar();
     const rule = { name: 'test', hash: Store.put('loli', [a, monad]), antecedent: a, consequent: monad };
-    const compiled = compileRule(rule);
+    const compiled = compileRule(rule, { connectives: ILL_CONNECTIVES });
 
     const theta = new Array(compiled.metavarCount);
     const state = createState();
@@ -331,7 +333,7 @@ describe('resolveExistentials three-level fallback', () => {
     resetMetavar();
     const ruleH = await parseExpr('a X Y -o { exists Z. (b Z * !plus X Y Z) }');
     const [ante, conseq] = Store.children(ruleH);
-    const compiled = compileRule({ name: 'test_ffi', hash: ruleH, antecedent: ante, consequent: conseq });
+    const compiled = compileRule({ name: 'test_ffi', hash: ruleH, antecedent: ante, consequent: conseq }, { connectives: ILL_CONNECTIVES });
 
     assert.ok(compiled.existentialSlots.length > 0, 'should have existential slots');
 

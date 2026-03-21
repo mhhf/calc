@@ -5,8 +5,8 @@
  */
 
 const Store = require('../../lib/kernel/store');
-const { intToBin, intToBinRecursive, binToInt } = require('../../lib/engine/ffi/convert');
-const arithmetic = require('../../lib/engine/ffi/arithmetic');
+const { intToBin, intToBinRecursive, binToInt } = require('../../lib/engine/ill/ffi/convert');
+const arithmetic = require('../../lib/engine/ill/ffi/arithmetic');
 
 function benchmark(name, fn, iterations = 1000) {
   // Warmup
@@ -152,7 +152,7 @@ console.table(fixedResults.map(r => ({
 // String operations
 console.log('\n--- String Operations ---\n');
 
-const { strToHash, hashToStr } = require('../../lib/engine/ffi/convert');
+const { strToHash, hashToStr } = require('../../lib/engine/ill/ffi/convert');
 
 Store.clear();
 const str_a = strToHash('hello');

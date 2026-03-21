@@ -17,7 +17,6 @@ const mde = require('../lib/engine');
 const Store = require('../lib/kernel/store');
 const Seq = require('../lib/kernel/sequent');
 const calculus = require('../lib/calculus');
-const { DEFAULT_ROLES } = require('../lib/engine/compile');
 const { buildGuidedTerm } = require('../lib/prover/guided-term');
 const { rightFocusTerm } = require('../lib/prover/bridge');
 const { generateWitness } = require('../lib/zk/witness');
@@ -59,7 +58,6 @@ const ALL_CUSTOM_CHIPS = new Set([
 describe('ZK custom chip: solc with all predicates', { timeout: 600000 }, () => {
   let engineCalc, illCalc, state, forwardResult, guidedTerm;
   let witnessCustom;
-  const roles = DEFAULT_ROLES;
 
   before(async () => {
     Store.clear();
@@ -89,7 +87,7 @@ describe('ZK custom chip: solc with all predicates', { timeout: 600000 }, () => 
     const succFormula = buildSuccedentFromState(forwardResult.state);
     const linear = forwardResult.state.linear || {};
     const persistent = forwardResult.state.persistent || {};
-    const rfResult = rightFocusTerm(linear, persistent, succFormula, roles);
+    const rfResult = rightFocusTerm(linear, persistent, succFormula, illCalc.roles);
     assert.ok(rfResult, 'rightFocusTerm should succeed');
 
     const t0 = performance.now();

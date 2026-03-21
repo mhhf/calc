@@ -14,6 +14,7 @@ const Store = require('../lib/kernel/store');
 const forward = require('../lib/engine/forward');
 const { buildGuidedTerm, getLoliFromRule } = require('../lib/prover/guided-term');
 const { rightFocusTerm, executeModeSwitch } = require('../lib/prover/bridge');
+const { ILL_CONNECTIVES } = require('../lib/engine/ill/connectives');
 
 describe('Guided Proof Terms (TODO_0068 §10.5)', () => {
 
@@ -328,7 +329,7 @@ describe('Guided Proof Terms (TODO_0068 §10.5)', () => {
       const monadB = Store.put('monad', [b]);
       const loli = Store.put('loli', [a, monadB]);
 
-      const rules = [forward.compileRule({ name: 'r1', hash: loli, antecedent: a, consequent: monadB })];
+      const rules = [forward.compileRule({ name: 'r1', hash: loli, antecedent: a, consequent: monadB }, { connectives: ILL_CONNECTIVES })];
 
       const result = forward.run(
         { linear: { [a]: 1 }, persistent: {} },
@@ -353,7 +354,7 @@ describe('Guided Proof Terms (TODO_0068 §10.5)', () => {
       const monadB = Store.put('monad', [b]);
       const loli = Store.put('loli', [a, monadB]);
 
-      const rules = [forward.compileRule({ name: 'r1', hash: loli, antecedent: a, consequent: monadB })];
+      const rules = [forward.compileRule({ name: 'r1', hash: loli, antecedent: a, consequent: monadB }, { connectives: ILL_CONNECTIVES })];
 
       const result = forward.run(
         { linear: { [a]: 1 }, persistent: {} },
@@ -383,7 +384,7 @@ describe('Guided Proof Terms (TODO_0068 §10.5)', () => {
       const monadB = Store.put('monad', [b]);
       const loli = Store.put('loli', [a, monadB]);
 
-      const rules = [forward.compileRule({ name: 'r1', hash: loli, antecedent: a, consequent: monadB })];
+      const rules = [forward.compileRule({ name: 'r1', hash: loli, antecedent: a, consequent: monadB }, { connectives: ILL_CONNECTIVES })];
       const Seq = require('../lib/kernel/sequent');
       const seq = Seq.fromArrays([a], [], monadB);
 

@@ -18,7 +18,6 @@ const mde = require('../lib/engine');
 const Store = require('../lib/kernel/store');
 const Seq = require('../lib/kernel/sequent');
 const calculus = require('../lib/calculus');
-const { DEFAULT_ROLES } = require('../lib/engine/compile');
 const { buildGuidedTerm } = require('../lib/prover/guided-term');
 const { rightFocusTerm } = require('../lib/prover/bridge');
 const { generateWitness, generateChunkedTreeWitness } = require('../lib/zk/witness');
@@ -59,7 +58,6 @@ const ALL_CUSTOM_CHIPS = new Set([
 describe('ZK chunked tree: split and verify', { timeout: 600000 }, () => {
   let engineCalc, illCalc, state, forwardResult, guidedTerm;
   let fullWitness, chunks;
-  const roles = DEFAULT_ROLES;
 
   before(async () => {
     Store.clear();
@@ -83,7 +81,7 @@ describe('ZK chunked tree: split and verify', { timeout: 600000 }, () => {
     const succFormula = buildSuccedentFromState(forwardResult.state);
     const linear = forwardResult.state.linear || {};
     const persistent = forwardResult.state.persistent || {};
-    const rfResult = rightFocusTerm(linear, persistent, succFormula, roles);
+    const rfResult = rightFocusTerm(linear, persistent, succFormula, illCalc.roles);
     assert.ok(rfResult);
 
     const innerTerm = buildGuidedTerm(forwardResult.trace, rfResult.term);

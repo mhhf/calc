@@ -15,7 +15,6 @@ const mde = require('../lib/engine');
 const Store = require('../lib/kernel/store');
 const Seq = require('../lib/kernel/sequent');
 const calculus = require('../lib/calculus');
-const { DEFAULT_ROLES } = require('../lib/engine/compile');
 const { buildGuidedTerm } = require('../lib/prover/guided-term');
 const { rightFocusTerm } = require('../lib/prover/bridge');
 const { createChecker } = require('../lib/prover/check-term');
@@ -75,7 +74,6 @@ function countRule(t, ruleName) {
 
 describe('ZK noFFI witness: noffi_tiny (2-step clause resolution)', { timeout: 30000 }, () => {
   let calc, illCalc, state, forwardResult, guidedTerm, witness;
-  const roles = DEFAULT_ROLES;
 
   before(async () => {
     Store.clear();
@@ -112,7 +110,7 @@ describe('ZK noFFI witness: noffi_tiny (2-step clause resolution)', { timeout: 3
     const succFormula = buildSuccedentFromState(forwardResult.state);
     const linear = forwardResult.state.linear || {};
     const persistent = forwardResult.state.persistent || {};
-    const rfResult = rightFocusTerm(linear, persistent, succFormula, roles);
+    const rfResult = rightFocusTerm(linear, persistent, succFormula, illCalc.roles);
     assert.ok(rfResult, 'rightFocusTerm should succeed');
 
     const innerTerm = buildGuidedTerm(forwardResult.trace, rfResult.term);
@@ -224,7 +222,6 @@ describe('ZK noFFI witness: noffi_tiny (2-step clause resolution)', { timeout: 3
 
 describe('ZK noFFI witness: pure_linear (no clause resolution)', { timeout: 30000 }, () => {
   let calc, illCalc, state, forwardResult, guidedTerm, witness;
-  const roles = DEFAULT_ROLES;
 
   before(async () => {
     Store.clear();
@@ -258,7 +255,7 @@ describe('ZK noFFI witness: pure_linear (no clause resolution)', { timeout: 3000
     const succFormula = buildSuccedentFromState(forwardResult.state);
     const linear = forwardResult.state.linear || {};
     const persistent = forwardResult.state.persistent || {};
-    const rfResult = rightFocusTerm(linear, persistent, succFormula, roles);
+    const rfResult = rightFocusTerm(linear, persistent, succFormula, illCalc.roles);
     assert.ok(rfResult, 'rightFocusTerm should succeed');
 
     const innerTerm = buildGuidedTerm(forwardResult.trace, rfResult.term);

@@ -15,7 +15,6 @@ const mde = require('../lib/engine');
 const Store = require('../lib/kernel/store');
 const Seq = require('../lib/kernel/sequent');
 const calculus = require('../lib/calculus');
-const { DEFAULT_ROLES } = require('../lib/engine/compile');
 const { buildRewriteTrace, checkRewriteTrace } = require('../lib/prover/rewrite-trace');
 const { generateFlatWitness, MAX_CONSUMED, MAX_PRODUCED } = require('../lib/zk/flat-witness');
 

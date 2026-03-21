@@ -71,8 +71,9 @@ lib/
 │   ├── ill/             # ILL layer: ILL-specific logic
 │   │   ├── backchain-ill.js # ILL defaults for backchainer
 │   │   ├── binlit-theory.js # Equational theory: binlit ↔ i/o/e
-│   │   └── loli-drain.js   # Loli drain optimization
-│   ├── ffi/             # Foreign function interface (arithmetic, memory)
+│   │   ├── connectives.js   # ILL connective configuration
+│   │   ├── loli-drain.js    # Loli drain optimization
+│   │   └── ffi/             # Foreign function interface (arithmetic, memory)
 │   └── opt/             # Toggleable optimization modules
 ├── meta-parser/         # Meta-level parser (@extends chain resolution)
 ├── parser/              # Pratt parser + sequent parser

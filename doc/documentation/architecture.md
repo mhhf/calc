@@ -78,23 +78,28 @@ lib/engine/                      # Forward execution engine (L4c/L4d)
 ├── optimizer.js                 # profile-driven engine config (bare/fast/evm)
 ├── match.js                     # pattern matching + persistent proving
 ├── strategy.js                  # rule selection: strategy stack builder
-├── forward.js                   # execution + committed-choice main loop
+├── forward.js                   # committed-choice main loop
 ├── explore.js                   # exhaustive DFS exploration + mutation/undo
+├── backchain.js                 # backward chaining for persistent antecedents
 ├── state-ops.js                 # state mutation: consume/produce/mutateState
 ├── compile.js                   # rule compilation (de Bruijn slots, metavar analysis)
 ├── rule-analysis.js             # pattern roles, compiled substitution recipes
 ├── constraint.js                # EqNeqSolver (union-find with forbid list)
 ├── disc-tree.js                 # discrimination tree indexing
-├── prove.js                     # backward chaining for persistent antecedents
-├── ffi/                         # foreign function interface (arithmetic, etc.)
+├── lnl/                         # Linear-Non-Linear framework
+│   ├── persistent.js            # persistent goal proving
+│   ├── loli.js                  # dynamic rule matching
+│   └── existential.js           # existential resolution
+├── ill/                         # ILL-specific
+│   ├── backchain-ill.js         # ILL backward prover defaults
+│   ├── binlit-theory.js         # binary number equational theory
+│   ├── connectives.js           # ILL connective configuration
+│   ├── loli-drain.js            # persistent-trigger loli optimization
+│   └── ffi/                     # foreign function interface (arithmetic, etc.)
 ├── opt/                         # extracted optimization modules (toggleable)
-│   ├── ffi.js                   # FFI-accelerated persistent proving
+│   ├── backward-cache.js        # backward proof cache
+│   ├── ffi.js                   # FFI-accelerated persistent proving + compiled steps
 │   ├── delta-bypass.js          # direct child extraction for flat patterns
-│   ├── preserved.js             # skip re-producing unchanged facts
-│   ├── compiled-sub.js          # precompiled substitution recipes
-│   ├── fingerprint.js           # fingerprint detection + layer factory
-│   ├── disc-tree-opt.js         # disc-tree layer factory
-│   ├── loli-drain.js            # persistent-trigger loli fusion
 │   ├── structural-memo.js       # control-hash subtree memoization
 │   ├── prediction.js            # threaded code dispatch (Opt_H)
 │   └── constraint.js            # solver integration (feed + SAT filter)
@@ -259,7 +264,7 @@ graph TB
 
 **Program-aware indexing (auto-detected).** The strategy stack includes a fingerprint layer that detects dominant discriminating predicates from rule structure. For EVM, `code(PC, OPCODE)` is the discriminator — 40 of 44 rules have a ground opcode child. The fingerprint layer resolves these in O(1). This is auto-detected by `detectFingerprintConfig()` from rule patterns; no program-specific code exists. The disc-tree layer (general-purpose trie) handles all remaining rules. See `doc/documentation/strategy-layers.md`.
 
-**Persistent proving.** Persistent antecedents (`!C` in `A * B * !C -o { D }`) are resolved in two levels: (1) state lookup — check if the fact already exists in `state.persistent`, (2) backward prove — FFI as O(1) fast path, then clause resolution via `prove.js` as fallback. FFI handles arithmetic (inc, plus, neq, mul) and is conceptually an optimization within backward proving, not a separate mechanism.
+**Persistent proving.** Persistent antecedents (`!C` in `A * B * !C -o { D }`) are resolved in two levels: (1) state lookup — check if the fact already exists in `state.persistent`, (2) backward prove — FFI as O(1) fast path, then clause resolution via `backchain.js` as fallback. FFI handles arithmetic (inc, plus, neq, mul) and is conceptually an optimization within backward proving, not a separate mechanism.
 
 **Mutation+undo.** During DFS exploration, state is mutated in-place via FactSet + Arena and restored after each child subtree returns. Snapshots are taken only at terminal nodes. See `doc/documentation/explore-optimizations.md`.
 
@@ -320,7 +325,7 @@ The monadic type `{S}` marks an **optimization boundary** in `lib/prover/bridge.
 
 The monad itself is a genuine logical connective (CLF, Watkins et al. 2004) — a polarity shift from negative (async) to positive (sync). But the decision to hand execution to a separate engine at this boundary is a strategy choice, not a logical necessity. With `opts.forward = 'guided'`, the forward engine runs as an oracle and the proof term decomposes into standard ILL inference steps. With `opts.forward = 'off'`, the backward prover handles the monadic fragment directly (intractable for large programs, but theoretically equivalent).
 
-Connective roles (`lib/calculus/builders.js:deriveRoles`) parameterize all engine tag dispatch for multi-logic support. See `doc/documentation/lax-monad.md` for full details.
+Connective table (`ill/connectives.js`) maps tag → `{ category, arity, polarity }`. `compile.js:resolveConnectives()` derives role→tag lookups for O(1) dispatch. No hardcoded ILL names in the generic layer. See `doc/documentation/lax-monad.md` for full details.
 
 ## Open Research
 

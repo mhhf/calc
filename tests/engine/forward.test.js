@@ -7,14 +7,17 @@ const path = require('path');
 const forward = require('../../lib/engine/forward');
 const mde = require('../../lib/engine');
 const Store = require('../../lib/kernel/store');
-const ffi = require('../../lib/engine/ffi');
+const ffi = require('../../lib/engine/ill/ffi');
 const { tryMatch } = require('../../lib/engine/match');
+const { ILL_CONNECTIVES } = require('../../lib/engine/ill/connectives');
+const { resolveConnectives } = require('../../lib/engine/compile');
+const ILL_RC = resolveConnectives(ILL_CONNECTIVES);
 
 describe('Forward Chaining', { timeout: 10000 }, () => {
-  describe('flattenTensor', () => {
+  describe('flattenAntecedent', () => {
     it('flattens simple tensor', async () => {
       const h = await mde.parseExpr('A * B * C');
-      const { linear, persistent } = forward.flattenTensor(h);
+      const { linear, persistent } = forward.flattenAntecedent(h, ILL_RC);
 
       assert.strictEqual(linear.length, 3, 'Should have 3 linear');
       assert.strictEqual(persistent.length, 0, 'Should have no persistent');
@@ -22,7 +25,7 @@ describe('Forward Chaining', { timeout: 10000 }, () => {
 
     it('extracts bang as persistent', async () => {
       const h = await mde.parseExpr('A * !B * C');
-      const { linear, persistent } = forward.flattenTensor(h);
+      const { linear, persistent } = forward.flattenAntecedent(h, ILL_RC);
 
       assert.strictEqual(linear.length, 2, 'Should have 2 linear');
       assert.strictEqual(persistent.length, 1, 'Should have 1 persistent');
@@ -39,7 +42,7 @@ describe('Forward Chaining', { timeout: 10000 }, () => {
         consequent: Store.children(h)[1]
       };
 
-      const compiled = forward.compileRule(rule);
+      const compiled = forward.compileRule(rule, { connectives: ILL_CONNECTIVES });
 
       assert.strictEqual(compiled.antecedent.linear.length, 1, 'Should have 1 linear ante');
       assert.strictEqual(compiled.antecedent.persistent.length, 1, 'Should have 1 persistent ante');
@@ -57,7 +60,7 @@ describe('Forward Chaining', { timeout: 10000 }, () => {
         hash: ruleH,
         antecedent: ante,
         consequent: conseq
-      });
+      }, { connectives: ILL_CONNECTIVES });
 
       // State: foo
       const foo = await mde.parseExpr('foo');
@@ -81,7 +84,7 @@ describe('Forward Chaining', { timeout: 10000 }, () => {
         hash: ruleH,
         antecedent: ante,
         consequent: conseq
-      });
+      }, { connectives: ILL_CONNECTIVES });
 
       // State: baz (not foo)
       const baz = await mde.parseExpr('baz');
@@ -103,7 +106,7 @@ describe('Forward Chaining', { timeout: 10000 }, () => {
         hash: ruleH,
         antecedent: ante,
         consequent: conseq
-      });
+      }, { connectives: ILL_CONNECTIVES });
 
       const foo = await mde.parseExpr('foo');
       const guard = await mde.parseExpr('guard');
@@ -132,7 +135,7 @@ describe('Forward Chaining', { timeout: 10000 }, () => {
         hash: ruleH,
         antecedent: ante,
         consequent: conseq
-      });
+      }, { connectives: ILL_CONNECTIVES });
 
       const foo = await mde.parseExpr('foo');
       const state = forward.createState({ [foo]: 1 }, {});
@@ -151,7 +154,7 @@ describe('Forward Chaining', { timeout: 10000 }, () => {
         hash: ruleH,
         antecedent: ante,
         consequent: conseq
-      });
+      }, { connectives: ILL_CONNECTIVES });
 
       const foo = await mde.parseExpr('foo');
       const state = forward.createState({ [foo]: 1 }, {});
@@ -208,7 +211,7 @@ describe('Forward Chaining', { timeout: 10000 }, () => {
         hash: ruleH,
         antecedent: ante,
         consequent: conseq
-      });
+      }, { connectives: ILL_CONNECTIVES });
 
       // Create a ground but non-numeric term as the value of foo
       const sym = Store.put('atom', ['sym']);

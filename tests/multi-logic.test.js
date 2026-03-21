@@ -8,7 +8,7 @@ const path = require('path');
 
 const calculus = require('../lib/calculus');
 const Store = require('../lib/kernel/store');
-const { DEFAULT_ROLES } = require('../lib/engine/compile');
+const { ILL_CONNECTIVES } = require('../lib/engine/ill/connectives');
 
 describe('deriveRoles', () => {
   let ill;
@@ -31,11 +31,16 @@ describe('deriveRoles', () => {
     assert.strictEqual(r['additive-zero'], 'zero');
   });
 
-  it('should match DEFAULT_ROLES for ILL connectives', () => {
-    for (const [role, name] of Object.entries(DEFAULT_ROLES)) {
-      assert.strictEqual(ill.roles[role], name,
-        `role '${role}' should be '${name}', got '${ill.roles[role]}'`);
-    }
+  it('should have ILL_CONNECTIVES as tag → structural info table', () => {
+    assert.deepStrictEqual(ILL_CONNECTIVES.tensor, { category: 'multiplicative', arity: 2, polarity: 'positive' });
+    assert.deepStrictEqual(ILL_CONNECTIVES.loli, { category: 'multiplicative', arity: 2, polarity: 'negative' });
+    assert.deepStrictEqual(ILL_CONNECTIVES.bang, { category: 'exponential', arity: 1 });
+    assert.deepStrictEqual(ILL_CONNECTIVES.monad, { category: 'monad', arity: 1 });
+    assert.deepStrictEqual(ILL_CONNECTIVES.oplus, { category: 'additive', arity: 2, polarity: 'positive' });
+    assert.deepStrictEqual(ILL_CONNECTIVES.with, { category: 'additive', arity: 2, polarity: 'negative' });
+    assert.deepStrictEqual(ILL_CONNECTIVES.exists, { category: 'quantifier', arity: 1, polarity: 'positive' });
+    assert.deepStrictEqual(ILL_CONNECTIVES.one, { category: 'multiplicative', arity: 0 });
+    assert.deepStrictEqual(ILL_CONNECTIVES.zero, { category: 'additive', arity: 0 });
   });
 });
 

@@ -14,8 +14,8 @@ const path = require('path');
 const Store = require('../lib/kernel/store');
 const mde = require('../lib/engine');
 const backward = require('../lib/engine/backchain');
-const ffi = require('../lib/engine/ffi');
-const convert = require('../lib/engine/ffi/convert');
+const ffi = require('../lib/engine/ill/ffi');
+const convert = require('../lib/engine/ill/ffi/convert');
 const show = require('../lib/engine/show');
 const apply = require('../lib/kernel/substitute').apply;
 
