@@ -17,7 +17,7 @@ const { resolveConnectives, compileRule, expandChoiceItem } = require('../lib/en
 const { ILL_CONNECTIVES } = require('../lib/engine/ill/connectives');
 const ILL_RC = resolveConnectives(ILL_CONNECTIVES);
 const { createState } = require('../lib/engine/forward');
-const { resolveExistentials, tryMatch, provePersistentGoals } = require('../lib/engine/match');
+const { resolveExistentials, tryMatch, provePersistent } = require('../lib/engine/match');
 
 describe('Quantifier Store operations', () => {
   it('exists(body) creates arity-1 node', () => {
@@ -344,7 +344,7 @@ describe('resolveExistentials three-level fallback', () => {
     const state = createState({ [aFact]: 1 }, {});
 
     // Use FFI-enabled provePersistent via matchOpts
-    const matchOpts = { provePersistent: provePersistentGoals, useCompiledSteps: true };
+    const matchOpts = { provePersistent: provePersistent, useCompiledSteps: true };
     const match = tryMatch(compiled, state, null, matchOpts);
     assert.notStrictEqual(match, null, 'tryMatch should succeed');
 
