@@ -1,92 +1,118 @@
 ---
 title: "Forward Chaining Engine — Architecture & Implementation"
 created: 2026-02-18
-modified: 2026-03-03
-summary: How the CALC forward chaining engine works — modules, data flow, matching, strategy, optimizations.
-tags: [implementation, forward-chaining, engine, architecture, CHR]
+modified: 2026-03-21
+summary: How the CALC forward chaining engine works — three-layer architecture, modules, data flow, matching, strategy, optimizations.
+tags: [implementation, forward-chaining, engine, architecture, CHR, linear-logic]
 ---
 
 # Forward Chaining Engine
 
-The forward engine executes ILL programs by multiset rewriting. A state (multiset of linear + persistent facts) is transformed by rules until quiescence. Conceptually a CHR-like runtime with exhaustive exploration (CHR-v).
+The forward engine executes programs by multiset rewriting. A state (multiset of linear + persistent facts) is transformed by rules until quiescence. Conceptually a CHR-like runtime with exhaustive exploration (CHR-v).
 
-## Module Architecture
+## Three-Layer Architecture
+
+The engine is structured as three layers with an orthogonal optimization axis. Each layer is a composable brick — testable and replaceable independently.
 
 ```mermaid
 graph TB
-    subgraph Compilation["Compile Time"]
-        COMPILE["<b>compile.js</b> (534 lines)<br/>Rule compilation:<br/>flatten, de Bruijn slots,<br/>discriminator detection"]
-        ANALYSIS["<b>rule-analysis.js</b> (285 lines)<br/>Pattern classification:<br/>preserved, delta, consumed,<br/>compiled substitution"]
+    subgraph Generic["Generic Core (any forward-chaining calculus)"]
+        COMPILE["<b>compile.js</b><br/>Rule compilation, connective resolution,<br/>de Bruijn slots, discriminator detection"]
+        MATCH["<b>match.js</b><br/>tryMatch, matchOnePattern,<br/>matchAllLinear"]
+        STRATEGY["<b>strategy.js</b><br/>Strategy stack: fingerprint →<br/>disc-tree → predicate"]
+        FORWARD["<b>forward.js</b><br/>Committed-choice main loop"]
+        EXPLORE["<b>explore.js</b><br/>Exhaustive DFS + mutation/undo"]
+        STATEOPS["<b>state-ops.js</b><br/>consume, produce, mutateState"]
+        BACKCHAIN["<b>backchain.js</b><br/>SLD-style backward chaining"]
     end
 
-    subgraph Config["Configuration"]
-        OPTIM["<b>optimizer.js</b> (132 lines)<br/>Profile resolution,<br/>engine creation,<br/>strategy stack assembly"]
+    subgraph LNL["LNL Layer (linear/persistent distinction)"]
+        PERSISTENT["<b>lnl/persistent.js</b><br/>Persistent goal proving:<br/>state → cache → clause"]
+        LOLI["<b>lnl/loli.js</b><br/>Dynamic rule matching<br/>(linear implications)"]
+        EXIST["<b>lnl/existential.js</b><br/>∃-variable resolution"]
     end
 
-    subgraph Runtime["Runtime (core)"]
-        MATCH["<b>match.js</b> (758 lines)<br/>Pattern matching primitives:<br/>tryMatch, provePersistentGoals,<br/>matchLoli"]
-        STRATEGY["<b>strategy.js</b> (284 lines)<br/>Strategy stack builder:<br/>findMatch, findAllMatches"]
-        STATEOPS["<b>state-ops.js</b> (99 lines)<br/>mutateState, consume,<br/>produce linear/persistent"]
-        FORWARD["<b>forward.js</b> (128 lines)<br/>Execution + main loop:<br/>applyMatch, run, createState"]
-        SYMEXEC["<b>explore.js</b> (333 lines)<br/>Exhaustive DFS exploration:<br/>explore, mutation+undo"]
+    subgraph ILL["ILL Layer (calculus-specific)"]
+        CONN["<b>ill/connectives.js</b><br/>ILL connective table"]
+        BINLIT["<b>ill/binlit-theory.js</b><br/>Binary number eq theory"]
+        DRAIN["<b>ill/loli-drain.js</b><br/>Persistent-trigger loli fusion"]
+        FFI["<b>ill/ffi/</b><br/>Arithmetic, memory, bitwise"]
+        BCILL["<b>ill/backchain-ill.js</b><br/>ILL backward defaults"]
     end
 
-    subgraph Opt["opt/ — Toggleable Optimizations (641 lines)"]
-        OPT_FFI["ffi.js — FFI persistent proving + compiled steps"]
-        OPT_FP["fingerprint.js — O(1) discriminator"]
-        OPT_DT["disc-tree-opt.js — trie layer"]
+    subgraph Opt["opt/ — Toggleable Optimizations"]
+        OPT_FFI["ffi.js — FFI proving + compiled steps"]
         OPT_DELTA["delta-bypass.js — flat pattern shortcut"]
         OPT_PRES["preserved.js — skip unchanged facts"]
         OPT_CSUB["compiled-sub.js — Store.put recipes"]
-        OPT_LOLI["loli-drain.js — eager loli fusion"]
         OPT_MEMO["structural-memo.js — control hash"]
         OPT_PRED["prediction.js — threaded code"]
         OPT_CONS["constraint.js — solver integration"]
+        OPT_CACHE["backward-cache.js — proof memoization"]
     end
 
-    subgraph Support["Support"]
-        DTREE["<b>disc-tree.js</b> (242 lines)<br/>Discrimination tree indexing"]
-        CONSTR["<b>constraint.js</b> (184 lines)<br/>EqNeqSolver"]
-        PROVE["<b>backchain.js</b><br/>Backward chaining"]
-        FFI["<b>ill/ffi/</b><br/>Foreign function interface"]
-        CONVERT["<b>convert.js</b> (403 lines)<br/>.ill → content-addressed hashes"]
-    end
-
-    subgraph Kernel["lib/kernel/"]
-        STORE["store.js — content-addressed arena"]
-        UNIFY["unify.js — matchIndexed, undo stack"]
-        SUBST["substitute.js — applyIndexed, subCompiled"]
-    end
-
-    OPTIM --> STRATEGY
-    COMPILE --> ANALYSIS
-    MATCH --> UNIFY
-    MATCH --> SUBST
-    MATCH --> PROVE
-    MATCH --> FFI
+    COMPILE --> MATCH
+    MATCH --> PERSISTENT
+    MATCH --> EXIST
     STRATEGY --> MATCH
-    STRATEGY --> DTREE
     FORWARD --> STRATEGY
-    FORWARD --> MATCH
-    FORWARD --> COMPILE
-    SYMEXEC --> STRATEGY
-    SYMEXEC --> MATCH
-    SYMEXEC --> STATEOPS
-    SYMEXEC --> Opt
-    STATEOPS --> SUBST
-    Opt --> MATCH
-    Opt --> STATEOPS
-    PROVE --> FFI
-    PROVE --> UNIFY
+    EXPLORE --> STRATEGY
+    FORWARD --> STATEOPS
+    EXPLORE --> STATEOPS
+    PERSISTENT --> BACKCHAIN
+    LOLI --> PERSISTENT
+    OPT_FFI --> FFI
+    CONN --> COMPILE
 
-    style MATCH fill:#cce5ff,stroke:#004085
-    style STRATEGY fill:#e2d5f1,stroke:#5a3d8a
-    style FORWARD fill:#d4edda,stroke:#155724
-    style SYMEXEC fill:#fff3cd,stroke:#856404
-    style COMPILE fill:#e8e8e8,stroke:#666
-    style ANALYSIS fill:#e8e8e8,stroke:#666
-    style OPTIM fill:#fce4ec,stroke:#880e4f
+    style Generic fill:#f0f8ff,stroke:#004085
+    style LNL fill:#f0fff0,stroke:#155724
+    style ILL fill:#fff8f0,stroke:#856404
     style Opt fill:#fce4ec,stroke:#880e4f
+```
+
+**Layer discipline:**
+- **Generic core** (`compile.js`, `match.js`, `strategy.js`, `state-ops.js`, `fact-set.js`): zero `ill/` imports. Parameterized by connective table and `matchOpts` callbacks.
+- **LNL layer** (`lnl/`): zero `ill/` imports. Receives configuration via `matchOpts`.
+- **Execution entry points** (`forward.js`, `explore.js`, `backchain.js`): import ILL defaults as fallbacks when `calc?.connectives` is absent. These are composition-layer wiring, not structural violations.
+- **ILL layer** (`ill/`): calculus-specific logic. Only imported by execution entry points and `opt/ffi.js`.
+
+### Connective Table
+
+The engine never queries tag names — it queries structural categories. `ill/connectives.js` provides the ILL connective table:
+
+```js
+// tag → { category, arity, polarity }
+{
+  tensor: { category: 'multiplicative', arity: 2, polarity: 'positive' },
+  loli:   { category: 'multiplicative', arity: 2, polarity: 'negative' },
+  bang:   { category: 'exponential',    arity: 1 },
+  one:    { category: 'multiplicative', arity: 0 },
+  monad:  { category: 'monad',          arity: 1 },
+  oplus:  { category: 'additive',       arity: 2, polarity: 'positive' },
+  with:   { category: 'additive',       arity: 2, polarity: 'negative' },
+  exists: { category: 'quantifier',     arity: 1, polarity: 'positive' },
+  zero:   { category: 'additive',       arity: 0 },
+}
+```
+
+`compile.js:resolveConnectives(ct)` inverts this table for O(1) structural role lookups: `product` (multiplicative, arity 2, positive), `implication` (multiplicative, arity 2, negative), `exponential` (arity 1), `computation` (monad), etc. Adding a new calculus means providing a parallel table with that calculus's tags.
+
+### matchOpts Composition
+
+Engine behavior is configured via callback composition at run start — no module-level mutable state:
+
+```js
+matchOpts = {
+  provePersistent,     // (patterns, idx, theta, slots, state, calc, evidence) → idx
+  matchDynamicRule,    // (factHash, state, calc, matchOpts) → match | null
+  dynamicRuleTag,      // tag name for state-resident rules (e.g., 'loli')
+  connectives,         // resolved connective roles from resolveConnectives()
+  canonicalize,        // hash → hash (equational theory normalization)
+  ffiParsedModes,      // pred → mode string[] (for output variable detection)
+  useCompiledSteps,    // boolean — enable FFI compiled persistent step fast path
+  optimizePreserved,   // boolean — skip preserved facts in produce
+  evidence,            // boolean — collect proof evidence per persistent goal
+}
 ```
 
 ## Data Flow: .ill to Execution
@@ -270,11 +296,11 @@ flowchart TB
 
 **Core invariant:** When `go()` returns, state (FactSet) and solver are in their original state via Arena undo.
 
-Optimization modules called in the hot loop (`go`): `drainPersistentLolis` (opt/loli-drain.js), `feedPersistent` + `filterAltsBySAT` (opt/constraint.js), `predictNext` (opt/prediction.js), `computeControlHash` + `recordMemo` (opt/structural-memo.js). All imported directly — no runtime dispatch. See `doc/documentation/optimization-architecture.md`.
+Optimization modules called in the hot loop (`go`): `drainPersistentLolis` (ill/loli-drain.js), `feedPersistent` + `filterAltsBySAT` (opt/constraint.js), `predictNext` (opt/prediction.js), `computeControlHash` + `recordMemo` (opt/structural-memo.js). All imported directly — no runtime dispatch. See `doc/documentation/optimization-architecture.md`.
 
 ## Rule Compilation Pipeline
 
-`compileRule(rule)` transforms a raw rule into an optimized compiled form:
+`compileRule(rule, { connectives, getModes })` transforms a raw rule into an optimized compiled form. Requires a connective table; `getModes` is optional (Mercury/Prolog-style `+`/`-` mode annotations for output variable detection):
 
 ```mermaid
 flowchart LR
@@ -317,7 +343,7 @@ All optimizations live in `lib/engine/opt/` as toggleable modules. See `doc/docu
 | Disc-tree | Catch-all rule selection | ~0% at 44 rules | `opt/disc-tree-opt.js` |
 | EqNeq solver | Branch pruning | ~10% (symbolic) | `opt/constraint.js` |
 | Structural memo | Isomorphic subtree reuse | 4.4x (symmetric) | `opt/structural-memo.js` |
-| Loli drain | Eager persistent-loli fusion | ~2% | `opt/loli-drain.js` |
+| Loli drain | Eager persistent-loli fusion | ~2% | `ill/loli-drain.js` |
 | Prediction (Opt_H) | Skip findAllMatches | ~3% | `opt/prediction.js` |
 
 Total: **181ms → ~5ms** for the symbolic multisig (477 nodes, memo enabled).
@@ -354,4 +380,22 @@ Soundness: Betz & Fruhwirth (2013) — every CHR derivation corresponds to a val
 
 **FFI as backward prove optimization.** FFI (arithmetic) is conceptually a fast path within backward proving, not a separate proving mechanism.
 
-**Optimizations as toggleable modules.** All 11 optimizations live in `lib/engine/opt/` and are controlled by profile flags resolved at engine creation. The `bare` profile (all off) serves as the correctness baseline. No runtime branching in hot loops — function pointers are resolved once. See `doc/documentation/optimization-architecture.md`.
+**Optimizations as toggleable modules.** All optimizations live in `lib/engine/opt/` (generic) or `lib/engine/ill/` (ILL-specific) and are controlled by profile flags resolved at engine creation. The `bare` profile (all off) serves as the correctness baseline. No runtime branching in hot loops — function pointers are resolved once. See `doc/documentation/optimization-architecture.md`.
+
+**Connective table, not hardcoded names.** The generic engine queries structural categories (`multiplicative`, `additive`, `exponential`, `monad`, `quantifier`) and structural properties (`arity`, `polarity`) — never connective names. `resolveConnectives(ct)` inverts the table once at startup for O(1) role→tag dispatch.
+
+**matchOpts callback composition.** Engine behavior is configured via callbacks assembled at run start — `provePersistent`, `matchDynamicRule`, `canonicalize`, etc. Eliminates module-level mutable flags (the old `_noFFI` pattern). Each execution mode (committed-choice, exhaustive, evidence-collecting) composes its own callback set.
+
+## Theoretical Foundations
+
+| Foundation | What it justifies | Engine implementation |
+|---|---|---|
+| Benton LNL (1995) | `!` as comonad from adjunction F⊣G; linear/persistent split | `flattenAntecedent` separates `linear[]`/`persistent[]`; persistent never consumed |
+| CHR / CHR-v (Frühwirth) | Simpagation rules; committed choice vs exhaustive search | `forward.run()` = committed choice; `explore.explore()` = CHR-v |
+| Betz & Frühwirth (2013) | Every CHR derivation = valid ILL proof | `preserved` analysis = simpagation H1; tensor spine = H1⊗H2 |
+| Mercury/Prolog modes | `+`/`-` mode declarations for output variable detection | `collectOutputVars(h, getModes)` callback in compile.js |
+| CLF (Watkins et al.) | `{A}` monad as phase boundary (backward→forward) | `unwrapComputation` strips monad; `bridge.js` switches execution mode |
+| Andreoli focusing | Polarity-driven phase alternation | Connective table carries polarity; `ILL_CONNECTIVES` matches Andreoli classification |
+| Celf architecture | Generic kernel → linear extension → monad layer | Generic core → LNL → ILL three-layer split |
+
+Soundness: Betz & Frühwirth (2013) — every CHR derivation corresponds to a valid ILL proof.

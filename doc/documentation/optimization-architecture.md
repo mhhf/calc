@@ -80,7 +80,7 @@ const PROFILES = {
 | `preserved` | `opt/preserved.js` | Skip consuming and re-producing facts that appear unchanged in consequent. |
 | `compiledSub` | `opt/compiled-sub.js` | Precompiled `Store.put` recipes for consequent instantiation. Bypasses recursive `applyIndexed`. |
 | `fingerprint` | `opt/fingerprint.js` | O(1) fingerprint layer in strategy stack. Auto-detects discriminating predicates from rule structure. |
-| `loliDrain` | `opt/loli-drain.js` | Eagerly fires persistent-trigger lolis before DFS continuation. Safe because they consume only themselves. |
+| `loliDrain` | `ill/loli-drain.js` | Eagerly fires persistent-trigger lolis before DFS continuation. Safe because they consume only themselves. |
 | `structuralMemo` | `opt/structural-memo.js` | Control-hash memoization: `hash(PC, SH)` detects isomorphic subtrees. |
 | `prediction` | `opt/prediction.js` | Threaded code dispatch. Predicts next rule from substitution, skips `findAllMatches`. |
 | `solver` | `opt/constraint.js` | EqNeq constraint solver for branch pruning. Feeds persistent facts to solver, filters UNSAT alternatives. |

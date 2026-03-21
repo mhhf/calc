@@ -1,6 +1,6 @@
 ---
 title: Prover Architecture (Lasagne)
-modified: 2026-03-03
+modified: 2026-03-21
 summary: Five-layer prover architecture separating verification, search, focusing, and strategy.
 tags: [architecture, prover, focusing, polarity, layers]
 ---
@@ -228,37 +228,50 @@ Multiple strategies coexist, all built on L3/L2:
 
 **L4c/L4d — Forward Engine:** `lib/engine/`
 
-The forward engine has its own internal layered architecture, separate from the backward proof search (L1–L3). It implements committed-choice forward chaining (multiset rewriting) with a compilation pipeline:
+The forward engine has its own internal three-layer architecture (Generic → LNL → ILL), separate from the backward proof search (L1–L3). It implements committed-choice forward chaining (multiset rewriting) with a compilation pipeline:
 
 ```mermaid
 graph TB
-    EXP["<b>Exploration</b> — explore.js<br/>DFS, mutation+undo, branching"]
-    EXEC["<b>Execution</b> — forward.js<br/>applyMatch, run, createState"]
-    STRAT["<b>Strategy</b> — strategy.js<br/>fingerprint → disc-tree → predicate"]
-    MAT["<b>Matching</b> — match.js<br/>tryMatch, provePersistentGoals, matchLoli"]
-    OPT["<b>Optimizations</b> — opt/<br/>11 toggleable modules"]
-    OPTIM["<b>Optimizer</b> — optimizer.js<br/>profile → engine context"]
-    COMP["<b>Compilation</b> — compile.js, rule-analysis.js<br/>De Bruijn slots, pattern roles, compiled sub"]
-    STO["<b>Store</b> — lib/kernel/<br/>Content-addressed arena, matchIndexed"]
+    subgraph GenericCore["Generic Core (zero ill/ imports)"]
+        COMP["<b>compile.js</b><br/>Rule compilation, connective resolution"]
+        MAT["<b>match.js</b><br/>tryMatch, matchAllLinear"]
+        STRAT["<b>strategy.js</b><br/>fingerprint → disc-tree → predicate"]
+        EXEC["<b>forward.js</b><br/>Committed-choice main loop"]
+        EXP["<b>explore.js</b><br/>DFS, mutation+undo"]
+    end
 
-    EXP --> EXEC
-    EXP --> STRAT
-    EXP --> OPT
-    EXEC --> STRAT
+    subgraph LNLLayer["LNL Layer (zero ill/ imports)"]
+        PERS["<b>lnl/persistent.js</b><br/>Persistent goal proving"]
+        LOLI["<b>lnl/loli.js</b><br/>Dynamic rule matching"]
+        EXIS["<b>lnl/existential.js</b><br/>∃-variable resolution"]
+    end
+
+    subgraph ILLLayer["ILL Layer"]
+        CONN["<b>ill/connectives.js</b>"]
+        FFIL["<b>ill/ffi/</b>"]
+        DRAIN["<b>ill/loli-drain.js</b>"]
+    end
+
+    subgraph OptLayer["opt/ — Toggleable"]
+        OPT["FFI, delta-bypass,<br/>preserved, compiled-sub,<br/>structural-memo, prediction,<br/>constraint, backward-cache"]
+    end
+
     STRAT --> MAT
-    MAT --> COMP
-    MAT --> STO
-    COMP --> STO
-    OPTIM --> STRAT
+    MAT --> PERS
+    MAT --> LOLI
+    MAT --> EXIS
+    EXEC --> STRAT
+    EXP --> STRAT
+    CONN --> COMP
     OPT --> MAT
 
-    style MAT fill:#cce5ff,stroke:#004085
-    style STRAT fill:#e2d5f1,stroke:#5a3d8a
-    style EXEC fill:#d4edda,stroke:#155724
-    style EXP fill:#fff3cd,stroke:#856404
-    style OPT fill:#fce4ec,stroke:#880e4f
-    style OPTIM fill:#fce4ec,stroke:#880e4f
+    style GenericCore fill:#f0f8ff,stroke:#004085
+    style LNLLayer fill:#f0fff0,stroke:#155724
+    style ILLLayer fill:#fff8f0,stroke:#856404
+    style OptLayer fill:#fce4ec,stroke:#880e4f
 ```
+
+**Layer discipline:** `compile.js` and `lnl/` have zero `ill/` imports — the compilation and matching logic is fully calculus-agnostic, parameterized by a connective table (`tag → { category, arity, polarity }`) and `matchOpts` callbacks. `forward.js`/`explore.js`/`backchain.js` retain ILL defaults as composition-layer fallbacks. See `doc/documentation/forward-chaining-engine.md` for full details.
 
 **Profile-driven optimization.** All engine optimizations live in `lib/engine/opt/` as independently toggleable modules. The `optimizer.js` resolves a profile (`bare`/`fast`/`evm`) into an engine context with the appropriate strategy stack at startup — no runtime branching in hot loops. The `bare` profile disables all optimizations and serves as the correctness baseline. See `doc/documentation/optimization-architecture.md`.
 
@@ -280,7 +293,7 @@ Pure view. `proofLogic.ts` is a thin type adapter; `ManualProof.tsx` renders the
 | **L2 generic** | Backtracking, depth limit, Hodas-Miller threading | Which rules exist (from calculus object) |
 | **L3 focused** | Phase alternation, blur condition, focus protocol | Polarity assignments (from calculus object) |
 | **L4 backward** | Manual UI protocol, auto search | None |
-| **L4 forward** | Strategy stack, matching, mutation+undo | None (indexing auto-detected from rules) |
+| **L4 forward** | Strategy stack, matching, mutation+undo, connective table | ILL defaults as composition-layer fallbacks in forward.js/explore.js |
 | **L5 UI** | Components, rendering, interaction | None |
 
 Adding a new connective (e.g., temporal `○`/`●`) requires only `.calc` + `.rules` changes. All backward layers pick it up automatically.
@@ -325,7 +338,7 @@ The monadic type `{S}` marks an **optimization boundary** in `lib/prover/bridge.
 
 The monad itself is a genuine logical connective (CLF, Watkins et al. 2004) — a polarity shift from negative (async) to positive (sync). But the decision to hand execution to a separate engine at this boundary is a strategy choice, not a logical necessity. With `opts.forward = 'guided'`, the forward engine runs as an oracle and the proof term decomposes into standard ILL inference steps. With `opts.forward = 'off'`, the backward prover handles the monadic fragment directly (intractable for large programs, but theoretically equivalent).
 
-Connective table (`ill/connectives.js`) maps tag → `{ category, arity, polarity }`. `compile.js:resolveConnectives()` derives role→tag lookups for O(1) dispatch. No hardcoded ILL names in the generic layer. See `doc/documentation/lax-monad.md` for full details.
+Connective table (`ill/connectives.js`) maps tag → `{ category, arity, polarity }`, mirroring `.calc` annotations (`@category`, `@polarity`). `compile.js:resolveConnectives()` inverts this for O(1) role→tag dispatch. The generic engine queries structural categories (`multiplicative`, `exponential`, `monad`, etc.), never connective names. See `doc/documentation/lax-monad.md` for full details.
 
 ## Open Research
 
