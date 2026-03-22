@@ -2,7 +2,7 @@
 title: "Total Maps with Default Values in Linear Logic: Object-Level Solutions"
 created: 2026-03-22
 modified: 2026-03-22
-summary: "Deep survey of object-level (logic-internal) approaches to representing total key-value maps with default values in linear logic and its extensions, motivated by the EVM storage problem."
+summary: "Deep survey of approaches to representing total key-value maps with default values in linear logic and its extensions. Two rounds: SELL/adjoint/QTT (round 1), dependent linear types/CLL negation/DiLL/infinite products (round 2). Preferred: Candidate C (infinite multiplicative product with lazy evaluation)."
 tags:
   - linear-logic
   - forward-chaining
@@ -22,6 +22,11 @@ tags:
   - with
   - semiring
   - QTT
+  - dependent-types
+  - differential-linear-logic
+  - classical-linear-logic
+  - game-semantics
+  - infinite-product
 category: "Forward Chaining"
 ---
 
@@ -396,6 +401,133 @@ with a priority ordering: linear `storage(K, V)` facts (consumed-reproduced in r
 
 ---
 
+## Round 2: Dependent Linear Types, CLL Negation, Infinite Products
+
+Second literature survey (30+ papers) covering angles not explored in round 1.
+
+### 13. Classical Linear Logic Negation (A⊥)
+
+**Source:** Girard, *Linear Logic* (TCS 1987). Paykin & Zdancewic, *A Linear/Producer/Consumer Model of Classical Linear Logic* (2015).
+
+CLL has involutive negation `A⊥` with De Morgan dualities. The question: can `storage(K,V)⊥` express "absence of storage(K,V)"?
+
+**Answer: No.** `A⊥` is the *dual demand* — "a hole that `A` fills." Having both `A` and `A⊥` annihilates to `1` (producer/consumer interaction). `storage(K,V)⊥` means "I need a storage(K,V)", not "storage(K,V) is absent." This is a communication channel model, not a default-value mechanism.
+
+### 14. Differential Linear Logic Co-Weakening
+
+**Source:** Ehrhard, *An Introduction to Differential Linear Logic* (MSCS 2018). Ehrhard & Regnier, *Differential Interaction Nets* (TCS 2006).
+
+DiLL adds dual rules to exponentials: co-weakening `⊢ !A` (produce `!A` from nothing), co-dereliction `A ⊢ !A` (promote single copy). Co-weakening literally produces a resource from the empty context — the "zeroth-order approximation" in the Taylor expansion interpretation.
+
+**Application attempt:** `co-weakening_a: ⊢ !_a storage(K, 0)` — produce an affine default from nothing. Combined with SELL's `!_a`, this could justify where the default resource "comes from."
+
+**Verdict:** Re-derives Candidate B (SELL affine) with a different justification for the resource's origin. The co-weakening says WHY the default exists (it's the zero/empty approximation), but the quantifier problem remains identical.
+
+### 15. Dependent Linear Types — The Literature Landscape
+
+Comprehensive survey of dependent linear type theory:
+
+- **LLF (Cervesato & Pfenning, 1996/2002):** Dependent Π + linear ⊸. Foundation for combining dependent types with linear resources. Linear context remains finite in any derivation. No infinite families.
+- **Krishnaswami, Pradic & Benton (POPL 2015):** Dependent LNL. Can write `(k : Key) → linear(store(k))` — one resource per key when instantiated. But this is a function type (sequential access), not a simultaneously-held collection.
+- **Vákár (arXiv:1405.0033, 2014):** Full linear dependent types. Introduces **multiplicative dependent quantifiers** Π⁺/Σ⁺. `Π⁺_{k:Key} B(k)` is a linear product — one resource of type `B(k)` for every `k` simultaneously. Categorical semantics via indexed symmetric monoidal categories with comprehension. **Closest to the target**: the multiplicative Π-type is the type-theoretic reading of "one linear resource per element of Key."
+- **Atkey (QTT, LICS 2018):** Semiring multiplicities on bindings. `f : (k :_ω Key) →_1 Store(k)` — per-call linearity, not spatial family.
+- **Furuseth & Rios (LICS 2020):** Fibration model for quantum linear families. Per-circuit-per-parameter linearity.
+- **Doré (ICFP 2025):** Dependent multiplicities via Dialectica embedding. The most advanced work — finite n keys with n linear resources. Implemented in Agda. Does not extend to infinite domains without coinduction.
+
+**Key insight from Vákár:** `Π⁺_{k:Key} storage(k, 0)` is exactly the type of "one linear storage fact per key, for all keys simultaneously." For finite Key, this is a standard multiplicative product. For infinite Key (like 2^256), it becomes an **infinite multiplicative product** — `⊗_{k ∈ 2^256} storage(k, 0)`. This is well-defined in categorical semantics (Day convolution in the presheaf model) but not finitely representable as a formula.
+
+### 16. Iris Resource Algebras (Total Map RA)
+
+**Source:** Jung et al., *Iris from the Ground Up* (JFP 2018).
+
+Iris uses Cameras (CMRAs) for ghost state. The `gmap_view` CMRA represents partial maps — absent keys have no fragments, no default. A total-map RA over `K → V` with default 0 is possible as a custom algebra but is not a standard Iris primitive. No paper was found implementing this specific construction.
+
+### 17. Game Semantics
+
+**Source:** Abramsky & Jagadeesan, *Games and Full Completeness for MLL* (JSL 1994). Abramsky, Honda & McCusker, *A Fully Abstract Game Semantics for General References* (LICS 1998).
+
+Game semantics for mutable state models read/write as strategy interactions. Each cell is a separate game component. No default-value mechanism — strategies respond to moves, they don't provide absent-key defaults.
+
+### 18. Bounded Linear Logic (Graded Exponentials)
+
+**Source:** Girard, Scedrov & Scott, *Bounded Linear Logic* (TCS 1992).
+
+Grades `!` with numeric bounds: `!_n A` = use A at most n times. The indices are usage counts per formula, not per-element-of-a-domain. Does not address indexed resource families.
+
+---
+
+## The Total Map / Partial Map Distinction
+
+A key reframing emerged from the second survey:
+
+**EVM storage = total map** `2^256 → uint256` — every key has a value (0 by default). Linear logic facts model **partial maps** — `storage(K, V)` entries for allocated keys; absent keys undefined.
+
+Every EVM implementation stores a partial map (trie, hashmap) with implicit default 0. The "totality" is specification-level; "partiality + default" is computation-level. The question is: what proof-theoretic object justifies this representation?
+
+### Candidate C: Infinite Multiplicative Product + Lazy Evaluation
+
+The EVM initial storage, expressed in linear logic via Vákár's multiplicative Π:
+
+```
+S₀ = Π⁺_{k ∈ 2^256} storage(k, 0) ≡ ⊗_{k ∈ 2^256} storage(k, 0)
+```
+
+Each factor is an independent linear resource. SLOAD consumes and re-produces. SSTORE replaces. The product is commutative (factors independent).
+
+**Lazy evaluation:** The engine holds a finite prefix (materialized entries). When key `k` is accessed and absent from Γ, one factor unfolds:
+
+```
+S₀ = storage(k, 0) ⊗ S₀\{k}
+```
+
+The invariant: `materialized(Γ) ⊗ unmaterialized(S₀ \ dom(Γ)) = S₀`.
+
+**Why this is sound:**
+1. Factors are independent and commutative — unfolding order irrelevant
+2. Each factor unfolds exactly once — linearity prevents double extraction (fact now in Γ)
+3. SSTORE replaces the factor's value — factor count invariant
+4. Backtracking (explore): materialization recorded in Arena undo log
+
+**Comparison to other candidates:**
+- vs Candidate B (SELL affine): No new modality. No `!_a`. No third context. Standard linear logic, just infinite initial context with lazy evaluation.
+- vs Candidate A (structural write-log): Flat facts (O(unique keys), no history bloat). Same operational behavior as B but cleaner theory.
+- The `[total, init: 0]` declaration is finitary notation for the infinite product — the same pattern as axiom schemas in first-order logic.
+
+**Categorical grounding:** The infinite tensor `⊗_{k ∈ K} A(k)` is well-defined as:
+- Day convolution product in the presheaf model over the resource monoid
+- Inverse limit in Chu spaces
+- Product of denotations in commutative monoid models
+
+**This is currently the preferred candidate.** See TODO_0129 Decision 11 for the full deliberation.
+
+---
+
+## Summary Table (All Rounds)
+
+| # | Approach | Object-Level? | Handles Infinite Domain? | Practical for FC? |
+|---|---|---|---|---|
+| 1 | μMALL coinduction | Yes | Yes (ν unfolds lazily) | Hard (circular proofs) |
+| 2 | SELL affine `!_a` | Yes (modality) | Schema (infinite context) | Best existing theory |
+| 3 | Adjoint logic modes | Yes | Schema | Good (multi-mode engine) |
+| 4 | BI two-zone context | Yes | Additive zone | Moderate (no BI engine) |
+| 5 | LNL adjunction | Yes | Cartesian side | Moderate (two-context) |
+| 6 | Additive `&` choice | Yes | ∀K problematic | Partial (backward only) |
+| 7 | QTT graded `[0..1]` | Yes | Schema | Good (semiring engine) |
+| 8 | Polarized LL | Auxiliary | N/A | Auxiliary |
+| 9 | `?` why-not | No | N/A | No (too strong) |
+| 10 | Sep logic `—*` | Partial | Total heap iso | No (just ⊸) |
+| 11 | Pure ILL `!∀K` | No | Yes but unsound | No (contraction) |
+| 12 | Dependent irrelevance | Partial | Indices only | Auxiliary |
+| 13 | CLL negation `A⊥` | No | N/A | No (dual demand) |
+| 14 | DiLL co-weakening | Partial | Same as #2 | Re-derives #2 |
+| 15 | Dependent linear Π⁺ | Yes (type) | Infinite product | No practical system |
+| 16 | Iris total-map RA | Framework-specific | Custom RA | Iris only |
+| 17 | Game semantics | No | N/A | No |
+| 18 | Bounded LL `!_n` | No | Counts, not indices | No |
+| **C** | **Infinite ⊗ + lazy eval** | **Categorical** | **Yes (Day conv.)** | **Preferred** |
+
+---
+
 ## Key References
 
 - Baelde & Miller, *Least and Greatest Fixed Points in Linear Logic*, TOCL 2012. [arXiv:0910.3383](https://arxiv.org/abs/0910.3383)
@@ -410,3 +542,19 @@ with a priority ordering: linear `storage(K, V)` facts (consumed-reproduced in r
 - Proof Theory Blog, *Exponentials vs Fixed Points in Linear Logic*, 2024. [Link](https://prooftheory.blog/2024/06/27/exponentials-vs-fixed-points-in-linear-logic/)
 - Atkey, *Syntax and Semantics of Quantitative Type Theory*, LICS 2018. [PDF](https://bentnib.org/quantitative-type-theory.pdf)
 - Brady, *Idris 2: Quantitative Type Theory in Practice*, ECOOP 2021. [arXiv:2104.00480](https://arxiv.org/abs/2104.00480)
+- Cervesato & Pfenning, *A Linear Logical Framework*, LICS 1996 / I&C 2002
+- Krishnaswami, Pradic & Benton, *Integrating Linear and Dependent Types*, POPL 2015
+- Vákár, *Syntax and Semantics of Linear Dependent Types*, arXiv:1405.0033, 2014
+- Furuseth & Rios, *Linear Dependent Type Theory for Quantum Programming Languages*, LICS 2020
+- Doré, *Linear Types with Dynamic Multiplicities in Dependent Type Theory*, ICFP 2025
+- Doré, *Dependent Multiplicities in Dependent Linear Type Theory*, arXiv:2507.08759, 2025
+- Ehrhard, *An Introduction to Differential Linear Logic*, MSCS 2018. [arXiv:1606.01642](https://arxiv.org/abs/1606.01642)
+- Ehrhard & Regnier, *Differential Interaction Nets*, TCS 2006
+- Paykin & Zdancewic, *A Linear/Producer/Consumer Model of Classical Linear Logic*, 2015. [arXiv:1502.04770](https://arxiv.org/abs/1502.04770)
+- de Paiva, *Linear Logic Model of State Revisited*, Logic Journal of the IGPL 22(5), 2014
+- Jung et al., *Iris from the Ground Up*, JFP 2018
+- Abramsky & Jagadeesan, *Games and Full Completeness for MLL*, JSL 1994
+- Abramsky, Honda & McCusker, *A Fully Abstract Game Semantics for General References*, LICS 1998
+- Girard, Scedrov & Scott, *Bounded Linear Logic*, TCS 1992
+- Reynolds, *Separation Logic: A Logic for Shared Mutable Data Structures*, LICS 2002
+- Barber, *Dual Intuitionistic Linear Logic*, LFCS-97-371, Edinburgh, 1996
