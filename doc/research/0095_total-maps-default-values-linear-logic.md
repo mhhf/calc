@@ -27,6 +27,10 @@ tags:
   - classical-linear-logic
   - game-semantics
   - infinite-product
+  - refinement-types
+  - sort-refinements
+  - session-types
+  - contextual-types
 category: "Forward Chaining"
 ---
 
@@ -498,7 +502,50 @@ The invariant: `materialized(Γ) ⊗ unmaterialized(S₀ \ dom(Γ)) = S₀`.
 - Inverse limit in Chu spaces
 - Product of denotations in commutative monoid models
 
-**This is currently the preferred candidate.** See TODO_0129 Decision 11 for the full deliberation.
+**Evolution problem (fatal flaw):** S₀ cannot express its own evolution. After extracting key 42, the residual `S₁ = ⊗_{k ∈ K\{42}} storage(k, 0)` is a set-indexed family requiring dependent coinductive types `ν X(S). ∀K. (K ∉ S) → (storage(K, 0) ⊗ X(S ∪ {K}))` — already rejected. Good semantic description, not a proof-theoretic object. **Superseded by Candidate D.**
+
+---
+
+## Round 3: Refinement Types, Sort-Directed Elaboration
+
+Third survey (20+ papers) focused on whether refinement types can express context invariants for linear logic.
+
+### The gap in the literature
+
+Lovas & Pfenning (LMCS 2010) define sort refinements for LF (intuitionistic logical framework) — datasort classifications with associated elaboration. This has NOT been extended to the linear setting (LLF/CLF). Simmons (CMU 2012) defines generative invariants for SLS (linear forward chaining) — structural properties preserved by transitions — but cannot express absence-dependent defaults. No existing refinement type system allows the refinement predicate to inspect the linear context.
+
+### Key papers surveyed
+
+- **Lovas & Pfenning (LMCS 2010):** Sort refinements for LF. Datasort classifications, bidirectional sort checking, proof irrelevance interpretation. NOT extended to LLF/CLF.
+- **Simmons (CMU thesis 2012):** Generative invariants for SLS. Can express shape properties ("at most one storage(k,_) per key"). CANNOT express "if absent, value is 0."
+- **Das & Pfenning (Rast, CONCUR 2020):** Arithmetic refinements on linear session types. Index layer is pure/persistent, separate from linear layer. Architecture relevant.
+- **CN (Pulte et al., POPL 2023):** Separation-logic refinement types for C. Iterated separating conjunction `∀k. k ↦ v(k)` for heap map totality. Closest to expressing the invariant but for verification, not execution.
+- **Vazou et al. (ESOP 2013):** Abstract refinement types. `Map<λk v. p(k,v)>` for functional maps.
+- **Baltazar et al. (LINEARITY 2012):** Linearly refined session types. Refinements as MLL resources — most direct combination of refinements with linearity.
+- **Toninho, Caires, Pfenning (PPDP 2011):** Dependent session types via intuitionistic linear type theory.
+- **Nanevski, Pfenning, Pientka (TOCL 2008):** Contextual modal type theory. Internalizes open terms with contexts.
+- **Schack-Nielsen & Schürmann (2011):** Linear contextual modal type theory. Extends CMTT to handle linear hypotheses.
+- **Aberlé (arXiv 2024):** Foundations of substructural dependent type theory via monoidal fibrations.
+
+### Candidate D: Sort-directed elaboration — PREFERRED
+
+**Core insight:** The "Used" set that Candidates B and C struggle to track IS ALREADY the linear context `dom(Γ_storage)`. No phantom state needed — the context itself is the tracker.
+
+**Mechanism:** The declaration `storage: bin -> bin -> type [total, init: 0]` is a SORT ANNOTATION — it classifies the predicate as a total map. When pattern matching for `storage(k, V)` fails and k is ground, the failure constitutes a sort-level observation: "k is absent from dom(Γ_storage)." The sort discipline triggers elaboration: inject `storage(k, 0)` into Γ.
+
+**Why this is NOT negation-as-failure:** NAF is an object-level deduction ("couldn't prove P, therefore ¬P" — unsound in ILL). Sort-directed elaboration is a meta-level sort discipline (like focusing's context inspection or Twelf's mode checking). The failed match is structural context analysis, not logical reasoning.
+
+**The evolution is clean:**
+- SLOAD 42 → miss → elaborate storage(42,0) → dom = {42}
+- SSTORE 42 1 → dom = {42}
+- SLOAD 7 → miss → elaborate storage(7,0) → dom = {42, 7}
+- SLOAD 42 → hit (v=1) → no elaboration
+
+Double-materialization prevention is FREE: once storage(42,_) exists in Γ, the sort check "42 ∉ dom(Γ_storage)" fails automatically. No separate tracking needed.
+
+**Positioning:** D extends Lovas-style sort refinements from intuitionistic LF to the linear setting — a novel contribution filling an identified gap. Soundness is a generative invariant (Simmons-style): "for all reachable states, the totality+default property holds." Architecture follows Rast (Das & Pfenning): persistent sort/index layer governing linear-layer behavior.
+
+**D supersedes C.** Same engine implementation, but D has clean evolution semantics (no residual tracking) and principled meta-theoretical positioning.
 
 ---
 
@@ -524,7 +571,8 @@ The invariant: `materialized(Γ) ⊗ unmaterialized(S₀ \ dom(Γ)) = S₀`.
 | 16 | Iris total-map RA | Framework-specific | Custom RA | Iris only |
 | 17 | Game semantics | No | N/A | No |
 | 18 | Bounded LL `!_n` | No | Counts, not indices | No |
-| **C** | **Infinite ⊗ + lazy eval** | **Categorical** | **Yes (Day conv.)** | **Preferred** |
+| C | Infinite ⊗ + lazy eval | Categorical | Yes (Day conv.) | Superseded by D |
+| **D** | **Sort-directed elaboration** | **Sort discipline (meta)** | **Yes (context = tracker)** | **PREFERRED** |
 
 ---
 
@@ -558,3 +606,17 @@ The invariant: `materialized(Γ) ⊗ unmaterialized(S₀ \ dom(Γ)) = S₀`.
 - Girard, Scedrov & Scott, *Bounded Linear Logic*, TCS 1992
 - Reynolds, *Separation Logic: A Logic for Shared Mutable Data Structures*, LICS 2002
 - Barber, *Dual Intuitionistic Linear Logic*, LFCS-97-371, Edinburgh, 1996
+- Lovas & Pfenning, *Refinement Types for Logical Frameworks and Their Interpretation as Proof Irrelevance*, LMCS 2010. [arXiv:1009.1861](https://arxiv.org/abs/1009.1861)
+- Freeman & Pfenning, *Refinement Types for ML*, PLDI 1991
+- Simmons, *Substructural Logical Specifications*, CMU thesis 2012
+- Pfenning & Simmons, *Substructural Operational Semantics as Ordered Logic Programming*, LICS 2009
+- Das & Pfenning, *Session Types with Arithmetic Refinements*, CONCUR 2020
+- Das & Pfenning, *Rast: A Language for Resource-Aware Session Types*, LMCS 2022. [arXiv:2012.13129](https://arxiv.org/abs/2012.13129)
+- Baltazar, Mostrous & Vasconcelos, *Linearly Refined Session Types*, LINEARITY 2012. [arXiv:1211.4099](https://arxiv.org/abs/1211.4099)
+- Toninho, Caires & Pfenning, *Dependent Session Types via Intuitionistic Linear Type Theory*, PPDP 2011
+- Pulte et al., *CN: Verifying Systems C Code with Separation-Logic Refinement Types*, POPL 2023
+- Sammler et al., *RefinedC: Automating the Foundational Verification of C Code with Refined Ownership Types*, PLDI 2021
+- Vazou, Rondon & Jhala, *Abstract Refinement Types*, ESOP 2013
+- Nanevski, Pfenning & Pientka, *Contextual Modal Type Theory*, TOCL 2008
+- Schack-Nielsen & Schürmann, *Linear Contextual Modal Type Theory*, 2011
+- Aberlé, *Foundations of Substructural Dependent Type Theory*, arXiv:2401.15258, 2024
