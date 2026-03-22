@@ -1,8 +1,8 @@
 ---
 title: "Total Maps with Default Values in Linear Logic: Object-Level Solutions"
 created: 2026-03-22
-modified: 2026-03-22
-summary: "Deep survey of approaches to representing total key-value maps with default values in linear logic and its extensions. Two rounds: SELL/adjoint/QTT (round 1), dependent linear types/CLL negation/DiLL/infinite products (round 2). Preferred: Candidate C (infinite multiplicative product with lazy evaluation)."
+modified: 2026-03-23
+summary: "Deep survey of approaches to representing total key-value maps with default values in linear logic and its extensions. Four rounds: SELL/adjoint/QTT (1), dependent types/CLL/DiLL (2), sort refinements (3), object-level initializedStorage (4). Leading: Candidate E (constructive notMember + initializedStorage), D (sort elaboration) as engine optimization."
 tags:
   - linear-logic
   - forward-chaining
@@ -374,34 +374,11 @@ The following ranks the candidates by (a) theoretical cleanliness, (b) proximity
 
 ## The Cleanest Object-Level Solution
 
-**Affine subexponential** is the most directly implementable clean solution:
+**Candidate E (initializedStorage + constructive notMember)** is the first fully object-level ILL solution found across four rounds of research. Unlike the SELL affine approach (Candidate B) which requires a modality outside standard ILL, E works within pure ILL using positive tracking and constructive disequality.
 
-Define a subexponential signature `⟨{lin, aff}, ≤, W={aff}, C={}⟩` with `aff ≤ lin`. The default storage declaration becomes:
+The affine subexponential (B) remains the cleanest solution *if you extend the logic* — `!_aff` with weakening-only gives exactly the right structural rules. But B has an unsolved quantifier problem for infinite domains and requires SELL machinery. E sidesteps this by not requiring any logic extension.
 
-```
-!_aff (∀K : Key. storage(K, 0))
-```
-
-Or in a first-order SELL, as a *schema* (rule template):
-
-```
-Default[K] :  !_aff storage(K, 0)
-```
-
-This is object-level: it's a formula in SELL, not a meta-level annotation. The structural rules are built into the logic:
-- **Weakening for `!_aff`**: Unused `!_aff storage(K, 0)` facts are silently discarded at end of derivation.
-- **Dereliction for `!_aff`**: Consuming `!_aff storage(K, 0)` yields one linear `storage(K, 0)`.
-- **No contraction for `!_aff`**: Cannot extract two copies of `storage(K, 0)` from one `!_aff storage(K, 0)`.
-
-In the **focused proof system** for SELL, the `!_aff` modality sits in the negative (asynchronous) zone — it can be unfolded lazily during left-asynchronous phase, which corresponds to "check if default is needed" in forward chaining.
-
-The forward chaining rule for "read with default" becomes logically:
-
-```
-!_aff storage(K, 0) ⊗ !∀K'. storage(K', _) ⊸ ...  [existing facts take priority]
-```
-
-with a priority ordering: linear `storage(K, V)` facts (consumed-reproduced in reads) take precedence over the affine `!_aff storage(K, 0)` defaults. This priority is naturally encoded by the subexponential preorder.
+**Candidate D (sort-directed elaboration)** is the natural engine optimization of E — it implements the same semantics by observing `dom(Γ_storage)` directly instead of running `notMember` backward clauses. The relationship: E is theory, D is implementation, following CALC's "FFI is optimization, theory is semantics" principle at the sort-discipline level.
 
 ---
 
@@ -549,6 +526,62 @@ Double-materialization prevention is FREE: once storage(42,_) exists in Γ, the 
 
 ---
 
+## Round 4: Object-Level Solution via Positive Tracking
+
+Fourth survey round, motivated by the observation that no impossibility proof exists for per-element linearity over infinite domains — the gap in the literature is an open problem, not a proven limitation.
+
+### Candidate E: initializedStorage + constructive notMember — LEADING
+
+**Core idea:** Track initialized keys positively via an `initializedStorage` linear fact containing a list of keys already materialized. Absence checking uses constructive `notMember` backward clauses — NO negation-as-failure, NO meta-level mechanisms. 100% object-level ILL.
+
+**Two rules per storage-accessing opcode:**
+
+```
+% SLOAD: key already has a storage fact
+evm/sload:
+  ... storage KEY V ...
+  -o { ... storage KEY V ... }.
+
+% SLOAD: key not yet initialized — default to 0
+evm/sload_init:
+  ... initializedStorage ISET * !notMember KEY ISET ...
+  -o { ... storage KEY 0 * initializedStorage (cons KEY ISET) ... }.
+```
+
+**Constructive notMember (backward clauses):**
+
+```
+notMember/base: notMember K ae.
+notMember/step: notMember K (cons H T) <- neq K H <- notMember K T.
+```
+
+Pure structural recursion with disequality. `notMember K ISET` succeeds constructively iff K is not in ISET. This is NOT negation-as-failure — it's a positive proof that K differs from every element.
+
+**Mutual exclusivity by invariant:** `storage(K, V) ∈ Γ ⟺ K ∈ ISET`. The two rules cannot fire simultaneously for the same key.
+
+**Performance:** O(|ISET|) via backward clauses. O(1) via FFI hash-set cache (incrementally updated, only grows). Follows CALC's FFI principle.
+
+**The two-layer architecture (E + D):**
+- **E** = object-level theory (what the logic says)
+- **D** = engine optimization (how the engine implements it efficiently)
+
+D's sort-directed elaboration can observe `dom(Γ_storage)` directly, skipping `notMember` resolution. This is the FFI principle at a higher level — the sort discipline optimizes the object-level theory.
+
+### Comparison: Sort-Directed Elaboration (D) vs Ceptre's `qui`
+
+Ceptre's `qui` predicate (Martens 2015) is a runtime-injected token when no stage rules fire. Martens acknowledges: "pure linear logic programming cannot express" this. Key distinction:
+
+- **`qui` is non-conservative**: Programs that diverge without `qui` terminate with it. It changes derivability.
+- **Sort-directed elaboration is conservative**: Pre-populating all keys gives identical derivations. The mechanism avoids materializing them eagerly, but doesn't change what's derivable.
+
+The test: "if you pre-populated everything, would you still need the mechanism?" No for D, Yes for `qui`.
+
+### Open Problem: No Impossibility Proof
+
+The claim "no finitary logic can express per-element linearity over infinite domains" is an observation about known systems, NOT a proven impossibility. No negative result exists showing this CANNOT be done at the object level. Candidate E demonstrates that with the right encoding (positive tracking + constructive disequality), significant progress is possible within standard ILL.
+
+---
+
 ## Summary Table (All Rounds)
 
 | # | Approach | Object-Level? | Handles Infinite Domain? | Practical for FC? |
@@ -572,7 +605,8 @@ Double-materialization prevention is FREE: once storage(42,_) exists in Γ, the 
 | 17 | Game semantics | No | N/A | No |
 | 18 | Bounded LL `!_n` | No | Counts, not indices | No |
 | C | Infinite ⊗ + lazy eval | Categorical | Yes (Day conv.) | Superseded by D |
-| **D** | **Sort-directed elaboration** | **Sort discipline (meta)** | **Yes (context = tracker)** | **PREFERRED** |
+| D | Sort-directed elaboration | Sort discipline (meta) | Yes (context = tracker) | Engine optimization of E |
+| **E** | **initializedStorage + notMember** | **Yes (100% object-level)** | **Yes (cons-list + FFI)** | **LEADING** |
 
 ---
 
