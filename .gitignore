@@ -50,6 +50,9 @@ zk/hooks
 zk/objects
 zk/refs
 
+# VMTest fixtures (fetched via tools/fetch-vmtests.sh)
+tests/fixtures/
+
 # Claude Code config
 .claude/settings.local.json
 .claude/projects/

@@ -97,6 +97,16 @@ gas: bin -> type.
 bytecode: arr -> type.
 stack: arr -> type.
 storage: bin -> bin -> type.
+initializedStorage: arr -> type.
+
+% notMember: KEY is not in the initialized-storage list
+% Used by sload_init/sstore_init to guard default-value materialization
+notMember: bin -> arr -> type.
+notMember/base: notMember K ae.
+notMember/step: notMember K [H | T]
+  <- neq K H
+  <- notMember K T.
+
 sender: bin -> type.
 address: bin -> type.
 balance: bin -> bin -> type.
@@ -695,6 +705,7 @@ sha3_iter/step:
     sha3_reading Offset' End (Acc ++ V) M
   }.
 
+% SLOAD: key already has a storage fact
 evm/sload:
   bytecode BC *
   pc PC *
@@ -712,6 +723,27 @@ evm/sload:
     storage KEY V
   }.
 
+% SLOAD: key not yet initialized — default to 0
+evm/sload_init:
+  bytecode BC *
+  pc PC *
+  !arr_get BC PC 0x54 *
+  !inc PC PC' *
+  gas GAS *
+  !plus 512 GAS GAS' *
+  stack [KEY | REST] *
+  initializedStorage ISET *
+  !notMember KEY ISET
+  -o {
+    bytecode BC *
+    pc PC' *
+    gas GAS' *
+    stack [0 | REST] *
+    storage KEY 0 *
+    initializedStorage (acons KEY ISET)
+  }.
+
+% SSTORE: key already has a storage fact
 evm/sstore:
   bytecode BC *
   pc PC *
@@ -727,6 +759,26 @@ evm/sstore:
     gas GAS' *
     stack REST *
     storage Pos Val
+  }.
+
+% SSTORE: key not yet initialized — create new slot
+evm/sstore_init:
+  bytecode BC *
+  pc PC *
+  !arr_get BC PC 0x55 *
+  !inc PC PC' *
+  gas GAS *
+  !inc GAS GAS' *          %simplified
+  stack [Pos, Val | REST] *
+  initializedStorage ISET *
+  !notMember Pos ISET
+  -o {
+    bytecode BC *
+    pc PC' *
+    gas GAS' *
+    stack REST *
+    storage Pos Val *
+    initializedStorage (acons Pos ISET)
   }.
 
 
