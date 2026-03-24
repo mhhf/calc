@@ -5,7 +5,7 @@ const { show } = require('../../lib/engine/show');
 const { isGround, collectMetavars, collectFreevars } = require('../../lib/engine/pattern-utils');
 const { serialize, deserialize } = require('../../lib/engine/store-binary');
 const { match, matchIndexed, undoSave, undoRestore, unify } = require('../../lib/kernel/unify');
-const { arr_get, arr_set, alen, read_bytes } = require('../../lib/engine/ill/ffi/array');
+const { arr_get, arr_set, alen, read_bytes, trie_get, trie_set, arrToTrie } = require('../../lib/engine/ill/ffi/array');
 const { buildParserFromTables, computeParserTables } = require('../../lib/calculus/builders');
 
 describe('arrlit - Stage 1: Store Infrastructure', () => {
@@ -656,6 +656,174 @@ describe('arrlit - Stage 6: acons-over-arrlit normalization', () => {
     assert.ok(theta !== null);
     const xVal = theta.find(([v]) => v === X)?.[1];
     assert.equal(xVal, a);
+  });
+});
+
+describe('arrlit - Stage 5: Bit-indexed trie', () => {
+  beforeEach(() => Store.clear());
+
+  function mkBin(n) { return Store.put('binlit', [BigInt(n)]); }
+  function mkIdx(n) { return Store.put('binlit', [BigInt(n)]); }
+  function mv(name) { return Store.put('metavar', [name]); }
+
+  describe('arrToTrie', () => {
+    it('converts 1-element array', () => {
+      const a = mkBin(42);
+      const arr = Store.putArray([a]);
+      const trie = arrToTrie(arr);
+      assert.notEqual(trie, arr);
+      assert.equal(Store.tag(trie), 'tn');
+    });
+
+    it('converts 4-element array', () => {
+      const elems = [mkBin(10), mkBin(20), mkBin(30), mkBin(40)];
+      const arr = Store.putArray(elems);
+      const trie = arrToTrie(arr);
+      assert.equal(Store.tag(trie), 'tn');
+    });
+
+    it('returns input unchanged for non-arrlit', () => {
+      const atom = Store.put('atom', ['ae']);
+      assert.equal(arrToTrie(atom), atom);
+    });
+
+    it('returns input unchanged for empty arrlit', () => {
+      const arr = Store.putArray([]);
+      assert.equal(arrToTrie(arr), arr);
+    });
+  });
+
+  describe('trie_get FFI', () => {
+    it('retrieves each element by index from converted trie', () => {
+      const elems = [mkBin(10), mkBin(20), mkBin(30), mkBin(40)];
+      const arr = Store.putArray(elems);
+      const trie = arrToTrie(arr);
+
+      for (let i = 0; i < elems.length; i++) {
+        const out = mv(`V${i}`);
+        const result = trie_get([trie, mkIdx(i), out]);
+        assert.equal(result.success, true, `trie_get failed at index ${i}`);
+        assert.equal(result.theta[0][1], elems[i], `wrong value at index ${i}`);
+      }
+    });
+
+    it('works for larger arrays (16 elements)', () => {
+      const elems = [];
+      for (let i = 0; i < 16; i++) elems.push(mkBin(i * 10));
+      const trie = arrToTrie(Store.putArray(elems));
+
+      for (let i = 0; i < 16; i++) {
+        const out = mv(`V${i}`);
+        const result = trie_get([trie, mkIdx(i), out]);
+        assert.equal(result.success, true, `index ${i}`);
+        assert.equal(result.theta[0][1], elems[i], `value at index ${i}`);
+      }
+    });
+
+    it('works for 256-element arrays (bytecode-sized)', () => {
+      const elems = [];
+      for (let i = 0; i < 256; i++) elems.push(mkBin(i));
+      const trie = arrToTrie(Store.putArray(elems));
+
+      // Spot-check a few indices
+      for (const i of [0, 1, 2, 127, 128, 255]) {
+        const out = mv(`V${i}`);
+        const result = trie_get([trie, mkIdx(i), out]);
+        assert.equal(result.success, true, `index ${i}`);
+        assert.equal(result.theta[0][1], elems[i], `value at index ${i}`);
+      }
+    });
+
+    it('fails on non-ground index', () => {
+      const trie = arrToTrie(Store.putArray([mkBin(1)]));
+      const result = trie_get([trie, mv('I'), mv('V')]);
+      assert.equal(result.success, false);
+    });
+  });
+
+  describe('trie_set FFI', () => {
+    it('updates value at index 0', () => {
+      const elems = [mkBin(10), mkBin(20), mkBin(30)];
+      const trie = arrToTrie(Store.putArray(elems));
+      const newVal = mkBin(99);
+      const out = mv('R');
+      const result = trie_set([trie, mkIdx(0), newVal, out]);
+      assert.equal(result.success, true);
+
+      // Verify: index 0 changed, others unchanged
+      const newTrie = result.theta[0][1];
+      const r0 = trie_get([newTrie, mkIdx(0), mv('V0')]);
+      assert.equal(r0.theta[0][1], newVal);
+      const r1 = trie_get([newTrie, mkIdx(1), mv('V1')]);
+      assert.equal(r1.theta[0][1], elems[1]);
+      const r2 = trie_get([newTrie, mkIdx(2), mv('V2')]);
+      assert.equal(r2.theta[0][1], elems[2]);
+    });
+
+    it('updates value at non-zero index', () => {
+      const elems = [mkBin(10), mkBin(20), mkBin(30)];
+      const trie = arrToTrie(Store.putArray(elems));
+      const newVal = mkBin(77);
+      const out = mv('R');
+      const result = trie_set([trie, mkIdx(2), newVal, out]);
+      assert.equal(result.success, true);
+
+      const newTrie = result.theta[0][1];
+      const r2 = trie_get([newTrie, mkIdx(2), mv('V')]);
+      assert.equal(r2.theta[0][1], newVal);
+      // Original unchanged
+      const r0 = trie_get([trie, mkIdx(2), mv('V2')]);
+      assert.equal(r0.theta[0][1], elems[2]);
+    });
+  });
+
+  describe('arr_get FFI on trie', () => {
+    it('arr_get works transparently on trie-backed arrays', () => {
+      const elems = [mkBin(0x60), mkBin(0x40), mkBin(0x00)];
+      const trie = arrToTrie(Store.putArray(elems));
+
+      for (let i = 0; i < elems.length; i++) {
+        const out = mv(`V${i}`);
+        const result = arr_get([trie, mkIdx(i), out]);
+        assert.equal(result.success, true, `arr_get on trie at index ${i}`);
+        assert.equal(result.theta[0][1], elems[i]);
+      }
+    });
+  });
+
+  describe('arr_set FFI on trie', () => {
+    it('arr_set works transparently on trie-backed arrays', () => {
+      const elems = [mkBin(10), mkBin(20)];
+      const trie = arrToTrie(Store.putArray(elems));
+      const newVal = mkBin(99);
+      const out = mv('R');
+      const result = arr_set([trie, mkIdx(1), newVal, out]);
+      assert.equal(result.success, true);
+
+      const newTrie = result.theta[0][1];
+      const r = arr_get([newTrie, mkIdx(1), mv('V')]);
+      assert.equal(r.theta[0][1], newVal);
+    });
+  });
+
+  describe('read_bytes FFI on trie', () => {
+    it('reads contiguous bytes from trie', () => {
+      const elems = [mkBin(0x10), mkBin(0x20), mkBin(0x30)];
+      const trie = arrToTrie(Store.putArray(elems));
+      const out = mv('V');
+      const result = read_bytes([trie, mkIdx(0), mkIdx(2), out]);
+      assert.equal(result.success, true);
+      assert.equal(Store.child(result.theta[0][1], 0), 0x1020n);
+    });
+
+    it('reads bytes with offset from trie', () => {
+      const elems = [mkBin(0x10), mkBin(0x20), mkBin(0x30)];
+      const trie = arrToTrie(Store.putArray(elems));
+      const out = mv('V');
+      const result = read_bytes([trie, mkIdx(1), mkIdx(2), out]);
+      assert.equal(result.success, true);
+      assert.equal(Store.child(result.theta[0][1], 0), 0x2030n);
+    });
   });
 });
 

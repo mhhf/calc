@@ -60,9 +60,19 @@ function extractTermination(state) {
   if (pcFacts.length > 0 && bcFacts.length > 0) {
     const pcVal = binToInt(pcFacts[0].children[0]);
     const arrHash = bcFacts[0].children[0];
+    // Handle both arrlit and trie-backed bytecode
     const elems = Store.getArrayElements(arrHash);
     if (pcVal !== null && elems && pcVal >= BigInt(elems.length)) {
-      return 'stop'; // implicit stop: fell off end of bytecode
+      return 'stop'; // implicit stop: fell off end of arrlit bytecode
+    }
+    // Trie-backed bytecode: check if arr_get(trie, pc, ?) fails
+    if (pcVal !== null && !elems && Store.tagId(arrHash) >= Store.PRED_BOUNDARY) {
+      const { arr_get } = require('../../../lib/engine/ill/ffi/array');
+      const idxHash = require('../../../lib/engine/ill/ffi/convert').intToBin(pcVal);
+      const mv = Store.put('metavar', ['_extract_v']);
+      if (!arr_get([arrHash, idxHash, mv]).success) {
+        return 'stop'; // implicit stop: fell off end of trie bytecode
+      }
     }
   }
 

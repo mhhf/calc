@@ -5,19 +5,41 @@ arr: type.
 ae: arr.
 acons: bin -> arr -> arr.
 
-% arr_get Array Index Value — O(1) via FFI, O(N) via clauses
-% Uses counting-up: increment counter K until K=N (target index).
+% ── Bit-indexed trie ──────────────────────────────────────────────────
+% O(log N) access via binary index navigation (LSB-first).
+% tn(Left, Value, Right): index e→Value, o(K)→Left[K], i(K)→Right[K].
+tn: arr -> bin -> arr -> arr.
+tn_nil: arr.
+
+trie_get: arr -> bin -> bin -> type.
+trie_get/hit: trie_get (tn L V R) e V.
+trie_get/left: trie_get (tn L V R) (o K) Result <- trie_get L K Result.
+trie_get/right: trie_get (tn L V R) (i K) Result <- trie_get R K Result.
+
+trie_set: arr -> bin -> bin -> arr -> type.
+trie_set/hit: trie_set (tn L V R) e NewV (tn L NewV R).
+trie_set/left: trie_set (tn L V R) (o K) NewV (tn L2 V R) <- trie_set L K NewV L2.
+trie_set/right: trie_set (tn L V R) (i K) NewV (tn L V R2) <- trie_set R K NewV R2.
+
+% ── arr_get: Array Index Value ────────────────────────────────────────
+% Dispatches on first arg: tn→trie O(log N), acons→linear O(N).
+% FFI handles arrlit O(1) and trie O(log N) before clause fallback.
 arr_get: arr -> bin -> bin -> type.
+arr_get/trie_hit: arr_get (tn L V R) e V.
+arr_get/trie_left: arr_get (tn L V R) (o K) Result <- trie_get L K Result.
+arr_get/trie_right: arr_get (tn L V R) (i K) Result <- trie_get R K Result.
 arr_get/go: arr_get A N V <- arr_idx A e N V.
 
 arr_idx: arr -> bin -> bin -> bin -> type.
 arr_idx/hit: arr_idx [V | W] K K V.
 arr_idx/skip: arr_idx [X | T] K N V <- inc K J <- arr_idx T J N V.
 
-% arr_set Array Index Value Result — returns new array
-% Uses explicit decrement (arr_dec) to avoid non-canonical zeros from reverse-inc.
-% arr_dec handles the 1→0 boundary explicitly, producing canonical 'e'.
+% ── arr_set: Array Index Value Result ─────────────────────────────────
+% Dispatches on first arg: tn→trie O(log N), acons→linear O(N).
 arr_set: arr -> bin -> bin -> arr -> type.
+arr_set/trie_hit: arr_set (tn L V R) e NewV (tn L NewV R).
+arr_set/trie_left: arr_set (tn L V R) (o K) NewV (tn L2 V R) <- trie_set L K NewV L2.
+arr_set/trie_right: arr_set (tn L V R) (i K) NewV (tn L V R2) <- trie_set R K NewV R2.
 arr_set/hit: arr_set [X | T] e V [V | T].
 arr_set/skip: arr_set [H | T] N V [H | U] <- arr_dec N N2 <- arr_set T N2 V U.
 

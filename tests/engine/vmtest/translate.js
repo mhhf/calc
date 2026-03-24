@@ -8,6 +8,7 @@
 const Store = require('../../../lib/kernel/store');
 const { intToBin } = require('../../../lib/engine/ill/ffi/convert');
 const { bytesToSemantic } = require('../../../lib/engine/index');
+const { arrToTrie } = require('../../../lib/engine/ill/ffi/array');
 
 /**
  * Convert a hex string (with or without 0x prefix) to a BigInt.
@@ -151,6 +152,21 @@ function fixtureToState(fixture, calc) {
   // Apply bytesToSemantic to combine PUSH data bytes
   let state = { linear, persistent };
   state = bytesToSemantic(state);
+
+  // Convert bytecode arrlit → bit-indexed trie for O(log N) clause access
+  const bcTagId = Store.TAG['bytecode'];
+  for (const h of Object.keys(state.linear)) {
+    const hNum = Number(h);
+    if (Store.tagId(hNum) === bcTagId) {
+      const arrH = Store.rawChild(hNum, 0);
+      const trieH = arrToTrie(arrH);
+      if (trieH !== arrH) {
+        delete state.linear[h];
+        state.linear[Store.put('bytecode', [trieH])] = 1;
+      }
+      break;
+    }
+  }
 
   return state;
 }
