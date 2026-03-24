@@ -86,6 +86,7 @@
 return: type.
 invalid: type.
 revert: type.
+selfdestruct: type.
 log0: type.
 log1: bin -> type.
 log2: bin -> bin -> type.
@@ -130,6 +131,95 @@ gaslimit: bin -> type.
 % shr, shl, slt: type declarations and clauses in bin.ill
 concat: bin -> bin -> bin.
 sha3: bin -> bin.
+
+% EVM-specific arithmetic (wrapping/zero-safe semantics)
+% General arithmetic stays pure — these encode EVM's modular 256-bit rules.
+
+% sub256 A B C: C = (A - B) mod 2^256  (wrapping, not saturating)
+sub256: bin -> bin -> bin -> type.
+sub256/wrap: sub256 A B C
+  <- not256 B NB
+  <- inc NB NB1
+  <- plus A NB1 C'
+  <- to256 C' C.
+
+% div256 A B Q: Q = A / B, or 0 when B = 0
+div256: bin -> bin -> bin -> type.
+div256/zero: div256 A e e.
+div256/nz: div256 A B Q <- neq B e <- div A B Q.
+
+% mod256 A B R: R = A % B, or 0 when B = 0
+mod256: bin -> bin -> bin -> type.
+mod256/zero: mod256 A e e.
+mod256/nz: mod256 A B R <- neq B e <- mod A B R.
+
+% exp256 Base Exp Result: Result = Base^Exp mod 2^256
+exp256: bin -> bin -> bin -> type.
+exp256/clause: exp256 Base Exp Result
+  <- exp Base Exp R
+  <- to256 R Result.
+
+% sdiv256 A B Q: Q = signed(A) / signed(B), truncated toward zero; 0 when B = 0
+% INT256_MIN / -1 = INT256_MIN (overflow wraps, per EVM spec)
+sdiv256: bin -> bin -> bin -> type.
+sdiv256/zero: sdiv256 A e e.
+
+% smod256 A B R: R = signed(A) % signed(B), sign follows A; 0 when B = 0
+smod256: bin -> bin -> bin -> type.
+smod256/zero: smod256 A e e.
+
+% addmod256 A B N R: R = (A + B) mod N, unbounded intermediate; 0 when N = 0
+addmod256: bin -> bin -> bin -> bin -> type.
+addmod256/zero: addmod256 A B e e.
+addmod256/nz: addmod256 A B N R
+  <- neq N e
+  <- plus A B S
+  <- mod S N R.
+
+% mulmod256 A B N R: R = (A * B) mod N, unbounded intermediate; 0 when N = 0
+mulmod256: bin -> bin -> bin -> bin -> type.
+mulmod256/zero: mulmod256 A B e e.
+mulmod256/nz: mulmod256 A B N R
+  <- neq N e
+  <- mul A B P
+  <- mod P N R.
+
+% signextend256 B X Y: sign-extend X at byte B
+% B >= 31 → Y = X unchanged. Otherwise, bit (B*8+7) is sign bit.
+signextend256: bin -> bin -> bin -> type.
+
+% byte256 Idx X Z: extract Ith byte (big-endian) from 256-bit value X
+% I >= 32 → Z = 0. Otherwise Z = (X >> ((31-I)*8)) & 0xFF.
+byte256: bin -> bin -> bin -> type.
+byte256/oob: byte256 Idx X e <- gt Idx 0x1f e (i e).
+byte256/ok: byte256 Idx X Z
+  <- sub256 0x1f Idx Offset
+  <- shl 0x3 Offset ShiftBits
+  <- shr ShiftBits X Shifted
+  <- and Shifted 0xff Z.
+
+% sar256 Shift Value Z: arithmetic right shift (sign-extending)
+% Positive values: identical to shr. Negative (MSB=1): fills high bits with 1s.
+% Shift >= 256: saturates to 0 (positive) or 2^256-1 (negative).
+sar256: bin -> bin -> bin -> type.
+sar256/oob_pos: sar256 Shift Value e
+  <- gt Shift 0xff e (i e)
+  <- shr 0xff Value e.
+sar256/oob_neg: sar256 Shift Value 0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+  <- gt Shift 0xff e (i e)
+  <- shr 0xff Value SignBit
+  <- neq SignBit e.
+sar256/pos: sar256 Shift Value Z
+  <- shr 0xff Value e
+  <- shr Shift Value Z.
+sar256/neg: sar256 Shift Value Z
+  <- gt 0x100 Shift e (i e)
+  <- shr 0xff Value SignBit
+  <- neq SignBit e
+  <- shr Shift Value Logical
+  <- sub256 0x100 Shift NBits
+  <- shl NBits 0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff HighMask
+  <- or Logical HighMask Z.
 
 % mem_expand OldSize Offset AccessLen NewSize
 % NewSize = max(OldSize, ceil_32(Offset + AccessLen))
@@ -208,7 +298,7 @@ evm/sub:
       bytecode BC *
       pc PC' *
       stack [C | REST] *
-      !sub A B C)
+      !sub256 A B C)
   }.
 
 evm/exp:
@@ -218,13 +308,11 @@ evm/exp:
   !inc PC PC' *
   stack [Base, Exponent | REST]
   -o {
-    exists Base'. exists Exponent'. exists Result. exists Result'. (
-      debug Base' *
-      debug Exponent' *
+    exists Result. (
       bytecode BC *
       pc PC' *
-      stack [Result' | REST] *
-      !trim Base Base' * !trim Exponent Exponent' * !exp Base' Exponent' Result * !to256 Result Result')
+      stack [Result | REST] *
+      !exp256 Base Exponent Result)
   }.
 
 evm/div:
@@ -234,11 +322,11 @@ evm/div:
   !inc PC PC' *
   stack [A, B | REST]
   -o {
-    exists A'. exists B'. exists Q. exists Q'. (
+    exists Q. exists Q'. (
       bytecode BC *
       pc PC' *
       stack [Q' | REST] *
-      !trim A A' * !trim B B' * !div A' B' Q * !to256 Q Q')
+      !div256 A B Q * !to256 Q Q')
   }.
 
 evm/mod:
@@ -248,11 +336,81 @@ evm/mod:
   !inc PC PC' *
   stack [A, B | REST]
   -o {
-    exists A'. exists B'. exists R. exists R'. (
+    exists R. exists R'. (
       bytecode BC *
       pc PC' *
       stack [R' | REST] *
-      !trim A A' * !trim B B' * !mod A' B' R * !to256 R R')
+      !mod256 A B R * !to256 R R')
+  }.
+
+evm/sdiv:
+  bytecode BC *
+  pc PC *
+  !arr_get BC PC 0x05 *
+  !inc PC PC' *
+  stack [A, B | REST]
+  -o {
+    exists Q. (
+      bytecode BC *
+      pc PC' *
+      stack [Q | REST] *
+      !sdiv256 A B Q)
+  }.
+
+evm/smod:
+  bytecode BC *
+  pc PC *
+  !arr_get BC PC 0x07 *
+  !inc PC PC' *
+  stack [A, B | REST]
+  -o {
+    exists R. (
+      bytecode BC *
+      pc PC' *
+      stack [R | REST] *
+      !smod256 A B R)
+  }.
+
+evm/addmod:
+  bytecode BC *
+  pc PC *
+  !arr_get BC PC 0x08 *
+  !inc PC PC' *
+  stack [A, B, N | REST]
+  -o {
+    exists R. (
+      bytecode BC *
+      pc PC' *
+      stack [R | REST] *
+      !addmod256 A B N R)
+  }.
+
+evm/mulmod:
+  bytecode BC *
+  pc PC *
+  !arr_get BC PC 0x09 *
+  !inc PC PC' *
+  stack [A, B, N | REST]
+  -o {
+    exists R. (
+      bytecode BC *
+      pc PC' *
+      stack [R | REST] *
+      !mulmod256 A B N R)
+  }.
+
+evm/signextend:
+  bytecode BC *
+  pc PC *
+  !arr_get BC PC 0x0b *
+  !inc PC PC' *
+  stack [B, X | REST]
+  -o {
+    exists Y. (
+      bytecode BC *
+      pc PC' *
+      stack [Y | REST] *
+      !signextend256 B X Y)
   }.
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%  10
@@ -331,6 +489,20 @@ evm/slt:
       !slt X Y Z)
   }.
 
+evm/sgt:
+  bytecode BC *
+  pc PC *
+  !arr_get BC PC 0x13 *
+  !inc PC PC' *
+  stack [X, Y | REST]
+  -o {
+    exists Z. (
+      bytecode BC *
+      pc PC' *
+      stack [Z | REST] *
+      !slt Y X Z)
+  }.
+
 evm/and:
   bytecode BC *
   pc PC *
@@ -359,6 +531,20 @@ evm/or:
       !or X Y Z)
   }.
 
+evm/xor:
+  bytecode BC *
+  pc PC *
+  !arr_get BC PC 0x18 *
+  !inc PC PC' *
+  stack [X, Y | REST]
+  -o {
+    exists Z. (
+      bytecode BC *
+      pc PC' *
+      stack [Z | REST] *
+      !xor X Y Z)
+  }.
+
 evm/not:
   bytecode BC *
   pc PC *
@@ -371,6 +557,20 @@ evm/not:
       pc PC' *
       stack [Y | REST] *
       !not256 X Y)
+  }.
+
+evm/byte:
+  bytecode BC *
+  pc PC *
+  !arr_get BC PC 0x1a *
+  !inc PC PC' *
+  stack [Idx, X | REST]
+  -o {
+    exists Z. (
+      bytecode BC *
+      pc PC' *
+      stack [Z | REST] *
+      !byte256 Idx X Z)
   }.
 
 evm/shl:
@@ -399,6 +599,20 @@ evm/shr:
       pc PC' *
       stack [Z | REST] *
       !shr Shift Value Z)
+  }.
+
+evm/sar:
+  bytecode BC *
+  pc PC *
+  !arr_get BC PC 0x1d *
+  !inc PC PC' *
+  stack [Shift, Value | REST]
+  -o {
+    exists Z. (
+      bytecode BC *
+      pc PC' *
+      stack [Z | REST] *
+      !sar256 Shift Value Z)
   }.
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%  20
@@ -925,6 +1139,125 @@ evm/push4:
     gas GAS'
   }.
 
+evm/push5:
+  bytecode BC *
+  pc PC *
+  !arr_get BC PC 0x64 *
+  !inc PC PC' *
+  !arr_get BC PC' V *
+  !plus 5 PC' PC_Target *
+  gas GAS *
+  !plus 3 GAS GAS' *
+  stack S
+  -o {
+    bytecode BC *
+    pc PC_Target *
+    stack [V | S] *
+    gas GAS'
+  }.
+
+evm/push6:
+  bytecode BC *
+  pc PC *
+  !arr_get BC PC 0x65 *
+  !inc PC PC' *
+  !arr_get BC PC' V *
+  !plus 6 PC' PC_Target *
+  gas GAS *
+  !plus 3 GAS GAS' *
+  stack S
+  -o {
+    bytecode BC *
+    pc PC_Target *
+    stack [V | S] *
+    gas GAS'
+  }.
+
+evm/push7:
+  bytecode BC *
+  pc PC *
+  !arr_get BC PC 0x66 *
+  !inc PC PC' *
+  !arr_get BC PC' V *
+  !plus 7 PC' PC_Target *
+  gas GAS *
+  !plus 3 GAS GAS' *
+  stack S
+  -o {
+    bytecode BC *
+    pc PC_Target *
+    stack [V | S] *
+    gas GAS'
+  }.
+
+evm/push8:
+  bytecode BC *
+  pc PC *
+  !arr_get BC PC 0x67 *
+  !inc PC PC' *
+  !arr_get BC PC' V *
+  !plus 8 PC' PC_Target *
+  gas GAS *
+  !plus 3 GAS GAS' *
+  stack S
+  -o {
+    bytecode BC *
+    pc PC_Target *
+    stack [V | S] *
+    gas GAS'
+  }.
+
+evm/push9:
+  bytecode BC *
+  pc PC *
+  !arr_get BC PC 0x68 *
+  !inc PC PC' *
+  !arr_get BC PC' V *
+  !plus 9 PC' PC_Target *
+  gas GAS *
+  !plus 3 GAS GAS' *
+  stack S
+  -o {
+    bytecode BC *
+    pc PC_Target *
+    stack [V | S] *
+    gas GAS'
+  }.
+
+evm/push10:
+  bytecode BC *
+  pc PC *
+  !arr_get BC PC 0x69 *
+  !inc PC PC' *
+  !arr_get BC PC' V *
+  !plus 10 PC' PC_Target *
+  gas GAS *
+  !plus 3 GAS GAS' *
+  stack S
+  -o {
+    bytecode BC *
+    pc PC_Target *
+    stack [V | S] *
+    gas GAS'
+  }.
+
+evm/push11:
+  bytecode BC *
+  pc PC *
+  !arr_get BC PC 0x6a *
+  !inc PC PC' *
+  !arr_get BC PC' V *
+  !plus 11 PC' PC_Target *
+  gas GAS *
+  !plus 3 GAS GAS' *
+  stack S
+  -o {
+    bytecode BC *
+    pc PC_Target *
+    stack [V | S] *
+    gas GAS'
+  }.
+
 evm/push12:
   bytecode BC *
   pc PC *
@@ -932,6 +1265,40 @@ evm/push12:
   !inc PC PC' *
   !arr_get BC PC' V *
   !plus 12 PC' PC_Target *
+  gas GAS *
+  !plus 3 GAS GAS' *
+  stack S
+  -o {
+    bytecode BC *
+    pc PC_Target *
+    stack [V | S] *
+    gas GAS'
+  }.
+
+evm/push13:
+  bytecode BC *
+  pc PC *
+  !arr_get BC PC 0x6c *
+  !inc PC PC' *
+  !arr_get BC PC' V *
+  !plus 13 PC' PC_Target *
+  gas GAS *
+  !plus 3 GAS GAS' *
+  stack S
+  -o {
+    bytecode BC *
+    pc PC_Target *
+    stack [V | S] *
+    gas GAS'
+  }.
+
+evm/push14:
+  bytecode BC *
+  pc PC *
+  !arr_get BC PC 0x6d *
+  !inc PC PC' *
+  !arr_get BC PC' V *
+  !plus 14 PC' PC_Target *
   gas GAS *
   !plus 3 GAS GAS' *
   stack S
@@ -959,6 +1326,74 @@ evm/push15:
     gas GAS'
   }.
 
+evm/push16:
+  bytecode BC *
+  pc PC *
+  !arr_get BC PC 0x6f *
+  !inc PC PC' *
+  !arr_get BC PC' V *
+  !plus 16 PC' PC_Target *
+  gas GAS *
+  !plus 3 GAS GAS' *
+  stack S
+  -o {
+    bytecode BC *
+    pc PC_Target *
+    stack [V | S] *
+    gas GAS'
+  }.
+
+evm/push17:
+  bytecode BC *
+  pc PC *
+  !arr_get BC PC 0x70 *
+  !inc PC PC' *
+  !arr_get BC PC' V *
+  !plus 17 PC' PC_Target *
+  gas GAS *
+  !plus 3 GAS GAS' *
+  stack S
+  -o {
+    bytecode BC *
+    pc PC_Target *
+    stack [V | S] *
+    gas GAS'
+  }.
+
+evm/push18:
+  bytecode BC *
+  pc PC *
+  !arr_get BC PC 0x71 *
+  !inc PC PC' *
+  !arr_get BC PC' V *
+  !plus 18 PC' PC_Target *
+  gas GAS *
+  !plus 3 GAS GAS' *
+  stack S
+  -o {
+    bytecode BC *
+    pc PC_Target *
+    stack [V | S] *
+    gas GAS'
+  }.
+
+evm/push19:
+  bytecode BC *
+  pc PC *
+  !arr_get BC PC 0x72 *
+  !inc PC PC' *
+  !arr_get BC PC' V *
+  !plus 19 PC' PC_Target *
+  gas GAS *
+  !plus 3 GAS GAS' *
+  stack S
+  -o {
+    bytecode BC *
+    pc PC_Target *
+    stack [V | S] *
+    gas GAS'
+  }.
+
 evm/push20:
   bytecode BC *
   pc PC *
@@ -966,6 +1401,193 @@ evm/push20:
   !inc PC PC' *
   !arr_get BC PC' V *
   !plus 20 PC' PC_Target *
+  gas GAS *
+  !plus 3 GAS GAS' *
+  stack S
+  -o {
+    bytecode BC *
+    pc PC_Target *
+    stack [V | S] *
+    gas GAS'
+  }.
+
+evm/push21:
+  bytecode BC *
+  pc PC *
+  !arr_get BC PC 0x74 *
+  !inc PC PC' *
+  !arr_get BC PC' V *
+  !plus 21 PC' PC_Target *
+  gas GAS *
+  !plus 3 GAS GAS' *
+  stack S
+  -o {
+    bytecode BC *
+    pc PC_Target *
+    stack [V | S] *
+    gas GAS'
+  }.
+
+evm/push22:
+  bytecode BC *
+  pc PC *
+  !arr_get BC PC 0x75 *
+  !inc PC PC' *
+  !arr_get BC PC' V *
+  !plus 22 PC' PC_Target *
+  gas GAS *
+  !plus 3 GAS GAS' *
+  stack S
+  -o {
+    bytecode BC *
+    pc PC_Target *
+    stack [V | S] *
+    gas GAS'
+  }.
+
+evm/push23:
+  bytecode BC *
+  pc PC *
+  !arr_get BC PC 0x76 *
+  !inc PC PC' *
+  !arr_get BC PC' V *
+  !plus 23 PC' PC_Target *
+  gas GAS *
+  !plus 3 GAS GAS' *
+  stack S
+  -o {
+    bytecode BC *
+    pc PC_Target *
+    stack [V | S] *
+    gas GAS'
+  }.
+
+evm/push24:
+  bytecode BC *
+  pc PC *
+  !arr_get BC PC 0x77 *
+  !inc PC PC' *
+  !arr_get BC PC' V *
+  !plus 24 PC' PC_Target *
+  gas GAS *
+  !plus 3 GAS GAS' *
+  stack S
+  -o {
+    bytecode BC *
+    pc PC_Target *
+    stack [V | S] *
+    gas GAS'
+  }.
+
+evm/push25:
+  bytecode BC *
+  pc PC *
+  !arr_get BC PC 0x78 *
+  !inc PC PC' *
+  !arr_get BC PC' V *
+  !plus 25 PC' PC_Target *
+  gas GAS *
+  !plus 3 GAS GAS' *
+  stack S
+  -o {
+    bytecode BC *
+    pc PC_Target *
+    stack [V | S] *
+    gas GAS'
+  }.
+
+evm/push26:
+  bytecode BC *
+  pc PC *
+  !arr_get BC PC 0x79 *
+  !inc PC PC' *
+  !arr_get BC PC' V *
+  !plus 26 PC' PC_Target *
+  gas GAS *
+  !plus 3 GAS GAS' *
+  stack S
+  -o {
+    bytecode BC *
+    pc PC_Target *
+    stack [V | S] *
+    gas GAS'
+  }.
+
+evm/push27:
+  bytecode BC *
+  pc PC *
+  !arr_get BC PC 0x7a *
+  !inc PC PC' *
+  !arr_get BC PC' V *
+  !plus 27 PC' PC_Target *
+  gas GAS *
+  !plus 3 GAS GAS' *
+  stack S
+  -o {
+    bytecode BC *
+    pc PC_Target *
+    stack [V | S] *
+    gas GAS'
+  }.
+
+evm/push28:
+  bytecode BC *
+  pc PC *
+  !arr_get BC PC 0x7b *
+  !inc PC PC' *
+  !arr_get BC PC' V *
+  !plus 28 PC' PC_Target *
+  gas GAS *
+  !plus 3 GAS GAS' *
+  stack S
+  -o {
+    bytecode BC *
+    pc PC_Target *
+    stack [V | S] *
+    gas GAS'
+  }.
+
+evm/push29:
+  bytecode BC *
+  pc PC *
+  !arr_get BC PC 0x7c *
+  !inc PC PC' *
+  !arr_get BC PC' V *
+  !plus 29 PC' PC_Target *
+  gas GAS *
+  !plus 3 GAS GAS' *
+  stack S
+  -o {
+    bytecode BC *
+    pc PC_Target *
+    stack [V | S] *
+    gas GAS'
+  }.
+
+evm/push30:
+  bytecode BC *
+  pc PC *
+  !arr_get BC PC 0x7d *
+  !inc PC PC' *
+  !arr_get BC PC' V *
+  !plus 30 PC' PC_Target *
+  gas GAS *
+  !plus 3 GAS GAS' *
+  stack S
+  -o {
+    bytecode BC *
+    pc PC_Target *
+    stack [V | S] *
+    gas GAS'
+  }.
+
+evm/push31:
+  bytecode BC *
+  pc PC *
+  !arr_get BC PC 0x7e *
+  !inc PC PC' *
+  !arr_get BC PC' V *
+  !plus 31 PC' PC_Target *
   gas GAS *
   !plus 3 GAS GAS' *
   stack S
@@ -1124,6 +1746,134 @@ evm/dup8:
     stack [V | S]
   }.
 
+evm/dup9:
+  bytecode BC *
+  pc PC *
+  !arr_get BC PC 0x88 *
+  !inc PC PC' *
+  gas GAS *
+  !plus 3 GAS GAS' *
+  stack S *
+  !arr_get S 0x8 V
+  -o {
+    bytecode BC *
+    pc PC' *
+    gas GAS' *
+    stack [V | S]
+  }.
+
+evm/dup10:
+  bytecode BC *
+  pc PC *
+  !arr_get BC PC 0x89 *
+  !inc PC PC' *
+  gas GAS *
+  !plus 3 GAS GAS' *
+  stack S *
+  !arr_get S 0x9 V
+  -o {
+    bytecode BC *
+    pc PC' *
+    gas GAS' *
+    stack [V | S]
+  }.
+
+evm/dup11:
+  bytecode BC *
+  pc PC *
+  !arr_get BC PC 0x8a *
+  !inc PC PC' *
+  gas GAS *
+  !plus 3 GAS GAS' *
+  stack S *
+  !arr_get S 0xa V
+  -o {
+    bytecode BC *
+    pc PC' *
+    gas GAS' *
+    stack [V | S]
+  }.
+
+evm/dup12:
+  bytecode BC *
+  pc PC *
+  !arr_get BC PC 0x8b *
+  !inc PC PC' *
+  gas GAS *
+  !plus 3 GAS GAS' *
+  stack S *
+  !arr_get S 0xb V
+  -o {
+    bytecode BC *
+    pc PC' *
+    gas GAS' *
+    stack [V | S]
+  }.
+
+evm/dup13:
+  bytecode BC *
+  pc PC *
+  !arr_get BC PC 0x8c *
+  !inc PC PC' *
+  gas GAS *
+  !plus 3 GAS GAS' *
+  stack S *
+  !arr_get S 0xc V
+  -o {
+    bytecode BC *
+    pc PC' *
+    gas GAS' *
+    stack [V | S]
+  }.
+
+evm/dup14:
+  bytecode BC *
+  pc PC *
+  !arr_get BC PC 0x8d *
+  !inc PC PC' *
+  gas GAS *
+  !plus 3 GAS GAS' *
+  stack S *
+  !arr_get S 0xd V
+  -o {
+    bytecode BC *
+    pc PC' *
+    gas GAS' *
+    stack [V | S]
+  }.
+
+evm/dup15:
+  bytecode BC *
+  pc PC *
+  !arr_get BC PC 0x8e *
+  !inc PC PC' *
+  gas GAS *
+  !plus 3 GAS GAS' *
+  stack S *
+  !arr_get S 0xe V
+  -o {
+    bytecode BC *
+    pc PC' *
+    gas GAS' *
+    stack [V | S]
+  }.
+
+evm/dup16:
+  bytecode BC *
+  pc PC *
+  !arr_get BC PC 0x8f *
+  !inc PC PC' *
+  gas GAS *
+  !plus 3 GAS GAS' *
+  stack S *
+  !arr_get S 0xf V
+  -o {
+    bytecode BC *
+    pc PC' *
+    gas GAS' *
+    stack [V | S]
+  }.
+
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%  90
 
 evm/swap1:
@@ -1202,6 +1952,193 @@ evm/swap5:
   stack [X | REST] *
   !arr_get REST 4 Y *
   !arr_set REST 4 X REST'
+  -o {
+    bytecode BC *
+    pc PC' *
+    gas GAS' *
+    stack [Y | REST']
+  }.
+
+evm/swap6:
+  bytecode BC *
+  pc PC *
+  !arr_get BC PC 0x95 *
+  !inc PC PC' *
+  gas GAS *
+  !inc GAS GAS' *
+  stack [X | REST] *
+  !arr_get REST 0x5 Y *
+  !arr_set REST 0x5 X REST'
+  -o {
+    bytecode BC *
+    pc PC' *
+    gas GAS' *
+    stack [Y | REST']
+  }.
+
+evm/swap7:
+  bytecode BC *
+  pc PC *
+  !arr_get BC PC 0x96 *
+  !inc PC PC' *
+  gas GAS *
+  !inc GAS GAS' *
+  stack [X | REST] *
+  !arr_get REST 0x6 Y *
+  !arr_set REST 0x6 X REST'
+  -o {
+    bytecode BC *
+    pc PC' *
+    gas GAS' *
+    stack [Y | REST']
+  }.
+
+evm/swap8:
+  bytecode BC *
+  pc PC *
+  !arr_get BC PC 0x97 *
+  !inc PC PC' *
+  gas GAS *
+  !inc GAS GAS' *
+  stack [X | REST] *
+  !arr_get REST 0x7 Y *
+  !arr_set REST 0x7 X REST'
+  -o {
+    bytecode BC *
+    pc PC' *
+    gas GAS' *
+    stack [Y | REST']
+  }.
+
+evm/swap9:
+  bytecode BC *
+  pc PC *
+  !arr_get BC PC 0x98 *
+  !inc PC PC' *
+  gas GAS *
+  !inc GAS GAS' *
+  stack [X | REST] *
+  !arr_get REST 0x8 Y *
+  !arr_set REST 0x8 X REST'
+  -o {
+    bytecode BC *
+    pc PC' *
+    gas GAS' *
+    stack [Y | REST']
+  }.
+
+evm/swap10:
+  bytecode BC *
+  pc PC *
+  !arr_get BC PC 0x99 *
+  !inc PC PC' *
+  gas GAS *
+  !inc GAS GAS' *
+  stack [X | REST] *
+  !arr_get REST 0x9 Y *
+  !arr_set REST 0x9 X REST'
+  -o {
+    bytecode BC *
+    pc PC' *
+    gas GAS' *
+    stack [Y | REST']
+  }.
+
+evm/swap11:
+  bytecode BC *
+  pc PC *
+  !arr_get BC PC 0x9a *
+  !inc PC PC' *
+  gas GAS *
+  !inc GAS GAS' *
+  stack [X | REST] *
+  !arr_get REST 0xa Y *
+  !arr_set REST 0xa X REST'
+  -o {
+    bytecode BC *
+    pc PC' *
+    gas GAS' *
+    stack [Y | REST']
+  }.
+
+evm/swap12:
+  bytecode BC *
+  pc PC *
+  !arr_get BC PC 0x9b *
+  !inc PC PC' *
+  gas GAS *
+  !inc GAS GAS' *
+  stack [X | REST] *
+  !arr_get REST 0xb Y *
+  !arr_set REST 0xb X REST'
+  -o {
+    bytecode BC *
+    pc PC' *
+    gas GAS' *
+    stack [Y | REST']
+  }.
+
+evm/swap13:
+  bytecode BC *
+  pc PC *
+  !arr_get BC PC 0x9c *
+  !inc PC PC' *
+  gas GAS *
+  !inc GAS GAS' *
+  stack [X | REST] *
+  !arr_get REST 0xc Y *
+  !arr_set REST 0xc X REST'
+  -o {
+    bytecode BC *
+    pc PC' *
+    gas GAS' *
+    stack [Y | REST']
+  }.
+
+evm/swap14:
+  bytecode BC *
+  pc PC *
+  !arr_get BC PC 0x9d *
+  !inc PC PC' *
+  gas GAS *
+  !inc GAS GAS' *
+  stack [X | REST] *
+  !arr_get REST 0xd Y *
+  !arr_set REST 0xd X REST'
+  -o {
+    bytecode BC *
+    pc PC' *
+    gas GAS' *
+    stack [Y | REST']
+  }.
+
+evm/swap15:
+  bytecode BC *
+  pc PC *
+  !arr_get BC PC 0x9e *
+  !inc PC PC' *
+  gas GAS *
+  !inc GAS GAS' *
+  stack [X | REST] *
+  !arr_get REST 0xe Y *
+  !arr_set REST 0xe X REST'
+  -o {
+    bytecode BC *
+    pc PC' *
+    gas GAS' *
+    stack [Y | REST']
+  }.
+
+evm/swap16:
+  bytecode BC *
+  pc PC *
+  !arr_get BC PC 0x9f *
+  !inc PC PC' *
+  gas GAS *
+  !inc GAS GAS' *
+  stack [X | REST] *
+  !arr_get REST 0xf Y *
+  !arr_set REST 0xf X REST'
   -o {
     bytecode BC *
     pc PC' *
@@ -1324,6 +2261,17 @@ evm/invalid:
   -o {
     bytecode BC *
     invalid
+  }.
+
+evm/selfdestruct:
+  bytecode BC *
+  pc PC *
+  !arr_get BC PC 0xff *
+  stack [Addr | REST]
+  -o {
+    bytecode BC *
+    stack REST *
+    selfdestruct
   }.
 
 evm/revert:

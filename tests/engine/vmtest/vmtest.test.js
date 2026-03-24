@@ -63,6 +63,15 @@ function assertStorageEqual(actual, expected, msg) {
   assert.deepStrictEqual(actualObj, expectedObj, msg);
 }
 
+/**
+ * List all .json fixtures in a category directory.
+ */
+function listFixtures(category) {
+  const dir = path.join(FIXTURES_DIR, category);
+  if (!fs.existsSync(dir)) return [];
+  return fs.readdirSync(dir).filter(f => f.endsWith('.json')).sort();
+}
+
 describe('VMTest Conformance', { skip: !fixturesExist && 'Fixtures not fetched (run: bash tools/fetch-vmtests.sh)' }, () => {
   let calc;
 
@@ -90,63 +99,25 @@ describe('VMTest Conformance', { skip: !fixturesExist && 'Fixtures not fetched (
         const { actual, expected, quiescent } = runFixture(fixture, calc);
 
         assert.ok(quiescent, `${name}: should reach quiescence`);
-        assert.equal(actual.termination, 'stop', `${name}: should terminate with STOP`);
+        assert.ok(
+          actual.termination === 'stop' || actual.termination === 'return' || actual.termination === 'selfdestruct',
+          `${name}: should terminate normally (got ${actual.termination})`
+        );
         assertStorageEqual(actual.storage, expected.storage, `${name}: storage mismatch`);
       }
     });
   }
 
-  // Known failures: modular arithmetic not yet implemented (SUB underflow, DIV/MOD by zero)
-  // and large-number backchaining overflow (EXP with big exponents)
-  const KNOWN_FAILURES = new Set([
-    'sub1.json', 'sub2.json', 'sub3.json',       // SUB underflow (needs modular 2^256)
-    'div1.json',                                   // DIV by zero (EVM returns 0)
-    'mod1.json', 'mod3.json', 'mod4.json',        // MOD edge cases
-    'exp1.json', 'exp2.json',                     // Large EXP causes stack overflow
-    'lt1.json',                                    // LT with values requiring modular comparison
-    'gt0.json',                                    // GT edge case
-    'slt0.json', 'slt4.json',                     // SLT (signed comparison) edge cases
-  ]);
+  /**
+   * Run all fixtures in a category directory.
+   */
+  function runCategory(category) {
+    describe(category, () => {
+      for (const file of listFixtures(category)) runStorageTest(category, file);
+    });
+  }
 
-  describe('vmArithmeticTest', () => {
-    const tests = [
-      'add0.json', 'add1.json', 'add2.json', 'add3.json', 'add4.json',
-      'mul0.json', 'mul1.json', 'mul2.json', 'mul3.json', 'mul4.json',
-      'sub0.json', 'sub1.json', 'sub2.json', 'sub3.json', 'sub4.json',
-      'div1.json',
-      'mod0.json', 'mod1.json', 'mod2.json', 'mod3.json', 'mod4.json',
-      'exp0.json', 'exp1.json', 'exp2.json', 'exp3.json', 'exp4.json',
-      'exp5.json', 'exp6.json', 'exp7.json', 'exp8.json',
-    ];
-    for (const file of tests) {
-      if (KNOWN_FAILURES.has(file)) {
-        it(file.replace('.json', '') + ' (known failure)', { todo: 'modular arithmetic / edge cases' }, () => {});
-      } else {
-        runStorageTest('vmArithmeticTest', file);
-      }
-    }
-  });
-
-  describe('vmBitwiseLogicOperation', () => {
-    const tests = [
-      'and0.json', 'and1.json', 'and2.json', 'and3.json', 'and4.json', 'and5.json',
-      'or0.json', 'or1.json', 'or2.json', 'or3.json', 'or4.json', 'or5.json',
-      'not0.json', 'not1.json',
-      'lt0.json', 'lt1.json', 'lt2.json', 'lt3.json',
-      'gt0.json', 'gt1.json', 'gt2.json', 'gt3.json',
-      'slt0.json', 'slt1.json', 'slt2.json', 'slt3.json', 'slt4.json',
-    ];
-    for (const file of tests) {
-      if (KNOWN_FAILURES.has(file)) {
-        it(file.replace('.json', '') + ' (known failure)', { todo: 'modular arithmetic / edge cases' }, () => {});
-      } else {
-        runStorageTest('vmBitwiseLogicOperation', file);
-      }
-    }
-  });
-
-  describe('vmPushDupSwapTest', () => {
-    const tests = ['push1.json'];
-    for (const file of tests) runStorageTest('vmPushDupSwapTest', file);
-  });
+  runCategory('vmArithmeticTest');
+  runCategory('vmBitwiseLogicOperation');
+  runCategory('vmPushDupSwapTest');
 });

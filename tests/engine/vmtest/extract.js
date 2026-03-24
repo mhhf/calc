@@ -50,7 +50,7 @@ function factsOfTag(state, tagName) {
  * We detect this by checking if pc >= bytecode length.
  */
 function extractTermination(state) {
-  for (const tag of ['stop', 'return', 'revert', 'invalid']) {
+  for (const tag of ['stop', 'return', 'revert', 'invalid', 'selfdestruct']) {
     if (factsOfTag(state, tag).length > 0) return tag;
   }
 
@@ -114,7 +114,7 @@ function extractStack(state) {
   const arrHash = stackFacts[0].children[0];
   const elems = Store.getArrayElements(arrHash);
   if (elems) {
-    return elems.map(h => binToInt(h)).filter(v => v !== null);
+    return Array.from(elems, h => binToInt(h)).filter(v => v !== null);
   }
   // Walk acons/ae structure
   return walkList(arrHash);
