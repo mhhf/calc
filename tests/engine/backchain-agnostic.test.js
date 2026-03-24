@@ -386,6 +386,37 @@ describe('Backward Prover — Calculus Agnostic', () => {
     });
   });
 
+  describe('Deep recursion (iterative _search)', () => {
+    const z = atom('z');
+    function nat(n) {
+      let r = z;
+      for (let i = 0; i < n; i++) r = pred('s', r);
+      return r;
+    }
+
+    // nat(z). nat(s(X)) :- nat(X).
+    const SPEC = [
+      ['nat/z', pred('nat', z)],
+      ['nat/s', pred('nat', pred('s', metavar('X'))), pred('nat', metavar('X'))],
+    ];
+
+    it('proves nat at depth 600 without stack overflow', () => {
+      const r = proveGoal(pred('nat', nat(600)), SPEC, { maxDepth: 1000 });
+      assert(r.success);
+    });
+
+    it('proves nat at depth 600 with buildTerm', () => {
+      const r = proveGoal(pred('nat', nat(600)), SPEC, {
+        maxDepth: 1000,
+        buildTerm: true,
+        buildClauseTerm: (prems, premTerms, head) => ({ head, prems, premTerms }),
+        buildTypeTerm: (goal) => ({ type: goal }),
+      });
+      assert(r.success);
+      assert(r.term != null);
+    });
+  });
+
   describe('Trace output', () => {
     const SPEC = [
       ['anc/base', pred('ancestor', metavar('A'), metavar('B')),
