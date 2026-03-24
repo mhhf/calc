@@ -317,7 +317,7 @@ describe('persistent step integration', { timeout: 10000 }, () => {
 
 // ─── E2E: persistent steps produce same tree ─────────────────────────
 
-describe('E2E persistent step correctness', { timeout: 30000 }, () => {
+describe('E2E persistent step correctness', { timeout: 30000, concurrency: 1 }, () => {
   it('multisig tree identical with persistent steps (280 nodes)', async () => {
     Store.clear();
     const calc = await mde.load(

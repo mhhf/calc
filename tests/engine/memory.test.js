@@ -236,7 +236,7 @@ describe('Memory Backward Clauses', { timeout: 30000 }, () => {
 // Integration Tests via EVM Execution
 // ============================================================================
 
-describe('EVM Memory Integration', { timeout: 30000 }, () => {
+describe('EVM Memory Integration', { timeout: 30000, concurrency: 1 }, () => {
   /**
    * Build a minimal EVM initial state with bytecode.
    * bytecodeMap: { address: opcode, ... }  e.g. { 0: 0x60, 1: 0x42, 2: 0x60, 3: 0x00, 4: 0x52 }
@@ -248,7 +248,7 @@ describe('EVM Memory Integration', { timeout: 30000 }, () => {
 
     linear[await mde.parseExpr('pc 0')] = 1;
     linear[await mde.parseExpr('stack ae')] = 1;
-    linear[await mde.parseExpr('gas 0')] = 1;
+    linear[await mde.parseExpr('gas 0xffffff')] = 1;
     linear[await mde.parseExpr('mem empty_mem')] = 1;
     linear[await mde.parseExpr('memsize 0')] = 1;
 

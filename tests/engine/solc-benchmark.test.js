@@ -12,7 +12,7 @@ const { getAllLeaves, countNodes } = require('../../lib/engine/tree-utils');
 const { classifyLeaf } = require('../../lib/engine/show');
 const Store = require('../../lib/kernel/store');
 
-describe('Solc multisig explore', { timeout: 30000 }, () => {
+describe('Solc multisig explore', { timeout: 30000, concurrency: 1 }, () => {
   let tree, allLeaves, classes;
 
   before(async () => {
@@ -89,7 +89,7 @@ describe('Solc multisig explore', { timeout: 30000 }, () => {
   });
 });
 
-describe('Solc multisig symbolic (structural memo)', { timeout: 30000 }, () => {
+describe('Solc multisig symbolic (structural memo)', { timeout: 30000, concurrency: 1 }, () => {
   let treeFull, treeMemo;
 
   before(async () => {

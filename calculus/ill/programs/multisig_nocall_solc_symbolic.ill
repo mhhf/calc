@@ -5,7 +5,7 @@
   pc 0 *
   stack ae *
   mem empty_mem * memsize 0 *
-  gas 0 *
+  gas 0xffffff *
 
   address      Contract_Address *
   sender       Sender *

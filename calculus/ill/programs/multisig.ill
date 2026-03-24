@@ -21,7 +21,7 @@ isNotMember/z:
   pc 0 *
   stack ae *
   mem empty_mem * memsize 0 *
-  gas 0 *
+  gas 0xffffff *
 
   % Contract context
   address      Contract_Address *

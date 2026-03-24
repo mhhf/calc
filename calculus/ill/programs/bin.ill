@@ -88,6 +88,15 @@ sub_b/io: sub_b (i X) (o Y) (o Z) <- sub X Y Z.
 sub_b/oi: sub_b (o X) (i Y) (o Z) <- sub_b X Y Z.
 sub/sat: sub A B e <- gt B A e (i e).
 
+% checked_sub A B C: C = A - B, only when A >= B (else fails)
+% Used by EVM gas model: checked_sub(GAS, Cost, GAS') → OOG when insufficient
+checked_sub: bin -> bin -> bin -> type.
+checked_sub/ok: checked_sub A B C <- le B A <- sub A B C.
+
+% byte_size256 X N: N = number of bytes needed to represent X
+% byte_size(0) = 0. Used by EVM EXP gas: cost = 10 + 50 * byte_size(exponent)
+byte_size256: bin -> bin -> type.
+
 lt: bin -> bin -> type.
 lt/z: lt A B <- gt B A e (i e).
 
