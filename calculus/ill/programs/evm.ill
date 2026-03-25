@@ -1076,16 +1076,28 @@ evm/sload_init:
     initializedStorage (acons KEY ISET)
   }.
 
-% SSTORE: key already has a storage fact
+% SSTORE gas (Yellow Paper): Gsset (20000) iff new != 0 AND old == 0, else Gsreset (5000)
+% sstore_gas computes the cost for the existing-key case (sstore_init uses separate rules)
+sstore_gas: bin -> bin -> bin -> type.
+sstore_gas/set: sstore_gas OldVal NewVal 0x4e20
+  <- eq OldVal e
+  <- neq NewVal e.
+sstore_gas/reset_nz: sstore_gas OldVal NewVal 0x1388
+  <- neq OldVal e.
+sstore_gas/reset_z: sstore_gas OldVal NewVal 0x1388
+  <- eq NewVal e.
+
+% SSTORE: key already has a storage fact — gas via sstore_gas helper
 evm/sstore:
   bytecode BC *
   pc PC *
   !arr_get BC PC 0x55 *
   !inc PC PC' *
   gas GAS *
-  !checked_sub GAS 0x1388 GAS' *
   stack [Pos, Val | REST] *
-  storage Pos Z
+  storage Pos OldVal *
+  !sstore_gas OldVal Val Cost *
+  !checked_sub GAS Cost GAS'
   -o {
     bytecode BC *
     pc PC' *
@@ -1094,8 +1106,29 @@ evm/sstore:
     storage Pos Val
   }.
 
-% SSTORE: key not yet initialized — create new slot
+% SSTORE: new key, nonzero value → Gsset (20000)
 evm/sstore_init:
+  bytecode BC *
+  pc PC *
+  !arr_get BC PC 0x55 *
+  !inc PC PC' *
+  gas GAS *
+  stack [Pos, Val | REST] *
+  initializedStorage ISET *
+  !notMember Pos ISET *
+  !neq Val e *
+  !checked_sub GAS 0x4e20 GAS'
+  -o {
+    bytecode BC *
+    pc PC' *
+    gas GAS' *
+    stack REST *
+    storage Pos Val *
+    initializedStorage (acons Pos ISET)
+  }.
+
+% SSTORE: new key, zero value → Gsreset (5000)
+evm/sstore_init_zero:
   bytecode BC *
   pc PC *
   !arr_get BC PC 0x55 *
