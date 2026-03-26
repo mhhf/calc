@@ -150,7 +150,7 @@ FFI is optimization, theory is semantics. Every FFI predicate MUST have backward
 
 **Research** documents live in `doc/research/`. They only contain **External knowledge** — literature surveys, paper summaries, technique catalogs sourced from existing work - named via `NNNN_title.md` e.g. `0007_chr-linear-logic.md`
 
-**TODOs** are managed externally in `~/src/hq/todo/`, not in this repo. Reference them by identifier (e.g., `TODO_0068`) — don't create `doc/todo/` here. When referencing TODOs from calc docs (research, theory, documentation), use the identifier only: `TODO_0068`. Do not create links to local files. Use the tools in `~/src/hq/bin` to work with todos: create, validate, tag, getNewId, update deps, etc
+**TODOs** are managed externally via the `hq` CLI, not in this repo. Reference them by identifier (e.g., `TODO_0068`) — don't create `doc/todo/` here. When referencing TODOs from calc docs (research, theory, documentation), use the identifier only: `TODO_0068`. Do not create links to local files. Use `hq todo <action>` to work with todos (show, list, search, edit, patch-body, etc.)
 
 ## Diagrams
 
