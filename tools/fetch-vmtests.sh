@@ -2,7 +2,7 @@
 # Fetch Ethereum VMTest fixtures (shallow sparse clone)
 set -euo pipefail
 
-DEST="${1:-tests/fixtures/vmtests}"
+DEST="${1:-tests/fixtures/VMTests}"
 
 if [ -d "$DEST/Constantinople" ]; then
   echo "VMTest fixtures already present at $DEST"
