@@ -9,10 +9,10 @@ nat: type.
 ee: nat.
 s: nat -> nat.
 
-eq: bin -> bin -> type.
+eq: (a: bin) -> (b: bin) -> type.
 eq/z: eq X X.
 
-neq: bin -> bin -> type.
+neq: (a: bin) -> (b: bin) -> type.
 
 neq/z1: neq e (o Y).
 neq/z2: neq e (i X).
@@ -25,13 +25,13 @@ neq/s1: neq (o X) (o Y)
 neq/s2: neq (i X) (i Y)
   <- neq X Y.
 
-inc: bin -> bin -> type.
+inc: (n: bin) -> (result: bin) -> type.
 inc/z1: inc (o X) (i X).
 inc/z2: inc e (i e).
 inc/s: inc (i X) (o Y)
   <- inc X Y.
 
-plus: bin -> bin -> bin -> type.
+plus: (a: bin) -> (b: bin) -> (result: bin) -> type.
 
 plus/z1: plus e e e.
 plus/z2: plus e (o N) (o N).
@@ -51,7 +51,7 @@ plus/s4: plus (i M) (i N) (o R)
   <- plus M N Q
   <- inc Q R.
 
-mul: bin -> bin -> bin -> type.
+mul: (a: bin) -> (b: bin) -> (result: bin) -> type.
 
 mul/z1: mul e Y e.
 
@@ -65,7 +65,7 @@ mul/s2: mul (i X) Y Z'
 
 % Direct binary subtraction: sub A B C = A - B (assumes A >= B).
 % EVM wrapping (mod 2^256) handled at call site via to256.
-sub: bin -> bin -> bin -> type.
+sub: (a: bin) -> (b: bin) -> (result: bin) -> type.
 sub/zl: sub e e e.
 sub/zr: sub X e X.
 sub/oo: sub (o X) (o Y) (o Z) <- sub X Y Z.
@@ -74,13 +74,13 @@ sub/io: sub (i X) (o Y) (i Z) <- sub X Y Z.
 sub/oi: sub (o X) (i Y) (i Z) <- sub_b X Y Z.
 
 % Decrement: dec X Y means Y = X - 1
-dec: bin -> bin -> type.
+dec: (n: bin) -> (result: bin) -> type.
 dec/one: dec (i e) e.
 dec/even: dec (i X) (o X).
 dec/odd: dec (o X) (i Y) <- dec X Y.
 
 % Subtraction with borrow: sub_b X Y Z means Z = X - Y - 1
-sub_b: bin -> bin -> bin -> type.
+sub_b: (a: bin) -> (b: bin) -> (result: bin) -> type.
 sub_b/zr: sub_b X e Z <- dec X Z.
 sub_b/oo: sub_b (o X) (o Y) (i Z) <- sub_b X Y Z.
 sub_b/ii: sub_b (i X) (i Y) (i Z) <- sub_b X Y Z.
@@ -90,21 +90,21 @@ sub/sat: sub A B e <- gt B A e (i e).
 
 % checked_sub A B C: C = A - B, only when A >= B (else fails)
 % Used by EVM gas model: checked_sub(GAS, Cost, GAS') → OOG when insufficient
-checked_sub: bin -> bin -> bin -> type.
+checked_sub: (a: bin) -> (b: bin) -> (result: bin) -> type.
 checked_sub/ok: checked_sub A B C <- le B A <- sub A B C.
 
 % byte_size256 X N: N = number of bytes needed to represent X
 % byte_size(0) = 0. Used by EVM EXP gas: cost = 10 + 50 * byte_size(exponent)
-byte_size256: bin -> bin -> type.
+byte_size256: (value: bin) -> (bytes: bin) -> type.
 
-lt: bin -> bin -> type.
+lt: (a: bin) -> (b: bin) -> type.
 lt/z: lt A B <- gt B A e (i e).
 
-le: bin -> bin -> type.
+le: (a: bin) -> (b: bin) -> type.
 le/lt: le A B <- gt B A e (i e).
 le/eq: le A A.
 
-shr: bin -> bin -> bin -> type.
+shr: (shift: bin) -> (value: bin) -> (result: bin) -> type.
 shr/z: shr e V V.
 shr/ze: shr (o e) V V.
 shr/e: shr S e e.
@@ -114,7 +114,7 @@ shr/io: shr (i S) (o X) R <- shr (o S) X R.
 % Even shift (2S, S>0): shift by S twice — O(log shift) depth
 shr/o: shr (o S) V R <- shr S V V' <- shr S V' R.
 
-shl: bin -> bin -> bin -> type.
+shl: (shift: bin) -> (value: bin) -> (result: bin) -> type.
 shl/z: shl e V V.
 shl/ze: shl (o e) V V.
 shl/e: shl S e e.
@@ -123,7 +123,7 @@ shl/i: shl (i S) V R <- shl (o S) (o V) R.
 % Even shift (2S, S>0): shift by S twice — O(log shift) depth
 shl/o: shl (o S) V R <- shl S V V' <- shl S V' R.
 
-slt: bin -> bin -> bin -> type.
+slt: (a: bin) -> (b: bin) -> (result: bin) -> type.
 slt/neg_pos: slt A B (i e)
   <- gt A B e (i e)
   <- shr 255 A (i e)
@@ -137,10 +137,10 @@ slt/same_sign: slt A B Z
   <- gt B A e R
   <- eq R Z.
 
-div: bin -> bin -> bin -> type.
-mod: bin -> bin -> bin -> type.
+div: (a: bin) -> (b: bin) -> (result: bin) -> type.
+mod: (a: bin) -> (b: bin) -> (result: bin) -> type.
 
-divmod: bin -> bin -> bin -> bin -> type.
+divmod: (a: bin) -> (b: bin) -> (quotient: bin) -> (remainder: bin) -> type.
 divmod/z: divmod A B e A <- gt B A e (i e).
 divmod/s: divmod A B Q R
   <- sub A B C
@@ -151,7 +151,7 @@ div/z: div A B Q <- divmod A B Q R.
 mod/z: mod A B R <- divmod A B Q R.
 
 %   X      Y      ass.   res.
-gt: bin -> bin -> bin -> bin -> type.
+gt: (x: bin) -> (y: bin) -> (assumption: bin) -> (result: bin) -> type.
 
 
 gt/s_ii: gt (i X) (i Y) A R
@@ -179,7 +179,7 @@ gt/s_eo: gt e (o Y) A R
 gt/s_ee: gt e e A A.
 
 
-exp: bin -> bin -> bin -> type.
+exp: (base: bin) -> (exponent: bin) -> (result: bin) -> type.
 
 exp/z: exp X e (i e).
 
@@ -192,7 +192,7 @@ exp/si: exp X (i Y) Z'
   <- exp X' Y Z
   <- mul Z X Z'.
 
-and: bin -> bin -> bin -> type.
+and: (a: bin) -> (b: bin) -> (result: bin) -> type.
 and/zl: and e Y e.
 and/zr: and X e e.
 and/sii: and (i X) (i Y) (i Z)
@@ -206,7 +206,7 @@ and/soo: and (o X) (o Y) (o Z)
   <- and X Y Z.
 
 
-or: bin -> bin -> bin -> type.
+or: (a: bin) -> (b: bin) -> (result: bin) -> type.
 or/zl: or e Y Y.
 or/zr: or X e X.
 or/sii: or (i X) (i Y) (i Z)
@@ -219,7 +219,7 @@ or/sio: or (i X) (o Y) (i Z)
 or/soo: or (o X) (o Y) (o Z)
   <- or X Y Z.
 
-not: bin -> bin -> type.
+not: (value: bin) -> (result: bin) -> type.
 not/z: not e e.
 not/si: not (i X) (o Y)
   <- not X Y.
@@ -229,12 +229,12 @@ not/so: not (o X) (i Y)
 
 % 256-bit NOT: ~X mod 2^256
 % Uses XOR with max_uint256 (2^256 - 1).
-not256: bin -> bin -> type.
+not256: (value: bin) -> (result: bin) -> type.
 not256/z: not256 X Y
   <- xor X 0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff Y.
 
 % XOR: bitwise exclusive-or
-xor: bin -> bin -> bin -> type.
+xor: (a: bin) -> (b: bin) -> (result: bin) -> type.
 xor/zl: xor e Y Y.
 xor/zr: xor X e X.
 xor/sii: xor (i X) (i Y) (o Z)
@@ -250,9 +250,9 @@ xor/soo: xor (o X) (o Y) (o Z)
 %
 %to256Helper/z: to256Helper e N
 %
-to256: bin -> bin -> type.
+to256: (value: bin) -> (result: bin) -> type.
 
-length: bin -> nat -> type.
+length: (value: bin) -> (len: nat) -> type.
 length/z: length e ee.
 length/si: length (i X) (s Y)
   <- length X Y.
@@ -290,8 +290,8 @@ to256/z: to256 X Y
   <- and X 0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff Y.
 
 
-reverse: bin -> bin -> type.
-reverse_h: bin -> bin -> bin -> type.
+reverse: (input: bin) -> (result: bin) -> type.
+reverse_h: (input: bin) -> (acc: bin) -> (result: bin) -> type.
 
 reverse/z: reverse X Y
   <- reverse_h X e Y.
@@ -303,10 +303,10 @@ reverse_h/si: reverse_h (i X) Y Z
 reverse_h/so: reverse_h (o X) Y Z
   <- reverse_h X (o Y) Z.
 
-trim: bin -> bin -> type.
+trim: (input: bin) -> (result: bin) -> type.
 
 %       curr   trim   orig   res
-trim_h: bin -> bin -> bin -> bin -> type.
+trim_h: (counter: bin) -> (trimmed: bin) -> (original: bin) -> (result: bin) -> type.
 
 trim_h/z: trim_h e X Y Z
   <- reverse X Z.

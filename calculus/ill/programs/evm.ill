@@ -89,20 +89,20 @@ revert: type.
 selfdestruct: type.
 log0: type.
 log1: bin -> type.
-log2: bin -> bin -> type.
-log3: bin -> bin -> bin -> type.
-log4: bin -> bin -> bin -> bin -> type.
+log2: (topic1: bin) -> (topic2: bin) -> type.
+log3: (topic1: bin) -> (topic2: bin) -> (topic3: bin) -> type.
+log4: (topic1: bin) -> (topic2: bin) -> (topic3: bin) -> (topic4: bin) -> type.
 stop: type.
 pc: bin -> type.
 gas: bin -> type.
 bytecode: arr -> type.
 stack: arr -> type.
-storage: bin -> bin -> type.
+storage: (key: bin) -> (value: bin) -> type.
 initializedStorage: arr -> type.
 
 % notMember: KEY is not in the initialized-storage list
 % Used by sload_init/sstore_init to guard default-value materialization
-notMember: bin -> arr -> type.
+notMember: (key: bin) -> (list: arr) -> type.
 notMember/base: notMember K ae.
 notMember/step: notMember K [H | T]
   <- neq K H
@@ -110,33 +110,33 @@ notMember/step: notMember K [H | T]
 
 sender: bin -> type.
 address: bin -> type.
-balance: bin -> bin -> type.
+balance: (addr: bin) -> (amount: bin) -> type.
 callvalue: bin -> type.
-calldata: bin -> bin -> bin -> type.
+calldata: (offset: bin) -> (size: bin) -> (value: bin) -> type.
 calldatasize: bin -> type.
 debug: bin -> type.
 mem: bin -> type.
 memsize: bin -> type.
-mem_read: bin -> bin -> bin -> type.
-no_overlap: bin -> bin -> bin -> bin -> type.
-write: bin -> bin -> bin -> bin.
-write8: bin -> bin -> bin -> bin.
+mem_read: (mem: bin) -> (addr: bin) -> (value: bin) -> type.
+no_overlap: (start1: bin) -> (len1: bin) -> (start2: bin) -> (len2: bin) -> type.
+write: (addr: bin) -> (value: bin) -> (mem: bin) -> bin.
+write8: (addr: bin) -> (value: bin) -> (mem: bin) -> bin.
 empty_mem: bin.
-calldatacopy_iter: bin -> bin -> bin -> bin -> type.
+calldatacopy_iter: (dest: bin) -> (src: bin) -> (end: bin) -> (mem: bin) -> type.
 calldatacopy_done: bin -> type.
 timestamp: bin -> type.
 gaslimit: bin -> type.
 % shr, shl, slt: type declarations and clauses in bin.ill
-concat: bin -> bin -> bin.
+concat: (a: bin) -> (b: bin) -> bin.
 sha3: bin -> bin.
-sha3_compute: bin -> bin -> bin -> bin -> type.
-mem_read_range: bin -> bin -> bin -> bin -> type.
+sha3_compute: (mem: bin) -> (offset: bin) -> (end: bin) -> (result: bin) -> type.
+mem_read_range: (mem: bin) -> (offset: bin) -> (end: bin) -> (result: bin) -> type.
 
 % EVM-specific arithmetic (wrapping/zero-safe semantics)
 % General arithmetic stays pure — these encode EVM's modular 256-bit rules.
 
 % sub256 A B C: C = (A - B) mod 2^256  (wrapping, not saturating)
-sub256: bin -> bin -> bin -> type.
+sub256: (a: bin) -> (b: bin) -> (result: bin) -> type.
 sub256/wrap: sub256 A B C
   <- not256 B NB
   <- inc NB NB1
@@ -144,32 +144,32 @@ sub256/wrap: sub256 A B C
   <- to256 C' C.
 
 % div256 A B Q: Q = A / B, or 0 when B = 0
-div256: bin -> bin -> bin -> type.
+div256: (a: bin) -> (b: bin) -> (result: bin) -> type.
 div256/zero: div256 A e e.
 div256/nz: div256 A B Q <- neq B e <- div A B Q.
 
 % mod256 A B R: R = A % B, or 0 when B = 0
-mod256: bin -> bin -> bin -> type.
+mod256: (a: bin) -> (b: bin) -> (result: bin) -> type.
 mod256/zero: mod256 A e e.
 mod256/nz: mod256 A B R <- neq B e <- mod A B R.
 
 % exp256 Base Exp Result: Result = Base^Exp mod 2^256
-exp256: bin -> bin -> bin -> type.
+exp256: (base: bin) -> (exponent: bin) -> (result: bin) -> type.
 exp256/clause: exp256 Base Exp Result
   <- exp Base Exp R
   <- to256 R Result.
 
 % sdiv256 A B Q: Q = signed(A) / signed(B), truncated toward zero; 0 when B = 0
 % INT256_MIN / -1 = INT256_MIN (overflow wraps, per EVM spec)
-sdiv256: bin -> bin -> bin -> type.
+sdiv256: (a: bin) -> (b: bin) -> (result: bin) -> type.
 sdiv256/zero: sdiv256 A e e.
 
 % smod256 A B R: R = signed(A) % signed(B), sign follows A; 0 when B = 0
-smod256: bin -> bin -> bin -> type.
+smod256: (a: bin) -> (b: bin) -> (result: bin) -> type.
 smod256/zero: smod256 A e e.
 
 % addmod256 A B N R: R = (A + B) mod N, unbounded intermediate; 0 when N = 0
-addmod256: bin -> bin -> bin -> bin -> type.
+addmod256: (a: bin) -> (b: bin) -> (n: bin) -> (result: bin) -> type.
 addmod256/zero: addmod256 A B e e.
 addmod256/nz: addmod256 A B N R
   <- neq N e
@@ -177,7 +177,7 @@ addmod256/nz: addmod256 A B N R
   <- mod S N R.
 
 % mulmod256 A B N R: R = (A * B) mod N, unbounded intermediate; 0 when N = 0
-mulmod256: bin -> bin -> bin -> bin -> type.
+mulmod256: (a: bin) -> (b: bin) -> (n: bin) -> (result: bin) -> type.
 mulmod256/zero: mulmod256 A B e e.
 mulmod256/nz: mulmod256 A B N R
   <- neq N e
@@ -186,11 +186,11 @@ mulmod256/nz: mulmod256 A B N R
 
 % signextend256 B X Y: sign-extend X at byte B
 % B >= 31 → Y = X unchanged. Otherwise, bit (B*8+7) is sign bit.
-signextend256: bin -> bin -> bin -> type.
+signextend256: (byte_pos: bin) -> (value: bin) -> (result: bin) -> type.
 
 % byte256 Idx X Z: extract Ith byte (big-endian) from 256-bit value X
 % I >= 32 → Z = 0. Otherwise Z = (X >> ((31-I)*8)) & 0xFF.
-byte256: bin -> bin -> bin -> type.
+byte256: (idx: bin) -> (value: bin) -> (result: bin) -> type.
 byte256/oob: byte256 Idx X e <- gt Idx 0x1f e (i e).
 byte256/ok: byte256 Idx X Z
   <- sub256 0x1f Idx Offset
@@ -201,7 +201,7 @@ byte256/ok: byte256 Idx X Z
 % sar256 Shift Value Z: arithmetic right shift (sign-extending)
 % Positive values: identical to shr. Negative (MSB=1): fills high bits with 1s.
 % Shift >= 256: saturates to 0 (positive) or 2^256-1 (negative).
-sar256: bin -> bin -> bin -> type.
+sar256: (shift: bin) -> (value: bin) -> (result: bin) -> type.
 sar256/oob_pos: sar256 Shift Value e
   <- gt Shift 0xff e (i e)
   <- shr 0xff Value e.
@@ -225,7 +225,7 @@ sar256/neg: sar256 Shift Value Z
 % NewSize = max(OldSize, ceil_32(Offset + AccessLen))
 % GasCost = memCost(NewSize) - memCost(OldSize)
 % where memCost(words) = 3*words + floor(words²/512)
-mem_expand: bin -> bin -> bin -> bin -> bin -> type.
+mem_expand: (old_size: bin) -> (offset: bin) -> (len: bin) -> (new_size: bin) -> (gas_cost: bin) -> type.
 
 % Zero-length access: no expansion, zero gas
 mem_expand/zero: mem_expand S Offset e S e.
@@ -706,7 +706,7 @@ evm/sha3:
   gas GAS *
   stack [Offset, Size | REST] *
   mem M * memsize S *
-  !mem_expand S Offset Size S' MemGas *
+  !mem_expand (old_size: S) (offset: Offset) (len: Size) (new_size: S') (gas_cost: MemGas) *
   !plus Offset Size End *
   !plus 0x1f Size SP *
   !div SP 0x20 Words *
@@ -954,7 +954,7 @@ evm/mstore:
   gas GAS *
   stack [Offset, Value | REST] *
   mem M * memsize S *
-  !mem_expand S Offset 32 S' MemGas *
+  !mem_expand (old_size: S) (offset: Offset) (len: 32) (new_size: S') (gas_cost: MemGas) *
   !plus 3 MemGas TotalCost *
   !checked_sub GAS TotalCost GAS'
   -o {
@@ -1003,11 +1003,11 @@ mem_read/hit: mem_read (write Offset V Rest) Offset V.
 
 mem_read/miss: mem_read (write W V Rest) R Result
   <- neq R W
-  <- no_overlap R 32 W 32
+  <- no_overlap (start1: R) (len1: 32) (start2: W) (len2: 32)
   <- mem_read Rest R Result.
 
 mem_read/write8_miss: mem_read (write8 Addr Byte Rest) R Result
-  <- no_overlap R 32 Addr 1
+  <- no_overlap (start1: R) (len1: 32) (start2: Addr) (len2: 1)
   <- mem_read Rest R Result.
 
 mem_read/zero: mem_read empty_mem R 0.
@@ -1051,13 +1051,13 @@ evm/sload:
   gas GAS *
   !checked_sub GAS 0xc8 GAS' *
   stack [KEY | REST] *
-  storage KEY V
+  storage (key: KEY) (value: V)
   -o {
     bytecode BC *
     pc PC' *
     gas GAS' *
     stack [V | REST] *
-    storage KEY V
+    storage (key: KEY) (value: V)
   }.
 
 % SLOAD: key not yet initialized — default to 0
@@ -1082,7 +1082,7 @@ evm/sload_init:
 
 % SSTORE gas (Yellow Paper): Gsset (20000) iff new != 0 AND old == 0, else Gsreset (5000)
 % sstore_gas computes the cost for the existing-key case (sstore_init uses separate rules)
-sstore_gas: bin -> bin -> bin -> type.
+sstore_gas: (current: bin) -> (new_val: bin) -> (gas: bin) -> type.
 sstore_gas/set: sstore_gas OldVal NewVal 0x4e20
   <- eq OldVal e
   <- neq NewVal e.
@@ -1099,15 +1099,15 @@ evm/sstore:
   !inc PC PC' *
   gas GAS *
   stack [Pos, Val | REST] *
-  storage Pos OldVal *
-  !sstore_gas OldVal Val Cost *
+  storage (key: Pos) (value: OldVal) *
+  !sstore_gas (current: OldVal) (new_val: Val) (gas: Cost) *
   !checked_sub GAS Cost GAS'
   -o {
     bytecode BC *
     pc PC' *
     gas GAS' *
     stack REST *
-    storage Pos Val
+    storage (key: Pos) (value: Val)
   }.
 
 % SSTORE: new key, nonzero value → Gsset (20000)
