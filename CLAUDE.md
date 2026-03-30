@@ -48,7 +48,7 @@ npm run bench:diff    # Cross-commit benchmark comparison (use this when asked t
 **Equational theories** (`kernel/eq-theory.js`): pluggable cross-tag matching. O(1) dispatch via `_rewriteFromTag[tagId]` lookup. Built-in: strlit. Calculus-registered: binlit (ILL).
 
 See `doc/documentation/architecture.md` for the full prover lasagne (L1-L5).
-See `doc/documentation/parser-pipeline.md` for the three parser paths (one shared Pratt parser).
+See `doc/documentation/parser-pipeline.md` for the three parser paths (one shared Earley parser).
 
 **Web UI:** SolidJS + TypeScript + Tailwind CSS + Vite. Source: `src/ui/`, Build: `out/ui/`
 
@@ -65,7 +65,7 @@ lib/
 │   ├── bridge.js        # Lax monad mode switch (backward ↔ forward)
 │   └── rule-interpreter.js  # descriptor → premise computation
 ├── calculus/            # Calculus loader (from .calc/.rules files)
-│   └── builders.js      # Shared Pratt parser, deriveRoles()
+│   └── builders.js      # Parser factory (Earley delegation), deriveRoles()
 ├── engine/              # Forward/backward execution engine (3-layer lego)
 │   ├── match.js         # Generic: pattern matching + tryMatch pipeline
 │   ├── strategy.js      # Generic: rule selection (fingerprint, disc-tree, dynamic rules)
@@ -87,7 +87,9 @@ lib/
 │   │   └── ffi/             # Foreign function interface (arithmetic, memory)
 │   └── opt/             # Toggleable optimization modules
 ├── meta-parser/         # Meta-level parser (@extends chain resolution)
-├── parser/              # Pratt parser + sequent parser
+├── parser/              # Earley parser + grammar generation + sequent parser
+│   ├── earley.js        # Core Earley engine (recognizer, chart, extraction)
+│   └── earley-grammar.js # Grammar generation from .calc annotations
 ├── rules/               # .rules file parser (sequent notation → descriptors)
 ├── browser.js           # Browser-compatible API (loads from ill.json bundle)
 └── index.js             # Node.js API entry point
