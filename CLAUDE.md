@@ -9,6 +9,17 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - rather then simply recognizing an error and fixing it - think always how to isolate it and test it in isolation - e.g. via unit and integration tests. If its not possible then how to encapsule it (e.g. via logs), then either testing the failed state via unit tests or testing your hypothesis via verifying the logs. only after you verified the fail and isolated the error, you should think about fixing it
 - Prefer reusable tools in the repo (tools/) before writing one-off /tmp scripts
 
+## Term / Resource / Proposition Principle
+
+Three categories in ILL — use the right one:
+- **Term** (constructor, `→ bin`): what something IS. `write(addr,val,M)`, `sha3(bytes)`, `eq_expr(X,Y)`. Inert data, pattern-matched by backward clauses.
+- **Resource** (linear fact, `→ type`): what you POSSESS. `storage K V`, `gas N`, `mem M`. Consumed/produced by forward rules.
+- **Proposition** (persistent fact, `!`): what you KNOW. `!plus A B C`, `!gt X Y 0 1`. Derived by backward chaining.
+
+Decision: *"Can I write down what this object IS?"* → Term. *"Do I know a fact about it?"* → Proposition. *"Do I possess it?"* → Resource.
+
+Backward predicates DERIVE propositions FROM terms (pattern matching on constructor structure). See `doc/documentation/term-resource-proposition.md`.
+
 ## Project Overview
 
 CALC is a proof calculus system for experimenting with sequent-calculi with an implementation for Intuitionistic Linear Logic (ILL). Its inspired by the [calculus toolbox](https://goodlyrottenapple.github.io/calculus-toolbox/doc/introduction.html). It implements backward proof search (Andreoli focusing), forward execution (multiset rewriting), and exhaustive symbolic exploration — all generated from declarative rule definitions.

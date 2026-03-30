@@ -24,5 +24,5 @@
   % Storage: fired = false (slot 0)
   storage 0 0 *
 
-  storage (sha3 (0 ++ sha3 (0 ++ Deadline ++ CallValue ++ DataHash) ++ 1)) Nonce
+  storage (sha3 (sha3 (Deadline ++ (CallValue ++ (DataHash ++ 0))) ++ (1 ++ 0))) Nonce
   .
