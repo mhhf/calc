@@ -40,7 +40,7 @@ All paths return the same **calc context**:
 ```mermaid
 graph LR
   A[".ill source"] -->|resolveImports| B["flat source"]
-  B -->|parseDeclarations + Pratt| C["Store entries + decl list"]
+  B -->|parseDeclarations + Earley| C["Store entries + decl list"]
   C -->|classify| D["types / clauses / forwardRules / queries"]
   D -->|compileRule| E["CompiledRule[]"]
   D -->|buildIndex| F["backwardIndex"]
@@ -51,10 +51,9 @@ graph LR
 ### Source load path (`convert.load`)
 
 1. **`resolveImports`** — inline `#import(path)` directives recursively (dedup via Set)
-2. **`expandHexNotation`** — rewrite `N_XX` hex literals to binary
-3. **`parseDeclarations`** — split source into name/body/premise declarations
-4. **`_exprParser`** (Pratt) — parse each body/premise to content-addressed Store hash
-5. **Classify** — `hasMonad(hash)` → forward rule, has premises → clause, else → type
+2. **`parseDeclarations`** — split source into name/body/premise declarations
+3. **`_exprParser`** (Earley) — parse each body/premise to content-addressed Store hash
+4. **Classify** — `hasMonad(hash)` → forward rule, has premises → clause, else → type
 
 ### Precompiled load path (`loadPrecompiled`)
 
@@ -151,7 +150,7 @@ After `Store.restore(sdkSnapshot)`, Store has IDs 1..N. User program calls `Stor
 
 | Path | Load | Explore | Total |
 |---|---|---|---|
-| Source (Pratt parser) | ~13.5ms | ~10ms | ~23.5ms |
+| Source (Earley parser) | ~13.5ms | ~10ms | ~23.5ms |
 | Auto-cache hit (full) | ~2.6ms | ~10ms | ~12.6ms |
 | Auto-cache hit (imports) | ~3ms | ~10ms | ~13ms |
 | Explicit precompiled | ~2.6ms | ~10ms | ~12.6ms |

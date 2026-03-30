@@ -301,7 +301,6 @@ lib/kernel/
   substitute.js   — sub, apply (simultaneous), occurs
   unify.js        — unify (union-find), match, equational normalization
   ast.js          — freeVars, mapChildren, fold, isAtomic
-  ast-hash.js     — hashAST (identity function, backwards compat)
   sequent.js      — sequent construction, hashing, operations
 
 lib/hash.js       — FNV-1a: hashString, hashCombine, hashBigInt

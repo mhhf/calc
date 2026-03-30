@@ -42,11 +42,11 @@ lib/
 │   ├── strategy.js  # Rule selection (fingerprint → disc-tree → predicate)
 │   ├── forward.js   # Main loop (committed-choice execution)
 │   ├── explore.js   # Exhaustive DFS exploration + backtracking
-│   ├── prove.js     # Backward chaining for persistent antecedents
+│   ├── backchain.js # Backward chaining for persistent antecedents
 │   ├── ffi/         # Foreign function interface (arithmetic, memory)
 │   └── opt/         # Toggleable optimization modules
 ├── calculus/        # Calculus loader from .calc/.rules definitions
-├── parser/          # Pratt parser (shared across all three parse paths)
+├── parser/          # Earley parser + grammar generation
 ├── meta-parser/     # Meta-level parser (@extends chain resolution)
 └── rules/           # .rules file parser (sequent notation → descriptors)
 
@@ -75,7 +75,7 @@ See `doc/` for detailed documentation:
 
 - `doc/documentation/architecture.md` — Prover lasagne (L1-L5), forward engine internals
 - `doc/documentation/content-addressed-store.md` — Store & term architecture
-- `doc/documentation/parser-pipeline.md` — Three parser paths from one Pratt parser
+- `doc/documentation/parser-pipeline.md` — Three parser paths from one Earley parser
 - `doc/documentation/forward-chaining-engine.md` — Forward engine modules and data flow
 - `doc/documentation/lax-monad.md` — `{A}` monad: polarity shift, execution profiles, connective roles
 - `doc/theory/0001_exhaustive-forward-chaining.md` — Theoretical foundations

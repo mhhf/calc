@@ -112,8 +112,8 @@ describe('MDE Convert', { timeout: 10000 }, () => {
       assert.deepStrictEqual(Store.children(h), [2n]);
     });
 
-    it('normalizes N_75 hex expansion to binlit(117n)', async () => {
-      const h = await mde.parseExpr('N_75');
+    it('parses 0x75 hex literal to binlit(117n)', async () => {
+      const h = await mde.parseExpr('0x75');
       assert.strictEqual(Store.tag(h), 'binlit');
       assert.deepStrictEqual(Store.children(h), [117n]);
     });

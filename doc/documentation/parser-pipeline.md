@@ -1,12 +1,16 @@
 # Parser Pipeline
 
-One Pratt parser, three configurations.
+One Earley parser, three configurations.
 
 ## Architecture
 
 ```
-              lib/calculus/builders.js
-              buildParserFromTables(tables)
+              lib/parser/earley-grammar.js
+              computeEarleyGrammarFromTables(tables)
+              buildParserFromGrammar(spec)
+                        │
+                        │  (via lib/calculus/builders.js
+                        │   buildParserFromTables)
                         │
          ┌──────────────┼──────────────┐
          │              │              │
@@ -47,10 +51,10 @@ ill.calc → declarations.js → loader.js (@extends chain) → calculus/index.j
 
 **Used by:** `lib/engine/index.js` (the execution engine).
 
-**Parser config:** Full tables (all connective operators) + all extensions: binders, numbers, multi-char freevars, application, arrows, forward rules, binary normalization.
+**Parser config:** Formula operators derived from `.calc` constructors + all extensions: binders, numbers, multi-char freevars, application, arrows, forward rules, binary normalization.
 
 ```
-evm.ill → declarations.js + Pratt parser → Store (hash → {tag, children})
+evm.ill → declarations.js + Earley parser → Store (hash → {tag, children})
 ```
 
 ### 3. Sequent Parser — defining inference rules
@@ -71,15 +75,19 @@ ill.rules → custom parser (uses buildParser for formula fragments) → rule de
 
 ## Two Layers
 
-### Layer 1 — Expression parser (`lib/calculus/builders.js`)
+### Layer 1 — Expression parser (Earley)
 
-`buildParserFromTables(tables)` — Pratt precedence-climbing parser generated from calculus-derived tables. Opt-in extensions via tables fields:
+**Core engine:** `lib/parser/earley.js` — generic Earley recognizer with Aycock-Horspool nullable handling, back-pointer tree extraction, configurable lexer. O(n³) general, O(n) for the unambiguous stratified grammars CALC generates.
+
+**Grammar generation:** `lib/parser/earley-grammar.js` — generates a stratified CFG from `.calc` constructor annotations (Danielsson-Norell style). Each precedence level becomes a distinct nonterminal; associativity is encoded via same/next references. Binder scoping uses open/closed nonterminals.
+
+**Factory:** `lib/calculus/builders.js:buildParserFromTables(tables)` — delegates to `computeEarleyGrammarFromTables` + `buildParserFromGrammar`. Same interface for all three parser paths. Opt-in extensions via tables fields:
 
 | Extension | Tables field | Example |
 |---|---|---|
 | Binders | `binders: { exists: 'exists' }` | `exists X. body` → de Bruijn |
 | Numbers | `numbers: true` | `42`, `0xff` → binlit |
-| Multi-char freevars | `multiCharFreevars: true` | `Sender` → freevar(`_Sender`) |
+| Multi-char freevars | `multiCharFreevars: true` | `Sender` → metavar(`Sender`) |
 | Application | `application: true` | `f x y` → `Store.put('f', [x, y])` |
 | Arrows | `arrows: true` | `A -> B` → arrow(A, B) |
 | Forward rules | `forwardRules: true` | `A -o { B }` → loli(A, monad(B)) |
@@ -115,3 +123,4 @@ Takes an expression parser function as input — the same declaration parser han
 3. **Calculus-agnostic**: Nothing ILL-specific. A new calculus with different connectives works without new parser code.
 4. **Synchronous**: All parsing is fully synchronous (no WASM, no async/await).
 5. **No bootstrapping problem**: `.calc` files define connectives but only use framework syntax (arrows, application) in their bodies. Connective operators are what's being defined, not used.
+6. **Earley over Pratt**: The Earley parser handles all CFGs, supports general mixfix operators, and is table-driven (portable to Zig). Trade-off: ~50-80µs higher per-parse constant overhead vs the previous hand-coded Pratt parser. Negligible for real workloads (<1% of engine runtime).

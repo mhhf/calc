@@ -104,7 +104,6 @@ lib/engine/                      # Forward execution engine (L4c/L4d)
 │   ├── prediction.js            # threaded code dispatch (Opt_H)
 │   └── constraint.js            # solver integration (feed + SAT filter)
 ├── convert.js                   # .ill → content-addressed hashes
-├── hex.js                       # hex/binary utilities
 └── index.js                     # loader + API
 
 lib/kernel/                      # Content-addressed AST substrate
@@ -112,7 +111,6 @@ lib/kernel/                      # Content-addressed AST substrate
 ├── unify.js                     # pattern matching (matchIndexed) + unification
 ├── substitute.js                # substitution (applyIndexed, subCompiled)
 ├── ast.js                       # AST construction helpers
-├── ast-hash.js                  # stable hashing for AST equality
 └── sequent.js                   # sequent structure
 ```
 
