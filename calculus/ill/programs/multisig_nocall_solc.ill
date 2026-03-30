@@ -35,5 +35,5 @@
   % Storage: nonces[proposalHash] (slot 1 mapping)
   % proposalHash = keccak256(abi.encode(deadline, callValue, dataHash))
   % nonceKey = keccak256(abi.encode(proposalHash, 1))
-  storage (sha3 (0 ++ sha3 (0 ++ Deadline ++ CallValue ++ DataHash) ++ 1)) 0
+  storage (sha3 (sha3 (Deadline ++ (CallValue ++ (DataHash ++ 0))) ++ (1 ++ 0))) 0
   .

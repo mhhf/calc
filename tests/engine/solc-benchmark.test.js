@@ -37,7 +37,7 @@ describe('Solc multisig explore', { timeout: 30000, concurrency: 1 }, () => {
   });
 
   it('explores to expected tree shape', () => {
-    assert.strictEqual(countNodes(tree), 280, 'Expected 280 nodes');
+    assert.strictEqual(countNodes(tree), 267, 'Expected 267 nodes');
     assert.strictEqual(allLeaves.length, 1, 'Expected 1 leaf');
   });
 
@@ -104,8 +104,8 @@ describe('Solc multisig symbolic (structural memo)', { timeout: 30000, concurren
     treeMemo = explore(state, calc.forwardRules, { ...opts, structuralMemo: true });
   });
 
-  it('full exploration has 2125 nodes and 31 leaves', () => {
-    assert.strictEqual(countNodes(treeFull), 2125, 'Expected 2125 nodes');
+  it('full exploration has 2023 nodes and 31 leaves', () => {
+    assert.strictEqual(countNodes(treeFull), 2023, 'Expected 2023 nodes');
     assert.strictEqual(getAllLeaves(treeFull).length, 31, 'Expected 31 leaves');
   });
 

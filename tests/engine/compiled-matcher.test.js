@@ -318,7 +318,7 @@ describe('persistent step integration', { timeout: 10000 }, () => {
 // ─── E2E: persistent steps produce same tree ─────────────────────────
 
 describe('E2E persistent step correctness', { timeout: 30000, concurrency: 1 }, () => {
-  it('multisig tree identical with persistent steps (280 nodes)', async () => {
+  it('multisig tree identical with persistent steps (267 nodes)', async () => {
     Store.clear();
     const calc = await mde.load(
       path.join(__dirname, '../../calculus/ill/programs/multisig_nocall_solc.ill')
@@ -331,7 +331,7 @@ describe('E2E persistent step correctness', { timeout: 30000, concurrency: 1 }, 
       dangerouslyUseFFI: true // Testing compiled matchers, not adversarial soundness
     });
 
-    assert.strictEqual(countNodes(tree), 280, 'Expected 280 nodes');
+    assert.strictEqual(countNodes(tree), 267, 'Expected 267 nodes');
     assert.strictEqual(getAllLeaves(tree).length, 1, 'Expected 1 leaf');
   });
 
@@ -349,7 +349,7 @@ describe('E2E persistent step correctness', { timeout: 30000, concurrency: 1 }, 
       structuralMemo: false,
       dangerouslyUseFFI: true // Testing structural memo, not adversarial soundness
     });
-    assert.strictEqual(countNodes(treeFull), 2125, 'Full: expected 2125 nodes');
+    assert.strictEqual(countNodes(treeFull), 2023, 'Full: expected 2023 nodes');
     assert.strictEqual(getAllLeaves(treeFull).length, 31, 'Full: expected 31 leaves');
 
     // With structural memo
