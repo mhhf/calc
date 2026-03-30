@@ -98,7 +98,7 @@ describe('fingerprint prediction (Opt_H)', { timeout: 30000 }, () => {
     });
 
     it('produces identical tree shape to expected', () => {
-      assert.strictEqual(countNodes(treePred), 280, 'Expected 280 nodes');
+      assert.strictEqual(countNodes(treePred), 267, 'Expected 267 nodes');
       assert.strictEqual(getAllLeaves(treePred).length, 1, 'Expected 1 leaf');
     });
 

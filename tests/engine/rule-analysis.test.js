@@ -694,12 +694,12 @@ describe('Rule Analysis', { timeout: 10000 }, () => {
         h => getPredicateHead(h) === 'bytecode');
       assert(result.preserved.includes(codeHash), 'bytecode should be preserved');
 
-      // pc, stack have different hashes → consumed/produced
+      // pc, gas, stack have different hashes → consumed/produced
       assert.strictEqual(result.preserved.length, 1, 'only bytecode is preserved in v1');
 
-      // 2 consumed (pc, stack), 2 produced (pc', stack')
-      assert.strictEqual(result.consumed.length, 2, '2 consumed');
-      assert.strictEqual(result.produced.length, 2, '2 produced');
+      // 3 consumed (pc, gas, stack), 3 produced (pc', gas', stack')
+      assert.strictEqual(result.consumed.length, 3, '3 consumed');
+      assert.strictEqual(result.produced.length, 3, '3 produced');
 
       // Verify multiset invariant
       const anteHashes = sortedHashes(rule.antecedent.linear);
@@ -989,8 +989,8 @@ describe('Rule Analysis', { timeout: 10000 }, () => {
       // stack should be a delta (acons pattern changes)
       assert(deltaPreds.includes('stack'), `stack should be delta, got: ${deltaPreds}`);
 
-      // evm/add does NOT have gas as a linear pattern (only eq, sload, etc. do)
-      assert(!deltaPreds.includes('gas'), 'no gas in evm/add');
+      // gas is a delta (gas GAS → gas GAS' via !checked_sub)
+      assert(deltaPreds.includes('gas'), 'gas should be a delta in evm/add');
     });
 
     it('evm/add: stack is a delta (1 ante, 1 conseq, arrlit version)', async () => {
@@ -1127,10 +1127,10 @@ describe('Rule Analysis', { timeout: 10000 }, () => {
       assert.strictEqual(a.preserved.length, 1, '1 preserved');
       assert.strictEqual(getPredicateHead(a.preserved[0]), 'bytecode');
 
-      // pc, stack are deltas (2 total, no sh in arrlit version)
+      // gas, pc, stack are deltas (3 total)
       const deltaPreds = a.deltas.map(d => d.pred).sort();
-      assert.deepStrictEqual(deltaPreds, ['pc', 'stack'],
-        'deltas: pc, stack');
+      assert.deepStrictEqual(deltaPreds, ['gas', 'pc', 'stack'],
+        'deltas: gas, pc, stack');
 
       // 0 remaining consumed (only 1 stack pattern now)
       assert.strictEqual(a.consumed.length, 0, '0 remaining consumed');
