@@ -501,7 +501,7 @@ This means:
 - Backward prover also needs ∃ handling (∃R: introduce logic variable, ∃L: open and bind)
 
 **Risks:**
-- Variable binding in the grammar (need `exists X. A` syntax) — adds complexity to tree-sitter grammar
+- Variable binding in the grammar (need `exists X. A` syntax) — adds complexity to the Earley grammar
 - Scoping: ∃ inside ⊗ vs ∃ outside ⊗ matters — need to track scope correctly
 - If done wrong, can break content-addressing (fresh names must be handled carefully in the Store)
 

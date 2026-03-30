@@ -1,7 +1,7 @@
 VM: type.
 bootVM: VM -o {
-  pc                             N_00  *
+  pc                             0  *
   sh                             ee *
-  mem empty_mem * memsize         N_00  *
-  gas                            N_00
+  mem empty_mem * memsize         0  *
+  gas                            0
 }.

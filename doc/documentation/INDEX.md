@@ -8,7 +8,7 @@ Technical documentation for how CALC works.
 |----------|-------------|
 | [[architecture]] | Prover lasagne: L1 kernel → L2 generic → L3 focused → L4 strategy → L5 UI |
 | [[content-addressed-store]] | Store & term architecture — node model, hashing, substitution, unification, complexity |
-| [[parser-pipeline]] | Three parser paths from one tree-sitter grammar |
+| [[parser-pipeline]] | Three parser paths from one Earley parser |
 | [[family-design]] | Calculus family abstraction and @extends mechanism |
 
 ## Reference
