@@ -14,6 +14,7 @@ const { explore } = require('../../lib/engine/explore');
 const {
   countNodes, countLeaves, maxDepth, getAllLeaves
 } = require('../../lib/engine/tree-utils');
+const { fromObject } = require('../../lib/engine/fact-set');
 const mde = require('../../lib/engine');
 
 describe('disc-tree', () => {
@@ -243,8 +244,8 @@ describe('disc-tree', () => {
       const built = layer.build([rule]);
 
       const fact = Store.put('code', [e, e]);
-      const stateIndex = { code: [fact] };
-      const candidates = built.getCandidateRules({}, stateIndex);
+      const state = fromObject({ [fact]: 1 }, {});
+      const candidates = built.getCandidateRules(state);
       assert.strictEqual(candidates.length, 1);
       assert.strictEqual(candidates[0], rule);
     });
@@ -264,14 +265,14 @@ describe('disc-tree', () => {
 
       // Only code in state, no pc → filtered out
       const fact = Store.put('code', [e, e]);
-      const stateIndex = { code: [fact] };
-      const candidates = built.getCandidateRules({}, stateIndex);
+      const state1 = fromObject({ [fact]: 1 }, {});
+      const candidates = built.getCandidateRules(state1);
       assert.strictEqual(candidates.length, 0);
 
       // Both present → included
       const pcFact = Store.put('pc', [e]);
-      stateIndex.pc = [pcFact];
-      const candidates2 = built.getCandidateRules({}, stateIndex);
+      const state2 = fromObject({ [fact]: 1, [pcFact]: 1 }, {});
+      const candidates2 = built.getCandidateRules(state2);
       assert.strictEqual(candidates2.length, 1);
     });
 
@@ -292,8 +293,8 @@ describe('disc-tree', () => {
       const fact1 = Store.put('code', [e, e]);
       const i_e = Store.put('i', [e]);
       const fact2 = Store.put('code', [i_e, e]);
-      const stateIndex = { code: [fact1, fact2] };
-      const candidates = built.getCandidateRules({}, stateIndex);
+      const state = fromObject({ [fact1]: 1, [fact2]: 1 }, {});
+      const candidates = built.getCandidateRules(state);
       assert.strictEqual(candidates.length, 1);
     });
   });
