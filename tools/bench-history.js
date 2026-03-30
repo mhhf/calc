@@ -214,7 +214,8 @@ async function main() {
   try {
     const mde = require('./lib/engine');
     const calc = mde.load(
-      path.join(__dirname, 'calculus/ill/programs/multisig_nocall_solc_symbolic.ill')
+      path.join(__dirname, 'calculus/ill/programs/multisig_nocall_solc_symbolic.ill'),
+      { cache: false }
     );
     const state = mde.decomposeQuery(calc.queries.get('symex'));
     const calcCtx = { clauses: calc.clauses, definitions: calc.definitions };
