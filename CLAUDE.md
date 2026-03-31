@@ -89,7 +89,8 @@ lib/
 ├── meta-parser/         # Meta-level parser (@extends chain resolution)
 ├── parser/              # Earley parser + grammar generation + sequent parser
 │   ├── earley.js        # Core Earley engine (recognizer, chart, extraction)
-│   └── earley-grammar.js # Grammar generation from .calc annotations
+│   ├── earley-grammar.js # Grammar generation from .calc annotations
+│   └── macros.js        # @def abbreviation macros (extract + expand)
 ├── rules/               # .rules file parser (sequent notation → descriptors)
 ├── browser.js           # Browser-compatible API (loads from ill.json bundle)
 └── index.js             # Node.js API entry point
@@ -140,6 +141,26 @@ evm/add:
 - `$!P` is an error (persistent resources are never consumed)
 - `$` in the consequent is an error
 - Engine already optimizes preserved patterns via `rule-analysis.js:analyzeDeltas()`
+
+## Abbreviation Macros (`@def`)
+
+`@def` provides parameterized formula abbreviations, expanded before content-addressing. Extralogical (Twelf `%abbrev` model) — engine never sees macro names.
+
+```ill
+@def evm_state(BC, PC, GAS, S) := bytecode BC * pc PC * gas GAS * stack S.
+@def dispatch(BC, PC, OP, PC2) := !arr_get BC PC OP * !inc PC PC2.
+
+evm/add:
+  $bytecode BC * dispatch(BC, PC, 0x01, PC') * ...
+  -o { ... }.
+```
+
+- Pre-pass: `macros.js:extractMacros()` runs after `resolveImports`, before `parseDeclarations`
+- Expansion: `macros.js:expandMacros()` wraps the expression parser — text-level substitution
+- Produces identical content-addressed hashes to writing things out longhand
+- Nested macros: iterative fixed-point with cycle detection
+- `$macro(args)` is an error — use `$` on individual atoms inside the macro body
+- Macros require ≥1 parameter; word boundary checks prevent false matches
 
 ## FFI Principle
 
