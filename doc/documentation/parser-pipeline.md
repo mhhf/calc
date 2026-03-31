@@ -91,6 +91,7 @@ ill.rules → custom parser (uses buildParser for formula fragments) → rule de
 | Application | `application: true` | `f x y` → `Store.put('f', [x, y])` |
 | Arrows | `arrows: true` | `A -> B` → arrow(A, B) |
 | Forward rules | `forwardRules: true` | `A -o { B }` → loli(A, monad(B)) |
+| Preserved sugar | (auto with forwardRules) | `$P` → preserved(P), desugared by convert.js |
 | Binary normalization | `binaryNormalization: true` | `(i (o e))` → binlit(2n) |
 
 ### Layer 2 — Declaration parser (`lib/parser/declarations.js`)

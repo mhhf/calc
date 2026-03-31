@@ -262,17 +262,16 @@ mem_expand/keep: mem_expand OldSize Offset Len OldSize e
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%  00
 
 evm/stop:
-  bytecode BC *
+  $bytecode BC *
   pc PC *
   !arr_get BC PC 0x00 *
   !inc PC PC'
   -o {
-    bytecode BC *
     stop
   }.
 
 evm/add:
-  bytecode BC *
+  $bytecode BC *
   pc PC *
   !arr_get BC PC 0x01 *
   !inc PC PC' *
@@ -281,7 +280,6 @@ evm/add:
   stack [A, B | REST]
   -o {
     exists C. exists C'. (
-      bytecode BC *
       pc PC' *
       gas GAS' *
       stack [C' | REST] *
@@ -289,7 +287,7 @@ evm/add:
   }.
 
 evm/mul:
-  bytecode BC *
+  $bytecode BC *
   pc PC *
   !arr_get BC PC 0x02 *
   !inc PC PC' *
@@ -298,7 +296,6 @@ evm/mul:
   stack [A, B | REST]
   -o {
     exists A'. exists B'. exists C. exists C'. (
-      bytecode BC *
       pc PC' *
       gas GAS' *
       stack [C' | REST] *
@@ -306,7 +303,7 @@ evm/mul:
   }.
 
 evm/sub:
-  bytecode BC *
+  $bytecode BC *
   pc PC *
   !arr_get BC PC 0x03 *
   !inc PC PC' *
@@ -315,7 +312,6 @@ evm/sub:
   stack [A, B | REST]
   -o {
     exists C. (
-      bytecode BC *
       pc PC' *
       gas GAS' *
       stack [C | REST] *
@@ -323,7 +319,7 @@ evm/sub:
   }.
 
 evm/exp:
-  bytecode BC *
+  $bytecode BC *
   pc PC *
   !arr_get BC PC 0x0a *
   !inc PC PC' *
@@ -335,7 +331,6 @@ evm/exp:
   !checked_sub GAS TotalExpGas GAS'
   -o {
     exists Result. (
-      bytecode BC *
       pc PC' *
       gas GAS' *
       stack [Result | REST] *
@@ -343,7 +338,7 @@ evm/exp:
   }.
 
 evm/div:
-  bytecode BC *
+  $bytecode BC *
   pc PC *
   !arr_get BC PC 0x04 *
   !inc PC PC' *
@@ -352,7 +347,6 @@ evm/div:
   stack [A, B | REST]
   -o {
     exists Q. exists Q'. (
-      bytecode BC *
       pc PC' *
       gas GAS' *
       stack [Q' | REST] *
@@ -360,7 +354,7 @@ evm/div:
   }.
 
 evm/mod:
-  bytecode BC *
+  $bytecode BC *
   pc PC *
   !arr_get BC PC 0x06 *
   !inc PC PC' *
@@ -369,7 +363,6 @@ evm/mod:
   stack [A, B | REST]
   -o {
     exists R. exists R'. (
-      bytecode BC *
       pc PC' *
       gas GAS' *
       stack [R' | REST] *
@@ -377,7 +370,7 @@ evm/mod:
   }.
 
 evm/sdiv:
-  bytecode BC *
+  $bytecode BC *
   pc PC *
   !arr_get BC PC 0x05 *
   !inc PC PC' *
@@ -386,7 +379,6 @@ evm/sdiv:
   stack [A, B | REST]
   -o {
     exists Q. (
-      bytecode BC *
       pc PC' *
       gas GAS' *
       stack [Q | REST] *
@@ -394,7 +386,7 @@ evm/sdiv:
   }.
 
 evm/smod:
-  bytecode BC *
+  $bytecode BC *
   pc PC *
   !arr_get BC PC 0x07 *
   !inc PC PC' *
@@ -403,7 +395,6 @@ evm/smod:
   stack [A, B | REST]
   -o {
     exists R. (
-      bytecode BC *
       pc PC' *
       gas GAS' *
       stack [R | REST] *
@@ -411,7 +402,7 @@ evm/smod:
   }.
 
 evm/addmod:
-  bytecode BC *
+  $bytecode BC *
   pc PC *
   !arr_get BC PC 0x08 *
   !inc PC PC' *
@@ -420,7 +411,6 @@ evm/addmod:
   stack [A, B, N | REST]
   -o {
     exists R. (
-      bytecode BC *
       pc PC' *
       gas GAS' *
       stack [R | REST] *
@@ -428,7 +418,7 @@ evm/addmod:
   }.
 
 evm/mulmod:
-  bytecode BC *
+  $bytecode BC *
   pc PC *
   !arr_get BC PC 0x09 *
   !inc PC PC' *
@@ -437,7 +427,6 @@ evm/mulmod:
   stack [A, B, N | REST]
   -o {
     exists R. (
-      bytecode BC *
       pc PC' *
       gas GAS' *
       stack [R | REST] *
@@ -445,7 +434,7 @@ evm/mulmod:
   }.
 
 evm/signextend:
-  bytecode BC *
+  $bytecode BC *
   pc PC *
   !arr_get BC PC 0x0b *
   !inc PC PC' *
@@ -454,7 +443,6 @@ evm/signextend:
   stack [B, X | REST]
   -o {
     exists Y. (
-      bytecode BC *
       pc PC' *
       gas GAS' *
       stack [Y | REST] *
@@ -464,7 +452,7 @@ evm/signextend:
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%  10
 
 evm/eq:
-  bytecode BC *
+  $bytecode BC *
   pc PC *
   !arr_get BC PC 0x14 *
   !inc PC PC' *
@@ -472,7 +460,6 @@ evm/eq:
   !checked_sub GAS 3 GAS' *
   stack [X, Y | REST]
   -o {
-    bytecode BC *
     pc PC' *
     gas GAS' *
     ((!neq X Y * stack [0 | REST]) +
@@ -480,7 +467,7 @@ evm/eq:
   }.
 
 evm/iszero:
-  bytecode BC *
+  $bytecode BC *
   pc PC *
   !arr_get BC PC 0x15 *
   !inc PC PC' *
@@ -488,7 +475,6 @@ evm/iszero:
   !checked_sub GAS 3 GAS' *
   stack [V | REST]
   -o {
-    bytecode BC *
     pc PC' *
     gas GAS' *
     ((!eq V 0 * stack [1 | REST]) +
@@ -496,7 +482,7 @@ evm/iszero:
   }.
 
 evm/lt:
-  bytecode BC *
+  $bytecode BC *
   pc PC *
   !arr_get BC PC 0x10 *
   !inc PC PC' *
@@ -505,7 +491,6 @@ evm/lt:
   stack [X, Y | REST]
   -o {
     exists Z. exists Z'. (
-      bytecode BC *
       pc PC' *
       gas GAS' *
       stack [Z' | REST] *
@@ -513,7 +498,7 @@ evm/lt:
   }.
 
 evm/gt:
-  bytecode BC *
+  $bytecode BC *
   pc PC *
   !arr_get BC PC 0x11 *
   !inc PC PC' *
@@ -522,7 +507,6 @@ evm/gt:
   stack [X, Y | REST]
   -o {
     exists Z. exists Z'. (
-      bytecode BC *
       pc PC' *
       gas GAS' *
       stack [Z' | REST] *
@@ -530,7 +514,7 @@ evm/gt:
   }.
 
 evm/slt:
-  bytecode BC *
+  $bytecode BC *
   pc PC *
   !arr_get BC PC 0x12 *
   !inc PC PC' *
@@ -539,7 +523,6 @@ evm/slt:
   stack [X, Y | REST]
   -o {
     exists Z. (
-      bytecode BC *
       pc PC' *
       gas GAS' *
       stack [Z | REST] *
@@ -547,7 +530,7 @@ evm/slt:
   }.
 
 evm/sgt:
-  bytecode BC *
+  $bytecode BC *
   pc PC *
   !arr_get BC PC 0x13 *
   !inc PC PC' *
@@ -556,7 +539,6 @@ evm/sgt:
   stack [X, Y | REST]
   -o {
     exists Z. (
-      bytecode BC *
       pc PC' *
       gas GAS' *
       stack [Z | REST] *
@@ -564,7 +546,7 @@ evm/sgt:
   }.
 
 evm/and:
-  bytecode BC *
+  $bytecode BC *
   pc PC *
   !arr_get BC PC 0x16 *
   !inc PC PC' *
@@ -573,7 +555,6 @@ evm/and:
   stack [X, Y | REST]
   -o {
     exists Z. (
-      bytecode BC *
       pc PC' *
       gas GAS' *
       stack [Z | REST] *
@@ -581,7 +562,7 @@ evm/and:
   }.
 
 evm/or:
-  bytecode BC *
+  $bytecode BC *
   pc PC *
   !arr_get BC PC 0x17 *
   !inc PC PC' *
@@ -590,7 +571,6 @@ evm/or:
   stack [X, Y | REST]
   -o {
     exists Z. (
-      bytecode BC *
       pc PC' *
       gas GAS' *
       stack [Z | REST] *
@@ -598,7 +578,7 @@ evm/or:
   }.
 
 evm/xor:
-  bytecode BC *
+  $bytecode BC *
   pc PC *
   !arr_get BC PC 0x18 *
   !inc PC PC' *
@@ -607,7 +587,6 @@ evm/xor:
   stack [X, Y | REST]
   -o {
     exists Z. (
-      bytecode BC *
       pc PC' *
       gas GAS' *
       stack [Z | REST] *
@@ -615,7 +594,7 @@ evm/xor:
   }.
 
 evm/not:
-  bytecode BC *
+  $bytecode BC *
   pc PC *
   !arr_get BC PC 0x19 *
   !inc PC PC' *
@@ -624,7 +603,6 @@ evm/not:
   stack [X | REST]
   -o {
     exists Y. (
-      bytecode BC *
       pc PC' *
       gas GAS' *
       stack [Y | REST] *
@@ -632,7 +610,7 @@ evm/not:
   }.
 
 evm/byte:
-  bytecode BC *
+  $bytecode BC *
   pc PC *
   !arr_get BC PC 0x1a *
   !inc PC PC' *
@@ -641,7 +619,6 @@ evm/byte:
   stack [Idx, X | REST]
   -o {
     exists Z. (
-      bytecode BC *
       pc PC' *
       gas GAS' *
       stack [Z | REST] *
@@ -649,7 +626,7 @@ evm/byte:
   }.
 
 evm/shl:
-  bytecode BC *
+  $bytecode BC *
   pc PC *
   !arr_get BC PC 0x1b *
   !inc PC PC' *
@@ -658,7 +635,6 @@ evm/shl:
   stack [Shift, Value | REST]
   -o {
     exists Z. (
-      bytecode BC *
       pc PC' *
       gas GAS' *
       stack [Z | REST] *
@@ -666,7 +642,7 @@ evm/shl:
   }.
 
 evm/shr:
-  bytecode BC *
+  $bytecode BC *
   pc PC *
   !arr_get BC PC 0x1c *
   !inc PC PC' *
@@ -675,7 +651,6 @@ evm/shr:
   stack [Shift, Value | REST]
   -o {
     exists Z. (
-      bytecode BC *
       pc PC' *
       gas GAS' *
       stack [Z | REST] *
@@ -683,7 +658,7 @@ evm/shr:
   }.
 
 evm/sar:
-  bytecode BC *
+  $bytecode BC *
   pc PC *
   !arr_get BC PC 0x1d *
   !inc PC PC' *
@@ -692,7 +667,6 @@ evm/sar:
   stack [Shift, Value | REST]
   -o {
     exists Z. (
-      bytecode BC *
       pc PC' *
       gas GAS' *
       stack [Z | REST] *
@@ -702,7 +676,7 @@ evm/sar:
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%  20
 
 evm/sha3:
-  bytecode BC * pc PC * !arr_get BC PC 0x20 * !inc PC PC' *
+  $bytecode BC * pc PC * !arr_get BC PC 0x20 * !inc PC PC' *
   gas GAS *
   stack [Offset, Size | REST] *
   mem M * memsize S *
@@ -716,7 +690,7 @@ evm/sha3:
   !checked_sub GAS TotalCost GAS'
   -o {
     exists Hash. (
-      bytecode BC * gas GAS' * memsize S' *
+      gas GAS' * memsize S' *
       pc PC' * stack [Hash | REST] * mem M *
       !sha3_compute M Offset End Hash)
   }.
@@ -724,7 +698,7 @@ evm/sha3:
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%  30
 
 evm/address:
-  bytecode BC *
+  $bytecode BC *
   pc PC *
   !arr_get BC PC 0x30 *
   !inc PC PC' *
@@ -733,7 +707,6 @@ evm/address:
   stack S *
   address A
   -o {
-    bytecode BC *
     pc PC' *
     gas GAS' *
     address A *
@@ -741,7 +714,7 @@ evm/address:
   }.
 
 evm/balance:
-  bytecode BC *
+  $bytecode BC *
   pc PC *
   !arr_get BC PC 0x31 *
   !inc PC PC' *
@@ -750,7 +723,6 @@ evm/balance:
   stack [A | REST] *
   balance A B
   -o {
-    bytecode BC *
     pc PC' *
     gas GAS' *
     stack [B | REST] *
@@ -758,7 +730,7 @@ evm/balance:
   }.
 
 evm/caller:
-  bytecode BC *
+  $bytecode BC *
   pc PC *
   !arr_get BC PC 0x33 *
   !inc PC PC' *
@@ -767,7 +739,6 @@ evm/caller:
   stack S *
   sender SENDER
   -o {
-    bytecode BC *
     pc PC' *
     gas GAS' *
     sender SENDER *
@@ -775,7 +746,7 @@ evm/caller:
   }.
 
 evm/callvalue:
-  bytecode BC *
+  $bytecode BC *
   pc PC *
   !arr_get BC PC 0x34 *
   !inc PC PC' *
@@ -784,7 +755,6 @@ evm/callvalue:
   stack S *
   callvalue Value
   -o {
-    bytecode BC *
     pc PC' *
     gas GAS' *
     callvalue Value *
@@ -794,7 +764,7 @@ evm/callvalue:
 % TODO
 % current assumption: calldatasize < 32
 evm/calldataload:
-  bytecode BC *
+  $bytecode BC *
   pc         PC         *
   !arr_get   BC PC 0x35 *
   !inc       PC    PC'  *
@@ -803,7 +773,6 @@ evm/calldataload:
   stack      [POS | REST] *
   calldata   POS   Size V
   -o {
-    bytecode BC *
     gas GAS' *
     stack [V | REST] *
     pc PC' *
@@ -811,7 +780,7 @@ evm/calldataload:
   }.
 
 evm/calldatasize:
-  bytecode BC *
+  $bytecode BC *
   pc PC *
   !arr_get BC PC 0x36 *
   !inc PC PC' *
@@ -820,7 +789,6 @@ evm/calldatasize:
   calldatasize Size *
   stack S
   -o {
-    bytecode BC *
     gas GAS' *
     stack [Size | S] *
     calldatasize Size *
@@ -846,7 +814,7 @@ calldatacopy_iter/s:
   }.
 
 evm/calldatacopy:
-  bytecode BC *
+  $bytecode BC *
   pc PC *
   !arr_get BC PC 0x37 *
   !inc PC PC' *
@@ -862,7 +830,6 @@ evm/calldatacopy:
   !plus CDBase MemGas TotalCost *
   !checked_sub GAS TotalCost GAS'
   -o {
-    bytecode BC *
     gas GAS' *
     memsize S' *
     calldatacopy_iter DestOffset DataOffset End M *
@@ -877,7 +844,7 @@ evm/calldatacopy:
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%  40
 
 evm/timestamp:
-  bytecode BC *
+  $bytecode BC *
   pc PC *
   !arr_get BC PC 0x42 *
   !inc PC PC' *
@@ -886,7 +853,6 @@ evm/timestamp:
   stack S *
   timestamp TS
   -o {
-    bytecode BC *
     pc PC' *
     gas GAS' *
     timestamp TS *
@@ -894,7 +860,7 @@ evm/timestamp:
   }.
 
 evm/gaslimit:
-  bytecode BC *
+  $bytecode BC *
   pc PC *
   !arr_get BC PC 0x45 *
   !inc PC PC' *
@@ -903,7 +869,6 @@ evm/gaslimit:
   stack S *
   gaslimit TS
   -o {
-    bytecode BC *
     pc PC' *
     gas GAS' *
     gaslimit TS *
@@ -913,7 +878,7 @@ evm/gaslimit:
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%  50
 
 evm/pop:
-  bytecode BC *
+  $bytecode BC *
   pc PC *
   !arr_get BC PC 0x50 *
   !inc PC PC' *
@@ -921,14 +886,13 @@ evm/pop:
   !checked_sub GAS 2 GAS' *
   stack [V | REST]
   -o {
-    bytecode BC *
     pc PC' *
     gas GAS' *
     stack REST
   }.
 
 evm/mload:
-  bytecode BC *
+  $bytecode BC *
   pc PC *
   !arr_get BC PC 0x51 *
   !inc PC PC' *
@@ -940,14 +904,14 @@ evm/mload:
   !checked_sub GAS TotalCost GAS' *
   !mem_read M Offset V
   -o {
-    bytecode BC * pc PC' *
+    pc PC' *
     gas GAS' *
     stack [V | REST] *
     mem M * memsize S'
   }.
 
 evm/mstore:
-  bytecode BC *
+  $bytecode BC *
   pc PC *
   !arr_get BC PC 0x52 *
   !inc PC PC' *
@@ -958,13 +922,13 @@ evm/mstore:
   !plus 3 MemGas TotalCost *
   !checked_sub GAS TotalCost GAS'
   -o {
-    bytecode BC * pc PC' * stack REST *
+    pc PC' * stack REST *
     gas GAS' *
     mem (write Offset Value M) * memsize S'
   }.
 
 evm/mstore8:
-  bytecode BC *
+  $bytecode BC *
   pc PC *
   !arr_get BC PC 0x53 *
   !inc PC PC' *
@@ -976,13 +940,13 @@ evm/mstore8:
   !plus 3 MemGas TotalCost *
   !checked_sub GAS TotalCost GAS'
   -o {
-    bytecode BC * pc PC' * stack REST *
+    pc PC' * stack REST *
     gas GAS' *
     mem (write8 Offset Byte M) * memsize S'
   }.
 
 evm/msize:
-  bytecode BC *
+  $bytecode BC *
   pc PC *
   !arr_get BC PC 0x59 *
   !inc PC PC' *
@@ -991,7 +955,7 @@ evm/msize:
   stack S *
   memsize MS
   -o {
-    bytecode BC * pc PC' *
+    pc PC' *
     gas GAS' *
     stack [MS | S] *
     memsize MS
@@ -1044,7 +1008,7 @@ mem_read_range/step: mem_read_range M Offset End (V ++ Rest)
 
 % SLOAD: key already has a storage fact
 evm/sload:
-  bytecode BC *
+  $bytecode BC *
   pc PC *
   !arr_get BC PC 0x54 *
   !inc PC PC' *
@@ -1053,7 +1017,6 @@ evm/sload:
   stack [KEY | REST] *
   storage (key: KEY) (value: V)
   -o {
-    bytecode BC *
     pc PC' *
     gas GAS' *
     stack [V | REST] *
@@ -1062,7 +1025,7 @@ evm/sload:
 
 % SLOAD: key not yet initialized — default to 0
 evm/sload_init:
-  bytecode BC *
+  $bytecode BC *
   pc PC *
   !arr_get BC PC 0x54 *
   !inc PC PC' *
@@ -1072,7 +1035,6 @@ evm/sload_init:
   initializedStorage ISET *
   !notMember KEY ISET
   -o {
-    bytecode BC *
     pc PC' *
     gas GAS' *
     stack [0 | REST] *
@@ -1093,7 +1055,7 @@ sstore_gas/reset_z: sstore_gas OldVal NewVal 0x1388
 
 % SSTORE: key already has a storage fact — gas via sstore_gas helper
 evm/sstore:
-  bytecode BC *
+  $bytecode BC *
   pc PC *
   !arr_get BC PC 0x55 *
   !inc PC PC' *
@@ -1103,7 +1065,6 @@ evm/sstore:
   !sstore_gas (current: OldVal) (new_val: Val) (gas: Cost) *
   !checked_sub GAS Cost GAS'
   -o {
-    bytecode BC *
     pc PC' *
     gas GAS' *
     stack REST *
@@ -1112,7 +1073,7 @@ evm/sstore:
 
 % SSTORE: new key, nonzero value → Gsset (20000)
 evm/sstore_init:
-  bytecode BC *
+  $bytecode BC *
   pc PC *
   !arr_get BC PC 0x55 *
   !inc PC PC' *
@@ -1123,7 +1084,6 @@ evm/sstore_init:
   !neq Val e *
   !checked_sub GAS 0x4e20 GAS'
   -o {
-    bytecode BC *
     pc PC' *
     gas GAS' *
     stack REST *
@@ -1133,7 +1093,7 @@ evm/sstore_init:
 
 % SSTORE: new key, zero value → Gsreset (5000)
 evm/sstore_init_zero:
-  bytecode BC *
+  $bytecode BC *
   pc PC *
   !arr_get BC PC 0x55 *
   !inc PC PC' *
@@ -1143,7 +1103,6 @@ evm/sstore_init_zero:
   initializedStorage ISET *
   !notMember Pos ISET
   -o {
-    bytecode BC *
     pc PC' *
     gas GAS' *
     stack REST *
@@ -1153,21 +1112,20 @@ evm/sstore_init_zero:
 
 
 evm/jump:
-  bytecode BC *
+  $bytecode BC *
   pc PC *
   !arr_get BC PC 0x56 *
   gas GAS *
   !checked_sub GAS 8 GAS' *
   stack [V | REST]
   -o {
-    bytecode BC *
     pc V *
     stack REST *
     gas GAS'
   }.
 
 evm/jumpi:
-  bytecode BC *
+  $bytecode BC *
   pc PC *
   !arr_get BC PC 0x57 *
   !inc PC PC' *
@@ -1175,7 +1133,6 @@ evm/jumpi:
   !checked_sub GAS 10 GAS' *
   stack [NPC, C | REST]
   -o {
-    bytecode BC *
     stack REST *
     gas GAS' *
     ((!neq C 0 * pc NPC) +
@@ -1183,7 +1140,7 @@ evm/jumpi:
   }.
 
 evm/gas:
-  bytecode BC *
+  $bytecode BC *
   pc PC *
   !arr_get BC PC 0x5a *
   !inc PC PC' *
@@ -1191,27 +1148,25 @@ evm/gas:
   !checked_sub GAS 2 GAS' *
   stack S
   -o {
-    bytecode BC *
     pc PC' *
     gas GAS' *
     stack [GAS' | S]
   }.
 
 evm/jumpdest:
-  bytecode BC *
+  $bytecode BC *
   pc PC *
   !arr_get BC PC 0x5b *
   !inc PC PC' *
   gas GAS *
   !checked_sub GAS 1 GAS'
   -o {
-    bytecode BC *
     pc PC' *
     gas GAS'
   }.
 
 evm/push0:
-  bytecode BC *
+  $bytecode BC *
   pc PC *
   !arr_get BC PC 0x5f *
   !inc PC PC' *
@@ -1219,7 +1174,6 @@ evm/push0:
   !checked_sub GAS 2 GAS' *
   stack S
   -o {
-    bytecode BC *
     pc PC' *
     gas GAS' *
     stack [e | S]
@@ -1228,7 +1182,7 @@ evm/push0:
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%  60
 
 evm/push1:
-  bytecode BC *
+  $bytecode BC *
   pc PC *
   !arr_get BC PC 0x60 *
   !inc PC PC' *
@@ -1238,14 +1192,13 @@ evm/push1:
   !checked_sub GAS 3 GAS' *
   stack S
   -o {
-    bytecode BC *
     pc PC'' *
     gas GAS' *
     stack [V | S]
   }.
 
 evm/push2:
-  bytecode BC *
+  $bytecode BC *
   pc PC *
   !arr_get BC PC 0x61 *
   !inc PC PC' *
@@ -1255,14 +1208,13 @@ evm/push2:
   !checked_sub GAS 3 GAS' *
   stack S
   -o {
-    bytecode BC *
     pc PC_Target *
     stack [V | S] *
     gas GAS'
   }.
 
 evm/push3:
-  bytecode BC *
+  $bytecode BC *
   pc PC *
   !arr_get BC PC 0x62 *
   !inc PC PC' *
@@ -1272,14 +1224,13 @@ evm/push3:
   !checked_sub GAS 3 GAS' *
   stack S
   -o {
-    bytecode BC *
     pc PC_Target *
     stack [V | S] *
     gas GAS'
   }.
 
 evm/push4:
-  bytecode BC *
+  $bytecode BC *
   pc PC *
   !arr_get BC PC 0x63 *
   !inc PC PC' *
@@ -1289,14 +1240,13 @@ evm/push4:
   !checked_sub GAS 3 GAS' *
   stack S
   -o {
-    bytecode BC *
     pc PC_Target *
     stack [V | S] *
     gas GAS'
   }.
 
 evm/push5:
-  bytecode BC *
+  $bytecode BC *
   pc PC *
   !arr_get BC PC 0x64 *
   !inc PC PC' *
@@ -1306,14 +1256,13 @@ evm/push5:
   !checked_sub GAS 3 GAS' *
   stack S
   -o {
-    bytecode BC *
     pc PC_Target *
     stack [V | S] *
     gas GAS'
   }.
 
 evm/push6:
-  bytecode BC *
+  $bytecode BC *
   pc PC *
   !arr_get BC PC 0x65 *
   !inc PC PC' *
@@ -1323,14 +1272,13 @@ evm/push6:
   !checked_sub GAS 3 GAS' *
   stack S
   -o {
-    bytecode BC *
     pc PC_Target *
     stack [V | S] *
     gas GAS'
   }.
 
 evm/push7:
-  bytecode BC *
+  $bytecode BC *
   pc PC *
   !arr_get BC PC 0x66 *
   !inc PC PC' *
@@ -1340,14 +1288,13 @@ evm/push7:
   !checked_sub GAS 3 GAS' *
   stack S
   -o {
-    bytecode BC *
     pc PC_Target *
     stack [V | S] *
     gas GAS'
   }.
 
 evm/push8:
-  bytecode BC *
+  $bytecode BC *
   pc PC *
   !arr_get BC PC 0x67 *
   !inc PC PC' *
@@ -1357,14 +1304,13 @@ evm/push8:
   !checked_sub GAS 3 GAS' *
   stack S
   -o {
-    bytecode BC *
     pc PC_Target *
     stack [V | S] *
     gas GAS'
   }.
 
 evm/push9:
-  bytecode BC *
+  $bytecode BC *
   pc PC *
   !arr_get BC PC 0x68 *
   !inc PC PC' *
@@ -1374,14 +1320,13 @@ evm/push9:
   !checked_sub GAS 3 GAS' *
   stack S
   -o {
-    bytecode BC *
     pc PC_Target *
     stack [V | S] *
     gas GAS'
   }.
 
 evm/push10:
-  bytecode BC *
+  $bytecode BC *
   pc PC *
   !arr_get BC PC 0x69 *
   !inc PC PC' *
@@ -1391,14 +1336,13 @@ evm/push10:
   !checked_sub GAS 3 GAS' *
   stack S
   -o {
-    bytecode BC *
     pc PC_Target *
     stack [V | S] *
     gas GAS'
   }.
 
 evm/push11:
-  bytecode BC *
+  $bytecode BC *
   pc PC *
   !arr_get BC PC 0x6a *
   !inc PC PC' *
@@ -1408,14 +1352,13 @@ evm/push11:
   !checked_sub GAS 3 GAS' *
   stack S
   -o {
-    bytecode BC *
     pc PC_Target *
     stack [V | S] *
     gas GAS'
   }.
 
 evm/push12:
-  bytecode BC *
+  $bytecode BC *
   pc PC *
   !arr_get BC PC 0x6b *
   !inc PC PC' *
@@ -1425,14 +1368,13 @@ evm/push12:
   !checked_sub GAS 3 GAS' *
   stack S
   -o {
-    bytecode BC *
     pc PC_Target *
     stack [V | S] *
     gas GAS'
   }.
 
 evm/push13:
-  bytecode BC *
+  $bytecode BC *
   pc PC *
   !arr_get BC PC 0x6c *
   !inc PC PC' *
@@ -1442,14 +1384,13 @@ evm/push13:
   !checked_sub GAS 3 GAS' *
   stack S
   -o {
-    bytecode BC *
     pc PC_Target *
     stack [V | S] *
     gas GAS'
   }.
 
 evm/push14:
-  bytecode BC *
+  $bytecode BC *
   pc PC *
   !arr_get BC PC 0x6d *
   !inc PC PC' *
@@ -1459,14 +1400,13 @@ evm/push14:
   !checked_sub GAS 3 GAS' *
   stack S
   -o {
-    bytecode BC *
     pc PC_Target *
     stack [V | S] *
     gas GAS'
   }.
 
 evm/push15:
-  bytecode BC *
+  $bytecode BC *
   pc PC *
   !arr_get BC PC 0x6e *
   !inc PC PC' *
@@ -1476,14 +1416,13 @@ evm/push15:
   !checked_sub GAS 3 GAS' *
   stack S
   -o {
-    bytecode BC *
     pc PC_Target *
     stack [V | S] *
     gas GAS'
   }.
 
 evm/push16:
-  bytecode BC *
+  $bytecode BC *
   pc PC *
   !arr_get BC PC 0x6f *
   !inc PC PC' *
@@ -1493,14 +1432,13 @@ evm/push16:
   !checked_sub GAS 3 GAS' *
   stack S
   -o {
-    bytecode BC *
     pc PC_Target *
     stack [V | S] *
     gas GAS'
   }.
 
 evm/push17:
-  bytecode BC *
+  $bytecode BC *
   pc PC *
   !arr_get BC PC 0x70 *
   !inc PC PC' *
@@ -1510,14 +1448,13 @@ evm/push17:
   !checked_sub GAS 3 GAS' *
   stack S
   -o {
-    bytecode BC *
     pc PC_Target *
     stack [V | S] *
     gas GAS'
   }.
 
 evm/push18:
-  bytecode BC *
+  $bytecode BC *
   pc PC *
   !arr_get BC PC 0x71 *
   !inc PC PC' *
@@ -1527,14 +1464,13 @@ evm/push18:
   !checked_sub GAS 3 GAS' *
   stack S
   -o {
-    bytecode BC *
     pc PC_Target *
     stack [V | S] *
     gas GAS'
   }.
 
 evm/push19:
-  bytecode BC *
+  $bytecode BC *
   pc PC *
   !arr_get BC PC 0x72 *
   !inc PC PC' *
@@ -1544,14 +1480,13 @@ evm/push19:
   !checked_sub GAS 3 GAS' *
   stack S
   -o {
-    bytecode BC *
     pc PC_Target *
     stack [V | S] *
     gas GAS'
   }.
 
 evm/push20:
-  bytecode BC *
+  $bytecode BC *
   pc PC *
   !arr_get BC PC 0x73 *
   !inc PC PC' *
@@ -1561,14 +1496,13 @@ evm/push20:
   !checked_sub GAS 3 GAS' *
   stack S
   -o {
-    bytecode BC *
     pc PC_Target *
     stack [V | S] *
     gas GAS'
   }.
 
 evm/push21:
-  bytecode BC *
+  $bytecode BC *
   pc PC *
   !arr_get BC PC 0x74 *
   !inc PC PC' *
@@ -1578,14 +1512,13 @@ evm/push21:
   !checked_sub GAS 3 GAS' *
   stack S
   -o {
-    bytecode BC *
     pc PC_Target *
     stack [V | S] *
     gas GAS'
   }.
 
 evm/push22:
-  bytecode BC *
+  $bytecode BC *
   pc PC *
   !arr_get BC PC 0x75 *
   !inc PC PC' *
@@ -1595,14 +1528,13 @@ evm/push22:
   !checked_sub GAS 3 GAS' *
   stack S
   -o {
-    bytecode BC *
     pc PC_Target *
     stack [V | S] *
     gas GAS'
   }.
 
 evm/push23:
-  bytecode BC *
+  $bytecode BC *
   pc PC *
   !arr_get BC PC 0x76 *
   !inc PC PC' *
@@ -1612,14 +1544,13 @@ evm/push23:
   !checked_sub GAS 3 GAS' *
   stack S
   -o {
-    bytecode BC *
     pc PC_Target *
     stack [V | S] *
     gas GAS'
   }.
 
 evm/push24:
-  bytecode BC *
+  $bytecode BC *
   pc PC *
   !arr_get BC PC 0x77 *
   !inc PC PC' *
@@ -1629,14 +1560,13 @@ evm/push24:
   !checked_sub GAS 3 GAS' *
   stack S
   -o {
-    bytecode BC *
     pc PC_Target *
     stack [V | S] *
     gas GAS'
   }.
 
 evm/push25:
-  bytecode BC *
+  $bytecode BC *
   pc PC *
   !arr_get BC PC 0x78 *
   !inc PC PC' *
@@ -1646,14 +1576,13 @@ evm/push25:
   !checked_sub GAS 3 GAS' *
   stack S
   -o {
-    bytecode BC *
     pc PC_Target *
     stack [V | S] *
     gas GAS'
   }.
 
 evm/push26:
-  bytecode BC *
+  $bytecode BC *
   pc PC *
   !arr_get BC PC 0x79 *
   !inc PC PC' *
@@ -1663,14 +1592,13 @@ evm/push26:
   !checked_sub GAS 3 GAS' *
   stack S
   -o {
-    bytecode BC *
     pc PC_Target *
     stack [V | S] *
     gas GAS'
   }.
 
 evm/push27:
-  bytecode BC *
+  $bytecode BC *
   pc PC *
   !arr_get BC PC 0x7a *
   !inc PC PC' *
@@ -1680,14 +1608,13 @@ evm/push27:
   !checked_sub GAS 3 GAS' *
   stack S
   -o {
-    bytecode BC *
     pc PC_Target *
     stack [V | S] *
     gas GAS'
   }.
 
 evm/push28:
-  bytecode BC *
+  $bytecode BC *
   pc PC *
   !arr_get BC PC 0x7b *
   !inc PC PC' *
@@ -1697,14 +1624,13 @@ evm/push28:
   !checked_sub GAS 3 GAS' *
   stack S
   -o {
-    bytecode BC *
     pc PC_Target *
     stack [V | S] *
     gas GAS'
   }.
 
 evm/push29:
-  bytecode BC *
+  $bytecode BC *
   pc PC *
   !arr_get BC PC 0x7c *
   !inc PC PC' *
@@ -1714,14 +1640,13 @@ evm/push29:
   !checked_sub GAS 3 GAS' *
   stack S
   -o {
-    bytecode BC *
     pc PC_Target *
     stack [V | S] *
     gas GAS'
   }.
 
 evm/push30:
-  bytecode BC *
+  $bytecode BC *
   pc PC *
   !arr_get BC PC 0x7d *
   !inc PC PC' *
@@ -1731,14 +1656,13 @@ evm/push30:
   !checked_sub GAS 3 GAS' *
   stack S
   -o {
-    bytecode BC *
     pc PC_Target *
     stack [V | S] *
     gas GAS'
   }.
 
 evm/push31:
-  bytecode BC *
+  $bytecode BC *
   pc PC *
   !arr_get BC PC 0x7e *
   !inc PC PC' *
@@ -1748,14 +1672,13 @@ evm/push31:
   !checked_sub GAS 3 GAS' *
   stack S
   -o {
-    bytecode BC *
     pc PC_Target *
     stack [V | S] *
     gas GAS'
   }.
 
 evm/push32:
-  bytecode BC *
+  $bytecode BC *
   pc PC *
   !arr_get BC PC 0x7f *
   !inc PC PC' *
@@ -1765,7 +1688,6 @@ evm/push32:
   !checked_sub GAS 3 GAS' *
   stack S
   -o {
-    bytecode BC *
     pc PC_Target *
     stack [V | S] *
     gas GAS'
@@ -1776,7 +1698,7 @@ evm/push32:
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%  80
 
 evm/dup1:
-  bytecode BC *
+  $bytecode BC *
   pc PC *
   !arr_get BC PC 0x80 *
   !inc PC PC' *
@@ -1784,14 +1706,13 @@ evm/dup1:
   !checked_sub GAS 3 GAS' * %11 = 3
   stack [V | REST]
   -o {
-    bytecode BC *
     pc PC' *
     gas GAS' *
     stack [V, V | REST]
   }.
 
 evm/dup2:
-  bytecode BC *
+  $bytecode BC *
   pc PC *
   !arr_get BC PC 0x81 *
   !inc PC PC' *
@@ -1800,14 +1721,13 @@ evm/dup2:
   stack S *
   !arr_get S 1 V
   -o {
-    bytecode BC *
     pc PC' *
     gas GAS' *
     stack [V | S]
   }.
 
 evm/dup3:
-  bytecode BC *
+  $bytecode BC *
   pc PC *
   !arr_get BC PC 0x82 *
   !inc PC PC' *
@@ -1816,14 +1736,13 @@ evm/dup3:
   stack S *
   !arr_get S 2 V
   -o {
-    bytecode BC *
     pc PC' *
     gas GAS' *
     stack [V | S]
   }.
 
 evm/dup4:
-  bytecode BC *
+  $bytecode BC *
   pc PC *
   !arr_get BC PC 0x83 *
   !inc PC PC' *
@@ -1832,14 +1751,13 @@ evm/dup4:
   stack S *
   !arr_get S 3 V
   -o {
-    bytecode BC *
     pc PC' *
     gas GAS' *
     stack [V | S]
   }.
 
 evm/dup5:
-  bytecode BC *
+  $bytecode BC *
   pc PC *
   !arr_get BC PC 0x84 *
   !inc PC PC' *
@@ -1848,14 +1766,13 @@ evm/dup5:
   stack S *
   !arr_get S 4 V
   -o {
-    bytecode BC *
     pc PC' *
     gas GAS' *
     stack [V | S]
   }.
 
 evm/dup6:
-  bytecode BC *
+  $bytecode BC *
   pc PC *
   !arr_get BC PC 0x85 *
   !inc PC PC' *
@@ -1864,14 +1781,13 @@ evm/dup6:
   stack S *
   !arr_get S 5 V
   -o {
-    bytecode BC *
     pc PC' *
     gas GAS' *
     stack [V | S]
   }.
 
 evm/dup7:
-  bytecode BC *
+  $bytecode BC *
   pc PC *
   !arr_get BC PC 0x86 *
   !inc PC PC' *
@@ -1880,14 +1796,13 @@ evm/dup7:
   stack S *
   !arr_get S 6 V
   -o {
-    bytecode BC *
     pc PC' *
     gas GAS' *
     stack [V | S]
   }.
 
 evm/dup8:
-  bytecode BC *
+  $bytecode BC *
   pc PC *
   !arr_get BC PC 0x87 *
   !inc PC PC' *
@@ -1896,14 +1811,13 @@ evm/dup8:
   stack S *
   !arr_get S 7 V
   -o {
-    bytecode BC *
     pc PC' *
     gas GAS' *
     stack [V | S]
   }.
 
 evm/dup9:
-  bytecode BC *
+  $bytecode BC *
   pc PC *
   !arr_get BC PC 0x88 *
   !inc PC PC' *
@@ -1912,14 +1826,13 @@ evm/dup9:
   stack S *
   !arr_get S 0x8 V
   -o {
-    bytecode BC *
     pc PC' *
     gas GAS' *
     stack [V | S]
   }.
 
 evm/dup10:
-  bytecode BC *
+  $bytecode BC *
   pc PC *
   !arr_get BC PC 0x89 *
   !inc PC PC' *
@@ -1928,14 +1841,13 @@ evm/dup10:
   stack S *
   !arr_get S 0x9 V
   -o {
-    bytecode BC *
     pc PC' *
     gas GAS' *
     stack [V | S]
   }.
 
 evm/dup11:
-  bytecode BC *
+  $bytecode BC *
   pc PC *
   !arr_get BC PC 0x8a *
   !inc PC PC' *
@@ -1944,14 +1856,13 @@ evm/dup11:
   stack S *
   !arr_get S 0xa V
   -o {
-    bytecode BC *
     pc PC' *
     gas GAS' *
     stack [V | S]
   }.
 
 evm/dup12:
-  bytecode BC *
+  $bytecode BC *
   pc PC *
   !arr_get BC PC 0x8b *
   !inc PC PC' *
@@ -1960,14 +1871,13 @@ evm/dup12:
   stack S *
   !arr_get S 0xb V
   -o {
-    bytecode BC *
     pc PC' *
     gas GAS' *
     stack [V | S]
   }.
 
 evm/dup13:
-  bytecode BC *
+  $bytecode BC *
   pc PC *
   !arr_get BC PC 0x8c *
   !inc PC PC' *
@@ -1976,14 +1886,13 @@ evm/dup13:
   stack S *
   !arr_get S 0xc V
   -o {
-    bytecode BC *
     pc PC' *
     gas GAS' *
     stack [V | S]
   }.
 
 evm/dup14:
-  bytecode BC *
+  $bytecode BC *
   pc PC *
   !arr_get BC PC 0x8d *
   !inc PC PC' *
@@ -1992,14 +1901,13 @@ evm/dup14:
   stack S *
   !arr_get S 0xd V
   -o {
-    bytecode BC *
     pc PC' *
     gas GAS' *
     stack [V | S]
   }.
 
 evm/dup15:
-  bytecode BC *
+  $bytecode BC *
   pc PC *
   !arr_get BC PC 0x8e *
   !inc PC PC' *
@@ -2008,14 +1916,13 @@ evm/dup15:
   stack S *
   !arr_get S 0xe V
   -o {
-    bytecode BC *
     pc PC' *
     gas GAS' *
     stack [V | S]
   }.
 
 evm/dup16:
-  bytecode BC *
+  $bytecode BC *
   pc PC *
   !arr_get BC PC 0x8f *
   !inc PC PC' *
@@ -2024,7 +1931,6 @@ evm/dup16:
   stack S *
   !arr_get S 0xf V
   -o {
-    bytecode BC *
     pc PC' *
     gas GAS' *
     stack [V | S]
@@ -2033,7 +1939,7 @@ evm/dup16:
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%  90
 
 evm/swap1:
-  bytecode BC *
+  $bytecode BC *
   pc PC *
   !arr_get BC PC 0x90 *
   !inc PC PC' *
@@ -2041,14 +1947,13 @@ evm/swap1:
   !checked_sub GAS 3 GAS' *
   stack [X, Y | REST]
   -o {
-    bytecode BC *
     pc PC' *
     gas GAS' *
     stack [Y, X | REST]
   }.
 
 evm/swap2:
-  bytecode BC *
+  $bytecode BC *
   pc PC *
   !arr_get BC PC 0x91 *
   !inc PC PC' *
@@ -2058,14 +1963,13 @@ evm/swap2:
   !arr_get REST 1 Y *
   !arr_set REST 1 X REST'
   -o {
-    bytecode BC *
     pc PC' *
     gas GAS' *
     stack [Y | REST']
   }.
 
 evm/swap3:
-  bytecode BC *
+  $bytecode BC *
   pc PC *
   !arr_get BC PC 0x92 *
   !inc PC PC' *
@@ -2075,14 +1979,13 @@ evm/swap3:
   !arr_get REST 2 Y *
   !arr_set REST 2 X REST'
   -o {
-    bytecode BC *
     pc PC' *
     gas GAS' *
     stack [Y | REST']
   }.
 
 evm/swap4:
-  bytecode BC *
+  $bytecode BC *
   pc PC *
   !arr_get BC PC 0x93 *
   !inc PC PC' *
@@ -2092,14 +1995,13 @@ evm/swap4:
   !arr_get REST 3 Y *
   !arr_set REST 3 X REST'
   -o {
-    bytecode BC *
     pc PC' *
     gas GAS' *
     stack [Y | REST']
   }.
 
 evm/swap5:
-  bytecode BC *
+  $bytecode BC *
   pc PC *
   !arr_get BC PC 0x94 *
   !inc PC PC' *
@@ -2109,14 +2011,13 @@ evm/swap5:
   !arr_get REST 4 Y *
   !arr_set REST 4 X REST'
   -o {
-    bytecode BC *
     pc PC' *
     gas GAS' *
     stack [Y | REST']
   }.
 
 evm/swap6:
-  bytecode BC *
+  $bytecode BC *
   pc PC *
   !arr_get BC PC 0x95 *
   !inc PC PC' *
@@ -2126,14 +2027,13 @@ evm/swap6:
   !arr_get REST 0x5 Y *
   !arr_set REST 0x5 X REST'
   -o {
-    bytecode BC *
     pc PC' *
     gas GAS' *
     stack [Y | REST']
   }.
 
 evm/swap7:
-  bytecode BC *
+  $bytecode BC *
   pc PC *
   !arr_get BC PC 0x96 *
   !inc PC PC' *
@@ -2143,14 +2043,13 @@ evm/swap7:
   !arr_get REST 0x6 Y *
   !arr_set REST 0x6 X REST'
   -o {
-    bytecode BC *
     pc PC' *
     gas GAS' *
     stack [Y | REST']
   }.
 
 evm/swap8:
-  bytecode BC *
+  $bytecode BC *
   pc PC *
   !arr_get BC PC 0x97 *
   !inc PC PC' *
@@ -2160,14 +2059,13 @@ evm/swap8:
   !arr_get REST 0x7 Y *
   !arr_set REST 0x7 X REST'
   -o {
-    bytecode BC *
     pc PC' *
     gas GAS' *
     stack [Y | REST']
   }.
 
 evm/swap9:
-  bytecode BC *
+  $bytecode BC *
   pc PC *
   !arr_get BC PC 0x98 *
   !inc PC PC' *
@@ -2177,14 +2075,13 @@ evm/swap9:
   !arr_get REST 0x8 Y *
   !arr_set REST 0x8 X REST'
   -o {
-    bytecode BC *
     pc PC' *
     gas GAS' *
     stack [Y | REST']
   }.
 
 evm/swap10:
-  bytecode BC *
+  $bytecode BC *
   pc PC *
   !arr_get BC PC 0x99 *
   !inc PC PC' *
@@ -2194,14 +2091,13 @@ evm/swap10:
   !arr_get REST 0x9 Y *
   !arr_set REST 0x9 X REST'
   -o {
-    bytecode BC *
     pc PC' *
     gas GAS' *
     stack [Y | REST']
   }.
 
 evm/swap11:
-  bytecode BC *
+  $bytecode BC *
   pc PC *
   !arr_get BC PC 0x9a *
   !inc PC PC' *
@@ -2211,14 +2107,13 @@ evm/swap11:
   !arr_get REST 0xa Y *
   !arr_set REST 0xa X REST'
   -o {
-    bytecode BC *
     pc PC' *
     gas GAS' *
     stack [Y | REST']
   }.
 
 evm/swap12:
-  bytecode BC *
+  $bytecode BC *
   pc PC *
   !arr_get BC PC 0x9b *
   !inc PC PC' *
@@ -2228,14 +2123,13 @@ evm/swap12:
   !arr_get REST 0xb Y *
   !arr_set REST 0xb X REST'
   -o {
-    bytecode BC *
     pc PC' *
     gas GAS' *
     stack [Y | REST']
   }.
 
 evm/swap13:
-  bytecode BC *
+  $bytecode BC *
   pc PC *
   !arr_get BC PC 0x9c *
   !inc PC PC' *
@@ -2245,14 +2139,13 @@ evm/swap13:
   !arr_get REST 0xc Y *
   !arr_set REST 0xc X REST'
   -o {
-    bytecode BC *
     pc PC' *
     gas GAS' *
     stack [Y | REST']
   }.
 
 evm/swap14:
-  bytecode BC *
+  $bytecode BC *
   pc PC *
   !arr_get BC PC 0x9d *
   !inc PC PC' *
@@ -2262,14 +2155,13 @@ evm/swap14:
   !arr_get REST 0xd Y *
   !arr_set REST 0xd X REST'
   -o {
-    bytecode BC *
     pc PC' *
     gas GAS' *
     stack [Y | REST']
   }.
 
 evm/swap15:
-  bytecode BC *
+  $bytecode BC *
   pc PC *
   !arr_get BC PC 0x9e *
   !inc PC PC' *
@@ -2279,14 +2171,13 @@ evm/swap15:
   !arr_get REST 0xe Y *
   !arr_set REST 0xe X REST'
   -o {
-    bytecode BC *
     pc PC' *
     gas GAS' *
     stack [Y | REST']
   }.
 
 evm/swap16:
-  bytecode BC *
+  $bytecode BC *
   pc PC *
   !arr_get BC PC 0x9f *
   !inc PC PC' *
@@ -2296,7 +2187,6 @@ evm/swap16:
   !arr_get REST 0xf Y *
   !arr_set REST 0xf X REST'
   -o {
-    bytecode BC *
     pc PC' *
     gas GAS' *
     stack [Y | REST']
@@ -2305,7 +2195,7 @@ evm/swap16:
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%  a0
 
 evm/log2:
-  bytecode BC *
+  $bytecode BC *
   pc PC *
   !arr_get BC PC 0xa2 *
   !inc PC PC' *
@@ -2313,7 +2203,6 @@ evm/log2:
   !checked_sub GAS 0x465 GAS' *
   stack [V0, V1, V2, V3 | REST]
   -o {
-    bytecode BC *
     pc PC' *
     gas GAS' *
     stack REST *
@@ -2321,7 +2210,7 @@ evm/log2:
   }.
 
 evm/log3:
-  bytecode BC *
+  $bytecode BC *
   pc PC *
   !arr_get BC PC 0xa3 *
   !inc PC PC' *
@@ -2329,7 +2218,6 @@ evm/log3:
   !checked_sub GAS 0x5dc GAS' *
   stack [V0, V1, V2, V3, V4 | REST]
   -o {
-    bytecode BC *
     pc PC' *
     gas GAS' *
     stack REST *
@@ -2337,7 +2225,7 @@ evm/log3:
   }.
 
 evm/log4:
-  bytecode BC *
+  $bytecode BC *
   pc PC *
   !arr_get BC PC 0xa4 *
   !inc PC PC' *
@@ -2345,7 +2233,6 @@ evm/log4:
   !checked_sub GAS 0x753 GAS' *
   stack [V0, V1, V2, V3, V4, V5 | REST]
   -o {
-    bytecode BC *
     pc PC' *
     gas GAS' *
     stack REST *
@@ -2364,42 +2251,42 @@ evm/log4:
 
 % Abstract CALL — nondeterministic success/failure, memory preserved
 evm/call:
-  bytecode BC * pc PC * !arr_get BC PC 0xf1 * !inc PC PC' *
+  $bytecode BC * pc PC * !arr_get BC PC 0xf1 * !inc PC PC' *
   gas GAS * !checked_sub GAS 0x2bc GAS' *
   stack [GAS_T, TO_T, VALUE_T, InOffset_T, InSize_T, OutOffset_T, OutSize_T | REST] *
   mem M * memsize S
   -o {
-    bytecode BC * pc PC' * gas GAS' *
+    pc PC' * gas GAS' *
     mem M * memsize S *
     (stack [1 | REST] + stack [0 | REST])
   }.
 
 % Abstract DELEGATECALL — 6 args (no value), same fork pattern
 evm/delegatecall:
-  bytecode BC * pc PC * !arr_get BC PC 0xf4 * !inc PC PC' *
+  $bytecode BC * pc PC * !arr_get BC PC 0xf4 * !inc PC PC' *
   gas GAS * !checked_sub GAS 0x2bc GAS' *
   stack [GAS_T, TO_T, InOffset_T, InSize_T, OutOffset_T, OutSize_T | REST] *
   mem M * memsize S
   -o {
-    bytecode BC * pc PC' * gas GAS' *
+    pc PC' * gas GAS' *
     mem M * memsize S *
     (stack [1 | REST] + stack [0 | REST])
   }.
 
 % Abstract STATICCALL — 6 args (no value), same fork pattern
 evm/staticcall:
-  bytecode BC * pc PC * !arr_get BC PC 0xfa * !inc PC PC' *
+  $bytecode BC * pc PC * !arr_get BC PC 0xfa * !inc PC PC' *
   gas GAS * !checked_sub GAS 0x2bc GAS' *
   stack [GAS_T, TO_T, InOffset_T, InSize_T, OutOffset_T, OutSize_T | REST] *
   mem M * memsize S
   -o {
-    bytecode BC * pc PC' * gas GAS' *
+    pc PC' * gas GAS' *
     mem M * memsize S *
     (stack [1 | REST] + stack [0 | REST])
   }.
 
 evm/return:
-  bytecode BC *
+  $bytecode BC *
   pc PC *
   !arr_get BC PC 0xf3 *
   !inc PC PC' *
@@ -2409,7 +2296,6 @@ evm/return:
   !mem_expand S Offset Size S' MemGas *
   !checked_sub GAS MemGas GAS'
   -o {
-    bytecode BC *
     memsize S' *
     gas GAS' *
     stack REST *
@@ -2417,32 +2303,29 @@ evm/return:
   }.
 
 evm/invalid:
-  bytecode BC *
+  $bytecode BC *
   pc PC *
   !arr_get BC PC 0xfe
   -o {
-    bytecode BC *
     invalid
   }.
 
 evm/selfdestruct:
-  bytecode BC *
+  $bytecode BC *
   pc PC *
   !arr_get BC PC 0xff *
   gas GAS *
   !checked_sub GAS 0x1388 GAS' *
   stack [Addr | REST]
   -o {
-    bytecode BC *
     stack REST *
     selfdestruct
   }.
 
 evm/revert:
-  bytecode BC *
+  $bytecode BC *
   pc PC *
   !arr_get BC PC 0xfd
   -o {
-    bytecode BC *
     revert
   }.
