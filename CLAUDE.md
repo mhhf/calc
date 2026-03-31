@@ -124,6 +124,23 @@ out/                     # Generated: ill.json (bundled calculus), ui/ (built ap
 
 Precedence: loli 50 < tensor 60 < oplus 65 < with 70 < bang 80
 
+## Preserved Resource Sugar (`$`)
+
+`$P` on a forward rule antecedent marks P as preserved — consumed and re-produced identically. Purely syntactic sugar (Ceptre convention).
+
+```ill
+evm/add:
+  $bytecode BC *        % desugars to: bytecode BC on both LHS and RHS
+  pc PC * ...
+  -o { pc PC' * ... }.
+```
+
+- Parser: `$P` → `preserved(P)` wrapper node (`earley-grammar.js`, only with `forwardRules: true`)
+- Desugaring: `convert.js:desugarPreserved()` strips wrappers, injects into consequent — before content-addressing
+- `$!P` is an error (persistent resources are never consumed)
+- `$` in the consequent is an error
+- Engine already optimizes preserved patterns via `rule-analysis.js:analyzeDeltas()`
+
 ## FFI Principle
 
 FFI is optimization, theory is semantics. Every FFI predicate MUST have backward clause definitions. FFI off → clause resolution takes over (slower but correct).
