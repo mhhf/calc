@@ -1,0 +1,10 @@
+% Main file — imports both alpha and beta
+#import(alpha.ill)
+#import(beta.ill)
+
+% Root rule — always participates (D3)
+root_rule: counter X -o { counter (X + 100) }.
+
+#symex counter 1.
+#symex (rules: [alpha]) counter 1.
+#symex (rules: [beta]) counter 1.

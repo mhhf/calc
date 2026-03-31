@@ -1,0 +1,2 @@
+% Base definitions — imported by both alpha and beta
+counter: type -> type.
