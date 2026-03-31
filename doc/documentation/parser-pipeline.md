@@ -54,10 +54,8 @@ ill.calc → declarations.js → loader.js (@extends chain) → calculus/index.j
 **Parser config:** Formula operators derived from `.calc` constructors + all extensions: binders, numbers, multi-char freevars, application, arrows, forward rules, binary normalization.
 
 ```
-evm.ill → resolveImports → extractMacros (@def) → declarations.js + Earley parser → Store
+evm.ill → declarations.js + Earley parser → Store (hash → {tag, children})
 ```
-
-**Macro pre-pass:** `@def` abbreviation macros (`lib/parser/macros.js`) are extracted before structural parsing. `extractMacros()` scans for `@def name(params) := body.` directives, builds a macro table, and blanks directives from source. The expression parser is wrapped with `expandMacros()` for text-level substitution before Earley parsing. Produces identical hashes to longhand.
 
 ### 3. Sequent Parser — defining inference rules
 
