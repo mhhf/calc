@@ -1,7 +1,7 @@
 tags:
-  linear-logic: 45
-  forward-chaining: 22
-  proof-theory: 20
+  linear-logic: 46
+  forward-chaining: 23
+  proof-theory: 21
   clf: 18
   chr: 17
   focusing: 15
@@ -54,7 +54,7 @@ tags:
   muMALL: 4
   oplus: 4
   prover: 4
-  quiescence: 4
+  quiescence: 5
   semiring: 4
   smt: 4
   type-theory: 4
@@ -65,7 +65,7 @@ tags:
   CHR: 3
   compilation: 3
   confluence: 3
-  cut-elimination: 3
+  cut-elimination: 4
   cyclic-proofs: 3
   induction: 3
   loli: 3
@@ -121,7 +121,7 @@ tags:
   MPST: 2
   MTDC: 2
   multiset: 2
-  multiset-rewriting: 2
+  multiset-rewriting: 3
   operational-semantics: 2
   pacioli-group: 2
   parallelism: 2
@@ -148,7 +148,7 @@ tags:
   temporal-logic: 2
   term-representation: 2
   term-rewriting: 2
-  termination: 2
+  termination: 3
   type-checking: 2
   union-find: 2
   v2: 2
@@ -156,6 +156,7 @@ tags:
   with: 2
   zk: 2
   AARA: 1
+  multicategory: 1
   abstract-interpretation: 1
   AC-normalization: 1
   agents: 1
