@@ -134,6 +134,11 @@ describe('Preserved resource sugar ($prefix)', { timeout: 10000 }, () => {
       assert.throws(() => desugarPreserved(h), /\$!P is not allowed/);
     });
 
+    it('rejects !$P (persistent wrapping preserved)', () => {
+      const h = parseExpr('!$foo * bar -o { baz }');
+      assert.throws(() => desugarPreserved(h), /!\$P is not allowed/);
+    });
+
     it('rejects $ in consequent', () => {
       // Manually construct: preserved(foo) * bar -o { preserved(baz) }
       // Need preserved in antecedent too, since validation only runs when
