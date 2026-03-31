@@ -1,0 +1,4 @@
+% Alpha rules — increment counter
+#import(base.ill)
+
+inc: counter X -o { counter (X + 1) }.

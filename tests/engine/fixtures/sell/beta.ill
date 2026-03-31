@@ -1,0 +1,4 @@
+% Beta rules — double counter
+#import(base.ill)
+
+dbl: counter X -o { counter (X + X) }.

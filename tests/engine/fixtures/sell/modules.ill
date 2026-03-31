@@ -1,0 +1,12 @@
+% Module algebra test
+#import(alpha.ill)
+#import(beta.ill)
+
+@module both = alpha + beta.
+@module only_inc = both - {dbl}.
+
+% Root rule
+root_mod: counter X -o { counter (X + 1000) }.
+
+#symex (rules: both) counter 1.
+#symex (rules: only_inc) counter 1.
