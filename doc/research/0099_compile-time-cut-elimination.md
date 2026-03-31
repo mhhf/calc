@@ -250,6 +250,38 @@ For gas accounting, memory context, etc., define separate intermediate types and
 
 In categorical terms: composing along M₁ and then M₂ gives the same result as composing along M₂ and then M₁, because the two composition operations act on disjoint wires.
 
+## Termination of Iterated Composition
+
+### The question
+
+If composition is iterated (compose all pairs sharing internal types, repeat until no new rules), does it always terminate?
+
+### No — productive cycles diverge
+
+```
+inc: type.
+r1: A -o { inc (s X) }.
+r2: inc X -o { inc (s X) }.    % both consumes AND produces inc
+```
+
+Round n produces `A -o { inc (s^n X) }` — strictly growing terms, distinct hashes, infinite sequence. The fixed point does not exist.
+
+### Sufficient condition: DAG on internal types
+
+If no rule both consumes and produces the same internal type (even transitively), the internal-type dependency graph is a DAG. Composition terminates in O(depth) rounds where depth = longest chain in the DAG.
+
+- **Polynomial check** (standard graph cycle detection)
+- **Covers all practical cases**: bipartite producer/consumer (EVM), chained abstractions
+- The Petri net analog: series-place elimination (Berthelot 1987) requires the place to lie on no cycle
+
+### Directed composition always terminates
+
+When composition is restricted to producer→consumer direction (expansion rules produce M, target rules consume M, composed rules don't mention M), one round suffices per internal type. No feedback possible. This is the `simplify(target, expansion)` pattern.
+
+### Connection to partial deduction termination
+
+The Küngas-Matskin unique-producer condition and the Leuschel-Bruynooghe global control (subsumption-based termination for partial deduction) are both instances of the DAG condition: they ensure the unfolding process generates no new intermediate atoms that weren't already present, preventing productive cycles.
+
 ## Implementation Strategy in CALC
 
 ### Where in the pipeline
