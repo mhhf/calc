@@ -8,6 +8,7 @@ category: "Forward Chaining"
 unique_contribution: "The observation that the indexed monad {A}_a (THY_0013) lifts from runtime state-level execution to compile-time rule-level composition — with simplify(T,E) as the terminating directed fragment and qui() as the general (potentially non-terminating) fixed point. The decomposition simplify(A,B) = qui(A+B) - B and the identification of productive cycles as the termination obstacle."
 references:
   - "THY_0013 — The Indexed Lax Monad"
+  - "THY_0015 — The Graded Indexed Monad (QTT quantities on monadic phases)"
   - "RES_0099 — Compile-Time Cut Elimination for Forward Rule Composition"
   - "Lambek (1969). Deductive Systems and Categories."
   - "Cockett & Seely. Proof Theory of the Cut Rule."
@@ -138,11 +139,24 @@ The indexed monad `{A}_a` operates on types (stratification). `simplify` operate
 
 `simplify` is a form of partial evaluation: specializing the two-phase interpreter (indexed monad) by fixing the expansion rules at compile time. The Futamura projection analogy: `PE(two-phase-interpreter, expansion-rules) = monolithic-rules`. Is there a deeper connection to the partial evaluation literature that could guide the design?
 
-## 7. References
+## 7. Relationship to THY_0015 (The Graded Indexed Monad)
+
+The compile-time monad described here is the **grade-0 case** of the graded indexed monad `{A}_{q·a}` (THY_0015). The grading comes from QTT's {0, 1, ω} semiring:
+
+- `{A}_{0·a}` = this document's compile-time monad (evaluate at compile time, erase)
+- `{A}_{1·a}` = THY_0013's runtime monad (forward-execute linearly)
+- `{A}_{ω·a}` = persistent phase (always-available knowledge)
+
+The key insight of THY_0015: grade 0 doesn't require dependent types (contra RES_0056 §10) — it's a staging annotation, meaningful through the indexed monad's phase structure.
+
+## 8. References
 
 - THY_0013 — The Indexed Lax Monad
+- THY_0015 — The Graded Indexed Monad
 - RES_0099 — Compile-Time Cut Elimination (literature survey + categorical perspective)
 - Lambek, "Deductive Systems and Categories" (1969)
 - Cockett & Seely, "Proof Theory of the Cut Rule"
 - Meseguer & Montanari, "Petri Nets Are Monoids" (1990)
 - Martens, "Ceptre" (2015) — stages as special case of indexed monad
+- Atkey, "Syntax and Semantics of Quantitative Type Theory" (LICS 2018)
+- Cockett, "Deforestation, Program Transformation, and Cut-Elimination" (ENTCS 2001)
