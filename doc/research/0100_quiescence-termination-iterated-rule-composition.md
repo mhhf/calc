@@ -140,7 +140,7 @@ A productive cycle corresponds to a **feedback loop** in the string diagram — 
 
 Gentzen's original proof of cut elimination for LK (1935) uses a measure (cut degree + height) and shows strict decrease at each step. The measure terminates because cut degree is finite and decreases. This works for *single* cut eliminations, not iterated composition of a rule set.
 
-Girard (1987) extends this to ILL. The termination measure for linear logic cut elimination involves the *size* of the cut formula and the *height* of the derivation. For multiplicative ILL (no `!`), this is polynomial (Mairson-Terui 2003). For `!`, it is non-elementary in general.
+Girard (1987) extends this to ILL. The termination measure for linear logic cut elimination involves the *size* of the cut formula and the *height* of the derivation. For multiplicative ILL (no `!`), the CEP is PTIME-complete (Mairson-Terui 2003) — polynomial cost. For `!`, it is non-elementary in general.
 
 **Key: these results address one fixed derivation tree, not an open-ended rule composition fixpoint.**
 
