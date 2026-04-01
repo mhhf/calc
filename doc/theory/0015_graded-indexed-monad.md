@@ -1,127 +1,71 @@
 ---
-title: "The Graded Indexed Monad: QTT Quantities on Monadic Phases"
+title: "Grade-0 Staging and Stratified Cut Elimination for Forward-Chaining ILL"
 created: 2026-04-01
 modified: 2026-04-01
-summary: "The {0,1,ω} semiring grades resource types independently of the indexed monad — grade 0 means compile-time-only (staging), grade 1 means linear runtime, grade ω means persistent. When combined with the indexed monad {A}_a, this gives {A}_{q·a}. The graded semiring stands alone; the indexed monad is orthogonal. Grade 0 is meaningful WITHOUT dependent types as a staging annotation."
-tags: [linear-logic, QTT, graded-types, forward-chaining, lax-monad, semiring, staging, subexponentials, cut-elimination, proof-theory]
+summary: "QTT's grade-0 quantity is meaningful in forward-chaining ILL WITHOUT dependent types — as a staging annotation ('compile-time only, composed away via cut'). Cut elimination in graded ILL can be stratified by grade: grade-0 cuts at compile time, grade-1 at runtime, grade-ω never. The graded semiring {0,1,ω} (established: Atkey 2018) and the indexed monad {A}_a (THY_0013) are orthogonal dimensions that compose into {A}_{q·a}."
+tags: [linear-logic, QTT, graded-types, forward-chaining, staging, cut-elimination, proof-theory]
 category: "Forward Chaining"
-unique_contribution: "Three contributions: (1) QTT's grade 0 is meaningful in forward-chaining ILL WITHOUT dependent types — as a staging annotation, not a type-level annotation. (2) The graded semiring {0,1,ω} on type declarations is standalone — it does not require the indexed monad's phase structure, only a compiler that eliminates grade-0 types via cut. The indexed monad adds orthogonal phase/stratum structure. (3) Stratified cut elimination: grade-0 cuts are eliminated at compile time, grade-1 at runtime, grade-ω never — a novel phased procedure not named in the literature (see RES_0102)."
+unique_contribution: "Two novel results: (1) QTT's grade-0 quantity is meaningful in forward-chaining ILL WITHOUT dependent types — as a staging annotation where the compiler eliminates grade-0 types via cut. This corrects RES_0056 §10. (2) Stratified cut elimination by grade: a phased procedure where grade-0 cuts are eliminated at compile time, grade-1 at runtime, grade-ω never. RES_0102 confirms this is not a named theorem in the literature."
 references:
   - "THY_0013 — The Indexed Lax Monad"
   - "THY_0014 — Compile-Time Evaluation of the Indexed Monad"
-  - "RES_0056 — QTT Sequent Calculus and Gap Analysis"
   - "RES_0054 — Graded Resource Analysis for Linear Logic"
+  - "RES_0056 — QTT Sequent Calculus and Gap Analysis"
   - "RES_0074 — QTT/Graded/Adjoint/SELL/MTDC Expressiveness Hierarchy"
+  - "RES_0101 — QTT, SELL, Graded Modalities, and Petri Nets"
   - "RES_0102 — Stratified and Phased Cut Elimination (literature survey)"
   - "Atkey (2018). Syntax and Semantics of Quantitative Type Theory. LICS."
   - "McBride (2016). I Got Plenty o' Nuttin'."
-  - "Brady (2021). Idris 2: QTT in Practice. ECOOP."
-  - "Gaboardi, Katsumata, Orchard, Breuvart, Uustalu (2016). Combining Effects and Coeffects via Grading. ICFP."
   - "Girard, Scedrov, Scott (1992). Bounded Linear Logic. TCS."
   - "Vollmer, Marshall, Eades, Orchard (2025). A Mixed Linear and Graded Logic. CSL."
   - "Baillot, Mazza (2010). Linear Logic by Levels. TCS."
+  - "Kovács (2023). Staged Compilation with Two-Level Type Theory. POPL."
+  - "Davies (1996). A Temporal Logic Approach to Binding-Time Analysis. LICS."
 ---
 
-# The Graded Indexed Monad: QTT Quantities on Monadic Phases
+# Grade-0 Staging and Stratified Cut Elimination for Forward-Chaining ILL
 
-## 1. The Three Quantities Already Exist
+## Prior art
 
-CALC already implements the {0, 1, ω} semiring, but doesn't name it:
+The {0,1,ω} semiring is established: BLL (Girard-Scedrov-Scott 1992) → Ghica-Smith / Brunel et al. (ESOP 2014) → McBride (2016) → Atkey (2018, QTT) → Brady (Idris 2, 2021). See RES_0054, RES_0056, RES_0074 for surveys. Indexed monads are established: Atkey (2009), Katsumata (2014). Graded + indexed monads combined: Gaboardi et al. (ICFP 2016). The indexed lax monad `{A}_a` for CALC's forward chaining is THY_0013.
 
-| QTT quantity | CALC concept | Code location |
-|---|---|---|
-| **1** (linear) | `state.linear` — consumed exactly once | `fact-set.js`, `consumeLinear` |
-| **ω** (unrestricted) | `state.persistent` — never consumed, always available | `persistent.js`, `producePersistent` (idempotent) |
-| **0** (erased) | `rule.preserved[]` — matched but not consumed or produced (net delta = 0) | `rule-analysis.js:analyzeDeltas`, `match.js:reserved` map |
+This document contributes two results that are NOT in the literature.
 
-The `$P` sugar (preserved resources) implements grade-0 at the **rule delta level** — a resource with zero net change per rule firing. But this is not the same as QTT's grade 0.
+## 1. Grade 0 as Staging Without Dependent Types
 
-## 2. Two Interpretations of Grade 0
+RES_0056 §10 states: *"Grade 0 requires dependent types to be meaningful."*
 
-RES_0056 §10 states: *"Grade 0 requires dependent types to be meaningful. Without dependent types, there ARE no types to mention it in."*
-
-This is correct for **QTT proper**, where grade 0 means "exists in types but not in computation" — you need dependent types for types to mention runtime-erased values.
-
-But in forward-chaining ILL, grade 0 has a different, equally rigorous meaning:
+This is correct for QTT proper, where grade 0 means "exists in types but not computation" — requiring dependent types for types to mention erased values. But in forward-chaining ILL, grade 0 has a different, equally rigorous meaning:
 
 | | QTT grade 0 | Forward-chaining grade 0 |
 |---|---|---|
 | **Meaning** | Type-level only, erased from computation | Compile-time only, erased from execution |
-| **Requires** | Dependent types (types mention erased values) | Type declarations with quantity annotations + a compiler that eliminates grade-0 types |
+| **Requires** | Dependent types | Type declarations with grade annotations + compiler that eliminates grade-0 types |
 | **Mechanism** | Type checker ensures 0-grade values don't appear in terms | Compiler composes away 0-grade types via cut elimination |
 | **Violation** | Type error: "using erased variable at runtime" | Composition error: "abstract type M not fully eliminated" |
-| **Example** | `id : (0 a : Type) -> a -> a` — `a` erased | `@abstract step : ... type.` — `step` composed away |
+| **Example** | `id : (0 a : Type) -> a -> a` | `@abstract step : ... type.` |
 
-**The staging interpretation of grade 0 is meaningful without dependent types.** It needs only:
-1. **Type declarations with grade annotations** — `@abstract M : ... type.` declares M as grade-0
-2. **A compilation step** that performs cut elimination on grade-0 types (composing producer/consumer rule pairs)
-3. **A static check** that no grade-0 types remain after compilation
+**The staging interpretation of grade 0 needs only:**
+1. Type declarations with grade annotations — `@abstract M : ... type.` declares M as grade-0
+2. A compilation step that performs cut elimination on grade-0 types
+3. A static check that no grade-0 types remain after compilation
 
-Note: the graded semiring {0,1,ω} on type declarations is **standalone**. It does not require the indexed monad `{A}_a` (THY_0013) or its phase/stratum structure. The indexed monad adds an orthogonal dimension (which rules fire when); the semiring adds another (which types survive to runtime). They compose naturally (§3) but neither depends on the other.
+No indexed monad. No dependent types. No module algebra. The graded semiring on type declarations is **standalone**.
 
-## 3. The Graded Indexed Monad `{A}_{q·a}`
+### Why this is novel
 
-The graded semiring (§2) and the indexed monad (THY_0013) are orthogonal:
+RES_0101 §9 lists "QTT 0-grade = staging formal equivalence" as novel/unestablished. The closest prior work:
+- Davies-Pfenning (JACM 2001): `□A` for compile-time code via S4 modality — but this is modal, not graded, and doesn't use a semiring
+- Kovács 2LTT (POPL 2023): two-level staging — but meta/object levels, not semiring grades
+- No paper interprets QTT's grade 0 as forward-chaining staging
 
-| Dimension | Source | What it governs |
-|---|---|---|
-| **Quantity q ∈ {0,1,ω}** | QTT semiring | *When* a type exists: compile-time (0), linear runtime (1), persistent (ω) |
-| **Stratum label a** | SELL / indexed monad | *Where* rules are visible: which phase/module/scope |
+## 2. Stratified Cut Elimination by Grade
 
-When combined, they give `{A}_{q·a}`: "execute rules at stratum a with quantity q."
+**Claim:** Cut elimination in graded forward-chaining ILL can be performed in phases, stratified by grade.
 
-```
-{A}_{0·a}  =  evaluate stratum a at COMPILE TIME, erase, return A
-{A}_{1·a}  =  execute stratum a at RUNTIME (linear — consumed once), return A
-{A}_{ω·a}  =  execute stratum a at RUNTIME (persistent — reusable), return A
-```
+### The graded cut
 
-This subsumes three constructs:
-
-| Construct | Graded monad instance |
-|---|---|
-| THY_0013's indexed monad `{A}_a` (runtime execution) | `{A}_{1·a}` |
-| THY_0014's compile-time monad (composition) | `{A}_{0·a}` |
-| Persistent fact derivation (backward chaining) | `{A}_{ω·a}` (always-available knowledge) |
-
-Two-phase staged execution with compile-time composition is:
-
-```
-{B}_{1·target}  ∘  {M}_{0·expansion}
-```
-
-The 0-quantity on the expansion phase says: this phase is evaluated at compile time. Its intermediate types are erased. The result feeds into the 1-phase (runtime linear execution).
-
-## 4. Semiring Arithmetic Has Natural Staging Interpretations
-
-The {0, 1, ω} semiring:
-
-```
-+  | 0  1  ω        ×  | 0  1  ω
-───+────────        ───+────────
-0  | 0  1  ω        0  | 0  0  0
-1  | 1  ω  ω        1  | 0  1  ω
-ω  | ω  ω  ω        ω  | 0  ω  ω
-```
-
-**Addition** (combining usages across sub-derivations):
-- `0 + 0 = 0` — used at compile time + used at compile time = still compile-time
-- `0 + 1 = 1` — compile-time + runtime = runtime (must survive to runtime)
-- `1 + 1 = ω` — two linear uses = unrestricted (standard QTT)
-
-**Multiplication** (scaling through binders / stratum boundaries):
-- `0 × q = 0` — anything inside a 0-phase is compile-time only
-- `1 × q = q` — linear nesting preserves the inner quantity
-- `ω × 0 = 0` — persistent use of a compile-time thing is still compile-time
-- `ω × 1 = ω` — persistent use of a linear thing = unrestricted
-
-The multiplication rule `0 × q = 0` says: **resources used only through a compile-time phase are themselves compile-time.** This is exactly why composition through a 0-grade type eliminates all traces of that type — the resources "inside" the 0-phase are scaled by 0.
-
-## 5. Proof Theory of the Graded Semiring
-
-### 5.1 Graded Cut Rule
-
-The graded cut rule for forward-chaining ILL. A cut on type M at grade q:
+A cut on type M at grade q (forward-chaining formulation):
 
 ```
 Γ₁ ⊢ M ⊗ Δ₁       M ⊗ Γ₂ ⊢ Δ₂
@@ -129,250 +73,128 @@ The graded cut rule for forward-chaining ILL. A cut on type M at grade q:
         Γ₁ ⊗ Γ₂ ⊢ Δ₁ ⊗ Δ₂
 ```
 
-The grade q determines **when** the cut is performed:
+The grade determines **when** the cut is performed:
 
 | Grade | Cut behavior | When eliminated |
 |---|---|---|
-| **0** | M is erased — entire sub-derivation producing M is composed away | Compile time |
-| **1** | M is consumed linearly — standard multiplicative cut | Runtime (forward execution) |
-| **ω** | M is persistent — available to all consumers, never consumed | Never (persists as axiom) |
+| **0** | M erased — producer/consumer fused, M disappears | Compile time |
+| **1** | M consumed linearly — standard multiplicative cut | Runtime |
+| **ω** | M persistent — available to all, never consumed | Never |
 
-Grade-0 cut corresponds to the **weakening** case in BLL (Girard-Scedrov-Scott 1992): the cut formula is used 0 times, so both the producer and consumer derivations are "fused" without the intermediate type. In standard ILL this is forbidden (no weakening on linear types), but grade 0 explicitly permits it — it is a type that was only ever meant to be an intermediate.
+Grade-0 cut is the forward-chaining analog of BLL's weakening case (cut formula used 0 times). In standard ILL this is forbidden (no weakening on linear types), but grade 0 explicitly marks types that exist only to be composed away.
 
-### 5.2 Stratified Cut Elimination (Novel)
+### The phased procedure
 
-**Claim:** Cut elimination in graded ILL can be performed in phases, stratified by grade:
+1. **Phase 0 (compile time):** Eliminate all grade-0 cuts. Each composes a producer rule with a consumer rule, erasing the grade-0 type.
+2. **Phase 1 (runtime):** Eliminate grade-1 cuts by forward execution (multiset rewriting).
+3. **Phase ω:** Grade-ω resources persist as axioms. No elimination.
 
-1. **Phase 0 (compile time):** Eliminate all cuts on grade-0 types. Each grade-0 cut composes a producer rule with a consumer rule, yielding a rule that doesn't mention the grade-0 type. After phase 0, no grade-0 types remain.
+**Invariant:** After phase k, no grade-k types remain. The proof is cut-free at all grades ≤ k.
 
-2. **Phase 1 (runtime):** Eliminate grade-1 cuts by forward execution — the standard multiset rewriting semantics. Each rule firing consumes grade-1 resources and produces new ones.
+**Termination:**
+- Phase 0: terminates when the grade-0 type dependency graph is a DAG (THY_0014 §4)
+- Phase 1: application-dependent (same as standard forward chaining termination)
+- Phase ω: trivially terminates
 
-3. **Phase ω (persistent):** Grade-ω resources are never cut-eliminated. They persist as axioms available to all derivations.
+### Soundness of phase 0
 
-**Invariant:** At each phase boundary, the proof is cut-free at all lower grades. After phase 0, no grade-0 types exist. After phase 1, all linear resources are consumed. Grade-ω facts remain.
+Grade-0 cut elimination is sound when:
+1. Every grade-0 type is fully eliminated (no tokens remain)
+2. Grade-0 types don't appear in initial states or goals
+3. Each (producer, consumer) pair has a unique cut result (guaranteed by linearity)
 
-**Termination by phase:**
-- Phase 0 terminates when the internal-type dependency graph is a DAG (THY_0014 §4). The bipartite condition (grade-0 types are only produced by expansion rules, only consumed by target rules) guarantees one round.
-- Phase 1 terminates when the forward rule set reaches quiescence (application-dependent, same as standard forward chaining).
-- Phase ω trivially "terminates" — nothing to eliminate.
+Under these conditions: `reachable(S, composed_rules) = reachable(S, original_rules)` for all base-type initial states S.
 
-**Novelty:** RES_0102 surveys all known work on stratified cut elimination. No paper states this as a named theorem. The closest results:
-- Baillot-Mazza (2010): level-indexed cut elimination for light logics — motivated by complexity bounds, not staging
-- Davies (1996): "normalization can be done in stage order" — an observation about λ-calculus, not a sequent calculus theorem
-- Kovács 2LTT (2022): two-phase staging algorithm — algorithmic, not proof-theoretic
-- BLL (1992): grade-bounded duplication — complexity, not phased elimination
+### Novelty
 
-### 5.3 Soundness of Phase-0 Elimination
+RES_0102 surveys all known work. No paper states "cut elimination stratified by formula grade" as a named theorem. The closest results each capture a fragment:
+- **Baillot-Mazza (2010):** level-indexed cut elimination in light logics — complexity bounds, not staging
+- **Davies (LICS 1996):** "normalization can be done in stage order" — λ-calculus observation, not sequent calculus theorem
+- **Kovács 2LTT (2023):** two-phase staging algorithm — operational, not proof-theoretic
+- **BLL (1992):** grade-bounded duplication — complexity, not phased elimination
+- **SELL (Nigam-Miller 2009), Adjoint logic (Pruiksma 2024):** cut admissibility by simultaneous induction, not phase-by-phase
 
-Grade-0 cut elimination is sound (produces equivalent reachable states) when:
+## 3. Orthogonal Composition: `{A}_{q·a}`
 
-1. **Completeness:** Every grade-0 type M is fully eliminated — no M tokens remain in the composed rule set. (If not, composition error.)
-2. **Conservative extension:** The grade-0 types don't appear in initial states or goals. (If they did, erasing them changes the problem.)
-3. **Determinism of composition:** For each (producer, consumer) pair, the multiplicative cut has a unique result. (Guaranteed by linearity — each M token is consumed exactly once.)
+The graded semiring (§1–2) and the indexed monad (THY_0013) are **orthogonal** dimensions:
 
-Under these conditions, for all base-type initial states S:
+| Dimension | Source | What it governs |
+|---|---|---|
+| **Quantity q ∈ {0,1,ω}** | QTT semiring (Atkey 2018) | *When* a type exists: compile-time, linear runtime, persistent |
+| **Stratum label a** | SELL / indexed monad (THY_0013) | *Where* rules are visible: which phase/module/scope |
 
-> reachable(S, composed_rules) = reachable(S, original_rules)
-
-This is the compile-time analog of the standard cut-elimination theorem for ILL: eliminating cuts doesn't change what is provable.
-
-### 5.4 Grade-ω as Structural Rule
-
-Grade ω corresponds to the exponential `!` in standard ILL. The structural rules (weakening, contraction) are permitted exactly for grade-ω resources:
-
-- **Weakening:** A grade-ω resource can be ignored (not consumed) — standard `!`-weakening
-- **Contraction:** A grade-ω resource can be used multiple times — standard `!`-contraction
-
-The graded semiring unifies these: `ω + ω = ω` (contraction is idempotent), `0 · ω = 0` (compile-time scaling erases even persistent resources).
-
-## 6. Proof Theory of the Indexed Monad
-
-### 6.1 Monadic Let as Cut
-
-The indexed monad's bind operation `{A}_a >>= f` is a form of cut:
+Neither requires the other. They compose into `{A}_{q·a}`: "execute rules at stratum a with quantity q."
 
 ```
-Γ₁ ⊢ {M}_a       M, Γ₂ ⊢ {B}_b
-──────────────────────────────────── monadic cut (bind)
-        Γ₁ ⊗ Γ₂ ⊢ {B}_b
+{A}_{0·a}  =  evaluate stratum a at COMPILE TIME, erase
+{A}_{1·a}  =  execute stratum a at RUNTIME (linear)
+{A}_{ω·a}  =  execute stratum a at RUNTIME (persistent)
 ```
 
-The intermediate state M is produced by executing stratum a to quiescence, then consumed by stratum b. This is cut on M, mediated by the monad.
+Two-phase staged execution: `{B}_{1·target} ∘ {M}_{0·expansion}` — phase 0 composed away at compile time, phase 1 executed at runtime.
 
-### 6.2 Grade-0 Bind = simplify
+### Monadic bind by grade
 
-When the first phase has grade 0:
+The indexed monad's bind `{A}_a >>= f` is a cut. When graded:
 
-```
-Γ₁ ⊢ {M}_{0·a}       M, Γ₂ ⊢ {B}_{1·b}
-────────────────────────────────────────── grade-0 bind
-        Γ₁ ⊗ Γ₂ ⊢ {B}_{1·b}
-```
+- **Grade-0 bind** = `simplify` (THY_0014): compile-time rule composition, intermediate types erased
+- **Grade-1 bind** = standard runtime phase sequencing
+- **Grade-ω bind** = persistent knowledge accumulation (always available)
 
-The grade-0 bind says: evaluate stratum a at compile time, obtain M, feed it to stratum b. The result is a single-phase runtime computation. This is exactly `simplify(b, a)` from THY_0014.
+### Reduction of CALC concepts
 
-**Grade-0 bind elimination:** The compiler eliminates grade-0 binds by composing the rules of stratum a into the rules of stratum b. After elimination, stratum a's rules are gone, M doesn't exist at runtime, and stratum b's rules directly compute from base types to results.
-
-### 6.3 How the Two Dimensions Compose
-
-The graded semiring and the indexed monad compose via the product `(q, a)`:
-
-```
-{A}_{q·a}  where  q ∈ {0,1,ω}  and  a ∈ Labels
-```
-
-Each dimension has its own cut structure:
-- **Grade cut** (§5.1): eliminates a type M by fusing producer/consumer — determined by q
-- **Stratum cut** (monadic bind, §6.1): sequences two phases a,b — determined by a
-
-The combination: a grade-0 stratum cut (§6.2) is eliminated at compile time. A grade-1 stratum cut is a runtime phase boundary.
-
-## 7. The QTT Cut Rule IS Composition
-
-QTT's cut (substitution) rule:
-
-```
-Γ₁ ⊢ A       Γ₂, x :_ρ A ⊢ C
-────────────────────────────────
-    Γ₁ + ρ × Γ₂ ⊢ C
-```
-
-When ρ = 0 (the cut formula is used 0 times at runtime):
-- The result's usage is `Γ₁ + 0 × Γ₂ = Γ₁`... but this isn't quite right for our setting.
-
-For forward rule composition, the analogy is more precise at the **type level**:
-
-- Expansion rule (produces M at grade 0): `Γ_E -o { M * Δ_E }`
-- Target rule (consumes M): `M * Γ_T -o { Δ_T }`
-- Cut on M (grade 0): the composed rule has `Γ_E * Γ_T -o { Δ_E * Δ_T }`
-
-All resources in Γ_E and Γ_T keep their original grades (1 or ω). Only M (grade 0) disappears. The cut eliminates the 0-grade type and preserves everything else.
-
-## 8. The `@abstract` Annotation = Grade 0 on Type Declarations
-
-The practical syntax:
-
-```ill
-@abstract step : bin -> bin -> bin -> bin -> type.
-```
-
-This declares `step` as a grade-0 type. The compiler:
-
-1. **Identifies** all rules producing/consuming `step` (from module membership)
-2. **Composes** each (producer, consumer) pair via multiplicative cut
-3. **Verifies** no `step` tokens remain in the composed rules
-4. **Reports error** if `step` appears in initial states or goals (grade violation: using a 0-grade type at runtime)
-
-Compared to the explicit `simplify(T, E)` syntax:
-- `simplify` requires the user to separate rules into two groups (target, expansion)
-- `@abstract` requires only a type annotation — the compiler finds the rules automatically
-- Both produce the same result; `@abstract` is the declarative version
-
-The two are equivalent when the abstract type has a single expansion module:
-```
-@abstract M  ≡  simplify(everything_consuming_M, everything_producing_M)
-```
-
-## 9. Reduction of Existing Concepts
-
-| Existing concept | QTT {0,1,ω} reduction |
+| Existing concept | Graded interpretation |
 |---|---|
 | Linear resource `P` | Grade-1 resource |
 | Persistent fact `!P` | Grade-ω resource |
-| `$P` preserved sugar | Grade-1 resource with net-zero delta per rule (NOT grade 0) |
+| `$P` preserved sugar | Grade-1 with net-zero delta (NOT grade 0) |
 | `@abstract M` type | Grade-0 type declaration |
 | `simplify(T, E)` | Evaluate grade-0 types via cut elimination |
-| `qui(X)` | Iterate grade-0 evaluation to fixed point |
-| `{A}_a` indexed monad | `{A}_{1·a}` (grade-1 runtime phase at stratum a) |
-| Compile-time monad (THY_0014) | `{A}_{0·a}` (grade-0 compile-time phase at stratum a) |
-| Module union `A + B` | Grade-preserving rule set union |
-| Module subtract `A - B` | Remove rules from active set |
-| SELL subexponential `!_a` | Grade-ω resource at stratum a |
+| `{A}_a` indexed monad | `{A}_{1·a}` (grade-1 at stratum a) |
+| Compile-time monad (THY_0014) | `{A}_{0·a}` (grade-0 at stratum a) |
+| SELL subexponential `!_a` | Grade-ω at stratum a |
 
-## 10. What New Doors Open
+### Staging interpretation of semiring arithmetic
 
-### 10.1 Cross-stage persistent fact specialization
+The {0,1,ω} operations (see RES_0056 for tables) gain staging meaning in forward-chaining:
+- `0 × q = 0` — resources inside a compile-time phase are themselves compile-time
+- `0 + 1 = 1` — a type used both at compile-time and runtime must survive to runtime
+- `ω + ω = ω` — contraction is idempotent (standard)
 
-Currently, `!arr_get BC PC OP` is resolved at runtime by backward chaining. If BC (the bytecode) is known at compile time (e.g., for a specific contract), the `!arr_get` facts could be resolved during composition, hardcoding the opcodes into the composed rules. This is **grade-0 evaluation of persistent facts** — a deeper form of partial evaluation where compile-time-known persistent facts participate in composition.
+The `0 × q = 0` rule is why composition through a grade-0 type eliminates all traces: resources "inside" the 0-phase are scaled by 0.
 
-### 10.2 Multi-stage compilation towers
-
-Not just 0→1 (compile→run), but 0→0'→1:
-
-```ill
-@abstract(priority=1) raw_opcode : bin -> type.     % eliminated first
-@abstract(priority=2) step : bin -> bin -> type.     % eliminated second
-
-% Stage 0a: raw_opcode → step (compose opcodes into dispatch steps)
-% Stage 0b: step → base types (compose dispatch into final rules)
-% Stage 1: execute composed rules
-```
-
-Multiple grade-0 phases form a **tower of compile-time stages**, each eliminating one layer of intermediate types. The priority/dependency order determines the composition sequence (DAG condition from THY_0014 guarantees termination).
-
-### 10.3 Grade-aware dead code detection
-
-If a type is declared `@abstract` (grade 0) but no rule consumes it, the expansion rules producing it are dead code. Grade analysis detects this statically.
-
-### 10.4 Affine and bounded-reuse resources (future)
-
-The {0,1,ω} semiring extends naturally:
-- **Affine** (grade ≤ 1): resource can be dropped but not duplicated
-- **Bounded reuse** (grade n): resource can be used exactly n times
-- **Interval bounds** [lo, hi]: resource used between lo and hi times
-
-These require engine changes (RES_0054) but the conceptual framework is the same semiring.
-
-## 11. Interaction with SELL (TODO 151)
-
-THY_0013's indexed monad `{A}_a` is indexed by stratum label a (from SELL). The graded monad adds a second index q (from QTT). These are orthogonal:
-
-- **Label a** (SELL): which rules are visible (structural: which zone of the proof state)
-- **Quantity q** (QTT): how the type is used (0 = compile-time, 1 = linear, ω = persistent)
-
-A forward rule carries BOTH: its label (from `@module` / `@label`) and the quantity of its types (from `@abstract` / `!` / default-linear).
-
-In the Glad system (Hanukaev & Eades, TyDe 2023), each mode (= SELL label) carries its own graded semiring. Our system is simpler: one semiring {0,1,ω} shared across all strata, with labels providing the structural partitioning.
-
-## 12. Open Questions
-
-### Is grade 0 the right staging mechanism?
-
-Grade 0 gives us a clean binary: compile-time (0) or runtime (1/ω). But real staging systems often have more than two levels (MetaOCaml: arbitrary nesting of brackets). Is there a natural extension where grades from a richer semiring give multi-level staging? The tower of 0-phases (§10.2) is one approach, but it requires explicit priority ordering.
-
-### How does grade 0 interact with focusing?
-
-Andreoli focusing partitions connectives by polarity. A grade-0 type is "compile-time positive" — it can be focused on during composition but doesn't participate in runtime focusing. Does a grade-aware focusing discipline exist? This is open (noted in RES_0054 §9).
+## 4. Open Questions
 
 ### Can grades be inferred from rule structure?
 
-Given a set of forward rules, can we automatically detect which types should be grade 0? This is a form of **binding-time analysis** (BTA). The sufficient condition: a type M is inferrably grade-0 if (1) no rule both produces and consumes M, and (2) M doesn't appear in initial states or goals. This is the bipartite condition from THY_0014.
-
-### What about grade-0 persistent facts?
-
-A persistent fact `!P` at grade 0 would be a compile-time-only axiom — available for backward chaining during composition but erased before runtime. This could model compile-time assumptions: "for this contract, slot 0 always holds the owner address." The backward chainer resolves `!storage(0, owner)` during composition, hardcoding the result.
+BTA (binding-time analysis) for forward-chaining ILL: a type M is inferrably grade-0 if (1) no rule both produces and consumes M, and (2) M doesn't appear in initial states or goals. This is the bipartite condition from THY_0014. Novel aspect: **linear BTA**, where static types are linear (consumed once during specialization). No BTA literature addresses linear programs.
 
 ### Is there a graded focusing theorem?
 
-No focused proof system for semiring-graded ILL exists in the literature. The standard Andreoli focusing + the graded semiring would yield a system where focus phases respect grades — e.g., grade-0 focus phases are compile-time only. Proving cut elimination for such a system is open.
+No focused proof system for semiring-graded ILL exists. Andreoli focusing + the graded semiring would yield a system where focus phases respect grades. Proving cut elimination for such a system is open (noted in RES_0054 §9).
 
-## 13. References
+### Grade-0 persistent facts
+
+A persistent fact `!P` at grade 0 would be a compile-time-only axiom — available for backward chaining during composition but erased before runtime. This could model compile-time assumptions ("for this contract, slot 0 always holds the owner address").
+
+### Multi-stage compilation towers
+
+Multiple grade-0 types with a dependency order form a tower of compile-time stages (THY_0014 §4). Each layer is eliminated before the next. The DAG condition guarantees termination. Relationship to multi-level staging (MetaOCaml, Kovács 2LTT) is unclear.
+
+## 5. References
 
 - THY_0013 — The Indexed Lax Monad
 - THY_0014 — Compile-Time Evaluation of the Indexed Monad
 - RES_0054 — Graded Resource Analysis for Linear Logic
 - RES_0056 — QTT Sequent Calculus and Gap Analysis (§10 corrected here)
 - RES_0074 — QTT/Graded/Adjoint/SELL/MTDC Expressiveness Hierarchy
+- RES_0101 — QTT, SELL, Graded Modalities, and Petri Nets
 - RES_0102 — Stratified and Phased Cut Elimination (literature survey)
 - Atkey, "Syntax and Semantics of Quantitative Type Theory" (LICS 2018)
 - McBride, "I Got Plenty o' Nuttin'" (2016)
-- Brady, "Idris 2: QTT in Practice" (ECOOP 2021)
-- Gaboardi, Katsumata, Orchard, Breuvart, Uustalu, "Combining Effects and Coeffects via Grading" (ICFP 2016)
-- Moon, Eades, Orchard, "Graded Modal Dependent Type Theory" (ICFP 2021)
-- Hanukaev & Eades, "Combining Dependency, Grades, and Adjoint Logic" (TyDe 2023)
 - Girard, Scedrov, Scott, "Bounded Linear Logic" (TCS 1992)
 - Baillot, Mazza, "Linear Logic by Levels and Bounded Time Complexity" (TCS 2010)
 - Vollmer, Marshall, Eades, Orchard, "A Mixed Linear and Graded Logic" (CSL 2025)
-- Cockett, "Deforestation, Program Transformation, and Cut-Elimination" (ENTCS 2001)
 - Kovács, "Staged Compilation with Two-Level Type Theory" (POPL 2023)
 - Davies, "A Temporal Logic Approach to Binding-Time Analysis" (LICS 1996)
+- Gaboardi, Katsumata, Orchard, Breuvart, Uustalu, "Combining Effects and Coeffects via Grading" (ICFP 2016)
