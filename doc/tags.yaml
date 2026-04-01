@@ -1,7 +1,7 @@
-452 tags written to doc/tags.yaml
+454 tags written to doc/tags.yaml
 -chaining: 30
+  proof-theory: 28
   clf: 26
-  proof-theory: 26
   research: 22
   performance: 21
   chr: 20
@@ -10,10 +10,10 @@
   implementation: 17
   lax-monad: 15
   optimization: 14
+  adjoint-logic: 13
   session-types: 13
   symbolic-execution: 13
   symexec: 13
-  adjoint-logic: 12
   QTT: 12
   verification: 12
   graded-types: 11
@@ -21,12 +21,12 @@
   Ceptre: 10
   dependent-types: 10
   ownership: 10
+  sequent-calculus: 10
   theory: 10
+  Curry-Howard: 9
+  cut-elimination: 9
   forward-engine: 9
   logical-framework: 9
-  sequent-calculus: 9
-  Curry-Howard: 8
-  cut-elimination: 8
   exponentials: 8
   resource-semantics: 8
   semiring: 8
@@ -36,6 +36,7 @@
   display-calculus: 7
   fixed-points: 7
   metaproofs: 7
+  subexponentials: 7
   category-theory: 6
   consensus: 6
   evm: 6
@@ -45,7 +46,6 @@
   multimodal: 6
   polarity: 6
   proof-search: 6
-  subexponentials: 6
   tooling: 6
   benchmarking: 5
   CLP: 5
@@ -72,12 +72,14 @@
   induction: 4
   invariants: 4
   lollimon: 4
+  modal-logic: 4
   modalities: 4
   model-checking: 4
   MTDC: 4
   prover: 4
   separation-logic: 4
   smt: 4
+  staging: 4
   stark: 4
   store: 4
   unification: 4
@@ -97,7 +99,6 @@
   ivc: 3
   matching: 3
   memoization: 3
-  modal-logic: 3
   MPST: 3
   multicategory: 3
   partial-evaluation: 3
@@ -106,7 +107,6 @@
   prover-architecture: 3
   residuation: 3
   semi-naive: 3
-  staging: 3
   termination: 3
   type-checking: 3
   UI: 3
@@ -119,6 +119,7 @@
   branching: 2
   classical-linear-logic: 2
   coeffects: 2
+  complexity: 2
   concurrency: 2
   connectives: 2
   constraint-propagation: 2
@@ -159,6 +160,7 @@
   metavariables: 2
   monad: 2
   multiset: 2
+  normalization-by-evaluation: 2
   operational-semantics: 2
   oracles: 2
   pacioli-group: 2
@@ -178,6 +180,7 @@
   recursion: 2
   resource-tracking: 2
   second-order: 2
+  SELL: 2
   semantics: 2
   simplification: 2
   stages: 2
@@ -232,7 +235,6 @@
   CLF: 1
   code-trees: 1
   completed: 1
-  complexity: 1
   complexity-analysis: 1
   congruence-closure: 1
   contextual-types: 1
@@ -316,6 +318,7 @@
   Lafont: 1
   Lamping: 1
   LF: 1
+  light-logic: 1
   linear-negation: 1
   literature: 1
   locally-nameless: 1
@@ -345,7 +348,6 @@
   Nomos: 1
   nondeterminism: 1
   normalization: 1
-  normalization-by-evaluation: 1
   novel-contributions: 1
   open-problem: 1
   optimal-reduction: 1
@@ -402,7 +404,6 @@
   scheduling: 1
   security: 1
   self-verification: 1
-  SELL: 1
   sequent: 1
   shifts: 1
   size-change: 1
@@ -417,6 +418,7 @@
   storage-models: 1
   store-normalization: 1
   store-optimization: 1
+  stratification: 1
   study-plan: 1
   subformula-property: 1
   synchronous: 1
