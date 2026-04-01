@@ -8,7 +8,7 @@
   focusing: 19
   architecture: 17
   implementation: 17
-  lax-monad: 15
+  lax-monad: 14
   optimization: 14
   adjoint-logic: 13
   session-types: 13
@@ -29,14 +29,13 @@
   logical-framework: 9
   exponentials: 8
   resource-semantics: 8
-  semiring: 8
   authorization: 7
   Celf: 7
   coinduction: 7
   display-calculus: 7
   fixed-points: 7
   metaproofs: 7
-  subexponentials: 7
+  semiring: 7
   category-theory: 6
   consensus: 6
   evm: 6
@@ -46,6 +45,7 @@
   multimodal: 6
   polarity: 6
   proof-search: 6
+  subexponentials: 6
   tooling: 6
   benchmarking: 5
   CLP: 5
