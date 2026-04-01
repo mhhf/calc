@@ -151,7 +151,7 @@ This is the multiplicative cut rule in linear sequent calculus:
        Γ, Γ₂ ⊢ Δ₁ ⊗ Δ₂
 ```
 
-**Soundness:** Cut elimination holds for ILL (Girard 1987, Pfenning 1994). The composed rule is provably equivalent to the two-step sequence. For the multiplicative fragment (tensor, loli — no exponential cuts), cut elimination is polynomial (Mairson & Terui, ICTCS 2003): no duplication occurs because multiplicative rules split contexts without contraction.
+**Soundness:** Cut elimination holds for ILL (Girard 1987, Pfenning 1994). The composed rule is provably equivalent to the two-step sequence. For the multiplicative fragment (tensor, loli — no exponential cuts), the cut-elimination problem is PTIME-complete (Mairson & Terui, ICTCS 2003): no duplication occurs because multiplicative rules split contexts without contraction.
 
 **Existentials:** Rules with `∃` in consequents (e.g., `exists Z. (stack [Z | REST] * !add A B Z)`) are handled correctly. Cut on M does not interact with `∃` in other parts of the consequent — they pass through structurally unchanged (Pfenning 1994, §3.3).
 
@@ -329,7 +329,7 @@ loadFile:
 - Andreoli, "Logic Programming with Focusing Proofs in Linear Logic" (JLC, 1992)
 - Chaudhuri, Miller, Saurin, "Canonical Sequent Proofs via Multi-Focusing" (TCS, 2008)
 - Chaudhuri, "The Focused Inverse Method for Linear Logic" (CMU-CS-06-162, 2006)
-- Chaudhuri, Miller, Saurin, "Multi-focused Cut Elimination" (arXiv 1502.04771)
+- Brock-Nannestad & Guenot, "Cut Elimination in Multifocused Linear Logic" (LINEARITY 2014 / MSCS 2018)
 - Chaudhuri & Pfenning, "A Focusing Inverse Method Theorem Prover for First-Order Linear Logic" (IJCAR, 2006) — administrative cuts
 
 ### Program transformation
