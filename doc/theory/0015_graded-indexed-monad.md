@@ -52,12 +52,28 @@ This is correct for QTT proper, where grade 0 means "exists in types but not com
 
 No indexed monad. No dependent types. No module algebra. The graded semiring on type declarations is **standalone**.
 
+### Three interpretations of "0"
+
+The literature conflates three distinct meanings of grade 0:
+
+1. **Irrelevance** — the value doesn't matter; any value gives the same result (Pfenning, LICS 2001; Mishra-Linger, PhD thesis 2008)
+2. **Erasure** — present at type level, passively *removed* before runtime (QTT: Atkey 2018; Idris 2: Brady 2021)
+3. **Staging** — actively participates in compile-time computation, then erased (this document)
+
+Brady (Idris 2) writes "compile-time only (erased)" — conflating erasure with staging. But in Idris 2, grade-0 values are passively removed, not actively computed with. Our interpretation is different: grade-0 types actively participate in compile-time cut elimination (rule composition), producing new rules, then are erased. The types DO work at compile time.
+
 ### Why this is novel
 
-RES_0101 §9 lists "QTT 0-grade = staging formal equivalence" as novel/unestablished. The closest prior work:
-- Davies-Pfenning (JACM 2001): `□A` for compile-time code via S4 modality — but this is modal, not graded, and doesn't use a semiring
-- Kovács 2LTT (POPL 2023): two-level staging — but meta/object levels, not semiring grades
-- No paper interprets QTT's grade 0 as forward-chaining staging
+Exhaustive search across all major PL venues (POPL, ICFP, ESOP, LICS, CSL) confirms no paper gives grade 0 a staging interpretation in a non-dependent system:
+
+- **All non-dependent graded systems** (Granule: Orchard et al. ICFP 2019; Ghica-Smith ESOP 2014; Brunel et al. ESOP 2014; Wood-Atkey ESOP 2022) interpret grade 0 as "unused/discarded" — pure resource counting, not staging
+- **All dependent graded systems** (QTT, Idris 2, GrTT, Moon-Eades-Orchard ESOP 2021) interpret grade 0 as erasure/irrelevance — leveraging dependent types for the "type-level" meaning
+- **Linear Haskell** (Bernardy et al. POPL 2018) excluded 0 entirely: "there is no use case" in a non-dependent setting
+- **The Granule project** explicitly lists "multi-stage semantics and typing via graded modalities" as an **open PhD research project** (granule-project.github.io/projects.html), confirming no published work bridges this gap
+- **Davies-Pfenning** (JACM 2001): `□A` for staging via S4 modality — modal, not graded, no semiring
+- **Kovács 2LTT** (POPL 2023): two-level staging — modal levels, not semiring grades
+
+RES_0101 §9 independently lists "QTT 0-grade = staging formal equivalence" as novel/unestablished.
 
 ## 2. Stratified Cut Elimination by Grade
 
