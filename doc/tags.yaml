@@ -1,5 +1,5 @@
 454 tags written to doc/tags.yaml
--chaining: 30
+-chaining: 32
   proof-theory: 28
   clf: 26
   research: 22
@@ -8,59 +8,60 @@
   focusing: 19
   architecture: 17
   implementation: 17
+  optimization: 15
   lax-monad: 14
-  optimization: 14
+  symbolic-execution: 14
   adjoint-logic: 13
   session-types: 13
-  symbolic-execution: 13
   symexec: 13
   QTT: 12
   verification: 12
   graded-types: 11
   soundness: 11
   Ceptre: 10
+  cut-elimination: 10
   dependent-types: 10
   ownership: 10
   sequent-calculus: 10
   theory: 10
   Curry-Howard: 9
-  cut-elimination: 9
   forward-engine: 9
   logical-framework: 9
+  evm: 8
   exponentials: 8
   resource-semantics: 8
   authorization: 7
+  category-theory: 7
   Celf: 7
   coinduction: 7
   display-calculus: 7
   fixed-points: 7
   metaproofs: 7
+  multiset-rewriting: 7
   semiring: 7
-  category-theory: 6
   consensus: 6
-  evm: 6
   hevm: 6
   lnl: 6
   loli: 6
   multimodal: 6
   polarity: 6
   proof-search: 6
+  quiescence: 6
   subexponentials: 6
   tooling: 6
+  backward-chaining: 5
   benchmarking: 5
   CLP: 5
+  compilation: 5
   eigenvariable: 5
   memory-model: 5
-  multiset-rewriting: 5
   muMALL: 5
   oplus: 5
   plonky3: 5
-  quiescence: 5
+  staging: 5
   type-theory: 5
   accounting: 4
-  backward-chaining: 4
   blockchain: 4
-  compilation: 4
   confluence: 4
   content-addressing: 4
   cyclic-proofs: 4
@@ -76,10 +77,11 @@
   modalities: 4
   model-checking: 4
   MTDC: 4
+  partial-evaluation: 4
+  Petri-nets: 4
   prover: 4
   separation-logic: 4
   smt: 4
-  staging: 4
   stark: 4
   store: 4
   unification: 4
@@ -89,6 +91,7 @@
   bisimulation: 3
   CHR: 3
   completeness: 3
+  concurrency: 3
   DSL: 3
   existential: 3
   fibrations: 3
@@ -101,12 +104,11 @@
   memoization: 3
   MPST: 3
   multicategory: 3
-  partial-evaluation: 3
-  Petri-nets: 3
   polymorphism: 3
   prover-architecture: 3
   residuation: 3
   semi-naive: 3
+  supercompilation: 3
   termination: 3
   type-checking: 3
   UI: 3
@@ -120,7 +122,6 @@
   classical-linear-logic: 2
   coeffects: 2
   complexity: 2
-  concurrency: 2
   connectives: 2
   constraint-propagation: 2
   Crucible: 2
@@ -187,7 +188,6 @@
   state-merging: 2
   storage: 2
   substitution: 2
-  supercompilation: 2
   symbolic-arithmetic: 2
   temporal-logic: 2
   term-representation: 2
