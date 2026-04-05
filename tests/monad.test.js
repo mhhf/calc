@@ -18,6 +18,7 @@ const { initRuleSpecs } = require('../lib/prover/rule-interpreter');
 const { sequentToState, stateToContext, rightFocus, executeModeSwitch } = require('../lib/prover/bridge');
 const { compileRule } = require('../lib/engine/compile');
 const { ILL_CONNECTIVES } = require('../lib/engine/ill/connectives');
+const { GRADE_W } = require('../lib/engine/grades');
 
 let ill, AST, parse, render;
 
@@ -548,7 +549,7 @@ describe('rightFocus succedent decomposition', () => {
 
   it('bang: atom in persistent state matches', () => {
     const a = AST.atom('a');
-    const bangA = AST.bang(a);
+    const bangA = AST.bang(GRADE_W,a);
     const remaining = rightFocus({}, { [a]: 1 }, bangA);
     assert.ok(remaining !== null, 'should succeed');
   });
@@ -556,7 +557,7 @@ describe('rightFocus succedent decomposition', () => {
   it('bang: missing from persistent fails', () => {
     const a = AST.atom('a');
     const b = AST.atom('b');
-    const bangA = AST.bang(a);
+    const bangA = AST.bang(GRADE_W,a);
     const remaining = rightFocus({}, { [b]: 1 }, bangA);
     assert.strictEqual(remaining, null, 'should fail — a not in persistent');
   });
@@ -564,7 +565,7 @@ describe('rightFocus succedent decomposition', () => {
   it('bang: does not consume linear resources', () => {
     const a = AST.atom('a');
     const b = AST.atom('b');
-    const bangA = AST.bang(a);
+    const bangA = AST.bang(GRADE_W,a);
     const remaining = rightFocus({ [b]: 1 }, { [a]: 1 }, bangA);
     assert.ok(remaining !== null);
     assert.strictEqual(remaining[b], 1, 'linear b should remain untouched');
@@ -574,7 +575,7 @@ describe('rightFocus succedent decomposition', () => {
     const a = AST.atom('a');
     const b = AST.atom('b');
     // a * !b
-    const succ = AST.tensor(a, AST.bang(b));
+    const succ = AST.tensor(a, AST.bang(GRADE_W,b));
     const remaining = rightFocus({ [a]: 1 }, { [b]: 1 }, succ);
     assert.ok(remaining !== null, 'should succeed');
     assert.strictEqual(Object.keys(remaining).length, 0);

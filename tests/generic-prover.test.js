@@ -10,6 +10,7 @@ const { buildRuleSpecs } = require('../lib/prover/rule-interpreter');
 const Seq = require('../lib/kernel/sequent');
 const calculus = require('../lib/calculus');
 const Context = require('../lib/prover/context');
+const { GRADE_W } = require('../lib/engine/grades');
 
 describe('L2 Generic Prover', () => {
   let calc, AST, generic, specs, alternatives;
@@ -180,14 +181,14 @@ describe('L2 Generic Prover', () => {
     it('bang_r returns null with non-empty linear (requiresEmptyDelta)', () => {
       const A = AST.freevar('A');
       const B = AST.freevar('B');
-      const s = seq([B], AST.bang(A));
+      const s = seq([B], AST.bang(GRADE_W,A));
       const result = generic.applyRule(s, 'R', -1, specs['bang_r']);
       assert.strictEqual(result, null);
     });
 
     it('bang_r succeeds with empty linear', () => {
       const A = AST.freevar('A');
-      const s = seq([], AST.bang(A));
+      const s = seq([], AST.bang(GRADE_W,A));
       const result = generic.applyRule(s, 'R', -1, specs['bang_r']);
       assert.ok(result?.success);
       assert.strictEqual(result.premises.length, 1);

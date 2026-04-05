@@ -11,6 +11,7 @@ const calculus = require('../lib/calculus');
 const { buildRuleSpecs } = require('../lib/prover/rule-interpreter');
 const Seq = require('../lib/kernel/sequent');
 const Store = require('../lib/kernel/store');
+const { GRADE_W } = require('../lib/engine/grades');
 
 describe('Rule Interpreter', () => {
   let calc, AST, result, specs;
@@ -157,25 +158,25 @@ describe('Rule Interpreter', () => {
     });
 
     it('bang_r (promotion): |- !p → |- p', () => {
-      const f = AST.bang(p);
+      const f = AST.bang(GRADE_W,p);
       const premises = specs.bang_r.makePremises(f, mkSeq([], f), -1);
       assertSeqEqual(premises[0], mkSeq([], p), 'p0');
     });
 
     it('bang_l (dereliction): !p |- r → p |- r', () => {
-      const f = AST.bang(p);
+      const f = AST.bang(GRADE_W,p);
       const premises = specs.bang_l.makePremises(f, mkSeq([f], r), 0);
       assertSeqEqual(premises[0], mkSeq([p], r), 'p0');
     });
 
     it('absorption: !p |- r → ; p |- r', () => {
-      const f = AST.bang(p);
+      const f = AST.bang(GRADE_W,p);
       const premises = specs.absorption.makePremises(f, mkSeq([f], r), 0);
       assertSeqEqual(premises[0], mkSeqCart([], [p], r), 'p0');
     });
 
     it('absorption preserves existing cartesian', () => {
-      const f = AST.bang(p);
+      const f = AST.bang(GRADE_W,p);
       const premises = specs.absorption.makePremises(f, mkSeqCart([f], [s], r), 0);
       assertSeqEqual(premises[0], mkSeqCart([], [s, p], r), 'p0');
     });
@@ -228,10 +229,10 @@ describe('Rule Interpreter', () => {
       const a = AST.atom('a'), b = AST.atom('b'), c = AST.atom('c');
       return mkSeq([AST.loli(a, AST.loli(b, c))], AST.loli(AST.tensor(a, b), c));
     });
-    provable('!A |- A', () => mkSeq([AST.bang(AST.atom('a'))], AST.atom('a')));
+    provable('!A |- A', () => mkSeq([AST.bang(GRADE_W,AST.atom('a'))], AST.atom('a')));
     provable('!A |- A & A', () => {
       const a = AST.atom('a');
-      return mkSeq([AST.bang(a)], AST.with(a, a));
+      return mkSeq([AST.bang(GRADE_W,a)], AST.with(a, a));
     });
 
     unprovable('A |- B', () => mkSeq([AST.atom('a')], AST.atom('b')));

@@ -11,6 +11,7 @@ const { buildRuleSpecs } = require('../lib/prover/rule-interpreter');
 const Seq = require('../lib/kernel/sequent');
 const calculus = require('../lib/calculus');
 const { ProofTree, leaf } = require('../lib/prover/pt');
+const { GRADE_W } = require('../lib/engine/grades');
 
 describe('L1 Kernel - Proof Verification', () => {
   let calc, AST, kernel, prover, ruleSpecs, alternatives;
@@ -159,7 +160,7 @@ describe('L1 Kernel - Proof Verification', () => {
 
     it('should verify !A |- A (dereliction)', () => {
       const A = AST.freevar('A');
-      const v = proveAndVerify(seq([AST.bang(A)], A));
+      const v = proveAndVerify(seq([AST.bang(GRADE_W,A)], A));
       assert.strictEqual(v.valid, true);
     });
 

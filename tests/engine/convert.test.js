@@ -33,14 +33,16 @@ describe('MDE Convert', { timeout: 10000 }, () => {
     it('converts bang', async () => {
       const h = await mde.parseExpr('!A');
       assert.strictEqual(Store.tag(h), 'bang');
-      const [inner] = Store.children(h);
+      const [grade, inner] = Store.children(h);
+      assert.strictEqual(Store.tag(grade), 'atom'); // GRADE_W = atom('gw')
       assert.strictEqual(Store.tag(inner), 'metavar');
     });
 
     it('converts double bang', async () => {
       const h = await mde.parseExpr('!!A');
       assert.strictEqual(Store.tag(h), 'bang');
-      const [inner] = Store.children(h);
+      const [grade, inner] = Store.children(h);
+      assert.strictEqual(Store.tag(grade), 'atom'); // GRADE_W
       assert.strictEqual(Store.tag(inner), 'bang');
     });
 

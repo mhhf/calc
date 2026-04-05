@@ -83,16 +83,25 @@ oplus: formula -> formula -> formula
 % Exponentials
 % =============================================================================
 
-% Bang (of-course): !A
-% "A is available for unlimited use"
+% Grade type for SELL subexponentials (Nigam-Miller PPDP 2009)
+% Labels from the QTT semiring {0, 1, ω} (Atkey LICS 2018):
+%   g0 = compile-time (composed away before runtime)
+%   gw = persistent (weakening + contraction) = today's !
+%   Grade-1 (linear) is implicit — bare formula without bang wrapper.
+grade : type.
+
+% Bang (of-course): !_a A — graded exponential modality
+% "A is available with usage determined by grade a"
 %
-% Semantically: !A = F(G(A)) where F ⊣ G is the LNL adjunction
-% - G extracts reusable content (moves to cartesian)
-% - F embeds back into linear world
+% !A (bare) = !_ω A = persistent (backward compatible)
+% !_0 A = compile-time resource
+% !_ω A = persistent (explicit omega, same as !A)
+%
+% Semantically: !_ω A = F(G(A)) where F ⊣ G is the LNL adjunction
 % Polarity: positive (inferred from empty-context right rule)
-bang: formula -> formula
-  @ascii "! _"
-  @latex "!#1"
+bang: grade -> formula -> formula
+  @ascii "! #2"
+  @latex "!#2"
   @prec 80
   @category exponential.
 
