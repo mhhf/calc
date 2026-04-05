@@ -97,7 +97,7 @@ describe('explore', { timeout: 10000 }, () => {
       const h = Store.put('atom', ['foo']);
       const alts = expandChoiceItem(h, ILL_RC);
       assert.strictEqual(alts.length, 1);
-      assert.deepStrictEqual(alts[0], { linear: [h], persistent: [] });
+      assert.deepStrictEqual(alts[0], { linear: [h], persistent: [], grade0: [] });
     });
 
     it('with(A,B) returns two alternatives', () => {
@@ -106,8 +106,8 @@ describe('explore', { timeout: 10000 }, () => {
       const w = Store.put('with', [a, b]);
       const alts = expandChoiceItem(w, ILL_RC);
       assert.strictEqual(alts.length, 2);
-      assert.deepStrictEqual(alts[0], { linear: [a], persistent: [] });
-      assert.deepStrictEqual(alts[1], { linear: [b], persistent: [] });
+      assert.deepStrictEqual(alts[0], { linear: [a], persistent: [], grade0: [] });
+      assert.deepStrictEqual(alts[1], { linear: [b], persistent: [], grade0: [] });
     });
 
     it('tensor(A, with(B,C)) returns cross-product', () => {
@@ -137,7 +137,7 @@ describe('explore', { timeout: 10000 }, () => {
       const bang = Store.put('bang', [GRADE_W,a]);
       const alts = expandChoiceItem(bang, ILL_RC);
       assert.strictEqual(alts.length, 1);
-      assert.deepStrictEqual(alts[0], { linear: [], persistent: [a] });
+      assert.deepStrictEqual(alts[0], { linear: [], persistent: [a], grade0: [] });
     });
 
     it('loli stays as opaque linear fact (fired by matchLoli at runtime)', () => {
@@ -148,7 +148,7 @@ describe('explore', { timeout: 10000 }, () => {
       const loli = Store.put('loli', [bangP, monadQ]);
       const alts = expandChoiceItem(loli, ILL_RC);
       assert.strictEqual(alts.length, 1);
-      assert.deepStrictEqual(alts[0], { linear: [loli], persistent: [] });
+      assert.deepStrictEqual(alts[0], { linear: [loli], persistent: [], grade0: [] });
     });
 
     it('oplus(A,B) returns two alternatives', () => {
@@ -157,8 +157,8 @@ describe('explore', { timeout: 10000 }, () => {
       const p = Store.put('oplus', [a, b]);
       const alts = expandChoiceItem(p, ILL_RC);
       assert.strictEqual(alts.length, 2);
-      assert.deepStrictEqual(alts[0], { linear: [a], persistent: [] });
-      assert.deepStrictEqual(alts[1], { linear: [b], persistent: [] });
+      assert.deepStrictEqual(alts[0], { linear: [a], persistent: [], grade0: [] });
+      assert.deepStrictEqual(alts[1], { linear: [b], persistent: [], grade0: [] });
     });
 
     it('oplus(loli(!P,{A}), loli(!Q,{B})) gives two loli alternatives', () => {
@@ -174,8 +174,8 @@ describe('explore', { timeout: 10000 }, () => {
       const alts = expandChoiceItem(pl, ILL_RC);
       assert.strictEqual(alts.length, 2);
       // Each branch is a loli fact (fired by matchLoli at runtime)
-      assert.deepStrictEqual(alts[0], { linear: [branch0], persistent: [] });
-      assert.deepStrictEqual(alts[1], { linear: [branch1], persistent: [] });
+      assert.deepStrictEqual(alts[0], { linear: [branch0], persistent: [], grade0: [] });
+      assert.deepStrictEqual(alts[1], { linear: [branch1], persistent: [], grade0: [] });
     });
 
     it('with(loli(!P,{A}), loli(!Q,{B})) gives two loli alternatives', () => {
@@ -191,8 +191,8 @@ describe('explore', { timeout: 10000 }, () => {
       const alts = expandChoiceItem(w, ILL_RC);
       assert.strictEqual(alts.length, 2);
       // Each branch is a loli fact (fired by matchLoli at runtime)
-      assert.deepStrictEqual(alts[0], { linear: [branch0], persistent: [] });
-      assert.deepStrictEqual(alts[1], { linear: [branch1], persistent: [] });
+      assert.deepStrictEqual(alts[0], { linear: [branch0], persistent: [], grade0: [] });
+      assert.deepStrictEqual(alts[1], { linear: [branch1], persistent: [], grade0: [] });
     });
   });
 

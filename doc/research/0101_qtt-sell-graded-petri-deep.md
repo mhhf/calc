@@ -340,7 +340,7 @@ This connection is **largely novel** — no paper explicitly establishes the cor
 ω  | ω  ω  ω         ω  | 0  ω  ω
 ```
 
-Partial order: 0 ≤ 1 ≤ ω (reflecting "fewer uses is more restrictive").
+Natural (algebraic) order: 0 ≤ 1 ≤ ω (induced by addition: a ≤ b ⟺ ∃c: a+c=b). But the **usage ordering** for structural rules and promotion in QTT is the partial order {0 ≤ ω, 1 ≤ ω} with 0 ∥ 1 (incomparable) — a "V" shape, not a total chain. This prevents erased (0) resources from being used linearly (1).
 
 ### Is it the natural numbers truncated at 2?
 
