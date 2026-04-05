@@ -34,7 +34,7 @@ describe('deriveRoles', () => {
   it('should have ILL_CONNECTIVES as tag → structural info table', () => {
     assert.deepStrictEqual(ILL_CONNECTIVES.tensor, { category: 'multiplicative', arity: 2, polarity: 'positive' });
     assert.deepStrictEqual(ILL_CONNECTIVES.loli, { category: 'multiplicative', arity: 2, polarity: 'negative' });
-    assert.deepStrictEqual(ILL_CONNECTIVES.bang, { category: 'exponential', arity: 1 });
+    assert.deepStrictEqual(ILL_CONNECTIVES.bang, { category: 'exponential', arity: 2 });
     assert.deepStrictEqual(ILL_CONNECTIVES.monad, { category: 'monad', arity: 1 });
     assert.deepStrictEqual(ILL_CONNECTIVES.oplus, { category: 'additive', arity: 2, polarity: 'positive' });
     assert.deepStrictEqual(ILL_CONNECTIVES.with, { category: 'additive', arity: 2, polarity: 'negative' });

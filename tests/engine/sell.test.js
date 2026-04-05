@@ -329,3 +329,245 @@ describe('SELL: QuerySettings Threading (T10)', () => {
     }
   });
 });
+
+// =============================================================================
+// SELL Graded Modality — TODO 155
+// =============================================================================
+
+const { GRADE_0, GRADE_W } = require('../../lib/engine/grades');
+const { ILL_CONNECTIVES } = require('../../lib/engine/ill/connectives');
+const { resolveConnectives, flattenAntecedent, compileRule } = require('../../lib/engine/compile');
+const { getModes } = require('../../lib/engine/opt/ffi');
+
+describe('SELL: Graded modality parsing (TODO 155)', () => {
+  beforeEach(() => Store.clear());
+
+  it('!A parses as bang(GRADE_W, A)', () => {
+    Store.clear();
+    const h = _exprParser('!foo');
+    assert.equal(Store.tag(h), 'bang');
+    const [grade, inner] = Store.children(h);
+    assert.equal(grade, GRADE_W);
+    assert.equal(Store.tag(inner), 'atom');
+    assert.deepEqual(Store.children(inner), ['foo']);
+  });
+
+  it('!_0 A parses as bang(GRADE_0, A)', () => {
+    Store.clear();
+    const h = _exprParser('!_0 foo');
+    assert.equal(Store.tag(h), 'bang');
+    const [grade, inner] = Store.children(h);
+    assert.equal(grade, GRADE_0);
+    assert.equal(Store.tag(inner), 'atom');
+    assert.deepEqual(Store.children(inner), ['foo']);
+  });
+
+  it('!_ω A parses as bang(GRADE_W, A) — same hash as !A', () => {
+    Store.clear();
+    const h1 = _exprParser('!foo');
+    const h2 = _exprParser('!_ω foo');
+    assert.equal(h1, h2, '!A and !_ω A should be identical (content-addressed)');
+  });
+
+  it('!_0 and !_ω produce different hashes', () => {
+    Store.clear();
+    const h0 = _exprParser('!_0 foo');
+    const hw = _exprParser('!_ω foo');
+    assert.notEqual(h0, hw, '!_0 and !_ω should differ');
+  });
+
+  it('nested: !_0 !A parses as bang(GRADE_0, bang(GRADE_W, A))', () => {
+    Store.clear();
+    const h = _exprParser('!_0 !foo');
+    assert.equal(Store.tag(h), 'bang');
+    const [outerGrade, innerBang] = Store.children(h);
+    assert.equal(outerGrade, GRADE_0);
+    assert.equal(Store.tag(innerBang), 'bang');
+    const [innerGrade, atom] = Store.children(innerBang);
+    assert.equal(innerGrade, GRADE_W);
+    assert.equal(Store.tag(atom), 'atom');
+  });
+
+  it('!_0 in application context: !_0 eq A B', () => {
+    Store.clear();
+    const h = _exprParser('!_0 eq A B');
+    assert.equal(Store.tag(h), 'bang');
+    const [grade, inner] = Store.children(h);
+    assert.equal(grade, GRADE_0);
+    assert.equal(Store.tag(inner), 'eq');
+    assert.equal(Store.children(inner).length, 2);
+  });
+});
+
+describe('SELL: flattenAntecedent grade classification (TODO 155)', () => {
+  beforeEach(() => Store.clear());
+
+  it('bang(GRADE_W, A) → persistent', () => {
+    Store.clear();
+    const rc = resolveConnectives(ILL_CONNECTIVES);
+    const A = Store.put('atom', ['a']);
+    const h = Store.put('bang', [GRADE_W, A]);
+    const flat = flattenAntecedent(h, rc);
+    assert.deepEqual(flat.linear, []);
+    assert.deepEqual(flat.persistent, [A]);
+    assert.deepEqual(flat.grade0, []);
+  });
+
+  it('bang(GRADE_0, A) → grade0', () => {
+    Store.clear();
+    const rc = resolveConnectives(ILL_CONNECTIVES);
+    const A = Store.put('atom', ['a']);
+    const h = Store.put('bang', [GRADE_0, A]);
+    const flat = flattenAntecedent(h, rc);
+    assert.deepEqual(flat.linear, []);
+    assert.deepEqual(flat.persistent, []);
+    assert.deepEqual(flat.grade0, [A]);
+  });
+
+  it('A * !B * !_0 C → linear:[A], persistent:[B], grade0:[C]', () => {
+    Store.clear();
+    const rc = resolveConnectives(ILL_CONNECTIVES);
+    const A = Store.put('atom', ['a']);
+    const B = Store.put('atom', ['b']);
+    const C = Store.put('atom', ['c']);
+    const bangB = Store.put('bang', [GRADE_W, B]);
+    const bang0C = Store.put('bang', [GRADE_0, C]);
+    const h = Store.put('tensor', [A, Store.put('tensor', [bangB, bang0C])]);
+    const flat = flattenAntecedent(h, rc);
+    assert.deepEqual(flat.linear, [A]);
+    assert.deepEqual(flat.persistent, [B]);
+    assert.deepEqual(flat.grade0, [C]);
+  });
+
+  it('bare atom → linear', () => {
+    Store.clear();
+    const rc = resolveConnectives(ILL_CONNECTIVES);
+    const A = Store.put('atom', ['a']);
+    const flat = flattenAntecedent(A, rc);
+    assert.deepEqual(flat.linear, [A]);
+    assert.deepEqual(flat.persistent, []);
+    assert.deepEqual(flat.grade0, []);
+  });
+});
+
+describe('SELL: hasGrade0 flag on compiled rules (TODO 155)', () => {
+  beforeEach(() => Store.clear());
+
+  it('rule with !_0 antecedent has hasGrade0: true', () => {
+    Store.clear();
+    const A = Store.put('atom', ['a']);
+    const B = Store.put('atom', ['b']);
+    const bang0A = Store.put('bang', [GRADE_0, A]);
+    const ante = Store.put('tensor', [bang0A, B]);
+    const conseq = Store.put('monad', [Store.put('atom', ['c'])]);
+    const rule = { name: 'test_g0', antecedent: ante, consequent: conseq };
+    const compiled = compileRule(rule, { connectives: ILL_CONNECTIVES, getModes });
+    assert.equal(compiled.hasGrade0, true);
+  });
+
+  it('rule with only !_ω antecedent has hasGrade0: false', () => {
+    Store.clear();
+    const A = Store.put('atom', ['a']);
+    const B = Store.put('atom', ['b']);
+    const bangWA = Store.put('bang', [GRADE_W, A]);
+    const ante = Store.put('tensor', [bangWA, B]);
+    const conseq = Store.put('monad', [Store.put('atom', ['c'])]);
+    const rule = { name: 'test_gw', antecedent: ante, consequent: conseq };
+    const compiled = compileRule(rule, { connectives: ILL_CONNECTIVES, getModes });
+    assert.equal(compiled.hasGrade0, false);
+  });
+
+  it('rule with !_0 in consequent has hasGrade0: true', () => {
+    Store.clear();
+    const A = Store.put('atom', ['a']);
+    const B = Store.put('atom', ['b']);
+    const bang0B = Store.put('bang', [GRADE_0, B]);
+    const conseq = Store.put('monad', [bang0B]);
+    const rule = { name: 'test_g0_conseq', antecedent: A, consequent: conseq };
+    const compiled = compileRule(rule, { connectives: ILL_CONNECTIVES, getModes });
+    assert.equal(compiled.hasGrade0, true);
+  });
+
+  it('rule with no bang has hasGrade0: false', () => {
+    Store.clear();
+    const A = Store.put('atom', ['a']);
+    const conseq = Store.put('monad', [Store.put('atom', ['b'])]);
+    const rule = { name: 'test_nobang', antecedent: A, consequent: conseq };
+    const compiled = compileRule(rule, { connectives: ILL_CONNECTIVES, getModes });
+    assert.equal(compiled.hasGrade0, false);
+  });
+});
+
+describe('SELL: Grade-0 filtering (TODO 155)', () => {
+  it('filterRules excludes hasGrade0 rules from exec/explore', () => {
+    Store.clear();
+    const fs = require('fs');
+    const os = require('os');
+    const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'sell-g0-'));
+
+    // Write a program with a grade-0 rule and a normal rule
+    fs.writeFileSync(path.join(tmpDir, 'g0test.ill'),
+      'counter: type.\n' +
+      'inc: counter X -o { counter (X + 1) }.\n' +
+      'stage: !_0 eq X X * counter X -o { counter X }.\n' +
+      '#symex counter 1.\n'
+    );
+
+    const calc = mde.load(path.join(tmpDir, 'g0test.ill'), { cache: false });
+
+    // The 'stage' rule should be compiled with hasGrade0: true
+    const stageRule = calc.forwardRules.find(r => r.name === 'stage');
+    assert.ok(stageRule, 'stage rule should exist');
+    assert.equal(stageRule.hasGrade0, true, 'stage rule should have hasGrade0 flag');
+
+    // The 'inc' rule should NOT have hasGrade0
+    const incRule = calc.forwardRules.find(r => r.name === 'inc');
+    assert.ok(incRule, 'inc rule should exist');
+    assert.equal(incRule.hasGrade0, false, 'inc rule should NOT have hasGrade0');
+
+    // When executing, only inc should fire (stage is filtered out)
+    const state = mde.decomposeQuery(mde.parseExpr('counter 1'));
+    const result = calc.exec(state, { maxSteps: 3, trace: true });
+    assert.ok(result.steps > 0, 'should execute at least one step');
+    // Trace should only show 'inc', never 'stage'
+    if (result.trace) {
+      for (const entry of result.trace) {
+        const name = typeof entry === 'string' ? entry : entry.rule;
+        assert.ok(!name.includes('stage'), `stage should be filtered out, got: ${name}`);
+      }
+    }
+
+    // Cleanup
+    for (const f of fs.readdirSync(tmpDir)) fs.unlinkSync(path.join(tmpDir, f));
+    fs.rmdirSync(tmpDir);
+  });
+});
+
+describe('SELL: Grade constants survive Store.clear() (TODO 155)', () => {
+  it('GRADE_W is valid after Store.clear()', () => {
+    Store.clear();
+    assert.equal(Store.tag(GRADE_W), 'atom');
+    assert.deepEqual(Store.children(GRADE_W), ['gw']);
+  });
+
+  it('GRADE_0 is valid after Store.clear()', () => {
+    Store.clear();
+    assert.equal(Store.tag(GRADE_0), 'atom');
+    assert.deepEqual(Store.children(GRADE_0), ['g0']);
+  });
+
+  it('GRADE_W has stable ID across clears', () => {
+    const before = GRADE_W;
+    Store.clear();
+    assert.equal(GRADE_W, before, 'GRADE_W hash should be stable across Store.clear()');
+  });
+
+  it('bang(GRADE_W, X) works after Store.clear()', () => {
+    Store.clear();
+    const X = Store.put('atom', ['x']);
+    const h = Store.put('bang', [GRADE_W, X]);
+    assert.equal(Store.tag(h), 'bang');
+    assert.equal(Store.child(h, 0), GRADE_W);
+    assert.equal(Store.child(h, 1), X);
+  });
+});

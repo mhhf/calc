@@ -226,7 +226,9 @@ describe('Store Binary Format', () => {
 
   describe('alignment', () => {
     it('handles odd node counts (alignment padding)', () => {
-      // 3 nodes → 6 bytes of tags+arities → needs 2 bytes padding to align
+      // Base: 2 grade atoms (g0, gw) auto-created on Store.clear().
+      // Adding 3 more → 5 total nodes → 10 bytes tags+arities → needs padding.
+      const base = Store.size();
       Store.put('atom', ['a']);
       Store.put('atom', ['b']);
       Store.put('atom', ['c']);
@@ -237,13 +239,14 @@ describe('Store Binary Format', () => {
       Store.clear();
       Store.restore(restored);
 
-      assert.strictEqual(Store.size(), 3);
-      assert.strictEqual(Store.tag(1), 'atom');
-      assert.strictEqual(Store.tag(2), 'atom');
-      assert.strictEqual(Store.tag(3), 'atom');
+      assert.strictEqual(Store.size(), base + 3);
+      assert.strictEqual(Store.tag(base + 1), 'atom');
+      assert.strictEqual(Store.tag(base + 2), 'atom');
+      assert.strictEqual(Store.tag(base + 3), 'atom');
     });
 
     it('handles even node counts (no padding needed)', () => {
+      const base = Store.size();
       Store.put('atom', ['a']);
       Store.put('atom', ['b']);
 
@@ -253,7 +256,7 @@ describe('Store Binary Format', () => {
       Store.clear();
       Store.restore(restored);
 
-      assert.strictEqual(Store.size(), 2);
+      assert.strictEqual(Store.size(), base + 2);
     });
   });
 

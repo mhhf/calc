@@ -2,6 +2,7 @@ const { describe, it, beforeEach } = require('node:test');
 const assert = require('node:assert/strict');
 const Store = require('../../lib/kernel/store');
 const { FactSet, Arena, State, hashFactEntry, lowerBound, fromObject, toObject } = require('../../lib/engine/fact-set');
+const { GRADE_W } = require('../../lib/engine/grades');
 
 describe('lowerBound', () => {
   it('returns 0 for empty range', () => {
@@ -312,7 +313,7 @@ describe('fromObject / toObject roundtrip', () => {
   it('works with real Store hashes', () => {
     const h1 = Store.put('pc', [Store.put('binlit', [5n])]);
     const h2 = Store.put('code', [Store.put('binlit', [5n]), Store.put('atom', ['PUSH1'])]);
-    const h3 = Store.put('bang', [Store.put('eq', [Store.put('binlit', [1n]), Store.put('binlit', [2n])])]);
+    const h3 = Store.put('bang', [GRADE_W,Store.put('eq', [Store.put('binlit', [1n]), Store.put('binlit', [2n])])]);
     const state = fromObject({ [h1]: 1, [h2]: 3 }, { [h3]: true });
     const back = toObject(state);
     assert.equal(back.linear[h1], 1);

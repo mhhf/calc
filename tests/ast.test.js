@@ -7,6 +7,7 @@ const assert = require('node:assert');
 
 const ast = require('../lib/kernel/ast');
 const calculus = require('../lib/calculus');
+const { GRADE_W } = require('../lib/engine/grades');
 
 describe('v2 AST utilities', () => {
   let AST;
@@ -74,7 +75,7 @@ describe('v2 AST utilities', () => {
     });
 
     it('should return false for bang', () => {
-      const f = AST.bang(AST.freevar('A'));
+      const f = AST.bang(GRADE_W,AST.freevar('A'));
       assert.strictEqual(ast.isAtomic(f), false);
     });
 

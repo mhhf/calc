@@ -13,6 +13,7 @@ const assert = require('node:assert/strict');
 const Store = require('../../lib/kernel/store');
 const backward = require('../../lib/engine/backchain');
 const { provePersistentWithFFI } = require('../../lib/engine/opt/ffi');
+const { GRADE_W } = require('../../lib/engine/grades');
 const forward = require('../../lib/engine/forward');
 const { buildGuidedTerm } = require('../../lib/prover/guided-term');
 
@@ -144,9 +145,9 @@ describe('3b.5: Clause Proof Terms', () => {
       const ant = Store.child(groundLoli, 0);
       assert.strictEqual(Store.tag(ant), 'tensor');
       assert.strictEqual(Store.tag(Store.child(ant, 0)), 'bang');
-      assert.strictEqual(Store.child(Store.child(ant, 0), 0), a);
+      assert.strictEqual(Store.child(Store.child(ant, 0), 1), a);
       assert.strictEqual(Store.tag(Store.child(ant, 1)), 'bang');
-      assert.strictEqual(Store.child(Store.child(ant, 1), 0), b);
+      assert.strictEqual(Store.child(Store.child(ant, 1), 1), b);
     });
 
     it('recursive clause resolution (clause premise proved by another clause)', () => {
@@ -209,9 +210,9 @@ describe('3b.5: Clause Proof Terms', () => {
       // The ground loli should reference p(a) and q(a), not p(_X) and q(_X)
       const groundLoli = term.principal;
       const groundAnt = Store.child(groundLoli, 0);
-      // bang(p(a))
+      // bang(GRADE_W, p(a))
       assert.strictEqual(Store.tag(groundAnt), 'bang');
-      const premHash = Store.child(groundAnt, 0);
+      const premHash = Store.child(groundAnt, 1);
       assert.strictEqual(Store.tag(premHash), 'p');
       assert.strictEqual(Store.child(premHash, 0), aAtom);
     });
@@ -321,7 +322,7 @@ describe('3b.5: Clause Proof Terms', () => {
       // Rule: !p -o { q }, with p proved by state lookup
       const p = Store.put('atom', ['sp']);
       const q = Store.put('atom', ['sq']);
-      const bangP = Store.put('bang', [p]);
+      const bangP = Store.put('bang', [GRADE_W,p]);
       const monadQ = Store.put('monad', [q]);
       const loli = Store.put('loli', [bangP, monadQ]);
 
@@ -355,7 +356,7 @@ describe('3b.5: Clause Proof Terms', () => {
       // Rule: !q -o { r }, with q proved by clause resolution
       const q = Store.put('atom', ['cq']);
       const r = Store.put('atom', ['cr']);
-      const bangQ = Store.put('bang', [q]);
+      const bangQ = Store.put('bang', [GRADE_W,q]);
       const monadR = Store.put('monad', [r]);
       const loli = Store.put('loli', [bangQ, monadR]);
 
@@ -397,7 +398,7 @@ describe('3b.5: Clause Proof Terms', () => {
       // Simulates pre-3b.5 evidence (no term field)
       const q = Store.put('atom', ['fq']);
       const r = Store.put('atom', ['fr']);
-      const bangQ = Store.put('bang', [q]);
+      const bangQ = Store.put('bang', [GRADE_W,q]);
       const monadR = Store.put('monad', [r]);
       const loli = Store.put('loli', [bangQ, monadR]);
 
@@ -442,7 +443,7 @@ describe('3b.5: Clause Proof Terms', () => {
       assert.strictEqual(Store.child(Store.child(groundLoli, 1), 0), q);
     });
 
-    it('one premise: loli(bang(P), monad(Q))', () => {
+    it('one premise: loli(bang(GRADE_W, P), monad(Q))', () => {
       const p = Store.put('atom', ['p']);
       const q = Store.put('atom', ['q']);
       const types = new Map([['p_type', p]]);
@@ -453,7 +454,7 @@ describe('3b.5: Clause Proof Terms', () => {
       const groundLoli = result.term.principal;
       const ant = Store.child(groundLoli, 0);
       assert.strictEqual(Store.tag(ant), 'bang');
-      assert.strictEqual(Store.child(ant, 0), p);
+      assert.strictEqual(Store.child(ant, 1), p);
     });
 
     it('three premises: loli(tensor(!P1, tensor(!P2, !P3)), monad(Q))', () => {
@@ -472,13 +473,13 @@ describe('3b.5: Clause Proof Terms', () => {
       // Right-associated: tensor(!a, tensor(!b, !c))
       assert.strictEqual(Store.tag(ant), 'tensor');
       assert.strictEqual(Store.tag(Store.child(ant, 0)), 'bang');
-      assert.strictEqual(Store.child(Store.child(ant, 0), 0), a);
+      assert.strictEqual(Store.child(Store.child(ant, 0), 1), a);
       const inner = Store.child(ant, 1);
       assert.strictEqual(Store.tag(inner), 'tensor');
       assert.strictEqual(Store.tag(Store.child(inner, 0)), 'bang');
-      assert.strictEqual(Store.child(Store.child(inner, 0), 0), b);
+      assert.strictEqual(Store.child(Store.child(inner, 0), 1), b);
       assert.strictEqual(Store.tag(Store.child(inner, 1)), 'bang');
-      assert.strictEqual(Store.child(Store.child(inner, 1), 0), c);
+      assert.strictEqual(Store.child(Store.child(inner, 1), 1), c);
     });
   });
 

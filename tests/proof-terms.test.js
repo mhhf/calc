@@ -22,6 +22,7 @@ const { createChecker, expand } = require('../lib/prover/check-term');
 const { createKernel } = require('../lib/prover/kernel');
 const Seq = require('../lib/kernel/sequent');
 const Store = require('../lib/kernel/store');
+const { GRADE_W } = require('../lib/engine/grades');
 
 describe('Generic Term Signatures', () => {
   let calc, sigs;
@@ -48,8 +49,8 @@ describe('Generic Term Signatures', () => {
     oplus_l:     { notation: 'oplus_l(z, x0 -> u0, x1 -> u1)',     arity: 3 },
     zero_l:      { notation: 'zero_l(z)',                           arity: 1 },
     promotion:   { notation: 'promotion(u0)',                       arity: 1 },
-    absorption:  { notation: 'absorption(z, y0 -> u0)',             arity: 2 },
-    dereliction: { notation: 'dereliction(z, x0 -> u0)',           arity: 2 },
+    absorption:  { notation: 'absorption(z, y1 -> u0)',             arity: 2 },
+    dereliction: { notation: 'dereliction(z, x1 -> u0)',           arity: 2 },
     copy:        { notation: 'copy(u, x0 -> u0)',                   arity: 2 },
     monad_r:     { notation: 'monad_r()',                           arity: 0 },
     monad_l:     { notation: 'monad_l(z, x0 -> u0)',               arity: 2 },
@@ -235,7 +236,7 @@ describe('Backward Term Extraction', () => {
 
   it('!A ⊢ A → bang_l(_, id)', () => {
     const A = AST.freevar('A');
-    const term = proveAndExtract(seq([AST.bang(A)], A));
+    const term = proveAndExtract(seq([AST.bang(GRADE_W,A)], A));
     // Prover uses spec key bang_l (= absorption, the primary !L rule)
     assert.ok(term.rule === 'bang_l' || term.rule === 'dereliction' || term.rule === 'absorption',
       `expected bang_l/dereliction/absorption, got ${term.rule}`);
@@ -433,7 +434,7 @@ describe('Forward Term Builders', () => {
 
     it('bang: promotion(id(a)) from persistent', () => {
       const p = AST.atom('p');
-      const bangP = AST.bang(p);
+      const bangP = AST.bang(GRADE_W,p);
       const result = rightFocusTerm({}, { [p]: 1 }, bangP, roles);
       assert.ok(result, 'should succeed');
       assert.strictEqual(result.term.rule, 'promotion');
@@ -444,7 +445,7 @@ describe('Forward Term Builders', () => {
     it('nested: tensor(atom, bang(atom))', () => {
       const p = AST.atom('p');
       const q = AST.atom('q');
-      const goal = AST.tensor(p, AST.bang(q));
+      const goal = AST.tensor(p, AST.bang(GRADE_W,q));
       const result = rightFocusTerm({ [p]: 1 }, { [q]: 1 }, goal, roles);
       assert.ok(result, 'should succeed');
       assert.strictEqual(result.term.rule, 'tensor_r');
@@ -633,12 +634,12 @@ describe('Type Checker', () => {
       assert.strictEqual(e.children.length, 2);
     });
 
-    it('expands bang (arity 1)', () => {
+    it('expands bang (arity 2: grade + formula)', () => {
       const p = AST.atom('p');
-      const e = expand(AST.bang(p));
+      const e = expand(AST.bang(GRADE_W,p));
       assert.strictEqual(e.tag, 'bang');
-      assert.strictEqual(e.children.length, 1);
-      assert.strictEqual(e.children[0].hash, p);
+      assert.strictEqual(e.children.length, 2);
+      assert.strictEqual(e.children[1].hash, p);
     });
 
     it('expands monad (arity 1)', () => {
@@ -651,10 +652,10 @@ describe('Type Checker', () => {
 
     it('expands nested structure recursively', () => {
       const p = AST.atom('p'), q = AST.atom('q');
-      const e = expand(AST.bang(AST.tensor(p, q)));
+      const e = expand(AST.bang(GRADE_W,AST.tensor(p, q)));
       assert.strictEqual(e.tag, 'bang');
-      assert.strictEqual(e.children[0].tag, 'tensor');
-      assert.strictEqual(e.children[0].children[0].hash, p);
+      assert.strictEqual(e.children[1].tag, 'tensor');
+      assert.strictEqual(e.children[1].children[0].hash, p);
     });
   });
 
