@@ -21,6 +21,7 @@ references:
   - "Baillot, Mazza (2010). Linear Logic by Levels. TCS."
   - "Kovács (2023). Staged Compilation with Two-Level Type Theory. POPL."
   - "Davies (1996). A Temporal Logic Approach to Binding-Time Analysis. LICS."
+  - "Choudhury, Eades, Eisenberg, Weirich (2021). A Graded Dependent Type System with a Usage-Aware Semantics. POPL."
 ---
 
 # Grade-0 Staging and Stratified Cut Elimination for Forward-Chaining ILL
@@ -178,6 +179,10 @@ The {0,1,ω} operations (see RES_0056 for tables) gain staging meaning in forwar
 - `ω + ω = ω` — contraction is idempotent (standard)
 
 The `0 × q = 0` rule is why composition through a grade-0 type eliminates all traces: resources "inside" the 0-phase are scaled by 0.
+
+### GraD validation
+
+Choudhury et al. (POPL 2021) independently validate the grade-0 non-interference claim. Their Lemma 6.2 proves that grade-0 heap entries are irrelevant to computation — the heap can be partitioned into "used" and "erased" segments, where the erased segment has no observable effect. This is the heap-semantics analog of our staging claim: grade-0 resources can be composed away because they don't affect runtime behavior. GraD achieves this in a dependent type setting; our result (§1) achieves the same property in a non-dependent forward-chaining setting via cut elimination.
 
 ## 4. Open Questions
 
