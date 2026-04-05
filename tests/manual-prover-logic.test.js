@@ -10,6 +10,7 @@ const calculus = require('../lib/calculus');
 const { createManualProofAPI } = require('../lib/prover/strategy/manual');
 const Seq = require('../lib/kernel/sequent');
 const Store = require('../lib/kernel/store');
+const { GRADE_W } = require('../lib/engine/grades');
 
 describe('ManualProofAPI - Rule Suggestions', () => {
   let calc, AST, api;
@@ -159,7 +160,7 @@ describe('ManualProofAPI - Rule Suggestions', () => {
 
     it('bang on right: |- !A', () => {
       const A = AST.freevar('A');
-      const state = api.createProofState(mkSeq([], AST.bang(A)));
+      const state = api.createProofState(mkSeq([], AST.bang(GRADE_W,A)));
       const names = ruleNames(state, { mode: 'unfocused' });
       assert.deepStrictEqual(names, ['bang_r']);
     });
@@ -167,7 +168,7 @@ describe('ManualProofAPI - Rule Suggestions', () => {
     it('bang on left: !A |- C', () => {
       const A = AST.freevar('A');
       const C = AST.freevar('C');
-      const state = api.createProofState(mkSeq([AST.bang(A)], C));
+      const state = api.createProofState(mkSeq([AST.bang(GRADE_W,A)], C));
       const names = ruleNames(state, { mode: 'unfocused' });
       assert.deepStrictEqual(names, ['absorption', 'bang_l']);
     });
@@ -480,14 +481,14 @@ describe('ManualProofAPI - Rule Suggestions', () => {
       const B = AST.freevar('B');
       const loli = AST.loli(A, B);
       // A -o B ⊢ !(A -o B) — the unsound derivation from TODO_0046
-      const state = api.createProofState(mkSeq([loli], AST.bang(loli)));
+      const state = api.createProofState(mkSeq([loli], AST.bang(GRADE_W,loli)));
       const names = ruleNames(state, { mode: 'unfocused' });
       assert.ok(!names.includes('bang_r'), 'bang_r must not be offered with non-empty linear');
     });
 
     it('bang_r NOT offered with non-empty linear (focused, after Focus_R)', () => {
       const P = AST.freevar('P');
-      const bangP = AST.bang(P);
+      const bangP = AST.bang(GRADE_W,P);
       // P ⊢ !P — linear P present
       const state = api.createProofState(mkSeq([P], bangP));
       state.focus = { position: 'R', index: -1, hash: bangP };
@@ -500,7 +501,7 @@ describe('ManualProofAPI - Rule Suggestions', () => {
     it('bang_r IS offered with empty linear (unfocused)', () => {
       const A = AST.freevar('A');
       // ⊢ !A — empty linear context
-      const state = api.createProofState(mkSeq([], AST.bang(A)));
+      const state = api.createProofState(mkSeq([], AST.bang(GRADE_W,A)));
       const names = ruleNames(state, { mode: 'unfocused' });
       assert.ok(names.includes('bang_r'), 'bang_r should be offered with empty linear');
     });
@@ -508,14 +509,14 @@ describe('ManualProofAPI - Rule Suggestions', () => {
     it('bang_r IS offered with empty linear + cartesian context', () => {
       const A = AST.freevar('A');
       // ; A ⊢ !A — cartesian A, empty linear
-      const state = api.createProofState(mkSeqCart([], [A], AST.bang(A)));
+      const state = api.createProofState(mkSeqCart([], [A], AST.bang(GRADE_W,A)));
       const names = ruleNames(state, { mode: 'unfocused' });
       assert.ok(names.includes('bang_r'), 'bang_r allowed: linear empty, cartesian is fine');
     });
 
     it('bang_r premise has correct structure when applied', () => {
       const A = AST.freevar('A');
-      const state = api.createProofState(mkSeq([], AST.bang(A)));
+      const state = api.createProofState(mkSeq([], AST.bang(GRADE_W,A)));
       const actions = api.getApplicableActions(state, { mode: 'unfocused' });
       const bangR = actions.find(a => a.name === 'bang_r');
       assert.ok(bangR, 'bang_r available');

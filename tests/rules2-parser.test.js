@@ -6,6 +6,7 @@ const assert = require('node:assert');
 const calculus = require('../lib/calculus');
 const { buildRuleSpecs } = require('../lib/prover/rule-interpreter');
 const Seq = require('../lib/kernel/sequent');
+const { GRADE_W } = require('../lib/engine/grades');
 
 describe('.rules2 parser', () => {
   describe('Proof search integration', () => {
@@ -52,10 +53,10 @@ describe('.rules2 parser', () => {
       const a = AST.atom('a'), b = AST.atom('b'), c = AST.atom('c');
       return mkSeq([AST.loli(a, AST.loli(b, c))], AST.loli(AST.tensor(a, b), c));
     });
-    provable('!A |- A', () => mkSeq([AST.bang(AST.atom('a'))], AST.atom('a')));
+    provable('!A |- A', () => mkSeq([AST.bang(GRADE_W,AST.atom('a'))], AST.atom('a')));
     provable('!A |- A & A', () => {
       const a = AST.atom('a');
-      return mkSeq([AST.bang(a)], AST.with(a, a));
+      return mkSeq([AST.bang(GRADE_W,a)], AST.with(a, a));
     });
 
     unprovable('A |- B', () => mkSeq([AST.atom('a')], AST.atom('b')));

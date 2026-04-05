@@ -15,6 +15,7 @@ const forward = require('../lib/engine/forward');
 const { buildGuidedTerm, getLoliFromRule } = require('../lib/prover/guided-term');
 const { rightFocusTerm, executeModeSwitch } = require('../lib/prover/bridge');
 const { ILL_CONNECTIVES } = require('../lib/engine/ill/connectives');
+const { GRADE_W } = require('../lib/engine/grades');
 
 describe('Guided Proof Terms (TODO_0068 §10.5)', () => {
 
@@ -34,7 +35,7 @@ describe('Guided Proof Terms (TODO_0068 §10.5)', () => {
       const A = Store.put('atom', ['a']);
       const B = Store.put('monad', [Store.put('atom', ['b'])]);
       const loli = Store.put('loli', [A, B]);
-      const banged = Store.put('bang', [loli]);
+      const banged = Store.put('bang', [GRADE_W,loli]);
       assert.strictEqual(getLoliFromRule(banged), loli);
     });
 
@@ -132,7 +133,7 @@ describe('Guided Proof Terms (TODO_0068 §10.5)', () => {
       // Rule: !p -o { q }
       const p = Store.put('atom', ['p']);
       const q = Store.put('atom', ['q']);
-      const bangP = Store.put('bang', [p]);
+      const bangP = Store.put('bang', [GRADE_W,p]);
       const monadQ = Store.put('monad', [q]);
       const loli = Store.put('loli', [bangP, monadQ]);
 
@@ -161,7 +162,7 @@ describe('Guided Proof Terms (TODO_0068 §10.5)', () => {
       const a = Store.put('atom', ['a']);
       const p = Store.put('atom', ['p']);
       const b = Store.put('atom', ['b']);
-      const bangP = Store.put('bang', [p]);
+      const bangP = Store.put('bang', [GRADE_W,p]);
       const tensor = Store.put('tensor', [a, bangP]);
       const monadB = Store.put('monad', [b]);
       const loli = Store.put('loli', [tensor, monadB]);

@@ -1,7 +1,7 @@
 ---
 title: "QTT, SELL, Graded Modalities, and Petri Nets: Deep Intersections"
 created: 2026-04-01
-modified: 2026-04-01
+modified: 2026-04-05
 summary: "Deep research on the intersections of QTT with SELL, graded comonads, erasure/staging, the {0,1,ω} semiring's algebraic structure, Petri net correspondences, and resource-graded monads. Identifies established versus novel connections."
 tags: [QTT, semiring, subexponentials, graded-types, Petri-nets, coeffects, staging, erasure, linear-logic, forward-chaining, multiset-rewriting, multimodal, SELL, Granule, Idris-2, category-theory]
 category: "Multi-Type Framework"
@@ -111,7 +111,7 @@ The key papers for SELLF are:
 |---|---|---|---|
 | Orchard, Liepelt, Eades (2019) | ICFP 2019 | — | Granule language, graded modal types for quantitative program reasoning |
 | Moon, Eades, Orchard (2020/2021) | ESOP 2021 | 2010.13163 | GrTT: graded modal dependent type theory |
-| Choudhury, Eades, Eisenberg, Weirich (2020/2021) | POPL 2021 | 2011.04070 | GraD: graded dependent type theory with usage-aware semantics |
+| Choudhury, Eades, Eisenberg, Weirich (2020/2021) | POPL 2021 | 2011.04070 | GraD: graded dependent type theory with usage-aware heap semantics; Lemma 6.2 proves grade-0 non-interference |
 | Abel, Danielsson, Eriksson (2026 preprint) | ICFP 2023 | 2603.29716 | GrTT formalized in Agda; subject reduction, normalization, decidability, erasure soundness |
 | Vollmer, Marshall, Eades, Orchard (2024/2025) | CSL 2025 | 2401.17199 | Mixed linear and graded logic (mGL); generalizes Benton's LNL to graded setting |
 | Eades, Orchard (2020) | LINEARITY/TLLA 2020 | 2006.08854 | Grading Adjoint Logic: combines adjoint logic with graded necessity modalities |
@@ -125,6 +125,18 @@ The key papers for SELLF are:
 | Marshall, Orchard (2023) | — | 2310.18166 | Functional Ownership via Fractional Uniqueness (Rust's ownership ≅ graded uniqueness) |
 | Marshall, Orchard (2023) | — | 2309.04324 | Graded Modal Types for Integrity and Confidentiality |
 | Breuvart, Kerjean, Mirwasser (2024/2026) | LMCS 2026 | 2402.09138 | Graded linear logic unified with differential linear logic via monoid-indexed exponentials |
+
+### GraD: graded types with usage-aware heap semantics (Choudhury-Eades-Eisenberg-Weirich, POPL 2021)
+
+GraD bridges the gap between QTT's type-level grade tracking and operational heap behavior. Key contributions relevant to CALC:
+
+1. **Grade-0 non-interference (Lemma 6.2):** Grade-0 heap entries are provably irrelevant to computation. The heap partitions into "used" and "erased" segments; the erased segment has no observable effect. This validates THY_0015's staging claim from the dependent-types side.
+
+2. **Graded substitution:** When substituting a term used `q` times, context cost is `Γ₁ + q·Γ` — the grade scales the substituted context. This is the operational content of the semiring multiplication.
+
+3. **V-shaped partial order:** GraD uses {0 ≤ ω, 1 ≤ ω, 0 ∥ 1} (same as Granule, same as CALC's implementation). The incomparability of 0 and 1 prevents erased resources from being used linearly.
+
+4. **Usage-aware heap semantics:** Resources are tracked in the heap with grade annotations. This is the closest published work to CALC's forward-engine state model where `state.linear` (grade-1) and `state.persistent` (grade-ω) are operationally distinct zones.
 
 ### The graded comonad decomposition (Fujii-Katsumata-Melliès 2016)
 
@@ -340,7 +352,7 @@ This connection is **largely novel** — no paper explicitly establishes the cor
 ω  | ω  ω  ω         ω  | 0  ω  ω
 ```
 
-Partial order: 0 ≤ 1 ≤ ω (reflecting "fewer uses is more restrictive").
+Natural (algebraic) order: 0 ≤ 1 ≤ ω (induced by addition: a ≤ b ⟺ ∃c: a+c=b). But the **usage ordering** for structural rules and promotion in QTT is the partial order {0 ≤ ω, 1 ≤ ω} with 0 ∥ 1 (incomparable) — a "V" shape, not a total chain. This prevents erased (0) resources from being used linearly (1).
 
 ### Is it the natural numbers truncated at 2?
 
@@ -407,9 +419,10 @@ rho' * Gamma |- t : A
 6. **ILL forward chaining = Petri net rewriting:** Kanovich (APAL 1995)
 7. **Graded types + adjoint logic combination:** Eades-Orchard (TLLA 2020) and Glad (TyDe 2023)
 8. **0-grade erasure in Idris 2:** Brady (ECOOP 2021), formalized by Abel-Danielsson-Eriksson
-9. **Graded effects + coeffects combined:** Gaboardi-Katsumata-Orchard-Breuvart (ICFP 2016)
-10. **SELL c-semiring connection:** Pimentel-Olarte-Nigam (TPLP 2014)
-11. **BLL = ℕ-graded exponential:** Girard-Scedrov-Scott (TCS 1992) — earliest graded modal logic
+9. **Grade-0 non-interference:** Choudhury-Eades-Eisenberg-Weirich (POPL 2021, Lemma 6.2) — grade-0 heap irrelevance
+10. **Graded effects + coeffects combined:** Gaboardi-Katsumata-Orchard-Breuvart (ICFP 2016)
+11. **SELL c-semiring connection:** Pimentel-Olarte-Nigam (TPLP 2014)
+12. **BLL = ℕ-graded exponential:** Girard-Scedrov-Scott (TCS 1992) — earliest graded modal logic
 
 ### Novel / Unestablished (no direct paper)
 

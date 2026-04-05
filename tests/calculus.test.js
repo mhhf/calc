@@ -9,6 +9,7 @@ const { describe, it, before } = require('node:test');
 const assert = require('node:assert');
 
 const calculus = require('../lib/calculus');
+const { GRADE_W } = require('../lib/engine/grades');
 
 describe('v2 Calculus (generated from spec)', () => {
   let ill;
@@ -61,11 +62,12 @@ describe('v2 Calculus (generated from spec)', () => {
       assert.strictEqual(ill.AST.children(one).length, 0);
     });
 
-    it('should generate unary constructors', () => {
+    it('should generate bang constructor (arity 2: grade + formula)', () => {
       const A = ill.AST.freevar('A');
-      const bangA = ill.AST.bang(A);
+      const { GRADE_W } = require('../lib/engine/grades');
+      const bangA = ill.AST.bang(GRADE_W, A);
       assert.strictEqual(ill.AST.tag(bangA), 'bang');
-      assert.strictEqual(ill.AST.children(bangA).length, 1);
+      assert.strictEqual(ill.AST.children(bangA).length, 2);
     });
 
     it('should generate sequent constructor from family', () => {
@@ -160,7 +162,7 @@ describe('v2 Calculus (generated from spec)', () => {
     });
 
     it('should render bang correctly', () => {
-      const ast = ill.AST.bang(ill.AST.freevar('A'));
+      const ast = ill.AST.bang(GRADE_W, ill.AST.freevar('A'));
       assert.strictEqual(ill.render(ast, 'ascii'), '! A');
     });
 
@@ -335,7 +337,7 @@ describe('v2 Calculus (generated from spec)', () => {
     it('should parse application with bang: !inc X Y', () => {
       const ast = engineParse('!inc X Y');
       assert.strictEqual(Store.tag(ast), 'bang');
-      const inner = Store.child(ast, 0);
+      const inner = Store.child(ast, 1);
       assert.strictEqual(Store.tag(inner), 'inc');
     });
 
