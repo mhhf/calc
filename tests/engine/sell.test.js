@@ -571,3 +571,35 @@ describe('SELL: Grade constants survive Store.clear() (TODO 155)', () => {
     assert.equal(Store.child(h, 1), X);
   });
 });
+
+describe('SELL: Grade-0 in queries rejected (TODO 155)', () => {
+  it('decomposeQuery throws on !_0 resource', () => {
+    Store.clear();
+    const A = Store.put('atom', ['a']);
+    const bang0A = Store.put('bang', [GRADE_0, A]);
+    assert.throws(
+      () => mde.decomposeQuery(bang0A),
+      /Grade-0 resources.*cannot appear in queries/
+    );
+  });
+
+  it('decomposeQuery throws on !_0 inside tensor', () => {
+    Store.clear();
+    const A = Store.put('atom', ['a']);
+    const B = Store.put('atom', ['b']);
+    const bang0A = Store.put('bang', [GRADE_0, A]);
+    const h = Store.put('tensor', [B, bang0A]);
+    assert.throws(
+      () => mde.decomposeQuery(h),
+      /Grade-0 resources.*cannot appear in queries/
+    );
+  });
+
+  it('decomposeQuery accepts !_ω resource (persistent)', () => {
+    Store.clear();
+    const A = Store.put('atom', ['a']);
+    const bangWA = Store.put('bang', [GRADE_W, A]);
+    const result = mde.decomposeQuery(bangWA);
+    assert.ok(result.persistent[A], 'should classify as persistent');
+  });
+});
