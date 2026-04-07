@@ -378,12 +378,12 @@
     "bang_r": {
       "name": "bang_r",
       "tag": 7,
-      "arity": 1,
+      "arity": 2,
       "oblig_receive": true,
       "premises": [
         {
           "succedent": {
-            "Child": 0
+            "Child": 1
           },
           "lax": null
         }
@@ -397,13 +397,13 @@
     "bang_l": {
       "name": "bang_l",
       "tag": 7,
-      "arity": 1,
+      "arity": 2,
       "oblig_receive": false,
       "premises": [],
       "ctx_receive": true,
       "ctx_sends": [
         {
-          "Child": 0
+          "Child": 1
         }
       ],
       "formula_lookup": true,
@@ -413,7 +413,7 @@
     "absorption": {
       "name": "absorption",
       "tag": 7,
-      "arity": 1,
+      "arity": 2,
       "oblig_receive": false,
       "premises": [],
       "ctx_receive": true,
@@ -482,7 +482,7 @@
       [
         0,
         0,
-        100,
+        104,
         1,
         0,
         0,
@@ -495,9 +495,9 @@
     "tensor_r": [
       [
         1,
-        100,
-        79,
-        79,
+        104,
+        83,
+        83,
         0,
         0,
         1,
@@ -507,23 +507,23 @@
     "copy": [
       [
         1,
-        79
+        83
       ],
       [
         1,
-        79
+        83
       ]
     ],
     "id": [
       [
         1,
-        79,
+        83,
         1,
         0
       ],
       [
         1,
-        79,
+        83,
         2,
         0
       ]
@@ -531,17 +531,17 @@
   },
   "formula_rom": [
     [
-      100,
+      104,
       1,
-      79,
-      79,
+      83,
+      83,
       1,
       1
     ]
   ],
   "gamma_rom": [
     [
-      79,
+      83,
       1,
       2
     ]

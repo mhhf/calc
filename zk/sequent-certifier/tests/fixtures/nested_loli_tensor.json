@@ -378,12 +378,12 @@
     "bang_r": {
       "name": "bang_r",
       "tag": 7,
-      "arity": 1,
+      "arity": 2,
       "oblig_receive": true,
       "premises": [
         {
           "succedent": {
-            "Child": 0
+            "Child": 1
           },
           "lax": null
         }
@@ -397,13 +397,13 @@
     "bang_l": {
       "name": "bang_l",
       "tag": 7,
-      "arity": 1,
+      "arity": 2,
       "oblig_receive": false,
       "premises": [],
       "ctx_receive": true,
       "ctx_sends": [
         {
-          "Child": 0
+          "Child": 1
         }
       ],
       "formula_lookup": true,
@@ -413,7 +413,7 @@
     "absorption": {
       "name": "absorption",
       "tag": 7,
-      "arity": 1,
+      "arity": 2,
       "oblig_receive": false,
       "premises": [],
       "ctx_receive": true,
@@ -480,16 +480,16 @@
   "chips": {
     "init": [
       [
-        99,
+        103,
         1,
-        84,
+        88,
         1,
         0,
         0,
         1
       ],
       [
-        79,
+        83,
         1,
         0,
         0,
@@ -498,7 +498,7 @@
         1
       ],
       [
-        82,
+        86,
         1,
         0,
         0,
@@ -513,22 +513,22 @@
     "loli_l": [
       [
         1,
-        99,
-        83,
-        84,
+        103,
+        87,
+        88,
         0,
         0,
         1,
         2,
-        84
+        88
       ]
     ],
     "tensor_r": [
       [
         1,
+        87,
         83,
-        79,
-        82,
+        86,
         1,
         0,
         3,
@@ -538,19 +538,19 @@
     "id": [
       [
         1,
-        79,
+        83,
         3,
         0
       ],
       [
         1,
-        82,
+        86,
         4,
         0
       ],
       [
         1,
-        84,
+        88,
         2,
         0
       ]
@@ -558,18 +558,18 @@
   },
   "formula_rom": [
     [
-      99,
+      103,
       2,
-      83,
-      84,
+      87,
+      88,
       1,
       1
     ],
     [
-      83,
+      87,
       1,
-      79,
-      82,
+      83,
+      86,
       1,
       1
     ]
