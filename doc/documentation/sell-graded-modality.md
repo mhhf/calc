@@ -70,7 +70,7 @@ The same classification applies in `expandChoiceItem()` for consequent expansion
 rules = rules.filter(r => !r.hasGrade0);
 ```
 
-This runs once per `exec()`/`explore()` call, before the filtered array is passed to the generic engine. Grade-0 rules are compile-time only (SELL/QTT convention). If they reach runtime, composition (TODO_0156) didn't run.
+This runs once per `exec()`/`explore()` call, before the filtered array is passed to the generic engine. Grade-0 rules are compile-time only — they are composed away by `compose.js` before reaching the runtime filter. See `doc/documentation/grade0-composition.md`.
 
 ## Store Stability
 
@@ -111,7 +111,8 @@ See THY_0015 for the grade-0 staging interpretation and stratified cut eliminati
 |------|------|
 | `lib/engine/grades.js` | Grade constants + Store.onClear() stability |
 | `lib/engine/compile.js` | flattenAntecedent 3-way split, hasGrade0 flag |
-| `lib/engine/index.js` | filterRules grade-0 exclusion, CACHE_VERSION |
+| `lib/engine/compose.js` | Grade-0 cut elimination (compose pass) |
+| `lib/engine/index.js` | filterRules grade-0 exclusion, compose integration, CACHE_VERSION |
 | `lib/engine/show.js` | Grade-aware bang display |
 | `lib/engine/convert.js` | desugarPreserved child(1), decomposeQuery child(1) |
 | `lib/engine/ill/connectives.js` | bang arity: 2 |
