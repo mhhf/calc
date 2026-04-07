@@ -30,9 +30,11 @@ CALC is a proof calculus system for experimenting with sequent-calculi with an i
 npm run dev           # Development server (http://localhost:3000)
 npm run build:ui      # Production build to out/ui/
 npm run build:bundle  # Regenerate out/ill.json from calculus specs
-npm test              # Core tests (431)
-npm run test:engine   # Engine tests (338)
-npm run test:all      # All tests (769)
+npm test              # All fast tests (1605 tests, ~3s) — RUN THIS DURING DEVELOPMENT
+npm run test:noffi    # noFFI adversarial soundness (13 tests, ~1s) — only after engine/FFI changes
+npm run test:zk       # ZK witness tests (94 tests, 24 known failures) — only after ZK changes
+npm run test:heavy    # Slow + drift tests (5-30 min) — only before release or major changes
+npm run test:all      # Everything combined
 npm run bench:diff    # Cross-commit benchmark comparison (use this when asked to benchmark)
 ```
 
