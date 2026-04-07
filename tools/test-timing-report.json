@@ -1,0 +1,641 @@
+{
+  "timestamp": "2026-04-07T11:47:18.357Z",
+  "timeout": 120000,
+  "profile": "default",
+  "nodeVersion": "v22.22.0",
+  "files": [
+    {
+      "basename": "api.test.js",
+      "category": "core",
+      "duration": 138,
+      "status": "pass",
+      "tests": 7,
+      "pass": 7,
+      "fail": 0,
+      "skip": 0
+    },
+    {
+      "basename": "ast.test.js",
+      "category": "core",
+      "duration": 134,
+      "status": "pass",
+      "tests": 18,
+      "pass": 18,
+      "fail": 0,
+      "skip": 0
+    },
+    {
+      "basename": "calculus.test.js",
+      "category": "core",
+      "duration": 147,
+      "status": "pass",
+      "tests": 53,
+      "pass": 53,
+      "fail": 0,
+      "skip": 0
+    },
+    {
+      "basename": "chunked-witness.test.js",
+      "category": "core",
+      "duration": 283,
+      "status": "fail",
+      "tests": 19,
+      "pass": 0,
+      "fail": 19,
+      "skip": 0
+    },
+    {
+      "basename": "earley-grammar.test.js",
+      "category": "core",
+      "duration": 151,
+      "status": "pass",
+      "tests": 50,
+      "pass": 50,
+      "fail": 0,
+      "skip": 0
+    },
+    {
+      "basename": "earley.test.js",
+      "category": "core",
+      "duration": 101,
+      "status": "pass",
+      "tests": 45,
+      "pass": 45,
+      "fail": 0,
+      "skip": 0
+    },
+    {
+      "basename": "focused-prover.test.js",
+      "category": "core",
+      "duration": 150,
+      "status": "pass",
+      "tests": 42,
+      "pass": 42,
+      "fail": 0,
+      "skip": 0
+    },
+    {
+      "basename": "focusing.test.js",
+      "category": "core",
+      "duration": 100,
+      "status": "pass",
+      "tests": 15,
+      "pass": 15,
+      "fail": 0,
+      "skip": 0
+    },
+    {
+      "basename": "generic-prover.test.js",
+      "category": "core",
+      "duration": 124,
+      "status": "pass",
+      "tests": 34,
+      "pass": 34,
+      "fail": 0,
+      "skip": 0
+    },
+    {
+      "basename": "guided-term.test.js",
+      "category": "core",
+      "duration": 135,
+      "status": "fail",
+      "tests": 17,
+      "pass": 16,
+      "fail": 1,
+      "skip": 0
+    },
+    {
+      "basename": "hash.js",
+      "category": "core",
+      "duration": 91,
+      "status": "pass",
+      "tests": 14,
+      "pass": 14,
+      "fail": 0,
+      "skip": 0
+    },
+    {
+      "basename": "kernel-ops.test.js",
+      "category": "core",
+      "duration": 107,
+      "status": "pass",
+      "tests": 17,
+      "pass": 17,
+      "fail": 0,
+      "skip": 0
+    },
+    {
+      "basename": "kernel.test.js",
+      "category": "core",
+      "duration": 128,
+      "status": "pass",
+      "tests": 20,
+      "pass": 20,
+      "fail": 0,
+      "skip": 0
+    },
+    {
+      "basename": "manual-api.test.js",
+      "category": "core",
+      "duration": 130,
+      "status": "pass",
+      "tests": 7,
+      "pass": 7,
+      "fail": 0,
+      "skip": 0
+    },
+    {
+      "basename": "manual-proof-flow.test.js",
+      "category": "core",
+      "duration": 111,
+      "status": "pass",
+      "tests": 15,
+      "pass": 15,
+      "fail": 0,
+      "skip": 0
+    },
+    {
+      "basename": "manual-prover-logic.test.js",
+      "category": "core",
+      "duration": 144,
+      "status": "pass",
+      "tests": 43,
+      "pass": 43,
+      "fail": 0,
+      "skip": 0
+    },
+    {
+      "basename": "meta-ctx.test.js",
+      "category": "core",
+      "duration": 92,
+      "status": "pass",
+      "tests": 8,
+      "pass": 8,
+      "fail": 0,
+      "skip": 0
+    },
+    {
+      "basename": "monad.test.js",
+      "category": "core",
+      "duration": 158,
+      "status": "fail",
+      "tests": 53,
+      "pass": 44,
+      "fail": 9,
+      "skip": 0
+    },
+    {
+      "basename": "multi-logic.test.js",
+      "category": "core",
+      "duration": 151,
+      "status": "pass",
+      "tests": 12,
+      "pass": 12,
+      "fail": 0,
+      "skip": 0
+    },
+    {
+      "basename": "proof-terms.test.js",
+      "category": "core",
+      "duration": 167,
+      "status": "pass",
+      "tests": 127,
+      "pass": 127,
+      "fail": 0,
+      "skip": 0
+    },
+    {
+      "basename": "prover.test.js",
+      "category": "core",
+      "duration": 127,
+      "status": "pass",
+      "tests": 21,
+      "pass": 21,
+      "fail": 0,
+      "skip": 0
+    },
+    {
+      "basename": "quantifiers.test.js",
+      "category": "core",
+      "duration": 129,
+      "status": "pass",
+      "tests": 28,
+      "pass": 28,
+      "fail": 0,
+      "skip": 0
+    },
+    {
+      "basename": "rewrite-trace.test.js",
+      "category": "core",
+      "duration": 236,
+      "status": "fail",
+      "tests": 8,
+      "pass": 7,
+      "fail": 1,
+      "skip": 0
+    },
+    {
+      "basename": "rule-interpreter.test.js",
+      "category": "core",
+      "duration": 154,
+      "status": "pass",
+      "tests": 33,
+      "pass": 33,
+      "fail": 0,
+      "skip": 0
+    },
+    {
+      "basename": "rules2-parser.test.js",
+      "category": "core",
+      "duration": 117,
+      "status": "pass",
+      "tests": 11,
+      "pass": 11,
+      "fail": 0,
+      "skip": 0
+    },
+    {
+      "basename": "sequent-ext.test.js",
+      "category": "core",
+      "duration": 128,
+      "status": "pass",
+      "tests": 37,
+      "pass": 37,
+      "fail": 0,
+      "skip": 0
+    },
+    {
+      "basename": "sequent.test.js",
+      "category": "core",
+      "duration": 114,
+      "status": "pass",
+      "tests": 8,
+      "pass": 8,
+      "fail": 0,
+      "skip": 0
+    },
+    {
+      "basename": "ui-flow.test.js",
+      "category": "core",
+      "duration": 112,
+      "status": "pass",
+      "tests": 7,
+      "pass": 7,
+      "fail": 0,
+      "skip": 0
+    },
+    {
+      "basename": "zk-benchmark.test.js",
+      "category": "core",
+      "duration": 218,
+      "status": "pass",
+      "tests": 4,
+      "pass": 4,
+      "fail": 0,
+      "skip": 0
+    },
+    {
+      "basename": "zk-custom-chip.test.js",
+      "category": "core",
+      "duration": 137,
+      "status": "pass",
+      "tests": 4,
+      "pass": 4,
+      "fail": 0,
+      "skip": 0
+    },
+    {
+      "basename": "zk-noffi-witness.test.js",
+      "category": "core",
+      "duration": 152,
+      "status": "fail",
+      "tests": 9,
+      "pass": 7,
+      "fail": 2,
+      "skip": 0
+    },
+    {
+      "basename": "zk-uint256.test.js",
+      "category": "core",
+      "duration": 80,
+      "status": "pass",
+      "tests": 16,
+      "pass": 16,
+      "fail": 0,
+      "skip": 0
+    },
+    {
+      "basename": "zk-witness.test.js",
+      "category": "core",
+      "duration": 152,
+      "status": "fail",
+      "tests": 17,
+      "pass": 16,
+      "fail": 1,
+      "skip": 0
+    },
+    {
+      "basename": "engine/arrlit.test.js",
+      "category": "engine",
+      "duration": 218,
+      "status": "pass",
+      "tests": 83,
+      "pass": 83,
+      "fail": 0,
+      "skip": 0
+    },
+    {
+      "basename": "engine/backchain-agnostic.test.js",
+      "category": "engine",
+      "duration": 179,
+      "status": "pass",
+      "tests": 34,
+      "pass": 34,
+      "fail": 0,
+      "skip": 0
+    },
+    {
+      "basename": "engine/clause-terms.test.js",
+      "category": "engine",
+      "duration": 152,
+      "status": "pass",
+      "tests": 18,
+      "pass": 18,
+      "fail": 0,
+      "skip": 0
+    },
+    {
+      "basename": "engine/compiled-matcher.test.js",
+      "category": "engine",
+      "duration": 429,
+      "status": "pass",
+      "tests": 16,
+      "pass": 16,
+      "fail": 0,
+      "skip": 0
+    },
+    {
+      "basename": "engine/compose.test.js",
+      "category": "engine",
+      "duration": 187,
+      "status": "pass",
+      "tests": 21,
+      "pass": 21,
+      "fail": 0,
+      "skip": 0
+    },
+    {
+      "basename": "engine/constraint.test.js",
+      "category": "engine",
+      "duration": 120,
+      "status": "pass",
+      "tests": 13,
+      "pass": 13,
+      "fail": 0,
+      "skip": 0
+    },
+    {
+      "basename": "engine/convert.test.js",
+      "category": "engine",
+      "duration": 207,
+      "status": "pass",
+      "tests": 36,
+      "pass": 36,
+      "fail": 0,
+      "skip": 0
+    },
+    {
+      "basename": "engine/disc-tree.test.js",
+      "category": "engine",
+      "duration": 208,
+      "status": "pass",
+      "tests": 19,
+      "pass": 19,
+      "fail": 0,
+      "skip": 0
+    },
+    {
+      "basename": "engine/e2e.test.js",
+      "category": "engine",
+      "duration": 253,
+      "status": "pass",
+      "tests": 9,
+      "pass": 9,
+      "fail": 0,
+      "skip": 0
+    },
+    {
+      "basename": "engine/evidence.test.js",
+      "category": "engine",
+      "duration": 126,
+      "status": "pass",
+      "tests": 13,
+      "pass": 13,
+      "fail": 0,
+      "skip": 0
+    },
+    {
+      "basename": "engine/explore.test.js",
+      "category": "engine",
+      "duration": 236,
+      "status": "pass",
+      "tests": 34,
+      "pass": 34,
+      "fail": 0,
+      "skip": 0
+    },
+    {
+      "basename": "engine/fact-set.test.js",
+      "category": "engine",
+      "duration": 132,
+      "status": "pass",
+      "tests": 37,
+      "pass": 37,
+      "fail": 0,
+      "skip": 0
+    },
+    {
+      "basename": "engine/forward.test.js",
+      "category": "engine",
+      "duration": 204,
+      "status": "pass",
+      "tests": 12,
+      "pass": 12,
+      "fail": 0,
+      "skip": 0
+    },
+    {
+      "basename": "engine/memory.test.js",
+      "category": "engine",
+      "duration": 351,
+      "status": "pass",
+      "tests": 34,
+      "pass": 34,
+      "fail": 0,
+      "skip": 0
+    },
+    {
+      "basename": "engine/named-args.test.js",
+      "category": "engine",
+      "duration": 211,
+      "status": "pass",
+      "tests": 37,
+      "pass": 37,
+      "fail": 0,
+      "skip": 0
+    },
+    {
+      "basename": "engine/noffi-e2e.test.js",
+      "category": "engine",
+      "duration": 1240,
+      "status": "pass",
+      "tests": 13,
+      "pass": 13,
+      "fail": 0,
+      "skip": 0
+    },
+    {
+      "basename": "engine/prediction.test.js",
+      "category": "engine",
+      "duration": 285,
+      "status": "pass",
+      "tests": 7,
+      "pass": 7,
+      "fail": 0,
+      "skip": 0
+    },
+    {
+      "basename": "engine/preserved-sugar.test.js",
+      "category": "engine",
+      "duration": 213,
+      "status": "pass",
+      "tests": 15,
+      "pass": 15,
+      "fail": 0,
+      "skip": 0
+    },
+    {
+      "basename": "engine/primitives.test.js",
+      "category": "engine",
+      "duration": 129,
+      "status": "pass",
+      "tests": 44,
+      "pass": 44,
+      "fail": 0,
+      "skip": 0
+    },
+    {
+      "basename": "engine/sell.test.js",
+      "category": "engine",
+      "duration": 247,
+      "status": "pass",
+      "tests": 49,
+      "pass": 49,
+      "fail": 0,
+      "skip": 0
+    },
+    {
+      "basename": "engine/separator.test.js",
+      "category": "engine",
+      "duration": 156,
+      "status": "pass",
+      "tests": 22,
+      "pass": 22,
+      "fail": 0,
+      "skip": 0
+    },
+    {
+      "basename": "engine/sha3.test.js",
+      "category": "engine",
+      "duration": 219,
+      "status": "pass",
+      "tests": 4,
+      "pass": 4,
+      "fail": 0,
+      "skip": 0
+    },
+    {
+      "basename": "engine/solc-benchmark.test.js",
+      "category": "engine",
+      "duration": 371,
+      "status": "pass",
+      "tests": 11,
+      "pass": 11,
+      "fail": 0,
+      "skip": 0
+    },
+    {
+      "basename": "engine/store-binary.test.js",
+      "category": "engine",
+      "duration": 743,
+      "status": "pass",
+      "tests": 34,
+      "pass": 34,
+      "fail": 0,
+      "skip": 0
+    },
+    {
+      "basename": "engine/type-check.test.js",
+      "category": "engine",
+      "duration": 292,
+      "status": "fail",
+      "tests": 29,
+      "pass": 26,
+      "fail": 3,
+      "skip": 0
+    },
+    {
+      "basename": "engine/vmtest/vmtest.test.js",
+      "category": "engine",
+      "duration": 1300,
+      "status": "pass",
+      "tests": 331,
+      "pass": 331,
+      "fail": 0,
+      "skip": 0
+    },
+    {
+      "basename": "engine/rule-analysis.test.js",
+      "category": "engine",
+      "duration": 295395,
+      "status": "fail",
+      "tests": 78,
+      "pass": 67,
+      "fail": 11,
+      "skip": 0
+    },
+    {
+      "basename": "zk-symbolic-solc.test.js",
+      "category": "core",
+      "duration": null,
+      "status": "not-measured",
+      "tests": 2,
+      "pass": 0,
+      "fail": 0,
+      "skip": 0,
+      "note": "declared timeout: 1800s (30 min)"
+    },
+    {
+      "basename": "zk-chunked-tree.test.js",
+      "category": "core",
+      "duration": null,
+      "status": "not-measured",
+      "tests": 6,
+      "pass": 0,
+      "fail": 0,
+      "skip": 0,
+      "note": "declared timeout: 600s (10 min)"
+    },
+    {
+      "basename": "zk-custom-chip-solc.test.js",
+      "category": "core",
+      "duration": null,
+      "status": "not-measured",
+      "tests": 4,
+      "pass": 0,
+      "fail": 0,
+      "skip": 0,
+      "note": "declared timeout: 600s (10 min)"
+    }
+  ]
+}
