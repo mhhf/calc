@@ -9,7 +9,7 @@ const { GRADE_0, GRADE_W } = require('../../lib/engine/grades');
 const { ILL_CONNECTIVES } = require('../../lib/engine/ill/connectives');
 const { resolveConnectives, compileRule, flattenAntecedent, unwrapComputation } = require('../../lib/engine/compile');
 const { getPredicateHead } = require('../../lib/kernel/ast');
-const { composePair, buildPredicateMap, composeGrade0 } = require('../../lib/engine/compose');
+const { composePair, specializePersistent, buildPredicateMap, composeGrade0 } = require('../../lib/engine/compose');
 const { getModes } = require('../../lib/engine/opt/ffi');
 
 const COMPILE_OPTS = { connectives: ILL_CONNECTIVES, getModes };
@@ -319,6 +319,138 @@ describe('compose L1: composePair', () => {
   });
 });
 
+// ─── L1: specializePersistent ────────────────────────────────────────────────
+
+describe('compose L1: specializePersistent', () => {
+  let rc;
+  beforeEach(() => {
+    Store.clear();
+    rc = resolveConnectives(ILL_CONNECTIVES);
+  });
+
+  it('basic persistent goal specialization', () => {
+    // Rule: !is_push OP N * foo OP -o { bar N }
+    const OP = Store.put('metavar', ['OP']);
+    const N = Store.put('metavar', ['N']);
+    const is_push_OP_N = Store.put('is_push', [OP, N]);
+    const bang_is_push = Store.put('bang', [GRADE_W, is_push_OP_N]);
+    const foo_OP = Store.put('foo', [OP]);
+    const bar_N = Store.put('bar', [N]);
+    const rule = makeRule('test_rule', tensor(bang_is_push, foo_OP), bar_N);
+
+    // Fact: is_push(0x60, 1) — ground
+    const val60 = Store.put('atom', ['h60']);
+    const val1 = Store.put('atom', ['v1']);
+    const factHash = Store.put('is_push', [val60, val1]);
+
+    const result = specializePersistent(rule, factHash, 'is_push/push1', 'is_push', rc);
+    assert.ok(result, 'should produce a specialized rule');
+    assert.equal(result.name, 'test_rule:is_push/push1');
+
+    // Verify: no persistent goals for is_push remain
+    const anteFlat = flattenAntecedent(result.antecedent, rc);
+    for (const p of anteFlat.persistent) {
+      assert.notEqual(getPredicateHead(p), 'is_push', 'is_push goal should be resolved');
+    }
+
+    // Verify: foo now has ground OP (val60)
+    assert.equal(anteFlat.linear.length, 1);
+    const fooPat = anteFlat.linear[0];
+    assert.equal(getPredicateHead(fooPat), 'foo');
+    assert.equal(Store.child(fooPat, 0), val60, 'OP should be grounded to h60');
+
+    // Verify: bar now has ground N (val1)
+    const conseqFlat = flattenAntecedent(unwrapComputation(result.consequent, rc), rc);
+    assert.equal(conseqFlat.linear.length, 1);
+    assert.equal(Store.child(conseqFlat.linear[0], 0), val1, 'N should be grounded to v1');
+  });
+
+  it('preserves non-matching persistent goals', () => {
+    // Rule: !is_push OP N * !plus N 1 M * foo OP -o { bar M }
+    const OP = Store.put('metavar', ['OP']);
+    const N = Store.put('metavar', ['N']);
+    const M = Store.put('metavar', ['M']);
+    const is_push_OP_N = Store.put('is_push', [OP, N]);
+    const one = Store.put('atom', ['one']);
+    const plus_N_1_M = Store.put('plus', [N, one, M]);
+    const bang_is_push = Store.put('bang', [GRADE_W, is_push_OP_N]);
+    const bang_plus = Store.put('bang', [GRADE_W, plus_N_1_M]);
+    const foo_OP = Store.put('foo', [OP]);
+    const bar_M = Store.put('bar', [M]);
+    const rule = makeRule('r', tensor(bang_is_push, bang_plus, foo_OP), bar_M);
+
+    const val60 = Store.put('atom', ['h60']);
+    const val1 = Store.put('atom', ['v1']);
+    const factHash = Store.put('is_push', [val60, val1]);
+
+    const result = specializePersistent(rule, factHash, 'f', 'is_push', rc);
+    assert.ok(result);
+
+    const anteFlat = flattenAntecedent(result.antecedent, rc);
+    // is_push removed, plus remains (with N→val1 substituted)
+    assert.equal(anteFlat.persistent.length, 1, 'one persistent goal remains');
+    assert.equal(getPredicateHead(anteFlat.persistent[0]), 'plus');
+    // plus(val1, one, M) — N was substituted
+    assert.equal(Store.child(anteFlat.persistent[0], 0), val1);
+  });
+
+  it('returns null when predHead not found in persistent goals', () => {
+    const X = Store.put('metavar', ['X']);
+    const aX = Store.put('a', [X]);
+    const bX = Store.put('b', [X]);
+    const rule = makeRule('r', aX, bX);
+
+    const factHash = Store.put('is_push', [Store.put('atom', ['h60']), Store.put('atom', ['v1'])]);
+    const result = specializePersistent(rule, factHash, 'f', 'is_push', rc);
+    assert.equal(result, null, 'no matching persistent goal → null');
+  });
+
+  it('unification failure returns null', () => {
+    // Rule: !is_push 0x60 N * foo -o { bar }
+    const val60 = Store.put('atom', ['h60']);
+    const N = Store.put('metavar', ['N']);
+    const is_push_60_N = Store.put('is_push', [val60, N]);
+    const bang_is_push = Store.put('bang', [GRADE_W, is_push_60_N]);
+    const foo = Store.put('atom', ['foo']);
+    const bar = Store.put('atom', ['bar']);
+    const rule = makeRule('r', tensor(bang_is_push, foo), bar);
+
+    // Fact: is_push(0x70, 2) — different opcode, unification fails on ground position
+    const val70 = Store.put('atom', ['h70']);
+    const val2 = Store.put('atom', ['v2']);
+    const factHash = Store.put('is_push', [val70, val2]);
+
+    const result = specializePersistent(rule, factHash, 'f', 'is_push', rc);
+    assert.equal(result, null, 'ground mismatch → unification failure → null');
+  });
+
+  it('preserves grade-0 content in antecedent', () => {
+    // Rule: !_0 step OP * !is_push OP N -o { done N }
+    const OP = Store.put('metavar', ['OP']);
+    const N = Store.put('metavar', ['N']);
+    const step_OP = Store.put('step', [OP]);
+    const bang0_step = Store.put('bang', [GRADE_0, step_OP]);
+    const is_push_OP_N = Store.put('is_push', [OP, N]);
+    const bang_is_push = Store.put('bang', [GRADE_W, is_push_OP_N]);
+    const done_N = Store.put('done', [N]);
+    const rule = makeRule('r', tensor(bang0_step, bang_is_push), done_N);
+
+    const val60 = Store.put('atom', ['h60']);
+    const val1 = Store.put('atom', ['v1']);
+    const factHash = Store.put('is_push', [val60, val1]);
+
+    const result = specializePersistent(rule, factHash, 'f', 'is_push', rc);
+    assert.ok(result);
+
+    const anteFlat = flattenAntecedent(result.antecedent, rc);
+    assert.equal(anteFlat.grade0.length, 1, 'grade-0 content preserved');
+    assert.equal(getPredicateHead(anteFlat.grade0[0]), 'step');
+    // step(h60) — OP was grounded
+    assert.equal(Store.child(anteFlat.grade0[0], 0), val60);
+    assert.equal(anteFlat.persistent.length, 0, 'is_push resolved');
+  });
+});
+
 // ─── L3: composeGrade0 ─────────────────────────────────────────────────────
 
 describe('compose L3: composeGrade0', () => {
@@ -499,6 +631,186 @@ describe('compose L3: composeGrade0', () => {
     const result = composeGrade0([normal], ILL_CONNECTIVES);
     assert.equal(result.composedRules.length, 0);
     assert.equal(result.diagnostics.grade0Predicates.length, 0);
+  });
+});
+
+// ─── L3: composeGrade0 with persistent specialization ───────────────────────
+
+describe('compose L3: persistent specialization (pass 2)', () => {
+  beforeEach(() => Store.clear());
+
+  it('specializes rule persistent goals against grade-0 clauses', () => {
+    // Rule: !is_push OP N * foo OP -o { bar N }
+    const OP = Store.put('metavar', ['OP']);
+    const N = Store.put('metavar', ['N']);
+    const is_push_OP_N = Store.put('is_push', [OP, N]);
+    const bang_is_push = Store.put('bang', [GRADE_W, is_push_OP_N]);
+    const foo_OP = Store.put('foo', [OP]);
+    const bar_N = Store.put('bar', [N]);
+    const rule = makeRule('r', tensor(bang_is_push, foo_OP), bar_N);
+
+    // Grade-0 clauses
+    const v1 = Store.put('atom', ['v1']);
+    const v2 = Store.put('atom', ['v2']);
+    const h60 = Store.put('atom', ['h60']);
+    const h61 = Store.put('atom', ['h61']);
+    const clauses = new Map([
+      ['is_push/push1', { hash: Store.put('is_push', [h60, v1]), premises: [], grade0: true }],
+      ['is_push/push2', { hash: Store.put('is_push', [h61, v2]), premises: [], grade0: true }],
+    ]);
+
+    const result = composeGrade0([rule], ILL_CONNECTIVES, null, clauses);
+    assert.equal(result.diagnostics.errors.length, 0);
+    assert.equal(result.composedRules.length, 2, '2 specialized rules');
+    assert.equal(result.diagnostics.specializations, 2);
+    assert.ok(result.removedNames.has('r'), 'original rule marked for removal');
+
+    // Each specialized rule should have ground OP
+    for (const raw of result.composedRules) {
+      const anteFlat = flattenAntecedent(raw.antecedent, resolveConnectives(ILL_CONNECTIVES));
+      for (const p of anteFlat.persistent) {
+        assert.notEqual(getPredicateHead(p), 'is_push', 'no is_push goals remain');
+      }
+    }
+  });
+
+  it('two-pass: linear composition then persistent specialization', () => {
+    // Producer: src -o { !_0 mid OP }
+    const OP = Store.put('metavar', ['OP']);
+    const src = Store.put('atom', ['src']);
+    const mid_OP = Store.put('mid', [OP]);
+    const bang0_mid = Store.put('bang', [GRADE_0, mid_OP]);
+    const producer = makeRule('prod', src, bang0_mid);
+
+    // Consumer: !_0 mid OP * !lookup OP V -o { done V }
+    const V = Store.put('metavar', ['V']);
+    const mid_OP2 = Store.put('mid', [Store.put('metavar', ['OP2'])]);
+    const bang0_mid2 = Store.put('bang', [GRADE_0, mid_OP2]);
+    const lookup_OP2_V = Store.put('lookup', [Store.put('metavar', ['OP2']), V]);
+    const bang_lookup = Store.put('bang', [GRADE_W, lookup_OP2_V]);
+    const done_V = Store.put('done', [V]);
+    const consumer = makeRule('cons', tensor(bang0_mid2, bang_lookup), done_V);
+
+    // Grade-0 clauses
+    const va = Store.put('atom', ['va']);
+    const vb = Store.put('atom', ['vb']);
+    const k1 = Store.put('atom', ['k1']);
+    const k2 = Store.put('atom', ['k2']);
+    const clauses = new Map([
+      ['lookup/a', { hash: Store.put('lookup', [k1, va]), premises: [], grade0: true }],
+      ['lookup/b', { hash: Store.put('lookup', [k2, vb]), premises: [], grade0: true }],
+    ]);
+
+    const result = composeGrade0([producer, consumer], ILL_CONNECTIVES, null, clauses);
+    assert.equal(result.diagnostics.errors.length, 0);
+    // Pass 1: 1 linear composition (prod × cons)
+    // Pass 2: 2 persistent specializations (× 2 lookup facts)
+    assert.equal(result.composedRules.length, 2, '2 specialized rules from two-pass');
+    assert.equal(result.diagnostics.pairsSucceeded, 1, '1 linear composition');
+    assert.equal(result.diagnostics.specializations, 2, '2 persistent specializations');
+
+    // Verify specialized rules have no is_push/mid/grade-0 residuals
+    const rc = resolveConnectives(ILL_CONNECTIVES);
+    for (const raw of result.composedRules) {
+      const anteFlat = flattenAntecedent(raw.antecedent, rc);
+      assert.equal(anteFlat.grade0.length, 0, 'no grade-0 residuals');
+      for (const p of anteFlat.persistent) {
+        assert.notEqual(getPredicateHead(p), 'lookup', 'no lookup goals remain');
+      }
+    }
+  });
+
+  it('no-op when no grade-0 clauses exist', () => {
+    const a = Store.put('atom', ['a']);
+    const b = Store.put('atom', ['b']);
+    const rule = makeRule('r', a, b);
+    const clauses = new Map([
+      ['foo/a', { hash: Store.put('foo', [Store.put('atom', ['x'])]), premises: [] }],
+    ]);
+    const result = composeGrade0([rule], ILL_CONNECTIVES, null, clauses);
+    assert.equal(result.composedRules.length, 0);
+    assert.equal(result.specializations || result.diagnostics.specializations, 0);
+  });
+});
+
+// ─── Integration: grade-0 persistent specialization end-to-end ──────────────
+
+describe('compose integration: persistent specialization', () => {
+  it('specializes lookup clauses in loaded program', () => {
+    Store.clear();
+    const fs = require('fs');
+    const os = require('os');
+    const path = require('path');
+    const mde = require('../../lib/engine/index');
+    const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'spec-'));
+
+    // Program with grade-0 lookup clauses + parameterized consumer
+    fs.writeFileSync(path.join(tmpDir, 'spec_test.ill'),
+      'spec_in : bin -> type.\n' +
+      'spec_mid : bin -> bin -> type.\n' +
+      'spec_out : bin -> type.\n' +
+      // Grade-0 lookup clauses
+      'spec_lk/a: !_0 spec_lk 1 0xa.\n' +
+      'spec_lk/b: !_0 spec_lk 2 0xb.\n' +
+      'spec_lk/c: !_0 spec_lk 3 0xc.\n' +
+      // Producer (grade-0 linear type)
+      'step: spec_in X -o { !_0 spec_mid X X }.\n' +
+      // Consumer uses !_0 step + !spec_lk (both resolved at compile time)
+      'consume: !_0 spec_mid X X * !spec_lk X V -o { spec_out V }.\n' +
+      '#symex spec_in 1.\n'
+    );
+
+    const calc = mde.load(path.join(tmpDir, 'spec_test.ill'), { cache: false });
+
+    // Grade-0 originals filtered
+    assert.ok(!calc.forwardRules.find(r => r.name === 'step'), 'step filtered');
+    assert.ok(!calc.forwardRules.find(r => r.name === 'consume'), 'consume filtered');
+
+    // Specialized rules present (3 lookup facts × 1 consumer after step composition)
+    const specialized = calc.forwardRules.filter(r => r.name.includes('spec_lk/'));
+    assert.equal(specialized.length, 3, '3 specialized rules');
+
+    // Each specialized rule has NO spec_lk persistent goals
+    for (const r of specialized) {
+      const persGoals = r.antecedent.persistent || [];
+      for (const g of persGoals) {
+        assert.notEqual(getPredicateHead(g), 'spec_lk', `${r.name} should not have spec_lk goal`);
+      }
+    }
+
+    // Execution should work: spec_in(1) → step → !_0 spec_mid(1,1) → consume → !spec_lk(1,0xa) → spec_out(0xa)
+    const queryHash = calc.queries.get('symex');
+    const state = mde.decomposeQuery(queryHash);
+    const result = calc.exec(state, { maxSteps: 5, trace: true });
+    assert.ok(result.steps > 0, 'should execute');
+
+    // Cleanup
+    for (const f of fs.readdirSync(tmpDir)) fs.unlinkSync(path.join(tmpDir, f));
+    fs.rmdirSync(tmpDir);
+  });
+
+  it('grade-0 clauses remain available for backward chaining', () => {
+    Store.clear();
+    const fs = require('fs');
+    const os = require('os');
+    const path = require('path');
+    const mde = require('../../lib/engine/index');
+    const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'spec-bc-'));
+
+    // Grade-0 clause + backward query
+    fs.writeFileSync(path.join(tmpDir, 'bc_test.ill'),
+      'bc_lk/a: !_0 bc_lk 1 0xa.\n' +
+      'bc_lk/b: !_0 bc_lk 2 0xb.\n' +
+      '#goal bc_lk 1 0xa.\n'
+    );
+
+    const calc = mde.load(path.join(tmpDir, 'bc_test.ill'), { cache: false });
+    const goalHash = calc.queries.get('goal');
+    const result = calc.prove(goalHash);
+    assert.ok(result.success, 'backward chaining should prove grade-0 clause');
+
+    for (const f of fs.readdirSync(tmpDir)) fs.unlinkSync(path.join(tmpDir, f));
+    fs.rmdirSync(tmpDir);
   });
 });
 

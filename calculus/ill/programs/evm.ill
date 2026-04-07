@@ -316,74 +316,77 @@ step/make:
   -o { !_0 step OP PC' COST GAS' BC }.
 
 % PUSH lookup: opcode → immediate byte count (push1=1 .. push32=32)
-is_push/push1: is_push 0x60 1.
-is_push/push2: is_push 0x61 2.
-is_push/push3: is_push 0x62 3.
-is_push/push4: is_push 0x63 4.
-is_push/push5: is_push 0x64 5.
-is_push/push6: is_push 0x65 6.
-is_push/push7: is_push 0x66 7.
-is_push/push8: is_push 0x67 8.
-is_push/push9: is_push 0x68 9.
-is_push/push10: is_push 0x69 10.
-is_push/push11: is_push 0x6a 11.
-is_push/push12: is_push 0x6b 12.
-is_push/push13: is_push 0x6c 13.
-is_push/push14: is_push 0x6d 14.
-is_push/push15: is_push 0x6e 15.
-is_push/push16: is_push 0x6f 16.
-is_push/push17: is_push 0x70 17.
-is_push/push18: is_push 0x71 18.
-is_push/push19: is_push 0x72 19.
-is_push/push20: is_push 0x73 20.
-is_push/push21: is_push 0x74 21.
-is_push/push22: is_push 0x75 22.
-is_push/push23: is_push 0x76 23.
-is_push/push24: is_push 0x77 24.
-is_push/push25: is_push 0x78 25.
-is_push/push26: is_push 0x79 26.
-is_push/push27: is_push 0x7a 27.
-is_push/push28: is_push 0x7b 28.
-is_push/push29: is_push 0x7c 29.
-is_push/push30: is_push 0x7d 30.
-is_push/push31: is_push 0x7e 31.
-is_push/push32: is_push 0x7f 32.
+% Grade-0 clauses: specialized away at compile time (THY_0015, TODO_0162).
+is_push/push1: !_0 is_push 0x60 1.
+is_push/push2: !_0 is_push 0x61 2.
+is_push/push3: !_0 is_push 0x62 3.
+is_push/push4: !_0 is_push 0x63 4.
+is_push/push5: !_0 is_push 0x64 5.
+is_push/push6: !_0 is_push 0x65 6.
+is_push/push7: !_0 is_push 0x66 7.
+is_push/push8: !_0 is_push 0x67 8.
+is_push/push9: !_0 is_push 0x68 9.
+is_push/push10: !_0 is_push 0x69 10.
+is_push/push11: !_0 is_push 0x6a 11.
+is_push/push12: !_0 is_push 0x6b 12.
+is_push/push13: !_0 is_push 0x6c 13.
+is_push/push14: !_0 is_push 0x6d 14.
+is_push/push15: !_0 is_push 0x6e 15.
+is_push/push16: !_0 is_push 0x6f 16.
+is_push/push17: !_0 is_push 0x70 17.
+is_push/push18: !_0 is_push 0x71 18.
+is_push/push19: !_0 is_push 0x72 19.
+is_push/push20: !_0 is_push 0x73 20.
+is_push/push21: !_0 is_push 0x74 21.
+is_push/push22: !_0 is_push 0x75 22.
+is_push/push23: !_0 is_push 0x76 23.
+is_push/push24: !_0 is_push 0x77 24.
+is_push/push25: !_0 is_push 0x78 25.
+is_push/push26: !_0 is_push 0x79 26.
+is_push/push27: !_0 is_push 0x7a 27.
+is_push/push28: !_0 is_push 0x7b 28.
+is_push/push29: !_0 is_push 0x7c 29.
+is_push/push30: !_0 is_push 0x7d 30.
+is_push/push31: !_0 is_push 0x7e 31.
+is_push/push32: !_0 is_push 0x7f 32.
 
 % DUP lookup: opcode → stack index (0-based)
-is_dup/dup1: is_dup 0x80 0.
-is_dup/dup2: is_dup 0x81 1.
-is_dup/dup3: is_dup 0x82 2.
-is_dup/dup4: is_dup 0x83 3.
-is_dup/dup5: is_dup 0x84 4.
-is_dup/dup6: is_dup 0x85 5.
-is_dup/dup7: is_dup 0x86 6.
-is_dup/dup8: is_dup 0x87 7.
-is_dup/dup9: is_dup 0x88 0x8.
-is_dup/dup10: is_dup 0x89 0x9.
-is_dup/dup11: is_dup 0x8a 0xa.
-is_dup/dup12: is_dup 0x8b 0xb.
-is_dup/dup13: is_dup 0x8c 0xc.
-is_dup/dup14: is_dup 0x8d 0xd.
-is_dup/dup15: is_dup 0x8e 0xe.
-is_dup/dup16: is_dup 0x8f 0xf.
+% Grade-0 clauses: specialized away at compile time (THY_0015, TODO_0162).
+is_dup/dup1: !_0 is_dup 0x80 0.
+is_dup/dup2: !_0 is_dup 0x81 1.
+is_dup/dup3: !_0 is_dup 0x82 2.
+is_dup/dup4: !_0 is_dup 0x83 3.
+is_dup/dup5: !_0 is_dup 0x84 4.
+is_dup/dup6: !_0 is_dup 0x85 5.
+is_dup/dup7: !_0 is_dup 0x86 6.
+is_dup/dup8: !_0 is_dup 0x87 7.
+is_dup/dup9: !_0 is_dup 0x88 0x8.
+is_dup/dup10: !_0 is_dup 0x89 0x9.
+is_dup/dup11: !_0 is_dup 0x8a 0xa.
+is_dup/dup12: !_0 is_dup 0x8b 0xb.
+is_dup/dup13: !_0 is_dup 0x8c 0xc.
+is_dup/dup14: !_0 is_dup 0x8d 0xd.
+is_dup/dup15: !_0 is_dup 0x8e 0xe.
+is_dup/dup16: !_0 is_dup 0x8f 0xf.
 
 % SWAP lookup: opcode → index into REST (tail after TOS)
-is_swap/swap1: is_swap 0x90 0.
-is_swap/swap2: is_swap 0x91 1.
-is_swap/swap3: is_swap 0x92 2.
-is_swap/swap4: is_swap 0x93 3.
-is_swap/swap5: is_swap 0x94 4.
-is_swap/swap6: is_swap 0x95 0x5.
-is_swap/swap7: is_swap 0x96 0x6.
-is_swap/swap8: is_swap 0x97 0x7.
-is_swap/swap9: is_swap 0x98 0x8.
-is_swap/swap10: is_swap 0x99 0x9.
-is_swap/swap11: is_swap 0x9a 0xa.
-is_swap/swap12: is_swap 0x9b 0xb.
-is_swap/swap13: is_swap 0x9c 0xc.
-is_swap/swap14: is_swap 0x9d 0xd.
-is_swap/swap15: is_swap 0x9e 0xe.
-is_swap/swap16: is_swap 0x9f 0xf.
+% Grade-0 clauses: specialized away at compile time (THY_0015, TODO_0162).
+is_swap/swap1: !_0 is_swap 0x90 0.
+is_swap/swap2: !_0 is_swap 0x91 1.
+is_swap/swap3: !_0 is_swap 0x92 2.
+is_swap/swap4: !_0 is_swap 0x93 3.
+is_swap/swap5: !_0 is_swap 0x94 4.
+is_swap/swap6: !_0 is_swap 0x95 0x5.
+is_swap/swap7: !_0 is_swap 0x96 0x6.
+is_swap/swap8: !_0 is_swap 0x97 0x7.
+is_swap/swap9: !_0 is_swap 0x98 0x8.
+is_swap/swap10: !_0 is_swap 0x99 0x9.
+is_swap/swap11: !_0 is_swap 0x9a 0xa.
+is_swap/swap12: !_0 is_swap 0x9b 0xb.
+is_swap/swap13: !_0 is_swap 0x9c 0xc.
+is_swap/swap14: !_0 is_swap 0x9d 0xd.
+is_swap/swap15: !_0 is_swap 0x9e 0xe.
+is_swap/swap16: !_0 is_swap 0x9f 0xf.
 
 % Parameterized PUSH (push1–push32, gas=3, reads N immediate bytes)
 % push0 is a standard step consumer (gas=2, no immediate read)
