@@ -2,10 +2,10 @@
 title: "Partial Evaluation as Cut Elimination in SELL"
 created: 2026-04-07
 modified: 2026-04-07
-summary: "SELL subexponential grades are binding-time annotations. Grade-0 composition is partial evaluation via cut elimination. The first Futamura projection — specialize(interpreter, program) = compiled program — instantiates as composeGrade0(evm_rules, bytecode_facts) = per-PC specialized rules. Correctness is free from SELL cut admissibility. Multi-level PE generalizes via the grade semiring."
+summary: "SELL subexponential grades are binding-time annotations. Grade-0 composition is partial evaluation via cut elimination. The grade × quantifier framework: grade controls WHEN (compile/run), quantifier controls HOW MANY (∀=tabling, ∃=committed choice). Intensional grade-0 facts (!_0 clause with premises) = compile-time tabling via backward proof search. First Futamura projection for forward-chaining linear logic. Correctness from SELL cut admissibility."
 tags: [linear-logic, partial-evaluation, cut-elimination, graded-types, staging, forward-chaining, proof-theory, QTT, SELL, subexponentials, Futamura]
 category: "Forward Chaining"
-unique_contribution: "The identification of SELL subexponential grades with partial evaluation binding times, yielding the first Futamura projection for forward-chaining linear logic where specialization = cut elimination and correctness follows from cut admissibility. Distinguished from THY_0015 (which establishes grade-0 as staging) by the concrete PE correspondence: binding-time analysis = grade annotation, specialization = cut, residual program = composed rules, Futamura projections = iterated cut elimination."
+unique_contribution: "Two results: (1) The identification of SELL grades with PE binding times, yielding the first Futamura projection for forward-chaining linear logic where specialization = cut elimination and correctness follows from cut admissibility. (2) The grade × quantifier framework: !_0 on a clause with premises = compile-time tabling (enumerate ALL solutions via backward proof search). This bridges offline PE (enumerated facts) and online PE (derived facts) within a single proof-theoretic mechanism. Distinguished from THY_0015 by the concrete PE correspondence and the tabling mechanism."
 references:
   - "THY_0014 — Compile-Time Evaluation of the Indexed Monad"
   - "THY_0015 — Grade-0 Staging and Stratified Cut Elimination"
@@ -149,7 +149,55 @@ The correspondence generalizes: for any grade semiring (R, +, ·, 0, 1) with a p
 
 This opens a design space: custom grade semirings for domain-specific staging. The natural numbers ℕ give unbounded staging levels. The tropical semiring (ℕ ∪ {∞}, min, +) gives cost-sensitive staging. The information flow lattice gives security-level-aware PE.
 
-## 4. Novel Properties of Proof-Theoretic PE
+## 4. Intensional Grade-0 Facts: Tabling via the ∀/∃ × Grade Framework
+
+### 4.1 Extensional vs intensional grade-0
+
+Grade-0 facts can be defined in two ways:
+
+**Extensional** (enumerate all ground instances):
+```ill
+!_0 is_push 0x60 1.
+!_0 is_push 0x61 2.
+...  % 32 lines
+```
+
+**Intensional** (define via a clause with premises):
+```ill
+!_0 is_push OP N <- plus 0x5f N OP <- gte OP 0x60 1 <- lte OP 0x7f 1.
+```
+
+Both define the same set of grade-0 facts. The extensional form lists them; the intensional form derives them via backward proof search. The compiler evaluates the intensional definition to produce the extensional set. This is **tabling** — memoization of all solutions, standard in logic programming (XSB Prolog, SWI-Prolog, Datalog bottom-up evaluation).
+
+### 4.2 The grade × quantifier framework
+
+The grade annotation controls WHEN resolution happens. The quantifier structure controls HOW MANY solutions are collected:
+
+| | ∀ (all solutions) | ∃ (one solution) |
+|---|---|---|
+| **Grade 0** (compile-time) | **Tabling**: enumerate all, specialize each | **Committed choice**: pick one witness |
+| **Grade ω** (runtime) | N/A | **Standard**: resolve one per state |
+
+Free metavariables in a forward rule are universally quantified. At compile time, ∀ means "prepare for all valid cases" — one specialized rule per solution. At runtime, the forward engine picks ONE matching substitution (existential).
+
+The key insight: `!_0` on a clause with premises = **grade-0 tabling**. The compiler performs universal instantiation by running backward proof search, collecting all ground solutions, then specializing the consumer rule against each.
+
+### 4.3 Termination
+
+Tabling requires the solution set to be finite. Guaranteed by:
+1. **Structural**: range predicates (`gte`, `lte`) bound the search space
+2. **Safety net**: compiler-enforced max-solutions bound (error if exceeded)
+3. **Theory**: Datalog stratification over finite domain — the binary arithmetic clauses with range bounds define a finite Herbrand model
+
+For `is_push`: `plus 0x5f N OP` generates (N, OP) pairs in structural order. `lte OP 0x7f 1` fails when OP > 0x7f (N > 32), terminating the search. Exactly 32 solutions.
+
+### 4.4 Online vs offline PE
+
+Extensional grade-0 facts are **offline PE**: pre-enumerate all static values, then specialize by unification. Intensional grade-0 facts are **online PE**: derive static values on demand via proof search. Online PE is strictly more powerful (Jones-Gomard-Sestoft 1993, §12) — it doesn't require the programmer to manually enumerate the static store.
+
+In our system, both are theory-native. The offline form is syntactic sugar for the online form: writing `!_0 P c.` is equivalent to `!_0 P X <- eq X c.` where the tabling trivially produces one solution.
+
+## 5. Novel Properties of Proof-Theoretic PE
 
 ### 4.1 Specialization preserves linearity
 
