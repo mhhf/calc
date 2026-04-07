@@ -1,25 +1,26 @@
-454 tags written to doc/tags.yaml
--chaining: 32
+tags:
+  linear-logic: 60
+  forward-chaining: 33
   proof-theory: 28
   clf: 26
   research: 22
   performance: 21
   chr: 20
   focusing: 19
-  architecture: 17
-  implementation: 17
+  architecture: 18
+  implementation: 18
   optimization: 15
   lax-monad: 14
   symbolic-execution: 14
   adjoint-logic: 13
+  QTT: 13
   session-types: 13
   symexec: 13
-  QTT: 12
+  graded-types: 12
   verification: 12
-  graded-types: 11
+  cut-elimination: 11
   soundness: 11
   Ceptre: 10
-  cut-elimination: 10
   dependent-types: 10
   ownership: 10
   sequent-calculus: 10

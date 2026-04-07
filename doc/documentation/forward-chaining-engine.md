@@ -85,7 +85,7 @@ The engine never queries tag names — it queries structural categories. `ill/co
 {
   tensor: { category: 'multiplicative', arity: 2, polarity: 'positive' },
   loli:   { category: 'multiplicative', arity: 2, polarity: 'negative' },
-  bang:   { category: 'exponential',    arity: 1 },
+  bang:   { category: 'exponential',    arity: 2 },
   one:    { category: 'multiplicative', arity: 0 },
   monad:  { category: 'monad',          arity: 1 },
   oplus:  { category: 'additive',       arity: 2, polarity: 'positive' },
@@ -127,11 +127,15 @@ flowchart LR
     FWRULES --> COMP["compileRule()"]
     COMP --> COMPILED["compiled rules<br/>slots, triggers,<br/>pattern roles,<br/>compiled sub"]
 
+    COMPILED --> COMPOSE["composeGrade0()<br/>cut elimination<br/>on !_0 types"]
+    COMPOSE --> COMP2["compileRule()<br/>(composed only)"]
+    COMP2 --> FILTERED["filterRules()<br/>exclude hasGrade0"]
+
     CLAUSES --> IDX["backchain.buildIndex()"]
     IDX --> CIDX["clause index"]
 
-    COMPILED --> RUN["forward.run()"]
-    COMPILED --> EXPLORE["explore.explore()"]
+    FILTERED --> RUN["forward.run()"]
+    FILTERED --> EXPLORE["explore.explore()"]
     CIDX --> RUN
     CIDX --> EXPLORE
 ```

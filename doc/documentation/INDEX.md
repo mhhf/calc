@@ -11,6 +11,15 @@ Technical documentation for how CALC works.
 | [[parser-pipeline]] | Three parser paths from one Earley parser |
 | [[family-design]] | Calculus family abstraction and @extends mechanism |
 
+## Forward Engine
+
+| Document | Description |
+|----------|-------------|
+| [[forward-chaining-engine]] | Three-layer engine architecture, matching pipeline, strategy stack, optimizations |
+| [[grade0-composition]] | Grade-0 cut elimination — compile-time composition of `!_0` intermediate types |
+| [[sell-graded-modality]] | SELL graded modality `!_a` with {0,1,ω} semiring |
+| [[sell-rule-filtering]] | SELL label-based rule filtering |
+
 ## Reference
 
 | Document | Description |
