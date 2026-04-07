@@ -515,12 +515,11 @@ describe('SELL: Grade-0 filtering (TODO 155)', () => {
 
     const calc = mde.load(path.join(tmpDir, 'g0test.ill'), { cache: false });
 
-    // The 'stage' rule should be compiled with hasGrade0: true
+    // Grade-0 rules should be filtered from forwardRules (public API)
     const stageRule = calc.forwardRules.find(r => r.name === 'stage');
-    assert.ok(stageRule, 'stage rule should exist');
-    assert.equal(stageRule.hasGrade0, true, 'stage rule should have hasGrade0 flag');
+    assert.ok(!stageRule, 'stage (grade-0) should be filtered from forwardRules');
 
-    // The 'inc' rule should NOT have hasGrade0
+    // The 'inc' rule should be present (not grade-0)
     const incRule = calc.forwardRules.find(r => r.name === 'inc');
     assert.ok(incRule, 'inc rule should exist');
     assert.equal(incRule.hasGrade0, false, 'inc rule should NOT have hasGrade0');

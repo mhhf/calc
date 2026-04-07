@@ -526,15 +526,13 @@ describe('compose integration', () => {
 
     const calc = mde.load(path.join(tmpDir, 'compose_test.ill'), { cache: false });
 
-    // The original grade-0 rules should have hasGrade0: true
+    // Grade-0 originals should be filtered from forwardRules (public API)
     const prodRule = calc.forwardRules.find(r => r.name === 'prod');
     const consRule = calc.forwardRules.find(r => r.name === 'cons');
-    assert.ok(prodRule, 'prod rule exists');
-    assert.ok(consRule, 'cons rule exists');
-    assert.equal(prodRule.hasGrade0, true, 'prod has grade0');
-    assert.equal(consRule.hasGrade0, true, 'cons has grade0');
+    assert.ok(!prodRule, 'prod (grade-0) filtered from forwardRules');
+    assert.ok(!consRule, 'cons (grade-0) filtered from forwardRules');
 
-    // There should be a composed rule
+    // There should be a composed rule (not grade-0)
     const composedRule = calc.forwardRules.find(r => r.name === 'cons:prod');
     assert.ok(composedRule, 'composed rule cons:prod exists');
     assert.equal(composedRule.hasGrade0, false, 'composed rule passes filter');
