@@ -48,10 +48,10 @@ describe('MDE End-to-End', { timeout: 10000 }, () => {
     it('loads forward rules', () => {
       assert(calc.forwardRules.length > 0, 'Should have forward rules');
 
-      // Check specific rules
+      // Check specific rules (grade-0 originals are filtered; composed rules have :step/make suffix)
       const ruleNames = calc.forwardRules.map(r => r.name);
       assert(ruleNames.includes('evm/stop'), 'Should have evm/stop rule');
-      assert(ruleNames.includes('evm/add'), 'Should have evm/add rule');
+      assert(ruleNames.includes('evm/add:step/make'), 'Should have evm/add:step/make composed rule');
     });
 
     it('executes STOP instruction', async () => {
