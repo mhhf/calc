@@ -197,15 +197,46 @@ Extensional grade-0 facts are **offline PE**: pre-enumerate all static values, t
 
 In our system, both are theory-native. The offline form is syntactic sugar for the online form: writing `!_0 P c.` is equivalent to `!_0 P X <- eq X c.` where the tabling trivially produces one solution.
 
+### 4.5 Non-commutativity of `!_0` with quantifiers
+
+`!_0` does NOT freely commute with `∀` and `∃`. The order encodes whether the quantifier is resolved at compile time or left to runtime.
+
+**`!_0` and `∀`:**
+
+`!_0 ∀X.A  ⊢  ∀X. !_0 A` ✓ — From `!_0 ∀X.A`, promotion gives unlimited copies of `∀X.A`. For fresh eigenvariable `a`, instantiate to `A[a/X]`. Context is all-`!`, so promotion gives `!_0 A[a/X]`. Since `a` ∉ `!_0 ∀X.A`, ∀R gives `∀X. !_0 A`. □
+
+`∀X. !_0 A  ⊬  !_0 ∀X.A` ✗ — The individual `!_0 A[a/X]` proofs cannot assemble into `!_0 ∀X.A` because ∀R requires the eigenvariable not to appear in the context, but `a` appears in `!_0 A[a/X]`.
+
+**`!_0` and `∃`:**
+
+`∃X. !_0 A  ⊢  !_0 ∃X.A` ✓ — From witness `t` and `!_0 A[t/X]`, promote to unlimited `A[t/X]`. Each gives `∃X.A` via ∃R. So `!_0 ∃X.A`. □
+
+`!_0 ∃X.A  ⊬  ∃X. !_0 A` ✗ — Unlimited copies of `∃X.A` don't guarantee a stable witness. Different derelictions might yield different witnesses.
+
+**Significance for tabling:**
+
+Our intensional clause `!_0 is_push OP N <- premises` reads as `∀OP,N. (premises → !_0 is_push(OP,N))` — the **∀-outside, !_0-inside** form. Each (OP, N) instance is independently a grade-0 fact. Tabling enumerates these independent instances.
+
+The alternative `!_0 ∀OP,N. is_push(OP,N)` — a single compile-time universal — is strictly stronger (implies the per-instance form via the distribution law). But specialization needs individual ground facts, not a universal statement.
+
+| Form | Reading | Tabling role |
+|---|---|---|
+| `∀X. !_0 P(X)` | Per-X compile-time facts | Enumerate instances, specialize per instance |
+| `!_0 ∀X. P(X)` | Single compile-time universal | Implies above; useful for universal properties |
+| `∃X. !_0 P(X)` | Specific X with compile-time proof | Runtime-chosen, fact is compile-time |
+| `!_0 ∃X. P(X)` | Compile-time existential | Committed choice: compiler picks one witness |
+
+The non-commutativity is not a defect — it's information. It distinguishes "compile-time fact for each X" from "compile-time fact about all X." The first gives specialization. The second gives compile-time reasoning about universal properties.
+
 ## 5. Novel Properties of Proof-Theoretic PE
 
-### 4.1 Specialization preserves linearity
+### 5.1 Specialization preserves linearity
 
 Traditional PE produces a residual program with no resource guarantees. Our PE produces residual forward rules that are still linear logic formulas — they still consume and produce linear resources correctly.
 
 Gas accounting, stack manipulation, memory operations all remain sound after specialization because cut elimination preserves the logical structure. The specialized rule `evm/add:...:bc[2]` has the same resource behavior as the original — fewer metavariables, but identical consumption/production pattern on dynamic resources.
 
-### 4.2 Dead code elimination as proof irrelevance
+### 5.2 Dead code elimination as proof irrelevance
 
 The closed-world assumption (CWA) on grade-0 facts: if a grade-0 fact database is complete (we have ALL grade-0 facts), then a rule whose grade-0 goal has no matching fact is **unreachable** — its antecedent has no proof.
 
@@ -214,7 +245,7 @@ Erasing such rules is weakening, which is sound for grade 0 (since 0 ∈ W in th
 - Erasing it = weakening on grade-0
 - Soundness = grade-0 membership in W
 
-### 4.3 Compositional analysis from residual rules
+### 5.3 Compositional analysis from residual rules
 
 The specialized per-PC rules are the contract's **control flow graph** (CFG) expressed as linear logic. Properties of the CFG become properties of the rule set:
 - Dead code: rules with no proof of antecedent (§4.2)
@@ -224,7 +255,7 @@ The specialized per-PC rules are the contract's **control flow graph** (CFG) exp
 
 No separate CFG construction needed — it's the residual rule set itself.
 
-### 4.4 Staged computation via lax monad + grades
+### 5.4 Staged computation via lax monad + grades
 
 The lax monad `{A}` provides polarity shift (async → sync). Combined with grades:
 - `{!_0 A}` = computation producing a compile-time fact
@@ -232,7 +263,7 @@ The lax monad `{A}` provides polarity shift (async → sync). Combined with grad
 
 This embeds Davies-Pfenning λ○ (LICS 1996) into SELL: the `□` modality (code type) corresponds to `!_0`, and `letbox` (splice) corresponds to grade-0 cut. The lax monad handles the staging boundary.
 
-## 5. Comparison with Prior Work
+## 6. Comparison with Prior Work
 
 | System | Formalism | PE mechanism | Correctness |
 |---|---|---|---|
@@ -248,7 +279,7 @@ Key distinctions:
 - **Subexponential grades**: binding times live in the type system's modality structure, not in a separate annotation language.
 - **Cut admissibility**: correctness is a corollary, not a theorem requiring custom proof.
 
-## 6. Open Questions
+## 7. Open Questions
 
 ### Automatic BTA via groundness analysis
 
