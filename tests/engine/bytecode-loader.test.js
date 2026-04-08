@@ -4,7 +4,7 @@
 const { describe, it, beforeEach } = require('node:test');
 const assert = require('node:assert/strict');
 const Store = require('../../lib/kernel/store');
-const { loadBytecode } = require('../../lib/engine/ill/bytecode-loader');
+const { loadBytecode, bytecodeArrGetGuard } = require('../../lib/engine/ill/bytecode-loader');
 const { intToBin, binToInt } = require('../../lib/engine/ill/ffi/convert');
 const { GRADE_W } = require('../../lib/engine/grades');
 const { ILL_CONNECTIVES } = require('../../lib/engine/ill/connectives');
@@ -443,5 +443,266 @@ describe('bytecode-loader: entry point pre-filter', () => {
 
     const res2 = composeGrade0([rule2], ILL_CONNECTIVES, null, null, null, filteredFacts);
     assert.equal(res2.composedRules.length, 2, 'only 2 rules (entry points only)');
+  });
+});
+
+// ─── Scoping guard ──────────────────────────────────────────────────────────
+
+describe('bytecode-loader: bytecodeArrGetGuard', () => {
+  beforeEach(() => Store.clear());
+
+  it('allows arr_get when arg₁ matches bytecode linear resource', () => {
+    // Rule: !arr_get(BC, PC, Val) * bytecode BC -o { out Val }
+    const BC = Store.put('metavar', ['BC']);
+    const PC = Store.put('metavar', ['PC']);
+    const Val = Store.put('metavar', ['Val']);
+    const arr_get_goal = Store.put('arr_get', [BC, PC, Val]);
+    const bang_arr_get = Store.put('bang', [GRADE_W, arr_get_goal]);
+    const bytecode_BC = Store.put('bytecode', [BC]);
+    const out = Store.put('out', [Val]);
+    const rule = makeRule('bc_rule', tensor(bang_arr_get, bytecode_BC), out);
+
+    const rc = resolveConnectives(ILL_CONNECTIVES);
+    const ante = flattenAntecedent(Store.child(rule.hash, 0), rc);
+    const goalMatch = ante.persistent.find(g => getPredicateHead(g) === 'arr_get');
+
+    assert.equal(
+      bytecodeArrGetGuard(rule, 'arr_get', goalMatch, ante),
+      true,
+      'should allow — BC matches bytecode resource'
+    );
+  });
+
+  it('rejects arr_get when arg₁ matches stack, not bytecode', () => {
+    // Rule: !arr_get(S, I, Val) * stack S -o { peeked Val }
+    const S = Store.put('metavar', ['S']);
+    const I = Store.put('metavar', ['I']);
+    const Val = Store.put('metavar', ['Val']);
+    const arr_get_goal = Store.put('arr_get', [S, I, Val]);
+    const bang_arr_get = Store.put('bang', [GRADE_W, arr_get_goal]);
+    const stack_S = Store.put('stack', [S]);
+    const peeked = Store.put('peeked', [Val]);
+    const rule = makeRule('stack_rule', tensor(bang_arr_get, stack_S), peeked);
+
+    const rc = resolveConnectives(ILL_CONNECTIVES);
+    const ante = flattenAntecedent(Store.child(rule.hash, 0), rc);
+    const goalMatch = ante.persistent.find(g => getPredicateHead(g) === 'arr_get');
+
+    assert.equal(
+      bytecodeArrGetGuard(rule, 'arr_get', goalMatch, ante),
+      false,
+      'should reject — S from stack, not bytecode'
+    );
+  });
+
+  it('passes through non-arr_get predicates unconditionally', () => {
+    assert.equal(bytecodeArrGetGuard({}, 'is_push', 0, { linear: [] }), true);
+    assert.equal(bytecodeArrGetGuard({}, 'step', 0, { linear: [] }), true);
+  });
+
+  it('scopeGuard prevents stack arr_get specialization in compose', () => {
+    // Two rules with free metavar arg₁:
+    // Rule 1: !arr_get(BC, PC, Val) * bytecode BC -o { read Val }
+    // Rule 2: !arr_get(S, I, Val) * stack S -o { peek Val }
+    const BC = Store.put('metavar', ['BC']);
+    const PC = Store.put('metavar', ['PC']);
+    const Val = Store.put('metavar', ['Val']);
+    const rule1 = makeRule('bc_read',
+      tensor(
+        Store.put('bang', [GRADE_W, Store.put('arr_get', [BC, PC, Val])]),
+        Store.put('bytecode', [BC])
+      ),
+      Store.put('read', [Val])
+    );
+
+    const S = Store.put('metavar', ['S']);
+    const I = Store.put('metavar', ['I']);
+    const Val2 = Store.put('metavar', ['Val2']);
+    const rule2 = makeRule('stack_peek',
+      tensor(
+        Store.put('bang', [GRADE_W, Store.put('arr_get', [S, I, Val2])]),
+        Store.put('stack', [S])
+      ),
+      Store.put('peek', [Val2])
+    );
+
+    const myArr = Store.put('myarr', [Store.put('atom', ['h1'])]);
+    const extraFacts = new Map([
+      ['arr_get', [
+        { name: 'ag/0', hash: Store.put('arr_get', [myArr, intToBin(0n), intToBin(0x60n)]) },
+        { name: 'ag/1', hash: Store.put('arr_get', [myArr, intToBin(1n), intToBin(0x40n)]) },
+      ]],
+    ]);
+
+    // Without scoping guard: both rules get specialized (metavar arg₁ unifies with anything)
+    const resNoGuard = composeGrade0([rule1, rule2], ILL_CONNECTIVES, null, null, null, extraFacts);
+    assert.equal(resNoGuard.composedRules.length, 4, '4 rules without guard (2 per original)');
+
+    Store.clear();
+
+    // Rebuild with fresh hashes
+    const BC2 = Store.put('metavar', ['BC2']);
+    const PC2 = Store.put('metavar', ['PC2']);
+    const Val3 = Store.put('metavar', ['Val3']);
+    const rule1b = makeRule('bc_read',
+      tensor(
+        Store.put('bang', [GRADE_W, Store.put('arr_get', [BC2, PC2, Val3])]),
+        Store.put('bytecode', [BC2])
+      ),
+      Store.put('read', [Val3])
+    );
+
+    const S2 = Store.put('metavar', ['S2']);
+    const I2 = Store.put('metavar', ['I2']);
+    const Val4 = Store.put('metavar', ['Val4']);
+    const rule2b = makeRule('stack_peek',
+      tensor(
+        Store.put('bang', [GRADE_W, Store.put('arr_get', [S2, I2, Val4])]),
+        Store.put('stack', [S2])
+      ),
+      Store.put('peek', [Val4])
+    );
+
+    const myArr2 = Store.put('myarr', [Store.put('atom', ['h1'])]);
+    const extraFacts2 = new Map([
+      ['arr_get', [
+        { name: 'ag/0', hash: Store.put('arr_get', [myArr2, intToBin(0n), intToBin(0x60n)]) },
+        { name: 'ag/1', hash: Store.put('arr_get', [myArr2, intToBin(1n), intToBin(0x40n)]) },
+      ]],
+    ]);
+
+    // With scoping guard: only bc_read gets specialized, stack_peek passes through unchanged
+    const resGuard = composeGrade0(
+      [rule1b, rule2b], ILL_CONNECTIVES, null, null, null, extraFacts2, bytecodeArrGetGuard
+    );
+    // 2 specialized bc_read rules + 1 unmodified stack_peek (passed through by guard)
+    assert.equal(resGuard.composedRules.length, 3, '3 rules: 2 specialized bc_read + 1 preserved stack_peek');
+    assert.equal(resGuard.diagnostics.scopeGuarded, 1, '1 rule scope-guarded');
+    const bcRules = resGuard.composedRules.filter(r => r.name.includes('bc_read'));
+    assert.equal(bcRules.length, 2, '2 specialized bc_read rules');
+    // stack_peek preserved with original name
+    const stackRules = resGuard.composedRules.filter(r => r.name === 'stack_peek');
+    assert.equal(stackRules.length, 1, 'stack_peek preserved unchanged');
+  });
+});
+
+// ─── EVM integration: bytecode specialization ───────────────────────────────
+
+describe('bytecode specialization: EVM integration', { timeout: 30000 }, () => {
+  it('specializes real EVM rules with bytecode facts via load opts', () => {
+    Store.clear();
+    const path = require('path');
+    const mde = require('../../lib/engine/index');
+
+    const evmPath = path.join(__dirname, '../../calculus/ill/programs/evm.ill');
+
+    // PUSH1 0x40 STOP = 60 40 00
+    const bc = loadBytecode('604000');
+    const entryFacts = bc.facts.get('arr_get').filter((_, i) => bc.entryPoints.has(i));
+    const filteredFacts = new Map([['arr_get', entryFacts]]);
+
+    // Load with bytecode facts + scoping guard injected into the compose pipeline
+    const calc = mde.load(evmPath, {
+      cache: false,
+      extraGrade0Facts: filteredFacts,
+      scopeGuard: bytecodeArrGetGuard,
+    });
+
+    // Should have specialized arr_get rules
+    const arrGetRules = calc.forwardRules.filter(r => r.name.includes('arr_get/'));
+    assert.ok(arrGetRules.length > 0, 'arr_get-specialized rules present');
+
+    // Verify some specialized rules have ground PC values
+    let hasGroundPC = false;
+    for (const r of calc.forwardRules) {
+      for (const pat of (r.antecedent.linear || [])) {
+        if (Store.tag(pat) === 'pc') {
+          const pcVal = Store.child(pat, 0);
+          if (Store.tag(pcVal) === 'binlit') hasGroundPC = true;
+        }
+      }
+    }
+    assert.ok(hasGroundPC, 'some specialized rules have ground PC values');
+  });
+
+  it('bytecode specialization via load opts', () => {
+    Store.clear();
+    const path = require('path');
+    const fs = require('fs');
+    const os = require('os');
+    const mde = require('../../lib/engine/index');
+
+    // Minimal program with bytecode-dependent rule
+    const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'bc-int-'));
+    fs.writeFileSync(path.join(tmpDir, 'bc_test.ill'),
+      'bc_src : type.\n' +
+      'bc_dst : bin -> type.\n' +
+      'bc_lk/0: !_0 bc_lk 0x0 0xa.\n' +
+      'bc_lk/1: !_0 bc_lk 0x1 0xb.\n' +
+      'bc_step: !bc_lk KEY VAL * bc_src -o { bc_dst VAL }.\n' +
+      '#symex bc_src.\n'
+    );
+
+    const calc = mde.load(path.join(tmpDir, 'bc_test.ill'), { cache: false });
+
+    // bc_step should be specialized against bc_lk facts
+    const specialized = calc.forwardRules.filter(r => r.name.includes('bc_lk/'));
+    assert.equal(specialized.length, 2, '2 specialized rules');
+
+    // Execute and verify
+    const queryHash = calc.queries.get('symex');
+    const state = mde.decomposeQuery(queryHash);
+    const result = calc.exec(state, { maxSteps: 5, trace: true });
+    assert.ok(result.steps > 0, 'should execute');
+
+    for (const f of fs.readdirSync(tmpDir)) fs.unlinkSync(path.join(tmpDir, f));
+    fs.rmdirSync(tmpDir);
+  });
+});
+
+// ─── Benchmark: composition timing ──────────────────────────────────────────
+
+describe('bytecode specialization: benchmark', { timeout: 30000 }, () => {
+  it('measures load+compose time with bytecode facts', () => {
+    Store.clear();
+    const path = require('path');
+    const mde = require('../../lib/engine/index');
+
+    const evmPath = path.join(__dirname, '../../calculus/ill/programs/evm.ill');
+
+    // ~40 byte contract: enough to measure
+    const hex = '6080604052348015600f57600080fd5b5060' +
+                '40805190602001604051809103902060005500';
+    // Warm up (without bytecode)
+    mde.load(evmPath, { cache: false });
+
+    // Measure load with bytecode specialization
+    Store.clear();
+    const t0 = performance.now();
+    const bc2 = loadBytecode(hex);
+    const ef2 = bc2.facts.get('arr_get').filter((_, i) => bc2.entryPoints.has(i));
+    const ff2 = new Map([['arr_get', ef2]]);
+    const calc = mde.load(evmPath, {
+      cache: false,
+      extraGrade0Facts: ff2,
+      scopeGuard: bytecodeArrGetGuard,
+    });
+    const dt = performance.now() - t0;
+
+    const entryCount = bc2.entryPoints.size;
+    const totalFacts = bc2.facts.get('arr_get').length;
+    const arrGetRules = calc.forwardRules.filter(r => r.name.includes('arr_get/'));
+    console.log(
+      `  Bytecode: ${hex.length / 2} bytes, ${totalFacts} arr_get facts, ` +
+      `${entryCount} entry points, ${ef2.length} filtered facts`
+    );
+    console.log(
+      `  Result: ${calc.forwardRules.length} total rules, ` +
+      `${arrGetRules.length} arr_get-specialized, ${dt.toFixed(1)}ms`
+    );
+
+    assert.ok(calc.forwardRules.length > 0, 'should have rules');
+    assert.ok(arrGetRules.length > 0, 'should have arr_get-specialized rules');
+    assert.ok(dt < 10000, `load+compose should complete in < 10s, got ${dt.toFixed(0)}ms`);
   });
 });
