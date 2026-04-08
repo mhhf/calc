@@ -107,8 +107,8 @@ describe('bytecode-loader: loadBytecode', () => {
     // 61 AB CD = PUSH2 0xABCD
     const result = loadBytecode('61abcd');
     const facts = result.facts.get('arr_get');
-    // Semantic: PC0=PUSH2(0x61), PC1=0xABCD, PC2=0, PC3=0 (implicit STOP extends array)
-    assert.equal(facts.length, 4, '4 semantic positions (including implicit STOP)');
+    // Semantic: PC0=PUSH2(0x61), PC1=0xABCD, [PC2=filler skipped], PC3=0 (implicit STOP)
+    assert.equal(facts.length, 3, '3 semantic positions (filler at PC2 skipped)');
 
     const pc0val = Store.child(facts[0].hash, 2);
     assert.equal(binToInt(pc0val), 0x61n, 'PC0 = PUSH2 opcode');
@@ -116,8 +116,9 @@ describe('bytecode-loader: loadBytecode', () => {
     const pc1val = Store.child(facts[1].hash, 2);
     assert.equal(binToInt(pc1val), 0xABCDn, 'PC1 = combined PUSH2 data');
 
-    const pc2val = Store.child(facts[2].hash, 2);
-    assert.equal(binToInt(pc2val), 0n, 'PC2 = zero fill');
+    // facts[2] is PC3 (implicit STOP), not PC2 (filler)
+    const pc3val = Store.child(facts[2].hash, 2);
+    assert.equal(binToInt(pc3val), 0n, 'PC3 = implicit STOP');
   });
 
   it('fact structure compatible with composeGrade0', () => {
