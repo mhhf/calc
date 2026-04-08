@@ -267,3 +267,185 @@ describe('SROA — stack decomposition', () => {
     assert.equal(Store.tag(arrExpr), 'acons', 'expanded to cons pattern');
   });
 });
+
+// ─── McCarthy array axiom tests ──────────────────────────────────────────────
+
+describe('McCarthy array normalization', () => {
+  beforeEach(() => { Store.clear(); });
+
+  it('resolves arr_get(acons, 0) directly — head access', () => {
+    Store.registerTag('stack');
+    Store.registerTag('arr_get');
+    Store.registerTag('out');
+    const H = mv('H'), T = mv('T'), V = mv('V');
+
+    // stack([H | T]) * !arr_get([H|T], 0, V) -o {out(V)}
+    // McCarthy: V = H, arr_get eliminated
+    const arr = cons(H, T);
+    const stk = stackFact(arr);
+    const arrGet = Store.put('arr_get', [arr, binlit(0), V]);
+    const ante = tensor(stk, bang(arrGet));
+    const conseq = Store.put('out', [V]);
+    const rule = makeRule('a+b', ante, conseq);
+
+    const result = _sroaStackDecomposition([rule], rc, _illGetModeMeta);
+    assert.equal(result.rules.length, 1);
+    assert.equal(result.mccarthyCount, 1, 'McCarthy applied');
+
+    const f = flattenRule(result.rules[0]);
+    assert.equal(countPred(f.antePersistent, 'arr_get'), 0, 'arr_get eliminated');
+
+    // The consequent out(V) should now reference H directly
+    const outHash = f.conseqLinear.find(h => getPredicateHead(h) === 'out');
+    assert(outHash, 'out still present');
+    // H should appear in the antecedent stack
+    const stkHash = f.anteLinear.find(h => getPredicateHead(h) === 'stack');
+    const stkArr = Store.child(stkHash, 0);
+    const stkHead = Store.child(stkArr, 0);
+    assert.equal(Store.child(outHash, 0), stkHead, 'out references stack head');
+  });
+
+  it('reduces arr_get(acons, N) to arr_get(tail, N-1) for SROA', () => {
+    Store.registerTag('stack');
+    Store.registerTag('arr_get');
+    Store.registerTag('out');
+    const TOP = mv('TOP'), H = mv('H'), REST = mv('REST'), V = mv('V');
+
+    // stack([TOP | [H | REST]]) * !arr_get([H|REST], 1, V) -o {out(V)}
+    // McCarthy: arr_get([H|REST], 1, V) → arr_get(REST, 0, V)
+    // Then SROA: REST expanded, V = S0
+    const inner = cons(H, REST);
+    const stk = stackFact(cons(TOP, inner));
+    const arrGet = Store.put('arr_get', [inner, binlit(1), V]);
+    const ante = tensor(stk, bang(arrGet));
+    const conseq = Store.put('out', [V]);
+    const rule = makeRule('a+b', ante, conseq);
+
+    const result = _sroaStackDecomposition([rule], rc, _illGetModeMeta);
+    assert.equal(result.mccarthyCount, 1, 'McCarthy applied');
+    assert.equal(result.sroaCount, 1, 'SROA also applied');
+
+    const f = flattenRule(result.rules[0]);
+    assert.equal(countPred(f.antePersistent, 'arr_get'), 0, 'arr_get eliminated');
+  });
+
+  it('resolves arr_set(acons, 0) — head replacement', () => {
+    Store.registerTag('stack');
+    Store.registerTag('arr_set');
+    const H = mv('H'), T = mv('T'), NEWVAL = mv('NEWVAL'), OUT = mv('OUT');
+
+    // stack([H | T]) * !arr_set([H|T], 0, NEWVAL, OUT) -o {stack(OUT)}
+    // McCarthy: OUT = [NEWVAL | T], arr_set eliminated
+    const arr = cons(H, T);
+    const stk = stackFact(arr);
+    const arrSet = Store.put('arr_set', [arr, binlit(0), NEWVAL, OUT]);
+    const ante = tensor(stk, bang(arrSet));
+    const conseq = stackFact(OUT);
+    const rule = makeRule('a+b', ante, conseq);
+
+    const result = _sroaStackDecomposition([rule], rc, _illGetModeMeta);
+    assert.equal(result.mccarthyCount, 1, 'McCarthy applied');
+
+    const f = flattenRule(result.rules[0]);
+    assert.equal(countPred(f.antePersistent, 'arr_set'), 0, 'arr_set eliminated');
+
+    // Consequent stack should have [NEWVAL | T] structure
+    const stkConseq = f.conseqLinear.find(h => getPredicateHead(h) === 'stack');
+    assert(stkConseq, 'stack in consequent');
+    const conseqArr = Store.child(stkConseq, 0);
+    assert.equal(Store.tag(conseqArr), 'acons', 'consequent is acons');
+  });
+
+  it('reduces arr_set(acons, N>=depth) to arr_set(base, N-depth)', () => {
+    Store.registerTag('stack');
+    Store.registerTag('arr_set');
+    Store.registerTag('arr_get');
+    const TOP = mv('TOP'), H = mv('H'), REST = mv('REST');
+    const VAL = mv('VAL'), OUT = mv('OUT');
+
+    // stack([TOP | [H | REST]]) * !arr_set([H|REST], 1, VAL, OUT) -o {stack([TOP | OUT])}
+    // McCarthy: arr_set([H|REST], 1, VAL, OUT) → arr_set(REST, 0, VAL, INNER), OUT = [H|INNER]
+    // Then SROA handles the reduced goal
+    const inner = cons(H, REST);
+    const stk = stackFact(cons(TOP, inner));
+    const arrSet = Store.put('arr_set', [inner, binlit(1), VAL, OUT]);
+    const ante = tensor(stk, bang(arrSet));
+    const conseq = stackFact(cons(TOP, OUT));
+    const rule = makeRule('a+b', ante, conseq);
+
+    const result = _sroaStackDecomposition([rule], rc, _illGetModeMeta);
+    assert.equal(result.mccarthyCount, 1, 'McCarthy applied');
+
+    const f = flattenRule(result.rules[0]);
+    assert.equal(countPred(f.antePersistent, 'arr_set'), 0, 'arr_set eliminated');
+  });
+
+  it('handles deeper acons chains — arr_get([H0|[H1|T]], 1)', () => {
+    Store.registerTag('stack');
+    Store.registerTag('arr_get');
+    Store.registerTag('out');
+    const TOP = mv('TOP'), H0 = mv('H0'), H1 = mv('H1'), T = mv('T'), V = mv('V');
+
+    // arr_get([H0 | [H1 | T]], 1, V) → V = H1 (direct, depth=2, idx=1)
+    const inner = cons(H1, T);
+    const arr = cons(H0, inner);
+    const stk = stackFact(cons(TOP, arr));
+    const arrGet = Store.put('arr_get', [arr, binlit(1), V]);
+    const ante = tensor(stk, bang(arrGet));
+    const conseq = Store.put('out', [V]);
+    const rule = makeRule('a+b+c', ante, conseq);
+
+    const result = _sroaStackDecomposition([rule], rc, _illGetModeMeta);
+    assert.equal(result.mccarthyCount, 1, 'McCarthy applied');
+
+    const f = flattenRule(result.rules[0]);
+    assert.equal(countPred(f.antePersistent, 'arr_get'), 0, 'arr_get eliminated');
+  });
+
+  it('skips goals with non-ground index', () => {
+    Store.registerTag('stack');
+    Store.registerTag('arr_get');
+    Store.registerTag('out');
+    const H = mv('H'), T = mv('T'), N = mv('N'), V = mv('V');
+
+    const arr = cons(H, T);
+    const stk = stackFact(arr);
+    const arrGet = Store.put('arr_get', [arr, N, V]);
+    const ante = tensor(stk, bang(arrGet));
+    const conseq = Store.put('out', [V]);
+    const rule = makeRule('a+b', ante, conseq);
+
+    const result = _sroaStackDecomposition([rule], rc, _illGetModeMeta);
+    // Non-ground index → no McCarthy, no SROA (arrVar is acons not metavar)
+    assert.equal(result.mccarthyCount, 0, 'no McCarthy');
+    assert.equal(result.sroaCount, 0, 'no SROA');
+  });
+
+  it('mixed: McCarthy reduces acons goal, SROA handles the base metavar', () => {
+    Store.registerTag('stack');
+    Store.registerTag('arr_get');
+    Store.registerTag('out');
+    const TOP = mv('TOP'), REST = mv('REST'), V1 = mv('V1'), V2 = mv('V2');
+
+    // stack([TOP | REST])
+    // !arr_get(REST, 0, V1)          ← SROA: metavar arrVar
+    // !arr_get([V1|REST], 1, V2)     ← McCarthy: acons, idx=1 → arr_get(REST, 0, V2)
+    //                                   Then SROA handles arr_get(REST, 0, V2)
+    // This pattern arises from fusion: rule A reads slot 0 into V1, rule B
+    // uses [V1|REST] (arr_set output shape) and reads slot 1.
+    const aconsArr = cons(V1, REST);
+    const stk = stackFact(cons(TOP, REST));
+    const arrGet1 = Store.put('arr_get', [REST, binlit(0), V1]);
+    const arrGet2 = Store.put('arr_get', [aconsArr, binlit(1), V2]);
+    const ante = tensor(stk, bang(arrGet1), bang(arrGet2));
+    const conseq = Store.put('out', [V2]);
+    const rule = makeRule('a+b+c', ante, conseq);
+
+    const result = _sroaStackDecomposition([rule], rc, _illGetModeMeta);
+    assert.equal(result.mccarthyCount, 1, 'McCarthy applied to acons goal');
+    assert.equal(result.sroaCount, 1, 'SROA handles the reduced goal');
+
+    const f = flattenRule(result.rules[0]);
+    assert.equal(countPred(f.antePersistent, 'arr_get'), 0, 'all arr_get eliminated');
+  });
+});
