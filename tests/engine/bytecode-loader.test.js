@@ -93,13 +93,14 @@ describe('bytecode-loader: loadBytecode', () => {
     assert.equal(result.entryPoints.size, 1, 'only PC=0 is entry');
   });
 
-  it('uses custom array name', () => {
+  it('uses custom array name in fact labels', () => {
     const result = loadBytecode('00', 'mycode');
     const facts = result.facts.get('arr_get');
     assert.ok(facts.length > 0);
-    // First arg should be mycode(arrHash)
+    // First arg is raw arrlit (FFI-compatible), name is cosmetic
     const arg0 = Store.child(facts[0].hash, 0);
-    assert.equal(Store.tag(arg0), 'mycode');
+    assert.equal(Store.tag(arg0), 'arrlit');
+    assert.ok(facts[0].name.includes('mycode'), 'label includes custom name');
   });
 
   it('semantic grouping: PUSH2 combines 2 data bytes', () => {
