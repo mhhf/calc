@@ -5,8 +5,9 @@
  * goals. SROA expands the stack cons pattern to expose individual slots,
  * replacing arr_get/arr_set goals with direct structural matching.
  *
- * SROA is additive: it creates SROA'd copies alongside originals.
- * Only fused rules (name contains '+') are SROA'd.
+ * SROA replaces the original: if the SROA'd pattern can't match (stack too
+ * shallow), the original would also stall (arr_get OOB), so the fallback is
+ * unreachable. Only fused rules (name contains '+') are SROA'd.
  */
 const { describe, it, beforeEach } = require('node:test');
 const assert = require('node:assert/strict');
@@ -99,7 +100,7 @@ describe('SROA — stack decomposition', () => {
     assert.equal(result.sroaCount, 0);
   });
 
-  it('eliminates a single arr_get (additive)', () => {
+  it('replaces original with SROA version (single arr_get)', () => {
     Store.registerTag('stack');
     Store.registerTag('arr_get');
     const TOP = mv('TOP'), REST = mv('REST'), X = mv('X');
@@ -112,9 +113,9 @@ describe('SROA — stack decomposition', () => {
     const rule = makeRule('a+b', ante, conseq);
 
     const result = _sroaStackDecomposition([rule], rc, _illGetModeMeta);
-    assert.equal(result.rules.length, 2, 'original + SROA copy');
+    assert.equal(result.rules.length, 1, 'original replaced by SROA');
     assert.equal(result.sroaCount, 1);
-    assert.notEqual(result.rules[0].hash, rule.hash, 'SROA copy first (more specific)');
+    assert.notEqual(result.rules[0].hash, rule.hash, 'SROA version differs from original');
 
     const sroa = getSroaRule(result);
     assert(sroa, 'SROA copy exists');
