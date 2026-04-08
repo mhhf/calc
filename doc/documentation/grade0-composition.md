@@ -1,88 +1,124 @@
 ---
-title: "Grade-0 Cut Elimination — Compile-Time Composition"
+title: "Grade-0 Cut Elimination — Compile-Time Composition Pipeline"
 created: 2026-04-07
 modified: 2026-04-08
-summary: How the compose pass eliminates grade-0 intermediate types at compile time, producing specialized rules via cut elimination. Includes bytecode specialization pipeline and benchmark.
-tags: [cut-elimination, forward-chaining, graded-types, QTT, implementation, architecture, specialization]
+summary: Multi-pass compile-time pipeline eliminating grade-0 intermediates via SELL cut admissibility, with basic block fusion, chain strength reduction, McCarthy normalization, and SROA.
+tags: [cut-elimination, forward-chaining, graded-types, SELL, implementation, architecture, specialization, optimization]
 ---
 
 # Grade-0 Cut Elimination
 
-`lib/engine/compose.js` implements compile-time cut elimination for grade-0 intermediate types (`!_0`). Rules connected through grade-0 predicates are composed into specialized rules before runtime. The intermediates disappear — the engine only sees the composed rules.
-
-## Motivation
-
-Factor shared rule preambles into a producer rule that outputs a grade-0 type, consumed by specialized target rules. The compiler glues them together.
-
-```ill
-% Producer: shared preamble → grade-0 intermediate
-step/make:
-  $bytecode BC * pc PC * !arr_get BC PC OP * !inc PC PC'
-  -o { !_0 step OP PC' }.
-
-% Consumer: specialized behavior
-evm/add: !_0 step 0x01 PC' * stack [A, B | REST]
-  -o { pc PC' * ... }.
-
-% Composed result (produced automatically):
-evm/add:step/make:
-  $bytecode BC * pc PC * !arr_get BC PC 0x01 * !inc PC PC' * stack [A, B | REST]
-  -o { pc PC' * ... }.
-```
-
-The `!_0` type `step` is a compile-time scaffold — it helps factor rules, then gets eliminated.
+`lib/engine/compose.js` is a calculus-agnostic compile-time optimization pipeline. Rules connected through grade-0 predicates (`!_0`) are composed, specialized, fused, and scalarized before runtime. All domain-specific knowledge (predicate names, number representations) is injected via configuration objects — see `lib/engine/ill/compose-config.js` for the ILL-specific defaults.
 
 ## Three-Layer API
 
 ```
-L1: composePair(producer, consumer, cutPredHead, rc) → rawRule | null
-L2: buildPredicateMap(compiledRules) → Map<pred, {producers[], consumers[], bridges[]}>
-L3: composeGrade0(compiledRules, connectives) → ComposeResult
+L1: composePair        — atomic linear cut elimination (grade-agnostic)
+    specializePersistent — atomic persistent specialization (ground fact → goal)
+    fuseLinearPair       — atomic linear fusion (shared threading predicate)
+L2: buildPredicateMap   — analysis (producers/consumers/bridges per grade-0 pred)
+    buildEliminationOrder — dependency DAG → Kahn's topological sort
+L3: composeGrade0       — multi-pass scheduler → ComposeResult
 ```
 
-**L1 — Atomic cut elimination.** Grade-agnostic. One cut step: alpha-rename producer, flatten both sides, locate cut formula, unify, merge with θ applied. Returns a raw rule or null on unification failure. Reused unchanged by v2–v4.
+**L1** operations are single cut steps. Each takes two rules and a cut predicate, produces one composed rule or null. Alpha-renames, flattens, unifies the cut formula, merges with θ applied. Three variants for the three cut shapes (linear type, persistent fact, linear threading).
 
-**L2 — Analysis.** Scans compiled rules with `hasGrade0: true`. Classifies each as producer (grade-0 in consequent), consumer (grade-0 in antecedent), or bridge (both). Returns a map keyed by grade-0 predicate head.
+**L2** builds the data structures L3 needs: predicate maps classifying rules as producers/consumers/bridges, and elimination orders via Kahn's algorithm on the dependency DAG.
 
-**L3 — v1 scheduler.** Validates (no bridges, all predicates have both producers and consumers), iterates N×M pairs per predicate, calls L1, filters residuals, returns `ComposeResult`.
+**L3** orchestrates the full pipeline described below.
 
-## Pipeline Position
+## Pipeline
 
 ```
-Parse → Compile → Compose → Compile² → Filter → Execute
-                  (compose.js)
+Parse → Compile → composeGrade0() → Compile² → Filter → Execute
 ```
 
-In `_buildCalc()` (index.js):
-1. First compile: `compileRule()` produces `hasGrade0` flags and `grade0[]` arrays
-2. **Compose**: `composeGrade0()` pairs producers with consumers, eliminates grade-0
-3. Second compile: composed raw rules go through `compileRule()`
-4. Runtime filter: `rules.filter(r => !r.hasGrade0)` excludes original grade-0 rules
+`composeGrade0` runs 7 passes (some conditional):
 
-Lazy-loaded: `require('./compose')` only executes when grade-0 rules exist. Zero cost otherwise.
+```
+Pass 1:   Linear composition — grade-0 types via composePair (N×M product)
+Pass 2:   Persistent specialization — grade-0 facts via specializePersistent
+          (multi-stage: DAG-ordered, with compile-time tabling for clauses with premises)
+Pass 3+4: Batch residual resolution — safety net for remaining resolvable goals
+Pass 5:   Basic block fusion — 1:1 producer→consumer linear chain merging
+Pass 5.5: Additive chain fusion — algebraic strength reduction on threading chains
+Pass 5.6: Second residual resolution — catch goals grounded by fusion
+Pass 6:   McCarthy normalization + SROA — peel acons, scalarize arrays
+Pass 6.5: Post-SROA residual resolution — resolve goals grounded by scalarization
+```
 
-## Algorithm (composePair)
+Passes 5–6.5 require `opts.fuseBasicBlocks = true` and appropriate configs. Each residual resolution pass is idempotent and catches goals that became ground in the preceding transformation.
 
-Given producer E and consumer T sharing cut formula M:
+## Pass Details
 
-1. **Alpha-rename E** — fresh metavars via `freshMetavar()` prevent variable capture
-2. **Flatten** — `flattenAntecedent` on both sides → `{ linear[], persistent[], grade0[] }`
-3. **Locate M** — find M by predicate head in E's consequent `grade0[]` and T's antecedent `grade0[]`
-4. **Unify** — `unify(E_output, T_input) → θ` (substitution mapping metavars)
-5. **Merge + apply θ** — combine antecedents and consequents, remove M from both
-6. **Reassemble** — re-wrap persistent with `!_ω`, residual grade-0 with `!_0`, build loli
+### Pass 1: Linear Composition
 
-Returns `{ name, hash, antecedent, consequent, sourceLabel }` or `null` on unification failure.
+Pairs producer rules (grade-0 in consequent) with consumers (grade-0 in antecedent) via `composePair`. N producers × M consumers → N×M composed rules. Grade-0 modality admits contraction (SELL structural rule W=C={0,ω}).
 
-## Validation
+Defense-in-depth: composed rules with residual grade-0 content are filtered out with diagnostic errors.
 
-**Pre-composition (L3):**
-- Every grade-0 predicate needs at least one producer AND one consumer
-- Bridge rules (consume pred A, produce pred B) rejected in v1 — needs multi-stage (TODO_0158)
+### Pass 2: Persistent Specialization
 
-**Post-composition (defense-in-depth):**
-- Composed rules with grade-0 residuals are filtered out with diagnostic errors
-- Catches multi-predicate edge cases (rule produces `!_0 M * !_0 N`)
+Grade-0 clauses (backward rules marked `grade0: true`) are resolved into ground facts via compile-time tabling (`resolveAll` — backward proof search). External facts can be injected via `extraGrade0Facts`. A `scopeGuard` callback restricts specialization per-rule.
+
+Elimination order is computed via Kahn's topological sort on the dependency DAG: if predicate A's clauses depend on predicate B, B is eliminated first. Cycles are rejected.
+
+Fact lookup uses argument indexes for O(1) dispatch when fact sets are large.
+
+### Pass 3+4: Residual Resolution
+
+`_resolveResidualBatch` iterates the pool, calling `_resolveResidualOnce` per rule. Each invocation pre-sorts persistent goals by mode metadata (ground-first), then resolves in a single pass with a running substitution θ. Resolved goals are removed; the rule is reassembled via `_makeRule`.
+
+### Pass 5: Basic Block Fusion
+
+`_fuseBasicBlocks(pool, rc, getModeMeta, cutPred)` merges rules chained through a configurable linear threading predicate. A rule producing `pred(V)` in its consequent can fuse with the unique consumer of `pred(V)` in its antecedent — equivalent to CFG basic block merging. Uses `fuseLinearPair` for each cut step. Chains are followed greedily; hidden producers inside oplus/with/exists are excluded (the consumer rule is still needed for runtime choice paths).
+
+Theory: each fusion is a cut step on the linear fragment — justified by ILL cut elimination.
+
+### Pass 5.5: Additive Chain Fusion
+
+`_fuseAdditiveChains(pool, rc, getModeMeta, chainConfigs)` collapses persistent threading chains algebraically. When persistent goals form chains (output feeds input of next), the chain is replaced by a single accumulated goal:
+
+```
+step(X,Y) * step(Y,Z) → fused(X, 2, Z)      (unary step)
+sub(G,3,G2) * sub(G2,5,G3) → sub(G,8,G3)     (binary accumulate)
+```
+
+Safety: intermediate metavars must not appear elsewhere in the rule (linear antecedent, consequent, or other persistent goals). Each `ChainConfig` descriptor specifies predicate names, argument positions, and `parseConstant`/`buildConstant` callbacks for number representation.
+
+### Pass 6: McCarthy Normalization + SROA
+
+Two linked transformations:
+
+1. **McCarthy normalization** (`_mccarthyNormalize`): peels `acons` layers from array-access goals using the read-head/read-tail/write-head/write-tail axioms (McCarthy 1962). Replaces `arr_get(acons(H,T), 0, V)` with `V=H`, and shifts indices for tail access. Produces goals with ground indices on flat arrays.
+
+2. **SROA** (`_trySROA`): once McCarthy normalization grounds all array indices, the linear resource holding the array (e.g., `stack(acons(A,acons(B,empty_stack)))`) is expanded into individual scalar slots (`slot_0(A) * slot_1(B)`). Array-access goals become direct bindings. Configured via `SROAConfig`: `arrayPreds`, `resourcePred`, `parseIndex`/`buildIndex`.
+
+Theory: replacement strategy — SROA'd rules replace originals. Out-of-bounds access stalls (no matching rule) in both versions, so no behavioral difference.
+
+## Configuration
+
+All domain-specific behavior is injected via `opts`:
+
+| Option | Type | Purpose |
+|--------|------|---------|
+| `residualResolver` | `(goalHash) → factHash \| null` | Resolve persistent goals at compile time |
+| `fuseBasicBlocks` | `boolean` | Enable passes 5–6.5 |
+| `linearFusionPredicate` | `string` | Threading predicate for block fusion |
+| `chainFusionPredicates` | `ChainConfig[]` | Chain fusion descriptors |
+| `sroaConfig` | `SROAConfig` | Array/resource config for SROA |
+| `canonicalize` | `(hash) → hash` | Normalize terms after tabling resolution |
+
+ILL defaults are injected in `lib/engine/index.js` from `lib/engine/ill/compose-config.js`.
+
+## Caching
+
+Two caches survive across `composeGrade0` calls within the same process:
+
+- **Tabling cache** (`_tablingCache`): keyed on clause+definition hashes. Caches `resolveAll` results (compile-time backward search is expensive).
+- **Full compose cache** (`_composeCache`): keyed on all inputs. Returns complete `ComposeResult` for identical Store content.
+
+Both invalidated on `Store.clear()` via the `onClear` hook.
 
 ## Diagnostics
 
@@ -93,72 +129,41 @@ Returns `{ name, hash, antecedent, consequent, sourceLabel }` or `null` on unifi
 | `pairsAttempted` | Total (producer, consumer) pairs tried |
 | `pairsSucceeded` | Pairs that produced composed rules |
 | `pairsSkipped` | Unification failures (normal, not errors) |
-| `grade0Predicates` | Predicate names that were composed through |
-| `errors` | Validation failures (bridges, missing producers/consumers, residuals) |
+| `specializations` | Persistent specialization count |
+| `grade0Predicates` | Predicate names composed through |
+| `residualResolutions` | Goals resolved by residual passes |
+| `fusedRuleReduction` | Rules eliminated by basic block fusion |
+| `fuseChainLengths` | Lengths of fused basic block chains |
+| `sroaTransformed` | Rules transformed by SROA |
+| `mccarthyNormalized` | Rules with McCarthy-normalized array goals |
+| `errors` | Validation failures |
 
 ## Theory
 
-Each `composePair` call is one cut step on the grade-0 fragment of SELL (Nigam-Miller PPDP 2009). Grade-0 non-interference (Choudhury et al. POPL 2021, Lemma 6.2) guarantees composed rules are observationally equivalent. See THY_0015 for the stratified cut elimination proof.
+Each `composePair`/`fuseLinearPair` call is one cut step on the SELL calculus (Nigam-Miller PPDP 2009). SELL cut admissibility ensures each step preserves derivability. Grade-0 non-interference (Atkey 2018; Choudhury et al. POPL 2021) justifies that grade-0 intermediates are compile-time scaffolding with no runtime effect. See THY_0015 for the stratified cut elimination proof and THY_0016 for the partial evaluation / Futamura projection framework.
 
-N producers × M consumers yield N×M composed rules — the grade-0 modality admits contraction (SELL structural rule W=C={0,ω}), so one producer serves many consumers.
+## Version History
 
-## Bytecode Specialization Pipeline
-
-The composition pass supports external grade-0 facts injected at load time. The primary use case is EVM bytecode specialization: converting contract hex into per-PC specialized rules.
-
-### End-to-end flow
-
-```
-hex string → bytecode-loader.js → grade-0 arr_get facts → composeGrade0 → specialized per-PC rules
-```
-
-1. **`loadBytecode(hex)`** (`ill/bytecode-loader.js`): parses hex, groups PUSH data bytes into semantic values, produces `arr_get(arrlit, PC, Value)` grade-0 facts using raw arrlit hash (FFI-compatible).
-
-2. **`mde.load(path, { extraGrade0Facts, scopeGuard })`**: injects facts into the compose pipeline. The `scopeGuard` (`bytecodeArrGetGuard`) restricts specialization to arr_get goals whose array argument matches a `bytecode` linear resource — prevents stack/memory arr_get from being specialized with bytecode facts.
-
-3. **Compose** eliminates `arr_get` goals at compile time, producing per-PC rules with ground program counters:
-
-```ill
-% Before (generic):
-evm/push: $bytecode BC * pc PC * !arr_get BC PC OP * !is_push OP N * ...
-  -o { pc PC' * ... }.
-
-% After specialization (PC=0, OP=0x60, N=1):
-evm/push:step/make:is_push/def:0:arr_get/contract:0:
-  pc 0x0 * gas GAS * !inc 0x0 0x1 * !checked_sub GAS 3 GAS' * stack SH
-  -o { pc 0x2 * gas GAS' * ... }.
-```
-
-4. **Discriminator detection** (`compile.js`): the unary `pc(0x0)` pattern is detected as a ground discriminator. Self-pointer mode (keyPos === groundPos) enables O(1) rule selection without a separate pointer predicate.
-
-### Benchmark (30-byte EVM, 20 steps)
-
-| Mode | Baseline | Specialized | Speedup |
-|------|----------|-------------|---------|
-| noFFI (clause chaining) | 177µs/step | 133µs/step | 1.34x |
-| FFI (production) | 11µs/step | 8.7µs/step | 1.29x |
-| explore (DFS) | 3.31ms total | 2.57ms total | 1.29x |
-
-See `benchmarks/engine/specialization-bench.js` for the full benchmark. See THY_0016 for the theoretical framework (PE ↔ cut elimination, Futamura projections).
-
-## Version Chain
-
-| Version | TODO | What changes |
+| Version | TODO | What changed |
 |---------|------|-------------|
-| v1 | TODO_0156 | Single-pass, no bridges. L1 + L2 + L3 |
-| v2 | TODO_0158 | Multi-stage DAG composition. Reuses L1 + L2, replaces L3 scheduler |
-| v3 | TODO_0159 | Grade-0 persistent facts. New post-compose pass |
-| v4 | TODO_0160 | Futamura projection. Demand-driven BFS from entry points |
+| v1 | TODO_0156 | Single-pass linear composition (L1 + L2 + L3) |
+| v2 | TODO_0158 | Multi-stage DAG composition with Kahn's sort |
+| v3 | TODO_0159 | Grade-0 persistent facts and tabling |
+| v4 | TODO_0160 | External fact injection, scope guards, tabling cache |
+| v5 | TODO_0164 | Basic block fusion, chain fusion, McCarthy + SROA, residual resolution, generalization |
 
 ## Files
 
 | File | Role |
 |------|------|
-| `lib/engine/compose.js` | Three-layer API: composePair, buildPredicateMap, composeGrade0 |
-| `lib/engine/index.js` | Integration: compose pass in `_buildCalc()`, extraGrade0Facts injection |
+| `lib/engine/compose.js` | Calculus-agnostic pipeline: L1 + L2 + L3 (7 passes) |
+| `lib/engine/ill/compose-config.js` | ILL-specific configs: chain fusion, SROA |
+| `lib/engine/ill/residual-resolver.js` | ILL-specific residual resolver (FFI + clause fallback) |
+| `lib/engine/index.js` | Integration: compose pass in `_buildCalc()`, ILL defaults |
 | `lib/engine/grades.js` | Grade constants (GRADE_0, GRADE_W) |
-| `lib/engine/compile.js` | flattenAntecedent 3-way split, hasGrade0 flag, discriminator detection |
-| `lib/engine/ill/bytecode-loader.js` | Hex → grade-0 arr_get facts, scoping guard |
-| `tests/engine/compose.test.js` | 21 tests: L1, L2, L3, integration |
-| `tests/engine/bytecode-loader.test.js` | Bytecode loader: parsing, semantic grouping, entry points |
-| `benchmarks/engine/specialization-bench.js` | Specialization benchmark: baseline vs specialized runtime |
+| `lib/engine/compile.js` | flattenAntecedent, hasGrade0, discriminator detection |
+| `tests/engine/compose.test.js` | L1, L2, L3 integration tests |
+| `tests/engine/compose-chain-fusion.test.js` | Additive chain fusion tests |
+| `tests/engine/compose-inc-fusion.test.js` | Inc-specific chain fusion tests |
+| `tests/engine/sroa.test.js` | McCarthy normalization + SROA tests |
+| `benchmarks/engine/specialization-bench.js` | Specialization benchmark |

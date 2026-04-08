@@ -11,7 +11,8 @@ const { GRADE_W } = require('../../lib/engine/grades');
 const { ILL_CONNECTIVES } = require('../../lib/engine/ill/connectives');
 const { resolveConnectives, compileRule, flattenAntecedent } = require('../../lib/engine/compile');
 const { getPredicateHead } = require('../../lib/kernel/ast');
-const { _fuseIncChains } = require('../../lib/engine/compose');
+const { _fuseAdditiveChains } = require('../../lib/engine/compose');
+const { ILL_CHAIN_CONFIGS } = require('../../lib/engine/ill/compose-config');
 const { getModes, getModeMeta: _illGetModeMeta } = require('../../lib/engine/opt/ffi');
 const { show } = require('../../lib/engine/show');
 
@@ -48,7 +49,7 @@ function binlit(n) {
   return Store.put('binlit', [BigInt(n)]);
 }
 
-describe('_fuseIncChains', () => {
+describe('_fuseAdditiveChains (inc-only)', () => {
   let rc;
 
   beforeEach(() => {
@@ -68,7 +69,7 @@ describe('_fuseIncChains', () => {
     const conseq = Store.put('pc', [Z]);
     const rule = makeRule('test-2chain', ante, conseq);
 
-    const result = _fuseIncChains([rule], rc, _illGetModeMeta);
+    const result = _fuseAdditiveChains([rule], rc, _illGetModeMeta, [ILL_CHAIN_CONFIGS[0]]);
     assert.equal(result.length, 1);
 
     // Check the fused rule has !plus(X, 2, Z) instead of !inc(X,Y) * !inc(Y,Z)
@@ -101,7 +102,7 @@ describe('_fuseIncChains', () => {
     const conseq = Store.put('pc', [W]);
     const rule = makeRule('test-3chain', ante, conseq);
 
-    const result = _fuseIncChains([rule], rc, _illGetModeMeta);
+    const result = _fuseAdditiveChains([rule], rc, _illGetModeMeta, [ILL_CHAIN_CONFIGS[0]]);
     assert.equal(result.length, 1);
 
     const fusedAnte = flattenAntecedent(Store.child(result[0].hash, 0), rc);
@@ -127,7 +128,7 @@ describe('_fuseIncChains', () => {
     const conseq = Store.put('pc', [Y]);
     const rule = makeRule('test-single', ante, conseq);
 
-    const result = _fuseIncChains([rule], rc, _illGetModeMeta);
+    const result = _fuseAdditiveChains([rule], rc, _illGetModeMeta, [ILL_CHAIN_CONFIGS[0]]);
     assert.equal(result.length, 1);
 
     const fusedAnte = flattenAntecedent(Store.child(result[0].hash, 0), rc);
@@ -152,7 +153,7 @@ describe('_fuseIncChains', () => {
     const conseq = Store.put('pc', [Z]);
     const rule = makeRule('test-unsafe-linear', ante, conseq);
 
-    const result = _fuseIncChains([rule], rc, _illGetModeMeta);
+    const result = _fuseAdditiveChains([rule], rc, _illGetModeMeta, [ILL_CHAIN_CONFIGS[0]]);
     assert.equal(result.length, 1);
 
     const fusedAnte = flattenAntecedent(Store.child(result[0].hash, 0), rc);
@@ -175,7 +176,7 @@ describe('_fuseIncChains', () => {
     const conseq = tensor(Store.put('pc', [Z]), Store.put('gas', [Y]));
     const rule = makeRule('test-unsafe-conseq', ante, conseq);
 
-    const result = _fuseIncChains([rule], rc, _illGetModeMeta);
+    const result = _fuseAdditiveChains([rule], rc, _illGetModeMeta, [ILL_CHAIN_CONFIGS[0]]);
     assert.equal(result.length, 1);
 
     const fusedAnte = flattenAntecedent(Store.child(result[0].hash, 0), rc);
@@ -199,7 +200,7 @@ describe('_fuseIncChains', () => {
     const conseq = tensor(Store.put('pc', [Z]), Store.put('gas', [B]));
     const rule = makeRule('test-mixed', ante, conseq);
 
-    const result = _fuseIncChains([rule], rc, _illGetModeMeta);
+    const result = _fuseAdditiveChains([rule], rc, _illGetModeMeta, [ILL_CHAIN_CONFIGS[0]]);
     assert.equal(result.length, 1);
 
     const fusedAnte = flattenAntecedent(Store.child(result[0].hash, 0), rc);
@@ -222,7 +223,7 @@ describe('_fuseIncChains', () => {
     const conseq = Store.put('pc', [Z]);
     const rule = makeRule('test-ground', ante, conseq);
 
-    const result = _fuseIncChains([rule], rc, _illGetModeMeta);
+    const result = _fuseAdditiveChains([rule], rc, _illGetModeMeta, [ILL_CHAIN_CONFIGS[0]]);
     assert.equal(result.length, 1);
 
     const fusedAnte = flattenAntecedent(Store.child(result[0].hash, 0), rc);
@@ -248,7 +249,7 @@ describe('_fuseIncChains', () => {
     const conseq = Store.put('pc', [Z]);
     const rule = makeRule('test-unsafe-persistent', ante, conseq);
 
-    const result = _fuseIncChains([rule], rc, _illGetModeMeta);
+    const result = _fuseAdditiveChains([rule], rc, _illGetModeMeta, [ILL_CHAIN_CONFIGS[0]]);
     assert.equal(result.length, 1);
 
     const fusedAnte = flattenAntecedent(Store.child(result[0].hash, 0), rc);
@@ -268,7 +269,7 @@ describe('_fuseIncChains', () => {
     const conseq = Store.put('pc', [Z]);
     const rule = makeRule('evm/add', ante, conseq);
 
-    const result = _fuseIncChains([rule], rc, _illGetModeMeta);
+    const result = _fuseAdditiveChains([rule], rc, _illGetModeMeta, [ILL_CHAIN_CONFIGS[0]]);
     assert.ok(result[0].name.includes('inc-fused'), `name should include 'inc-fused', got: ${result[0].name}`);
   });
 
@@ -291,7 +292,7 @@ describe('_fuseIncChains', () => {
     const conseq = tensor(Store.put('pc', [Z]), Store.put('gas', [C]));
     const rule = makeRule('test-two-chains', ante, conseq);
 
-    const result = _fuseIncChains([rule], rc, _illGetModeMeta);
+    const result = _fuseAdditiveChains([rule], rc, _illGetModeMeta, [ILL_CHAIN_CONFIGS[0]]);
     assert.equal(result.length, 1);
 
     const fusedAnte = flattenAntecedent(Store.child(result[0].hash, 0), rc);

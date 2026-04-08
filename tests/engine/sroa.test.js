@@ -18,6 +18,7 @@ const { resolveConnectives, flattenAntecedent, unwrapComputation } = require('..
 const { getPredicateHead } = require('../../lib/kernel/ast');
 const { _sroaStackDecomposition } = require('../../lib/engine/compose');
 const { getModeMeta: _illGetModeMeta } = require('../../lib/engine/opt/ffi');
+const { ILL_SROA_CONFIG } = require('../../lib/engine/ill/compose-config');
 
 const rc = resolveConnectives(ILL_CONNECTIVES);
 
@@ -77,7 +78,7 @@ describe('SROA — stack decomposition', () => {
     const conseq = Store.put('out', [X]);
     const rule = makeRule('individual_rule', ante, conseq);
 
-    const result = _sroaStackDecomposition([rule], rc, _illGetModeMeta);
+    const result = _sroaStackDecomposition([rule], rc, _illGetModeMeta, ILL_SROA_CONFIG);
     assert.equal(result.rules.length, 1, 'no SROA copy for non-fused rule');
     assert.equal(result.sroaCount, 0);
     assert.equal(result.rules[0].hash, rule.hash, 'rule unchanged');
@@ -95,7 +96,7 @@ describe('SROA — stack decomposition', () => {
     const conseq = tensor(Store.put('pc', [Y]), stackFact(cons(TOP, REST)));
     const rule = makeRule('a+b', ante, conseq); // fused name
 
-    const result = _sroaStackDecomposition([rule], rc, _illGetModeMeta);
+    const result = _sroaStackDecomposition([rule], rc, _illGetModeMeta, ILL_SROA_CONFIG);
     assert.equal(result.rules.length, 1, 'no SROA copy (no arr goals)');
     assert.equal(result.sroaCount, 0);
   });
@@ -112,7 +113,7 @@ describe('SROA — stack decomposition', () => {
     const conseq = Store.put('out', [X]);
     const rule = makeRule('a+b', ante, conseq);
 
-    const result = _sroaStackDecomposition([rule], rc, _illGetModeMeta);
+    const result = _sroaStackDecomposition([rule], rc, _illGetModeMeta, ILL_SROA_CONFIG);
     assert.equal(result.rules.length, 1, 'original replaced by SROA');
     assert.equal(result.sroaCount, 1);
     assert.notEqual(result.rules[0].hash, rule.hash, 'SROA version differs from original');
@@ -151,7 +152,7 @@ describe('SROA — stack decomposition', () => {
     const conseq = stackFact(cons(Y, REST2));
     const rule = makeRule('swap+next', ante, conseq);
 
-    const result = _sroaStackDecomposition([rule], rc, _illGetModeMeta);
+    const result = _sroaStackDecomposition([rule], rc, _illGetModeMeta, ILL_SROA_CONFIG);
     const sroa = getSroaRule(result);
     assert(sroa, 'SROA copy exists');
     const f = flattenRule(sroa);
@@ -189,7 +190,7 @@ describe('SROA — stack decomposition', () => {
     const conseq = Store.put('out', [X]);
     const rule = makeRule('a+b+c', ante, conseq);
 
-    const result = _sroaStackDecomposition([rule], rc, _illGetModeMeta);
+    const result = _sroaStackDecomposition([rule], rc, _illGetModeMeta, ILL_SROA_CONFIG);
     const sroa = getSroaRule(result);
     const f = flattenRule(sroa);
 
@@ -214,7 +215,7 @@ describe('SROA — stack decomposition', () => {
     const conseq = Store.put('out', [X]);
     const rule = makeRule('a+b', ante, conseq);
 
-    const result = _sroaStackDecomposition([rule], rc, _illGetModeMeta);
+    const result = _sroaStackDecomposition([rule], rc, _illGetModeMeta, ILL_SROA_CONFIG);
     assert.equal(result.rules.length, 1, 'no SROA copy');
     assert.equal(result.sroaCount, 0);
   });
@@ -234,7 +235,7 @@ describe('SROA — stack decomposition', () => {
     const conseq = Store.put('out', [X]);
     const rule = makeRule('a+b', ante, conseq);
 
-    const result = _sroaStackDecomposition([rule], rc, _illGetModeMeta);
+    const result = _sroaStackDecomposition([rule], rc, _illGetModeMeta, ILL_SROA_CONFIG);
     const sroa = getSroaRule(result);
     const f = flattenRule(sroa);
 
@@ -255,7 +256,7 @@ describe('SROA — stack decomposition', () => {
     const conseq = Store.put('out', [V]);
     const rule = makeRule('dup+next', ante, conseq);
 
-    const result = _sroaStackDecomposition([rule], rc, _illGetModeMeta);
+    const result = _sroaStackDecomposition([rule], rc, _illGetModeMeta, ILL_SROA_CONFIG);
     const sroa = getSroaRule(result);
     const f = flattenRule(sroa);
 
@@ -288,7 +289,7 @@ describe('McCarthy array normalization', () => {
     const conseq = Store.put('out', [V]);
     const rule = makeRule('a+b', ante, conseq);
 
-    const result = _sroaStackDecomposition([rule], rc, _illGetModeMeta);
+    const result = _sroaStackDecomposition([rule], rc, _illGetModeMeta, ILL_SROA_CONFIG);
     assert.equal(result.rules.length, 1);
     assert.equal(result.mccarthyCount, 1, 'McCarthy applied');
 
@@ -321,7 +322,7 @@ describe('McCarthy array normalization', () => {
     const conseq = Store.put('out', [V]);
     const rule = makeRule('a+b', ante, conseq);
 
-    const result = _sroaStackDecomposition([rule], rc, _illGetModeMeta);
+    const result = _sroaStackDecomposition([rule], rc, _illGetModeMeta, ILL_SROA_CONFIG);
     assert.equal(result.mccarthyCount, 1, 'McCarthy applied');
     assert.equal(result.sroaCount, 1, 'SROA also applied');
 
@@ -343,7 +344,7 @@ describe('McCarthy array normalization', () => {
     const conseq = stackFact(OUT);
     const rule = makeRule('a+b', ante, conseq);
 
-    const result = _sroaStackDecomposition([rule], rc, _illGetModeMeta);
+    const result = _sroaStackDecomposition([rule], rc, _illGetModeMeta, ILL_SROA_CONFIG);
     assert.equal(result.mccarthyCount, 1, 'McCarthy applied');
 
     const f = flattenRule(result.rules[0]);
@@ -373,7 +374,7 @@ describe('McCarthy array normalization', () => {
     const conseq = stackFact(cons(TOP, OUT));
     const rule = makeRule('a+b', ante, conseq);
 
-    const result = _sroaStackDecomposition([rule], rc, _illGetModeMeta);
+    const result = _sroaStackDecomposition([rule], rc, _illGetModeMeta, ILL_SROA_CONFIG);
     assert.equal(result.mccarthyCount, 1, 'McCarthy applied');
 
     const f = flattenRule(result.rules[0]);
@@ -395,7 +396,7 @@ describe('McCarthy array normalization', () => {
     const conseq = Store.put('out', [V]);
     const rule = makeRule('a+b+c', ante, conseq);
 
-    const result = _sroaStackDecomposition([rule], rc, _illGetModeMeta);
+    const result = _sroaStackDecomposition([rule], rc, _illGetModeMeta, ILL_SROA_CONFIG);
     assert.equal(result.mccarthyCount, 1, 'McCarthy applied');
 
     const f = flattenRule(result.rules[0]);
@@ -415,7 +416,7 @@ describe('McCarthy array normalization', () => {
     const conseq = Store.put('out', [V]);
     const rule = makeRule('a+b', ante, conseq);
 
-    const result = _sroaStackDecomposition([rule], rc, _illGetModeMeta);
+    const result = _sroaStackDecomposition([rule], rc, _illGetModeMeta, ILL_SROA_CONFIG);
     // Non-ground index → no McCarthy, no SROA (arrVar is acons not metavar)
     assert.equal(result.mccarthyCount, 0, 'no McCarthy');
     assert.equal(result.sroaCount, 0, 'no SROA');
@@ -441,7 +442,7 @@ describe('McCarthy array normalization', () => {
     const conseq = Store.put('out', [V2]);
     const rule = makeRule('a+b+c', ante, conseq);
 
-    const result = _sroaStackDecomposition([rule], rc, _illGetModeMeta);
+    const result = _sroaStackDecomposition([rule], rc, _illGetModeMeta, ILL_SROA_CONFIG);
     assert.equal(result.mccarthyCount, 1, 'McCarthy applied to acons goal');
     assert.equal(result.sroaCount, 1, 'SROA handles the reduced goal');
 
