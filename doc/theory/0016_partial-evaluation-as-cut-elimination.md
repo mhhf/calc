@@ -1,7 +1,7 @@
 ---
 title: "Partial Evaluation as Cut Elimination in SELL"
 created: 2026-04-07
-modified: 2026-04-07
+modified: 2026-04-08
 summary: "SELL subexponential grades are binding-time annotations. Grade-0 composition is partial evaluation via cut elimination. The grade × quantifier framework: grade controls WHEN (compile/run), quantifier controls HOW MANY (∀=tabling, ∃=committed choice). Intensional grade-0 facts (!_0 clause with premises) = compile-time tabling via backward proof search. First Futamura projection for forward-chaining linear logic. Correctness from SELL cut admissibility."
 tags: [linear-logic, partial-evaluation, cut-elimination, graded-types, staging, forward-chaining, proof-theory, QTT, SELL, subexponentials, Futamura]
 category: "Forward Chaining"
@@ -191,13 +191,29 @@ Tabling requires the solution set to be finite. Guaranteed by:
 
 For `is_push`: `plus 0x5f N OP` generates (N, OP) pairs in structural order. `lte OP 0x7f 1` fails when OP > 0x7f (N > 32), terminating the search. Exactly 32 solutions.
 
-### 4.4 Online vs offline PE
+### 4.4 Tabling as least fixed point computation
+
+Compile-time tabling corresponds to the operational content of least fixed point computation. For a definite logic program P, the immediate consequence operator T_P is continuous and lfp(T_P) equals the least Herbrand model M_P (van Emden & Kowalski 1976). SLD resolution with tabling (Chen & Warren 1996, SLG resolution) computes this same model.
+
+The connection to our system:
+
+```
+lfp(T_P)             (denotational — least Herbrand model)
+  = SLG resolution    (operational — tabling)
+  = resolveAll        (our implementation — compile-time SLD enumeration)
+```
+
+The `!_0` grade annotation restricts tabling to compile time: `∀X. !_0 P(X) ← premises` means "compute M_P at compile time." Each ground fact in M_P becomes a virtual grade-0 fact fed to `specializePersistent`. The restriction to grade 0 ensures the tabled model is **static** — it cannot depend on runtime linear resources.
+
+This makes compile-time tabling the grade-0 restriction of the mu operator from muMALL (Baelde 2012): `mu X. F(X)` computes lfp(F); our `!_0` on a clause with premises computes lfp(T_P) restricted to grade 0. When muMALL lands (TODO_0009), `!_0` on a `mu`-defined predicate will naturally mean "compute its LFP at compile time" — subsuming this mechanism.
+
+### 4.5 Online vs offline PE
 
 Extensional grade-0 facts are **offline PE**: pre-enumerate all static values, then specialize by unification. Intensional grade-0 facts are **online PE**: derive static values on demand via proof search. Online PE is strictly more powerful (Jones-Gomard-Sestoft 1993, §12) — it doesn't require the programmer to manually enumerate the static store.
 
 In our system, both are theory-native. The offline form is syntactic sugar for the online form: writing `!_0 P c.` is equivalent to `!_0 P X <- eq X c.` where the tabling trivially produces one solution.
 
-### 4.5 Non-commutativity of `!_0` with quantifiers
+### 4.6 Non-commutativity of `!_0` with quantifiers
 
 `!_0` does NOT freely commute with `∀` and `∃`. The order encodes whether the quantifier is resolved at compile time or left to runtime.
 
