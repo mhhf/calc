@@ -127,15 +127,21 @@ async function runExplore(iterations) {
       { maxDepth: 200, calc: calcCtx }, iterations);
   }
 
-  // 2. Solc symbolic multisig (structuralMemo)
+  // 2. Solc symbolic multisig with bytecode (realistic E2E)
   {
+    const fs = require('fs');
+    const { loadBytecode, bytecodeArrGetGuard } = require('../../lib/engine/ill/bytecode-loader');
+    const codePath = path.join(__dirname, '../../calculus/ill/programs/multisig_nocall_solc_code.ill');
+    const hex = fs.readFileSync(codePath, 'utf8').match(/bytecode\s+0x([0-9a-fA-F]+)/)[1];
+    const bc = loadBytecode(hex);
     const calc = await mde.load(
-      path.join(__dirname, '../../calculus/ill/programs/multisig_nocall_solc_symbolic.ill')
+      path.join(__dirname, '../../calculus/ill/programs/multisig_nocall_solc_symbolic.ill'),
+      { extraGrade0Facts: bc.facts, scopeGuard: bytecodeArrGetGuard }
     );
     const state = mde.decomposeQuery(calc.queries.get('symex'));
     const calcCtx = { clauses: calc.clauses, definitions: calc.definitions };
     results['explore.solc_symbolic'] = benchOne('solc_symbolic', state, calc.forwardRules, calcCtx,
-      { maxDepth: 400, calc: calcCtx, structuralMemo: true }, iterations);
+      { maxDepth: 400, calc: calcCtx, structuralMemo: true, dangerouslyUseFFI: true }, iterations);
   }
 
   return results;
