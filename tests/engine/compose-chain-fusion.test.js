@@ -16,6 +16,7 @@ const { getPredicateHead } = require('../../lib/kernel/ast');
 const { _fuseAdditiveChains } = require('../../lib/engine/compose');
 const { _resolveResidualOnce } = require('../../lib/engine/compose');
 const { getModeMeta: _illGetModeMeta } = require('../../lib/engine/opt/ffi');
+const { ILL_CHAIN_CONFIGS } = require('../../lib/engine/ill/compose-config');
 const { intToBin, binToInt } = require('../../lib/engine/ill/ffi/convert');
 const { residualResolver } = require('../../lib/engine/ill/residual-resolver');
 
@@ -59,7 +60,7 @@ describe('_fuseAdditiveChains', () => {
     const conseq = Store.put('pc', [G3]);
     const rule = makeRule('a+b', ante, conseq);
 
-    const result = _fuseAdditiveChains([rule], rc, _illGetModeMeta);
+    const result = _fuseAdditiveChains([rule], rc, _illGetModeMeta, ILL_CHAIN_CONFIGS);
     assert.equal(result.length, 1);
 
     const newAnte = flattenAntecedent(Store.child(result[0].hash, 0), rc);
@@ -84,7 +85,7 @@ describe('_fuseAdditiveChains', () => {
     const conseq = Store.put('pc', [G4]);
     const rule = makeRule('a+b+c', ante, conseq);
 
-    const result = _fuseAdditiveChains([rule], rc, _illGetModeMeta);
+    const result = _fuseAdditiveChains([rule], rc, _illGetModeMeta, ILL_CHAIN_CONFIGS);
     const newAnte = flattenAntecedent(Store.child(result[0].hash, 0), rc);
     const csGoals = newAnte.persistent.filter(h => getPredicateHead(h) === 'checked_sub');
     assert.equal(csGoals.length, 1, 'should fuse 3 checked_sub into 1');
@@ -102,7 +103,7 @@ describe('_fuseAdditiveChains', () => {
     const conseq = Store.put('pc', [X3]);
     const rule = makeRule('a+b', ante, conseq);
 
-    const result = _fuseAdditiveChains([rule], rc, _illGetModeMeta);
+    const result = _fuseAdditiveChains([rule], rc, _illGetModeMeta, ILL_CHAIN_CONFIGS);
     const newAnte = flattenAntecedent(Store.child(result[0].hash, 0), rc);
     const plusGoals = newAnte.persistent.filter(h => getPredicateHead(h) === 'plus');
     assert.equal(plusGoals.length, 1, 'should fuse 2 plus into 1');
@@ -122,7 +123,7 @@ describe('_fuseAdditiveChains', () => {
     const conseq = Store.put('pc', [G3]);
     const rule = makeRule('a+b', ante, conseq);
 
-    const result = _fuseAdditiveChains([rule], rc, _illGetModeMeta);
+    const result = _fuseAdditiveChains([rule], rc, _illGetModeMeta, ILL_CHAIN_CONFIGS);
     const newAnte = flattenAntecedent(Store.child(result[0].hash, 0), rc);
     const csGoals = newAnte.persistent.filter(h => getPredicateHead(h) === 'checked_sub');
     assert.equal(csGoals.length, 2, 'should NOT fuse when intermediate var leaks');
@@ -140,7 +141,7 @@ describe('_fuseAdditiveChains', () => {
     const conseq = Store.put('pc', [G3]);
     const rule = makeRule('single_rule', ante, conseq);
 
-    const result = _fuseAdditiveChains([rule], rc, _illGetModeMeta);
+    const result = _fuseAdditiveChains([rule], rc, _illGetModeMeta, ILL_CHAIN_CONFIGS);
     const newAnte = flattenAntecedent(Store.child(result[0].hash, 0), rc);
     const csGoals = newAnte.persistent.filter(h => getPredicateHead(h) === 'checked_sub');
     assert.equal(csGoals.length, 1, 'should fuse even without + in name');
@@ -158,7 +159,11 @@ describe('_fuseAdditiveChains', () => {
     const conseq = Store.put('pc', [G3]);
     const rule = makeRule('a+b', ante, conseq);
 
-    const customConfig = [{ pred: 'sub', inputArg: 0, outputArg: 2, constantArg: 1, fusedPred: 'sub' }];
+    const customConfig = [{
+      pred: 'sub', inputArg: 0, outputArg: 2, constantArg: 1,
+      fusedPred: 'sub', fusedInputArg: 0, fusedConstantArg: 1, fusedOutputArg: 2,
+      parseConstant: binToInt, buildConstant: intToBin,
+    }];
     const result = _fuseAdditiveChains([rule], rc, _illGetModeMeta, customConfig);
     const newAnte = flattenAntecedent(Store.child(result[0].hash, 0), rc);
     const subGoals = newAnte.persistent.filter(h => getPredicateHead(h) === 'sub');
