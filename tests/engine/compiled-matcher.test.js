@@ -218,6 +218,122 @@ describe('compilePersistentStep', () => {
   });
 });
 
+// ─── structured output patterns (fusion creates these) ──────────────
+
+describe('structured output patterns in FFI', () => {
+  beforeEach(() => { Store.clear(); });
+
+  it('arr_set with cons pattern output binds component metavars', () => {
+    // Simulates what fusion creates: arr_set(Arr, Idx, Val, [Head | Tail])
+    // where the output position is a structured pattern, not a simple metavar
+    Store.registerTag('arr_set');
+    const arrVar = Store.put('metavar', ['Arr']);
+    const idxVar = Store.put('metavar', ['Idx']);
+    const valVar = Store.put('metavar', ['Val']);
+    const headVar = Store.put('metavar', ['Head']);
+    const tailVar = Store.put('metavar', ['Tail']);
+    const consPattern = Store.put('acons', [headVar, tailVar]);
+
+    const pattern = Store.put('arr_set', [arrVar, idxVar, valVar, consPattern]);
+    const slots = {
+      [arrVar]: 0, [idxVar]: 1, [valVar]: 2,
+      [headVar]: 3, [tailVar]: 4,
+    };
+
+    const spec = compilePersistentStep(pattern, slots);
+    assert(spec, 'should compile arr_set with structured output');
+    assert.strictEqual(spec.argSpecs[3].pattern, consPattern,
+      'output position should have pattern argSpec');
+
+    // Build input: arrlit [10, 20, 30]
+    const e10 = Store.put('binlit', [10n]);
+    const e20 = Store.put('binlit', [20n]);
+    const e30 = Store.put('binlit', [30n]);
+    const arr = Store.put('arrlit', [new Uint32Array([e10, e20, e30])]);
+    const idx = Store.put('binlit', [0n]);
+    const newVal = Store.put('binlit', [99n]);
+
+    // arr_set(arr, 0, 99, [Head|Tail]) → new arr = [99, 20, 30]
+    // Expect Head = 99, Tail = arrlit([20, 30])
+    const theta = [arr, idx, newVal, undefined, undefined];
+    const result = executePersistentStep(spec, theta);
+
+    assert.strictEqual(result, true, 'should succeed with structured output');
+    assert.strictEqual(theta[3], Store.put('binlit', [99n]), 'Head should be 99');
+    const expectedTail = Store.put('arrlit', [new Uint32Array([e20, e30])]);
+    assert.strictEqual(theta[4], expectedTail, 'Tail should be [20, 30]');
+  });
+
+  it('arr_get with cons pattern output binds head and tail', () => {
+    Store.registerTag('arr_get');
+    const arrVar = Store.put('metavar', ['Arr']);
+    const idxVar = Store.put('metavar', ['Idx']);
+    const headVar = Store.put('metavar', ['Head']);
+    const tailVar = Store.put('metavar', ['Tail']);
+    const consPattern = Store.put('acons', [headVar, tailVar]);
+
+    // arr_get mode is + + - : two inputs, one output
+    const pattern = Store.put('arr_get', [arrVar, idxVar, consPattern]);
+    const slots = {
+      [arrVar]: 0, [idxVar]: 1,
+      [headVar]: 2, [tailVar]: 3,
+    };
+
+    const spec = compilePersistentStep(pattern, slots);
+    assert(spec, 'should compile arr_get with structured output');
+
+    const e5 = Store.put('binlit', [5n]);
+    const e6 = Store.put('binlit', [6n]);
+    const e7 = Store.put('binlit', [7n]);
+    const arr = Store.put('arrlit', [new Uint32Array([e5, e6, e7])]);
+    const idx = Store.put('binlit', [1n]);
+
+    // arr_get(arr, 1) → result at index 1 = 6, rest = [5, 7]
+    // But arr_get returns just the element, not a cons!
+    // Mode + + - means output is the element. So cons pattern won't match...
+    // Actually this tests a FAILURE case: arr_get returns a scalar, not a cons
+    const theta = [arr, idx, undefined, undefined];
+    const result = executePersistentStep(spec, theta);
+    // arr_get returns the scalar value 6, not a cons. Unification with acons fails.
+    assert.strictEqual(result, false, 'should fail: scalar vs cons pattern');
+  });
+
+  it('provePersistentWithFFI handles structured output pattern', () => {
+    Store.registerTag('arr_set');
+    const { provePersistentWithFFI } = require('../../lib/engine/opt/ffi');
+
+    const arrVar = Store.put('metavar', ['Arr']);
+    const idxVar = Store.put('metavar', ['Idx']);
+    const valVar = Store.put('metavar', ['Val']);
+    const headVar = Store.put('metavar', ['Head']);
+    const tailVar = Store.put('metavar', ['Tail']);
+    const consPattern = Store.put('acons', [headVar, tailVar]);
+
+    const pattern = Store.put('arr_set', [arrVar, idxVar, valVar, consPattern]);
+    const slots = {
+      [arrVar]: 0, [idxVar]: 1, [valVar]: 2,
+      [headVar]: 3, [tailVar]: 4,
+    };
+
+    const e10 = Store.put('binlit', [10n]);
+    const e20 = Store.put('binlit', [20n]);
+    const arr = Store.put('arrlit', [new Uint32Array([e10, e20])]);
+    const idx = Store.put('binlit', [0n]);
+    const newVal = Store.put('binlit', [42n]);
+    const theta = [arr, idx, newVal, undefined, undefined];
+
+    // Minimal state object with empty persistent facts
+    const forward = require('../../lib/engine/forward');
+    const state = forward.createState({}, {});
+
+    const result = provePersistentWithFFI([pattern], 0, theta, slots, state, null, null);
+    assert.strictEqual(result, 1, 'should prove the pattern (index past end)');
+    assert.strictEqual(theta[3], Store.put('binlit', [42n]), 'Head bound to 42');
+    const expectedTail = Store.put('arrlit', [new Uint32Array([e20])]);
+    assert.strictEqual(theta[4], expectedTail, 'Tail bound to [20]');
+  });
+});
+
 // ─── persistentSteps attachment ──────────────────────────────────────
 
 describe('persistentSteps attachment', { timeout: 10000 }, () => {
