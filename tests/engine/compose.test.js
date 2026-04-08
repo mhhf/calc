@@ -574,7 +574,7 @@ describe('compose L3: composeGrade0', () => {
 
     const result = composeGrade0([producer, midConsumer, otherConsumer], ILL_CONNECTIVES);
     assert.ok(result.diagnostics.errors.length > 0, 'should have residual errors');
-    assert.ok(result.diagnostics.errors.some(e => e.includes('grade-0 content')));
+    assert.ok(result.diagnostics.errors.some(e => e.includes('grade-0 residuals')));
     assert.equal(result.composedRules.length, 0, 'defective rules filtered out');
   });
 

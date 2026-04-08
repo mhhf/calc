@@ -7,7 +7,7 @@
  *
  * SROA replaces the original: if the SROA'd pattern can't match (stack too
  * shallow), the original would also stall (arr_get OOB), so the fallback is
- * unreachable. Only fused rules (name contains '+') are SROA'd.
+ * unreachable. Only rules with isFused: true are SROA'd.
  */
 const { describe, it, beforeEach } = require('node:test');
 const assert = require('node:assert/strict');
@@ -25,7 +25,7 @@ const rc = resolveConnectives(ILL_CONNECTIVES);
 function makeRule(name, anteHash, conseqBodyHash) {
   const conseqHash = Store.put('monad', [conseqBodyHash]);
   const hash = Store.put('loli', [anteHash, conseqHash]);
-  return { name, hash, antecedent: anteHash, consequent: conseqHash };
+  return { name, hash, antecedent: anteHash, consequent: conseqHash, isFused: true };
 }
 
 function tensor(...hashes) {
@@ -67,7 +67,7 @@ function getSroaRule(result) {
 describe('SROA — stack decomposition', () => {
   beforeEach(() => { Store.clear(); });
 
-  it('passes through non-fused rules (no + in name)', () => {
+  it('passes through non-fused rules', () => {
     Store.registerTag('stack');
     Store.registerTag('arr_get');
     const TOP = mv('TOP'), REST = mv('REST'), X = mv('X');
@@ -76,7 +76,10 @@ describe('SROA — stack decomposition', () => {
     const ante = tensor(stk, bang(arrGet));
     Store.registerTag('out');
     const conseq = Store.put('out', [X]);
-    const rule = makeRule('individual_rule', ante, conseq);
+    // Non-fused rule — no isFused flag, should be passed through unchanged
+    const conseqHash = Store.put('monad', [conseq]);
+    const hash = Store.put('loli', [ante, conseqHash]);
+    const rule = { name: 'individual_rule', hash, antecedent: ante, consequent: conseqHash };
 
     const result = _sroaStackDecomposition([rule], rc, _illGetModeMeta, ILL_SROA_CONFIG);
     assert.equal(result.rules.length, 1, 'no SROA copy for non-fused rule');
