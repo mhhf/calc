@@ -209,13 +209,31 @@ function benchExplore(state, forwardRules, calcCtx) {
 
 async function main() {
   const path = require('path');
+  const fs = require('fs');
   const result = {};
 
   try {
     const mde = require('./lib/engine');
+
+    // Load with bytecode if bytecode-loader exists (post-compose era)
+    const codePath = path.join(__dirname, 'calculus/ill/programs/multisig_nocall_solc_code.ill');
+    let loadOpts = { cache: false };
+    try {
+      const codeExists = fs.existsSync(codePath);
+      const loaderPath = './lib/engine/ill/bytecode-loader';
+      const hasLoader = fs.existsSync(path.join(__dirname, 'lib/engine/ill/bytecode-loader.js'));
+      if (codeExists && hasLoader) {
+        const { loadBytecode, bytecodeArrGetGuard } = require(loaderPath);
+        const hex = fs.readFileSync(codePath, 'utf8').match(/bytecode\\s+0x([0-9a-fA-F]+)/)[1];
+        const bc = loadBytecode(hex);
+        loadOpts.extraGrade0Facts = bc.facts;
+        loadOpts.scopeGuard = bytecodeArrGetGuard;
+      }
+    } catch (e) { /* older commit without bytecode support — run without */ }
+
     const calc = mde.load(
       path.join(__dirname, 'calculus/ill/programs/multisig_nocall_solc_symbolic.ill'),
-      { cache: false }
+      loadOpts
     );
     const state = mde.decomposeQuery(calc.queries.get('symex'));
     const calcCtx = { clauses: calc.clauses, definitions: calc.definitions };
