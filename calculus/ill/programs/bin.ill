@@ -97,6 +97,10 @@ checked_sub/ok: checked_sub A B C <- le B A <- sub A B C.
 % byte_size(0) = 0. Used by EVM EXP gas: cost = 10 + 50 * byte_size(exponent)
 byte_size256: (value: bin) -> (bytes: bin) -> type.
 
+between: (x: bin) -> (lo: bin) -> (hi: bin) -> type.
+between/eq: between Lo Lo Hi <- le Lo Hi.
+between/step: between X Lo Hi <- lt Lo Hi <- inc Lo Lo' <- between X Lo' Hi.
+
 lt: (a: bin) -> (b: bin) -> type.
 lt/z: lt A B <- gt B A e (i e).
 
