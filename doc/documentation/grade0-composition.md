@@ -157,6 +157,7 @@ Each `composePair`/`fuseLinearPair` call is one cut step on the SELL calculus (N
 | File | Role |
 |------|------|
 | `lib/engine/compose.js` | Calculus-agnostic pipeline: L1 + L2 + L3 (7 passes) |
+| `lib/engine/resolve-all.js` | Compile-time backward proof search (tabling), lazy-loaded |
 | `lib/engine/ill/compose-config.js` | ILL-specific configs: chain fusion, SROA |
 | `lib/engine/ill/residual-resolver.js` | ILL-specific residual resolver (FFI + clause fallback) |
 | `lib/engine/index.js` | Integration: compose pass in `_buildCalc()`, ILL defaults |
@@ -165,5 +166,6 @@ Each `composePair`/`fuseLinearPair` call is one cut step on the SELL calculus (N
 | `tests/engine/compose.test.js` | L1, L2, L3 integration tests |
 | `tests/engine/compose-chain-fusion.test.js` | Additive chain fusion tests |
 | `tests/engine/compose-inc-fusion.test.js` | Inc-specific chain fusion tests |
+| `tests/engine/compose-batch-resolve.test.js` | Residual resolution tests |
 | `tests/engine/sroa.test.js` | McCarthy normalization + SROA tests |
 | `benchmarks/engine/specialization-bench.js` | Specialization benchmark |

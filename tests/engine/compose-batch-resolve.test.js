@@ -3,7 +3,6 @@
  *
  * Resolves ground persistent goals at compile time in a single pass per rule,
  * with running theta composition for transitive dependencies.
- * Replaces the old _fuseIncChains + _resolveResidualGoals fixpoint.
  */
 const { describe, it, beforeEach } = require('node:test');
 const assert = require('node:assert/strict');
