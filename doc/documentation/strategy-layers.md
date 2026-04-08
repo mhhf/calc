@@ -10,7 +10,7 @@ discTreeLayer     →  O(depth) per fact, general-purpose trie over patterns
 predicateLayer    →  O(R) linear scan (safety net, rarely activates)
 ```
 
-`detectStrategy(rules)` auto-builds this stack. The fingerprint layer is added only when a dominant discriminating predicate is detected (e.g., `code(PC, OPCODE)` in EVM). The disc-tree layer claims all remaining rules.
+`detectStrategy(rules)` auto-builds this stack. The fingerprint layer is added only when a dominant discriminating predicate is detected from rule structure. The disc-tree layer claims all remaining rules.
 
 ## How the Discrimination Tree Works
 
@@ -36,17 +36,28 @@ A layer has two methods:
 }
 ```
 
-### Example: Custom Fingerprint for Your Program
+### Fingerprint Auto-Detection
 
-If your program has a dominant lookup pattern (like EVM's `code(PC, OPCODE)`), `detectFingerprintConfig()` auto-detects it. This works when:
+`detectFingerprintConfig()` auto-detects discriminator structure from compiled rules. Three patterns are recognized:
 
-1. A binary+ predicate has one ground child and one variable child across most rules
-2. A pointer predicate (e.g., `pc(VALUE)`) links the current position to the lookup key
+**Standard (arity >= 2):** A binary+ predicate has one ground child and one variable child across most rules. A separate pointer predicate (unary, sharing a variable with the key position) links the current position to the lookup key.
 
-No manual configuration needed — just write rules like:
-```
+```ill
+% code(PC, OPCODE) is the discriminator, pc(PC) is the pointer
 code(_PC, my_opcode) * pc(_PC) * ... -o { ... }
 ```
+
+**Self-pointer (arity 1):** A unary predicate has a ground value — e.g., `pc(0x0)`. The predicate IS its own pointer (`keyPos === groundPos`). No separate pointer predicate needed. This pattern arises from compile-time specialization, where `arr_get` cut elimination produces per-PC rules with ground program counters.
+
+```ill
+% After specialization: pc(0x0) is both discriminator and pointer
+pc 0x0 * gas GAS * ... -o { pc 0x2 * ... }.
+pc 0x2 * gas GAS * ... -o { pc 0x5 * ... }.
+```
+
+**Virtual (persistent goal):** When no linear discriminator exists, `compileRule` scans persistent antecedents for `!arr_get B PC GROUND` patterns and builds a virtual discriminator from the ground value and associated linear pointer/array predicates.
+
+**Discriminator preference:** When multiple candidates exist, the compiler prefers non-arrlit ground values (binlit/atom) over arrlit. Arrlit values are often shared across all rules (e.g., `bytecode(arrlit)`) giving zero discrimination, while binlit values (e.g., `pc(0x5)`) vary per rule.
 
 ### Example: Domain-Specific Layer
 
