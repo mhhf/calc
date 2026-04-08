@@ -9,7 +9,7 @@ const { GRADE_0, GRADE_W } = require('../../lib/engine/grades');
 const { ILL_CONNECTIVES } = require('../../lib/engine/ill/connectives');
 const { resolveConnectives, compileRule, flattenAntecedent, unwrapComputation } = require('../../lib/engine/compile');
 const { getPredicateHead } = require('../../lib/kernel/ast');
-const { composePair, specializePersistent, buildPredicateMap, composeGrade0 } = require('../../lib/engine/compose');
+const { composePair, specializePersistent, buildPredicateMap, buildEliminationOrder, composeGrade0 } = require('../../lib/engine/compose');
 const { getModes } = require('../../lib/engine/opt/ffi');
 
 const COMPILE_OPTS = { connectives: ILL_CONNECTIVES, getModes };
@@ -937,5 +937,183 @@ describe('compose integration', () => {
     // Cleanup
     for (const f of fs.readdirSync(tmpDir)) fs.unlinkSync(path.join(tmpDir, f));
     fs.rmdirSync(tmpDir);
+  });
+});
+
+// ─── L2.5: buildEliminationOrder ────────────────────────────────────────────
+
+describe('compose L2.5: buildEliminationOrder', () => {
+  let rc;
+  beforeEach(() => {
+    Store.clear();
+    rc = resolveConnectives(ILL_CONNECTIVES);
+  });
+
+  it('single predicate returns immediately', () => {
+    const h60 = Store.put('atom', ['h60']);
+    const v1 = Store.put('atom', ['v1']);
+    const grade0Facts = new Map([
+      ['is_push', [{ name: 'f', hash: Store.put('is_push', [h60, v1]) }]],
+    ]);
+    const order = buildEliminationOrder(grade0Facts, [], rc);
+    assert.deepEqual(order, ['is_push']);
+  });
+
+  it('independent predicates all included', () => {
+    const grade0Facts = new Map([
+      ['is_push', [{ name: 'f1', hash: Store.put('is_push', [Store.put('atom', ['a'])]) }]],
+      ['is_dup', [{ name: 'f2', hash: Store.put('is_dup', [Store.put('atom', ['b'])]) }]],
+    ]);
+    const order = buildEliminationOrder(grade0Facts, [], rc);
+    assert.equal(order.length, 2);
+    assert.ok(order.includes('is_push'));
+    assert.ok(order.includes('is_dup'));
+  });
+
+  it('shared metavar induces ordering (fewer metavars first)', () => {
+    // Rule: !is_push OP N * !arr_get OP N V — is_push has 2 mvs, arr_get has 3 mvs
+    // Shared: OP and N → is_push (fewer mvs) comes before arr_get
+    const OP = Store.put('metavar', ['OP']);
+    const N = Store.put('metavar', ['N']);
+    const V = Store.put('metavar', ['V']);
+    const is_push_OP_N = Store.put('is_push', [OP, N]);
+    const arr_get_OP_N_V = Store.put('arr_get', [OP, N, V]);
+    const bang_is_push = Store.put('bang', [GRADE_W, is_push_OP_N]);
+    const bang_arr_get = Store.put('bang', [GRADE_W, arr_get_OP_N_V]);
+    const out = Store.put('atom', ['out']);
+    const rule = makeRule('r', tensor(bang_is_push, bang_arr_get), out);
+
+    const grade0Facts = new Map([
+      ['is_push', [{ name: 'f1', hash: Store.put('is_push', [Store.put('atom', ['h60']), Store.put('atom', ['v1'])]) }]],
+      ['arr_get', [{ name: 'f2', hash: Store.put('arr_get', [Store.put('atom', ['bc']), Store.put('atom', ['p0']), Store.put('atom', ['v0'])]) }]],
+    ]);
+
+    const order = buildEliminationOrder(grade0Facts, [rule], rc);
+    assert.equal(order.length, 2);
+    assert.equal(order[0], 'is_push', 'is_push (fewer mvs) comes first');
+    assert.equal(order[1], 'arr_get', 'arr_get (more mvs) comes second');
+  });
+
+  it('cycle detection throws error', () => {
+    // Create two predicates that each depend on the other
+    // Pred A goal has 1 mv (shared), Pred B goal has 2 mvs (shared + extra)
+    // → A before B. But also make B have 1 mv and A have 2 mvs in another rule → B before A → cycle
+    const X = Store.put('metavar', ['X']);
+    const Y = Store.put('metavar', ['Y']);
+    const Z = Store.put('metavar', ['Z']);
+
+    // Rule 1: !alpha X * !beta X Y — alpha(1mv) < beta(2mv) → alpha before beta
+    const rule1 = makeRule('r1',
+      tensor(
+        Store.put('bang', [GRADE_W, Store.put('alpha', [X])]),
+        Store.put('bang', [GRADE_W, Store.put('beta', [X, Y])])
+      ),
+      Store.put('atom', ['out1'])
+    );
+
+    // Rule 2: !beta Z * !alpha Z Y — beta(1mv) < alpha(2mv) → beta before alpha
+    const rule2 = makeRule('r2',
+      tensor(
+        Store.put('bang', [GRADE_W, Store.put('beta', [Z])]),
+        Store.put('bang', [GRADE_W, Store.put('alpha', [Z, Y])])
+      ),
+      Store.put('atom', ['out2'])
+    );
+
+    const grade0Facts = new Map([
+      ['alpha', [{ name: 'af', hash: Store.put('alpha', [Store.put('atom', ['a1'])]) }]],
+      ['beta', [{ name: 'bf', hash: Store.put('beta', [Store.put('atom', ['b1'])]) }]],
+    ]);
+
+    assert.throws(
+      () => buildEliminationOrder(grade0Facts, [rule1, rule2], rc),
+      /cycle/i
+    );
+  });
+});
+
+// ─── Multi-stage persistent specialization ──────────────────────────────────
+
+describe('compose L3: multi-stage persistent specialization', () => {
+  beforeEach(() => Store.clear());
+
+  it('two-predicate multi-stage specialization', () => {
+    // Rule: !is_push OP N * !lookup OP V * foo -o { bar N V }
+    const OP = Store.put('metavar', ['OP']);
+    const N = Store.put('metavar', ['N']);
+    const V = Store.put('metavar', ['V']);
+    const is_push_OP_N = Store.put('is_push', [OP, N]);
+    const lookup_OP_V = Store.put('lookup', [OP, V]);
+    const bang_is_push = Store.put('bang', [GRADE_W, is_push_OP_N]);
+    const bang_lookup = Store.put('bang', [GRADE_W, lookup_OP_V]);
+    const foo = Store.put('atom', ['foo']);
+    const bar_N_V = Store.put('bar', [N, V]);
+    const rule = makeRule('r', tensor(bang_is_push, bang_lookup, foo), bar_N_V);
+
+    // Grade-0 clauses: 2 is_push facts × 2 lookup facts
+    const h60 = Store.put('atom', ['h60']);
+    const h61 = Store.put('atom', ['h61']);
+    const v1 = Store.put('atom', ['v1']);
+    const v2 = Store.put('atom', ['v2']);
+    const va = Store.put('atom', ['va']);
+    const vb = Store.put('atom', ['vb']);
+    const clauses = new Map([
+      ['is_push/1', { hash: Store.put('is_push', [h60, v1]), premises: [], grade0: true }],
+      ['is_push/2', { hash: Store.put('is_push', [h61, v2]), premises: [], grade0: true }],
+      ['lookup/a', { hash: Store.put('lookup', [h60, va]), premises: [], grade0: true }],
+      ['lookup/b', { hash: Store.put('lookup', [h61, vb]), premises: [], grade0: true }],
+    ]);
+
+    const result = composeGrade0([rule], ILL_CONNECTIVES, null, clauses);
+    assert.equal(result.diagnostics.errors.length, 0, 'no errors');
+    assert.ok(result.removedNames.has('r'), 'original rule removed');
+
+    // is_push has 2 mvs (OP, N), lookup has 2 mvs (OP, V) — shared OP, equal mvs
+    // Both predicates should be specialized. With 2 is_push × 2 lookup facts:
+    // Stage 1: is_push → 2 rules (OP=h60,N=v1 and OP=h61,N=v2)
+    // Stage 2: lookup → each gets matched. OP=h60 matches lookup/a, OP=h61 matches lookup/b
+    // Result: 2 fully specialized rules (not 4, because unification filters mismatches)
+    // Actually, it could be 2 or up to 4 depending on whether lookup facts match post-specialization
+
+    // After is_push specialization: rule1 has OP=h60, rule2 has OP=h61
+    // lookup/a: lookup(h60, va) — matches rule1's lookup(h60, V) ✓, rule2's lookup(h61, V) ✗
+    // lookup/b: lookup(h61, vb) — matches rule1's lookup(h60, V) ✗, rule2's lookup(h61, V) ✓
+    // So 2 final rules: one with h60/v1/va, one with h61/v2/vb
+    assert.equal(result.composedRules.length, 2, '2 fully specialized rules');
+
+    // Verify no is_push or lookup goals remain
+    const rc = resolveConnectives(ILL_CONNECTIVES);
+    for (const raw of result.composedRules) {
+      const anteFlat = flattenAntecedent(raw.antecedent, rc);
+      for (const p of anteFlat.persistent) {
+        const pred = getPredicateHead(p);
+        assert.notEqual(pred, 'is_push', 'no is_push goals remain');
+        assert.notEqual(pred, 'lookup', 'no lookup goals remain');
+      }
+    }
+  });
+
+  it('max composed rules safeguard', () => {
+    // Create a situation with explosive expansion
+    const OP = Store.put('metavar', ['OP']);
+    const is_push_OP = Store.put('is_push', [OP]);
+    const bang_is_push = Store.put('bang', [GRADE_W, is_push_OP]);
+    const out = Store.put('atom', ['out']);
+    const rule = makeRule('r', bang_is_push, out);
+
+    // Create many grade-0 facts (well under the 100000 limit, just testing the path)
+    const clauses = new Map();
+    for (let i = 0; i < 50; i++) {
+      clauses.set(`is_push/${i}`, {
+        hash: Store.put('is_push', [Store.put('atom', [`v${i}`])]),
+        premises: [],
+        grade0: true,
+      });
+    }
+
+    // Should succeed (50 rules is well under the limit)
+    const result = composeGrade0([rule], ILL_CONNECTIVES, null, clauses);
+    assert.equal(result.composedRules.length, 50);
+    assert.equal(result.diagnostics.specializations, 50);
   });
 });
