@@ -1,7 +1,7 @@
 ---
 title: "Forward Chaining Engine — Architecture & Implementation"
 created: 2026-02-18
-modified: 2026-03-21
+modified: 2026-04-08
 summary: How the CALC forward chaining engine works — three-layer architecture, modules, data flow, matching, strategy, optimizations.
 tags: [implementation, forward-chaining, engine, architecture, CHR, linear-logic]
 ---
@@ -226,7 +226,7 @@ flowchart TB
     STATE["State + Rules"] --> DETECT["detectStrategy(rules)<br/>auto-select layers"]
 
     DETECT --> FP{"Fingerprint<br/>structure<br/>detected?"}
-    FP --> |"yes"| FPLAYER["<b>Fingerprint Layer</b><br/>O(1) by ground discriminator<br/>e.g. code(PC, <b>OPCODE</b>)<br/>Claims 40/44 EVM rules"]
+    FP --> |"yes"| FPLAYER["<b>Fingerprint Layer</b><br/>O(1) by ground discriminator<br/>Claims rules with dominant<br/>ground-valued predicate"]
     FP --> |"no"| DTLAYER
 
     FPLAYER --> |"unclaimed rules"| DTLAYER["<b>Disc-Tree Layer</b><br/>O(depth) trie lookup<br/>Catches remaining rules"]
@@ -243,7 +243,13 @@ flowchart TB
     PREDLAYER --> Selection
 ```
 
-The fingerprint layer is **program-agnostic** — it auto-detects any dominant discriminating predicate from rule structure. For EVM, `code(PC, OPCODE)` is the discriminator (40/44 rules have a ground opcode child). For other programs, a different predicate may be detected, or the fingerprint layer is skipped entirely.
+The fingerprint layer is **program-agnostic** — it auto-detects any dominant discriminating predicate from rule structure. Three patterns are supported:
+
+- **Standard:** binary+ predicate with ground child + separate pointer predicate (e.g., baseline EVM: `!arr_get` virtual discriminator with `pc` pointer and `bytecode` array)
+- **Self-pointer:** unary predicate with ground value where `keyPos === groundPos` — the predicate IS its own pointer (e.g., specialized EVM: `pc(0x0)`, `pc(0x2)`, ...)
+- **Virtual:** persistent `!arr_get B PC GROUND` pattern resolved through associated linear predicates
+
+After bytecode specialization (grade-0 cut elimination), `arr_get` goals are resolved at compile time. The resulting per-PC rules have ground `pc` values, triggering self-pointer detection. See `doc/documentation/strategy-layers.md` for details and `doc/documentation/grade0-composition.md` for the specialization pipeline.
 
 ## Execution Modes
 

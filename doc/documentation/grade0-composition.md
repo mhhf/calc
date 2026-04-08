@@ -1,9 +1,9 @@
 ---
 title: "Grade-0 Cut Elimination — Compile-Time Composition"
 created: 2026-04-07
-modified: 2026-04-07
-summary: How the compose pass eliminates grade-0 intermediate types at compile time, producing specialized rules via cut elimination.
-tags: [cut-elimination, forward-chaining, graded-types, QTT, implementation, architecture]
+modified: 2026-04-08
+summary: How the compose pass eliminates grade-0 intermediate types at compile time, producing specialized rules via cut elimination. Includes bytecode specialization pipeline and benchmark.
+tags: [cut-elimination, forward-chaining, graded-types, QTT, implementation, architecture, specialization]
 ---
 
 # Grade-0 Cut Elimination
@@ -102,6 +102,45 @@ Each `composePair` call is one cut step on the grade-0 fragment of SELL (Nigam-M
 
 N producers × M consumers yield N×M composed rules — the grade-0 modality admits contraction (SELL structural rule W=C={0,ω}), so one producer serves many consumers.
 
+## Bytecode Specialization Pipeline
+
+The composition pass supports external grade-0 facts injected at load time. The primary use case is EVM bytecode specialization: converting contract hex into per-PC specialized rules.
+
+### End-to-end flow
+
+```
+hex string → bytecode-loader.js → grade-0 arr_get facts → composeGrade0 → specialized per-PC rules
+```
+
+1. **`loadBytecode(hex)`** (`ill/bytecode-loader.js`): parses hex, groups PUSH data bytes into semantic values, produces `arr_get(arrlit, PC, Value)` grade-0 facts using raw arrlit hash (FFI-compatible).
+
+2. **`mde.load(path, { extraGrade0Facts, scopeGuard })`**: injects facts into the compose pipeline. The `scopeGuard` (`bytecodeArrGetGuard`) restricts specialization to arr_get goals whose array argument matches a `bytecode` linear resource — prevents stack/memory arr_get from being specialized with bytecode facts.
+
+3. **Compose** eliminates `arr_get` goals at compile time, producing per-PC rules with ground program counters:
+
+```ill
+% Before (generic):
+evm/push: $bytecode BC * pc PC * !arr_get BC PC OP * !is_push OP N * ...
+  -o { pc PC' * ... }.
+
+% After specialization (PC=0, OP=0x60, N=1):
+evm/push:step/make:is_push/def:0:arr_get/contract:0:
+  pc 0x0 * gas GAS * !inc 0x0 0x1 * !checked_sub GAS 3 GAS' * stack SH
+  -o { pc 0x2 * gas GAS' * ... }.
+```
+
+4. **Discriminator detection** (`compile.js`): the unary `pc(0x0)` pattern is detected as a ground discriminator. Self-pointer mode (keyPos === groundPos) enables O(1) rule selection without a separate pointer predicate.
+
+### Benchmark (30-byte EVM, 20 steps)
+
+| Mode | Baseline | Specialized | Speedup |
+|------|----------|-------------|---------|
+| noFFI (clause chaining) | 177µs/step | 133µs/step | 1.34x |
+| FFI (production) | 11µs/step | 8.7µs/step | 1.29x |
+| explore (DFS) | 3.31ms total | 2.57ms total | 1.29x |
+
+See `benchmarks/engine/specialization-bench.js` for the full benchmark. See THY_0016 for the theoretical framework (PE ↔ cut elimination, Futamura projections).
+
 ## Version Chain
 
 | Version | TODO | What changes |
@@ -116,7 +155,10 @@ N producers × M consumers yield N×M composed rules — the grade-0 modality ad
 | File | Role |
 |------|------|
 | `lib/engine/compose.js` | Three-layer API: composePair, buildPredicateMap, composeGrade0 |
-| `lib/engine/index.js` | Integration: compose pass in `_buildCalc()` |
+| `lib/engine/index.js` | Integration: compose pass in `_buildCalc()`, extraGrade0Facts injection |
 | `lib/engine/grades.js` | Grade constants (GRADE_0, GRADE_W) |
-| `lib/engine/compile.js` | flattenAntecedent 3-way split, hasGrade0 flag |
+| `lib/engine/compile.js` | flattenAntecedent 3-way split, hasGrade0 flag, discriminator detection |
+| `lib/engine/ill/bytecode-loader.js` | Hex → grade-0 arr_get facts, scoping guard |
 | `tests/engine/compose.test.js` | 21 tests: L1, L2, L3, integration |
+| `tests/engine/bytecode-loader.test.js` | Bytecode loader: parsing, semantic grouping, entry points |
+| `benchmarks/engine/specialization-bench.js` | Specialization benchmark: baseline vs specialized runtime |
