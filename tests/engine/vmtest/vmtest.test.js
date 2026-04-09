@@ -120,4 +120,5 @@ describe('VMTest Conformance', { skip: !fixturesExist && 'Fixtures not fetched (
   runCategory('vmArithmeticTest');
   runCategory('vmBitwiseLogicOperation');
   runCategory('vmPushDupSwapTest');
+  runCategory('vmEnvironmentalInfo');
 });
