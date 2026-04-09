@@ -303,6 +303,12 @@ mem_read_range/step: mem_read_range M Offset End (V ++ Rest)
 
 % cd_read: read 32 bytes from calldata at given offset.
 % Traverses sconcat chain structurally; ground binlit via FFI fast path.
+%
+% Invariant: SZ ∈ {4, 32} — all callers (translate.js, ABI encoding) produce
+% chunks of exactly 4 (function selector) or 32 bytes. SZ > 32 is a data
+% construction error and is intentionally not handled: no clause fires, leaving
+% the result as a freshEvar (valid symbolic witness). SZ = 32 and SZ < 32 are
+% the only cases covered; the gap SZ > 32 at Offset=0 is left open by design.
 
 cd_read/hit: cd_read (sconcat 32 Val Rest) 0 Val.
 
@@ -320,7 +326,15 @@ cd_read/cross: cd_read (sconcat SZ Val Rest) 0 (byte_join SZ Val TailVal)
 % The result spans the tail of the current chunk and the head of the next:
 %   High (SZ-Offset) bytes: shl(Offset*8, Val)  — shift left to discard top Offset bytes
 %   Low  Offset      bytes: shr((SZ-Offset)*8, NextVal) — take top Offset bytes of next chunk
+%
+% Guard: SZ >= 32 only. The shl/shr arithmetic assumes Val is left-aligned in a 256-bit word
+% (i.e. stored as the full 32-byte big-endian integer). This holds for SZ=32 chunks produced
+% by translate.js (which pads to 32 bytes before BigInt conversion), but NOT for SZ<32 segments
+% (e.g. sconcat(4, selector, ...) where intToBin stores a right-aligned value). Admitting SZ<32
+% here would produce wrong bytes. For SZ<32 with Offset>0: falls through to freshEvar (sound,
+% imprecise — same documented behaviour as cd_read/cross_mid).
 cd_read/partial: cd_read (sconcat SZ Val Rest) Offset Result
+  <- le 32 SZ
   <- lt Offset SZ
   <- neq Offset 0
   <- sub SZ Offset TailSize
