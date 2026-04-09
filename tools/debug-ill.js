@@ -62,7 +62,7 @@ function header(kind, label) {
  */
 function runTrace(calc, hash, settings) {
   const initial = mde.decomposeQuery(hash);
-  const maxSteps = settings?.max_steps ? parseInt(settings.max_steps, 10) : MAX_STEPS;
+  const maxSteps = settings?.maxSteps ? parseInt(settings.maxSteps, 10) : MAX_STEPS;
   const filterRule = settings?.filter || null;
 
   const steps = [];
@@ -77,7 +77,7 @@ function runTrace(calc, hash, settings) {
   if (settings?.rules) execOpts.rules = settings.rules;
 
   if (stateHasFreevars(initial)) {
-    const maxD = settings?.max_depth ? parseInt(settings.max_depth, 10) : MAX_DEPTH;
+    const maxD = settings?.maxDepth ? parseInt(settings.maxDepth, 10) : MAX_DEPTH;
     calc.explore(initial, { maxDepth: maxD, onStep, ...(settings?.rules ? { rules: settings.rules } : {}) });
   } else {
     calc.exec(initial, execOpts);
@@ -99,7 +99,7 @@ function runTrace(calc, hash, settings) {
  */
 function runDumpState(calc, hash, settings) {
   const initial = mde.decomposeQuery(hash);
-  const maxSteps = settings?.max_steps ? parseInt(settings.max_steps, 10) : MAX_STEPS;
+  const maxSteps = settings?.maxSteps ? parseInt(settings.maxSteps, 10) : MAX_STEPS;
   const execOpts = { maxSteps };
   if (settings?.rules) execOpts.rules = settings.rules;
 
@@ -121,7 +121,7 @@ function runDumpState(calc, hash, settings) {
  */
 function runDebug(calc, hash, settings) {
   const initial = mde.decomposeQuery(hash);
-  const maxD = settings?.max_depth ? parseInt(settings.max_depth, 10) : MAX_DEPTH;
+  const maxD = settings?.maxDepth ? parseInt(settings.maxDepth, 10) : MAX_DEPTH;
   const execOpts = { maxDepth: maxD };
   if (settings?.rules) execOpts.rules = settings.rules;
 
@@ -150,8 +150,8 @@ function runBenchmark(calc, hash, settings) {
 
   const execOpts = {};
   if (settings?.rules) execOpts.rules = settings.rules;
-  if (settings?.max_steps) execOpts.maxSteps = parseInt(settings.max_steps, 10);
-  if (settings?.max_depth) execOpts.maxDepth = parseInt(settings.max_depth, 10);
+  if (settings?.maxSteps) execOpts.maxSteps = parseInt(settings.maxSteps, 10);
+  if (settings?.maxDepth) execOpts.maxDepth = parseInt(settings.maxDepth, 10);
 
   const runOnce = mode === 'explore'
     ? () => {
@@ -200,11 +200,11 @@ function runCompare(calc, hash, settings) {
     if (settings?.rules) execOpts.rules = settings.rules;
 
     if (stateHasFreevars(initial) || settings?.mode === 'explore') {
-      const maxD = settings?.max_depth ? parseInt(settings.max_depth, 10) : MAX_DEPTH;
+      const maxD = settings?.maxDepth ? parseInt(settings.maxDepth, 10) : MAX_DEPTH;
       const tree = calc.explore(initial, { maxDepth: maxD, ...execOpts });
       return { nodes: countNodes(tree), leaves: countLeaves(tree) };
     } else {
-      const maxS = settings?.max_steps ? parseInt(settings.max_steps, 10) : MAX_STEPS;
+      const maxS = settings?.maxSteps ? parseInt(settings.maxSteps, 10) : MAX_STEPS;
       const r = calc.exec(initial, { maxSteps: maxS, ...execOpts });
       return { steps: r.steps, quiescent: r.quiescent };
     }
@@ -276,7 +276,7 @@ function verboseBackward(calc, kind, entry, modality) {
   if (settings?.useFFI !== undefined) proveOpts.useFFI = settings.useFFI === 'true';
   if (settings?.maxDepth) proveOpts.maxDepth = parseInt(settings.maxDepth, 10);
 
-  for (const g of goals) {
+  const results = goals.map(g => {
     const result = calc.prove(g, proveOpts);
     const status = result.success ? 'PROVED' : 'FAILED';
     console.log(`  ${show(g)}: ${status}`);
@@ -286,9 +286,10 @@ function verboseBackward(calc, kind, entry, modality) {
         console.log(`    θ = { ${bindings.map(([k, v]) => `${k} ↦ ${show(v)}`).join(', ')} }`);
       }
     }
-  }
+    return result;
+  });
 
-  const allSuccess = goals.every(g => calc.prove(g, proveOpts).success);
+  const allSuccess = results.every(r => r.success);
   const expected = modality === 'not' ? !allSuccess : allSuccess;
   console.log(`  verdict: ${expected ? 'PASS' : 'FAIL'} (modality: ${modality})`);
 }
@@ -327,12 +328,15 @@ function verboseForward(calc, kind, entry, modality) {
       : matchCount > 0;
     console.log(`  verdict: ${pass ? 'PASS' : 'FAIL'} (${matchCount} matches, modality: ${modality})`);
   } else {
-    const maxS = settings?.max_steps ? parseInt(settings.max_steps, 10) : MAX_STEPS;
-    const steps = [];
-    const onStep = ({ step, rule }) => steps.push({ step, rule: rule.name });
-    const result = calc.exec(initial, { maxSteps: maxS, onStep, ...execOpts });
+    const maxS = settings?.maxSteps ? parseInt(settings.maxSteps, 10) : MAX_STEPS;
+    const wantTrace = settings?.trace === 'true';
+    const steps = wantTrace ? [] : null;
+    const onStep = wantTrace
+      ? ({ step, rule }) => steps.push({ step, rule: rule.name })
+      : undefined;
+    const result = calc.exec(initial, { maxSteps: maxS, ...(onStep ? { onStep } : {}), ...execOpts });
 
-    if (settings?.trace === 'true') {
+    if (steps) {
       for (const s of steps) console.log(`  [${s.step}] ${s.rule}`);
     }
 
