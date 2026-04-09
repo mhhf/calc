@@ -1,0 +1,72 @@
+% Forward execution tests for EVM arithmetic and comparison opcodes.
+% Tests ADD, SUB, MUL, DIV, LT via forward symbolic execution.
+% Each backward predicate (plus, sub, mul, div, lt) is exercised by the
+% corresponding opcode rule during forward execution.
+
+#import(../../programs/evm.ill)
+
+% ── ADD (0x01) ────────────────────────────────────────────────────────────────
+
+% PUSH1 2, PUSH1 3, ADD, STOP → 3 + 2 = 5
+#expect_add_basic
+  pc 0 * gas 0xffffff * stack ae * mem empty_mem * memsize 0 *
+  bytecode [0x60, 0x02, 0x60, 0x03, 0x01, 0x00]
+  => stop * stack [5] .
+
+% PUSH1 0, PUSH1 0, ADD, STOP → 0 + 0 = 0
+#expect_add_zero
+  pc 0 * gas 0xffffff * stack ae * mem empty_mem * memsize 0 *
+  bytecode [0x60, 0x00, 0x60, 0x00, 0x01, 0x00]
+  => stop * stack [0] .
+
+% ── SUB (0x03) ────────────────────────────────────────────────────────────────
+
+% PUSH1 2, PUSH1 5, SUB, STOP → 5 - 2 = 3
+#expect_sub_basic
+  pc 0 * gas 0xffffff * stack ae * mem empty_mem * memsize 0 *
+  bytecode [0x60, 0x02, 0x60, 0x05, 0x03, 0x00]
+  => stop * stack [3] .
+
+% ── MUL (0x02) ────────────────────────────────────────────────────────────────
+
+% PUSH1 3, PUSH1 4, MUL, STOP → 4 * 3 = 12
+#expect_mul_basic
+  pc 0 * gas 0xffffff * stack ae * mem empty_mem * memsize 0 *
+  bytecode [0x60, 0x03, 0x60, 0x04, 0x02, 0x00]
+  => stop * stack [0x0c] .
+
+% ── DIV (0x04) ────────────────────────────────────────────────────────────────
+
+% PUSH1 2, PUSH1 6, DIV, STOP → 6 / 2 = 3
+#expect_div_basic
+  pc 0 * gas 0xffffff * stack ae * mem empty_mem * memsize 0 *
+  bytecode [0x60, 0x02, 0x60, 0x06, 0x04, 0x00]
+  => stop * stack [3] .
+
+% ── LT (0x10) ─────────────────────────────────────────────────────────────────
+
+% PUSH1 5, PUSH1 3, LT, STOP → 3 < 5 = 1 (true)
+#expect_lt_true
+  pc 0 * gas 0xffffff * stack ae * mem empty_mem * memsize 0 *
+  bytecode [0x60, 0x05, 0x60, 0x03, 0x10, 0x00]
+  => stop * stack [1] .
+
+% PUSH1 3, PUSH1 5, LT, STOP → 5 < 3 = 0 (false)
+#expect_lt_false
+  pc 0 * gas 0xffffff * stack ae * mem empty_mem * memsize 0 *
+  bytecode [0x60, 0x03, 0x60, 0x05, 0x10, 0x00]
+  => stop * stack [0] .
+
+% ── Negative forward tests (expect_not + =>) ────────────────────────────────
+
+% 1 + 1 = 2, NOT 0
+#expect_not_add_wrong
+  pc 0 * gas 0xffffff * stack ae * mem empty_mem * memsize 0 *
+  bytecode [0x60, 0x01, 0x60, 0x01, 0x01, 0x00]
+  => stop * stack [0] .
+
+% 4 * 3 = 12, NOT 7
+#expect_not_mul_wrong
+  pc 0 * gas 0xffffff * stack ae * mem empty_mem * memsize 0 *
+  bytecode [0x60, 0x03, 0x60, 0x04, 0x02, 0x00]
+  => stop * stack [7] .

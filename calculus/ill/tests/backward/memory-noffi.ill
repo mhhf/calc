@@ -1,0 +1,22 @@
+% Pure clause resolution tests — no FFI acceleration.
+% Mirrors memory.ill but with (useFFI: false) to test the same code path
+% as tests/engine/memory.test.js "Memory Backward Clauses" suite.
+
+#import(../../programs/evm.ill)
+
+% ── no_overlap ──────────────────────────────────────────────────────────────
+
+#expect_noffi_no_overlap_disjoint (useFFI: false) |- !no_overlap 0 0x20 0x20 0x20 .
+#expect_noffi_no_overlap_reversed (useFFI: false) |- !no_overlap 0x20 0x20 0 0x20 .
+#expect_not_noffi_no_overlap_crossing (useFFI: false) |- !no_overlap 0 0x20 0x10 0x20 .
+#expect_noffi_no_overlap_write8 (useFFI: false) |- !no_overlap 0 0x20 0x20 1 .
+
+% ── mem_read ────────────────────────────────────────────────────────────────
+
+#expect_noffi_memread_hit (useFFI: false) |- !mem_read (write 0 0x2a empty_mem) 0 0x2a .
+#expect_noffi_memread_miss (useFFI: false) |- !mem_read (write 0x20 0x2a empty_mem) 0 0 .
+#expect_noffi_memread_overwrite (useFFI: false) |- !mem_read (write 0 0xBB (write 0 0xAA empty_mem)) 0 0xBB .
+#expect_noffi_memread_chain (useFFI: false) |- !mem_read (write 0x40 0xCC (write 0x20 0xBB (write 0 0xAA empty_mem))) 0x40 0xCC .
+#expect_not_noffi_memread_overlap (useFFI: false) [V] |- !mem_read (write 0x10 0xBB (write 0 0xAA empty_mem)) 0 V .
+#expect_noffi_memread_write8_miss (useFFI: false) |- !mem_read (write8 0x20 0xAB empty_mem) 0 0 .
+#expect_noffi_memread_empty (useFFI: false) |- !mem_read empty_mem 0 0 .

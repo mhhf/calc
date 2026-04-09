@@ -1,0 +1,23 @@
+% Backward clause tests for comparison and subtraction predicates.
+% Tests lt, le, sub from bin.ill.
+
+#import(../../programs/bin.ill)
+
+% ── lt: strict less than ──────────────────────────────────────────────────────
+
+#expect_lt_one_two |- !lt (i e) (o (i e)) .
+#expect_not_lt_two_one |- !lt (o (i e)) (i e) .
+#expect_not_lt_equal |- !lt (i e) (i e) .
+#expect_lt_zero_one |- !lt e (i e) .
+
+% ── le: less or equal ─────────────────────────────────────────────────────────
+
+#expect_le_one_two |- !le (i e) (o (i e)) .
+#expect_le_equal |- !le (i e) (i e) .
+#expect_not_le_two_one |- !le (o (i e)) (i e) .
+
+% ── sub: subtraction ──────────────────────────────────────────────────────────
+
+#expect_sub_two_one |- !sub (o (i e)) (i e) (i e) .
+#expect_sub_self |- !sub (i e) (i e) e .
+#expect_sub_three_one |- !sub (i (i e)) (i e) (o (i e)) .

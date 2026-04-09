@@ -1,0 +1,22 @@
+% Backward clause tests for bitwise operations.
+% Tests and, or, xor from bin.ill.
+
+#import(../../programs/bin.ill)
+
+% ── and: bitwise AND ──────────────────────────────────────────────────────────
+
+#expect_and_ones |- !and (i e) (i e) (i e) .
+#expect_and_zero |- !and (i e) e e .
+#expect_and_mask |- !and (i (i e)) (i e) (i e) .
+
+% ── or: bitwise OR ───────────────────────────────────────────────────────────
+
+#expect_or_zero |- !or e e e .
+#expect_or_ones |- !or (i e) e (i e) .
+#expect_or_combine |- !or (i e) (o (i e)) (i (i e)) .
+
+% ── xor: bitwise XOR ─────────────────────────────────────────────────────────
+
+#expect_xor_self |- !xor (i e) (i e) e .
+#expect_xor_zero |- !xor (i e) e (i e) .
+#expect_xor_diff |- !xor (i (i e)) (o (i e)) (i e) .

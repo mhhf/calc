@@ -1,0 +1,33 @@
+% Forward execution tests for SHA3 (KECCAK256) opcode.
+% Ports tests/engine/sha3.test.js — sha3 via exists + sha3_compute backward clause.
+% sha3(Bytes) is an irreducible symbolic constructor (not evaluated to a hash).
+
+#import(../../programs/evm.ill)
+
+% ── SHA3 of 32 bytes ──────────────────────────────────────────────────────────
+
+% PUSH1 0xFF, PUSH1 0x00, MSTORE, PUSH1 0x20, PUSH1 0x00, SHA3, STOP
+% Write 0xFF at offset 0, hash 32 bytes → sha3(concat(0xFF, 0))
+#expect_sha3_32bytes
+  pc 0 * gas 0xffffff * stack ae * mem empty_mem * memsize 0 *
+  bytecode [0x60, 0xff, 0x60, 0x00, 0x52, 0x60, 0x20, 0x60, 0x00, 0x20, 0x00]
+  => stop * stack [sha3 (0xff ++ 0)] .
+
+% ── SHA3 of 64 bytes ──────────────────────────────────────────────────────────
+
+% PUSH1 0xAA, PUSH1 0x00, MSTORE, PUSH1 0xBB, PUSH1 0x20, MSTORE,
+% PUSH1 0x40, PUSH1 0x00, SHA3, STOP
+% Two 32-byte words → sha3(concat(0xAA, concat(0xBB, 0)))
+#expect_sha3_64bytes
+  pc 0 * gas 0xffffff * stack ae * mem empty_mem * memsize 0 *
+  bytecode [0x60, 0xaa, 0x60, 0x00, 0x52, 0x60, 0xbb, 0x60, 0x20, 0x52, 0x60, 0x40, 0x60, 0x00, 0x20, 0x00]
+  => stop * stack [sha3 (0xaa ++ (0xbb ++ 0))] .
+
+% ── SHA3 of 0 bytes ──────────────────────────────────────────────────────────
+
+% PUSH1 0x00, PUSH1 0x00, SHA3, STOP
+% Zero-length hash → sha3(0)  (base case: mem_read_range/done returns 0)
+#expect_sha3_0bytes
+  pc 0 * gas 0xffffff * stack ae * mem empty_mem * memsize 0 *
+  bytecode [0x60, 0x00, 0x60, 0x00, 0x20, 0x00]
+  => stop * stack [sha3 0] .

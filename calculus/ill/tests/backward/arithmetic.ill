@@ -1,0 +1,33 @@
+% Backward clause tests for binary arithmetic predicates.
+% Verifies inc, plus, mul via backward proof search.
+%
+% Binary encoding (LSB-first): e=0, i(X)=2X+1, o(X)=2X
+%   i e = 1,  o(i e) = 2,  i(i e) = 3,  o(o(i e)) = 4
+
+#import(../../programs/bin.ill)
+
+% ── inc: increment ───────────────────────────────────────────────────────────
+
+#expect_inc_zero |- !inc e (i e) .
+#expect_inc_one |- !inc (i e) (o (i e)) .
+#expect_inc_two |- !inc (o (i e)) (i (i e)) .
+#expect_inc_three |- !inc (i (i e)) (o (o (i e))) .
+#expect_not_inc_wrong |- !inc e (o e) .
+
+% ── plus: addition ───────────────────────────────────────────────────────────
+
+#expect_plus_zero |- !plus e e e .
+#expect_plus_id_left |- !plus e (i e) (i e) .
+#expect_plus_id_right |- !plus (i e) e (i e) .
+#expect_plus_one_one |- !plus (i e) (i e) (o (i e)) .
+#expect_plus_one_two |- !plus (i e) (o (i e)) (i (i e)) .
+#expect_not_plus_wrong |- !plus (i e) (i e) (i e) .
+
+% ── plus: existential ────────────────────────────────────────────────────────
+
+#expect_some_plus_comm |- !plus (i e) (o (i e)) (i (i e)) .
+
+% ── mul: multiplication ──────────────────────────────────────────────────────
+
+#expect_mul_zero |- !mul e (i e) e .
+#expect_mul_one |- !mul (i e) (o (i e)) (o (i e)) .

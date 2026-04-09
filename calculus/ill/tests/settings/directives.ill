@@ -1,0 +1,24 @@
+% Per-directive settings tests.
+% Exercises maxDepth and rules settings — the two previously untested settings.
+
+#import(../../programs/evm.ill)
+
+% ── maxDepth (backward) ─────────────────────────────────────────────────────
+% useFFI: false forces clause resolution so maxDepth actually limits recursion.
+% mul(2,2,4) requires depth > 1 via recursive mul/plus clauses.
+
+% maxDepth: 1 is too shallow for recursive mul clauses
+#expect_not_maxdepth_too_shallow (useFFI: false, maxDepth: 1) |- !mul (o (i e)) (o (i e)) (o (o (i e))) .
+
+% Same goal with sufficient depth succeeds
+#expect_maxdepth_sufficient (useFFI: false, maxDepth: 50) |- !mul (o (i e)) (o (i e)) (o (o (i e))) .
+
+% ── rules (forward) ─────────────────────────────────────────────────────────
+% SELL rule-label filtering. All EVM rules share sourceLabel 'evm', so we
+% exercise the Tier 3 (single label string) code path through filterRules.
+
+% rules: evm includes all EVM rules — PUSH1 5, STOP reaches stop normally
+#expect_rules_evm (rules: evm)
+  pc 0 * gas 0xffffff * stack ae * mem empty_mem * memsize 0 *
+  bytecode [0x60, 0x05, 0x00]
+  => stop * stack [5] .

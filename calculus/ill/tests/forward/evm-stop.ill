@@ -1,0 +1,10 @@
+% Forward execution tests for EVM opcodes.
+% Verifies reachability via the forward engine.
+
+#import(../../programs/evm.ill)
+
+% ── STOP (0x00) ──────────────────────────────────────────────────────────────
+
+#expect_stop pc 0 * bytecode [0x00] => stop .
+#expect_some_stop pc 0 * bytecode [0x00] => stop .
+#expect_not_revert pc 0 * bytecode [0x00] => revert .

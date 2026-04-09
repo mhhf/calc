@@ -1,0 +1,23 @@
+% Backward clause tests for SHA3/memory-range predicates.
+% Tests sha3_compute and mem_read_range directly (without full EVM forward execution).
+
+#import(../../programs/evm.ill)
+
+% ── mem_read_range ────────────────────────────────────────────────────────────
+
+% Base case: reading zero-width range returns 0 (nil)
+#expect_mem_read_range_base |- !mem_read_range empty_mem 0 0 0 .
+
+% One word: read 32 bytes from offset 0 → concat(value, 0)
+#expect_mem_read_range_one |- !mem_read_range (write 0 0xff empty_mem) 0 0x20 (0xff ++ 0) .
+
+% Two words: read 64 bytes → concat(v0, concat(v1, 0))
+#expect_mem_read_range_two |- !mem_read_range (write 0x20 0xbb (write 0 0xaa empty_mem)) 0 0x40 (0xaa ++ (0xbb ++ 0)) .
+
+% ── sha3_compute ──────────────────────────────────────────────────────────────
+
+% Empty hash: sha3(0)
+#expect_sha3_compute_empty |- !sha3_compute empty_mem 0 0 (sha3 0) .
+
+% One-word hash: sha3(concat(0xFF, 0))
+#expect_sha3_compute_one |- !sha3_compute (write 0 0xff empty_mem) 0 0x20 (sha3 (0xff ++ 0)) .
