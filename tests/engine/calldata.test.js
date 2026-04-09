@@ -409,11 +409,10 @@ describe('Calldata (TODO 141)', { timeout: 30000 }, () => {
 
       assert.ok(result.quiescent);
       assert.ok(hasStop(result.state));
-      if (result.trace) {
-        const traceStr = result.trace.join(' ');
-        assert.ok(!traceStr.includes('calldatacopy_iter'), 'No calldatacopy_iter in trace');
-        assert.ok(!traceStr.includes('loli'), 'No loli in trace');
-      }
+      assert.ok(result.trace, 'trace should be present when trace:true is set');
+      const traceStr = result.trace.join(' ');
+      assert.ok(!traceStr.includes('calldatacopy_iter'), 'No calldatacopy_iter in trace');
+      assert.ok(!traceStr.includes('loli'), 'No loli in trace');
     });
   });
 
@@ -555,6 +554,73 @@ describe('Calldata (TODO 141)', { timeout: 30000 }, () => {
     });
   });
 
+  describe('cd_read/partial SZ guard — SZ<32 must not fire (bugfix)', () => {
+    // cd_read/partial has a guard `le 32 SZ` to prevent firing on SZ<32 chunks.
+    // For SZ<32 (e.g. sconcat(4, selector, ...)), Val is right-aligned (intToBin),
+    // not left-aligned. The shl/shr arithmetic would produce wrong bytes.
+    // Expected behaviour for SZ<32 with Offset>0: falls through to freshEvar (sound, imprecise).
+
+    it('SZ=4 at mid-chunk offset 2 produces evar (not wrong bytes)', () => {
+      // CD = sconcat(4, 0xcd68b367, sconcat(32, deadline, epsilon))
+      // CALLDATALOAD(2): offset 2 is inside the 4-byte segment (0 < 2 < 4).
+      // cd_read/partial must NOT fire because SZ=4 < 32.
+      // cd_read/skip doesn't fire (2 < 4). cd_read/cross doesn't fire (offset != 0).
+      // Result: freshEvar (sound but imprecise).
+      const code = '60023500';
+      const epsilon = Store.put('atom', ['epsilon']);
+      const selector = intToBin(0xcd68b367n);
+      const deadline = intToBin(99999n);
+      const inner = Store.put('sconcat', [intToBin(32n), deadline, epsilon]);
+      const cdHash = Store.put('sconcat', [intToBin(4n), selector, inner]);
+
+      const state = makeState(code, calc, { calldata: cdHash, calldatasize: 36n });
+      const result = calc.exec(state, { maxSteps: 500 });
+
+      assert.ok(result.quiescent, 'Should reach quiescence');
+      assert.ok(hasStop(result.state), 'Should terminate with stop');
+
+      const top = getStackTop(result.state);
+      assert.ok(top !== null, 'Stack should not be empty');
+      assert.equal(Store.tag(top), 'evar',
+        'SZ=4 with Offset=2: cd_read/partial must not fire — should produce evar, not wrong bytes');
+    });
+
+    it('SZ=32 at mid-chunk offset 16 fires correctly (partial guard allows SZ>=32)', () => {
+      // CD = sconcat(32, word0, sconcat(32, word1, epsilon))
+      // CALLDATALOAD(16): 0 < 16 < 32, SZ=32 — cd_read/partial must fire.
+      // word0 = 0x0102030405060708090a0b0c0d0e0f10_0000000000000000000000000000000 (left-aligned)
+      // word1 = 0x1112131415161718191a1b1c1d1e1f20_0000000000000000000000000000000 (left-aligned)
+      // Result at offset 16 = top 16 bytes of word0 shifted left 128 bits
+      //                     | top 16 bytes of word1 (i.e. shr 128 of word1)
+      const code = '60103500';
+      const epsilon = Store.put('atom', ['epsilon']);
+      // Left-aligned 32-byte words (as translate.js would produce):
+      // word0: bytes 0x01..0x10 in positions 0..15, zeros in 16..31
+      const w0 = 0x0102030405060708090a0b0c0d0e0f10n << 128n;
+      // word1: bytes 0x11..0x20 in positions 0..15, zeros in 16..31
+      const w1 = 0x1112131415161718191a1b1c1d1e1f20n << 128n;
+      const inner = Store.put('sconcat', [intToBin(32n), intToBin(w1), epsilon]);
+      const cdHash = Store.put('sconcat', [intToBin(32n), intToBin(w0), inner]);
+
+      const state = makeState(code, calc, { calldata: cdHash, calldatasize: 64n });
+      const result = calc.exec(state, { maxSteps: 500 });
+
+      assert.ok(result.quiescent, 'Should reach quiescence');
+      assert.ok(hasStop(result.state), 'Should terminate with stop');
+
+      const top = getStackTop(result.state);
+      assert.ok(top !== null, 'Stack should not be empty');
+      // cd_read/partial: shl(128, w0) | shr(128, w1)
+      // shl(128, w0): low 16 bytes of w0 → 0x090a0b0c0d0e0f10_0000000000000000 shifted to top
+      // shr(128, w1): top 16 bytes of w1 → 0x1112131415161718191a1b1c1d1e1f20
+      const shifted = (w0 << 128n) & ((1n << 256n) - 1n);
+      const nextHead = w1 >> 128n;
+      const expected = (shifted | nextHead) & ((1n << 256n) - 1n);
+      assert.equal(binToInt(top), expected,
+        'cd_read/partial at offset 16 in SZ=32 chunk should combine tail of word0 and head of word1');
+    });
+  });
+
   describe('leading-zero calldata — sconcat preserves byte positions', () => {
     // BigInt strips leading zeros: BigInt('0x00AABB') === BigInt('0xAABB').
     // The sconcat representation encodes byte position by right-padding each chunk
@@ -650,6 +716,79 @@ describe('Calldata (TODO 141)', { timeout: 30000 }, () => {
       // vs the actual calldata byte count of 3
       // The FFI is correct for the chunk (31 significant bytes) but not for a raw 3-byte binlit
       assert.ok(ffiByteLen <= 32, 'chunk ffiByteLen <= 32 bytes');
+    });
+  });
+
+  describe('cd_read FFI fast path — raw ground binlit calldata (R11)', () => {
+    // These tests exercise the cd_read FFI directly.
+    // When calldata is a raw binlit (not sconcat/epsilon), none of the backward
+    // clauses cd_read/hit, cd_read/skip, cd_read/cross, cd_read/partial, cd_read/nil
+    // match (they all pattern-match on sconcat or epsilon). The engine falls through
+    // to the FFI which calls calldata.js:cd_read() to compute the result.
+    //
+    // Precondition: raw binlit calldata must have no leading-zero bytes.
+    // (BigInt strips leading zeros; for leading-zero calldata, use sconcat.)
+
+    it('CALLDATALOAD(0) on raw binlit 0xAABBCCDD returns left-aligned 32-byte word', () => {
+      // PUSH1 0, CALLDATALOAD, STOP
+      const code = '60003500';
+      // Raw binlit calldata — not wrapped in sconcat
+      const cdHash = intToBin(0xAABBCCDDn);
+      const state = makeState(code, calc, { calldata: cdHash, calldatasize: 4n });
+      const result = calc.exec(state, { maxSteps: 500 });
+
+      assert.ok(result.quiescent, 'Should reach quiescence');
+      assert.ok(hasStop(result.state), 'Should terminate with stop');
+
+      const top = getStackTop(result.state);
+      assert.ok(top !== null, 'Stack should not be empty');
+
+      // byteLen=4, offset=0, avail=4: extract all 4 bytes, left-align in 32-byte word
+      // result = 0xAABBCCDD << (28*8)
+      const expected = 0xAABBCCDDn << (28n * 8n);
+      assert.equal(binToInt(top), expected,
+        'CALLDATALOAD(0) on 0xAABBCCDD should return 0xAABBCCDD left-aligned in 32 bytes');
+    });
+
+    it('CALLDATALOAD(2) on raw binlit 0xAABBCCDDEEFF returns bytes starting at offset 2', () => {
+      // PUSH1 2, CALLDATALOAD, STOP
+      const code = '60023500';
+      // Raw 6-byte binlit calldata — bytes: AA BB CC DD EE FF
+      const cdHash = intToBin(0xAABBCCDDEEFFn);
+      const state = makeState(code, calc, { calldata: cdHash, calldatasize: 6n });
+      const result = calc.exec(state, { maxSteps: 500 });
+
+      assert.ok(result.quiescent, 'Should reach quiescence');
+      assert.ok(hasStop(result.state), 'Should terminate with stop');
+
+      const top = getStackTop(result.state);
+      assert.ok(top !== null, 'Stack should not be empty');
+
+      // byteLen=6, offset=2, avail=min(32,4)=4: bytes at indices 2-5 = CC DD EE FF
+      // extracted = 0xCCDDEEFF, left-aligned in 32 bytes
+      // result = 0xCCDDEEFF << (28*8)
+      const expected = 0xCCDDEEFFn << (28n * 8n);
+      assert.equal(binToInt(top), expected,
+        'CALLDATALOAD(2) on 0xAABBCCDDEEFF should return 0xCCDDEEFF left-aligned');
+    });
+
+    it('CALLDATALOAD at offset past end of raw binlit returns 0', () => {
+      // PUSH1 4, CALLDATALOAD, STOP
+      const code = '60043500';
+      // Raw 4-byte binlit calldata
+      const cdHash = intToBin(0xAABBCCDDn);
+      const state = makeState(code, calc, { calldata: cdHash, calldatasize: 4n });
+      const result = calc.exec(state, { maxSteps: 500 });
+
+      assert.ok(result.quiescent, 'Should reach quiescence');
+      assert.ok(hasStop(result.state), 'Should terminate with stop');
+
+      const top = getStackTop(result.state);
+      assert.ok(top !== null, 'Stack should not be empty');
+
+      // byteLen=4, offset=4 >= byteLen: past end, FFI returns 0
+      assert.equal(binToInt(top), 0n,
+        'CALLDATALOAD at offset past end of raw binlit should return 0');
     });
   });
 });
