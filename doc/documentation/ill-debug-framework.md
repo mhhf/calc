@@ -1,3 +1,10 @@
+---
+title: ILL-Native Debug Framework
+modified: 2026-04-09
+summary: Observation directives and engine hooks for debugging ILL forward/backward execution.
+tags: [debugging, engine, forward-chaining, hooks, ill, testing]
+---
+
 # ILL-Native Debug Framework
 
 Observation directives and engine hooks for debugging ILL programs. Companion to the test framework (`ill-test-framework.md`).

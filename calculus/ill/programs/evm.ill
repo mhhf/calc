@@ -901,22 +901,20 @@ evm/codecopy:
 evm/origin:
   !_0 step 0x32 PC' 2 GAS' BC *
   stack S *
-  origin O
+  $origin O
   -o {
     pc PC' *
     gas GAS' *
-    origin O *
     stack [O | S]
   }.
 
 evm/gasprice:
   !_0 step 0x3a PC' 2 GAS' BC *
   stack S *
-  gasprice GP
+  $gasprice GP
   -o {
     pc PC' *
     gas GAS' *
-    gasprice GP *
     stack [GP | S]
   }.
 

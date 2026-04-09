@@ -1,3 +1,10 @@
+---
+title: ILL-Native Test Framework
+modified: 2026-04-09
+summary: Test directives as provability judgments — backward entailment and forward reachability.
+tags: [testing, engine, forward-chaining, backward, ill, metalogic]
+---
+
 # ILL-Native Test Framework
 
 Tests as provability judgments. No imperative machinery — the logic IS the framework.
