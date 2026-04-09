@@ -181,12 +181,15 @@ Opt-in callbacks on `calc.exec()`/`calc.explore()` for instrumentation. Zero cos
 
 ```js
 calc.exec(state, {
-  onStep: ({ step, rule, consumed, theta, slots, state }) => { ... },
+  onStep: ({ step, rule, consumed, theta, slots, state }) => { ... },  // step: monotonic counter
   onProveFail: (goal, reason) => { ... },  // reason: 'cached_failure'|'external_binding'|'exhausted'
+});
+calc.explore(state, {
+  onStep: ({ depth, rule, consumed, theta, slots, state }) => { ... },  // depth: DFS nesting level
 });
 ```
 
-`onStep` fires after state mutation. `consumed`/`theta` are snapshots; `state` is live (inspect via show.js, don't mutate). See `doc/documentation/ill-debug-framework.md`.
+`exec()` emits `{ step }` (1-based counter), `explore()` emits `{ depth }` (0-based DFS level). `consumed`/`theta` are snapshots; `state` is live (inspect via show.js, don't mutate). See `doc/documentation/ill-debug-framework.md`.
 
 ## doc/ Placement Rule
 

@@ -87,7 +87,7 @@ describe('Engine Hooks API', { timeout: 10000 }, () => {
   });
 
   describe('onStep — explore()', () => {
-    it('fires with correct shape', () => {
+    it('fires with correct shape (depth field, not step)', () => {
       const initial = mde.decomposeQuery(
         mde.parseExpr('pc 0 * bytecode [0x00]')
       );
@@ -99,24 +99,25 @@ describe('Engine Hooks API', { timeout: 10000 }, () => {
 
       assert.ok(steps.length >= 1);
       const s = steps[0];
-      assert.equal(typeof s.step, 'number');
+      assert.equal(typeof s.depth, 'number');
+      assert.equal(s.step, undefined, 'explore uses depth, not step');
       assert.ok(s.rule);
       assert.ok(s.consumed);
       assert.ok(Array.isArray(s.theta));
       assert.ok(s.state);
     });
 
-    it('step represents DFS depth', () => {
+    it('depth represents DFS nesting level', () => {
       const initial = mde.decomposeQuery(
         mde.parseExpr('pc 0 * bytecode [0x00]')
       );
       const depths = [];
       calc.explore(initial, {
         maxDepth: 10,
-        onStep: ({ step }) => depths.push(step),
+        onStep: ({ depth }) => depths.push(depth),
       });
 
-      // All explore steps start at depth 0 for first-level matches
+      // First-level matches are at depth 0
       assert.ok(depths.length >= 1);
       assert.equal(depths[0], 0);
     });

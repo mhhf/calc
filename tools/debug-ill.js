@@ -65,12 +65,13 @@ function runTrace(calc, hash, settings) {
   const maxSteps = settings?.maxSteps ? parseInt(settings.maxSteps, 10) : MAX_STEPS;
   const filterRule = settings?.filter || null;
 
-  const steps = [];
-  const onStep = ({ step, rule, consumed, state }) => {
+  const entries = [];
+  // forward.run() emits { step }, explore() emits { depth } — coalesce via step ?? depth
+  const onStep = ({ step, depth, rule, consumed, state }) => {
     if (filterRule && rule.name !== filterRule) return;
     const consumedFacts = Object.keys(consumed).map(h => show(Number(h)));
     const cls = classifyLeaf(state);
-    steps.push({ step, rule: rule.name, consumed: consumedFacts, cls });
+    entries.push({ pos: step ?? depth, rule: rule.name, consumed: consumedFacts, cls });
   };
 
   const execOpts = { maxSteps, onStep };
@@ -83,14 +84,14 @@ function runTrace(calc, hash, settings) {
     calc.exec(initial, execOpts);
   }
 
-  if (steps.length === 0) {
+  if (entries.length === 0) {
     console.log('  (no steps fired)');
     return;
   }
-  for (const s of steps) {
-    console.log(`  step ${s.step}: ${s.rule} — consumed: [${s.consumed.join(', ')}]`);
+  for (const s of entries) {
+    console.log(`  step ${s.pos}: ${s.rule} — consumed: [${s.consumed.join(', ')}]`);
   }
-  console.log(`  total: ${steps.length} steps`);
+  console.log(`  total: ${entries.length} steps`);
 }
 
 /**
