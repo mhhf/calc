@@ -128,25 +128,26 @@ function fixtureToState(fixture, calc) {
     linear[balance] = 1;
   }
 
-  // Calldata
+  // Calldata — sconcat chain of 32-byte chunks (D1/D6: calldata is linear, single fact)
   const calldataHex = exec.data;
+  const epsilon = Store.put('atom', ['epsilon']);
   if (calldataHex && calldataHex !== '0x') {
     const cdClean = calldataHex.startsWith('0x') ? calldataHex.slice(2) : calldataHex;
     const cdLen = cdClean.length / 2;
-    const calldatasize = Store.put('calldatasize', [intToBin(BigInt(cdLen))]);
-    linear[calldatasize] = 1;
-    // Build calldata chunks (32-byte aligned)
-    for (let offset = 0; offset < cdLen; offset += 32) {
+    linear[Store.put('calldatasize', [intToBin(BigInt(cdLen))])] = 1;
+    // Build sconcat chain from last chunk backwards
+    let cdStruct = epsilon;
+    const numChunks = Math.ceil(cdLen / 32);
+    for (let i = numChunks - 1; i >= 0; i--) {
+      const offset = i * 32;
       const chunk = cdClean.slice(offset * 2, (offset + 32) * 2).padEnd(64, '0');
-      const offsetHash = intToBin(BigInt(offset));
-      const lenHash = intToBin(BigInt(Math.min(32, cdLen - offset)));
       const valHash = intToBin(BigInt('0x' + chunk));
-      const cd = Store.put('calldata', [offsetHash, lenHash, valHash]);
-      linear[cd] = 1;
+      cdStruct = Store.put('sconcat', [intToBin(32n), valHash, cdStruct]);
     }
+    linear[Store.put('calldata', [cdStruct])] = 1;
   } else {
-    const calldatasize = Store.put('calldatasize', [intToBin(0n)]);
-    linear[calldatasize] = 1;
+    linear[Store.put('calldatasize', [intToBin(0n)])] = 1;
+    linear[Store.put('calldata', [epsilon])] = 1;
   }
 
   // Apply bytesToSemantic to combine PUSH data bytes

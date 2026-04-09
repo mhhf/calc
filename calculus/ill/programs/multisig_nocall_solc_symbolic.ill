@@ -15,10 +15,7 @@
 
   #import(multisig_nocall_solc_code.ill)
 
-  calldata 0  32 0xcd68b36700000000000000000000000000000000000000000000000000000000 *
-  calldata 4  32 Deadline *
-  calldata 36 32 CallValue *
-  calldata 68 32 DataHash *
+  calldata (sconcat 4 0xcd68b367 (sconcat 32 Deadline (sconcat 32 CallValue (sconcat 32 DataHash epsilon)))) *
   calldatasize 100 *
 
   % Storage: fired = false (slot 0)

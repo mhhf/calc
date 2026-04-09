@@ -34,6 +34,7 @@ function makeState(hexCode, calc, { gas = 0xFFFFn } = {}) {
   linear[Store.put('callvalue', [intToBin(0n)])] = 1;
   linear[Store.put('timestamp', [intToBin(0n)])] = 1;
   linear[Store.put('gaslimit', [intToBin(0xFFFFn)])] = 1;
+  linear[Store.put('calldata', [Store.put('atom', ['epsilon'])])] = 1;
   linear[Store.put('calldatasize', [intToBin(0n)])] = 1;
   linear[Store.put('initializedStorage', [ae])] = 1;
 

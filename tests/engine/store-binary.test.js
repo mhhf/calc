@@ -88,6 +88,29 @@ describe('Store Binary Format', () => {
       assert.strictEqual(a2, a);
     });
 
+    it('round-trips high-arity terms (6+ children, overflow storage)', () => {
+      const args = [];
+      for (let i = 0; i < 7; i++) args.push(Store.put('atom', [`arg${i}`]));
+      const h = Store.put('highArity', args);
+
+      assert.strictEqual(Store.arity(h), 7);
+      for (let i = 0; i < 7; i++) {
+        assert.deepStrictEqual(Store.children(Store.child(h, i)), [`arg${i}`],
+          `child ${i} mismatch before snapshot`);
+      }
+
+      const snap = Store.snapshot();
+      Store.clear();
+      Store.restore(snap);
+
+      assert.strictEqual(Store.tag(h), 'highArity');
+      assert.strictEqual(Store.arity(h), 7);
+      for (let i = 0; i < 7; i++) {
+        assert.deepStrictEqual(Store.children(Store.child(h, i)), [`arg${i}`],
+          `child ${i} mismatch after restore`);
+      }
+    });
+
     it('supports incremental loading after restore', () => {
       const a = Store.put('atom', ['sdk_term']);
       const snap = Store.snapshot();
@@ -125,6 +148,24 @@ describe('Store Binary Format', () => {
       assert.deepStrictEqual(Store.children(b), [255n]);
       assert.strictEqual(Store.tag(t), 'tensor');
       assert.deepStrictEqual(Store.children(t), [a, b]);
+    });
+
+    it('round-trips high-arity terms through binary', () => {
+      const args = [];
+      for (let i = 0; i < 6; i++) args.push(Store.put('atom', [`c${i}`]));
+      const h = Store.put('wide', args);
+
+      const snap = Store.snapshot({ version: '1.0' });
+      const buf = serialize(snap);
+      Store.clear();
+      Store.restore(deserialize(buf));
+
+      assert.strictEqual(Store.tag(h), 'wide');
+      assert.strictEqual(Store.arity(h), 6);
+      for (let i = 0; i < 6; i++) {
+        assert.deepStrictEqual(Store.children(Store.child(h, i)), [`c${i}`],
+          `child ${i} after binary round-trip`);
+      }
     });
 
     it('preserves metadata', () => {
