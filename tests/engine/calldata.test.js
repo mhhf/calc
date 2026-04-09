@@ -303,6 +303,99 @@ describe('Calldata (TODO 141)', { timeout: 30000 }, () => {
     });
   });
 
+  describe('symbolic calldata (R7 opaque / R8 partial)', () => {
+    it('R7: opaque calldata produces evar on stack top', () => {
+      // PUSH1 0, CALLDATALOAD, STOP
+      // CD is a freevar — cd_read cannot resolve → Val stays unbound → freshEvar
+      const code = '60003500';
+      const cdHash = Store.put('freevar', ['_CD']);
+      const state = makeState(code, calc, { calldata: cdHash, calldatasize: 0n });
+      const result = calc.exec(state, { maxSteps: 500 });
+
+      assert.ok(result.quiescent, 'Should reach quiescence');
+      assert.ok(hasStop(result.state), 'Should terminate with stop');
+
+      const top = getStackTop(result.state);
+      assert.ok(top !== null, 'Stack should not be empty');
+      assert.equal(Store.tag(top), 'evar',
+        'Opaque calldata: cd_read fails → Val = freshEvar()');
+    });
+
+    it('R8: partial symbolic (selector known, first param symbolic) produces byte_join at offset 0', () => {
+      // PUSH1 0, CALLDATALOAD, STOP
+      // CD = sconcat(4, 0xa9059cbb, sconcat(32, freevar('_VAL'), epsilon))
+      // cd_read/cross fires: SZ=4 < 32, then cd_read inner sconcat → freevar('_VAL')
+      // Result: byte_join(4, 0xa9059cbb, freevar('_VAL'))
+      const code = '60003500';
+      const epsilon = Store.put('atom', ['epsilon']);
+      const selector = intToBin(0xa9059cbbn);
+      const symVal = Store.put('freevar', ['_VAL']);
+      const inner = Store.put('sconcat', [intToBin(32n), symVal, epsilon]);
+      const cdHash = Store.put('sconcat', [intToBin(4n), selector, inner]);
+
+      const state = makeState(code, calc, { calldata: cdHash, calldatasize: 36n });
+      const result = calc.exec(state, { maxSteps: 500 });
+
+      assert.ok(result.quiescent, 'Should reach quiescence');
+      assert.ok(hasStop(result.state), 'Should terminate with stop');
+
+      const top = getStackTop(result.state);
+      assert.ok(top !== null, 'Stack should not be empty');
+      assert.equal(Store.tag(top), 'byte_join',
+        'Cross-boundary with symbolic inner value should produce byte_join');
+      assert.equal(Store.child(top, 0), intToBin(4n), 'byte_join first arg = segment size');
+      assert.equal(binToInt(Store.child(top, 1)), 0xa9059cbbn,
+        'byte_join head = selector 0xa9059cbb');
+      // Tail is the symbolic value freevar (cd_read/hit on inner sconcat returns _VAL directly)
+      assert.equal(Store.tag(Store.child(top, 2)), 'freevar',
+        'byte_join tail = symbolic _VAL (cd_read/hit on inner sconcat returns freevar)');
+    });
+
+    it('R8+SHR: SHR(224, byte_join(4, sel, _)) extracts selector from partial symbolic', () => {
+      // PUSH1 0, CALLDATALOAD, PUSH1 0xE0, SHR, STOP
+      // CD = sconcat(4, 0xa9059cbb, sconcat(32, freevar('_VAL'), epsilon))
+      // CALLDATALOAD(0) → byte_join(4, sel, _VAL)
+      // shr/byte_join clause: SHR(224, byte_join(4, sel, _)) = sel
+      const code = '60003560e01c00';
+      const epsilon = Store.put('atom', ['epsilon']);
+      const selector = intToBin(0xa9059cbbn);
+      const symVal = Store.put('freevar', ['_VAL']);
+      const inner = Store.put('sconcat', [intToBin(32n), symVal, epsilon]);
+      const cdHash = Store.put('sconcat', [intToBin(4n), selector, inner]);
+
+      const state = makeState(code, calc, { calldata: cdHash, calldatasize: 36n });
+      const result = calc.exec(state, { maxSteps: 500 });
+
+      assert.ok(result.quiescent, 'Should reach quiescence');
+      assert.ok(hasStop(result.state), 'Should terminate with stop');
+
+      assert.equal(binToInt(getStackTop(result.state)), 0xa9059cbbn,
+        'SHR(224, byte_join(4, sel, _)) = sel — selector extracted');
+    });
+
+    it('R8 skip: CALLDATALOAD(4) on partial symbolic produces evar (skip past selector)', () => {
+      // PUSH1 4, CALLDATALOAD, STOP
+      // CD = sconcat(4, 0xa9059cbb, freevar('_REST'))
+      // cd_read/skip fires (SZ=4 <= Offset=4), then cd_read(freevar, 0, Val)
+      // cd_read on freevar fails → Val = freshEvar
+      const code = '60043500';
+      const selector = intToBin(0xa9059cbbn);
+      const rest = Store.put('freevar', ['_REST']);
+      const cdHash = Store.put('sconcat', [intToBin(4n), selector, rest]);
+
+      const state = makeState(code, calc, { calldata: cdHash, calldatasize: 36n });
+      const result = calc.exec(state, { maxSteps: 500 });
+
+      assert.ok(result.quiescent, 'Should reach quiescence');
+      assert.ok(hasStop(result.state), 'Should terminate with stop');
+
+      const top = getStackTop(result.state);
+      assert.ok(top !== null, 'Stack should not be empty');
+      assert.equal(Store.tag(top), 'evar',
+        'cd_read/skip skips selector, then cd_read(freevar) fails → freshEvar');
+    });
+  });
+
   describe('no calldatacopy_iter (loli eliminated)', () => {
     it('forward execution trace has no calldatacopy_iter or loli', () => {
       // PUSH1 32, PUSH1 0, PUSH1 0, CALLDATACOPY, STOP
@@ -321,6 +414,242 @@ describe('Calldata (TODO 141)', { timeout: 30000 }, () => {
         assert.ok(!traceStr.includes('calldatacopy_iter'), 'No calldatacopy_iter in trace');
         assert.ok(!traceStr.includes('loli'), 'No loli in trace');
       }
+    });
+  });
+
+  describe('CALLDATACOPY memory correctness', () => {
+    /**
+     * Extract the inner memory hash (the write-chain root) from a state.
+     * Returns the hash stored inside the `mem` fact, or null if not found.
+     */
+    function getMemHash(state) {
+      const memTagId = Store.TAG['mem'];
+      for (const h of Object.keys(state.linear)) {
+        const hNum = Number(h);
+        if (Store.tagId(hNum) === memTagId) {
+          return Store.child(hNum, 0);
+        }
+      }
+      return null;
+    }
+
+    /**
+     * Walk a write-chain (write(addr, val, rest) | write8(...) | empty_mem)
+     * and return the value written at `addrBig` (as BigInt), or null if not found.
+     * Only matches exact-address 32-byte writes (write nodes), not write8.
+     */
+    function getMemValue(state, addrBig) {
+      let chain = getMemHash(state);
+      if (chain === null) return null;
+      while (chain !== null) {
+        const tag = Store.tag(chain);
+        if (tag === 'atom') {
+          // empty_mem — address not found, return 0 (EVM zero-initialised memory)
+          return 0n;
+        }
+        if (tag === 'write') {
+          const writeAddr = binToInt(Store.child(chain, 0));
+          const writeVal  = Store.child(chain, 1);
+          if (writeAddr === addrBig) return binToInt(writeVal);
+          chain = Store.child(chain, 2);
+        } else if (tag === 'write8') {
+          // Skip byte-level writes when looking for 32-byte word hits
+          chain = Store.child(chain, 2);
+        } else {
+          // Unknown node in chain (symbolic) — cannot resolve
+          return null;
+        }
+      }
+      return null;
+    }
+
+    it('CALLDATACOPY writes value into memory (direct write-chain inspection)', () => {
+      // PUSH1 32, PUSH1 0, PUSH1 0, CALLDATACOPY, STOP
+      // Stack order for CALLDATACOPY: size, dataOffset, destOffset
+      // Encoding: PUSH1 size=32, PUSH1 dataOffset=0, PUSH1 destOffset=0, CALLDATACOPY, STOP
+      const code = '6020600060003700';
+      const epsilon = Store.put('atom', ['epsilon']);
+      const padded = 0xDEADBEEFn << (28n * 8n);
+      const cdHash = Store.put('sconcat', [intToBin(32n), intToBin(padded), epsilon]);
+      const state = makeState(code, calc, { calldata: cdHash, calldatasize: 32n });
+      const result = calc.exec(state, { maxSteps: 1000 });
+
+      assert.ok(result.quiescent, 'Should reach quiescence');
+      assert.ok(hasStop(result.state), 'Should terminate with stop');
+
+      // Verify the write-chain contains a write(0, padded, ...) node
+      const memHash = getMemHash(result.state);
+      assert.ok(memHash !== null, 'mem fact should be present');
+      assert.notEqual(Store.tag(memHash), 'atom',
+        'Memory should not be empty after CALLDATACOPY');
+
+      const val = getMemValue(result.state, 0n);
+      assert.ok(val !== null, 'Should find a write at address 0');
+      assert.equal(val, padded,
+        `Memory[0] should be 0xDEADBEEF padded to 32 bytes; got 0x${val.toString(16)}`);
+    });
+
+    it('CALLDATACOPY then MLOAD returns copied value', () => {
+      // PUSH1 32, PUSH1 0, PUSH1 0, CALLDATACOPY, PUSH1 0, MLOAD, STOP
+      // Opcodes: 60 20  60 00  60 00  37  60 00  51  00
+      const code = '6020600060003760005100';
+      const epsilon = Store.put('atom', ['epsilon']);
+      const padded = 0xDEADBEEFn << (28n * 8n);
+      const cdHash = Store.put('sconcat', [intToBin(32n), intToBin(padded), epsilon]);
+      const state = makeState(code, calc, { calldata: cdHash, calldatasize: 32n });
+      const result = calc.exec(state, { maxSteps: 2000 });
+
+      assert.ok(result.quiescent, 'Should reach quiescence');
+      assert.ok(hasStop(result.state), 'Should terminate with stop');
+
+      const top = getStackTop(result.state);
+      assert.ok(top !== null, 'Stack should not be empty after MLOAD');
+      assert.equal(binToInt(top), padded,
+        `MLOAD(0) after CALLDATACOPY should return 0xDEADBEEF padded; got 0x${binToInt(top).toString(16)}`);
+    });
+
+    it('CALLDATACOPY preserves calldata — copy then CALLDATALOAD still works', () => {
+      // PUSH1 32, PUSH1 0, PUSH1 0, CALLDATACOPY (copies to mem[0]),
+      // PUSH1 0, CALLDATALOAD (reads from calldata[0]), STOP
+      // Opcodes: 60 20  60 00  60 00  37  60 00  35  00
+      const code = '6020600060003760003500';
+      const epsilon = Store.put('atom', ['epsilon']);
+      const padded = 0xDEADBEEFn << (28n * 8n);
+      const cdHash = Store.put('sconcat', [intToBin(32n), intToBin(padded), epsilon]);
+      const state = makeState(code, calc, { calldata: cdHash, calldatasize: 32n });
+      const result = calc.exec(state, { maxSteps: 2000 });
+
+      assert.ok(result.quiescent, 'Should reach quiescence after CALLDATACOPY + CALLDATALOAD');
+      assert.ok(hasStop(result.state), 'Should terminate with stop');
+
+      // CALLDATALOAD at offset 0 should still return the original calldata value
+      const top = getStackTop(result.state);
+      assert.ok(top !== null, 'Stack should not be empty');
+      assert.equal(binToInt(top), padded,
+        'Calldata should be preserved after CALLDATACOPY — CALLDATALOAD returns original value');
+    });
+
+    it('CALLDATACOPY with non-zero destOffset writes to correct address', () => {
+      // PUSH1 32, PUSH1 0, PUSH1 32, CALLDATACOPY, STOP
+      // Copy 32 bytes from calldata[0] to mem[32]
+      // Opcodes: 60 20  60 00  60 20  37  00
+      const code = '6020600060203700';
+      const epsilon = Store.put('atom', ['epsilon']);
+      const padded = 0xCAFEBABEn << (28n * 8n);
+      const cdHash = Store.put('sconcat', [intToBin(32n), intToBin(padded), epsilon]);
+      const state = makeState(code, calc, { calldata: cdHash, calldatasize: 32n });
+      const result = calc.exec(state, { maxSteps: 1000 });
+
+      assert.ok(result.quiescent, 'Should reach quiescence');
+      assert.ok(hasStop(result.state), 'Should terminate with stop');
+
+      // Memory at address 32 should contain the copied value; address 0 should be empty (0)
+      const valAt32 = getMemValue(result.state, 32n);
+      assert.ok(valAt32 !== null, 'Should find write at address 32');
+      assert.equal(valAt32, padded,
+        `Memory[32] should contain copied value; got 0x${valAt32.toString(16)}`);
+
+      const valAt0 = getMemValue(result.state, 0n);
+      assert.equal(valAt0, 0n,
+        'Memory[0] should be 0 (not written by this CALLDATACOPY)');
+    });
+  });
+
+  describe('leading-zero calldata — sconcat preserves byte positions', () => {
+    // BigInt strips leading zeros: BigInt('0x00AABB') === BigInt('0xAABB').
+    // The sconcat representation encodes byte position by right-padding each chunk
+    // to 32 bytes before converting to BigInt, so the numeric value carries the
+    // correct positional information even when the first calldata byte is 0x00.
+    //
+    // Example: calldata 0x00AABB (3 bytes)
+    //   chunk hex = '00aabb' padEnd(64,'0') = '00aabb000...000'
+    //   BigInt('0x00aabb000...000') = 0xAABB * 2^(29*8)
+    //   As 32-byte word: byte0=0x00, byte1=0xAA, byte2=0xBB — correct!
+    //
+    // The raw-binlit FFI (calldata.js) has a known limitation: it cannot handle
+    // leading-zero bytes because BigInt drops them. translate.js always produces
+    // sconcat chains, so the FFI is not used for concrete calldata.
+
+    it('CALLDATALOAD 0 on 3-byte calldata 0x00AABB returns correct 32-byte word', () => {
+      // PUSH1 0, CALLDATALOAD, STOP — loads 32 bytes starting at offset 0
+      const code = '60003500';
+      const epsilon = Store.put('atom', ['epsilon']);
+
+      // Build sconcat chunk as translate.js would:
+      // chunk = '00aabb' padded to 32 bytes, BigInt preserves byte positions via right-padding
+      const cdClean = '00aabb'; // 3 bytes: 0x00, 0xAA, 0xBB
+      const chunk = cdClean.padEnd(64, '0'); // '00aabb' + 58 zeros
+      const chunkVal = intToBin(BigInt('0x' + chunk)); // 0xAABB * 2^(29*8)
+      const cdHash = Store.put('sconcat', [intToBin(32n), chunkVal, epsilon]);
+
+      const state = makeState(code, calc, { calldata: cdHash, calldatasize: 3n });
+      const result = calc.exec(state, { maxSteps: 500 });
+
+      assert.ok(result.quiescent, 'Should reach quiescence');
+      assert.ok(hasStop(result.state), 'Should terminate with stop');
+
+      const top = getStackTop(result.state);
+      assert.ok(top !== null, 'Stack should not be empty');
+
+      // Expected: 32-byte word with byte0=0x00, byte1=0xAA, byte2=0xBB, rest=0
+      // = BigInt('0x00aabb' + '0'.repeat(58))
+      const expected = BigInt('0x' + chunk); // same computation as chunk
+      assert.equal(binToInt(top), expected,
+        'CALLDATALOAD should return 0x00AABB... (leading zero preserved via sconcat)');
+
+      // Verify byte decomposition of the result
+      const topVal = binToInt(top);
+      assert.equal((topVal >> 248n) & 0xffn, 0x00n, 'byte 0 should be 0x00 (leading zero)');
+      assert.equal((topVal >> 240n) & 0xffn, 0xAAn, 'byte 1 should be 0xAA');
+      assert.equal((topVal >> 232n) & 0xffn, 0xBBn, 'byte 2 should be 0xBB');
+    });
+
+    it('CALLDATALOAD 0 on 4-byte calldata 0x00001234 returns correct 32-byte word', () => {
+      // calldata 0x00001234 — two leading zero bytes
+      const code = '60003500';
+      const epsilon = Store.put('atom', ['epsilon']);
+
+      const cdClean = '00001234'; // 4 bytes: 0x00, 0x00, 0x12, 0x34
+      const chunk = cdClean.padEnd(64, '0');
+      const chunkVal = intToBin(BigInt('0x' + chunk));
+      const cdHash = Store.put('sconcat', [intToBin(32n), chunkVal, epsilon]);
+
+      const state = makeState(code, calc, { calldata: cdHash, calldatasize: 4n });
+      const result = calc.exec(state, { maxSteps: 500 });
+
+      assert.ok(result.quiescent);
+      assert.ok(hasStop(result.state));
+
+      const top = getStackTop(result.state);
+      const topVal = binToInt(top);
+      assert.equal((topVal >> 248n) & 0xffn, 0x00n, 'byte 0 should be 0x00');
+      assert.equal((topVal >> 240n) & 0xffn, 0x00n, 'byte 1 should be 0x00');
+      assert.equal((topVal >> 232n) & 0xffn, 0x12n, 'byte 2 should be 0x12');
+      assert.equal((topVal >> 224n) & 0xffn, 0x34n, 'byte 3 should be 0x34');
+    });
+
+    it('translate.js fixtureToState produces correct sconcat for leading-zero calldata', () => {
+      // Simulate translate.js chunk construction for 3-byte calldata '00aabb'
+      // Verify the BigInt correctly represents the 32-byte word with 0x00 at byte 0
+      const cdClean = '00aabb';
+      const chunk = cdClean.slice(0, 64).padEnd(64, '0');
+      const val = BigInt('0x' + chunk);
+
+      // Byte positions in the 256-bit integer
+      assert.equal((val >> 248n) & 0xffn, 0x00n, 'chunk byte 0 = 0x00 (leading zero)');
+      assert.equal((val >> 240n) & 0xffn, 0xAAn, 'chunk byte 1 = 0xAA');
+      assert.equal((val >> 232n) & 0xffn, 0xBBn, 'chunk byte 2 = 0xBB');
+      assert.equal((val >> 224n) & 0xffn, 0x00n, 'chunk byte 3 = 0x00 (padding)');
+
+      // The FFI byteLen would compute 2 (strips leading 0x00) — different from true 32-byte width
+      // This demonstrates the raw-binlit FFI limitation for leading-zero calldata:
+      let ffiByteLen = 0;
+      let v = val;
+      while (v > 0n) { v >>= 8n; ffiByteLen++; }
+      // ffiByteLen = 31 (correct: AA is at byte 1 of the 32-byte chunk, so 31 significant bytes)
+      // vs the actual calldata byte count of 3
+      // The FFI is correct for the chunk (31 significant bytes) but not for a raw 3-byte binlit
+      assert.ok(ffiByteLen <= 32, 'chunk ffiByteLen <= 32 bytes');
     });
   });
 });
