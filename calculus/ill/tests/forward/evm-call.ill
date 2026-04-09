@@ -1,0 +1,28 @@
+% Forward execution tests for abstract CALL nondeterminism.
+% Ports tests/engine/memory.test.js "Abstract CALL" suite.
+% Uses (explore: true) to force exhaustive exploration — CALL forks
+% nondeterministically, so committed-choice exec only sees one branch.
+
+#import(../../programs/evm.ill)
+
+% ── Abstract CALL ────────────────────────────────────────────────────────────
+
+% PUSH1 0x42, PUSH1 0x00, MSTORE, 7xPUSH1 args, CALL, STOP
+% CALL forks into success (stack [1]) and failure (stack [0]).
+% Memory (write 0 0x42 empty_mem) is preserved in both branches.
+
+#expect_some_call_success (explore: true)
+  pc 0 * gas 0xffffff * stack ae * mem empty_mem * memsize 0 *
+  bytecode [0x60, 0x42, 0x60, 0x00, 0x52, 0x60, 0x00, 0x60, 0x00, 0x60, 0x00, 0x60, 0x00, 0x60, 0x00, 0x60, 0x01, 0x60, 0xFF, 0xf1, 0x00]
+  => stop * stack [1] .
+
+#expect_some_call_failure (explore: true)
+  pc 0 * gas 0xffffff * stack ae * mem empty_mem * memsize 0 *
+  bytecode [0x60, 0x42, 0x60, 0x00, 0x52, 0x60, 0x00, 0x60, 0x00, 0x60, 0x00, 0x60, 0x00, 0x60, 0x00, 0x60, 0x01, 0x60, 0xFF, 0xf1, 0x00]
+  => stop * stack [0] .
+
+% Memory must survive CALL — assert write node in both branches
+#expect_call_mem_preserved (explore: true)
+  pc 0 * gas 0xffffff * stack ae * mem empty_mem * memsize 0 *
+  bytecode [0x60, 0x42, 0x60, 0x00, 0x52, 0x60, 0x00, 0x60, 0x00, 0x60, 0x00, 0x60, 0x00, 0x60, 0x00, 0x60, 0x01, 0x60, 0xFF, 0xf1, 0x00]
+  => stop * mem (write 0 0x42 empty_mem) .

@@ -1,0 +1,26 @@
+% Symbolic property tests using eigenvariables.
+% Verifies universal properties: backward predicates and forward invariants.
+
+#import(../../programs/evm.ill)
+
+% ── Backward eigenvariable tests ──────────────────────────────────────────────
+
+% Reflexivity: eq X X holds for any X
+#expect_eq_refl [X] |- !eq X X .
+
+% Anti-reflexivity: neq X X never holds
+#expect_not_neq_refl [X] |- !neq X X .
+
+% ── Forward eigenvariable tests ───────────────────────────────────────────────
+% Eigenvariables in LHS trigger explore() (symbolic execution).
+% Freevars pass through rules unchanged — isSubset matches by hash equality.
+
+% STOP preserves any stack value: for all X, STOP leaves stack [X] intact
+#expect_stop_preserves_stack [X]
+  pc 0 * stack [X] * bytecode [0x00]
+  => stop * stack [X] .
+
+% Negative: freevar X never matches concrete 0 — hash inequality
+#expect_not_stop_wrong_stack [X]
+  pc 0 * stack [X] * bytecode [0x00]
+  => stop * stack [0] .

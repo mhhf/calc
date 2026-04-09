@@ -30,11 +30,12 @@ CALC is a proof calculus system for experimenting with sequent-calculi with an i
 npm run dev           # Development server (http://localhost:3000)
 npm run build:ui      # Production build to out/ui/
 npm run build:bundle  # Regenerate out/ill.json from calculus specs
-npm test              # All fast tests (1605 tests, ~3s) — RUN THIS DURING DEVELOPMENT
+npm test              # All fast tests (1702 tests, ~4s) — RUN THIS DURING DEVELOPMENT
+npm run test:ill      # ILL-native tests (17 tests, ~0.2s) — .ill files as provability judgments
 npm run test:noffi    # noFFI adversarial soundness (13 tests, ~1s) — only after engine/FFI changes
 npm run test:zk       # ZK witness tests (94 tests, 24 known failures) — only after ZK changes
 npm run test:heavy    # Slow + drift tests (5-30 min) — only before release or major changes
-npm run test:all      # Everything combined
+npm run test:all      # Everything combined (includes test:ill)
 npm run bench:diff    # Cross-commit benchmark comparison (use this when asked to benchmark)
 ```
 
@@ -101,11 +102,12 @@ calculus/ill/            # ILL calculus definition
 ├── ill.rules            # Inference rules (sequent notation)
 ├── lnl.family           # Family infrastructure (LNL structural framework)
 ├── prelude/             # Type bounds, booleans, arrays
-└── programs/            # EVM model, binary arithmetic, multisig contracts
+├── programs/            # EVM model, binary arithmetic, multisig contracts
+└── tests/               # ILL-native tests (provability judgments, run via test:ill)
 
 tests/                   # Test suite (core: *.test.js, engine: engine/)
 benchmarks/              # Performance benchmarks (engine/, proof/, micro/)
-tools/                   # CLI utilities (bench-compare.js, explore-inspect.js)
+tools/                   # CLI utilities (bench-compare.js, explore-inspect.js, test-ill.js)
 out/                     # Generated: ill.json (bundled calculus), ui/ (built app)
 ```
 

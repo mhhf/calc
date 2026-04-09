@@ -1,0 +1,21 @@
+% Backward clause tests for division, modulo, and exponentiation.
+% Tests div, mod, exp from bin.ill.
+
+#import(../../programs/bin.ill)
+
+% ── div: integer division ─────────────────────────────────────────────────────
+
+#expect_div_six_two |- !div (o (i (i e))) (o (i e)) (i (i e)) .
+#expect_div_one_one |- !div (i e) (i e) (i e) .
+#expect_div_zero |- !div e (i e) e .
+#expect_div_smaller |- !div (i e) (o (i e)) e .
+
+% ── mod: modulo ───────────────────────────────────────────────────────────────
+
+#expect_mod_even |- !mod (o (i (i e))) (o (i e)) e .
+#expect_mod_odd |- !mod (i (i (i e))) (o (i e)) (i e) .
+
+% ── exp: exponentiation ──────────────────────────────────────────────────────
+
+#expect_exp_base |- !exp (o (i e)) e (i e) .
+#expect_exp_square |- !exp (o (i e)) (o (i e)) (o (o (i e))) .

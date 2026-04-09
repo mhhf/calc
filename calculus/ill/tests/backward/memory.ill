@@ -1,0 +1,39 @@
+% Backward clause tests for EVM memory model (McCarthy axiom traversal).
+% Ports: tests/engine/memory.test.js "Memory Backward Clauses" suite.
+%
+% mem_read traverses a write-log using McCarthy array axioms:
+%   read(write(A, V, M), A) = V          (hit)
+%   read(write(A', V, M), A) = read(M, A) when no_overlap(A, A')  (miss)
+%   read(empty_mem, A) = 0               (default)
+
+#import(../../programs/evm.ill)
+
+% ── no_overlap: disjoint memory ranges ──────────────────────────────────────
+
+#expect_no_overlap_disjoint_left |- !no_overlap 0 0x20 0x20 0x20 .
+#expect_no_overlap_disjoint_right |- !no_overlap 0x20 0x20 0 0x20 .
+#expect_not_no_overlap_crossing |- !no_overlap 0 0x20 0x10 0x20 .
+#expect_no_overlap_write8 |- !no_overlap 0 0x20 0x20 1 .
+
+% ── mem_read: McCarthy axiom read ───────────────────────────────────────────
+
+% Exact hit: write at 0, read at 0 -> 0x2a
+#expect_memread_hit |- !mem_read (write 0 0x2a empty_mem) 0 0x2a .
+
+% Miss + default zero: write at 0x20, read at 0 -> 0
+#expect_memread_miss |- !mem_read (write 0x20 0x2a empty_mem) 0 0 .
+
+% Most recent wins: two writes at same offset, latest value returned
+#expect_memread_overwrite |- !mem_read (write 0 0xBB (write 0 0xAA empty_mem)) 0 0xBB .
+
+% Chain traversal: 3 writes, read deepest offset
+#expect_memread_chain |- !mem_read (write 0x40 0xCC (write 0x20 0xBB (write 0 0xAA empty_mem))) 0x40 0xCC .
+
+% Overlap -> stuck: partial overlap has no matching clause (sound failure)
+#expect_not_memread_overlap [V] |- !mem_read (write 0x10 0xBB (write 0 0xAA empty_mem)) 0 V .
+
+% write8 miss: write8 at 0x20, read at 0 -> 0
+#expect_memread_write8_miss |- !mem_read (write8 0x20 0xAB empty_mem) 0 0 .
+
+% Empty memory default: read from empty_mem -> 0
+#expect_memread_empty |- !mem_read empty_mem 0 0 .

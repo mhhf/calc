@@ -1,0 +1,36 @@
+% Forward execution tests for EVM memory opcodes (MSTORE, MLOAD, MSIZE).
+% Ports tests/engine/memory.test.js "EVM Memory Integration" suite.
+
+#import(../../programs/evm.ill)
+
+% ── MSTORE + MLOAD ──────────────────────────────────────────────────────────
+
+% PUSH1 0x42, PUSH1 0x00, MSTORE, PUSH1 0x00, MLOAD, STOP
+% Write 0x42 at offset 0, read it back → stack [0x42]
+#expect_mstore_mload
+  pc 0 * gas 0xffffff * stack ae * mem empty_mem * memsize 0 *
+  bytecode [0x60, 0x42, 0x60, 0x00, 0x52, 0x60, 0x00, 0x51, 0x00]
+  => stop * stack [0x42] .
+
+% PUSH1 0x42, PUSH1 0x00, MSTORE, PUSH1 0x20, MLOAD, STOP
+% Write at offset 0, read at offset 0x20 → stack [0] (unwritten)
+#expect_mload_unwritten
+  pc 0 * gas 0xffffff * stack ae * mem empty_mem * memsize 0 *
+  bytecode [0x60, 0x42, 0x60, 0x00, 0x52, 0x60, 0x20, 0x51, 0x00]
+  => stop * stack [0] .
+
+% PUSH1 0xAA, PUSH1 0x00, MSTORE, PUSH1 0xBB, PUSH1 0x00, MSTORE, PUSH1 0x00, MLOAD, STOP
+% Two writes at same offset → latest (0xBB) wins
+#expect_mstore_overwrite
+  pc 0 * gas 0xffffff * stack ae * mem empty_mem * memsize 0 *
+  bytecode [0x60, 0xAA, 0x60, 0x00, 0x52, 0x60, 0xBB, 0x60, 0x00, 0x52, 0x60, 0x00, 0x51, 0x00]
+  => stop * stack [0xBB] .
+
+% ── MSIZE ────────────────────────────────────────────────────────────────────
+
+% PUSH1 0x42, PUSH1 0x00, MSTORE, MSIZE, STOP
+% MSTORE at offset 0 expands memory to 32 bytes
+#expect_msize_after_mstore
+  pc 0 * gas 0xffffff * stack ae * mem empty_mem * memsize 0 *
+  bytecode [0x60, 0x42, 0x60, 0x00, 0x52, 0x59, 0x00]
+  => stop * stack [0x20] .
