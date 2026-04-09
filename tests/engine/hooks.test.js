@@ -123,19 +123,22 @@ describe('Engine Hooks API', { timeout: 10000 }, () => {
   });
 
   describe('onProveFail', () => {
-    it('fires with exhausted reason for impossible persistent goal', () => {
-      // Set up a state where a persistent goal cannot be proved
+    it('fires with valid reasons when persistent goals fail', () => {
+      // Incomplete state (no gas, no mem) — forces persistent goal failures
+      // because step rules need !_0(step, ...) which requires bytecode lookup,
+      // and rules that try but fail to match will trigger onProveFail.
       const initial = mde.decomposeQuery(
-        mde.parseExpr('pc 0 * gas 0xffffff * stack ae * mem empty_mem * memsize 0 * bytecode [0x60, 0x05, 0x00]')
+        mde.parseExpr('pc 0 * stack ae * bytecode [0x60, 0x05, 0x01, 0x00]')
       );
       const failures = [];
       calc.exec(initial, {
+        maxSteps: 100,
         onProveFail: (goal, reason) => failures.push({ goal: show(goal), reason }),
       });
 
-      // Failures may or may not happen depending on rule set — just verify shape
+      // Verify shape of any failures that occurred
       for (const f of failures) {
-        assert.ok(typeof f.goal === 'string');
+        assert.ok(typeof f.goal === 'string', 'goal should be a string');
         assert.ok(['cached_failure', 'external_binding', 'exhausted'].includes(f.reason),
           `unknown reason: ${f.reason}`);
       }
