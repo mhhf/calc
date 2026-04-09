@@ -123,25 +123,26 @@ describe('Engine Hooks API', { timeout: 10000 }, () => {
   });
 
   describe('onProveFail', () => {
-    it('fires with valid reasons when persistent goals fail', () => {
-      // Incomplete state (no gas, no mem) — forces persistent goal failures
-      // because step rules need !_0(step, ...) which requires bytecode lookup,
-      // and rules that try but fail to match will trigger onProveFail.
+    it('fires on out-of-gas: checked_sub(0, cost, ?) fails', () => {
+      // ADD (0x01, cost 3) with gas 0 — checked_sub(0, 3, ?) is unprovable.
+      // The engine tries every step/make variant; those requiring gas > 0 fail.
       const initial = mde.decomposeQuery(
-        mde.parseExpr('pc 0 * stack ae * bytecode [0x60, 0x05, 0x01, 0x00]')
+        mde.parseExpr('pc 0 * gas 0 * stack [0x1, 0x2] * bytecode [0x01]')
       );
       const failures = [];
       calc.exec(initial, {
-        maxSteps: 100,
+        maxSteps: 10,
         onProveFail: (goal, reason) => failures.push({ goal: show(goal), reason }),
       });
 
-      // Verify shape of any failures that occurred
+      assert.ok(failures.length > 0, 'expected onProveFail calls for out-of-gas');
       for (const f of failures) {
-        assert.ok(typeof f.goal === 'string', 'goal should be a string');
+        assert.ok(typeof f.goal === 'string');
         assert.ok(['cached_failure', 'external_binding', 'exhausted'].includes(f.reason),
           `unknown reason: ${f.reason}`);
       }
+      assert.ok(failures.some(f => f.goal.includes('checked_sub')),
+        'expected checked_sub failure for out-of-gas');
     });
 
     it('does not fire when not provided', () => {
