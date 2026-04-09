@@ -90,7 +90,7 @@ Safety: intermediate metavars must not appear elsewhere in the rule (linear ante
 
 Two linked transformations:
 
-1. **McCarthy normalization** (`_mccarthyNormalize`): peels `acons` layers from array-access goals using the read-head/read-tail/write-head/write-tail axioms (McCarthy 1962). Replaces `arr_get(acons(H,T), 0, V)` with `V=H`, and shifts indices for tail access. Produces goals with ground indices on flat arrays.
+1. **McCarthy normalization** (`_mccarthyNormalize`): peels `acons` layers from array-access goals using read-head/read-tail/write-head/write-tail rewrite rules. Replaces `arr_get(acons(H,T), 0, V)` with `V=H`, and shifts indices for tail access. Produces goals with ground indices on flat arrays. These rules are a list-based recursive encoding of McCarthy's select/store axioms (McCarthy 1962; Stump et al. 2001), which are originally stated as first-order logic axioms over flat arrays: `select(store(a,i,v),i)=v` and `select(store(a,i,v),j)=select(a,j)` when `i≠j`. Our `acons(H,T)` head-tail decomposition is semantically equivalent for ground non-negative integer indices and forms a convergent conditional rewrite system on ground terms (terminating by structural recursion on list depth, confluent with no critical pairs when indices are ground).
 
 2. **SROA** (`_trySROA`): once McCarthy normalization grounds all array indices, the linear resource holding the array (e.g., `stack(acons(A,acons(B,empty_stack)))`) is expanded into individual scalar slots (`slot_0(A) * slot_1(B)`). Array-access goals become direct bindings. Configured via `SROAConfig`: `arrayPreds`, `resourcePred`, `parseIndex`/`buildIndex`.
 
