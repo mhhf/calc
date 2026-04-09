@@ -45,13 +45,18 @@ No separator (`|-`/`=>`), no expected outcome — pure information gathering.
 Opt-in callbacks on `exec()`/`explore()` — zero cost when not provided.
 
 ```js
+// forward.run() — monotonic step counter
 calc.exec(state, {
   onStep: ({ step, rule, consumed, theta, slots, state }) => { ... },
   onProveFail: (goal, reason) => { ... },
 });
+// explore() — DFS depth (separate field name, following Prolog convention)
+calc.explore(state, {
+  onStep: ({ depth, rule, consumed, theta, slots, state }) => { ... },
+});
 ```
 
-**`onStep`** fires after state mutation. `step` is the monotonic step counter (forward) or DFS depth (explore). `consumed` and `theta` are snapshots (`.slice()` / `{...spread}`). `state` is a live FactSet reference — inspect via `show.js` utilities, do not mutate.
+**`onStep`** fires after state mutation. `exec()` emits `{ step }` (monotonic 1-based counter). `explore()` emits `{ depth }` (DFS nesting level, 0-based). Separate field names follow the Prolog Byrd Box convention (invocation vs depth). `consumed` and `theta` are snapshots (`.slice()` / `{...spread}`). `state` is a live FactSet reference — inspect via `show.js` utilities, do not mutate.
 
 **`onProveFail`** fires during persistent goal resolution (in `provePersistentNaive`). Three failure reasons:
 - `'cached_failure'` — backward cache recorded this goal as unprovable
