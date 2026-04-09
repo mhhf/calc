@@ -85,15 +85,26 @@ function fixtureToState(fixture, calc) {
   const bytecodeHash = Store.put('bytecode', [arrHash]);
   linear[bytecodeHash] = 1;
 
-  // address, sender, callvalue
+  // address, sender, origin, callvalue, gasprice
   const address = Store.put('address', [hexToBinHash(exec.address)]);
   linear[address] = 1;
 
   const sender = Store.put('sender', [hexToBinHash(exec.caller)]);
   linear[sender] = 1;
 
+  const origin = Store.put('origin', [hexToBinHash(exec.origin || exec.caller)]);
+  linear[origin] = 1;
+
   const callvalue = Store.put('callvalue', [hexToBinHash(exec.value)]);
   linear[callvalue] = 1;
+
+  const gasprice = Store.put('gasprice', [hexToBinHash(exec.gasPrice || '0x0')]);
+  linear[gasprice] = 1;
+
+  // codesize — byte length of the deployed contract code
+  const codeClean = exec.code.startsWith('0x') ? exec.code.slice(2) : exec.code;
+  const codeLenBytes = BigInt(codeClean.length / 2);
+  linear[Store.put('codesize', [intToBin(codeLenBytes)])] = 1;
 
   // Environment: timestamp, gaslimit
   if (fixture.env) {

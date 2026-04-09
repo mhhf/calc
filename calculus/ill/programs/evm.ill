@@ -92,10 +92,13 @@ notMember/step: notMember K [H | T]
 
 sender: bin -> type.
 address: bin -> type.
+origin: bin -> type.
 balance: (addr: bin) -> (amount: bin) -> type.
 callvalue: bin -> type.
+gasprice: bin -> type.
 calldata: bin -> type.
 calldatasize: bin -> type.
+codesize: bin -> type.
 debug: bin -> type.
 mem: bin -> type.
 memsize: bin -> type.
@@ -109,6 +112,8 @@ epsilon: bin.
 byte_join: (n: bin) -> (head: bin) -> (tail: bin) -> bin.
 cd_read: (data: bin) -> (offset: bin) -> (value: bin) -> type.
 cd_copy: (data: bin) -> (data_offset: bin) -> (end: bin) -> (dest_offset: bin) -> (mem: bin) -> (result: bin) -> type.
+code_read32: (bc: arr) -> (offset: bin) -> (end: bin) -> (result: bin) -> type.
+code_copy: (bc: arr) -> (code_offset: bin) -> (size: bin) -> (cs: bin) -> (dest_offset: bin) -> (mem: bin) -> (result: bin) -> type.
 timestamp: bin -> type.
 gaslimit: bin -> type.
 % shr, shl, slt: type declarations and clauses in bin.ill
@@ -310,19 +315,105 @@ cd_read/cross: cd_read (sconcat SZ Val Rest) 0 (byte_join SZ Val TailVal)
   <- lt SZ 32
   <- cd_read Rest 0 TailVal.
 
+% cd_read/partial: non-zero intra-chunk offset (0 < Offset < SZ).
+% Occurs with concrete ground sconcat chains (e.g. VMTest calldata split into 32-byte chunks).
+% The result spans the tail of the current chunk and the head of the next:
+%   High (SZ-Offset) bytes: shl(Offset*8, Val)  — shift left to discard top Offset bytes
+%   Low  Offset      bytes: shr((SZ-Offset)*8, NextVal) — take top Offset bytes of next chunk
+cd_read/partial: cd_read (sconcat SZ Val Rest) Offset Result
+  <- lt Offset SZ
+  <- neq Offset 0
+  <- sub SZ Offset TailSize
+  <- mul Offset 8 SkipBits
+  <- mul TailSize 8 TailBits
+  <- shl SkipBits Val Shifted
+  <- cd_read Rest 0 NextVal
+  <- shr TailBits NextVal NextHead
+  <- or Shifted NextHead Result.
+
 cd_read/nil: cd_read epsilon Offset 0.
 
 % cd_copy: copy calldata[DataOffset..End) into mem starting at DestOffset.
-% Accumulator pattern — writes stack on top of each other.
+% Writes 32-byte memory words. The last write is zero-padded when Remaining < 32.
 
 cd_copy/done: cd_copy D Offset End Dest M M <- le End Offset.
 
+% Full 32-byte chunk: remaining >= 32
 cd_copy/step: cd_copy D Offset End Dest M Result
   <- lt Offset End
+  <- sub End Offset Remaining
+  <- le 32 Remaining
   <- cd_read D Offset V
   <- plus Offset 32 Offset'
   <- plus Dest 32 Dest'
   <- cd_copy D Offset' End Dest' (write Dest V M) Result.
+
+% Partial last chunk: remaining < 32, zero-pad the low bytes
+cd_copy/step_partial: cd_copy D Offset End Dest M Result
+  <- lt Offset End
+  <- sub End Offset Remaining
+  <- lt Remaining 32
+  <- cd_read D Offset V
+  <- sub 32 Remaining ZeroBytes
+  <- mul ZeroBytes 8 ZeroBits
+  <- shr ZeroBits V Temp
+  <- shl ZeroBits Temp Masked
+  <- plus Dest 32 Dest'
+  <- cd_copy D End End Dest' (write Dest Masked M) Result.
+
+% code_read32: read 32 bytes from bytecode array at Offset, zero-padding past end.
+% End is the code size (upper bound); reads from [Offset, Offset+32) clamped to [0, End).
+% Used by CODECOPY to write 32-byte memory words.
+
+% All 32 bytes fall within code: use read_bytes directly
+code_read32/inbounds: code_read32 BC Offset End Val
+  <- plus Offset 32 Next
+  <- le Next End
+  <- read_bytes BC Offset 32 Val.
+
+% Partial chunk: some bytes in code, rest zero-padded
+code_read32/partial: code_read32 BC Offset End Val
+  <- lt Offset End
+  <- plus Offset 32 Next
+  <- lt End Next
+  <- sub End Offset Avail
+  <- read_bytes BC Offset Avail Head
+  <- sub 32 Avail Pad
+  <- mul Pad 8 PadBits
+  <- shl PadBits Head Val.
+
+% Offset >= End: entirely out of range, return 0
+code_read32/oob: code_read32 BC Offset End 0
+  <- le End Offset.
+
+% code_copy: copy bytecode[CodeOffset..CodeOffset+Size) into mem at DestOffset.
+% Size-based iteration avoids 256-bit offset overflow (EVM CODECOPY with huge offset).
+% CS = code size (passed through for code_read32 bounds check).
+% OOB bytes (CodeOffset >= CS) are zero via code_read32/oob.
+
+code_copy/done: code_copy BC CodeOffset 0 CS Dest M M.
+
+% Full 32-byte chunk: size >= 32
+code_copy/step: code_copy BC CodeOffset Size CS Dest M Result
+  <- neq Size 0
+  <- le 32 Size
+  <- code_read32 BC CodeOffset CS V
+  <- sub Size 32 Size'
+  <- plus CodeOffset 32 CodeOffset'
+  <- plus Dest 32 Dest'
+  <- code_copy BC CodeOffset' Size' CS Dest' (write Dest V M) Result.
+
+% Partial last chunk: size < 32, zero-pad low bytes
+code_copy/step_partial: code_copy BC CodeOffset Size CS Dest M Result
+  <- neq Size 0
+  <- lt Size 32
+  <- code_read32 BC CodeOffset CS V
+  <- sub 32 Size ZeroBytes
+  <- mul ZeroBytes 8 ZeroBits
+  <- shr ZeroBits V Temp
+  <- shl ZeroBits Temp Masked
+  <- plus Dest 32 Dest'
+  <- code_copy BC CodeOffset 0 CS Dest' (write Dest Masked M) Result.
 
 % shr/byte_join: decompose byte_join when shift exactly removes tail bytes.
 % SHR(224, byte_join(4, Sel, Tail)) = Sel because (32-4)*8 = 224.
@@ -768,6 +859,52 @@ evm/calldatacopy:
       mem MOut * !cd_copy CD DataOffset End DestOffset M MOut)
   }.
 
+evm/codesize:
+  !_0 step 0x38 PC' 2 GAS' BC *
+  stack S *
+  $codesize CS
+  -o {
+    pc PC' *
+    gas GAS' *
+    stack [CS | S]
+  }.
+
+evm/codecopy:
+  !_0 step 0x39 PC' COST GAS' BC *
+  stack [DestOffset, CodeOffset, Size | REST] *
+  mem M * memsize S *
+  $codesize CS *
+  !mem_expand S DestOffset Size S' MemGas *
+  !plus 0x1f Size SP * !div SP 0x20 Words *
+  !mul 3 Words WordGas * !plus 3 WordGas CDBase *
+  !plus CDBase MemGas COST
+  -o {
+    exists MOut. (
+      gas GAS' * pc PC' * memsize S' * stack REST *
+      mem MOut * !code_copy BC CodeOffset Size CS DestOffset M MOut)
+  }.
+
+evm/origin:
+  !_0 step 0x32 PC' 2 GAS' BC *
+  stack S *
+  origin O
+  -o {
+    pc PC' *
+    gas GAS' *
+    origin O *
+    stack [O | S]
+  }.
+
+evm/gasprice:
+  !_0 step 0x3a PC' 2 GAS' BC *
+  stack S *
+  gasprice GP
+  -o {
+    pc PC' *
+    gas GAS' *
+    gasprice GP *
+    stack [GP | S]
+  }.
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%  40
