@@ -22,11 +22,8 @@
   #import(multisig_nocall_solc_code.ill)
 
   % Calldata: execute(uint256 deadline, uint256 callValue, bytes32 dataHash)
-  % Selector 0xcd68b367 left-aligned in 32-byte word
-  calldata 0  32 0xcd68b36700000000000000000000000000000000000000000000000000000000 *
-  calldata 4  32 Deadline *
-  calldata 36 32 CallValue *
-  calldata 68 32 DataHash *
+  % ABI: 4-byte selector + 3 × 32-byte params
+  calldata (sconcat 4 0xcd68b367 (sconcat 32 Deadline (sconcat 32 CallValue (sconcat 32 DataHash epsilon)))) *
   calldatasize 100 *
 
   % Storage: fired = false (slot 0)

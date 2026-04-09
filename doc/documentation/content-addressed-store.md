@@ -1,14 +1,14 @@
 ---
 title: "Content-Addressed Store & Term Architecture"
 created: 2026-02-13
-modified: 2026-02-13
+modified: 2026-04-09
 summary: How the content-addressed Store works — node model, hashing, substitution, unification, complexity analysis
 tags: [architecture, store, hash-consing, content-addressing, kernel]
 ---
 
 # Content-Addressed Store & Term Architecture
 
-All formulas, terms, and logical objects in CALC are **content-addressed hashes** — plain JavaScript numbers. The Store is a global hash-consing table that maps hashes to `{ tag, children }` nodes. Structural equality is O(1) hash comparison.
+All formulas, terms, and logical objects in CALC are **content-addressed hashes** — plain JavaScript numbers (sequential indices). The Store is a global hash-consing arena that deduplicates terms by content. Structural equality is O(1) index comparison.
 
 > **Research background:** [[../research/content-addressed-formulas]] — design rationale, hash function selection, migration from AST objects
 > **Prover architecture:** [[architecture]] — how the Store is used across prover layers L1-L5
@@ -18,21 +18,28 @@ All formulas, terms, and logical objects in CALC are **content-addressed hashes*
 
 ## 1. Node Model
 
-Every term is a node in a Merkle DAG:
+Every term is a node in a Merkle DAG stored in a **flat TypedArray arena** (SoA layout):
 
 ```
-STORE[hash] = { tag: string, children: (hash | string | bigint)[] }
+tags[id]     : Uint8Array   — tag ID (0-255)
+arities[id]  : Uint8Array   — number of children
+childOff[id] : Uint32Array  — offset into childBuf
+childBuf     : Uint32Array  — flat append-only buffer of all children
 ```
 
-**Tags** are the outermost constructor: `atom`, `freevar`, `tensor`, `loli`, `with`, `bang`, `app`, `one`, `binlit`, `strlit`, `charlit`, `type`, `monad`, `arrow`.
+Node identity is a **sequential uint32 index** (not a hash). Content-addressing is preserved via a dedup Map on `put()` (cold path) — same content always produces the same index.
 
-**Children** have three types:
+**Tags** are the outermost constructor: `atom`, `freevar`, `tensor`, `loli`, `with`, `bang`, `app`, `one`, `binlit`, `strlit`, `charlit`, `type`, `monad`, `arrow`, plus dynamically registered predicate tags.
 
-| Type | Meaning | Example |
+**Children** are stored as uint32 values in `childBuf`. The tag determines interpretation:
+
+| Tag category | Child interpretation | Examples |
 |------|---------|---------|
-| `number` | Hash reference to another term | `tensor(h1, h2)` → children: `[h1, h2]` |
-| `string` | Primitive leaf value | `atom('plus')` → children: `['plus']` |
-| `bigint` | Compact numeric literal | `binlit(42n)` → children: `[42n]` |
+| Most tags | Term index (uint32 reference to another node) | `tensor(h1, h2)` |
+| `atom`, `freevar`, `metavar`, `strlit` | String table index | `atom('plus')` |
+| `binlit`, `bound`, `evar` | BigInt table index | `binlit(42n)` |
+| `arrlit` | Array table index | `arrlit([h1, h2, h3])` |
+| `charlit` | Raw uint32 codepoint | `charlit(65)` |
 
 **Leaf nodes** (no term children): `atom`, `freevar`, `binlit`, `strlit`, `charlit`, `one`, `type`
 **Branch nodes** (term children): `tensor`, `loli`, `with`, `bang`, `app`, `monad`, `arrow`
@@ -42,14 +49,18 @@ STORE[hash] = { tag: string, children: (hash | string | bigint)[] }
 The formula `A ⊗ (B ⊸ C)` produces four Store entries:
 
 ```
-h1 = put('atom', ['A'])     → { tag: 'atom', children: ['A'] }
-h2 = put('atom', ['B'])     → { tag: 'atom', children: ['B'] }
-h3 = put('atom', ['C'])     → { tag: 'atom', children: ['C'] }
-h4 = put('loli', [h2, h3])  → { tag: 'loli', children: [h2, h3] }
-h5 = put('tensor', [h1, h4]) → { tag: 'tensor', children: [h1, h4] }
+h1 = put('atom', ['A'])       → tags[h1]=atom, childBuf[childOff[h1]]=strIdx('A')
+h2 = put('atom', ['B'])       → tags[h2]=atom, childBuf[childOff[h2]]=strIdx('B')
+h3 = put('atom', ['C'])       → tags[h3]=atom, childBuf[childOff[h3]]=strIdx('C')
+h4 = put('loli', [h2, h3])    → tags[h4]=loli, childBuf[childOff[h4]..]=h2,h3
+h5 = put('tensor', [h1, h4])  → tags[h5]=tensor, childBuf[childOff[h5]..]=h1,h4
 ```
 
 If `A` appears elsewhere, `put('atom', ['A'])` returns the same `h1` — no new entry.
+
+### Memory Layout
+
+Children are stored in a single flat `childBuf` with per-term offsets (`childOff`). This variable-length design supports any arity with no fixed limit. Average arity is ~1.87 for typical ILL programs (86.7% of terms have arity ≤ 2), yielding ~42% less child storage than a fixed-width design.
 
 ---
 
@@ -85,16 +96,21 @@ For persistence or large-scale use, switch to 64-bit or 128-bit hash (e.g., xxHa
 
 | Operation | Signature | Complexity | Notes |
 |-----------|-----------|------------|-------|
-| `put(tag, children)` | → hash | O(k) | k = children count. Deduplicates: returns existing hash if node exists |
-| `get(hash)` | → node \| undefined | O(1) | Map lookup |
-| `tag(hash)` | → string \| undefined | O(1) | `get(hash)?.tag` |
-| `children(hash)` | → array | O(1) | `get(hash)?.children` |
-| `child(hash, i)` | → child \| undefined | O(1) | Index into children |
+| `put(tag, children)` | → id | O(k) | k = children count. Deduplicates via content hash. Normalizes `acons(H, arrlit)` → `arrlit` |
+| `put1(tag, c0)` | → id | O(1) | Arity-1 fast path (no array allocation). Hot path: binlit, freevar, bang |
+| `put2(tag, c0, c1)` | → id | O(1) | Arity-2 fast path. Hot path: tensor, loli, with, oplus |
+| `get(id)` | → node \| undefined | O(k) | Reconstructs `{tag, children}` object. Cold path — use `tag()`/`child()` directly |
+| `tag(id)` | → string \| undefined | O(1) | `TAG_NAMES[tags[id]]` |
+| `tagId(id)` | → number | O(1) | Raw numeric tag ID. No string allocation |
+| `child(id, i)` | → child \| undefined | O(1) | Type-reconstructed (string/bigint/term) via tag-based dispatch |
+| `rawChild(id, i)` | → number | O(1) | Raw uint32 from childBuf. No type reconstruction |
+| `arity(id)` | → number | O(1) | `arities[id]` |
 | `eq(a, b)` | → boolean | O(1) | `a === b` — the core insight |
-| `isTerm(v)` | → boolean | O(1) | Is this hash in the Store? |
-| `isTermChild(c)` | → boolean | O(1) | Is this child a hash reference (number)? |
-| `clear()` | — | O(n) | Testing only |
-| `size()` | → number | O(1) | Map.size |
+| `isTerm(v)` | → boolean | O(1) | Valid sequential index? |
+| `snapshot()` | → object | O(n) | Copy all arrays for serialization |
+| `restore(data)` | — | O(n) | Bulk restore from snapshot (binary cache) |
+| `clear()` | — | O(n) | Reset. Fires onClear + onReplace hooks |
+| `size()` | → number | O(1) | `nextId - 1` |
 
 ### Key Invariant
 
@@ -279,11 +295,11 @@ Structure: `{ [hash: number]: count: number }`
 
 ### What It Costs
 
-1. **Global mutable state** — the Store is a singleton `Map`, not garbage collected
+1. **Global mutable state** — the Store is a singleton arena, not garbage collected
 2. **Hash computation on creation** — O(k) per put, amortized by deduplication
-3. **Indirection** — every structural inspection requires a `Store.get` lookup
-4. **No GC** — terms live forever once interned (acceptable for proof search lifetimes)
-5. **32-bit collision risk** — no detection, silent corruption at ~77k entries
+3. **Indirection** — structural inspection requires typed-array indexing + tag-based child reconstruction
+4. **No GC** — terms live forever once interned (acceptable for proof search lifetimes). Binary cache uses `compactSnapshot` for GC at serialization boundaries
+5. **32-bit collision risk** — linear probing on collision (up to 64 probes), throws on exhaustion
 
 ### Critical Assumptions
 
@@ -297,11 +313,14 @@ Structure: `{ [hash: number]: count: number }`
 
 ```
 lib/kernel/
-  store.js        — Store: put, get, tag, children, eq
+  store.js        — Flat TypedArray arena: put/put1/put2, tag/tagId, child/rawChild, snapshot/restore
   substitute.js   — sub, apply (simultaneous), occurs
   unify.js        — unify (union-find), match, equational normalization
   ast.js          — freeVars, mapChildren, fold, isAtomic
   sequent.js      — sequent construction, hashing, operations
+
+lib/engine/
+  store-binary.js — Binary serialize/deserialize for disk cache (CRC32 verified)
 
 lib/hash.js       — FNV-1a: hashString, hashCombine, hashBigInt
 
@@ -313,10 +332,8 @@ lib/prover/
 
 ## 11. Improvements & Research Topics
 
-### Collision Mitigation (MEDIUM priority)
-32-bit FNV-1a has birthday-paradox collisions at ~77k entries. Two options:
-- **Detection:** On `put`, if hash exists, verify `tag === existing.tag && children deepEquals existing.children`. Cost: O(k) per put.
-- **Wider hash:** 64-bit or 128-bit hash (xxHash, rapidhash). Cost: needs BigInt or two-number representation for hash values. See `lib/hash-alternatives.js`.
+### Collision Mitigation (RESOLVED)
+32-bit FNV-1a has birthday-paradox collisions at ~77k entries. The Store now uses **linear probing** on collision: if a hash slot is occupied, `matchesEntry` verifies structural equality, and up to 64 probes are attempted. This detects and resolves collisions at O(k) cost per collision. Throws on probe exhaustion (would indicate need for wider hash).
 
 ### Scoped Store / Arena Allocation (LOW priority, MEDIUM for Zig port)
 Each proof branch gets its own scope. On backtrack, discard entire scope in O(1). Currently, failed branches leave garbage in the global Store. Would require `ScopedStore` with parent chain for lookups. See [[../research/prover-optimization]] §4.

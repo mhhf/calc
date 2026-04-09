@@ -94,7 +94,7 @@ sender: bin -> type.
 address: bin -> type.
 balance: (addr: bin) -> (amount: bin) -> type.
 callvalue: bin -> type.
-calldata: (offset: bin) -> (size: bin) -> (value: bin) -> type.
+calldata: bin -> type.
 calldatasize: bin -> type.
 debug: bin -> type.
 mem: bin -> type.
@@ -104,8 +104,11 @@ no_overlap: (start1: bin) -> (len1: bin) -> (start2: bin) -> (len2: bin) -> type
 write: (addr: bin) -> (value: bin) -> (mem: bin) -> bin.
 write8: (addr: bin) -> (value: bin) -> (mem: bin) -> bin.
 empty_mem: bin.
-calldatacopy_iter: (dest: bin) -> (src: bin) -> (end: bin) -> (mem: bin) -> type.
-calldatacopy_done: bin -> type.
+sconcat: (size: bin) -> (value: bin) -> (rest: bin) -> bin.
+epsilon: bin.
+byte_join: (n: bin) -> (head: bin) -> (tail: bin) -> bin.
+cd_read: (data: bin) -> (offset: bin) -> (value: bin) -> type.
+cd_copy: (data: bin) -> (data_offset: bin) -> (end: bin) -> (dest_offset: bin) -> (mem: bin) -> (result: bin) -> type.
 timestamp: bin -> type.
 gaslimit: bin -> type.
 % shr, shl, slt: type declarations and clauses in bin.ill
@@ -292,6 +295,40 @@ mem_read_range/step: mem_read_range M Offset End (V ++ Rest)
   <- mem_read M Offset V
   <- plus Offset 0x20 Offset'
   <- mem_read_range M Offset' End Rest.
+
+% cd_read: read 32 bytes from calldata at given offset.
+% Traverses sconcat chain structurally; ground binlit via FFI fast path.
+
+cd_read/hit: cd_read (sconcat 32 Val Rest) 0 Val.
+
+cd_read/skip: cd_read (sconcat SZ Val Rest) Offset Result
+  <- le SZ Offset
+  <- sub Offset SZ Offset'
+  <- cd_read Rest Offset' Result.
+
+cd_read/cross: cd_read (sconcat SZ Val Rest) 0 (byte_join SZ Val TailVal)
+  <- lt SZ 32
+  <- cd_read Rest 0 TailVal.
+
+cd_read/nil: cd_read epsilon Offset 0.
+
+% cd_copy: copy calldata[DataOffset..End) into mem starting at DestOffset.
+% Accumulator pattern — writes stack on top of each other.
+
+cd_copy/done: cd_copy D Offset End Dest M M <- le End Offset.
+
+cd_copy/step: cd_copy D Offset End Dest M Result
+  <- lt Offset End
+  <- cd_read D Offset V
+  <- plus Offset 32 Offset'
+  <- plus Dest 32 Dest'
+  <- cd_copy D Offset' End Dest' (write Dest V M) Result.
+
+% shr/byte_join: decompose byte_join when shift exactly removes tail bytes.
+% SHR(224, byte_join(4, Sel, Tail)) = Sel because (32-4)*8 = 224.
+shr/byte_join: shr Shift (byte_join N H T) H
+  <- sub 32 N TailBytes
+  <- mul TailBytes 8 Shift.
 
 % SSTORE gas (Yellow Paper): Gsset (20000) iff new != 0 AND old == 0, else Gsreset (5000)
 % sstore_gas computes the cost for the existing-key case (sstore_init uses separate rules)
@@ -702,66 +739,33 @@ evm/callvalue:
     stack [Value | S]
   }.
 
-% TODO
-% current assumption: calldatasize < 32
 evm/calldataload:
   !_0 step 0x35 PC' 3 GAS' BC *
-  stack [POS | REST] *
-  calldata POS Size V
+  $calldata CD * stack [Offset | REST]
   -o {
-    gas GAS' *
-    stack [V | REST] *
-    pc PC' *
-    calldata POS Size V
+    exists Val. (
+      gas GAS' * pc PC' * stack [Val | REST] *
+      !cd_read CD Offset Val)
   }.
 
 evm/calldatasize:
   !_0 step 0x36 PC' 2 GAS' BC *
-  calldatasize Size *
-  stack S
-  -o {
-    gas GAS' *
-    stack [Size | S] *
-    calldatasize Size *
-    pc PC'
-  }.
-
-calldatacopy_iter/z:
-  calldatacopy_iter Dest Ce Ce M
-  -o {
-    calldatacopy_done M
-  }.
-
-calldatacopy_iter/s:
-  calldatacopy_iter Dest Cs Ce M *
-  calldata Cs Size D *
-  !neq Cs Ce
-  -o {
-    exists Cs'. exists Dest'. (
-      calldata Cs Size D *
-      calldatacopy_iter Dest' Cs' Ce (write Dest D M) *
-      !plus Cs Size Cs' *
-      !plus Dest Size Dest')
-  }.
+  $calldatasize Size * stack S
+  -o { gas GAS' * pc PC' * stack [Size | S] }.
 
 evm/calldatacopy:
   !_0 step 0x37 PC' COST GAS' BC *
-  stack [DestOffset, DataOffset, Size | REST] *
+  $calldata CD * stack [DestOffset, DataOffset, Size | REST] *
   mem M * memsize S *
   !mem_expand S DestOffset Size S' MemGas *
   !plus DataOffset Size End *
-  !plus 0x1f Size SP *
-  !div SP 0x20 Words *
-  !mul 3 Words WordGas *
-  !plus 3 WordGas CDBase *
+  !plus 0x1f Size SP * !div SP 0x20 Words *
+  !mul 3 Words WordGas * !plus 3 WordGas CDBase *
   !plus CDBase MemGas COST
   -o {
-    gas GAS' *
-    memsize S' *
-    calldatacopy_iter DestOffset DataOffset End M *
-    (calldatacopy_done M' -o {
-      pc PC' * stack REST * mem M'
-    })
+    exists MOut. (
+      gas GAS' * pc PC' * memsize S' * stack REST *
+      mem MOut * !cd_copy CD DataOffset End DestOffset M MOut)
   }.
 
 

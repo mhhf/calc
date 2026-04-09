@@ -44,9 +44,7 @@ isNotMember/z:
   storage (sha3 (Deadline ++ (Target ++ (Value ++ 0)))) 2 *
 
   % Transaction data
-  calldata     0 32 Deadline *
-  calldata     32 32 Target *
-  calldata     64 32 Value *
+  calldata (sconcat 32 Deadline (sconcat 32 Target (sconcat 32 Value epsilon))) *
   calldatasize 96 *
   callvalue    V *
 
