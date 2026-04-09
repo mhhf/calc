@@ -1,0 +1,23 @@
+% Debug framework demo — observation directives + judgment with verbose output.
+% Used by tools/debug-ill.js and tests/engine/hooks.test.js.
+
+#import(../../programs/evm.ill)
+
+% ── Observation: trace execution of STOP opcode ──────────────────────────────
+
+#trace_stop
+  pc 0 * bytecode [0x00] .
+
+% ── Observation: dump final state after PUSH1 5, STOP ────────────────────────
+
+#dump_state_push_stop
+  pc 0 * gas 0xffffff * stack ae * mem empty_mem * memsize 0 *
+  bytecode [0x60, 0x05, 0x00] .
+
+% ── Observation: inspect EVM rules ───────────────────────────────────────────
+
+#inspect_evm (label: evm) I .
+
+% ── Judgment: STOP reaches stop (verbose output in debug-ill.js) ─────────────
+
+#expect_stop_debug pc 0 * bytecode [0x00] => stop .

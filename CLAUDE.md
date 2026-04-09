@@ -30,12 +30,13 @@ CALC is a proof calculus system for experimenting with sequent-calculi with an i
 npm run dev           # Development server (http://localhost:3000)
 npm run build:ui      # Production build to out/ui/
 npm run build:bundle  # Regenerate out/ill.json from calculus specs
-npm test              # All fast tests (1702 tests, ~4s) — RUN THIS DURING DEVELOPMENT
-npm run test:ill      # ILL-native tests (17 tests, ~0.2s) — .ill files as provability judgments
+npm test              # All fast tests (1774 tests, ~4s) — RUN THIS DURING DEVELOPMENT
+npm run test:ill      # ILL-native tests (98 tests, ~0.2s) — .ill files as provability judgments
 npm run test:noffi    # noFFI adversarial soundness (13 tests, ~1s) — only after engine/FFI changes
 npm run test:zk       # ZK witness tests (94 tests, 24 known failures) — only after ZK changes
 npm run test:heavy    # Slow + drift tests (5-30 min) — only before release or major changes
 npm run test:all      # Everything combined (includes test:ill)
+npm run debug:ill     # Debug runner — observation directives + verbose judgment output
 npm run bench:diff    # Cross-commit benchmark comparison (use this when asked to benchmark)
 ```
 
@@ -78,6 +79,7 @@ lib/
 │   ├── backchain.js     # Generic: backward chaining (SLD-style, renamed from prove.js)
 │   ├── fact-set.js      # Generic: FactSet (sorted typed-array groups) + Arena (undo log)
 │   ├── convert.js       # .ill → content-addressed hashes
+│   ├── directive-loader.js # Shared directive loading (test-ill.js + debug-ill.js)
 │   ├── lnl/             # LNL layer: linear/persistent distinction
 │   │   ├── persistent.js  # Persistent goal proving (state → cache → backchain)
 │   │   ├── loli.js        # Dynamic rule matching (linear implications)
@@ -107,7 +109,7 @@ calculus/ill/            # ILL calculus definition
 
 tests/                   # Test suite (core: *.test.js, engine: engine/)
 benchmarks/              # Performance benchmarks (engine/, proof/, micro/)
-tools/                   # CLI utilities (bench-compare.js, explore-inspect.js, test-ill.js)
+tools/                   # CLI utilities (bench-compare.js, explore-inspect.js, test-ill.js, debug-ill.js)
 out/                     # Generated: ill.json (bundled calculus), ui/ (built app)
 ```
 
@@ -168,9 +170,23 @@ FFI is optimization, theory is semantics. Every FFI predicate MUST have backward
 
 - `tools/bench-compare.js` — cross-commit benchmark comparison via git worktrees
 - `tools/explore-inspect.js` — `node tools/explore-inspect.js [--leaf N] [--all] <files...>`
+- `tools/debug-ill.js` — `npm run debug:ill -- <file.ill> [--only trace]` (observation directives + verbose judgments)
 - `lib/engine/show.js` — `show(hash)`, `classifyLeaf(state)`, `showInteresting(state)`
 - `out/ill.json` precomputes: parserTables, rendererFormats, ruleSpecMeta, connectivesByType
 - `lib/engine/store-binary.js` — binary serialize/deserialize for precompiled SDK loading
+
+## Engine Hooks API
+
+Opt-in callbacks on `calc.exec()`/`calc.explore()` for instrumentation. Zero cost when not provided.
+
+```js
+calc.exec(state, {
+  onStep: ({ step, rule, consumed, theta, slots, state }) => { ... },
+  onProveFail: (goal, reason) => { ... },  // reason: 'cached_failure'|'external_binding'|'exhausted'
+});
+```
+
+`onStep` fires after state mutation. `consumed`/`theta` are snapshots; `state` is live (inspect via show.js, don't mutate). See `doc/documentation/ill-debug-framework.md`.
 
 ## doc/ Placement Rule
 

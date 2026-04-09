@@ -13,93 +13,18 @@
 const { describe, it } = require('node:test');
 const assert = require('node:assert/strict');
 const path = require('path');
-const fs = require('fs');
 const mde = require('../lib/engine');
 const convert = require('../lib/engine/convert');
-const Store = require('../lib/kernel/store');
-const { toObject } = require('../lib/engine/fact-set');
-const { getAllLeaves } = require('../lib/engine/tree-utils');
-const { showInteresting, classifyLeaf, show } = require('../lib/engine/show');
+const {
+  ROOT, findIllFiles, scanDirectives, detectDuplicates, loadProgram,
+  parseModality, stateHasFreevars, isSubset, formatState,
+  show, toObject, getAllLeaves,
+} = require('../lib/engine/directive-loader');
 
 const TEST_DIR = path.join(__dirname, '..', 'calculus', 'ill', 'tests');
-const ROOT = path.join(__dirname, '..');
+const PROGRAM = path.join(__dirname, '..', 'calculus', 'ill', 'programs', 'evm.ill');
 const MAX_STEPS = 10000;
 const MAX_DEPTH = 100;
-
-// ─── Modality ───────────────────────────────────────────────────────────────
-
-/** Extract modality from directive kind prefix. */
-function parseModality(kind) {
-  if (kind === 'expect_not' || kind.startsWith('expect_not_')) return 'not';
-  if (kind === 'expect_some' || kind.startsWith('expect_some_')) return 'some';
-  if (kind.startsWith('expect')) return 'all';
-  return null;
-}
-
-// ─── Freevar Detection ──────────────────────────────────────────────────────
-
-/** Recursively check if a content-addressed hash contains freevar nodes. */
-function hasFreevar(h) {
-  const t = Store.tag(h);
-  if (!t) return false;
-  if (t === 'freevar') return true;
-  // charlit children are raw codepoints (uint32), not term refs — don't recurse
-  if (t === 'charlit') return false;
-  if (t === 'arrlit') {
-    const elems = Store.getArrayElements(h);
-    if (elems) for (let i = 0; i < elems.length; i++)
-      if (hasFreevar(elems[i])) return true;
-    return false;
-  }
-  const a = Store.arity(h);
-  for (let i = 0; i < a; i++) {
-    const c = Store.child(h, i);
-    if (Store.isTermChild(c) && hasFreevar(c)) return true;
-  }
-  return false;
-}
-
-/** Check if a decomposed state contains any freevars (from eigenvariables). */
-function stateHasFreevars(state) {
-  for (const h of Object.keys(state.linear))
-    if (hasFreevar(+h)) return true;
-  for (const h of Object.keys(state.persistent))
-    if (hasFreevar(+h)) return true;
-  return false;
-}
-
-// ─── Subset Matching ────────────────────────────────────────────────────────
-
-/** Pattern ⊆ state: every fact in pattern exists (with sufficient count) in state. */
-function isSubset(pattern, state) {
-  for (const [h, cnt] of Object.entries(pattern.linear))
-    if ((state.linear[h] || 0) < cnt) return false;
-  for (const h of Object.keys(pattern.persistent))
-    if (!state.persistent[h]) return false;
-  return true;
-}
-
-// ─── Diagnostics ────────────────────────────────────────────────────────────
-
-function formatState(state, label) {
-  if (!state) return `${label}: NO_STATE`;
-  const cls = classifyLeaf(state);
-  const facts = showInteresting(state, { exclude: [] });
-  return `${label} [${cls}]: ${facts.join(', ')}`;
-}
-
-// ─── File Discovery ─────────────────────────────────────────────────────────
-
-function findIllFiles(dir) {
-  if (!fs.existsSync(dir)) return [];
-  const results = [];
-  for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
-    const full = path.join(dir, entry.name);
-    if (entry.isDirectory()) results.push(...findIllFiles(full));
-    else if (entry.name.endsWith('.ill')) results.push(full);
-  }
-  return results.sort();
-}
 
 // ─── Backward Dispatch (|-) ─────────────────────────────────────────────────
 
@@ -230,48 +155,14 @@ function checkTreeModality(modality, leaves, pattern) {
 }
 
 // ─── Main ───────────────────────────────────────────────────────────────────
-// Same load strategy as JS tests: mde.load(program, { cache: true }).
-// Load the shared program (evm.ill) from binary cache, then overlay
-// lightweight test files to extract their #expect_* directives.
 
 const files = findIllFiles(TEST_DIR);
-
-// Step 1: pre-scan each file for #expect_* directive names
-const fileDirectives = new Map(); // file → Set<directiveName>
-for (const file of files) {
-  const src = fs.readFileSync(file, 'utf8');
-  const names = new Set();
-  for (const m of src.matchAll(/#(expect\w+)/g)) names.add(m[1]);
-  if (names.size > 0) fileDirectives.set(file, names);
-}
-
+const fileDirectives = scanDirectives(files, /#(expect\w+)/g);
 if (fileDirectives.size === 0) process.exit(0);
+detectDuplicates(fileDirectives);
+const calc = loadProgram(PROGRAM, fileDirectives);
 
-// Detect duplicate directive names across files (splitQueries is a flat Map — last writer wins)
-const nameToFile = new Map();
-for (const [file, names] of fileDirectives) {
-  for (const name of names) {
-    if (nameToFile.has(name)) {
-      const prev = path.relative(ROOT, nameToFile.get(name));
-      const curr = path.relative(ROOT, file);
-      throw new Error(`Duplicate directive '${name}' in ${prev} and ${curr}`);
-    }
-    nameToFile.set(name, file);
-  }
-}
-
-// Step 2: load shared program with cache (same as JS tests), overlay test files
-const PROGRAM = path.join(__dirname, '..', 'calculus', 'ill', 'programs', 'evm.ill');
-const calc = mde.load(PROGRAM, { cache: true });
-const alreadyImported = new Set(convert.buildImportTree(PROGRAM).map(n => n.path));
-for (const file of fileDirectives.keys()) {
-  convert.loadFile(file, new Map(), new Map(), [], new Map(), {
-    argNamesTable: new Map(), querySettings: calc.querySettings,
-    splitQueries: calc.splitQueries, moduleDecls: [], alreadyImported
-  });
-}
-
-// Step 3: register tests grouped by source file
+// Register tests grouped by source file
 for (const [file, names] of fileDirectives) {
   const rel = path.relative(ROOT, file);
   const entries = [...calc.splitQueries.entries()]

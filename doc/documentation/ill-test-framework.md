@@ -59,10 +59,11 @@ For forward `=>`, eigenvariables trigger `explore()` (exhaustive symbolic execut
 ## Runner
 
 `tools/test-ill.js` — discovers `calculus/ill/tests/**/*.ill`, dispatches via `node:test`.
+For verbose debug output, use `tools/debug-ill.js` (see `ill-debug-framework.md`).
 
 ```bash
 npm run test:ill                     # run ILL tests
-node --test --test-concurrency=1 tools/test-ill.js
+npm run debug:ill -- <file.ill>      # verbose debug output
 ```
 
 ## Test File Structure
@@ -83,6 +84,7 @@ calculus/ill/tests/
     evm-memory.ill      # MSTORE, MLOAD, MSIZE integration (4 tests)
     evm-sha3.ill        # SHA3 opcode — symbolic hash constructor (3 tests)
     evm-stop.ill        # STOP opcode reachability (3 tests)
+    debug-demo.ill      # Debug framework demo (trace, dump_state, inspect) (1 test)
   settings/
     directives.ill      # Per-directive settings: maxDepth, rules (3 tests)
   symbolic/
