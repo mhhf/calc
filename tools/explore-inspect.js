@@ -19,6 +19,11 @@
  */
 
 const path = require('path');
+const mde = require('../lib/engine');
+const {
+  decomposeQuery, getAllLeaves, countNodes, maxDepth,
+  classifyLeaf, showInteresting,
+} = require('../lib/engine/directive-loader');
 
 const args = process.argv.slice(2);
 const opts = { query: 'symex', depth: 200, leaf: null, exclude: 'code,calldata', all: false };
@@ -38,56 +43,48 @@ if (files.length === 0) {
   process.exit(1);
 }
 
-(async () => {
-  const mde = require('../lib/engine');
-  const { explore } = require('../lib/engine/explore');
-  const { getAllLeaves, countNodes, maxDepth } = require('../lib/engine/tree-utils');
-  const { classifyLeaf, showInteresting } = require('../lib/engine/show');
+const calc = mde.load(files);
+const query = calc.queries.get(opts.query);
+if (!query) {
+  console.error(`Query '${opts.query}' not found. Available: ${[...calc.queries.keys()].join(', ')}`);
+  process.exit(1);
+}
 
-  const calc = await mde.load(files);
-  const query = calc.queries.get(opts.query);
-  if (!query) {
-    console.error(`Query '${opts.query}' not found. Available: ${[...calc.queries.keys()].join(', ')}`);
-    process.exit(1);
-  }
+const state = decomposeQuery(query);
 
-  const state = mde.decomposeQuery(query);
-  const calcCtx = { clauses: calc.clauses, definitions: calc.definitions };
+const t0 = performance.now();
+const tree = calc.explore(state, { maxDepth: opts.depth });
+const elapsed = performance.now() - t0;
 
-  const t0 = performance.now();
-  const tree = explore(state, calc.forwardRules, { maxDepth: opts.depth, calc: calcCtx });
-  const elapsed = performance.now() - t0;
+const leaves = getAllLeaves(tree);
+const nodes = countNodes(tree);
+const depth = maxDepth(tree);
 
-  const leaves = getAllLeaves(tree);
-  const nodes = countNodes(tree);
-  const depth = maxDepth(tree);
+console.log(`Nodes: ${nodes}  Leaves: ${leaves.length}  Depth: ${depth}  Time: ${elapsed.toFixed(1)}ms`);
+console.log();
 
-  console.log(`Nodes: ${nodes}  Leaves: ${leaves.length}  Depth: ${depth}  Time: ${elapsed.toFixed(1)}ms`);
-  console.log();
+const excludeSet = opts.exclude.split(',').filter(Boolean);
 
-  const excludeSet = opts.exclude.split(',').filter(Boolean);
+for (let i = 0; i < leaves.length; i++) {
+  const leaf = leaves[i];
+  const status = classifyLeaf(leaf.state);
+  const marker = status === 'STOP' ? '\x1b[32m' : status === 'REVERT' ? '\x1b[33m' :
+    status === 'RUNNING' ? '\x1b[36m' : '\x1b[31m';
 
-  for (let i = 0; i < leaves.length; i++) {
-    const leaf = leaves[i];
-    const status = classifyLeaf(leaf.state);
-    const marker = status === 'STOP' ? '\x1b[32m' : status === 'REVERT' ? '\x1b[33m' :
-      status === 'RUNNING' ? '\x1b[36m' : '\x1b[31m';
+  if (opts.leaf !== null && opts.leaf !== i) continue;
 
-    if (opts.leaf !== null && opts.leaf !== i) continue;
-
-    if (opts.all || opts.leaf === i) {
-      console.log(`${marker}Leaf ${i} [${leaf.type}]: ${status}\x1b[0m`);
-      if (leaf.state) {
-        const facts = showInteresting(leaf.state, { exclude: excludeSet });
-        for (const f of facts) console.log(`  ${f}`);
-      }
-      console.log();
-    } else {
-      const interesting = leaf.state
-        ? showInteresting(leaf.state, { exclude: [...excludeSet, 'storage', 'balance'] })
-            .filter(f => /^(stop|revert|invalid|pc|loli)/.test(f))
-        : [];
-      console.log(`${marker}Leaf ${i} [${leaf.type}]: ${status}\x1b[0m — ${interesting.join(', ')}`);
+  if (opts.all || opts.leaf === i) {
+    console.log(`${marker}Leaf ${i} [${leaf.type}]: ${status}\x1b[0m`);
+    if (leaf.state) {
+      const facts = showInteresting(leaf.state, { exclude: excludeSet });
+      for (const f of facts) console.log(`  ${f}`);
     }
+    console.log();
+  } else {
+    const interesting = leaf.state
+      ? showInteresting(leaf.state, { exclude: [...excludeSet, 'storage', 'balance'] })
+          .filter(f => /^(stop|revert|invalid|pc|loli)/.test(f))
+      : [];
+    console.log(`${marker}Leaf ${i} [${leaf.type}]: ${status}\x1b[0m — ${interesting.join(', ')}`);
   }
-})();
+}

@@ -9,22 +9,19 @@
  *   node tools/debug-ill.js <file.ill>              # all directives
  *   node tools/debug-ill.js <file.ill> --only trace  # filter by kind
  *
- * See TODO_0147.
+ * See doc/documentation/ill-debug-framework.md.
  */
 
 const path = require('path');
-const mde = require('../lib/engine');
-const convert = require('../lib/engine/convert');
-const { countLeaves, maxDepth, countNodes } = require('../lib/engine/tree-utils');
 const {
-  ROOT, scanDirectives, detectDuplicates, loadProgram,
-  parseModality, stateHasFreevars, isSubset, groupByPredicate,
-  show, classifyLeaf, showInteresting, toObject, getAllLeaves,
+  ROOT, PROGRAM, MAX_STEPS, MAX_DEPTH,
+  scanDirectives, detectDuplicates, loadProgram,
+  parseModality, decomposeQuery, extractGoals, buildProveOpts,
+  resolveExecOpts, resolveQueryHash, normalizeLeafState,
+  stateHasFreevars, isSubset,
+  groupByPredicate, show, classifyLeaf, showInteresting, getAllLeaves,
+  countLeaves, maxDepth, countNodes,
 } = require('../lib/engine/directive-loader');
-
-const PROGRAM = path.join(__dirname, '..', 'calculus', 'ill', 'programs', 'evm.ill');
-const MAX_STEPS = 10000;
-const MAX_DEPTH = 100;
 
 // ─── CLI ────────────────────────────────────────────────────────────────────
 
@@ -34,6 +31,8 @@ const positional = [];
 for (let i = 0; i < args.length; i++) {
   if (args[i] === '--only' && i + 1 < args.length) {
     flags.only = args[++i];
+  } else if (args[i] === '--program' && i + 1 < args.length) {
+    flags.program = args[++i];
   } else if (args[i].startsWith('--')) {
     const [k, v] = args[i].slice(2).split('=');
     flags[k] = v || 'true';
@@ -43,7 +42,7 @@ for (let i = 0; i < args.length; i++) {
 }
 
 if (positional.length === 0) {
-  console.error('Usage: node tools/debug-ill.js <file.ill> [--only <kind>]');
+  console.error('Usage: node tools/debug-ill.js <file.ill> [--only <kind>] [--program <path>]');
   process.exit(1);
 }
 
@@ -61,8 +60,8 @@ function header(kind, label) {
  * Uses the engine onStep hook for live output.
  */
 function runTrace(calc, hash, settings) {
-  const initial = mde.decomposeQuery(hash);
-  const maxSteps = settings?.maxSteps ? parseInt(settings.maxSteps, 10) : MAX_STEPS;
+  const initial = decomposeQuery(hash);
+  const eo = resolveExecOpts(settings);
   const filterRule = settings?.filter || null;
 
   const entries = [];
@@ -74,14 +73,10 @@ function runTrace(calc, hash, settings) {
     entries.push({ pos: step ?? depth, rule: rule.name, consumed: consumedFacts, cls });
   };
 
-  const execOpts = { maxSteps, onStep };
-  if (settings?.rules) execOpts.rules = settings.rules;
-
   if (stateHasFreevars(initial)) {
-    const maxD = settings?.maxDepth ? parseInt(settings.maxDepth, 10) : MAX_DEPTH;
-    calc.explore(initial, { maxDepth: maxD, onStep, ...(settings?.rules ? { rules: settings.rules } : {}) });
+    calc.explore(initial, { maxDepth: MAX_DEPTH, ...eo, onStep });
   } else {
-    calc.exec(initial, execOpts);
+    calc.exec(initial, { maxSteps: MAX_STEPS, ...eo, onStep });
   }
 
   if (entries.length === 0) {
@@ -99,12 +94,9 @@ function runTrace(calc, hash, settings) {
  * Runs forward execution to quiescence, then dumps final state.
  */
 function runDumpState(calc, hash, settings) {
-  const initial = mde.decomposeQuery(hash);
-  const maxSteps = settings?.maxSteps ? parseInt(settings.maxSteps, 10) : MAX_STEPS;
-  const execOpts = { maxSteps };
-  if (settings?.rules) execOpts.rules = settings.rules;
-
-  const result = calc.exec(initial, execOpts);
+  const initial = decomposeQuery(hash);
+  const eo = resolveExecOpts(settings);
+  const result = calc.exec(initial, { maxSteps: MAX_STEPS, ...eo });
   const state = result.state;
   const cls = classifyLeaf(state);
 
@@ -121,19 +113,16 @@ function runDumpState(calc, hash, settings) {
  * Explores all paths and dumps per-leaf diagnostics.
  */
 function runDebug(calc, hash, settings) {
-  const initial = mde.decomposeQuery(hash);
-  const maxD = settings?.maxDepth ? parseInt(settings.maxDepth, 10) : MAX_DEPTH;
-  const execOpts = { maxDepth: maxD };
-  if (settings?.rules) execOpts.rules = settings.rules;
-
-  const tree = calc.explore(initial, execOpts);
+  const initial = decomposeQuery(hash);
+  const eo = resolveExecOpts(settings);
+  const tree = calc.explore(initial, { maxDepth: MAX_DEPTH, ...eo });
   const leaves = getAllLeaves(tree);
 
   console.log(`  leaves: ${leaves.length}, depth: ${maxDepth(tree)}, nodes: ${countNodes(tree)}`);
 
   for (let i = 0; i < leaves.length; i++) {
     const leaf = leaves[i];
-    const plain = leaf.state ? (leaf.state.linear?.group ? toObject(leaf.state) : leaf.state) : null;
+    const plain = normalizeLeafState(leaf);
     const cls = plain ? classifyLeaf(plain) : 'NO_STATE';
     const facts = plain ? showInteresting(plain, { exclude: [] }) : [];
     console.log(`  leaf ${i} [${leaf.type}/${cls}]: ${facts.join(', ') || '(empty)'}`);
@@ -144,23 +133,19 @@ function runDebug(calc, hash, settings) {
  * #benchmark — warmup+N iterations with timing stats.
  */
 function runBenchmark(calc, hash, settings) {
-  const initial = mde.decomposeQuery(hash);
+  const initial = decomposeQuery(hash);
   const iterations = settings?.iterations ? parseInt(settings.iterations, 10) : 10;
   const warmup = settings?.warmup ? parseInt(settings.warmup, 10) : 3;
   const mode = settings?.mode || 'exec';
-
-  const execOpts = {};
-  if (settings?.rules) execOpts.rules = settings.rules;
-  if (settings?.maxSteps) execOpts.maxSteps = parseInt(settings.maxSteps, 10);
-  if (settings?.maxDepth) execOpts.maxDepth = parseInt(settings.maxDepth, 10);
+  const eo = resolveExecOpts(settings);
 
   const runOnce = mode === 'explore'
     ? () => {
-        const tree = calc.explore(initial, { maxDepth: execOpts.maxDepth || MAX_DEPTH, ...execOpts });
+        const tree = calc.explore(initial, { maxDepth: MAX_DEPTH, ...eo });
         return { nodes: countNodes(tree), leaves: countLeaves(tree) };
       }
     : () => {
-        const r = calc.exec(initial, { maxSteps: execOpts.maxSteps || MAX_STEPS, ...execOpts });
+        const r = calc.exec(initial, { maxSteps: MAX_STEPS, ...eo });
         return { steps: r.steps, quiescent: r.quiescent };
       };
 
@@ -190,23 +175,19 @@ function runBenchmark(calc, hash, settings) {
  * #compare — side-by-side mode comparison (e.g. FFI vs noFFI).
  */
 function runCompare(calc, hash, settings) {
-  const initial = mde.decomposeQuery(hash);
+  const initial = decomposeQuery(hash);
   const modeA = settings?.mode_a || 'ffi';
   const modeB = settings?.mode_b || 'noffi';
   const diff = settings?.diff || 'node_count';
+  const eo = resolveExecOpts(settings);
 
   function runMode(mode) {
     const useFFI = mode === 'ffi';
-    const execOpts = { dangerouslyUseFFI: useFFI };
-    if (settings?.rules) execOpts.rules = settings.rules;
-
     if (stateHasFreevars(initial) || settings?.mode === 'explore') {
-      const maxD = settings?.maxDepth ? parseInt(settings.maxDepth, 10) : MAX_DEPTH;
-      const tree = calc.explore(initial, { maxDepth: maxD, ...execOpts });
+      const tree = calc.explore(initial, { maxDepth: MAX_DEPTH, ...eo, dangerouslyUseFFI: useFFI });
       return { nodes: countNodes(tree), leaves: countLeaves(tree) };
     } else {
-      const maxS = settings?.maxSteps ? parseInt(settings.maxSteps, 10) : MAX_STEPS;
-      const r = calc.exec(initial, { maxSteps: maxS, ...execOpts });
+      const r = calc.exec(initial, { maxSteps: MAX_STEPS, ...eo, dangerouslyUseFFI: useFFI });
       return { steps: r.steps, quiescent: r.quiescent };
     }
   }
@@ -267,15 +248,9 @@ function verboseJudgment(calc, kind, entry, modality) {
 }
 
 function verboseBackward(calc, kind, entry, modality) {
-  const state = convert.decomposeQuery(entry.rhsHash);
-  const goals = [
-    ...Object.keys(state.persistent).map(Number),
-    ...Object.keys(state.linear).map(Number),
-  ];
+  const goals = extractGoals(entry.rhsHash);
   const settings = calc.querySettings.get(kind);
-  const proveOpts = {};
-  if (settings?.useFFI !== undefined) proveOpts.useFFI = settings.useFFI === 'true';
-  if (settings?.maxDepth) proveOpts.maxDepth = parseInt(settings.maxDepth, 10);
+  const proveOpts = buildProveOpts(settings);
 
   const results = goals.map(g => {
     const result = calc.prove(g, proveOpts);
@@ -296,17 +271,13 @@ function verboseBackward(calc, kind, entry, modality) {
 }
 
 function verboseForward(calc, kind, entry, modality) {
-  const initial = mde.decomposeQuery(entry.lhsHash);
-  const pattern = mde.decomposeQuery(entry.rhsHash);
+  const initial = decomposeQuery(entry.lhsHash);
+  const pattern = decomposeQuery(entry.rhsHash);
   const settings = calc.querySettings.get(kind);
-  const execOpts = {};
-  if (settings?.rules) execOpts.rules = settings.rules;
+  const eo = resolveExecOpts(settings);
 
-  const forceExplore = settings?.explore === 'true';
-
-  if (stateHasFreevars(initial) || forceExplore) {
-    const maxD = settings?.maxDepth ? parseInt(settings.maxDepth, 10) : MAX_DEPTH;
-    const tree = calc.explore(initial, { maxDepth: maxD, ...execOpts });
+  if (stateHasFreevars(initial) || settings?.explore === 'true') {
+    const tree = calc.explore(initial, { maxDepth: MAX_DEPTH, ...eo });
     const leaves = getAllLeaves(tree);
 
     console.log(`  explore: ${leaves.length} leaves, depth ${maxDepth(tree)}, ${countNodes(tree)} nodes`);
@@ -315,7 +286,7 @@ function verboseForward(calc, kind, entry, modality) {
     for (let i = 0; i < leaves.length; i++) {
       const leaf = leaves[i];
       if (leaf.type === 'dead' || leaf.type === 'memo') continue;
-      const plain = leaf.state ? (leaf.state.linear?.group ? toObject(leaf.state) : leaf.state) : null;
+      const plain = normalizeLeafState(leaf);
       if (!plain) continue;
       const matches = isSubset(pattern, plain);
       if (matches) matchCount++;
@@ -329,13 +300,12 @@ function verboseForward(calc, kind, entry, modality) {
       : matchCount > 0;
     console.log(`  verdict: ${pass ? 'PASS' : 'FAIL'} (${matchCount} matches, modality: ${modality})`);
   } else {
-    const maxS = settings?.maxSteps ? parseInt(settings.maxSteps, 10) : MAX_STEPS;
     const wantTrace = settings?.trace === 'true';
     const steps = wantTrace ? [] : null;
     const onStep = wantTrace
       ? ({ step, rule }) => steps.push({ step, rule: rule.name })
       : undefined;
-    const result = calc.exec(initial, { maxSteps: maxS, ...(onStep ? { onStep } : {}), ...execOpts });
+    const result = calc.exec(initial, { maxSteps: MAX_STEPS, ...eo, ...(onStep ? { onStep } : {}) });
 
     if (steps) {
       for (const s of steps) console.log(`  [${s.step}] ${s.rule}`);
@@ -410,7 +380,8 @@ if (fileDirectives.size === 0) {
 }
 
 detectDuplicates(fileDirectives);
-const calc = loadProgram(PROGRAM, fileDirectives);
+const programPath = flags.program ? path.resolve(flags.program) : PROGRAM;
+const calc = loadProgram(programPath, fileDirectives);
 
 // Process each directive
 for (const [file, names] of fileDirectives) {
@@ -432,11 +403,12 @@ for (const [file, names] of fileDirectives) {
       const settings = calc.querySettings.get(kind);
 
       // Observation directives use the queries map (no separator)
-      const queryHash = calc.queries.get(kind);
-      if (!queryHash && !calc.splitQueries.has(kind)) {
+      let queryHash = calc.queries.get(kind);
+      if (!queryHash && !settings?.query && !calc.splitQueries.has(kind)) {
         header(kind, '(not found in queries)');
         continue;
       }
+      queryHash = resolveQueryHash(calc, kind, queryHash, settings);
 
       header(kind, handlerName);
       handler(calc, queryHash, settings);

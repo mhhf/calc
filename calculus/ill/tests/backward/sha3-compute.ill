@@ -21,3 +21,11 @@
 
 % One-word hash: sha3(concat(0xFF, 0))
 #expect_sha3_compute_one |- !sha3_compute (write 0 0xff empty_mem) 0 0x20 (sha3 (0xff ++ 0)) .
+
+% Two-word hash: sha3(concat(0xAA, concat(0xBB, 0)))
+#expect_sha3_compute_two |- !sha3_compute (write 0x20 0xbb (write 0 0xaa empty_mem)) 0 0x40 (sha3 (0xaa ++ (0xbb ++ 0))) .
+
+% ── mem_read ─────────────────────────────────────────────────────────────────
+
+% Direct read from single-write memory
+#expect_mem_read_direct |- !mem_read (write 0 0xff empty_mem) 0 0xff .

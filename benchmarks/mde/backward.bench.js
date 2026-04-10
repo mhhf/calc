@@ -105,7 +105,7 @@ async function runBenchmarks(opts = {}) {
   } = opts;
 
   // Load calculus
-  const calc = await mde.load(path.join(__dirname, '../../calculus/ill/programs/bin.ill'));
+  const calc = mde.load(path.join(__dirname, '../../calculus/ill/programs/bin.ill'));
   const idx = prove.buildIndex(calc.clauses, calc.definitions);
 
   console.log('='.repeat(70));
@@ -127,7 +127,7 @@ async function runBenchmarks(opts = {}) {
     results[cat] = [];
 
     for (const bench of BENCHMARKS[cat]) {
-      const goal = await mde.parseExpr(bench.query);
+      const goal = mde.parseExpr(bench.query);
 
       // Warmup
       for (let i = 0; i < warmup; i++) {
@@ -197,9 +197,9 @@ async function runBenchmarks(opts = {}) {
 async function profileBenchmark(query, desc, opts = {}) {
   const { iterations = 10 } = opts;
 
-  const calc = await mde.load(path.join(__dirname, '../../calculus/ill/programs/bin.ill'));
+  const calc = mde.load(path.join(__dirname, '../../calculus/ill/programs/bin.ill'));
   const idx = prove.buildIndex(calc.clauses, calc.definitions);
-  const goal = await mde.parseExpr(query);
+  const goal = mde.parseExpr(query);
 
   console.log('='.repeat(70));
   console.log(`PROFILING: ${desc}`);

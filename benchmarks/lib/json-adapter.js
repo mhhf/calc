@@ -118,7 +118,7 @@ async function runExplore(iterations) {
 
   // 1. Small multisig (committed-choice baseline)
   {
-    const calc = await mde.load(
+    const calc = mde.load(
       path.join(__dirname, '../../calculus/ill/programs/multisig.ill')
     );
     const state = mde.decomposeQuery(calc.queries.get('symex'));
@@ -134,7 +134,7 @@ async function runExplore(iterations) {
     const codePath = path.join(__dirname, '../../calculus/ill/programs/multisig_nocall_solc_code.ill');
     const hex = fs.readFileSync(codePath, 'utf8').match(/bytecode\s+0x([0-9a-fA-F]+)/)[1];
     const bc = loadBytecode(hex);
-    const calc = await mde.load(
+    const calc = mde.load(
       path.join(__dirname, '../../calculus/ill/programs/multisig_nocall_solc_symbolic.ill'),
       { extraGrade0Facts: bc.facts, scopeGuard: bytecodeArrGetGuard }
     );

@@ -18,6 +18,10 @@
 
 #inspect_evm (label: evm) I .
 
+% ── Observation: benchmark via query reference (reuses dump_state_push_stop) ──
+
+#benchmark_via_query (query: dump_state_push_stop) (iterations: 5) I .
+
 % ── Judgment: STOP reaches stop (verbose output in debug-ill.js) ─────────────
 
 #expect_stop_debug pc 0 * bytecode [0x00] => stop .

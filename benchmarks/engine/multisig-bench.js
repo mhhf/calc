@@ -41,7 +41,7 @@ async function runOnce(warmup = false) {
 
   // Phase 1: Load rules
   const tLoad0 = performance.now();
-  const calc = await mde.load([
+  const calc = mde.load([
     path.join(__dirname, '../../calculus/ill/programs/bin.ill'),
     path.join(__dirname, '../../calculus/ill/programs/evm.ill'),
     path.join(__dirname, '../../calculus/ill/programs/multisig_code.ill'),
@@ -59,7 +59,7 @@ async function runOnce(warmup = false) {
     'sender member01',
   ];
   for (const f of basicFacts) {
-    const h = await mde.parseExpr(f);
+    const h = mde.parseExpr(f);
     state.linear[h] = 1;
   }
   const tParse1 = performance.now();
@@ -76,7 +76,7 @@ async function runOnce(warmup = false) {
     if (!trimmed || !trimmed.startsWith('code')) continue;
     const parts = trimmed.replace(/\*.*$/, '').trim();
     if (parts) {
-      const h = await mde.parseExpr(parts);
+      const h = mde.parseExpr(parts);
       state.linear[h] = 1;
       codeCount++;
     }
@@ -199,7 +199,7 @@ async function runProfiled() {
   // We can't easily instrument without modifying the source,
   // so let's do a manual profiling by timing each phase more granularly
 
-  const calc = await mde.load([
+  const calc = mde.load([
     path.join(__dirname, '../../calculus/ill/programs/bin.ill'),
     path.join(__dirname, '../../calculus/ill/programs/evm.ill'),
     path.join(__dirname, '../../calculus/ill/programs/multisig_code.ill'),
@@ -214,7 +214,7 @@ async function runProfiled() {
     'sender member01',
   ];
   for (const f of basicFacts) {
-    const h = await mde.parseExpr(f);
+    const h = mde.parseExpr(f);
     state.linear[h] = 1;
   }
 
@@ -227,7 +227,7 @@ async function runProfiled() {
     if (!trimmed || !trimmed.startsWith('code')) continue;
     const parts = trimmed.replace(/\*.*$/, '').trim();
     if (parts) {
-      const h = await mde.parseExpr(parts);
+      const h = mde.parseExpr(parts);
       state.linear[h] = 1;
     }
   }

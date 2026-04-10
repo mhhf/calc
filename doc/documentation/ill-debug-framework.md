@@ -1,6 +1,6 @@
 ---
 title: ILL-Native Debug Framework
-modified: 2026-04-09
+modified: 2026-04-10
 summary: Observation directives and engine hooks for debugging ILL forward/backward execution.
 tags: [debugging, engine, forward-chaining, hooks, ill, testing]
 ---
@@ -29,6 +29,9 @@ No separator (`|-`/`=>`), no expected outcome — pure information gathering.
 #benchmark_name (iterations: 10)   initial_state .
 #compare_name (mode_a: ffi)        initial_state .
 #inspect_name (label: evm)         I .
+
+% Query references — reuse a named query's state instead of inlining:
+#benchmark_name (query: other_query_name) (iterations: 10) I .
 ```
 
 | Directive | Output |
@@ -39,6 +42,20 @@ No separator (`|-`/`=>`), no expected outcome — pure information gathering.
 | `#benchmark` | Warmup + N iterations with min/mean/p50/max timing |
 | `#compare` | Side-by-side mode comparison (e.g. FFI vs noFFI) |
 | `#inspect` | Compiled rule metadata dump (linear/persistent counts, slots, alts) |
+
+## Query References
+
+The `(query: name)` setting lets an observation directive reuse another query's initial state instead of inlining it. The body (typically `I`) is ignored when `query` is set.
+
+```ill
+#import(../../programs/multisig.ill)
+
+#benchmark_multisig (query: symex) (iterations: 10) (mode: explore) I .
+#trace_multisig (query: symex) I .
+#compare_multisig (query: symex) (mode_a: ffi) (mode_b: noffi) I .
+```
+
+Resolution: `calc.queries.get(settings.query)`. Throws with known query names on miss.
 
 ## Engine Hooks API
 
@@ -71,6 +88,7 @@ calc.explore(state, {
 npm run debug:ill -- calculus/ill/tests/forward/debug-demo.ill
 npm run debug:ill -- file.ill --only trace
 npm run debug:ill -- file.ill --only judgment
+npm run debug:ill -- calculus/ill/tests/forward/evm-multisig.ill --program calculus/ill/programs/multisig_nocall.ill
 ```
 
 ## Verbose Judgment Output
@@ -83,12 +101,25 @@ npm run debug:ill -- file.ill --only judgment
 | `#expect S => P` | PASS/FAIL | Execution steps + final state |
 | `#expect_not S => P` | PASS/FAIL | All leaves shown, none match P |
 
+## Shared Infrastructure (`directive-loader.js`)
+
+Both tools import from `lib/engine/directive-loader.js` which provides:
+- **Discovery**: `findIllFiles`, `scanDirectives`, `detectDuplicates`
+- **Loading**: `loadProgram` (base program + overlay), constants (`PROGRAM`, `MAX_STEPS`, `MAX_DEPTH`)
+- **Execution**: `resolveExecOpts(settings)` — parses `maxSteps`/`maxDepth`/`rules` from query settings into engine-compatible options
+- **State**: `normalizeLeafState(leaf)` — FactSet→plain object, `decomposeQuery`, `stateHasFreevars`, `isSubset`
+- **Display**: `show`, `classifyLeaf`, `showInteresting`, `groupByPredicate`, `formatState`
+- **Backward**: `extractGoals`, `buildProveOpts`
+- **Tree**: `getAllLeaves`, `countLeaves`, `maxDepth`, `countNodes`
+
 ## File Structure
 
 ```
 lib/engine/directive-loader.js    # Shared: discovery, scanning, loading, utilities
 tools/test-ill.js                 # Judgment runner (TODO_0143)
 tools/debug-ill.js                # Observation runner + verbose judgments (TODO_0147)
-calculus/ill/tests/forward/debug-demo.ill  # Demo file
-tests/engine/hooks.test.js        # Hook API tests
+tools/explore-inspect.js          # Interactive tree inspector (uses directive-loader re-exports)
+calculus/ill/tests/forward/debug-demo.ill     # Demo file (EVM)
+calculus/ill/tests/forward/evm-multisig.ill  # Multisig exploration (--program)
+tests/engine/hooks.test.js                   # Hook API tests
 ```
