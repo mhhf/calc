@@ -433,9 +433,8 @@ describe('Calldata (TODO 141)', { timeout: 30000 }, () => {
     }
 
     /**
-     * Walk a write-chain (write(addr, val, rest) | write8(...) | empty_mem)
+     * Walk a write-chain (write(addr, val, rest) | empty_mem)
      * and return the value written at `addrBig` (as BigInt), or null if not found.
-     * Only matches exact-address 32-byte writes (write nodes), not write8.
      */
     function getMemValue(state, addrBig) {
       let chain = getMemHash(state);
@@ -450,9 +449,6 @@ describe('Calldata (TODO 141)', { timeout: 30000 }, () => {
           const writeAddr = binToInt(Store.child(chain, 0));
           const writeVal  = Store.child(chain, 1);
           if (writeAddr === addrBig) return binToInt(writeVal);
-          chain = Store.child(chain, 2);
-        } else if (tag === 'write8') {
-          // Skip byte-level writes when looking for 32-byte word hits
           chain = Store.child(chain, 2);
         } else {
           // Unknown node in chain (symbolic) — cannot resolve

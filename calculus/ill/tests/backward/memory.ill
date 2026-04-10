@@ -13,7 +13,7 @@
 #expect_no_overlap_disjoint_left |- !no_overlap 0 0x20 0x20 0x20 .
 #expect_no_overlap_disjoint_right |- !no_overlap 0x20 0x20 0 0x20 .
 #expect_not_no_overlap_crossing |- !no_overlap 0 0x20 0x10 0x20 .
-#expect_no_overlap_write8 |- !no_overlap 0 0x20 0x20 1 .
+#expect_no_overlap_1byte |- !no_overlap 0 0x20 0x20 1 .
 
 % ── mem_read: McCarthy axiom read ───────────────────────────────────────────
 
@@ -31,9 +31,6 @@
 
 % Overlap -> stuck: partial overlap has no matching clause (sound failure)
 #expect_not_memread_overlap [V] |- !mem_read (write 0x10 0xBB (write 0 0xAA empty_mem)) 0 V .
-
-% write8 miss: write8 at 0x20, read at 0 -> 0
-#expect_memread_write8_miss |- !mem_read (write8 0x20 0xAB empty_mem) 0 0 .
 
 % Empty memory default: read from empty_mem -> 0
 #expect_memread_empty |- !mem_read empty_mem 0 0 .

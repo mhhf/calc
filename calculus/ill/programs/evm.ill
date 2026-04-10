@@ -105,7 +105,7 @@ memsize: bin -> type.
 mem_read: (mem: bin) -> (addr: bin) -> (value: bin) -> type.
 no_overlap: (start1: bin) -> (len1: bin) -> (start2: bin) -> (len2: bin) -> type.
 write: (addr: bin) -> (value: bin) -> (mem: bin) -> bin.
-write8: (addr: bin) -> (value: bin) -> (mem: bin) -> bin.
+byte_replace: (word: bin) -> (pos: bin) -> (byte: bin) -> (result: bin) -> type.
 empty_mem: bin.
 sconcat: (size: bin) -> (value: bin) -> (rest: bin) -> bin.
 epsilon: bin.
@@ -198,6 +198,17 @@ byte256/ok: byte256 Idx X Z
   <- shr ShiftBits X Shifted
   <- and Shifted 0xff Z.
 
+% byte_replace Word Pos Byte Result: set byte at position Pos in 256-bit Word
+% Inverse of byte256 — used by MSTORE8 for eager read-modify-write.
+byte_replace/def: byte_replace Word Pos Byte Result
+  <- sub256 0x1f Pos Offset
+  <- shl 0x3 Offset ShiftBits
+  <- shl ShiftBits 0xff Mask
+  <- not256 Mask InvMask
+  <- and Word InvMask Cleared
+  <- shl ShiftBits Byte ByteShifted
+  <- or Cleared ByteShifted Result.
+
 % sar256 Shift Value Z: arithmetic right shift (sign-extending)
 % Positive values: identical to shr. Negative (MSB=1): fills high bits with 1s.
 % Shift >= 256: saturates to 0 (positive) or 2^256-1 (negative).
@@ -263,10 +274,6 @@ mem_read/hit: mem_read (write Offset V Rest) Offset V.
 mem_read/miss: mem_read (write W V Rest) R Result
   <- neq R W
   <- no_overlap (start1: R) (len1: 32) (start2: W) (len2: 32)
-  <- mem_read Rest R Result.
-
-mem_read/write8_miss: mem_read (write8 Addr Byte Rest) R Result
-  <- no_overlap (start1: R) (len1: 32) (start2: Addr) (len2: 1)
   <- mem_read Rest R Result.
 
 mem_read/zero: mem_read empty_mem R 0.
@@ -986,11 +993,13 @@ evm/mstore8:
   mem M * memsize S *
   !mod Value 0x100 Byte *
   !mem_expand S Offset 1 S' MemGas *
-  !plus 3 MemGas COST
+  !plus 3 MemGas COST *
+  !mem_read M Offset OldWord *
+  !byte_replace OldWord 0 Byte NewWord
   -o {
     pc PC' * stack REST *
     gas GAS' *
-    mem (write8 Offset Byte M) * memsize S'
+    mem (write Offset NewWord M) * memsize S'
   }.
 
 evm/msize:
