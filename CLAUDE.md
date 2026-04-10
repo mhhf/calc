@@ -91,6 +91,7 @@ lib/
 │   │   ├── loli-drain.js    # Loli drain optimization
 │   │   └── ffi/             # Foreign function interface (arithmetic, memory)
 │   └── opt/             # Toggleable optimization modules
+│       └── compiled-clauses.js # Tier 1 compiled clause dispatch (zero-subgoal → direct lookup)
 ├── meta-parser/         # Meta-level parser (@extends chain resolution)
 ├── parser/              # Earley parser + grammar generation + sequent parser
 │   ├── earley.js        # Core Earley engine (recognizer, chart, extraction)
@@ -183,7 +184,7 @@ Opt-in callbacks on `calc.exec()`/`calc.explore()` for instrumentation. Zero cos
 calc.exec(state, {
   onStep: ({ step, rule, consumed, theta, slots, state }) => { ... },  // step: monotonic counter
   onProveFail: (goal, reason) => { ... },  // reason: 'cached_failure'|'external_binding'|'exhausted'|'ffi_mismatch'
-  onProveSuccess: (goal, method) => { ... },  // method: 'ffi'|'state'|'cache'|'clause'
+  onProveSuccess: (goal, method) => { ... },  // method: 'ffi'|'state'|'compiled'|'cache'|'clause'
 });
 calc.explore(state, {
   onStep: ({ depth, rule, consumed, theta, slots, state }) => { ... },  // depth: DFS nesting level

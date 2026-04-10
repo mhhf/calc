@@ -350,7 +350,7 @@ function runProfile(calc, hash, settings) {
     return getPredicateHead(goalHash) || 'unknown';
   }
   function initPred(pred) {
-    if (!byPred[pred]) byPred[pred] = { ffi: 0, state: 0, cache: 0, clause: 0, fail: 0, nonGround: 0, failReasons: {} };
+    if (!byPred[pred]) byPred[pred] = { ffi: 0, state: 0, compiled: 0, cache: 0, clause: 0, fail: 0, nonGround: 0, failReasons: {} };
   }
 
   const onProveSuccess = (goal, method, info) => {
@@ -412,7 +412,7 @@ function runProfile(calc, hash, settings) {
   // Sort by total calls descending
   const entries = Object.entries(byPred)
     .map(([pred, counts]) => {
-      const total = counts.ffi + counts.state + counts.cache + counts.clause + counts.fail;
+      const total = counts.ffi + counts.state + counts.compiled + counts.cache + counts.clause + counts.fail;
       return { pred, ...counts, total };
     })
     .sort((a, b) => b.total - a.total);
@@ -424,20 +424,23 @@ function runProfile(calc, hash, settings) {
 
   // Header
   const ffiLabel = useFFI ? 'ffi' : 'n/a';
-  console.log(`  ${'predicate'.padEnd(24)} ${ffiLabel.padStart(6)} ${'state'.padStart(6)} ${'cache'.padStart(6)} ${'clause'.padStart(6)} ${'fail'.padStart(6)} ${'total'.padStart(6)} ${'!gnd'.padStart(5)}`);
-  console.log(`  ${'─'.repeat(24)} ${'─'.repeat(6)} ${'─'.repeat(6)} ${'─'.repeat(6)} ${'─'.repeat(6)} ${'─'.repeat(6)} ${'─'.repeat(6)} ${'─'.repeat(5)}`);
+  console.log(`  ${'predicate'.padEnd(24)} ${ffiLabel.padStart(6)} ${'state'.padStart(6)} ${'compd'.padStart(6)} ${'cache'.padStart(6)} ${'clause'.padStart(6)} ${'fail'.padStart(6)} ${'total'.padStart(6)} ${'!gnd'.padStart(5)}`);
+  console.log(`  ${'─'.repeat(24)} ${'─'.repeat(6)} ${'─'.repeat(6)} ${'─'.repeat(6)} ${'─'.repeat(6)} ${'─'.repeat(6)} ${'─'.repeat(6)} ${'─'.repeat(6)} ${'─'.repeat(5)}`);
 
   for (const e of entries) {
     const ffiCol = useFFI ? String(e.ffi).padStart(6) : '   n/a';
     const ngCol = e.nonGround > 0 ? String(e.nonGround).padStart(5) : '    -';
-    console.log(`  ${e.pred.padEnd(24)} ${ffiCol} ${String(e.state).padStart(6)} ${String(e.cache).padStart(6)} ${String(e.clause).padStart(6)} ${String(e.fail).padStart(6)} ${String(e.total).padStart(6)} ${ngCol}`);
+    console.log(`  ${e.pred.padEnd(24)} ${ffiCol} ${String(e.state).padStart(6)} ${String(e.compiled).padStart(6)} ${String(e.cache).padStart(6)} ${String(e.clause).padStart(6)} ${String(e.fail).padStart(6)} ${String(e.total).padStart(6)} ${ngCol}`);
   }
 
-  console.log(`  ${'─'.repeat(24)} ${'─'.repeat(6)} ${'─'.repeat(6)} ${'─'.repeat(6)} ${'─'.repeat(6)} ${'─'.repeat(6)} ${'─'.repeat(6)} ${'─'.repeat(5)}`);
+  console.log(`  ${'─'.repeat(24)} ${'─'.repeat(6)} ${'─'.repeat(6)} ${'─'.repeat(6)} ${'─'.repeat(6)} ${'─'.repeat(6)} ${'─'.repeat(6)} ${'─'.repeat(6)} ${'─'.repeat(5)}`);
   const totalAll = totalSuccess + totalFail;
-  console.log(`  ${'TOTAL'.padEnd(24)} ${String(totalSuccess).padStart(30)} ${String(totalFail).padStart(6)} ${String(totalAll).padStart(6)} ${totalNonGround > 0 ? String(totalNonGround).padStart(5) : '    -'}`);
+  console.log(`  ${'TOTAL'.padEnd(24)} ${String(totalSuccess).padStart(37)} ${String(totalFail).padStart(6)} ${String(totalAll).padStart(6)} ${totalNonGround > 0 ? String(totalNonGround).padStart(5) : '    -'}`);
   console.log(`  steps: ${steps}, mode: ${mode}, useFFI: ${useFFI}, elapsed: ${elapsed.toFixed(2)}ms`);
   console.log(`  cache: ${cacheProfile.hits} hits, ${cacheProfile.misses} misses, ${cacheProfile.negHits} neg-hits (warmup: ${warmupCache.hits}h/${warmupCache.misses}m/${warmupCache.negHits}n)`);
+  if (engineProfile.compiledCalls > 0) {
+    console.log(`  compiled dispatch: ${engineProfile.compiledCalls} calls, ${engineProfile.compiledTime?.toFixed(2) || 0}ms total`);
+  }
   if (engineProfile.clauseCalls > 0) {
     console.log(`  clause resolution: ${engineProfile.clauseCalls} calls, ${engineProfile.clauseTime?.toFixed(2) || 0}ms total`);
   }

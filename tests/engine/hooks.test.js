@@ -170,10 +170,10 @@ describe('Engine Hooks API', { timeout: 10000 }, () => {
       assert.ok(successes.length > 0, 'expected onProveSuccess calls');
       for (const s of successes) {
         assert.equal(typeof s.goal, 'string');
-        assert.ok(['ffi', 'state', 'clause'].includes(s.method),
+        assert.ok(['ffi', 'state', 'compiled', 'clause'].includes(s.method),
           `unknown method: ${s.method}`);
       }
-      // FFI path: all goals should be resolved by FFI
+      // FFI path: all goals should be resolved by FFI (tried first)
       assert.ok(successes.every(s => s.method === 'ffi'),
         'expected all goals resolved by ffi in FFI mode');
     });
@@ -189,10 +189,10 @@ describe('Engine Hooks API', { timeout: 10000 }, () => {
 
       assert.ok(successes.length > 0, 'expected onProveSuccess calls');
       const methods = new Set(successes.map(s => s.method));
-      // noFFI path should use cache and/or clause
+      // noFFI path should use compiled, cache, and/or clause — never ffi
       assert.ok(!methods.has('ffi'), 'noFFI path should not use ffi method');
-      assert.ok(methods.has('cache') || methods.has('clause'),
-        'expected cache or clause methods in noFFI path');
+      assert.ok(methods.has('compiled') || methods.has('cache') || methods.has('clause'),
+        'expected compiled/cache/clause methods in noFFI path');
     });
 
     it('does not fire when not provided', () => {
@@ -218,7 +218,7 @@ describe('Engine Hooks API', { timeout: 10000 }, () => {
       assert.ok(successes.length > 0, 'expected onProveSuccess calls in explore mode');
       for (const s of successes) {
         assert.equal(typeof s.goal, 'string');
-        assert.ok(['ffi', 'state', 'clause'].includes(s.method));
+        assert.ok(['ffi', 'state', 'compiled', 'clause'].includes(s.method));
       }
     });
   });
