@@ -104,14 +104,14 @@ describe('Memory FFI', () => {
       assert(!r.success);
     });
 
-    it('write8 disjoint from 32-byte read', () => {
+    it('1-byte range disjoint from 32-byte read', () => {
       const r = memory.no_overlap([
         intToBin(0n), intToBin(32n), intToBin(32n), intToBin(1n)
       ]);
       assert(r.success);
     });
 
-    it('write8 inside 32-byte read fails', () => {
+    it('1-byte range inside 32-byte read fails', () => {
       const r = memory.no_overlap([
         intToBin(0n), intToBin(32n), intToBin(15n), intToBin(1n)
       ]);
@@ -174,9 +174,9 @@ describe('Memory Backward Clauses', { timeout: 30000 }, () => {
       assert(!r.success, 'Overlapping ranges should fail');
     });
 
-    it('disjoint: write8 [32,33) vs read [0,32)', async () => {
+    it('disjoint: 1-byte [32,33) vs read [0,32)', async () => {
       const r = await proveNoFFI('no_overlap 0 32 32 1');
-      assert(r.success, 'write8 disjoint from 32-byte read should succeed');
+      assert(r.success, '1-byte range disjoint from 32-byte read should succeed');
     });
   });
 
@@ -214,14 +214,6 @@ describe('Memory Backward Clauses', { timeout: 30000 }, () => {
         'mem_read (write 16 0xBB (write 0 0xAA empty_mem)) 0 V'
       );
       assert(!r.success, 'Partial overlap should fail (no clause matches)');
-    });
-
-    it('write8 miss: write8 at 32, read at 0 → V = 0', async () => {
-      const v = await proveAndExtract(
-        'mem_read (write8 32 0xAB empty_mem) 0 V'
-      );
-      assert(v !== null, 'Should prove mem_read with write8 miss');
-      assert.strictEqual(binToInt(v), 0n);
     });
 
     it('empty memory: read at 0 → V = 0', async () => {

@@ -127,6 +127,9 @@ async function runExplore(iterations) {
       { maxDepth: 200, calc: calcCtx }, iterations);
   }
 
+  // Isolate Store state between benchmarks
+  mde.Store.clear();
+
   // 2. Solc symbolic multisig with bytecode (realistic E2E)
   {
     const fs = require('fs');
