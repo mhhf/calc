@@ -5,7 +5,7 @@ const { show } = require('../../lib/engine/show');
 const { isGround, collectMetavars, collectFreevars } = require('../../lib/engine/pattern-utils');
 const { serialize, deserialize } = require('../../lib/engine/store-binary');
 const { match, matchIndexed, undoSave, undoRestore, unify } = require('../../lib/kernel/unify');
-const { arr_get, arr_set, alen, read_bytes, trie_get, trie_set, arrToTrie } = require('../../lib/engine/ill/ffi/array');
+const { arr_get, arr_set, alen, read_bytes, arrToTrie, trieNav } = require('../../lib/engine/ill/ffi/array');
 const { buildParserFromTables, computeParserTables } = require('../../lib/calculus/builders');
 
 describe('arrlit - Stage 1: Store Infrastructure', () => {
@@ -693,17 +693,16 @@ describe('arrlit - Stage 5: Bit-indexed trie', () => {
     });
   });
 
-  describe('trie_get FFI', () => {
+  describe('trie_get via trieNav', () => {
     it('retrieves each element by index from converted trie', () => {
       const elems = [mkBin(10), mkBin(20), mkBin(30), mkBin(40)];
       const arr = Store.putArray(elems);
       const trie = arrToTrie(arr);
 
       for (let i = 0; i < elems.length; i++) {
-        const out = mv(`V${i}`);
-        const result = trie_get([trie, mkIdx(i), out]);
-        assert.equal(result.success, true, `trie_get failed at index ${i}`);
-        assert.equal(result.theta[0][1], elems[i], `wrong value at index ${i}`);
+        const val = trieNav(trie, BigInt(i));
+        assert.notEqual(val, null, `trieNav failed at index ${i}`);
+        assert.equal(val, elems[i], `wrong value at index ${i}`);
       }
     });
 
@@ -713,10 +712,9 @@ describe('arrlit - Stage 5: Bit-indexed trie', () => {
       const trie = arrToTrie(Store.putArray(elems));
 
       for (let i = 0; i < 16; i++) {
-        const out = mv(`V${i}`);
-        const result = trie_get([trie, mkIdx(i), out]);
-        assert.equal(result.success, true, `index ${i}`);
-        assert.equal(result.theta[0][1], elems[i], `value at index ${i}`);
+        const val = trieNav(trie, BigInt(i));
+        assert.notEqual(val, null, `index ${i}`);
+        assert.equal(val, elems[i], `value at index ${i}`);
       }
     });
 
@@ -725,39 +723,27 @@ describe('arrlit - Stage 5: Bit-indexed trie', () => {
       for (let i = 0; i < 256; i++) elems.push(mkBin(i));
       const trie = arrToTrie(Store.putArray(elems));
 
-      // Spot-check a few indices
       for (const i of [0, 1, 2, 127, 128, 255]) {
-        const out = mv(`V${i}`);
-        const result = trie_get([trie, mkIdx(i), out]);
-        assert.equal(result.success, true, `index ${i}`);
-        assert.equal(result.theta[0][1], elems[i], `value at index ${i}`);
+        const val = trieNav(trie, BigInt(i));
+        assert.notEqual(val, null, `index ${i}`);
+        assert.equal(val, elems[i], `value at index ${i}`);
       }
-    });
-
-    it('fails on non-ground index', () => {
-      const trie = arrToTrie(Store.putArray([mkBin(1)]));
-      const result = trie_get([trie, mv('I'), mv('V')]);
-      assert.equal(result.success, false);
     });
   });
 
-  describe('trie_set FFI', () => {
+  describe('trie_set via arr_set', () => {
     it('updates value at index 0', () => {
       const elems = [mkBin(10), mkBin(20), mkBin(30)];
       const trie = arrToTrie(Store.putArray(elems));
       const newVal = mkBin(99);
       const out = mv('R');
-      const result = trie_set([trie, mkIdx(0), newVal, out]);
+      const result = arr_set([trie, mkIdx(0), newVal, out]);
       assert.equal(result.success, true);
 
-      // Verify: index 0 changed, others unchanged
       const newTrie = result.theta[0][1];
-      const r0 = trie_get([newTrie, mkIdx(0), mv('V0')]);
-      assert.equal(r0.theta[0][1], newVal);
-      const r1 = trie_get([newTrie, mkIdx(1), mv('V1')]);
-      assert.equal(r1.theta[0][1], elems[1]);
-      const r2 = trie_get([newTrie, mkIdx(2), mv('V2')]);
-      assert.equal(r2.theta[0][1], elems[2]);
+      assert.equal(trieNav(newTrie, 0n), newVal);
+      assert.equal(trieNav(newTrie, 1n), elems[1]);
+      assert.equal(trieNav(newTrie, 2n), elems[2]);
     });
 
     it('updates value at non-zero index', () => {
@@ -765,15 +751,13 @@ describe('arrlit - Stage 5: Bit-indexed trie', () => {
       const trie = arrToTrie(Store.putArray(elems));
       const newVal = mkBin(77);
       const out = mv('R');
-      const result = trie_set([trie, mkIdx(2), newVal, out]);
+      const result = arr_set([trie, mkIdx(2), newVal, out]);
       assert.equal(result.success, true);
 
       const newTrie = result.theta[0][1];
-      const r2 = trie_get([newTrie, mkIdx(2), mv('V')]);
-      assert.equal(r2.theta[0][1], newVal);
+      assert.equal(trieNav(newTrie, 2n), newVal);
       // Original unchanged
-      const r0 = trie_get([trie, mkIdx(2), mv('V2')]);
-      assert.equal(r0.theta[0][1], elems[2]);
+      assert.equal(trieNav(trie, 2n), elems[2]);
     });
   });
 
