@@ -14,3 +14,9 @@
 % ── Observation: benchmark exploration ───────────────────────────────────────
 
 #benchmark_symex (query: symex) (iterations: 5) (mode: explore) I .
+
+% ── Observation: profile persistent goals ────────────────────────────────────
+
+#profile_symex_ffi (query: symex, useFFI: true, mode: explore) I .
+
+#profile_symex_noffi (query: symex, useFFI: false, mode: explore) I .

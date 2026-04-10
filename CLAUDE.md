@@ -170,7 +170,7 @@ FFI is optimization, theory is semantics. Every FFI predicate MUST have backward
 
 - `tools/bench-compare.js` — cross-commit benchmark comparison via git worktrees
 - `tools/explore-inspect.js` — `node tools/explore-inspect.js [--leaf N] [--all] <files...>`
-- `tools/debug-ill.js` — `npm run debug:ill -- <file.ill> [--only trace]` (observation directives + verbose judgments)
+- `tools/debug-ill.js` — `npm run debug:ill -- <file.ill> [--only trace]` (observation directives + verbose judgments). Directives: `#trace`, `#dump_state`, `#debug`, `#benchmark`, `#compare`, `#inspect`, `#profile`
 - `lib/engine/show.js` — `show(hash)`, `classifyLeaf(state)`, `showInteresting(state)`
 - `out/ill.json` precomputes: parserTables, rendererFormats, ruleSpecMeta, connectivesByType
 - `lib/engine/store-binary.js` — binary serialize/deserialize for precompiled SDK loading
@@ -182,14 +182,17 @@ Opt-in callbacks on `calc.exec()`/`calc.explore()` for instrumentation. Zero cos
 ```js
 calc.exec(state, {
   onStep: ({ step, rule, consumed, theta, slots, state }) => { ... },  // step: monotonic counter
-  onProveFail: (goal, reason) => { ... },  // reason: 'cached_failure'|'external_binding'|'exhausted'
+  onProveFail: (goal, reason) => { ... },  // reason: 'cached_failure'|'external_binding'|'exhausted'|'ffi_mismatch'
+  onProveSuccess: (goal, method) => { ... },  // method: 'ffi'|'state'|'cache'|'clause'
 });
 calc.explore(state, {
   onStep: ({ depth, rule, consumed, theta, slots, state }) => { ... },  // depth: DFS nesting level
+  onProveSuccess: (goal, method) => { ... },  // same as exec
+  onProveFail: (goal, reason) => { ... },     // same as exec
 });
 ```
 
-`exec()` emits `{ step }` (1-based counter), `explore()` emits `{ depth }` (0-based DFS level). `consumed`/`theta` are snapshots; `state` is live (inspect via show.js, don't mutate). See `doc/documentation/ill-debug-framework.md`.
+`exec()` emits `{ step }` (1-based counter), `explore()` emits `{ depth }` (0-based DFS level). `consumed`/`theta` are snapshots; `state` is live (inspect via show.js, don't mutate). When `onProveSuccess`/`onProveFail` hooks are provided, the compiled persistent step fast path is bypassed (same as evidence mode) to ensure all goals are observable. See `doc/documentation/ill-debug-framework.md`.
 
 ## doc/ Placement Rule
 

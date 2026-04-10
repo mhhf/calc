@@ -1,0 +1,10 @@
+% Solc-compiled multisig (fully symbolic) — profiling directives.
+% Usage: npm run debug:ill -- calculus/ill/tests/forward/evm-multisig-solc-symbolic.ill --program calculus/ill/programs/multisig_nocall_solc_symbolic.ill
+
+#import(../../programs/multisig_nocall_solc_symbolic.ill)
+
+% ── Profiling: symbolic sender + nonce ────────────────────────────────────────
+
+#profile_solc_sym_ffi (query: symex, useFFI: true, mode: explore) I .
+
+#profile_solc_sym_noffi (query: symex, useFFI: false, mode: explore) I .
