@@ -139,7 +139,7 @@ describe('Engine Hooks API', { timeout: 10000 }, () => {
       assert.ok(failures.length > 0, 'expected onProveFail calls for out-of-gas');
       for (const f of failures) {
         assert.ok(typeof f.goal === 'string');
-        assert.ok(['cached_failure', 'external_binding', 'exhausted'].includes(f.reason),
+        assert.ok(['cached_failure', 'external_binding', 'exhausted', 'ffi_mismatch'].includes(f.reason),
           `unknown reason: ${f.reason}`);
       }
       assert.ok(failures.some(f => f.goal.includes('checked_sub')),
@@ -153,6 +153,73 @@ describe('Engine Hooks API', { timeout: 10000 }, () => {
       // No onProveFail — should not crash
       const result = calc.exec(initial, {});
       assert.ok(result.quiescent);
+    });
+  });
+
+  describe('onProveSuccess', () => {
+    it('fires with correct shape (goal, method) for FFI path', () => {
+      const initial = mde.decomposeQuery(
+        mde.parseExpr('pc 0 * gas 0xffffff * stack ae * mem empty_mem * memsize 0 * bytecode [0x60, 0x05, 0x00]')
+      );
+      const successes = [];
+      calc.exec(initial, {
+        dangerouslyUseFFI: true,
+        onProveSuccess: (goal, method) => successes.push({ goal: show(goal), method }),
+      });
+
+      assert.ok(successes.length > 0, 'expected onProveSuccess calls');
+      for (const s of successes) {
+        assert.equal(typeof s.goal, 'string');
+        assert.ok(['ffi', 'state', 'clause'].includes(s.method),
+          `unknown method: ${s.method}`);
+      }
+      // FFI path: all goals should be resolved by FFI
+      assert.ok(successes.every(s => s.method === 'ffi'),
+        'expected all goals resolved by ffi in FFI mode');
+    });
+
+    it('fires with cache/clause methods for noFFI path', () => {
+      const initial = mde.decomposeQuery(
+        mde.parseExpr('pc 0 * gas 0xffffff * stack ae * mem empty_mem * memsize 0 * bytecode [0x60, 0x05, 0x00]')
+      );
+      const successes = [];
+      calc.exec(initial, {
+        onProveSuccess: (goal, method) => successes.push({ goal: show(goal), method }),
+      });
+
+      assert.ok(successes.length > 0, 'expected onProveSuccess calls');
+      const methods = new Set(successes.map(s => s.method));
+      // noFFI path should use cache and/or clause
+      assert.ok(!methods.has('ffi'), 'noFFI path should not use ffi method');
+      assert.ok(methods.has('cache') || methods.has('clause'),
+        'expected cache or clause methods in noFFI path');
+    });
+
+    it('does not fire when not provided', () => {
+      const initial = mde.decomposeQuery(
+        mde.parseExpr('pc 0 * bytecode [0x00]')
+      );
+      // No onProveSuccess — should not crash
+      const result = calc.exec(initial, {});
+      assert.ok(result.quiescent);
+    });
+
+    it('fires in explore mode', () => {
+      const initial = mde.decomposeQuery(
+        mde.parseExpr('pc 0 * gas 0xffffff * stack ae * mem empty_mem * memsize 0 * bytecode [0x60, 0x05, 0x00]')
+      );
+      const successes = [];
+      calc.explore(initial, {
+        maxDepth: 5,
+        dangerouslyUseFFI: true,
+        onProveSuccess: (goal, method) => successes.push({ goal: show(goal), method }),
+      });
+
+      assert.ok(successes.length > 0, 'expected onProveSuccess calls in explore mode');
+      for (const s of successes) {
+        assert.equal(typeof s.goal, 'string');
+        assert.ok(['ffi', 'state', 'clause'].includes(s.method));
+      }
     });
   });
 });

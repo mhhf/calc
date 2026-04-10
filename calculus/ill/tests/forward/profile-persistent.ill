@@ -1,0 +1,22 @@
+% Persistent goal profiling — realistic EVM workloads.
+% Usage: npm run debug:ill -- calculus/ill/tests/forward/profile-persistent.ill
+
+#import(../../programs/evm.ill)
+
+% ── Concrete exec: PUSH1 5, ADD, STOP (3 steps, ground arithmetic) ──────────
+
+#profile_arithmetic (useFFI: true)
+  pc 0 * gas 0xffffff * stack [0x3] * mem empty_mem * memsize 0 *
+  bytecode [0x60, 0x05, 0x01, 0x00] .
+
+% ── Concrete exec: MSTORE + MLOAD (memory ops) ─────────────────────────────
+
+#profile_mstore (useFFI: true)
+  pc 0 * gas 0xffffff * stack ae * mem empty_mem * memsize 0 *
+  bytecode [0x60, 0x05, 0x60, 0x00, 0x52, 0x60, 0x20, 0x51, 0x00] .
+
+% ── Concrete exec: PUSH, DUP, ADD, MUL, LT, JUMPI sequence ─────────────────
+
+#profile_complex (useFFI: true)
+  pc 0 * gas 0xffffff * stack ae * mem empty_mem * memsize 0 *
+  bytecode [0x60, 0x0a, 0x60, 0x14, 0x01, 0x60, 0x03, 0x02, 0x60, 0x5a, 0x10, 0x60, 0x10, 0x57, 0x00] .

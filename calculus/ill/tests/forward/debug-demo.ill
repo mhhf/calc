@@ -22,6 +22,12 @@
 
 #benchmark_via_query (query: dump_state_push_stop) (iterations: 5) I .
 
+% ── Observation: profile persistent goals for PUSH1 5, STOP ──────────────────
+
+#profile_push_stop (useFFI: true)
+  pc 0 * gas 0xffffff * stack ae * mem empty_mem * memsize 0 *
+  bytecode [0x60, 0x05, 0x00] .
+
 % ── Judgment: STOP reaches stop (verbose output in debug-ill.js) ─────────────
 
 #expect_stop_debug pc 0 * bytecode [0x00] => stop .

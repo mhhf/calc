@@ -1,0 +1,14 @@
+% Solc-compiled multisig — observation directives for profiling.
+% Usage: npm run debug:ill -- calculus/ill/tests/forward/evm-multisig-solc.ill --program calculus/ill/programs/multisig_nocall_solc.ill
+
+#import(../../programs/multisig_nocall_solc.ill)
+
+% ── Profiling: concrete sender, nonce=0 ──────────────────────────────────────
+
+#profile_solc_ffi (query: symex, useFFI: true, mode: explore) I .
+
+#profile_solc_noffi (query: symex, useFFI: false, mode: explore) I .
+
+% ── Benchmark ─────────────────────────────────────────────────────────────────
+
+#benchmark_solc (query: symex) (iterations: 5) (mode: explore) I .

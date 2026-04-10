@@ -33,6 +33,8 @@ for (let i = 0; i < args.length; i++) {
     flags.only = args[++i];
   } else if (args[i] === '--program' && i + 1 < args.length) {
     flags.program = args[++i];
+  } else if (args[i] === '--bytecode' && i + 1 < args.length) {
+    flags.bytecode = args[++i];
   } else if (args[i].startsWith('--')) {
     const [k, v] = args[i].slice(2).split('=');
     flags[k] = v || 'true';
@@ -324,6 +326,123 @@ function verboseForward(calc, kind, entry, modality) {
   }
 }
 
+/**
+ * #profile — per-predicate persistent goal breakdown.
+ * Uses onProveSuccess/onProveFail hooks to show which predicates
+ * are resolved by which tier (ffi/state/cache/clause) and which fail.
+ *
+ * Settings:
+ *   mode: 'exec' (default) or 'explore'
+ *   useFFI: 'true' (default) or 'false' — selects FFI vs noFFI path
+ */
+function runProfile(calc, hash, settings) {
+  const initial = decomposeQuery(hash);
+  const eo = resolveExecOpts(settings);
+  const useFFI = settings?.useFFI !== 'false';
+  const mode = settings?.mode || (stateHasFreevars(initial) ? 'explore' : 'exec');
+
+  // Per-predicate tracking: { predName: { ffi, state, cache, clause, fail, nonGround, failReasons } }
+  const byPred = {};
+  let totalSuccess = 0, totalFail = 0, totalNonGround = 0;
+
+  const { getPredicateHead } = require('../lib/kernel/ast');
+  function getPred(goalHash) {
+    return getPredicateHead(goalHash) || 'unknown';
+  }
+  function initPred(pred) {
+    if (!byPred[pred]) byPred[pred] = { ffi: 0, state: 0, cache: 0, clause: 0, fail: 0, nonGround: 0, failReasons: {} };
+  }
+
+  const onProveSuccess = (goal, method, info) => {
+    const pred = getPred(goal);
+    initPred(pred);
+    byPred[pred][method]++;
+    if (info && !info.ground) { byPred[pred].nonGround++; totalNonGround++; }
+    totalSuccess++;
+  };
+
+  const onProveFail = (goal, reason, info) => {
+    const pred = getPred(goal);
+    initPred(pred);
+    byPred[pred].fail++;
+    if (info && !info.ground) { byPred[pred].nonGround++; totalNonGround++; }
+    byPred[pred].failReasons[reason] = (byPred[pred].failReasons[reason] || 0) + 1;
+    totalFail++;
+  };
+
+  let steps = 0;
+  const onStep = ({ step, depth }) => { steps = step ?? depth ?? steps; };
+
+  const execOpts = {
+    ...eo,
+    dangerouslyUseFFI: useFFI,
+    onProveSuccess,
+    onProveFail,
+    onStep,
+  };
+
+  // Read PROFILE data from engine if available
+  const ffiProfile = require('../lib/engine/opt/ffi');
+  const { getCacheProfile, resetCacheProfile } = require('../lib/engine/backward-cache');
+  ffiProfile.resetProfile();
+  resetCacheProfile();
+
+  // Warmup run (no hooks — full speed, primes backward cache)
+  if (mode === 'explore') {
+    calc.explore(initial, { maxDepth: MAX_DEPTH, ...eo, dangerouslyUseFFI: useFFI });
+  } else {
+    calc.exec(initial, { maxSteps: MAX_STEPS, ...eo, dangerouslyUseFFI: useFFI });
+  }
+  const warmupCache = { ...getCacheProfile() };
+  resetCacheProfile();
+  ffiProfile.resetProfile();
+
+  // Measured run (with hooks — bypasses compiled steps)
+  const t0 = performance.now();
+  if (mode === 'explore') {
+    calc.explore(initial, { maxDepth: MAX_DEPTH, ...execOpts });
+  } else {
+    const result = calc.exec(initial, { maxSteps: MAX_STEPS, ...execOpts });
+    steps = result.steps;
+  }
+  const elapsed = performance.now() - t0;
+  const engineProfile = ffiProfile.getProfile();
+  const cacheProfile = getCacheProfile();
+
+  // Sort by total calls descending
+  const entries = Object.entries(byPred)
+    .map(([pred, counts]) => {
+      const total = counts.ffi + counts.state + counts.cache + counts.clause + counts.fail;
+      return { pred, ...counts, total };
+    })
+    .sort((a, b) => b.total - a.total);
+
+  if (entries.length === 0) {
+    console.log('  (no persistent goals fired)');
+    return;
+  }
+
+  // Header
+  const ffiLabel = useFFI ? 'ffi' : 'n/a';
+  console.log(`  ${'predicate'.padEnd(24)} ${ffiLabel.padStart(6)} ${'state'.padStart(6)} ${'cache'.padStart(6)} ${'clause'.padStart(6)} ${'fail'.padStart(6)} ${'total'.padStart(6)} ${'!gnd'.padStart(5)}`);
+  console.log(`  ${'─'.repeat(24)} ${'─'.repeat(6)} ${'─'.repeat(6)} ${'─'.repeat(6)} ${'─'.repeat(6)} ${'─'.repeat(6)} ${'─'.repeat(6)} ${'─'.repeat(5)}`);
+
+  for (const e of entries) {
+    const ffiCol = useFFI ? String(e.ffi).padStart(6) : '   n/a';
+    const ngCol = e.nonGround > 0 ? String(e.nonGround).padStart(5) : '    -';
+    console.log(`  ${e.pred.padEnd(24)} ${ffiCol} ${String(e.state).padStart(6)} ${String(e.cache).padStart(6)} ${String(e.clause).padStart(6)} ${String(e.fail).padStart(6)} ${String(e.total).padStart(6)} ${ngCol}`);
+  }
+
+  console.log(`  ${'─'.repeat(24)} ${'─'.repeat(6)} ${'─'.repeat(6)} ${'─'.repeat(6)} ${'─'.repeat(6)} ${'─'.repeat(6)} ${'─'.repeat(6)} ${'─'.repeat(5)}`);
+  const totalAll = totalSuccess + totalFail;
+  console.log(`  ${'TOTAL'.padEnd(24)} ${String(totalSuccess).padStart(30)} ${String(totalFail).padStart(6)} ${String(totalAll).padStart(6)} ${totalNonGround > 0 ? String(totalNonGround).padStart(5) : '    -'}`);
+  console.log(`  steps: ${steps}, mode: ${mode}, useFFI: ${useFFI}, elapsed: ${elapsed.toFixed(2)}ms`);
+  console.log(`  cache: ${cacheProfile.hits} hits, ${cacheProfile.misses} misses, ${cacheProfile.negHits} neg-hits (warmup: ${warmupCache.hits}h/${warmupCache.misses}m/${warmupCache.negHits}n)`);
+  if (engineProfile.clauseCalls > 0) {
+    console.log(`  clause resolution: ${engineProfile.clauseCalls} calls, ${engineProfile.clauseTime?.toFixed(2) || 0}ms total`);
+  }
+}
+
 // ─── Handler Registry ───────────────────────────────────────────────────────
 
 const OBSERVATION_HANDLERS = {
@@ -333,6 +452,7 @@ const OBSERVATION_HANDLERS = {
   benchmark:  runBenchmark,
   compare:    runCompare,
   inspect:    runInspect,
+  profile:    runProfile,
 };
 
 /** Classify directive kind: observation, judgment, or unknown. */
@@ -381,7 +501,25 @@ if (fileDirectives.size === 0) {
 
 detectDuplicates(fileDirectives);
 const programPath = flags.program ? path.resolve(flags.program) : PROGRAM;
-const calc = loadProgram(programPath, fileDirectives);
+
+// Bytecode specialization: --bytecode <codefile.ill> loads hex, produces grade-0 arr_get facts
+let loadOpts = undefined;
+if (flags.bytecode) {
+  const fs = require('fs');
+  const { loadBytecode, bytecodeArrGetGuard } = require('../lib/engine/ill/bytecode-loader');
+  const bcPath = path.resolve(flags.bytecode);
+  const bcContent = fs.readFileSync(bcPath, 'utf8');
+  const hexMatch = bcContent.match(/bytecode\s+0x([0-9a-fA-F]+)/);
+  if (!hexMatch) {
+    console.error(`Error: no 'bytecode 0x...' found in ${bcPath}`);
+    process.exit(1);
+  }
+  const bc = loadBytecode(hexMatch[1]);
+  loadOpts = { extraGrade0Facts: bc.facts, scopeGuard: bytecodeArrGetGuard };
+  console.log(`Bytecode loaded: ${hexMatch[1].length / 2} bytes, ${bc.facts.get('arr_get')?.length || 0} arr_get facts`);
+}
+
+const calc = loadProgram(programPath, fileDirectives, loadOpts);
 
 // Process each directive
 for (const [file, names] of fileDirectives) {
