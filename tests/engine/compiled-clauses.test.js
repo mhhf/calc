@@ -19,12 +19,13 @@ describe('Compiled Clause Dispatch', { timeout: 10000 }, () => {
 
   before(() => {
     calc = mde.load(PROGRAM, { cache: true });
-    dispatch = calc.clauseDispatch || buildClauseDispatch(
-      require('../../lib/engine/backchain').buildIndex(calc.clauses, calc.definitions)
-    );
-    theoryLookup = calc.theoryLookup || buildTheoryLookup([...defaultTheories, binlitTheory]);
     const { ffiParsedModes } = require('../../lib/engine/opt/ffi');
     parsedModes = ffiParsedModes;
+    theoryLookup = calc.theoryLookup || buildTheoryLookup([...defaultTheories, binlitTheory]);
+    dispatch = calc.clauseDispatch || buildClauseDispatch(
+      require('../../lib/engine/backchain').buildIndex(calc.clauses, calc.definitions),
+      parsedModes
+    );
   });
 
   describe('buildClauseDispatch', () => {
@@ -93,7 +94,7 @@ describe('Compiled Clause Dispatch', { timeout: 10000 }, () => {
       assert.equal(outVal, 3n, 'inc(2) should equal 3');
     });
 
-    it('falls through for inc(1, ?) — needs carry (subgoal clause)', () => {
+    it('resolves inc(1, ?) = 2 via carry (Tier 2 recursive)', () => {
       const { intToBin } = require('../../lib/engine/ill/ffi/convert');
       const one = intToBin(1n);
       const mv = Store.put('metavar', ['test_out3']);
@@ -105,8 +106,8 @@ describe('Compiled Clause Dispatch', { timeout: 10000 }, () => {
       const result = tryCompiledClause(dispatch, goal, slots, theta,
         binlitTheory.canonicalize, theoryLookup, parsedModes);
 
-      assert.equal(result, null, 'carry case should fall through');
-      assert.equal(theta[0], undefined, 'output should remain unbound');
+      assert.equal(result, true, 'carry case resolved via Tier 2');
+      assert.equal(Store.child(theta[0], 0), 2n, 'inc(1) should equal 2');
     });
 
     it('verifies ground output for fully ground goal', () => {
@@ -160,6 +161,88 @@ describe('Compiled Clause Dispatch', { timeout: 10000 }, () => {
         null, null, parsedModes);
 
       assert.equal(result, null);
+    });
+  });
+
+  describe('Tier 2 — recursive clauses', () => {
+    it('resolves inc(3) = 4 via carry propagation', () => {
+      const { intToBin } = require('../../lib/engine/ill/ffi/convert');
+      const three = intToBin(3n);
+      const mv = Store.put('metavar', ['t2_inc3']);
+      const goal = Store.put('inc', [three, mv]);
+
+      const slots = { [mv]: 0 };
+      const theta = [undefined];
+
+      const result = tryCompiledClause(dispatch, goal, slots, theta,
+        binlitTheory.canonicalize, theoryLookup, parsedModes);
+
+      assert.equal(result, true, 'should resolve inc(3) via Tier 2');
+      assert.equal(Store.child(theta[0], 0), 4n, 'inc(3) should equal 4');
+    });
+
+    it('resolves inc(255) = 256 (8-bit carry chain)', () => {
+      const { intToBin } = require('../../lib/engine/ill/ffi/convert');
+      const mv = Store.put('metavar', ['t2_inc255']);
+      const goal = Store.put('inc', [intToBin(255n), mv]);
+      const theta = [undefined];
+
+      tryCompiledClause(dispatch, goal, { [mv]: 0 }, theta,
+        binlitTheory.canonicalize, theoryLookup, parsedModes);
+
+      assert.equal(Store.child(theta[0], 0), 256n, 'inc(255) should equal 256');
+    });
+
+    it('resolves plus(2,4) = 6 (no carry, Tier 2 recursion)', () => {
+      const { intToBin } = require('../../lib/engine/ill/ffi/convert');
+      const mv = Store.put('metavar', ['t2_plus']);
+      const goal = Store.put('plus', [intToBin(2n), intToBin(4n), mv]);
+      const theta = [undefined];
+
+      const result = tryCompiledClause(dispatch, goal, { [mv]: 0 }, theta,
+        binlitTheory.canonicalize, theoryLookup, parsedModes);
+
+      assert.equal(result, true, 'should resolve plus(2,4) via Tier 2');
+      assert.equal(Store.child(theta[0], 0), 6n, 'plus(2,4) should equal 6');
+    });
+
+    it('falls through for plus(1,1) — carry needs Tier 3 (plus/s4)', () => {
+      const { intToBin } = require('../../lib/engine/ill/ffi/convert');
+      const mv = Store.put('metavar', ['t2_carry']);
+      const goal = Store.put('plus', [intToBin(1n), intToBin(1n), mv]);
+      const theta = [undefined];
+
+      const result = tryCompiledClause(dispatch, goal, { [mv]: 0 }, theta,
+        binlitTheory.canonicalize, theoryLookup, parsedModes);
+
+      assert.equal(result, null, 'carry case should fall through to backchainer');
+    });
+
+    it('resolves trie_get for nested trie', () => {
+      const { intToBin } = require('../../lib/engine/ill/ffi/convert');
+      // Build: tn (tn tn_nil 0x10 tn_nil) 0x42 (tn tn_nil 0x20 tn_nil)
+      const nil = Store.put('atom', ['tn_nil']);
+      const inner_l = Store.put('tn', [nil, intToBin(0x10n), nil]);
+      const inner_r = Store.put('tn', [nil, intToBin(0x20n), nil]);
+      const trie = Store.put('tn', [inner_l, intToBin(0x42n), inner_r]);
+
+      // trie_get(trie, e, ?) — key=e → root value (0x42)
+      const mv = Store.put('metavar', ['trie_v']);
+      const goal = Store.put('trie_get', [trie, intToBin(0n), mv]);
+      const theta = [undefined];
+
+      const result = tryCompiledClause(dispatch, goal, { [mv]: 0 }, theta,
+        binlitTheory.canonicalize, theoryLookup, parsedModes);
+
+      assert.equal(result, true, 'trie_get base case');
+      assert.equal(Store.child(theta[0], 0), 0x42n, 'root value should be 0x42');
+    });
+
+    it('dispatch._tier2 contains expected predicates', () => {
+      assert.ok(dispatch._tier2.inc, 'should have inc');
+      assert.ok(dispatch._tier2.plus, 'should have plus');
+      assert.ok(dispatch._tier2.trie_get, 'should have trie_get');
+      assert.ok(dispatch._tier2.trie_set, 'should have trie_set');
     });
   });
 

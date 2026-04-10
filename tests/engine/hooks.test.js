@@ -173,9 +173,9 @@ describe('Engine Hooks API', { timeout: 10000 }, () => {
         assert.ok(['ffi', 'state', 'compiled', 'clause'].includes(s.method),
           `unknown method: ${s.method}`);
       }
-      // FFI path: all goals should be resolved by FFI (tried first)
-      assert.ok(successes.every(s => s.method === 'ffi'),
-        'expected all goals resolved by ffi in FFI mode');
+      // Hybrid path: goals resolved by compiled dispatch (structural) or FFI (arithmetic)
+      assert.ok(successes.every(s => s.method === 'ffi' || s.method === 'compiled'),
+        `expected ffi/compiled methods, got: ${[...new Set(successes.map(s => s.method))].join(', ')}`);
     });
 
     it('fires with cache/clause methods for noFFI path', () => {
