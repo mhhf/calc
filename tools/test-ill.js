@@ -13,18 +13,16 @@
 const { describe, it } = require('node:test');
 const assert = require('node:assert/strict');
 const path = require('path');
-const mde = require('../lib/engine');
-const convert = require('../lib/engine/convert');
 const {
-  ROOT, findIllFiles, scanDirectives, detectDuplicates, loadProgram,
-  parseModality, stateHasFreevars, isSubset, formatState,
-  show, toObject, getAllLeaves,
+  ROOT, PROGRAM, MAX_STEPS, MAX_DEPTH,
+  findIllFiles, scanDirectives, detectDuplicates, loadProgram,
+  parseModality, decomposeQuery, extractGoals, buildProveOpts,
+  resolveExecOpts, normalizeLeafState,
+  stateHasFreevars, isSubset, formatState,
+  show, getAllLeaves,
 } = require('../lib/engine/directive-loader');
 
 const TEST_DIR = path.join(__dirname, '..', 'calculus', 'ill', 'tests');
-const PROGRAM = path.join(__dirname, '..', 'calculus', 'ill', 'programs', 'evm.ill');
-const MAX_STEPS = 10000;
-const MAX_DEPTH = 100;
 
 // ─── Backward Dispatch (|-) ─────────────────────────────────────────────────
 
@@ -36,23 +34,15 @@ const MAX_DEPTH = 100;
 function dispatchBackward(calc, entry, modality, kind) {
   assert.equal(entry.lhsHash, null, 'Phase 1: empty LHS only for |-');
 
-  // decomposeQuery strips quantifiers (eigenvars → freevar) and bang → persistent
-  const state = convert.decomposeQuery(entry.rhsHash);
-  const goals = [
-    ...Object.keys(state.persistent).map(Number),
-    ...Object.keys(state.linear).map(Number),
-  ];
+  const goals = extractGoals(entry.rhsHash);
   assert.ok(goals.length > 0, 'No goals found in |- directive');
 
-  // Forward per-directive settings to the backward prover
   const settings = calc.querySettings.get(kind);
-  const proveOpts = {};
   if (settings?.useFFI !== undefined) {
     assert.ok(settings.useFFI === 'true' || settings.useFFI === 'false',
       `Invalid useFFI value '${settings.useFFI}' — expected 'true' or 'false'`);
-    proveOpts.useFFI = settings.useFFI === 'true';
   }
-  if (settings?.maxDepth) proveOpts.maxDepth = parseInt(settings.maxDepth, 10);
+  const proveOpts = buildProveOpts(settings);
 
   const results = goals.map(g => calc.prove(g, proveOpts));
   const allSuccess = results.every(r => r.success);
@@ -76,25 +66,22 @@ function dispatchBackward(calc, entry, modality, kind) {
  * Freevar initial → exhaustive explore (symbolic execution tree).
  */
 function dispatchForward(calc, entry, modality, kind, t) {
-  const initial = mde.decomposeQuery(entry.lhsHash);
-  const pattern = mde.decomposeQuery(entry.rhsHash);
+  const initial = decomposeQuery(entry.lhsHash);
+  const pattern = decomposeQuery(entry.rhsHash);
   const settings = calc.querySettings.get(kind);
-  const execOpts = {};
-  if (settings?.rules) execOpts.rules = settings.rules;
   if (settings?.explore !== undefined) {
     assert.ok(settings.explore === 'true' || settings.explore === 'false',
       `Invalid explore value '${settings.explore}' — expected 'true' or 'false'`);
   }
+  const eo = resolveExecOpts(settings);
 
-  const forceExplore = settings?.explore === 'true';
-  if (stateHasFreevars(initial) || forceExplore) {
+  if (stateHasFreevars(initial) || settings?.explore === 'true') {
     // Exhaustive exploration: symbolic (freevars) or explicit (explore: true)
-    const exploreDepth = settings?.maxDepth ? parseInt(settings.maxDepth, 10) : MAX_DEPTH;
-    const tree = calc.explore(initial, { maxDepth: exploreDepth, ...execOpts });
+    const tree = calc.explore(initial, { maxDepth: MAX_DEPTH, ...eo });
     checkTreeModality(modality, getAllLeaves(tree), pattern);
   } else {
     // Concrete: single execution
-    const result = calc.exec(initial, { maxSteps: MAX_STEPS, ...execOpts });
+    const result = calc.exec(initial, { maxSteps: MAX_STEPS, ...eo });
     if (!result.quiescent) {
       if (modality === 'some') {
         t.skip(`Budget exhausted after ${result.steps} steps — inconclusive`);
@@ -130,7 +117,7 @@ function checkTreeModality(modality, leaves, pattern) {
       verdicts.push({ type: leaf.type, match: null, state: leaf.state });
       continue;
     }
-    const plain = toObject(leaf.state);
+    const plain = normalizeLeafState(leaf);
     verdicts.push({ type: 'leaf', match: isSubset(pattern, plain), state: plain });
   }
 

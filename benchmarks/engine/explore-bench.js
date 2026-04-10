@@ -52,8 +52,8 @@ function stats(arr) {
 
 // ─── State setup ─────────────────────────────────────────────────────────────
 
-async function setupState() {
-  const calc = await mde.load(
+function setupState() {
+  const calc = mde.load(
     path.join(__dirname, '../../calculus/ill/programs/multisig.ill')
   );
 
@@ -209,7 +209,7 @@ function instrumentedExplore(initialState, rules, calcCtx, maxDepth) {
 // ─── Benchmark run ───────────────────────────────────────────────────────────
 
 async function runBenchmark(doProfile) {
-  const { calc, state } = await setupState();
+  const { calc, state } = setupState();
   const calcCtx = {
     clauses: calc.clauses,
     definitions: calc.definitions,

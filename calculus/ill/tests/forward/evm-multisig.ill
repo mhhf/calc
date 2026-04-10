@@ -1,0 +1,16 @@
+% Multisig exploration — observation directives for symbolic execution.
+% Usage: npm run debug:ill -- calculus/ill/tests/forward/evm-multisig.ill --program calculus/ill/programs/multisig_nocall.ill
+
+#import(../../programs/multisig_nocall.ill)
+
+% ── Observation: explore all paths and classify leaves ───────────────────────
+
+#debug_symex (query: symex) I .
+
+% ── Observation: trace execution steps ───────────────────────────────────────
+
+#trace_symex (query: symex) I .
+
+% ── Observation: benchmark exploration ───────────────────────────────────────
+
+#benchmark_symex (query: symex) (iterations: 5) (mode: explore) I .

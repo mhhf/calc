@@ -105,7 +105,7 @@ for (const pred of preds) {
 
     // Clause path
     const clauseResult = backward.prove(ffiGoal, ec.clauses, ec.definitions, {
-      maxDepth: 20000, index: ec.backchainIndex, allBuckets: true, useFFI: false
+      maxDepth: 20000, allBuckets: true, useFFI: false
     });
 
     // Compare
