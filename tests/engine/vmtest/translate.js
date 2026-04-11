@@ -106,13 +106,22 @@ function fixtureToState(fixture, calc) {
   const codeLenBytes = BigInt(codeClean.length / 2);
   linear[Store.put('codesize', [intToBin(codeLenBytes)])] = 1;
 
-  // Environment: timestamp, gaslimit
+  // Environment: timestamp, gaslimit, coinbase, number, difficulty
   if (fixture.env) {
     const timestamp = Store.put('timestamp', [hexToBinHash(fixture.env.currentTimestamp)]);
     linear[timestamp] = 1;
 
     const gaslimit = Store.put('gaslimit', [hexToBinHash(fixture.env.currentGasLimit)]);
     linear[gaslimit] = 1;
+
+    const coinbase = Store.put('coinbase', [hexToBinHash(fixture.env.currentCoinbase)]);
+    linear[coinbase] = 1;
+
+    const number = Store.put('number', [hexToBinHash(fixture.env.currentNumber)]);
+    linear[number] = 1;
+
+    const difficulty = Store.put('difficulty', [hexToBinHash(fixture.env.currentDifficulty)]);
+    linear[difficulty] = 1;
   }
 
   // Pre-existing storage + initializedStorage list

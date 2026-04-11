@@ -19,6 +19,36 @@ const FIXTURES_DIR = path.join(__dirname, '../../fixtures/VMTests');
 // Skip all tests if fixtures not fetched
 const fixturesExist = fs.existsSync(FIXTURES_DIR);
 
+// Known failures: tests that fail for documented reasons (not regressions)
+const KNOWN_FAILURES = new Set([
+  // vmSha3Test: concrete keccak256 not implemented (symbolic sha3 only)
+  'vmSha3Test/sha3_0', 'vmSha3Test/sha3_1', 'vmSha3Test/sha3_2',
+  'vmSha3Test/sha3_bigOffset2',
+  'vmSha3Test/sha3_memSizeNoQuadraticCost31',
+  'vmSha3Test/sha3_memSizeQuadraticCost32',
+  'vmSha3Test/sha3_memSizeQuadraticCost32_zeroSize',
+  'vmSha3Test/sha3_memSizeQuadraticCost33',
+  'vmSha3Test/sha3_memSizeQuadraticCost63',
+  'vmSha3Test/sha3_memSizeQuadraticCost64',
+  'vmSha3Test/sha3_memSizeQuadraticCost64_2',
+  'vmSha3Test/sha3_memSizeQuadraticCost65',
+  // vmPerformance: step limit exceeded (loops need millions of steps)
+  'vmPerformance/fibonacci16',
+  'vmPerformance/loop-add-10M', 'vmPerformance/loop-divadd-10M',
+  'vmPerformance/loop-divadd-unr100-10M',
+  'vmPerformance/loop-exp-16b-100k', 'vmPerformance/loop-exp-1b-1M',
+  'vmPerformance/loop-exp-2b-100k', 'vmPerformance/loop-exp-32b-100k',
+  'vmPerformance/loop-exp-4b-100k', 'vmPerformance/loop-exp-8b-100k',
+  'vmPerformance/loop-exp-nop-1M', 'vmPerformance/loop-mul',
+  'vmPerformance/loop-mulmod-2M',
+]);
+
+// Per-test step limit overrides (default: 10000)
+const STEP_OVERRIDES = {
+  'vmIOandFlowOperations/loop_stacklimit_1020': 15000,
+  'vmPerformance/ackermann32': 20000,
+};
+
 /**
  * Load a VMTest fixture file, returning { name, fixture } for each test in it.
  */
@@ -32,9 +62,9 @@ function loadFixture(category, filename) {
 /**
  * Run a single VMTest fixture and return { actual, expected }.
  */
-function runFixture(fixture, calc) {
+function runFixture(fixture, calc, maxSteps) {
   const state = fixtureToState(fixture, calc);
-  const result = calc.exec(state, { maxSteps: 10000 });
+  const result = calc.exec(state, { maxSteps });
 
   const actual = extractResult(result.state);
 
@@ -81,22 +111,25 @@ describe('VMTest Conformance', { skip: !fixturesExist && 'Fixtures not fetched (
 
   /**
    * Run all fixtures in a category file, asserting storage match.
-   * Skips OOG tests (no post state).
+   * Skips OOG tests (no post state). Known failures are marked as TODO.
    */
   function runStorageTest(category, file) {
-    it(file.replace('.json', ''), () => {
+    const testName = file.replace('.json', '');
+    const knownKey = `${category}/${testName}`;
+    const isKnown = KNOWN_FAILURES.has(knownKey);
+    const maxSteps = STEP_OVERRIDES[knownKey] || 10000;
+
+    it(testName, { todo: isKnown && 'known failure' }, () => {
       const tests = loadFixture(category, file);
       for (const { name, fixture } of tests) {
         if (!fixture.post) {
           // OOG test — no expected post state
-          // Verify the engine doesn't crash, but skip storage comparison
           const state = fixtureToState(fixture, calc);
-          const result = calc.exec(state, { maxSteps: 10000 });
-          assert.ok(true, `${name}: OOG test (ran ${result.steps} steps)`);
+          calc.exec(state, { maxSteps });
           continue;
         }
 
-        const { actual, expected, quiescent } = runFixture(fixture, calc);
+        const { actual, expected, quiescent } = runFixture(fixture, calc, maxSteps);
 
         assert.ok(quiescent, `${name}: should reach quiescence`);
         assert.ok(
@@ -121,4 +154,12 @@ describe('VMTest Conformance', { skip: !fixturesExist && 'Fixtures not fetched (
   runCategory('vmBitwiseLogicOperation');
   runCategory('vmPushDupSwapTest');
   runCategory('vmEnvironmentalInfo');
+  runCategory('vmSystemOperations');
+  runCategory('vmTests');
+  runCategory('vmRandomTest');
+  runCategory('vmIOandFlowOperations');
+  runCategory('vmLogTest');
+  runCategory('vmBlockInfoTest');
+  runCategory('vmSha3Test');
+  runCategory('vmPerformance');
 });

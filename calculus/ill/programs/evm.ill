@@ -96,6 +96,9 @@ origin: bin -> type.
 balance: (addr: bin) -> (amount: bin) -> type.
 callvalue: bin -> type.
 gasprice: bin -> type.
+coinbase: bin -> type.
+number: bin -> type.
+difficulty: bin -> type.
 calldata: bin -> type.
 calldatasize: bin -> type.
 codesize: bin -> type.
@@ -928,6 +931,26 @@ evm/gasprice:
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%  40
 
+evm/blockhash:
+  !_0 step 0x40 PC' 0x14 GAS' BC *
+  stack [BLOCKNUM | S]
+  -o {
+    pc PC' *
+    gas GAS' *
+    stack [0 | S]
+  }.
+
+evm/coinbase:
+  !_0 step 0x41 PC' 2 GAS' BC *
+  stack S *
+  coinbase CB
+  -o {
+    pc PC' *
+    gas GAS' *
+    coinbase CB *
+    stack [CB | S]
+  }.
+
 evm/timestamp:
   !_0 step 0x42 PC' 2 GAS' BC *
   stack S *
@@ -937,6 +960,28 @@ evm/timestamp:
     gas GAS' *
     timestamp TS *
     stack [TS | S]
+  }.
+
+evm/number:
+  !_0 step 0x43 PC' 2 GAS' BC *
+  stack S *
+  number N
+  -o {
+    pc PC' *
+    gas GAS' *
+    number N *
+    stack [N | S]
+  }.
+
+evm/difficulty:
+  !_0 step 0x44 PC' 2 GAS' BC *
+  stack S *
+  difficulty D
+  -o {
+    pc PC' *
+    gas GAS' *
+    difficulty D *
+    stack [D | S]
   }.
 
 evm/gaslimit:
@@ -1000,6 +1045,16 @@ evm/mstore8:
     pc PC' * stack REST *
     gas GAS' *
     mem (write Offset NewWord M) * memsize S'
+  }.
+
+evm/pc:
+  !_0 step 0x58 PC' 2 GAS' BC *
+  stack S *
+  !dec PC' CurPC
+  -o {
+    pc PC' *
+    gas GAS' *
+    stack [CurPC | S]
   }.
 
 evm/msize:
@@ -1131,6 +1186,26 @@ evm/push0:
   }.
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%  a0
+
+evm/log0:
+  !_0 step 0xa0 PC' 0x177 GAS' BC *
+  stack [V0, V1 | REST]
+  -o {
+    pc PC' *
+    gas GAS' *
+    stack REST *
+    log0
+  }.
+
+evm/log1:
+  !_0 step 0xa1 PC' 0x2ee GAS' BC *
+  stack [V0, V1, V2 | REST]
+  -o {
+    pc PC' *
+    gas GAS' *
+    stack REST *
+    log1 V2
+  }.
 
 evm/log2:
   !_0 step 0xa2 PC' 0x465 GAS' BC *
