@@ -1,26 +1,86 @@
 #!/usr/bin/env node
 /**
- * Convert bench-history.js JSON output to a markdown document
- * with frontmatter compatible with os-web doc rendering.
+ * Convert benchmark run files to a compiled markdown document
+ * with chart data for os-web rendering.
+ *
+ * Reads all JSON files from a runs directory, aggregates per-commit
+ * statistics (averaging means across multiple runs), and outputs
+ * a markdown document with an embedded bench-chart code block.
  *
  * Usage:
- *   node tools/bench-to-doc.js <results.json>
+ *   node tools/bench-to-doc.js --runs-dir=<dir>
  */
 
 const fs = require('fs');
 const path = require('path');
 
-const inputFile = process.argv[2];
-if (!inputFile) {
-  console.error('Usage: node tools/bench-to-doc.js <results.json>');
-  process.exit(1);
+// ─── Arg parsing ──────────────────────────────────────────────────────────────
+
+function parseArgs() {
+  const args = process.argv.slice(2);
+  let runsDir = null;
+  for (const arg of args) {
+    if (arg.startsWith('--runs-dir=')) runsDir = arg.slice(11);
+  }
+  return { runsDir };
 }
 
-const data = JSON.parse(fs.readFileSync(inputFile, 'utf8'));
-const { config, results, timestamp } = data;
+// ─── Aggregation ──────────────────────────────────────────────────────────────
 
-const now = new Date(timestamp || Date.now());
-const dateStr = now.toISOString().slice(0, 10);
+function aggregate(runsDir) {
+  const files = fs.readdirSync(runsDir).filter(f => f.endsWith('.json'));
+  if (files.length === 0) {
+    console.error('No JSON files found in', runsDir);
+    process.exit(1);
+  }
+
+  // Collect all data points per commit (keyed by fullHash)
+  const commitMap = new Map();
+
+  for (const file of files) {
+    const data = JSON.parse(fs.readFileSync(path.join(runsDir, file), 'utf8'));
+    for (const result of data.results || []) {
+      if (!result.data || result.data.error) continue;
+
+      if (!commitMap.has(result.fullHash)) {
+        commitMap.set(result.fullHash, {
+          fullHash: result.fullHash,
+          shortHash: result.shortHash,
+          date: result.date,
+          subject: result.subject,
+          means: [],
+          stddevs: [],
+          nodes: result.data.nodes,
+          branches: result.data.branches,
+        });
+      }
+
+      const entry = commitMap.get(result.fullHash);
+      entry.means.push(result.data.mean);
+      entry.stddevs.push(result.data.stddev);
+    }
+  }
+
+  // Compute aggregated stats per commit
+  const commits = Array.from(commitMap.values()).map(c => ({
+    fullHash: c.fullHash,
+    shortHash: c.shortHash,
+    date: c.date,
+    subject: c.subject,
+    mean: c.means.reduce((a, b) => a + b, 0) / c.means.length,
+    stddev: c.stddevs.reduce((a, b) => a + b, 0) / c.stddevs.length,
+    runCount: c.means.length,
+    nodes: c.nodes,
+    branches: c.branches,
+  }));
+
+  // Sort oldest-first (for left-to-right chronological chart)
+  commits.sort((a, b) => a.date.localeCompare(b.date) || a.fullHash.localeCompare(b.fullHash));
+
+  return { totalCommits: commits.length, totalRuns: files.length, commits };
+}
+
+// ─── Document generation ──────────────────────────────────────────────────────
 
 function fmtMs(ms) {
   if (ms === undefined || ms === null) return '—';
@@ -29,69 +89,58 @@ function fmtMs(ms) {
   return `${ms.toFixed(0)}ms`;
 }
 
-function fmtChange(current, baseline) {
-  if (!baseline || !current) return '—';
-  const pct = ((current - baseline) / baseline) * 100;
-  const sign = pct > 0 ? '+' : '';
-  return `${sign}${pct.toFixed(1)}%`;
-}
+function buildDocument(agg) {
+  const { totalCommits, totalRuns, commits } = agg;
+  const dateStr = new Date().toISOString().slice(0, 10);
 
-// Find baseline (newest successful result)
-let baselineMean = null;
-for (const r of results) {
-  if (r.data && !r.data.error) {
-    baselineMean = r.data.mean;
-    break;
+  const vals = commits.map(c => c.mean);
+  const minMs = vals.length > 0 ? Math.min(...vals) : null;
+  const maxMs = vals.length > 0 ? Math.max(...vals) : null;
+
+  const lines = [];
+
+  // Frontmatter
+  lines.push('---');
+  lines.push('title: "Calc Benchmarks"');
+  lines.push(`summary: "${totalCommits} commits across ${totalRuns} run${totalRuns === 1 ? '' : 's'} — explore solc_symbolic"`);
+  lines.push('tags:');
+  lines.push('  - benchmarks');
+  lines.push('  - performance');
+  lines.push('project: calc');
+  lines.push('status: active');
+  lines.push(`modified: "${dateStr}"`);
+  lines.push('---');
+  lines.push('');
+
+  // Body
+  lines.push('## Benchmark: explore solc_symbolic');
+  lines.push('');
+  lines.push('Benchmark of `explore()` on `solc_symbolic` with FFI + all optimizations enabled.');
+  lines.push('');
+  lines.push(`- **Commits**: ${totalCommits}`);
+  lines.push(`- **Benchmark runs**: ${totalRuns}`);
+  lines.push(`- **Last updated**: ${dateStr}`);
+  if (minMs !== null) {
+    lines.push(`- **Range**: ${fmtMs(minMs)} — ${fmtMs(maxMs)}`);
   }
+  lines.push('');
+
+  // Embedded chart data
+  lines.push('```bench-chart');
+  lines.push(JSON.stringify({ commits }, null, 2));
+  lines.push('```');
+  lines.push('');
+
+  return lines.join('\n');
 }
 
-const successful = results.filter(r => r.data && !r.data.error);
-const vals = successful.map(r => r.data.mean);
-const minMs = vals.length > 0 ? Math.min(...vals) : null;
-const maxMs = vals.length > 0 ? Math.max(...vals) : null;
+// ─── Main ─────────────────────────────────────────────────────────────────────
 
-// Build markdown
-const lines = [];
-
-lines.push('---');
-lines.push('title: "Calc Benchmarks"');
-lines.push(`summary: "${successful.length}/${results.length} commits benchmarked — explore solc_symbolic (${config.runs || '?'} runs, ${config.warmup || '?'} warmup)"`);
-lines.push('tags:');
-lines.push('  - benchmarks');
-lines.push('  - performance');
-lines.push('project: calc');
-lines.push('status: active');
-lines.push(`modified: "${dateStr}"`);
-lines.push('---');
-lines.push('');
-lines.push('## Benchmark: explore solc_symbolic');
-lines.push('');
-lines.push(`Benchmark of \`explore()\` on \`solc_symbolic\` across ${results.length} commits with FFI + all optimizations enabled.`);
-lines.push('');
-lines.push(`- **Runs per commit**: ${config.runs || '?'} timed, ${config.warmup || '?'} warmup`);
-lines.push(`- **Last updated**: ${dateStr}`);
-if (minMs !== null) {
-  lines.push(`- **Range**: ${fmtMs(minMs)} — ${fmtMs(maxMs)} (${((maxMs / minMs - 1) * 100).toFixed(1)}% spread)`);
-}
-lines.push('');
-lines.push('| # | Commit | Date | Message | Nodes | Leaves | Mean | StdDev | vs HEAD |');
-lines.push('|---|--------|------|---------|------:|-------:|-----:|-------:|--------:|');
-
-for (let i = 0; i < results.length; i++) {
-  const r = results[i];
-  const subject = r.subject.length > 40 ? r.subject.slice(0, 37) + '...' : r.subject;
-
-  if (r.data && r.data.error) {
-    lines.push(`| ${i} | ${r.shortHash} | ${r.date} | ${subject} | — | — | ERROR | — | — |`);
-  } else if (!r.data) {
-    lines.push(`| ${i} | ${r.shortHash} | ${r.date} | ${subject} | — | — | — | — | — |`);
-  } else {
-    lines.push(`| ${i} | ${r.shortHash} | ${r.date} | ${subject} | ${r.data.nodes} | ${r.data.branches} | ${fmtMs(r.data.mean)} | ${fmtMs(r.data.stddev)} | ${fmtChange(r.data.mean, baselineMean)} |`);
-  }
+const opts = parseArgs();
+if (!opts.runsDir) {
+  console.error('Usage: node tools/bench-to-doc.js --runs-dir=<dir>');
+  process.exit(1);
 }
 
-lines.push('');
-lines.push(`*${successful.length}/${results.length} commits benchmarked successfully.*`);
-lines.push('');
-
-process.stdout.write(lines.join('\n'));
+const agg = aggregate(opts.runsDir);
+process.stdout.write(buildDocument(agg));
