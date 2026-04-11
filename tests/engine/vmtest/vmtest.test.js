@@ -22,7 +22,6 @@ const fixturesExist = fs.existsSync(FIXTURES_DIR);
 // Known failures: tests that fail for documented reasons (not regressions)
 const KNOWN_FAILURES = new Set([
   // vmPerformance: step limit exceeded (loops need millions of steps)
-  'vmPerformance/fibonacci16',
   'vmPerformance/loop-add-10M', 'vmPerformance/loop-divadd-10M',
   'vmPerformance/loop-divadd-unr100-10M',
   'vmPerformance/loop-exp-16b-100k', 'vmPerformance/loop-exp-1b-1M',
@@ -36,6 +35,7 @@ const KNOWN_FAILURES = new Set([
 const STEP_OVERRIDES = {
   'vmIOandFlowOperations/loop_stacklimit_1020': 15000,
   'vmPerformance/ackermann32': 20000,
+  'vmPerformance/fibonacci16': 110000,
 };
 
 /**
