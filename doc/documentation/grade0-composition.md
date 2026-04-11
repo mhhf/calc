@@ -140,7 +140,7 @@ Both invalidated on `Store.clear()` via the `onClear` hook.
 
 ## Theory
 
-Each `composePair`/`fuseLinearPair` call is one cut step on the SELL calculus (Nigam-Miller PPDP 2009). SELL cut admissibility ensures each step preserves derivability. Grade-0 non-interference (Atkey 2018; Choudhury et al. POPL 2021) justifies that grade-0 intermediates are compile-time scaffolding with no runtime effect. See THY_0015 for the stratified cut elimination proof and THY_0016 for the partial evaluation / Futamura projection framework.
+Each `composePair`/`fuseLinearPair` call is one cut step on the SELL calculus (Nigam-Miller PPDP 2009). SELL cut admissibility ensures each step preserves derivability. Grade-0 non-interference (Atkey 2018; Choudhury et al. POPL 2021) justifies that grade-0 intermediates are compile-time scaffolding with no runtime effect. See THY_0015 for the stratified cut elimination proof, THY_0016 for the partial evaluation / Futamura projection framework, and `fusion-symex-spectrum.md` for how the compose pipeline and runtime exploration form a continuous spectrum of forward rule fusion.
 
 ## Version History
 

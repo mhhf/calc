@@ -1,20 +1,20 @@
 tags:
   linear-logic: 62
-  forward-chaining: 40
+  forward-chaining: 41
   proof-theory: 29
   clf: 22
   focusing: 19
   chr: 18
-  architecture: 15
-  optimization: 15
-  symbolic-execution: 15
+  architecture: 16
+  optimization: 16
+  symbolic-execution: 16
   performance: 14
   adjoint-logic: 13
   lax-monad: 13
   QTT: 13
+  cut-elimination: 12
   graded-types: 12
   implementation: 12
-  cut-elimination: 11
   session-types: 11
   Ceptre: 10
   evm: 10
@@ -27,10 +27,11 @@ tags:
   Celf: 8
   exponentials: 8
   ownership: 8
+  partial-evaluation: 8
   resource-semantics: 8
   category-theory: 7
   multiset-rewriting: 7
-  partial-evaluation: 7
+  staging: 7
   subexponentials: 7
   symexec: 7
   coinduction: 6
@@ -43,7 +44,6 @@ tags:
   quiescence: 6
   semiring: 6
   soundness: 6
-  staging: 6
   theory: 6
   authorization: 5
   backward-chaining: 5
@@ -52,6 +52,7 @@ tags:
   memory-model: 5
   muMALL: 5
   plonky3: 5
+  supercompilation: 5
   accounting: 4
   blockchain: 4
   CLP: 4
@@ -72,7 +73,6 @@ tags:
   separation-logic: 4
   smt: 4
   stark: 4
-  supercompilation: 4
   termination: 4
   type-theory: 4
   unification: 4
@@ -122,6 +122,7 @@ tags:
   fibrations: 2
   finality: 2
   forward-engine: 2
+  Futamura: 2
   halmos: 2
   HCP: 2
   hereditary-substitution: 2
@@ -262,7 +263,6 @@ tags:
   foundations: 1
   fresh-variables: 1
   functor-arity: 1
-  Futamura: 1
   Galois-connection: 1
   games: 1
   gap-analysis: 1
