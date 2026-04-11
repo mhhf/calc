@@ -1,8 +1,8 @@
 /**
- * Tests for SHA3 opcode refactoring (exists + backward clauses)
+ * Tests for SHA3 opcode (exists + backward clauses + keccak256 FFI)
  *
- * Verifies that evm/sha3 using the exists + sha3_compute pattern
- * produces correct sha3(Bytes) constructor results.
+ * Verifies that evm/sha3 produces correct concrete keccak256 hashes
+ * when memory is ground, via the sha3_compute FFI.
  */
 
 const { describe, it, before } = require('node:test');
@@ -87,7 +87,6 @@ function getStackTop(state) {
     const hNum = Number(h);
     if (Store.tagId(hNum) === stackTagId) {
       const listH = Store.child(hNum, 0);
-      // Stack may be arrlit (optimized) or acons (list)
       const elems = Store.getArrayElements(listH);
       if (elems && elems.length > 0) return elems[0];
       if (Store.tag(listH) === 'acons') return Store.child(listH, 0);
@@ -103,7 +102,7 @@ describe('SHA3 opcode (exists + sha3_compute)', { timeout: 30000 }, () => {
     calc = mde.load(path.join(__dirname, '../../calculus/ill/programs/evm.ill'));
   });
 
-  it('SHA3 of 32 bytes produces sha3(concat(V, 0))', () => {
+  it('SHA3 of 32 bytes produces concrete keccak256', () => {
     // PUSH1 0xFF, PUSH1 0x00, MSTORE, PUSH1 0x20, PUSH1 0x00, SHA3, STOP
     const code = '60ff6000526020600020 00'.replace(/\s/g, '');
     const state = makeState(code, calc);
@@ -114,15 +113,13 @@ describe('SHA3 opcode (exists + sha3_compute)', { timeout: 30000 }, () => {
 
     const top = getStackTop(result.state);
     assert.ok(top !== null, 'Stack should not be empty');
-    assert.equal(Store.tag(top), 'sha3', 'Stack top should be sha3 constructor');
-
-    // sha3(concat(V, 0)) — right-recursive cons-list with 0 as nil
-    const inner = Store.child(top, 0);
-    assert.equal(Store.tag(inner), 'concat', 'sha3 inner should be concat');
-    assert.equal(binToInt(Store.child(inner, 1)), 0n, 'tail should be 0 (nil)');
+    const val = binToInt(top);
+    assert.ok(val !== null, 'Stack top should be a concrete number');
+    // keccak256(0x00..00FF) = e08ec2af...
+    assert.equal(val, BigInt('0xe08ec2af2cfc251225e1968fd6ca21e4044f129bffa95bac3503be8bdb30a367'));
   });
 
-  it('SHA3 of 64 bytes produces right-recursive concat', () => {
+  it('SHA3 of 64 bytes produces correct keccak256', () => {
     // PUSH1 0xAA, PUSH1 0x00, MSTORE,
     // PUSH1 0xBB, PUSH1 0x20, MSTORE,
     // PUSH1 0x40, PUSH1 0x00, SHA3, STOP
@@ -135,17 +132,12 @@ describe('SHA3 opcode (exists + sha3_compute)', { timeout: 30000 }, () => {
 
     const top = getStackTop(result.state);
     assert.ok(top !== null, 'Stack should not be empty');
-    assert.equal(Store.tag(top), 'sha3', 'Stack top should be sha3 constructor');
-
-    // sha3(concat(V0, concat(V1, 0))) — right-recursive
-    const c0 = Store.child(top, 0);
-    assert.equal(Store.tag(c0), 'concat', 'outer should be concat');
-    const c1 = Store.child(c0, 1);
-    assert.equal(Store.tag(c1), 'concat', 'tail should be concat');
-    assert.equal(binToInt(Store.child(c1, 1)), 0n, 'tail of tail should be 0 (nil)');
+    const val = binToInt(top);
+    assert.ok(val !== null, 'Stack top should be a concrete number');
+    assert.equal(val, BigInt('0xe75341cef40916e44766738c5c2fc48518809c87d2843a8bec425b4bc23f242e'));
   });
 
-  it('SHA3 of 0 bytes produces sha3(0)', () => {
+  it('SHA3 of 0 bytes produces keccak256(empty)', () => {
     // PUSH1 0x00, PUSH1 0x00, SHA3, STOP
     const code = '6000600020 00'.replace(/\s/g, '');
     const state = makeState(code, calc);
@@ -156,26 +148,19 @@ describe('SHA3 opcode (exists + sha3_compute)', { timeout: 30000 }, () => {
 
     const top = getStackTop(result.state);
     assert.ok(top !== null, 'Stack should not be empty');
-    assert.equal(Store.tag(top), 'sha3', 'Stack top should be sha3 constructor');
-
-    // sha3(0) — the 0 is the base case
-    const inner = Store.child(top, 0);
-    assert.equal(binToInt(inner), 0n, 'sha3 of empty should be sha3(0)');
+    const val = binToInt(top);
+    assert.ok(val !== null, 'Stack top should be a concrete number');
+    // keccak256('') = c5d24601...
+    assert.equal(val, BigInt('0xc5d2460186f7233c927e7db2dcc703c0e500b653ca82273b7bfad8045d85a470'));
   });
 
-  it('refactored SHA3 takes fewer forward steps (no state machine)', () => {
-    // The exists + backward clause approach should take ~6 forward steps:
-    // push, push, mstore, push, push, sha3, stop
-    // vs the old state machine: push, push, mstore, push, push, sha3,
-    //   sha3_iter/step, sha3_iter/done, loli:sha3_done, stop (10 steps)
+  it('SHA3 takes few forward steps (no state machine)', () => {
     const code = '60ff6000526020600020 00'.replace(/\s/g, '');
     const state = makeState(code, calc);
     const result = calc.exec(state, { maxSteps: 500, trace: true });
 
     assert.ok(result.quiescent);
-    // After refactoring: should be 7 steps (no sha3_iter, no loli)
     assert.ok(result.steps <= 7, `Expected <= 7 steps, got ${result.steps}`);
-    // Should NOT contain sha3_iter or loli in trace
     const traceStr = result.trace.join(' ');
     assert.ok(!traceStr.includes('sha3_iter'), 'Should not use sha3_iter');
     assert.ok(!traceStr.includes('loli'), 'Should not use loli');

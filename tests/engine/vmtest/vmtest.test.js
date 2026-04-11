@@ -21,17 +21,6 @@ const fixturesExist = fs.existsSync(FIXTURES_DIR);
 
 // Known failures: tests that fail for documented reasons (not regressions)
 const KNOWN_FAILURES = new Set([
-  // vmSha3Test: concrete keccak256 not implemented (symbolic sha3 only)
-  'vmSha3Test/sha3_0', 'vmSha3Test/sha3_1', 'vmSha3Test/sha3_2',
-  'vmSha3Test/sha3_bigOffset2',
-  'vmSha3Test/sha3_memSizeNoQuadraticCost31',
-  'vmSha3Test/sha3_memSizeQuadraticCost32',
-  'vmSha3Test/sha3_memSizeQuadraticCost32_zeroSize',
-  'vmSha3Test/sha3_memSizeQuadraticCost33',
-  'vmSha3Test/sha3_memSizeQuadraticCost63',
-  'vmSha3Test/sha3_memSizeQuadraticCost64',
-  'vmSha3Test/sha3_memSizeQuadraticCost64_2',
-  'vmSha3Test/sha3_memSizeQuadraticCost65',
   // vmPerformance: step limit exceeded (loops need millions of steps)
   'vmPerformance/fibonacci16',
   'vmPerformance/loop-add-10M', 'vmPerformance/loop-divadd-10M',
