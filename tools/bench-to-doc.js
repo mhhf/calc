@@ -74,8 +74,9 @@ function aggregate(runsDir) {
     branches: c.branches,
   }));
 
-  // Sort oldest-first (for left-to-right chronological chart)
-  commits.sort((a, b) => a.date.localeCompare(b.date) || a.fullHash.localeCompare(b.fullHash));
+  // Results files preserve git log order (newest-first from bench-history.js).
+  // Map insertion order retains that — reverse for oldest-first (chart left→right).
+  commits.reverse();
 
   return { totalCommits: commits.length, totalRuns: files.length, commits };
 }
