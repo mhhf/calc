@@ -154,7 +154,7 @@ FFI is optimization, theory is semantics. Every FFI predicate MUST have backward
 
 - `provePersistentGoals` (match.js): FFI → state lookup → clause resolution
 - FFI failure is advisory: `{ success: false }` falls through to clause resolution
-- FFI-only (no clause fallback): `mem_expand`, `mod`
+- All FFI predicates have backward clause definitions (FFI is optimization only)
 
 ## Common Gotchas
 
