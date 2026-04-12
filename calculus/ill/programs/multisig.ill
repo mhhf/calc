@@ -34,7 +34,7 @@ isNotMember/z:
   #import(multisig_code.ill)
 
   % Sender is Member01
-  !eq Sender Member01 *
+  !eq_bool Sender Member01 1 *
 
   % Storage
   storage (sha3 (Deadline ++ (Target ++ (Value ++ 0)))) 2 *

@@ -104,25 +104,26 @@ describe('Solc multisig symbolic (structural memo)', { timeout: 30000, concurren
     treeMemo = explore(state, calc.forwardRules, { ...opts, structuralMemo: true });
   });
 
-  it('full exploration has 2023 nodes and 31 leaves', () => {
-    assert.strictEqual(countNodes(treeFull), 2023, 'Expected 2023 nodes');
-    assert.strictEqual(getAllLeaves(treeFull).length, 31, 'Expected 31 leaves');
+  it('full exploration has 214 nodes and 2 leaves', () => {
+    assert.strictEqual(countNodes(treeFull), 214, 'Expected 214 nodes');
+    assert.strictEqual(getAllLeaves(treeFull).length, 2, 'Expected 2 leaves');
   });
 
-  it('structural memo reduces to <500 nodes', () => {
+  it('structural memo has same tree (no redundant branches to memo)', () => {
     const n = countNodes(treeMemo);
-    assert(n < 500, `Expected <500 nodes with memo, got ${n}`);
+    assert.strictEqual(n, 214, `Expected 214 nodes with memo, got ${n}`);
   });
 
-  it('structural memo produces memo nodes', () => {
-    let memoCount = 0;
-    function walk(node) {
-      if (!node) return;
-      if (node.type === 'memo') memoCount++;
-      if (node.children) for (const c of node.children) walk(c.child || c);
+  it('leaves are STOP + REVERT (all infeasible branches pruned)', () => {
+    const leaves = getAllLeaves(treeFull);
+    const classes = {};
+    for (const l of leaves) {
+      const { classifyLeaf } = require('../../lib/engine/show');
+      const cl = classifyLeaf(l.state);
+      classes[cl] = (classes[cl] || 0) + 1;
     }
-    walk(treeMemo);
-    assert(memoCount > 0, `Expected memo nodes, got ${memoCount}`);
+    assert.strictEqual(classes.STOP, 1, 'Expected 1 STOP leaf');
+    assert.strictEqual(classes.REVERT, 1, 'Expected 1 REVERT leaf');
   });
 
   it('no bound or cycle nodes (full exploration achieved)', () => {

@@ -35,7 +35,7 @@ isNotMember/z:
   #import(multisig_nocall_code.ill)
 
   % Sender is Member01
-  !eq Sender Member01 *
+  !eq_bool Sender Member01 1 *
 
   % Storage — fired flag slot (initially 0)
   storage 0xff 0 *

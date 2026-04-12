@@ -465,16 +465,16 @@ describe('E2E persistent step correctness', { timeout: 30000, concurrency: 1 }, 
       structuralMemo: false,
       dangerouslyUseFFI: true // Testing structural memo, not adversarial soundness
     });
-    assert.strictEqual(countNodes(treeFull), 2023, 'Full: expected 2023 nodes');
-    assert.strictEqual(getAllLeaves(treeFull).length, 31, 'Full: expected 31 leaves');
+    assert.strictEqual(countNodes(treeFull), 214, 'Full: expected 214 nodes');
+    assert.strictEqual(getAllLeaves(treeFull).length, 2, 'Full: expected 2 leaves');
 
-    // With structural memo
+    // With structural memo (same tree — no redundant branches to memo)
     const treeMemo = explore(state, calc.forwardRules, {
       maxDepth: 500,
       calc: { clauses: calc.clauses, definitions: calc.definitions },
       structuralMemo: true,
       dangerouslyUseFFI: true
     });
-    assert(countNodes(treeMemo) < 500, `Memo: expected <500 nodes, got ${countNodes(treeMemo)}`);
+    assert.strictEqual(countNodes(treeMemo), 214, `Memo: expected 214 nodes, got ${countNodes(treeMemo)}`);
   });
 });

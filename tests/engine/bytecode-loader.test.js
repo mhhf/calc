@@ -49,9 +49,10 @@ describe('bytecode-loader: loadBytecode', () => {
     const arrGetFacts = result.facts.get('arr_get');
     assert.ok(arrGetFacts, 'should have arr_get facts');
 
-    // Semantic: PC0=PUSH1(0x60), PC1=0x40, PC2=PUSH1(0x60), PC3=0x00, PC4=0 (implicit STOP)
-    // Pre-scan extends array when PUSH data reaches end of bytecode
-    assert.equal(arrGetFacts.length, 5, '5 semantic positions (including implicit STOP)');
+    // Semantic: PC0=PUSH1(0x60), PC1=filler, PC2=PUSH1(0x60), PC3=filler, PC4=0 (implicit STOP)
+    // PUSH data positions (PC1, PC3) are fillers — skipped to prevent phantom rules.
+    // Pre-scan extends array when PUSH data reaches end of bytecode.
+    assert.equal(arrGetFacts.length, 3, '3 semantic positions (PUSH data fillers skipped)');
 
     // Check PC0 value = 0x60 (PUSH1 opcode)
     const pc0 = arrGetFacts[0].hash;
@@ -59,10 +60,10 @@ describe('bytecode-loader: loadBytecode', () => {
     const pc0val = Store.child(pc0, 2); // 3rd arg = value
     assert.equal(binToInt(pc0val), 0x60n, 'PC0 = PUSH1 opcode (0x60)');
 
-    // Check PC1 value = 0x40 (combined PUSH data)
-    const pc1 = arrGetFacts[1].hash;
-    const pc1val = Store.child(pc1, 2);
-    assert.equal(binToInt(pc1val), 0x40n, 'PC1 = 0x40 (PUSH1 data)');
+    // PC1 is filler (skipped), next fact is PC2
+    const pc2 = arrGetFacts[1].hash;
+    const pc2val = Store.child(pc2, 2);
+    assert.equal(binToInt(pc2val), 0x60n, 'PC2 = PUSH1 opcode (0x60)');
   });
 
   it('handles 0x prefix', () => {
@@ -107,17 +108,15 @@ describe('bytecode-loader: loadBytecode', () => {
     // 61 AB CD = PUSH2 0xABCD
     const result = loadBytecode('61abcd');
     const facts = result.facts.get('arr_get');
-    // Semantic: PC0=PUSH2(0x61), PC1=0xABCD, [PC2=filler skipped], PC3=0 (implicit STOP)
-    assert.equal(facts.length, 3, '3 semantic positions (filler at PC2 skipped)');
+    // Semantic: PC0=PUSH2(0x61), PC1=filler, PC2=filler, PC3=0 (implicit STOP)
+    // All PUSH data positions (PC1, PC2) are fillers — skipped to prevent phantom rules.
+    assert.equal(facts.length, 2, '2 semantic positions (PUSH data fillers skipped)');
 
     const pc0val = Store.child(facts[0].hash, 2);
     assert.equal(binToInt(pc0val), 0x61n, 'PC0 = PUSH2 opcode');
 
-    const pc1val = Store.child(facts[1].hash, 2);
-    assert.equal(binToInt(pc1val), 0xABCDn, 'PC1 = combined PUSH2 data');
-
-    // facts[2] is PC3 (implicit STOP), not PC2 (filler)
-    const pc3val = Store.child(facts[2].hash, 2);
+    // facts[1] is PC3 (implicit STOP), PC1 and PC2 are fillers
+    const pc3val = Store.child(facts[1].hash, 2);
     assert.equal(binToInt(pc3val), 0n, 'PC3 = implicit STOP');
   });
 
@@ -379,8 +378,8 @@ describe('compose: extraGrade0Facts parameter', () => {
 
     const result = composeGrade0([rule], ILL_CONNECTIVES, null, null, null, bc.facts);
     assert.equal(result.diagnostics.errors.length, 0);
-    // 6 semantic positions → 6 specialized rules
-    assert.equal(result.composedRules.length, 6, 'one rule per semantic position');
+    // 4 non-filler positions (PC0, PC2, PC4, PC5) → 4 specialized rules
+    assert.equal(result.composedRules.length, 4, 'one rule per non-filler position');
     assert.ok(result.removedNames.has('read_bc'));
   });
 });
@@ -395,7 +394,11 @@ describe('bytecode-loader: entry point pre-filter', () => {
     // PUSH1 0x40 PUSH1 0x00 JUMPDEST STOP = 6040 6000 5b 00
     const bc = loadBytecode('604060005b00');
     const allFacts = bc.facts.get('arr_get');
-    const entryFacts = allFacts.filter((_, i) => bc.entryPoints.has(i));
+    // Filter by actual PC value in fact, not array index
+    const entryFacts = allFacts.filter(f => {
+      const pc = Number(binToInt(Store.child(f.hash, 1)));
+      return bc.entryPoints.has(pc);
+    });
 
     // Only PC=0 (PUSH1) and PC=4 (JUMPDEST) are entry points
     assert.equal(entryFacts.length, 2, '2 entry point facts');
@@ -408,8 +411,6 @@ describe('bytecode-loader: entry point pre-filter', () => {
 
   it('entry-filtered compose produces fewer rules', () => {
     const bc = loadBytecode('604060005b00');
-    const allFacts = bc.facts.get('arr_get');
-    const entryFacts = allFacts.filter((_, i) => bc.entryPoints.has(i));
 
     const BC = Store.put('metavar', ['BC']);
     const PC = Store.put('metavar', ['PC']);
@@ -422,14 +423,17 @@ describe('bytecode-loader: entry point pre-filter', () => {
       out
     );
 
-    // All facts → 6 rules
+    // All non-filler facts → 4 rules
     const res1 = composeGrade0([rule], ILL_CONNECTIVES, null, null, null, bc.facts);
-    assert.equal(res1.composedRules.length, 6);
+    assert.equal(res1.composedRules.length, 4);
 
     Store.clear();
-    // Rebuild after clear
+    // Rebuild after clear — filter by actual PC value
     const bc2 = loadBytecode('604060005b00');
-    const entryFacts2 = bc2.facts.get('arr_get').filter((_, i) => bc2.entryPoints.has(i));
+    const entryFacts2 = bc2.facts.get('arr_get').filter(f => {
+      const pc = Number(binToInt(Store.child(f.hash, 1)));
+      return bc2.entryPoints.has(pc);
+    });
     const filteredFacts = new Map([['arr_get', entryFacts2]]);
 
     const BC2 = Store.put('metavar', ['BC2']);

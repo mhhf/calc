@@ -194,7 +194,7 @@ describe('noFFI e2e: symbolic explore → guided terms', { timeout: 600000 }, ()
   });
 
   it('explore produces expected tree shape', () => {
-    assert.strictEqual(countNodes(tree), 2023);
+    assert.strictEqual(countNodes(tree), 1987);
     assert.strictEqual(leaves.length, 31);
   });
 
