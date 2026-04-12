@@ -640,20 +640,22 @@ evm/eq:
   !_0 step 0x14 PC' 3 GAS' BC *
   stack [X, Y | REST]
   -o {
-    pc PC' *
-    gas GAS' *
-    ((!neq X Y * stack [0 | REST]) +
-     (!eq X Y * stack [1 | REST]))
+    exists R. (
+      pc PC' *
+      gas GAS' *
+      !eq_bool X Y R *
+      stack [R | REST])
   }.
 
 evm/iszero:
   !_0 step 0x15 PC' 3 GAS' BC *
   stack [V | REST]
   -o {
-    pc PC' *
-    gas GAS' *
-    ((!eq V 0 * stack [1 | REST]) +
-     (!neq V 0 * stack [0 | REST]))
+    exists R. (
+      pc PC' *
+      gas GAS' *
+      !eq_bool V 0 R *
+      stack [R | REST])
   }.
 
 evm/lt:

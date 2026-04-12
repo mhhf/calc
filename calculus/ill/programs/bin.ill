@@ -14,6 +14,14 @@ eq/z: eq X X.
 
 neq: (a: bin) -> (b: bin) -> type.
 
+% eq_bool: deterministic boolean equality — R=1 if A=B, R=0 if A≠B.
+% Used by evm/eq and evm/iszero so their result is existential (fuseable)
+% rather than a choice (oplus), which blocks basic-block fusion.
+eq_bool: (a: bin) -> (b: bin) -> (result: bin) -> type.
+eq_bool/true: eq_bool X X 1.
+eq_bool/false: eq_bool X Y 0 <- neq X Y.
+eq_bool/eq: eq_bool X Y 1 <- eq X Y.
+
 neq/z1: neq e (o Y).
 neq/z2: neq e (i X).
 neq/z3: neq (o X) e.

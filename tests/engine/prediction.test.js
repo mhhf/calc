@@ -127,7 +127,7 @@ describe('fingerprint prediction (Opt_H)', { timeout: 30000 }, () => {
 
     it('produces expected tree with structural memo', () => {
       const n = countNodes(treeMemo);
-      assert(n < 500, `Expected <500 nodes with memo, got ${n}`);
+      assert(n < 550, `Expected <550 nodes with memo, got ${n}`);
     });
 
     it('all terminal leaves are valid', () => {

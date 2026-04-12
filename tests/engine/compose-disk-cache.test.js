@@ -28,11 +28,15 @@ function loadBytecodeHex() {
 
 function loadWithCompose(cacheDir) {
   const bc = loadBytecodeHex();
+  const { intToBin } = require('../../lib/engine/ill/ffi/convert');
+  const barriers = new Set();
+  for (const pc of bc.entryPoints) barriers.add(intToBin(BigInt(pc)));
   return mde.load(SYMEX_PATH, {
     cache: false,
     extraGrade0Facts: bc.facts,
     scopeGuard: require('../../lib/engine/ill/bytecode-loader').bytecodeArrGetGuard,
     fuseBasicBlocks: true,
+    fusionBarriers: barriers,
     composeDiskCache: cacheDir
   });
 }
@@ -78,14 +82,19 @@ describe('Compose disk cache', () => {
     // Warm up: first load populates cache
     loadWithCompose(dir);
 
-    // Cold miss: clear store, load without cache dir
+    // Cold miss: clear store, load without cache dir (but with same barriers)
     Store.clear();
     const t0 = performance.now();
+    const bcMiss = loadBytecodeHex();
+    const { intToBin } = require('../../lib/engine/ill/ffi/convert');
+    const barriersMiss = new Set();
+    for (const pc of bcMiss.entryPoints) barriersMiss.add(intToBin(BigInt(pc)));
     const calc1 = mde.load(SYMEX_PATH, {
       cache: false,
-      extraGrade0Facts: loadBytecodeHex().facts,
+      extraGrade0Facts: bcMiss.facts,
       scopeGuard: require('../../lib/engine/ill/bytecode-loader').bytecodeArrGetGuard,
-      fuseBasicBlocks: true
+      fuseBasicBlocks: true,
+      fusionBarriers: barriersMiss
     });
     const missTime = performance.now() - t0;
 
