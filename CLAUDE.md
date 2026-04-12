@@ -91,7 +91,8 @@ lib/
 │   │   ├── loli-drain.js    # Loli drain optimization
 │   │   └── ffi/             # Foreign function interface (arithmetic, memory)
 │   └── opt/             # Toggleable optimization modules
-│       └── compiled-clauses.js # Tier 1 compiled clause dispatch (zero-subgoal → direct lookup)
+│       ├── compiled-clauses.js # Tier 1 compiled clause dispatch (zero-subgoal → direct lookup)
+│       └── existential-compile.js # Compiled ∃-chain (per-goal FFI fast path for existential resolution)
 ├── meta-parser/         # Meta-level parser (@extends chain resolution)
 ├── parser/              # Earley parser + grammar generation + sequent parser
 │   ├── earley.js        # Core Earley engine (recognizer, chart, extraction)
