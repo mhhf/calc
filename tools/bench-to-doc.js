@@ -11,6 +11,7 @@
  *   node tools/bench-to-doc.js --runs-dir=<dir>
  */
 
+const { execSync } = require('child_process');
 const fs = require('fs');
 const path = require('path');
 
@@ -74,9 +75,18 @@ function aggregate(runsDir) {
     branches: c.branches,
   }));
 
-  // Results files preserve git log order (newest-first from bench-history.js).
-  // Map insertion order retains that — reverse for oldest-first (chart left→right).
-  commits.reverse();
+  // Sort by canonical git history order (oldest-first for chart left→right).
+  // Map insertion order is unreliable across multiple run files (readdirSync is alphabetical).
+  const maxLog = Math.max(200, commitMap.size * 3);
+  const gitLog = execSync(`git log --format=%H --topo-order -n ${maxLog} HEAD --`, {
+    encoding: 'utf8',
+  }).trim().split('\n');
+  const orderMap = new Map(gitLog.map((h, i) => [h, i]));
+  commits.sort((a, b) => {
+    const ia = orderMap.get(a.fullHash) ?? Infinity;
+    const ib = orderMap.get(b.fullHash) ?? Infinity;
+    return ib - ia;  // oldest first (higher git log index = older commit)
+  });
 
   return { totalCommits: commits.length, totalRuns: files.length, commits };
 }
