@@ -5,16 +5,16 @@ tags:
   clf: 22
   focusing: 19
   chr: 18
-  architecture: 16
-  optimization: 16
+  architecture: 17
+  optimization: 17
   symbolic-execution: 16
   performance: 14
   adjoint-logic: 13
+  implementation: 13
   lax-monad: 13
   QTT: 13
   cut-elimination: 12
   graded-types: 12
-  implementation: 12
   session-types: 11
   Ceptre: 10
   evm: 10
@@ -31,6 +31,7 @@ tags:
   resource-semantics: 8
   category-theory: 7
   multiset-rewriting: 7
+  soundness: 7
   staging: 7
   subexponentials: 7
   symexec: 7
@@ -43,15 +44,16 @@ tags:
   proof-search: 6
   quiescence: 6
   semiring: 6
-  soundness: 6
   theory: 6
   authorization: 5
   backward-chaining: 5
   benchmarking: 5
   consensus: 5
+  engine: 5
   memory-model: 5
   muMALL: 5
   plonky3: 5
+  prover: 5
   supercompilation: 5
   accounting: 4
   blockchain: 4
@@ -60,7 +62,6 @@ tags:
   content-addressing: 4
   data-structures: 4
   eigenvariable: 4
-  engine: 4
   ethereum: 4
   hash-consing: 4
   lollimon: 4
@@ -68,7 +69,6 @@ tags:
   multimodal: 4
   oplus: 4
   Petri-nets: 4
-  prover: 4
   SELL: 4
   separation-logic: 4
   smt: 4
@@ -96,6 +96,7 @@ tags:
   polymorphism: 3
   prover-architecture: 3
   residuation: 3
+  testing: 3
   type-checking: 3
   WAM: 3
   with: 3
@@ -173,7 +174,6 @@ tags:
   temporal-logic: 2
   term-representation: 2
   term-rewriting: 2
-  testing: 2
   union-find: 2
   v2: 2
   validators: 2
@@ -208,6 +208,7 @@ tags:
   ceptre: 1
   CHRv: 1
   CLF: 1
+  code-quality: 1
   code-trees: 1
   completed: 1
   complexity-analysis: 1
