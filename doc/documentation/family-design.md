@@ -49,5 +49,4 @@ calculus/
 
 ## References
 
-- [[dsl_refactor]] - Migration status
 - Research: [[multi-type-display-calculus]]

@@ -188,7 +188,7 @@ Three-layer engine (generic → LNL → ILL) with dependency injection via `matc
 - [ ] Add observability: strategy stack decision hooks, existential resolution hooks
 - [ ] Document `matchOpts` composition as standalone reference
 - [ ] Naming pass: engine function names (see naming table above)
-- [ ] Test: `state-ops.js`, `delta-bypass.js`, `compiled-sub.js` unit tests
+- [ ] Test: `state-ops.js`, `delta-bypass.js` unit tests — compiled-sub.js merged into state-ops.js in S3
 
 ### Phase 3: Optimization Modules (soundness audit)
 **Scope:** `opt/` (1,630 LOC) + `backward-cache.js` + `optimizer.js`
@@ -258,17 +258,17 @@ Three-layer engine (generic → LNL → ILL) with dependency injection via `matc
 - [ ] Remove or archive `doc/todo/` (48 legacy files)
 - [ ] Fix `pt.js:summarizeSequent` broken display
 - [ ] Clean up circular lazy requires
-- [ ] Update test-overview.md with current known failures and timing
+- [x] Update test-overview.md with current known failures and timing (S3)
 
 ### Phase 9: Kolmogorov Density Pass (suckless cleanup)
 **Scope:** Full codebase
 **Goal:** Reduce LOC while preserving performance and correctness
-- [ ] Identify dead code paths (unused exports, unreachable branches)
+- [x] Identify dead code paths (unused exports, unreachable branches) (S3: 30 unused exports removed)
 - [ ] Deduplicate matchOpts assembly
-- [ ] Collapse unnecessary re-exports (guided-term.js, opt/fingerprint.js, opt/disc-tree-opt.js)
+- [ ] Collapse unnecessary re-exports (guided-term.js, opt/fingerprint.js) — disc-tree-opt.js deleted in S3
 - [ ] Remove legacy `unifyBinlit`/`unifyStrlit`/`unifyArrlit` from unify.js
 - [ ] Simplify `show.js` EVM-specific defaults
-- [ ] Consider merging tiny files (<50 LOC): `grades.js`, `preserved.js`, `compiled-sub.js`
+- [ ] Consider merging tiny files (<50 LOC): `grades.js`, `preserved.js` — compiled-sub.js merged into state-ops.js in S3
 - [ ] Remove `doc/todo/` (4,019 LOC of legacy)
 - [ ] LOC budget: target 10-15% reduction in lib/ without losing features
 
@@ -483,7 +483,7 @@ The backward prover is a black box. No trace of what the prover tried, why it fa
 - [x] Fix C2: add loli_match handler to check-term.js (S2)
 - [x] Fix B1: pt.js summarizeSequent should use Store.tag() (S2)
 - [x] Fix B2: state.js toString should handle number focusHash (S2)
-- [ ] Fix C4: correct verifyTree comment about resource tracking
+- [x] Fix C4: correct verifyTree comment about resource tracking (S3)
 - [ ] Test: add loli_match verification test through check-term.js
 
 
@@ -770,7 +770,7 @@ Clean separation: compile → match → strategy → forward/explore. backchain.
 
 - [ ] Unify findMatch to use strategy stack (C5 — remove legacy discriminatorIndex path)
 - [ ] Extract buildMatchOpts helper (C6 — deduplicate forward.js/explore.js)
-- [ ] Remove PM_CHECK opcode (C8)
+- [x] Remove PM_CHECK opcode (C8) (S3)
 - [ ] Add bounds checking to _deltaWritten, _pmStack, _mStack (B3-B5)
 - [ ] Naming pass: rename verbose functions (see table above)
 - [ ] Consider splitting compile.js PM/PUT instructions to separate module
@@ -1042,11 +1042,11 @@ matchAllLinear (match.js)
 - [x] Fix B7: Save theta snapshot per Tier 2 frame (S2)
 - [ ] Fix C13: Extract first-arg indexing to shared helper in compiled-clauses.js
 - [ ] Fix C10: Consolidate backward cache soundness argument into one location
-- [ ] Fix C12: Update ffi.js docstring to match actual resolution order
+- [x] Fix C12: Update ffi.js docstring to match actual resolution order (S3)
 - [ ] Add test: existential-compile.js isolation test (C14)
 - [ ] Add test: constraint-feed.js filterAltsBySAT (C15)
 - [ ] Add test: backward-cache.js direct (cache hit, miss, negative, invalidation)
-- [ ] Consider: Remove disc-tree-opt.js and fingerprint.js re-export wrappers
+- [ ] Consider: Remove fingerprint.js re-export wrapper — disc-tree-opt.js deleted in S3
 - [ ] Naming pass: rename verbose functions (see table)
 
 ## Phase 4 Findings: LNL + ILL Layers (Soundness Audit)
@@ -2401,19 +2401,19 @@ Let me document what should be updated:
 ### Phase 8 Tasks
 
 **CLAUDE.md fixes (immediate):**
-- [ ] Fix CLM1: Replace `provePersistentGoals` with correct function names
-- [ ] Fix CLM2: Update PRED_BOUNDARY from 26 to 31
-- [ ] Fix CLM3: Fix `zero` ASCII from `0` to `zero` in connectives table
-- [ ] Fix CLM4: Note bang is binary (grade, formula) in connectives table
-- [ ] Fix CLM5: Add missing opt/ files to directory listing
-- [ ] Fix CLM6: Add missing parser/ files to directory listing
-- [ ] Add undocumented tools to CLAUDE.md Tooling section (bench-history, fuzz-ffi, precompile, bytecode-to-ill, test-timing, bench-to-doc)
+- [x] Fix CLM1: Replace `provePersistentGoals` with correct function names (S3)
+- [x] Fix CLM2: Update PRED_BOUNDARY from 26 to 31 (S3)
+- [x] Fix CLM3: Fix `zero` ASCII from `0` to `zero` in connectives table (S3)
+- [x] Fix CLM4: Note bang is binary (grade, formula) in connectives table (S3)
+- [x] Fix CLM5: Add missing opt/ files to directory listing (S3)
+- [x] Fix CLM6: Add missing parser/ files to directory listing (S3)
+- [x] Add undocumented tools to CLAUDE.md Tooling section (S3: all 8 tools documented)
 
 **Documentation fixes:**
 - [ ] Fix opt/ path drift in architecture.md, forward-chaining-engine.md, optimization-architecture.md
-- [ ] Update test-overview.md with current test count and known failures
-- [ ] Update INDEX.md with newer documentation files
-- [ ] Archive or remove 7 fully stale docs: notes.md, CHANGELOG.md, benchmark-v2.md, operations-analysis.md, prover-optimization.md, typed-dsl-logical-framework.md, symexec-optimizations.md
+- [x] Update test-overview.md with current test count and known failures (S3)
+- [x] Update INDEX.md with newer documentation files (S3)
+- [x] Archive or remove 7 fully stale docs (S3: deleted, preserved in git history)
 - [ ] Update eigenvariable-walkthrough.md sections 9-10 (∃ is now implemented)
 - [x] Fix B12: pt.js summarizeSequent — use Store.tag(hash) instead of hash.tag (S2)
 
@@ -2423,8 +2423,8 @@ Let me document what should be updated:
 - [ ] Write proof-term-pipeline.md (backward → bridge → forward → guided → check)
 
 **Cleanup:**
-- [ ] Remove or archive doc/todo/ (48 legacy files violating stated CLAUDE.md policy)
-- [ ] Remove dead wiki-link cross-references in stale docs
+- [x] Remove or archive doc/todo/ (S3: deleted 49 files, ~4,019 LOC)
+- [x] Remove dead wiki-link cross-references in stale docs (S3: stale docs deleted, dsl_refactor link removed from family-design.md)
 - [ ] Consider breaking circular: explore.js → index.js (move codeToArrlit to a shared utility)
 
 ## Phase 9 Findings: Kolmogorov Density Pass
@@ -2570,12 +2570,12 @@ Additional savings possible from:
 ### Phase 9 Tasks
 
 **Immediate (safe, no risk):**
-- [ ] Delete unifyBinlit and unifyStrlit from unify.js (DC1, 37 LOC)
-- [ ] Delete doc/todo/ directory (DC2, 4,019 LOC markdown)
-- [ ] Delete engine/opt/disc-tree-opt.js, update 1 importer
-- [ ] Delete prover/index.js, update importers to use strategy/auto.js directly
-- [ ] Merge engine/compiled-sub.js into engine/state-ops.js
-- [ ] Remove unused exports from module.exports (30 symbols across 17 files)
+- [x] Delete unifyBinlit and unifyStrlit from unify.js (DC1, 37 LOC) (S3)
+- [x] Delete doc/todo/ directory (DC2, 49 files, ~4,019 LOC) (S3)
+- [x] Delete engine/opt/disc-tree-opt.js, update 1 importer (S3)
+- [x] Delete prover/index.js, update 3 importers to use strategy/auto.js directly (S3)
+- [x] Merge engine/compiled-sub.js into engine/state-ops.js (S3)
+- [x] Remove unused exports from module.exports (30 symbols across 17 files) (S3)
 
 **Medium effort (duplication):**
 - [ ] Extract shared _firstArgHead helper in compiled-clauses.js (DUP2, ~67 LOC saved)

@@ -8,7 +8,7 @@ const { BenchmarkRunner } = require('../lib/runner');
 
 // v2 imports
 const calcV2 = require('../../lib/calculus');
-const proverV2 = require('../../lib/prover');
+const proverV2 = require('../../lib/prover/strategy/auto');
 const SeqV2 = require('../../lib/kernel/sequent');
 
 // Cached calculus and prover (initialized lazily)
