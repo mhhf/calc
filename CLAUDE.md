@@ -30,10 +30,10 @@ CALC is a proof calculus system for experimenting with sequent-calculi with an i
 npm run dev           # Development server (http://localhost:3000)
 npm run build:ui      # Production build to out/ui/
 npm run build:bundle  # Regenerate out/ill.json from calculus specs
-npm test              # All fast tests (1774 tests, ~4s) — RUN THIS DURING DEVELOPMENT
+npm test              # All fast tests (2035 tests, ~4s) — RUN THIS DURING DEVELOPMENT
 npm run test:ill      # ILL-native tests (98 tests, ~0.2s) — .ill files as provability judgments
 npm run test:noffi    # noFFI adversarial soundness (13 tests, ~1s) — only after engine/FFI changes
-npm run test:zk       # ZK witness tests (94 tests, 24 known failures) — only after ZK changes
+npm run test:zk       # ZK witness tests (94 tests) — only after ZK changes
 npm run test:heavy    # Slow + drift tests (5-30 min) — only before release or major changes
 npm run test:all      # Everything combined (includes test:ill)
 npm run debug:ill     # Debug runner — observation directives + verbose judgment output
@@ -92,11 +92,18 @@ lib/
 │   │   └── ffi/             # Foreign function interface (arithmetic, memory)
 │   └── opt/             # Toggleable optimization modules
 │       ├── compiled-clauses.js # Tier 1 compiled clause dispatch (zero-subgoal → direct lookup)
-│       └── existential-compile.js # Compiled ∃-chain (per-goal FFI fast path for existential resolution)
+│       ├── existential-compile.js # Compiled ∃-chain (per-goal FFI fast path for existential resolution)
+│       ├── ffi.js             # FFI-first persistent goal proving (state → FFI → compiled → clause)
+│       ├── fingerprint.js     # First-argument fingerprint indexing for rule selection
+│       ├── prediction.js      # Rule applicability prediction (pre-filter before full match)
+│       └── structural-memo.js # Structural memoization for explore (control hash → subtree skip)
 ├── meta-parser/         # Meta-level parser (@extends chain resolution)
 ├── parser/              # Earley parser + grammar generation + sequent parser
 │   ├── earley.js        # Core Earley engine (recognizer, chart, extraction)
-│   └── earley-grammar.js # Grammar generation from .calc annotations
+│   ├── earley-grammar.js # Grammar generation from .calc annotations
+│   ├── declarations.js  # Declaration extraction from .calc files (types, grammars, roles)
+│   ├── sequent-parser.js # Sequent notation parser (antecedent ⊢ succedent)
+│   └── balanced-split.js # Bracket-aware string splitting for sequent components
 ├── rules/               # .rules file parser (sequent notation → descriptors)
 ├── browser.js           # Browser-compatible API (loads from ill.json bundle)
 └── index.js             # Node.js API entry point
@@ -124,8 +131,8 @@ out/                     # Generated: ill.json (bundled calculus), ui/ (built ap
 | one | `I` | positive | multiplicative unit |
 | with | `&` | negative | additive conjunction (external choice) |
 | oplus | `+` | positive | additive disjunction (internal choice) — renamed from `plus` |
-| zero | `0` | positive | additive false — `zero_l` discards linear context |
-| bang | `!` | positive | exponential (reusable resource) |
+| zero | `zero` | positive | additive false — `zero_l` discards linear context |
+| bang | `!` | positive | exponential (reusable resource) — binary: `bang(grade, formula)`, `!A` is sugar for `bang(GRADE_W, A)` |
 | monad | `{ _ }` | negative | lax monad (invertible right, sticky left) |
 | exists | `exists` | positive | existential |
 | forall | `forall` | negative | universal |
@@ -153,14 +160,14 @@ evm/add:
 
 FFI is optimization, theory is semantics. Every FFI predicate MUST have backward clause definitions. FFI off → clause resolution takes over (slower but correct).
 
-- `provePersistentGoals` (match.js): FFI → state lookup → clause resolution
+- `provePersistent` (match.js → ffi.js): state lookup → FFI → compiled clause → full clause resolution
 - FFI failure is advisory: `{ success: false }` falls through to clause resolution
 - All FFI predicates have backward clause definitions (FFI is optimization only)
 
 ## Common Gotchas
 
 - `Store.tagId()` returns 0 for both invalid IDs and `atom` tag — use `isTerm()` first
-- Atoms share tag 0, predicates have tag >= `PRED_BOUNDARY` (26) — use `hasPredicate`/`groupForPred`
+- Atoms share tag 0, predicates have tag >= `PRED_BOUNDARY` (31) — use `hasPredicate`/`groupForPred`
 - Nullary constructors (e.g. `empty_mem`) are `atom('empty_mem')` not tag — use helpers
 - `code` facts are **linear** in EVM rules (consumed and re-produced)
 - `linearMeta.persistentDeps` (Set) needs Array↔Set conversion for JSON serialization
@@ -171,8 +178,16 @@ FFI is optimization, theory is semantics. Every FFI predicate MUST have backward
 ## Tooling
 
 - `tools/bench-compare.js` — cross-commit benchmark comparison via git worktrees
+- `tools/bench-history.js` — commit-history benchmark across N commits
+- `tools/bench-to-doc.js` — converts bench-history JSON to markdown/chart
+- `tools/bytecode-to-ill.js` — EVM hex bytecode → CALC facts converter
+- `tools/collect-tags.js` — regenerate `doc/tags.yaml` tag index (`npm run tags`)
 - `tools/explore-inspect.js` — `node tools/explore-inspect.js [--leaf N] [--all] <files...>`
+- `tools/fuzz-ffi.js` — FFI correctness fuzzer (FFI vs clause comparison)
+- `tools/precompile.js` — binary cache precompiler for .ill files
+- `tools/test-timing.js` — per-file test execution time profiler
 - `tools/debug-ill.js` — `npm run debug:ill -- <file.ill> [--only trace]` (observation directives + verbose judgments). Directives: `#trace`, `#dump_state`, `#debug`, `#benchmark`, `#compare`, `#inspect`, `#profile`
+- `tools/analyze-csub.js` — compiled substitution analysis (recipe coverage stats)
 - `lib/engine/show.js` — `show(hash)`, `classifyLeaf(state)`, `showInteresting(state)`
 - `out/ill.json` precomputes: parserTables, rendererFormats, ruleSpecMeta, connectivesByType
 - `lib/engine/store-binary.js` — binary serialize/deserialize for precompiled SDK loading

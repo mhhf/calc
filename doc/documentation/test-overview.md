@@ -1,12 +1,12 @@
 # Test Overview
 
-Measured 2026-04-07. 63 test files, 1782+ tests total.
+Measured 2026-04-13. 63 test files, 2035 tests total.
 
 ## Scripts
 
 | Script | Files | Tests | Time | When to run |
 |---|---|---|---|---|
-| `npm test` | 48 | 1605 | ~3s | Every iteration |
+| `npm test` | 48 | 2035 | ~4s | Every iteration |
 | `npm run test:noffi` | 1 | 13 | ~1s | Engine changes affecting FFI/clause resolution |
 | `npm run test:zk` | 8 | 94 | ~0.4s | ZK/witness changes (24 known failures) |
 | `npm run test:heavy` | 6 | ~160 | 5-30 min | Major changes, release validation |
@@ -102,18 +102,9 @@ Measured 2026-04-07. 63 test files, 1782+ tests total.
 | **ZK** | zk-benchmark, zk-custom-chip, zk-uint256 | zk-witness, zk-noffi-witness, chunked-witness (test:zk); zk-symbolic-solc, zk-chunked-tree, zk-custom-chip-solc (test:heavy) |
 | **UI/API** | api, ui-flow | e2e-solidjs (test:e2e) |
 
-## Known Failures (code drift from orphaned tests)
+## Known Failures
 
-| File | Pass/Fail | Suite | Notes |
-|---|---|---|---|
-| monad.test.js | 44/9 | test:heavy | Lax monad — likely bridge/mode-switch API changes |
-| chunked-witness.test.js | 0/19 | test:zk | ZK chunking — likely flat-witness API change |
-| engine/rule-analysis.test.js | 67/11 | test:heavy | EVM rule analysis — 5 min runtime, possibly evm.ill drift |
-| engine/type-check.test.js | 26/3 | test:heavy | Sort checking — likely signature/ILL changes |
-| zk-noffi-witness.test.js | 7/2 | test:zk | noFFI witness pipeline |
-| zk-witness.test.js | 16/1 | test:zk | ZK witness generation |
-| rewrite-trace.test.js | 7/1 | test:zk | Rewrite trace + flat witness |
-| guided-term.test.js | 16/1 | test:zk | Guided proof term builder |
+After S1 (TODO_0193) all `npm test`, `test:heavy`, `test:noffi`, and `test:ill` suites are green. ZK suite has 24 known failures tracked via `{ todo: true }` markers in `test:zk`.
 
 ## Benchmarks (separate from tests)
 
