@@ -153,8 +153,11 @@ describe('Guided Proof Terms (TODO_0068 §10.5)', () => {
       const loliL = term.subterms[0];
       const antProof = loliL.subterms[0];
       assert.strictEqual(antProof.rule, 'promotion');
-      assert.strictEqual(antProof.subterms[0].rule, 'id');
+      // Persistent fact needs copy → id (copy moves persistent to linear delta)
+      assert.strictEqual(antProof.subterms[0].rule, 'copy');
       assert.strictEqual(antProof.subterms[0].principal, p);
+      assert.strictEqual(antProof.subterms[0].subterms[0].rule, 'id');
+      assert.strictEqual(antProof.subterms[0].subterms[0].principal, p);
     });
 
     it('builds tensor_r + promotion for mixed antecedent', () => {

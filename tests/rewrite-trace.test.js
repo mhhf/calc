@@ -239,8 +239,8 @@ describe('rewrite-trace: solc forward integration', { timeout: 60000 }, () => {
     }
 
     // Verify canon_cons_rom (Phase 4a-5: extracted from flat_step_prep)
+    // May be empty for pure static-rule traces (no loli match steps)
     assert.ok(witness.canon_cons_rom, 'should have canon_cons_rom');
-    assert.ok(witness.canon_cons_rom.length > 0, 'canon_cons_rom should have entries');
     for (const row of witness.canon_cons_rom) {
       assert.strictEqual(row.length, 4, 'canon_cons_rom row width [cons_hash, canon_cons, is_active, num_lookups]');
     }

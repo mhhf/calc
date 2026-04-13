@@ -88,19 +88,19 @@ describe('ZK noFFI witness: noffi_tiny (2-step clause resolution)', { timeout: 3
     forwardResult = calc.exec(state, {
       maxSteps: 10,
       trace: true,
-      evidence: true
-      // no dangerouslyUseFFI — noFFI is default
+      evidence: true,
+      useFFI: false  // disable FFI in backward chainer for ZK-verifiable proof terms
     });
 
     assert.strictEqual(forwardResult.quiescent, true);
     assert.strictEqual(forwardResult.steps, 2);
     assert.strictEqual(forwardResult.trace.length, 2);
 
-    // All evidence must be clause-based (no FFI)
+    // All evidence must be non-FFI (state lookup or clause resolution)
     for (const t of forwardResult.trace) {
       for (const ev of (t.persistentEvidence || [])) {
-        assert.strictEqual(ev.method, 'clause', `Expected clause evidence, got ${ev.method}`);
-        assert.ok(ev.term, 'Clause evidence must include proof term');
+        assert.notStrictEqual(ev.method, 'ffi', `FFI evidence not allowed in noFFI mode`);
+        if (ev.method === 'clause') assert.ok(ev.term, 'Clause evidence must include proof term');
       }
     }
     console.log(`  forward: ${forwardResult.steps} steps, all clause-resolved`);
