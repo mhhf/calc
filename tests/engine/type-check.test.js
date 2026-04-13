@@ -162,7 +162,7 @@ describe('_checkTerm', () => {
     const errors = [];
     _checkTerm(h, 'type', st, new Map(), errors, 'test');
     assert.equal(errors.length, 1);
-    assert.match(errors[0], /expects 3 args, got 2/);
+    assert.match(errors[0], /expects 3 args.*got 2/);
   });
 
   it('detects sort mismatch', () => {
@@ -210,7 +210,7 @@ describe('_checkTerm', () => {
     const errors = [];
     _checkTerm(h, '_', st, new Map(), errors, 'test');
     assert.equal(errors.length, 1);
-    assert.match(errors[0], /expects 3 args, got 2/);
+    assert.match(errors[0], /expects 3 args.*got 2/);
   });
 });
 
@@ -246,7 +246,7 @@ describe('checkForwardRule', () => {
     const errors = checkForwardRule(rule, st);
     assert.equal(errors.length, 1);
     assert.match(errors[0], /rule 'bad\/rule'/);
-    assert.match(errors[0], /expects 1 args, got 2/);
+    assert.match(errors[0], /expects 1 args.*got 2/);
   });
 
   it('detects sort mismatch in forward rule consequent', () => {

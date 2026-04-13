@@ -378,12 +378,12 @@
     "bang_r": {
       "name": "bang_r",
       "tag": 7,
-      "arity": 1,
+      "arity": 2,
       "oblig_receive": true,
       "premises": [
         {
           "succedent": {
-            "Child": 0
+            "Child": 1
           },
           "lax": null
         }
@@ -397,13 +397,13 @@
     "bang_l": {
       "name": "bang_l",
       "tag": 7,
-      "arity": 1,
+      "arity": 2,
       "oblig_receive": false,
       "premises": [],
       "ctx_receive": true,
       "ctx_sends": [
         {
-          "Child": 0
+          "Child": 1
         }
       ],
       "formula_lookup": true,
@@ -413,7 +413,7 @@
     "absorption": {
       "name": "absorption",
       "tag": 7,
-      "arity": 1,
+      "arity": 2,
       "oblig_receive": false,
       "premises": [],
       "ctx_receive": true,
@@ -480,9 +480,9 @@
   "chips": {
     "init": [
       [
-        92,
+        96,
         1,
-        79,
+        83,
         1,
         0,
         0,
@@ -495,14 +495,14 @@
     "bang_l": [
       [
         1,
-        92,
-        79
+        96,
+        83
       ]
     ],
     "id": [
       [
         1,
-        79,
+        83,
         0,
         0
       ]
@@ -510,10 +510,10 @@
   },
   "formula_rom": [
     [
-      92,
+      96,
       7,
-      79,
-      0,
+      2,
+      83,
       1,
       1
     ]

@@ -8,7 +8,7 @@
 
 % PUSH1 0xFF, PUSH1 0x00, MSTORE, PUSH1 0x20, PUSH1 0x00, SHA3, STOP
 % Write 0xFF at offset 0, hash 32 bytes → sha3(concat(0xFF, 0))
-#expect_sha3_32bytes
+#expect_sha3_32bytes (useFFI: false)
   pc 0 * gas 0xffffff * stack ae * mem empty_mem * memsize 0 *
   bytecode [0x60, 0xff, 0x60, 0x00, 0x52, 0x60, 0x20, 0x60, 0x00, 0x20, 0x00]
   => stop * stack [sha3 (0xff ++ 0)] .
@@ -18,7 +18,7 @@
 % PUSH1 0xAA, PUSH1 0x00, MSTORE, PUSH1 0xBB, PUSH1 0x20, MSTORE,
 % PUSH1 0x40, PUSH1 0x00, SHA3, STOP
 % Two 32-byte words → sha3(concat(0xAA, concat(0xBB, 0)))
-#expect_sha3_64bytes
+#expect_sha3_64bytes (useFFI: false)
   pc 0 * gas 0xffffff * stack ae * mem empty_mem * memsize 0 *
   bytecode [0x60, 0xaa, 0x60, 0x00, 0x52, 0x60, 0xbb, 0x60, 0x20, 0x52, 0x60, 0x40, 0x60, 0x00, 0x20, 0x00]
   => stop * stack [sha3 (0xaa ++ (0xbb ++ 0))] .
@@ -27,7 +27,7 @@
 
 % PUSH1 0x00, PUSH1 0x00, SHA3, STOP
 % Zero-length hash → sha3(0)  (base case: mem_read_range/done returns 0)
-#expect_sha3_0bytes
+#expect_sha3_0bytes (useFFI: false)
   pc 0 * gas 0xffffff * stack ae * mem empty_mem * memsize 0 *
   bytecode [0x60, 0x00, 0x60, 0x00, 0x20, 0x00]
   => stop * stack [sha3 0] .

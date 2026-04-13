@@ -488,9 +488,11 @@ describe('Monad integration', () => {
 // =========================================================================
 
 describe('rightFocus succedent decomposition', () => {
+  const roles = { product: 'tensor', unit: 'one', exponential: 'bang' };
+
   it('atom: single atom in state matches', () => {
     const a = AST.atom('a');
-    const remaining = rightFocus({ [a]: 1 }, {}, a);
+    const remaining = rightFocus({ [a]: 1 }, {}, a, roles);
     assert.ok(remaining !== null, 'should succeed');
     assert.strictEqual(Object.keys(remaining).length, 0, 'remaining should be empty');
   });
@@ -498,7 +500,7 @@ describe('rightFocus succedent decomposition', () => {
   it('atom: missing resource fails', () => {
     const a = AST.atom('a');
     const b = AST.atom('b');
-    const remaining = rightFocus({ [b]: 1 }, {}, a);
+    const remaining = rightFocus({ [b]: 1 }, {}, a, roles);
     assert.strictEqual(remaining, null, 'should fail — a not in state');
   });
 
@@ -506,7 +508,7 @@ describe('rightFocus succedent decomposition', () => {
     const a = AST.atom('a');
     const b = AST.atom('b');
     const t = AST.tensor(a, b);
-    const remaining = rightFocus({ [a]: 1, [b]: 1 }, {}, t);
+    const remaining = rightFocus({ [a]: 1, [b]: 1 }, {}, t, roles);
     assert.ok(remaining !== null, 'should succeed');
     assert.strictEqual(Object.keys(remaining).length, 0, 'remaining should be empty');
   });
@@ -516,7 +518,7 @@ describe('rightFocus succedent decomposition', () => {
     const b = AST.atom('b');
     const c = AST.atom('c');
     const t = AST.tensor(AST.tensor(a, b), c);
-    const remaining = rightFocus({ [a]: 1, [b]: 1, [c]: 1 }, {}, t);
+    const remaining = rightFocus({ [a]: 1, [b]: 1, [c]: 1 }, {}, t, roles);
     assert.ok(remaining !== null);
     assert.strictEqual(Object.keys(remaining).length, 0);
   });
@@ -525,32 +527,32 @@ describe('rightFocus succedent decomposition', () => {
     const a = AST.atom('a');
     const t = AST.tensor(a, a);
     // Need exactly 2 copies
-    const r1 = rightFocus({ [a]: 2 }, {}, t);
+    const r1 = rightFocus({ [a]: 2 }, {}, t, roles);
     assert.ok(r1 !== null, 'should succeed with 2 copies');
     assert.strictEqual(Object.keys(r1).length, 0);
 
     // Only 1 copy → fail
-    const r2 = rightFocus({ [a]: 1 }, {}, t);
+    const r2 = rightFocus({ [a]: 1 }, {}, t, roles);
     assert.strictEqual(r2, null, 'should fail with only 1 copy');
   });
 
   it('one: empty state matches', () => {
     const one = AST.one();
-    const remaining = rightFocus({}, {}, one);
+    const remaining = rightFocus({}, {}, one, roles);
     assert.ok(remaining !== null, 'should succeed on empty state');
   });
 
   it('one: non-empty state fails', () => {
     const a = AST.atom('a');
     const one = AST.one();
-    const remaining = rightFocus({ [a]: 1 }, {}, one);
+    const remaining = rightFocus({ [a]: 1 }, {}, one, roles);
     assert.strictEqual(remaining, null, 'should fail — resources remain');
   });
 
   it('bang: atom in persistent state matches', () => {
     const a = AST.atom('a');
     const bangA = AST.bang(GRADE_W,a);
-    const remaining = rightFocus({}, { [a]: 1 }, bangA);
+    const remaining = rightFocus({}, { [a]: 1 }, bangA, roles);
     assert.ok(remaining !== null, 'should succeed');
   });
 
@@ -558,7 +560,7 @@ describe('rightFocus succedent decomposition', () => {
     const a = AST.atom('a');
     const b = AST.atom('b');
     const bangA = AST.bang(GRADE_W,a);
-    const remaining = rightFocus({}, { [b]: 1 }, bangA);
+    const remaining = rightFocus({}, { [b]: 1 }, bangA, roles);
     assert.strictEqual(remaining, null, 'should fail — a not in persistent');
   });
 
@@ -566,7 +568,7 @@ describe('rightFocus succedent decomposition', () => {
     const a = AST.atom('a');
     const b = AST.atom('b');
     const bangA = AST.bang(GRADE_W,a);
-    const remaining = rightFocus({ [b]: 1 }, { [a]: 1 }, bangA);
+    const remaining = rightFocus({ [b]: 1 }, { [a]: 1 }, bangA, roles);
     assert.ok(remaining !== null);
     assert.strictEqual(remaining[b], 1, 'linear b should remain untouched');
   });
@@ -576,7 +578,7 @@ describe('rightFocus succedent decomposition', () => {
     const b = AST.atom('b');
     // a * !b
     const succ = AST.tensor(a, AST.bang(GRADE_W,b));
-    const remaining = rightFocus({ [a]: 1 }, { [b]: 1 }, succ);
+    const remaining = rightFocus({ [a]: 1 }, { [b]: 1 }, succ, roles);
     assert.ok(remaining !== null, 'should succeed');
     assert.strictEqual(Object.keys(remaining).length, 0);
   });
@@ -587,7 +589,7 @@ describe('rightFocus succedent decomposition', () => {
     const c = AST.atom('c');
     // Succedent asks for a * b, but state has a, b, c
     const succ = AST.tensor(a, b);
-    const remaining = rightFocus({ [a]: 1, [b]: 1, [c]: 1 }, {}, succ);
+    const remaining = rightFocus({ [a]: 1, [b]: 1, [c]: 1 }, {}, succ, roles);
     // rightFocus itself succeeds (consumed a and b) but c remains
     assert.ok(remaining !== null, 'rightFocus succeeds (partial)');
     assert.strictEqual(remaining[c], 1, 'c should remain unconsumed');
@@ -596,14 +598,14 @@ describe('rightFocus succedent decomposition', () => {
 
   it('freevar in succedent fails', () => {
     const fv = AST.freevar('X');
-    const remaining = rightFocus({}, {}, fv);
+    const remaining = rightFocus({}, {}, fv, roles);
     assert.strictEqual(remaining, null, 'freevar cannot be rightFocused');
   });
 
   it('predicate term consumes from linear', () => {
     // Compound term like pc(5) — treated as ground fact
     const pc5 = Store.put('pc', [Store.put('binlit', [5n])]);
-    const remaining = rightFocus({ [pc5]: 1 }, {}, pc5);
+    const remaining = rightFocus({ [pc5]: 1 }, {}, pc5, roles);
     assert.ok(remaining !== null);
     assert.strictEqual(Object.keys(remaining).length, 0);
   });
