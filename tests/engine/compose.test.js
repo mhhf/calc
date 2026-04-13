@@ -9,7 +9,7 @@ const { GRADE_0, GRADE_W } = require('../../lib/engine/grades');
 const { ILL_CONNECTIVES } = require('../../lib/engine/ill/connectives');
 const { resolveConnectives, compileRule, flattenAntecedent, unwrapComputation } = require('../../lib/engine/compile');
 const { getPredicateHead } = require('../../lib/kernel/ast');
-const { composePair, specializePersistent, buildPredicateMap, buildEliminationOrder, composeGrade0 } = require('../../lib/engine/compose');
+const { composePair, specializePersistent, buildPredicateMap, buildEliminationOrder, composeGrade0, _tablingCacheKey, _composeFullKey } = require('../../lib/engine/compose');
 const { getModes } = require('../../lib/engine/opt/ffi');
 
 const COMPILE_OPTS = { connectives: ILL_CONNECTIVES, getModes };
@@ -1115,5 +1115,63 @@ describe('compose L3: multi-stage persistent specialization', () => {
     const result = composeGrade0([rule], ILL_CONNECTIVES, null, clauses);
     assert.equal(result.composedRules.length, 50);
     assert.equal(result.diagnostics.specializations, 50);
+  });
+});
+
+describe('Cache key collision resistance (C22)', () => {
+  beforeEach(() => Store.clear());
+
+  it('_tablingCacheKey: different clauses → different keys', () => {
+    const a = Store.put('atom', ['alpha']);
+    const b = Store.put('atom', ['beta']);
+    const cl1 = new Map([['p', { hash: a }]]);
+    const cl2 = new Map([['p', { hash: b }]]);
+    assert.notEqual(_tablingCacheKey(cl1, null), _tablingCacheKey(cl2, null));
+  });
+
+  it('_tablingCacheKey: different definitions → different keys', () => {
+    const defs1 = new Map([['t', 100]]);
+    const defs2 = new Map([['t', 200]]);
+    assert.notEqual(_tablingCacheKey(null, defs1), _tablingCacheKey(null, defs2));
+  });
+
+  it('_tablingCacheKey: order matters', () => {
+    const a = Store.put('atom', ['x']);
+    const b = Store.put('atom', ['y']);
+    const cl1 = new Map([['p', { hash: a }], ['q', { hash: b }]]);
+    const cl2 = new Map([['q', { hash: b }], ['p', { hash: a }]]);
+    // Map iteration order is insertion order — swapped order → different key
+    assert.notEqual(_tablingCacheKey(cl1, null), _tablingCacheKey(cl2, null));
+  });
+
+  it('_composeFullKey: different rules → different keys', () => {
+    const r1 = [{ hash: 10 }, { hash: 20 }];
+    const r2 = [{ hash: 10 }, { hash: 30 }];
+    assert.notEqual(
+      _composeFullKey(r1, null, null, null, false),
+      _composeFullKey(r2, null, null, null, false)
+    );
+  });
+
+  it('_composeFullKey: resolver flag differentiates', () => {
+    const rules = [{ hash: 42 }];
+    assert.notEqual(
+      _composeFullKey(rules, null, null, null, false),
+      _composeFullKey(rules, null, null, null, true)
+    );
+  });
+
+  it('_composeFullKey: string keys — no 32-bit collision on similar inputs', () => {
+    // Inputs that would collide under polynomial hash (h*31+val)|0
+    // but canonical strings are distinct
+    const rules = [{ hash: 0 }];
+    const facts1 = new Map([['t', [{ hash: 31 }]]]);
+    const facts2 = new Map([['t', [{ hash: 62 }]]]);
+    const k1 = _composeFullKey(rules, null, null, facts1, false);
+    const k2 = _composeFullKey(rules, null, null, facts2, false);
+    assert.notEqual(k1, k2);
+    // Keys are human-readable strings, not opaque numbers
+    assert.equal(typeof k1, 'string');
+    assert(k1.includes(';'), 'canonical string uses semicolons');
   });
 });
