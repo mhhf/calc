@@ -22,11 +22,16 @@ Technical documentation for how CALC works.
 | [[sell-graded-modality]] | SELL graded modality `!_a` with {0,1,ω} semiring |
 | [[sell-rule-filtering]] | SELL label-based rule filtering |
 
+## Debugging & Testing
+
+| Document | Description |
+|----------|-------------|
+| [[ill-debug-framework]] | ILL debug framework — observation directives, hooks, profiling |
+| [[test-overview]] | Test suite overview — scripts, per-file timing, architecture layers |
+| [[audit-findings]] | Codebase audit findings (TODO_0192) |
+
 ## Reference
 
 | Document | Description |
 |----------|-------------|
-| [[CHANGELOG]] | Release history and changes |
-| [[notes]] | Miscellaneous technical notes |
 | [[ANKI]] | Flashcards for learning proof theory concepts |
-| [[benchmark-v2]] | Proof search benchmark results |
