@@ -246,6 +246,89 @@ describe('Compiled Clause Dispatch', { timeout: 10000 }, () => {
     });
   });
 
+  describe('Tier 2 — savedTheta for input-referencing output wrappers (B7)', () => {
+    // Predicate: peel(pair(H, T), cons(H, R)) :- peel(T, R)
+    // Base:      peel(e, nil)
+    //
+    // Output wrapper cons(H, R) references H (from input decomposition).
+    // At depth >= 2, the inner recursion clobbers _localTheta with its own H,
+    // so the outer recursion's H resolves wrong without savedTheta.
+    //
+    // peel(pair(a, pair(b, e)), ?) should give cons(a, cons(b, nil))
+    // Without savedTheta: cons(b, cons(b, nil)) — outer H clobbered by inner H.
+    it('output referencing input metavar across recursion depth (B7)', () => {
+      const { collectMetavars } = require('../../lib/engine/pattern-utils');
+
+      const H = Store.put('metavar', ['_H']);
+      const T = Store.put('metavar', ['_T']);
+      const R = Store.put('metavar', ['_R']);
+      const e = Store.put('atom', ['nil_e']);
+      const nil = Store.put('atom', ['nil_out']);
+
+      // Base: peel(e, nil) — ground, no metavars
+      const baseHead = Store.put('peel', [e, nil]);
+      const baseDef = [
+        'peel/base',
+        { hash: baseHead, localSlots: {}, metavarCount: 0, metavarList: [] }
+      ];
+
+      // Recursive: peel(pair(H, T), cons(H, R)) :- peel(T, R)
+      const recHead = Store.put('peel', [
+        Store.put('pair', [H, T]),
+        Store.put('cons', [H, R])
+      ]);
+      const recPremise = Store.put('peel', [T, R]);
+      const recMvs = new Set();
+      collectMetavars(recHead, recMvs);
+      collectMetavars(recPremise, recMvs);
+      const recSlots = {};
+      let rsi = 0;
+      for (const mv of recMvs) recSlots[mv] = rsi++;
+      const recClause = [
+        'peel/rec',
+        {
+          hash: recHead, premises: [recPremise],
+          localSlots: recSlots, metavarCount: rsi,
+          metavarList: [...recMvs].map((h, i) => ({ hash: h, localSlot: i })),
+        }
+      ];
+
+      // Build dispatch
+      const idx = {
+        types: { 'peel': { '_': [baseDef] } },
+        clauses: { 'peel': { '_': [recClause] } }
+      };
+      const modes = { peel: ['+', '-'] };
+      const localDispatch = buildClauseDispatch(idx, modes);
+
+      // Goal: peel(pair(a, pair(b, e)), ?) — depth 2 recursion
+      const a = Store.put('atom', ['sym_a']);
+      const b = Store.put('atom', ['sym_b']);
+      const input = Store.put('pair', [a, Store.put('pair', [b, e])]);
+      const mv = Store.put('metavar', ['_out']);
+      const goal = Store.put('peel', [input, mv]);
+      const theta = [undefined];
+
+      const result = tryCompiledClause(localDispatch, goal, { [mv]: 0 }, theta,
+        null, null, modes);
+
+      assert.equal(result, true, 'should resolve via Tier 2');
+      assert.ok(theta[0] !== undefined, 'output should be bound');
+
+      // Expected: cons(a, cons(b, nil))
+      const out = theta[0];
+      assert.equal(Store.tag(out), 'cons', 'outer should be cons');
+
+      const outerH = Store.child(out, 0);
+      assert.equal(outerH, a, 'outer H should be sym_a (not sym_b)');
+
+      const innerCons = Store.child(out, 1);
+      assert.equal(Store.tag(innerCons), 'cons', 'inner should be cons');
+      assert.equal(Store.child(innerCons, 0), b, 'inner H should be sym_b');
+      assert.equal(Store.child(innerCons, 1), nil, 'tail should be nil');
+    });
+  });
+
   describe('end-to-end integration', () => {
     it('noFFI exec produces same result with compiled dispatch', () => {
       const initial = mde.decomposeQuery(

@@ -480,9 +480,9 @@ The backward prover is a black box. No trace of what the prover tried, why it fa
 - [ ] Document the full proof term pipeline: backward to bridge to forward to guided to check
 - [ ] Add observability: backward prover trace hooks
 - [ ] Naming pass: rename verbose functions (see table above)
-- [ ] Fix C2: add loli_match handler to check-term.js
-- [ ] Fix B1: pt.js summarizeSequent should use Store.tag()
-- [ ] Fix B2: state.js toString should handle number focusHash
+- [x] Fix C2: add loli_match handler to check-term.js (S2)
+- [x] Fix B1: pt.js summarizeSequent should use Store.tag() (S2)
+- [x] Fix B2: state.js toString should handle number focusHash (S2)
 - [ ] Fix C4: correct verifyTree comment about resource tracking
 - [ ] Test: add loli_match verification test through check-term.js
 
@@ -1039,7 +1039,7 @@ matchAllLinear (match.js)
 ### Phase 3 Tasks
 
 - [ ] Fix C9: Make structural-memo calculus-agnostic (inject predicate names)
-- [ ] Fix B7: Save theta snapshot per Tier 2 frame (or document restriction)
+- [x] Fix B7: Save theta snapshot per Tier 2 frame (S2)
 - [ ] Fix C13: Extract first-arg indexing to shared helper in compiled-clauses.js
 - [ ] Fix C10: Consolidate backward cache soundness argument into one location
 - [ ] Fix C12: Update ffi.js docstring to match actual resolution order
@@ -1637,7 +1637,7 @@ This would reduce compose.js from 2085 to ~535 LOC. Each sub-module has clean bo
 
 ### Phase 5 Tasks
 
-- [ ] Fix C22: Replace weak 32-bit cache key with collision-resistant hash or verification on hit
+- [x] Fix C22: Replace weak 32-bit cache key with canonical string keys (S2)
 - [ ] Fix C23: Move resolve-all.js ILL imports to injection (same pattern as C16)
 - [ ] Fix C23: Make `between` handler injectable via opts.nativePredicates
 - [ ] Add test: sortPersistentGoals isolation (mode-aware ordering, cycles, multiModal)
@@ -1746,19 +1746,10 @@ But if future metadata includes larger non-hash numbers (counts, sizes, threshol
 
 Fix: Tag hash fields explicitly, or use a schema-driven remapper that only processes known hash paths.
 
-**C30. _composeDiskCacheKey uses weak 32-bit hash (engine/index.js:43-53)**
+**C30. _composeDiskCacheKey uses weak 32-bit hash (engine/index.js:43-53)** — **FIXED (S2)**
 Severity: LOW (same class as C22 — collision invalidates cache, not soundness)
 
-```js
-function _composeDiskCacheKey(treeHashes, absPath, extraGrade0Facts, fuseBasicBlocks) {
-  let h = treeHashes.get(absPath) | 0;
-  ...
-  h = (h * 31 + COMPOSE_DISK_VERSION) | 0;
-  return (h >>> 0).toString(16);
-}
-```
-
-32-bit hash key for compose disk cache. Collision between two different file sets → wrong cached snapshot → silent composition error. Same mitigation as C22: store verification material alongside cache entry.
+Fixed: SHA-256 on canonical string with section delimiters. 16-char hex key for filenames.
 
 **C31. directive-loader.js hardcodes EVM program path (line 19)**
 Severity: LOW (tool-specific, not library code)
@@ -1954,7 +1945,7 @@ This would also improve the ILL coupling story (C27) by isolating the 3 EVM-spec
 
 ### Phase 6 Tasks
 
-- [ ] Fix B9: Replace _substituteBound with depth-aware substitution (use kernel debruijnSubst or add depth tracking)
+- [x] Fix B9: Replace _substituteBound with kernel debruijnSubst (S2)
 - [ ] Fix C27: Inject ILL config into engine/index.js via opts (connectives, getModes, compileOpts)
 - [ ] Fix C27: Move bytecode functions (codeToArrlit, bytesToSemantic, bytecodeToTrie) to ill/ layer
 - [ ] Fix C28: Make convert.js _exprParser lazy or parameterized
@@ -2424,7 +2415,7 @@ Let me document what should be updated:
 - [ ] Update INDEX.md with newer documentation files
 - [ ] Archive or remove 7 fully stale docs: notes.md, CHANGELOG.md, benchmark-v2.md, operations-analysis.md, prover-optimization.md, typed-dsl-logical-framework.md, symexec-optimizations.md
 - [ ] Update eigenvariable-walkthrough.md sections 9-10 (∃ is now implemented)
-- [ ] Fix B12: pt.js summarizeSequent — use Store.tag(hash) instead of hash.tag
+- [x] Fix B12: pt.js summarizeSequent — use Store.tag(hash) instead of hash.tag (S2)
 
 **New documentation:**
 - [ ] Write existential-compile.md (compiled ∃-chain partial evaluation)
