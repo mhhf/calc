@@ -52,12 +52,16 @@ function dumpRule(rule) {
 // ============================================================================
 
 describe('Rule Analysis', { timeout: 10000 }, () => {
-  describe('EVM rule structure inspection', () => {
-    let calc;
+  // Shared EVM calc — loaded once, reused by PART 1/6/7/8.
+  // Re-loading in the same process hits a compacted binary cache whose Store
+  // is smaller than the compiled rules' hashes (compactSnapshot GC).
+  let calc;
 
-    before(async () => {
-      calc = await mde.load(path.join(__dirname, '../../calculus/ill/programs/evm.ill'));
-    });
+  before(async () => {
+    calc = await mde.load(path.join(__dirname, '../../calculus/ill/programs/evm.ill'));
+  });
+
+  describe('EVM rule structure inspection', () => {
 
     it('evm/stop has expected antecedent and consequent predicates', () => {
       const rule = calc.forwardRules.find(r => r.name === 'evm/stop');
@@ -75,8 +79,8 @@ describe('Rule Analysis', { timeout: 10000 }, () => {
     });
 
     it('evm/add has preserved, delta, and consumed predicates', () => {
-      const rule = calc.forwardRules.find(r => r.name === 'evm/add');
-      assert(rule, 'evm/add rule should exist');
+      const rule = calc.forwardRules.find(r => r.name === 'evm/add:step/make');
+      assert(rule, 'evm/add:step/make rule should exist');
 
       const dump = dumpRule(rule);
       const antePreds = dump.anteLinear.map(p => p.pred);
@@ -101,7 +105,7 @@ describe('Rule Analysis', { timeout: 10000 }, () => {
     });
 
     it('preserved predicates have identical hashes on both sides', () => {
-      const rule = calc.forwardRules.find(r => r.name === 'evm/add');
+      const rule = calc.forwardRules.find(r => r.name === 'evm/add:step/make');
       const dump = dumpRule(rule);
 
       // bytecode appears on both sides — if preserved, hashes should be identical
@@ -117,7 +121,7 @@ describe('Rule Analysis', { timeout: 10000 }, () => {
     });
 
     it('delta predicates have different hashes but same predicate head', () => {
-      const rule = calc.forwardRules.find(r => r.name === 'evm/add');
+      const rule = calc.forwardRules.find(r => r.name === 'evm/add:step/make');
       const dump = dumpRule(rule);
 
       // pc appears on both sides — delta (arg changes)
@@ -153,8 +157,8 @@ describe('Rule Analysis', { timeout: 10000 }, () => {
     });
 
     it('evm/swap1 has 1 stack on each side (array-packed)', () => {
-      const rule = calc.forwardRules.find(r => r.name === 'evm/swap1');
-      assert(rule, 'evm/swap1 should exist');
+      const rule = calc.forwardRules.find(r => r.name === 'evm/swap:step/make:is_swap/def:0');
+      assert(rule, 'evm/swap:step/make:is_swap/def:0 should exist');
 
       const dump = dumpRule(rule);
       const anteStacks = dump.anteLinear.filter(p => p.pred === 'stack');
@@ -169,8 +173,8 @@ describe('Rule Analysis', { timeout: 10000 }, () => {
     });
 
     it('evm/dup1 has 1 stack in, 1 stack out (array-packed)', () => {
-      const rule = calc.forwardRules.find(r => r.name === 'evm/dup1');
-      assert(rule, 'evm/dup1 should exist');
+      const rule = calc.forwardRules.find(r => r.name === 'evm/dup:step/make:is_dup/def:0');
+      assert(rule, 'evm/dup:step/make:is_dup/def:0 should exist');
 
       const dump = dumpRule(rule);
       const anteStacks = dump.anteLinear.filter(p => p.pred === 'stack');
@@ -181,7 +185,7 @@ describe('Rule Analysis', { timeout: 10000 }, () => {
     });
 
     it('delta predicates share a metavar with persistent antecedents', () => {
-      const rule = calc.forwardRules.find(r => r.name === 'evm/add');
+      const rule = calc.forwardRules.find(r => r.name === 'evm/add:step/make');
       const dump = dumpRule(rule);
 
       // pc ante pattern: pc(_PC) — child 0 is a metavar
@@ -684,9 +688,8 @@ describe('Rule Analysis', { timeout: 10000 }, () => {
     });
 
     it('evm/add: only bytecode is preserved (v1, no delta detection)', async () => {
-      const calc = await mde.load(
-        path.join(__dirname, '../../calculus/ill/programs/evm.ill'));
-      const rule = calc.forwardRules.find(r => r.name === 'evm/add');
+
+      const rule = calc.forwardRules.find(r => r.name === 'evm/add:step/make');
       const result = analyzeRule(rule);
 
       // bytecode has identical hash on both sides → preserved
@@ -708,9 +711,8 @@ describe('Rule Analysis', { timeout: 10000 }, () => {
     });
 
     it('evm/swap1: all different hashes — nothing preserved in v1', async () => {
-      const calc = await mde.load(
-        path.join(__dirname, '../../calculus/ill/programs/evm.ill'));
-      const rule = calc.forwardRules.find(r => r.name === 'evm/swap1');
+
+      const rule = calc.forwardRules.find(r => r.name === 'evm/swap:step/make:is_swap/def:0');
       const result = analyzeRule(rule);
 
       // Check if bytecode is preserved (should be if same hash)
@@ -730,8 +732,7 @@ describe('Rule Analysis', { timeout: 10000 }, () => {
     });
 
     it('multiset invariants hold for ALL EVM rules', async () => {
-      const calc = await mde.load(
-        path.join(__dirname, '../../calculus/ill/programs/evm.ill'));
+
 
       for (const rule of calc.forwardRules) {
         const result = analyzeRule(rule);
@@ -968,9 +969,8 @@ describe('Rule Analysis', { timeout: 10000 }, () => {
     // --- EVM rules ---
 
     it('evm/add: pc, stack are deltas (no sh in arrlit version)', async () => {
-      const calc = await mde.load(
-        path.join(__dirname, '../../calculus/ill/programs/evm.ill'));
-      const rule = calc.forwardRules.find(r => r.name === 'evm/add');
+
+      const rule = calc.forwardRules.find(r => r.name === 'evm/add:step/make');
       const result = analyzeDeltas(rule);
 
       // bytecode is preserved (identical hash)
@@ -994,9 +994,8 @@ describe('Rule Analysis', { timeout: 10000 }, () => {
     });
 
     it('evm/add: stack is a delta (1 ante, 1 conseq, arrlit version)', async () => {
-      const calc = await mde.load(
-        path.join(__dirname, '../../calculus/ill/programs/evm.ill'));
-      const rule = calc.forwardRules.find(r => r.name === 'evm/add');
+
+      const rule = calc.forwardRules.find(r => r.name === 'evm/add:step/make');
       const result = analyzeDeltas(rule);
 
       // stack: 1 consumed, 1 produced → 1 delta pair, 0 remaining consumed
@@ -1009,8 +1008,7 @@ describe('Rule Analysis', { timeout: 10000 }, () => {
     });
 
     it('multiset invariants hold for ALL EVM rules with deltas', async () => {
-      const calc = await mde.load(
-        path.join(__dirname, '../../calculus/ill/programs/evm.ill'));
+
 
       for (const rule of calc.forwardRules) {
         const result = analyzeDeltas(rule);
@@ -1040,8 +1038,7 @@ describe('Rule Analysis', { timeout: 10000 }, () => {
     });
 
     it('all EVM deltas have valid changedPositions', async () => {
-      const calc = await mde.load(
-        path.join(__dirname, '../../calculus/ill/programs/evm.ill'));
+
 
       for (const rule of calc.forwardRules) {
         const result = analyzeDeltas(rule);
@@ -1105,8 +1102,7 @@ describe('Rule Analysis', { timeout: 10000 }, () => {
     });
 
     it('EVM rules have analysis metadata via mde.load()', async () => {
-      const calc = await mde.load(
-        path.join(__dirname, '../../calculus/ill/programs/evm.ill'));
+
 
       for (const rule of calc.forwardRules) {
         assert(rule.analysis, `${rule.name} should have analysis`);
@@ -1118,9 +1114,8 @@ describe('Rule Analysis', { timeout: 10000 }, () => {
     });
 
     it('evm/add analysis matches expectations', async () => {
-      const calc = await mde.load(
-        path.join(__dirname, '../../calculus/ill/programs/evm.ill'));
-      const rule = calc.forwardRules.find(r => r.name === 'evm/add');
+
+      const rule = calc.forwardRules.find(r => r.name === 'evm/add:step/make');
       const a = rule.analysis;
 
       // bytecode is preserved
