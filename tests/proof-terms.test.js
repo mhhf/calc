@@ -742,6 +742,60 @@ describe('Type Checker', () => {
     });
   });
 
+  // --- loli_match (C2) ---
+
+  describe('loli_match — linear loli consumption (C2)', () => {
+    it('validates loli_match inside monad_r evidence', () => {
+      // Sequent: (a -o {b}), a |- {b}
+      // monad_r enters lax mode, then loli_match consumes the loli:
+      //   1. antecedent proof: id(a) — consumes a from delta
+      //   2. consequent {b} added to delta, then monad_l unwraps to b, id(b)
+      const a = AST.atom('a'), b = AST.atom('b');
+      const monadB = AST.monad(b);
+      const loli = AST.loli(a, monadB);
+
+      const evidence = {
+        rule: 'loli_match',
+        principal: loli,
+        groundAntecedent: a,
+        groundFacts: [b],
+        subterms: [
+          { rule: 'id', principal: a, subterms: [] },
+          { rule: 'monad_l', principal: monadB, subterms: [
+            { rule: 'id', principal: b, subterms: [] }
+          ] }
+        ]
+      };
+
+      const term = { rule: 'monad_r', principal: null, subterms: [], evidence };
+      const s = seq([loli, a], monadB);
+      const result = checker.check(term, s);
+      assert.strictEqual(result.valid, true, result.error || '');
+    });
+
+    it('rejects loli_match with wrong antecedent proof', () => {
+      const a = AST.atom('a'), b = AST.atom('b'), c = AST.atom('c');
+      const monadB = AST.monad(b);
+      const loli = AST.loli(a, monadB);
+
+      const evidence = {
+        rule: 'loli_match',
+        principal: loli,
+        groundAntecedent: a,
+        groundFacts: [b],
+        subterms: [
+          { rule: 'id', principal: c, subterms: [] },  // c not in context
+          { rule: 'id', principal: b, subterms: [] }
+        ]
+      };
+
+      const term = { rule: 'monad_r', principal: null, subterms: [], evidence };
+      const s = seq([loli, a], monadB);
+      const result = checker.check(term, s);
+      assert.strictEqual(result.valid, false, 'should reject wrong antecedent');
+    });
+  });
+
   // --- Invalid terms rejected ---
 
   describe('invalid terms rejected', () => {
