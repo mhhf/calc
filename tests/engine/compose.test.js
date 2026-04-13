@@ -1174,4 +1174,26 @@ describe('Cache key collision resistance (C22)', () => {
     assert.equal(typeof k1, 'string');
     assert(k1.includes(';'), 'canonical string uses semicolons');
   });
+
+  it('_tablingCacheKey: clause/definition boundary is unambiguous', () => {
+    // 2 clauses + 0 defs must differ from 1 clause + 1 def with same hash value
+    const cl2 = new Map([['p', { hash: 10 }], ['q', { hash: 20 }]]);
+    const cl1def1 = new Map([['p', { hash: 10 }]]);
+    const defs = new Map([['t', 20]]);
+    assert.notEqual(
+      _tablingCacheKey(cl2, null),
+      _tablingCacheKey(cl1def1, defs)
+    );
+  });
+
+  it('_composeFullKey: rule/fact boundary is unambiguous', () => {
+    // 2 rules + 0 facts must differ from 1 rule + 1 fact with same hash value
+    const r2 = [{ hash: 10 }, { hash: 20 }];
+    const r1 = [{ hash: 10 }];
+    const facts = new Map([['t', [{ hash: 20 }]]]);
+    assert.notEqual(
+      _composeFullKey(r2, null, null, null, false),
+      _composeFullKey(r1, null, null, facts, false)
+    );
+  });
 });
