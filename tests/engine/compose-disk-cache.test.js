@@ -9,6 +9,7 @@ const path = require('path');
 const os = require('os');
 const Store = require('../../lib/kernel/store');
 const mde = require('../../lib/engine');
+const { _composeDiskCacheKey } = mde;
 
 const SYMEX_PATH = path.join(__dirname, '../../calculus/ill/programs/multisig_nocall_solc_symbolic.ill');
 const CODE_PATH = path.join(__dirname, '../../calculus/ill/programs/multisig_nocall_solc_code.ill');
@@ -181,6 +182,23 @@ describe('Compose disk cache', () => {
     const nodes2 = countNodes(tree2);
 
     assert.equal(nodes2, nodes1, 'explore tree has same node count');
+  });
+
+  it('SHA-256 cache key: different inputs → different keys (C30)', () => {
+    const hashes = new Map([['/a.ill', 12345]]);
+    const k1 = _composeDiskCacheKey(hashes, '/a.ill', null, false);
+    const k2 = _composeDiskCacheKey(hashes, '/a.ill', null, true);
+    assert.notEqual(k1, k2, 'fuseBasicBlocks flag differentiates');
+
+    const facts1 = new Map([['t', [{ hash: 100 }]]]);
+    const facts2 = new Map([['t', [{ hash: 200 }]]]);
+    const k3 = _composeDiskCacheKey(hashes, '/a.ill', facts1, false);
+    const k4 = _composeDiskCacheKey(hashes, '/a.ill', facts2, false);
+    assert.notEqual(k3, k4, 'different facts → different keys');
+
+    // Key is 16-char hex (SHA-256 truncated)
+    assert.equal(k1.length, 16, 'key is 16 hex chars');
+    assert(/^[0-9a-f]+$/.test(k1), 'key is lowercase hex');
   });
 
   it('composeDiskCache: true uses default temp dir', () => {

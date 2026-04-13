@@ -112,6 +112,16 @@ describe('v2 ProofTree', () => {
       assert.ok(str.includes('id'));
       assert.ok(str.includes('✓'));
     });
+
+    it('toString should show tag names, not "?" (B1/B12)', () => {
+      const s = Seq.fromArrays([AST.freevar('A')], [AST.freevar('B')], AST.freevar('C'));
+      const pt = leaf(s, 'id');
+      const str = pt.toString();
+
+      // Formulas are Store hashes — summarizeSequent must use Store.tag(), not f?.tag
+      assert.ok(!str.includes('?'), `expected tag names, got: ${str.trim()}`);
+      assert.ok(str.includes('freevar'), `expected 'freevar' tag, got: ${str.trim()}`);
+    });
   });
 });
 
@@ -187,6 +197,16 @@ describe('v2 FocusedProofState', () => {
     it('toString should produce readable output', () => {
       assert.strictEqual(inversion().toString(), 'inversion');
       assert.ok(focus('R').toString().includes('focus'));
+    });
+
+    it('toString should handle numeric focusHash (B2)', () => {
+      // In real usage, focusHash is a Store hash (number), not a string.
+      // Number.prototype.slice doesn't exist — must not throw.
+      const state = focus('L', 42);
+      assert.doesNotThrow(() => state.toString());
+      const str = state.toString();
+      assert.ok(str.includes('focus'), str);
+      assert.ok(str.includes('L'), str);
     });
 
     it('toJSON should produce plain object', () => {
