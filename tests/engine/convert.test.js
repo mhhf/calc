@@ -295,5 +295,38 @@ describe('MDE Convert', { timeout: 10000 }, () => {
       assert.strictEqual(arg0, arg1,
         'same forall var should produce same freevar hash (content-addressed)');
     });
+
+    it('nested quantifier inside connective body (B9)', () => {
+      // forall X. (f(X) * exists Y. g(X, Y))
+      // The inner exists Y is NOT stripped by decomposeQuery (behind tensor).
+      // _substituteBound was flat — it replaced bound(0) inside the exists
+      // with eigenX, but bound(0) there refers to Y, not X.
+      // debruijnSubst correctly shifts depth under nested binders.
+      const h = mde.parseExpr('forall X. f X * exists Y. g X Y');
+      const { linear } = decomposeQuery(h);
+      const keys = Object.keys(linear).map(Number);
+      assert.strictEqual(keys.length, 2, 'tensor → 2 linear facts');
+
+      // Find f(_) and exists(g(_, _))
+      const fFact = keys.find(k => Store.tag(k) === 'f');
+      const exFact = keys.find(k => Store.tag(k) === 'exists');
+      assert.ok(fFact, 'should have f(X)');
+      assert.ok(exFact, 'should have exists Y. g(X, Y)');
+
+      // f(X): X should be freevar (eigenvariable)
+      assert.strictEqual(Store.tag(Store.child(fFact, 0)), 'freevar');
+
+      // exists Y. g(X, Y): the body is g(X, Y)
+      const gBody = Store.child(exFact, 0); // exists body
+      assert.strictEqual(Store.tag(gBody), 'g');
+      // g's first arg (X) should be freevar — NOT bound
+      const gArg0 = Store.child(gBody, 0);
+      assert.strictEqual(Store.tag(gArg0), 'freevar',
+        'X inside nested exists should be freevar, not bound');
+      // g's second arg (Y) should remain bound(0) — the inner binder
+      const gArg1 = Store.child(gBody, 1);
+      assert.strictEqual(Store.tag(gArg1), 'bound',
+        'Y should remain bound (inner quantifier not stripped)');
+    });
   });
 });
