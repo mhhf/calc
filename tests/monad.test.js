@@ -747,7 +747,7 @@ describe('rightFocus integration', () => {
     const result = focused.prove(seq, {
       rules: specs,
       alternatives,
-      engineCalc: { forwardRules: [compiled] }
+      engineCalc: { forwardRules: [compiled], roles: { product: 'tensor', unit: 'one', exponential: 'bang' } }
     });
 
     assert.ok(result.success, 'forward produces {b, c}, rightFocus decomposes b * c');
