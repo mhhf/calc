@@ -2601,7 +2601,7 @@ Additional savings possible from:
 
 | Suite | Pass | Fail | TODO | Total | Status |
 |---|---|---|---|---|---|
-| `npm test` (main) | 2009 | 0 | 12 | 2021 | **GREEN** |
+| `npm test` (main) | 2197 | 0 | 12 | 2209 | **GREEN** (S6: +162 tests) |
 | `test:ill` | 95 | 3 | 0 | 98 | 3 SHA3 failures |
 | `test:noffi` | 13 | 0 | 0 | 13 | **GREEN** |
 | `test:zk` | 66 | 28 | 0 | 94 | 28 failures (up from 24) |
@@ -2613,7 +2613,7 @@ Additional savings possible from:
 
 ### Main Suite (`npm test`) — 0 failures
 
-All 2009 tests pass. 12 tests marked as TODO (known failures) — all are VMTest loop fixtures:
+All 2197 tests pass (162 added by S6 test coverage). 12 tests marked as TODO (known failures) — all are VMTest loop fixtures:
 - `loop-add-10M`, `loop-divadd-10M`, `loop-divadd-unr100-10M`
 - `loop-exp-{1b,2b,4b,8b,16b,32b}-{100k,1M}`
 - `loop-mul`, `loop-mulmod-2M`, `loop-exp-nop-1M`
