@@ -1,61 +1,63 @@
 tags:
-  linear-logic: 62
-  forward-chaining: 41
-  proof-theory: 29
-  clf: 22
-  focusing: 19
+  linear-logic: 64
+  forward-chaining: 43
+  proof-theory: 31
+  clf: 21
+  focusing: 20
+  architecture: 18
   chr: 18
-  architecture: 17
-  optimization: 17
+  implementation: 16
   symbolic-execution: 16
-  performance: 14
-  adjoint-logic: 13
-  implementation: 13
-  lax-monad: 13
+  adjoint-logic: 15
+  optimization: 15
+  cut-elimination: 14
+  lax-monad: 14
   QTT: 13
-  cut-elimination: 12
+  session-types: 13
   graded-types: 12
-  session-types: 11
+  Curry-Howard: 11
+  sequent-calculus: 11
   Ceptre: 10
   evm: 10
-  sequent-calculus: 10
-  Curry-Howard: 9
+  performance: 10
+  verification: 10
   dependent-types: 9
-  logical-framework: 9
-  research: 9
-  verification: 9
-  Celf: 8
+  partial-evaluation: 9
   exponentials: 8
+  logical-framework: 8
+  multiset-rewriting: 8
   ownership: 8
-  partial-evaluation: 8
+  research: 8
   resource-semantics: 8
   category-theory: 7
-  multiset-rewriting: 7
+  Celf: 7
+  polarity: 7
   soundness: 7
   staging: 7
   subexponentials: 7
-  symexec: 7
   coinduction: 6
+  concurrency: 6
   display-calculus: 6
+  engine: 6
   fixed-points: 6
   hevm: 6
   lnl: 6
-  polarity: 6
+  memory-model: 6
   proof-search: 6
   quiescence: 6
   semiring: 6
+  symexec: 6
   theory: 6
   authorization: 5
   backward-chaining: 5
-  benchmarking: 5
+  bisimulation: 5
   consensus: 5
-  engine: 5
-  memory-model: 5
   muMALL: 5
   plonky3: 5
-  prover: 5
+  separation-logic: 5
   supercompilation: 5
   accounting: 4
+  benchmarking: 4
   blockchain: 4
   CLP: 4
   compilation: 4
@@ -63,6 +65,7 @@ tags:
   data-structures: 4
   eigenvariable: 4
   ethereum: 4
+  ffi: 4
   hash-consing: 4
   lollimon: 4
   modal-logic: 4
@@ -70,7 +73,6 @@ tags:
   oplus: 4
   Petri-nets: 4
   SELL: 4
-  separation-logic: 4
   smt: 4
   stark: 4
   termination: 4
@@ -78,12 +80,11 @@ tags:
   unification: 4
   zk: 4
   adjunction: 3
-  bisimulation: 3
   CHR: 3
-  concurrency: 3
   confluence: 3
+  curry-howard: 3
   cyclic-proofs: 3
-  ffi: 3
+  existential: 3
   game-semantics: 3
   Granule: 3
   Idris-2: 3
@@ -93,7 +94,10 @@ tags:
   memoization: 3
   model-checking: 3
   multicategory: 3
+  operational-semantics: 3
+  pi-calculus: 3
   polymorphism: 3
+  prover: 3
   prover-architecture: 3
   residuation: 3
   testing: 3
@@ -113,13 +117,11 @@ tags:
   complexity: 2
   connectives: 2
   Crucible: 2
-  curry-howard: 2
   debugging: 2
   delegation: 2
   derivatives: 2
-  DSL: 2
+  differential-linear-logic: 2
   duality: 2
-  existential: 2
   fibrations: 2
   finality: 2
   forward-engine: 2
@@ -146,14 +148,11 @@ tags:
   modalities: 2
   MPST: 2
   MTDC: 2
-  multiset: 2
   normalization-by-evaluation: 2
-  operational-semantics: 2
   pacioli-group: 2
   parallelism: 2
   pattern-matching: 2
   persistent-data-structure: 2
-  pi-calculus: 2
   principals: 2
   process-algebra: 2
   prolog: 2
@@ -161,13 +160,16 @@ tags:
   proof-nets: 2
   proof-of-stake: 2
   proof-systems: 2
+  proof-terms: 2
   quantifiers: 2
   recursion: 2
   resource-tracking: 2
   second-order: 2
   semantics: 2
+  shared-memory: 2
   state-merging: 2
   storage: 2
+  subformula-property: 2
   substitution: 2
   symbolic-arithmetic: 2
   tabling: 2
@@ -175,7 +177,6 @@ tags:
   term-representation: 2
   term-rewriting: 2
   union-find: 2
-  v2: 2
   validators: 2
   AARA: 1
   AC-normalization: 1
@@ -192,7 +193,7 @@ tags:
   bang-modality: 1
   BDI: 1
   Belnap: 1
-  benchmark: 1
+  BI: 1
   bibliography: 1
   bidirectional: 1
   binlit: 1
@@ -210,8 +211,6 @@ tags:
   CLF: 1
   code-quality: 1
   code-trees: 1
-  completed: 1
-  complexity-analysis: 1
   congruence-closure: 1
   constraint-propagation: 1
   contextual-types: 1
@@ -235,12 +234,10 @@ tags:
   design: 1
   design-space: 1
   determinism: 1
-  development: 1
-  differential-linear-logic: 1
   digital-assets: 1
   discrimination-trees: 1
   disjunction: 1
-  done: 1
+  DSL: 1
   e-graphs: 1
   entailment: 1
   equality: 1
@@ -297,12 +294,12 @@ tags:
   Lamping: 1
   LEAPS: 1
   learning: 1
-  LF: 1
   light-logic: 1
   linear-negation: 1
   literature: 1
   locally-nameless: 1
   location: 1
+  lock-free: 1
   logic-design: 1
   logic-programming: 1
   logics-survey: 1
@@ -318,7 +315,6 @@ tags:
   metalogic: 1
   methodology: 1
   milawa: 1
-  milestones: 1
   mix-rule: 1
   mode-checking: 1
   moggi: 1
@@ -327,6 +323,7 @@ tags:
   multi-logic: 1
   multi-party: 1
   multi-type: 1
+  multiset: 1
   mythril: 1
   Nomos: 1
   nondeterminism: 1
@@ -349,18 +346,15 @@ tags:
   poseidon2: 1
   primitives: 1
   production-systems: 1
-  profiling: 1
   proof-as-process: 1
   proof-certificates: 1
   proof-erasure: 1
   proof-irrelevance: 1
   proof-market: 1
   proof-of-authority: 1
-  proof-terms: 1
   proofs: 1
   provenance: 1
   "Q&A": 1
-  questions: 1
   references: 1
   refinement-types: 1
   relational-e-matching: 1
@@ -373,12 +367,12 @@ tags:
   rule-selection: 1
   saturation: 1
   SAW: 1
+  SAX: 1
   says-modality: 1
   scheduling: 1
   security: 1
   self-verification: 1
   semi-naive: 1
-  sequent: 1
   shifts: 1
   simplification: 1
   size-change: 1
@@ -399,7 +393,6 @@ tags:
   store-optimization: 1
   stratification: 1
   study-plan: 1
-  subformula-property: 1
   synchronous: 1
   tactics: 1
   temporal-modalities: 1

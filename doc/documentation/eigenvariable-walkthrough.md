@@ -380,7 +380,7 @@ Not needed for eigenvariables. Confluence is a Skolem concern (ground folding). 
 Becomes constraint propagation instead of term rewriting. Different techniques (CLP vs Knuth-Bendix) but same structural role. Could be done via CHR-style propagation rules.
 
 ### TODO_0006 (Lax Monad Integration)
-∃ in the monad (CLF-style) IS the eigenvariable mechanism made explicit. If we add ∃ as a connective, then eigenvariable generation during forward chaining becomes ∃R in the monadic decomposition. Clean fit — this is exactly what CLF was designed for.
+∃ in the monad (CLF-style) IS the eigenvariable mechanism made explicit. ∃ is now a connective in CALC (`exists` tag, positive polarity), and `lnl/existential.js` implements existential resolution in forward chaining: per-goal compiled FFI step → fallback `provePersistent` → `freshEvar` as symbolic witness. This is exactly CLF ∃R in the monadic decomposition.
 
 ### TODO_0029-0032 (Verification: properties, invariants, reachability, counterexamples)
 Eigenvariable constraint stores export DIRECTLY to SMT:
@@ -399,6 +399,8 @@ Eigenvariable generation is O(1) per step — a counter increment + Store.put + 
 ---
 
 ## 10. The ∃ Connective and Its Relationship to Eigenvariables
+
+> **Status:** ∃ is now implemented in CALC. The `exists` connective (positive polarity, category `quantifier`) is handled by the backward prover (∃R/∃L in focused.js), the forward engine (`lnl/existential.js` for resolution, `opt/existential-compile.js` for compiled fast path), and the rule compiler (`compile.js` tracks existential slots and goals). The discussion below describes the theory and how the implementation maps to it.
 
 ### What ∃ means
 
@@ -439,82 +441,39 @@ The monadic decomposition encounters `∃C` and:
 2. Continues decomposing `{stack(SH, α) * !plus(A, B, α) * ...}`
 3. Adds all resulting facts (including the constraint) to the state
 
-**This IS the eigenvariable approach.** Adding ∃ makes it explicit in the logic rather than implicit in engine code.
+**This IS the eigenvariable approach.** ∃ makes it explicit in the logic rather than implicit in engine code.
 
-### What changes in CALC if we add ∃
+### How CALC implements ∃
 
-**Without ∃ (current + eigenvariable hack):**
-- Forward rules have implicit universal quantification over all variables
-- The engine detects "backward proving failed" and generates a fresh evar
-- This is an engine-level workaround, not a logical mechanism
-- The constraint emission is ad-hoc (engine code, not rule-specified)
+The forward engine resolves existential variables in `lnl/existential.js:resolveExistentials()` after linear matching succeeds. The resolution strategy per goal:
 
-**With ∃ (CLF-style):**
-- Forward rules explicitly declare which consequent variables are existentially quantified
-- The forward engine has a case for ∃ in monadic decomposition
-- Fresh parameter generation is a logical operation (∃R), not a hack
-- The constraint appears naturally as part of the rule consequent
+1. **Compiled FFI step** (`opt/existential-compile.js`) — O(1), slot-to-slot dataflow
+2. **provePersistent fallback** — state lookup → FFI → clause resolution
+3. **freshEvar** — symbolic witness when resolution fails (eigenvariable)
+
+For ground inputs, step 1 or 2 binds the output concretely. For symbolic inputs, step 3 generates a fresh eigenvariable. The compiled existential chain partially evaluates the resolution: for deterministic predicates (mode `+...+-`), `∃x.P(inputs, x)` reduces to `x := f(inputs)` — see `doc/documentation/existential-compile.md`.
 
 ### Example: ADD rule with ∃
 
-**Current (implicit):**
+**Antecedent-style (current EVM rules):**
 ```
 evm/add: pc(PC) * stack(1, A) * stack(0, B) * !inc(PC, PC') * !plus(A, B, C)
          -o { pc(PC') * stack(0, C) }
 ```
-C is determined by proving !plus(A, B, C). If proof fails, engine hacks in a fresh evar.
+C is determined by proving !plus(A, B, C) in the antecedent. For ground inputs, FFI resolves immediately. For symbolic inputs, `resolveExistentials` detects C as an existential variable and generates a fresh evar.
 
-**With ∃ (explicit):**
+**Consequent-style (CLF-explicit):**
 ```
 evm/add: pc(PC) * stack(1, A) * stack(0, B) * !inc(PC, PC')
          -o { exists C. (pc(PC') * stack(0, C) * !plus(A, B, C)) }
 ```
-C is fresh (∃R). The constraint !plus(A, B, C) is part of the consequent — it's emitted alongside the value. If the constraint IS immediately provable (FFI succeeds), C gets bound to the concrete result. If not, C stays as a fresh parameter.
+C is fresh (∃R). The constraint !plus(A, B, C) is part of the consequent. The rule fires whenever its pattern matches — computation is deferred to existential resolution.
 
-### The beautiful part
+### Antecedent vs consequent placement
 
-With ∃, the rule DOESN'T NEED to prove plus in the antecedent at all. The plus constraint moves to the CONSEQUENT:
-- Antecedent: only linear matching (pc, stack) + inc (always succeeds for ground PC)
-- Consequent: ∃C + constraint + state facts
+Both forms are supported. The current EVM rules use the antecedent style (persistent goals prove C before production). The engine's existential resolution (`lnl/existential.js`) handles both: antecedent-bound variables that couldn't be resolved are detected as existential slots by `compile.js`, and consequent-style ∃ are handled by `expandChoiceItem` in the monadic decomposition.
 
-This means:
-- No backward chaining needed for arithmetic during rule firing
-- The constraint is part of the monadic output, not a precondition
-- For ground inputs: the constraint `!plus(3, 5, C)` is immediately resolved by FFI → C = 8
-- For symbolic inputs: C stays fresh, constraint accumulates
-
-**This cleanly separates matching (antecedent) from computation (consequent).** The rule fires whenever its pattern matches. The computation is deferred to constraint resolution.
-
-### Tradeoffs of adding ∃
-
-**What we gain:**
-- Theoretically clean: standard CLF, not engine hack
-- Rule-level control: author decides which variables are existential
-- Natural constraint emission: constraints are consequent facts, not engine artifacts
-- CLF/Celf/Ceptre compatibility
-- Foundation for dependent types (TODO_0011)
-- Foundation for fresh name generation (protocols, nonces)
-
-**What we lose:**
-- Simplicity: one more connective through every layer
-- Current rule format: rules would need rewriting (move plus from antecedent to consequent)
-- Backward prover also needs ∃ handling (∃R: introduce logic variable, ∃L: open and bind)
-
-**Risks:**
-- Variable binding in the grammar (need `exists X. A` syntax) — adds complexity to the Earley grammar
-- Scoping: ∃ inside ⊗ vs ∃ outside ⊗ matters — need to track scope correctly
-- If done wrong, can break content-addressing (fresh names must be handled carefully in the Store)
-
-**If we DON'T add ∃:**
-- Engine-level eigenvariable generation works but is ad-hoc
-- Can't express protocols with fresh nonces in .ill rules
-- Dependent types (TODO_0011) become harder
-- We lose CLF compatibility
-
-**If we DO add ∃:**
-- ~200 LOC across all layers (grammar ~10, parser ~20, rules ~20, forward engine ~30, backward prover ~30, focusing ~5, convert ~20, Store ~5, tests ~60)
-- One-time effort, then all future rules can use it
-- The eigenvariable approach becomes a LOGICAL MECHANISM, not a hack
+**The key architectural insight:** whether the obligation `!plus(A, B, C)` lives in the antecedent or consequent, the resolution path is the same: compiled FFI → provePersistent → freshEvar. The difference is cosmetic in the rule file, not semantic in the engine.
 
 ---
 
@@ -588,12 +547,12 @@ CALC's `{...}` in rule consequents IS the CLF monad, implemented implicitly:
 | CLF monad operation | CALC implementation |
 |---|---|
 | ⊗ decomposition | `expandChoiceItem` splits into individual facts |
-| ∃ introduction | **Missing** — this is the gap ∃ fills |
+| ∃ introduction | `lnl/existential.js:resolveExistentials` — compiled FFI → provePersistent → freshEvar |
 | ⊕ branching | `expandChoiceItem` forks into children |
 | ⊸ suspension | Loli stays in state, `matchLoli` fires when guard provable |
 | ! annotation | Fact added to `state.persistent` |
 
-The implementation is **incomplete**, not dirty. Adding ∃ fills the main gap and completes the monadic decomposition. If we wanted "proper CLF," we'd also add type-level tracking of the monadic boundary — but that's not needed for symbolic execution.
+The monadic decomposition is now complete (all five CLF operations implemented). Type-level tracking of the monadic boundary is not needed for symbolic execution.
 
 ---
 
