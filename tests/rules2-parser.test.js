@@ -1,11 +1,12 @@
 /**
- * Tests for .rules2 parser: proof search integration
+ * Tests for .rules2 parser: proof search integration + direct parser tests
  */
 const { describe, it, before } = require('node:test');
 const assert = require('node:assert');
 const calculus = require('../lib/calculus');
 const { buildRuleSpecs } = require('../lib/prover/rule-interpreter');
 const Seq = require('../lib/kernel/sequent');
+const Store = require('../lib/kernel/store');
 const { GRADE_W } = require('../lib/engine/grades');
 
 describe('.rules2 parser', () => {
@@ -61,5 +62,101 @@ describe('.rules2 parser', () => {
 
     unprovable('A |- B', () => mkSeq([AST.atom('a')], AST.atom('b')));
     unprovable('|- A', () => mkSeq([], AST.atom('a')));
+  });
+
+  describe('Direct parser — rule blocks → flat descriptors', () => {
+    let parseRules2, parse;
+
+    before(async () => {
+      const calc = await calculus.loadILL();
+      parse = (s) => calc.parse(s);
+      ({ parseRules2 } = require('../lib/rules/rules2-parser'));
+    });
+
+    // Note: .rules2 format uses '.' ONLY to terminate the whole block.
+    // Premise lines do NOT end with '.'. The block terminator is '.\n'.
+
+    it('parses simple right rule', () => {
+      const text = `@formulas A, B
+tensor_r: G ; D |- A * B
+  <- G ; D' |- A
+  <- G ; D'' |- B.
+`;
+      const rules = parseRules2(text, parse);
+      assert.ok(rules.tensor_r);
+      assert.equal(rules.tensor_r.name, 'tensor_r');
+      assert.equal(rules.tensor_r.descriptor.connective, 'tensor');
+      assert.equal(rules.tensor_r.descriptor.side, 'r');
+      assert.equal(rules.tensor_r.descriptor.arity, 2);
+      assert.equal(rules.tensor_r.numPremises, 2);
+    });
+
+    it('detects context split', () => {
+      const text = `@formulas A, B
+tensor_r: G ; D |- A * B
+  <- G ; D' |- A
+  <- G ; D'' |- B.
+`;
+      const rules = parseRules2(text, parse);
+      assert.equal(rules.tensor_r.descriptor.contextSplit, true);
+      assert.equal(rules.tensor_r.descriptor.contextFlow, 'split');
+    });
+
+    it('detects preserved context (single premise)', () => {
+      const text = `@formulas A, B
+loli_r: G ; D |- A -o B
+  <- G ; D, A |- B.
+`;
+      const rules = parseRules2(text, parse);
+      assert.equal(rules.loli_r.descriptor.contextFlow, 'preserved');
+      assert.equal(rules.loli_r.descriptor.side, 'r');
+    });
+
+    it('detects left rule principal', () => {
+      const text = `@formulas A, B
+tensor_l: G ; D, A * B |- C
+  <- G ; D, A, B |- C.
+`;
+      const rules = parseRules2(text, parse);
+      assert.equal(rules.tensor_l.descriptor.side, 'l');
+      assert.equal(rules.tensor_l.descriptor.connective, 'tensor');
+    });
+
+    it('parses zero-premise axiom', () => {
+      const text = `@formulas A
+one_r: G ; |- I.
+`;
+      const rules = parseRules2(text, parse);
+      assert.equal(rules.one_r.descriptor.contextFlow, 'empty');
+      assert.equal(rules.one_r.numPremises, 0);
+    });
+
+    it('parses annotations', () => {
+      const text = `@formulas A, B
+tensor_r: G ; D |- A * B
+  <- G ; D' |- A
+  <- G ; D'' |- B
+  @invertible false
+  @pretty "⊗R".
+`;
+      const rules = parseRules2(text, parse);
+      assert.equal(rules.tensor_r.invertible, false);
+      assert.equal(rules.tensor_r.pretty, '⊗R');
+    });
+
+    it('requires @formulas directive', () => {
+      assert.throws(() => parseRules2('no_directive: |- A.', parse), /@formulas directive required/);
+    });
+
+    it('parses copy context (all vars in all premises)', () => {
+      const text = `@formulas A, B
+with_r: G ; D |- A & B
+  <- G ; D |- A
+  <- G ; D |- B.
+`;
+      const rules = parseRules2(text, parse);
+      assert.equal(rules.with_r.descriptor.contextFlow, 'copy');
+      assert.equal(rules.with_r.descriptor.copyContext, true);
+    });
   });
 });
