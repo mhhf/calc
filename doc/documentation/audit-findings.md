@@ -126,14 +126,14 @@ Three-layer engine (generic → LNL → ILL) with dependency injection via `matc
 
 | Topic | Status |
 |---|---|
-| `existential-compile.js` | Mentioned in dir listing only; no standalone doc |
-| `backward-cache.js` semantics | No doc on invalidation conditions or soundness argument |
-| `constraint-feed.js` | Not mentioned by name in any doc |
-| `fuzz-ffi.js` tool | Not in CLAUDE.md Tooling section |
-| `bench-history.js` tool | Not in CLAUDE.md Tooling section |
-| `analyze-csub.js` tool | Not in CLAUDE.md Tooling section |
-| Proof term pipeline end-to-end | `proof-terms.md` exists but doesn't cover full/guided/off modes or the `loli_match` gap |
-| `matchOpts` composition | No doc; only discoverable by reading forward.js/explore.js source |
+| `existential-compile.js` | ✅ `doc/documentation/existential-compile.md` (S7) |
+| `backward-cache.js` semantics | ✅ Soundness argument consolidated in `backward-cache.js` header (S7) |
+| `constraint-feed.js` | ✅ Documented in `optimization-architecture.md` Cache Semantics section (S7) |
+| `fuzz-ffi.js` tool | ✅ Added to CLAUDE.md (S3) |
+| `bench-history.js` tool | ✅ Added to CLAUDE.md (S3) |
+| `analyze-csub.js` tool | ✅ Added to CLAUDE.md (S3) |
+| Proof term pipeline end-to-end | ✅ `doc/documentation/proof-term-pipeline.md` (S7) |
+| `matchOpts` composition | ✅ `doc/documentation/matchOpts-reference.md` (S7) |
 | Profile system (`optimizer.js`) | `optimization-architecture.md` lists it but no standalone reference |
 | Circular dependency workarounds | Not documented; lazy `require()` in 4+ files |
 
@@ -2416,17 +2416,19 @@ Let me document what should be updated:
 - [x] Add undocumented tools to CLAUDE.md Tooling section (S3: all 8 tools documented)
 
 **Documentation fixes:**
-- [ ] Fix opt/ path drift in architecture.md, forward-chaining-engine.md, optimization-architecture.md
+- [x] Fix opt/ path drift in architecture.md, forward-chaining-engine.md, optimization-architecture.md (S7)
 - [x] Update test-overview.md with current test count and known failures (S3)
 - [x] Update INDEX.md with newer documentation files (S3)
 - [x] Archive or remove 7 fully stale docs (S3: deleted, preserved in git history)
-- [ ] Update eigenvariable-walkthrough.md sections 9-10 (∃ is now implemented)
+- [x] Update eigenvariable-walkthrough.md sections 9-10 (∃ is now implemented) (S7)
 - [x] Fix B12: pt.js summarizeSequent — use Store.tag(hash) instead of hash.tag (S2)
+- [x] Consolidate backward cache soundness argument (C10) in backward-cache.js (S7)
+- [x] Add cache semantics + constraint-feed docs to optimization-architecture.md (S7)
 
 **New documentation:**
-- [ ] Write existential-compile.md (compiled ∃-chain partial evaluation)
-- [ ] Write matchOpts-reference.md (15-field config object)
-- [ ] Write proof-term-pipeline.md (backward → bridge → forward → guided → check)
+- [x] Write existential-compile.md (compiled ∃-chain partial evaluation) (S7)
+- [x] Write matchOpts-reference.md (15-field config object) (S7)
+- [x] Write proof-term-pipeline.md (backward → bridge → forward → guided → check) (S7)
 
 **Cleanup:**
 - [x] Remove or archive doc/todo/ (S3: deleted 49 files, ~4,019 LOC)

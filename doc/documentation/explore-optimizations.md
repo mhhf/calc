@@ -54,7 +54,7 @@ pathVisited.delete(sh)
 ```
 scp = solver.checkpoint()
   mutateState(...)
-  feedPersistent(solver, perArena, perCp)    // opt/constraint.js
+  feedPersistent(solver, perArena, perCp)    // constraint-feed.js
   go(depth + 1)
 solver.restore(scp)
 ```
@@ -73,15 +73,15 @@ grows monotonically across calls, eventually overflowing the fixed-size undo buf
 
 ## 6. Delta bypass + compiled substitution (Stage 7)
 
-**Delta bypass** (`opt/delta-bypass.js`): For flat delta patterns (children are metavars or ground), extract children directly via `Store.child(fact, pos)` instead of full `matchIndexed` decomposition.
+**Delta bypass** (`delta-bypass.js`): For flat delta patterns (children are metavars or ground), extract children directly via `Store.child(fact, pos)` instead of full `matchIndexed` decomposition.
 
-**Compiled substitution** (`opt/compiled-sub.js`): Precomputed recipes map consequent patterns to direct `Store.put(tag, [theta[slot0], theta[slot1]])` calls, bypassing recursive `applyIndexed` traversal.
+**Compiled substitution** (`rule-analysis.js`): Precomputed recipes map consequent patterns to direct `Store.put(tag, [theta[slot0], theta[slot1]])` calls, bypassing recursive `applyIndexed` traversal.
 
-**mutateState integration** (`state-ops.js`): When `rule` is passed to `mutateState`, it handles preserved-skip + compiled substitution together. Recipe indices align with full consequent pattern list. Multi-alt paths use external `filterPreserved` (`opt/preserved.js`).
+**mutateState integration** (`state-ops.js`): When `rule` is passed to `mutateState`, it handles preserved-skip + compiled substitution together. Recipe indices align with full consequent pattern list. Multi-alt paths use external `filterPreserved` (`preserved.js`).
 
 ## 7. Optimization modules
 
-All optimizations called in the `go()` hot loop live in `lib/engine/opt/` as independently importable modules. Each is controlled by a profile flag in `optimizer.js`. See `doc/documentation/optimization-architecture.md` for the full module map, flag table, and V8 design constraints.
+Optimizations called in the `go()` hot loop live in `lib/engine/opt/` (generic) or alongside their consumers at the engine root. Each is controlled by a profile flag in `optimizer.js`. See `doc/documentation/optimization-architecture.md` for the full module map, flag table, and V8 design constraints.
 
 ## When to be careful
 
