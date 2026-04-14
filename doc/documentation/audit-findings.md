@@ -47,7 +47,7 @@ Three-layer engine (generic → LNL → ILL) with dependency injection via `matc
 
 **P3 — `verifyStep` (kernel.js) weakness**: The L1 kernel's premise verification uses subset check (expected ⊆ actual) rather than multiset equality. Extra formulas in actual premises are silently accepted. This weakens the trusted base.
 
-**P4 — `structural-memo.js` hardcodes EVM predicates**: `computeControlHash` uses `Store.TAG['pc']` and `Store.TAG['stack']` directly — not calculus-agnostic. Would break for non-EVM calculi.
+**P4 — ~~`structural-memo.js` hardcodes EVM predicates~~ (FIXED, S4)**: `computeControlHash` now accepts `memoControlTags` via opts — injected from `domainConfig.memoControlTags` by `explore.js`. Generic layer is calculus-agnostic.
 
 **P5 — ZK subsystem is 24/94 failures**: `chunked-witness.test.js` is 0/19 pass. The ZK path has drifted significantly from the main engine.
 
@@ -56,19 +56,25 @@ Three-layer engine (generic → LNL → ILL) with dependency injection via `matc
 ### Separation of Concerns Assessment
 
 **Clean:**
-- Generic engine core (match/strategy/forward/explore) has zero imports from ill/ or lnl/
+- Generic engine core (match/strategy/forward/explore) has zero ILL imports on the pipeline path — all ILL-specific config injected via `calcContext` (S4). Lazy ILL defaults in 7 files for backward-compatible direct callers (tests, bridge.js), never reached via pipeline.
 - LNL layer adds linear/persistent distinction without ILL knowledge
 - Equational theories are pluggable via `eq-theory.js`
 - Connectives injected via `opts.connectives` (not hardcoded)
 - FFI registry is modular (`register`/`get`/`has`)
+- `structural-memo.js` accepts predicate names via opts (S4: `memoControlTags` from `domainConfig`)
+- `backchain.js` config-driven path when called via `index.js` pipeline; lazy ILL defaults only for direct callers (S4)
+- `opt/ffi.js` receives `ffiContext` from `calcContext` — no module-level ILL imports (S4)
+- `opt/prediction.js` accepts `binToInt`/`trieNav` as builder parameters (S4)
+- `directive-loader.js` program path configurable via `setProgram()` (S4)
+- `ill/calculus-config.js` is single assembly point for all ILL-specific config (S4: D5 layered config)
 
-**Leaky:**
-- `structural-memo.js` knows `pc`/`stack` predicate names (EVM-specific in generic layer)
+**Leaky (remaining):**
 - `show.js` excludes `['bytecode', 'calldata']` by default (EVM-specific)
 - `compose-config.js` and `ill/` have ILL-specific SROA/fusion configs that could be calculus-config files
-- `forward.js` and `explore.js` duplicate `matchOpts` assembly (~30 lines each)
+- `forward.js` and `explore.js` duplicate `matchOpts` assembly (~30 lines each) — now config-driven via `calcContext` but not yet extracted to shared helper
 - `opt/ffi.js` and `lnl/persistent.js` both have `maxDepth: 20000` hardcoded independently
 - `backchain.js` hardcodes `_mvSlotsLen = 4_000_000`, `MAX_TRAIL = 32768`, `_MAX_RESOLVE_ITER = 500_000`
+- `resolve-all.js` has `_ensureDefaults()` with ILL imports — only for direct callers, pipeline path threads config via `opts.canonicalize` (S4)
 
 ### Optimization Soundness Assessment
 
@@ -181,10 +187,10 @@ Three-layer engine (generic → LNL → ILL) with dependency injection via `matc
 - [ ] Audit `backchain.js` (999 LOC) — singleton pattern, slot machinery, trail
 - [ ] Audit `compile.js` (743 LOC) — rule compilation phases A-H, PM instruction set
 - [ ] Audit `match.js` (479 LOC) — tryMatch pipeline, matchOpts threading
-- [ ] Audit `strategy.js` (302 LOC) — dual strategy mechanism (legacy discriminator vs stack)
+- [ ] Audit `strategy.js` (302 LOC) — strategy stack (S5: legacy discriminator removed, unified to strategy stack)
 - [ ] Audit `explore.js` (444 LOC) — DFS, cycle detection, mutation/undo
 - [ ] Audit `fact-set.js` (486 LOC) — FactSet/Arena/State, Zobrist hash
-- [ ] Extract shared matchOpts assembly from forward.js/explore.js
+- [x] Extract shared matchOpts assembly from forward.js/explore.js (S5: `buildMatchOpts` in match.js)
 - [ ] Add observability: strategy stack decision hooks, existential resolution hooks
 - [ ] Document `matchOpts` composition as standalone reference
 - [ ] Naming pass: engine function names (see naming table above)
@@ -200,7 +206,7 @@ Three-layer engine (generic → LNL → ILL) with dependency injection via `matc
 - [ ] Audit `structural-memo.js` (82 LOC) — EVM-specific predicates in generic layer
 - [ ] Audit `backward-cache.js` (152 LOC) — soundness argument for cache validity
 - [ ] Audit `constraint-feed.js` (57 LOC) — SAT pruning, zero tests
-- [ ] Make structural-memo calculus-agnostic (inject predicate names)
+- [x] Make structural-memo calculus-agnostic (inject predicate names) — S4: `memoControlTags` via `domainConfig`
 - [ ] Document cache invalidation semantics
 - [ ] Add tests: existential-compile, constraint-feed
 - [ ] Add observability: compiled clause tier counters as hooks
@@ -213,7 +219,7 @@ Three-layer engine (generic → LNL → ILL) with dependency injection via `matc
 - [ ] Audit `loli.js` (135 LOC) — dynamic rule firing
 - [ ] Audit `binlit-theory.js` (141 LOC) — equational theory correctness
 - [ ] Audit `ill/ffi/arithmetic.js` (1,129 LOC) — all FFI predicates vs clause definitions
-- [ ] Audit `loli-drain.js` (86 LOC) — optimization soundness
+- [ ] Audit `loli-drain.js` (86 LOC) — optimization soundness — moved to `lnl/loli-drain.js` (S4: confirmed generic, zero ILL imports)
 - [ ] Verify: run `fuzz-ffi.js` and expand its coverage
 - [ ] Document loli-drain semantics
 - [ ] Add `fuzz-ffi.js` to CLAUDE.md Tooling section
@@ -232,7 +238,7 @@ Three-layer engine (generic → LNL → ILL) with dependency injection via `matc
 ### Phase 6: Entry Point & Loader (index.js orchestration)
 **Scope:** `index.js` (1,112 LOC) + `convert.js` (799 LOC) + `store-binary.js` (463 LOC) + `directive-loader.js` (266 LOC)
 **Goal:** Clean up entry point concerns, verify disk cache, audit convert pipeline
-- [ ] Audit `index.js` — separate I/O (disk cache) from orchestration
+- [ ] Audit `index.js` — separate I/O (disk cache) from orchestration — ILL coupling eliminated (S4: single `require('./ill/calculus-config')` fallback, all 17 references replaced by layered config threading)
 - [ ] Audit `convert.js` — .ill→Store pipeline, preserved desugaring
 - [ ] Audit `store-binary.js` — binary serialization correctness
 - [ ] Clean up COMPOSE_DISK_VERSION management
@@ -257,14 +263,14 @@ Three-layer engine (generic → LNL → ILL) with dependency injection via `matc
 - [ ] Add `fuzz-ffi.js`, `bench-history.js`, `analyze-csub.js` to CLAUDE.md Tooling
 - [ ] Remove or archive `doc/todo/` (48 legacy files)
 - [ ] Fix `pt.js:summarizeSequent` broken display
-- [ ] Clean up circular lazy requires
+- [ ] Clean up circular lazy requires — S4: lazy requires in `backchain.js`, `resolve-all.js`, `opt/ffi.js` documented and justified (backward compatibility for direct callers); pipeline path avoids them via config threading
 - [x] Update test-overview.md with current known failures and timing (S3)
 
 ### Phase 9: Kolmogorov Density Pass (suckless cleanup)
 **Scope:** Full codebase
 **Goal:** Reduce LOC while preserving performance and correctness
 - [x] Identify dead code paths (unused exports, unreachable branches) (S3: 30 unused exports removed)
-- [ ] Deduplicate matchOpts assembly
+- [x] Deduplicate matchOpts assembly — S5: `buildMatchOpts` factory in match.js (S4 did config-driven, S5 extracted shared factory)
 - [ ] Collapse unnecessary re-exports (guided-term.js, opt/fingerprint.js) — disc-tree-opt.js deleted in S3
 - [ ] Remove legacy `unifyBinlit`/`unifyStrlit`/`unifyArrlit` from unify.js
 - [ ] Simplify `show.js` EVM-specific defaults
@@ -499,7 +505,7 @@ The codebase has maintained its core architectural discipline (3-layer engine, d
 tryMatch pipeline: setup → matchAllLinear → existential resolution. matchOnePattern: 3 strategies (delta bypass → secondary index → general). Pooled Maps/theta (MAX_SLOTS=128). Re-exports from 4 modules (lnl/persistent, lnl/existential, lnl/loli, opt/ffi). PROFILE gating via CALC_PERF_PROFILE.
 
 **Forward Engine (forward.js, 218 LOC):**
-run() main loop: committed-choice forward chaining. applyMatchInPlace (mutating). Builds both legacy discriminatorIndex AND strategy stack but findMatch only uses the legacy path. Three trace levels (evidence/terms/string). Multi-alt SAT filtering. Inline lazy requires for ill/connectives and backchain.
+run() main loop: committed-choice forward chaining. applyMatchInPlace (mutating). Builds both legacy discriminatorIndex AND strategy stack but findMatch only uses the legacy path. Three trace levels (evidence/terms/string). Multi-alt SAT filtering. All ILL config injected via `calc.ffiContext` and `calc.domainConfig` (S4: zero ill/ imports).
 
 **Strategy Stack (strategy.js, 302 LOC):**
 Strategy stack: fingerprint → disc-tree → predicate (catch-all). `findMatch` has DUAL mechanism: legacy discriminatorIndex scan AND full predicate scan (does NOT use strategy stack). `findAllMatches` correctly uses strategy stack for explore. attachPredictions for Opt_H threaded code.
@@ -768,8 +774,8 @@ Clean separation: compile → match → strategy → forward/explore. backchain.
 
 ### Phase 2 Tasks
 
-- [ ] Unify findMatch to use strategy stack (C5 — remove legacy discriminatorIndex path)
-- [ ] Extract buildMatchOpts helper (C6 — deduplicate forward.js/explore.js)
+- [x] Unify findMatch to use strategy stack (C5 — remove legacy discriminatorIndex path) (S5: strategy stack in findMatch, discriminatorIndex removed)
+- [x] Extract buildMatchOpts helper (C6 — deduplicate forward.js/explore.js) (S5: `buildMatchOpts` in match.js)
 - [x] Remove PM_CHECK opcode (C8) (S3)
 - [ ] Add bounds checking to _deltaWritten, _pmStack, _mStack (B3-B5)
 - [ ] Naming pass: rename verbose functions (see table above)
@@ -1038,9 +1044,9 @@ matchAllLinear (match.js)
 
 ### Phase 3 Tasks
 
-- [ ] Fix C9: Make structural-memo calculus-agnostic (inject predicate names)
+- [x] Fix C9: Make structural-memo calculus-agnostic (inject predicate names) (S4: `memoControlTags` via `domainConfig`)
 - [x] Fix B7: Save theta snapshot per Tier 2 frame (S2)
-- [ ] Fix C13: Extract first-arg indexing to shared helper in compiled-clauses.js
+- [x] Fix C13: Extract first-arg indexing to shared helper in compiled-clauses.js (S5: `_classifyFirstArg` helper)
 - [ ] Fix C10: Consolidate backward cache soundness argument into one location
 - [x] Fix C12: Update ffi.js docstring to match actual resolution order (S3)
 - [ ] Add test: existential-compile.js isolation test (C14)
@@ -1356,7 +1362,7 @@ Theory-standard: binToInt, intToBin, canonicalize, rewrite, trieNav, union-find,
 - [ ] Fix C16: Remove ILL connective defaults from forward.js/explore.js (require explicit parameter)
 - [ ] Fix C17: Remove ILL defaults from backchain.js (neutral defaults or required opts)
 - [ ] Fix C20: Move backchain-ill.js side effects to explicit initILL() function
-- [ ] Fix C19: Extract shared arithmetic computation for residual-resolver.js and FFI
+- [x] Fix C19: Extract shared arithmetic computation for residual-resolver.js and FFI (S5: `arith-core.js` shared by both)
 - [ ] Fix C18: Rename FFI isGround to distinguish from pattern-utils.isGround
 - [ ] Add test: LNL persistent.js direct test (state lookup, compiled clause, cache, clause fallback)
 - [ ] Add test: LNL existential.js direct test (compiled chain, provePersistent, freshEvar)
@@ -2026,10 +2032,10 @@ Three flat hash-walking substitution functions exist:
 
 All three walk the Store tree, check a Map for replacements, rebuild changed nodes. The first two are specialized (no depth tracking) but structurally identical. Neither handles de Bruijn depth adjustment — which is fine for `_substituteHashes` (metavar→bound, no depth shift needed) but was flagged as B9 for `_substituteBound` (bound→freevar in nested quantifiers).
 
-**C38. declarations.js findDeclEnd doesn't track bracket depth (declarations.js:344-373)**
+**C38. declarations.js findDeclEnd doesn't track bracket depth (declarations.js:344-373)** — **Fixed (S5)**
 Severity: LOW (same gap as balanced-split)
 
-`findDeclEnd` tracks `()` and `{}` depth but not `[]`. A declaration body containing `[... . ...]` (array with a period inside) would terminate the declaration prematurely. In practice, array elements never contain periods in ILL syntax. But if a string-like value or comment contained a period inside brackets, the parse would break.
+`findDeclEnd` tracks `()` and `{}` depth but not `[]`. A declaration body containing `[... . ...]` (array with a period inside) would terminate the declaration prematurely. **Fixed in S5: added `bracketDepth` tracking for `[]`.**
 
 ### Bug Findings
 
@@ -2201,10 +2207,10 @@ The parser pipeline forms a clean layered stack:
 
 ### Phase 7 Tasks
 
-- [ ] Fix C32: Use balanced split for `|-` in sequent-parser.js and rules2-parser.js
-- [ ] Fix C33: Add `[]` bracket tracking to balanced-split.js
-- [ ] Fix C35: Deduplicate binder/non-binder branches in earley-grammar.js
-- [ ] Fix C36: Extract shared number/hex parsing helper in earley-grammar.js
+- [x] Fix C32: Use balanced split for `|-` in sequent-parser.js and rules2-parser.js (S5)
+- [x] Fix C33: Add `[]` bracket tracking to balanced-split.js (S5)
+- [x] Fix C35: Deduplicate binder/non-binder branches in earley-grammar.js (S5: collapsed via computed `rhsTarget`/`unaryOperand`)
+- [x] Fix C36: Extract shared number/hex parsing helper in earley-grammar.js (S5: `_parseNumber` helper)
 - [ ] Fix C37: Consider extracting shared hash-walking substitution (declarations.js + convert.js)
 - [ ] Add test: balanced-split.js (bracket depth, nested separators)
 - [ ] Add test: sequent-parser.js direct (simple sequents, edge cases)
@@ -2578,13 +2584,13 @@ Additional savings possible from:
 - [x] Remove unused exports from module.exports (30 symbols across 17 files) (S3)
 
 **Medium effort (duplication):**
-- [ ] Extract shared _firstArgHead helper in compiled-clauses.js (DUP2, ~67 LOC saved)
-- [ ] Extract buildMatchOpts factory (DUP1, ~24 LOC saved)
-- [ ] Extract _parseNumber helper in earley-grammar.js (DUP4, ~5 LOC saved)
-- [ ] Collapse binder/non-binder branches in earley-grammar.js (DUP5, ~60 LOC saved)
-- [ ] Extract bang/loli_monad grammar helpers (DUP6+7, ~18 LOC saved)
-- [ ] Extract shared hash-walking substitution to kernel/ (DUP3, ~30 LOC saved)
-- [ ] Extract backchainIndex guard helper (DUP8, ~4 LOC saved)
+- [x] Extract shared _firstArgHead helper in compiled-clauses.js (DUP2, ~67 LOC saved) (S5: `_classifyFirstArg`)
+- [x] Extract buildMatchOpts factory (DUP1, ~24 LOC saved) (S5: `buildMatchOpts` in match.js)
+- [x] Extract _parseNumber helper in earley-grammar.js (DUP4, ~5 LOC saved) (S5)
+- [x] Collapse binder/non-binder branches in earley-grammar.js (DUP5, ~60 LOC saved) (S5)
+- [x] Extract bang/loli_monad grammar helpers (DUP6+7, ~18 LOC saved) (S5: collapsed with DUP5)
+- [ ] Extract shared hash-walking substitution to kernel/ (DUP3, ~30 LOC saved) — dropped: functions diverged after B9 fix
+- [x] Extract backchainIndex guard helper (DUP8, ~4 LOC saved) (S5: `ensureIndex` in backchain.js)
 
 **Decision needed:**
 - [ ] LOC budget reality check — 1.2% is the honest achievable without feature removal. Adjust target or accept.
