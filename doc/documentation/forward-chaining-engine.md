@@ -40,15 +40,22 @@ graph TB
         BCILL["<b>ill/backchain-ill.js</b><br/>ILL backward defaults"]
     end
 
-    subgraph Opt["opt/ — Toggleable Optimizations"]
-        OPT_FFI["ffi.js — FFI proving + compiled steps"]
-        OPT_DELTA["delta-bypass.js — flat pattern shortcut"]
-        OPT_PRES["preserved.js — skip unchanged facts"]
-        OPT_CSUB["compiled-sub.js — Store.put recipes"]
-        OPT_MEMO["structural-memo.js — control hash"]
-        OPT_PRED["prediction.js — threaded code"]
-        OPT_CONS["constraint.js — solver integration"]
-        OPT_CACHE["backward-cache.js — proof memoization"]
+    subgraph Opt["Toggleable Optimizations"]
+        direction TB
+        subgraph OptDir["opt/"]
+            OPT_FFI["ffi.js — FFI proving + compiled steps"]
+            OPT_MEMO["structural-memo.js — control hash"]
+            OPT_PRED["prediction.js — threaded code"]
+            OPT_FP["fingerprint.js — O(1) discriminator"]
+            OPT_CC["compiled-clauses.js — zero-subgoal dispatch"]
+            OPT_EC["existential-compile.js — compiled ∃-chain"]
+        end
+        subgraph EngRoot["engine/ root"]
+            OPT_DELTA["delta-bypass.js — flat pattern shortcut"]
+            OPT_PRES["preserved.js — skip unchanged facts"]
+            OPT_CONS["constraint-feed.js — solver integration"]
+            OPT_CACHE["backward-cache.js — proof memoization"]
+        end
     end
 
     COMPILE --> MATCH
@@ -306,7 +313,7 @@ flowchart TB
 
 **Core invariant:** When `go()` returns, state (FactSet) and solver are in their original state via Arena undo.
 
-Optimization modules called in the hot loop (`go`): `drainPersistentLolis` (ill/loli-drain.js), `feedPersistent` + `filterAltsBySAT` (opt/constraint.js), `predictNext` (opt/prediction.js), `computeControlHash` + `recordMemo` (opt/structural-memo.js). All imported directly — no runtime dispatch. See `doc/documentation/optimization-architecture.md`.
+Optimization modules called in the hot loop (`go`): `drainPersistentLolis` (lnl/loli-drain.js), `feedPersistent` + `filterAltsBySAT` (constraint-feed.js), `predictNext` (opt/prediction.js), `computeControlHash` + `recordMemo` (opt/structural-memo.js). All imported directly — no runtime dispatch. See `doc/documentation/optimization-architecture.md`.
 
 ## Rule Compilation Pipeline
 
@@ -339,22 +346,24 @@ Guarded loli continuations (e.g. `!eq V 0 -o { stack SH 1 }`) become linear fact
 
 ## Optimization Summary
 
-All optimizations live in `lib/engine/opt/` as toggleable modules. See `doc/documentation/optimization-architecture.md` for the profile system and module details.
+Optimizations live in `lib/engine/opt/` (generic) or alongside their consumers at the engine root (`delta-bypass.js`, `preserved.js`, `backward-cache.js`, `constraint-feed.js`). All are toggleable via profiles. See `doc/documentation/optimization-architecture.md` for the profile system and module details.
 
 | Stage | What | Speedup | Module |
 |-------|------|---------|--------|
-| Strategy stack | Rule selection | 12.7x | `opt/fingerprint.js`, `opt/disc-tree-opt.js` |
+| Strategy stack | Rule selection | 12.7x | `opt/fingerprint.js`, `disc-tree.js` |
 | Mutation + undo | State management | 1.8x | Core (FactSet + Arena) |
 | Direct FFI bypass | Persistent proving | 1.2x | `opt/ffi.js` |
 | De Bruijn theta | Substitution lookup | 2.1x | Core (compile.js) |
-| Delta bypass | Linear matching | ~8% | `opt/delta-bypass.js` |
-| Compiled substitution | Consequent production | ~8% | `opt/compiled-sub.js` |
-| Preserved skip | Skip unchanged facts | ~6-16% | `opt/preserved.js` |
-| Disc-tree | Catch-all rule selection | ~0% at 44 rules | `opt/disc-tree-opt.js` |
-| EqNeq solver | Branch pruning | ~10% (symbolic) | `opt/constraint.js` |
+| Delta bypass | Linear matching | ~8% | `delta-bypass.js` |
+| Compiled substitution | Consequent production | ~8% | `rule-analysis.js` (compiled recipes) |
+| Preserved skip | Skip unchanged facts | ~6-16% | `preserved.js` |
+| Disc-tree | Catch-all rule selection | ~0% at 44 rules | `disc-tree.js` |
+| EqNeq solver | Branch pruning | ~10% (symbolic) | `constraint.js` + `constraint-feed.js` |
 | Structural memo | Isomorphic subtree reuse | 4.4x (symmetric) | `opt/structural-memo.js` |
-| Loli drain | Eager persistent-loli fusion | ~2% | `ill/loli-drain.js` |
+| Loli drain | Eager persistent-loli fusion | ~2% | `lnl/loli-drain.js` |
 | Prediction (Opt_H) | Skip findAllMatches | ~3% | `opt/prediction.js` |
+| Compiled clauses | Zero-subgoal dispatch | ~5% | `opt/compiled-clauses.js` |
+| Compiled ∃-chain | Existential fast path | ~3% | `opt/existential-compile.js` |
 
 Total: **181ms → ~5ms** for the symbolic multisig (477 nodes, memo enabled).
 
@@ -390,7 +399,7 @@ Soundness: Betz & Fruhwirth (2013) — every CHR derivation corresponds to a val
 
 **FFI as backward prove optimization.** FFI (arithmetic) is conceptually a fast path within backward proving, not a separate proving mechanism.
 
-**Optimizations as toggleable modules.** All optimizations live in `lib/engine/opt/` (generic) or `lib/engine/ill/` (ILL-specific) and are controlled by profile flags resolved at engine creation. The `bare` profile (all off) serves as the correctness baseline. No runtime branching in hot loops — function pointers are resolved once. See `doc/documentation/optimization-architecture.md`.
+**Optimizations as toggleable modules.** Optimizations live in `lib/engine/opt/` (generic), at the engine root (delta-bypass, preserved, backward-cache, constraint-feed), or in `lib/engine/ill/` (ILL-specific loli-drain). All are controlled by profile flags resolved at engine creation. The `bare` profile (all off) serves as the correctness baseline. No runtime branching in hot loops — function pointers are resolved once. See `doc/documentation/optimization-architecture.md`.
 
 **Connective table, not hardcoded names.** The generic engine queries structural categories (`multiplicative`, `additive`, `exponential`, `monad`, `quantifier`) and structural properties (`arity`, `polarity`) — never connective names. `resolveConnectives(ct)` inverts the table once at startup for O(1) role→tag dispatch.
 

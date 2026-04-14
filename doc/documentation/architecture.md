@@ -96,13 +96,17 @@ lib/engine/                      # Forward execution engine (L4c/L4d)
 │   ├── connectives.js           # ILL connective configuration
 │   ├── loli-drain.js            # persistent-trigger loli optimization
 │   └── ffi/                     # foreign function interface (arithmetic, etc.)
+├── backward-cache.js            # backward proof cache (toggleable)
+├── constraint-feed.js           # solver integration: feedPersistent, filterAltsBySAT
+├── delta-bypass.js              # direct child extraction for flat patterns
+├── preserved.js                 # skip re-producing unchanged facts
 ├── opt/                         # extracted optimization modules (toggleable)
-│   ├── backward-cache.js        # backward proof cache
+│   ├── compiled-clauses.js      # compiled clause dispatch (zero-subgoal → direct lookup)
+│   ├── existential-compile.js   # compiled ∃-chain (per-goal FFI fast path)
 │   ├── ffi.js                   # FFI-accelerated persistent proving + compiled steps
-│   ├── delta-bypass.js          # direct child extraction for flat patterns
-│   ├── structural-memo.js       # control-hash subtree memoization
+│   ├── fingerprint.js           # fingerprint detection + layer factory
 │   ├── prediction.js            # threaded code dispatch (Opt_H)
-│   └── constraint.js            # solver integration (feed + SAT filter)
+│   └── structural-memo.js       # control-hash subtree memoization
 ├── convert.js                   # .ill → content-addressed hashes
 └── index.js                     # loader + API
 
@@ -250,8 +254,8 @@ graph TB
         DRAIN["<b>ill/loli-drain.js</b>"]
     end
 
-    subgraph OptLayer["opt/ — Toggleable"]
-        OPT["FFI, delta-bypass,<br/>preserved, compiled-sub,<br/>structural-memo, prediction,<br/>constraint, backward-cache"]
+    subgraph OptLayer["Toggleable Optimizations"]
+        OPT["opt/: FFI, compiled-clauses,<br/>existential-compile, structural-memo,<br/>prediction, fingerprint<br/>root: delta-bypass, preserved,<br/>backward-cache, constraint-feed"]
     end
 
     STRAT --> MAT
@@ -271,7 +275,7 @@ graph TB
 
 **Layer discipline:** `compile.js` and `lnl/` have zero `ill/` imports — the compilation and matching logic is fully calculus-agnostic, parameterized by a connective table (`tag → { category, arity, polarity }`) and `matchOpts` callbacks. `forward.js`/`explore.js`/`backchain.js` retain ILL defaults as composition-layer fallbacks. See `doc/documentation/forward-chaining-engine.md` for full details.
 
-**Profile-driven optimization.** All engine optimizations live in `lib/engine/opt/` as independently toggleable modules. The `optimizer.js` resolves a profile (`bare`/`fast`/`evm`) into an engine context with the appropriate strategy stack at startup — no runtime branching in hot loops. The `bare` profile disables all optimizations and serves as the correctness baseline. See `doc/documentation/optimization-architecture.md`.
+**Profile-driven optimization.** Engine optimizations live in `lib/engine/opt/` (generic) or alongside their consumers at the engine root (`backward-cache.js`, `constraint-feed.js`, `delta-bypass.js`, `preserved.js`). The `optimizer.js` resolves a profile (`bare`/`fast`/`evm`) into an engine context with the appropriate strategy stack at startup — no runtime branching in hot loops. The `bare` profile disables all optimizations and serves as the correctness baseline. See `doc/documentation/optimization-architecture.md`.
 
 **Program-aware indexing (auto-detected).** The strategy stack includes a fingerprint layer that detects dominant discriminating predicates from rule structure. For EVM, `code(PC, OPCODE)` is the discriminator — 40 of 44 rules have a ground opcode child. The fingerprint layer resolves these in O(1). This is auto-detected by `detectFingerprintConfig()` from rule patterns; no program-specific code exists. The disc-tree layer (general-purpose trie) handles all remaining rules. See `doc/documentation/strategy-layers.md`.
 
