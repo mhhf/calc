@@ -7,6 +7,7 @@ const { describe, it, beforeEach } = require('node:test');
 const assert = require('node:assert/strict');
 const Store = require('../../lib/kernel/store');
 const { resolveEx } = require('../../lib/engine/lnl/existential');
+const { execExStep } = require('../../lib/engine/opt/existential-compile');
 
 describe('lnl/existential — resolveEx', () => {
   beforeEach(() => Store.clear());
@@ -93,7 +94,7 @@ describe('lnl/existential — resolveEx', () => {
       _compiledExChain: compiledChain,
     };
 
-    const matchOpts = { useCompiledSteps: true };
+    const matchOpts = { useCompiledSteps: true, execExStep };
 
     resolveEx(theta, slots, rule, null, null, matchOpts);
     assert.ok(stepExecuted);
