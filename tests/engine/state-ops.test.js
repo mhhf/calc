@@ -1,16 +1,16 @@
 /**
  * Direct tests for state-ops.js and delta-bypass.js
  *
- * Covers: consumeLinear, produceLinear, producePersistent, mutateState,
- * and matchDeltaBypass.
+ * Covers: consume, produce, producePers, mutateState,
+ * and deltaBypass.
  */
 const { describe, it, before, beforeEach } = require('node:test');
 const assert = require('node:assert/strict');
 const path = require('path');
 const Store = require('../../lib/kernel/store');
 const { FactSet, Arena } = require('../../lib/engine/fact-set');
-const { consumeLinear, produceLinear, producePersistent } = require('../../lib/engine/state-ops');
-const { matchDeltaBypass } = require('../../lib/engine/delta-bypass');
+const { consume, produce, producePers } = require('../../lib/engine/state-ops');
+const { deltaBypass } = require('../../lib/engine/delta-bypass');
 
 describe('state-ops', () => {
   // Load ILL to register predicate tags
@@ -20,7 +20,7 @@ describe('state-ops', () => {
     mde.load(path.join(__dirname, '../../calculus/ill/programs/evm.ill'), { cache: true });
   });
 
-  describe('consumeLinear', () => {
+  describe('consume', () => {
     it('removes facts from FactSet by hash and count', () => {
       const fs = new FactSet(Store.TAG_NAMES.length);
       const v1 = Store.put('atom', ['v1']);
@@ -30,7 +30,7 @@ describe('state-ops', () => {
       fs.insert(tagId, h, null);
       assert.equal(fs.count(tagId, h), 2);
 
-      consumeLinear(fs, { [h]: 1 }, null);
+      consume(fs, { [h]: 1 }, null);
       assert.equal(fs.count(tagId, h), 1);
     });
 
@@ -41,7 +41,7 @@ describe('state-ops', () => {
       fs.insert(Store.tagId(h1), h1, null);
       fs.insert(Store.tagId(h2), h2, null);
 
-      consumeLinear(fs, { [h1]: 1, [h2]: 1 }, null);
+      consume(fs, { [h1]: 1, [h2]: 1 }, null);
       assert.equal(fs.count(Store.tagId(h1), h1), 0);
       assert.equal(fs.count(Store.tagId(h2), h2), 0);
     });
@@ -54,19 +54,19 @@ describe('state-ops', () => {
       fs.insert(tagId, h, null);
 
       const cp = arena.cursor;
-      consumeLinear(fs, { [h]: 1 }, arena);
+      consume(fs, { [h]: 1 }, arena);
       assert.equal(fs.count(tagId, h), 0);
       assert.ok(arena.cursor > cp);
     });
   });
 
-  describe('producePersistent', () => {
+  describe('producePers', () => {
     it('inserts new persistent facts', () => {
       const fs = new FactSet(Store.TAG_NAMES.length);
       const h = Store.put('inc', [Store.put('atom', ['a']), Store.put('atom', ['b'])]);
       const tagId = Store.tagId(h);
 
-      producePersistent(fs, [h], [], {}, null, null);
+      producePers(fs, [h], [], {}, null, null);
       assert.equal(fs.has(tagId, h), true);
     });
 
@@ -76,18 +76,18 @@ describe('state-ops', () => {
       const tagId = Store.tagId(h);
       fs.insert(tagId, h, null);
 
-      producePersistent(fs, [h], [], {}, null, null);
+      producePers(fs, [h], [], {}, null, null);
       assert.equal(fs.count(tagId, h), 1);
     });
   });
 
-  describe('produceLinear', () => {
+  describe('produce', () => {
     it('inserts linear facts from patterns', () => {
       const fs = new FactSet(Store.TAG_NAMES.length);
       const h = Store.put('gas', [Store.put('atom', ['x'])]);
       const tagId = Store.tagId(h);
 
-      produceLinear(fs, [h], [], {}, null, false, null);
+      produce(fs, [h], [], {}, null, false, null);
       assert.equal(fs.count(tagId, h), 1);
     });
   });
@@ -100,12 +100,12 @@ describe('delta-bypass', () => {
     mde.load(path.join(__dirname, '../../calculus/ill/programs/evm.ill'), { cache: true });
   });
 
-  describe('matchDeltaBypass', () => {
+  describe('deltaBypass', () => {
     it('returns false when role is not flat delta', () => {
       const pattern = Store.put('gas', [Store.put('atom', ['x'])]);
       const rule = { patternRoles: [null], linearMeta: {} };
       const state = { linear: new FactSet(Store.TAG_NAMES.length) };
-      const result = matchDeltaBypass(pattern, 0, rule, state, [], new Map(), new Map(), false, -1);
+      const result = deltaBypass(pattern, 0, rule, state, [], new Map(), new Map(), false, -1);
       assert.equal(result, false);
     });
 
@@ -116,7 +116,7 @@ describe('delta-bypass', () => {
         linearMeta: { [pattern]: { pred: 'gas' } },
       };
       const state = { linear: new FactSet(Store.TAG_NAMES.length) };
-      const result = matchDeltaBypass(pattern, 0, rule, state, [], new Map(), new Map(), true, -1);
+      const result = deltaBypass(pattern, 0, rule, state, [], new Map(), new Map(), true, -1);
       assert.equal(result, false);
     });
 
@@ -141,7 +141,7 @@ describe('delta-bypass', () => {
       };
       const state = { linear: fs, groupForPred: () => fs.group(tagId) };
 
-      const result = matchDeltaBypass(pattern, 0, rule, state, theta, consumed, reserved, false, tagId);
+      const result = deltaBypass(pattern, 0, rule, state, theta, consumed, reserved, false, tagId);
       assert.equal(result, true);
       assert.equal(theta[0], child);
       assert.equal(consumed.get(fact), 1);
@@ -172,7 +172,7 @@ describe('delta-bypass', () => {
       };
       const state = { linear: fs, groupForPred: () => fs.group(tagId) };
 
-      const result = matchDeltaBypass(pattern, 0, rule, state, theta, consumed, new Map(), false, tagId);
+      const result = deltaBypass(pattern, 0, rule, state, theta, consumed, new Map(), false, tagId);
       assert.equal(result, true);
       assert.equal(theta[0], v2);
     });
@@ -201,7 +201,7 @@ describe('delta-bypass', () => {
       };
       const state = { linear: fs, groupForPred: () => fs.group(tagId) };
 
-      const result = matchDeltaBypass(pattern, 0, rule, state, theta, new Map(), new Map(), false, tagId);
+      const result = deltaBypass(pattern, 0, rule, state, theta, new Map(), new Map(), false, tagId);
       assert.equal(result, false);
     });
   });

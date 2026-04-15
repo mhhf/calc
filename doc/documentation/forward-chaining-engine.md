@@ -18,7 +18,7 @@ The engine is structured as three layers with an orthogonal optimization axis. E
 graph TB
     subgraph Generic["Generic Core (any forward-chaining calculus)"]
         COMPILE["<b>compile.js</b><br/>Rule compilation, connective resolution,<br/>de Bruijn slots, discriminator detection"]
-        MATCH["<b>match.js</b><br/>tryMatch, matchOnePattern,<br/>matchAllLinear"]
+        MATCH["<b>match.js</b><br/>tryMatch, matchLinear1,<br/>matchLinearAll"]
         STRATEGY["<b>strategy.js</b><br/>Strategy stack: fingerprint →<br/>disc-tree → predicate"]
         FORWARD["<b>forward.js</b><br/>Committed-choice main loop"]
         EXPLORE["<b>explore.js</b><br/>Exhaustive DFS + mutation/undo"]
@@ -156,7 +156,7 @@ flowchart TB
     START["tryMatch(rule, state)"] --> SETUP["Create theta[], consumed{}, reserved{}"]
     SETUP --> WORKLIST
 
-    subgraph WORKLIST["matchAllLinear — worklist with persistent interleaving"]
+    subgraph WORKLIST["matchLinearAll — worklist with persistent interleaving"]
         direction TB
         LP["Phase 1: Match next linear pattern"]
         PP["Phase 2: Prove persistent patterns"]
@@ -177,7 +177,7 @@ flowchart TB
 
     LP --> LINEAR
 
-    WORKLIST --> EXIST["resolveExistentials()<br/>bind forall vars via state/FFI/backward"]
+    WORKLIST --> EXIST["resolveEx()<br/>bind forall vars via state/FFI/backward"]
     EXIST --> RESULT["return { rule, theta, consumed }"]
 
     style FAIL1 fill:#f8d7da,stroke:#721c24
@@ -298,8 +298,8 @@ flowchart TB
         subgraph FOREACH["For each match"]
             CHECKPOINT["Arena checkpoint<br/>(linArena, perArena, solver)"]
             MUTATE["mutateState()"]
-            DRAIN["drainPersistentLolis()"]
-            FEED["feedPersistent(solver)"]
+            DRAIN["drainLolis()"]
+            FEED["feedPers(solver)"]
             PREDICT["predictNext(m)"]
             RECURSE["go(depth+1, pred)"]
             UNDO["Arena restore<br/>(undo all mutations)"]
@@ -313,7 +313,7 @@ flowchart TB
 
 **Core invariant:** When `go()` returns, state (FactSet) and solver are in their original state via Arena undo.
 
-Optimization modules called in the hot loop (`go`): `drainPersistentLolis` (lnl/loli-drain.js), `feedPersistent` + `filterAltsBySAT` (constraint-feed.js), `predictNext` (opt/prediction.js), `computeControlHash` + `recordMemo` (opt/structural-memo.js). All imported directly — no runtime dispatch. See `doc/documentation/optimization-architecture.md`.
+Optimization modules called in the hot loop (`go`): `drainLolis` (lnl/loli-drain.js), `feedPers` + `satFilter` (constraint-feed.js), `predictNext` (opt/prediction.js), `controlHash` + `recordMemo` (opt/structural-memo.js). All imported directly — no runtime dispatch. See `doc/documentation/optimization-architecture.md`.
 
 ## Rule Compilation Pipeline
 

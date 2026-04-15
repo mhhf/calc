@@ -345,9 +345,9 @@ function runProfile(calc, hash, settings) {
   const byPred = {};
   let totalSuccess = 0, totalFail = 0, totalNonGround = 0;
 
-  const { getPredicateHead } = require('../lib/kernel/ast');
+  const { predHead } = require('../lib/kernel/ast');
   function getPred(goalHash) {
-    return getPredicateHead(goalHash) || 'unknown';
+    return predHead(goalHash) || 'unknown';
   }
   function initPred(pred) {
     if (!byPred[pred]) byPred[pred] = { ffi: 0, state: 0, compiled: 0, cache: 0, clause: 0, fail: 0, nonGround: 0, failReasons: {} };

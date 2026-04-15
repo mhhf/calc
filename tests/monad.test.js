@@ -15,7 +15,7 @@ const { createGenericProver } = require('../lib/prover/generic');
 const { createKernel } = require('../lib/prover/kernel');
 const { createProver } = require('../lib/prover/focused');
 const { initRuleSpecs } = require('../lib/prover/rule-interpreter');
-const { sequentToState, stateToContext, rightFocus, executeModeSwitch } = require('../lib/prover/bridge');
+const { sequentToState, stateToContext, rightFocus, modeSwitch } = require('../lib/prover/bridge');
 const { compileRule } = require('../lib/engine/compile');
 const { ILL_CONNECTIVES } = require('../lib/engine/ill/connectives');
 const { GRADE_W } = require('../lib/engine/grades');
@@ -195,25 +195,25 @@ describe('Monad mode switch', () => {
     assert.strictEqual(inv.formula, monadA);
   });
 
-  it('executeModeSwitch returns null without forwardRules', () => {
+  it('modeSwitch returns null without forwardRules', () => {
     const a = AST.atom('a');
     const monadA = AST.monad(a);
     const seq = Seq.fromArrays([a], [], monadA);
 
-    const result = executeModeSwitch(seq, null);
+    const result = modeSwitch(seq, null);
     assert.strictEqual(result, null);
   });
 
-  it('executeModeSwitch returns null with empty forwardRules', () => {
+  it('modeSwitch returns null with empty forwardRules', () => {
     const a = AST.atom('a');
     const monadA = AST.monad(a);
     const seq = Seq.fromArrays([a], [], monadA);
 
-    const result = executeModeSwitch(seq, { forwardRules: [] });
+    const result = modeSwitch(seq, { forwardRules: [] });
     assert.strictEqual(result, null);
   });
 
-  it('executeModeSwitch with simple forward rule produces result', () => {
+  it('modeSwitch with simple forward rule produces result', () => {
     // Build a simple forward rule: a -o {b}
     const a = AST.atom('a');
     const b = AST.atom('b');
@@ -228,7 +228,7 @@ describe('Monad mode switch', () => {
     const monadB = AST.monad(b);
     const seq = Seq.fromArrays([a], [], monadB);
 
-    const result = executeModeSwitch(seq, { forwardRules: [compiled] });
+    const result = modeSwitch(seq, { forwardRules: [compiled] });
     assert.ok(result, 'should produce a result');
     assert.ok(result.proofNode, 'should have proofNode');
     assert.strictEqual(result.proofNode.rule, 'monad_r');
@@ -593,7 +593,7 @@ describe('rightFocus succedent decomposition', () => {
     // rightFocus itself succeeds (consumed a and b) but c remains
     assert.ok(remaining !== null, 'rightFocus succeeds (partial)');
     assert.strictEqual(remaining[c], 1, 'c should remain unconsumed');
-    // executeModeSwitch would reject this (linearEmpty check)
+    // modeSwitch would reject this (linearEmpty check)
   });
 
   it('freevar in succedent fails', () => {

@@ -8,9 +8,9 @@ const { loadBytecode, bytecodeArrGetGuard } = require('../../lib/engine/ill/byte
 const { intToBin, binToInt } = require('../../lib/engine/ill/ffi/convert');
 const { GRADE_W } = require('../../lib/engine/grades');
 const { ILL_CONNECTIVES } = require('../../lib/engine/ill/connectives');
-const { resolveConnectives, compileRule, flattenAntecedent } = require('../../lib/engine/compile');
-const { getPredicateHead } = require('../../lib/kernel/ast');
-const { composeGrade0 } = require('../../lib/engine/compose');
+const { resolveConn, compileRule, flattenAnte } = require('../../lib/engine/compile');
+const { predHead } = require('../../lib/kernel/ast');
+const { compose0 } = require('../../lib/engine/compose');
 const { getModes } = require('../../lib/engine/opt/ffi');
 
 const COMPILE_OPTS = { connectives: ILL_CONNECTIVES, getModes };
@@ -120,7 +120,7 @@ describe('bytecode-loader: loadBytecode', () => {
     assert.equal(binToInt(pc3val), 0n, 'PC3 = implicit STOP');
   });
 
-  it('fact structure compatible with composeGrade0', () => {
+  it('fact structure compatible with compose0', () => {
     const result = loadBytecode('6040');
     const facts = result.facts.get('arr_get');
     for (const f of facts) {
@@ -161,18 +161,18 @@ describe('compose: extraGrade0Facts parameter', () => {
       ]],
     ]);
 
-    const result = composeGrade0([rule], ILL_CONNECTIVES, null, null, null, extraFacts);
+    const result = compose0([rule], ILL_CONNECTIVES, null, null, null, extraFacts);
     assert.equal(result.diagnostics.errors.length, 0, 'no errors');
     assert.equal(result.composedRules.length, 2, '2 specialized rules');
     assert.equal(result.diagnostics.specializations, 2);
     assert.ok(result.removedNames.has('r'), 'original removed');
 
     // Verify arr_get goals resolved
-    const rc = resolveConnectives(ILL_CONNECTIVES);
+    const rc = resolveConn(ILL_CONNECTIVES);
     for (const raw of result.composedRules) {
-      const anteFlat = flattenAntecedent(raw.antecedent, rc);
+      const anteFlat = flattenAnte(raw.antecedent, rc);
       for (const p of anteFlat.persistent) {
-        assert.notEqual(getPredicateHead(p), 'arr_get', 'no arr_get goals remain');
+        assert.notEqual(predHead(p), 'arr_get', 'no arr_get goals remain');
       }
     }
   });
@@ -207,7 +207,7 @@ describe('compose: extraGrade0Facts parameter', () => {
       ]],
     ]);
 
-    const result = composeGrade0([rule], ILL_CONNECTIVES, null, clauses, null, extraFacts);
+    const result = compose0([rule], ILL_CONNECTIVES, null, clauses, null, extraFacts);
     assert.equal(result.diagnostics.errors.length, 0);
     // Stage 1: is_push → 1 specialized rule (OP=h60, N=v1)
     // Stage 2: arr_get → from that 1 rule, 1 specialization (arr_get matches)
@@ -242,7 +242,7 @@ describe('compose: extraGrade0Facts parameter', () => {
       ['lookup', [{ name: 'lk/k1', hash: Store.put('lookup', [k1, va]) }]],
     ]);
 
-    const result = composeGrade0([rule, rule2], ILL_CONNECTIVES, null, null, null, extraFacts);
+    const result = compose0([rule, rule2], ILL_CONNECTIVES, null, null, null, extraFacts);
     // Both rules have lookup goals → both get specialized.
     // Both match the single fact → both produce 1 specialized rule.
     assert.equal(result.composedRules.length, 2, '2 specialized rules (one per original)');
@@ -297,7 +297,7 @@ describe('compose: extraGrade0Facts parameter', () => {
       ]],
     ]);
 
-    const res = composeGrade0([rule], ILL_CONNECTIVES, null, clauses, null, extraFacts);
+    const res = compose0([rule], ILL_CONNECTIVES, null, clauses, null, extraFacts);
     assert.equal(res.diagnostics.errors.length, 0, 'no errors');
 
     // After step specialization: OP=h60 (only 1 step fact matches)
@@ -307,9 +307,9 @@ describe('compose: extraGrade0Facts parameter', () => {
     assert.ok(res.removedNames.has('r'));
 
     // Verify all persistent goals are resolved
-    const rc = resolveConnectives(ILL_CONNECTIVES);
+    const rc = resolveConn(ILL_CONNECTIVES);
     for (const raw of res.composedRules) {
-      const anteFlat = flattenAntecedent(raw.antecedent, rc);
+      const anteFlat = flattenAnte(raw.antecedent, rc);
       assert.equal(anteFlat.persistent.length, 0, 'all persistent goals resolved');
     }
   });
@@ -346,7 +346,7 @@ describe('compose: extraGrade0Facts parameter', () => {
       ]],
     ]);
 
-    const result = composeGrade0([rule1, rule2], ILL_CONNECTIVES, null, null, null, extraFacts);
+    const result = compose0([rule1, rule2], ILL_CONNECTIVES, null, null, null, extraFacts);
     assert.equal(result.diagnostics.errors.length, 0);
 
     // rule1's arr_get(code_arr, ...) unifies with fact → 1 specialized rule
@@ -376,7 +376,7 @@ describe('compose: extraGrade0Facts parameter', () => {
       out
     );
 
-    const result = composeGrade0([rule], ILL_CONNECTIVES, null, null, null, bc.facts);
+    const result = compose0([rule], ILL_CONNECTIVES, null, null, null, bc.facts);
     assert.equal(result.diagnostics.errors.length, 0);
     // 4 non-filler positions (PC0, PC2, PC4, PC5) → 4 specialized rules
     assert.equal(result.composedRules.length, 4, 'one rule per non-filler position');
@@ -424,7 +424,7 @@ describe('bytecode-loader: entry point pre-filter', () => {
     );
 
     // All non-filler facts → 4 rules
-    const res1 = composeGrade0([rule], ILL_CONNECTIVES, null, null, null, bc.facts);
+    const res1 = compose0([rule], ILL_CONNECTIVES, null, null, null, bc.facts);
     assert.equal(res1.composedRules.length, 4);
 
     Store.clear();
@@ -447,7 +447,7 @@ describe('bytecode-loader: entry point pre-filter', () => {
       Store.put('out', [Val2])
     );
 
-    const res2 = composeGrade0([rule2], ILL_CONNECTIVES, null, null, null, filteredFacts);
+    const res2 = compose0([rule2], ILL_CONNECTIVES, null, null, null, filteredFacts);
     assert.equal(res2.composedRules.length, 2, 'only 2 rules (entry points only)');
   });
 });
@@ -468,9 +468,9 @@ describe('bytecode-loader: bytecodeArrGetGuard', () => {
     const out = Store.put('out', [Val]);
     const rule = makeRule('bc_rule', tensor(bang_arr_get, bytecode_BC), out);
 
-    const rc = resolveConnectives(ILL_CONNECTIVES);
-    const ante = flattenAntecedent(Store.child(rule.hash, 0), rc);
-    const goalMatch = ante.persistent.find(g => getPredicateHead(g) === 'arr_get');
+    const rc = resolveConn(ILL_CONNECTIVES);
+    const ante = flattenAnte(Store.child(rule.hash, 0), rc);
+    const goalMatch = ante.persistent.find(g => predHead(g) === 'arr_get');
 
     assert.equal(
       bytecodeArrGetGuard(rule, 'arr_get', goalMatch, ante),
@@ -490,9 +490,9 @@ describe('bytecode-loader: bytecodeArrGetGuard', () => {
     const peeked = Store.put('peeked', [Val]);
     const rule = makeRule('stack_rule', tensor(bang_arr_get, stack_S), peeked);
 
-    const rc = resolveConnectives(ILL_CONNECTIVES);
-    const ante = flattenAntecedent(Store.child(rule.hash, 0), rc);
-    const goalMatch = ante.persistent.find(g => getPredicateHead(g) === 'arr_get');
+    const rc = resolveConn(ILL_CONNECTIVES);
+    const ante = flattenAnte(Store.child(rule.hash, 0), rc);
+    const goalMatch = ante.persistent.find(g => predHead(g) === 'arr_get');
 
     assert.equal(
       bytecodeArrGetGuard(rule, 'arr_get', goalMatch, ante),
@@ -541,7 +541,7 @@ describe('bytecode-loader: bytecodeArrGetGuard', () => {
     ]);
 
     // Without scoping guard: both rules get specialized (metavar arg₁ unifies with anything)
-    const resNoGuard = composeGrade0([rule1, rule2], ILL_CONNECTIVES, null, null, null, extraFacts);
+    const resNoGuard = compose0([rule1, rule2], ILL_CONNECTIVES, null, null, null, extraFacts);
     assert.equal(resNoGuard.composedRules.length, 4, '4 rules without guard (2 per original)');
 
     Store.clear();
@@ -578,7 +578,7 @@ describe('bytecode-loader: bytecodeArrGetGuard', () => {
     ]);
 
     // With scoping guard: only bc_read gets specialized, stack_peek passes through unchanged
-    const resGuard = composeGrade0(
+    const resGuard = compose0(
       [rule1b, rule2b], ILL_CONNECTIVES, null, null, null, extraFacts2, bytecodeArrGetGuard
     );
     // 2 specialized bc_read rules + 1 unmodified stack_peek (passed through by guard)

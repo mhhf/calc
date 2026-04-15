@@ -10,14 +10,14 @@ const Store = require('../../lib/kernel/store');
 const ffi = require('../../lib/engine/ill/ffi');
 const { tryMatch } = require('../../lib/engine/match');
 const { ILL_CONNECTIVES } = require('../../lib/engine/ill/connectives');
-const { resolveConnectives } = require('../../lib/engine/compile');
-const ILL_RC = resolveConnectives(ILL_CONNECTIVES);
+const { resolveConn } = require('../../lib/engine/compile');
+const ILL_RC = resolveConn(ILL_CONNECTIVES);
 
 describe('Forward Chaining', { timeout: 10000 }, () => {
-  describe('flattenAntecedent', () => {
+  describe('flattenAnte', () => {
     it('flattens simple tensor', async () => {
       const h = await mde.parseExpr('A * B * C');
-      const { linear, persistent } = forward.flattenAntecedent(h, ILL_RC);
+      const { linear, persistent } = forward.flattenAnte(h, ILL_RC);
 
       assert.strictEqual(linear.length, 3, 'Should have 3 linear');
       assert.strictEqual(persistent.length, 0, 'Should have no persistent');
@@ -25,7 +25,7 @@ describe('Forward Chaining', { timeout: 10000 }, () => {
 
     it('extracts bang as persistent', async () => {
       const h = await mde.parseExpr('A * !B * C');
-      const { linear, persistent } = forward.flattenAntecedent(h, ILL_RC);
+      const { linear, persistent } = forward.flattenAnte(h, ILL_RC);
 
       assert.strictEqual(linear.length, 2, 'Should have 2 linear');
       assert.strictEqual(persistent.length, 1, 'Should have 1 persistent');
@@ -167,7 +167,7 @@ describe('Forward Chaining', { timeout: 10000 }, () => {
     });
   });
 
-  describe('tryFFIDirect non-definitive failure fallback', () => {
+  describe('ffiDirect non-definitive failure fallback', () => {
     // FFI failures with a reason (conversion_failed, mode_mismatch, division_by_zero)
     // are non-definitive — tryMatch falls through to state lookup and backward proving.
     // Only failures WITHOUT a reason (e.g. neq(5,5)) are definitive mathematical "no".

@@ -314,7 +314,7 @@ describe('chunked flat witness: solc integration', { timeout: 60000 }, () => {
     Store.clear();
     const mde = require('../lib/engine');
     const calculus = require('../lib/calculus');
-    const { buildRewriteTrace } = require('../lib/prover/rewrite-trace');
+    const { rwTrace } = require('../lib/prover/rewrite-trace');
 
     const engineCalc = await mde.load(
       path.join(__dirname, '../calculus/ill/programs/multisig_nocall_solc.ill')
@@ -325,7 +325,7 @@ describe('chunked flat witness: solc integration', { timeout: 60000 }, () => {
     const forwardResult = engineCalc.exec(state, {
       maxSteps: 2000, trace: true, evidence: true,
     });
-    flatTrace = buildRewriteTrace(forwardResult.trace);
+    flatTrace = rwTrace(forwardResult.trace);
 
     // Build sequent
     const linearCtx = [];

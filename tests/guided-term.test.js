@@ -2,7 +2,7 @@
  * Tests for guided proof term construction (TODO_0068 §10.5).
  *
  * Tests the guided execution profile pipeline:
- *   forward.run(evidence:true) → buildGuidedTerm → check-term
+ *   forward.run(evidence:true) → guidedTerm → check-term
  *
  * Phase 1: Unit tests with mock traces (builder logic)
  * Phase 2: Integration tests with real forward execution
@@ -12,8 +12,8 @@ const { describe, it, beforeEach } = require('node:test');
 const assert = require('node:assert/strict');
 const Store = require('../lib/kernel/store');
 const forward = require('../lib/engine/forward');
-const { buildGuidedTerm, getLoliFromRule } = require('../lib/prover/guided-term');
-const { rightFocusTerm, executeModeSwitch } = require('../lib/prover/bridge');
+const { guidedTerm, loliOf } = require('../lib/prover/guided-term');
+const { rightFocusTerm, modeSwitch } = require('../lib/prover/bridge');
 const { ILL_CONNECTIVES } = require('../lib/engine/ill/connectives');
 const { GRADE_W } = require('../lib/engine/grades');
 
@@ -23,12 +23,12 @@ describe('Guided Proof Terms (TODO_0068 §10.5)', () => {
 
   // ─── Phase 1: Builder Unit Tests ──────────────────────────────────
 
-  describe('getLoliFromRule', () => {
+  describe('loliOf', () => {
     it('returns loli directly', () => {
       const A = Store.put('atom', ['a']);
       const B = Store.put('monad', [Store.put('atom', ['b'])]);
       const loli = Store.put('loli', [A, B]);
-      assert.strictEqual(getLoliFromRule(loli), loli);
+      assert.strictEqual(loliOf(loli), loli);
     });
 
     it('peels bang wrapper', () => {
@@ -36,7 +36,7 @@ describe('Guided Proof Terms (TODO_0068 §10.5)', () => {
       const B = Store.put('monad', [Store.put('atom', ['b'])]);
       const loli = Store.put('loli', [A, B]);
       const banged = Store.put('bang', [GRADE_W,loli]);
-      assert.strictEqual(getLoliFromRule(banged), loli);
+      assert.strictEqual(loliOf(banged), loli);
     });
 
     it('peels forall wrapper', () => {
@@ -44,16 +44,16 @@ describe('Guided Proof Terms (TODO_0068 §10.5)', () => {
       const body = Store.put('monad', [X]);
       const loli = Store.put('loli', [X, body]);
       const fa = Store.put('forall', [loli]);
-      assert.strictEqual(getLoliFromRule(fa), loli);
+      assert.strictEqual(loliOf(fa), loli);
     });
 
     it('returns null for non-loli', () => {
       const atom = Store.put('atom', ['a']);
-      assert.strictEqual(getLoliFromRule(atom), null);
+      assert.strictEqual(loliOf(atom), null);
     });
   });
 
-  describe('buildGuidedTerm with mock traces', () => {
+  describe('guidedTerm with mock traces', () => {
     it('builds copy → loli_l → monad_l chain for single step', () => {
       // Rule: a -o { b }
       const a = Store.put('atom', ['a']);
@@ -72,7 +72,7 @@ describe('Guided Proof Terms (TODO_0068 §10.5)', () => {
         loliHash: null
       }];
 
-      const term = buildGuidedTerm(trace, rfTerm);
+      const term = guidedTerm(trace, rfTerm);
 
       assert.strictEqual(term.rule, 'copy');
       assert.strictEqual(term.principal, loli);
@@ -116,7 +116,7 @@ describe('Guided Proof Terms (TODO_0068 §10.5)', () => {
         loliHash: null
       }];
 
-      const term = buildGuidedTerm(trace, rfTerm);
+      const term = guidedTerm(trace, rfTerm);
 
       // copy → loli_l
       const loliL = term.subterms[0];
@@ -148,7 +148,7 @@ describe('Guided Proof Terms (TODO_0068 §10.5)', () => {
         loliHash: null
       }];
 
-      const term = buildGuidedTerm(trace, rfTerm);
+      const term = guidedTerm(trace, rfTerm);
 
       const loliL = term.subterms[0];
       const antProof = loliL.subterms[0];
@@ -181,7 +181,7 @@ describe('Guided Proof Terms (TODO_0068 §10.5)', () => {
         loliHash: null
       }];
 
-      const term = buildGuidedTerm(trace, rfTerm);
+      const term = guidedTerm(trace, rfTerm);
 
       const loliL = term.subterms[0];
       const antProof = loliL.subterms[0];
@@ -212,7 +212,7 @@ describe('Guided Proof Terms (TODO_0068 §10.5)', () => {
         loliHash: null
       }];
 
-      const term = buildGuidedTerm(trace, rfTerm);
+      const term = guidedTerm(trace, rfTerm);
 
       const loliL = term.subterms[0];
       const monadL = loliL.subterms[1];
@@ -242,7 +242,7 @@ describe('Guided Proof Terms (TODO_0068 §10.5)', () => {
         loliHash: loli
       }];
 
-      const term = buildGuidedTerm(trace, rfTerm);
+      const term = guidedTerm(trace, rfTerm);
 
       // Linear loli → loli_match (not copy+loli_l, since it's consumed not copied)
       assert.strictEqual(term.rule, 'loli_match');
@@ -278,7 +278,7 @@ describe('Guided Proof Terms (TODO_0068 §10.5)', () => {
         }
       ];
 
-      const term = buildGuidedTerm(trace, rfTerm);
+      const term = guidedTerm(trace, rfTerm);
 
       // Step 1: copy(loli1, ...)
       assert.strictEqual(term.rule, 'copy');
@@ -315,7 +315,7 @@ describe('Guided Proof Terms (TODO_0068 §10.5)', () => {
         loliHash: null
       }];
 
-      const term = buildGuidedTerm(trace, rfTerm);
+      const term = guidedTerm(trace, rfTerm);
 
       const loliL = term.subterms[0];
       // Antecedent proof: id(dataVal) — subApplyIdx(data(X), [val], {X:0}) = data(val)
@@ -352,7 +352,7 @@ describe('Guided Proof Terms (TODO_0068 §10.5)', () => {
       assert(Array.isArray(entry.persistentEvidence), 'should have persistentEvidence');
     });
 
-    it('enriched trace feeds buildGuidedTerm', () => {
+    it('enriched trace feeds guidedTerm', () => {
       const a = Store.put('atom', ['go']);
       const b = Store.put('atom', ['done']);
       const monadB = Store.put('monad', [b]);
@@ -371,8 +371,8 @@ describe('Guided Proof Terms (TODO_0068 §10.5)', () => {
       );
       assert(rfResult, 'rightFocusTerm should succeed');
 
-      const term = buildGuidedTerm(result.trace, rfResult.term);
-      assert(term, 'buildGuidedTerm should produce a term');
+      const term = guidedTerm(result.trace, rfResult.term);
+      assert(term, 'guidedTerm should produce a term');
       assert.strictEqual(term.rule, 'copy');
 
       const loliL = term.subterms[0];
@@ -381,7 +381,7 @@ describe('Guided Proof Terms (TODO_0068 §10.5)', () => {
     });
   });
 
-  describe('executeModeSwitch guided', () => {
+  describe('modeSwitch guided', () => {
     it('produces guided monadic term via bridge', () => {
       const a = Store.put('atom', ['go']);
       const b = Store.put('atom', ['done']);
@@ -392,7 +392,7 @@ describe('Guided Proof Terms (TODO_0068 §10.5)', () => {
       const Seq = require('../lib/kernel/sequent');
       const seq = Seq.fromArrays([a], [], monadB);
 
-      const result = executeModeSwitch(seq, {
+      const result = modeSwitch(seq, {
         forwardRules: rules,
         roles: { product: 'tensor', unit: 'one', exponential: 'bang', implication: 'loli', computation: 'monad' }
       }, { forward: 'guided' });

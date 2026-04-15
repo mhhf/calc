@@ -17,7 +17,7 @@ const mde = require('../lib/engine');
 const Store = require('../lib/kernel/store');
 const Seq = require('../lib/kernel/sequent');
 const calculus = require('../lib/calculus');
-const { buildGuidedTerm } = require('../lib/prover/guided-term');
+const { guidedTerm } = require('../lib/prover/guided-term');
 const { rightFocusTerm } = require('../lib/prover/bridge');
 const { generateWitness } = require('../lib/zk/witness');
 
@@ -93,7 +93,7 @@ describe('ZK custom chip: fact_axiom replaces clause proofs', { timeout: 30000 }
     const rfResult = rightFocusTerm(linear, persistent, succFormula, illCalc.roles);
     assert.ok(rfResult, 'rightFocusTerm should succeed');
 
-    const innerTerm = buildGuidedTerm(forwardResult.trace, rfResult.term);
+    const innerTerm = guidedTerm(forwardResult.trace, rfResult.term);
     guidedTerm = {
       rule: 'monad_r',
       principal: null,

@@ -8,8 +8,8 @@ const { describe, it, before } = require('node:test');
 const assert = require('node:assert');
 const path = require('path');
 const forward = require('../../lib/engine/forward');
-const { getPredicateHead } = require('../../lib/kernel/ast');
-const { analyzeRule, analyzeDeltas } = require('../../lib/engine/rule-analysis');
+const { predHead } = require('../../lib/kernel/ast');
+const { analyzeRule, deltaAnalysis } = require('../../lib/engine/rule-analysis');
 const mde = require('../../lib/engine');
 const Store = require('../../lib/kernel/store');
 const { ILL_CONNECTIVES } = require('../../lib/engine/ill/connectives');
@@ -24,21 +24,21 @@ async function makeRule(name, expr) {
 // Helper: dump a compiled rule's structure for inspection
 function dumpRule(rule) {
   const anteLinear = (rule.antecedent.linear || []).map(h => ({
-    pred: getPredicateHead(h),
+    pred: predHead(h),
     tag: Store.tag(h),
     arity: Store.arity(h),
     hash: h,
     children: Store.children(h)
   }));
   const antePersistent = (rule.antecedent.persistent || []).map(h => ({
-    pred: getPredicateHead(h),
+    pred: predHead(h),
     tag: Store.tag(h),
     arity: Store.arity(h),
     hash: h,
     children: Store.children(h)
   }));
   const conseqLinear = (rule.consequent.linear || []).map(h => ({
-    pred: getPredicateHead(h),
+    pred: predHead(h),
     tag: Store.tag(h),
     arity: Store.arity(h),
     hash: h,
@@ -54,7 +54,7 @@ function dumpRule(rule) {
 describe('Rule Analysis', { timeout: 10000 }, () => {
   // Shared EVM calc — loaded once, reused by PART 1/6/7/8.
   // Re-loading in the same process hits a compacted binary cache whose Store
-  // is smaller than the compiled rules' hashes (compactSnapshot GC).
+  // is smaller than the compiled rules' hashes (compact GC).
   let calc;
 
   before(async () => {
@@ -588,7 +588,7 @@ describe('Rule Analysis', { timeout: 10000 }, () => {
 
       // p(_X) has the same hash on both sides (content-addressed, same metavar)
       const pHash = rule.antecedent.linear.find(
-        h => getPredicateHead(h) === 'p');
+        h => predHead(h) === 'p');
 
       assert(result.preserved.includes(pHash), 'p(_X) should be preserved');
       assert.strictEqual(result.preserved.length, 1);
@@ -694,7 +694,7 @@ describe('Rule Analysis', { timeout: 10000 }, () => {
 
       // bytecode has identical hash on both sides → preserved
       const codeHash = rule.antecedent.linear.find(
-        h => getPredicateHead(h) === 'bytecode');
+        h => predHead(h) === 'bytecode');
       assert(result.preserved.includes(codeHash), 'bytecode should be preserved');
 
       // pc, gas, stack have different hashes → consumed/produced
@@ -717,9 +717,9 @@ describe('Rule Analysis', { timeout: 10000 }, () => {
 
       // Check if bytecode is preserved (should be if same hash)
       const anteCode = rule.antecedent.linear.find(
-        h => getPredicateHead(h) === 'bytecode');
+        h => predHead(h) === 'bytecode');
       const conseqCode = rule.consequent.linear.find(
-        h => getPredicateHead(h) === 'bytecode');
+        h => predHead(h) === 'bytecode');
 
       if (anteCode === conseqCode) {
         assert(result.preserved.includes(anteCode), 'bytecode preserved if same hash');
@@ -753,10 +753,10 @@ describe('Rule Analysis', { timeout: 10000 }, () => {
   });
 
   // ============================================================================
-  // PART 7: analyzeDeltas — delta detection (same pred, different args)
+  // PART 7: deltaAnalysis — delta detection (same pred, different args)
   // ============================================================================
 
-  describe('analyzeDeltas: delta detection', () => {
+  describe('deltaAnalysis: delta detection', () => {
 
     function sortedHashes(arr) { return [...arr].sort((a, b) => a - b); }
     function assertMultisetEqual(actual, expected, msg) {
@@ -767,7 +767,7 @@ describe('Rule Analysis', { timeout: 10000 }, () => {
 
     it('p _X -o p _Y: one delta (position 0 changed)', async () => {
       const rule = await makeRule('d1', 'p _X * !inc _X _Y -o { p _Y }');
-      const result = analyzeDeltas(rule);
+      const result = deltaAnalysis(rule);
 
       assert.strictEqual(result.deltas.length, 1, 'one delta');
       assert.strictEqual(result.deltas[0].pred, 'p');
@@ -781,7 +781,7 @@ describe('Rule Analysis', { timeout: 10000 }, () => {
 
     it('foo -o bar: no deltas (different preds)', async () => {
       const rule = await makeRule('d2', 'foo -o { bar }');
-      const result = analyzeDeltas(rule);
+      const result = deltaAnalysis(rule);
 
       assert.strictEqual(result.deltas.length, 0, 'no deltas');
       assert.strictEqual(result.consumed.length, 1, 'foo consumed');
@@ -790,7 +790,7 @@ describe('Rule Analysis', { timeout: 10000 }, () => {
 
     it('preserved: foo * bar -o foo * baz has no deltas (foo preserved)', async () => {
       const rule = await makeRule('d3', 'foo * bar -o { foo * baz }');
-      const result = analyzeDeltas(rule);
+      const result = deltaAnalysis(rule);
 
       assert.strictEqual(result.deltas.length, 0, 'no deltas');
       assert.strictEqual(result.preserved.length, 1, 'foo preserved');
@@ -801,7 +801,7 @@ describe('Rule Analysis', { timeout: 10000 }, () => {
     it('mixed: keep * p _X * gone * !inc _X _Y -o keep * p _Y * born', async () => {
       const rule = await makeRule('d4',
         'keep * p _X * gone * !inc _X _Y -o { keep * p _Y * born }');
-      const result = analyzeDeltas(rule);
+      const result = deltaAnalysis(rule);
 
       // keep is preserved (identical hash)
       assert.strictEqual(result.preserved.length, 1, '1 preserved (keep)');
@@ -821,7 +821,7 @@ describe('Rule Analysis', { timeout: 10000 }, () => {
     it('f _X _Y * !inc _X _X2 * !inc _Y _Y2 -o f _X2 _Y2: both positions changed', async () => {
       const rule = await makeRule('d5',
         'f _X _Y * !inc _X _X2 * !inc _Y _Y2 -o { f _X2 _Y2 }');
-      const result = analyzeDeltas(rule);
+      const result = deltaAnalysis(rule);
 
       assert.strictEqual(result.deltas.length, 1, '1 delta');
       assert.strictEqual(result.deltas[0].pred, 'f');
@@ -832,7 +832,7 @@ describe('Rule Analysis', { timeout: 10000 }, () => {
     it('f _X _Y * !inc _X _Z -o f _Z _Y: only position 0 changed', async () => {
       const rule = await makeRule('d6',
         'f _X _Y * !inc _X _Z -o { f _Z _Y }');
-      const result = analyzeDeltas(rule);
+      const result = deltaAnalysis(rule);
 
       assert.strictEqual(result.deltas.length, 1, '1 delta');
       assert.strictEqual(result.deltas[0].pred, 'f');
@@ -853,7 +853,7 @@ describe('Rule Analysis', { timeout: 10000 }, () => {
     it('f (g _X) * !inc _X _Y -o f (g _Y): nested delta', async () => {
       const rule = await makeRule('d7',
         'f (g _X) * !inc _X _Y -o { f (g _Y) }');
-      const result = analyzeDeltas(rule);
+      const result = deltaAnalysis(rule);
 
       assert.strictEqual(result.deltas.length, 1);
       assert.strictEqual(result.deltas[0].pred, 'f');
@@ -864,7 +864,7 @@ describe('Rule Analysis', { timeout: 10000 }, () => {
     it('f _X (g _Y) * !inc _X _Z -o f _Z (g _Y): partial nested delta', async () => {
       const rule = await makeRule('d8',
         'f _X (g _Y) * !inc _X _Z -o { f _Z (g _Y) }');
-      const result = analyzeDeltas(rule);
+      const result = deltaAnalysis(rule);
 
       assert.strictEqual(result.deltas.length, 1);
       assert.strictEqual(result.deltas[0].pred, 'f');
@@ -877,7 +877,7 @@ describe('Rule Analysis', { timeout: 10000 }, () => {
     it('coin * coin -o coin: no deltas (identical hashes, not different-arg)', async () => {
       // All coins have identical hash → all go to preserved/consumed, no deltas
       const rule = await makeRule('d9', 'coin * coin -o { coin }');
-      const result = analyzeDeltas(rule);
+      const result = deltaAnalysis(rule);
 
       assert.strictEqual(result.deltas.length, 0, 'no deltas');
       assert.strictEqual(result.preserved.length, 1, '1 preserved');
@@ -889,7 +889,7 @@ describe('Rule Analysis', { timeout: 10000 }, () => {
       // Should pair one consumed with the produced → 1 delta + 1 remaining consumed
       const rule = await makeRule('d10',
         'p _X * p _Y * !merge _X _Y _Z -o { p _Z }');
-      const result = analyzeDeltas(rule);
+      const result = deltaAnalysis(rule);
 
       assert.strictEqual(result.deltas.length, 1, '1 delta');
       assert.strictEqual(result.deltas[0].pred, 'p');
@@ -900,7 +900,7 @@ describe('Rule Analysis', { timeout: 10000 }, () => {
     it('p _X -o p _Y * p _Z: 1 delta, 1 produced (1 consumed, 2 produced)', async () => {
       const rule = await makeRule('d11',
         'p _X * !split _X _Y _Z -o { p _Y * p _Z }');
-      const result = analyzeDeltas(rule);
+      const result = deltaAnalysis(rule);
 
       assert.strictEqual(result.deltas.length, 1, '1 delta');
       assert.strictEqual(result.deltas[0].pred, 'p');
@@ -913,7 +913,7 @@ describe('Rule Analysis', { timeout: 10000 }, () => {
       // Content-addressing: p(_X) ante hash = p(_X) conseq hash, same for p(_Y).
       // So v1 sees both as preserved. 0 deltas.
       const rule = await makeRule('d12', 'p _X * p _Y -o { p _Y * p _X }');
-      const result = analyzeDeltas(rule);
+      const result = deltaAnalysis(rule);
 
       assert.strictEqual(result.preserved.length, 2, '2 preserved');
       assert.strictEqual(result.deltas.length, 0, '0 deltas');
@@ -925,7 +925,7 @@ describe('Rule Analysis', { timeout: 10000 }, () => {
 
     it('atoms have no deltas (different pred = different consumed/produced)', async () => {
       const rule = await makeRule('d13', 'a * b -o { c * d }');
-      const result = analyzeDeltas(rule);
+      const result = deltaAnalysis(rule);
 
       assert.strictEqual(result.deltas.length, 0);
       assert.strictEqual(result.consumed.length, 2);
@@ -937,7 +937,7 @@ describe('Rule Analysis', { timeout: 10000 }, () => {
     it('multiset invariant: preserved + consumed + delta.ante = antecedent', async () => {
       const rule = await makeRule('dinv',
         'keep * p _X * q _A _B * gone * !inc _X _Y * !inc _A _A2 -o { keep * p _Y * q _A2 _B * born }');
-      const result = analyzeDeltas(rule);
+      const result = deltaAnalysis(rule);
 
       const deltaAnteHashes = result.deltas.map(d => d.anteHash);
       const anteHashes = sortedHashes(rule.antecedent.linear);
@@ -953,7 +953,7 @@ describe('Rule Analysis', { timeout: 10000 }, () => {
     it('multiset invariant: preserved + produced + delta.conseq = consequent', async () => {
       const rule = await makeRule('dinv2',
         'keep * p _X * q _A _B * gone * !inc _X _Y * !inc _A _A2 -o { keep * p _Y * q _A2 _B * born }');
-      const result = analyzeDeltas(rule);
+      const result = deltaAnalysis(rule);
 
       const deltaConseqHashes = result.deltas.map(d => d.conseqHash);
       const conseqHashes = sortedHashes(rule.consequent.linear);
@@ -971,11 +971,11 @@ describe('Rule Analysis', { timeout: 10000 }, () => {
     it('evm/add: pc, stack are deltas (no sh in arrlit version)', async () => {
 
       const rule = calc.forwardRules.find(r => r.name === 'evm/add:step/make');
-      const result = analyzeDeltas(rule);
+      const result = deltaAnalysis(rule);
 
       // bytecode is preserved (identical hash)
       const codeHash = rule.antecedent.linear.find(
-        h => getPredicateHead(h) === 'bytecode');
+        h => predHead(h) === 'bytecode');
       assert(result.preserved.includes(codeHash), 'bytecode preserved');
 
       // Check delta predicates
@@ -996,14 +996,14 @@ describe('Rule Analysis', { timeout: 10000 }, () => {
     it('evm/add: stack is a delta (1 ante, 1 conseq, arrlit version)', async () => {
 
       const rule = calc.forwardRules.find(r => r.name === 'evm/add:step/make');
-      const result = analyzeDeltas(rule);
+      const result = deltaAnalysis(rule);
 
       // stack: 1 consumed, 1 produced → 1 delta pair, 0 remaining consumed
       const stackDeltas = result.deltas.filter(d => d.pred === 'stack');
       assert.strictEqual(stackDeltas.length, 1, '1 stack delta pair');
 
       const remainingConsumedStacks = result.consumed.filter(
-        h => getPredicateHead(h) === 'stack');
+        h => predHead(h) === 'stack');
       assert.strictEqual(remainingConsumedStacks.length, 0, '0 stack remaining consumed');
     });
 
@@ -1011,7 +1011,7 @@ describe('Rule Analysis', { timeout: 10000 }, () => {
 
 
       for (const rule of calc.forwardRules) {
-        const result = analyzeDeltas(rule);
+        const result = deltaAnalysis(rule);
         const deltaAnteHashes = result.deltas.map(d => d.anteHash);
         const deltaConseqHashes = result.deltas.map(d => d.conseqHash);
 
@@ -1041,7 +1041,7 @@ describe('Rule Analysis', { timeout: 10000 }, () => {
 
 
       for (const rule of calc.forwardRules) {
-        const result = analyzeDeltas(rule);
+        const result = deltaAnalysis(rule);
         for (const delta of result.deltas) {
           // changedPositions should be non-empty (otherwise it would be preserved)
           assert(delta.changedPositions.length > 0,
@@ -1056,8 +1056,8 @@ describe('Rule Analysis', { timeout: 10000 }, () => {
 
           // Ante and conseq should have same pred head
           assert.strictEqual(
-            getPredicateHead(delta.anteHash),
-            getPredicateHead(delta.conseqHash),
+            predHead(delta.anteHash),
+            predHead(delta.conseqHash),
             `${rule.name}: delta ante/conseq should have same pred head`);
 
           // Unchanged positions should have identical children
@@ -1091,12 +1091,12 @@ describe('Rule Analysis', { timeout: 10000 }, () => {
       assert(Array.isArray(rule.analysis.deltas), 'analysis.deltas is array');
     });
 
-    it('analysis matches standalone analyzeDeltas call', async () => {
+    it('analysis matches standalone deltaAnalysis call', async () => {
       const rule = await makeRule('int2',
         'keep * p _X * gone * !inc _X _Y -o { keep * p _Y * born }');
 
       // Analysis from compileRule should match standalone call
-      const standalone = analyzeDeltas(rule);
+      const standalone = deltaAnalysis(rule);
       assert.deepStrictEqual(rule.analysis, standalone,
         'embedded analysis should equal standalone call');
     });
@@ -1120,7 +1120,7 @@ describe('Rule Analysis', { timeout: 10000 }, () => {
 
       // bytecode is preserved
       assert.strictEqual(a.preserved.length, 1, '1 preserved');
-      assert.strictEqual(getPredicateHead(a.preserved[0]), 'bytecode');
+      assert.strictEqual(predHead(a.preserved[0]), 'bytecode');
 
       // gas, pc, stack are deltas (3 total)
       const deltaPreds = a.deltas.map(d => d.pred).sort();

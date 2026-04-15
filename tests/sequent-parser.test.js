@@ -7,7 +7,7 @@
 const { describe, it, before } = require('node:test');
 const assert = require('node:assert/strict');
 const calculus = require('../lib/calculus');
-const { createSequentParser } = require('../lib/parser/sequent-parser');
+const { sequentParser } = require('../lib/parser/sequent-parser');
 const Seq = require('../lib/kernel/sequent');
 
 describe('sequent-parser', () => {
@@ -15,7 +15,7 @@ describe('sequent-parser', () => {
 
   before(async () => {
     calc = await calculus.loadILL();
-    sp = createSequentParser(calc);
+    sp = sequentParser(calc);
   });
 
   describe('parseSequent', () => {

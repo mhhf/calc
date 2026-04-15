@@ -8,7 +8,7 @@ const assert = require('node:assert/strict');
 const path = require('path');
 const Store = require('../../lib/kernel/store');
 const { FactSet } = require('../../lib/engine/fact-set');
-const { computeControlHash, createMemoCtx, recordMemo } = require('../../lib/engine/opt/structural-memo');
+const { controlHash, createMemoCtx, recordMemo } = require('../../lib/engine/opt/structural-memo');
 
 describe('structural-memo', () => {
   // Load ILL once to register predicate tags (pc, gas, etc.)
@@ -18,10 +18,10 @@ describe('structural-memo', () => {
     mde.load(path.join(__dirname, '../../calculus/ill/programs/evm.ill'), { cache: true });
   });
 
-  describe('computeControlHash', () => {
+  describe('controlHash', () => {
     it('returns a 32-bit unsigned number', () => {
       const state = { linear: new FactSet(Store.TAG_NAMES.length), persistent: new FactSet(Store.TAG_NAMES.length) };
-      const hash = computeControlHash(state, {});
+      const hash = controlHash(state, {});
       assert.equal(typeof hash, 'number');
       assert.ok(hash >= 0);
       assert.ok(hash <= 0xFFFFFFFF);
@@ -41,7 +41,7 @@ describe('structural-memo', () => {
       fs2.insert(tagId, pc2, null);
       const state2 = { linear: fs2, persistent: new FactSet(Store.TAG_NAMES.length) };
 
-      assert.equal(computeControlHash(state1, {}), computeControlHash(state2, {}));
+      assert.equal(controlHash(state1, {}), controlHash(state2, {}));
     });
 
     it('different PC values → different hash', () => {
@@ -58,8 +58,8 @@ describe('structural-memo', () => {
       fs2.insert(Store.tagId(pc2), pc2, null);
       const state2 = { linear: fs2, persistent: new FactSet(Store.TAG_NAMES.length) };
 
-      const h1 = computeControlHash(state1, {});
-      const h2 = computeControlHash(state2, {});
+      const h1 = controlHash(state1, {});
+      const h2 = controlHash(state2, {});
       assert.notEqual(h1, h2);
     });
   });

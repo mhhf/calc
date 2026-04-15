@@ -1,5 +1,5 @@
 /**
- * Direct tests for compose.js:fuseLinearPair
+ * Direct tests for compose.js:fusePair
  *
  * Covers: exists opening, predicate matching, unification failure handling.
  */
@@ -7,10 +7,10 @@ const { describe, it, before } = require('node:test');
 const assert = require('node:assert/strict');
 const path = require('path');
 const Store = require('../../lib/kernel/store');
-const { fuseLinearPair } = require('../../lib/engine/compose');
-const { resolveConnectives } = require('../../lib/engine/compile');
+const { fusePair } = require('../../lib/engine/compose');
+const { resolveConn } = require('../../lib/engine/compile');
 
-describe('fuseLinearPair', () => {
+describe('fusePair', () => {
   let rc;
 
   before(() => {
@@ -18,7 +18,7 @@ describe('fuseLinearPair', () => {
     const mde = require('../../lib/engine/index');
     mde.load(path.join(__dirname, '../../calculus/ill/programs/evm.ill'), { cache: true });
     const ccfg = require('../../lib/engine/ill/calculus-config');
-    rc = resolveConnectives(ccfg.connectives);
+    rc = resolveConn(ccfg.connectives);
   });
 
   it('returns null when cut predicate not found in producer consequent', () => {
@@ -32,7 +32,7 @@ describe('fuseLinearPair', () => {
     const bodyC = Store.put('monad', [d]);
     const consumer = { hash: Store.put('loli', [c, bodyC]) };
 
-    const result = fuseLinearPair(producer, consumer, 'nonexistent', rc, null);
+    const result = fusePair(producer, consumer, 'nonexistent', rc, null);
     assert.equal(result, null);
   });
 
@@ -50,7 +50,7 @@ describe('fuseLinearPair', () => {
     const consumer = { hash: Store.put('loli', [cAnte, Store.put('monad', [cConseq])]) };
 
     // x_val !== y_val → unification fails
-    const result = fuseLinearPair(producer, consumer, 'pc', rc, null);
+    const result = fusePair(producer, consumer, 'pc', rc, null);
     assert.equal(result, null);
   });
 
@@ -67,7 +67,7 @@ describe('fuseLinearPair', () => {
     const cConseq = Store.put('stack', [mvY]);
     const consumer = { hash: Store.put('loli', [cAnte, Store.put('monad', [cConseq])]) };
 
-    const result = fuseLinearPair(producer, consumer, 'pc', rc, null);
+    const result = fusePair(producer, consumer, 'pc', rc, null);
     assert.ok(result, 'should fuse via metavar unification');
     assert.ok(result.hash, 'fused rule should have a hash');
   });
@@ -89,7 +89,7 @@ describe('fuseLinearPair', () => {
 
     // Without exists opening, cut on 'pc' fails (producer consequent is 'exists', not 'pc')
     // With exists opening, bound(0) → fresh metavar, exposing pc(m_fresh) for cut
-    const result = fuseLinearPair(producer, consumer, 'pc', rc, null);
+    const result = fusePair(producer, consumer, 'pc', rc, null);
     assert.ok(result, 'should fuse: exists opened to expose pc for cut elimination');
     assert.ok(result.hash, 'fused rule should have a hash');
   });
@@ -112,7 +112,7 @@ describe('fuseLinearPair', () => {
     const cConseq = Store.put('stack', [mvM]);
     const consumer = { hash: Store.put('loli', [cAnte, Store.put('monad', [cConseq])]) };
 
-    const result = fuseLinearPair(producer, consumer, 'pc', rc, null);
+    const result = fusePair(producer, consumer, 'pc', rc, null);
     assert.ok(result, 'should fuse: nested exists opened recursively');
   });
 });

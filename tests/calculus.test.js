@@ -176,12 +176,12 @@ describe('v2 Calculus (generated from spec)', () => {
     let extParse;
 
     before(() => {
-      const { buildParserFromTables, computeParserTables } = require('../lib/calculus/builders');
-      const tables = computeParserTables(ill.constructors);
+      const { parserFromTables, parserTables } = require('../lib/calculus/builders');
+      const tables = parserTables(ill.constructors);
       tables.binders = { exists: 'exists', forall: 'forall' };
       tables.multiCharFreevars = true;
       tables.numbers = true;
-      extParse = buildParserFromTables(tables);
+      extParse = parserFromTables(tables);
     });
 
     it('should parse exists X. body as binder with de Bruijn', () => {
@@ -257,8 +257,8 @@ describe('v2 Calculus (generated from spec)', () => {
     const Store = require('../lib/kernel/store');
 
     before(() => {
-      const { buildParserFromTables, computeParserTables } = require('../lib/calculus/builders');
-      const tables = computeParserTables(ill.constructors);
+      const { parserFromTables, parserTables } = require('../lib/calculus/builders');
+      const tables = parserTables(ill.constructors);
       tables.binders = { exists: 'exists', forall: 'forall' };
       tables.multiCharFreevars = true;
       tables.numbers = true;
@@ -266,7 +266,7 @@ describe('v2 Calculus (generated from spec)', () => {
       tables.arrows = true;
       tables.forwardRules = true;
       tables.binaryNormalization = true;
-      engineParse = buildParserFromTables(tables);
+      engineParse = parserFromTables(tables);
     });
 
     it('should parse application f x y as flat predicate', () => {
@@ -352,55 +352,55 @@ describe('v2 Calculus (generated from spec)', () => {
   });
 
   describe('declaration parser', () => {
-    const { parseDeclarations } = require('../lib/parser/declarations');
+    const { parseDecls } = require('../lib/parser/declarations');
     const Store = require('../lib/kernel/store');
     const id = (x) => Store.put('atom', [x]);
 
     it('should parse simple declaration', () => {
-      const decls = parseDeclarations('foo: bar.', id);
+      const decls = parseDecls('foo: bar.', id);
       assert.strictEqual(decls.length, 1);
       assert.strictEqual(decls[0].type, 'declaration');
       assert.strictEqual(decls[0].name, 'foo');
     });
 
     it('should parse declaration with premises', () => {
-      const decls = parseDeclarations('r: head <- p1 <- p2.', id);
+      const decls = parseDecls('r: head <- p1 <- p2.', id);
       assert.strictEqual(decls.length, 1);
       assert.strictEqual(decls[0].premises.length, 2);
     });
 
     it('should parse comments', () => {
-      const decls = parseDeclarations('% comment\nfoo: bar.', id);
+      const decls = parseDecls('% comment\nfoo: bar.', id);
       assert.strictEqual(decls.length, 1);
       assert.strictEqual(decls[0].name, 'foo');
     });
 
     it('should parse query directive', () => {
-      const decls = parseDeclarations('#symex body.', id);
+      const decls = parseDecls('#symex body.', id);
       assert.strictEqual(decls.length, 1);
       assert.strictEqual(decls[0].type, 'query');
       assert.strictEqual(decls[0].kind, 'symex');
     });
 
     it('should parse standalone directive', () => {
-      const decls = parseDeclarations('@family lnl.', id);
+      const decls = parseDecls('@family lnl.', id);
       assert.strictEqual(decls.length, 1);
       assert.strictEqual(decls[0].type, 'directive');
       assert.strictEqual(decls[0].key, 'family');
     });
 
     it('should parse declaration with slash name', () => {
-      const decls = parseDeclarations('eq/z: head.', id);
+      const decls = parseDecls('eq/z: head.', id);
       assert.strictEqual(decls[0].name, 'eq/z');
     });
 
     it('should parse multiple declarations', () => {
-      const decls = parseDeclarations('a: x.\nb: y.\nc: z.', id);
+      const decls = parseDecls('a: x.\nb: y.\nc: z.', id);
       assert.strictEqual(decls.length, 3);
     });
 
     it('should parse declarations with annotations', () => {
-      const decls = parseDeclarations(
+      const decls = parseDecls(
         'tensor: body @ascii "_ * _" @prec 60 left.',
         id, { annotations: true }
       );
@@ -413,7 +413,7 @@ describe('v2 Calculus (generated from spec)', () => {
     });
 
     it('should handle import directives', () => {
-      const decls = parseDeclarations('#import(bin.ill)\nfoo: bar.', id);
+      const decls = parseDecls('#import(bin.ill)\nfoo: bar.', id);
       assert.strictEqual(decls.length, 2);
       assert.strictEqual(decls[0].type, 'import');
       assert.strictEqual(decls[0].path, 'bin.ill');
