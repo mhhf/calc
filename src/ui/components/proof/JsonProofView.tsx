@@ -17,15 +17,7 @@ export default function JsonProofView(props: JsonProofViewProps) {
   const handleCopy = async () => {
     try {
       await navigator.clipboard.writeText(jsonString());
-    } catch (err) {
-      // Fallback for older browsers
-      const textarea = document.createElement('textarea');
-      textarea.value = jsonString();
-      document.body.appendChild(textarea);
-      textarea.select();
-      document.execCommand('copy');
-      document.body.removeChild(textarea);
-    }
+    } catch {}
   };
 
   const handleDownload = () => {
@@ -105,7 +97,7 @@ export default function JsonProofView(props: JsonProofViewProps) {
           JSON Schema Info
         </summary>
         <div class="mt-2 p-3 bg-gray-50 dark:bg-gray-900 rounded border border-gray-200 dark:border-gray-700 space-y-2 text-gray-800 dark:text-gray-200">
-          <p><strong>version:</strong> Schema version (currently "1.0")</p>
+          <p><strong>version:</strong> Schema version (currently "2.0")</p>
           <p><strong>goal:</strong> The sequent being proved</p>
           <p><strong>complete:</strong> Whether all branches are closed</p>
           <p><strong>mode:</strong> "unfocused" or "focused" proof mode</p>

@@ -37,13 +37,6 @@ export interface ProcessedDocument {
   backlinks?: string[];
 }
 
-// Configure marked with highlight.js
-// basePath is set per-render before calling marked.parse()
-let currentBasePath = '/research';
-
-// Heading collection for TOC generation (reset before each parse)
-let collectedHeadings: { depth: number; text: string; id: string }[] = [];
-
 function slugify(text: string): string {
   return text
     .toLowerCase()
@@ -54,43 +47,51 @@ function slugify(text: string): string {
     .trim();
 }
 
-const marked = new Marked(
-  markedHighlight({
-    emptyLangClass: 'hljs',
-    langPrefix: 'hljs language-',
-    highlight(code, lang) {
-      if (lang && hljs.getLanguage(lang)) {
-        return hljs.highlight(code, { language: lang }).value;
-      }
-      return hljs.highlightAuto(code).value;
-    },
-  }),
-  {
-    renderer: {
-      heading({ tokens, depth }) {
-        const text = this.parser.parseInline(tokens);
-        const id = slugify(text);
-        if (depth <= 3) {
-          collectedHeadings.push({ depth, text, id });
-        }
-        return `<h${depth} id="${id}">${text}</h${depth}>\n`;
-      },
-      // Handle .md links and external links
-      link({ href, text }) {
-        if (href.endsWith('.md')) {
-          href = currentBasePath + '/' + href.replace(/\.md$/, '');
-        }
-        if (href.startsWith('#')) {
+// Shared highlight configuration (stateless, safe to reuse)
+const highlightExtension = markedHighlight({
+  emptyLangClass: 'hljs',
+  langPrefix: 'hljs language-',
+  highlight(code, lang) {
+    if (lang && hljs.getLanguage(lang)) {
+      return hljs.highlight(code, { language: lang }).value;
+    }
+    return hljs.highlightAuto(code).value;
+  },
+});
+
+/**
+ * Create a configured Marked instance for the given render context.
+ * Each call produces an isolated instance — no shared mutable state.
+ */
+function createMarkedInstance(basePath: string, headings: { depth: number; text: string; id: string }[]) {
+  return new Marked(
+    highlightExtension,
+    {
+      renderer: {
+        heading({ tokens, depth }) {
+          const text = this.parser.parseInline(tokens);
+          const id = slugify(text);
+          if (depth <= 3) {
+            headings.push({ depth, text, id });
+          }
+          return `<h${depth} id="${id}">${text}</h${depth}>\n`;
+        },
+        link({ href, text }) {
+          if (href.endsWith('.md')) {
+            href = basePath + '/' + href.replace(/\.md$/, '');
+          }
+          if (href.startsWith('#')) {
+            return `<a href="${href}">${text}</a>`;
+          }
+          if (href.startsWith('http://') || href.startsWith('https://')) {
+            return `<a href="${href}" target="_blank" rel="noopener">${text}</a>`;
+          }
           return `<a href="${href}">${text}</a>`;
-        }
-        if (href.startsWith('http://') || href.startsWith('https://')) {
-          return `<a href="${href}" target="_blank" rel="noopener">${text}</a>`;
-        }
-        return `<a href="${href}">${text}</a>`;
+        },
       },
-    },
-  }
-);
+    }
+  );
+}
 
 function buildToc(headings: { depth: number; text: string; id: string }[]): string {
   if (headings.length < 2) return '';
@@ -136,9 +137,9 @@ const serverProcessors: Record<string, (code: string, options?: Record<string, s
 
   viz: async (code: string) => serverProcessors.graphviz(code),
 
-  calc: (code: string) => {
+  calc: async (code: string) => {
     try {
-      const { parseFormula, renderFormula } = require('./calculus');
+      const { parseFormula, renderFormula } = await import('./calculus');
       const formula = parseFormula(code.trim());
       const latex = renderFormula(formula, 'latex');
       return `<span class="calc-formula">${katex.renderToString(latex, {
@@ -151,7 +152,7 @@ const serverProcessors: Record<string, (code: string, options?: Record<string, s
   },
 };
 
-const clientBlocks = ['mermaid', 'proof'];
+const clientBlocks = ['mermaid'];
 
 /**
  * Parse YAML frontmatter from markdown content
@@ -191,7 +192,7 @@ function escapeHtml(text: string): string {
 async function extractSpecialBlocks(md: string): Promise<{ md: string; blocks: Map<string, string> }> {
   const blocks = new Map<string, string>();
   // Match both ```{mermaid} (legacy) and ```mermaid (standard fenced)
-  const regex = /```(?:\{([^}]+)\}|(mermaid|proof|katex|graphviz|viz|calc))\n([\s\S]*?)```/g;
+  const regex = /```(?:\{([^}]+)\}|(mermaid|katex|graphviz|viz|calc))\n([\s\S]*?)```/g;
   let idx = 0;
 
   // Collect all matches first
@@ -233,9 +234,8 @@ async function extractSpecialBlocks(md: string): Promise<{ md: string; blocks: M
  * Convert wiki-style links [[doc]] to HTML links
  */
 const FOLDER_TO_ROUTE: Record<string, string> = {
-  research: '/research',
   theory: '/theory',
-  dev: '/dev',
+  def: '/def',
   documentation: '/docs',
 };
 
@@ -285,7 +285,7 @@ export async function markdownToHtml(
   markdown: string,
   options: { basePath?: string; slug?: string } = {}
 ): Promise<string> {
-  const { basePath = '/research' } = options;
+  const { basePath = '/docs' } = options;
 
   // 1. Extract special code blocks before marked sees them
   const { md, blocks } = await extractSpecialBlocks(markdown);
@@ -294,12 +294,12 @@ export async function markdownToHtml(
   let processed = processWikiLinks(md, basePath);
 
   // 3. Run marked for core markdown → HTML (collects headings for TOC)
-  currentBasePath = basePath;
-  collectedHeadings = [];
-  let html = await marked.parse(processed);
+  const headings: { depth: number; text: string; id: string }[] = [];
+  const markedInstance = createMarkedInstance(basePath, headings);
+  let html = await markedInstance.parse(processed);
 
   // 4. Prepend TOC if enough headings
-  const toc = buildToc(collectedHeadings);
+  const toc = buildToc(headings);
   if (toc) html = toc + html;
 
   // 5. Process inline math on the HTML
@@ -335,27 +335,3 @@ export async function processDocument(
 
   return { frontmatter, html, title };
 }
-
-/**
- * Client-side hydration for mermaid blocks
- */
-export const clientHydrationScript = `
-<script type="module">
-  const mermaidBlocks = document.querySelectorAll('.client-render[data-processor="mermaid"]');
-  if (mermaidBlocks.length > 0) {
-    import('https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs').then(({ default: mermaid }) => {
-      mermaid.initialize({ startOnLoad: false, theme: 'neutral' });
-      mermaidBlocks.forEach(async (el, i) => {
-        const source = el.querySelector('.client-source')?.textContent || '';
-        try {
-          const { svg } = await mermaid.render('mermaid-' + i, source);
-          el.innerHTML = svg;
-          el.classList.add('hydrated');
-        } catch (e) {
-          el.innerHTML = '<pre class="error">Mermaid error: ' + e.message + '</pre>';
-        }
-      });
-    });
-  }
-</script>
-`;

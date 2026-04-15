@@ -41,16 +41,20 @@ export default function RuleSelector(props: RuleSelectorProps) {
   };
 
   const categoryLabels: Record<string, string> = {
-    RuleZer: 'Axioms',
-    RuleCut: 'Cut',
-    RuleU: 'Unary Rules',
-    RuleBin: 'Binary Rules',
-    RuleStruct: 'Structural Rules',
+    Identity: 'Identity',
+    Focus: 'Focus',
+    Multiplicatives: 'Multiplicative Rules',
+    Additives: 'Additive Rules',
+    Exponentials: 'Exponential Rules',
+    Structural: 'Structural Rules',
+    Other: 'Other Rules',
   };
 
   return (
     <div
       class="fixed inset-0 bg-black/50 flex items-center justify-center z-50"
+      role="dialog"
+      aria-modal="true"
       onClick={(e) => {
         if (e.target === e.currentTarget) props.onCancel();
       }}

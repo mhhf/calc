@@ -87,6 +87,11 @@ export default function viteDocs(): Plugin {
         }
 
         // Serve individual doc
+        if (slug.includes('..') || slug.includes('/')) {
+          res.statusCode = 400;
+          res.end(JSON.stringify({ error: 'invalid slug' }));
+          return;
+        }
         const filePath = path.join(folderPath, slug + '.md');
         try {
           const content = fs.readFileSync(filePath, 'utf-8');

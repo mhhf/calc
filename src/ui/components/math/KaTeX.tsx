@@ -14,7 +14,7 @@ export default function KaTeX(props: KaTeXProps) {
       return katex.renderToString(props.latex, {
         displayMode: props.display ?? false,
         throwOnError: false,
-        trust: true,
+        trust: false,
       });
     } catch (e) {
       console.error('KaTeX error:', e);

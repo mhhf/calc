@@ -66,7 +66,9 @@ app.get('/api/docs/:folder', (c) => {
 app.get('/api/docs/:folder/:slug', (c) => {
   const diskFolder = ALLOWED_FOLDERS[c.req.param('folder')];
   if (!diskFolder) return c.json({ error: 'unknown folder' }, 404);
-  const filePath = path.join(DOC_ROOT, diskFolder, c.req.param('slug') + '.md');
+  const slug = c.req.param('slug');
+  if (slug.includes('..') || slug.includes('/')) return c.json({ error: 'invalid slug' }, 400);
+  const filePath = path.join(DOC_ROOT, diskFolder, slug + '.md');
   try {
     return c.text(fs.readFileSync(filePath, 'utf-8'));
   } catch {
@@ -77,8 +79,15 @@ app.get('/api/docs/:folder/:slug', (c) => {
 // Serve static UI build
 app.use('/*', serveStatic({ root: './out/ui' }));
 
-// SPA fallback: serve index.html for all non-file routes
-app.use('/*', serveStatic({ root: './out/ui', path: 'index.html' }));
+// SPA fallback: serve index.html for non-API routes
+app.get('*', (c) => {
+  if (c.req.path.startsWith('/api/')) return c.notFound();
+  try {
+    return c.html(fs.readFileSync(path.join(__dirname, 'out/ui/index.html'), 'utf-8'));
+  } catch {
+    return c.notFound();
+  }
+});
 
 serve({ fetch: app.fetch, port, hostname: host }, () => {
   console.log(`CALC server running on http://${host}:${port}`);
