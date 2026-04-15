@@ -78,12 +78,12 @@ graph TB
 ```
 
 **Layer discipline:**
-- **Generic core** (`compile.js`, `match.js`, `strategy.js`, `forward.js`, `explore.js`, `backchain.js`, `state-ops.js`, `fact-set.js`): zero `lnl/`, `opt/`, or `ill/` imports. Parameterized by connective table and `matchOpts` callbacks.
+- **Generic core** (`formula-utils.js`, `compile.js`, `match.js`, `strategy.js`, `forward.js`, `explore.js`, `backchain.js`, `state-ops.js`, `fact-set.js`): zero `lnl/`, `opt/`, or `ill/` imports. Parameterized by connective table and `matchOpts` callbacks. `formula-utils.js` provides connective-aware formula decomposition (`resolveConn`, `flattenAnte`, `unwrapComp`, `expandChoice`, `expandConsqChoices`) shared across pipeline stages. `forward.js` and `explore.js` have zero `backchain.js` imports — backward index building is guaranteed by the assembler (`index.js`).
 - **LNL layer** (`lnl/`): zero `opt/` or `ill/` imports. Receives configuration via `matchOpts`.
 - **opt layer** (`opt/`): zero `ill/` imports. Receives configuration via injection.
 - **ILL layer** (`ill/`): calculus-specific logic. Only imported by the orchestrator (`index.js`).
 - **Orchestrator** (`index.js`): single composition root. Imports all layers, builds `matchOpts`, injects into `exec()`/`explore()`.
-- Enforced by `tests/engine/layer-dag.test.js` (static require() analysis, zero exceptions).
+- Enforced by `tests/engine/layer-dag.test.js` (static require() analysis, zero exceptions). Same test also enforces the backward prover DAG (kernel←generic←focused←strategy) and `lib/`↛`src/ui/` global boundary.
 
 ### Connective Table
 

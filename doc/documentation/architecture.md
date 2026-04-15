@@ -124,7 +124,7 @@ lib/kernel/                      # Content-addressed AST substrate
 
 **Generate, don't hardcode.** Polarity, invertibility, and rule application are all generated from `.rules` files via `rule-interpreter.js`. Adding a new connective to `.rules` requires zero prover code changes.
 
-**Stacking.** Each layer extends the one below by adding *strategy*, not *mechanism*. Layer N calls Layer N-1's API, never reaches into its internals.
+**Stacking.** Each layer extends the one below by adding *strategy*, not *mechanism*. Layer N calls Layer N-1's API, never reaches into its internals. Enforced by `tests/engine/layer-dag.test.js` (static require() analysis, covers both engine and prover DAGs + `lib/`↛`src/ui/` boundary).
 
 ## L0 — Calculus Object
 
@@ -235,7 +235,8 @@ The forward engine has its own internal three-layer architecture (Generic → LN
 ```mermaid
 graph TB
     subgraph GenericCore["Generic Core (zero lnl/opt/ill imports)"]
-        COMP["<b>compile.js</b><br/>Rule compilation, connective resolution"]
+        FORM["<b>formula-utils.js</b><br/>Connective-aware decomposition"]
+        COMP["<b>compile.js</b><br/>Rule compilation"]
         MAT["<b>match.js</b><br/>tryMatch, matchLinearAll"]
         STRAT["<b>strategy.js</b><br/>fingerprint → disc-tree → predicate"]
         EXEC["<b>forward.js</b><br/>Committed-choice main loop"]
@@ -273,7 +274,7 @@ graph TB
     style OptLayer fill:#fce4ec,stroke:#880e4f
 ```
 
-**Layer discipline:** The generic core (`compile.js`, `match.js`, `strategy.js`, `forward.js`, `explore.js`, `backchain.js`) and `lnl/` have zero `ill/` or `opt/` imports. All cross-layer behavior is injected via `matchOpts` callbacks by the composition root (`index.js`). Enforced by `tests/engine/layer-dag.test.js`. See `doc/documentation/forward-chaining-engine.md` for full details.
+**Layer discipline:** The generic core (`compile.js`, `match.js`, `strategy.js`, `forward.js`, `explore.js`, `backchain.js`) and `lnl/` have zero `ill/` or `opt/` imports. All cross-layer behavior is injected via `matchOpts` callbacks by the composition root (`index.js`). Enforced by `tests/engine/layer-dag.test.js` (also covers the backward prover DAG and `lib/`↛`src/ui/` boundary). See `doc/documentation/forward-chaining-engine.md` for full details.
 
 **Profile-driven optimization.** Engine optimizations live in `lib/engine/opt/` (generic) or alongside their consumers at the engine root (`backward-cache.js`, `constraint-feed.js`, `delta-bypass.js`, `preserved.js`). The `optimizer.js` resolves a profile (`bare`/`fast`/`evm`) into an engine context with the appropriate strategy stack at startup — no runtime branching in hot loops. The `bare` profile disables all optimizations and serves as the correctness baseline. See `doc/documentation/optimization-architecture.md`.
 
