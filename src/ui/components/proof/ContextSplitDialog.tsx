@@ -1,4 +1,4 @@
-import { For, Show, createSignal, createMemo } from 'solid-js';
+import { For, Show, createSignal, createMemo, createEffect } from 'solid-js';
 import KaTeX from '../math/KaTeX';
 import { type ApplicableRule, sequentToLatex, previewSplitSubgoals } from '../../lib/proofLogic';
 
@@ -36,6 +36,16 @@ export default function ContextSplitDialog(props: ContextSplitDialogProps) {
     return initial;
   };
   const [assignments, setAssignments] = createSignal<Record<string, 1 | 2>>(getInitialAssignments());
+
+  // Re-initialize when context entries change
+  createEffect(() => {
+    const entries = props.contextEntries;
+    const initial: Record<string, 1 | 2> = {};
+    for (const entry of entries) {
+      initial[entry.id] = 1;
+    }
+    setAssignments(initial);
+  });
 
   const premise1Resources = createMemo(() =>
     props.contextEntries.filter(e => assignments()[e.id] === 1)
@@ -100,6 +110,8 @@ export default function ContextSplitDialog(props: ContextSplitDialogProps) {
   return (
     <div
       class="fixed inset-0 bg-black/50 flex items-center justify-center z-50"
+      role="dialog"
+      aria-modal="true"
       onClick={(e) => {
         if (e.target === e.currentTarget) props.onCancel();
       }}

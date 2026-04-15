@@ -28,14 +28,7 @@ export default function AsciiProofTree(props: AsciiProofTreeProps) {
   const handleCopy = async () => {
     try {
       await navigator.clipboard.writeText(asciiTree());
-    } catch (err) {
-      const textarea = document.createElement('textarea');
-      textarea.value = asciiTree();
-      document.body.appendChild(textarea);
-      textarea.select();
-      document.execCommand('copy');
-      document.body.removeChild(textarea);
-    }
+    } catch {}
   };
 
   return (

@@ -282,7 +282,7 @@ rule oplus_r2
                 <span class="flex-shrink-0 w-6 h-6 rounded-full bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 flex items-center justify-center text-sm font-medium">4</span>
                 <div>
                   <p class="font-medium text-gray-900 dark:text-white">Regenerate the bundle</p>
-                  <p class="text-sm text-gray-600 dark:text-gray-400">Run: <code>npm run build:v2-bundle</code></p>
+                  <p class="text-sm text-gray-600 dark:text-gray-400">Run: <code>npm run build:bundle</code></p>
                 </div>
               </div>
             </div>
@@ -302,7 +302,7 @@ rule oplus_r2
               <span class="text-gray-400">+</span>
               <span class="px-3 py-1 bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-300 rounded">.rules</span>
               <span class="text-gray-400">→</span>
-              <span class="px-3 py-1 bg-purple-100 dark:bg-purple-900/30 text-purple-800 dark:text-purple-300 rounded">Tree-sitter</span>
+              <span class="px-3 py-1 bg-purple-100 dark:bg-purple-900/30 text-purple-800 dark:text-purple-300 rounded">Earley</span>
               <span class="text-gray-400">→</span>
               <span class="px-3 py-1 bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300 rounded">ill.json</span>
               <span class="text-gray-400">→</span>
@@ -314,7 +314,7 @@ rule oplus_r2
             <div class="prose dark:prose-invert max-w-none text-sm">
               <ul>
                 <li><strong>.calc + .rules</strong> define the calculus declaratively</li>
-                <li><strong>Tree-sitter</strong> parses these into an AST representation</li>
+                <li><strong>Earley</strong> parses these into an AST representation</li>
                 <li><strong>ill.json</strong> bundles the calculus for browser use</li>
                 <li><strong>Runtime Parser</strong> is built from @ascii/@prec annotations</li>
                 <li><strong>AST</strong> nodes are rendered in different formats (ascii, latex)</li>

@@ -161,6 +161,7 @@ export function getFormulaConnectives(): ConnectiveInfo[] {
 
 /** Look up connective category from constructor annotations (e.g. "multiplicative" → "Multiplicatives"). */
 function getConnectiveCategory(connective: string): string | null {
+  ensureInitialized();
   const calc = browser.getCalculus();
   const cat = calc?.constructors?.[connective]?.annotations?.category;
   if (!cat) return null;

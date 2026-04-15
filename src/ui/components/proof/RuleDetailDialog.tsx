@@ -32,9 +32,12 @@ export default function RuleDetailDialog(props: RuleDetailDialogProps) {
     <Show when={props.details}>
       <div
         class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4"
+        role="dialog"
+        aria-modal="true"
         onClick={handleBackdropClick}
         onKeyDown={handleKeyDown}
         tabIndex={0}
+        ref={(el) => requestAnimationFrame(() => el.focus())}
       >
         <div class="bg-white dark:bg-gray-800 rounded-lg shadow-lg max-w-2xl w-full max-h-[90vh] overflow-auto text-gray-900 dark:text-gray-100">
           {/* Header */}

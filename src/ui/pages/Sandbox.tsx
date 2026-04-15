@@ -9,24 +9,19 @@ import { parseFormula, renderFormula, buildASTTree, type Formula } from '../lib/
 
 export default function Sandbox() {
   const [input, setInput] = createSignal('');
-  const [error, setError] = createSignal<string | null>(null);
 
-  const parsed = createMemo((): Formula | null => {
-    const formula = input().trim();
-    if (!formula) {
-      setError(null);
-      return null;
-    }
-
+  const parseResult = createMemo((): { formula: Formula | null; error: string | null } => {
+    const text = input().trim();
+    if (!text) return { formula: null, error: null };
     try {
-      const node = parseFormula(formula);
-      setError(null);
-      return node;
+      return { formula: parseFormula(text), error: null };
     } catch (e: any) {
-      setError(e.message || 'Parse error');
-      return null;
+      return { formula: null, error: e.message || 'Parse error' };
     }
   });
+
+  const parsed = () => parseResult().formula;
+  const error = () => parseResult().error;
 
   const latex = createMemo(() => {
     const node = parsed();
