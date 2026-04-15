@@ -17,7 +17,10 @@ const { resolveConn, compileRule, expandChoice } = require('../lib/engine/compil
 const { ILL_CONNECTIVES } = require('../lib/engine/ill/connectives');
 const ILL_RC = resolveConn(ILL_CONNECTIVES);
 const { createState } = require('../lib/engine/forward');
-const { resolveEx, tryMatch, provePersistent } = require('../lib/engine/match');
+const { tryMatch } = require('../lib/engine/match');
+const { resolveEx } = require('../lib/engine/lnl/existential');
+const { proveWithFFI: provePersistent } = require('../lib/engine/opt/ffi');
+const illFfi = require('../lib/engine/ill/ffi');
 
 describe('Quantifier Store operations', () => {
   it('exists(body) creates arity-1 node', () => {
@@ -344,7 +347,15 @@ describe('resolveEx three-level fallback', () => {
     const state = createState({ [aFact]: 1 }, {});
 
     // Use FFI-enabled provePersistent via matchOpts
-    const matchOpts = { provePersistent: provePersistent, useCompiledSteps: true };
+    const matchOpts = {
+      provePersistent: provePersistent,
+      resolveEx,
+      useCompiledSteps: true,
+      ffiMeta: illFfi.defaultMeta,
+      ffiGet: illFfi.get,
+      ffiParsedModes: illFfi.parsedModes,
+      ffiIsGround: illFfi.convert.isGround,
+    };
     const match = tryMatch(compiled, state, null, matchOpts);
     assert.notStrictEqual(match, null, 'tryMatch should succeed');
 

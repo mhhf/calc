@@ -17,7 +17,8 @@ describe('lnl/persistent — proveNaive', () => {
   before(() => {
     Store.clear();
     const mde = require('../../lib/engine/index');
-    calc = mde.load(path.join(__dirname, '../../calculus/ill/programs/evm.ill'), { cache: true });
+    const loaded = mde.load(path.join(__dirname, '../../calculus/ill/programs/evm.ill'), { cache: true });
+    calc = loaded._calcContext;
   });
 
   beforeEach(() => {
@@ -68,7 +69,7 @@ describe('lnl/persistent — proveNaive', () => {
       const state = { linear: new FactSet(Store.TAG_NAMES.length), persistent: new FactSet(Store.TAG_NAMES.length) };
       const matchOpts = {
         ffiParsedModes: calc.ffiContext ? calc.ffiContext.parsedModes : {},
-        canonicalize: null,
+        canonicalize: calc.canonicalize || null,
         backchainUseFFI: false,
       };
 

@@ -31,7 +31,7 @@ describe('noFFI e2e: solc multisig (clause-only resolution)', { timeout: 120000 
     const state = mde.decomposeQuery(calc.queries.get('symex'));
     treeFFI = explore(state, calc.forwardRules, {
       maxDepth: 2000,
-      calc: { clauses: calc.clauses, definitions: calc.definitions },
+      calc: calc._calcContext,
       dangerouslyUseFFI: true
     });
 
@@ -43,7 +43,7 @@ describe('noFFI e2e: solc multisig (clause-only resolution)', { timeout: 120000 
     const state2 = mde.decomposeQuery(calc2.queries.get('symex'));
     treeNoFFI = explore(state2, calc2.forwardRules, {
       maxDepth: 2000,
-      calc: { clauses: calc2.clauses, definitions: calc2.definitions }
+      calc: calc2._calcContext
       // no dangerouslyUseFFI — noFFI is default
     });
   });
@@ -75,7 +75,7 @@ describe('noFFI e2e: forward.run with evidence', { timeout: 60000 }, () => {
     const state = mde.decomposeQuery(calc.queries.get('symex'));
     result = run(state, calc.forwardRules, {
       maxSteps: 2000,
-      calc: { clauses: calc.clauses, definitions: calc.definitions },
+      calc: calc._calcContext,
       trace: true,
       evidence: true
       // no dangerouslyUseFFI — noFFI is default
@@ -138,7 +138,7 @@ describe('noFFI e2e: dangerouslyUseFFI flag resets correctly', () => {
     // Run with FFI
     run(state, calc.forwardRules, {
       maxSteps: 10,
-      calc: { clauses: calc.clauses, definitions: calc.definitions },
+      calc: calc._calcContext,
       dangerouslyUseFFI: true
     });
 
@@ -150,7 +150,7 @@ describe('noFFI e2e: dangerouslyUseFFI flag resets correctly', () => {
     const state2 = mde.decomposeQuery(calc2.queries.get('symex'));
     const result = run(state2, calc2.forwardRules, {
       maxSteps: 10,
-      calc: { clauses: calc2.clauses, definitions: calc2.definitions },
+      calc: calc2._calcContext,
       trace: true,
       evidence: true
     });
@@ -187,7 +187,7 @@ describe('noFFI e2e: symbolic explore → guided terms', { timeout: 600000 }, ()
     const state = mde.decomposeQuery(calc.queries.get('symex'));
     tree = explore(state, calc.forwardRules, {
       maxDepth: 2000,
-      calc: { clauses: calc.clauses, definitions: calc.definitions },
+      calc: calc._calcContext,
       evidence: true
     });
     leaves = getAllLeaves(tree);

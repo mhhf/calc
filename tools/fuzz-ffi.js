@@ -14,6 +14,7 @@ const path = require('path');
 const Store = require('../lib/kernel/store');
 const mde = require('../lib/engine');
 const backward = require('../lib/engine/backchain');
+const { makeILLBackchainOpts } = require('../lib/engine/ill/backchain-ill');
 const ffi = require('../lib/engine/ill/ffi');
 const convert = require('../lib/engine/ill/ffi/convert');
 const show = require('../lib/engine/show');
@@ -105,7 +106,7 @@ for (const pred of preds) {
 
     // Clause path
     const clauseResult = backward.prove(ffiGoal, ec.clauses, ec.definitions, {
-      maxDepth: 20000, allBuckets: true, useFFI: false
+      ...makeILLBackchainOpts(), maxDepth: 20000, allBuckets: true, useFFI: false
     });
 
     // Compare

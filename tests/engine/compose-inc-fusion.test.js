@@ -13,7 +13,7 @@ const { resolveConn, compileRule, flattenAnte } = require('../../lib/engine/comp
 const { predHead } = require('../../lib/kernel/ast');
 const { _fuseChains } = require('../../lib/engine/compose');
 const { ILL_CHAIN_CONFIGS } = require('../../lib/engine/ill/compose-config');
-const { getModes, getModeMeta: _illGetModeMeta } = require('../../lib/engine/opt/ffi');
+const { getModes, getModeMeta: _illGetModeMeta } = require('../../lib/engine/ill/ffi');
 const { show } = require('../../lib/engine/show');
 
 const COMPILE_OPTS = { connectives: ILL_CONNECTIVES, getModes };

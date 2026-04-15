@@ -20,7 +20,7 @@ const {
   resolveExecOpts, normalizeLeafState,
   stateHasFreevars, isSubset, formatState,
   show, getAllLeaves,
-} = require('../lib/engine/directive-loader');
+} = require('./directive-loader');
 
 const TEST_DIR = path.join(__dirname, '..', 'calculus', 'ill', 'tests');
 

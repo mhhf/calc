@@ -8,10 +8,11 @@ const forward = require('../../lib/engine/forward');
 const mde = require('../../lib/engine');
 const Store = require('../../lib/kernel/store');
 const ffi = require('../../lib/engine/ill/ffi');
-const { tryMatch } = require('../../lib/engine/match');
+const { tryMatch, buildMatchOpts } = require('../../lib/engine/match');
 const { ILL_CONNECTIVES } = require('../../lib/engine/ill/connectives');
 const { resolveConn } = require('../../lib/engine/compile');
 const ILL_RC = resolveConn(ILL_CONNECTIVES);
+const { proveNaive } = require('../../lib/engine/lnl/persistent');
 
 describe('Forward Chaining', { timeout: 10000 }, () => {
   describe('flattenAnte', () => {
@@ -118,7 +119,10 @@ describe('Forward Chaining', { timeout: 10000 }, () => {
         { [guard]: true }
       );
 
-      const result = forward.run(state, [rule]);
+      const matchOpts = buildMatchOpts({
+        rc: ILL_RC, provePersistentNaive: proveNaive,
+      });
+      const result = forward.run(state, [rule], { matchOpts });
 
       assert(result.quiescent, 'Should reach quiescence');
       assert.strictEqual(result.steps, 2, 'Should take 2 steps (both foos)');
@@ -228,7 +232,14 @@ describe('Forward Chaining', { timeout: 10000 }, () => {
 
       // FFI can't convert sym to BigInt → conversion_failed (non-definitive).
       // tryMatch falls through to persistent state lookup, finds inc(sym, sym_plus_1).
-      const result = tryMatch(rule, state, null);
+      const { proveNaive } = require('../../lib/engine/lnl/persistent');
+      const { buildMatchOpts } = require('../../lib/engine/match');
+      const matchOpts = buildMatchOpts({
+        useFFI: false, evidence: false, rc: ILL_RC,
+        ffiCtx: null, canonicalize: null,
+        provePersistentNaive: proveNaive,
+      });
+      const result = tryMatch(rule, state, null, matchOpts);
 
       assert.notStrictEqual(result, null,
         'tryMatch should succeed via persistent state fallback');

@@ -337,7 +337,7 @@ describe('SELL: QuerySettings Threading (T10)', () => {
 const { GRADE_0, GRADE_W } = require('../../lib/engine/grades');
 const { ILL_CONNECTIVES } = require('../../lib/engine/ill/connectives');
 const { resolveConn, flattenAnte, compileRule } = require('../../lib/engine/compile');
-const { getModes } = require('../../lib/engine/opt/ffi');
+const { getModes } = require('../../lib/engine/ill/ffi');
 
 describe('SELL: Graded modality parsing (TODO 155)', () => {
   beforeEach(() => Store.clear());

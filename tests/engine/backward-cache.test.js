@@ -109,15 +109,9 @@ describe('backward-cache — positive hit with real calc', () => {
     Store.clear();
     const mde = require('../../lib/engine/index');
     const loaded = mde.load(path.join(__dirname, '../../calculus/ill/programs/evm.ill'), { cache: true });
-    // Build a calc object suitable for tryBWCache (clauses + definitions)
-    calc = {
-      clauses: loaded.clauses,
-      definitions: loaded.definitions,
-      backchainIndex: null,
-      backwardOpts: {},
-    };
-    // ffiParsedModes comes from opt/ffi, not from the calc object
-    modes = require('../../lib/engine/opt/ffi').ffiParsedModes;
+    // Use _calcContext which includes backwardOpts with ILL theories
+    calc = loaded._calcContext;
+    modes = calc.ffiContext ? calc.ffiContext.parsedModes : require('../../lib/engine/ill/ffi').parsedModes;
   });
 
   it('caches successful resolution and returns hit on second call', () => {

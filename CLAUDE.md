@@ -79,7 +79,6 @@ lib/
 │   ├── backchain.js     # Generic: backward chaining (SLD-style, renamed from prove.js)
 │   ├── fact-set.js      # Generic: FactSet (sorted typed-array groups) + Arena (undo log)
 │   ├── convert.js       # .ill → content-addressed hashes
-│   ├── directive-loader.js # Shared directive loading (test-ill.js + debug-ill.js)
 │   ├── lnl/             # LNL layer: linear/persistent distinction
 │   │   ├── persistent.js  # Persistent goal proving (state → cache → backchain)
 │   │   ├── loli.js        # Dynamic rule matching (linear implications)
@@ -120,7 +119,8 @@ calculus/ill/            # ILL calculus definition
 
 tests/                   # Test suite (core: *.test.js, engine: engine/)
 benchmarks/              # Performance benchmarks (engine/, proof/, micro/)
-tools/                   # CLI utilities (bench-compare.js, explore-inspect.js, test-ill.js, debug-ill.js)
+tools/                   # CLI utilities + shared tool infrastructure
+├── directive-loader.js  # Shared directive loading (test-ill.js, debug-ill.js, explore-inspect.js)
 out/                     # Generated: ill.json (bundled calculus), ui/ (built app)
 ```
 

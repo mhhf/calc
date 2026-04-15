@@ -9,7 +9,6 @@ const { describe, it, before } = require('node:test');
 const assert = require('node:assert');
 const path = require('path');
 const mde = require('../../lib/engine');
-const { explore } = require('../../lib/engine/explore');
 const { countNodes, getAllLeaves } = require('../../lib/engine/tree-utils');
 const { classifyLeaf } = require('../../lib/engine/show');
 const { detectStrategy } = require('../../lib/engine/strategy');
@@ -86,15 +85,12 @@ describe('fingerprint prediction (Opt_H)', { timeout: 30000 }, () => {
         path.join(__dirname, '../../calculus/ill/programs/multisig_nocall_solc.ill')
       );
       const state = mde.decomposeQuery(calc.queries.get('symex'));
-      const opts = {
-        maxDepth: 2000,
-        calc: { clauses: calc.clauses, definitions: calc.definitions },
-        dangerouslyUseFFI: true
-      };
-
       // Both trees use the same code path — prediction is automatic.
       // We verify the tree shape matches the known-good expected values.
-      treePred = explore(state, calc.forwardRules, opts);
+      treePred = calc.explore(state, {
+        maxDepth: 2000,
+        dangerouslyUseFFI: true
+      });
     });
 
     it('produces identical tree shape to expected', () => {
@@ -117,10 +113,9 @@ describe('fingerprint prediction (Opt_H)', { timeout: 30000 }, () => {
         path.join(__dirname, '../../calculus/ill/programs/multisig_nocall_solc_symbolic.ill')
       );
       const state = mde.decomposeQuery(calc.queries.get('symex'));
-      treeMemo = explore(state, calc.forwardRules, {
+      treeMemo = calc.explore(state, {
         maxDepth: 500,
         structuralMemo: true,
-        calc: { clauses: calc.clauses, definitions: calc.definitions },
         dangerouslyUseFFI: true
       });
     });

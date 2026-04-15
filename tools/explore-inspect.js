@@ -23,7 +23,7 @@ const mde = require('../lib/engine');
 const {
   decomposeQuery, getAllLeaves, countNodes, maxDepth,
   classifyLeaf, showInteresting,
-} = require('../lib/engine/directive-loader');
+} = require('./directive-loader');
 
 const args = process.argv.slice(2);
 const opts = { query: 'symex', depth: 200, leaf: null, exclude: 'code,calldata', all: false };

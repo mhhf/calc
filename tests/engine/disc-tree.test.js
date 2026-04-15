@@ -10,7 +10,6 @@ const {
   createNode, insert, flattenPattern, flattenFact,
   subtreeSize, queryFlat, collectAll, makeDiscTreeLayer
 } = require('../../lib/engine/disc-tree');
-const { explore } = require('../../lib/engine/explore');
 const {
   countNodes, countLeaves, maxDepth, getAllLeaves
 } = require('../../lib/engine/tree-utils');
@@ -309,9 +308,8 @@ describe('disc-tree', () => {
       const state = mde.decomposeQuery(calc.queries.get('symex'));
 
       // disc-tree strategy (default via detectStrategy)
-      const tree = explore(state, calc.forwardRules, {
+      const tree = calc.explore(state, {
         maxDepth: 200,
-        calc: { clauses: calc.clauses, definitions: calc.definitions },
         dangerouslyUseFFI: true
       });
 

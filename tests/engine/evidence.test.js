@@ -10,8 +10,15 @@ const { describe, it, beforeEach } = require('node:test');
 const assert = require('node:assert/strict');
 const Store = require('../../lib/kernel/store');
 const forward = require('../../lib/engine/forward');
-const { matchLoli } = require('../../lib/engine/match');
+const { matchLoli } = require('../../lib/engine/lnl/loli');
 const { proveWithFFI } = require('../../lib/engine/opt/ffi');
+const illFfi = require('../../lib/engine/ill/ffi');
+const illMatchOpts = {
+  ffiMeta: illFfi.defaultMeta,
+  ffiGet: illFfi.get,
+  ffiParsedModes: illFfi.parsedModes,
+  ffiIsGround: illFfi.convert.isGround,
+};
 const { drainLolis } = require('../../lib/engine/ill/loli-drain');
 const { GRADE_W } = require('../../lib/engine/grades');
 const { ILL_CONNECTIVES } = require('../../lib/engine/ill/connectives');
@@ -51,7 +58,7 @@ describe('Evidence collection (TODO_0068 §10.5)', () => {
       const theta = new Array(1);
       const evidenceOut = [];
 
-      const idx = proveWithFFI([pattern], 0, theta, slots, state, null, evidenceOut);
+      const idx = proveWithFFI([pattern], 0, theta, slots, state, null, evidenceOut, illMatchOpts);
       assert.strictEqual(idx, 1, 'should prove via FFI');
       assert.strictEqual(evidenceOut.length, 1);
       assert.strictEqual(evidenceOut[0].method, 'ffi');

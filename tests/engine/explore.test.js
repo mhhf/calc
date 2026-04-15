@@ -18,7 +18,10 @@ const {
   countLeaves, getAllLeaves, maxDepth, countNodes, toDot
 } = require('../../lib/engine/tree-utils');
 const forward = require('../../lib/engine/forward');
-const { matchLoli } = require('../../lib/engine/match');
+const { matchLoli } = require('../../lib/engine/lnl/loli');
+const { drainLolis } = require('../../lib/engine/lnl/loli-drain');
+const { proveNaive } = require('../../lib/engine/lnl/persistent');
+const { buildMatchOpts } = require('../../lib/engine/match');
 const Store = require('../../lib/kernel/store');
 
 describe('explore', { timeout: 10000 }, () => {
@@ -35,7 +38,7 @@ describe('explore', { timeout: 10000 }, () => {
 
       const tree = explore(state, calc.forwardRules, {
         maxDepth: 10,
-        calc: { clauses: calc.clauses, definitions: calc.definitions }
+        calc: calc._calcContext
       });
 
       assert.strictEqual(tree.type, 'leaf');
@@ -60,7 +63,7 @@ describe('explore', { timeout: 10000 }, () => {
 
       const tree = explore(state, calc.forwardRules, {
         maxDepth: 5,
-        calc: { clauses: calc.clauses, definitions: calc.definitions }
+        calc: calc._calcContext
       });
 
       if (tree.type === 'branch') {
@@ -83,7 +86,7 @@ describe('explore', { timeout: 10000 }, () => {
 
       const tree = explore(state, calc.forwardRules, {
         maxDepth: 3,
-        calc: { clauses: calc.clauses, definitions: calc.definitions }
+        calc: calc._calcContext
       });
 
       assert(maxDepth(tree) <= 3);
@@ -235,7 +238,7 @@ describe('explore', { timeout: 10000 }, () => {
 
       const tree = explore(state, calc.forwardRules, {
         maxDepth: 5,
-        calc: { clauses: calc.clauses, definitions: calc.definitions }
+        calc: calc._calcContext
       });
 
       // Root should branch — the 'choose' rule produces left & right
@@ -262,7 +265,7 @@ describe('explore', { timeout: 10000 }, () => {
 
       const tree = explore(state, calc.forwardRules, {
         maxDepth: 5,
-        calc: { clauses: calc.clauses, definitions: calc.definitions }
+        calc: calc._calcContext
       });
 
       assert.strictEqual(tree.type, 'branch');
@@ -562,9 +565,14 @@ describe('explore', { timeout: 10000 }, () => {
         { [guard]: true }
       );
 
+      const matchOpts = buildMatchOpts({
+        rc: ILL_RC, provePersistentNaive: proveNaive,
+        matchLoli, drainLolis,
+      });
       const tree = explore(state, [rule], {
         maxDepth: 5,
-        calc: { connectives: ILL_CONNECTIVES }
+        calc: { connectives: ILL_CONNECTIVES },
+        matchOpts,
       });
 
       // Root should branch (rule fires, plus creates 2 alternatives)

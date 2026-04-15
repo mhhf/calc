@@ -11,7 +11,7 @@ const { ILL_CONNECTIVES } = require('../../lib/engine/ill/connectives');
 const { resolveConn, compileRule, flattenAnte } = require('../../lib/engine/compile');
 const { predHead } = require('../../lib/kernel/ast');
 const { compose0 } = require('../../lib/engine/compose');
-const { getModes } = require('../../lib/engine/opt/ffi');
+const { getModes } = require('../../lib/engine/ill/ffi');
 
 const COMPILE_OPTS = { connectives: ILL_CONNECTIVES, getModes };
 

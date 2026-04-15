@@ -1,7 +1,7 @@
 ---
 title: "Forward Chaining Engine — Architecture & Implementation"
 created: 2026-02-18
-modified: 2026-04-08
+modified: 2026-04-16
 summary: How the CALC forward chaining engine works — three-layer architecture, modules, data flow, matching, strategy, optimizations.
 tags: [implementation, forward-chaining, engine, architecture, CHR, linear-logic]
 ---
@@ -29,13 +29,13 @@ graph TB
     subgraph LNL["LNL Layer (linear/persistent distinction)"]
         PERSISTENT["<b>lnl/persistent.js</b><br/>Persistent goal proving:<br/>state → cache → clause"]
         LOLI["<b>lnl/loli.js</b><br/>Dynamic rule matching<br/>(linear implications)"]
+        DRAIN["<b>lnl/loli-drain.js</b><br/>Persistent-trigger loli drain"]
         EXIST["<b>lnl/existential.js</b><br/>∃-variable resolution"]
     end
 
     subgraph ILL["ILL Layer (calculus-specific)"]
         CONN["<b>ill/connectives.js</b><br/>ILL connective table"]
         BINLIT["<b>ill/binlit-theory.js</b><br/>Binary number eq theory"]
-        DRAIN["<b>ill/loli-drain.js</b><br/>Persistent-trigger loli fusion"]
         FFI["<b>ill/ffi/</b><br/>Arithmetic, memory, bitwise"]
         BCILL["<b>ill/backchain-ill.js</b><br/>ILL backward defaults"]
     end
@@ -78,10 +78,12 @@ graph TB
 ```
 
 **Layer discipline:**
-- **Generic core** (`compile.js`, `match.js`, `strategy.js`, `state-ops.js`, `fact-set.js`): zero `ill/` imports. Parameterized by connective table and `matchOpts` callbacks.
-- **LNL layer** (`lnl/`): zero `ill/` imports. Receives configuration via `matchOpts`.
-- **Execution entry points** (`forward.js`, `explore.js`, `backchain.js`): import ILL defaults as fallbacks when `calc?.connectives` is absent. These are composition-layer wiring, not structural violations.
-- **ILL layer** (`ill/`): calculus-specific logic. Only imported by execution entry points and `opt/ffi.js`.
+- **Generic core** (`compile.js`, `match.js`, `strategy.js`, `forward.js`, `explore.js`, `backchain.js`, `state-ops.js`, `fact-set.js`): zero `lnl/`, `opt/`, or `ill/` imports. Parameterized by connective table and `matchOpts` callbacks.
+- **LNL layer** (`lnl/`): zero `opt/` or `ill/` imports. Receives configuration via `matchOpts`.
+- **opt layer** (`opt/`): zero `ill/` imports. Receives configuration via injection.
+- **ILL layer** (`ill/`): calculus-specific logic. Only imported by the orchestrator (`index.js`).
+- **Orchestrator** (`index.js`): single composition root. Imports all layers, builds `matchOpts`, injects into `exec()`/`explore()`.
+- Enforced by `tests/engine/layer-dag.test.js` (static require() analysis, zero exceptions).
 
 ### Connective Table
 
@@ -110,15 +112,30 @@ Engine behavior is configured via callback composition at run start — no modul
 
 ```js
 matchOpts = {
-  provePersistent,     // (patterns, idx, theta, slots, state, calc, evidence) → idx
-  matchDynamicRule,    // (factHash, state, calc, matchOpts) → match | null
-  dynamicRuleTag,      // tag name for state-resident rules (e.g., 'loli')
-  connectives,         // resolved connective roles from resolveConnectives()
-  canonicalize,        // hash → hash (equational theory normalization)
-  ffiParsedModes,      // pred → mode string[] (for output variable detection)
-  useCompiledSteps,    // boolean — enable FFI compiled persistent step fast path
+  // Generic config
   optimizePreserved,   // boolean — skip preserved facts in produce
   evidence,            // boolean — collect proof evidence per persistent goal
+  connectives,         // resolved connective roles from resolveConnectives()
+  canonicalize,        // hash → hash (equational theory normalization)
+  onProveFail,         // hook: (goal, reason) => void
+  onProveSuccess,      // hook: (goal, method) => void
+  // LNL layer (injected by orchestrator)
+  provePersistent,     // (patterns, idx, theta, slots, state, calc, evidence) → idx
+  matchDynamicRule,    // (factHash, state, calc, matchOpts) → match | null
+  resolveEx,           // (state, calc, matchOpts) → bindings
+  drainLolis,          // (state, calc, matchOpts) → void
+  dynamicRuleTag,      // tag name for state-resident rules (e.g., 'loli')
+  // Opt layer (injected by orchestrator)
+  execExStep,          // compiled ∃-chain fast path
+  execPS,              // compiled persistent step fast path
+  tryCCDispatch,       // compiled clause dispatch
+  useCompiledSteps,    // boolean — enable FFI compiled persistent step fast path
+  backchainUseFFI,     // boolean — allow FFI in backward chaining
+  // FFI context
+  ffiParsedModes,      // pred → mode string[] (for output variable detection)
+  ffiMeta,             // FFI metadata by predicate
+  ffiGet,              // pred → FFI function
+  ffiIsGround,         // hash → boolean
 }
 ```
 
@@ -313,7 +330,7 @@ flowchart TB
 
 **Core invariant:** When `go()` returns, state (FactSet) and solver are in their original state via Arena undo.
 
-Optimization modules called in the hot loop (`go`): `drainLolis` (lnl/loli-drain.js), `feedPers` + `satFilter` (constraint-feed.js), `predictNext` (opt/prediction.js), `controlHash` + `recordMemo` (opt/structural-memo.js). All imported directly — no runtime dispatch. See `doc/documentation/optimization-architecture.md`.
+Optimization modules called in the hot loop (`go`): `drainLolis` (lnl/loli-drain.js), `feedPers` + `satFilter` (constraint-feed.js), `predictNext` (opt/prediction.js), `controlHash` + `recordMemo` (opt/structural-memo.js). Cross-layer callbacks (`drainLolis`, `matchLoli`, etc.) are injected via `matchOpts` by the orchestrator; generic optimization modules at the engine root are imported directly. See `doc/documentation/optimization-architecture.md`.
 
 ## Rule Compilation Pipeline
 
@@ -399,7 +416,7 @@ Soundness: Betz & Fruhwirth (2013) — every CHR derivation corresponds to a val
 
 **FFI as backward prove optimization.** FFI (arithmetic) is conceptually a fast path within backward proving, not a separate proving mechanism.
 
-**Optimizations as toggleable modules.** Optimizations live in `lib/engine/opt/` (generic), at the engine root (delta-bypass, preserved, backward-cache, constraint-feed), or in `lib/engine/ill/` (ILL-specific loli-drain). All are controlled by profile flags resolved at engine creation. The `bare` profile (all off) serves as the correctness baseline. No runtime branching in hot loops — function pointers are resolved once. See `doc/documentation/optimization-architecture.md`.
+**Optimizations as toggleable modules.** Optimizations live in `lib/engine/opt/` (generic), at the engine root (delta-bypass, preserved, backward-cache, constraint-feed), or in `lib/engine/lnl/` (loli-drain). All are controlled by profile flags resolved at engine creation. The `bare` profile (all off) serves as the correctness baseline. No runtime branching in hot loops — function pointers are resolved once. See `doc/documentation/optimization-architecture.md`.
 
 **Connective table, not hardcoded names.** The generic engine queries structural categories (`multiplicative`, `additive`, `exponential`, `monad`, `quantifier`) and structural properties (`arity`, `polarity`) — never connective names. `resolveConnectives(ct)` inverts the table once at startup for O(1) role→tag dispatch.
 

@@ -1,6 +1,6 @@
 ---
 title: Prover Architecture (Lasagne)
-modified: 2026-03-21
+modified: 2026-04-16
 summary: Five-layer prover architecture separating verification, search, focusing, and strategy.
 tags: [architecture, prover, focusing, polarity, layers]
 ---
@@ -89,12 +89,12 @@ lib/engine/                      # Forward execution engine (L4c/L4d)
 ├── lnl/                         # Linear-Non-Linear framework
 │   ├── persistent.js            # persistent goal proving
 │   ├── loli.js                  # dynamic rule matching
+│   ├── loli-drain.js            # persistent-trigger loli drain
 │   └── existential.js           # existential resolution
 ├── ill/                         # ILL-specific
 │   ├── backchain-ill.js         # ILL backward prover defaults
 │   ├── binlit-theory.js         # binary number equational theory
 │   ├── connectives.js           # ILL connective configuration
-│   ├── loli-drain.js            # persistent-trigger loli optimization
 │   └── ffi/                     # foreign function interface (arithmetic, etc.)
 ├── backward-cache.js            # backward proof cache (toggleable)
 ├── constraint-feed.js           # solver integration: feedPers, satFilter
@@ -234,7 +234,7 @@ The forward engine has its own internal three-layer architecture (Generic → LN
 
 ```mermaid
 graph TB
-    subgraph GenericCore["Generic Core (zero ill/ imports)"]
+    subgraph GenericCore["Generic Core (zero lnl/opt/ill imports)"]
         COMP["<b>compile.js</b><br/>Rule compilation, connective resolution"]
         MAT["<b>match.js</b><br/>tryMatch, matchLinearAll"]
         STRAT["<b>strategy.js</b><br/>fingerprint → disc-tree → predicate"]
@@ -242,16 +242,16 @@ graph TB
         EXP["<b>explore.js</b><br/>DFS, mutation+undo"]
     end
 
-    subgraph LNLLayer["LNL Layer (zero ill/ imports)"]
+    subgraph LNLLayer["LNL Layer (zero opt/ill imports)"]
         PERS["<b>lnl/persistent.js</b><br/>Persistent goal proving"]
         LOLI["<b>lnl/loli.js</b><br/>Dynamic rule matching"]
+        DRAIN["<b>lnl/loli-drain.js</b><br/>Persistent-trigger loli drain"]
         EXIS["<b>lnl/existential.js</b><br/>∃-variable resolution"]
     end
 
     subgraph ILLLayer["ILL Layer"]
         CONN["<b>ill/connectives.js</b>"]
         FFIL["<b>ill/ffi/</b>"]
-        DRAIN["<b>ill/loli-drain.js</b>"]
     end
 
     subgraph OptLayer["Toggleable Optimizations"]
@@ -273,7 +273,7 @@ graph TB
     style OptLayer fill:#fce4ec,stroke:#880e4f
 ```
 
-**Layer discipline:** `compile.js` and `lnl/` have zero `ill/` imports — the compilation and matching logic is fully calculus-agnostic, parameterized by a connective table (`tag → { category, arity, polarity }`) and `matchOpts` callbacks. `forward.js`/`explore.js`/`backchain.js` retain ILL defaults as composition-layer fallbacks. See `doc/documentation/forward-chaining-engine.md` for full details.
+**Layer discipline:** The generic core (`compile.js`, `match.js`, `strategy.js`, `forward.js`, `explore.js`, `backchain.js`) and `lnl/` have zero `ill/` or `opt/` imports. All cross-layer behavior is injected via `matchOpts` callbacks by the composition root (`index.js`). Enforced by `tests/engine/layer-dag.test.js`. See `doc/documentation/forward-chaining-engine.md` for full details.
 
 **Profile-driven optimization.** Engine optimizations live in `lib/engine/opt/` (generic) or alongside their consumers at the engine root (`backward-cache.js`, `constraint-feed.js`, `delta-bypass.js`, `preserved.js`). The `optimizer.js` resolves a profile (`bare`/`fast`/`evm`) into an engine context with the appropriate strategy stack at startup — no runtime branching in hot loops. The `bare` profile disables all optimizations and serves as the correctness baseline. See `doc/documentation/optimization-architecture.md`.
 
@@ -295,7 +295,7 @@ Pure view. `proofLogic.ts` is a thin type adapter; `ManualProof.tsx` renders the
 | **L2 generic** | Backtracking, depth limit, Hodas-Miller threading | Which rules exist (from calculus object) |
 | **L3 focused** | Phase alternation, blur condition, focus protocol | Polarity assignments (from calculus object) |
 | **L4 backward** | Manual UI protocol, auto search | None |
-| **L4 forward** | Strategy stack, matching, mutation+undo, connective table | ILL defaults as composition-layer fallbacks in forward.js/explore.js |
+| **L4 forward** | Strategy stack, matching, mutation+undo, connective table | None — all configuration injected via matchOpts by orchestrator (index.js) |
 | **L5 UI** | Components, rendering, interaction | None |
 
 Adding a new connective (e.g., temporal `○`/`●`) requires only `.calc` + `.rules` changes. All backward layers pick it up automatically.
