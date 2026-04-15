@@ -116,4 +116,4 @@ Restricting the rule set is a **sound operational refinement**: any derivation f
 | `lib/parser/declarations.js` | `parseQuerySettings()`, `parseModuleDefinition()` |
 | `lib/engine/convert.js` | `_scanDeclNames()`, threading querySettings/moduleDecls |
 | `lib/engine/compile.js` | `sourceLabel` field on compiled rules |
-| `lib/engine/index.js` | `buildLabelDeps()`, `filterRules()`, `_resolveModuleExpr()`, exec/explore wrappers |
+| `lib/engine/index.js` | `labelDeps()`, `filterRules()`, `_resolveModuleExpr()`, exec/explore wrappers |

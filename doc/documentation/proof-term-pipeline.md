@@ -36,17 +36,17 @@ graph LR
 - `binding='metavar'` → witness term `s`
 - `premises[i].linear` → bound variables scoped over sub-proof
 
-Also provides `buildMonadicTerm(trace, rfTerm)` for the `full` profile: wraps forward trace entries as opaque CLF let-chain with `monad_r(evidence)`.
+Also provides `monadicTerm(trace, rfTerm)` for the `full` profile: wraps forward trace entries as opaque CLF let-chain with `monad_r(evidence)`.
 
 ### Stage 2: Bridge (`bridge.js`)
 
-`executeModeSwitch(seq, engineCalc, opts)` is the single integration point where the execution profile is checked. Everything upstream (inversion, focus, identity, copy) is identical.
+`modeSwitch(seq, engineCalc, opts)` is the single integration point where the execution profile is checked. Everything upstream (inversion, focus, identity, copy) is identical.
 
 ```mermaid
 flowchart TB
     SEQ["sequent with {S}"] --> PROFILE{"opts.forward?"}
-    PROFILE --> |"'full'"| FULL["forward.run(trace=true)<br/>rightFocus(verify only)<br/>buildMonadicTerm(opaque)"]
-    PROFILE --> |"'guided'"| GUIDED["forward.run(evidence=true)<br/>rightFocusTerm(with terms)<br/>buildGuidedTerm(ILL verified)"]
+    PROFILE --> |"'full'"| FULL["forward.run(trace=true)<br/>rightFocus(verify only)<br/>monadicTerm(opaque)"]
+    PROFILE --> |"'guided'"| GUIDED["forward.run(evidence=true)<br/>rightFocusTerm(with terms)<br/>guidedTerm(ILL verified)"]
     PROFILE --> |"'off'"| OFF["backward searches<br/>inside monad<br/>(intractable)"]
 
     FULL --> NODE["ProofTree(monad_r)<br/>modeSwitch: true"]
@@ -65,7 +65,7 @@ flowchart TB
 
 ### Stage 3: Guided Construction (`guided-term.js`)
 
-`buildGuidedTerm(trace, rfTerm)` folds right-to-left over enriched trace entries, producing a complete ILL proof term. Each forward step becomes:
+`guidedTerm(trace, rfTerm)` folds right-to-left over enriched trace entries, producing a complete ILL proof term. Each forward step becomes:
 
 ```
 copy(ruleHash,
@@ -131,8 +131,8 @@ Note: `check-term.js` is currently test-only (not invoked in production paths).
 
 | File | Role |
 |---|---|
-| `lib/prover/generic-term.js` | `extractTerm` — backward proof tree → generic term, `buildMonadicTerm` — opaque forward term |
-| `lib/prover/bridge.js` | `executeModeSwitch` — profile dispatch, `rightFocus`/`rightFocusTerm` — succedent decomposition |
-| `lib/prover/guided-term.js` | `buildGuidedTerm` — forward trace → complete ILL term |
+| `lib/prover/generic-term.js` | `extractTerm` — backward proof tree → generic term, `monadicTerm` — opaque forward term |
+| `lib/prover/bridge.js` | `modeSwitch` — profile dispatch, `rightFocus`/`rightFocusTerm` — succedent decomposition |
+| `lib/prover/guided-term.js` | `guidedTerm` — forward trace → complete ILL term |
 | `lib/prover/check-term.js` | `createChecker` → `{ check, expand }` — type checker |
 | `doc/documentation/proof-terms.md` | Constructor catalog and typing rules |

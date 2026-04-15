@@ -21,9 +21,9 @@ The architecture is **calculus-agnostic**. The Rust verifier contains zero ILL-s
 ```mermaid
 graph LR
     BP[Backward prover] --> PT[Proof term]
-    FE[Forward engine] --> GT[buildGuidedTerm] --> PT
+    FE[Forward engine] --> GT[guidedTerm] --> PT
     PT --> TW[Tree witness]
-    FE --> RT[buildRewriteTrace] --> FW[Flat witness]
+    FE --> RT[rwTrace] --> FW[Flat witness]
     TW --> JSON
     FW --> JSON
     JSON --> RP[Rust STARK prover]
@@ -32,7 +32,7 @@ graph LR
 
 ### Tree Path (ILL Proof Terms)
 
-Verifies full derivation trees: `checkTerm(term, sequent)`. Produced by backward prover, forward engine (via `buildGuidedTerm`), or manual prover. Each proof term node maps to one chip row in DFS pre-order.
+Verifies full derivation trees: `checkTerm(term, sequent)`. Produced by backward prover, forward engine (via `guidedTerm`), or manual prover. Each proof term node maps to one chip row in DFS pre-order.
 
 - NOT IVC-compatible (obligation nonce threading crosses subtree boundaries)
 - Chunked via ObligBoundaryChip + CtxBoundaryChip at obligation-depth boundaries
@@ -336,8 +336,8 @@ lib/zk/
 └── flat-witness.js      # Flat: generateFlatWitness, generateChunkedFlatWitness
 
 lib/prover/
-├── guided-term.js       # buildGuidedTerm — forward trace → ILL proof term (with custom chip annotations)
-├── rewrite-trace.js     # buildRewriteTrace, checkRewriteTrace
+├── guided-term.js       # guidedTerm — forward trace → ILL proof term (with custom chip annotations)
+├── rewrite-trace.js     # rwTrace, checkRW
 └── check-term.js        # checkTerm — proof term type-checker (reference implementation)
 ```
 

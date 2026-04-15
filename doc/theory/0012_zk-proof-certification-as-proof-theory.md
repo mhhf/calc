@@ -171,7 +171,7 @@ Verifies a forward execution trace via ZK-Flat / ZK-Flat-Verify. 5-7 chips, 6 bu
 (∃c. Δ ⊢ c : C)  ⟹  (∃trace. Δ →* C)       but NOT vice versa in general
 ```
 
-The flat path certifies that resources are conserved and rules applied correctly, but does not produce a proof term. For CALC's forward engine (which is sound for ILL — see theory/0001), the gap is narrow: every forward trace corresponds to a valid ILL derivation via `buildGuidedTerm`. But the flat STARK does not certify this correspondence.
+The flat path certifies that resources are conserved and rules applied correctly, but does not produce a proof term. For CALC's forward engine (which is sound for ILL — see theory/0001), the gap is narrow: every forward trace corresponds to a valid ILL derivation via `guidedTerm`. But the flat STARK does not certify this correspondence.
 
 The two paths represent a **trade-off axis between proof-theoretic strength and certification efficiency** that, to our knowledge, has not been formalized for any ZK proof system.
 

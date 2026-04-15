@@ -98,7 +98,7 @@ Same three reasons, applied to linear implications:
 
 CALC extends CLF with loli-in-monad (THY_0001) because:
 - CALC doesn't implement proof-term equality or type checking
-- The extra machinery (matchLoli, drainPersistentLolis) is well-understood and tested
+- The extra machinery (matchLoli, drainLolis) is well-understood and tested
 - Conditional continuations (guarded branches) are essential for EVM symbolic execution
 - The pragmatic trade (lose equational theory, gain expressiveness) is worth it for an execution engine
 

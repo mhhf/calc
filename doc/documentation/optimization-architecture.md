@@ -93,7 +93,7 @@ const PROFILES = {
 ```mermaid
 graph TB
     subgraph Startup["Engine Creation (once)"]
-        PROFILE["resolveProfile()"] --> ENGINE["createEngine(profile, rules)"]
+        PROFILE["profile()"] --> ENGINE["engine(profile, rules)"]
         ENGINE --> STRATEGY["_buildStrategy()"]
         STRATEGY --> |"profile.fingerprint"| FP["detectFingerprintConfig"]
         STRATEGY --> |"profile.discTree"| DT["makeDiscTreeLayer"]

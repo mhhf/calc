@@ -109,7 +109,7 @@ Pooled match results and precomputed tagIds tested on feature branch `opt/pool-a
 
 For predicted nodes, we know the rule and the new PC value. The idea was to merge tryMatch + mutateState into a single compiled step, eliminating intermediate allocations.
 
-**What it would save:** The `consumed` object copy (~150ns), `theta.slice()` (~150ns), `for..in + Number()` coercion in consumeLinear (~300ns), Map clear/setup (~40ns). Total: ~0.3ms for 415 predicted calls.
+**What it would save:** The `consumed` object copy (~150ns), `theta.slice()` (~150ns), `for..in + Number()` coercion in consume (~300ns), Map clear/setup (~40ns). Total: ~0.3ms for 415 predicted calls.
 
 **What it would NOT save:** The irreducible work dominates — FactSet binary search + Zobrist updates in consume/produce, FFI calls for persistent proving, `matchIdx` unification, `Store.put` for compiled substitution. These costs are identical whether tryMatch and mutateState are separate or fused.
 
