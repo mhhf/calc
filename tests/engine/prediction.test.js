@@ -13,11 +13,11 @@ const { explore } = require('../../lib/engine/explore');
 const { countNodes, getAllLeaves } = require('../../lib/engine/tree-utils');
 const { classifyLeaf } = require('../../lib/engine/show');
 const { detectStrategy } = require('../../lib/engine/strategy');
-const { buildDiscriminatorIndex, detectFingerprintConfig } = require('../../lib/engine/match');
+const { discIndex, fpDetect } = require('../../lib/engine/match');
 const Store = require('../../lib/kernel/store');
 
 describe('fingerprint prediction (Opt_H)', { timeout: 30000 }, () => {
-  describe('attachPredictions', () => {
+  describe('attachPred', () => {
     it('attaches nextPointerSlot to rules with virtual discriminator', async () => {
       Store.clear();
       const calc = await mde.load(
@@ -25,12 +25,12 @@ describe('fingerprint prediction (Opt_H)', { timeout: 30000 }, () => {
       );
 
       const ruleList = calc.forwardRules;
-      const fpConfig = detectFingerprintConfig(ruleList);
+      const fpConfig = fpDetect(ruleList);
       assert(fpConfig, 'should detect fingerprint config');
       assert.strictEqual(fpConfig.type, 'virtual', 'EVM rules use virtual discriminator');
       assert(fpConfig.pointerPred, 'should have pointerPred');
 
-      // attachPredictions is called by detectStrategy, so rules should already have it
+      // attachPred is called by detectStrategy, so rules should already have it
       const strategy = detectStrategy(ruleList);
       assert(strategy.fpConfig, 'strategy should have fpConfig');
 
@@ -64,7 +64,7 @@ describe('fingerprint prediction (Opt_H)', { timeout: 30000 }, () => {
         path.join(__dirname, '../../calculus/ill/programs/multisig_nocall_solc.ill')
       );
 
-      const index = buildDiscriminatorIndex(calc.forwardRules);
+      const index = discIndex(calc.forwardRules);
       const keys = Object.keys(index);
       assert(keys.length > 0, 'discriminator index should have entries');
 

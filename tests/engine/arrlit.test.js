@@ -6,7 +6,7 @@ const { isGround, collectMetavars, collectFreevars } = require('../../lib/engine
 const { serialize, deserialize } = require('../../lib/engine/store-binary');
 const { match, matchIndexed, undoSave, undoRestore, unify } = require('../../lib/kernel/unify');
 const { arr_get, arr_set, alen, read_bytes, arrToTrie, trieNav } = require('../../lib/engine/ill/ffi/array');
-const { buildParserFromTables, computeParserTables } = require('../../lib/calculus/builders');
+const { parserFromTables, parserTables } = require('../../lib/calculus/builders');
 
 describe('arrlit - Stage 1: Store Infrastructure', () => {
   beforeEach(() => Store.clear());
@@ -502,7 +502,7 @@ describe('arrlit - Stage 4: Hex-to-arrlit Parser', () => {
   function makeParser() {
     const tables = { operators: [], nullary: {}, unaryPrefix: {},
       numbers: true, application: true, binaryNormalization: true };
-    return buildParserFromTables(tables);
+    return parserFromTables(tables);
   }
 
   it('short hex stays binlit', () => {
@@ -818,7 +818,7 @@ describe('arrlit - Stage 7: Bracket Syntax + bytesToSemantic', () => {
   function makeParser() {
     const tables = { operators: [], nullary: {}, unaryPrefix: {},
       numbers: true, application: true, multiCharFreevars: true };
-    return buildParserFromTables(tables);
+    return parserFromTables(tables);
   }
 
   describe('bracket syntax', () => {

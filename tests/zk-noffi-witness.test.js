@@ -15,7 +15,7 @@ const mde = require('../lib/engine');
 const Store = require('../lib/kernel/store');
 const Seq = require('../lib/kernel/sequent');
 const calculus = require('../lib/calculus');
-const { buildGuidedTerm } = require('../lib/prover/guided-term');
+const { guidedTerm } = require('../lib/prover/guided-term');
 const { rightFocusTerm } = require('../lib/prover/bridge');
 const { createChecker } = require('../lib/prover/check-term');
 const { generateWitness } = require('../lib/zk/witness');
@@ -113,7 +113,7 @@ describe('ZK noFFI witness: noffi_tiny (2-step clause resolution)', { timeout: 3
     const rfResult = rightFocusTerm(linear, persistent, succFormula, illCalc.roles);
     assert.ok(rfResult, 'rightFocusTerm should succeed');
 
-    const innerTerm = buildGuidedTerm(forwardResult.trace, rfResult.term);
+    const innerTerm = guidedTerm(forwardResult.trace, rfResult.term);
     guidedTerm = {
       rule: 'monad_r',
       principal: null,
@@ -258,7 +258,7 @@ describe('ZK noFFI witness: pure_linear (no clause resolution)', { timeout: 3000
     const rfResult = rightFocusTerm(linear, persistent, succFormula, illCalc.roles);
     assert.ok(rfResult, 'rightFocusTerm should succeed');
 
-    const innerTerm = buildGuidedTerm(forwardResult.trace, rfResult.term);
+    const innerTerm = guidedTerm(forwardResult.trace, rfResult.term);
     guidedTerm = {
       rule: 'monad_r',
       principal: null,

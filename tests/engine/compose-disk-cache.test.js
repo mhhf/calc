@@ -1,5 +1,5 @@
 /**
- * Tests for compose disk cache — persisting composeGrade0 results to disk
+ * Tests for compose disk cache — persisting compose0 results to disk
  * so cold E2E skips the ~60ms compose overhead.
  */
 const { describe, it, beforeEach, afterEach } = require('node:test');
@@ -9,7 +9,7 @@ const path = require('path');
 const os = require('os');
 const Store = require('../../lib/kernel/store');
 const mde = require('../../lib/engine');
-const { _composeDiskCacheKey } = mde;
+const { _composeCacheKey } = mde;
 
 const SYMEX_PATH = path.join(__dirname, '../../calculus/ill/programs/multisig_nocall_solc_symbolic.ill');
 const CODE_PATH = path.join(__dirname, '../../calculus/ill/programs/multisig_nocall_solc_code.ill');
@@ -71,7 +71,7 @@ describe('Compose disk cache', () => {
     const calc2 = loadWithCompose(dir);
     const names2 = calc2.forwardRules.map(r => r.name);
 
-    // compactSnapshot renumbers Store IDs, so hashes differ —
+    // compact renumbers Store IDs, so hashes differ —
     // compare names (structurally stable) instead
     assert.deepStrictEqual(names2, names1, 'cache hit produces same rule names');
     assert.equal(calc2.forwardRules.length, calc1.forwardRules.length);
@@ -186,14 +186,14 @@ describe('Compose disk cache', () => {
 
   it('SHA-256 cache key: different inputs → different keys (C30)', () => {
     const hashes = new Map([['/a.ill', 12345]]);
-    const k1 = _composeDiskCacheKey(hashes, '/a.ill', null, false);
-    const k2 = _composeDiskCacheKey(hashes, '/a.ill', null, true);
+    const k1 = _composeCacheKey(hashes, '/a.ill', null, false);
+    const k2 = _composeCacheKey(hashes, '/a.ill', null, true);
     assert.notEqual(k1, k2, 'fuseBasicBlocks flag differentiates');
 
     const facts1 = new Map([['t', [{ hash: 100 }]]]);
     const facts2 = new Map([['t', [{ hash: 200 }]]]);
-    const k3 = _composeDiskCacheKey(hashes, '/a.ill', facts1, false);
-    const k4 = _composeDiskCacheKey(hashes, '/a.ill', facts2, false);
+    const k3 = _composeCacheKey(hashes, '/a.ill', facts1, false);
+    const k4 = _composeCacheKey(hashes, '/a.ill', facts2, false);
     assert.notEqual(k3, k4, 'different facts → different keys');
 
     // Key is 16-char hex (SHA-256 truncated)

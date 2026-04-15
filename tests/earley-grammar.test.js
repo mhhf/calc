@@ -2,8 +2,8 @@
  * Earley grammar generation tests.
  *
  * Verifies that two grammar construction paths produce identical Store hashes:
- *   1. Tables path: computeParserTables(constructors) → buildParserFromTables(tables + opts)
- *   2. Direct path: computeEarleyGrammar(constructors, opts) → buildParserFromGrammar(spec)
+ *   1. Tables path: parserTables(constructors) → parserFromTables(tables + opts)
+ *   2. Direct path: earleyGrammar(constructors, opts) → parserFromGrammar(spec)
  *
  * Both paths use the Earley engine internally. The test ensures that
  * operator extraction from constructors matches the direct grammar generation.
@@ -14,8 +14,8 @@
 const { describe, it, before, beforeEach } = require('node:test');
 const assert = require('node:assert/strict');
 const Store = require('../lib/kernel/store');
-const { computeParserTables, buildParserFromTables } = require('../lib/calculus/builders');
-const { computeEarleyGrammar, buildParserFromGrammar } = require('../lib/parser/earley-grammar');
+const { parserTables, parserFromTables } = require('../lib/calculus/builders');
+const { earleyGrammar, parserFromGrammar } = require('../lib/parser/earley-grammar');
 
 // ─── Test fixtures ───────────────────────────────────────────────────────────
 
@@ -70,10 +70,10 @@ describe('Earley grammar generation', () => {
   describe('ILL engine parser (full features)', () => {
     beforeEach(() => {
       Store.clear();
-      const tables = computeParserTables(ill.constructors);
-      tablesParse = buildParserFromTables({ ...tables, ...ILL_OPTS });
-      const gram = computeEarleyGrammar(ill.constructors, ILL_OPTS);
-      directParse = buildParserFromGrammar(gram);
+      const tables = parserTables(ill.constructors);
+      tablesParse = parserFromTables({ ...tables, ...ILL_OPTS });
+      const gram = earleyGrammar(ill.constructors, ILL_OPTS);
+      directParse = parserFromGrammar(gram);
     });
 
     // Binary operators
@@ -161,12 +161,12 @@ describe('Earley grammar generation', () => {
   describe('bootstrap parser (minimal features)', () => {
     beforeEach(() => {
       Store.clear();
-      tablesParse = buildParserFromTables({
+      tablesParse = parserFromTables({
         operators: [], nullary: {}, unaryPrefix: {},
         ...BOOTSTRAP_OPTS,
       });
-      const gram = computeEarleyGrammar({}, BOOTSTRAP_OPTS);
-      directParse = buildParserFromGrammar(gram);
+      const gram = earleyGrammar({}, BOOTSTRAP_OPTS);
+      directParse = parserFromGrammar(gram);
     });
 
     it('atom: foo', () => assertSameHash(tablesParse, directParse, 'foo'));

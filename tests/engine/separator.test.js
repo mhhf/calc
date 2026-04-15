@@ -6,7 +6,7 @@
 const { describe, it, beforeEach } = require('node:test');
 const assert = require('node:assert/strict');
 const Store = require('../../lib/kernel/store');
-const { parseDeclarations, _findTopLevelSeparator } = require('../../lib/parser/declarations');
+const { parseDecls, _findSep } = require('../../lib/parser/declarations');
 
 let _exprParser;
 beforeEach(() => {
@@ -17,66 +17,66 @@ beforeEach(() => {
   }
 });
 
-// ─── Unit: _findTopLevelSeparator ────────────────────────────────────────────
+// ─── Unit: _findSep ────────────────────────────────────────────
 
-describe('_findTopLevelSeparator', () => {
+describe('_findSep', () => {
   it('finds |- at top level', () => {
-    const r = _findTopLevelSeparator('A * B |- C');
+    const r = _findSep('A * B |- C');
     assert.equal(r.separator, '|-');
     assert.equal(r.splitIndex, 6);
   });
 
   it('finds => at top level', () => {
-    const r = _findTopLevelSeparator('A * B => C * D');
+    const r = _findSep('A * B => C * D');
     assert.equal(r.separator, '=>');
     assert.equal(r.splitIndex, 6);
   });
 
   it('returns null when no separator', () => {
-    assert.equal(_findTopLevelSeparator('A * B * C'), null);
+    assert.equal(_findSep('A * B * C'), null);
   });
 
   it('ignores | inside brackets (array cons)', () => {
-    assert.equal(_findTopLevelSeparator('[H | T]'), null);
+    assert.equal(_findSep('[H | T]'), null);
   });
 
   it('ignores |- inside parens', () => {
-    assert.equal(_findTopLevelSeparator('(A |- B) -o C'), null);
+    assert.equal(_findSep('(A |- B) -o C'), null);
   });
 
   it('ignores => inside braces', () => {
-    assert.equal(_findTopLevelSeparator('{ A => B }'), null);
+    assert.equal(_findSep('{ A => B }'), null);
   });
 
   it('ignores |- inside brackets', () => {
-    assert.equal(_findTopLevelSeparator('[A |- B]'), null);
+    assert.equal(_findSep('[A |- B]'), null);
   });
 
   it('finds first separator (|- before =>)', () => {
-    const r = _findTopLevelSeparator('A |- B => C');
+    const r = _findSep('A |- B => C');
     assert.equal(r.separator, '|-');
   });
 
   it('handles empty LHS', () => {
-    const r = _findTopLevelSeparator('|- goal');
+    const r = _findSep('|- goal');
     assert.equal(r.separator, '|-');
     assert.equal(r.splitIndex, 0);
   });
 
   it('handles nested parens before separator', () => {
-    const r = _findTopLevelSeparator('(A * B) |- C');
+    const r = _findSep('(A * B) |- C');
     assert.equal(r.separator, '|-');
     assert.equal(r.splitIndex, 8);
   });
 });
 
-// ─── Integration: parseDeclarations with separators ──────────────────────────
+// ─── Integration: parseDecls with separators ──────────────────────────
 
 describe('Directive separator: turnstile (|-)', () => {
   it('#prove with |- produces lhsHash and rhsHash', () => {
     Store.clear();
     const src = '#prove storage K V |- mem_read M K V.';
-    const decls = parseDeclarations(src, _exprParser);
+    const decls = parseDecls(src, _exprParser);
     assert.equal(decls.length, 1);
     const d = decls[0];
     assert.equal(d.type, 'query');
@@ -90,7 +90,7 @@ describe('Directive separator: turnstile (|-)', () => {
   it('#prove with empty LHS (no context)', () => {
     Store.clear();
     const src = '#prove |- no_overlap 0 32 32 32.';
-    const decls = parseDeclarations(src, _exprParser);
+    const decls = parseDecls(src, _exprParser);
     const d = decls[0];
     assert.equal(d.separator, '|-');
     assert.equal(d.lhsHash, null);
@@ -100,7 +100,7 @@ describe('Directive separator: turnstile (|-)', () => {
   it('#prove with settings and |-', () => {
     Store.clear();
     const src = '#prove (rules: [bin]) |- inc 0 1.';
-    const decls = parseDeclarations(src, _exprParser);
+    const decls = parseDecls(src, _exprParser);
     const d = decls[0];
     assert.equal(d.separator, '|-');
     assert.deepEqual(d.settings, { rules: ['bin'] });
@@ -111,7 +111,7 @@ describe('Directive separator: turnstile (|-)', () => {
   it('#prove with eigenvars and |-', () => {
     Store.clear();
     const src = '#prove [V] storage K V |- mem_read M K V.';
-    const decls = parseDeclarations(src, _exprParser);
+    const decls = parseDecls(src, _exprParser);
     const d = decls[0];
     assert.equal(d.separator, '|-');
     assert.deepEqual(d.eigenVars, ['V']);
@@ -125,7 +125,7 @@ describe('Directive separator: fat arrow (=>)', () => {
   it('#test with => produces lhsHash and rhsHash', () => {
     Store.clear();
     const src = '#test pc 0 * gas 0xffff => stop.';
-    const decls = parseDeclarations(src, _exprParser);
+    const decls = parseDecls(src, _exprParser);
     const d = decls[0];
     assert.equal(d.type, 'query');
     assert.equal(d.kind, 'test');
@@ -138,7 +138,7 @@ describe('Directive separator: fat arrow (=>)', () => {
   it('#reachable with => and eigenvars', () => {
     Store.clear();
     const src = '#reachable [X] pc 0 * stack X => stop.';
-    const decls = parseDeclarations(src, _exprParser);
+    const decls = parseDecls(src, _exprParser);
     const d = decls[0];
     assert.equal(d.separator, '=>');
     assert.deepEqual(d.eigenVars, ['X']);
@@ -149,7 +149,7 @@ describe('Directive separator: fat arrow (=>)', () => {
   it('#unreachable with =>', () => {
     Store.clear();
     const src = '#unreachable pc 0 * gas 0xffff => revert.';
-    const decls = parseDeclarations(src, _exprParser);
+    const decls = parseDecls(src, _exprParser);
     const d = decls[0];
     assert.equal(d.separator, '=>');
     assert.ok(d.lhsHash);
@@ -161,7 +161,7 @@ describe('Backward compatibility', () => {
   it('#symex without separator still works', () => {
     Store.clear();
     const src = '#symex pc 0 * gas 0xffff.';
-    const decls = parseDeclarations(src, _exprParser);
+    const decls = parseDecls(src, _exprParser);
     const d = decls[0];
     assert.equal(d.kind, 'symex');
     assert.ok(d.bodyHash);
@@ -173,7 +173,7 @@ describe('Backward compatibility', () => {
   it('#symex with eigenvars still works', () => {
     Store.clear();
     const src = '#symex [X] pc 0 * stack X.';
-    const decls = parseDeclarations(src, _exprParser);
+    const decls = parseDecls(src, _exprParser);
     const d = decls[0];
     assert.ok(d.bodyHash);
     assert.equal(d.separator, undefined);
@@ -183,7 +183,7 @@ describe('Backward compatibility', () => {
   it('array cons [H | T] is not mistaken for turnstile', () => {
     Store.clear();
     const src = '#symex bytecode [0x60 | Rest].';
-    const decls = parseDeclarations(src, _exprParser);
+    const decls = parseDecls(src, _exprParser);
     const d = decls[0];
     assert.ok(d.bodyHash);
     assert.equal(d.separator, undefined);
@@ -193,7 +193,7 @@ describe('Backward compatibility', () => {
     Store.clear();
     // Slightly contrived but tests nesting: a monad with | and - adjacent
     const src = '#prove (counter 1 * counter 2) -o { counter 3 }.';
-    const decls = parseDeclarations(src, _exprParser);
+    const decls = parseDecls(src, _exprParser);
     const d = decls[0];
     assert.ok(d.bodyHash);
     assert.equal(d.separator, undefined);

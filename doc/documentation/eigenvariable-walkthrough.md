@@ -445,7 +445,7 @@ The monadic decomposition encounters `∃C` and:
 
 ### How CALC implements ∃
 
-The forward engine resolves existential variables in `lnl/existential.js:resolveExistentials()` after linear matching succeeds. The resolution strategy per goal:
+The forward engine resolves existential variables in `lnl/existential.js:resolveEx()` after linear matching succeeds. The resolution strategy per goal:
 
 1. **Compiled FFI step** (`opt/existential-compile.js`) — O(1), slot-to-slot dataflow
 2. **provePersistent fallback** — state lookup → FFI → clause resolution
@@ -460,7 +460,7 @@ For ground inputs, step 1 or 2 binds the output concretely. For symbolic inputs,
 evm/add: pc(PC) * stack(1, A) * stack(0, B) * !inc(PC, PC') * !plus(A, B, C)
          -o { pc(PC') * stack(0, C) }
 ```
-C is determined by proving !plus(A, B, C) in the antecedent. For ground inputs, FFI resolves immediately. For symbolic inputs, `resolveExistentials` detects C as an existential variable and generates a fresh evar.
+C is determined by proving !plus(A, B, C) in the antecedent. For ground inputs, FFI resolves immediately. For symbolic inputs, `resolveEx` detects C as an existential variable and generates a fresh evar.
 
 **Consequent-style (CLF-explicit):**
 ```
@@ -547,7 +547,7 @@ CALC's `{...}` in rule consequents IS the CLF monad, implemented implicitly:
 | CLF monad operation | CALC implementation |
 |---|---|
 | ⊗ decomposition | `expandChoiceItem` splits into individual facts |
-| ∃ introduction | `lnl/existential.js:resolveExistentials` — compiled FFI → provePersistent → freshEvar |
+| ∃ introduction | `lnl/existential.js:resolveEx` — compiled FFI → provePersistent → freshEvar |
 | ⊕ branching | `expandChoiceItem` forks into children |
 | ⊸ suspension | Loli stays in state, `matchLoli` fires when guard provable |
 | ! annotation | Fact added to `state.persistent` |

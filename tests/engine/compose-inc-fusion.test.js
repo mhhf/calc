@@ -9,9 +9,9 @@ const assert = require('node:assert/strict');
 const Store = require('../../lib/kernel/store');
 const { GRADE_W } = require('../../lib/engine/grades');
 const { ILL_CONNECTIVES } = require('../../lib/engine/ill/connectives');
-const { resolveConnectives, compileRule, flattenAntecedent } = require('../../lib/engine/compile');
-const { getPredicateHead } = require('../../lib/kernel/ast');
-const { _fuseAdditiveChains } = require('../../lib/engine/compose');
+const { resolveConn, compileRule, flattenAnte } = require('../../lib/engine/compile');
+const { predHead } = require('../../lib/kernel/ast');
+const { _fuseChains } = require('../../lib/engine/compose');
 const { ILL_CHAIN_CONFIGS } = require('../../lib/engine/ill/compose-config');
 const { getModes, getModeMeta: _illGetModeMeta } = require('../../lib/engine/opt/ffi');
 const { show } = require('../../lib/engine/show');
@@ -49,12 +49,12 @@ function binlit(n) {
   return Store.put('binlit', [BigInt(n)]);
 }
 
-describe('_fuseAdditiveChains (inc-only)', () => {
+describe('_fuseChains (inc-only)', () => {
   let rc;
 
   beforeEach(() => {
     Store.clear();
-    rc = resolveConnectives(ILL_CONNECTIVES);
+    rc = resolveConn(ILL_CONNECTIVES);
   });
 
   it('fuses 2-inc chain: !inc(X,Y) * !inc(Y,Z) → !plus(X, 2, Z)', () => {
@@ -69,13 +69,13 @@ describe('_fuseAdditiveChains (inc-only)', () => {
     const conseq = Store.put('pc', [Z]);
     const rule = makeRule('test-2chain', ante, conseq);
 
-    const result = _fuseAdditiveChains([rule], rc, _illGetModeMeta, [ILL_CHAIN_CONFIGS[0]]);
+    const result = _fuseChains([rule], rc, _illGetModeMeta, [ILL_CHAIN_CONFIGS[0]]);
     assert.equal(result.length, 1);
 
     // Check the fused rule has !plus(X, 2, Z) instead of !inc(X,Y) * !inc(Y,Z)
-    const fusedAnte = flattenAntecedent(Store.child(result[0].hash, 0), rc);
-    const plusGoals = fusedAnte.persistent.filter(h => getPredicateHead(h) === 'plus');
-    const incGoals = fusedAnte.persistent.filter(h => getPredicateHead(h) === 'inc');
+    const fusedAnte = flattenAnte(Store.child(result[0].hash, 0), rc);
+    const plusGoals = fusedAnte.persistent.filter(h => predHead(h) === 'plus');
+    const incGoals = fusedAnte.persistent.filter(h => predHead(h) === 'inc');
 
     assert.equal(plusGoals.length, 1, 'should have one plus goal');
     assert.equal(incGoals.length, 0, 'should have no inc goals');
@@ -102,12 +102,12 @@ describe('_fuseAdditiveChains (inc-only)', () => {
     const conseq = Store.put('pc', [W]);
     const rule = makeRule('test-3chain', ante, conseq);
 
-    const result = _fuseAdditiveChains([rule], rc, _illGetModeMeta, [ILL_CHAIN_CONFIGS[0]]);
+    const result = _fuseChains([rule], rc, _illGetModeMeta, [ILL_CHAIN_CONFIGS[0]]);
     assert.equal(result.length, 1);
 
-    const fusedAnte = flattenAntecedent(Store.child(result[0].hash, 0), rc);
-    const plusGoals = fusedAnte.persistent.filter(h => getPredicateHead(h) === 'plus');
-    const incGoals = fusedAnte.persistent.filter(h => getPredicateHead(h) === 'inc');
+    const fusedAnte = flattenAnte(Store.child(result[0].hash, 0), rc);
+    const plusGoals = fusedAnte.persistent.filter(h => predHead(h) === 'plus');
+    const incGoals = fusedAnte.persistent.filter(h => predHead(h) === 'inc');
 
     assert.equal(plusGoals.length, 1);
     assert.equal(incGoals.length, 0);
@@ -128,12 +128,12 @@ describe('_fuseAdditiveChains (inc-only)', () => {
     const conseq = Store.put('pc', [Y]);
     const rule = makeRule('test-single', ante, conseq);
 
-    const result = _fuseAdditiveChains([rule], rc, _illGetModeMeta, [ILL_CHAIN_CONFIGS[0]]);
+    const result = _fuseChains([rule], rc, _illGetModeMeta, [ILL_CHAIN_CONFIGS[0]]);
     assert.equal(result.length, 1);
 
-    const fusedAnte = flattenAntecedent(Store.child(result[0].hash, 0), rc);
-    const incGoals = fusedAnte.persistent.filter(h => getPredicateHead(h) === 'inc');
-    const plusGoals = fusedAnte.persistent.filter(h => getPredicateHead(h) === 'plus');
+    const fusedAnte = flattenAnte(Store.child(result[0].hash, 0), rc);
+    const incGoals = fusedAnte.persistent.filter(h => predHead(h) === 'inc');
+    const plusGoals = fusedAnte.persistent.filter(h => predHead(h) === 'plus');
 
     assert.equal(incGoals.length, 1, 'single inc should be preserved');
     assert.equal(plusGoals.length, 0, 'no plus should be created');
@@ -153,11 +153,11 @@ describe('_fuseAdditiveChains (inc-only)', () => {
     const conseq = Store.put('pc', [Z]);
     const rule = makeRule('test-unsafe-linear', ante, conseq);
 
-    const result = _fuseAdditiveChains([rule], rc, _illGetModeMeta, [ILL_CHAIN_CONFIGS[0]]);
+    const result = _fuseChains([rule], rc, _illGetModeMeta, [ILL_CHAIN_CONFIGS[0]]);
     assert.equal(result.length, 1);
 
-    const fusedAnte = flattenAntecedent(Store.child(result[0].hash, 0), rc);
-    const incGoals = fusedAnte.persistent.filter(h => getPredicateHead(h) === 'inc');
+    const fusedAnte = flattenAnte(Store.child(result[0].hash, 0), rc);
+    const incGoals = fusedAnte.persistent.filter(h => predHead(h) === 'inc');
 
     // Should still have inc goals — not fused
     assert.equal(incGoals.length, 2, 'inc goals should be preserved when intermediate is used');
@@ -176,11 +176,11 @@ describe('_fuseAdditiveChains (inc-only)', () => {
     const conseq = tensor(Store.put('pc', [Z]), Store.put('gas', [Y]));
     const rule = makeRule('test-unsafe-conseq', ante, conseq);
 
-    const result = _fuseAdditiveChains([rule], rc, _illGetModeMeta, [ILL_CHAIN_CONFIGS[0]]);
+    const result = _fuseChains([rule], rc, _illGetModeMeta, [ILL_CHAIN_CONFIGS[0]]);
     assert.equal(result.length, 1);
 
-    const fusedAnte = flattenAntecedent(Store.child(result[0].hash, 0), rc);
-    const incGoals = fusedAnte.persistent.filter(h => getPredicateHead(h) === 'inc');
+    const fusedAnte = flattenAnte(Store.child(result[0].hash, 0), rc);
+    const incGoals = fusedAnte.persistent.filter(h => predHead(h) === 'inc');
 
     assert.equal(incGoals.length, 2, 'inc goals should be preserved when intermediate is in consequent');
   });
@@ -200,12 +200,12 @@ describe('_fuseAdditiveChains (inc-only)', () => {
     const conseq = tensor(Store.put('pc', [Z]), Store.put('gas', [B]));
     const rule = makeRule('test-mixed', ante, conseq);
 
-    const result = _fuseAdditiveChains([rule], rc, _illGetModeMeta, [ILL_CHAIN_CONFIGS[0]]);
+    const result = _fuseChains([rule], rc, _illGetModeMeta, [ILL_CHAIN_CONFIGS[0]]);
     assert.equal(result.length, 1);
 
-    const fusedAnte = flattenAntecedent(Store.child(result[0].hash, 0), rc);
-    const plusGoals = fusedAnte.persistent.filter(h => getPredicateHead(h) === 'plus');
-    const incGoals = fusedAnte.persistent.filter(h => getPredicateHead(h) === 'inc');
+    const fusedAnte = flattenAnte(Store.child(result[0].hash, 0), rc);
+    const plusGoals = fusedAnte.persistent.filter(h => predHead(h) === 'plus');
+    const incGoals = fusedAnte.persistent.filter(h => predHead(h) === 'inc');
 
     assert.equal(plusGoals.length, 1, 'chain of 2 should become plus');
     assert.equal(incGoals.length, 1, 'standalone inc should remain');
@@ -223,11 +223,11 @@ describe('_fuseAdditiveChains (inc-only)', () => {
     const conseq = Store.put('pc', [Z]);
     const rule = makeRule('test-ground', ante, conseq);
 
-    const result = _fuseAdditiveChains([rule], rc, _illGetModeMeta, [ILL_CHAIN_CONFIGS[0]]);
+    const result = _fuseChains([rule], rc, _illGetModeMeta, [ILL_CHAIN_CONFIGS[0]]);
     assert.equal(result.length, 1);
 
-    const fusedAnte = flattenAntecedent(Store.child(result[0].hash, 0), rc);
-    const plusGoals = fusedAnte.persistent.filter(h => getPredicateHead(h) === 'plus');
+    const fusedAnte = flattenAnte(Store.child(result[0].hash, 0), rc);
+    const plusGoals = fusedAnte.persistent.filter(h => predHead(h) === 'plus');
 
     assert.equal(plusGoals.length, 1);
     const plus = plusGoals[0];
@@ -249,11 +249,11 @@ describe('_fuseAdditiveChains (inc-only)', () => {
     const conseq = Store.put('pc', [Z]);
     const rule = makeRule('test-unsafe-persistent', ante, conseq);
 
-    const result = _fuseAdditiveChains([rule], rc, _illGetModeMeta, [ILL_CHAIN_CONFIGS[0]]);
+    const result = _fuseChains([rule], rc, _illGetModeMeta, [ILL_CHAIN_CONFIGS[0]]);
     assert.equal(result.length, 1);
 
-    const fusedAnte = flattenAntecedent(Store.child(result[0].hash, 0), rc);
-    const incGoals = fusedAnte.persistent.filter(h => getPredicateHead(h) === 'inc');
+    const fusedAnte = flattenAnte(Store.child(result[0].hash, 0), rc);
+    const incGoals = fusedAnte.persistent.filter(h => predHead(h) === 'inc');
 
     assert.equal(incGoals.length, 2, 'should not fuse when intermediate is used in other persistent goal');
   });
@@ -269,7 +269,7 @@ describe('_fuseAdditiveChains (inc-only)', () => {
     const conseq = Store.put('pc', [Z]);
     const rule = makeRule('evm/add', ante, conseq);
 
-    const result = _fuseAdditiveChains([rule], rc, _illGetModeMeta, [ILL_CHAIN_CONFIGS[0]]);
+    const result = _fuseChains([rule], rc, _illGetModeMeta, [ILL_CHAIN_CONFIGS[0]]);
     assert.ok(result[0].name.includes('inc-fused'), `name should include 'inc-fused', got: ${result[0].name}`);
   });
 
@@ -292,12 +292,12 @@ describe('_fuseAdditiveChains (inc-only)', () => {
     const conseq = tensor(Store.put('pc', [Z]), Store.put('gas', [C]));
     const rule = makeRule('test-two-chains', ante, conseq);
 
-    const result = _fuseAdditiveChains([rule], rc, _illGetModeMeta, [ILL_CHAIN_CONFIGS[0]]);
+    const result = _fuseChains([rule], rc, _illGetModeMeta, [ILL_CHAIN_CONFIGS[0]]);
     assert.equal(result.length, 1);
 
-    const fusedAnte = flattenAntecedent(Store.child(result[0].hash, 0), rc);
-    const plusGoals = fusedAnte.persistent.filter(h => getPredicateHead(h) === 'plus');
-    const incGoals = fusedAnte.persistent.filter(h => getPredicateHead(h) === 'inc');
+    const fusedAnte = flattenAnte(Store.child(result[0].hash, 0), rc);
+    const plusGoals = fusedAnte.persistent.filter(h => predHead(h) === 'plus');
+    const incGoals = fusedAnte.persistent.filter(h => predHead(h) === 'inc');
 
     assert.equal(plusGoals.length, 2, 'both chains should become plus');
     assert.equal(incGoals.length, 0, 'no inc goals should remain');

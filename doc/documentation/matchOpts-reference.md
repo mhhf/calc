@@ -33,7 +33,7 @@ const matchOpts = match.buildMatchOpts({
 | `matchDynamicRule` | `(factHash, state, calc, matchOpts) → match \| null` | `buildMatchOpts` (→ `matchLoli`) | `strategy.js` (loli scan) |
 | `dynamicRuleTag` | `string \| null` | `buildMatchOpts` (→ `rc.implication`) | `strategy.js` (filter state for loli candidates) |
 
-`provePersistent` is the most critical callback. With FFI enabled, it wires to `opt/ffi.js:provePersistent` (state → FFI → compiled clause → full clause pipeline). Without FFI, it wires to `lnl/persistent.js:provePersistentNaive` (state → clause resolution only).
+`provePersistent` is the most critical callback. With FFI enabled, it wires to `opt/ffi.js:provePersistent` (state → FFI → compiled clause → full clause pipeline). Without FFI, it wires to `lnl/persistent.js:proveNaive` (state → clause resolution only).
 
 ### Connective Resolution
 

@@ -1,26 +1,26 @@
 /**
- * Direct tests for compose.js:sortPersistentGoals
+ * Direct tests for compose.js:sortGoals
  *
  * Covers: mode-aware ordering, cycle handling, multiModal scenarios.
  */
 const { describe, it, beforeEach } = require('node:test');
 const assert = require('node:assert/strict');
 const Store = require('../../lib/kernel/store');
-const { sortPersistentGoals } = require('../../lib/engine/compose');
+const { sortGoals } = require('../../lib/engine/compose');
 
-describe('sortPersistentGoals', () => {
+describe('sortGoals', () => {
   beforeEach(() => Store.clear());
 
   it('returns goals unchanged when single goal', () => {
     const g = Store.put('foo', [Store.put('atom', ['x'])]);
-    const result = sortPersistentGoals([g], [], () => null);
+    const result = sortGoals([g], [], () => null);
     assert.deepEqual(result, [g]);
   });
 
   it('returns goals unchanged when no getModeMeta', () => {
     const g1 = Store.put('foo', [Store.put('atom', ['x'])]);
     const g2 = Store.put('bar', [Store.put('atom', ['y'])]);
-    const result = sortPersistentGoals([g1, g2], [], null);
+    const result = sortGoals([g1, g2], [], null);
     assert.deepEqual(result, [g1, g2]);
   });
 
@@ -49,7 +49,7 @@ describe('sortPersistentGoals', () => {
     };
 
     // goal2 depends on goal1's output (mvY), so goal1 must come first
-    const result = sortPersistentGoals([goal2, goal1], linearPatterns, getModeMeta);
+    const result = sortGoals([goal2, goal1], linearPatterns, getModeMeta);
     assert.equal(result[0], goal1);
     assert.equal(result[1], goal2);
   });
@@ -65,7 +65,7 @@ describe('sortPersistentGoals', () => {
     const getModeMeta = () => ({ modes: ['+', '-'], multiModal: false });
 
     // Neither can be scheduled first → both end up in remaining
-    const result = sortPersistentGoals([goal1, goal2], [], getModeMeta);
+    const result = sortGoals([goal1, goal2], [], getModeMeta);
     assert.equal(result.length, 2);
   });
 
@@ -79,7 +79,7 @@ describe('sortPersistentGoals', () => {
     const linearPatterns = [Store.put('src', [mvX])];
     const getModeMeta = () => ({ modes: ['+', '+', '+', '-'], multiModal: true });
 
-    const result = sortPersistentGoals([goal], linearPatterns, getModeMeta);
+    const result = sortGoals([goal], linearPatterns, getModeMeta);
     assert.equal(result.length, 1);
     assert.equal(result[0], goal);
   });
@@ -90,7 +90,7 @@ describe('sortPersistentGoals', () => {
 
     const getModeMeta = () => null; // no mode info
     // mvX is not grounded → goal not ready → goes to remaining
-    const result = sortPersistentGoals([goal], [], getModeMeta);
+    const result = sortGoals([goal], [], getModeMeta);
     assert.equal(result.length, 1);
   });
 });

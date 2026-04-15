@@ -351,7 +351,7 @@ storage: (key: bin) -> (value: bin) -> type.
 // ─── Sort table integration ──────────────────────────────────────────────────
 
 describe('Named args — sort table', () => {
-  const { buildSortTable } = require('../../lib/engine/type-check');
+  const { sortTable } = require('../../lib/engine/type-check');
 
   it('includes argNames in sort entries', () => {
     const argNamesTable = new Map();
@@ -364,7 +364,7 @@ describe('Named args — sort table', () => {
     const definitions = new Map();
     definitions.set('balance', balanceType);
 
-    const table = buildSortTable(definitions, argNamesTable);
+    const table = sortTable(definitions, argNamesTable);
     const entry = table.get('balance');
     assert.ok(entry);
     assert.deepStrictEqual(entry.argSorts, ['bin', 'bin']);
@@ -378,7 +378,7 @@ describe('Named args — sort table', () => {
     const typeHash = Store.put('type', []);
     definitions.set('foo', Store.put('arrow', [binHash, typeHash]));
 
-    const table = buildSortTable(definitions);
+    const table = sortTable(definitions);
     const entry = table.get('foo');
     assert.ok(entry);
     assert.strictEqual(entry.argNames, undefined);
@@ -420,7 +420,7 @@ describe('Named args — show', () => {
 // ─── Type-check error messages with arg names ────────────────────────────────
 
 describe('Named args — type-check errors', () => {
-  const { _checkTerm, buildSortTable } = require('../../lib/engine/type-check');
+  const { _checkTerm, sortTable } = require('../../lib/engine/type-check');
 
   it('arity error includes arg names', () => {
     const argNamesTable = new Map();
@@ -432,11 +432,11 @@ describe('Named args — type-check errors', () => {
     const definitions = new Map();
     definitions.set('balance', balanceType);
 
-    const sortTable = buildSortTable(definitions, argNamesTable);
+    const sorts = sortTable(definitions, argNamesTable);
     const errors = [];
     // balance used as nullary atom (0 args instead of 2)
     const h = Store.put('atom', ['balance']);
-    _checkTerm(h, 'type', sortTable, new Map(), errors, 'test');
+    _checkTerm(h, 'type', sorts, new Map(), errors, 'test');
     assert.strictEqual(errors.length, 1);
     assert.ok(errors[0].includes('address: bin'), `Expected 'address: bin' in '${errors[0]}'`);
     assert.ok(errors[0].includes('amount: bin'), `Expected 'amount: bin' in '${errors[0]}'`);

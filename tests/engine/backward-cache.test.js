@@ -7,7 +7,7 @@
 const { describe, it, before, beforeEach } = require('node:test');
 const assert = require('node:assert/strict');
 const Store = require('../../lib/kernel/store');
-const { tryBackwardCache, clearBackwardCache, getCacheProfile, resetCacheProfile } = require('../../lib/engine/backward-cache');
+const { tryBWCache, clearBWCache, getCacheProfile, resetCacheProfile } = require('../../lib/engine/backward-cache');
 
 describe('backward-cache', () => {
   beforeEach(() => {
@@ -17,31 +17,31 @@ describe('backward-cache', () => {
 
   it('returns undefined for non-predicate goals', () => {
     const h = Store.put('atom', ['x']);
-    const result = tryBackwardCache(h, {}, [], {}, false, null, {});
+    const result = tryBWCache(h, {}, [], {}, false, null, {});
     assert.equal(result, undefined);
   });
 
   it('returns undefined for goals with no FFI parsed modes', () => {
     const goal = Store.put('foo', [Store.put('atom', ['a'])]);
-    const result = tryBackwardCache(goal, {}, [], {}, false, null, {});
+    const result = tryBWCache(goal, {}, [], {}, false, null, {});
     assert.equal(result, undefined);
   });
 
   it('returns undefined for all-input modes (no output positions)', () => {
     const goal = Store.put('foo', [Store.put('atom', ['a'])]);
-    const result = tryBackwardCache(goal, {}, [], {}, false, null, { foo: ['+'] });
+    const result = tryBWCache(goal, {}, [], {}, false, null, { foo: ['+'] });
     assert.equal(result, undefined);
   });
 
   it('returns undefined when input arg is a metavar', () => {
     const mv = Store.put('metavar', ['X']);
     const goal = Store.put('foo', [mv]);
-    const result = tryBackwardCache(goal, {}, [], {}, false, null, { foo: ['+'] });
+    const result = tryBWCache(goal, {}, [], {}, false, null, { foo: ['+'] });
     assert.equal(result, undefined);
   });
 
-  it('clearBackwardCache resets state', () => {
-    clearBackwardCache();
+  it('clearBWCache resets state', () => {
+    clearBWCache();
     const profile = getCacheProfile();
     assert.equal(profile.hits, 0);
     assert.equal(profile.misses, 0);
@@ -57,7 +57,7 @@ describe('backward-cache', () => {
     // Need minimal calc with clauses that will fail resolution
     const calc = { clauses: new Map(), definitions: new Map(), backchainIndex: null };
 
-    tryBackwardCache(goal, { [output]: 0 }, [undefined], calc, false, null, { inc: ['+', '-'] });
+    tryBWCache(goal, { [output]: 0 }, [undefined], calc, false, null, { inc: ['+', '-'] });
     const profile = getCacheProfile();
     assert.equal(profile.misses, 1);
   });
@@ -71,11 +71,11 @@ describe('backward-cache', () => {
     const modes = { inc: ['+', '-'] };
 
     // First call: miss → probe → fail → cache negative
-    tryBackwardCache(goal, { [output]: 0 }, [undefined], calc, false, null, modes);
+    tryBWCache(goal, { [output]: 0 }, [undefined], calc, false, null, modes);
 
     // Second call: should return null (cached negative)
     resetCacheProfile();
-    const result = tryBackwardCache(goal, { [output]: 0 }, [undefined], calc, false, null, modes);
+    const result = tryBWCache(goal, { [output]: 0 }, [undefined], calc, false, null, modes);
     assert.equal(result, null);
     assert.equal(getCacheProfile().negHits, 1);
   });
@@ -86,7 +86,7 @@ describe('backward-cache', () => {
     const goal = Store.put('inc', [input, output]);
     const calc = { clauses: new Map(), definitions: new Map(), backchainIndex: null };
 
-    tryBackwardCache(goal, { [output]: 0 }, [undefined], calc, false, null, { inc: ['+', '-'] });
+    tryBWCache(goal, { [output]: 0 }, [undefined], calc, false, null, { inc: ['+', '-'] });
     Store.clear();
     resetCacheProfile();
 
@@ -95,7 +95,7 @@ describe('backward-cache', () => {
     const output2 = Store.put('metavar', ['Y']);
     const goal2 = Store.put('inc', [input2, output2]);
 
-    const result = tryBackwardCache(goal2, { [output2]: 0 }, [undefined], calc, false, null, { inc: ['+', '-'] });
+    const result = tryBWCache(goal2, { [output2]: 0 }, [undefined], calc, false, null, { inc: ['+', '-'] });
     // After clear, should be a fresh miss, not a negHit
     assert.equal(getCacheProfile().negHits, 0);
   });
@@ -109,7 +109,7 @@ describe('backward-cache — positive hit with real calc', () => {
     Store.clear();
     const mde = require('../../lib/engine/index');
     const loaded = mde.load(path.join(__dirname, '../../calculus/ill/programs/evm.ill'), { cache: true });
-    // Build a calc object suitable for tryBackwardCache (clauses + definitions)
+    // Build a calc object suitable for tryBWCache (clauses + definitions)
     calc = {
       clauses: loaded.clauses,
       definitions: loaded.definitions,
@@ -129,7 +129,7 @@ describe('backward-cache — positive hit with real calc', () => {
     const theta1 = [undefined];
 
     // First call: miss → backchain resolves inc(5, ?out) → caches result
-    const r1 = tryBackwardCache(goal, slots, theta1, calc, false, null, modes);
+    const r1 = tryBWCache(goal, slots, theta1, calc, false, null, modes);
     assert.ok(r1 !== undefined && r1 !== null, 'should resolve inc(5, ?)');
     assert.equal(getCacheProfile().misses, 1);
     assert.equal(getCacheProfile().hits, 0);
@@ -139,7 +139,7 @@ describe('backward-cache — positive hit with real calc', () => {
     // Second call: same goal → cache hit
     resetCacheProfile();
     const theta2 = [undefined];
-    const r2 = tryBackwardCache(goal, slots, theta2, calc, false, null, modes);
+    const r2 = tryBWCache(goal, slots, theta2, calc, false, null, modes);
     assert.ok(r2 !== undefined && r2 !== null, 'should hit cache');
     assert.equal(getCacheProfile().hits, 1);
     assert.equal(getCacheProfile().misses, 0);

@@ -1,5 +1,5 @@
 /**
- * Tests for additive chain fusion (_fuseAdditiveChains) and arr_get/arr_set
+ * Tests for additive chain fusion (_fuseChains) and arr_get/arr_set
  * residual resolution.
  *
  * Chain fusion collapses threading patterns like:
@@ -11,10 +11,10 @@ const assert = require('node:assert/strict');
 const Store = require('../../lib/kernel/store');
 const { GRADE_W } = require('../../lib/engine/grades');
 const { ILL_CONNECTIVES } = require('../../lib/engine/ill/connectives');
-const { resolveConnectives, flattenAntecedent } = require('../../lib/engine/compile');
-const { getPredicateHead } = require('../../lib/kernel/ast');
-const { _fuseAdditiveChains } = require('../../lib/engine/compose');
-const { _resolveResidualOnce } = require('../../lib/engine/compose');
+const { resolveConn, flattenAnte } = require('../../lib/engine/compile');
+const { predHead } = require('../../lib/kernel/ast');
+const { _fuseChains } = require('../../lib/engine/compose');
+const { _resolveOnce } = require('../../lib/engine/compose');
 const { getModeMeta: _illGetModeMeta } = require('../../lib/engine/opt/ffi');
 const { ILL_CHAIN_CONFIGS } = require('../../lib/engine/ill/compose-config');
 const { intToBin, binToInt } = require('../../lib/engine/ill/ffi/convert');
@@ -40,12 +40,12 @@ function bang(h) { return Store.put('bang', [GRADE_W, h]); }
 function mv(name) { return Store.put('metavar', [name]); }
 function bin(n) { return intToBin(BigInt(n)); }
 
-describe('_fuseAdditiveChains', () => {
+describe('_fuseChains', () => {
   let rc;
 
   beforeEach(() => {
     Store.clear();
-    rc = resolveConnectives(ILL_CONNECTIVES);
+    rc = resolveConn(ILL_CONNECTIVES);
   });
 
   it('fuses a 2-link checked_sub chain', () => {
@@ -60,11 +60,11 @@ describe('_fuseAdditiveChains', () => {
     const conseq = Store.put('pc', [G3]);
     const rule = makeRule('a+b', ante, conseq);
 
-    const result = _fuseAdditiveChains([rule], rc, _illGetModeMeta, ILL_CHAIN_CONFIGS);
+    const result = _fuseChains([rule], rc, _illGetModeMeta, ILL_CHAIN_CONFIGS);
     assert.equal(result.length, 1);
 
-    const newAnte = flattenAntecedent(Store.child(result[0].hash, 0), rc);
-    const csGoals = newAnte.persistent.filter(h => getPredicateHead(h) === 'checked_sub');
+    const newAnte = flattenAnte(Store.child(result[0].hash, 0), rc);
+    const csGoals = newAnte.persistent.filter(h => predHead(h) === 'checked_sub');
     assert.equal(csGoals.length, 1, 'should fuse 2 checked_sub into 1');
 
     // Fused constant should be 3 + 5 = 8
@@ -85,9 +85,9 @@ describe('_fuseAdditiveChains', () => {
     const conseq = Store.put('pc', [G4]);
     const rule = makeRule('a+b+c', ante, conseq);
 
-    const result = _fuseAdditiveChains([rule], rc, _illGetModeMeta, ILL_CHAIN_CONFIGS);
-    const newAnte = flattenAntecedent(Store.child(result[0].hash, 0), rc);
-    const csGoals = newAnte.persistent.filter(h => getPredicateHead(h) === 'checked_sub');
+    const result = _fuseChains([rule], rc, _illGetModeMeta, ILL_CHAIN_CONFIGS);
+    const newAnte = flattenAnte(Store.child(result[0].hash, 0), rc);
+    const csGoals = newAnte.persistent.filter(h => predHead(h) === 'checked_sub');
     assert.equal(csGoals.length, 1, 'should fuse 3 checked_sub into 1');
     assert.equal(binToInt(Store.child(csGoals[0], 1)), 6n, 'fused constant should be 6');
   });
@@ -103,9 +103,9 @@ describe('_fuseAdditiveChains', () => {
     const conseq = Store.put('pc', [X3]);
     const rule = makeRule('a+b', ante, conseq);
 
-    const result = _fuseAdditiveChains([rule], rc, _illGetModeMeta, ILL_CHAIN_CONFIGS);
-    const newAnte = flattenAntecedent(Store.child(result[0].hash, 0), rc);
-    const plusGoals = newAnte.persistent.filter(h => getPredicateHead(h) === 'plus');
+    const result = _fuseChains([rule], rc, _illGetModeMeta, ILL_CHAIN_CONFIGS);
+    const newAnte = flattenAnte(Store.child(result[0].hash, 0), rc);
+    const plusGoals = newAnte.persistent.filter(h => predHead(h) === 'plus');
     assert.equal(plusGoals.length, 1, 'should fuse 2 plus into 1');
     assert.equal(binToInt(Store.child(plusGoals[0], 1)), 5n, 'fused constant should be 5');
   });
@@ -123,9 +123,9 @@ describe('_fuseAdditiveChains', () => {
     const conseq = Store.put('pc', [G3]);
     const rule = makeRule('a+b', ante, conseq);
 
-    const result = _fuseAdditiveChains([rule], rc, _illGetModeMeta, ILL_CHAIN_CONFIGS);
-    const newAnte = flattenAntecedent(Store.child(result[0].hash, 0), rc);
-    const csGoals = newAnte.persistent.filter(h => getPredicateHead(h) === 'checked_sub');
+    const result = _fuseChains([rule], rc, _illGetModeMeta, ILL_CHAIN_CONFIGS);
+    const newAnte = flattenAnte(Store.child(result[0].hash, 0), rc);
+    const csGoals = newAnte.persistent.filter(h => predHead(h) === 'checked_sub');
     assert.equal(csGoals.length, 2, 'should NOT fuse when intermediate var leaks');
   });
 
@@ -141,9 +141,9 @@ describe('_fuseAdditiveChains', () => {
     const conseq = Store.put('pc', [G3]);
     const rule = makeRule('single_rule', ante, conseq);
 
-    const result = _fuseAdditiveChains([rule], rc, _illGetModeMeta, ILL_CHAIN_CONFIGS);
-    const newAnte = flattenAntecedent(Store.child(result[0].hash, 0), rc);
-    const csGoals = newAnte.persistent.filter(h => getPredicateHead(h) === 'checked_sub');
+    const result = _fuseChains([rule], rc, _illGetModeMeta, ILL_CHAIN_CONFIGS);
+    const newAnte = flattenAnte(Store.child(result[0].hash, 0), rc);
+    const csGoals = newAnte.persistent.filter(h => predHead(h) === 'checked_sub');
     assert.equal(csGoals.length, 1, 'should fuse even without + in name');
   });
 
@@ -164,9 +164,9 @@ describe('_fuseAdditiveChains', () => {
       fusedPred: 'sub', fusedInputArg: 0, fusedConstantArg: 1, fusedOutputArg: 2,
       parseConstant: binToInt, buildConstant: intToBin,
     }];
-    const result = _fuseAdditiveChains([rule], rc, _illGetModeMeta, customConfig);
-    const newAnte = flattenAntecedent(Store.child(result[0].hash, 0), rc);
-    const subGoals = newAnte.persistent.filter(h => getPredicateHead(h) === 'sub');
+    const result = _fuseChains([rule], rc, _illGetModeMeta, customConfig);
+    const newAnte = flattenAnte(Store.child(result[0].hash, 0), rc);
+    const subGoals = newAnte.persistent.filter(h => predHead(h) === 'sub');
     assert.equal(subGoals.length, 1, 'should fuse custom predicate chain');
     assert.equal(binToInt(Store.child(subGoals[0], 1)), 3n, 'fused constant should be 3');
   });
@@ -177,7 +177,7 @@ describe('arr_get residual resolution', () => {
 
   beforeEach(() => {
     Store.clear();
-    rc = resolveConnectives(ILL_CONNECTIVES);
+    rc = resolveConn(ILL_CONNECTIVES);
   });
 
   it('resolves arr_get on ground arrlit with ground index', () => {
@@ -192,17 +192,17 @@ describe('arr_get residual resolution', () => {
     const conseq = Store.put('pc', [V]);
     const rule = makeRule('test', ante, conseq);
 
-    const result = _resolveResidualOnce(rule, rc, _illGetModeMeta, residualResolver);
+    const result = _resolveOnce(rule, rc, _illGetModeMeta, residualResolver);
     assert.notEqual(result.hash, rule.hash, 'rule should be changed');
 
-    const newAnte = flattenAntecedent(Store.child(result.hash, 0), rc);
-    const arrGetGoals = newAnte.persistent.filter(h => getPredicateHead(h) === 'arr_get');
+    const newAnte = flattenAnte(Store.child(result.hash, 0), rc);
+    const arrGetGoals = newAnte.persistent.filter(h => predHead(h) === 'arr_get');
     assert.equal(arrGetGoals.length, 0, 'arr_get goal should be resolved');
 
     // Consequent pc should have the value at index 1 = 0x80
     const conseqBody = Store.child(Store.child(result.hash, 1), 0);
-    const newConseq = flattenAntecedent(conseqBody, rc);
-    const pcOut = newConseq.linear.find(h => getPredicateHead(h) === 'pc');
+    const newConseq = flattenAnte(conseqBody, rc);
+    const pcOut = newConseq.linear.find(h => predHead(h) === 'pc');
     assert.ok(pcOut);
     assert.equal(Store.child(pcOut, 0), bin(0x80), 'pc should have value 0x80');
   });
@@ -217,7 +217,7 @@ describe('arr_get residual resolution', () => {
     const conseq = Store.put('pc', [V]);
     const rule = makeRule('test', ante, conseq);
 
-    const result = _resolveResidualOnce(rule, rc, _illGetModeMeta, residualResolver);
+    const result = _resolveOnce(rule, rc, _illGetModeMeta, residualResolver);
     assert.equal(result, rule, 'rule should not be changed');
   });
 
@@ -232,7 +232,7 @@ describe('arr_get residual resolution', () => {
     const conseq = Store.put('pc', [V]);
     const rule = makeRule('test', ante, conseq);
 
-    const result = _resolveResidualOnce(rule, rc, _illGetModeMeta, residualResolver);
+    const result = _resolveOnce(rule, rc, _illGetModeMeta, residualResolver);
     assert.equal(result, rule, 'rule should not be changed');
   });
 
@@ -250,17 +250,17 @@ describe('arr_get residual resolution', () => {
     const conseq = Store.put('stack', [Result]);
     const rule = makeRule('test', ante, conseq);
 
-    const result = _resolveResidualOnce(rule, rc, _illGetModeMeta, residualResolver);
+    const result = _resolveOnce(rule, rc, _illGetModeMeta, residualResolver);
     assert.notEqual(result.hash, rule.hash, 'rule should be changed');
 
-    const newAnte = flattenAntecedent(Store.child(result.hash, 0), rc);
-    const arrSetGoals = newAnte.persistent.filter(h => getPredicateHead(h) === 'arr_set');
+    const newAnte = flattenAnte(Store.child(result.hash, 0), rc);
+    const arrSetGoals = newAnte.persistent.filter(h => predHead(h) === 'arr_set');
     assert.equal(arrSetGoals.length, 0, 'arr_set goal should be resolved');
 
     // Result should be an arrlit with [0xFF, 0x80]
     const conseqBody = Store.child(Store.child(result.hash, 1), 0);
-    const newConseq = flattenAntecedent(conseqBody, rc);
-    const stackOut = newConseq.linear.find(h => getPredicateHead(h) === 'stack');
+    const newConseq = flattenAnte(conseqBody, rc);
+    const stackOut = newConseq.linear.find(h => predHead(h) === 'stack');
     assert.ok(stackOut);
     const resultArr = Store.child(stackOut, 0);
     const resultElems = Store.getArrayElements(resultArr);

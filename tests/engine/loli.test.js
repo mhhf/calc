@@ -10,7 +10,7 @@ const path = require('path');
 const Store = require('../../lib/kernel/store');
 const { FactSet } = require('../../lib/engine/fact-set');
 const { matchLoli } = require('../../lib/engine/lnl/loli');
-const { resolveConnectives } = require('../../lib/engine/compile');
+const { resolveConn } = require('../../lib/engine/compile');
 
 describe('lnl/loli — matchLoli', () => {
   let calc, rc;
@@ -20,7 +20,7 @@ describe('lnl/loli — matchLoli', () => {
     const mde = require('../../lib/engine/index');
     calc = mde.load(path.join(__dirname, '../../calculus/ill/programs/evm.ill'), { cache: true });
     const ccfg = require('../../lib/engine/ill/calculus-config');
-    rc = resolveConnectives(ccfg.connectives);
+    rc = resolveConn(ccfg.connectives);
   });
 
   it('returns null when trigger linear fact not in state', () => {
@@ -175,10 +175,10 @@ describe('lnl/loli — matchLoli', () => {
       },
     };
 
-    const { provePersistentNaive } = require('../../lib/engine/lnl/persistent');
+    const { proveNaive } = require('../../lib/engine/lnl/persistent');
     const result = matchLoli(loliHash, state, null, {
       connectives: rc,
-      provePersistent: provePersistentNaive,
+      provePersistent: proveNaive,
     });
     assert.ok(result, 'should match when guard is in persistent state');
     assert.ok(result.consumed[loliHash], 'loli should be consumed');

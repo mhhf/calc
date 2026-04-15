@@ -6,20 +6,20 @@
 const { describe, it, beforeEach } = require('node:test');
 const assert = require('node:assert/strict');
 const Store = require('../../lib/kernel/store');
-const { resolveExistentials } = require('../../lib/engine/lnl/existential');
+const { resolveEx } = require('../../lib/engine/lnl/existential');
 
-describe('lnl/existential — resolveExistentials', () => {
+describe('lnl/existential — resolveEx', () => {
   beforeEach(() => Store.clear());
 
   it('returns true immediately when no existential slots', () => {
     const rule = { existentialSlots: [] };
-    const result = resolveExistentials([], {}, rule, null, null, {});
+    const result = resolveEx([], {}, rule, null, null, {});
     assert.equal(result, true);
   });
 
   it('returns true when existentialSlots is null', () => {
     const rule = { existentialSlots: null };
-    const result = resolveExistentials([], {}, rule, null, null, {});
+    const result = resolveEx([], {}, rule, null, null, {});
     assert.equal(result, true);
   });
 
@@ -34,7 +34,7 @@ describe('lnl/existential — resolveExistentials', () => {
       consequent: { persistent: [] },
     };
 
-    const result = resolveExistentials(theta, slots, rule, null, null, {});
+    const result = resolveEx(theta, slots, rule, null, null, {});
     assert.equal(result, true);
     assert.ok(theta[0] !== undefined, 'slot should be filled');
     assert.equal(Store.tag(theta[0]), 'evar');
@@ -63,7 +63,7 @@ describe('lnl/existential — resolveExistentials', () => {
       consequent: { persistent: [goalPat] },
     };
 
-    resolveExistentials(theta, slots, rule, null, null, matchOpts);
+    resolveEx(theta, slots, rule, null, null, matchOpts);
     assert.ok(proveCalled);
     assert.equal(theta[0], resolvedResult);
   });
@@ -95,7 +95,7 @@ describe('lnl/existential — resolveExistentials', () => {
 
     const matchOpts = { useCompiledSteps: true };
 
-    resolveExistentials(theta, slots, rule, null, null, matchOpts);
+    resolveEx(theta, slots, rule, null, null, matchOpts);
     assert.ok(stepExecuted);
   });
 
@@ -116,7 +116,7 @@ describe('lnl/existential — resolveExistentials', () => {
       consequent: { persistent: [goalPat] },
     };
 
-    const result = resolveExistentials(theta, slots, rule, null, null, matchOpts);
+    const result = resolveEx(theta, slots, rule, null, null, matchOpts);
     assert.equal(result, true);
     assert.ok(theta[0] !== undefined, 'should be filled with freshEvar');
     assert.equal(Store.tag(theta[0]), 'evar');

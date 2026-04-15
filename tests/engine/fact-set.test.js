@@ -1,7 +1,7 @@
 const { describe, it, beforeEach } = require('node:test');
 const assert = require('node:assert/strict');
 const Store = require('../../lib/kernel/store');
-const { FactSet, Arena, State, hashFactEntry, lowerBound, fromObject, toObject } = require('../../lib/engine/fact-set');
+const { FactSet, Arena, State, zobristMix, lowerBound, fromObject, toObject } = require('../../lib/engine/fact-set');
 const { GRADE_W } = require('../../lib/engine/grades');
 
 describe('lowerBound', () => {
@@ -43,21 +43,21 @@ describe('lowerBound', () => {
   });
 });
 
-describe('hashFactEntry', () => {
+describe('zobristMix', () => {
   it('returns different values for different counts', () => {
-    const h1 = hashFactEntry(42, 1);
-    const h2 = hashFactEntry(42, 2);
+    const h1 = zobristMix(42, 1);
+    const h2 = zobristMix(42, 2);
     assert.notEqual(h1, h2);
   });
 
   it('returns different values for different hashes', () => {
-    const h1 = hashFactEntry(42, 1);
-    const h2 = hashFactEntry(43, 1);
+    const h1 = zobristMix(42, 1);
+    const h2 = zobristMix(43, 1);
     assert.notEqual(h1, h2);
   });
 
   it('returns unsigned 32-bit value', () => {
-    const h = hashFactEntry(999999, 5);
+    const h = zobristMix(999999, 5);
     assert.ok(h >= 0 && h <= 0xFFFFFFFF);
   });
 });

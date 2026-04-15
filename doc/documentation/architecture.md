@@ -97,7 +97,7 @@ lib/engine/                      # Forward execution engine (L4c/L4d)
 │   ├── loli-drain.js            # persistent-trigger loli optimization
 │   └── ffi/                     # foreign function interface (arithmetic, etc.)
 ├── backward-cache.js            # backward proof cache (toggleable)
-├── constraint-feed.js           # solver integration: feedPersistent, filterAltsBySAT
+├── constraint-feed.js           # solver integration: feedPers, satFilter
 ├── delta-bypass.js              # direct child extraction for flat patterns
 ├── preserved.js                 # skip re-producing unchanged facts
 ├── opt/                         # extracted optimization modules (toggleable)
@@ -236,7 +236,7 @@ The forward engine has its own internal three-layer architecture (Generic → LN
 graph TB
     subgraph GenericCore["Generic Core (zero ill/ imports)"]
         COMP["<b>compile.js</b><br/>Rule compilation, connective resolution"]
-        MAT["<b>match.js</b><br/>tryMatch, matchAllLinear"]
+        MAT["<b>match.js</b><br/>tryMatch, matchLinearAll"]
         STRAT["<b>strategy.js</b><br/>fingerprint → disc-tree → predicate"]
         EXEC["<b>forward.js</b><br/>Committed-choice main loop"]
         EXP["<b>explore.js</b><br/>DFS, mutation+undo"]

@@ -18,7 +18,7 @@ const mde = require('../lib/engine');
 const Store = require('../lib/kernel/store');
 const Seq = require('../lib/kernel/sequent');
 const calculus = require('../lib/calculus');
-const { buildGuidedTerm } = require('../lib/prover/guided-term');
+const { guidedTerm } = require('../lib/prover/guided-term');
 const { rightFocusTerm } = require('../lib/prover/bridge');
 const { generateWitness } = require('../lib/zk/witness');
 
@@ -101,7 +101,7 @@ describe('ZK benchmark: solc forward execution', { timeout: 60000 }, () => {
     assert.ok(rfResult, 'rightFocusTerm should succeed');
 
     // Build guided term from trace + rf decomposition
-    const innerTerm = buildGuidedTerm(forwardResult.trace, rfResult.term);
+    const innerTerm = guidedTerm(forwardResult.trace, rfResult.term);
 
     // Wrap in monad_r
     guidedTerm = {

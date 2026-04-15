@@ -1,13 +1,13 @@
 /**
  * Direct tests for constraint-feed.js
  *
- * Covers: feedPersistent (arena → solver), filterAltsBySAT (oplus pruning).
+ * Covers: feedPers (arena → solver), satFilter (oplus pruning).
  */
 const { describe, it, beforeEach } = require('node:test');
 const assert = require('node:assert/strict');
 const Store = require('../../lib/kernel/store');
 const { FactSet, Arena } = require('../../lib/engine/fact-set');
-const { feedPersistent, filterAltsBySAT } = require('../../lib/engine/constraint-feed');
+const { feedPers, satFilter } = require('../../lib/engine/constraint-feed');
 
 // Minimal EqNeqSolver stub — tracks constraints + SAT state
 function makeSolver(satResult = true) {
@@ -25,7 +25,7 @@ function makeSolver(satResult = true) {
 describe('constraint-feed', () => {
   beforeEach(() => Store.clear());
 
-  describe('feedPersistent', () => {
+  describe('feedPers', () => {
     it('feeds INSERT records from arena into solver', () => {
       const fs = new FactSet();
       const arena = new Arena();
@@ -39,7 +39,7 @@ describe('constraint-feed', () => {
       fs.insert(tagId2, h2, arena);
 
       const solver = makeSolver();
-      feedPersistent(solver, arena, checkpoint);
+      feedPers(solver, arena, checkpoint);
       assert.equal(solver.constraints.length, 2);
       assert.ok(solver.constraints.includes(h1));
       assert.ok(solver.constraints.includes(h2));
@@ -56,13 +56,13 @@ describe('constraint-feed', () => {
       fs.insert(Store.tagId(h2), h2, arena);
 
       const solver = makeSolver();
-      feedPersistent(solver, arena, checkpoint);
+      feedPers(solver, arena, checkpoint);
       assert.equal(solver.constraints.length, 1);
       assert.equal(solver.constraints[0], h2);
     });
   });
 
-  describe('filterAltsBySAT', () => {
+  describe('satFilter', () => {
     it('returns all indices when solver always returns SAT', () => {
       const solver = makeSolver(true);
       const alts = [
@@ -71,7 +71,7 @@ describe('constraint-feed', () => {
       ];
       const theta = [];
       const slots = {};
-      const result = filterAltsBySAT(solver, alts, theta, slots);
+      const result = satFilter(solver, alts, theta, slots);
       assert.deepEqual(result, [0, 1]);
     });
 
@@ -86,7 +86,7 @@ describe('constraint-feed', () => {
         { persistent: [Store.put('atom', ['b'])] },
         { persistent: [Store.put('atom', ['c'])] },
       ];
-      const result = filterAltsBySAT(solver, alts, [], {});
+      const result = satFilter(solver, alts, [], {});
       assert.deepEqual(result, [0, 2]);
     });
 
@@ -97,7 +97,7 @@ describe('constraint-feed', () => {
       const alts = [{ persistent: [p1] }, { persistent: [p2] }];
 
       const cpBefore = solver.checkpoint();
-      filterAltsBySAT(solver, alts, [], {});
+      satFilter(solver, alts, [], {});
       assert.equal(solver.constraints.length, cpBefore);
     });
 
@@ -106,7 +106,7 @@ describe('constraint-feed', () => {
       const alts = [
         { persistent: [Store.put('atom', ['x'])] },
       ];
-      const result = filterAltsBySAT(solver, alts, [], {});
+      const result = satFilter(solver, alts, [], {});
       assert.deepEqual(result, []);
     });
   });

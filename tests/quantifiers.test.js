@@ -13,11 +13,11 @@ const { createProver } = require('../lib/prover/focused');
 const { buildRuleSpecs } = require('../lib/prover/rule-interpreter');
 const Seq = require('../lib/kernel/sequent');
 const { parseExpr } = require('../lib/engine/convert');
-const { resolveConnectives, compileRule, expandChoiceItem } = require('../lib/engine/compile');
+const { resolveConn, compileRule, expandChoice } = require('../lib/engine/compile');
 const { ILL_CONNECTIVES } = require('../lib/engine/ill/connectives');
-const ILL_RC = resolveConnectives(ILL_CONNECTIVES);
+const ILL_RC = resolveConn(ILL_CONNECTIVES);
 const { createState } = require('../lib/engine/forward');
-const { resolveExistentials, tryMatch, provePersistent } = require('../lib/engine/match');
+const { resolveEx, tryMatch, provePersistent } = require('../lib/engine/match');
 
 describe('Quantifier Store operations', () => {
   it('exists(body) creates arity-1 node', () => {
@@ -213,12 +213,12 @@ describe('Backward prover with quantifiers', () => {
 });
 
 describe('Forward engine with exists', () => {
-  it('expandChoiceItem opens exists binder', () => {
+  it('expandChoice opens exists binder', () => {
     const b0 = Store.put('bound', [0n]);
     const pb = Store.put('p', [b0]);
     const ex = Store.put('exists', [pb]);
 
-    const alts = expandChoiceItem(ex, ILL_RC);
+    const alts = expandChoice(ex, ILL_RC);
     assert.strictEqual(alts.length, 1);
     // Body should have a freevar (metavar) instead of bound(0)
     const linearFact = alts[0].linear[0];
@@ -227,14 +227,14 @@ describe('Forward engine with exists', () => {
     assert.strictEqual(Store.tag(arg), 'metavar');
   });
 
-  it('expandChoiceItem handles exists inside tensor', () => {
+  it('expandChoice handles exists inside tensor', () => {
     const b0 = Store.put('bound', [0n]);
     const pb = Store.put('p', [b0]);
     const ex = Store.put('exists', [pb]);
     const q = Store.put('atom', ['q']);
     const tensor = Store.put('tensor', [ex, q]);
 
-    const alts = expandChoiceItem(tensor, ILL_RC);
+    const alts = expandChoice(tensor, ILL_RC);
     assert.strictEqual(alts.length, 1);
     assert.strictEqual(alts[0].linear.length, 2);
   });
@@ -288,7 +288,7 @@ describe('Loli variables are NOT existential slots', () => {
     const loliBody = Store.put('monad', [rz]);
     const loli = Store.put('loli', [qz, loliBody]);
     const tensor = Store.put('tensor', [px, loli]);
-    // exists wraps the tensor — after expandChoiceItem, X becomes a fresh metavar
+    // exists wraps the tensor — after expandChoice, X becomes a fresh metavar
     const ex = Store.put('exists', [tensor]);
     const monad = Store.put('monad', [ex]);
 
@@ -301,7 +301,7 @@ describe('Loli variables are NOT existential slots', () => {
   });
 });
 
-describe('resolveExistentials three-level fallback', () => {
+describe('resolveEx three-level fallback', () => {
   it('always returns true (exists never blocks)', () => {
     // Rule with existential slot but no goals — gets freshEvar
     resetFresh();
@@ -317,9 +317,9 @@ describe('resolveExistentials three-level fallback', () => {
 
     const theta = new Array(compiled.metavarCount);
     const state = createState();
-    const result = resolveExistentials(theta, compiled.metavarSlots, compiled, state, null);
+    const result = resolveEx(theta, compiled.metavarSlots, compiled, state, null);
 
-    assert.strictEqual(result, true, 'resolveExistentials always returns true');
+    assert.strictEqual(result, true, 'resolveEx always returns true');
     // The existential slot should be bound to a freshEvar
     const slot = compiled.existentialSlots[0];
     assert.notStrictEqual(theta[slot], undefined, 'existential slot should be bound');

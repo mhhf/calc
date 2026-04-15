@@ -249,13 +249,13 @@ describe('L2 Generic Prover', () => {
     });
   });
 
-  describe('computeChildDelta', () => {
+  describe('childDelta', () => {
     it('should merge premise linear into delta', () => {
       const A = AST.freevar('A');
       const B = AST.freevar('B');
       const delta = Context.fromArray([A]);
       const premise = Seq.fromArrays([B], [], A);
-      const result = generic.computeChildDelta(premise, delta);
+      const result = generic.childDelta(premise, delta);
       assert.ok(Context.has(result, A));
       assert.ok(Context.has(result, B));
     });
@@ -264,18 +264,18 @@ describe('L2 Generic Prover', () => {
       const A = AST.freevar('A');
       const delta = Context.fromArray([A]);
       const premise = Seq.fromArrays([], [], A);
-      const result = generic.computeChildDelta(premise, delta);
+      const result = generic.childDelta(premise, delta);
       assert.deepStrictEqual(result, delta);
     });
   });
 
-  describe('addDeltaToSequent', () => {
+  describe('addDelta', () => {
     it('should add delta resources to linear context', () => {
       const A = AST.freevar('A');
       const B = AST.freevar('B');
       const s = seq([], A);
       const delta = Context.fromArray([B]);
-      const result = generic.addDeltaToSequent(s, delta);
+      const result = generic.addDelta(s, delta);
       const linear = Seq.getContext(result, 'linear');
       assert.ok(linear.includes(B));
     });
@@ -283,7 +283,7 @@ describe('L2 Generic Prover', () => {
     it('should return same sequent for empty delta', () => {
       const A = AST.freevar('A');
       const s = seq([A], A);
-      const result = generic.addDeltaToSequent(s, Context.empty());
+      const result = generic.addDelta(s, Context.empty());
       assert.strictEqual(result, s);
     });
   });

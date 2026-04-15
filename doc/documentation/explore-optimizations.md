@@ -54,12 +54,12 @@ pathVisited.delete(sh)
 ```
 scp = solver.checkpoint()
   mutateState(...)
-  feedPersistent(solver, perArena, perCp)    // constraint-feed.js
+  feedPers(solver, perArena, perCp)    // constraint-feed.js
   go(depth + 1)
 solver.restore(scp)
 ```
 
-The EqNeqSolver (union-find with forbid list) tracks eq/neq constraints from persistent facts. Checkpoint/restore wraps each subtree for backtracking. Multi-alt branches use `filterAltsBySAT()` to prune UNSAT alternatives before exploring.
+The EqNeqSolver (union-find with forbid list) tracks eq/neq constraints from persistent facts. Checkpoint/restore wraps each subtree for backtracking. Multi-alt branches use `satFilter()` to prune UNSAT alternatives before exploring.
 
 ## 5. De Bruijn indexed theta (Stage 6)
 
@@ -91,4 +91,4 @@ Optimizations called in the `go()` hot loop live in `lib/engine/opt/` (generic) 
 
 - **Arena ordering**: `state.persistent.undo()` must be called before `state.linear.undo()` to match the mutation order in `mutateState`. The solver must also be restored.
 
-- **Importing in opt/ modules**: Never pass core functions as parameters to opt/ modules — import them directly. V8 polymorphic call sites from function-as-parameter cause measurable regression (70% observed with `mutateState` passed to `drainPersistentLolis`).
+- **Importing in opt/ modules**: Never pass core functions as parameters to opt/ modules — import them directly. V8 polymorphic call sites from function-as-parameter cause measurable regression (70% observed with `mutateState` passed to `drainLolis`).

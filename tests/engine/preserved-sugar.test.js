@@ -12,9 +12,9 @@ const mde = require('../../lib/engine');
 const { parseExpr, desugarPreserved } = require('../../lib/engine/convert');
 const forward = require('../../lib/engine/forward');
 const { ILL_CONNECTIVES } = require('../../lib/engine/ill/connectives');
-const { resolveConnectives, flattenAntecedent, compileRule } = require('../../lib/engine/compile');
+const { resolveConn, flattenAnte, compileRule } = require('../../lib/engine/compile');
 
-const ILL_RC = resolveConnectives(ILL_CONNECTIVES);
+const ILL_RC = resolveConn(ILL_CONNECTIVES);
 
 // Helper: compile a forward rule from a formula string
 function compileFromExpr(name, exprStr) {
@@ -64,7 +64,7 @@ describe('Preserved resource sugar ($prefix)', { timeout: 10000 }, () => {
       const desugared = desugarPreserved(sugared);
 
       const ante = Store.child(desugared, 0);
-      const anteFlat = flattenAntecedent(ante, ILL_RC);
+      const anteFlat = flattenAnte(ante, ILL_RC);
       const anteTags = anteFlat.linear.map(h => Store.tag(h));
       assert(anteTags.includes('bytecode'), 'antecedent should contain bytecode');
       assert(anteTags.includes('pc'), 'antecedent should contain pc');
@@ -72,7 +72,7 @@ describe('Preserved resource sugar ($prefix)', { timeout: 10000 }, () => {
       // Consequent should have bytecode injected alongside gas
       const conseq = Store.child(desugared, 1);
       const body = Store.child(conseq, 0);
-      const conseqFlat = flattenAntecedent(body, ILL_RC);
+      const conseqFlat = flattenAnte(body, ILL_RC);
       const conseqTags = conseqFlat.linear.map(h => Store.tag(h));
       assert(conseqTags.includes('bytecode'), 'consequent should contain bytecode (injected)');
       assert(conseqTags.includes('gas'), 'consequent should contain gas (original)');
@@ -83,12 +83,12 @@ describe('Preserved resource sugar ($prefix)', { timeout: 10000 }, () => {
       const desugared = desugarPreserved(sugared);
 
       const ante = Store.child(desugared, 0);
-      const anteFlat = flattenAntecedent(ante, ILL_RC);
+      const anteFlat = flattenAnte(ante, ILL_RC);
       assert.strictEqual(anteFlat.linear.length, 3);
 
       const conseq = Store.child(desugared, 1);
       const body = Store.child(conseq, 0);
-      const conseqFlat = flattenAntecedent(body, ILL_RC);
+      const conseqFlat = flattenAnte(body, ILL_RC);
       const conseqTags = conseqFlat.linear.map(h => Store.tag(h));
       assert(conseqTags.includes('bytecode'), 'consequent should have bytecode');
       assert(conseqTags.includes('gas'), 'consequent should have gas');
@@ -101,12 +101,12 @@ describe('Preserved resource sugar ($prefix)', { timeout: 10000 }, () => {
       const desugared = desugarPreserved(sugared);
 
       const ante = Store.child(desugared, 0);
-      const anteFlat = flattenAntecedent(ante, ILL_RC);
+      const anteFlat = flattenAnte(ante, ILL_RC);
       const bytecodeInAnte = anteFlat.linear.find(h => Store.tag(h) === 'bytecode');
 
       const conseq = Store.child(desugared, 1);
       const body = Store.child(conseq, 0);
-      const conseqFlat = flattenAntecedent(body, ILL_RC);
+      const conseqFlat = flattenAnte(body, ILL_RC);
       const bytecodeInConseq = conseqFlat.linear.find(h => Store.tag(h) === 'bytecode');
 
       assert.strictEqual(bytecodeInAnte, bytecodeInConseq,
@@ -177,7 +177,7 @@ describe('Preserved resource sugar ($prefix)', { timeout: 10000 }, () => {
       const sugaredPreservedTags = sugared.preserved.map(h => Store.tag(h));
       const longhandPreservedTags = longhand.preserved.map(h => Store.tag(h));
       assert.deepStrictEqual(sugaredPreservedTags, longhandPreservedTags,
-        'same preserved resources detected by analyzeDeltas');
+        'same preserved resources detected by deltaAnalysis');
     });
 
     it('preserved resources appear in compiled.preserved', () => {
