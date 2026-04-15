@@ -9,7 +9,7 @@ paths:
 
 `doc/theory/` holds CALC's **original theoretical contributions** -- novel results, proof sketches, formal judgments, design frameworks, and analyses that don't exist in the literature. "Did we invent it?" → theory/.
 
-Distinguished from `doc/research/` (surveys of others' work), `doc/def/` (concept definitions), and `doc/documentation/` (implementation details).
+Distinguished from research docs (surveys of others' work, managed via `hq doc/research`), `doc/def/` (concept definitions), and `doc/documentation/` (implementation details).
 
 ## Format
 
@@ -37,9 +37,9 @@ references: []
 
 ## Rules
 
-- **`unique_contribution` is required.** Every theory document must articulate what is novel. If the contribution can't be stated clearly, the content likely belongs in `doc/research/` instead.
+- **`unique_contribution` is required.** Every theory document must articulate what is novel. If the contribution can't be stated clearly, the content likely belongs in research (use `hq doc/research new`).
 - The contribution should answer: "If this were a paper, what would the abstract's main claim be?"
 - **Numbered filenames.** All files must follow the `NNNN_kebab-title.md` convention.
 - **`category` is required.** Assign a category for grouping in the UI.
 - Keep documents focused on the theoretical result. Implementation details belong in `doc/documentation/`.
-- External research surveys belong in `doc/research/`.
+- External research surveys belong in hq-data (use `hq doc/research new`).

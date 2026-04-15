@@ -16,7 +16,7 @@ const ROOT = path.resolve(__dirname, '..');
 const DOC_DIR = path.join(ROOT, 'doc');
 const OUTPUT = path.join(DOC_DIR, 'tags.yaml');
 
-const SUBDIRS = ['research', 'theory', 'def', 'documentation'];
+const SUBDIRS = ['theory', 'def', 'documentation'];
 
 function collectMarkdownFiles(dir) {
   const files = [];

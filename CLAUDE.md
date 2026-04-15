@@ -221,11 +221,9 @@ calc.explore(state, {
 | `doc/documentation/` | **How CALC works NOW** — system architecture, data-flow docs, reference material | free-form | `architecture.md`, `content-addressed-store.md` |
 | `doc/def/` | **Atomic definitions** — one concept per file, encyclopedia of terms | `NNNN_title.md` + `meta.yaml` | `0005_internal-vs-external-choice.md` |
 
-**Decision heuristic:** "Did we invent it?" → `theory/`. "Did someone else write about it?" → `research/`. "Does it describe the system as-is?" → `documentation/`. "Is it a single concept/term to define?" → `def/`.
+**Decision heuristic:** "Did we invent it?" → `theory/`. "Does it describe the system as-is?" → `documentation/`. "Is it a single concept/term to define?" → `def/`.
 
-**Research** documents live in `doc/research/`. They only contain **External knowledge** — literature surveys, paper summaries, technique catalogs sourced from existing work - named via `NNNN_title.md` e.g. `0007_chr-linear-logic.md`
-
-**TODOs** are managed externally via the `hq` CLI, not in this repo. Reference them by identifier (e.g., `TODO_0068`) — don't create `doc/todo/` here. When referencing TODOs from calc docs (research, theory, documentation), use the identifier only: `TODO_0068`. Do not create links to local files. Use `hq todo <action>` to work with todos (show, list, search, edit, patch-body, etc.)
+**Research** documents and **TODOs** are managed externally via the `hq` CLI, not in this repo. Use `hq doc/research <action>` for research docs and `hq todo <action>` for todos. Reference them by identifier: `RES_0068`, `TODO_0068`. Do not create `doc/research/` or `doc/todo/` here.
 
 ## Diagrams
 
