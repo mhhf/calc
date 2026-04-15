@@ -129,5 +129,5 @@ Tiers 1-2 are sound operational approximations of Tier 3. They implement the rul
 - Pruiksma & Pfenning (2018). *Adjoint Logic.* CMU tech report.
 - Martens (2015). *Programming Interactive Worlds with Linear Logic.* PhD thesis, CMU.
 - Chaudhuri (2010). *Classical and Intuitionistic Subexponential Logics Are Equally Expressive.* CSL.
-- RES_0097 — Subexponentials in Linear Logic (survey of SELL)
-- RES_0098 — ILL, SELL, and LNL recovery relationships
+- RES_0130 — Subexponentials in Linear Logic (survey of SELL)
+- RES_0131 — ILL, SELL, and LNL recovery relationships

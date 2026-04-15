@@ -9,7 +9,7 @@ unique_contribution: "The observation that the indexed monad {A}_a (THY_0013) li
 references:
   - "THY_0013 — The Indexed Lax Monad"
   - "THY_0015 — The Graded Indexed Monad (QTT quantities on monadic phases)"
-  - "RES_0099 — Compile-Time Cut Elimination for Forward Rule Composition"
+  - "RES_0132 — Compile-Time Cut Elimination for Forward Rule Composition"
   - "Lambek (1969). Deductive Systems and Categories."
   - "Cockett & Seely. Proof Theory of the Cut Rule."
   - "Meseguer & Montanari (1990). Petri Nets Are Monoids."
@@ -116,7 +116,7 @@ Runtime `{A}_a` can also fail to terminate (non-terminating forward execution). 
 
 Forward rules are multimorphisms in a free symmetric multicategory (Lambek 1969, Cockett-Seely). `simplify` = composing morphisms along an internal wire. Cut elimination = this composition terminates and is canonical.
 
-See RES_0099 §"The Categorical Picture" for the full explanation with string diagrams.
+See RES_0132 §"The Categorical Picture" for the full explanation with string diagrams.
 
 `qui()` = the closure of the multicategory under composition through internal objects. When the internal-object dependency graph is a DAG, this closure is finite.
 
@@ -153,7 +153,7 @@ The key insight of THY_0015: grade 0 doesn't require dependent types (contra RES
 
 - THY_0013 — The Indexed Lax Monad
 - THY_0015 — The Graded Indexed Monad
-- RES_0099 — Compile-Time Cut Elimination (literature survey + categorical perspective)
+- RES_0132 — Compile-Time Cut Elimination (literature survey + categorical perspective)
 - Lambek, "Deductive Systems and Categories" (1969)
 - Cockett & Seely, "Proof Theory of the Cut Rule"
 - Meseguer & Montanari, "Petri Nets Are Monoids" (1990)
