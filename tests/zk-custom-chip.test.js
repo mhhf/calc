@@ -65,7 +65,7 @@ function countRule(t, ruleName) {
 }
 
 describe('ZK custom chip: fact_axiom replaces clause proofs', { timeout: 30000 }, () => {
-  let calc, illCalc, state, forwardResult, guidedTerm;
+  let calc, illCalc, state, forwardResult, gTerm;
   let witnessBaseline, witnessCustom;
 
   before(async () => {
@@ -94,16 +94,16 @@ describe('ZK custom chip: fact_axiom replaces clause proofs', { timeout: 30000 }
     assert.ok(rfResult, 'rightFocusTerm should succeed');
 
     const innerTerm = guidedTerm(forwardResult.trace, rfResult.term);
-    guidedTerm = {
+    gTerm = {
       rule: 'monad_r',
       principal: null,
       subterms: [innerTerm]
     };
 
     // Verify proof term has copy nodes (clause proofs)
-    const copyCount = countRule(guidedTerm, 'copy');
+    const copyCount = countRule(gTerm, 'copy');
     assert.ok(copyCount > 0, `Expected copy nodes in proof term, got ${copyCount}`);
-    console.log(`  proof term: ${countNodes(guidedTerm)} nodes, ${copyCount} copy nodes`);
+    console.log(`  proof term: ${countNodes(gTerm)} nodes, ${copyCount} copy nodes`);
   });
 
   it('generates baseline witness WITHOUT custom chips', () => {
@@ -119,7 +119,7 @@ describe('ZK custom chip: fact_axiom replaces clause proofs', { timeout: 30000 }
     const monadSucc = Store.put('monad', [succFormula]);
     const sequent = Seq.fromArrays(linearCtx, cartesianCtx, monadSucc);
 
-    witnessBaseline = generateWitness(guidedTerm, sequent, { calculus: illCalc });
+    witnessBaseline = generateWitness(gTerm, sequent, { calculus: illCalc });
 
     // Baseline: should have copy/loli_l/id rows for clause proofs
     const copyRows = (witnessBaseline.chips.copy || []).filter(r => r[0] === 1).length;
@@ -153,7 +153,7 @@ describe('ZK custom chip: fact_axiom replaces clause proofs', { timeout: 30000 }
     const monadSucc = Store.put('monad', [succFormula]);
     const sequent = Seq.fromArrays(linearCtx, cartesianCtx, monadSucc);
 
-    witnessCustom = generateWitness(guidedTerm, sequent, {
+    witnessCustom = generateWitness(gTerm, sequent, {
       calculus: illCalc,
       customChips: new Set(['inc'])
     });
