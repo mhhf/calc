@@ -12,7 +12,6 @@ import path from 'path';
 const DOC_ROOT = path.resolve(__dirname, '../../../doc');
 
 const ALLOWED_FOLDERS: Record<string, string> = {
-  research: 'research',
   theory: 'theory',
   def: 'def',
   docs: 'documentation',

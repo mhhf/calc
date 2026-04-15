@@ -1,18 +1,25 @@
 import { A, useLocation } from '@solidjs/router';
 
-const mainTabs = [
+interface Tab {
+  path: string;
+  label: string;
+  /** Additional path prefixes that activate this tab */
+  also?: string[];
+}
+
+const mainTabs: Tab[] = [
   { path: '/', label: 'Sandbox' },
   { path: '/prove', label: 'Prove' },
   { path: '/calculus', label: 'Calculus' },
   { path: '/health', label: 'Health' },
   { path: '/meta', label: 'Meta' },
-  { path: '/docs', label: 'Docs' },
+  { path: '/docs', label: 'Docs', also: ['/theory', '/def'] },
 ];
 
-function isActive(tab: { path: string }, pathname: string) {
-  return tab.path === '/'
-    ? pathname === '/'
-    : pathname === tab.path || pathname.startsWith(tab.path + '/');
+function isActive(tab: Tab, pathname: string) {
+  if (tab.path === '/') return pathname === '/';
+  const prefixes = [tab.path, ...(tab.also || [])];
+  return prefixes.some(p => pathname === p || pathname.startsWith(p + '/'));
 }
 
 export default function TabNav() {

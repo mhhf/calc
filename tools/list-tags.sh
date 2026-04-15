@@ -6,7 +6,7 @@
 
 set -euo pipefail
 
-DIRS="doc/research doc/theory doc/def doc/todo doc/documentation"
+DIRS="doc/theory doc/def doc/documentation"
 MODE="alpha"
 PATTERN=""
 

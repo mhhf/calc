@@ -1,5 +1,6 @@
 import { createResource, For, Show } from 'solid-js';
 import { A, useLocation } from '@solidjs/router';
+import DocFolderNav from '../components/layout/DocFolderNav';
 
 interface DocEntry {
   slug: string;
@@ -10,8 +11,8 @@ interface DocEntry {
 }
 
 const FOLDER_LABELS: Record<string, string> = {
-  research: 'Research',
-  dev: 'Development',
+  theory: 'Theory',
+  def: 'Definitions',
   docs: 'Documentation',
 };
 
@@ -34,6 +35,7 @@ export default function DocIndex() {
 
   return (
     <div class="mx-auto p-6" style="max-width: 1280px">
+      <DocFolderNav />
       <h2 class="text-2xl font-bold text-gray-900 dark:text-white mb-6">
         {FOLDER_LABELS[folder()] || folder()}
       </h2>

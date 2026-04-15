@@ -14,8 +14,8 @@
 const fs = require('fs');
 const path = require('path');
 const calculus = require('../lib/calculus');
-const { computeParserTables, computeRendererFormats, computeConnectivesByType } = require('../lib/calculus/builders');
-const { computeRuleSpecMeta } = require('../lib/prover/rule-interpreter');
+const { parserTables: computeParserTables, rendererFormats: computeRendererFormats, connByType: computeConnectivesByType } = require('../lib/calculus/builders');
+const { specMeta: computeRuleSpecMeta } = require('../lib/prover/rule-interpreter');
 
 async function main() {
   const outputPath = process.argv[2] || path.join(__dirname, '../out/ill.json');

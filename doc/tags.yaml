@@ -1,425 +1,144 @@
 tags:
-  linear-logic: 64
-  forward-chaining: 43
-  proof-theory: 31
-  clf: 21
-  focusing: 20
-  architecture: 18
-  chr: 18
-  implementation: 16
-  symbolic-execution: 16
-  adjoint-logic: 15
-  optimization: 15
-  cut-elimination: 14
-  lax-monad: 14
-  QTT: 13
-  session-types: 13
-  graded-types: 12
-  Curry-Howard: 11
-  sequent-calculus: 11
-  Ceptre: 10
-  evm: 10
-  performance: 10
-  verification: 10
-  dependent-types: 9
-  partial-evaluation: 9
-  exponentials: 8
-  logical-framework: 8
-  multiset-rewriting: 8
-  ownership: 8
-  research: 8
-  resource-semantics: 8
-  category-theory: 7
-  Celf: 7
-  polarity: 7
-  soundness: 7
-  staging: 7
-  subexponentials: 7
-  coinduction: 6
-  concurrency: 6
-  display-calculus: 6
-  engine: 6
-  fixed-points: 6
-  hevm: 6
-  lnl: 6
-  memory-model: 6
-  proof-search: 6
-  quiescence: 6
-  semiring: 6
-  symexec: 6
-  theory: 6
-  authorization: 5
-  backward-chaining: 5
-  bisimulation: 5
-  consensus: 5
-  muMALL: 5
-  plonky3: 5
-  separation-logic: 5
-  supercompilation: 5
-  accounting: 4
-  benchmarking: 4
-  blockchain: 4
-  CLP: 4
-  compilation: 4
-  content-addressing: 4
-  data-structures: 4
-  eigenvariable: 4
-  ethereum: 4
-  ffi: 4
-  hash-consing: 4
-  lollimon: 4
-  modal-logic: 4
-  multimodal: 4
+  linear-logic: 23
+  forward-chaining: 19
+  architecture: 13
+  chr: 13
+  proof-theory: 9
+  implementation: 8
+  optimization: 7
+  ownership: 6
+  soundness: 6
+  symbolic-execution: 6
+  cut-elimination: 5
+  engine: 5
+  graded-types: 5
+  verification: 5
+  lax-monad: 4
   oplus: 4
-  Petri-nets: 4
-  SELL: 4
-  smt: 4
-  stark: 4
-  termination: 4
-  type-theory: 4
-  unification: 4
-  zk: 4
-  adjunction: 3
-  CHR: 3
-  confluence: 3
-  curry-howard: 3
-  cyclic-proofs: 3
-  existential: 3
-  game-semantics: 3
-  Granule: 3
-  Idris-2: 3
-  induction: 3
-  ivc: 3
-  loli: 3
-  memoization: 3
-  model-checking: 3
-  multicategory: 3
-  operational-semantics: 3
-  pi-calculus: 3
-  polymorphism: 3
+  partial-evaluation: 4
+  symexec: 4
+  authorization: 3
+  clf: 3
+  Curry-Howard: 3
+  evm: 3
+  ffi: 3
   prover: 3
-  prover-architecture: 3
-  residuation: 3
+  QTT: 3
+  staging: 3
+  subexponentials: 3
   testing: 3
-  type-checking: 3
-  WAM: 3
-  with: 3
-  abstract-interpretation: 2
-  angr: 2
-  array-theory: 2
-  babybear: 2
+  accounting: 2
   backward: 2
-  BEAM: 2
-  branching: 2
-  classical-linear-logic: 2
-  coeffects: 2
-  completeness: 2
-  complexity: 2
-  connectives: 2
-  Crucible: 2
-  debugging: 2
-  delegation: 2
-  derivatives: 2
-  differential-linear-logic: 2
-  duality: 2
-  fibrations: 2
-  finality: 2
-  forward-engine: 2
+  eigenvariable: 2
+  existential: 2
+  focusing: 2
   Futamura: 2
-  halmos: 2
-  HCP: 2
-  hereditary-substitution: 2
-  higher-order: 2
-  hooks: 2
-  HVM: 2
-  hypersequents: 2
   ill: 2
-  interaction-nets: 2
-  JavaScript: 2
-  kernel: 2
-  KLEE: 2
   layers: 2
-  LCF: 2
-  lf: 2
-  linear-types: 2
-  llf: 2
-  metaproofs: 2
-  metavariables: 2
-  modalities: 2
-  MPST: 2
-  MTDC: 2
-  normalization-by-evaluation: 2
-  pacioli-group: 2
-  parallelism: 2
-  pattern-matching: 2
-  persistent-data-structure: 2
+  modal-logic: 2
+  performance: 2
   principals: 2
-  process-algebra: 2
-  prolog: 2
-  proof-assistants: 2
-  proof-nets: 2
-  proof-of-stake: 2
-  proof-systems: 2
-  proof-terms: 2
-  quantifiers: 2
-  recursion: 2
-  resource-tracking: 2
-  second-order: 2
-  semantics: 2
-  shared-memory: 2
-  state-merging: 2
-  storage: 2
-  subformula-property: 2
-  substitution: 2
-  symbolic-arithmetic: 2
-  tabling: 2
-  temporal-logic: 2
-  term-representation: 2
-  term-rewriting: 2
-  union-find: 2
-  validators: 2
-  AARA: 1
-  AC-normalization: 1
-  affine: 1
-  agents: 1
-  algorithms: 1
+  resource-semantics: 2
+  SELL: 2
+  sequent-calculus: 2
+  session-types: 2
+  supercompilation: 2
+  type-checking: 2
+  with: 2
+  adjoint-logic: 1
   anki: 1
-  anti-unification: 1
-  arena-allocation: 1
-  asynchronous: 1
   atomic-swaps: 1
-  attributed-variables: 1
-  automation: 1
-  bang-modality: 1
-  BDI: 1
-  Belnap: 1
-  BI: 1
-  bibliography: 1
-  bidirectional: 1
+  benchmarking: 1
   binlit: 1
-  BLL: 1
-  bootstrapping: 1
-  buffers: 1
-  calculus-design: 1
+  blockchain: 1
+  branching: 1
   calldata: 1
   case-analysis: 1
-  casper: 1
-  catch-all: 1
-  CEGAR: 1
-  ceptre: 1
-  CHRv: 1
-  CLF: 1
+  category-theory: 1
+  CHR: 1
+  CLP: 1
   code-quality: 1
-  code-trees: 1
-  congruence-closure: 1
-  constraint-propagation: 1
-  contextual-types: 1
-  copy-on-write: 1
+  compilation: 1
+  completeness: 1
+  complexity: 1
+  confluence: 1
+  connectives: 1
+  consensus: 1
+  content-addressing: 1
   correspondence: 1
   cost-semantics: 1
-  CP: 1
-  CTL: 1
   cut: 1
-  datalog: 1
-  Datalog: 1
-  de-bruijn: 1
-  deadlock-freedom: 1
-  debt: 1
-  decision-trees: 1
-  default: 1
-  default-logic: 1
-  definitional-equality: 1
+  debugging: 1
   definitions: 1
-  delta-tracking: 1
+  delegation: 1
+  derivatives: 1
   design: 1
-  design-space: 1
   determinism: 1
   digital-assets: 1
-  discrimination-trees: 1
   disjunction: 1
-  DSL: 1
-  e-graphs: 1
   entailment: 1
-  equality: 1
-  equality-saturation: 1
-  equational-completion: 1
-  equivalence: 1
-  erasure: 1
-  execution: 1
   execution-tree: 1
-  execution-trees: 1
   exploration: 1
+  exponentials: 1
   family: 1
+  fibrations: 1
   financial: 1
-  financial-instruments: 1
   financial-primitives: 1
-  fingerprint-indexing: 1
-  first-arg-indexing: 1
-  flat-arrays: 1
-  flat-terms: 1
-  formal-verification: 1
-  foundations: 1
-  fresh-variables: 1
-  functor-arity: 1
-  Galois-connection: 1
+  forward-engine: 1
   games: 1
-  gap-analysis: 1
-  generalization: 1
-  geometry-of-interaction: 1
-  ghost: 1
-  Girard: 1
-  groth16: 1
   grothendieck-group: 1
-  HAMT: 1
-  hash-tables: 1
-  haskell: 1
-  incremental: 1
-  incremental-solving: 1
-  indexed-categories: 1
-  indexing: 1
-  infinite-product: 1
-  inhibitor-arcs: 1
+  hash-consing: 1
+  HCP: 1
+  hevm: 1
+  hooks: 1
+  HVM: 1
+  hypersequents: 1
   insights: 1
-  instrumentation: 1
-  interaction-combinators: 1
-  interning: 1
-  interval-tree: 1
-  invariants: 1
+  interaction-nets: 1
   judgment: 1
-  K-framework: 1
-  kevm: 1
-  Knuth-Bendix: 1
-  Kripke-structures: 1
-  Lafont: 1
-  Lamping: 1
-  LEAPS: 1
+  kernel: 1
   learning: 1
-  light-logic: 1
-  linear-negation: 1
-  literature: 1
-  locally-nameless: 1
+  lnl: 1
   location: 1
-  lock-free: 1
-  logic-design: 1
-  logic-programming: 1
-  logics-survey: 1
-  Ludics: 1
-  manticore: 1
-  Maranget: 1
+  logical-framework: 1
+  loli: 1
   markets: 1
-  Martelli-Montanari: 1
-  memory-management: 1
-  MemSight: 1
-  Merkle-DAG: 1
-  meta-theory: 1
+  memoization: 1
   metalogic: 1
-  methodology: 1
-  milawa: 1
-  mix-rule: 1
-  mode-checking: 1
-  moggi: 1
-  monad: 1
-  mu-calculus: 1
-  multi-logic: 1
-  multi-party: 1
-  multi-type: 1
-  multiset: 1
-  mythril: 1
-  Nomos: 1
+  modalities: 1
+  MPST: 1
+  multicategory: 1
+  multimodal: 1
   nondeterminism: 1
   novel-contributions: 1
-  optimal-reduction: 1
+  operational-semantics: 1
   options: 1
-  oracles: 1
-  orthogonality: 1
-  par: 1
-  parallel-composition: 1
-  partition-refinement: 1
-  path-addressing: 1
+  pacioli-group: 1
   path-conditions: 1
-  path-indexing: 1
-  patricia-trie: 1
-  petri-nets: 1
-  pi-types: 1
-  planning: 1
+  plonky3: 1
+  polarity: 1
   polynomial-time: 1
-  poseidon2: 1
   primitives: 1
-  production-systems: 1
-  proof-as-process: 1
-  proof-certificates: 1
-  proof-erasure: 1
-  proof-irrelevance: 1
   proof-market: 1
-  proof-of-authority: 1
-  proofs: 1
-  provenance: 1
-  "Q&A": 1
-  references: 1
-  refinement-types: 1
-  relational-e-matching: 1
-  residuated-lattices: 1
-  Rete: 1
-  rewriting: 1
+  proof-nets: 1
+  proof-of-stake: 1
+  proof-search: 1
+  proof-terms: 1
+  quantifiers: 1
   roadmap: 1
-  Rosette: 1
-  round-robin: 1
-  rule-selection: 1
-  saturation: 1
-  SAW: 1
-  SAX: 1
-  says-modality: 1
-  scheduling: 1
-  security: 1
-  self-verification: 1
-  semi-naive: 1
-  shifts: 1
-  simplification: 1
-  size-change: 1
   Skolem: 1
-  slashing: 1
-  sld-resolution: 1
-  Sledgehammer: 1
-  smart-contracts: 1
-  sort-refinements: 1
+  smt: 1
   specialization: 1
-  specification: 1
-  stages: 1
-  STG: 1
-  stickiness: 1
-  storage-models: 1
+  stark: 1
+  storage: 1
   store: 1
-  store-normalization: 1
-  store-optimization: 1
-  stratification: 1
-  study-plan: 1
-  synchronous: 1
-  tactics: 1
-  temporal-modalities: 1
-  term-indexing: 1
-  term-positions: 1
-  terms: 1
+  subformula-property: 1
+  termination: 1
   theorem: 1
-  TLL: 1
-  tooling: 1
-  tracing: 1
+  theory: 1
   transfers: 1
   translation: 1
-  treap: 1
-  TREAT: 1
-  tree-addressing: 1
-  Triton: 1
-  trusted-computation: 1
-  tutorial: 1
-  type-constructors: 1
-  type-stratification: 1
-  TypedArrays: 1
-  up-to: 1
+  unification: 1
   vision: 1
   walkthrough: 1
-  why-not: 1
-  whynot: 1
-  write-absorption: 1
-  WSTS: 1
-  z3: 1
-  zk-proofs: 1
+  zk: 1

@@ -33,6 +33,11 @@ export const routes = [
   { path: '/calculus', component: CalculusOverview },
   { path: '/health', component: CalculusHealth },
   { path: '/meta', component: MetaOverview },
+  // Doc folders
+  { path: '/theory', component: DocIndex },
+  { path: '/theory/:slug', component: DocPage },
+  { path: '/def', component: DocIndex },
+  { path: '/def/:slug', component: DocPage },
   { path: '/docs', component: DocIndex },
   { path: '/docs/:slug', component: DocPage },
 ];

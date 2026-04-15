@@ -95,7 +95,7 @@ Solutions: value representations R1-R5 (see below). All require:
 2. Catch-all backward clauses (equational completion) — `plus_sym: plus X Y (plus_expr X Y).`
 3. Expression type constructors — `plus_expr`, `mul_expr`, etc.
 
-See `doc/research/equational-completion.md` for the theoretical foundation.
+See RES_0043 for the theoretical foundation.
 
 **Problem B (object level): How to branch on symbolic conditions?**
 
@@ -103,7 +103,7 @@ When JUMPI's condition is symbolic (`gt(32, ?S)` — unknown calldata size), nei
 
 **Solution:** Add ⊕ (additive disjunction / internal choice) to ILL. Comparison operations produce `⊕` instead of `&` — the system decides (one holds), both cases explored. Each ⊕ branch gets the result AND a path condition as a persistent fact. With ⊕ at comparisons, GT doesn't compute `gt(32, ?S)` — it branches, each branch gets concrete 0 or 1. JUMPI always sees concrete. B1: independent of Problem A.
 
-See `doc/research/symbolic-branching.md` for full analysis.
+See RES_0014 (execution trees) for full analysis.
 
 ### The Design Question (Reframed)
 
@@ -136,7 +136,7 @@ Two kinds of normalization serve different purposes:
 - Content-addressing preserved: the `plus_expr` is never stored, so no hash/content mismatch
 - Ensures confluence: catch-all path and FFI path produce the same hash for ground inputs
 
-See `doc/research/equational-completion.md` for the full safety argument.
+See RES_0043 for the full safety argument.
 
 **Unrestricted Store.put normalization IS wrong:** Normalizing `Store.put('plus_expr', [_A, binlit(0)])` → `_A` would corrupt rule patterns containing metavars. The normalization must only fire when ALL children are concrete values (`binlit`).
 
@@ -187,7 +187,7 @@ Engine normalizes ground + identity + cancellation (fast, always correct). ILL r
 
 K's bottleneck is **lemma engineering** — proofs get stuck on terms that are logically simplifiable but have no matching rule. Users must understand internal simplification state to write effective lemmas. Our catch-all approach avoids "stuck" — expressions always reduce to SOME symbolic term.
 
-See `doc/research/symbolic-arithmetic-design-space.md` for detailed comparison.
+See RES_0039 for detailed comparison.
 
 ## The O(n) Argument: Nested vs Separate
 
@@ -1156,7 +1156,7 @@ Key benchmark questions:
 
 ## Theory-Informed Simplification Techniques
 
-The 5 approaches above were derived from EVM-specific tools (hevm, K). Proof theory and term rewriting literature reveals additional techniques. Full survey: `doc/research/expression-simplification.md`.
+The 5 approaches above were derived from EVM-specific tools (hevm, K). Proof theory and term rewriting literature reveals additional techniques. Full survey: RES_0016.
 
 ### T1: AC-Normalization at Construction Time (Maude philosophy)
 
@@ -1515,8 +1515,8 @@ Notes on the table:
 - Tamarin Prover — multiset rewriting for security protocol verification
 - Jaffar & Maher (1994) — *Constraint Logic Programming: A Survey* (CLP framework for flat constraints)
 - Locally nameless representation — de Bruijn within binders, global names across (Charguéraud 2012)
-- Symbolic arithmetic design space — `doc/research/symbolic-arithmetic-design-space.md`
-- Expression simplification survey — `doc/research/expression-simplification.md`
+- Symbolic arithmetic design space — RES_0039
+- Expression simplification survey — RES_0016
 - Willsey et al. (2021) — *egg: Fast and Extensible Equality Saturation*
 - Singher & Shacham (2023) — *Colored E-Graph: Equality Reasoning with Conditions*
 - Eker (2003) — *Associative-Commutative Rewriting on Large Terms* (Maude)

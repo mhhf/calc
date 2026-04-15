@@ -17,11 +17,3 @@ export function toggleDarkMode() {
     localStorage.setItem('darkMode', String(newValue));
   }
 }
-
-
-// Calculus overview filters
-export const [ruleFilter, setRuleFilter] = createSignal('');
-export const [showStructuralRules, setShowStructuralRules] = createSignal(false);
-
-// Sandbox state
-export const [formulaInput, setFormulaInput] = createSignal('');
