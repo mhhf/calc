@@ -7,11 +7,10 @@ const assert = require('node:assert');
 const path = require('path');
 const mde = require('../../lib/engine');
 const {
-  explore,
-  expandChoice, expandConsqChoices, stateHashStr
+  explore, stateHashStr
 } = require('../../lib/engine/explore');
 const { ILL_CONNECTIVES } = require('../../lib/engine/ill/connectives');
-const { resolveConn } = require('../../lib/engine/compile');
+const { resolveConn, expandChoice, expandConsqChoices } = require('../../lib/engine/formula-utils');
 const { GRADE_W } = require('../../lib/engine/grades');
 const ILL_RC = resolveConn(ILL_CONNECTIVES);
 const {

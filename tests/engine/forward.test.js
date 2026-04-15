@@ -10,7 +10,7 @@ const Store = require('../../lib/kernel/store');
 const ffi = require('../../lib/engine/ill/ffi');
 const { tryMatch, buildMatchOpts } = require('../../lib/engine/match');
 const { ILL_CONNECTIVES } = require('../../lib/engine/ill/connectives');
-const { resolveConn } = require('../../lib/engine/compile');
+const { resolveConn, flattenAnte } = require('../../lib/engine/formula-utils');
 const ILL_RC = resolveConn(ILL_CONNECTIVES);
 const { proveNaive } = require('../../lib/engine/lnl/persistent');
 
@@ -18,7 +18,7 @@ describe('Forward Chaining', { timeout: 10000 }, () => {
   describe('flattenAnte', () => {
     it('flattens simple tensor', async () => {
       const h = await mde.parseExpr('A * B * C');
-      const { linear, persistent } = forward.flattenAnte(h, ILL_RC);
+      const { linear, persistent } = flattenAnte(h, ILL_RC);
 
       assert.strictEqual(linear.length, 3, 'Should have 3 linear');
       assert.strictEqual(persistent.length, 0, 'Should have no persistent');
@@ -26,7 +26,7 @@ describe('Forward Chaining', { timeout: 10000 }, () => {
 
     it('extracts bang as persistent', async () => {
       const h = await mde.parseExpr('A * !B * C');
-      const { linear, persistent } = forward.flattenAnte(h, ILL_RC);
+      const { linear, persistent } = flattenAnte(h, ILL_RC);
 
       assert.strictEqual(linear.length, 2, 'Should have 2 linear');
       assert.strictEqual(persistent.length, 1, 'Should have 1 persistent');

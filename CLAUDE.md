@@ -71,6 +71,7 @@ lib/
 ├── calculus/            # Calculus loader (from .calc/.rules files)
 │   └── builders.js      # Parser factory (Earley delegation), deriveRoles()
 ├── engine/              # Forward/backward execution engine (3-layer lego)
+│   ├── formula-utils.js # Generic: connective-aware formula decomposition (shared across pipeline)
 │   ├── match.js         # Generic: pattern matching + tryMatch pipeline
 │   ├── strategy.js      # Generic: rule selection (fingerprint, disc-tree, dynamic rules)
 │   ├── forward.js       # Generic: committed-choice main loop

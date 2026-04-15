@@ -1,7 +1,7 @@
 /**
  * Tests for compiled pattern matching (Opt_G).
  *
- * Verifies compilePM, compilePS, compilePSAll
+ * Verifies compilePM, compilePS
  * produce identical results to the generic matching pipeline.
  */
 
