@@ -129,7 +129,7 @@ describe('ZK symbolic solc: 31-path witness generation', { timeout: 1800000 }, (
 
       // Build guided proof term
       const innerTerm = guidedTerm(leaf.trace, rfResult.term);
-      const guidedTerm = {
+      const gTerm = {
         rule: 'monad_r',
         principal: null,
         subterms: [innerTerm]
@@ -138,7 +138,7 @@ describe('ZK symbolic solc: 31-path witness generation', { timeout: 1800000 }, (
       // Build sequent and generate witness
       const monadSucc = Store.put('monad', [succFormula]);
       const sequent = Seq.fromArrays(linearCtx, cartesianCtx, monadSucc);
-      const witness = generateWitness(guidedTerm, sequent, {
+      const witness = generateWitness(gTerm, sequent, {
         calculus: illCalc,
         customChips: ALL_CUSTOM_CHIPS,
       });

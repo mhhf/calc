@@ -60,7 +60,7 @@ function buildSuccedentFromState(finalState) {
 }
 
 describe('ZK benchmark: solc forward execution', { timeout: 60000 }, () => {
-  let engineCalc, illCalc, state, forwardResult, guidedTerm, witness;
+  let engineCalc, illCalc, state, forwardResult, gTerm, witness;
 
   before(async () => {
     Store.clear();
@@ -104,7 +104,7 @@ describe('ZK benchmark: solc forward execution', { timeout: 60000 }, () => {
     const innerTerm = guidedTerm(forwardResult.trace, rfResult.term);
 
     // Wrap in monad_r
-    guidedTerm = {
+    gTerm = {
       rule: 'monad_r',
       principal: null,
       subterms: [innerTerm]
@@ -117,7 +117,7 @@ describe('ZK benchmark: solc forward execution', { timeout: 60000 }, () => {
       nodeCount++;
       if (t.subterms) t.subterms.forEach(countNodes);
     }
-    countNodes(guidedTerm);
+    countNodes(gTerm);
     console.log(`  proof term: ${nodeCount} nodes`);
   });
 
@@ -137,7 +137,7 @@ describe('ZK benchmark: solc forward execution', { timeout: 60000 }, () => {
     const sequent = Seq.fromArrays(linearCtx, cartesianCtx, monadSucc);
 
     const t0 = performance.now();
-    witness = generateWitness(guidedTerm, sequent, { calculus: illCalc });
+    witness = generateWitness(gTerm, sequent, { calculus: illCalc });
     const dt = performance.now() - t0;
 
     // Summary stats

@@ -56,7 +56,7 @@ const ALL_CUSTOM_CHIPS = new Set([
 ]);
 
 describe('ZK chunked tree: split and verify', { timeout: 600000 }, () => {
-  let engineCalc, illCalc, state, forwardResult, guidedTerm;
+  let engineCalc, illCalc, state, forwardResult, gTerm;
   let fullWitness, chunks;
 
   before(async () => {
@@ -85,7 +85,7 @@ describe('ZK chunked tree: split and verify', { timeout: 600000 }, () => {
     assert.ok(rfResult);
 
     const innerTerm = guidedTerm(forwardResult.trace, rfResult.term);
-    guidedTerm = { rule: 'monad_r', principal: null, subterms: [innerTerm] };
+    gTerm = { rule: 'monad_r', principal: null, subterms: [innerTerm] };
 
     const linearCtx = [];
     for (const [h, count] of Object.entries(state.linear || {})) {
@@ -98,7 +98,7 @@ describe('ZK chunked tree: split and verify', { timeout: 600000 }, () => {
     const monadSucc = Store.put('monad', [succFormula]);
     const sequent = Seq.fromArrays(linearCtx, cartesianCtx, monadSucc);
 
-    fullWitness = generateWitness(guidedTerm, sequent, {
+    fullWitness = generateWitness(gTerm, sequent, {
       calculus: illCalc,
       customChips: ALL_CUSTOM_CHIPS,
     });

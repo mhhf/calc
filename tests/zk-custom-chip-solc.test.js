@@ -56,7 +56,7 @@ const ALL_CUSTOM_CHIPS = new Set([
 ]);
 
 describe('ZK custom chip: solc with all predicates', { timeout: 600000 }, () => {
-  let engineCalc, illCalc, state, forwardResult, guidedTerm;
+  let engineCalc, illCalc, state, forwardResult, gTerm;
   let witnessCustom;
 
   before(async () => {
@@ -94,7 +94,7 @@ describe('ZK custom chip: solc with all predicates', { timeout: 600000 }, () => 
     const innerTerm = guidedTerm(forwardResult.trace, rfResult.term);
     const dt = performance.now() - t0;
 
-    guidedTerm = {
+    gTerm = {
       rule: 'monad_r',
       principal: null,
       subterms: [innerTerm]
@@ -102,7 +102,7 @@ describe('ZK custom chip: solc with all predicates', { timeout: 600000 }, () => 
 
     // Count nodes iteratively (tree is ~1.74M deep, recursion overflows)
     let nodeCount = 0;
-    const stack = [guidedTerm];
+    const stack = [gTerm];
     while (stack.length > 0) {
       const t = stack.pop();
       if (!t) continue;
@@ -127,7 +127,7 @@ describe('ZK custom chip: solc with all predicates', { timeout: 600000 }, () => 
     const sequent = Seq.fromArrays(linearCtx, cartesianCtx, monadSucc);
 
     const t0 = performance.now();
-    witnessCustom = generateWitness(guidedTerm, sequent, {
+    witnessCustom = generateWitness(gTerm, sequent, {
       calculus: illCalc,
       customChips: ALL_CUSTOM_CHIPS,
     });

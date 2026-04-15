@@ -73,7 +73,7 @@ function countRule(t, ruleName) {
 }
 
 describe('ZK noFFI witness: noffi_tiny (2-step clause resolution)', { timeout: 30000 }, () => {
-  let calc, illCalc, state, forwardResult, guidedTerm, witness;
+  let calc, illCalc, state, forwardResult, gTerm, witness;
 
   before(async () => {
     Store.clear();
@@ -114,25 +114,25 @@ describe('ZK noFFI witness: noffi_tiny (2-step clause resolution)', { timeout: 3
     assert.ok(rfResult, 'rightFocusTerm should succeed');
 
     const innerTerm = guidedTerm(forwardResult.trace, rfResult.term);
-    guidedTerm = {
+    gTerm = {
       rule: 'monad_r',
       principal: null,
       evidence: innerTerm,   // monad_r checker uses .evidence, not .subterms[0]
       subterms: [innerTerm]
     };
 
-    const nodes = countNodes(guidedTerm);
+    const nodes = countNodes(gTerm);
     console.log(`  proof term: ${nodes} nodes`);
     // Should have clause proof nodes (copy/loli_l/monad_l chains)
     assert.ok(nodes > 10, `Expected >10 nodes (clause proofs), got ${nodes}`);
 
     // Phase 6-3: ZERO ffi nodes in the entire proof term tree
-    const ffiCount = countRule(guidedTerm, 'ffi');
+    const ffiCount = countRule(gTerm, 'ffi');
     assert.strictEqual(ffiCount, 0,
       `SOUNDNESS: proof term must have 0 ffi nodes, found ${ffiCount}`);
 
     // Verify expected clause-proof rules are present
-    const rules = collectRules(guidedTerm);
+    const rules = collectRules(gTerm);
     assert.ok(rules.has('copy'), 'clause proofs must use copy');
     assert.ok(rules.has('loli_l'), 'clause proofs must use loli_l');
     assert.ok(rules.has('monad_l'), 'clause proofs must use monad_l');
@@ -155,14 +155,14 @@ describe('ZK noFFI witness: noffi_tiny (2-step clause resolution)', { timeout: 3
       if (t.rule === 'copy') cartesianCtx.add(t.principal);
       if (t.subterms) for (const s of t.subterms) collectGamma(s);
     }
-    collectGamma(guidedTerm);
+    collectGamma(gTerm);
 
     const succFormula = buildSuccedentFromState(forwardResult.state);
     const monadSucc = Store.put('monad', [succFormula]);
     const sequent = Seq.fromArrays(linearCtx, [...cartesianCtx], monadSucc);
 
     const checker = createChecker(illCalc);
-    const result = checker.check(guidedTerm, sequent);
+    const result = checker.check(gTerm, sequent);
     assert.strictEqual(result.valid, true,
       `checkTerm failed: ${result.error || JSON.stringify(result)}`);
     console.log('  checkTerm: valid');
@@ -181,7 +181,7 @@ describe('ZK noFFI witness: noffi_tiny (2-step clause resolution)', { timeout: 3
     const monadSucc = Store.put('monad', [succFormula]);
     const sequent = Seq.fromArrays(linearCtx, cartesianCtx, monadSucc);
 
-    witness = generateWitness(guidedTerm, sequent, { calculus: illCalc });
+    witness = generateWitness(gTerm, sequent, { calculus: illCalc });
 
     // No FFI rows
     const ffiRows = (witness.chips.ffi || []).filter(r => r[0] === 1);
@@ -221,7 +221,7 @@ describe('ZK noFFI witness: noffi_tiny (2-step clause resolution)', { timeout: 3
 // ─── Phase 6-3: Pure linear baseline (no persistent/clause proofs) ───────────
 
 describe('ZK noFFI witness: pure_linear (no clause resolution)', { timeout: 30000 }, () => {
-  let calc, illCalc, state, forwardResult, guidedTerm, witness;
+  let calc, illCalc, state, forwardResult, gTerm, witness;
 
   before(async () => {
     Store.clear();
@@ -259,20 +259,20 @@ describe('ZK noFFI witness: pure_linear (no clause resolution)', { timeout: 3000
     assert.ok(rfResult, 'rightFocusTerm should succeed');
 
     const innerTerm = guidedTerm(forwardResult.trace, rfResult.term);
-    guidedTerm = {
+    gTerm = {
       rule: 'monad_r',
       principal: null,
       subterms: [innerTerm]
     };
 
     // Zero ffi nodes — the critical soundness assertion
-    const ffiCount = countRule(guidedTerm, 'ffi');
+    const ffiCount = countRule(gTerm, 'ffi');
     assert.strictEqual(ffiCount, 0, 'pure linear: 0 ffi nodes');
 
-    const rules = collectRules(guidedTerm);
+    const rules = collectRules(gTerm);
     assert.ok(!rules.has('ffi'), 'no ffi');
     // copy nodes ARE expected (for using rules from gamma) — just no clause RESOLUTION
-    console.log(`  nodes: ${countNodes(guidedTerm)}, rules: ${[...rules].sort().join(', ')}`);
+    console.log(`  nodes: ${countNodes(gTerm)}, rules: ${[...rules].sort().join(', ')}`);
   });
 
   it('generates ZK witness with zero clause-resolution evidence', () => {
@@ -289,7 +289,7 @@ describe('ZK noFFI witness: pure_linear (no clause resolution)', { timeout: 3000
     const monadSucc = Store.put('monad', [succFormula]);
     const sequent = Seq.fromArrays(linearCtx, cartesianCtx, monadSucc);
 
-    witness = generateWitness(guidedTerm, sequent, { calculus: illCalc });
+    witness = generateWitness(gTerm, sequent, { calculus: illCalc });
 
     // Key soundness property: zero persistent evidence means no clause proofs
     // were needed. The proof term uses copy/loli_l/monad_l for rule APPLICATION
