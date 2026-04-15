@@ -1,13 +1,13 @@
 /**
  * Direct tests for optimizer.js
  *
- * Covers: resolveProfile (bare/fast/evm), env var override, custom profiles.
+ * Covers: profile (bare/fast/evm), env var override, custom profiles.
  */
 const { describe, it, beforeEach, afterEach } = require('node:test');
 const assert = require('node:assert/strict');
-const { resolveProfile } = require('../../lib/engine/optimizer');
+const { profile } = require('../../lib/engine/optimizer');
 
-describe('resolveProfile', () => {
+describe('profile', () => {
   let savedEnv;
 
   beforeEach(() => {
@@ -21,7 +21,7 @@ describe('resolveProfile', () => {
   });
 
   it('defaults to evm profile', () => {
-    const p = resolveProfile();
+    const p = profile();
     assert.equal(p.name, 'evm');
     assert.equal(p.ffi, true);
     assert.equal(p.discTree, true);
@@ -30,7 +30,7 @@ describe('resolveProfile', () => {
   });
 
   it('resolves bare profile — all optimizations off', () => {
-    const p = resolveProfile('bare');
+    const p = profile('bare');
     assert.equal(p.name, 'bare');
     assert.equal(p.ffi, false);
     assert.equal(p.discTree, false);
@@ -39,7 +39,7 @@ describe('resolveProfile', () => {
   });
 
   it('resolves fast profile — FFI + compiledSub + preserved', () => {
-    const p = resolveProfile('fast');
+    const p = profile('fast');
     assert.equal(p.name, 'fast');
     assert.equal(p.ffi, true);
     assert.equal(p.compiledSub, true);
@@ -49,11 +49,11 @@ describe('resolveProfile', () => {
   });
 
   it('throws on unknown profile name', () => {
-    assert.throws(() => resolveProfile('nonexistent'), /Unknown profile/);
+    assert.throws(() => profile('nonexistent'), /Unknown profile/);
   });
 
   it('accepts custom object profile', () => {
-    const p = resolveProfile({ ffi: true, discTree: false });
+    const p = profile({ ffi: true, discTree: false });
     assert.equal(p.name, 'custom');
     assert.equal(p.ffi, true);
     assert.equal(p.discTree, false);
@@ -63,13 +63,13 @@ describe('resolveProfile', () => {
 
   it('CALC_PROFILE env var overrides argument', () => {
     process.env.CALC_PROFILE = 'bare';
-    const p = resolveProfile('evm');
+    const p = profile('evm');
     assert.equal(p.name, 'bare');
     assert.equal(p.ffi, false);
   });
 
   it('env var throws on unknown profile', () => {
     process.env.CALC_PROFILE = 'bogus';
-    assert.throws(() => resolveProfile(), /Unknown profile/);
+    assert.throws(() => profile(), /Unknown profile/);
   });
 });

@@ -131,7 +131,7 @@ Originally proposed when findAllMatches was called on every node (69% of explore
 
 ### Configurable control predicates
 
-Stage 14 implements structural memoization for EVM using a hardcoded `computeControlHash(stateIndex)` that hashes `(pc, sh)`. This works because PC and SH determine the EVM execution point — states with the same PC+SH produce isomorphic subtrees when branching depends only on symbolic values.
+Stage 14 implements structural memoization for EVM using a hardcoded `controlHash(stateIndex)` that hashes `(pc, sh)`. This works because PC and SH determine the EVM execution point — states with the same PC+SH produce isomorphic subtrees when branching depends only on symbolic values.
 
 The concept generalizes: any program with symmetric structure (checking against a list, dispatch tables, loop unrolling) can benefit. But each domain needs different "control predicates." The fix is to let programs declare them:
 
@@ -139,7 +139,7 @@ The concept generalizes: any program with symmetric structure (checking against 
 @control pc sh.
 ```
 
-The engine reads the annotation and auto-computes the control hash from those predicates. Programs without `@control` get no structural memo (no overhead). Implementation: ~30 LOC in `explore.js` (read annotation, generalize `computeControlHash` to iterate over declared predicates) + grammar support for `@control` annotation.
+The engine reads the annotation and auto-computes the control hash from those predicates. Programs without `@control` get no structural memo (no overhead). Implementation: ~30 LOC in `explore.js` (read annotation, generalize `controlHash` to iterate over declared predicates) + grammar support for `@control` annotation.
 
 **Soundness condition:** the declared control predicates must fully determine the subtree branching structure. Branching on concrete values excluded from the hash would cause unsound memoization. For EVM, this holds because all oplus branching is on symbolic evars/freevars, not on concrete member-specific values like `bitPos`.
 

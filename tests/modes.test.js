@@ -5,10 +5,10 @@
  */
 const { describe, it } = require('node:test');
 const assert = require('node:assert/strict');
-const { generateMonadRules } = require('../lib/calculus/modes');
+const { monadRules } = require('../lib/calculus/modes');
 
-describe('generateMonadRules', () => {
-  const rules = generateMonadRules();
+describe('monadRules', () => {
+  const rules = monadRules();
 
   describe('monad_r', () => {
     it('has correct name and descriptor connective', () => {

@@ -4,18 +4,18 @@
  * Covers:
  * - prove.js buildTerm option (clause proof term construction)
  * - prove.js buildTerm=false (zero overhead, term is null)
- * - provePersistentWithFFI clause evidence forwarding (opt/ffi.js)
- * - evidenceToTerm for state/clause methods (via buildGuidedTerm)
+ * - proveWithFFI clause evidence forwarding (opt/ffi.js)
+ * - evidenceToTerm for state/clause methods (via guidedTerm)
  */
 
 const { describe, it, beforeEach } = require('node:test');
 const assert = require('node:assert/strict');
 const Store = require('../../lib/kernel/store');
 const backward = require('../../lib/engine/backchain');
-const { provePersistentWithFFI } = require('../../lib/engine/opt/ffi');
+const { proveWithFFI } = require('../../lib/engine/opt/ffi');
 const { GRADE_W } = require('../../lib/engine/grades');
 const forward = require('../../lib/engine/forward');
-const { buildGuidedTerm } = require('../../lib/prover/guided-term');
+const { guidedTerm } = require('../../lib/prover/guided-term');
 
 describe('3b.5: Clause Proof Terms', () => {
 
@@ -262,9 +262,9 @@ describe('3b.5: Clause Proof Terms', () => {
     });
   });
 
-  // ─── provePersistentWithFFI clause evidence ─────────────────────
+  // ─── proveWithFFI clause evidence ─────────────────────
 
-  describe('provePersistentWithFFI clause evidence', () => {
+  describe('proveWithFFI clause evidence', () => {
 
     it('forwards proof term in clause evidence', () => {
       // Set up: a goal that can only be proved by clause resolution (not FFI, not state)
@@ -283,7 +283,7 @@ describe('3b.5: Clause Proof Terms', () => {
       const slots = {};
       const evidenceOut = [];
 
-      const idx = provePersistentWithFFI([q], 0, theta, slots, state, calc, evidenceOut);
+      const idx = proveWithFFI([q], 0, theta, slots, state, calc, evidenceOut);
 
       assert.strictEqual(idx, 1, 'should prove the goal');
       assert.strictEqual(evidenceOut.length, 1);
@@ -309,14 +309,14 @@ describe('3b.5: Clause Proof Terms', () => {
       const slots = {};
 
       // No evidenceOut — should succeed without building term
-      const idx = provePersistentWithFFI([q], 0, theta, slots, state, calc, null);
+      const idx = proveWithFFI([q], 0, theta, slots, state, calc, null);
       assert.strictEqual(idx, 1, 'should still prove the goal');
     });
   });
 
-  // ─── evidenceToTerm via buildGuidedTerm ─────────────────────────
+  // ─── evidenceToTerm via guidedTerm ─────────────────────────
 
-  describe('evidenceToTerm via buildGuidedTerm', () => {
+  describe('evidenceToTerm via guidedTerm', () => {
 
     it('state evidence produces copy(fact, id(fact))', () => {
       // Rule: !p -o { q }, with p proved by state lookup
@@ -337,7 +337,7 @@ describe('3b.5: Clause Proof Terms', () => {
         loliHash: null
       }];
 
-      const term = buildGuidedTerm(trace, rfTerm);
+      const term = guidedTerm(trace, rfTerm);
 
       // Navigate to the promotion node's inner term
       const loliL = term.subterms[0];
@@ -383,7 +383,7 @@ describe('3b.5: Clause Proof Terms', () => {
         loliHash: null
       }];
 
-      const term = buildGuidedTerm(trace, rfTerm);
+      const term = guidedTerm(trace, rfTerm);
 
       const loliL = term.subterms[0];
       const antProof = loliL.subterms[0]; // promotion
@@ -413,7 +413,7 @@ describe('3b.5: Clause Proof Terms', () => {
         loliHash: null
       }];
 
-      const term = buildGuidedTerm(trace, rfTerm);
+      const term = guidedTerm(trace, rfTerm);
 
       const loliL = term.subterms[0];
       const antProof = loliL.subterms[0];

@@ -1,14 +1,14 @@
 /**
  * Direct tests for opt/existential-compile.js
  *
- * Covers: chain compilation, executeCompiledStep, FFI failure fallback,
+ * Covers: chain compilation, execExStep, FFI failure fallback,
  * compiled vs non-compiled equivalence.
  */
 const { describe, it, before, beforeEach } = require('node:test');
 const assert = require('node:assert/strict');
 const path = require('path');
 const Store = require('../../lib/kernel/store');
-const { compileExistentialChain, executeCompiledStep } = require('../../lib/engine/opt/existential-compile');
+const { compileExChain, execExStep } = require('../../lib/engine/opt/existential-compile');
 
 describe('opt/existential-compile', () => {
   let calc, ffiContext;
@@ -20,20 +20,20 @@ describe('opt/existential-compile', () => {
     ffiContext = calc.ffiContext;
   });
 
-  describe('compileExistentialChain', () => {
+  describe('compileExChain', () => {
     it('returns null for rule with no existential slots', () => {
       const rule = { existentialSlots: [], existentialGoals: {} };
-      assert.equal(compileExistentialChain(rule, ffiContext), null);
+      assert.equal(compileExChain(rule, ffiContext), null);
     });
 
     it('returns null for null existentialSlots', () => {
       const rule = { existentialSlots: null };
-      assert.equal(compileExistentialChain(rule, ffiContext), null);
+      assert.equal(compileExChain(rule, ffiContext), null);
     });
 
     it('returns null for null existentialGoals', () => {
       const rule = { existentialSlots: [0], existentialGoals: null };
-      assert.equal(compileExistentialChain(rule, ffiContext), null);
+      assert.equal(compileExChain(rule, ffiContext), null);
     });
 
     it('compiles inc goal chain', () => {
@@ -51,7 +51,7 @@ describe('opt/existential-compile', () => {
         metavarSlots: { [inputMv]: inputSlot, [outputMv]: outputSlot },
       };
 
-      const chain = compileExistentialChain(rule, ffiContext);
+      const chain = compileExChain(rule, ffiContext);
       assert.ok(chain, 'should compile inc chain');
       assert.equal(chain.length, 1);
       assert.ok(chain[0], 'inc step should be compiled (not null)');
@@ -69,7 +69,7 @@ describe('opt/existential-compile', () => {
         metavarSlots: { [mv]: 0 },
       };
 
-      const chain = compileExistentialChain(rule, ffiContext);
+      const chain = compileExChain(rule, ffiContext);
       // No FFI handler for 'no_such_ffi' → null or all-null chain
       assert.ok(chain === null || chain.every(s => s === null));
     });
@@ -85,13 +85,13 @@ describe('opt/existential-compile', () => {
         metavarSlots: { [Store.put('metavar', ['In'])]: 0, [mv]: 1 },
       };
 
-      compileExistentialChain(rule, ffiContext);
+      compileExChain(rule, ffiContext);
       assert.ok(Array.isArray(rule._existentialGoalOrder));
       assert.equal(rule._existentialGoalOrder.length, 1);
     });
   });
 
-  describe('executeCompiledStep', () => {
+  describe('execExStep', () => {
     it('returns false when required input is missing from theta', () => {
       const step = {
         handler: () => ({ success: true, theta: [] }),
@@ -100,7 +100,7 @@ describe('opt/existential-compile', () => {
         inputMask: 1,
         arity: 1,
       };
-      const result = executeCompiledStep(step, [undefined], {});
+      const result = execExStep(step, [undefined], {});
       assert.equal(result, false);
     });
 
@@ -112,7 +112,7 @@ describe('opt/existential-compile', () => {
         inputMask: 0,
         arity: 1,
       };
-      const result = executeCompiledStep(step, [Store.put('atom', ['x'])], {});
+      const result = execExStep(step, [Store.put('atom', ['x'])], {});
       assert.equal(result, false);
     });
 
@@ -124,7 +124,7 @@ describe('opt/existential-compile', () => {
         inputMask: 0,
         arity: 1,
       };
-      const result = executeCompiledStep(step, [Store.put('atom', ['x'])], {});
+      const result = execExStep(step, [Store.put('atom', ['x'])], {});
       assert.equal(result, false);
     });
 
@@ -141,7 +141,7 @@ describe('opt/existential-compile', () => {
       const slots = { [outMv]: 0 };
       const theta = [undefined];
 
-      const result = executeCompiledStep(step, theta, slots);
+      const result = execExStep(step, theta, slots);
       assert.equal(result, true);
       assert.equal(theta[0], outVal);
     });

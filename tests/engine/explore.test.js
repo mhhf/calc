@@ -8,12 +8,12 @@ const path = require('path');
 const mde = require('../../lib/engine');
 const {
   explore,
-  expandChoiceItem, expandConsequentChoices, hashStateString
+  expandChoice, expandConsqChoices, stateHashStr
 } = require('../../lib/engine/explore');
 const { ILL_CONNECTIVES } = require('../../lib/engine/ill/connectives');
-const { resolveConnectives } = require('../../lib/engine/compile');
+const { resolveConn } = require('../../lib/engine/compile');
 const { GRADE_W } = require('../../lib/engine/grades');
-const ILL_RC = resolveConnectives(ILL_CONNECTIVES);
+const ILL_RC = resolveConn(ILL_CONNECTIVES);
 const {
   countLeaves, getAllLeaves, maxDepth, countNodes, toDot
 } = require('../../lib/engine/tree-utils');
@@ -90,12 +90,12 @@ describe('explore', { timeout: 10000 }, () => {
     });
   });
 
-  describe('expandChoiceItem', () => {
+  describe('expandChoice', () => {
     beforeEach(() => { Store.clear(); });
 
     it('leaf returns single alternative', () => {
       const h = Store.put('atom', ['foo']);
-      const alts = expandChoiceItem(h, ILL_RC);
+      const alts = expandChoice(h, ILL_RC);
       assert.strictEqual(alts.length, 1);
       assert.deepStrictEqual(alts[0], { linear: [h], persistent: [], grade0: [] });
     });
@@ -104,7 +104,7 @@ describe('explore', { timeout: 10000 }, () => {
       const a = Store.put('atom', ['a']);
       const b = Store.put('atom', ['b']);
       const w = Store.put('with', [a, b]);
-      const alts = expandChoiceItem(w, ILL_RC);
+      const alts = expandChoice(w, ILL_RC);
       assert.strictEqual(alts.length, 2);
       assert.deepStrictEqual(alts[0], { linear: [a], persistent: [], grade0: [] });
       assert.deepStrictEqual(alts[1], { linear: [b], persistent: [], grade0: [] });
@@ -116,7 +116,7 @@ describe('explore', { timeout: 10000 }, () => {
       const c = Store.put('atom', ['c']);
       const w = Store.put('with', [b, c]);
       const t = Store.put('tensor', [a, w]);
-      const alts = expandChoiceItem(t, ILL_RC);
+      const alts = expandChoice(t, ILL_RC);
       assert.strictEqual(alts.length, 2);
       assert.deepStrictEqual(alts[0].linear, [a, b]);
       assert.deepStrictEqual(alts[1].linear, [a, c]);
@@ -128,14 +128,14 @@ describe('explore', { timeout: 10000 }, () => {
       const c = Store.put('atom', ['c']);
       const w1 = Store.put('with', [a, b]);
       const w2 = Store.put('with', [w1, c]);
-      const alts = expandChoiceItem(w2, ILL_RC);
+      const alts = expandChoice(w2, ILL_RC);
       assert.strictEqual(alts.length, 3);
     });
 
     it('bang(A) returns persistent alternative', () => {
       const a = Store.put('atom', ['a']);
       const bang = Store.put('bang', [GRADE_W,a]);
-      const alts = expandChoiceItem(bang, ILL_RC);
+      const alts = expandChoice(bang, ILL_RC);
       assert.strictEqual(alts.length, 1);
       assert.deepStrictEqual(alts[0], { linear: [], persistent: [a], grade0: [] });
     });
@@ -146,7 +146,7 @@ describe('explore', { timeout: 10000 }, () => {
       const bangP = Store.put('bang', [GRADE_W,p]);
       const monadQ = Store.put('monad', [q]);
       const loli = Store.put('loli', [bangP, monadQ]);
-      const alts = expandChoiceItem(loli, ILL_RC);
+      const alts = expandChoice(loli, ILL_RC);
       assert.strictEqual(alts.length, 1);
       assert.deepStrictEqual(alts[0], { linear: [loli], persistent: [], grade0: [] });
     });
@@ -155,7 +155,7 @@ describe('explore', { timeout: 10000 }, () => {
       const a = Store.put('atom', ['a']);
       const b = Store.put('atom', ['b']);
       const p = Store.put('oplus', [a, b]);
-      const alts = expandChoiceItem(p, ILL_RC);
+      const alts = expandChoice(p, ILL_RC);
       assert.strictEqual(alts.length, 2);
       assert.deepStrictEqual(alts[0], { linear: [a], persistent: [], grade0: [] });
       assert.deepStrictEqual(alts[1], { linear: [b], persistent: [], grade0: [] });
@@ -171,7 +171,7 @@ describe('explore', { timeout: 10000 }, () => {
       const branch0 = Store.put('loli', [bangP, Store.put('monad', [a])]);
       const branch1 = Store.put('loli', [bangQ, Store.put('monad', [b])]);
       const pl = Store.put('oplus', [branch0, branch1]);
-      const alts = expandChoiceItem(pl, ILL_RC);
+      const alts = expandChoice(pl, ILL_RC);
       assert.strictEqual(alts.length, 2);
       // Each branch is a loli fact (fired by matchLoli at runtime)
       assert.deepStrictEqual(alts[0], { linear: [branch0], persistent: [], grade0: [] });
@@ -188,7 +188,7 @@ describe('explore', { timeout: 10000 }, () => {
       const branch0 = Store.put('loli', [bangP, Store.put('monad', [a])]);
       const branch1 = Store.put('loli', [bangQ, Store.put('monad', [b])]);
       const w = Store.put('with', [branch0, branch1]);
-      const alts = expandChoiceItem(w, ILL_RC);
+      const alts = expandChoice(w, ILL_RC);
       assert.strictEqual(alts.length, 2);
       // Each branch is a loli fact (fired by matchLoli at runtime)
       assert.deepStrictEqual(alts[0], { linear: [branch0], persistent: [], grade0: [] });
@@ -196,12 +196,12 @@ describe('explore', { timeout: 10000 }, () => {
     });
   });
 
-  describe('expandConsequentChoices', () => {
+  describe('expandConsqChoices', () => {
     beforeEach(() => { Store.clear(); });
 
     it('no choice returns single alternative', () => {
       const a = Store.put('atom', ['a']);
-      const alts = expandConsequentChoices({ linear: [a], persistent: [] }, ILL_RC);
+      const alts = expandConsqChoices({ linear: [a], persistent: [] }, ILL_RC);
       assert.strictEqual(alts.length, 1);
       assert.deepStrictEqual(alts[0].linear, [a]);
     });
@@ -210,14 +210,14 @@ describe('explore', { timeout: 10000 }, () => {
       const a = Store.put('atom', ['a']);
       const b = Store.put('atom', ['b']);
       const w = Store.put('with', [a, b]);
-      const alts = expandConsequentChoices({ linear: [w], persistent: [] }, ILL_RC);
+      const alts = expandConsqChoices({ linear: [w], persistent: [] }, ILL_RC);
       assert.strictEqual(alts.length, 2);
     });
 
     it('preserves original persistent items', () => {
       const a = Store.put('atom', ['a']);
       const p = Store.put('atom', ['p']);
-      const alts = expandConsequentChoices({ linear: [a], persistent: [p] }, ILL_RC);
+      const alts = expandConsqChoices({ linear: [a], persistent: [p] }, ILL_RC);
       assert.strictEqual(alts.length, 1);
       assert(alts[0].persistent.includes(p));
     });
@@ -289,10 +289,10 @@ describe('explore', { timeout: 10000 }, () => {
       assert.strictEqual(tree.children[0].child.type, 'cycle');
     });
 
-    it('hashStateString produces deterministic strings', () => {
+    it('stateHashStr produces deterministic strings', () => {
       const s1 = { linear: { 5: 2, 3: 1 }, persistent: { 7: true, 2: true } };
       const s2 = { linear: { 3: 1, 5: 2 }, persistent: { 2: true, 7: true } };
-      assert.strictEqual(hashStateString(s1), hashStateString(s2));
+      assert.strictEqual(stateHashStr(s1), stateHashStr(s2));
     });
   });
 
@@ -564,7 +564,7 @@ describe('explore', { timeout: 10000 }, () => {
 
       const tree = explore(state, [rule], {
         maxDepth: 5,
-        calc: null
+        calc: { connectives: ILL_CONNECTIVES }
       });
 
       // Root should branch (rule fires, plus creates 2 alternatives)

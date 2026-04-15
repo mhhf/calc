@@ -13,7 +13,7 @@ const fs = require('fs');
 
 const calculus = require('../lib/calculus');
 const Seq = require('../lib/kernel/sequent');
-const { createSequentParser } = require('../lib/parser/sequent-parser');
+const { sequentParser } = require('../lib/parser/sequent-parser');
 const { createProver } = require('../lib/prover/focused');
 const { buildRuleSpecs } = require('../lib/prover/rule-interpreter');
 const { extractTerm } = require('../lib/prover/generic-term');
@@ -85,7 +85,7 @@ function proveAndWitnessCart(linear, cartesian, succ, name) {
 
 before(async () => {
   calc = await calculus.loadILL();
-  seqParser = createSequentParser(calc);
+  seqParser = sequentParser(calc);
   prover = createProver(calc);
   checker = createChecker(calc);
   const built = buildRuleSpecs(calc);

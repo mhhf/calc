@@ -17,7 +17,7 @@ const mde = require('../lib/engine');
 const Store = require('../lib/kernel/store');
 const Seq = require('../lib/kernel/sequent');
 const calculus = require('../lib/calculus');
-const { buildGuidedTerm } = require('../lib/prover/guided-term');
+const { guidedTerm } = require('../lib/prover/guided-term');
 const { rightFocusTerm } = require('../lib/prover/bridge');
 const { generateWitness } = require('../lib/zk/witness');
 
@@ -91,7 +91,7 @@ describe('ZK custom chip: solc with all predicates', { timeout: 600000 }, () => 
     assert.ok(rfResult, 'rightFocusTerm should succeed');
 
     const t0 = performance.now();
-    const innerTerm = buildGuidedTerm(forwardResult.trace, rfResult.term);
+    const innerTerm = guidedTerm(forwardResult.trace, rfResult.term);
     const dt = performance.now() - t0;
 
     guidedTerm = {

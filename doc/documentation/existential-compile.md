@@ -21,9 +21,9 @@ The compilation is sound because:
 
 ## Algorithm
 
-`compileExistentialChain(rule, ffiContext)` runs once per rule at compile time:
+`compileExChain(rule, ffiContext)` runs once per rule at compile time:
 
-1. **Collect goals** — gather existential goals from `rule.existentialSlots` and `rule.existentialGoals`, order by consequent-persistent position (mirrors `resolveExistentials` order)
+1. **Collect goals** — gather existential goals from `rule.existentialSlots` and `rule.existentialGoals`, order by consequent-persistent position (mirrors `resolveEx` order)
 2. **Per goal** — look up predicate, FFI handler, and mode annotations
 3. **Map arguments** — for each arg position:
    - If child has a metavar slot → `argSlot[i] = slotIndex` (read from theta)
@@ -34,7 +34,7 @@ The compilation is sound because:
 
 ## Compiled Step Execution
 
-`executeCompiledStep(step, theta, slots)` runs per goal per match attempt:
+`execExStep(step, theta, slots)` runs per goal per match attempt:
 
 ```
 for each arg:
@@ -63,7 +63,7 @@ Key: metavar chain dereferencing handles fused rules where `A→B→concrete` cr
 - **Deterministic only** — mode `+...+-` required. Non-deterministic predicates (all `+` or multiple `-`) are left as `null` in the chain.
 - **Mode annotations required** — predicates without parsed modes are skipped.
 - **FFI handler required** — predicates without FFI are skipped (compiled clause dispatch is separate, in `opt/compiled-clauses.js`).
-- **Parallel to resolveExistentials** — ordering must match to ensure dependencies (goal A's output feeds goal B's input) are satisfied.
+- **Parallel to resolveEx** — ordering must match to ensure dependencies (goal A's output feeds goal B's input) are satisfied.
 
 ## Performance
 

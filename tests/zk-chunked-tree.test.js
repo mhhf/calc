@@ -18,7 +18,7 @@ const mde = require('../lib/engine');
 const Store = require('../lib/kernel/store');
 const Seq = require('../lib/kernel/sequent');
 const calculus = require('../lib/calculus');
-const { buildGuidedTerm } = require('../lib/prover/guided-term');
+const { guidedTerm } = require('../lib/prover/guided-term');
 const { rightFocusTerm } = require('../lib/prover/bridge');
 const { generateWitness, generateChunkedTreeWitness } = require('../lib/zk/witness');
 
@@ -84,7 +84,7 @@ describe('ZK chunked tree: split and verify', { timeout: 600000 }, () => {
     const rfResult = rightFocusTerm(linear, persistent, succFormula, illCalc.roles);
     assert.ok(rfResult);
 
-    const innerTerm = buildGuidedTerm(forwardResult.trace, rfResult.term);
+    const innerTerm = guidedTerm(forwardResult.trace, rfResult.term);
     guidedTerm = { rule: 'monad_r', principal: null, subterms: [innerTerm] };
 
     const linearCtx = [];

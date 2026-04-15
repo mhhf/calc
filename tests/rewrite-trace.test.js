@@ -1,8 +1,8 @@
 /**
  * Tests for flat rewriting certificates.
  *
- * Validates buildRewriteTrace (forward trace → flat certificate) and
- * checkRewriteTrace (resource accounting verification), plus
+ * Validates rwTrace (forward trace → flat certificate) and
+ * checkRW (resource accounting verification), plus
  * generateFlatWitness (flat certificate → ZK witness).
  */
 
@@ -15,7 +15,7 @@ const mde = require('../lib/engine');
 const Store = require('../lib/kernel/store');
 const Seq = require('../lib/kernel/sequent');
 const calculus = require('../lib/calculus');
-const { buildRewriteTrace, checkRewriteTrace } = require('../lib/prover/rewrite-trace');
+const { rwTrace, checkRW } = require('../lib/prover/rewrite-trace');
 const { generateFlatWitness, MAX_CONSUMED, MAX_PRODUCED } = require('../lib/zk/flat-witness');
 
 const FIXTURE_DIR = path.join(__dirname, '..', 'zk', 'sequent-certifier', 'tests', 'fixtures');
@@ -28,7 +28,7 @@ function saveFixture(name, data) {
 }
 
 describe('rewrite-trace: unit tests', () => {
-  it('buildRewriteTrace extracts consumed/produced from mock trace', () => {
+  it('rwTrace extracts consumed/produced from mock trace', () => {
     Store.clear();
     const a = Store.put('atom', ['a']);
     const b = Store.put('atom', ['b']);
@@ -46,7 +46,7 @@ describe('rewrite-trace: unit tests', () => {
       loliHash: null,
     }];
 
-    const flat = buildRewriteTrace(mockTrace);
+    const flat = rwTrace(mockTrace);
     assert.strictEqual(flat.length, 1);
     assert.deepStrictEqual(flat[0].consumed, [a]);
     assert.deepStrictEqual(flat[0].produced, [b]);
@@ -55,7 +55,7 @@ describe('rewrite-trace: unit tests', () => {
     assert.strictEqual(flat[0].name, 'test_rule');
   });
 
-  it('buildRewriteTrace preserves consumed multiplicity', () => {
+  it('rwTrace preserves consumed multiplicity', () => {
     Store.clear();
     const a = Store.put('atom', ['a']);
     const b = Store.put('atom', ['b']);
@@ -74,12 +74,12 @@ describe('rewrite-trace: unit tests', () => {
       loliHash: null,
     }];
 
-    const flat = buildRewriteTrace(mockTrace);
+    const flat = rwTrace(mockTrace);
     assert.deepStrictEqual(flat[0].consumed, [a, a],
       'should expand count=2 to two entries');
   });
 
-  it('checkRewriteTrace verifies resource accounting', () => {
+  it('checkRW verifies resource accounting', () => {
     Store.clear();
     const a = Store.put('atom', ['a']);
     const b = Store.put('atom', ['b']);
@@ -89,14 +89,14 @@ describe('rewrite-trace: unit tests', () => {
     const trace = [
       { consumed: [a], produced: [c], name: 'step0' },
     ];
-    const result = checkRewriteTrace(delta0, trace);
+    const result = checkRW(delta0, trace);
     assert.ok(result.valid);
     assert.strictEqual(result.remaining.get(b), 1);
     assert.strictEqual(result.remaining.get(c), 1);
     assert.strictEqual(result.remaining.has(a), false);
   });
 
-  it('checkRewriteTrace rejects missing consumed fact', () => {
+  it('checkRW rejects missing consumed fact', () => {
     Store.clear();
     const a = Store.put('atom', ['a']);
     const b = Store.put('atom', ['b']);
@@ -105,12 +105,12 @@ describe('rewrite-trace: unit tests', () => {
     const trace = [
       { consumed: [b], produced: [], name: 'bad_step' },
     ];
-    const result = checkRewriteTrace(delta0, trace);
+    const result = checkRW(delta0, trace);
     assert.strictEqual(result.valid, false);
     assert.ok(result.error.includes('bad_step'));
   });
 
-  it('checkRewriteTrace handles multi-step traces', () => {
+  it('checkRW handles multi-step traces', () => {
     Store.clear();
     const a = Store.put('atom', ['a']);
     const b = Store.put('atom', ['b']);
@@ -121,7 +121,7 @@ describe('rewrite-trace: unit tests', () => {
       { consumed: [a], produced: [b], name: 's0' },
       { consumed: [b], produced: [c], name: 's1' },
     ];
-    const result = checkRewriteTrace(delta0, trace);
+    const result = checkRW(delta0, trace);
     assert.ok(result.valid);
     assert.strictEqual(result.remaining.get(c), 1);
     assert.strictEqual(result.remaining.size, 1);
@@ -147,7 +147,7 @@ describe('rewrite-trace: solc forward integration', { timeout: 60000 }, () => {
   });
 
   it('builds flat trace from 279-step forward execution', () => {
-    flatTrace = buildRewriteTrace(forwardResult.trace);
+    flatTrace = rwTrace(forwardResult.trace);
     assert.strictEqual(flatTrace.length, forwardResult.trace.length);
     console.log(`  flat trace: ${flatTrace.length} steps`);
 
@@ -171,14 +171,14 @@ describe('rewrite-trace: solc forward integration', { timeout: 60000 }, () => {
     console.log(`  compiled rules: ${compiledCount}, loli matches: ${loliCount}`);
   });
 
-  it('checkRewriteTrace verifies the full trace', () => {
+  it('checkRW verifies the full trace', () => {
     // Build initial delta from state
     const delta0 = new Map();
     for (const [h, count] of Object.entries(state.linear || {})) {
       delta0.set(Number(h), Number(count));
     }
 
-    const result = checkRewriteTrace(delta0, flatTrace);
+    const result = checkRW(delta0, flatTrace);
     assert.ok(result.valid, `trace verification failed: ${result.error}`);
     console.log(`  remaining context: ${result.remaining.size} unique facts`);
   });

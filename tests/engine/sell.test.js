@@ -7,7 +7,7 @@ const assert = require('node:assert/strict');
 const path = require('path');
 const Store = require('../../lib/kernel/store');
 const mde = require('../../lib/engine/index');
-const { parseDeclarations } = require('../../lib/parser/declarations');
+const { parseDecls } = require('../../lib/parser/declarations');
 
 const FIXTURES = path.join(__dirname, 'fixtures', 'sell');
 
@@ -26,7 +26,7 @@ describe('SELL: Directive Settings Parser (T9, T23)', () => {
   it('parses (rules: [alpha, beta]) settings', () => {
     Store.clear();
     const src = '#symex (rules: [alpha, beta]) counter 1.';
-    const decls = parseDeclarations(src, _exprParser);
+    const decls = parseDecls(src, _exprParser);
     assert.equal(decls.length, 1);
     assert.equal(decls[0].type, 'query');
     assert.equal(decls[0].kind, 'symex');
@@ -37,14 +37,14 @@ describe('SELL: Directive Settings Parser (T9, T23)', () => {
   it('parses (rules: module_name) single identifier', () => {
     Store.clear();
     const src = '#symex (rules: full) counter 1.';
-    const decls = parseDeclarations(src, _exprParser);
+    const decls = parseDecls(src, _exprParser);
     assert.equal(decls[0].settings.rules, 'full');
   });
 
   it('does NOT misparse #prove (A * B) -o C as settings (T23)', () => {
     Store.clear();
     const src = '#prove (counter 1 * counter 2) -o { counter 3 }.';
-    const decls = parseDeclarations(src, _exprParser);
+    const decls = parseDecls(src, _exprParser);
     assert.equal(decls[0].type, 'query');
     assert.equal(decls[0].settings, undefined);
     assert.ok(decls[0].bodyHash); // expression parsed correctly
@@ -53,7 +53,7 @@ describe('SELL: Directive Settings Parser (T9, T23)', () => {
   it('handles settings with eigenvars', () => {
     Store.clear();
     const src = '#symex (rules: [alpha]) [X] counter X.';
-    const decls = parseDeclarations(src, _exprParser);
+    const decls = parseDecls(src, _exprParser);
     assert.deepEqual(decls[0].settings, { rules: ['alpha'] });
     assert.deepEqual(decls[0].eigenVars, ['X']);
   });
@@ -61,7 +61,7 @@ describe('SELL: Directive Settings Parser (T9, T23)', () => {
   it('omitted rules: returns no settings (backward-compat T19)', () => {
     Store.clear();
     const src = '#symex counter 1.';
-    const decls = parseDeclarations(src, _exprParser);
+    const decls = parseDecls(src, _exprParser);
     assert.equal(decls[0].settings, undefined);
   });
 });
@@ -70,7 +70,7 @@ describe('SELL: Module Algebra Parser (T11)', () => {
   it('parses @module name = label', () => {
     Store.clear();
     const src = '@module full = evm.';
-    const decls = parseDeclarations(src, _exprParser);
+    const decls = parseDecls(src, _exprParser);
     assert.equal(decls[0].type, 'directive');
     assert.equal(decls[0].key, 'module');
     assert.equal(decls[0].args.name, 'full');
@@ -80,7 +80,7 @@ describe('SELL: Module Algebra Parser (T11)', () => {
   it('parses @module name = A + B', () => {
     Store.clear();
     const src = '@module full = evm + gas.';
-    const decls = parseDeclarations(src, _exprParser);
+    const decls = parseDecls(src, _exprParser);
     const expr = decls[0].args.expr;
     assert.equal(expr.type, 'union');
     assert.deepEqual(expr.left, { type: 'label', name: 'evm' });
@@ -90,7 +90,7 @@ describe('SELL: Module Algebra Parser (T11)', () => {
   it('parses @module name = A - {rule1, rule2}', () => {
     Store.clear();
     const src = '@module slim = full - {gas_charge, gas_refund}.';
-    const decls = parseDeclarations(src, _exprParser);
+    const decls = parseDecls(src, _exprParser);
     const expr = decls[0].args.expr;
     assert.equal(expr.type, 'subtract');
     assert.deepEqual(expr.left, { type: 'label', name: 'full' });
@@ -100,7 +100,7 @@ describe('SELL: Module Algebra Parser (T11)', () => {
   it('parses @module with intersection', () => {
     Store.clear();
     const src = '@module core = alpha & beta.';
-    const decls = parseDeclarations(src, _exprParser);
+    const decls = parseDecls(src, _exprParser);
     const expr = decls[0].args.expr;
     assert.equal(expr.type, 'intersect');
   });
@@ -108,7 +108,7 @@ describe('SELL: Module Algebra Parser (T11)', () => {
   it('respects operator precedence: & binds tighter than +', () => {
     Store.clear();
     const src = '@module mix = a + b & c.';
-    const decls = parseDeclarations(src, _exprParser);
+    const decls = parseDecls(src, _exprParser);
     const expr = decls[0].args.expr;
     // Should be: union(a, intersect(b, c))
     assert.equal(expr.type, 'union');
@@ -119,7 +119,7 @@ describe('SELL: Module Algebra Parser (T11)', () => {
   it('parses parenthesized sub-expressions', () => {
     Store.clear();
     const src = '@module x = (a + b) & c.';
-    const decls = parseDeclarations(src, _exprParser);
+    const decls = parseDecls(src, _exprParser);
     const expr = decls[0].args.expr;
     assert.equal(expr.type, 'intersect');
     assert.equal(expr.left.type, 'union');
@@ -336,7 +336,7 @@ describe('SELL: QuerySettings Threading (T10)', () => {
 
 const { GRADE_0, GRADE_W } = require('../../lib/engine/grades');
 const { ILL_CONNECTIVES } = require('../../lib/engine/ill/connectives');
-const { resolveConnectives, flattenAntecedent, compileRule } = require('../../lib/engine/compile');
+const { resolveConn, flattenAnte, compileRule } = require('../../lib/engine/compile');
 const { getModes } = require('../../lib/engine/opt/ffi');
 
 describe('SELL: Graded modality parsing (TODO 155)', () => {
@@ -399,15 +399,15 @@ describe('SELL: Graded modality parsing (TODO 155)', () => {
   });
 });
 
-describe('SELL: flattenAntecedent grade classification (TODO 155)', () => {
+describe('SELL: flattenAnte grade classification (TODO 155)', () => {
   beforeEach(() => Store.clear());
 
   it('bang(GRADE_W, A) → persistent', () => {
     Store.clear();
-    const rc = resolveConnectives(ILL_CONNECTIVES);
+    const rc = resolveConn(ILL_CONNECTIVES);
     const A = Store.put('atom', ['a']);
     const h = Store.put('bang', [GRADE_W, A]);
-    const flat = flattenAntecedent(h, rc);
+    const flat = flattenAnte(h, rc);
     assert.deepEqual(flat.linear, []);
     assert.deepEqual(flat.persistent, [A]);
     assert.deepEqual(flat.grade0, []);
@@ -415,10 +415,10 @@ describe('SELL: flattenAntecedent grade classification (TODO 155)', () => {
 
   it('bang(GRADE_0, A) → grade0', () => {
     Store.clear();
-    const rc = resolveConnectives(ILL_CONNECTIVES);
+    const rc = resolveConn(ILL_CONNECTIVES);
     const A = Store.put('atom', ['a']);
     const h = Store.put('bang', [GRADE_0, A]);
-    const flat = flattenAntecedent(h, rc);
+    const flat = flattenAnte(h, rc);
     assert.deepEqual(flat.linear, []);
     assert.deepEqual(flat.persistent, []);
     assert.deepEqual(flat.grade0, [A]);
@@ -426,14 +426,14 @@ describe('SELL: flattenAntecedent grade classification (TODO 155)', () => {
 
   it('A * !B * !_0 C → linear:[A], persistent:[B], grade0:[C]', () => {
     Store.clear();
-    const rc = resolveConnectives(ILL_CONNECTIVES);
+    const rc = resolveConn(ILL_CONNECTIVES);
     const A = Store.put('atom', ['a']);
     const B = Store.put('atom', ['b']);
     const C = Store.put('atom', ['c']);
     const bangB = Store.put('bang', [GRADE_W, B]);
     const bang0C = Store.put('bang', [GRADE_0, C]);
     const h = Store.put('tensor', [A, Store.put('tensor', [bangB, bang0C])]);
-    const flat = flattenAntecedent(h, rc);
+    const flat = flattenAnte(h, rc);
     assert.deepEqual(flat.linear, [A]);
     assert.deepEqual(flat.persistent, [B]);
     assert.deepEqual(flat.grade0, [C]);
@@ -441,9 +441,9 @@ describe('SELL: flattenAntecedent grade classification (TODO 155)', () => {
 
   it('bare atom → linear', () => {
     Store.clear();
-    const rc = resolveConnectives(ILL_CONNECTIVES);
+    const rc = resolveConn(ILL_CONNECTIVES);
     const A = Store.put('atom', ['a']);
-    const flat = flattenAntecedent(A, rc);
+    const flat = flattenAnte(A, rc);
     assert.deepEqual(flat.linear, [A]);
     assert.deepEqual(flat.persistent, []);
     assert.deepEqual(flat.grade0, []);

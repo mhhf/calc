@@ -22,7 +22,7 @@ const { classifyLeaf } = require('../lib/engine/show');
 const Store = require('../lib/kernel/store');
 const Seq = require('../lib/kernel/sequent');
 const calculus = require('../lib/calculus');
-const { buildGuidedTerm } = require('../lib/prover/guided-term');
+const { guidedTerm } = require('../lib/prover/guided-term');
 const { rightFocusTerm } = require('../lib/prover/bridge');
 const { generateWitness } = require('../lib/zk/witness');
 const { toObject } = require('../lib/engine/fact-set');
@@ -128,7 +128,7 @@ describe('ZK symbolic solc: 31-path witness generation', { timeout: 1800000 }, (
       assert.ok(rfResult, `rightFocusTerm should succeed for leaf ${i}`);
 
       // Build guided proof term
-      const innerTerm = buildGuidedTerm(leaf.trace, rfResult.term);
+      const innerTerm = guidedTerm(leaf.trace, rfResult.term);
       const guidedTerm = {
         rule: 'monad_r',
         principal: null,

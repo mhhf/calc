@@ -7,7 +7,7 @@ const assert = require('node:assert/strict');
 const path = require('path');
 const mde = require('../../lib/engine');
 const Store = require('../../lib/kernel/store');
-const { buildClauseDispatch, tryCompiledClause } = require('../../lib/engine/opt/compiled-clauses');
+const { clauseDispatch, tryCCDispatch } = require('../../lib/engine/opt/compiled-clauses');
 const { buildTheoryLookup, defaultTheories } = require('../../lib/kernel/eq-theory');
 const { binlitTheory } = require('../../lib/engine/ill/binlit-theory');
 const { show } = require('../../lib/engine/show');
@@ -22,13 +22,13 @@ describe('Compiled Clause Dispatch', { timeout: 10000 }, () => {
     const { ffiParsedModes } = require('../../lib/engine/opt/ffi');
     parsedModes = ffiParsedModes;
     theoryLookup = calc.theoryLookup || buildTheoryLookup([...defaultTheories, binlitTheory]);
-    dispatch = calc.clauseDispatch || buildClauseDispatch(
+    dispatch = calc.clauseDispatch || clauseDispatch(
       require('../../lib/engine/backchain').buildIndex(calc.clauses, calc.definitions),
       parsedModes
     );
   });
 
-  describe('buildClauseDispatch', () => {
+  describe('clauseDispatch', () => {
     it('creates dispatch table with expected predicates', () => {
       assert.ok(dispatch.inc, 'should have inc predicate');
       assert.ok(dispatch.plus, 'should have plus predicate');
@@ -57,7 +57,7 @@ describe('Compiled Clause Dispatch', { timeout: 10000 }, () => {
     });
   });
 
-  describe('tryCompiledClause — ground goals', () => {
+  describe('tryCCDispatch — ground goals', () => {
     it('resolves inc(0, ?) base case', () => {
       const { intToBin } = require('../../lib/engine/ill/ffi/convert');
       const zero = intToBin(0n);
@@ -67,7 +67,7 @@ describe('Compiled Clause Dispatch', { timeout: 10000 }, () => {
       const slots = { [mv]: 0 };
       const theta = [undefined];
 
-      const result = tryCompiledClause(dispatch, goal, slots, theta,
+      const result = tryCCDispatch(dispatch, goal, slots, theta,
         binlitTheory.canonicalize, theoryLookup, parsedModes);
 
       assert.equal(result, true, 'should resolve inc(0, ?)');
@@ -86,7 +86,7 @@ describe('Compiled Clause Dispatch', { timeout: 10000 }, () => {
       const slots = { [mv]: 0 };
       const theta = [undefined];
 
-      const result = tryCompiledClause(dispatch, goal, slots, theta,
+      const result = tryCCDispatch(dispatch, goal, slots, theta,
         binlitTheory.canonicalize, theoryLookup, parsedModes);
 
       assert.equal(result, true, 'should resolve inc(2, ?)');
@@ -103,7 +103,7 @@ describe('Compiled Clause Dispatch', { timeout: 10000 }, () => {
       const slots = { [mv]: 0 };
       const theta = [undefined];
 
-      const result = tryCompiledClause(dispatch, goal, slots, theta,
+      const result = tryCCDispatch(dispatch, goal, slots, theta,
         binlitTheory.canonicalize, theoryLookup, parsedModes);
 
       assert.equal(result, true, 'carry case resolved via Tier 2');
@@ -120,7 +120,7 @@ describe('Compiled Clause Dispatch', { timeout: 10000 }, () => {
       const slots = {};
       const theta = [];
 
-      const result = tryCompiledClause(dispatch, goal, slots, theta,
+      const result = tryCCDispatch(dispatch, goal, slots, theta,
         binlitTheory.canonicalize, theoryLookup, parsedModes);
 
       assert.equal(result, true, 'inc(0, 1) is provable');
@@ -136,19 +136,19 @@ describe('Compiled Clause Dispatch', { timeout: 10000 }, () => {
       const slots = {};
       const theta = [];
 
-      const result = tryCompiledClause(dispatch, goal, slots, theta,
+      const result = tryCCDispatch(dispatch, goal, slots, theta,
         binlitTheory.canonicalize, theoryLookup, parsedModes);
 
       assert.equal(result, null, 'inc(0, 5) should not match');
     });
   });
 
-  describe('tryCompiledClause — no modes fallback', () => {
+  describe('tryCCDispatch — no modes fallback', () => {
     it('returns null for predicate without modes', () => {
       const mv = Store.put('metavar', ['test_unknown']);
       const goal = Store.put('unknown_pred', [mv]);
 
-      const result = tryCompiledClause(dispatch, goal, {}, [],
+      const result = tryCCDispatch(dispatch, goal, {}, [],
         null, null, parsedModes);
 
       assert.equal(result, null);
@@ -157,7 +157,7 @@ describe('Compiled Clause Dispatch', { timeout: 10000 }, () => {
     it('returns null for predicate not in dispatch', () => {
       const goal = Store.put('nonexistent', [Store.put('atom', ['x'])]);
 
-      const result = tryCompiledClause(dispatch, goal, {}, [],
+      const result = tryCCDispatch(dispatch, goal, {}, [],
         null, null, parsedModes);
 
       assert.equal(result, null);
@@ -174,7 +174,7 @@ describe('Compiled Clause Dispatch', { timeout: 10000 }, () => {
       const slots = { [mv]: 0 };
       const theta = [undefined];
 
-      const result = tryCompiledClause(dispatch, goal, slots, theta,
+      const result = tryCCDispatch(dispatch, goal, slots, theta,
         binlitTheory.canonicalize, theoryLookup, parsedModes);
 
       assert.equal(result, true, 'should resolve inc(3) via Tier 2');
@@ -187,7 +187,7 @@ describe('Compiled Clause Dispatch', { timeout: 10000 }, () => {
       const goal = Store.put('inc', [intToBin(255n), mv]);
       const theta = [undefined];
 
-      tryCompiledClause(dispatch, goal, { [mv]: 0 }, theta,
+      tryCCDispatch(dispatch, goal, { [mv]: 0 }, theta,
         binlitTheory.canonicalize, theoryLookup, parsedModes);
 
       assert.equal(Store.child(theta[0], 0), 256n, 'inc(255) should equal 256');
@@ -199,7 +199,7 @@ describe('Compiled Clause Dispatch', { timeout: 10000 }, () => {
       const goal = Store.put('plus', [intToBin(2n), intToBin(4n), mv]);
       const theta = [undefined];
 
-      const result = tryCompiledClause(dispatch, goal, { [mv]: 0 }, theta,
+      const result = tryCCDispatch(dispatch, goal, { [mv]: 0 }, theta,
         binlitTheory.canonicalize, theoryLookup, parsedModes);
 
       assert.equal(result, true, 'should resolve plus(2,4) via Tier 2');
@@ -212,7 +212,7 @@ describe('Compiled Clause Dispatch', { timeout: 10000 }, () => {
       const goal = Store.put('plus', [intToBin(1n), intToBin(1n), mv]);
       const theta = [undefined];
 
-      const result = tryCompiledClause(dispatch, goal, { [mv]: 0 }, theta,
+      const result = tryCCDispatch(dispatch, goal, { [mv]: 0 }, theta,
         binlitTheory.canonicalize, theoryLookup, parsedModes);
 
       assert.equal(result, null, 'carry case should fall through to backchainer');
@@ -231,7 +231,7 @@ describe('Compiled Clause Dispatch', { timeout: 10000 }, () => {
       const goal = Store.put('trie_get', [trie, intToBin(0n), mv]);
       const theta = [undefined];
 
-      const result = tryCompiledClause(dispatch, goal, { [mv]: 0 }, theta,
+      const result = tryCCDispatch(dispatch, goal, { [mv]: 0 }, theta,
         binlitTheory.canonicalize, theoryLookup, parsedModes);
 
       assert.equal(result, true, 'trie_get base case');
@@ -299,7 +299,7 @@ describe('Compiled Clause Dispatch', { timeout: 10000 }, () => {
         clauses: { 'peel': { '_': [recClause] } }
       };
       const modes = { peel: ['+', '-'] };
-      const localDispatch = buildClauseDispatch(idx, modes);
+      const localDispatch = clauseDispatch(idx, modes);
 
       // Goal: peel(pair(a, pair(b, e)), ?) — depth 2 recursion
       const a = Store.put('atom', ['sym_a']);
@@ -309,7 +309,7 @@ describe('Compiled Clause Dispatch', { timeout: 10000 }, () => {
       const goal = Store.put('peel', [input, mv]);
       const theta = [undefined];
 
-      const result = tryCompiledClause(localDispatch, goal, { [mv]: 0 }, theta,
+      const result = tryCCDispatch(localDispatch, goal, { [mv]: 0 }, theta,
         null, null, modes);
 
       assert.equal(result, true, 'should resolve via Tier 2');

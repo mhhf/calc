@@ -35,7 +35,7 @@ lib/engine/
 ├── compile.js              # Rule compilation
 ├── constraint.js           # EqNeqSolver data structure
 ├── backward-cache.js       # Backward proof cache (toggleable)
-├── constraint-feed.js      # Solver integration: feedPersistent, filterAltsBySAT
+├── constraint-feed.js      # Solver integration: feedPers, satFilter
 ├── delta-bypass.js         # Direct child extraction for flat patterns
 ├── preserved.js            # Skip re-producing unchanged facts
 ├── disc-tree.js            # Discrimination tree indexing
@@ -107,10 +107,10 @@ graph TB
         PREDICT --> GO["go(depth)"]
         GO --> MATCH["findAllMatches<br/>(uses engine.strategyStack)"]
         GO --> MUTATE["mutateState()"]
-        GO --> DRAIN["drainPersistentLolis()"]
-        GO --> FEED["feedPersistent()"]
+        GO --> DRAIN["drainLolis()"]
+        GO --> FEED["feedPers()"]
         GO --> MEMO["checkMemo / recordMemo"]
-        GO --> SAT["filterAltsBySAT()"]
+        GO --> SAT["satFilter()"]
     end
 
     style Startup fill:#e8e8e8,stroke:#666
@@ -144,7 +144,7 @@ Zero measurable regression from the module reorganization. V8 inlines across Com
 
 Two patterns caused regression during extraction and had to be fixed:
 
-1. **Function-as-parameter.** Passing `mutateState` to `drainPersistentLolis` as a parameter created a polymorphic call site. Fix: import directly.
+1. **Function-as-parameter.** Passing `mutateState` to `drainLolis` as a parameter created a polymorphic call site. Fix: import directly.
 
 2. **Context object in hot loop.** `predictNext(m, ctx)` with `ctx.discIndex[...]` lookups was slower than a closure capturing `discIndex` directly. Fix: `createPredictNext()` returns a closure.
 
@@ -162,9 +162,9 @@ Three caching mechanisms with different invalidation strategies:
 
 The constraint solver integration has two functions:
 
-**`feedPersistent(solver, perArena, checkpoint)`** — reads newly-added persistent facts from the Arena undo log (INSERT operations between checkpoint and cursor) and feeds their hashes to the EqNeqSolver. Called after each `mutateState()` in the DFS loop.
+**`feedPers(solver, perArena, checkpoint)`** — reads newly-added persistent facts from the Arena undo log (INSERT operations between checkpoint and cursor) and feeds their hashes to the EqNeqSolver. Called after each `mutateState()` in the DFS loop.
 
-**`filterAltsBySAT(solver, alts, theta, slots)`** — SAT-filters oplus alternatives. For each alternative, tentatively adds its persistent consequents to the solver and checks satisfiability. Returns indices of surviving (SAT) alternatives. Uses solver checkpoint/restore so filtering is non-destructive.
+**`satFilter(solver, alts, theta, slots)`** — SAT-filters oplus alternatives. For each alternative, tentatively adds its persistent consequents to the solver and checks satisfiability. Returns indices of surviving (SAT) alternatives. Uses solver checkpoint/restore so filtering is non-destructive.
 
 The EqNeqSolver itself (`constraint.js`) is a data structure — union-find with forbid list for `eq`/`neq` constraints. The constraint-feed module handles lifecycle integration with the DFS loop.
 

@@ -6,7 +6,7 @@ const assert = require('node:assert/strict');
 const Store = require('../../lib/kernel/store');
 const {
   _parseSignature,
-  buildSortTable,
+  sortTable,
   inferSort,
   _checkTerm,
   checkForwardRule,
@@ -68,9 +68,9 @@ describe('_parseSignature', () => {
   });
 });
 
-// ─── buildSortTable ─────────────────────────────────────────────────────────
+// ─── sortTable ─────────────────────────────────────────────────────────
 
-describe('buildSortTable', () => {
+describe('sortTable', () => {
   beforeEach(() => Store.clear());
 
   it('builds table from type declarations', () => {
@@ -80,7 +80,7 @@ describe('buildSortTable', () => {
       ['i', arrow(atom('bin'), atom('bin'))],
       ['plus', arrow(atom('bin'), arrow(atom('bin'), arrow(atom('bin'), type())))],
     ]);
-    const table = buildSortTable(types);
+    const table = sortTable(types);
     assert.equal(table.size, 4);
     assert.deepEqual(table.get('bin'), { argSorts: [], returnSort: 'type' });
     assert.deepEqual(table.get('e'), { argSorts: [], returnSort: 'bin' });
@@ -93,14 +93,14 @@ describe('buildSortTable', () => {
       ['bin', type()],
       ['plus/z1', pred('plus', binlit(0n), binlit(0n), binlit(0n))],
     ]);
-    const table = buildSortTable(types);
+    const table = sortTable(types);
     assert.equal(table.size, 1);
     assert.ok(table.has('bin'));
     assert.ok(!table.has('plus/z1'));
   });
 
   it('handles empty input', () => {
-    const table = buildSortTable(new Map());
+    const table = sortTable(new Map());
     assert.equal(table.size, 0);
   });
 });

@@ -1,7 +1,7 @@
 /**
  * Tests for compiled pattern matching (Opt_G).
  *
- * Verifies compilePatternMatch, compilePersistentStep, compilePersistentSteps
+ * Verifies compilePM, compilePS, compilePSAll
  * produce identical results to the generic matching pipeline.
  */
 
@@ -12,15 +12,15 @@ const Store = require('../../lib/kernel/store');
 const mde = require('../../lib/engine');
 const forward = require('../../lib/engine/forward');
 const {
-  compilePatternMatch, executePatternMatch,
+  compilePM, execPM,
 } = require('../../lib/engine/compile');
-const { tryMatch, executePersistentStep, compilePersistentStep } = require('../../lib/engine/match');
+const { tryMatch, execPS, compilePS } = require('../../lib/engine/match');
 const { explore } = require('../../lib/engine/explore');
 const { countNodes, getAllLeaves } = require('../../lib/engine/tree-utils');
 
-// ─── compilePatternMatch ─────────────────────────────────────────────
+// ─── compilePM ─────────────────────────────────────────────
 
-describe('compilePatternMatch', () => {
+describe('compilePM', () => {
   beforeEach(() => { Store.clear(); });
 
   it('matches flat pred(X, Y) binding both vars', () => {
@@ -30,14 +30,14 @@ describe('compilePatternMatch', () => {
     const pattern = Store.put('pred', [xVar, yVar]);
     const slots = { [xVar]: 0, [yVar]: 1 };
 
-    const instructions = compilePatternMatch(pattern, slots);
+    const instructions = compilePM(pattern, slots);
 
     const valA = Store.put('atom', ['a']);
     const valB = Store.put('atom', ['b']);
     const fact = Store.put('pred', [valA, valB]);
     const theta = new Array(2);
 
-    assert(executePatternMatch(instructions, fact, theta), 'should match');
+    assert(execPM(instructions, fact, theta), 'should match');
     assert.strictEqual(theta[0], valA, 'X bound to a');
     assert.strictEqual(theta[1], valB, 'Y bound to b');
   });
@@ -49,18 +49,18 @@ describe('compilePatternMatch', () => {
     const pattern = Store.put('pred', [xVar, ground]);
     const slots = { [xVar]: 0 };
 
-    const instructions = compilePatternMatch(pattern, slots);
+    const instructions = compilePM(pattern, slots);
 
     const valA = Store.put('atom', ['a']);
     const factOk = Store.put('pred', [valA, ground]);
     const factBad = Store.put('pred', [valA, Store.put('atom', ['c2'])]);
 
     const theta1 = new Array(1);
-    assert(executePatternMatch(instructions, factOk, theta1), 'should match with correct ground');
+    assert(execPM(instructions, factOk, theta1), 'should match with correct ground');
     assert.strictEqual(theta1[0], valA);
 
     const theta2 = new Array(1);
-    assert(!executePatternMatch(instructions, factBad, theta2), 'should not match wrong ground');
+    assert(!execPM(instructions, factBad, theta2), 'should not match wrong ground');
   });
 
   it('matches depth-1 compound pred(s(X))', () => {
@@ -71,14 +71,14 @@ describe('compilePatternMatch', () => {
     const pattern = Store.put('pred', [sX]);
     const slots = { [xVar]: 0 };
 
-    const instructions = compilePatternMatch(pattern, slots);
+    const instructions = compilePM(pattern, slots);
 
     const inner = Store.put('atom', ['e']);
     const sInner = Store.put('s', [inner]);
     const fact = Store.put('pred', [sInner]);
 
     const theta = new Array(1);
-    assert(executePatternMatch(instructions, fact, theta), 'should match s(e)');
+    assert(execPM(instructions, fact, theta), 'should match s(e)');
     assert.strictEqual(theta[0], inner, 'X bound to e');
   });
 
@@ -90,21 +90,21 @@ describe('compilePatternMatch', () => {
     const pattern = Store.put('pred', [ssX]);
     const slots = { [xVar]: 0 };
 
-    const instructions = compilePatternMatch(pattern, slots);
+    const instructions = compilePM(pattern, slots);
 
     const inner = Store.put('atom', ['e']);
     const ssInner = Store.put('s', [Store.put('s', [inner])]);
     const fact = Store.put('pred', [ssInner]);
 
     const theta = new Array(1);
-    assert(executePatternMatch(instructions, fact, theta), 'should match s(s(e))');
+    assert(execPM(instructions, fact, theta), 'should match s(s(e))');
     assert.strictEqual(theta[0], inner);
 
     // depth-1 should not match depth-2 pattern
     const sInner = Store.put('s', [inner]);
     const factShallow = Store.put('pred', [sInner]);
     const theta2 = new Array(1);
-    assert(!executePatternMatch(instructions, factShallow, theta2), 'depth-1 should not match depth-2 pattern');
+    assert(!execPM(instructions, factShallow, theta2), 'depth-1 should not match depth-2 pattern');
   });
 
   it('enforces metavar consistency (shared var)', () => {
@@ -113,7 +113,7 @@ describe('compilePatternMatch', () => {
     const pattern = Store.put('pred', [xVar, xVar]);
     const slots = { [xVar]: 0 };
 
-    const instructions = compilePatternMatch(pattern, slots);
+    const instructions = compilePM(pattern, slots);
 
     const valA = Store.put('atom', ['a']);
     const valB = Store.put('atom', ['b']);
@@ -121,10 +121,10 @@ describe('compilePatternMatch', () => {
     const factDiff = Store.put('pred', [valA, valB]);
 
     const theta1 = new Array(1);
-    assert(executePatternMatch(instructions, factSame, theta1), 'should match when both children equal');
+    assert(execPM(instructions, factSame, theta1), 'should match when both children equal');
 
     const theta2 = new Array(1);
-    assert(!executePatternMatch(instructions, factDiff, theta2), 'should not match when children differ');
+    assert(!execPM(instructions, factDiff, theta2), 'should not match when children differ');
   });
 
   it('rejects wrong tag', () => {
@@ -134,19 +134,19 @@ describe('compilePatternMatch', () => {
     const pattern = Store.put('pred', [xVar]);
     const slots = { [xVar]: 0 };
 
-    const instructions = compilePatternMatch(pattern, slots);
+    const instructions = compilePM(pattern, slots);
 
     const val = Store.put('atom', ['a']);
     const wrongTag = Store.put('other', [val]);
 
     const theta = new Array(1);
-    assert(!executePatternMatch(instructions, wrongTag, theta), 'should reject wrong tag');
+    assert(!execPM(instructions, wrongTag, theta), 'should reject wrong tag');
   });
 });
 
-// ─── compilePersistentStep ───────────────────────────────────────────
+// ─── compilePS ───────────────────────────────────────────
 
-describe('compilePersistentStep', () => {
+describe('compilePS', () => {
   beforeEach(() => { Store.clear(); });
 
   it('compiles inc FFI fast path', () => {
@@ -156,12 +156,12 @@ describe('compilePersistentStep', () => {
     const pattern = Store.put('inc', [xVar, yVar]);
     const slots = { [xVar]: 0, [yVar]: 1 };
 
-    const spec = compilePersistentStep(pattern, slots);
+    const spec = compilePS(pattern, slots);
     assert(spec, 'should compile inc');
 
     const input = Store.put('binlit', [5n]);
     const theta = [input, undefined];
-    const result = executePersistentStep(spec, theta);
+    const result = execPS(spec, theta);
 
     assert.strictEqual(result, true, 'should succeed');
     // inc(5) = 6
@@ -177,13 +177,13 @@ describe('compilePersistentStep', () => {
     const pattern = Store.put('plus', [aVar, bVar, cVar]);
     const slots = { [aVar]: 0, [bVar]: 1, [cVar]: 2 };
 
-    const spec = compilePersistentStep(pattern, slots);
+    const spec = compilePS(pattern, slots);
     assert(spec, 'should compile plus');
 
     const a = Store.put('binlit', [3n]);
     const b = Store.put('binlit', [7n]);
     const theta = [a, b, undefined];
-    const result = executePersistentStep(spec, theta);
+    const result = execPS(spec, theta);
 
     assert.strictEqual(result, true, 'should succeed');
     const expected = Store.put('binlit', [10n]);
@@ -197,12 +197,12 @@ describe('compilePersistentStep', () => {
     const pattern = Store.put('neq', [aVar, bVar]);
     const slots = { [aVar]: 0, [bVar]: 1 };
 
-    const spec = compilePersistentStep(pattern, slots);
+    const spec = compilePS(pattern, slots);
     assert(spec, 'should compile neq');
 
     const val = Store.put('binlit', [5n]);
     const theta = [val, val]; // equal values → definitive failure
-    const result = executePersistentStep(spec, theta);
+    const result = execPS(spec, theta);
 
     assert.strictEqual(result, false, 'should return false (definitive)');
   });
@@ -213,7 +213,7 @@ describe('compilePersistentStep', () => {
     const pattern = Store.put('unknown_pred', [xVar]);
     const slots = { [xVar]: 0 };
 
-    const step = compilePersistentStep(pattern, slots);
+    const step = compilePS(pattern, slots);
     assert.strictEqual(step, null, 'should return null for unknown pred');
   });
 });
@@ -240,7 +240,7 @@ describe('structured output patterns in FFI', () => {
       [headVar]: 3, [tailVar]: 4,
     };
 
-    const spec = compilePersistentStep(pattern, slots);
+    const spec = compilePS(pattern, slots);
     assert(spec, 'should compile arr_set with structured output');
     assert.strictEqual(spec.argSpecs[3].pattern, consPattern,
       'output position should have pattern argSpec');
@@ -256,7 +256,7 @@ describe('structured output patterns in FFI', () => {
     // arr_set(arr, 0, 99, [Head|Tail]) → new arr = [99, 20, 30]
     // Expect Head = 99, Tail = arrlit([20, 30])
     const theta = [arr, idx, newVal, undefined, undefined];
-    const result = executePersistentStep(spec, theta);
+    const result = execPS(spec, theta);
 
     assert.strictEqual(result, true, 'should succeed with structured output');
     assert.strictEqual(theta[3], Store.put('binlit', [99n]), 'Head should be 99');
@@ -279,7 +279,7 @@ describe('structured output patterns in FFI', () => {
       [headVar]: 2, [tailVar]: 3,
     };
 
-    const spec = compilePersistentStep(pattern, slots);
+    const spec = compilePS(pattern, slots);
     assert(spec, 'should compile arr_get with structured output');
 
     const e5 = Store.put('binlit', [5n]);
@@ -293,14 +293,14 @@ describe('structured output patterns in FFI', () => {
     // Mode + + - means output is the element. So cons pattern won't match...
     // Actually this tests a FAILURE case: arr_get returns a scalar, not a cons
     const theta = [arr, idx, undefined, undefined];
-    const result = executePersistentStep(spec, theta);
+    const result = execPS(spec, theta);
     // arr_get returns the scalar value 6, not a cons. Unification with acons fails.
     assert.strictEqual(result, false, 'should fail: scalar vs cons pattern');
   });
 
-  it('provePersistentWithFFI handles structured output pattern', () => {
+  it('proveWithFFI handles structured output pattern', () => {
     Store.registerTag('arr_set');
-    const { provePersistentWithFFI } = require('../../lib/engine/opt/ffi');
+    const { proveWithFFI } = require('../../lib/engine/opt/ffi');
 
     const arrVar = Store.put('metavar', ['Arr']);
     const idxVar = Store.put('metavar', ['Idx']);
@@ -326,7 +326,7 @@ describe('structured output patterns in FFI', () => {
     const forward = require('../../lib/engine/forward');
     const state = forward.createState({}, {});
 
-    const result = provePersistentWithFFI([pattern], 0, theta, slots, state, null, null);
+    const result = proveWithFFI([pattern], 0, theta, slots, state, null, null);
     assert.strictEqual(result, 1, 'should prove the pattern (index past end)');
     assert.strictEqual(theta[3], Store.put('binlit', [42n]), 'Head bound to 42');
     const expectedTail = Store.put('arrlit', [new Uint32Array([e20])]);

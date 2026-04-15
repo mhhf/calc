@@ -15,9 +15,9 @@ const { run } = require('../../lib/engine/forward');
 const { countNodes, getAllLeaves } = require('../../lib/engine/tree-utils');
 const { classifyLeaf } = require('../../lib/engine/show');
 const { toObject } = require('../../lib/engine/fact-set');
-const { buildGuidedTerm } = require('../../lib/prover/guided-term');
+const { guidedTerm } = require('../../lib/prover/guided-term');
 const { rightFocusTerm } = require('../../lib/prover/bridge');
-const { buildRightTensor } = require('../../lib/kernel/ast');
+const { rTensor } = require('../../lib/kernel/ast');
 
 describe('noFFI e2e: solc multisig (clause-only resolution)', { timeout: 120000 }, () => {
   let treeNoFFI, treeFFI;
@@ -220,23 +220,23 @@ describe('noFFI e2e: symbolic explore → guided terms', { timeout: 600000 }, ()
       for (const [h, count] of Object.entries(plain.linear)) {
         for (let j = 0; j < count; j++) hashes.push(Number(h));
       }
-      const succFormula = buildRightTensor(hashes);
+      const succFormula = rTensor(hashes);
       const rf = rightFocusTerm(plain.linear, plain.persistent, succFormula, ILL_ROLES);
       assert.ok(rf, `Leaf ${i}: rightFocusTerm returned null`);
     }
   });
 
-  it('buildGuidedTerm succeeds for all leaves', () => {
+  it('guidedTerm succeeds for all leaves', () => {
     for (let i = 0; i < leaves.length; i++) {
       const plain = toObject(leaves[i].state);
       const hashes = [];
       for (const [h, count] of Object.entries(plain.linear)) {
         for (let j = 0; j < count; j++) hashes.push(Number(h));
       }
-      const succFormula = buildRightTensor(hashes);
+      const succFormula = rTensor(hashes);
       const rf = rightFocusTerm(plain.linear, plain.persistent, succFormula, ILL_ROLES);
-      const term = buildGuidedTerm(leaves[i].trace, rf.term);
-      assert.ok(term, `Leaf ${i}: buildGuidedTerm returned null`);
+      const term = guidedTerm(leaves[i].trace, rf.term);
+      assert.ok(term, `Leaf ${i}: guidedTerm returned null`);
       assert.ok(term.rule, `Leaf ${i}: guided term has no rule`);
     }
   });

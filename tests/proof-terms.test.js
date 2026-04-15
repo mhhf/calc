@@ -3,7 +3,7 @@
  *
  * Phase 1: Generic term signatures match the §2.7 catalog.
  * Phase 2: Backward term extraction from proof trees.
- * Phase 3: Forward term builders (rightFocusTerm, buildMonadicTerm, buildExploreTreeTerm).
+ * Phase 3: Forward term builders (rightFocusTerm, monadicTerm, exploreTerm).
  * Phase 4: Type checker (expand, round-trip, invalid terms).
  * Phase 5: Bridge integration (monad_r term construction, kernel verification).
  * Phase 6: End-to-end bridge term construction, zero-overhead.
@@ -11,11 +11,11 @@
 const { describe, it, before } = require('node:test');
 const assert = require('node:assert');
 const calculus = require('../lib/calculus');
-const { buildSignatureMap, formatSignature, flattenedArity, extractTerm,
-        buildMonadicTerm, buildExploreTreeTerm } = require('../lib/prover/generic-term');
+const { sigMap, formatSignature, flattenedArity, extractTerm,
+        monadicTerm, exploreTerm } = require('../lib/prover/generic-term');
 const { createProver } = require('../lib/prover/focused');
 const { buildRuleSpecs } = require('../lib/prover/rule-interpreter');
-const { rightFocusTerm, executeModeSwitch } = require('../lib/prover/bridge');
+const { rightFocusTerm, modeSwitch } = require('../lib/prover/bridge');
 const { compileRule } = require('../lib/engine/compile');
 const { ILL_CONNECTIVES } = require('../lib/engine/ill/connectives');
 const { createChecker, expand } = require('../lib/prover/check-term');
@@ -29,7 +29,7 @@ describe('Generic Term Signatures', () => {
 
   before(async () => {
     calc = await calculus.loadILL();
-    sigs = buildSignatureMap(calc.rules);
+    sigs = sigMap(calc.rules);
   });
 
   // Expected catalog from TODO_0068 §2.7
@@ -468,17 +468,17 @@ describe('Forward Term Builders', () => {
     });
   });
 
-  describe('buildMonadicTerm', () => {
+  describe('monadicTerm', () => {
     it('empty trace: returns rfTerm directly', () => {
       const rfTerm = { rule: 'one_r', principal: null, subterms: [] };
-      const term = buildMonadicTerm([], rfTerm);
+      const term = monadicTerm([], rfTerm);
       assert.deepStrictEqual(term, rfTerm);
     });
 
     it('single step: wraps rfTerm', () => {
       const rfTerm = { rule: 'id', principal: 42, subterms: [] };
       const trace = [{ rule: 'step1', consumed: { 10: 1 } }];
-      const term = buildMonadicTerm(trace, rfTerm);
+      const term = monadicTerm(trace, rfTerm);
       assert.strictEqual(term.rule, 'step1');
       assert.strictEqual(term.subterms.length, 1);
       assert.deepStrictEqual(term.subterms[0], rfTerm);
@@ -491,7 +491,7 @@ describe('Forward Term Builders', () => {
         { rule: 'r2', consumed: { 2: 1 } },
         { rule: 'r3', consumed: { 3: 1 } }
       ];
-      const term = buildMonadicTerm(trace, rfTerm);
+      const term = monadicTerm(trace, rfTerm);
       // r1 -> r2 -> r3 -> rfTerm
       assert.strictEqual(term.rule, 'r1');
       assert.strictEqual(term.subterms[0].rule, 'r2');
@@ -500,12 +500,12 @@ describe('Forward Term Builders', () => {
     });
   });
 
-  describe('buildExploreTreeTerm', () => {
+  describe('exploreTerm', () => {
     const mockRfFn = (state) => ({ rule: 'id', principal: 1, subterms: [] });
 
     it('leaf: produces rightFocus term', () => {
       const tree = { type: 'leaf', state: {} };
-      const term = buildExploreTreeTerm(tree, mockRfFn, {});
+      const term = exploreTerm(tree, mockRfFn, {});
       assert.strictEqual(term.rule, 'id');
     });
 
@@ -514,21 +514,21 @@ describe('Forward Term Builders', () => {
         type: 'branch', state: null,
         children: [{ rule: 'step1', child: { type: 'leaf', state: {} } }]
       };
-      const term = buildExploreTreeTerm(tree, mockRfFn, {});
+      const term = exploreTerm(tree, mockRfFn, {});
       assert.strictEqual(term.rule, 'step1');
       assert.strictEqual(term.subterms[0].rule, 'id');
     });
 
     it('dead branch: unreachable', () => {
       const tree = { type: 'dead', state: null };
-      const term = buildExploreTreeTerm(tree, mockRfFn, {});
+      const term = exploreTerm(tree, mockRfFn, {});
       assert.strictEqual(term.rule, 'unreachable');
     });
 
     it('bound/cycle/memo: returns null', () => {
-      assert.strictEqual(buildExploreTreeTerm({ type: 'bound', state: {} }, mockRfFn), null);
-      assert.strictEqual(buildExploreTreeTerm({ type: 'cycle', state: {} }, mockRfFn), null);
-      assert.strictEqual(buildExploreTreeTerm({ type: 'memo', state: {} }, mockRfFn), null);
+      assert.strictEqual(exploreTerm({ type: 'bound', state: {} }, mockRfFn), null);
+      assert.strictEqual(exploreTerm({ type: 'cycle', state: {} }, mockRfFn), null);
+      assert.strictEqual(exploreTerm({ type: 'memo', state: {} }, mockRfFn), null);
     });
 
     it('oplus fork: oplus_l with case-split subterms', () => {
@@ -539,7 +539,7 @@ describe('Forward Term Builders', () => {
           { rule: 'r1', choice: 1, child: { type: 'leaf', state: {} } }
         ]
       };
-      const term = buildExploreTreeTerm(tree, mockRfFn, {});
+      const term = exploreTerm(tree, mockRfFn, {});
       assert.strictEqual(term.rule, 'oplus_l');
       assert.strictEqual(term.subterms.length, 2);
     });
@@ -961,12 +961,12 @@ describe('End-to-end bridge term construction', () => {
     }, { connectives: ILL_CONNECTIVES });
   }
 
-  it('executeModeSwitch with terms:true produces monadicTerm', () => {
+  it('modeSwitch with terms:true produces monadicTerm', () => {
     const a = AST.atom('a'), b = AST.atom('b');
     const compiled = makeRule(a, b);
     const seq = Seq.fromArrays([a], [], AST.monad(b));
 
-    const result = executeModeSwitch(seq, { forwardRules: [compiled] }, { terms: true });
+    const result = modeSwitch(seq, { forwardRules: [compiled] }, { terms: true });
     assert.ok(result, 'should produce a result');
     const st = result.proofNode.state;
     assert.ok(st.monadicTerm, 'should have monadicTerm');
@@ -979,7 +979,7 @@ describe('End-to-end bridge term construction', () => {
     const compiled = makeRule(a, b);
     const seq = Seq.fromArrays([a], [], AST.monad(b));
 
-    const result = executeModeSwitch(seq, { forwardRules: [compiled] }, { terms: true });
+    const result = modeSwitch(seq, { forwardRules: [compiled] }, { terms: true });
     const mt = result.proofNode.state.monadicTerm;
     // Single forward step → one let-binding wrapping the rightFocus term
     assert.strictEqual(mt.rule, 'test_fwd');
@@ -990,12 +990,12 @@ describe('End-to-end bridge term construction', () => {
     assert.strictEqual(terminal.principal, b);
   });
 
-  it('extractTerm on executeModeSwitch result attaches evidence', () => {
+  it('extractTerm on modeSwitch result attaches evidence', () => {
     const a = AST.atom('a'), b = AST.atom('b');
     const compiled = makeRule(a, b);
     const seq = Seq.fromArrays([a], [], AST.monad(b));
 
-    const result = executeModeSwitch(seq, { forwardRules: [compiled] }, { terms: true });
+    const result = modeSwitch(seq, { forwardRules: [compiled] }, { terms: true });
     const term = extractTerm(result.proofNode, calc);
     assert.ok(term);
     assert.strictEqual(term.rule, 'monad_r');
@@ -1003,12 +1003,12 @@ describe('End-to-end bridge term construction', () => {
     assert.strictEqual(term.evidence.rule, 'test_fwd');
   });
 
-  it('kernel verifies executeModeSwitch proof node with termVerified', () => {
+  it('kernel verifies modeSwitch proof node with termVerified', () => {
     const a = AST.atom('a'), b = AST.atom('b');
     const compiled = makeRule(a, b);
     const seq = Seq.fromArrays([a], [], AST.monad(b));
 
-    const result = executeModeSwitch(seq, { forwardRules: [compiled] }, { terms: true });
+    const result = modeSwitch(seq, { forwardRules: [compiled] }, { terms: true });
     const kernel = createKernel(calc);
     const vr = kernel.verifyStep(
       result.proofNode.conclusion, 'monad_r', [],
@@ -1019,7 +1019,7 @@ describe('End-to-end bridge term construction', () => {
     assert.ok(vr.evidence, 'should carry evidence');
   });
 
-  it('leftover linear resources → executeModeSwitch returns null', () => {
+  it('leftover linear resources → modeSwitch returns null', () => {
     const a = AST.atom('a'), b = AST.atom('b');
     // Forward rule: a -o {a * b} — produces BOTH a and b
     const ruleH = AST.loli(a, AST.monad(AST.tensor(a, b)));
@@ -1030,16 +1030,16 @@ describe('End-to-end bridge term construction', () => {
 
     // Succedent only wants {a} — b will be leftover after rightFocus
     const seq = Seq.fromArrays([a], [], AST.monad(a));
-    const result = executeModeSwitch(seq, { forwardRules: [compiled] }, { terms: true });
+    const result = modeSwitch(seq, { forwardRules: [compiled] }, { terms: true });
     assert.strictEqual(result, null, 'should fail: leftover b after rightFocus');
   });
 
-  it('rightFocus decomposition failure → executeModeSwitch returns null', () => {
+  it('rightFocus decomposition failure → modeSwitch returns null', () => {
     const a = AST.atom('a'), b = AST.atom('b');
     const compiled = makeRule(a, b);
     // Forward produces b, but succedent wants {a} — rightFocus can't find a
     const seq = Seq.fromArrays([a], [], AST.monad(a));
-    const result = executeModeSwitch(seq, { forwardRules: [compiled] });
+    const result = modeSwitch(seq, { forwardRules: [compiled] });
     assert.strictEqual(result, null, 'should fail: residual b does not match succedent a');
   });
 });
@@ -1060,12 +1060,12 @@ describe('Zero-overhead (terms: false)', () => {
     }, { connectives: ILL_CONNECTIVES });
   }
 
-  it('executeModeSwitch without terms option produces no term data', () => {
+  it('modeSwitch without terms option produces no term data', () => {
     const a = AST.atom('a'), b = AST.atom('b');
     const compiled = makeRule(a, b);
     const seq = Seq.fromArrays([a], [], AST.monad(b));
 
-    const result = executeModeSwitch(seq, { forwardRules: [compiled] });
+    const result = modeSwitch(seq, { forwardRules: [compiled] });
     assert.ok(result, 'proof still succeeds');
     const st = result.proofNode.state;
     assert.strictEqual(st.rightFocusTerm, null, 'no rightFocusTerm');
@@ -1073,12 +1073,12 @@ describe('Zero-overhead (terms: false)', () => {
     assert.strictEqual(st.termVerified, false, 'not termVerified');
   });
 
-  it('executeModeSwitch with terms:false produces no term data', () => {
+  it('modeSwitch with terms:false produces no term data', () => {
     const a = AST.atom('a'), b = AST.atom('b');
     const compiled = makeRule(a, b);
     const seq = Seq.fromArrays([a], [], AST.monad(b));
 
-    const result = executeModeSwitch(seq, { forwardRules: [compiled] }, { terms: false });
+    const result = modeSwitch(seq, { forwardRules: [compiled] }, { terms: false });
     assert.ok(result, 'proof still succeeds');
     const st = result.proofNode.state;
     assert.strictEqual(st.rightFocusTerm, null);

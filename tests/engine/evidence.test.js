@@ -1,7 +1,7 @@
 /**
  * Tests for evidence collection in the guided execution profile.
  *
- * Tests the evidence pipeline: provePersistentWithFFI → matchLoli → drainPersistentLolis
+ * Tests the evidence pipeline: proveWithFFI → matchLoli → drainLolis
  * All evidence is collected via mutable collector arrays (evidenceOut).
  * See TODO_0068 §10.5 for the guided profile design.
  */
@@ -11,17 +11,17 @@ const assert = require('node:assert/strict');
 const Store = require('../../lib/kernel/store');
 const forward = require('../../lib/engine/forward');
 const { matchLoli } = require('../../lib/engine/match');
-const { provePersistentWithFFI } = require('../../lib/engine/opt/ffi');
-const { drainPersistentLolis } = require('../../lib/engine/ill/loli-drain');
+const { proveWithFFI } = require('../../lib/engine/opt/ffi');
+const { drainLolis } = require('../../lib/engine/ill/loli-drain');
 const { GRADE_W } = require('../../lib/engine/grades');
 const { ILL_CONNECTIVES } = require('../../lib/engine/ill/connectives');
-const { resolveConnectives } = require('../../lib/engine/compile');
-const ILL_RC = resolveConnectives(ILL_CONNECTIVES);
+const { resolveConn } = require('../../lib/engine/compile');
+const ILL_RC = resolveConn(ILL_CONNECTIVES);
 const { Arena } = require('../../lib/engine/fact-set');
 
 describe('Evidence collection (TODO_0068 §10.5)', () => {
 
-  describe('provePersistentWithFFI evidence', () => {
+  describe('proveWithFFI evidence', () => {
     beforeEach(() => { Store.clear(); });
 
     it('collects state lookup evidence', () => {
@@ -33,7 +33,7 @@ describe('Evidence collection (TODO_0068 §10.5)', () => {
       const slots = {};
       const evidenceOut = [];
 
-      const idx = provePersistentWithFFI([pattern], 0, theta, slots, state, null, evidenceOut);
+      const idx = proveWithFFI([pattern], 0, theta, slots, state, null, evidenceOut);
       assert.strictEqual(idx, 1, 'should prove the goal');
       assert.strictEqual(evidenceOut.length, 1);
       assert.strictEqual(evidenceOut[0].method, 'state');
@@ -51,7 +51,7 @@ describe('Evidence collection (TODO_0068 §10.5)', () => {
       const theta = new Array(1);
       const evidenceOut = [];
 
-      const idx = provePersistentWithFFI([pattern], 0, theta, slots, state, null, evidenceOut);
+      const idx = proveWithFFI([pattern], 0, theta, slots, state, null, evidenceOut);
       assert.strictEqual(idx, 1, 'should prove via FFI');
       assert.strictEqual(evidenceOut.length, 1);
       assert.strictEqual(evidenceOut[0].method, 'ffi');
@@ -65,7 +65,7 @@ describe('Evidence collection (TODO_0068 §10.5)', () => {
       const slots = {};
 
       // null evidenceOut — should not throw
-      const idx = provePersistentWithFFI([fact], 0, theta, slots, state, null, null);
+      const idx = proveWithFFI([fact], 0, theta, slots, state, null, null);
       assert.strictEqual(idx, 1);
     });
 
@@ -77,7 +77,7 @@ describe('Evidence collection (TODO_0068 §10.5)', () => {
       const slots = {};
 
       // no evidenceOut argument — backward compatibility
-      const idx = provePersistentWithFFI([fact], 0, theta, slots, state, null);
+      const idx = proveWithFFI([fact], 0, theta, slots, state, null);
       assert.strictEqual(idx, 1);
     });
   });
@@ -203,7 +203,7 @@ describe('Evidence collection (TODO_0068 §10.5)', () => {
     });
   });
 
-  describe('drainPersistentLolis evidence', () => {
+  describe('drainLolis evidence', () => {
     beforeEach(() => { Store.clear(); });
 
     it('collects drain evidence for persistent-trigger lolis', () => {
@@ -223,7 +223,7 @@ describe('Evidence collection (TODO_0068 §10.5)', () => {
       const perArena = new Arena(256);
       const evidenceOut = [];
 
-      drainPersistentLolis(state, linArena, perArena, { connectives: ILL_CONNECTIVES }, evidenceOut, { connectives: ILL_RC });
+      drainLolis(state, linArena, perArena, { connectives: ILL_CONNECTIVES }, evidenceOut, { connectives: ILL_RC });
 
       assert.strictEqual(evidenceOut.length, 1, 'should have 1 drain firing');
       assert.strictEqual(evidenceOut[0].loliHash, loli);
@@ -247,8 +247,8 @@ describe('Evidence collection (TODO_0068 §10.5)', () => {
       const perArena = new Arena(256);
 
       // Should not throw when evidenceOut is null/undefined
-      drainPersistentLolis(state, linArena, perArena, { connectives: ILL_CONNECTIVES }, null, { connectives: ILL_RC });
-      drainPersistentLolis(state, linArena, perArena, { connectives: ILL_CONNECTIVES }, undefined, { connectives: ILL_RC });
+      drainLolis(state, linArena, perArena, { connectives: ILL_CONNECTIVES }, null, { connectives: ILL_RC });
+      drainLolis(state, linArena, perArena, { connectives: ILL_CONNECTIVES }, undefined, { connectives: ILL_RC });
     });
 
     it('collects multiple drain firings', () => {
@@ -273,7 +273,7 @@ describe('Evidence collection (TODO_0068 §10.5)', () => {
       const perArena = new Arena(256);
       const evidenceOut = [];
 
-      drainPersistentLolis(state, linArena, perArena, { connectives: ILL_CONNECTIVES }, evidenceOut, { connectives: ILL_RC });
+      drainLolis(state, linArena, perArena, { connectives: ILL_CONNECTIVES }, evidenceOut, { connectives: ILL_RC });
 
       assert.strictEqual(evidenceOut.length, 2, 'should drain both lolis');
     });

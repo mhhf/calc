@@ -83,12 +83,14 @@ lib/
 │   ├── lnl/             # LNL layer: linear/persistent distinction
 │   │   ├── persistent.js  # Persistent goal proving (state → cache → backchain)
 │   │   ├── loli.js        # Dynamic rule matching (linear implications)
+│   │   ├── loli-drain.js  # Persistent-trigger loli drain (generic, moved from ill/)
 │   │   └── existential.js # ∃-variable resolution
-│   ├── ill/             # ILL layer: ILL-specific logic
-│   │   ├── backchain-ill.js # ILL defaults for backchainer
+│   ├── ill/             # ILL layer: ILL-specific logic (single assembly point: calculus-config.js)
+│   │   ├── calculus-config.js # Layered config (L0-L6) — ONLY ILL import in generic engine
+│   │   ├── backchain-ill.js # ILL defaults for backchainer (explicit initILL())
 │   │   ├── binlit-theory.js # Equational theory: binlit ↔ i/o/e
+│   │   ├── bytecode-normalize.js # EVM bytecode → trie/arrlit/semantic (moved from index.js)
 │   │   ├── connectives.js   # ILL connective configuration
-│   │   ├── loli-drain.js    # Loli drain optimization
 │   │   └── ffi/             # Foreign function interface (arithmetic, memory)
 │   └── opt/             # Toggleable optimization modules
 │       ├── compiled-clauses.js # Tier 1 compiled clause dispatch (zero-subgoal → direct lookup)
@@ -171,7 +173,7 @@ FFI is optimization, theory is semantics. Every FFI predicate MUST have backward
 - Nullary constructors (e.g. `empty_mem`) are `atom('empty_mem')` not tag — use helpers
 - `code` facts are **linear** in EVM rules (consumed and re-produced)
 - `linearMeta.persistentDeps` (Set) needs Array↔Set conversion for JSON serialization
-- Per-rule compiled matchers were attempted and reverted — 59 closures → V8 megamorphic → ~25% regression (RES_0069). `compilePersistentStep` works: only ~4 closure types stays within V8 polymorphic IC threshold.
+- Per-rule compiled matchers were attempted and reverted — 59 closures → V8 megamorphic → ~25% regression (RES_0069). `compilePS` works: only ~4 closure types stays within V8 polymorphic IC threshold.
 - Manual prover: `getApplicableActions(state, { mode: 'focused' })` (default) vs `{ mode: 'unfocused' }`
 - Focus action names: `Focus_L` / `Focus_R` (not just `Focus`)
 
