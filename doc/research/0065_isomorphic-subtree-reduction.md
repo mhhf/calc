@@ -281,7 +281,7 @@ Two concrete states that map to the same abstract state produce the same abstrac
 
 Standard abstract interpretation uses **widening** to ensure fixpoint computation terminates. For symbolic execution trees, the analog is: when the abstract state space has been fully explored (all abstract control configurations reached), further concrete exploration with new data values is redundant.
 
-This is precisely what CALC's structural memo does: `computeControlHash(stateIndex)` abstracts the state to `(PC, SH)`, and the memo table records which abstract states have been fully explored.
+This is precisely what CALC's structural memo does: `controlHash(stateIndex)` abstracts the state to `(PC, SH)`, and the memo table records which abstract states have been fully explored.
 
 ### Predicate Abstraction
 

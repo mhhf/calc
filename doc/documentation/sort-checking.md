@@ -17,7 +17,7 @@ The sort checker enforces these declarations at load time. It catches arity erro
 
 ## Sort Table
 
-`buildSortTable(types)` walks the `types` Map and parses arrow-chain hashes into sort entries:
+`sortTable(types)` walks the `types` Map and parses arrow-chain hashes into sort entries:
 
 ```
 bin:  type              → { argSorts: [],                returnSort: 'type' }
@@ -61,7 +61,7 @@ Errors are logged to stderr as warnings. With `opts.strict`, errors throw.
 
 | Function | Signature | Purpose |
 |----------|-----------|---------|
-| `buildSortTable` | `(types: Map) → Map<string, SortEntry>` | Build sort table from type declarations |
+| `sortTable` | `(types: Map) → Map<string, SortEntry>` | Build sort table from type declarations |
 | `inferSort` | `(h, sortTable, metavarSorts) → string` | Infer sort of a term |
 | `checkForwardRule` | `(rule, sortTable) → string[]` | Check one compiled forward rule |
 | `checkClause` | `(name, clause, sortTable) → string[]` | Check one backward clause |

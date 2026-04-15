@@ -371,14 +371,14 @@ function bisimilar(t1, t2, opts = {}) {
 
 // Weaker: same leaf state sets (trace equivalence)
 function traceEquivalent(t1, t2) {
-  const leaves1 = getAllLeaves(t1).map(l => hashStateString(l.state)).sort();
-  const leaves2 = getAllLeaves(t2).map(l => hashStateString(l.state)).sort();
+  const leaves1 = getAllLeaves(t1).map(l => stateHashStr(l.state)).sort();
+  const leaves2 = getAllLeaves(t2).map(l => stateHashStr(l.state)).sort();
   return arraysEqual(leaves1, leaves2);
 }
 
-// State equivalence: default uses hashStateString
+// State equivalence: default uses stateHashStr
 function defaultStateEquiv(s1, s2) {
-  return hashStateString(s1) === hashStateString(s2);
+  return stateHashStr(s1) === stateHashStr(s2);
 }
 ```
 
@@ -387,7 +387,7 @@ function defaultStateEquiv(s1, s2) {
 | Existing module | How bisim.js uses it |
 |---|---|
 | `symexec.js: explore()` | Produces the two trees to compare |
-| `symexec.js: hashStateString()` | O(1) state equality |
+| `symexec.js: stateHashStr()` | O(1) state equality |
 | `symexec.js: getAllLeaves()` | Leaf enumeration for trace equivalence |
 | `show.js: show()` | Human-readable divergence reporting |
 

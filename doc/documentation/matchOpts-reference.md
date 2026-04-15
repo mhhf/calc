@@ -85,7 +85,7 @@ When hooks are set, the compiled persistent step fast path and compiled existent
 ## Not in matchOpts
 
 These engine behaviors are configured elsewhere:
-- **Strategy stack** — built by `optimizer.js:createEngine()`, passed separately to `strategy.findMatch()`
+- **Strategy stack** — built by `optimizer.js:engine()`, passed separately to `strategy.findMatch()`
 - **Solver** — `EqNeqSolver` created per `explore()` call, used directly in the DFS loop
 - **Structural memo** — `createMemoCtx()` in `explore()`, used directly in `go()`
 - **Prediction** — `createPredictNext()` in `explore()`, closure over strategy state

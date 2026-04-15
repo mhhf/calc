@@ -139,7 +139,7 @@ The forward engine (`forward.js`, `explore.js`) does NOT produce proof trees. It
 
 The `'guided'` execution profile closes this gap partially:
 - Forward engine emits enriched traces with `persistentEvidence` (backward proof subtrees for each persistent goal)
-- `buildGuidedTerm` constructs a full ILL proof term (GenericTerm tree)
+- `guidedTerm` constructs a full ILL proof term (GenericTerm tree)
 - `check-term.js` verifies it
 - The kernel returns `{ valid: true, evidence: state.monadicTerm }` — verified!
 
@@ -173,7 +173,7 @@ What IS still missing:
 
 **Idea:** Don't change the logic. Use CALC's existing forward/backward machinery to build a reflective tower.
 
-**Step 1: Complete proof certificates (TODO_0067).** Make the forward engine emit verifiable ILL proof trees for every step. The guided mode (`buildGuidedTerm`) already does this partially — extend to all execution modes. The L1 kernel then verifies ALL execution, not just backward proofs.
+**Step 1: Complete proof certificates (TODO_0067).** Make the forward engine emit verifiable ILL proof trees for every step. The guided mode (`guidedTerm`) already does this partially — extend to all execution modes. The L1 kernel then verifies ALL execution, not just backward proofs.
 
 **Step 2: Intern proof terms in Store.** GenericTerms are currently plain JS objects. Interning them via `Store.put('tensor_r', [child1, child2])` makes them content-addressed hashes that can appear as ILL facts. Small mechanical change (~50 LOC).
 

@@ -144,7 +144,7 @@ CALC doesn't have traditional unification-triggered wakeups. Instead:
 | Attributed Variable | CALC Equivalent |
 |---------------------|-----------------|
 | Variable with attribute | `evar(N)` + persistent constraint facts |
-| `verify_attributes` on binding | `resolveExistentials` + `provePersistentGoals` |
+| `verify_attributes` on binding | `resolveEx` + `provePersistentGoals` |
 | Wakeup on unification | Forward rule re-matching when evar appears in matching |
 | Attribute = constraint list | Persistent facts referencing `evar(N)` |
 

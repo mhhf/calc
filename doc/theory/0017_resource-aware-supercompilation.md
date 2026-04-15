@@ -36,10 +36,10 @@ In CALC: `composeGrade0` is PE, `explore()` is driving, and the structural memo 
 | Configuration | `state` (linear FactSet + persistent FactSet) | `fact-set.js` |
 | Driving step | `mutateState()` — apply one forward rule | `explore.js` |
 | Driving machine | `go(depth, predicted)` DFS loop | `explore.js` |
-| Positive info propagation | `provePersistentNaive()` — known facts flow forward | `lnl/persistent.js` |
+| Positive info propagation | `proveNaive()` — known facts flow forward | `lnl/persistent.js` |
 | Negative info propagation | `EqNeqSolver` — eq/neq constraints accumulate | `constraint.js` |
-| Branch pruning | `filterAltsBySAT()` — kill UNSAT alternatives | `opt/constraint.js` |
-| Generalization | `computeControlHash()` — abstract to (PC, stack depth) | `opt/structural-memo.js` |
+| Branch pruning | `satFilter()` — kill UNSAT alternatives | `opt/constraint.js` |
+| Generalization | `controlHash()` — abstract to (PC, stack depth) | `opt/structural-memo.js` |
 | Memo (shared subtree) | `globalControl` hash map → `{ type: 'memo' }` | `opt/structural-memo.js` |
 | Folding (back-edge) | `pathVisited.has(sh)` → `{ type: 'cycle' }` | `explore.js` |
 | Process tree leaf | `{ type: 'leaf', state }` — quiescent configuration | `explore.js` |
@@ -52,13 +52,13 @@ Each call to `mutateState(state, m.consumed, m.theta, ...)` is one driving step.
 
 ### 2.2 Information propagation
 
-**Positive**: persistent facts accumulate monotonically along each DFS path. When a rule proves `!gt PC 10 true`, all subsequent rules on the same path can use this fact. `feedPersistent(solver, ...)` extends the constraint solver incrementally after each step.
+**Positive**: persistent facts accumulate monotonically along each DFS path. When a rule proves `!gt PC 10 true`, all subsequent rules on the same path can use this fact. `feedPers(solver, ...)` extends the constraint solver incrementally after each step.
 
-**Negative**: the `EqNeqSolver` tracks `eq`/`neq` constraints via union-find with a forbid list. `filterAltsBySAT` kills `⊕` alternatives inconsistent with accumulated constraints — branches where `eq X Y` contradicts an earlier `neq X Y`. This is the supercompiler's negative information filtering.
+**Negative**: the `EqNeqSolver` tracks `eq`/`neq` constraints via union-find with a forbid list. `satFilter` kills `⊕` alternatives inconsistent with accumulated constraints — branches where `eq X Y` contradicts an earlier `neq X Y`. This is the supercompiler's negative information filtering.
 
 ### 2.3 Generalization
 
-`computeControlHash` projects the full state to (PC value, stack depth), discarding symbolic values. Two states with the same control hash execute the same instruction sequence regardless of concrete values. This is a coarse but sound abstraction — it avoids re-exploring isomorphic subtrees.
+`controlHash` projects the full state to (PC value, stack depth), discarding symbolic values. Two states with the same control hash execute the same instruction sequence regardless of concrete values. This is a coarse but sound abstraction — it avoids re-exploring isomorphic subtrees.
 
 Classical supercompilation uses the **Homeomorphic Embedding Test** (HET) to detect when a configuration is "growing" relative to an ancestor, then applies **Most Specific Generalization** (MSG) to abstract away the growing part. CALC's `controlHash` is a simpler mechanism that achieves the same goal in a domain-specific way.
 
@@ -113,7 +113,7 @@ For CALC: HET would operate on multiset structure. A state S₁ embeds in S₂ i
 
 ### 5.2 Proper generalization (MSG)
 
-`computeControlHash` is a fixed abstraction function. Full supercompilation computes the Most Specific Generalization (MSG) of two configurations — the most precise common pattern. For linear multisets, MSG would find the largest common sub-multiset and abstract the remainder.
+`controlHash` is a fixed abstraction function. Full supercompilation computes the Most Specific Generalization (MSG) of two configurations — the most precise common pattern. For linear multisets, MSG would find the largest common sub-multiset and abstract the remainder.
 
 This is related to anti-unification on multisets — a known problem in the term indexing literature but not studied for linear resource multisets.
 

@@ -15,7 +15,7 @@ The monad is a genuine logical connective, not an implementation artifact. But t
 ```
 L3 focused.js: finds {S} on right → monad_r fires → spec.modeShift detected
     ↓
-bridge.executeModeSwitch(seq, engineCalc, opts)
+bridge.modeSwitch(seq, engineCalc, opts)
     │
     ├─ 1. sequentToState(seq)
     │     linear context array  → { hash: count } map
@@ -59,7 +59,7 @@ copy(ruleHash,                           — from persistent gamma
       consequentDecomp(continuation))))  — tensor_l/bang_l/one_l chain
 ```
 
-**Pipeline:** `forward.run()` with `evidence: true` → enriched trace (theta, slots, persistentEvidence per step) → `buildGuidedTerm()` folds trace right-to-left → `monad_r(evidence: fullILLTerm)` → `check-term.js` verifies the complete term.
+**Pipeline:** `forward.run()` with `evidence: true` → enriched trace (theta, slots, persistentEvidence per step) → `guidedTerm()` folds trace right-to-left → `monad_r(evidence: fullILLTerm)` → `check-term.js` verifies the complete term.
 
 **Antecedent proof** (`buildAntecedentProof`): Walks the Store formula tree of the antecedent pattern. `tensor` → `tensor_r(left, right)`, `bang` → `promotion(evidenceTerm)`, `one` → `one_r()`, atom → `id(groundHash)`.
 
@@ -119,7 +119,7 @@ Three departures from standard CLF:
 |---|---|
 | `lib/calculus/modes.js` | Generates monad_r / monad_l descriptors |
 | `lib/calculus/builders.js` | `deriveRoles()` — (category, arity, polarity) → role map |
-| `lib/prover/bridge.js` | `sequentToState`, `rightFocus`, `executeModeSwitch` |
+| `lib/prover/bridge.js` | `sequentToState`, `rightFocus`, `modeSwitch` |
 | `lib/prover/focused.js` | Detects `spec.modeShift`, calls bridge (lines 102–113) |
 | `lib/prover/generic.js` | Stickiness guard via `requiresSuccedentTag` (lines 102–106) |
 | `lib/prover/kernel.js` | `verifyStep` for monad_r (lines 84–91) |

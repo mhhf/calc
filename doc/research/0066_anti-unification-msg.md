@@ -311,7 +311,7 @@ The supercompilation framework maps directly:
 | Generalization | MSG of states at oplus branches |
 | Whistle | Homeomorphic embedding on state terms |
 
-The current structural memo in CALC (`computeControlHash`) is a crude **folding** criterion. MSG-based merging would add a proper **generalization** criterion, handling cases where states are similar but not identical.
+The current structural memo in CALC (`controlHash`) is a crude **folding** criterion. MSG-based merging would add a proper **generalization** criterion, handling cases where states are similar but not identical.
 
 ---
 

@@ -105,7 +105,7 @@ function mutateState(state, consumed, theta, linearPats, persistPats) {
   for (const hStr in consumed) {
     const hash = Number(hStr);
     delta.removed.add(hash);
-    delta.changedPreds.add(getPredicateHead(hash));
+    delta.changedPreds.add(predHead(hash));
     // ... existing consume logic
   }
 
@@ -113,7 +113,7 @@ function mutateState(state, consumed, theta, linearPats, persistPats) {
   for (const pattern of linearPats) {
     const h = subApply(pattern, theta);
     delta.added.add(h);
-    delta.changedPreds.add(getPredicateHead(h));
+    delta.changedPreds.add(predHead(h));
     // ... existing produce logic
   }
 

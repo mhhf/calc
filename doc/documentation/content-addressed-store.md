@@ -298,7 +298,7 @@ Structure: `{ [hash: number]: count: number }`
 1. **Global mutable state** — the Store is a singleton arena, not garbage collected
 2. **Hash computation on creation** — O(k) per put, amortized by deduplication
 3. **Indirection** — structural inspection requires typed-array indexing + tag-based child reconstruction
-4. **No GC** — terms live forever once interned (acceptable for proof search lifetimes). Binary cache uses `compactSnapshot` for GC at serialization boundaries
+4. **No GC** — terms live forever once interned (acceptable for proof search lifetimes). Binary cache uses `compact` for GC at serialization boundaries
 5. **32-bit collision risk** — linear probing on collision (up to 64 probes), throws on exhaustion
 
 ### Critical Assumptions
