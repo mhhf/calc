@@ -17,7 +17,7 @@ describe('opt/existential-compile', () => {
     Store.clear();
     const mde = require('../../lib/engine/index');
     calc = mde.load(path.join(__dirname, '../../calculus/ill/programs/evm.ill'), { cache: true });
-    ffiContext = calc.ffiContext;
+    ffiContext = calc._calcContext.ffiContext;
   });
 
   describe('compileExChain', () => {

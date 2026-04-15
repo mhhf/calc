@@ -14,8 +14,21 @@ const forward = require('../../lib/engine/forward');
 const {
   compilePM, execPM,
 } = require('../../lib/engine/compile');
-const { tryMatch, execPS, compilePS } = require('../../lib/engine/match');
-const { explore } = require('../../lib/engine/explore');
+const { tryMatch } = require('../../lib/engine/match');
+const { execPS, compilePS } = require('../../lib/engine/opt/ffi');
+const illFfi = require('../../lib/engine/ill/ffi');
+const illFfiContext = {
+  meta: illFfi.defaultMeta,
+  parsedModes: illFfi.parsedModes,
+  get: illFfi.get,
+  isFFIGround: illFfi.convert.isGround,
+};
+const illMatchOpts = {
+  ffiMeta: illFfi.defaultMeta,
+  ffiGet: illFfi.get,
+  ffiParsedModes: illFfi.parsedModes,
+  ffiIsGround: illFfi.convert.isGround,
+};
 const { countNodes, getAllLeaves } = require('../../lib/engine/tree-utils');
 
 // ─── compilePM ─────────────────────────────────────────────
@@ -156,7 +169,7 @@ describe('compilePS', () => {
     const pattern = Store.put('inc', [xVar, yVar]);
     const slots = { [xVar]: 0, [yVar]: 1 };
 
-    const spec = compilePS(pattern, slots);
+    const spec = compilePS(pattern, slots, null, illFfiContext);
     assert(spec, 'should compile inc');
 
     const input = Store.put('binlit', [5n]);
@@ -177,7 +190,7 @@ describe('compilePS', () => {
     const pattern = Store.put('plus', [aVar, bVar, cVar]);
     const slots = { [aVar]: 0, [bVar]: 1, [cVar]: 2 };
 
-    const spec = compilePS(pattern, slots);
+    const spec = compilePS(pattern, slots, null, illFfiContext);
     assert(spec, 'should compile plus');
 
     const a = Store.put('binlit', [3n]);
@@ -197,7 +210,7 @@ describe('compilePS', () => {
     const pattern = Store.put('neq', [aVar, bVar]);
     const slots = { [aVar]: 0, [bVar]: 1 };
 
-    const spec = compilePS(pattern, slots);
+    const spec = compilePS(pattern, slots, null, illFfiContext);
     assert(spec, 'should compile neq');
 
     const val = Store.put('binlit', [5n]);
@@ -213,7 +226,7 @@ describe('compilePS', () => {
     const pattern = Store.put('unknown_pred', [xVar]);
     const slots = { [xVar]: 0 };
 
-    const step = compilePS(pattern, slots);
+    const step = compilePS(pattern, slots, null, illFfiContext);
     assert.strictEqual(step, null, 'should return null for unknown pred');
   });
 });
@@ -240,7 +253,7 @@ describe('structured output patterns in FFI', () => {
       [headVar]: 3, [tailVar]: 4,
     };
 
-    const spec = compilePS(pattern, slots);
+    const spec = compilePS(pattern, slots, null, illFfiContext);
     assert(spec, 'should compile arr_set with structured output');
     assert.strictEqual(spec.argSpecs[3].pattern, consPattern,
       'output position should have pattern argSpec');
@@ -279,7 +292,7 @@ describe('structured output patterns in FFI', () => {
       [headVar]: 2, [tailVar]: 3,
     };
 
-    const spec = compilePS(pattern, slots);
+    const spec = compilePS(pattern, slots, null, illFfiContext);
     assert(spec, 'should compile arr_get with structured output');
 
     const e5 = Store.put('binlit', [5n]);
@@ -326,7 +339,7 @@ describe('structured output patterns in FFI', () => {
     const forward = require('../../lib/engine/forward');
     const state = forward.createState({}, {});
 
-    const result = proveWithFFI([pattern], 0, theta, slots, state, null, null);
+    const result = proveWithFFI([pattern], 0, theta, slots, state, null, null, illMatchOpts);
     assert.strictEqual(result, 1, 'should prove the pattern (index past end)');
     assert.strictEqual(theta[3], Store.put('binlit', [42n]), 'Head bound to 42');
     const expectedTail = Store.put('arrlit', [new Uint32Array([e20])]);
@@ -441,9 +454,8 @@ describe('E2E persistent step correctness', { timeout: 30000, concurrency: 1 }, 
     );
     const state = mde.decomposeQuery(calc.queries.get('symex'));
 
-    const tree = explore(state, calc.forwardRules, {
+    const tree = calc.explore(state, {
       maxDepth: 2000,
-      calc: { clauses: calc.clauses, definitions: calc.definitions },
       dangerouslyUseFFI: true // Testing compiled matchers, not adversarial soundness
     });
 
@@ -459,9 +471,8 @@ describe('E2E persistent step correctness', { timeout: 30000, concurrency: 1 }, 
     const state = mde.decomposeQuery(calc.queries.get('symex'));
 
     // Full exploration
-    const treeFull = explore(state, calc.forwardRules, {
+    const treeFull = calc.explore(state, {
       maxDepth: 500,
-      calc: { clauses: calc.clauses, definitions: calc.definitions },
       structuralMemo: false,
       dangerouslyUseFFI: true // Testing structural memo, not adversarial soundness
     });
@@ -469,9 +480,8 @@ describe('E2E persistent step correctness', { timeout: 30000, concurrency: 1 }, 
     assert.strictEqual(getAllLeaves(treeFull).length, 2, 'Full: expected 2 leaves');
 
     // With structural memo (same tree — no redundant branches to memo)
-    const treeMemo = explore(state, calc.forwardRules, {
+    const treeMemo = calc.explore(state, {
       maxDepth: 500,
-      calc: { clauses: calc.clauses, definitions: calc.definitions },
       structuralMemo: true,
       dangerouslyUseFFI: true
     });

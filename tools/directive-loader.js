@@ -7,15 +7,15 @@
 
 const path = require('path');
 const fs = require('fs');
-const mde = require('./index');
-const convert = require('./convert');
-const Store = require('../kernel/store');
-const { toObject } = require('../engine/fact-set');
-const { getAllLeaves, countLeaves, maxDepth, countNodes } = require('../engine/tree-utils');
-const { showInteresting, classifyLeaf, show } = require('../engine/show');
-const { predHead } = require('../kernel/ast');
+const mde = require('../lib/engine');
+const convert = require('../lib/engine/convert');
+const Store = require('../lib/kernel/store');
+const { toObject } = require('../lib/engine/fact-set');
+const { getAllLeaves, countLeaves, maxDepth, countNodes } = require('../lib/engine/tree-utils');
+const { showInteresting, classifyLeaf, show } = require('../lib/engine/show');
+const { predHead } = require('../lib/kernel/ast');
 
-const ROOT = path.join(__dirname, '..', '..');
+const ROOT = path.join(__dirname, '..');
 const DEFAULT_PROGRAM = path.join(ROOT, 'calculus', 'ill', 'programs', 'evm.ill');
 let PROGRAM = DEFAULT_PROGRAM;
 function setProgram(p) { PROGRAM = p; }

@@ -382,7 +382,7 @@ describe('Store Binary Format', () => {
         const stateSrc = mde.decomposeQuery(calcSrc.queries.get('symex'));
         const treeSrc = explore(stateSrc, calcSrc.forwardRules, {
           maxDepth: 200,
-          calc: { clauses: calcSrc.clauses, definitions: calcSrc.definitions },
+          calc: calcSrc._calcContext,
           dangerouslyUseFFI: true
         });
 
@@ -394,7 +394,7 @@ describe('Store Binary Format', () => {
         const stateBin = mde.decomposeQuery(calcBin.queries.get('symex'));
         const treeBin = explore(stateBin, calcBin.forwardRules, {
           maxDepth: 200,
-          calc: { clauses: calcBin.clauses, definitions: calcBin.definitions },
+          calc: calcBin._calcContext,
           dangerouslyUseFFI: true
         });
 
@@ -576,7 +576,7 @@ describe('Store Binary Format', () => {
       const stateFresh = mde.decomposeQuery(calcFresh.queries.get('symex'));
       const treeFresh = explore(stateFresh, calcFresh.forwardRules, {
         maxDepth: 200,
-        calc: { clauses: calcFresh.clauses, definitions: calcFresh.definitions },
+        calc: calcFresh._calcContext,
         dangerouslyUseFFI: true
       });
 
@@ -586,7 +586,7 @@ describe('Store Binary Format', () => {
       const stateCached = mde.decomposeQuery(calcCached.queries.get('symex'));
       const treeCached = explore(stateCached, calcCached.forwardRules, {
         maxDepth: 200,
-        calc: { clauses: calcCached.clauses, definitions: calcCached.definitions },
+        calc: calcCached._calcContext,
         dangerouslyUseFFI: true
       });
 

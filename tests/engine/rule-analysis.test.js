@@ -1282,17 +1282,13 @@ describe('Rule Analysis', { timeout: 10000 }, () => {
 
       const initState = mde.decomposeQuery(calc.queries.get('symex'));
 
-      const calcCtx = { definitions: calc.definitions, clauses: calc.clauses };
-
-      const r1 = forward.run(
+      const r1 = calc.exec(
         { linear: { ...initState.linear }, persistent: { ...initState.persistent } },
-        calc.forwardRules,
-        { maxSteps: 200, calc: calcCtx, optimizePreserved: false });
+        { maxSteps: 200, optimizePreserved: false });
 
-      const r2 = forward.run(
+      const r2 = calc.exec(
         { linear: { ...initState.linear }, persistent: { ...initState.persistent } },
-        calc.forwardRules,
-        { maxSteps: 200, calc: calcCtx, optimizePreserved: true });
+        { maxSteps: 200, optimizePreserved: true });
 
       assertStatesEqual(r1.state, r2.state,
         'EVM multisig: final states should match');

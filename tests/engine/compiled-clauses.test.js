@@ -19,7 +19,7 @@ describe('Compiled Clause Dispatch', { timeout: 10000 }, () => {
 
   before(() => {
     calc = mde.load(PROGRAM, { cache: true });
-    const { ffiParsedModes } = require('../../lib/engine/opt/ffi');
+    const { parsedModes: ffiParsedModes } = require('../../lib/engine/ill/ffi');
     parsedModes = ffiParsedModes;
     theoryLookup = calc.theoryLookup || buildTheoryLookup([...defaultTheories, binlitTheory]);
     dispatch = calc.clauseDispatch || clauseDispatch(

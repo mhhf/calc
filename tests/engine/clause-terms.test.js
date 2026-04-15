@@ -16,6 +16,7 @@ const { proveWithFFI } = require('../../lib/engine/opt/ffi');
 const { GRADE_W } = require('../../lib/engine/grades');
 const forward = require('../../lib/engine/forward');
 const { guidedTerm } = require('../../lib/prover/guided-term');
+const { makeILLBackchainOpts } = require('../../lib/engine/ill/backchain-ill');
 
 describe('3b.5: Clause Proof Terms', () => {
 
@@ -31,7 +32,7 @@ describe('3b.5: Clause Proof Terms', () => {
       const types = new Map([['foo', foo]]);
       const clauses = new Map();
 
-      const result = backward.prove(foo, clauses, types, { buildTerm: true });
+      const result = backward.prove(foo, clauses, types, { ...makeILLBackchainOpts(), buildTerm: true });
 
       assert(result.success, 'should prove');
       assert(result.term, 'should have term');
@@ -50,7 +51,7 @@ describe('3b.5: Clause Proof Terms', () => {
       ]);
       const types = new Map();
 
-      const result = backward.prove(bar, clauses, types, { buildTerm: true });
+      const result = backward.prove(bar, clauses, types, { ...makeILLBackchainOpts(), buildTerm: true });
 
       assert(result.success, 'should prove');
       const term = result.term;
@@ -88,7 +89,7 @@ describe('3b.5: Clause Proof Terms', () => {
         ['ab_clause', { hash: b, premises: [a] }]
       ]);
 
-      const result = backward.prove(b, clauses, types, { buildTerm: true });
+      const result = backward.prove(b, clauses, types, { ...makeILLBackchainOpts(), buildTerm: true });
 
       assert(result.success, 'should prove');
       const term = result.term;
@@ -121,7 +122,7 @@ describe('3b.5: Clause Proof Terms', () => {
         ['abc_clause', { hash: c, premises: [a, b] }]
       ]);
 
-      const result = backward.prove(c, clauses, types, { buildTerm: true });
+      const result = backward.prove(c, clauses, types, { ...makeILLBackchainOpts(), buildTerm: true });
 
       assert(result.success, 'should prove');
       const term = result.term;
@@ -161,7 +162,7 @@ describe('3b.5: Clause Proof Terms', () => {
         ['yz_clause', { hash: z, premises: [y] }]
       ]);
 
-      const result = backward.prove(z, clauses, types, { buildTerm: true });
+      const result = backward.prove(z, clauses, types, { ...makeILLBackchainOpts(), buildTerm: true });
 
       assert(result.success, 'should prove');
       const term = result.term;
@@ -201,7 +202,7 @@ describe('3b.5: Clause Proof Terms', () => {
         ['pq_clause', { hash: qX, premises: [pX] }]
       ]);
 
-      const result = backward.prove(qA, clauses, types, { buildTerm: true });
+      const result = backward.prove(qA, clauses, types, { ...makeILLBackchainOpts(), buildTerm: true });
 
       assert(result.success, 'should prove');
       const term = result.term;
@@ -225,7 +226,7 @@ describe('3b.5: Clause Proof Terms', () => {
       const types = new Map([['foo', foo]]);
       const clauses = new Map();
 
-      const result = backward.prove(foo, clauses, types, { buildTerm: false });
+      const result = backward.prove(foo, clauses, types, { ...makeILLBackchainOpts(), buildTerm: false });
       assert(result.success);
       assert.strictEqual(result.term, null);
     });
@@ -235,7 +236,7 @@ describe('3b.5: Clause Proof Terms', () => {
       const types = new Map([['foo', foo]]);
       const clauses = new Map();
 
-      const result = backward.prove(foo, clauses, types, {});
+      const result = backward.prove(foo, clauses, types, { ...makeILLBackchainOpts() });
       assert(result.success);
       assert.strictEqual(result.term, null);
     });
@@ -246,14 +247,14 @@ describe('3b.5: Clause Proof Terms', () => {
       const types = new Map([['a_type', a]]);
       const clauses = new Map([['ab_clause', { hash: b, premises: [a] }]]);
 
-      const r1 = backward.prove(b, clauses, types, { buildTerm: false });
+      const r1 = backward.prove(b, clauses, types, { ...makeILLBackchainOpts(), buildTerm: false });
       Store.clear();
       // Recreate with same structure — Store.clear resets IDs
       const a2 = Store.put('atom', ['a']);
       const b2 = Store.put('atom', ['b']);
       const types2 = new Map([['a_type', a2]]);
       const clauses2 = new Map([['ab_clause', { hash: b2, premises: [a2] }]]);
-      const r2 = backward.prove(b2, clauses2, types2, { buildTerm: true });
+      const r2 = backward.prove(b2, clauses2, types2, { ...makeILLBackchainOpts(), buildTerm: true });
 
       assert(r1.success);
       assert(r2.success);
@@ -276,7 +277,7 @@ describe('3b.5: Clause Proof Terms', () => {
       const clauses = new Map([['pq_clause', { hash: q, premises: [p] }]]);
       const backchainIndex = backward.buildIndex(clauses, types);
 
-      const calc = { clauses, definitions: types, backchainIndex };
+      const calc = { clauses, definitions: types, backchainIndex, backwardOpts: makeILLBackchainOpts() };
       const state = forward.createState({}, {});
 
       const theta = new Array(1);
@@ -433,7 +434,7 @@ describe('3b.5: Clause Proof Terms', () => {
     it('zero premises: loli(one, monad(Q))', () => {
       const q = Store.put('atom', ['q']);
       const clauses = new Map([['q_clause', { hash: q, premises: [] }]]);
-      const result = backward.prove(q, clauses, new Map(), { buildTerm: true });
+      const result = backward.prove(q, clauses, new Map(), { ...makeILLBackchainOpts(), buildTerm: true });
 
       assert(result.success);
       const groundLoli = result.term.principal;
@@ -448,7 +449,7 @@ describe('3b.5: Clause Proof Terms', () => {
       const q = Store.put('atom', ['q']);
       const types = new Map([['p_type', p]]);
       const clauses = new Map([['pq_clause', { hash: q, premises: [p] }]]);
-      const result = backward.prove(q, clauses, types, { buildTerm: true });
+      const result = backward.prove(q, clauses, types, { ...makeILLBackchainOpts(), buildTerm: true });
 
       assert(result.success);
       const groundLoli = result.term.principal;
@@ -464,7 +465,7 @@ describe('3b.5: Clause Proof Terms', () => {
       const d = Store.put('atom', ['d']);
       const types = new Map([['a_type', a], ['b_type', b], ['c_type', c]]);
       const clauses = new Map([['abcd_clause', { hash: d, premises: [a, b, c] }]]);
-      const result = backward.prove(d, clauses, types, { buildTerm: true });
+      const result = backward.prove(d, clauses, types, { ...makeILLBackchainOpts(), buildTerm: true });
 
       assert(result.success);
       const groundLoli = result.term.principal;
@@ -489,7 +490,7 @@ describe('3b.5: Clause Proof Terms', () => {
 
     it('returns null term on failure', () => {
       const unknown = Store.put('atom', ['unknown']);
-      const result = backward.prove(unknown, new Map(), new Map(), { buildTerm: true });
+      const result = backward.prove(unknown, new Map(), new Map(), { ...makeILLBackchainOpts(), buildTerm: true });
       assert(!result.success);
       assert.strictEqual(result.term, null);
     });

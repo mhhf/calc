@@ -7,7 +7,6 @@ const { describe, it, before } = require('node:test');
 const assert = require('node:assert');
 const path = require('path');
 const mde = require('../../lib/engine');
-const { explore } = require('../../lib/engine/explore');
 const { getAllLeaves, countNodes } = require('../../lib/engine/tree-utils');
 const { classifyLeaf } = require('../../lib/engine/show');
 const Store = require('../../lib/kernel/store');
@@ -22,9 +21,8 @@ describe('Solc multisig explore', { timeout: 30000, concurrency: 1 }, () => {
     );
     const state = mde.decomposeQuery(calc.queries.get('symex'));
 
-    tree = explore(state, calc.forwardRules, {
+    tree = calc.explore(state, {
       maxDepth: 2000,
-      calc: { clauses: calc.clauses, definitions: calc.definitions },
       dangerouslyUseFFI: true // Benchmark test
     });
 
@@ -78,9 +76,8 @@ describe('Solc multisig explore', { timeout: 30000, concurrency: 1 }, () => {
     const state = mde.decomposeQuery(calc.queries.get('symex'));
 
     const t0 = performance.now();
-    explore(state, calc.forwardRules, {
+    calc.explore(state, {
       maxDepth: 2000,
-      calc: { clauses: calc.clauses, definitions: calc.definitions },
       dangerouslyUseFFI: true
     });
     const dt = performance.now() - t0;
@@ -98,10 +95,9 @@ describe('Solc multisig symbolic (structural memo)', { timeout: 30000, concurren
       path.join(__dirname, '../../calculus/ill/programs/multisig_nocall_solc_symbolic.ill')
     );
     const state = mde.decomposeQuery(calc.queries.get('symex'));
-    const opts = { maxDepth: 500, calc: { clauses: calc.clauses, definitions: calc.definitions }, dangerouslyUseFFI: true };
 
-    treeFull = explore(state, calc.forwardRules, { ...opts, structuralMemo: false });
-    treeMemo = explore(state, calc.forwardRules, { ...opts, structuralMemo: true });
+    treeFull = calc.explore(state, { maxDepth: 500, dangerouslyUseFFI: true, structuralMemo: false });
+    treeMemo = calc.explore(state, { maxDepth: 500, dangerouslyUseFFI: true, structuralMemo: true });
   });
 
   it('full exploration has 214 nodes and 2 leaves', () => {
@@ -142,10 +138,9 @@ describe('Solc multisig symbolic (structural memo)', { timeout: 30000, concurren
     const state = mde.decomposeQuery(calc.queries.get('symex'));
 
     const t0 = performance.now();
-    explore(state, calc.forwardRules, {
+    calc.explore(state, {
       maxDepth: 500,
       structuralMemo: true,
-      calc: { clauses: calc.clauses, definitions: calc.definitions },
       dangerouslyUseFFI: true
     });
     const dt = performance.now() - t0;

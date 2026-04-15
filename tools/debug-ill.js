@@ -21,7 +21,7 @@ const {
   stateHasFreevars, isSubset,
   groupByPredicate, show, classifyLeaf, showInteresting, getAllLeaves,
   countLeaves, maxDepth, countNodes,
-} = require('../lib/engine/directive-loader');
+} = require('./directive-loader');
 
 // ─── CLI ────────────────────────────────────────────────────────────────────
 

@@ -9,7 +9,7 @@ const path = require('path');
 const fs = require('fs');
 const os = require('os');
 const Store = require('../../lib/kernel/store');
-const dl = require('../../lib/engine/directive-loader');
+const dl = require('../../tools/directive-loader');
 
 describe('directive-loader', () => {
   beforeEach(() => Store.clear());

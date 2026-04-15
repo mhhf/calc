@@ -7,7 +7,7 @@ const assert = require('node:assert');
 const path = require('path');
 const mde = require('../../lib/engine');
 const backward = require('../../lib/engine/backchain');
-const { explore } = require('../../lib/engine/explore');
+const { makeILLBackchainOpts } = require('../../lib/engine/ill/backchain-ill');
 const { getAllLeaves, countNodes } = require('../../lib/engine/tree-utils');
 const Store = require('../../lib/kernel/store');
 const { apply: subApply } = require('../../lib/kernel/substitute');
@@ -139,6 +139,7 @@ describe('Memory Backward Clauses', { timeout: 30000 }, () => {
   async function proveNoFFI(expr, opts = {}) {
     const goal = await mde.parseExpr(expr);
     return backward.prove(goal, calc.clauses, calc.definitions, {
+      ...makeILLBackchainOpts(),
       useFFI: false,
       maxDepth: opts.maxDepth || 100,
       trace: opts.trace || false,
@@ -150,6 +151,7 @@ describe('Memory Backward Clauses', { timeout: 30000 }, () => {
     const goal = await mde.parseExpr(expr);
     const vHash = Store.put('metavar', ['' + varName]);
     const result = backward.prove(goal, calc.clauses, calc.definitions, {
+      ...makeILLBackchainOpts(),
       useFFI: false,
       maxDepth: 100,
     });
@@ -282,9 +284,8 @@ describe('EVM Memory Integration', { timeout: 30000, concurrency: 1 }, () => {
         7: '0x51'
       });
 
-      const tree = explore(state, calc.forwardRules, {
+      const tree = calc.explore(state, {
         maxDepth: 100,
-        calc: { clauses: calc.clauses, definitions: calc.definitions },
         dangerouslyUseFFI: true // Testing EVM execution, not adversarial soundness
       });
 
@@ -327,9 +328,8 @@ describe('EVM Memory Integration', { timeout: 30000, concurrency: 1 }, () => {
         7: '0x51'
       });
 
-      const tree = explore(state, calc.forwardRules, {
+      const tree = calc.explore(state, {
         maxDepth: 100,
-        calc: { clauses: calc.clauses, definitions: calc.definitions },
         dangerouslyUseFFI: true // Testing EVM execution, not adversarial soundness
       });
 
@@ -374,9 +374,8 @@ describe('EVM Memory Integration', { timeout: 30000, concurrency: 1 }, () => {
         12: '0x51'
       });
 
-      const tree = explore(state, calc.forwardRules, {
+      const tree = calc.explore(state, {
         maxDepth: 200,
-        calc: { clauses: calc.clauses, definitions: calc.definitions },
         dangerouslyUseFFI: true // Testing EVM execution, not adversarial soundness
       });
 
@@ -419,9 +418,8 @@ describe('EVM Memory Integration', { timeout: 30000, concurrency: 1 }, () => {
         5: '0x59'
       });
 
-      const tree = explore(state, calc.forwardRules, {
+      const tree = calc.explore(state, {
         maxDepth: 50,
-        calc: { clauses: calc.clauses, definitions: calc.definitions },
         dangerouslyUseFFI: true // Testing EVM execution, not adversarial soundness
       });
 
@@ -472,9 +470,8 @@ describe('EVM Memory Integration', { timeout: 30000, concurrency: 1 }, () => {
         19: '0xf1'                // CALL
       });
 
-      const tree = explore(state, calc.forwardRules, {
+      const tree = calc.explore(state, {
         maxDepth: 100,
-        calc: { clauses: calc.clauses, definitions: calc.definitions },
         dangerouslyUseFFI: true // Testing EVM execution, not adversarial soundness
       });
 
@@ -530,9 +527,8 @@ describe('EVM Memory Integration', { timeout: 30000, concurrency: 1 }, () => {
 
       const state = mde.decomposeQuery(msCalc.queries.get('symex'));
 
-      tree = explore(state, msCalc.forwardRules, {
+      tree = msCalc.explore(state, {
         maxDepth: 200,
-        calc: { clauses: msCalc.clauses, definitions: msCalc.definitions },
         dangerouslyUseFFI: true
       });
 
@@ -569,9 +565,8 @@ describe('EVM Memory Integration', { timeout: 30000, concurrency: 1 }, () => {
 
       const state = mde.decomposeQuery(msCalc.queries.get('symex'));
 
-      tree = explore(state, msCalc.forwardRules, {
+      tree = msCalc.explore(state, {
         maxDepth: 300,
-        calc: { clauses: msCalc.clauses, definitions: msCalc.definitions },
         dangerouslyUseFFI: true
       });
 

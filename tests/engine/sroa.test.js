@@ -17,7 +17,7 @@ const { ILL_CONNECTIVES } = require('../../lib/engine/ill/connectives');
 const { resolveConn, flattenAnte, unwrapComp } = require('../../lib/engine/compile');
 const { predHead } = require('../../lib/kernel/ast');
 const { _sroa } = require('../../lib/engine/compose');
-const { getModeMeta: _illGetModeMeta } = require('../../lib/engine/opt/ffi');
+const { getModeMeta: _illGetModeMeta } = require('../../lib/engine/ill/ffi');
 const { ILL_SROA_CONFIG } = require('../../lib/engine/ill/compose-config');
 
 const rc = resolveConn(ILL_CONNECTIVES);

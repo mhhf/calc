@@ -154,7 +154,7 @@ describe('Compose disk cache', () => {
       const state = mde.decomposeQuery(calc.queries.get('symex'));
       return explore(state, calc.forwardRules, {
         maxDepth: 500,
-        calc: { clauses: calc.clauses, definitions: calc.definitions },
+        calc: calc._calcContext,
         dangerouslyUseFFI: true
       });
     }

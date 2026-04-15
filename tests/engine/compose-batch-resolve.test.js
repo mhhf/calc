@@ -12,7 +12,7 @@ const { ILL_CONNECTIVES } = require('../../lib/engine/ill/connectives');
 const { resolveConn, flattenAnte } = require('../../lib/engine/compile');
 const { predHead } = require('../../lib/kernel/ast');
 const { _resolveOnce, _resolveBatch } = require('../../lib/engine/compose');
-const { getModeMeta: _illGetModeMeta } = require('../../lib/engine/opt/ffi');
+const { getModeMeta: _illGetModeMeta } = require('../../lib/engine/ill/ffi');
 const { intToBin, binToInt } = require('../../lib/engine/ill/ffi/convert');
 
 function makeRule(name, anteHash, conseqBodyHash) {
