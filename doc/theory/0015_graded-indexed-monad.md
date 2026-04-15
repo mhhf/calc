@@ -5,15 +5,15 @@ modified: 2026-04-01
 summary: "QTT's grade-0 quantity is meaningful in forward-chaining ILL WITHOUT dependent types — as a staging annotation ('compile-time only, composed away via cut'). Cut elimination in graded ILL can be stratified by grade: grade-0 cuts at compile time, grade-1 at runtime, grade-ω never. The graded semiring {0,1,ω} (established: Atkey 2018) and the indexed monad {A}_a (THY_0013) are orthogonal dimensions that compose into {A}_{q·a}."
 tags: [linear-logic, QTT, graded-types, forward-chaining, staging, cut-elimination, proof-theory]
 category: "Forward Chaining"
-unique_contribution: "Two novel results: (1) QTT's grade-0 quantity is meaningful in forward-chaining ILL WITHOUT dependent types — as a staging annotation where the compiler eliminates grade-0 types via cut. This corrects RES_0056 §10. (2) Stratified cut elimination by grade: a phased procedure where grade-0 cuts are eliminated at compile time, grade-1 at runtime, grade-ω never. RES_0102 confirms this is not a named theorem in the literature."
+unique_contribution: "Two novel results: (1) QTT's grade-0 quantity is meaningful in forward-chaining ILL WITHOUT dependent types — as a staging annotation where the compiler eliminates grade-0 types via cut. This corrects RES_0056 §10. (2) Stratified cut elimination by grade: a phased procedure where grade-0 cuts are eliminated at compile time, grade-1 at runtime, grade-ω never. RES_0118 confirms this is not a named theorem in the literature."
 references:
   - "THY_0013 — The Indexed Lax Monad"
   - "THY_0014 — Compile-Time Evaluation of the Indexed Monad"
   - "RES_0054 — Graded Resource Analysis for Linear Logic"
   - "RES_0056 — QTT Sequent Calculus and Gap Analysis"
   - "RES_0074 — QTT/Graded/Adjoint/SELL/MTDC Expressiveness Hierarchy"
-  - "RES_0101 — QTT, SELL, Graded Modalities, and Petri Nets"
-  - "RES_0102 — Stratified and Phased Cut Elimination (literature survey)"
+  - "RES_0117 — QTT, SELL, Graded Modalities, and Petri Nets"
+  - "RES_0118 — Stratified and Phased Cut Elimination (literature survey)"
   - "Atkey (2018). Syntax and Semantics of Quantitative Type Theory. LICS."
   - "McBride (2016). I Got Plenty o' Nuttin'."
   - "Girard, Scedrov, Scott (1992). Bounded Linear Logic. TCS."
@@ -74,7 +74,7 @@ Exhaustive search across all major PL venues (POPL, ICFP, ESOP, LICS, CSL) confi
 - **Davies-Pfenning** (JACM 2001): `□A` for staging via S4 modality — modal, not graded, no semiring
 - **Kovács 2LTT** (POPL 2023): two-level staging — modal levels, not semiring grades
 
-RES_0101 §9 independently lists "QTT 0-grade = staging formal equivalence" as novel/unestablished.
+RES_0117 §9 independently lists "QTT 0-grade = staging formal equivalence" as novel/unestablished.
 
 ## 2. Stratified Cut Elimination by Grade
 
@@ -124,7 +124,7 @@ Under these conditions: `reachable(S, composed_rules) = reachable(S, original_ru
 
 ### Novelty
 
-RES_0102 surveys all known work. No paper states "cut elimination stratified by formula grade" as a named theorem. The closest results each capture a fragment:
+RES_0118 surveys all known work. No paper states "cut elimination stratified by formula grade" as a named theorem. The closest results each capture a fragment:
 - **Baillot-Mazza (2010):** level-indexed cut elimination in light logics — complexity bounds, not staging
 - **Davies (LICS 1996):** "normalization can be done in stage order" — λ-calculus observation, not sequent calculus theorem
 - **Kovács 2LTT (2023):** two-phase staging algorithm — operational, not proof-theoretic
@@ -209,8 +209,8 @@ Multiple grade-0 types with a dependency order form a tower of compile-time stag
 - RES_0054 — Graded Resource Analysis for Linear Logic
 - RES_0056 — QTT Sequent Calculus and Gap Analysis (§10 corrected here)
 - RES_0074 — QTT/Graded/Adjoint/SELL/MTDC Expressiveness Hierarchy
-- RES_0101 — QTT, SELL, Graded Modalities, and Petri Nets
-- RES_0102 — Stratified and Phased Cut Elimination (literature survey)
+- RES_0117 — QTT, SELL, Graded Modalities, and Petri Nets
+- RES_0118 — Stratified and Phased Cut Elimination (literature survey)
 - Atkey, "Syntax and Semantics of Quantitative Type Theory" (LICS 2018)
 - McBride, "I Got Plenty o' Nuttin'" (2016)
 - Girard, Scedrov, Scott, "Bounded Linear Logic" (TCS 1992)
