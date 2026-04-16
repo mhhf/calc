@@ -24,12 +24,7 @@ const illFfiContext = {
   get: illFfi.get,
   isFFIGround: illFfi.convert.isGround,
 };
-const illMatchOpts = {
-  ffiMeta: illFfi.defaultMeta,
-  ffiGet: illFfi.get,
-  ffiParsedModes: illFfi.parsedModes,
-  ffiIsGround: illFfi.convert.isGround,
-};
+const illMatchOpts = makeMatchOpts({ ffi: illFfiContext });
 const { countNodes, getAllLeaves } = require('../../lib/engine/tree-utils');
 
 // ─── compilePM ─────────────────────────────────────────────

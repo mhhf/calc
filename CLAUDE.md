@@ -8,6 +8,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - Don't write 'status update' documents or other verbose documents unless its told expricitly. Keep all documents descriptive of what IS not how it changed. Keep it VERY short and concise
 - rather then simply recognizing an error and fixing it - think always how to isolate it and test it in isolation - e.g. via unit and integration tests. If its not possible then how to encapsule it (e.g. via logs), then either testing the failed state via unit tests or testing your hypothesis via verifying the logs. only after you verified the fail and isolated the error, you should think about fixing it
 - Prefer reusable tools in the repo (tools/) before writing one-off /tmp scripts
+- For refactor TODOs, grade the finished work against a mechanical rubric (shape / contract / semantic / performance / docs) — see `doc/documentation/audit-rubric.md`
 
 ## Term / Resource / Proposition Principle
 

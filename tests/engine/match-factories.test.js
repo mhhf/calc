@@ -223,3 +223,68 @@ describe('FIELD constants (single source of truth)', () => {
     assert.ok(Object.isFrozen(FFI_FIELDS));
   });
 });
+
+describe('S7 — iteration order (V8 hidden-class stability)', () => {
+  /**
+   * The field iteration order on a matchOpts object is part of its hidden-class
+   * identity. Changing the order (by reordering factories or fields within a
+   * factory) will construct a different hidden class, risking polymorphic IC
+   * transitions on hot call sites. Pin the order mechanically.
+   *
+   * Canonical order: generic → lnl → opt → ffi, each factory in declaration order.
+   */
+  const EXPECTED_ORDER = [
+    // GENERIC_FIELDS (in buildGenericProtocol order)
+    'optimizePreserved', 'evidence', 'canonicalize',
+    'onProveFail', 'onProveSuccess', 'provePersistent',
+    // LNL_FIELDS (in buildLnlProtocol order)
+    'matchDynamicRule', 'resolveEx', 'drainLolis',
+    'connectives', 'dynamicRuleTag', 'backchainUseFFI',
+    // OPT_FIELDS (in buildOptProtocol order)
+    'execPS', 'execExStep', 'tryCCDispatch', 'useCompiledSteps',
+    // FFI_FIELDS (in buildFfiProtocol order)
+    'ffiParsedModes', 'ffiMeta', 'ffiGet', 'ffiIsGround',
+  ];
+
+  it('buildMatchOpts preserves canonical field order (empty)', () => {
+    const m = buildMatchOpts({
+      ...buildGenericProtocol(),
+      ...buildLnlProtocol(),
+      ...buildOptProtocol(),
+      ...buildFfiProtocol(null),
+    });
+    assert.deepStrictEqual(Object.keys(m), EXPECTED_ORDER);
+  });
+
+  it('buildMatchOpts preserves canonical field order (populated)', () => {
+    const m = buildMatchOpts({
+      ...buildGenericProtocol({
+        optimizePreserved: true, evidence: true,
+        canonicalize: x => x, onProveFail: () => {}, onProveSuccess: () => {},
+        provePersistent: () => {},
+      }),
+      ...buildLnlProtocol({
+        matchLoli: () => {}, resolveEx: () => {}, drainLolis: () => {},
+        rc: { implication: 'loli' }, backchainUseFFI: true,
+      }),
+      ...buildOptProtocol({
+        execPS: () => {}, execExStep: () => {},
+        tryCCDispatch: () => {}, useCompiledSteps: true,
+      }),
+      ...buildFfiProtocol({ parsedModes: {}, meta: {}, get: () => {}, isFFIGround: () => {} }),
+    });
+    assert.deepStrictEqual(Object.keys(m), EXPECTED_ORDER);
+  });
+
+  it('EMPTY_MATCH_OPTS has canonical field order', () => {
+    assert.deepStrictEqual(Object.keys(EMPTY_MATCH_OPTS), EXPECTED_ORDER);
+  });
+
+  it('expected order totals exactly 20 fields (20-field shape contract)', () => {
+    assert.strictEqual(EXPECTED_ORDER.length, 20);
+    assert.strictEqual(
+      GENERIC_FIELDS.length + LNL_FIELDS.length + OPT_FIELDS.length + FFI_FIELDS.length,
+      20
+    );
+  });
+});
