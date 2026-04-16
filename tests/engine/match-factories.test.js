@@ -103,14 +103,15 @@ describe('protocol factory default semantics', () => {
     assert.strictEqual(l.drainLolis, null);
     assert.strictEqual(l.connectives, null);
     assert.strictEqual(l.dynamicRuleTag, null);
-    // Default: backward-clause proving uses FFI-accelerated arithmetic.
-    // Encoded in the factory so consumers (lnl/persistent.js) read one source of truth.
-    assert.strictEqual(l.backchainUseFFI, true);
+    // Factory default is false — the platonic empty record supplies no FFI
+    // provider. The production pragmatic default (FFI-on unless opted out)
+    // lives at index.js:_buildMatchOpts, not in this factory.
+    assert.strictEqual(l.backchainUseFFI, false);
   });
 
-  it('buildLnlProtocol accepts explicit backchainUseFFI=false (adversarial mode)', () => {
-    const l = buildLnlProtocol({ backchainUseFFI: false });
-    assert.strictEqual(l.backchainUseFFI, false);
+  it('buildLnlProtocol accepts explicit backchainUseFFI=true (production mode)', () => {
+    const l = buildLnlProtocol({ backchainUseFFI: true });
+    assert.strictEqual(l.backchainUseFFI, true);
   });
 
   it('buildLnlProtocol maps rc.implication → dynamicRuleTag', () => {
