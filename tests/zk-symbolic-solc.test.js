@@ -16,7 +16,6 @@ const path = require('path');
 const fs = require('fs');
 
 const mde = require('../lib/engine');
-const { explore } = require('../lib/engine/explore');
 const { getAllLeaves } = require('../lib/engine/tree-utils');
 const { classifyLeaf } = require('../lib/engine/show');
 const Store = require('../lib/kernel/store');
@@ -75,11 +74,10 @@ describe('ZK symbolic solc: 31-path witness generation', { timeout: 1800000 }, (
 
   it('explores with evidence → 31 leaves', () => {
     const t0 = performance.now();
-    tree = explore(initialState, engineCalc.forwardRules, {
+    tree = engineCalc.explore(initialState, {
       maxDepth: 500,
       evidence: true,
       dangerouslyUseFFI: true,
-      calc: engineCalc._calcContext,
       // FFI is safe here: custom chips discard clause proof subtrees anyway.
       // fact_axiom intercepts ALL copy(loli(_, monad(_))) — the subtree content
       // (clause proofs vs ffi stubs) is never walked.

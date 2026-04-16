@@ -10,17 +10,18 @@
  *   node benchmarks/engine/explore-bench.js --save       # save baseline
  *   node benchmarks/engine/explore-bench.js --compare    # compare to baseline
  *   node benchmarks/engine/explore-bench.js --profile    # detailed function breakdown
- *   CALC_PROFILE=1 node benchmarks/engine/explore-bench.js --profile  # with forward internals
+ *   CALC_PERF_PROFILE=1 node benchmarks/engine/explore-bench.js --profile  # with forward internals
  */
 
 const path = require('path');
 const fs = require('fs');
 const { performance } = require('perf_hooks');
 const mde = require('../../lib/engine');
-const Store = require('../../lib/kernel/store');
-const { explore, findAllMatches, mutateState } = require('../../lib/engine/explore');
+const { findAllMatches } = require('../../lib/engine/strategy');
+const { mutateState } = require('../../lib/engine/state-ops');
 const match = require('../../lib/engine/match');
 const { detectStrategy } = require('../../lib/engine/strategy');
+const { buildFingerprintIndex } = require('../../lib/engine/forward');
 const treeUtils = require('../../lib/engine/tree-utils');
 
 const BASELINE_PATH = path.join(__dirname, 'explore-baseline.json');
@@ -64,7 +65,16 @@ function setupState() {
 
 // ─── Instrumented explore ────────────────────────────────────────────────────
 
-function instrumentedExplore(initialState, rules, calcCtx, maxDepth) {
+/**
+ * Manual DFS with per-function timing instrumentation.
+ *
+ * Note: This reimplements the DFS loop for profiling granularity (timing
+ * findAllMatches vs mutateState vs undo separately). It does NOT include
+ * loli drain, constraint solving, or structural memoization — for those,
+ * use calc.explore() with onStep hooks. The matchOpts parameter is required
+ * for persistent goal proving (without it, rules with !bang goals fail silently).
+ */
+function instrumentedExplore(initialState, rules, calcCtx, maxDepth, matchOpts) {
   const { fromObject, toObject, Arena } = require('../../lib/engine/fact-set');
 
   const timers = {
@@ -88,16 +98,8 @@ function instrumentedExplore(initialState, rules, calcCtx, maxDepth) {
   if (fpConfig) {
     state._fpPred = fpConfig.pred;
     state._fpKeyPos = fpConfig.keyPos;
-    const fpTagId = Store.TAG[fpConfig.pred];
-    state._byKey = {};
-    if (fpTagId !== undefined) {
-      const grp = state.linear.group(fpTagId);
-      for (let i = 0; i < grp.length; i++) {
-        const h = grp[i];
-        if (Store.arity(h) > fpConfig.keyPos) {
-          state._byKey[Store.child(h, fpConfig.keyPos)] = h;
-        }
-      }
+    if (fpConfig.type !== 'virtual') {
+      buildFingerprintIndex(state, fpConfig);
     }
   }
 
@@ -131,7 +133,7 @@ function instrumentedExplore(initialState, rules, calcCtx, maxDepth) {
     }
 
     t0 = performance.now();
-    const matches = findAllMatches(state, indexedRules, calcCtx, strategy);
+    const matches = findAllMatches(state, indexedRules, calcCtx, strategy, matchOpts);
     timers.findAllMatches.time += performance.now() - t0;
     timers.findAllMatches.calls++;
 
@@ -210,10 +212,6 @@ function instrumentedExplore(initialState, rules, calcCtx, maxDepth) {
 
 async function runBenchmark(doProfile) {
   const { calc, state } = setupState();
-  const calcCtx = {
-    clauses: calc.clauses,
-    definitions: calc.definitions,
-  };
 
   const linearCount = Object.keys(state.linear).length;
   const ruleCount = calc.forwardRules.length;
@@ -225,7 +223,9 @@ async function runBenchmark(doProfile) {
   if (doProfile) {
     match.resetProfile();
 
-    const { tree, timers } = instrumentedExplore(state, calc.forwardRules, calcCtx, 200);
+    const matchOpts = calc._buildMatchOpts({});
+    const { tree, timers } = instrumentedExplore(
+      state, calc.forwardRules, calc._calcContext, 200, matchOpts);
     const totalTime = Object.values(timers).reduce((s, t) => s + t.time, 0);
     const prof = match.getProfile();
 
@@ -279,10 +279,7 @@ async function runBenchmark(doProfile) {
 
   for (let i = 0; i < WARMUP + RUNS; i++) {
     const t0 = performance.now();
-    const tree = explore(state, calc.forwardRules, {
-      maxDepth: 200,
-      calc: calcCtx
-    });
+    const tree = calc.explore(state, { maxDepth: 200 });
     const elapsed = performance.now() - t0;
 
     if (i >= WARMUP) {
@@ -323,7 +320,7 @@ async function runBenchmark(doProfile) {
     facts: linearCount,
     rules: ruleCount,
     tree: {
-      nodes: treeUtils.countNodes(explore(state, calc.forwardRules, { maxDepth: 200, calc: calcCtx })),
+      nodes: treeUtils.countNodes(calc.explore(state, { maxDepth: 200 })),
     },
     timing: {
       mean: s.mean,

@@ -8,7 +8,7 @@ const forward = require('../../lib/engine/forward');
 const mde = require('../../lib/engine');
 const Store = require('../../lib/kernel/store');
 const ffi = require('../../lib/engine/ill/ffi');
-const { tryMatch, buildMatchOpts } = require('../../lib/engine/match');
+const { tryMatch, buildMatchOpts, buildGenericProtocol, buildLnlProtocol, buildOptProtocol, buildFfiProtocol } = require('../../lib/engine/match');
 const { ILL_CONNECTIVES } = require('../../lib/engine/ill/connectives');
 const { resolveConn, flattenAnte } = require('../../lib/engine/formula-utils');
 const ILL_RC = resolveConn(ILL_CONNECTIVES);
@@ -120,7 +120,11 @@ describe('Forward Chaining', { timeout: 10000 }, () => {
       );
 
       const matchOpts = buildMatchOpts({
-        rc: ILL_RC, provePersistentNaive: proveNaive,
+        ...buildGenericProtocol({}),
+        ...buildLnlProtocol({ rc: ILL_RC }),
+        ...buildOptProtocol({}),
+        ...buildFfiProtocol(null),
+        provePersistent: proveNaive,
       });
       const result = forward.run(state, [rule], { matchOpts });
 
@@ -233,11 +237,13 @@ describe('Forward Chaining', { timeout: 10000 }, () => {
       // FFI can't convert sym to BigInt → conversion_failed (non-definitive).
       // tryMatch falls through to persistent state lookup, finds inc(sym, sym_plus_1).
       const { proveNaive } = require('../../lib/engine/lnl/persistent');
-      const { buildMatchOpts } = require('../../lib/engine/match');
-      const matchOpts = buildMatchOpts({
-        useFFI: false, evidence: false, rc: ILL_RC,
-        ffiCtx: null, canonicalize: null,
-        provePersistentNaive: proveNaive,
+      const { buildMatchOpts: bmo, buildGenericProtocol: bgp, buildLnlProtocol: blp, buildOptProtocol: bop, buildFfiProtocol: bfp } = require('../../lib/engine/match');
+      const matchOpts = bmo({
+        ...bgp({ evidence: false, canonicalize: null }),
+        ...blp({ rc: ILL_RC }),
+        ...bop({ useCompiledSteps: false }),
+        ...bfp(null),
+        provePersistent: proveNaive,
       });
       const result = tryMatch(rule, state, null, matchOpts);
 

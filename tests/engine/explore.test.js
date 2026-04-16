@@ -20,7 +20,7 @@ const forward = require('../../lib/engine/forward');
 const { matchLoli } = require('../../lib/engine/lnl/loli');
 const { drainLolis } = require('../../lib/engine/lnl/loli-drain');
 const { proveNaive } = require('../../lib/engine/lnl/persistent');
-const { buildMatchOpts } = require('../../lib/engine/match');
+const { buildMatchOpts, buildGenericProtocol, buildLnlProtocol, buildOptProtocol, buildFfiProtocol } = require('../../lib/engine/match');
 const Store = require('../../lib/kernel/store');
 
 describe('explore', { timeout: 10000 }, () => {
@@ -565,8 +565,11 @@ describe('explore', { timeout: 10000 }, () => {
       );
 
       const matchOpts = buildMatchOpts({
-        rc: ILL_RC, provePersistentNaive: proveNaive,
-        matchLoli, drainLolis,
+        ...buildGenericProtocol({}),
+        ...buildLnlProtocol({ rc: ILL_RC, matchLoli, drainLolis }),
+        ...buildOptProtocol({}),
+        ...buildFfiProtocol(null),
+        provePersistent: proveNaive,
       });
       const tree = explore(state, [rule], {
         maxDepth: 5,

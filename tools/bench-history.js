@@ -164,19 +164,17 @@ const MARKER = '${MARKER}';
 const WARMUP = ${warmup};
 const RUNS = ${runs};
 
-function benchExplore(state, forwardRules, calcCtx) {
-  const explore = require('./lib/engine/explore');
+function benchExplore(state, calc) {
   const treeUtils = require('./lib/engine/tree-utils');
   const opts = {
     maxDepth: 400,
-    calc: calcCtx,
     structuralMemo: true,
     dangerouslyUseFFI: true,
   };
 
   // Warmup
   for (let i = 0; i < WARMUP; i++) {
-    explore.explore(state, forwardRules, opts);
+    calc.explore(state, opts);
   }
   if (global.gc) global.gc();
 
@@ -185,7 +183,7 @@ function benchExplore(state, forwardRules, calcCtx) {
   const times = [];
   for (let i = 0; i < RUNS; i++) {
     const t0 = performance.now();
-    const tree = explore.explore(state, forwardRules, opts);
+    const tree = calc.explore(state, opts);
     times.push(performance.now() - t0);
     if (i === 0) {
       nodes = treeUtils.countNodes(tree);
@@ -236,9 +234,8 @@ async function main() {
       loadOpts
     );
     const state = mde.decomposeQuery(calc.queries.get('symex'));
-    const calcCtx = { clauses: calc.clauses, definitions: calc.definitions };
 
-    Object.assign(result, benchExplore(state, calc.forwardRules, calcCtx));
+    Object.assign(result, benchExplore(state, calc));
   } catch (err) {
     result.error = err.message;
   }

@@ -1,0 +1,241 @@
+/**
+ * Protocol factory unit tests (TODO_0209).
+ *
+ * Each factory is a pure function that maps a record of inputs to a record of
+ * output fields with a stable shape. These tests pin down the shape contract
+ * so regressions that widen/narrow the matchOpts hidden class are caught at
+ * unit-test granularity (not via whole-engine integration).
+ *
+ * Properties tested:
+ *   1. Shape stability — factory always returns the same keys, regardless of input.
+ *   2. Default semantics — missing/falsy inputs produce the documented defaults.
+ *   3. Freeze — buildMatchOpts's output is frozen (V8 shape pinned).
+ *   4. Identity — EMPTY_MATCH_OPTS has full shape, matching a populated matchOpts.
+ *   5. Single source of truth — exported FIELD constants match factory outputs.
+ */
+
+const { describe, it } = require('node:test');
+const assert = require('node:assert');
+const match = require('../../lib/engine/match');
+
+const {
+  buildGenericProtocol, buildLnlProtocol, buildOptProtocol,
+  buildFfiProtocol, buildProofProtocol, buildMatchOpts,
+  GENERIC_FIELDS, LNL_FIELDS, OPT_FIELDS, FFI_FIELDS, PROOF_FIELDS,
+  EMPTY_MATCH_OPTS,
+} = match;
+
+/** Sorted keys — order-independent shape comparison. */
+function shape(obj) {
+  return Object.keys(obj).sort();
+}
+
+describe('protocol factory shape stability', () => {
+  it('buildGenericProtocol has stable shape regardless of input', () => {
+    const empty = shape(buildGenericProtocol());
+    const partial = shape(buildGenericProtocol({ evidence: true }));
+    const full = shape(buildGenericProtocol({
+      optimizePreserved: true, evidence: true,
+      canonicalize: x => x, onProveFail: () => {}, onProveSuccess: () => {},
+    }));
+    assert.deepStrictEqual(empty, partial);
+    assert.deepStrictEqual(empty, full);
+    assert.deepStrictEqual(empty, [...GENERIC_FIELDS].sort());
+  });
+
+  it('buildLnlProtocol has stable shape regardless of input', () => {
+    const empty = shape(buildLnlProtocol());
+    const full = shape(buildLnlProtocol({
+      matchLoli: () => {}, resolveEx: () => {}, drainLolis: () => {},
+      rc: { implication: 'loli' }, backchainUseFFI: true,
+    }));
+    assert.deepStrictEqual(empty, full);
+    assert.deepStrictEqual(empty, [...LNL_FIELDS].sort());
+  });
+
+  it('buildOptProtocol has stable shape regardless of input', () => {
+    const empty = shape(buildOptProtocol());
+    const full = shape(buildOptProtocol({
+      execPS: () => {}, execExStep: () => {},
+      tryCCDispatch: () => {}, useCompiledSteps: true,
+    }));
+    assert.deepStrictEqual(empty, full);
+    assert.deepStrictEqual(empty, [...OPT_FIELDS].sort());
+  });
+
+  it('buildFfiProtocol has stable shape regardless of input', () => {
+    const empty = shape(buildFfiProtocol(null));
+    const full = shape(buildFfiProtocol({
+      parsedModes: {}, meta: {}, get: () => {}, isFFIGround: () => {},
+    }));
+    assert.deepStrictEqual(empty, full);
+    assert.deepStrictEqual(empty, [...FFI_FIELDS].sort());
+  });
+
+  it('buildProofProtocol has stable shape regardless of input', () => {
+    const empty = shape(buildProofProtocol());
+    const full = shape(buildProofProtocol({
+      useFFI: true, proveWithFFI: () => {}, proveNaive: () => {},
+    }));
+    assert.deepStrictEqual(empty, full);
+    assert.deepStrictEqual(empty, [...PROOF_FIELDS].sort());
+  });
+});
+
+describe('protocol factory default semantics', () => {
+  it('buildGenericProtocol defaults callbacks to null', () => {
+    const g = buildGenericProtocol();
+    assert.strictEqual(g.canonicalize, null);
+    assert.strictEqual(g.onProveFail, null);
+    assert.strictEqual(g.onProveSuccess, null);
+    // Flags default to undefined (distinguishes unset from explicit false)
+    assert.strictEqual(g.optimizePreserved, undefined);
+    assert.strictEqual(g.evidence, undefined);
+  });
+
+  it('buildLnlProtocol defaults callbacks to null, rc to null', () => {
+    const l = buildLnlProtocol();
+    assert.strictEqual(l.matchDynamicRule, null);
+    assert.strictEqual(l.resolveEx, null);
+    assert.strictEqual(l.drainLolis, null);
+    assert.strictEqual(l.connectives, null);
+    assert.strictEqual(l.dynamicRuleTag, null);
+    // Default: backward-clause proving uses FFI-accelerated arithmetic.
+    // Encoded in the factory so consumers (lnl/persistent.js) read one source of truth.
+    assert.strictEqual(l.backchainUseFFI, true);
+  });
+
+  it('buildLnlProtocol accepts explicit backchainUseFFI=false (adversarial mode)', () => {
+    const l = buildLnlProtocol({ backchainUseFFI: false });
+    assert.strictEqual(l.backchainUseFFI, false);
+  });
+
+  it('buildLnlProtocol maps rc.implication → dynamicRuleTag', () => {
+    const l = buildLnlProtocol({ rc: { implication: 'loli' } });
+    assert.strictEqual(l.dynamicRuleTag, 'loli');
+    assert.deepStrictEqual(l.connectives, { implication: 'loli' });
+  });
+
+  it('buildOptProtocol defaults callbacks to null', () => {
+    const o = buildOptProtocol();
+    assert.strictEqual(o.execPS, null);
+    assert.strictEqual(o.execExStep, null);
+    assert.strictEqual(o.tryCCDispatch, null);
+    assert.strictEqual(o.useCompiledSteps, undefined);
+  });
+
+  it('buildFfiProtocol defaults all fields to null when ffiCtx is null', () => {
+    const f = buildFfiProtocol(null);
+    assert.strictEqual(f.ffiParsedModes, null);
+    assert.strictEqual(f.ffiMeta, null);
+    assert.strictEqual(f.ffiGet, null);
+    assert.strictEqual(f.ffiIsGround, null);
+  });
+
+  it('buildFfiProtocol passes through ffiCtx fields', () => {
+    const getFn = () => 42;
+    const ctx = { parsedModes: { p: [] }, meta: { x: 1 }, get: getFn, isFFIGround: () => true };
+    const f = buildFfiProtocol(ctx);
+    assert.deepStrictEqual(f.ffiParsedModes, { p: [] });
+    assert.deepStrictEqual(f.ffiMeta, { x: 1 });
+    assert.strictEqual(f.ffiGet, getFn);
+    assert.strictEqual(typeof f.ffiIsGround, 'function');
+  });
+
+  it('buildProofProtocol routes by useFFI flag', () => {
+    const ffi = () => 'ffi';
+    const naive = () => 'naive';
+    const withFFI = buildProofProtocol({ useFFI: true, proveWithFFI: ffi, proveNaive: naive });
+    const withoutFFI = buildProofProtocol({ useFFI: false, proveWithFFI: ffi, proveNaive: naive });
+    assert.strictEqual(withFFI.provePersistent, ffi);
+    assert.strictEqual(withoutFFI.provePersistent, naive);
+  });
+
+  it('buildProofProtocol defaults to null when implementation is missing', () => {
+    const withFFIMissing = buildProofProtocol({ useFFI: true });
+    const withoutFFIMissing = buildProofProtocol({ useFFI: false });
+    assert.strictEqual(withFFIMissing.provePersistent, null);
+    assert.strictEqual(withoutFFIMissing.provePersistent, null);
+  });
+
+  it('boolean fields preserve explicit false (not coerced to undefined)', () => {
+    // Regression: `value || undefined` loses false. Consumers use `!== undefined`
+    // to detect explicit opt-out — so false must round-trip as false.
+    const g = buildGenericProtocol({ optimizePreserved: false, evidence: false });
+    assert.strictEqual(g.optimizePreserved, false);
+    assert.strictEqual(g.evidence, false);
+
+    const l = buildLnlProtocol({ backchainUseFFI: false });
+    assert.strictEqual(l.backchainUseFFI, false);
+
+    const o = buildOptProtocol({ useCompiledSteps: false });
+    assert.strictEqual(o.useCompiledSteps, false);
+  });
+});
+
+describe('buildMatchOpts and EMPTY_MATCH_OPTS', () => {
+  it('buildMatchOpts freezes its output', () => {
+    const m = buildMatchOpts({ ...buildGenericProtocol(), ...buildProofProtocol() });
+    assert.ok(Object.isFrozen(m), 'matchOpts must be frozen');
+    // Strict-mode assignment must throw on frozen objects (function-scoped directive).
+    function strictAssign() {
+      'use strict';
+      m.canonicalize = x => x;
+    }
+    assert.throws(strictAssign, /read only|assign.*read.only|Cannot/i);
+  });
+
+  it('EMPTY_MATCH_OPTS is frozen', () => {
+    assert.ok(Object.isFrozen(EMPTY_MATCH_OPTS));
+  });
+
+  it('EMPTY_MATCH_OPTS has full shape (all factory fields present)', () => {
+    const expected = [
+      ...GENERIC_FIELDS, ...LNL_FIELDS, ...OPT_FIELDS, ...FFI_FIELDS, ...PROOF_FIELDS,
+    ].sort();
+    assert.deepStrictEqual(shape(EMPTY_MATCH_OPTS), expected);
+  });
+
+  it('EMPTY_MATCH_OPTS matches shape of fully-populated matchOpts', () => {
+    const populated = buildMatchOpts({
+      ...buildGenericProtocol({
+        optimizePreserved: true, evidence: true,
+        canonicalize: x => x, onProveFail: () => {}, onProveSuccess: () => {},
+      }),
+      ...buildLnlProtocol({
+        matchLoli: () => {}, resolveEx: () => {}, drainLolis: () => {},
+        rc: { implication: 'loli' }, backchainUseFFI: true,
+      }),
+      ...buildOptProtocol({
+        execPS: () => {}, execExStep: () => {},
+        tryCCDispatch: () => {}, useCompiledSteps: true,
+      }),
+      ...buildFfiProtocol({ parsedModes: {}, meta: {}, get: () => {}, isFFIGround: () => {} }),
+      ...buildProofProtocol({ useFFI: true, proveWithFFI: () => {}, proveNaive: () => {} }),
+    });
+    assert.deepStrictEqual(shape(EMPTY_MATCH_OPTS), shape(populated));
+  });
+});
+
+describe('FIELD constants (single source of truth)', () => {
+  it('all FIELD constants are disjoint (no field owned by two factories)', () => {
+    const all = [GENERIC_FIELDS, LNL_FIELDS, OPT_FIELDS, FFI_FIELDS, PROOF_FIELDS];
+    const seen = new Map();
+    for (let i = 0; i < all.length; i++) {
+      for (const f of all[i]) {
+        if (seen.has(f)) {
+          assert.fail(`Field '${f}' is produced by factories #${seen.get(f)} and #${i}`);
+        }
+        seen.set(f, i);
+      }
+    }
+  });
+
+  it('FIELD constants are frozen', () => {
+    assert.ok(Object.isFrozen(GENERIC_FIELDS));
+    assert.ok(Object.isFrozen(LNL_FIELDS));
+    assert.ok(Object.isFrozen(OPT_FIELDS));
+    assert.ok(Object.isFrozen(FFI_FIELDS));
+    assert.ok(Object.isFrozen(PROOF_FIELDS));
+  });
+});

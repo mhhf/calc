@@ -84,20 +84,19 @@ async function runEngine(iterations) {
 
 // ─── Suite: explore ──────────────────────────────────────────────────────────
 
-function benchOne(label, state, forwardRules, calcCtx, exploreOpts, iterations) {
+function benchOne(_label, calc, state, exploreOpts, iterations) {
   const { performance } = require('perf_hooks');
-  const explore = require('../../lib/engine/explore');
   const WARMUP = 3;
 
   for (let i = 0; i < WARMUP; i++) {
-    explore.explore(state, forwardRules, exploreOpts);
+    calc.explore(state, exploreOpts);
   }
   if (global.gc) global.gc();
 
   const times = [];
   for (let i = 0; i < iterations; i++) {
     const t0 = performance.now();
-    explore.explore(state, forwardRules, exploreOpts);
+    calc.explore(state, exploreOpts);
     times.push(performance.now() - t0);
   }
   times.sort((a, b) => a - b);
@@ -122,9 +121,8 @@ async function runExplore(iterations) {
       path.join(__dirname, '../../calculus/ill/programs/multisig.ill')
     );
     const state = mde.decomposeQuery(calc.queries.get('symex'));
-    const calcCtx = { clauses: calc.clauses, definitions: calc.definitions };
-    results['explore.multisig'] = benchOne('multisig', state, calc.forwardRules, calcCtx,
-      { maxDepth: 200, calc: calcCtx }, iterations);
+    results['explore.multisig'] = benchOne('multisig', calc, state,
+      { maxDepth: 200 }, iterations);
   }
 
   // Isolate Store state between benchmarks
@@ -142,9 +140,8 @@ async function runExplore(iterations) {
       { extraGrade0Facts: bc.facts, scopeGuard: bytecodeArrGetGuard }
     );
     const state = mde.decomposeQuery(calc.queries.get('symex'));
-    const calcCtx = { clauses: calc.clauses, definitions: calc.definitions };
-    results['explore.solc_symbolic'] = benchOne('solc_symbolic', state, calc.forwardRules, calcCtx,
-      { maxDepth: 400, calc: calcCtx, structuralMemo: true, dangerouslyUseFFI: true }, iterations);
+    results['explore.solc_symbolic'] = benchOne('solc_symbolic', calc, state,
+      { maxDepth: 400, structuralMemo: true, dangerouslyUseFFI: true }, iterations);
   }
 
   return results;
