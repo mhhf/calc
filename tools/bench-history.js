@@ -4,7 +4,11 @@
  *
  * Benchmarks the last N commits (via git worktrees) running two scenarios:
  *   - symex: explore.explore() on a pre-loaded state (hot path only)
- *   - e2e:   load + decomposeQuery + explore with no cache (full compile+parse+explore)
+ *   - e2e:   load + decomposeQuery + explore, each iteration in a FRESH Node
+ *            subprocess so the Store hash-cons table, lazy-built expression
+ *            parser, module require cache, and V8 JIT all start cold. This is
+ *            the true "first-invocation" cost users pay — not the warm re-parse
+ *            cost you'd get running the load loop in a single process.
  *
  * Usage:
  *   node --expose-gc tools/bench-history.js [--commits=50] [--runs=21] [--warmup=10]
@@ -13,8 +17,8 @@
  *   --commits=N      Number of commits to benchmark (default: 50)
  *   --runs=N         Symex timed runs per benchmark (default: 21)
  *   --warmup=N       Symex warmup runs before timing (default: 10)
- *   --e2e-runs=N     E2E timed runs per benchmark (default: 5)
- *   --e2e-warmup=N   E2E warmup runs before timing (default: 2)
+ *   --e2e-runs=N     E2E timed runs per benchmark (default: 5, each a fresh Node process)
+ *   --e2e-warmup=N   E2E warmup runs (fresh processes, prime OS page cache) (default: 2)
  *   --no-e2e         Disable end-to-end benchmark (symex only)
  *   --branch=REF     Branch/ref to walk (default: HEAD)
  *   --resume=FILE    Resume from partial results JSON file
@@ -166,6 +170,70 @@ function cleanupAll() {
 }
 
 // ─── Benchmark runner (inline script written to worktree) ─────────────────────
+//
+// Two-layer subprocess design:
+//   Layer 1 (this bench-history.js main process) spawns a runner script per commit.
+//   Layer 2 (runner, below) runs symex in-process and spawns a further child per
+//   e2e iteration so each e2e measurement starts from a cold Node process.
+//
+// Why layer 3 (the e2e child) exists:
+//   `{ cache: false }` in mde.load() routes to _loadFresh, which does NOT call
+//   Store.clear(). The module-level hash-cons DEDUP map, lazy-built expression
+//   parser, module require cache, V8 JIT, and OS page cache all stay hot across
+//   iterations in a single process. A warm in-process e2e underestimates true
+//   cold-start by ~25x (8ms vs ~200ms on solc_symbolic). A fresh subprocess
+//   guarantees every iteration starts truly cold. The cost of fork+startup is
+//   NOT included in the reported time — the child times just load+decompose+
+//   explore internally and prints the result.
+
+// Source of the innermost e2e child script. Defined as a regular string so
+// JSON.stringify can handle escaping (notably the `\s` in the bytecode regex)
+// when embedding this into the runner script template.
+const E2E_CHILD_SOURCE = `'use strict';
+// Runs exactly ONE e2e iteration from a cold Node process:
+//   load(sourcePath, { cache: false, extraGrade0Facts, scopeGuard })
+//   decomposeQuery(symex)
+//   explore()
+// Prints the elapsed wall-clock (ms) delimited by a marker so any incidental
+// stdout from deep engine code (shouldn't happen, but be robust) can't poison
+// the parse. Bytecode-loader setup happens outside the timer to match the
+// existing in-process bench semantics.
+
+const path = require('path');
+const fs = require('fs');
+const { performance } = require('perf_hooks');
+
+try {
+  const mde = require('./lib/engine');
+  const codePath = path.join(__dirname, 'calculus/ill/programs/multisig_nocall_solc_code.ill');
+  const sourcePath = path.join(__dirname, 'calculus/ill/programs/multisig_nocall_solc_symbolic.ill');
+
+  const loadOpts = { cache: false };
+  try {
+    const loaderFile = path.join(__dirname, 'lib/engine/ill/bytecode-loader.js');
+    if (fs.existsSync(loaderFile) && fs.existsSync(codePath)) {
+      const { loadBytecode, bytecodeArrGetGuard } = require('./lib/engine/ill/bytecode-loader');
+      const hex = fs.readFileSync(codePath, 'utf8').match(/bytecode\\s+0x([0-9a-fA-F]+)/)[1];
+      const bc = loadBytecode(hex);
+      loadOpts.extraGrade0Facts = bc.facts;
+      loadOpts.scopeGuard = bytecodeArrGetGuard;
+    }
+  } catch (e) { /* older commit without bytecode support — run without */ }
+
+  const EXPLORE_OPTS = { maxDepth: 400, structuralMemo: true, dangerouslyUseFFI: true };
+
+  const t0 = performance.now();
+  const calc = mde.load(sourcePath, loadOpts);
+  const state = mde.decomposeQuery(calc.queries.get('symex'));
+  calc.explore(state, EXPLORE_OPTS);
+  const elapsed = performance.now() - t0;
+
+  process.stdout.write('BENCH_E2E_RESULT=' + elapsed + '\\n');
+} catch (err) {
+  process.stderr.write('E2E_CHILD_ERROR: ' + (err && err.stack || err && err.message || String(err)) + '\\n');
+  process.exit(1);
+}
+`;
 
 function makeBenchScript(warmup, runs, e2eWarmup, e2eRuns, e2eEnabled) {
   return `
@@ -176,12 +244,17 @@ const RUNS = ${runs};
 const E2E_WARMUP = ${e2eWarmup};
 const E2E_RUNS = ${e2eRuns};
 const E2E_ENABLED = ${e2eEnabled ? 'true' : 'false'};
+const E2E_CHILD_SCRIPT = ${JSON.stringify(E2E_CHILD_SOURCE)};
 
 const EXPLORE_OPTS = {
   maxDepth: 400,
   structuralMemo: true,
   dangerouslyUseFFI: true,
 };
+
+const { spawnSync } = require('child_process');
+const path = require('path');
+const fs = require('fs');
 
 function stats(times) {
   times.sort((a, b) => a - b);
@@ -225,32 +298,48 @@ function benchSymex(state, calc) {
   return { ...stats(times), nodes, branches };
 }
 
-function benchE2E(mde, sourcePath, loadOpts) {
-  // Warmup — full fresh load each iteration (no cache)
-  for (let i = 0; i < E2E_WARMUP; i++) {
-    const calc = mde.load(sourcePath, loadOpts);
-    const state = mde.decomposeQuery(calc.queries.get('symex'));
-    calc.explore(state, EXPLORE_OPTS);
+// Run one e2e iteration in a fresh Node subprocess. Returns elapsed ms (parsed
+// from the child's BENCH_E2E_RESULT=... line). Throws on failure.
+function runE2EChild(scriptPath) {
+  const r = spawnSync(process.execPath, [scriptPath], {
+    cwd: __dirname,
+    env: { ...process.env, NODE_PATH: path.join(__dirname, 'node_modules') },
+    timeout: 60_000,
+  });
+  if (r.error) throw new Error('spawn: ' + r.error.message);
+  if (r.status !== 0) {
+    const stderr = (r.stderr || Buffer.alloc(0)).toString();
+    throw new Error('exit ' + r.status + ': ' + stderr.slice(0, 300).trim());
   }
-  if (global.gc) global.gc();
+  const stdout = (r.stdout || Buffer.alloc(0)).toString();
+  const m = stdout.match(/BENCH_E2E_RESULT=([\\d.eE+-]+)/);
+  if (!m) throw new Error('no BENCH_E2E_RESULT in stdout: ' + stdout.slice(0, 200));
+  const t = parseFloat(m[1]);
+  if (!isFinite(t)) throw new Error('bad e2e time: ' + m[1]);
+  return t;
+}
 
-  // Timed runs — each iteration runs load + decomposeQuery + explore with no cache
-  const times = [];
-  for (let i = 0; i < E2E_RUNS; i++) {
-    const t0 = performance.now();
-    const calc = mde.load(sourcePath, loadOpts);
-    const state = mde.decomposeQuery(calc.queries.get('symex'));
-    calc.explore(state, EXPLORE_OPTS);
-    times.push(performance.now() - t0);
-    if (global.gc) global.gc();
+function benchE2EChildSpawned() {
+  // Write the child script once per commit; reuse across all warmup+timed iterations.
+  const scriptPath = path.join(__dirname, '_bench_e2e_iter.js');
+  fs.writeFileSync(scriptPath, E2E_CHILD_SCRIPT);
+
+  try {
+    // Warmup: each spawn is a cold Node process, so these don't warm any JS
+    // state — they only prime the OS page cache for the .ill source files,
+    // reducing filesystem variance across the timed runs. Results discarded.
+    for (let i = 0; i < E2E_WARMUP; i++) runE2EChild(scriptPath);
+
+    // Timed runs — each a fresh process, parent records child-reported ms only.
+    const times = [];
+    for (let i = 0; i < E2E_RUNS; i++) times.push(runE2EChild(scriptPath));
+    return stats(times);
+  } finally {
+    try { fs.unlinkSync(scriptPath); } catch {}
   }
-
-  return stats(times);
 }
 
 async function main() {
-  const path = require('path');
-  const fs = require('fs');
   const result = {};
 
   try {
@@ -273,7 +362,7 @@ async function main() {
       }
     } catch (e) { /* older commit without bytecode support — run without */ }
 
-    // Symex: pre-load once, then time explore() only
+    // Symex: pre-load once, then time explore() only (hot path)
     const calc = mde.load(sourcePath, loadOpts);
     const state = mde.decomposeQuery(calc.queries.get('symex'));
 
@@ -285,10 +374,10 @@ async function main() {
     result.nodes = symex.nodes;
     result.branches = symex.branches;
 
-    // E2E: full load + decompose + explore per iteration (no cache)
+    // E2E: cold subprocess per iteration — measures true first-invocation cost.
     if (E2E_ENABLED) {
       try {
-        result.e2e = benchE2E(mde, sourcePath, loadOpts);
+        result.e2e = benchE2EChildSpawned();
       } catch (err) {
         result.e2eError = err.message;
       }
@@ -490,9 +579,9 @@ async function main() {
 
   console.log(`\nBenchmark History: explore solc_symbolic (FFI + all optimizations)`);
   console.log(`  Commits:     ${commits.length} (from ${opts.branch})`);
-  console.log(`  Symex:       ${opts.warmup} warmup, ${opts.runs} timed`);
+  console.log(`  Symex:       ${opts.warmup} warmup, ${opts.runs} timed (hot explore-only)`);
   if (opts.e2eEnabled) {
-    console.log(`  E2E:         ${opts.e2eWarmup} warmup, ${opts.e2eRuns} timed (load+decompose+explore, no cache)`);
+    console.log(`  E2E:         ${opts.e2eWarmup} warmup, ${opts.e2eRuns} timed (cold: fresh Node per iter, load+decompose+explore)`);
   } else {
     console.log(`  E2E:         disabled (--no-e2e)`);
   }
