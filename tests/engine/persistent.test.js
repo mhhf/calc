@@ -10,6 +10,7 @@ const path = require('path');
 const Store = require('../../lib/kernel/store');
 const { FactSet } = require('../../lib/engine/fact-set');
 const { proveNaive } = require('../../lib/engine/lnl/persistent');
+const { makeMatchOpts } = require('./_match-opts');
 
 describe('lnl/persistent — proveNaive', () => {
   let calc;
@@ -67,11 +68,11 @@ describe('lnl/persistent — proveNaive', () => {
       const theta = [undefined];
 
       const state = { linear: new FactSet(Store.TAG_NAMES.length), persistent: new FactSet(Store.TAG_NAMES.length) };
-      const matchOpts = {
-        ffiParsedModes: calc.ffiContext ? calc.ffiContext.parsedModes : {},
+      const matchOpts = makeMatchOpts({
         canonicalize: calc.canonicalize || null,
         backchainUseFFI: false,
-      };
+        ffi: calc.ffiContext ? { parsedModes: calc.ffiContext.parsedModes } : null,
+      });
 
       const idx = proveNaive([goal], 0, theta, slots, state, calc, null, matchOpts);
       assert.equal(idx, 1);

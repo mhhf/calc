@@ -13,12 +13,6 @@ const forward = require('../../lib/engine/forward');
 const { matchLoli } = require('../../lib/engine/lnl/loli');
 const { proveWithFFI } = require('../../lib/engine/opt/ffi');
 const illFfi = require('../../lib/engine/ill/ffi');
-const illMatchOpts = {
-  ffiMeta: illFfi.defaultMeta,
-  ffiGet: illFfi.get,
-  ffiParsedModes: illFfi.parsedModes,
-  ffiIsGround: illFfi.convert.isGround,
-};
 const { drainLolis } = require('../../lib/engine/lnl/loli-drain');
 const { GRADE_W } = require('../../lib/engine/grades');
 const { ILL_CONNECTIVES } = require('../../lib/engine/ill/connectives');
@@ -26,6 +20,14 @@ const { resolveConn } = require('../../lib/engine/compile');
 const ILL_RC = resolveConn(ILL_CONNECTIVES);
 const { Arena } = require('../../lib/engine/fact-set');
 const { makeMatchOpts } = require('./_match-opts');
+const illMatchOpts = makeMatchOpts({
+  ffi: {
+    meta: illFfi.defaultMeta,
+    get: illFfi.get,
+    parsedModes: illFfi.parsedModes,
+    isFFIGround: illFfi.convert.isGround,
+  },
+});
 
 describe('Evidence collection (TODO_0068 §10.5)', () => {
 
