@@ -288,3 +288,49 @@ describe('S7 — iteration order (V8 hidden-class stability)', () => {
     );
   });
 });
+
+describe('U — usage coverage (every field has a consumer)', () => {
+  /**
+   * Every matchOpts field must be accessed by at least one file in lib/engine/.
+   * A field without any consumer is dead weight: it widens the hidden class
+   * and every call site pays allocation + IC cost for no semantic gain.
+   *
+   * Detection: grep for `matchOpts.<field>` and `opts.<field>` where `opts`
+   * is the conventional local name for the matchOpts parameter. We accept
+   * either pattern since cached field extractions at function entry
+   * (`const { foo } = matchOpts`) are the canonical low-cost access pattern.
+   */
+  const fs = require('fs');
+  const path = require('path');
+
+  function walkJs(dir) {
+    const out = [];
+    for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+      const full = path.join(dir, entry.name);
+      if (entry.isDirectory()) out.push(...walkJs(full));
+      else if (entry.isFile() && entry.name.endsWith('.js')) out.push(full);
+    }
+    return out;
+  }
+
+  const ENGINE_DIR = path.resolve(__dirname, '..', '..', 'lib', 'engine');
+  const engineFiles = walkJs(ENGINE_DIR);
+  const corpus = engineFiles.map(f => fs.readFileSync(f, 'utf8')).join('\n');
+
+  const ALL_FIELDS = [
+    ...GENERIC_FIELDS, ...LNL_FIELDS, ...OPT_FIELDS, ...FFI_FIELDS,
+  ];
+
+  for (const field of ALL_FIELDS) {
+    it(`${field} is consumed by at least one engine file`, () => {
+      // Accept either `matchOpts.field` or destructured `{ field }` from matchOpts.
+      // The destructuring pattern is conservative: any `{ ..., field, ... } = matchOpts`
+      // or similar alias counts. To avoid brittleness we just check the field
+      // name appears as a property access or as a bare identifier in the corpus.
+      const dotAccess = new RegExp(`\\.${field}\\b`);
+      const destructured = new RegExp(`\\{[^}]*\\b${field}\\b[^}]*\\}\\s*=\\s*(?:matchOpts|opts|mo|_mo)\\b`);
+      const ok = dotAccess.test(corpus) || destructured.test(corpus);
+      assert.ok(ok, `Field '${field}' has no consumer in lib/engine/ — candidate for removal`);
+    });
+  }
+});
