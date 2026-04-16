@@ -14,6 +14,7 @@ const mainTabs: Tab[] = [
   { path: '/health', label: 'Health' },
   { path: '/meta', label: 'Meta' },
   { path: '/docs', label: 'Docs', also: ['/theory', '/def'] },
+  { path: '/overview', label: 'Overview' },
 ];
 
 function isActive(tab: Tab, pathname: string) {

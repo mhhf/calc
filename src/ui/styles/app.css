@@ -116,6 +116,13 @@
     @apply bg-gray-700 dark:bg-gray-300 text-gray-300 dark:text-gray-600 hover:bg-gray-600 dark:hover:bg-gray-200 hover:text-white dark:hover:text-gray-900;
   }
 
+  /* Architecture Overview — small chip used in DetailPanel cross-view nav */
+  .nav-chip {
+    @apply px-2 py-1.5 text-xs font-medium text-center rounded border border-gray-200 dark:border-gray-700;
+    @apply bg-white dark:bg-gray-900/30 text-gray-700 dark:text-gray-300;
+    @apply hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors;
+  }
+
   /* Input styling */
   .formula-input {
     @apply w-full px-4 py-3 font-mono text-lg border-2 rounded-lg;
@@ -131,6 +138,26 @@
 }
 
 @layer utilities {
+  /* Detail panel slide-in + backdrop fade — keeps the whole view stable
+     while the panel animates. Used in overview/blocks/DetailPanel.tsx. */
+  @keyframes overview-slide-in {
+    from { transform: translateX(16px); opacity: 0; }
+    to   { transform: translateX(0);    opacity: 1; }
+  }
+  @keyframes overview-fade-in {
+    from { opacity: 0; }
+    to   { opacity: 1; }
+  }
+  .animate-slide-in { animation: overview-slide-in 180ms ease-out; }
+  .animate-fade-in  { animation: overview-fade-in 140ms ease-out; }
+
+  /* Overview pipeline connector fade */
+  @keyframes overview-pulse {
+    0%, 100% { opacity: 0.45; }
+    50%      { opacity: 1;    }
+  }
+  .animate-overview-pulse { animation: overview-pulse 2.4s ease-in-out infinite; }
+
   /* KaTeX display mode centering */
   .katex-display {
     @apply overflow-x-auto py-2;
