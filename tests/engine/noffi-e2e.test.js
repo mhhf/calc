@@ -10,8 +10,6 @@ const assert = require('node:assert/strict');
 const path = require('path');
 const Store = require('../../lib/kernel/store');
 const mde = require('../../lib/engine');
-const { explore } = require('../../lib/engine/explore');
-const { run } = require('../../lib/engine/forward');
 const { countNodes, getAllLeaves } = require('../../lib/engine/tree-utils');
 const { classifyLeaf } = require('../../lib/engine/show');
 const { toObject } = require('../../lib/engine/fact-set');
@@ -29,9 +27,8 @@ describe('noFFI e2e: solc multisig (clause-only resolution)', { timeout: 120000 
       path.join(__dirname, '../../calculus/ill/programs/multisig_nocall_solc.ill')
     );
     const state = mde.decomposeQuery(calc.queries.get('symex'));
-    treeFFI = explore(state, calc.forwardRules, {
+    treeFFI = calc.explore(state, {
       maxDepth: 2000,
-      calc: calc._calcContext,
       dangerouslyUseFFI: true
     });
 
@@ -41,11 +38,7 @@ describe('noFFI e2e: solc multisig (clause-only resolution)', { timeout: 120000 
       path.join(__dirname, '../../calculus/ill/programs/multisig_nocall_solc.ill')
     );
     const state2 = mde.decomposeQuery(calc2.queries.get('symex'));
-    treeNoFFI = explore(state2, calc2.forwardRules, {
-      maxDepth: 2000,
-      calc: calc2._calcContext
-      // no dangerouslyUseFFI — noFFI is default
-    });
+    treeNoFFI = calc2.explore(state2, { maxDepth: 2000 });
   });
 
   it('noFFI produces same tree shape as FFI', () => {
@@ -73,9 +66,8 @@ describe('noFFI e2e: forward.run with evidence', { timeout: 60000 }, () => {
       path.join(__dirname, '../../calculus/ill/programs/multisig_nocall_solc.ill')
     );
     const state = mde.decomposeQuery(calc.queries.get('symex'));
-    result = run(state, calc.forwardRules, {
+    result = calc.exec(state, {
       maxSteps: 2000,
-      calc: calc._calcContext,
       trace: true,
       evidence: true
       // no dangerouslyUseFFI — noFFI is default
@@ -136,9 +128,8 @@ describe('noFFI e2e: dangerouslyUseFFI flag resets correctly', () => {
     const state = mde.decomposeQuery(calc.queries.get('symex'));
 
     // Run with FFI
-    run(state, calc.forwardRules, {
+    calc.exec(state, {
       maxSteps: 10,
-      calc: calc._calcContext,
       dangerouslyUseFFI: true
     });
 
@@ -148,9 +139,8 @@ describe('noFFI e2e: dangerouslyUseFFI flag resets correctly', () => {
       path.join(__dirname, '../../calculus/ill/programs/multisig_nocall_solc.ill')
     );
     const state2 = mde.decomposeQuery(calc2.queries.get('symex'));
-    const result = run(state2, calc2.forwardRules, {
+    const result = calc2.exec(state2, {
       maxSteps: 10,
-      calc: calc2._calcContext,
       trace: true,
       evidence: true
     });
@@ -185,9 +175,8 @@ describe('noFFI e2e: symbolic explore → guided terms', { timeout: 600000 }, ()
       path.join(__dirname, '../../calculus/ill/programs/multisig_nocall_solc_symbolic.ill')
     );
     const state = mde.decomposeQuery(calc.queries.get('symex'));
-    tree = explore(state, calc.forwardRules, {
+    tree = calc.explore(state, {
       maxDepth: 2000,
-      calc: calc._calcContext,
       evidence: true
     });
     leaves = getAllLeaves(tree);

@@ -370,7 +370,6 @@ describe('Store Binary Format', () => {
     });
 
     it('precompiled explore produces same tree as source load', () => {
-      const { explore } = require('../../lib/engine/explore');
       const treeUtils = require('../../lib/engine/tree-utils');
       const tmpFile = path.join(os.tmpdir(), `store-binary-explore-${Date.now()}.bin`);
       try {
@@ -380,9 +379,8 @@ describe('Store Binary Format', () => {
         Store.clear();
         const calcSrc = mde.load(msPath, { cache: false });
         const stateSrc = mde.decomposeQuery(calcSrc.queries.get('symex'));
-        const treeSrc = explore(stateSrc, calcSrc.forwardRules, {
+        const treeSrc = calcSrc.explore(stateSrc, {
           maxDepth: 200,
-          calc: calcSrc._calcContext,
           dangerouslyUseFFI: true
         });
 
@@ -392,9 +390,8 @@ describe('Store Binary Format', () => {
         Store.clear();
         const calcBin = mde.loadPrecompiled(tmpFile);
         const stateBin = mde.decomposeQuery(calcBin.queries.get('symex'));
-        const treeBin = explore(stateBin, calcBin.forwardRules, {
+        const treeBin = calcBin.explore(stateBin, {
           maxDepth: 200,
-          calc: calcBin._calcContext,
           dangerouslyUseFFI: true
         });
 
@@ -566,7 +563,6 @@ describe('Store Binary Format', () => {
     });
 
     it('auto-cached explore produces same tree as fresh', () => {
-      const { explore } = require('../../lib/engine/explore');
       const treeUtils = require('../../lib/engine/tree-utils');
       const msPath = path.join(__dirname, '../../calculus/ill/programs/multisig.ill');
 
@@ -574,9 +570,8 @@ describe('Store Binary Format', () => {
       Store.clear();
       const calcFresh = mde.load(msPath, { cache: false });
       const stateFresh = mde.decomposeQuery(calcFresh.queries.get('symex'));
-      const treeFresh = explore(stateFresh, calcFresh.forwardRules, {
+      const treeFresh = calcFresh.explore(stateFresh, {
         maxDepth: 200,
-        calc: calcFresh._calcContext,
         dangerouslyUseFFI: true
       });
 
@@ -584,9 +579,8 @@ describe('Store Binary Format', () => {
       Store.clear();
       const calcCached = mde.load(msPath, { cacheDir: tmpDir });
       const stateCached = mde.decomposeQuery(calcCached.queries.get('symex'));
-      const treeCached = explore(stateCached, calcCached.forwardRules, {
+      const treeCached = calcCached.explore(stateCached, {
         maxDepth: 200,
-        calc: calcCached._calcContext,
         dangerouslyUseFFI: true
       });
 

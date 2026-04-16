@@ -215,6 +215,212 @@ describe('prover layer DAG enforcement', () => {
   });
 });
 
+// ─── matchOpts field-access enforcement ──────────────────────────────
+//
+// Verifies each engine layer only accesses matchOpts fields it is allowed to.
+// This complements the require() DAG: require() enforces module-level boundaries,
+// this enforces field-level boundaries on the shared matchOpts callback bag.
+//
+// The allowed-field sets encode the dependency inversion contracts:
+// - generic defines interface contracts (provePersistent, matchDynamicRule, etc.)
+//   and consumes them — it doesn't need to know which layer implements them.
+// - lnl consumes generic interfaces + its own context + opt fast-path callbacks.
+// - opt consumes everything above + FFI context data.
+//
+// Field shapes come from match.js factory exports (single source of truth).
+// Per-layer consumption extras are explicitly documented below.
+
+const _match = require('../../lib/engine/match');
+const { GENERIC_FIELDS, LNL_FIELDS, OPT_FIELDS, FFI_FIELDS, PROOF_FIELDS } = _match;
+
+// Generic layer access: generic fields + proof routing + interface callbacks
+// it defined (provided by outer layers) + opt fast-path (intentional exception).
+const GENERIC_ACCESS = new Set([
+  ...GENERIC_FIELDS,
+  ...PROOF_FIELDS,
+  // Interface callbacks defined in generic, implemented by lnl
+  'matchDynamicRule', 'resolveEx', 'drainLolis', 'dynamicRuleTag',
+  // Opt fast-path inline in hot loop (match.js:354-368) — intentional exception:
+  // avoids function call overhead per compiled step in hottest loop
+  'execPS', 'useCompiledSteps',
+]);
+
+// LNL layer access: generic's access + LNL-owned fields + opt callbacks it uses
+// + ffiParsedModes (design debt: backward cache mode detection).
+const LNL_ACCESS = new Set([
+  ...GENERIC_ACCESS,
+  ...LNL_FIELDS,
+  // Opt callbacks consumed by lnl (lnl calls opt for compiled dispatch)
+  'tryCCDispatch', 'execExStep',
+  // Design debt: lnl reads FFI context for backward cache mode detection
+  'ffiParsedModes',
+]);
+
+// Opt layer access: lnl's access + all FFI context data.
+const OPT_ACCESS = new Set([
+  ...LNL_ACCESS,
+  ...OPT_FIELDS,
+  ...FFI_FIELDS,
+]);
+
+const MATCHOPTS_FIELDS = {
+  generic: GENERIC_ACCESS,
+  lnl: LNL_ACCESS,
+  opt: OPT_ACCESS,
+};
+
+/**
+ * Extract matchOpts field accesses from a JS file.
+ *
+ * Captures three syntactic forms:
+ *   1. matchOpts.FIELD              — direct property access
+ *   2. matchOpts?.FIELD             — optional chaining
+ *   3. { FIELD1, FIELD2 } = matchOpts  — destructuring (including renames)
+ *
+ * Aliasing (e.g. `const x = matchOpts; x.FIELD`) is not detected by regex
+ * and is therefore prohibited by convention — enforced by the aliasing test.
+ */
+function extractMatchOptsFields(filePath) {
+  const src = fs.readFileSync(filePath, 'utf8');
+  const fields = new Set();
+
+  // Direct access: matchOpts.FIELD or matchOpts?.FIELD
+  const reDirect = /matchOpts[?]?\.\s*(\w+)/g;
+  let m;
+  while ((m = reDirect.exec(src)) !== null) {
+    fields.add(m[1]);
+  }
+
+  // Destructuring: const { FIELD1, FIELD2: alias, ... } = matchOpts
+  // The LHS is an object pattern; RHS is literal identifier matchOpts.
+  const reDestructure = /\{\s*([^}]+?)\s*\}\s*=\s*matchOpts\b/g;
+  while ((m = reDestructure.exec(src)) !== null) {
+    const body = m[1];
+    // Split on top-level commas; extract the key (before ':' for renames)
+    for (const part of body.split(',')) {
+      const key = part.trim().split(':')[0].trim();
+      if (key && /^\w+$/.test(key)) fields.add(key);
+    }
+  }
+
+  return fields;
+}
+
+/**
+ * Detect illegal aliasing of matchOpts — any assignment where the RHS is the
+ * literal `matchOpts` identifier (and not a property access on it) defeats
+ * the field-access scanner. Callers must access fields directly.
+ *
+ * Allowed: matchOpts.x, matchOpts?.x, { x } = matchOpts, foo(matchOpts)
+ * Banned: const x = matchOpts, let x = matchOpts, x = matchOpts (assignment)
+ */
+function detectMatchOptsAliases(filePath) {
+  const src = fs.readFileSync(filePath, 'utf8');
+  const aliases = [];
+  // Match: (const|let|var|=) <identifier> = matchOpts   where RHS is bare matchOpts
+  // The lookahead ensures matchOpts is not followed by `.`, `?.`, `,`, `)`, etc. used as arg.
+  // Require assignment context: `= matchOpts` at end of RHS (followed by ; \n , } ) or EOF).
+  const re = /(?:(?:const|let|var)\s+)?(\w+)\s*=\s*matchOpts\s*(?=[;\n,})]|$)/g;
+  let m;
+  while ((m = re.exec(src)) !== null) {
+    // Skip: destructuring (handled separately) — that's `{ ... } = matchOpts`
+    // The regex above doesn't match destructuring because `(\w+)` requires an identifier.
+    aliases.push({ name: m[1], offset: m.index });
+  }
+  return aliases;
+}
+
+describe('matchOpts field-access enforcement', () => {
+  it('engine layers only access allowed matchOpts fields', () => {
+    const allFiles = collectJSFiles(ENGINE_DIR);
+    const violations = [];
+
+    for (const filePath of allFiles) {
+      const relPath = path.relative(ENGINE_DIR, filePath);
+      const layer = classifyEngineModule(relPath);
+
+      // root (index.js) and ill/ can access any field — they're above all layers
+      if (layer === 'root' || layer === 'ill') continue;
+
+      const allowed = MATCHOPTS_FIELDS[layer];
+      if (!allowed) continue;
+
+      const accessed = extractMatchOptsFields(filePath);
+      for (const field of accessed) {
+        if (!allowed.has(field)) {
+          violations.push(`${relPath} (${layer}) accesses matchOpts.${field}`);
+        }
+      }
+    }
+
+    if (violations.length > 0) {
+      assert.fail(
+        `matchOpts field-access violations (layer accesses disallowed field):\n` +
+        violations.map(v => `  ${v}`).join('\n')
+      );
+    }
+  });
+
+  it('matchOpts is never aliased (would defeat the field-access scanner)', () => {
+    // The field-access scanner relies on `matchOpts.FIELD` or
+    // `{ FIELD } = matchOpts` being the only ways fields are read.
+    // Aliasing (`const opts = matchOpts; opts.FIELD`) bypasses detection.
+    // Prohibit it to keep the boundary enforceable.
+    const allFiles = collectJSFiles(ENGINE_DIR);
+    const violations = [];
+
+    for (const filePath of allFiles) {
+      const relPath = path.relative(ENGINE_DIR, filePath);
+      const aliases = detectMatchOptsAliases(filePath);
+      for (const a of aliases) {
+        violations.push(`${relPath}: \`${a.name} = matchOpts\` (use matchOpts.${a.name} or destructure instead)`);
+      }
+    }
+
+    if (violations.length > 0) {
+      assert.fail(
+        `matchOpts aliasing detected (bypasses field-access scanner):\n` +
+        violations.map(v => `  ${v}`).join('\n')
+      );
+    }
+  });
+
+  it('all matchOpts fields are covered by some factory (shape stability)', () => {
+    // Every field referenced by any engine layer must come from one of the
+    // protocol factories — otherwise it would be a ghost field not in the
+    // frozen shape, causing runtime errors or IC polymorphism.
+    const allFactoryFields = new Set([
+      ..._match.GENERIC_FIELDS,
+      ..._match.LNL_FIELDS,
+      ..._match.OPT_FIELDS,
+      ..._match.FFI_FIELDS,
+      ..._match.PROOF_FIELDS,
+    ]);
+
+    const allFiles = collectJSFiles(ENGINE_DIR);
+    const unknownFields = new Set();
+
+    for (const filePath of allFiles) {
+      const relPath = path.relative(ENGINE_DIR, filePath);
+      const layer = classifyEngineModule(relPath);
+      if (layer === 'root') continue;  // composition root
+      const accessed = extractMatchOptsFields(filePath);
+      for (const field of accessed) {
+        if (!allFactoryFields.has(field)) {
+          unknownFields.add(`${relPath}: matchOpts.${field}`);
+        }
+      }
+    }
+
+    if (unknownFields.size > 0) {
+      assert.fail(
+        `Fields accessed but not produced by any factory:\n` +
+        [...unknownFields].map(v => `  ${v}`).join('\n')
+      );
+    }
+  });
+});
+
 describe('global boundary enforcement', () => {
   it('lib/ must not import from src/ui/', () => {
     const allFiles = collectJSFiles(LIB_DIR);

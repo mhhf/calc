@@ -147,14 +147,12 @@ describe('Compose disk cache', () => {
   });
 
   it('explore produces same results with cached vs fresh compose', () => {
-    const { explore } = require('../../lib/engine/explore');
     const dir = freshTmpDir();
 
     function runExplore(calc) {
       const state = mde.decomposeQuery(calc.queries.get('symex'));
-      return explore(state, calc.forwardRules, {
+      return calc.explore(state, {
         maxDepth: 500,
-        calc: calc._calcContext,
         dangerouslyUseFFI: true
       });
     }
