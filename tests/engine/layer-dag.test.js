@@ -231,13 +231,13 @@ describe('prover layer DAG enforcement', () => {
 // Per-layer consumption extras are explicitly documented below.
 
 const _match = require('../../lib/engine/match');
-const { GENERIC_FIELDS, LNL_FIELDS, OPT_FIELDS, FFI_FIELDS, PROOF_FIELDS } = _match;
+const { GENERIC_FIELDS, LNL_FIELDS, OPT_FIELDS, FFI_FIELDS } = _match;
 
-// Generic layer access: generic fields + proof routing + interface callbacks
-// it defined (provided by outer layers) + opt fast-path (intentional exception).
+// Generic layer access: generic fields (includes provePersistent — the interface
+// generic consumes, implemented by outer layers) + interface callbacks it
+// defined (provided by outer layers) + opt fast-path (intentional exception).
 const GENERIC_ACCESS = new Set([
   ...GENERIC_FIELDS,
-  ...PROOF_FIELDS,
   // Interface callbacks defined in generic, implemented by lnl
   'matchDynamicRule', 'resolveEx', 'drainLolis', 'dynamicRuleTag',
   // Opt fast-path inline in hot loop (match.js:354-368) — intentional exception:
@@ -394,7 +394,6 @@ describe('matchOpts field-access enforcement', () => {
       ..._match.LNL_FIELDS,
       ..._match.OPT_FIELDS,
       ..._match.FFI_FIELDS,
-      ..._match.PROOF_FIELDS,
     ]);
 
     const allFiles = collectJSFiles(ENGINE_DIR);

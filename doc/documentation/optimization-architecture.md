@@ -39,8 +39,7 @@ lib/engine/
 ├── delta-bypass.js         # Direct child extraction for flat patterns
 ├── preserved.js            # Skip re-producing unchanged facts
 ├── disc-tree.js            # Discrimination tree indexing
-├── lnl/loli-drain.js       # Persistent-trigger loli fusion
-├── ill/loli-drain.js       # ILL-specific loli drain variant
+├── lnl/loli-drain.js       # Persistent-trigger loli fusion (LNL-generic)
 └── opt/                    # Extracted optimization modules
     ├── ffi.js              # FFI-accelerated persistent proving + compiled steps
     ├── compiled-clauses.js # Compiled clause dispatch (zero-subgoal → direct lookup)
