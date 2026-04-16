@@ -191,13 +191,23 @@ function cleanupAll() {
 // when embedding this into the runner script template.
 const E2E_CHILD_SOURCE = `'use strict';
 // Runs exactly ONE e2e iteration from a cold Node process:
-//   load(sourcePath, { cache: false, extraGrade0Facts, scopeGuard })
+//   load(sourcePath, { cache: false, onPhase, extraGrade0Facts, scopeGuard })
 //   decomposeQuery(symex)
 //   explore()
-// Prints the elapsed wall-clock (ms) delimited by a marker so any incidental
-// stdout from deep engine code (shouldn't happen, but be robust) can't poison
-// the parse. Bytecode-loader setup happens outside the timer to match the
-// existing in-process bench semantics.
+// Prints per-phase timings via onPhase callback inside load(), plus externally
+// measured decompose/explore durations. All values are emitted as JSON delimited
+// by a marker so any incidental stdout from deep engine code can't poison the
+// parse. Bytecode-loader setup happens outside the timer.
+//
+// Phase schema (paths use '/' to mark nesting):
+//   load/parse, load/rule-compile, load/compose/{pass1-linear,grade0-facts,
+//     specialize,residual,fuse-blocks,fuse-chains,sroa}, load/type-check,
+//     load/backchain-index, load/clause-dispatch, load/persistent-steps,
+//     load/ex-chains, load/engine-init, load/label-index,
+//   decompose, explore
+//
+// Older commits without onPhase support simply emit no phase entries — the
+// runner treats missing phases as a non-fatal "phases unavailable" signal.
 
 const path = require('path');
 const fs = require('fs');
@@ -208,7 +218,10 @@ try {
   const codePath = path.join(__dirname, 'calculus/ill/programs/multisig_nocall_solc_code.ill');
   const sourcePath = path.join(__dirname, 'calculus/ill/programs/multisig_nocall_solc_symbolic.ill');
 
-  const loadOpts = { cache: false };
+  const phases = [];
+  const onPhase = (pathName, ms, meta) => phases.push(meta ? [pathName, ms, meta] : [pathName, ms]);
+
+  const loadOpts = { cache: false, onPhase };
   try {
     const loaderFile = path.join(__dirname, 'lib/engine/ill/bytecode-loader.js');
     if (fs.existsSync(loaderFile) && fs.existsSync(codePath)) {
@@ -223,12 +236,38 @@ try {
   const EXPLORE_OPTS = { maxDepth: 400, structuralMemo: true, dangerouslyUseFFI: true };
 
   const t0 = performance.now();
+
+  const tLoad0 = performance.now();
   const calc = mde.load(sourcePath, loadOpts);
+  const loadMs = performance.now() - tLoad0;
+
+  const tDec0 = performance.now();
   const state = mde.decomposeQuery(calc.queries.get('symex'));
-  calc.explore(state, EXPLORE_OPTS);
+  const decMs = performance.now() - tDec0;
+  const stateSize = (state && state.linear ? state.linear.length : 0) + (state && state.persistent ? state.persistent.length : 0);
+  phases.push(['decompose', decMs, { stateSize, linear: state && state.linear ? state.linear.length : 0, persistent: state && state.persistent ? state.persistent.length : 0 }]);
+
+  const tExp0 = performance.now();
+  const tree = calc.explore(state, EXPLORE_OPTS);
+  const expMs = performance.now() - tExp0;
+  const treeUtils = require('./lib/engine/tree-utils');
+  const nodes = treeUtils && treeUtils.countNodes ? treeUtils.countNodes(tree) : 0;
+  const branches = treeUtils && treeUtils.countLeaves ? treeUtils.countLeaves(tree) : 0;
+  phases.push(['explore', expMs, { nodes, branches, maxDepth: EXPLORE_OPTS.maxDepth }]);
+
   const elapsed = performance.now() - t0;
 
+  // Add a synthetic 'load' bucket if the engine emitted any load/* phases.
+  // Not strictly needed (sunburst derives it), but keeps the flat log complete.
+  const hasLoadPhases = phases.some(p => p[0].startsWith('load/'));
+  if (hasLoadPhases) phases.unshift(['load', loadMs, {
+    rules: (calc && calc.compiledRules) ? calc.compiledRules.length : 0,
+    clauses: (calc && calc.clauses) ? calc.clauses.size : 0,
+    definitions: (calc && calc.definitions) ? calc.definitions.size : 0,
+  }]);
+
   process.stdout.write('BENCH_E2E_RESULT=' + elapsed + '\\n');
+  process.stdout.write('BENCH_E2E_PHASES=' + JSON.stringify(phases) + '\\n');
 } catch (err) {
   process.stderr.write('E2E_CHILD_ERROR: ' + (err && err.stack || err && err.message || String(err)) + '\\n');
   process.exit(1);
@@ -298,8 +337,9 @@ function benchSymex(state, calc) {
   return { ...stats(times), nodes, branches };
 }
 
-// Run one e2e iteration in a fresh Node subprocess. Returns elapsed ms (parsed
-// from the child's BENCH_E2E_RESULT=... line). Throws on failure.
+// Run one e2e iteration in a fresh Node subprocess. Returns { t, phases } where
+// t is the total elapsed ms and phases is an array of [path, ms]. On older
+// commits without onPhase support, phases is [].
 function runE2EChild(scriptPath) {
   const r = spawnSync(process.execPath, [scriptPath], {
     cwd: __dirname,
@@ -316,7 +356,68 @@ function runE2EChild(scriptPath) {
   if (!m) throw new Error('no BENCH_E2E_RESULT in stdout: ' + stdout.slice(0, 200));
   const t = parseFloat(m[1]);
   if (!isFinite(t)) throw new Error('bad e2e time: ' + m[1]);
-  return t;
+
+  // Phases are optional — older commits won't emit the line.
+  let phases = [];
+  const pm = stdout.match(/BENCH_E2E_PHASES=(.+)/);
+  if (pm) {
+    try { phases = JSON.parse(pm[1]); } catch { phases = []; }
+  }
+  return { t, phases };
+}
+
+// Aggregate per-phase stats across iterations.
+//   Input:  [{t, phases: [[path, ms, meta?], ...]}, ...]
+//   Output: { "load/parse": { mean, stddev, runs, meta? }, ... }
+//
+// Meta aggregation: numeric fields averaged across iterations (stable counts
+// but floating-point means to cover jitter in nondeterministic phases).
+// Boolean/string fields: last-iteration value. Array fields: last-iteration
+// copy (e.g. chainLengths — dropping 20 iterations of identical arrays).
+function aggregatePhases(iterResults) {
+  const byPath = new Map();
+  for (const { phases } of iterResults) {
+    for (const p of phases) {
+      const [name, ms, meta] = p;
+      if (!byPath.has(name)) byPath.set(name, { times: [], metas: [] });
+      const e = byPath.get(name);
+      e.times.push(ms);
+      if (meta) e.metas.push(meta);
+    }
+  }
+  const out = {};
+  for (const [p, { times, metas }] of byPath) {
+    const mean = times.reduce((a, b) => a + b, 0) / times.length;
+    const stddev = Math.sqrt(times.reduce((s, t) => s + (t - mean) ** 2, 0) / times.length);
+    const entry = { mean, stddev, runs: times.length };
+    if (metas.length > 0) entry.meta = _aggregateMeta(metas);
+    out[p] = entry;
+  }
+  return out;
+}
+
+function _aggregateMeta(metas) {
+  if (metas.length === 0) return undefined;
+  const keys = new Set();
+  for (const m of metas) for (const k of Object.keys(m)) keys.add(k);
+  const out = {};
+  for (const k of keys) {
+    const vals = metas.map(m => m[k]).filter(v => v !== undefined);
+    if (vals.length === 0) continue;
+    const first = vals[0];
+    if (typeof first === 'number') {
+      const sum = vals.reduce((a, b) => a + (typeof b === 'number' ? b : 0), 0);
+      out[k] = sum / vals.length;
+    } else if (typeof first === 'boolean') {
+      // majority (or last)
+      out[k] = vals[vals.length - 1];
+    } else if (Array.isArray(first)) {
+      out[k] = vals[vals.length - 1];  // last-iter snapshot
+    } else {
+      out[k] = vals[vals.length - 1];
+    }
+  }
+  return out;
 }
 
 function benchE2EChildSpawned() {
@@ -330,10 +431,14 @@ function benchE2EChildSpawned() {
     // reducing filesystem variance across the timed runs. Results discarded.
     for (let i = 0; i < E2E_WARMUP; i++) runE2EChild(scriptPath);
 
-    // Timed runs — each a fresh process, parent records child-reported ms only.
-    const times = [];
-    for (let i = 0; i < E2E_RUNS; i++) times.push(runE2EChild(scriptPath));
-    return stats(times);
+    // Timed runs — each a fresh process, parent records child-reported ms + phases.
+    const iters = [];
+    for (let i = 0; i < E2E_RUNS; i++) iters.push(runE2EChild(scriptPath));
+    const times = iters.map(x => x.t);
+    const s = stats(times);
+    const phases = aggregatePhases(iters);
+    if (Object.keys(phases).length > 0) s.phases = phases;
+    return s;
   } finally {
     try { fs.unlinkSync(scriptPath); } catch {}
   }

@@ -50,6 +50,67 @@ function avg(xs) {
   return xs.reduce((a, b) => a + b, 0) / xs.length;
 }
 
+// Merge per-phase stats across multiple bench runs for the same commit.
+// Each run emits phases: { "path": { mean, stddev, runs, meta? } }. We average
+// the means weighted by runs, and re-compute a pooled stddev as the
+// simple average of reported stddevs (sufficient for display; the
+// per-run stddev already captures within-run variance).
+//
+// Meta is merged field-by-field: numeric fields are averaged weighted by runs,
+// array/boolean/string fields take the last-observed value.
+function mergePhases(phasesList) {
+  if (!phasesList || phasesList.length === 0) return null;
+  const byPath = new Map();
+  for (const phases of phasesList) {
+    for (const [p, s] of Object.entries(phases)) {
+      if (!byPath.has(p)) byPath.set(p, { sumMean: 0, sumStddev: 0, totalRuns: 0, entries: 0, metas: [] });
+      const acc = byPath.get(p);
+      const n = s.runs || 1;
+      acc.sumMean += s.mean * n;
+      acc.sumStddev += (s.stddev || 0);
+      acc.totalRuns += n;
+      acc.entries += 1;
+      if (s.meta) acc.metas.push({ meta: s.meta, runs: n });
+    }
+  }
+  const out = {};
+  for (const [p, acc] of byPath) {
+    const entry = {
+      mean: acc.sumMean / acc.totalRuns,
+      stddev: acc.sumStddev / acc.entries,
+      runs: acc.totalRuns,
+    };
+    if (acc.metas.length > 0) entry.meta = _mergeMeta(acc.metas);
+    out[p] = entry;
+  }
+  return out;
+}
+
+function _mergeMeta(weightedMetas) {
+  const keys = new Set();
+  for (const { meta } of weightedMetas) for (const k of Object.keys(meta)) keys.add(k);
+  const out = {};
+  for (const k of keys) {
+    let numSum = 0, numWeight = 0;
+    let last = undefined;
+    let allNumeric = true;
+    for (const { meta, runs } of weightedMetas) {
+      const v = meta[k];
+      if (v === undefined) continue;
+      last = v;
+      if (typeof v === 'number') {
+        numSum += v * runs;
+        numWeight += runs;
+      } else {
+        allNumeric = false;
+      }
+    }
+    if (allNumeric && numWeight > 0) out[k] = numSum / numWeight;
+    else out[k] = last;
+  }
+  return out;
+}
+
 function aggregate(runsDir) {
   const files = fs.readdirSync(runsDir).filter(f => f.endsWith('.json'));
   if (files.length === 0) {
@@ -75,6 +136,7 @@ function aggregate(runsDir) {
           symexStddevs: [],
           e2eMeans: [],
           e2eStddevs: [],
+          e2ePhasesList: [],
           nodes: result.data.nodes,
           branches: result.data.branches,
         });
@@ -90,6 +152,7 @@ function aggregate(runsDir) {
       if (e) {
         entry.e2eMeans.push(e.mean);
         entry.e2eStddevs.push(e.stddev);
+        if (e.phases) entry.e2ePhasesList.push(e.phases);
       }
     }
   }
@@ -102,6 +165,11 @@ function aggregate(runsDir) {
       const symexStddev = avg(c.symexStddevs);
       const e2eMean = avg(c.e2eMeans);
       const e2eStddev = avg(c.e2eStddevs);
+      const phases = mergePhases(c.e2ePhasesList);
+      const e2e = e2eMean !== null
+        ? { mean: e2eMean, stddev: e2eStddev, runCount: c.e2eMeans.length }
+        : null;
+      if (e2e && phases) e2e.phases = phases;
       return {
         fullHash: c.fullHash,
         shortHash: c.shortHash,
@@ -113,9 +181,7 @@ function aggregate(runsDir) {
         runCount: c.symexMeans.length,
         // Explicit nested series
         symex: { mean: symexMean, stddev: symexStddev, runCount: c.symexMeans.length },
-        e2e: e2eMean !== null
-          ? { mean: e2eMean, stddev: e2eStddev, runCount: c.e2eMeans.length }
-          : null,
+        e2e,
         nodes: c.nodes,
         branches: c.branches,
       };
