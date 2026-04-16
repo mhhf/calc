@@ -12,18 +12,21 @@ tags: [architecture, forward-chaining, implementation, engine, layering]
 
 ## Assembly
 
-Each layer exports a protocol factory (`buildGenericProtocol`, `buildLnlProtocol`, `buildOptProtocol`, `buildFfiProtocol`, `buildProofProtocol`) returning its field contributions. The composition root (`index.js:_buildMatchOpts`) spreads them flat and freezes:
+Each layer exports a protocol factory (`buildGenericProtocol`, `buildLnlProtocol`, `buildOptProtocol`, `buildFfiProtocol`) returning its field contributions. The composition root (`index.js:_buildMatchOpts`) spreads them flat and freezes:
 
 ```js
-// index.js — composition root (ML functor analogy: spread = include)
+// index.js — composition root (row-polymorphic record extension)
 function _buildMatchOpts(execOpts) {
   const useFFI = execOpts.dangerouslyUseFFI || false;
   return match.buildMatchOpts({
-    ...match.buildGenericProtocol({ optimizePreserved, evidence, ... }),
+    ...match.buildGenericProtocol({
+      optimizePreserved, evidence, ...,
+      // Route persistent-proving impl: FFI-accelerated vs naive clause prover.
+      provePersistent: useFFI ? proveWithFFI : proveNaive,
+    }),
     ...match.buildLnlProtocol({ matchLoli, resolveEx, drainLolis, rc, ... }),
     ...match.buildOptProtocol({ execPS, execExStep, tryCCDispatch, ... }),
     ...match.buildFfiProtocol(ffiContext),
-    ...match.buildProofProtocol({ useFFI, proveWithFFI, proveNaive }),
   });
 }
 ```
@@ -46,11 +49,11 @@ Layer ownership is enforced by `tests/engine/layer-dag.test.js` at both the `req
 
 | Field | Type | Set by | Used by |
 |---|---|---|---|
-| `provePersistent` | `(patterns, startIdx, theta, slots, state, calc, evidenceOut, matchOpts) → idx` | `buildProofProtocol` | `match.js`, `lnl/existential.js`, `lnl/loli.js` |
+| `provePersistent` | `(patterns, startIdx, theta, slots, state, calc, evidenceOut, matchOpts) → idx` | `buildGenericProtocol` (composition root routes FFI vs naive) | `match.js`, `lnl/existential.js`, `lnl/loli.js` |
 | `matchDynamicRule` | `(factHash, state, calc, matchOpts) → match \| null` | `buildLnlProtocol` (→ `matchLoli`) | `strategy.js` (loli scan) |
 | `dynamicRuleTag` | `string \| null` | `buildLnlProtocol` (→ `rc.implication`) | `strategy.js` (filter state for loli candidates) |
 
-`provePersistent` is the most critical callback. With FFI enabled, it wires to `opt/ffi.js:provePersistent` (state → FFI → compiled clause → full clause pipeline). Without FFI, it wires to `lnl/persistent.js:proveNaive` (state → clause resolution only).
+`provePersistent` is the most critical callback. It is declared as a generic-layer interface (the generic engine consumes it), but routed at the composition root: with FFI enabled it wires to `opt/ffi.js:proveWithFFI` (state → FFI → compiled clause → full clause pipeline); without FFI it wires to `lnl/persistent.js:proveNaive` (state → clause resolution only).
 
 ### Connective Resolution
 

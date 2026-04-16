@@ -19,7 +19,7 @@ const illMatchOpts = {
   ffiParsedModes: illFfi.parsedModes,
   ffiIsGround: illFfi.convert.isGround,
 };
-const { drainLolis } = require('../../lib/engine/ill/loli-drain');
+const { drainLolis } = require('../../lib/engine/lnl/loli-drain');
 const { GRADE_W } = require('../../lib/engine/grades');
 const { ILL_CONNECTIVES } = require('../../lib/engine/ill/connectives');
 const { resolveConn } = require('../../lib/engine/compile');

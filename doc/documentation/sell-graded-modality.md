@@ -117,7 +117,7 @@ See THY_0015 for the grade-0 staging interpretation and stratified cut eliminati
 | `lib/engine/convert.js` | desugarPreserved child(1), decomposeQuery child(1) |
 | `lib/engine/ill/connectives.js` | bang arity: 2 |
 | `lib/engine/ill/backchain-ill.js` | GRADE_W in buildClauseTerm |
-| `lib/engine/ill/loli-drain.js` | GRADE_W in isAllPersistentAntecedent |
+| `lib/engine/lnl/loli-drain.js` | GRADE_W in isAllPersistentAntecedent |
 | `lib/parser/earley-grammar.js` | Hardcoded !, !_0, !_ω grammar rules |
 | `lib/calculus/builders.js` | deriveRoles arity === 2 detection |
 | `calculus/ill/ill.calc` | grade type, bang: grade -> formula -> formula |
