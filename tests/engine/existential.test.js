@@ -8,19 +8,20 @@ const assert = require('node:assert/strict');
 const Store = require('../../lib/kernel/store');
 const { resolveEx } = require('../../lib/engine/lnl/existential');
 const { execExStep } = require('../../lib/engine/opt/existential-compile');
+const { makeMatchOpts } = require('./_match-opts');
 
 describe('lnl/existential — resolveEx', () => {
   beforeEach(() => Store.clear());
 
   it('returns true immediately when no existential slots', () => {
     const rule = { existentialSlots: [] };
-    const result = resolveEx([], {}, rule, null, null, {});
+    const result = resolveEx([], {}, rule, null, null, makeMatchOpts());
     assert.equal(result, true);
   });
 
   it('returns true when existentialSlots is null', () => {
     const rule = { existentialSlots: null };
-    const result = resolveEx([], {}, rule, null, null, {});
+    const result = resolveEx([], {}, rule, null, null, makeMatchOpts());
     assert.equal(result, true);
   });
 
@@ -35,7 +36,7 @@ describe('lnl/existential — resolveEx', () => {
       consequent: { persistent: [] },
     };
 
-    const result = resolveEx(theta, slots, rule, null, null, {});
+    const result = resolveEx(theta, slots, rule, null, null, makeMatchOpts());
     assert.equal(result, true);
     assert.ok(theta[0] !== undefined, 'slot should be filled');
     assert.equal(Store.tag(theta[0]), 'evar');
@@ -50,13 +51,13 @@ describe('lnl/existential — resolveEx', () => {
 
     let proveCalled = false;
     const resolvedResult = Store.put('atom', ['result']);
-    const matchOpts = {
-      provePersistent: (goals, startIdx, th) => {
+    const matchOpts = makeMatchOpts({
+      provePersistent: (goals, _startIdx, th) => {
         proveCalled = true;
         th[slot] = resolvedResult;
         return goals.length;
       },
-    };
+    });
 
     const rule = {
       existentialSlots: [slot],
@@ -94,7 +95,7 @@ describe('lnl/existential — resolveEx', () => {
       _compiledExChain: compiledChain,
     };
 
-    const matchOpts = { useCompiledSteps: true, execExStep };
+    const matchOpts = makeMatchOpts({ useCompiledSteps: true, execExStep });
 
     resolveEx(theta, slots, rule, null, null, matchOpts);
     assert.ok(stepExecuted);
@@ -106,9 +107,9 @@ describe('lnl/existential — resolveEx', () => {
     const theta = [undefined];
     const slots = { [mv]: slot };
 
-    const matchOpts = {
+    const matchOpts = makeMatchOpts({
       provePersistent: () => 0, // fails
-    };
+    });
 
     const goalPat = Store.put('fail_pred', [mv]);
     const rule = {

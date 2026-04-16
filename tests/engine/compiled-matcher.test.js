@@ -15,6 +15,7 @@ const {
   compilePM, execPM,
 } = require('../../lib/engine/compile');
 const { tryMatch } = require('../../lib/engine/match');
+const { makeMatchOpts } = require('./_match-opts');
 const { execPS, compilePS } = require('../../lib/engine/opt/ffi');
 const illFfi = require('../../lib/engine/ill/ffi');
 const illFfiContext = {
@@ -415,14 +416,14 @@ describe('persistent step integration', { timeout: 10000 }, () => {
       // Run with persistent steps
       const resultWith = tryMatch(rule, state, {
         clauses: calc.clauses, definitions: calc.definitions
-      }, { optimizePreserved: true });
+      }, makeMatchOpts({ optimizePreserved: true }));
 
       // Temporarily disable persistent steps and run generic path
       const saved = rule.persistentSteps;
       rule.persistentSteps = null;
       const resultWithout = tryMatch(rule, state, {
         clauses: calc.clauses, definitions: calc.definitions
-      }, { optimizePreserved: true });
+      }, makeMatchOpts({ optimizePreserved: true }));
       rule.persistentSteps = saved;
 
       // Both should agree on match/no-match

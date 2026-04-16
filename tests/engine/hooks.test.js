@@ -7,6 +7,7 @@ const assert = require('node:assert/strict');
 const path = require('path');
 const mde = require('../../lib/engine');
 const { show } = require('../../lib/engine/show');
+const { PROVE_METHODS } = require('../../lib/engine/match');
 
 const PROGRAM = path.join(__dirname, '..', '..', 'calculus', 'ill', 'programs', 'evm.ill');
 
@@ -170,7 +171,7 @@ describe('Engine Hooks API', { timeout: 10000 }, () => {
       assert.ok(successes.length > 0, 'expected onProveSuccess calls');
       for (const s of successes) {
         assert.equal(typeof s.goal, 'string');
-        assert.ok(['ffi', 'state', 'compiled', 'clause'].includes(s.method),
+        assert.ok(PROVE_METHODS.includes(s.method),
           `unknown method: ${s.method}`);
       }
       // Hybrid path: goals resolved by compiled dispatch (structural) or FFI (arithmetic)
@@ -218,7 +219,7 @@ describe('Engine Hooks API', { timeout: 10000 }, () => {
       assert.ok(successes.length > 0, 'expected onProveSuccess calls in explore mode');
       for (const s of successes) {
         assert.equal(typeof s.goal, 'string');
-        assert.ok(['ffi', 'state', 'compiled', 'clause'].includes(s.method));
+        assert.ok(PROVE_METHODS.includes(s.method));
       }
     });
   });

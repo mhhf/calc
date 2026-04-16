@@ -21,6 +21,7 @@ const { matchLoli } = require('../../lib/engine/lnl/loli');
 const { drainLolis } = require('../../lib/engine/lnl/loli-drain');
 const { proveNaive } = require('../../lib/engine/lnl/persistent');
 const { buildMatchOpts, buildGenericProtocol, buildLnlProtocol, buildOptProtocol, buildFfiProtocol } = require('../../lib/engine/match');
+const { makeMatchOpts } = require('./_match-opts');
 const Store = require('../../lib/kernel/store');
 
 describe('explore', { timeout: 10000 }, () => {
@@ -419,7 +420,7 @@ describe('explore', { timeout: 10000 }, () => {
         { [loli]: 1, [trigger]: 1 },
         {}
       );
-      const m = matchLoli(loli, state, null, { connectives: ILL_RC });
+      const m = matchLoli(loli, state, null, makeMatchOpts({ rc: ILL_RC }));
       assert(m, 'matchLoli should return a match');
       assert.strictEqual(m.consumed[loli], 1);
       assert.strictEqual(m.consumed[trigger], 1);
@@ -441,7 +442,7 @@ describe('explore', { timeout: 10000 }, () => {
         { [loli]: 1, [triggerFact]: 1 },
         {}
       );
-      const m = matchLoli(loli, state, null, { connectives: ILL_RC });
+      const m = matchLoli(loli, state, null, makeMatchOpts({ rc: ILL_RC }));
       assert(m, 'matchLoli should return a match');
       assert.strictEqual(m.consumed[loli], 1);
       assert.strictEqual(m.consumed[triggerFact], 1);
@@ -461,7 +462,7 @@ describe('explore', { timeout: 10000 }, () => {
         { [loli]: 1 },
         { [guard]: true }  // Guard is provable via state
       );
-      const m = matchLoli(loli, state, null, { connectives: ILL_RC });
+      const m = matchLoli(loli, state, null, makeMatchOpts({ rc: ILL_RC }));
       assert(m, 'matchLoli should fire when guard is in persistent state');
       assert.strictEqual(m.consumed[loli], 1);
       assert(m.rule.consequent.linear.includes(result));
@@ -478,7 +479,7 @@ describe('explore', { timeout: 10000 }, () => {
         { [loli]: 1 },
         {}  // Guard NOT in state
       );
-      const m = matchLoli(loli, state, null, { connectives: ILL_RC });
+      const m = matchLoli(loli, state, null, makeMatchOpts({ rc: ILL_RC }));
       assert.strictEqual(m, null, 'matchLoli should return null when guard fails');
     });
 
@@ -492,7 +493,7 @@ describe('explore', { timeout: 10000 }, () => {
         { [loli]: 1 },  // trigger NOT in state
         {}
       );
-      const m = matchLoli(loli, state, null, { connectives: ILL_RC });
+      const m = matchLoli(loli, state, null, makeMatchOpts({ rc: ILL_RC }));
       assert.strictEqual(m, null, 'matchLoli should return null when trigger absent');
     });
 
@@ -510,7 +511,7 @@ describe('explore', { timeout: 10000 }, () => {
         { [loli]: 1, [linTrigger]: 1 },
         { [guard]: true }
       );
-      const m = matchLoli(loli, state, null, { connectives: ILL_RC });
+      const m = matchLoli(loli, state, null, makeMatchOpts({ rc: ILL_RC }));
       assert(m, 'matchLoli should fire with mixed trigger');
       assert.strictEqual(m.consumed[loli], 1);
       assert.strictEqual(m.consumed[linTrigger], 1);
@@ -529,7 +530,7 @@ describe('explore', { timeout: 10000 }, () => {
         { [loli]: 1, [trigger]: 1 },
         {}
       );
-      const m = matchLoli(loli, state, null, { connectives: ILL_RC });
+      const m = matchLoli(loli, state, null, makeMatchOpts({ rc: ILL_RC }));
       assert(m, 'matchLoli should fire');
       assert.strictEqual(m.rule.consequentAlts.length, 2, 'should have 2 alternatives from oplus');
     });
