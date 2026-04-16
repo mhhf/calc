@@ -11,6 +11,7 @@ const Store = require('../../lib/kernel/store');
 const { FactSet } = require('../../lib/engine/fact-set');
 const { matchLoli } = require('../../lib/engine/lnl/loli');
 const { resolveConn } = require('../../lib/engine/compile');
+const { makeMatchOpts } = require('./_match-opts');
 
 describe('lnl/loli — matchLoli', () => {
   let calc, rc;
@@ -40,7 +41,7 @@ describe('lnl/loli — matchLoli', () => {
       },
     };
 
-    const result = matchLoli(loliHash, state, calc, { connectives: rc });
+    const result = matchLoli(loliHash, state, calc, makeMatchOpts({ rc }));
     assert.equal(result, null);
   });
 
@@ -64,7 +65,7 @@ describe('lnl/loli — matchLoli', () => {
       },
     };
 
-    const result = matchLoli(loliHash, state, calc, { connectives: rc });
+    const result = matchLoli(loliHash, state, calc, makeMatchOpts({ rc }));
     assert.ok(result, 'should match');
     assert.ok(result.consumed[loliHash], 'loli should be consumed');
     assert.ok(result.consumed[trigger], 'trigger should be consumed');
@@ -90,7 +91,7 @@ describe('lnl/loli — matchLoli', () => {
       },
     };
 
-    const result = matchLoli(loliHash, state, calc, { connectives: rc });
+    const result = matchLoli(loliHash, state, calc, makeMatchOpts({ rc }));
     assert.ok(result);
     assert.ok(result.rule.name.startsWith('loli:'));
   });
@@ -118,7 +119,7 @@ describe('lnl/loli — matchLoli', () => {
       },
     };
 
-    const result = matchLoli(loliHash, state, calc, { connectives: rc });
+    const result = matchLoli(loliHash, state, calc, makeMatchOpts({ rc }));
     assert.ok(result, 'should match with metavar unification');
   });
 
@@ -145,7 +146,7 @@ describe('lnl/loli — matchLoli', () => {
       },
     };
 
-    const result = matchLoli(loliHash, state, null, { connectives: rc });
+    const result = matchLoli(loliHash, state, null, makeMatchOpts({ rc }));
     assert.equal(result, null, 'should fail: persistent guard not proveable');
   });
 
@@ -176,10 +177,7 @@ describe('lnl/loli — matchLoli', () => {
     };
 
     const { proveNaive } = require('../../lib/engine/lnl/persistent');
-    const result = matchLoli(loliHash, state, null, {
-      connectives: rc,
-      provePersistent: proveNaive,
-    });
+    const result = matchLoli(loliHash, state, null, makeMatchOpts({ rc, provePersistent: proveNaive }));
     assert.ok(result, 'should match when guard is in persistent state');
     assert.ok(result.consumed[loliHash], 'loli should be consumed');
     assert.ok(result.consumed[gasF], 'linear trigger should be consumed');
@@ -209,7 +207,7 @@ describe('lnl/loli — matchLoli', () => {
     };
 
     let capturedPatterns = null;
-    const provePersistent = (patterns, startIdx, theta, slots, _s, _c, _e, _o) => {
+    const provePersistent = (patterns, _startIdx, _theta, _slots, _s, _c, _e, _o) => {
       capturedPatterns = patterns.slice();
       return patterns.length; // pretend proved
     };
