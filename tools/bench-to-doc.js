@@ -28,6 +28,28 @@ function parseArgs() {
 
 // ─── Aggregation ──────────────────────────────────────────────────────────────
 
+// Extract symex/e2e stats from a data record supporting both
+// legacy flat format (pre-e2e: { mean, stddev, ... }) and new nested
+// ({ symex: {...}, e2e: {...} }) format.
+function extractSymex(data) {
+  if (!data || data.error) return null;
+  if (data.symex) return data.symex;
+  if (typeof data.mean === 'number') {
+    return { mean: data.mean, stddev: data.stddev };
+  }
+  return null;
+}
+
+function extractE2E(data) {
+  if (!data || data.error) return null;
+  return data.e2e || null;
+}
+
+function avg(xs) {
+  if (!xs || xs.length === 0) return null;
+  return xs.reduce((a, b) => a + b, 0) / xs.length;
+}
+
 function aggregate(runsDir) {
   const files = fs.readdirSync(runsDir).filter(f => f.endsWith('.json'));
   if (files.length === 0) {
@@ -49,31 +71,55 @@ function aggregate(runsDir) {
           shortHash: result.shortHash,
           date: result.date,
           subject: result.subject,
-          means: [],
-          stddevs: [],
+          symexMeans: [],
+          symexStddevs: [],
+          e2eMeans: [],
+          e2eStddevs: [],
           nodes: result.data.nodes,
           branches: result.data.branches,
         });
       }
 
       const entry = commitMap.get(result.fullHash);
-      entry.means.push(result.data.mean);
-      entry.stddevs.push(result.data.stddev);
+      const s = extractSymex(result.data);
+      if (s) {
+        entry.symexMeans.push(s.mean);
+        entry.symexStddevs.push(s.stddev);
+      }
+      const e = extractE2E(result.data);
+      if (e) {
+        entry.e2eMeans.push(e.mean);
+        entry.e2eStddevs.push(e.stddev);
+      }
     }
   }
 
   // Compute aggregated stats per commit
-  const commits = Array.from(commitMap.values()).map(c => ({
-    fullHash: c.fullHash,
-    shortHash: c.shortHash,
-    date: c.date,
-    subject: c.subject,
-    mean: c.means.reduce((a, b) => a + b, 0) / c.means.length,
-    stddev: c.stddevs.reduce((a, b) => a + b, 0) / c.stddevs.length,
-    runCount: c.means.length,
-    nodes: c.nodes,
-    branches: c.branches,
-  }));
+  const commits = Array.from(commitMap.values())
+    .filter(c => c.symexMeans.length > 0)
+    .map(c => {
+      const symexMean = avg(c.symexMeans);
+      const symexStddev = avg(c.symexStddevs);
+      const e2eMean = avg(c.e2eMeans);
+      const e2eStddev = avg(c.e2eStddevs);
+      return {
+        fullHash: c.fullHash,
+        shortHash: c.shortHash,
+        date: c.date,
+        subject: c.subject,
+        // Legacy top-level fields (== symex) for backward compat
+        mean: symexMean,
+        stddev: symexStddev,
+        runCount: c.symexMeans.length,
+        // Explicit nested series
+        symex: { mean: symexMean, stddev: symexStddev, runCount: c.symexMeans.length },
+        e2e: e2eMean !== null
+          ? { mean: e2eMean, stddev: e2eStddev, runCount: c.e2eMeans.length }
+          : null,
+        nodes: c.nodes,
+        branches: c.branches,
+      };
+    });
 
   // Sort by canonical git history order (oldest-first for chart left→right).
   // Map insertion order is unreliable across multiple run files (readdirSync is alphabetical).
@@ -104,9 +150,8 @@ function buildDocument(agg) {
   const { totalCommits, totalRuns, commits } = agg;
   const dateStr = new Date().toISOString().slice(0, 10);
 
-  const vals = commits.map(c => c.mean);
-  const minMs = vals.length > 0 ? Math.min(...vals) : null;
-  const maxMs = vals.length > 0 ? Math.max(...vals) : null;
+  const symexVals = commits.map(c => c.symex?.mean).filter(v => typeof v === 'number');
+  const e2eVals = commits.map(c => c.e2e?.mean).filter(v => typeof v === 'number');
 
   const lines = [];
 
@@ -126,13 +171,19 @@ function buildDocument(agg) {
   // Body
   lines.push('## Benchmark: explore solc_symbolic');
   lines.push('');
-  lines.push('Benchmark of `explore()` on `solc_symbolic` with FFI + all optimizations enabled.');
+  lines.push('Two scenarios per commit (FFI + all optimizations enabled):');
+  lines.push('');
+  lines.push('- **Symex**: `explore()` on a pre-loaded state (hot-path only).');
+  lines.push('- **End-to-end**: full `load()` + `decomposeQuery()` + `explore()` with `cache: false` — measures the cold-start cost users pay on first invocation.');
   lines.push('');
   lines.push(`- **Commits**: ${totalCommits}`);
   lines.push(`- **Benchmark runs**: ${totalRuns}`);
   lines.push(`- **Last updated**: ${dateStr}`);
-  if (minMs !== null) {
-    lines.push(`- **Range**: ${fmtMs(minMs)} — ${fmtMs(maxMs)}`);
+  if (symexVals.length > 0) {
+    lines.push(`- **Symex range**: ${fmtMs(Math.min(...symexVals))} — ${fmtMs(Math.max(...symexVals))}`);
+  }
+  if (e2eVals.length > 0) {
+    lines.push(`- **E2E range**: ${fmtMs(Math.min(...e2eVals))} — ${fmtMs(Math.max(...e2eVals))}`);
   }
   lines.push('');
 

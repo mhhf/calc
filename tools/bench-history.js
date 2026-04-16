@@ -2,19 +2,23 @@
 /**
  * Benchmark History — explore solc_symbolic across N commits.
  *
- * Benchmarks the last N commits (via git worktrees) running
- * explore.explore() on solc_symbolic with full optimizations (evm profile).
+ * Benchmarks the last N commits (via git worktrees) running two scenarios:
+ *   - symex: explore.explore() on a pre-loaded state (hot path only)
+ *   - e2e:   load + decomposeQuery + explore with no cache (full compile+parse+explore)
  *
  * Usage:
  *   node --expose-gc tools/bench-history.js [--commits=50] [--runs=21] [--warmup=10]
  *
  * Options:
- *   --commits=N    Number of commits to benchmark (default: 50)
- *   --runs=N       Timed runs per benchmark (default: 20)
- *   --warmup=N     Warmup runs before timing (default: 5)
- *   --branch=REF   Branch/ref to walk (default: HEAD)
- *   --resume=FILE  Resume from partial results JSON file
- *   --out=FILE     Write results JSON to file
+ *   --commits=N      Number of commits to benchmark (default: 50)
+ *   --runs=N         Symex timed runs per benchmark (default: 21)
+ *   --warmup=N       Symex warmup runs before timing (default: 10)
+ *   --e2e-runs=N     E2E timed runs per benchmark (default: 5)
+ *   --e2e-warmup=N   E2E warmup runs before timing (default: 2)
+ *   --no-e2e         Disable end-to-end benchmark (symex only)
+ *   --branch=REF     Branch/ref to walk (default: HEAD)
+ *   --resume=FILE    Resume from partial results JSON file
+ *   --out=FILE       Write results JSON to file
  *
  * Examples:
  *   node --expose-gc tools/bench-history.js --commits=20
@@ -39,6 +43,9 @@ function parseArgs() {
   let commits = 50;
   let runs = 21;
   let warmup = 10;
+  let e2eRuns = 5;
+  let e2eWarmup = 2;
+  let e2eEnabled = true;
   let branch = 'HEAD';
   let resume = null;
   let out = null;
@@ -47,12 +54,15 @@ function parseArgs() {
     if (arg.startsWith('--commits=')) commits = parseInt(arg.slice(10), 10);
     else if (arg.startsWith('--runs=')) runs = parseInt(arg.slice(7), 10);
     else if (arg.startsWith('--warmup=')) warmup = parseInt(arg.slice(9), 10);
+    else if (arg.startsWith('--e2e-runs=')) e2eRuns = parseInt(arg.slice(11), 10);
+    else if (arg.startsWith('--e2e-warmup=')) e2eWarmup = parseInt(arg.slice(13), 10);
+    else if (arg === '--no-e2e') e2eEnabled = false;
     else if (arg.startsWith('--branch=')) branch = arg.slice(9);
     else if (arg.startsWith('--resume=')) resume = arg.slice(9);
     else if (arg.startsWith('--out=')) out = arg.slice(6);
   }
 
-  return { commits, runs, warmup, branch, resume, out };
+  return { commits, runs, warmup, e2eRuns, e2eWarmup, e2eEnabled, branch, resume, out };
 }
 
 // ─── Git helpers ──────────────────────────────────────────────────────────────
@@ -157,24 +167,45 @@ function cleanupAll() {
 
 // ─── Benchmark runner (inline script written to worktree) ─────────────────────
 
-function makeBenchScript(warmup, runs) {
+function makeBenchScript(warmup, runs, e2eWarmup, e2eRuns, e2eEnabled) {
   return `
 'use strict';
 const MARKER = '${MARKER}';
 const WARMUP = ${warmup};
 const RUNS = ${runs};
+const E2E_WARMUP = ${e2eWarmup};
+const E2E_RUNS = ${e2eRuns};
+const E2E_ENABLED = ${e2eEnabled ? 'true' : 'false'};
 
-function benchExplore(state, calc) {
-  const treeUtils = require('./lib/engine/tree-utils');
-  const opts = {
-    maxDepth: 400,
-    structuralMemo: true,
-    dangerouslyUseFFI: true,
+const EXPLORE_OPTS = {
+  maxDepth: 400,
+  structuralMemo: true,
+  dangerouslyUseFFI: true,
+};
+
+function stats(times) {
+  times.sort((a, b) => a - b);
+  const mean = times.reduce((a, b) => a + b, 0) / times.length;
+  const stddev = Math.sqrt(
+    times.reduce((s, t) => s + (t - mean) ** 2, 0) / times.length
+  );
+  return {
+    mean,
+    median: times[Math.floor(times.length / 2)],
+    min: times[0],
+    max: times[times.length - 1],
+    p95: times[Math.floor(times.length * 0.95)],
+    stddev,
+    runs: times.length,
   };
+}
+
+function benchSymex(state, calc) {
+  const treeUtils = require('./lib/engine/tree-utils');
 
   // Warmup
   for (let i = 0; i < WARMUP; i++) {
-    calc.explore(state, opts);
+    calc.explore(state, EXPLORE_OPTS);
   }
   if (global.gc) global.gc();
 
@@ -183,26 +214,38 @@ function benchExplore(state, calc) {
   const times = [];
   for (let i = 0; i < RUNS; i++) {
     const t0 = performance.now();
-    const tree = calc.explore(state, opts);
+    const tree = calc.explore(state, EXPLORE_OPTS);
     times.push(performance.now() - t0);
     if (i === 0) {
       nodes = treeUtils.countNodes(tree);
       branches = treeUtils.countLeaves(tree);
     }
   }
-  times.sort((a, b) => a - b);
 
-  return {
-    mean: times.reduce((a, b) => a + b, 0) / times.length,
-    median: times[Math.floor(times.length / 2)],
-    min: times[0],
-    max: times[times.length - 1],
-    p95: times[Math.floor(times.length * 0.95)],
-    stddev: Math.sqrt(times.reduce((s, t) => s + (t - times.reduce((a, b) => a + b, 0) / times.length) ** 2, 0) / times.length),
-    runs: times.length,
-    nodes,
-    branches,
-  };
+  return { ...stats(times), nodes, branches };
+}
+
+function benchE2E(mde, sourcePath, loadOpts) {
+  // Warmup — full fresh load each iteration (no cache)
+  for (let i = 0; i < E2E_WARMUP; i++) {
+    const calc = mde.load(sourcePath, loadOpts);
+    const state = mde.decomposeQuery(calc.queries.get('symex'));
+    calc.explore(state, EXPLORE_OPTS);
+  }
+  if (global.gc) global.gc();
+
+  // Timed runs — each iteration runs load + decomposeQuery + explore with no cache
+  const times = [];
+  for (let i = 0; i < E2E_RUNS; i++) {
+    const t0 = performance.now();
+    const calc = mde.load(sourcePath, loadOpts);
+    const state = mde.decomposeQuery(calc.queries.get('symex'));
+    calc.explore(state, EXPLORE_OPTS);
+    times.push(performance.now() - t0);
+    if (global.gc) global.gc();
+  }
+
+  return stats(times);
 }
 
 async function main() {
@@ -215,6 +258,7 @@ async function main() {
 
     // Load with bytecode if bytecode-loader exists (post-compose era)
     const codePath = path.join(__dirname, 'calculus/ill/programs/multisig_nocall_solc_code.ill');
+    const sourcePath = path.join(__dirname, 'calculus/ill/programs/multisig_nocall_solc_symbolic.ill');
     let loadOpts = { cache: false };
     try {
       const codeExists = fs.existsSync(codePath);
@@ -229,13 +273,26 @@ async function main() {
       }
     } catch (e) { /* older commit without bytecode support — run without */ }
 
-    const calc = mde.load(
-      path.join(__dirname, 'calculus/ill/programs/multisig_nocall_solc_symbolic.ill'),
-      loadOpts
-    );
+    // Symex: pre-load once, then time explore() only
+    const calc = mde.load(sourcePath, loadOpts);
     const state = mde.decomposeQuery(calc.queries.get('symex'));
 
-    Object.assign(result, benchExplore(state, calc));
+    const symex = benchSymex(state, calc);
+    result.symex = {
+      mean: symex.mean, median: symex.median, min: symex.min, max: symex.max,
+      p95: symex.p95, stddev: symex.stddev, runs: symex.runs,
+    };
+    result.nodes = symex.nodes;
+    result.branches = symex.branches;
+
+    // E2E: full load + decompose + explore per iteration (no cache)
+    if (E2E_ENABLED) {
+      try {
+        result.e2e = benchE2E(mde, sourcePath, loadOpts);
+      } catch (err) {
+        result.e2eError = err.message;
+      }
+    }
   } catch (err) {
     result.error = err.message;
   }
@@ -254,9 +311,9 @@ main().catch(err => {
 
 // ─── Run benchmark in a directory ─────────────────────────────────────────────
 
-function runBench(cwd, warmup, runs) {
+function runBench(cwd, warmup, runs, e2eWarmup, e2eRuns, e2eEnabled) {
   return new Promise((resolve) => {
-    const script = makeBenchScript(warmup, runs);
+    const script = makeBenchScript(warmup, runs, e2eWarmup, e2eRuns, e2eEnabled);
     const scriptPath = path.join(cwd, '_bench_history_runner.js');
     fs.writeFileSync(scriptPath, script);
 
@@ -264,7 +321,8 @@ function runBench(cwd, warmup, runs) {
       cwd,
       stdio: ['ignore', 'pipe', 'pipe'],
       env: { ...process.env, NODE_PATH: path.join(cwd, 'node_modules') },
-      timeout: 120_000, // 2 min timeout per commit
+      // E2E iterations include full load+compose per run, so extend timeout generously.
+      timeout: 600_000,
     });
 
     let stdout = '';
@@ -319,19 +377,37 @@ function fmtChange(current, baseline) {
   return `${sign}${pct.toFixed(1)}%`;
 }
 
+function getSymex(data) {
+  if (!data || data.error) return null;
+  if (data.symex) return data.symex;
+  // Legacy flat format (pre-e2e): treat as symex
+  if (typeof data.mean === 'number') {
+    return { mean: data.mean, stddev: data.stddev, runs: data.runs };
+  }
+  return null;
+}
+
+function getE2E(data) {
+  if (!data || data.error) return null;
+  return data.e2e || null;
+}
+
 function displayTable(results) {
-  // Baseline = newest successful result
-  let baselineMean = null;
+  // Baselines = newest successful result
+  let baselineSymex = null;
+  let baselineE2E = null;
   for (const r of results) {
-    if (r.data && !r.data.error) {
-      baselineMean = r.data.mean;
-      break;
-    }
+    const s = getSymex(r.data);
+    if (s && baselineSymex === null) baselineSymex = s.mean;
+    const e = getE2E(r.data);
+    if (e && baselineE2E === null) baselineE2E = e.mean;
+    if (baselineSymex !== null && baselineE2E !== null) break;
   }
 
   const maxSubj = Math.min(40, Math.max(20, ...results.map(r => r.subject.length)));
 
-  const cols = ['#', 'Commit', 'Date', 'Message', 'Nodes', 'Leaves', 'Mean', 'StdDev', 'vs HEAD'];
+  const cols = ['#', 'Commit', 'Date', 'Message', 'Nodes', 'Leaves',
+    'Symex', 'σs', 'E2E', 'σe', 'vs HEAD'];
   const rows = [];
 
   for (let i = 0; i < results.length; i++) {
@@ -343,17 +419,24 @@ function displayTable(results) {
       r.subject.slice(0, maxSubj),
     ];
 
+    const s = getSymex(r.data);
+    const e = getE2E(r.data);
+
     if (r.data && r.data.error) {
-      row.push('—', '—', 'ERROR', '—', '—');
+      row.push('—', '—', 'ERROR', '—', '—', '—', '—');
     } else if (!r.data) {
-      row.push('—', '—', '—', '—', '—');
+      row.push('—', '—', '—', '—', '—', '—', '—');
     } else {
+      const nodes = r.data.nodes !== undefined ? String(r.data.nodes) : '—';
+      const branches = r.data.branches !== undefined ? String(r.data.branches) : '—';
       row.push(
-        String(r.data.nodes),
-        String(r.data.branches),
-        fmtMs(r.data.mean),
-        fmtMs(r.data.stddev),
-        fmtChange(r.data.mean, baselineMean),
+        nodes,
+        branches,
+        s ? fmtMs(s.mean) : '—',
+        s ? fmtMs(s.stddev) : '—',
+        e ? fmtMs(e.mean) : '—',
+        e ? fmtMs(e.stddev) : '—',
+        s ? fmtChange(s.mean, baselineSymex) : '—',
       );
     }
     rows.push(row);
@@ -380,11 +463,15 @@ function displayTable(results) {
   console.log(widths.map(w => '─'.repeat(w)).join('──'));
 
   // Summary stats
-  const successful = results.filter(r => r.data && !r.data.error);
-  const vals = successful.map(r => r.data.mean);
-  if (vals.length > 0) {
-    console.log(`min=${fmtMs(Math.min(...vals))} max=${fmtMs(Math.max(...vals))} range=${((Math.max(...vals)/Math.min(...vals) - 1)*100).toFixed(1)}%`);
+  const symexVals = results.map(r => getSymex(r.data)).filter(Boolean).map(s => s.mean);
+  if (symexVals.length > 0) {
+    console.log(`symex: min=${fmtMs(Math.min(...symexVals))} max=${fmtMs(Math.max(...symexVals))} range=${((Math.max(...symexVals)/Math.min(...symexVals) - 1)*100).toFixed(1)}%`);
   }
+  const e2eVals = results.map(r => getE2E(r.data)).filter(Boolean).map(e => e.mean);
+  if (e2eVals.length > 0) {
+    console.log(`e2e:   min=${fmtMs(Math.min(...e2eVals))} max=${fmtMs(Math.max(...e2eVals))} range=${((Math.max(...e2eVals)/Math.min(...e2eVals) - 1)*100).toFixed(1)}%`);
+  }
+  const successful = results.filter(r => getSymex(r.data));
   console.log(`${successful.length}/${results.length} commits benchmarked successfully.`);
   console.log();
 }
@@ -402,10 +489,14 @@ async function main() {
   }
 
   console.log(`\nBenchmark History: explore solc_symbolic (FFI + all optimizations)`);
-  console.log(`  Commits:  ${commits.length} (from ${opts.branch})`);
-  console.log(`  Warmup:   ${opts.warmup} runs`);
-  console.log(`  Timed:    ${opts.runs} runs`);
-  console.log(`  Range:    ${commits[commits.length - 1].shortHash}..${commits[0].shortHash}`);
+  console.log(`  Commits:     ${commits.length} (from ${opts.branch})`);
+  console.log(`  Symex:       ${opts.warmup} warmup, ${opts.runs} timed`);
+  if (opts.e2eEnabled) {
+    console.log(`  E2E:         ${opts.e2eWarmup} warmup, ${opts.e2eRuns} timed (load+decompose+explore, no cache)`);
+  } else {
+    console.log(`  E2E:         disabled (--no-e2e)`);
+  }
+  console.log(`  Range:       ${commits[commits.length - 1].shortHash}..${commits[0].shortHash}`);
   console.log();
 
   // Load partial results if resuming
@@ -455,13 +546,13 @@ async function main() {
     let data;
     if (isHead) {
       // Run HEAD in-place (no worktree needed)
-      data = await runBench(ROOT, opts.warmup, opts.runs);
+      data = await runBench(ROOT, opts.warmup, opts.runs, opts.e2eWarmup, opts.e2eRuns, opts.e2eEnabled);
     } else {
       currentHash = c.fullHash;
       let wtPath;
       try {
         wtPath = setupWorktree(c.fullHash);
-        data = await runBench(wtPath, opts.warmup, opts.runs);
+        data = await runBench(wtPath, opts.warmup, opts.runs, opts.e2eWarmup, opts.e2eRuns, opts.e2eEnabled);
       } catch (err) {
         data = { error: err.message };
       } finally {
@@ -476,7 +567,11 @@ async function main() {
     if (data.error) {
       process.stdout.write(`ERROR (${elapsed}s)\n`);
     } else {
-      process.stdout.write(`${fmtMs(data.mean)} ±${fmtMs(data.stddev)} [${data.nodes} nodes, ${data.branches} leaves] (${elapsed}s)\n`);
+      const s = getSymex(data);
+      const e = getE2E(data);
+      const symexStr = s ? `${fmtMs(s.mean)} ±${fmtMs(s.stddev)}` : 'n/a';
+      const e2eStr = e ? ` · e2e ${fmtMs(e.mean)} ±${fmtMs(e.stddev)}` : (data.e2eError ? ' · e2e ERROR' : '');
+      process.stdout.write(`${symexStr}${e2eStr} [${data.nodes} nodes, ${data.branches} leaves] (${elapsed}s)\n`);
     }
 
     results.push({ ...c, data });
@@ -502,7 +597,11 @@ async function main() {
   if (opts.out) {
     const outData = {
       timestamp: new Date().toISOString(),
-      config: { runs: opts.runs, warmup: opts.warmup, commits: opts.commits, branch: opts.branch },
+      config: {
+        runs: opts.runs, warmup: opts.warmup,
+        e2eRuns: opts.e2eRuns, e2eWarmup: opts.e2eWarmup, e2eEnabled: opts.e2eEnabled,
+        commits: opts.commits, branch: opts.branch,
+      },
       results: results.map(r => ({ fullHash: r.fullHash, shortHash: r.shortHash, date: r.date, subject: r.subject, data: r.data })),
     };
     fs.writeFileSync(opts.out, JSON.stringify(outData, null, 2));
