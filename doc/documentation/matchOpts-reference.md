@@ -39,7 +39,7 @@ function _buildMatchOpts(execOpts) {
 
 Note: this is not a mathematical monoid identity — there is no binary combining operation on matchOpts. It is simply the distinguished empty record that fills the default-parameter slot.
 
-Consequence: if you need a factory default (e.g. `backchainUseFFI` = `true`), encode it in the factory, not in a consumer-side `!== undefined ? ... : default` fallback. The factory is the single source of truth for defaults. `backchainUseFFI = true` in `buildLnlProtocol` is a pragmatic adversarial-soundness default (FFI enabled unless the caller explicitly opts out via `dangerouslyUseFFI: false`), not a platonic property of the empty record.
+Consequence: factory defaults encode *platonic* empty-record values (no callbacks, no FFI provider, all flags off). Pragmatic production defaults that depend on the caller's full execOpts — e.g. "FFI-on unless opted out via `useFFI: false`" — live at the composition root (`index.js:_buildMatchOpts`), not inside a single-layer factory. The rule of thumb: a factory sees only its own layer's slice of options, so its default must be meaningful in isolation; policy choices that mix information across layers belong where all layers are visible.
 
 Layer ownership is enforced by `tests/engine/layer-dag.test.js` at both the `require()` level and the matchOpts field-access level.
 
