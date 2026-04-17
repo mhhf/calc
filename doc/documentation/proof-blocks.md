@@ -137,6 +137,45 @@ readable end-to-end.
 exp (i (i e)) (i (i (i (i e)))) R
 ```
 
+## Forward / symbolic execution — `{proof ill symex}`
+
+`{proof ill symex}` switches from backward proof search to **forward
+symbolic execution**: the engine runs the `#symex [vars] facts.` directive
+from the imported program, explores every branching choice exhaustively,
+and ships a `forward-trace/v1` payload (tree skeleton + per-leaf summaries;
+per-leaf traces lazy-fetched on click).
+
+Real-program traces can be *very* large — `multisig_nocall_solc_symbolic.ill`
+produces **1987 tree nodes, 31 leaves, 8733 total rule applications,
+max trace length 382 steps**. The viewer is tiered to survive that:
+
+1. **Skeleton tree** pane (left) — single-child chains collapse into
+   breadcrumbs (`rule1 → rule2 → rule3`), branches fold by default
+   past depth 2, click to expand.
+2. **Leaves** pane (middle) — every explored path terminated somewhere;
+   each leaf shows its final state plus a status pill
+   (`STOP` / `REVERT` / `INVALID` / `RUNNING` / `STUCK`).
+3. **Trace** pane (right) — select a leaf in either of the first two
+   panes to lazy-fetch its full rule-application sequence with consumed
+   facts per step.
+
+First paint: tree + leaves only (≈256 KB raw / ≈40 KB gzipped for the
+multisig fixture). Per-leaf trace: ≈84 KB on demand.
+
+### Multisig contract — symbolic execution (1987 nodes, 31 leaves)
+
+```{proof ill symex}
+#import(programs/multisig_nocall_solc_symbolic.ill)
+```
+
+### Pure-linear micro-trace (2 nodes, 1 leaf)
+
+Tiny fixture useful for sanity-checking the viewer pipeline.
+
+```{proof ill symex}
+#import(programs/pure_linear.ill)
+```
+
 ## Deep / wide trees — viewer defaults
 
 The Phase A + B + C toggles (TODO_0213) live in the header bar and
