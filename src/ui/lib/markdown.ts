@@ -231,7 +231,16 @@ async function extractSpecialBlocks(md: string): Promise<{ md: string; blocks: M
 }
 
 /**
- * Convert wiki-style links [[doc]] to HTML links
+ * Convert wiki-style links [[doc]], [[folder/doc]], [[doc|Label]] to HTML links.
+ *
+ * When a slug manifest is supplied, targets are resolved via:
+ *   1. exact slug match
+ *   2. numbered-prefix suffix match ("ownership-design" → "0005_ownership-design") if unique
+ *   3. otherwise rendered as <span class="wiki-broken"> to flag the broken reference
+ *
+ * Without a manifest, falls back to the legacy behavior (raw pass-through link).
+ *
+ * Must mirror the server-side resolver in src/ui/plugins/doc-scan.js exactly.
  */
 const FOLDER_TO_ROUTE: Record<string, string> = {
   theory: '/theory',
@@ -239,9 +248,52 @@ const FOLDER_TO_ROUTE: Record<string, string> = {
   documentation: '/docs',
 };
 
-function processWikiLinks(html: string, basePath: string): string {
+const RESOLVE_ROUTE: Record<string, string> = {
+  theory: 'theory',
+  def: 'def',
+  docs: 'docs',
+  documentation: 'docs',
+};
+
+export function resolveWikiTarget(
+  raw: string,
+  sourceRoute: string,
+  manifest: Record<string, string[]>,
+): { route: string; slug: string } | null {
+  let targetRoute = sourceRoute;
+  let name = raw.trim();
+  if (name.includes('/')) {
+    const parts = name.split('/').filter(p => p !== '..' && p.length > 0);
+    if (parts.length < 2) return null;
+    const resolved = RESOLVE_ROUTE[parts[0]];
+    if (!resolved) return null;
+    targetRoute = resolved;
+    name = parts.slice(1).join('/');
+  }
+  const slugs = manifest[targetRoute] || [];
+  if (slugs.includes(name)) return { route: targetRoute, slug: name };
+  const prefixed = slugs.filter(s => /^\d{4}_/.test(s) && s.slice(5) === name);
+  if (prefixed.length === 1) return { route: targetRoute, slug: prefixed[0] };
+  return null;
+}
+
+function processWikiLinks(
+  html: string,
+  basePath: string,
+  manifest?: Record<string, string[]>,
+): string {
+  const sourceRoute = basePath.replace(/^\//, '');
   return html.replace(/\[\[([^\]|]+)(?:\|([^\]]+))?\]\]/g, (_, doc, label) => {
     const displayText = label || doc;
+    if (manifest) {
+      const resolved = resolveWikiTarget(doc, sourceRoute, manifest);
+      if (resolved) {
+        return `<a href="/${resolved.route}/${resolved.slug}">${displayText}</a>`;
+      }
+      // Manifest provided but target not found — surface the broken reference.
+      return `<span class="wiki-broken" title="Unresolved wiki-link: ${doc}">${displayText}</span>`;
+    }
+    // Legacy fallback (no manifest): pass through raw target.
     if (doc.includes('/')) {
       const parts = doc.split('/').filter((p: string) => p !== '..');
       const folder = parts[0];
@@ -283,15 +335,15 @@ function processInlineMath(html: string): string {
  */
 export async function markdownToHtml(
   markdown: string,
-  options: { basePath?: string; slug?: string } = {}
+  options: { basePath?: string; slug?: string; manifest?: Record<string, string[]> } = {}
 ): Promise<string> {
-  const { basePath = '/docs' } = options;
+  const { basePath = '/docs', manifest } = options;
 
   // 1. Extract special code blocks before marked sees them
   const { md, blocks } = await extractSpecialBlocks(markdown);
 
   // 2. Process wiki-links in the raw markdown (before marked converts []() links)
-  let processed = processWikiLinks(md, basePath);
+  let processed = processWikiLinks(md, basePath, manifest);
 
   // 3. Run marked for core markdown → HTML (collects headings for TOC)
   const headings: { depth: number; text: string; id: string }[] = [];
@@ -321,7 +373,7 @@ export async function markdownToHtml(
  */
 export async function processDocument(
   content: string,
-  options: { basePath?: string; slug?: string } = {}
+  options: { basePath?: string; slug?: string; manifest?: Record<string, string[]> } = {}
 ): Promise<ProcessedDocument> {
   const { frontmatter, body } = parseFrontmatter(content);
 

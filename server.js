@@ -11,7 +11,7 @@ const { serve } = require('@hono/node-server');
 const { serveStatic } = require('@hono/node-server/serve-static');
 const fs = require('fs');
 const path = require('path');
-const { getCachedIndex } = require('./src/ui/plugins/doc-scan');
+const { getCachedIndex, getCachedManifest } = require('./src/ui/plugins/doc-scan');
 
 const app = new Hono();
 const port = parseInt(process.argv.find((_, i, a) => a[i-1] === '--port') || process.env.PORT || '3000', 10);
@@ -67,6 +67,15 @@ app.get('/api/docs/:folder', (c) => {
 app.get('/api/backlinks', (c) => {
   try {
     return c.json(getCachedIndex(DOC_ROOT));
+  } catch (e) {
+    return c.json({ error: e.message }, 500);
+  }
+});
+
+// Doc slug manifest — { [route]: [slug, ...] } for browser-side wiki-link resolution
+app.get('/api/doc-manifest', (c) => {
+  try {
+    return c.json(getCachedManifest(DOC_ROOT));
   } catch (e) {
     return c.json({ error: e.message }, 500);
   }
