@@ -183,16 +183,15 @@ describe('Compose disk cache', () => {
   });
 
   it('SHA-256 cache key: different inputs → different keys (C30)', () => {
+    // Signature (TODO_0218 Phase 3): (treeHashes, absPath, bcHex, flagOpts).
     const hashes = new Map([['/a.ill', 12345]]);
-    const k1 = _composeCacheKey(hashes, '/a.ill', null, false);
-    const k2 = _composeCacheKey(hashes, '/a.ill', null, true);
+    const k1 = _composeCacheKey(hashes, '/a.ill', null, { fuseBasicBlocks: false });
+    const k2 = _composeCacheKey(hashes, '/a.ill', null, { fuseBasicBlocks: true });
     assert.notEqual(k1, k2, 'fuseBasicBlocks flag differentiates');
 
-    const facts1 = new Map([['t', [{ hash: 100 }]]]);
-    const facts2 = new Map([['t', [{ hash: 200 }]]]);
-    const k3 = _composeCacheKey(hashes, '/a.ill', facts1, false);
-    const k4 = _composeCacheKey(hashes, '/a.ill', facts2, false);
-    assert.notEqual(k3, k4, 'different facts → different keys');
+    const k3 = _composeCacheKey(hashes, '/a.ill', '6040600052', { fuseBasicBlocks: false });
+    const k4 = _composeCacheKey(hashes, '/a.ill', '6040600054', { fuseBasicBlocks: false });
+    assert.notEqual(k3, k4, 'different bytecode → different keys');
 
     // Key is 16-char hex (SHA-256 truncated)
     assert.equal(k1.length, 16, 'key is 16 hex chars');
