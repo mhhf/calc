@@ -1,0 +1,43 @@
+{
+  "schema": "0216-baseline/v1",
+  "commit": "8a2678a9028e755ad95cf19de1ed7824d0c4a9ef",
+  "shortSha": "8a2678a",
+  "subject": "perf(0216-phase3): Substitution type codifies idempotence invariant (idea N)",
+  "iterations": 3,
+  "recorded": "2026-04-17T16:29:47.670Z",
+  "node": "v22.22.0",
+  "results": {
+    "load.multisig_nocall_solc_symbolic": {
+      "mean": 46.27704133333333,
+      "p50": 46.270602,
+      "p95": 46.270602,
+      "min": 37.577336,
+      "max": 54.98318599999999,
+      "n": 3
+    },
+    "load.multisig_nocall_solc": {
+      "mean": 37.34123566666667,
+      "p50": 34.973635,
+      "p95": 34.973635,
+      "min": 31.934505,
+      "max": 45.115567,
+      "n": 3
+    },
+    "load.multisig": {
+      "mean": 34.43525133333336,
+      "p50": 32.268688,
+      "p95": 32.268688,
+      "min": 31.17242800000008,
+      "max": 39.864638000000014,
+      "n": 3
+    },
+    "explore.solc_symbolic": {
+      "mean": 5.80579666666669,
+      "p50": 5.5100929999999835,
+      "p95": 5.5100929999999835,
+      "min": 4.892333000000008,
+      "max": 7.014964000000077,
+      "n": 3
+    }
+  }
+}
