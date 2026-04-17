@@ -1,1 +1,26 @@
-current_number: 21
+current_number: 45
+rule_mappings:
+  absorption: 42
+  copy: 43
+  dereliction: 41
+  exists_l: 34
+  exists_r: 33
+  forall_l: 36
+  forall_r: 35
+  id: 22
+  loli_l: 26
+  loli_r: 25
+  monad_l: 45
+  monad_r: 44
+  one_l: 38
+  one_r: 37
+  oplus_l: 32
+  oplus_r1: 30
+  oplus_r2: 31
+  promotion: 40
+  tensor_l: 24
+  tensor_r: 23
+  with_l1: 28
+  with_l2: 29
+  with_r: 27
+  zero_l: 39
