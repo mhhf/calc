@@ -52,8 +52,10 @@
             # Copy source modules required by server.js at runtime:
             #   server.js:14  require('./src/ui/plugins/doc-scan')
             #   server.js:100 require('./lib/prover/prove-source') (pulls in lib/calculus, lib/parser, …)
+            #     lib/calculus/index.js reads ../../calculus/ill/{*.calc,*.rules,prelude/…} at runtime
             cp -r lib $out/lib/lib
             cp -r src $out/lib/src
+            cp -r calculus $out/lib/calculus
 
             # Copy documentation (served via /api/docs)
             cp -r doc $out/lib/doc
