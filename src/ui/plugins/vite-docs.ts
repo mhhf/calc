@@ -27,6 +27,7 @@ const { proveSource } = proveSourceMod as {
     source: string;
     calculus?: string;
     profile?: string;
+    mode?: string;
     cacheDir?: string;
   }) => Promise<{ ok: boolean; tree?: unknown; key: string; cacheHit: boolean; error?: string }>;
 };
@@ -87,7 +88,7 @@ export default function viteDocs(): Plugin {
           let raw = '';
           reqAny.on('data', (chunk) => { raw += String(chunk); });
           reqAny.on('end', async () => {
-            let body: { source?: string; calculus?: string; profile?: string };
+            let body: { source?: string; calculus?: string; profile?: string; mode?: string };
             try {
               body = JSON.parse(raw || '{}');
             } catch {
@@ -111,6 +112,7 @@ export default function viteDocs(): Plugin {
                 source,
                 calculus: body.calculus || 'ill',
                 profile: body.profile || 'default',
+                mode: body.mode || 'sequent',
                 cacheDir: PROOF_CACHE_DIR,
               });
               res.setHeader('Content-Type', 'application/json');

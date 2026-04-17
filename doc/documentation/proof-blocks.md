@@ -17,8 +17,14 @@ interchangeable layouts.
     ```
 
 - First positional token: calculus name (today: `ill`)
-- Second positional token (optional): execution profile (TODO_0212)
-- Body: any sequent in that calculus's surface syntax
+- Second positional token (optional): **mode** — `sequent` (default),
+  `backchain`, or `forward`
+- Third positional token (optional): execution **profile** — `default` or
+  `teaching` (see *Backchain mode* below)
+- Body: any sequent (sequent mode) or predicate atom (backchain mode)
+
+If the second token isn't a known mode it's treated as a profile for
+backward compatibility with pre-Phase-C `{proof ill verified}` blocks.
 
 ## Layouts
 
@@ -75,6 +81,41 @@ A |- A & A
 ```{proof ill}
 A |- B
 ```
+
+## Backchain mode — proving against a program
+
+`{proof ill backchain}` switches from focused sequent search to SLD
+backchaining against a user-supplied program, loaded via a
+`#import(path)` header. Paths resolve under `calculus/ill/` (the
+sandbox root) — absolute paths and paths that escape the root are
+rejected. Edits to any imported file invalidate the cache
+automatically (transitive content hashes in the key).
+
+The body of the block is a **predicate atom**, not a sequent — the
+backchainer derives a proposition from clause / type / FFI evidence.
+
+### Plus via FFI (default: opaque leaf)
+
+```{proof ill backchain}
+#import(programs/bin.ill)
+
+plus (i e) (i e) R
+```
+
+Default mode uses the FFI fast path where available; it shows the goal
+resolved to a single opaque `ffi` node. Use `teaching` profile to see
+the full derivation:
+
+### Plus via clause expansion (teaching profile)
+
+```{proof ill backchain teaching}
+#import(programs/bin.ill)
+
+plus (i e) (i e) R
+```
+
+`teaching` forces clause resolution (`useFFI: false`) so the full
+`plus/*` ladder is visible.
 
 ## Deep / wide trees — viewer defaults
 
@@ -137,7 +178,12 @@ contract between prover and renderer.
 
 ## Cache behaviour
 
-Keys hash `(calculus, profile, trimmed-source, format-version)` into a
-16-char hex digest stored at `out/doc-cache/<key>.json`. Edit the sequent,
-change calculus, or bump the format version → new cache file; old entries
-age out (no automatic eviction — wipe the directory on a clean rebuild).
+Keys hash `(calculus, profile, mode, imports-digest, body, format-version)`
+into a 16-char hex digest stored at `out/doc-cache/<key>.json`. Edit the
+sequent, change calculus/mode/profile, or touch any imported `.ill`
+file → new key; old entries age out (no automatic eviction — wipe the
+directory on a clean rebuild).
+
+The `imports-digest` is computed from `convert.buildImportTree` over
+the transitive dependency graph of each `#import`, so editing a file
+two hops deep still invalidates correctly.

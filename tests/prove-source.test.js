@@ -25,26 +25,38 @@ describe('prove-source', () => {
 
   describe('hashKey', () => {
     it('is deterministic for same inputs', () => {
-      const k1 = hashKey('ill', 'default', 'A |- A');
-      const k2 = hashKey('ill', 'default', 'A |- A');
+      const k1 = hashKey('ill', 'default', 'sequent', '', 'A |- A');
+      const k2 = hashKey('ill', 'default', 'sequent', '', 'A |- A');
       assert.strictEqual(k1, k2);
     });
 
     it('changes when source changes', () => {
-      const k1 = hashKey('ill', 'default', 'A |- A');
-      const k2 = hashKey('ill', 'default', 'B |- B');
+      const k1 = hashKey('ill', 'default', 'sequent', '', 'A |- A');
+      const k2 = hashKey('ill', 'default', 'sequent', '', 'B |- B');
       assert.notStrictEqual(k1, k2);
     });
 
     it('changes when profile changes', () => {
-      const k1 = hashKey('ill', 'default', 'A |- A');
-      const k2 = hashKey('ill', 'verified', 'A |- A');
+      const k1 = hashKey('ill', 'default', 'sequent', '', 'A |- A');
+      const k2 = hashKey('ill', 'verified', 'sequent', '', 'A |- A');
       assert.notStrictEqual(k1, k2);
     });
 
     it('changes when calculus changes', () => {
-      const k1 = hashKey('ill', 'default', 'A |- A');
-      const k2 = hashKey('other', 'default', 'A |- A');
+      const k1 = hashKey('ill', 'default', 'sequent', '', 'A |- A');
+      const k2 = hashKey('other', 'default', 'sequent', '', 'A |- A');
+      assert.notStrictEqual(k1, k2);
+    });
+
+    it('changes when mode changes', () => {
+      const k1 = hashKey('ill', 'default', 'sequent', '', 'A |- A');
+      const k2 = hashKey('ill', 'default', 'backchain', '', 'A |- A');
+      assert.notStrictEqual(k1, k2);
+    });
+
+    it('changes when imports digest changes', () => {
+      const k1 = hashKey('ill', 'default', 'backchain', 'abc123', 'goal');
+      const k2 = hashKey('ill', 'default', 'backchain', 'def456', 'goal');
       assert.notStrictEqual(k1, k2);
     });
   });
@@ -125,13 +137,13 @@ describe('prove-source', () => {
     });
 
     it('ignores cache entries from a stale format version', async () => {
-      const key = hashKey('ill', 'default', 'stale |- stale');
+      const key = hashKey('ill', 'default', 'sequent', '', 'stale |- stale');
       fs.writeFileSync(
         path.join(cacheDir, key + '.json'),
         JSON.stringify({ ok: true, tree: { format: 'proof-tree/v0' } }),
       );
       // Fresh key would differ; but force a lookup on the same key:
-      const k = hashKey('ill', 'default', 'stale');
+      const k = hashKey('ill', 'default', 'sequent', '', 'stale');
       assert.notStrictEqual(k, key); // different source → different key
       // Direct sanity: stale file is present but won't be read for other inputs.
       const r = await proveSource({ source: 'stale', cacheDir });
