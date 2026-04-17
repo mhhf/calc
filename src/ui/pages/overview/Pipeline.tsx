@@ -16,6 +16,7 @@ import { useHashComponent } from './blocks/useHashComponent';
 import Page from './blocks/Page';
 import SectionCard from './blocks/SectionCard';
 import DetailPanel from './blocks/DetailPanel';
+import Intro from './blocks/Intro';
 import ComponentBox from './blocks/ComponentBox';
 import { StageBadge, ModeBadge } from './blocks/Badge';
 import { COMPONENTS } from './data/components';
@@ -153,6 +154,16 @@ export default function Pipeline() {
         </div>
       }
     >
+      <DetailPanel component={selected()} onClose={() => setSelected(null)} />
+
+      <Intro>
+        The <strong>pipeline</strong> axis asks <em>when</em> each piece of code runs.
+        Early stages (define → parse → compile) happen once per program load;
+        later stages (execute → certify → present) run per query.
+        Each swim-lane below lists every component that participates in that stage —
+        a single component can show up in several stages, and that's the truth, not a duplication.
+      </Intro>
+
       <SectionCard
         title="Stage lanes"
         subtitle="Every component appears in every stage it touches. A single component may participate in multiple stages — that's truthful, not a duplication. Click to open the detail panel."
@@ -265,7 +276,6 @@ export default function Pipeline() {
         </div>
       </SectionCard>
 
-      <DetailPanel component={selected()} onClose={() => setSelected(null)} />
     </Page>
   );
 }

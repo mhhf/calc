@@ -1,12 +1,15 @@
 /**
- * Slide-over detail panel for a selected component.
+ * Embedded detail panel for a selected component.
  *
- * Used by every view — when the user clicks a ComponentBox, this panel
- * shows the full metadata and provides cross-view navigation links
- * ("view in Trust / Specificity / Pipeline / Atlas / Deep Dive").
+ * Renders inline in the page flow (NOT a slide-over) — when the user clicks
+ * a ComponentBox or a LayerBand component, this panel appears at the top of
+ * the page with the full metadata and cross-view navigation links.
+ *
+ * No modal, no backdrop, no ESC handler. Close button removes the hash
+ * selection; the panel scrolls itself into view on new selection.
  */
 
-import { Show, For, createEffect, onCleanup } from 'solid-js';
+import { Show, For, createEffect } from 'solid-js';
 import { A } from '@solidjs/router';
 import type { Component } from '../data/types';
 import { TRUST_COLORS, DEEPDIVE_ACCENT, MODE_LABEL } from '../data/palette';
@@ -26,44 +29,41 @@ function withHash(path: string): string {
 
 export default function DetailPanel(props: Props) {
   const dive = () => DEEP_DIVES.find(d => d.id === props.component?.deepDive);
+  let ref: HTMLElement | undefined;
 
-  // Global ESC handler active only while a component is selected.
+  // When selection changes to a new component, bring the detail card into view.
   createEffect(() => {
-    if (!props.component) return;
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') { e.preventDefault(); props.onClose(); }
-    };
-    document.addEventListener('keydown', onKey);
-    onCleanup(() => document.removeEventListener('keydown', onKey));
+    if (!props.component || !ref) return;
+    // Only scroll if the card is off-screen above/below the viewport; avoid
+    // jerky scrolls when user clicks a component that's already on-screen.
+    const rect = ref.getBoundingClientRect();
+    if (rect.top < 0 || rect.bottom > window.innerHeight) {
+      ref.scrollIntoView({ block: 'start' });
+    }
   });
 
   return (
     <Show when={props.component}>
-      {(c) => (
-        <>
-          {/* Backdrop */}
-          <div
-            class="fixed inset-0 bg-black/20 dark:bg-black/40 z-40 animate-fade-in"
-            onClick={props.onClose}
-            aria-hidden="true"
-          />
-          {/* Panel */}
-          <aside
-            class="fixed top-0 right-0 bottom-0 w-full sm:w-[440px] bg-white dark:bg-gray-800 shadow-2xl border-l border-gray-200 dark:border-gray-700 z-50 overflow-y-auto animate-slide-in"
-            role="dialog"
+      {(c) => {
+        const p = TRUST_COLORS[c().trust];
+        return (
+          <section
+            ref={(el) => (ref = el)}
+            class={`rounded-xl border-2 ${p.border} bg-white dark:bg-gray-800 shadow-sm overflow-hidden scroll-mt-24`}
             aria-label={`Details for ${c().name}`}
           >
-            <header class={`px-5 py-4 border-b border-gray-200 dark:border-gray-700 ${TRUST_COLORS[c().trust].bg}`}>
-              <div class="flex items-start justify-between gap-3">
-                <div class="flex-1 min-w-0">
-                  <div class="font-mono text-xs text-gray-500 dark:text-gray-400">{c().id}</div>
-                  <h3 class={`text-lg font-bold truncate ${TRUST_COLORS[c().trust].text}`}>{c().name}</h3>
-                  <p class="text-sm text-gray-700 dark:text-gray-300 mt-1">{c().summary}</p>
+            {/* Header */}
+            <header class={`px-6 py-5 border-b ${p.border} ${p.bg}`}>
+              <div class="flex items-start justify-between gap-4">
+                <div class="min-w-0">
+                  <div class="font-mono text-xs text-gray-600 dark:text-gray-400">{c().id}</div>
+                  <h3 class={`text-xl font-bold mt-0.5 ${p.text}`}>{c().name}</h3>
+                  <p class="text-sm text-gray-700 dark:text-gray-300 mt-2 max-w-3xl leading-relaxed">{c().summary}</p>
                 </div>
                 <button
                   type="button"
                   onClick={props.onClose}
-                  class="shrink-0 p-1 text-gray-500 hover:text-gray-800 dark:hover:text-gray-200 rounded-md hover:bg-white/50 dark:hover:bg-gray-700/50"
+                  class="shrink-0 p-1.5 text-gray-500 hover:text-gray-800 dark:hover:text-gray-200 rounded-md hover:bg-white/60 dark:hover:bg-gray-700/50"
                   aria-label="Close details"
                 >
                   <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -73,78 +73,79 @@ export default function DetailPanel(props: Props) {
               </div>
             </header>
 
-            <div class="px-5 py-4 space-y-5">
-              {/* Badges */}
-              <section>
-                <h4 class="text-[11px] uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-2">Tags</h4>
-                <div class="flex flex-wrap gap-1.5">
-                  <TrustBadge trust={c().trust} />
-                  <SpecificityBadge specificity={c().specificity} />
-                </div>
-              </section>
-
-              {/* Stages */}
-              <section>
-                <h4 class="text-[11px] uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-2">Pipeline Stages</h4>
-                <div class="flex flex-wrap gap-1.5">
-                  <For each={c().stages}>{(s) => <StageBadge stage={s} />}</For>
-                </div>
-              </section>
-
-              {/* Modes */}
-              <section>
-                <h4 class="text-[11px] uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-2">Execution Modes</h4>
-                <div class="flex flex-wrap gap-1.5">
-                  <For each={c().modes}>{(m) => <ModeBadge mode={MODE_LABEL[m]} />}</For>
-                </div>
-              </section>
-
-              {/* Files */}
-              <section>
-                <h4 class="text-[11px] uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-2">Files</h4>
-                <ul class="space-y-1">
-                  <For each={c().files}>
-                    {(f) => (
-                      <li class="font-mono text-xs text-gray-800 dark:text-gray-200 bg-gray-100 dark:bg-gray-900/50 px-2 py-1 rounded break-all">
-                        {f}
-                      </li>
-                    )}
-                  </For>
-                </ul>
-              </section>
-
-              {/* Details (if present) */}
-              <Show when={c().details}>
+            {/* Body — 2-column grid on md+ so the card stays compact */}
+            <div class="px-6 py-5 grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-6">
+              {/* Left column: taxonomy */}
+              <div class="space-y-5">
                 <section>
-                  <h4 class="text-[11px] uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-2">Notes</h4>
-                  <p class="text-sm text-gray-700 dark:text-gray-300 leading-relaxed">{c().details}</p>
+                  <h4 class="text-[11px] uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-2">Tags</h4>
+                  <div class="flex flex-wrap gap-1.5">
+                    <TrustBadge trust={c().trust} />
+                    <SpecificityBadge specificity={c().specificity} />
+                  </div>
                 </section>
-              </Show>
 
-              {/* Cross-view navigation */}
-              <section class="pt-4 border-t border-gray-200 dark:border-gray-700">
-                <h4 class="text-[11px] uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-2">Cross-View Navigation</h4>
-                <div class="grid grid-cols-2 gap-2">
-                  <A href={withHash('/overview/trust')} class="nav-chip">Trust Stack</A>
-                  <A href={withHash('/overview/specificity')} class="nav-chip">Specificity Tree</A>
-                  <A href={withHash('/overview/pipeline')} class="nav-chip">Pipeline</A>
-                  <A href={withHash('/overview/atlas')} class="nav-chip">Atlas</A>
-                </div>
-                <Show when={dive()}>
-                  {(d) => (
-                    <A
-                      href={withHash(`/overview/${d().slug}`)}
-                      class={`mt-3 block w-full rounded-md border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/40 px-3 py-2 text-center text-sm font-semibold hover:bg-gray-100 dark:hover:bg-gray-800 ${DEEPDIVE_ACCENT[d().id]}`}
-                    >
-                      Deep Dive → {d().title}
-                    </A>
-                  )}
+                <section>
+                  <h4 class="text-[11px] uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-2">Pipeline stages</h4>
+                  <div class="flex flex-wrap gap-1.5">
+                    <For each={c().stages}>{(s) => <StageBadge stage={s} />}</For>
+                  </div>
+                </section>
+
+                <section>
+                  <h4 class="text-[11px] uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-2">Execution modes</h4>
+                  <div class="flex flex-wrap gap-1.5">
+                    <For each={c().modes}>{(m) => <ModeBadge mode={MODE_LABEL[m]} />}</For>
+                  </div>
+                </section>
+
+                <Show when={c().details}>
+                  <section>
+                    <h4 class="text-[11px] uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-2">Notes</h4>
+                    <p class="text-sm text-gray-700 dark:text-gray-300 leading-relaxed">{c().details}</p>
+                  </section>
                 </Show>
-              </section>
+              </div>
+
+              {/* Right column: files + navigation */}
+              <div class="space-y-5">
+                <section>
+                  <h4 class="text-[11px] uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-2">Files</h4>
+                  <ul class="space-y-1">
+                    <For each={c().files}>
+                      {(f) => (
+                        <li class="font-mono text-xs text-gray-800 dark:text-gray-200 bg-gray-100 dark:bg-gray-900/50 px-2 py-1 rounded break-all">
+                          {f}
+                        </li>
+                      )}
+                    </For>
+                  </ul>
+                </section>
+
+                <section>
+                  <h4 class="text-[11px] uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-2">See this component in…</h4>
+                  <div class="grid grid-cols-2 gap-2">
+                    <A href={withHash('/overview/trust')} class="nav-chip">Trust Stack</A>
+                    <A href={withHash('/overview/specificity')} class="nav-chip">Specificity Tree</A>
+                    <A href={withHash('/overview/pipeline')} class="nav-chip">Pipeline</A>
+                    <A href={withHash('/overview/atlas')} class="nav-chip">Atlas</A>
+                  </div>
+                  <Show when={dive()}>
+                    {(d) => (
+                      <A
+                        href={withHash(`/overview/${d().slug}`)}
+                        class={`mt-3 block w-full rounded-md border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/40 px-3 py-2 text-center text-sm font-semibold hover:bg-gray-100 dark:hover:bg-gray-800 ${DEEPDIVE_ACCENT[d().id]}`}
+                      >
+                        Deep dive → {d().title}
+                      </A>
+                    )}
+                  </Show>
+                </section>
+              </div>
             </div>
-          </aside>
-        </>
-      )}
+          </section>
+        );
+      }}
     </Show>
   );
 }

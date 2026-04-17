@@ -16,6 +16,7 @@ import { createSignal, createMemo, For, Show } from 'solid-js';
 import Page from './blocks/Page';
 import SectionCard from './blocks/SectionCard';
 import DetailPanel from './blocks/DetailPanel';
+import Intro from './blocks/Intro';
 import { useHashComponent } from './blocks/useHashComponent';
 import { TrustBadge, SpecificityBadge, StageBadge, ModeBadge } from './blocks/Badge';
 import { COMPONENTS } from './data/components';
@@ -172,6 +173,15 @@ export default function Atlas() {
       question={meta.question}
       subtitle={meta.blurb}
     >
+      <DetailPanel component={selected()} onClose={() => setSelected(null)} />
+
+      <Intro>
+        The <strong>Atlas</strong> is the flat, searchable index that every other overview page projects onto.
+        Every component is tagged by trust, specificity, the pipeline stages it touches, the execution modes it
+        runs in, and which deep dive it belongs to. Combine facets to narrow the list, search free-text across
+        id/name/summary/files, and click any row to pin its details at the top of the page.
+      </Intro>
+
       <SectionCard
         title="Search + filter"
         subtitle="Combine facets freely — they AND together. Clicking twice deselects a facet."
@@ -300,7 +310,6 @@ export default function Atlas() {
         </div>
       </SectionCard>
 
-      <DetailPanel component={selected()} onClose={() => setSelected(null)} />
     </Page>
   );
 }

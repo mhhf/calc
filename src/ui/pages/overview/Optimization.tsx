@@ -18,6 +18,7 @@ import { useHashComponent } from './blocks/useHashComponent';
 import Page from './blocks/Page';
 import SectionCard from './blocks/SectionCard';
 import DetailPanel from './blocks/DetailPanel';
+import Intro from './blocks/Intro';
 import ComponentBox from './blocks/ComponentBox';
 import { DEEP_DIVES } from './data/meta';
 import { DEEPDIVE_ACCENT } from './data/palette';
@@ -142,6 +143,16 @@ export default function Optimization() {
       subtitle="Six modules that wrap lower-layer functions. Not a stack layer — just cross-cutting instrumentation. Turning them off preserves soundness; only performance changes."
       accentClass={DEEPDIVE_ACCENT.optimization}
     >
+      <DetailPanel component={selected()} onClose={() => setSelected(null)} />
+
+      <Intro>
+        The <strong>optimization modules</strong> are the only genuinely cross-cutting layer in CALC. Each module
+        exports a <code>wrap(fn)</code> that takes a lower-layer function and returns an equivalent but faster
+        one; the composition root decides which wrappers to apply. Profiles (<em>bare</em>, <em>fast</em>,
+        <em>evm</em>) are just presets for which wrappers to enable. Disabling everything keeps the engine sound,
+        it just gets slower.
+      </Intro>
+
       <SectionCard
         title="The six modules"
         subtitle="Each opt module exports a wrap(fn) with an identical signature to the function it instruments. A composition root wires them in at assembly time."
@@ -242,7 +253,6 @@ export default function Optimization() {
         </div>
       </SectionCard>
 
-      <DetailPanel component={selected()} onClose={() => setSelected(null)} />
     </Page>
   );
 }

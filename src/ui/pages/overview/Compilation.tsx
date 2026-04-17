@@ -15,6 +15,7 @@ import { useHashComponent } from './blocks/useHashComponent';
 import Page from './blocks/Page';
 import SectionCard from './blocks/SectionCard';
 import DetailPanel from './blocks/DetailPanel';
+import Intro from './blocks/Intro';
 import ComponentBox from './blocks/ComponentBox';
 import { StageBadge } from './blocks/Badge';
 import { DEEP_DIVES } from './data/meta';
@@ -249,6 +250,15 @@ export default function Compilation() {
       subtitle="Every calculus is compiled. Rules flow through six passes, each reducing the runtime cost or enabling an optimization."
       accentClass={DEEPDIVE_ACCENT.compilation}
     >
+      <DetailPanel component={selected()} onClose={() => setSelected(null)} />
+
+      <Intro>
+        The <strong>compilation pipeline</strong> takes a <code>.calc</code> definition plus a <code>.rules</code>
+        file and produces a runnable, cached calculus bundle. It runs six passes — parse, compile, compose,
+        assemble, runtime-prep, certify — each either shrinking the runtime cost or unlocking a new optimization.
+        Every pre-runtime pass is paid once per bundle and cached in <code>out/ill.json</code>.
+      </Intro>
+
       <SectionCard
         title="Six passes"
         subtitle="Parse → Compile → Compose → Assemble → Runtime → Certify. All pre-runtime work is paid once per calculus bundle and cached in out/ill.json."
@@ -315,7 +325,6 @@ export default function Compilation() {
         </div>
       </SectionCard>
 
-      <DetailPanel component={selected()} onClose={() => setSelected(null)} />
     </Page>
   );
 }

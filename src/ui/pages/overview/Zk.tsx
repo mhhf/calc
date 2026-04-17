@@ -24,6 +24,7 @@ import { useHashComponent } from './blocks/useHashComponent';
 import Page from './blocks/Page';
 import SectionCard from './blocks/SectionCard';
 import DetailPanel from './blocks/DetailPanel';
+import Intro from './blocks/Intro';
 import ComponentBox from './blocks/ComponentBox';
 import { DEEP_DIVES } from './data/meta';
 import { DEEPDIVE_ACCENT } from './data/palette';
@@ -196,6 +197,15 @@ export default function Zk() {
       subtitle="Proof term in, Plonky3 STARK out. 14 shared buses let chips exchange values; chips verify, they never re-execute."
       accentClass={DEEPDIVE_ACCENT.zk}
     >
+      <DetailPanel component={selected()} onClose={() => setSelected(null)} />
+
+      <Intro>
+        The <strong>ZK certifier</strong> turns a proof term into a Plonky3 STARK witness. It never re-executes
+        the proof — it just verifies that each step is consistent with the rule it claims to apply, then emits
+        one row per step. <em>Chips</em> encode rule applications; <em>buses</em> (14 of them) let chips exchange
+        values via permutation or lookup arguments. The payoff: a succinct proof that the calculus ran correctly.
+      </Intro>
+
       <SectionCard
         title="Entry points"
         subtitle="The certifier consumes a proof term produced by any CALC mode (backward, forward, symbolic) and emits a Plonky3 witness."
@@ -277,7 +287,6 @@ export default function Zk() {
         </div>
       </SectionCard>
 
-      <DetailPanel component={selected()} onClose={() => setSelected(null)} />
     </Page>
   );
 }

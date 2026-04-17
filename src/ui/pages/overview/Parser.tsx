@@ -18,6 +18,7 @@ import { useHashComponent } from './blocks/useHashComponent';
 import Page from './blocks/Page';
 import SectionCard from './blocks/SectionCard';
 import DetailPanel from './blocks/DetailPanel';
+import Intro from './blocks/Intro';
 import ComponentBox from './blocks/ComponentBox';
 import { DEEP_DIVES } from './data/meta';
 import { DEEPDIVE_ACCENT } from './data/palette';
@@ -212,6 +213,16 @@ export default function Parser() {
       subtitle="One Earley engine, three grammars. Share the recognizer — a bug in Earley is visible across every parsing path. Grammars are generated from .calc annotations; opt-in extensions are flags."
       accentClass={DEEPDIVE_ACCENT.parser}
     >
+      <DetailPanel component={selected()} onClose={() => setSelected(null)} />
+
+      <Intro>
+        Every flavor of CALC input goes through the <strong>same Earley recognizer</strong>, only the grammar
+        differs. Three paths: <em>meta</em> (parses the calculus description itself — <code>.calc</code>),
+        <em> program</em> (parses user programs — <code>.ill</code>), and <em>rules</em> (parses inference rules in
+        sequent notation). The payoff: a bug in Earley is visible across every parsing path, and grammar
+        extensions enable features uniformly.
+      </Intro>
+
       <SectionCard
         title="Three paths, one core"
         subtitle="Every flavor of CALC input is parsed by the same Earley recognizer against a different generated grammar."
@@ -261,7 +272,6 @@ export default function Parser() {
         </div>
       </SectionCard>
 
-      <DetailPanel component={selected()} onClose={() => setSelected(null)} />
     </Page>
   );
 }
