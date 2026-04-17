@@ -11,6 +11,7 @@ const { serve } = require('@hono/node-server');
 const { serveStatic } = require('@hono/node-server/serve-static');
 const fs = require('fs');
 const path = require('path');
+const { getCachedIndex } = require('./src/ui/plugins/doc-scan');
 
 const app = new Hono();
 const port = parseInt(process.argv.find((_, i, a) => a[i-1] === '--port') || process.env.PORT || '3000', 10);
@@ -57,6 +58,15 @@ app.get('/api/docs/:folder', (c) => {
       return { slug: f.replace(/\.md$/, ''), title: fm.title || fm.term || f.replace(/\.md$/, ''), summary: fm.summary || '', tags: fm.tags || [], status: fm.status || '', priority: fm.priority ? Number(fm.priority) : undefined, type: fm.type || undefined, depends_on: fm.depends_on || [], required_by: fm.required_by || [], cluster: fm.cluster || undefined };
     });
     return c.json(docs);
+  } catch (e) {
+    return c.json({ error: e.message }, 500);
+  }
+});
+
+// Backlink manifest — "<route>/<slug>" → [{folder, slug, title}, ...]
+app.get('/api/backlinks', (c) => {
+  try {
+    return c.json(getCachedIndex(DOC_ROOT));
   } catch (e) {
     return c.json({ error: e.message }, 500);
   }

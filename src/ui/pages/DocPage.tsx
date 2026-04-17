@@ -1,6 +1,20 @@
-import { createResource, Show } from 'solid-js';
+import { createMemo, createResource, For, Show } from 'solid-js';
 import { A, useParams, useLocation } from '@solidjs/router';
 import { processDocument } from '../lib/markdown';
+
+type Backlink = { folder: string; slug: string; title: string };
+type BacklinkIndex = Record<string, Backlink[]>;
+
+// Session-level singleton — manifest rarely changes and is shared across pages.
+let backlinksPromise: Promise<BacklinkIndex> | null = null;
+function fetchBacklinks(): Promise<BacklinkIndex> {
+  if (!backlinksPromise) {
+    backlinksPromise = fetch('/api/backlinks')
+      .then(r => (r.ok ? r.json() : {}))
+      .catch(() => ({}));
+  }
+  return backlinksPromise;
+}
 
 async function fetchAndProcess(args: { folder: string; slug: string }) {
   const res = await fetch(`/api/docs/${args.folder}/${args.slug}`);
@@ -18,6 +32,13 @@ export default function DocPage() {
     () => ({ folder: folder(), slug: params.slug }),
     fetchAndProcess,
   );
+  const [backlinks] = createResource(fetchBacklinks);
+
+  const incoming = createMemo<Backlink[]>(() => {
+    const idx = backlinks();
+    if (!idx) return [];
+    return idx[`${folder()}/${params.slug}`] || [];
+  });
 
   function hydrateBlocks(el: HTMLElement) {
     const mermaidBlocks = el.querySelectorAll('.client-render[data-processor="mermaid"]');
@@ -65,6 +86,32 @@ export default function DocPage() {
               class="prose-research"
               innerHTML={d().html}
             />
+
+            <Show when={incoming().length > 0}>
+              <nav
+                aria-label="Referenced by"
+                class="mt-10 pt-6 border-t border-gray-200 dark:border-gray-700"
+              >
+                <h2 class="text-sm font-semibold tracking-wide uppercase text-gray-500 dark:text-gray-400 mb-3">
+                  Referenced by
+                </h2>
+                <ul class="space-y-1.5">
+                  <For each={incoming()}>
+                    {(b) => (
+                      <li>
+                        <A
+                          href={`/${b.folder}/${b.slug}`}
+                          class="inline-flex items-baseline gap-2 text-sm text-blue-600 dark:text-blue-400 hover:underline"
+                        >
+                          <span class="font-mono text-xs text-gray-400">{b.folder}</span>
+                          <span>{b.title}</span>
+                        </A>
+                      </li>
+                    )}
+                  </For>
+                </ul>
+              </nav>
+            </Show>
           </div>
         )}
       </Show>

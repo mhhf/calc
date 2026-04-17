@@ -4,10 +4,14 @@
  * Handles:
  *   GET /api/docs/:folder       → JSON array of { slug, title, summary, tags, modified, category, ... }
  *   GET /api/docs/:folder/:slug → raw markdown text
+ *   GET /api/backlinks          → JSON { "<folder>/<slug>": [{folder, slug, title}, ...] }
  */
 import type { Plugin } from 'vite';
 import fs from 'fs';
 import path from 'path';
+// @ts-expect-error - CJS scanner module shared with production server.js
+import docScan from './doc-scan.js';
+const { getCachedIndex } = docScan as { getCachedIndex: (root: string) => Record<string, { folder: string; slug: string; title: string }[]> };
 
 const DOC_ROOT = path.resolve(__dirname, '../../../doc');
 
@@ -44,6 +48,19 @@ export default function viteDocs(): Plugin {
     configureServer(server) {
       server.middlewares.use((req, res, next) => {
         const url = req.url || '';
+
+        // /api/backlinks — global backlink manifest
+        if (url === '/api/backlinks') {
+          try {
+            const index = getCachedIndex(DOC_ROOT);
+            res.setHeader('Content-Type', 'application/json');
+            res.end(JSON.stringify(index));
+          } catch (e) {
+            res.statusCode = 500;
+            res.end(JSON.stringify({ error: (e as Error).message }));
+          }
+          return;
+        }
 
         // Match /api/docs/:folder or /api/docs/:folder/:slug
         const m = url.match(/^\/api\/docs\/([^/]+)(?:\/(.+))?$/);
