@@ -40,14 +40,23 @@ shape families:
 |                                     |    16 |    31 |    16 |  6.1 K |
 |                                     |    32 |    65 |    33 | 14.3 K |
 | `A ⊸ (B ⊸ … ⊸ (A*…*H))` (curry-8)   |     — |    23 |    16 |  4.6 K |
+| `mul N N` (bin.ill, teaching)       |   255 |   150 |    23 |   28 K |
+|                                     | 65535 |   618 |    47 |  119 K |
+| `exp 3 N` (bin.ill, teaching)       |    15 |   627 |    43 |  118 K |
 
 **Takeaway.** Base ILL focused proof search already hits **255-node,
-depth-128** trees on wide-tensor goals with zero program imports. The
-real-world regime (`#import bin.ill` / `evm.ill` / multisig / solc
-symbolic) is expected one to two orders of magnitude larger — the
-`zk/sequent-certifier/tests/fixtures/solc_symbolic_*.json` fixtures
-already contain `faCount=192` chip segments, which is a rough proxy
-for 200+ proof rule applications per contract symbolic run.
+depth-128** trees on wide-tensor goals with zero program imports.
+Backchain mode against `bin.ill` with the `teaching` profile (FFI off,
+full clause expansion) scales well past that — `exp 3 15` expands to
+**627 nodes** (depth 43, 118 KB raw, 16 KB gzipped), `mul 65535 65535`
+to **618 nodes** (depth 47). These are the canonical fixtures that hit
+the 500-node acceptance target for
+[TODO_0213](https://hq.denis.page/todo/0213). `bin.ill` is the
+arithmetic layer transitively imported by `evm.ill` and the
+multisig / solc-symbolic programs, so the same clauses fire there at
+scale — the `zk/sequent-certifier/tests/fixtures/solc_symbolic_*.json`
+fixtures already contain `faCount=192` chip segments, which is a rough
+proxy for 200+ proof rule applications per contract symbolic run.
 
 ## Strategy menu — with decisions
 
@@ -195,13 +204,14 @@ fixtures — tensor128 renders 7 visible nodes at fold-depth 3 in under
 3. **Canvas pan/zoom** — Tier 2 above. Toggle-driven, zero cost off.
 
 4. **Benchmark fixture** — `tools/proof-viewer-bench.js` enumerates
-   the `tensor_N` / `chain_N` / `plus_N_N` / `loli_curry` fixture
-   matrix; results embedded in the Tier 2 tables above. The
-   real-program fixtures (`multisig_nocall_solc_symbolic.ill` and the
-   solc chunks) still require `#import` round-tripping through the
-   backchainer at scale — tracked as follow-up work rather than a
-   Phase C blocker because the synthetic tensor128 already exceeds
-   any real-program tree density we've measured.
+   the `tensor_N` / `chain_N` / `plus_N_N` / `loli_curry` matrix plus
+   three real-program backchain fixtures (`mul_255_255`,
+   `mul_65535_65535`, `exp_3_15`) that exercise the arithmetic layer
+   of `bin.ill` — the same clauses fired at scale by `evm.ill` and the
+   multisig / solc-symbolic programs. `exp_3_15` (627 nodes, depth 43)
+   is the canonical 500-node acceptance fixture; embedded live in
+   [`proof-blocks.md`](proof-blocks.md) so every doc rebuild
+   re-exercises the full viewer pipeline end-to-end.
 
 ### Phase D — optimize the real measured hotspot *(deferred)*
 

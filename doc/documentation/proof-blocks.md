@@ -117,6 +117,26 @@ plus (i e) (i e) R
 `teaching` forces clause resolution (`useFFI: false`) so the full
 `plus/*` ladder is visible.
 
+### Real-program proof — `exp 3 15` via bin.ill (627 nodes, depth 43)
+
+The `exp 3 15 R` goal derives `3¹⁵ = 14 348 907` by iterated multiplication
+against the clauses in `programs/bin.ill` (itself transitively imported by
+`evm.ill`, the multisig contract, and the solc-symbolic fixtures). With
+the `teaching` profile it expands into a 627-node tree — the canonical
+large-proof example backing the 500-node acceptance target in
+[TODO_0213](https://hq.denis.page/todo/0213).
+
+Open the block with **lazy** on (default) to ship only the top 3 levels
+over the wire; click any blue `↓` stub to fetch a subtree on demand.
+**Skeleton** mode collapses the arithmetic text so the branching shape is
+readable end-to-end.
+
+```{proof ill backchain teaching}
+#import(programs/bin.ill)
+
+exp (i (i e)) (i (i (i (i e)))) R
+```
+
 ## Deep / wide trees — viewer defaults
 
 The Phase A + B + C toggles (TODO_0213) live in the header bar and
