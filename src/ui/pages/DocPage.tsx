@@ -68,6 +68,13 @@ export default function DocPage() {
         });
       }).catch(() => {});
     }
+
+    const proofBlocks = el.querySelectorAll('.client-render[data-processor="proof-tree"]');
+    if (proofBlocks.length > 0) {
+      import('../components/proof-block/ProofBlock')
+        .then(({ hydrateProofBlocks }) => hydrateProofBlocks(el))
+        .catch((e) => console.error('proof-block hydration failed', e));
+    }
   }
 
   return (

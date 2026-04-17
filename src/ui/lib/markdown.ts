@@ -152,7 +152,7 @@ const serverProcessors: Record<string, (code: string, options?: Record<string, s
   },
 };
 
-const clientBlocks = ['mermaid'];
+const clientBlocks = ['mermaid', 'proof'];
 
 /**
  * Parse YAML frontmatter from markdown content
@@ -192,7 +192,8 @@ function escapeHtml(text: string): string {
 async function extractSpecialBlocks(md: string): Promise<{ md: string; blocks: Map<string, string> }> {
   const blocks = new Map<string, string>();
   // Match both ```{mermaid} (legacy) and ```mermaid (standard fenced)
-  const regex = /```(?:\{([^}]+)\}|(mermaid|katex|graphviz|viz|calc))\n([\s\S]*?)```/g;
+  // Also supports positional args inside braces: ```{proof ill default}
+  const regex = /```(?:\{([^}]+)\}|(mermaid|katex|graphviz|viz|calc|proof))\n([\s\S]*?)```/g;
   let idx = 0;
 
   // Collect all matches first
@@ -205,17 +206,40 @@ async function extractSpecialBlocks(md: string): Promise<{ md: string; blocks: M
   // Process and replace
   let result = md;
   for (const { full, optionsStr, code } of matches) {
-    const parts = optionsStr.split(',').map(s => s.trim());
-    const processor = parts[0];
+    // The header allows a mix of whitespace-separated positional tokens and
+    // comma-separated k=v options:
+    //   ```{proof ill verified}        → processor=proof, args=[ill, verified]
+    //   ```{graphviz, theme=dark}      → processor=graphviz, options={theme}
+    //   ```mermaid                     → processor=mermaid (bare fenced form)
+    const commaParts = optionsStr.split(',').map(s => s.trim());
+    const headTokens = commaParts[0].split(/\s+/);
+    const processor = headTokens[0];
+    const positional = headTokens.slice(1);
     const options: Record<string, string> = {};
-    for (let i = 1; i < parts.length; i++) {
-      const [k, v] = parts[i].split('=');
+    for (let i = 1; i < commaParts.length; i++) {
+      const [k, v] = commaParts[i].split('=');
       options[k.trim()] = v?.trim() || 'true';
     }
 
     let html: string;
     if (serverProcessors[processor]) {
       html = await Promise.resolve(serverProcessors[processor](code, options));
+    } else if (processor === 'proof') {
+      // `{proof <calculus> [profile]}` — client-rendered. The tree itself is
+      // fetched from POST /api/proof on mount; the client renders one of five
+      // layouts with a user-toggle. Source travels in a <script> to avoid
+      // HTML-escape headaches with `|-` and `<`.
+      const calcName = positional[0] || 'ill';
+      const profile = positional[1] || 'default';
+      const sourceId = `proof-src-${idx}`;
+      html =
+        `<div class="client-render" data-processor="proof-tree" ` +
+        `data-calculus="${escapeHtml(calcName)}" ` +
+        `data-profile="${escapeHtml(profile)}" ` +
+        `data-source-id="${sourceId}">` +
+        `<script type="application/x-calc-proof-source" id="${sourceId}">${escapeHtml(code)}</script>` +
+        `<pre class="client-source" style="display:none">${escapeHtml(code)}</pre>` +
+        `</div>`;
     } else if (clientBlocks.includes(processor)) {
       html = `<div class="client-render" data-processor="${processor}" data-options='${JSON.stringify(options)}'><pre class="client-source">${escapeHtml(code)}</pre></div>`;
     } else {
