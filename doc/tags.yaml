@@ -31,6 +31,7 @@ tags:
   evm: 3
   ffi: 3
   loli: 3
+  performance: 3
   prover: 3
   QTT: 3
   staging: 3
@@ -49,7 +50,6 @@ tags:
   modal-logic: 2
   monad: 2
   one: 2
-  performance: 2
   principals: 2
   resource-semantics: 2
   SELL: 2
@@ -89,6 +89,7 @@ tags:
   determinism: 1
   digital-assets: 1
   disjunction: 1
+  documentation: 1
   entailment: 1
   execution-tree: 1
   exploration: 1
@@ -137,6 +138,7 @@ tags:
   proof-of-stake: 1
   proof-search: 1
   proof-terms: 1
+  proof-tree: 1
   quantifiers: 1
   roadmap: 1
   Skolem: 1
@@ -152,6 +154,7 @@ tags:
   theory: 1
   transfers: 1
   translation: 1
+  ui: 1
   unification: 1
   vision: 1
   walkthrough: 1
