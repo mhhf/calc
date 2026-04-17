@@ -47,6 +47,68 @@ export interface ProofTreeV1 {
   meta?: Record<string, unknown>;
 }
 
+// ── forward-trace/v1 (symex / exec) ─────────────────────────────────────
+// Produced by lib/prover/serialize-trace.js. Tree skeleton + leaves; per-leaf
+// traces fetch lazily via POST /api/proof/leaf-trace.
+
+export type LeafStatus =
+  | 'STOP' | 'REVERT' | 'INVALID' | 'RUNNING' | 'STUCK' | 'NO_STATE';
+
+export interface ForwardLeafSummary {
+  leafIndex: number;
+  id: string;
+  status: LeafStatus;
+  stepCount: number;
+  state: {
+    linear: Array<[string, number]>;
+    persistent: string[];
+  };
+}
+
+export type ForwardNode =
+  | { id: string; idx: number; type: 'branch'; children: Array<{ rule: string; choice?: unknown; child: ForwardNode }>; elided?: boolean }
+  | { id: string; idx: number; type: 'leaf'; leafIndex: number; status: LeafStatus }
+  | { id: string; idx: number; type: 'bound' | 'cycle' | 'memo' | 'dead' };
+
+export interface ForwardTraceV1 {
+  format: 'forward-trace/v1';
+  mode: 'symex' | 'exec';
+  calculus: string;
+  profile: string;
+  formulas: Record<string, FormulaAST>;
+  queryVars: string[];
+  initial: { linear: Array<[string, number]>; persistent: string[] };
+  stats: {
+    totalNodes: number;
+    branchCount: number;
+    leafCount: number;
+    maxDepth: number;
+    totalTraceSteps: number;
+    maxTraceLen: number;
+  };
+  tree: ForwardNode;
+  leaves: ForwardLeafSummary[];
+}
+
+export interface TraceStep {
+  step: number;
+  ruleName: string;
+  consumed: Array<[string, number]>;
+}
+
+export interface ForwardLeafDetail {
+  leafIndex: number;
+  id: string;
+  status: LeafStatus;
+  stepCount: number;
+  state: {
+    linear: Array<[string, number]>;
+    persistent: string[];
+  };
+  trace: TraceStep[];
+  formulas: Record<string, FormulaAST>;
+}
+
 /** One of the five supported layouts; persists in localStorage per-browser. */
 export type ProofLayout = 'bussproofs' | 'gentzen' | 'tactic' | 'indented' | 'flipped';
 

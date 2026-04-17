@@ -243,7 +243,7 @@ async function extractSpecialBlocks(md: string): Promise<{ md: string; blocks: M
       // would arrive at the prover literally — and the parser would choke
       // on the semicolon (observed: "parse error at position 6, got ';'").
       // <pre> is parsed as normal HTML, so `.textContent` decodes entities.
-      const KNOWN_MODES = new Set(['sequent', 'backchain', 'forward']);
+      const KNOWN_MODES = new Set(['sequent', 'backchain', 'forward', 'symex', 'exec']);
       const calcName = positional[0] || 'ill';
       let mode = 'sequent';
       let profile = 'default';

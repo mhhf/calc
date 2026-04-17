@@ -18,6 +18,8 @@ import { createEffect, createMemo, createSignal, createResource, Show, For } fro
 import { render } from 'solid-js/web';
 import { renderLayout } from './layouts';
 import { PROOF_LAYOUTS } from './types';
+import { ForwardTrace } from './ForwardTrace';
+import type { ForwardTraceV1 } from './types';
 import { computeStats, tooltip as statsTooltip } from './stats';
 import { buildSearch, EMPTY_SEARCH } from './search';
 import { PanZoom } from './PanZoom';
@@ -365,8 +367,67 @@ export function ProofBlock(props: {
 }
 
 /**
+ * Forward-trace shell: drives fetch, routes the forward-trace/v1 payload
+ * into the three-pane ForwardTrace viewer. Separate from the backward
+ * ProofBlock because the two formats share almost nothing (no sequents,
+ * no layouts, no pan/zoom — instead a tree/leaves/trace tri-pane).
+ */
+function ForwardTraceBlock(props: {
+  source: string;
+  calculus: string;
+  profile: string;
+  mode: string;
+}) {
+  const [result] = createResource(
+    () => ({
+      source: props.source, calculus: props.calculus, profile: props.profile, mode: props.mode,
+    }),
+    fetchProof,
+  );
+  return (
+    <div class="calc-proof-block" style="border:1px solid #ddd;border-radius:6px;margin:1em 0;background:#fff">
+      <div class="calc-proof-header" style="display:flex;align-items:center;gap:0.5em;padding:0.4em 0.6em;border-bottom:1px solid #eee;background:#fafafa;font-size:0.8em;color:#666">
+        <span style="font-weight:600">proof</span>
+        <span style="opacity:0.7">·</span>
+        <span>{props.calculus}</span>
+        <span style="opacity:0.7">·</span>
+        <span>{props.mode}</span>
+        <Show when={props.profile !== 'default'}>
+          <span style="opacity:0.7">·</span>
+          <span>{props.profile}</span>
+        </Show>
+      </div>
+      <div>
+        <Show when={result.loading}>
+          <div style="padding:1em;color:#888;font-style:italic">Running symbolic execution…</div>
+        </Show>
+        <Show when={result() && !result()!.ok}>
+          <pre style="padding:1em;color:#a33;white-space:pre-wrap;margin:0;font-size:0.85em">
+            {result()!.error || 'Execution failed (no tree)'}
+          </pre>
+        </Show>
+        <Show when={result() && result()!.ok && result()!.tree}>
+          <ForwardTrace
+            source={props.source}
+            calculus={props.calculus}
+            profile={props.profile}
+            tree={result()!.tree as unknown as ForwardTraceV1}
+          />
+        </Show>
+      </div>
+      <Show when={result() && result()!.cacheHit}>
+        <div style="font-size:0.7em;color:#aaa;padding:0.2em 0.6em;border-top:1px solid #eee">
+          cache hit
+        </div>
+      </Show>
+    </div>
+  );
+}
+
+/**
  * Find every placeholder div emitted by the markdown processor and mount a
- * ProofBlock into it. Idempotent — already-hydrated divs are skipped.
+ * ProofBlock (or ForwardTraceBlock for symex/exec) into it. Idempotent —
+ * already-hydrated divs are skipped.
  */
 export function hydrateProofBlocks(root: HTMLElement) {
   const divs = root.querySelectorAll<HTMLDivElement>(
@@ -381,6 +442,10 @@ export function hydrateProofBlocks(root: HTMLElement) {
     const mode = div.dataset.mode || 'sequent';
     div.dataset.hydrated = '1';
     div.innerHTML = '';
-    render(() => <ProofBlock source={source} calculus={calculus} profile={profile} mode={mode} />, div);
+    if (mode === 'symex' || mode === 'exec') {
+      render(() => <ForwardTraceBlock source={source} calculus={calculus} profile={profile} mode={mode} />, div);
+    } else {
+      render(() => <ProofBlock source={source} calculus={calculus} profile={profile} mode={mode} />, div);
+    }
   }
 }

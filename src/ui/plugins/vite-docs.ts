@@ -22,7 +22,7 @@ const PROOF_CACHE_DIR = path.resolve(__dirname, '../../../out/doc-cache');
 
 // @ts-expect-error - CJS module shared with production server.js
 import proveSourceMod from '../../../lib/prover/prove-source.js';
-const { proveSource, proveSubtree } = proveSourceMod as {
+const { proveSource, proveSubtree, extractSymexLeafTrace } = proveSourceMod as {
   proveSource: (opts: {
     source: string;
     calculus?: string;
@@ -40,6 +40,11 @@ const { proveSource, proveSubtree } = proveSourceMod as {
     nodeId: string;
     elideBelowDepth?: number;
   }) => Promise<{ ok: boolean; tree?: unknown; key?: string; cacheHit?: boolean; error?: string }>;
+  extractSymexLeafTrace: (
+    key: string,
+    leafIndex: number,
+    opts?: { calculus?: string; profile?: string },
+  ) => { ok: boolean; key: string; leaf?: unknown; error?: string };
 };
 
 const ALLOWED_FOLDERS: Record<string, string> = {
@@ -177,6 +182,71 @@ export default function viteDocs(): Plugin {
                 nodeId,
                 cacheDir: PROOF_CACHE_DIR,
                 elideBelowDepth: typeof body.elideBelowDepth === 'number' ? body.elideBelowDepth : undefined,
+              });
+              res.setHeader('Content-Type', 'application/json');
+              res.end(JSON.stringify(r));
+            } catch (e) {
+              res.statusCode = 500;
+              res.end(JSON.stringify({ ok: false, error: (e as Error).message }));
+            }
+          });
+          return;
+        }
+
+        // POST /api/proof/leaf-trace — fetch the full trace for a single
+        // leaf of a previously-proved symex source. Requires the same
+        // source body so the server can re-prove into the in-memory
+        // tree cache on cold start (cheap: disk cache short-circuits
+        // serializer; in-memory tree is rebuilt only when the process
+        // cache has evicted it).
+        if (url === '/api/proof/leaf-trace' && reqAny.method === 'POST') {
+          let raw = '';
+          reqAny.on('data', (chunk) => { raw += String(chunk); });
+          reqAny.on('end', async () => {
+            let body: { source?: string; calculus?: string; profile?: string; leafIndex?: number };
+            try {
+              body = JSON.parse(raw || '{}');
+            } catch {
+              res.statusCode = 400;
+              res.end(JSON.stringify({ ok: false, error: 'invalid JSON body' }));
+              return;
+            }
+            const source = body.source;
+            const leafIndex = body.leafIndex;
+            if (typeof source !== 'string' || source.length === 0) {
+              res.statusCode = 400;
+              res.end(JSON.stringify({ ok: false, error: 'source (string) required' }));
+              return;
+            }
+            if (typeof leafIndex !== 'number' || leafIndex < 0) {
+              res.statusCode = 400;
+              res.end(JSON.stringify({ ok: false, error: 'leafIndex (non-negative number) required' }));
+              return;
+            }
+            if (source.length > 4096) {
+              res.statusCode = 413;
+              res.end(JSON.stringify({ ok: false, error: 'source too large' }));
+              return;
+            }
+            try {
+              // Re-prove to guarantee the in-memory tree cache has an entry
+              // (cheap when disk cache hits — we only pay for the in-memory
+              // tree reconstruction if evicted).
+              const p = await proveSource({
+                source,
+                calculus: body.calculus || 'ill',
+                profile: body.profile || 'default',
+                mode: 'symex',
+                cacheDir: PROOF_CACHE_DIR,
+              });
+              if (!p.ok || !p.key) {
+                res.statusCode = 400;
+                res.end(JSON.stringify({ ok: false, error: p.error || 'prove failed' }));
+                return;
+              }
+              const r = extractSymexLeafTrace(p.key, leafIndex, {
+                calculus: body.calculus || 'ill',
+                profile: body.profile || 'default',
               });
               res.setHeader('Content-Type', 'application/json');
               res.end(JSON.stringify(r));

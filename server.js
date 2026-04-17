@@ -97,7 +97,7 @@ app.get('/api/docs/:folder/:slug', (c) => {
 
 // Proof block API — run the prover on a sequent string and return
 // proof-tree/v1 JSON. Cached on disk under out/doc-cache/.
-const { proveSource, proveSubtree } = require('./lib/prover/prove-source');
+const { proveSource, proveSubtree, extractSymexLeafTrace } = require('./lib/prover/prove-source');
 const PROOF_CACHE_DIR = path.join(__dirname, 'out/doc-cache');
 app.post('/api/proof', async (c) => {
   let body;
@@ -156,6 +156,47 @@ app.post('/api/proof/subtree', async (c) => {
       nodeId,
       cacheDir: PROOF_CACHE_DIR,
       elideBelowDepth: typeof elideBelowDepth === 'number' ? elideBelowDepth : undefined,
+    });
+    return c.json(r);
+  } catch (e) {
+    return c.json({ ok: false, error: e.message }, 500);
+  }
+});
+
+// Per-leaf trace fetch for symex/exec proofs (forward-trace/v1). Re-proves
+// the source (cheap when disk cache hits) to guarantee the in-memory tree
+// cache has the explore tree, then serializes one leaf's trace.
+app.post('/api/proof/leaf-trace', async (c) => {
+  let body;
+  try {
+    body = await c.req.json();
+  } catch {
+    return c.json({ ok: false, error: 'invalid JSON body' }, 400);
+  }
+  const { source, calculus, profile, leafIndex } = body || {};
+  if (typeof source !== 'string' || source.length === 0) {
+    return c.json({ ok: false, error: 'source (string) required' }, 400);
+  }
+  if (typeof leafIndex !== 'number' || leafIndex < 0) {
+    return c.json({ ok: false, error: 'leafIndex (non-negative number) required' }, 400);
+  }
+  if (source.length > 4096) {
+    return c.json({ ok: false, error: 'source too large' }, 413);
+  }
+  try {
+    const p = await proveSource({
+      source,
+      calculus: calculus || 'ill',
+      profile: profile || 'default',
+      mode: 'symex',
+      cacheDir: PROOF_CACHE_DIR,
+    });
+    if (!p.ok || !p.key) {
+      return c.json({ ok: false, error: p.error || 'prove failed' }, 400);
+    }
+    const r = extractSymexLeafTrace(p.key, leafIndex, {
+      calculus: calculus || 'ill',
+      profile: profile || 'default',
     });
     return c.json(r);
   } catch (e) {
