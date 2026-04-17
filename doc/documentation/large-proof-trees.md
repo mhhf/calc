@@ -15,24 +15,39 @@ reach hundreds or thousands of nodes.
 ## Baseline measurements
 
 `node tools/proof-size-probe.js` sizes a set of representative
-backward proofs (proof-tree/v1 JSON over the `auto` strategy):
+backward proofs (proof-tree/v1 JSON over the `auto` strategy) across
+three shape families — inline teaching examples, wide tensors, and
+chained implications:
 
-| Sequent                                   | Nodes | Depth | JSON bytes |
-| ----------------------------------------- | ----: | ----: | ---------: |
-| `\|- A -o A` (id)                         |     2 |     2 |        419 |
-| `A, B \|- A * B` (tensor intro)           |     3 |     2 |        605 |
-| `A, A -o B \|- B` (modus ponens)          |     3 |     2 |        594 |
-| `(A*B)*C \|- A*(B*C)` (tensor assoc)      |     7 |     5 |      1 332 |
-| `A*B -o C \|- A -o (B -o C)` (curry)      |     7 |     5 |      1 308 |
-| `A,…,H \|- A*…*H` (8-wide tensor)         |    15 |     8 |      3 073 |
+| Sequent family                      | Width | Nodes | Depth | JSON   |
+| ----------------------------------- | ----: | ----: | ----: | -----: |
+| `id`, `tensor`, `modus_ponens`      |     — |   2–3 |     2 | ≤0.6 K |
+| `tensor_assoc`, `loli_curry`        |     — |     7 |     5 | ≈1.3 K |
+| `A₁,…,Aₙ ⊢ A₁*…*Aₙ` (wide tensor)   |     8 |    15 |     8 |  3.1 K |
+|                                     |    16 |    31 |    16 |  7.4 K |
+|                                     |    32 |    63 |    32 | 19.6 K |
+|                                     |    64 |   127 |    64 | 57.8 K |
+|                                     |   128 |   255 |   128 |  197 K |
+| `A,A⊸B,…,Y⊸Z ⊢ Z` (impl chain)     |     4 |     7 |     4 |  1.3 K |
+|                                     |     8 |    15 |     8 |  2.8 K |
+|                                     |    16 |    31 |    16 |  6.1 K |
+|                                     |    32 |    65 |    33 | 14.3 K |
+| `A ⊸ (B ⊸ … ⊸ (A*…*H))` (curry-8)   |     — |    23 |    16 |  4.6 K |
 
-All inline ILL proofs stay tiny — the naive bussproofs/Gentzen
-renderers handle them comfortably. The regime that motivates TODO_0213
-only appears once `#import`-backed programs (binary arithmetic, EVM
-model, multisig verification) are wired into the proof pipeline. Those
-use the directive loader (`tools/directive-loader.js`) rather than the
-`proveSource` entrypoint used by the doc viewer, so this note's
-benchmarks are a floor — not a ceiling.
+**Takeaway.** The base ILL focused prover already hits **255-node,
+depth-128** trees on wide-tensor goals with zero program imports. At
+that scale the naive bussproofs renderer produces 128-level nested
+flex containers that drive horizontal overflow for kilometres.
+
+The regime at TODO_0213's upper end — thousands of nodes — will
+arrive once `#import`-backed programs (binary arithmetic, EVM model,
+multisig verification) wire into the doc viewer. Those use the
+directive loader (`tools/directive-loader.js`) rather than the
+`proveSource` entrypoint; see §Rollout step 3 below.
+
+Fixtures saved by the probe (`tests/fixtures/proof-trees/`) —
+`tensor32.json`, `tensor64.json`, `tensor128.json`, `chain32.json` —
+serve as stable benchmark inputs for layout perf work.
 
 ## Strategy bet
 
