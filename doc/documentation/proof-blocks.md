@@ -76,6 +76,38 @@ A |- A & A
 A |- B
 ```
 
+## Deep / wide trees — viewer defaults
+
+The Phase A defaults (TODO_0213) are visible in the examples below. Each
+of the five layouts (see the tabs top-right) collapses premises past
+depth 3 into a clickable `⋮` stub; the **skeleton** toggle hides sequent
+text and renders only the rule chips. See
+[`large-proof-trees.md`](large-proof-trees.md) for the design notes.
+
+### Tensor associativity (7 nodes, depth 5)
+
+Small enough to render fully, deep enough that depth-folding kicks in at
+the leaves.
+
+```{proof ill}
+(A * B) * C |- A * (B * C)
+```
+
+### Loli currying (7 nodes, depth 5)
+
+```{proof ill}
+A * B -o C |- A -o (B -o C)
+```
+
+### Wide tensor — 8-way split (15 nodes, depth 8)
+
+First proof where the default fold actually hides subtrees; click a `⋮`
+stub to expand. Toggle **skeleton** to see the branching shape.
+
+```{proof ill}
+A1, A2, A3, A4, A5, A6, A7, A8 |- A1 * A2 * A3 * A4 * A5 * A6 * A7 * A8
+```
+
 ## Architecture
 
 The pipeline is:

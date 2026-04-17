@@ -202,9 +202,9 @@ export function hydrateProofBlocks(root: HTMLElement) {
     'div.client-render[data-processor="proof-tree"]:not([data-hydrated])',
   );
   for (const div of Array.from(divs)) {
-    const sourceId = div.dataset.sourceId;
-    const scriptEl = sourceId ? document.getElementById(sourceId) : null;
-    const source = scriptEl?.textContent || div.querySelector('.client-source')?.textContent || '';
+    // Source lives in a hidden <pre>; reading .textContent correctly
+    // decodes HTML entities (unlike a <script>, which is raw-text state).
+    const source = div.querySelector('.client-source')?.textContent || '';
     const calculus = div.dataset.calculus || 'ill';
     const profile = div.dataset.profile || 'default';
     div.dataset.hydrated = '1';

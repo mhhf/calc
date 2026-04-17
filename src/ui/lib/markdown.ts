@@ -226,18 +226,21 @@ async function extractSpecialBlocks(md: string): Promise<{ md: string; blocks: M
       html = await Promise.resolve(serverProcessors[processor](code, options));
     } else if (processor === 'proof') {
       // `{proof <calculus> [profile]}` — client-rendered. The tree itself is
-      // fetched from POST /api/proof on mount; the client renders one of five
-      // layouts with a user-toggle. Source travels in a <script> to avoid
-      // HTML-escape headaches with `|-` and `<`.
+      // fetched from POST /api/proof on mount; the client renders one of
+      // five layouts with a user-toggle.
+      //
+      // Source travels in a hidden <pre>. We can't use a <script> tag here:
+      // per HTML5 its content is "raw text state", which does NOT decode
+      // character references, so escapeHtml()'d output like `A &amp; B`
+      // would arrive at the prover literally — and the parser would choke
+      // on the semicolon (observed: "parse error at position 6, got ';'").
+      // <pre> is parsed as normal HTML, so `.textContent` decodes entities.
       const calcName = positional[0] || 'ill';
       const profile = positional[1] || 'default';
-      const sourceId = `proof-src-${idx}`;
       html =
         `<div class="client-render" data-processor="proof-tree" ` +
         `data-calculus="${escapeHtml(calcName)}" ` +
-        `data-profile="${escapeHtml(profile)}" ` +
-        `data-source-id="${sourceId}">` +
-        `<script type="application/x-calc-proof-source" id="${sourceId}">${escapeHtml(code)}</script>` +
+        `data-profile="${escapeHtml(profile)}">` +
         `<pre class="client-source" style="display:none">${escapeHtml(code)}</pre>` +
         `</div>`;
     } else if (clientBlocks.includes(processor)) {
