@@ -7,23 +7,24 @@ tags:
   chr: 13
   left-rule: 10
   positive-connective: 10
+  implementation: 9
   negative-connective: 9
   proof-theory: 9
   right-rule: 9
-  implementation: 8
+  optimization: 8
   oplus: 7
-  optimization: 7
+  symbolic-execution: 7
+  engine: 6
   ownership: 6
   soundness: 6
-  symbolic-execution: 6
   cut-elimination: 5
-  engine: 5
   graded-types: 5
   structural-rule: 5
   verification: 5
   with: 5
   lax-monad: 4
   partial-evaluation: 4
+  performance: 4
   symexec: 4
   authorization: 3
   clf: 3
@@ -31,7 +32,6 @@ tags:
   evm: 3
   ffi: 3
   loli: 3
-  performance: 3
   prover: 3
   QTT: 3
   staging: 3
