@@ -56,15 +56,16 @@ describe('TODO_0216 H6 — ground-bit survives snapshot/restore (deferred-GREEN)
     const g = Store.put('tensor', [p, p]);
     const o = Store.put('tensor', [p, m]);
 
-    const buf = StoreBinary.serialize({ roots: { g, o } });
+    // Content-addressed allocation is stable across clear/re-put, so the
+    // same hashes return after Store.restore(deserialize(buf)).
+    const snap = Store.snapshot({ roots: { g, o } });
+    const buf = StoreBinary.serialize(snap);
     Store.clear();
-    const restored = StoreBinary.deserialize(buf);
-    const gHash = restored.roots.g;
-    const oHash = restored.roots.o;
+    Store.restore(StoreBinary.deserialize(buf));
 
-    assert.strictEqual(Store.isGround(gHash), true,
+    assert.strictEqual(Store.isGround(g), true,
       'ground term lost ground-bit through binary round-trip');
-    assert.strictEqual(Store.isGround(oHash), false,
+    assert.strictEqual(Store.isGround(o), false,
       'open term became "ground" after binary round-trip (would corrupt matching)');
   });
 });
