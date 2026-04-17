@@ -49,6 +49,12 @@
             mkdir -p $out/lib/out
             cp -r out/ui $out/lib/out/ui
 
+            # Copy source modules required by server.js at runtime:
+            #   server.js:14  require('./src/ui/plugins/doc-scan')
+            #   server.js:100 require('./lib/prover/prove-source') (pulls in lib/calculus, lib/parser, …)
+            cp -r lib $out/lib/lib
+            cp -r src $out/lib/src
+
             # Copy documentation (served via /api/docs)
             cp -r doc $out/lib/doc
 
