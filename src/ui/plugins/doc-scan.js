@@ -155,4 +155,49 @@ function getCachedIndex(docRoot) {
   return index;
 }
 
-module.exports = { scanDocs, resolveTarget, buildBacklinkIndex, getCachedIndex, extractFrontmatter };
+/**
+ * Compact slug manifest for the client: { [route]: [slug, ...] }.
+ * Used by browser-side wiki-link resolution in markdown rendering.
+ */
+function getDocManifest(docRoot) {
+  const { byRoute } = scanDocs(docRoot);
+  const out = {};
+  for (const [route, entries] of Object.entries(byRoute)) {
+    out[route] = entries.map(e => e.slug).sort();
+  }
+  return out;
+}
+
+let manifestCache = null;
+function getCachedManifest(docRoot) {
+  let maxMtime = 0;
+  try {
+    for (const disk of Object.values(ROUTE_TO_DISK)) {
+      const dir = path.join(docRoot, disk);
+      if (!fs.existsSync(dir)) continue;
+      for (const f of fs.readdirSync(dir)) {
+        if (!f.endsWith('.md')) continue;
+        const t = fs.statSync(path.join(dir, f)).mtimeMs;
+        if (t > maxMtime) maxMtime = t;
+      }
+    }
+  } catch {
+    return getDocManifest(docRoot);
+  }
+  if (manifestCache && manifestCache.docRoot === docRoot && manifestCache.mtime === maxMtime) {
+    return manifestCache.manifest;
+  }
+  const manifest = getDocManifest(docRoot);
+  manifestCache = { docRoot, mtime: maxMtime, manifest };
+  return manifest;
+}
+
+module.exports = {
+  scanDocs,
+  resolveTarget,
+  buildBacklinkIndex,
+  getCachedIndex,
+  getDocManifest,
+  getCachedManifest,
+  extractFrontmatter,
+};

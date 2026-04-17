@@ -231,6 +231,16 @@
   text-decoration: underline;
 }
 
+/* Unresolved wiki-link [[target]] — flag broken references visually */
+.prose-research .wiki-broken {
+  color: var(--color-red-600, #dc2626);
+  border-bottom: 1px dashed currentColor;
+  cursor: help;
+}
+.dark .prose-research .wiki-broken {
+  color: var(--color-red-400, #f87171);
+}
+
 /* Inline code — GitHub style */
 .prose-research code {
   padding: 0.2em 0.4em;

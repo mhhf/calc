@@ -11,7 +11,7 @@ const fs = require('fs');
 const path = require('path');
 const os = require('os');
 
-const { scanDocs, resolveTarget, buildBacklinkIndex } = require('../src/ui/plugins/doc-scan');
+const { scanDocs, resolveTarget, buildBacklinkIndex, getDocManifest } = require('../src/ui/plugins/doc-scan');
 
 let root;
 
@@ -141,6 +141,15 @@ describe('doc-scan', () => {
     it('docs with no incoming links are absent from the index', () => {
       const idx = buildBacklinkIndex(root);
       assert.strictEqual(idx['def/0003_epsilon'], undefined);
+    });
+  });
+
+  describe('getDocManifest', () => {
+    it('produces slug arrays per route, sorted', () => {
+      const m = getDocManifest(root);
+      assert.deepStrictEqual(m.theory, ['0001_alpha', '0002_beta']);
+      assert.deepStrictEqual(m.def, ['0002_gamma', '0003_epsilon']);
+      assert.deepStrictEqual(m.docs, ['delta']);
     });
   });
 });

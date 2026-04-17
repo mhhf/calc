@@ -4,8 +4,9 @@ import { processDocument } from '../lib/markdown';
 
 type Backlink = { folder: string; slug: string; title: string };
 type BacklinkIndex = Record<string, Backlink[]>;
+type DocManifest = Record<string, string[]>;
 
-// Session-level singleton — manifest rarely changes and is shared across pages.
+// Session-level singletons — manifests rarely change and are shared across pages.
 let backlinksPromise: Promise<BacklinkIndex> | null = null;
 function fetchBacklinks(): Promise<BacklinkIndex> {
   if (!backlinksPromise) {
@@ -16,12 +17,25 @@ function fetchBacklinks(): Promise<BacklinkIndex> {
   return backlinksPromise;
 }
 
+let manifestPromise: Promise<DocManifest> | null = null;
+function fetchDocManifest(): Promise<DocManifest> {
+  if (!manifestPromise) {
+    manifestPromise = fetch('/api/doc-manifest')
+      .then(r => (r.ok ? r.json() : {}))
+      .catch(() => ({}));
+  }
+  return manifestPromise;
+}
+
 async function fetchAndProcess(args: { folder: string; slug: string }) {
-  const res = await fetch(`/api/docs/${args.folder}/${args.slug}`);
+  const [res, manifest] = await Promise.all([
+    fetch(`/api/docs/${args.folder}/${args.slug}`),
+    fetchDocManifest(),
+  ]);
   if (!res.ok) throw new Error(`Not found: ${res.status}`);
   const markdown = await res.text();
   const basePath = `/${args.folder}`;
-  return processDocument(markdown, { basePath, slug: args.slug });
+  return processDocument(markdown, { basePath, slug: args.slug, manifest });
 }
 
 export default function DocPage() {

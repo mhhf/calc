@@ -5,13 +5,17 @@
  *   GET /api/docs/:folder       → JSON array of { slug, title, summary, tags, modified, category, ... }
  *   GET /api/docs/:folder/:slug → raw markdown text
  *   GET /api/backlinks          → JSON { "<folder>/<slug>": [{folder, slug, title}, ...] }
+ *   GET /api/doc-manifest       → JSON { [route]: [slug, ...] } for client-side wiki-link resolution
  */
 import type { Plugin } from 'vite';
 import fs from 'fs';
 import path from 'path';
 // @ts-expect-error - CJS scanner module shared with production server.js
 import docScan from './doc-scan.js';
-const { getCachedIndex } = docScan as { getCachedIndex: (root: string) => Record<string, { folder: string; slug: string; title: string }[]> };
+const { getCachedIndex, getCachedManifest } = docScan as {
+  getCachedIndex: (root: string) => Record<string, { folder: string; slug: string; title: string }[]>;
+  getCachedManifest: (root: string) => Record<string, string[]>;
+};
 
 const DOC_ROOT = path.resolve(__dirname, '../../../doc');
 
@@ -55,6 +59,19 @@ export default function viteDocs(): Plugin {
             const index = getCachedIndex(DOC_ROOT);
             res.setHeader('Content-Type', 'application/json');
             res.end(JSON.stringify(index));
+          } catch (e) {
+            res.statusCode = 500;
+            res.end(JSON.stringify({ error: (e as Error).message }));
+          }
+          return;
+        }
+
+        // /api/doc-manifest — slug lists by folder for wiki-link resolution
+        if (url === '/api/doc-manifest') {
+          try {
+            const manifest = getCachedManifest(DOC_ROOT);
+            res.setHeader('Content-Type', 'application/json');
+            res.end(JSON.stringify(manifest));
           } catch (e) {
             res.statusCode = 500;
             res.end(JSON.stringify({ error: (e as Error).message }));
