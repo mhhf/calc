@@ -26,6 +26,8 @@ import type { ProofNode, ProofTreeV1, ProofLayout } from './types';
 import { renderSequent } from './formula';
 import type { StatsMap } from './stats';
 import { badge as statsBadge, tooltip as statsTooltip } from './stats';
+import type { SearchIndex } from './search';
+import { EMPTY_SEARCH } from './search';
 
 type Pool = ProofTreeV1['formulas'];
 type RuleSlugs = Record<string, string>;
@@ -35,7 +37,14 @@ export interface RenderOpts {
   skeleton: boolean;
   foldDepth: number;
   stats: StatsMap;
+  /** Search result: matching node ids + their ancestors. */
+  search: SearchIndex;
 }
+
+// Highlight style for nodes that match the active search. Applied to the
+// sequent line (or the rule chip in skeleton mode) across every layout.
+const MATCH_BG = '#fff3a8';
+const MATCH_OUTLINE = '1px solid #d4a900';
 
 // Placeholder glyph shown in place of the sequent when skeleton mode is on.
 const SKELETON_GLYPH = '·';
@@ -105,11 +114,14 @@ function BussNode(props: { node: ProofNode; pool: Pool; depth: number; opts: Ren
   const { node, pool, opts } = props;
   const [expanded, setExpanded] = createSignal(false);
   const shouldFold = () =>
-    props.depth >= opts.foldDepth && node.premises.length > 0 && !expanded();
+    props.depth >= opts.foldDepth &&
+    node.premises.length > 0 &&
+    !expanded() &&
+    !forceOpen(node.id, opts);
   const seq = () =>
     opts.skeleton ? SKELETON_GLYPH : renderSequent(node.sequent, pool);
   return (
-    <div class="buss-node" style="display:inline-flex;flex-direction:column;align-items:center;margin:0 0.75em;vertical-align:bottom">
+    <div data-proof-node={node.id} class="buss-node" style="display:inline-flex;flex-direction:column;align-items:center;margin:0 0.75em;vertical-align:bottom">
       <Show when={node.premises.length > 0}>
         <Show
           when={!shouldFold()}
@@ -140,7 +152,7 @@ function BussNode(props: { node: ProofNode; pool: Pool; depth: number; opts: Ren
           </Show>
         </div>
       </Show>
-      <div class="buss-seq" style="padding:0.15em 0.3em;font-family:ui-monospace,monospace;white-space:nowrap">
+      <div class="buss-seq" style={`padding:0.15em 0.3em;font-family:ui-monospace,monospace;white-space:nowrap${matchStyle(node.id, opts)}`}>
         {seq()}
       </div>
     </div>
@@ -163,11 +175,14 @@ function GentzenNode(props: { node: ProofNode; pool: Pool; depth: number; opts: 
   const { node, pool, opts } = props;
   const [expanded, setExpanded] = createSignal(false);
   const shouldFold = () =>
-    props.depth >= opts.foldDepth && node.premises.length > 0 && !expanded();
+    props.depth >= opts.foldDepth &&
+    node.premises.length > 0 &&
+    !expanded() &&
+    !forceOpen(node.id, opts);
   const seq = () =>
     opts.skeleton ? SKELETON_GLYPH : renderSequent(node.sequent, pool);
   return (
-    <div class="gentzen-node" style="display:inline-flex;flex-direction:column;align-items:stretch;margin:0 0.5em">
+    <div data-proof-node={node.id} class="gentzen-node" style="display:inline-flex;flex-direction:column;align-items:stretch;margin:0 0.5em">
       <Show when={node.premises.length > 0}>
         <Show
           when={!shouldFold()}
@@ -195,7 +210,7 @@ function GentzenNode(props: { node: ProofNode; pool: Pool; depth: number; opts: 
           </Show>
         </div>
       </Show>
-      <div style="padding:0.15em 0.3em;font-family:ui-monospace,monospace;text-align:center;white-space:nowrap">
+      <div style={`padding:0.15em 0.3em;font-family:ui-monospace,monospace;text-align:center;white-space:nowrap${matchStyle(node.id, opts)}`}>
         {seq()}
       </div>
     </div>
@@ -219,7 +234,10 @@ function TacticEntry(props: { node: ProofNode; pool: Pool; depth: number; opts: 
   const { node, pool, opts } = props;
   const [expanded, setExpanded] = createSignal(false);
   const shouldFold = () =>
-    props.depth >= opts.foldDepth && node.premises.length > 0 && !expanded();
+    props.depth >= opts.foldDepth &&
+    node.premises.length > 0 &&
+    !expanded() &&
+    !forceOpen(node.id, opts);
   const pad = '  '.repeat(props.depth);
   const ruleName = node.rule || 'goal';
   const spacer = ' '.repeat(Math.max(1, 14 - ruleName.length));
@@ -227,15 +245,19 @@ function TacticEntry(props: { node: ProofNode; pool: Pool; depth: number; opts: 
   const stats = opts.stats.get(node.id);
   const seq = () =>
     opts.skeleton ? '' : renderSequent(node.sequent, pool);
+  const hl = matchStyle(node.id, opts);
   return (
     <>
-      <span>{pad}</span>
-      <Show when={slug} fallback={<span>{ruleName}</span>}>
-        <a href={`/def/${slug}`} class="calc-proof-rule" data-rule={ruleName}
-           title={`${ruleName} — ${statsTooltip(stats)}`}
-           style="text-decoration:none;color:#225">{ruleName}</a>
-      </Show>
-      <span>{spacer}{seq()}{'\n'}</span>
+      <span data-proof-node={node.id} style={hl}>
+        <span>{pad}</span>
+        <Show when={slug} fallback={<span>{ruleName}</span>}>
+          <a href={`/def/${slug}`} class="calc-proof-rule" data-rule={ruleName}
+             title={`${ruleName} — ${statsTooltip(stats)}`}
+             style="text-decoration:none;color:#225">{ruleName}</a>
+        </Show>
+        <span>{spacer}{seq()}</span>
+      </span>
+      <span>{'\n'}</span>
       <Show when={shouldFold()} fallback={
         <For each={node.premises}>
           {(p) => <TacticEntry node={p} pool={pool} depth={props.depth + 1} opts={opts} />}
@@ -274,18 +296,20 @@ function IndentedNode(props: { node: ProofNode; pool: Pool; depth: number; opts:
     opts.skeleton ? '' : renderSequent(node.sequent, pool);
   const hasKids = node.premises.length > 0;
   const stats = opts.stats.get(node.id);
+  // Force-open whenever this subtree contains a search match.
+  const isOpen = () => open() || forceOpen(node.id, opts);
   return (
-    <div style={`margin-left:${depth * 1.25}em;font-family:ui-monospace,monospace;font-size:0.9em;line-height:1.5`}>
-      <div style="display:flex;gap:0.5em;align-items:baseline;white-space:nowrap">
+    <div data-proof-node={node.id} style={`margin-left:${depth * 1.25}em;font-family:ui-monospace,monospace;font-size:0.9em;line-height:1.5`}>
+      <div style={`display:flex;gap:0.5em;align-items:baseline;white-space:nowrap${matchStyle(node.id, opts)}`}>
         <Show when={hasKids}>
           <button
             type="button"
             onClick={() => setOpen(!open())}
             title={statsTooltip(stats)}
             style="border:none;background:none;font-family:inherit;cursor:pointer;padding:0;width:1em;color:#666"
-            aria-label={open() ? 'collapse' : 'expand'}
+            aria-label={isOpen() ? 'collapse' : 'expand'}
           >
-            {open() ? '▾' : '▸'}
+            {isOpen() ? '▾' : '▸'}
           </button>
         </Show>
         <Show when={!hasKids}>
@@ -299,12 +323,12 @@ function IndentedNode(props: { node: ProofNode; pool: Pool; depth: number; opts:
             style: 'color:#4a6;font-style:italic',
           })}
         </Show>
-        <Show when={hasKids && !open()}>
+        <Show when={hasKids && !isOpen()}>
           <span style="color:#999;font-size:0.85em">{statsBadge(stats)}</span>
         </Show>
         <span>{seq()}</span>
       </div>
-      <Show when={open() && hasKids}>
+      <Show when={isOpen() && hasKids}>
         <For each={node.premises}>
           {(p) => <IndentedNode node={p} pool={pool} depth={depth + 1} opts={opts} />}
         </For>
@@ -328,12 +352,15 @@ function FlippedNode(props: { node: ProofNode; pool: Pool; depth: number; opts: 
   const { node, pool, opts } = props;
   const [expanded, setExpanded] = createSignal(false);
   const shouldFold = () =>
-    props.depth >= opts.foldDepth && node.premises.length > 0 && !expanded();
+    props.depth >= opts.foldDepth &&
+    node.premises.length > 0 &&
+    !expanded() &&
+    !forceOpen(node.id, opts);
   const seq = () =>
     opts.skeleton ? SKELETON_GLYPH : renderSequent(node.sequent, pool);
   return (
-    <div class="flipped-node" style="display:inline-flex;flex-direction:column;align-items:center;margin:0 0.75em">
-      <div style="padding:0.15em 0.3em;font-family:ui-monospace,monospace;white-space:nowrap">
+    <div data-proof-node={node.id} class="flipped-node" style="display:inline-flex;flex-direction:column;align-items:center;margin:0 0.75em">
+      <div style={`padding:0.15em 0.3em;font-family:ui-monospace,monospace;white-space:nowrap${matchStyle(node.id, opts)}`}>
         {seq()}
       </div>
       <Show when={node.premises.length > 0}>
@@ -384,7 +411,19 @@ const DEFAULT_OPTS: RenderOpts = {
   skeleton: false,
   foldDepth: Infinity,
   stats: new Map(),
+  search: EMPTY_SEARCH,
 };
+
+// A node is "forced open" when it or any descendant matches the active
+// search — ensures matches are never hidden behind a fold-stub.
+function forceOpen(id: string, opts: RenderOpts): boolean {
+  return opts.search.ancestors.has(id) || opts.search.matches.has(id);
+}
+function matchStyle(id: string, opts: RenderOpts): string {
+  return opts.search.matches.has(id)
+    ? `;background:${MATCH_BG};outline:${MATCH_OUTLINE};border-radius:3px`
+    : '';
+}
 
 export function renderLayout(
   layout: ProofLayout,

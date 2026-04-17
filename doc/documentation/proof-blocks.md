@@ -78,11 +78,15 @@ A |- B
 
 ## Deep / wide trees — viewer defaults
 
-The Phase A defaults (TODO_0213) are visible in the examples below. Each
-of the five layouts (see the tabs top-right) collapses premises past
+The Phase A + B defaults (TODO_0213) are visible in the examples below.
+Each of the five layouts (see the tabs top-right) collapses premises past
 depth 3 into a clickable `⋮` stub; the **skeleton** toggle hides sequent
-text and renders only the rule chips. See
-[`large-proof-trees.md`](large-proof-trees.md) for the design notes.
+text and renders only the rule chips; the **search** box matches rules
+and sequent text (substring, case-insensitive) — prefix with `/` for
+regex (e.g. `/tensor|loli/`). Matches highlight yellow, their ancestors
+force-expand so nothing stays hidden, and the first hit scrolls into
+view. ESC clears the query. See [`large-proof-trees.md`](large-proof-trees.md)
+for the design notes.
 
 ### Tensor associativity (7 nodes, depth 5)
 
