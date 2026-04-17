@@ -62,6 +62,7 @@ async function fetchProof(args: {
   source: string;
   calculus: string;
   profile: string;
+  mode: string;
 }): Promise<ProofApiResult> {
   const res = await fetch('/api/proof', {
     method: 'POST',
@@ -99,9 +100,10 @@ export function ProofBlock(props: {
   source: string;
   calculus: string;
   profile: string;
+  mode: string;
 }) {
   const [result] = createResource(
-    () => ({ source: props.source, calculus: props.calculus, profile: props.profile }),
+    () => ({ source: props.source, calculus: props.calculus, profile: props.profile, mode: props.mode }),
     fetchProof,
   );
   const [ruleSlugs] = createResource(fetchRuleSlugs);
@@ -155,6 +157,10 @@ export function ProofBlock(props: {
         <span style="font-weight:600">proof</span>
         <span style="opacity:0.7">·</span>
         <span>{props.calculus}</span>
+        <Show when={props.mode !== 'sequent'}>
+          <span style="opacity:0.7">·</span>
+          <span>{props.mode}</span>
+        </Show>
         <Show when={props.profile !== 'default'}>
           <span style="opacity:0.7">·</span>
           <span>{props.profile}</span>
@@ -256,8 +262,9 @@ export function hydrateProofBlocks(root: HTMLElement) {
     const source = div.querySelector('.client-source')?.textContent || '';
     const calculus = div.dataset.calculus || 'ill';
     const profile = div.dataset.profile || 'default';
+    const mode = div.dataset.mode || 'sequent';
     div.dataset.hydrated = '1';
     div.innerHTML = '';
-    render(() => <ProofBlock source={source} calculus={calculus} profile={profile} />, div);
+    render(() => <ProofBlock source={source} calculus={calculus} profile={profile} mode={mode} />, div);
   }
 }

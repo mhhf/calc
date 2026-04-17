@@ -225,9 +225,17 @@ async function extractSpecialBlocks(md: string): Promise<{ md: string; blocks: M
     if (serverProcessors[processor]) {
       html = await Promise.resolve(serverProcessors[processor](code, options));
     } else if (processor === 'proof') {
-      // `{proof <calculus> [profile]}` — client-rendered. The tree itself is
-      // fetched from POST /api/proof on mount; the client renders one of
-      // five layouts with a user-toggle.
+      // `{proof <calculus> [mode] [profile]}` — client-rendered. The tree
+      // itself is fetched from POST /api/proof on mount; the client renders
+      // one of five layouts with a user-toggle.
+      //
+      // Header grammar (all positional after `proof`):
+      //   1. calculus  (ill)
+      //   2. mode      (sequent | backchain | forward)   — optional; default `sequent`
+      //   3. profile   (default | teaching | …)          — optional; default `default`
+      //
+      // If token 2 is not a recognized mode we treat it as the profile
+      // (backwards compat with pre-Phase-C `{proof ill verified}` blocks).
       //
       // Source travels in a hidden <pre>. We can't use a <script> tag here:
       // per HTML5 its content is "raw text state", which does NOT decode
@@ -235,11 +243,22 @@ async function extractSpecialBlocks(md: string): Promise<{ md: string; blocks: M
       // would arrive at the prover literally — and the parser would choke
       // on the semicolon (observed: "parse error at position 6, got ';'").
       // <pre> is parsed as normal HTML, so `.textContent` decodes entities.
+      const KNOWN_MODES = new Set(['sequent', 'backchain', 'forward']);
       const calcName = positional[0] || 'ill';
-      const profile = positional[1] || 'default';
+      let mode = 'sequent';
+      let profile = 'default';
+      if (positional[1]) {
+        if (KNOWN_MODES.has(positional[1])) {
+          mode = positional[1];
+          if (positional[2]) profile = positional[2];
+        } else {
+          profile = positional[1];
+        }
+      }
       html =
         `<div class="client-render" data-processor="proof-tree" ` +
         `data-calculus="${escapeHtml(calcName)}" ` +
+        `data-mode="${escapeHtml(mode)}" ` +
         `data-profile="${escapeHtml(profile)}">` +
         `<pre class="client-source" style="display:none">${escapeHtml(code)}</pre>` +
         `</div>`;

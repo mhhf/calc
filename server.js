@@ -106,7 +106,7 @@ app.post('/api/proof', async (c) => {
   } catch {
     return c.json({ ok: false, error: 'invalid JSON body' }, 400);
   }
-  const { source, calculus, profile } = body || {};
+  const { source, calculus, profile, mode } = body || {};
   if (typeof source !== 'string' || source.length === 0) {
     return c.json({ ok: false, error: 'source (string) required' }, 400);
   }
@@ -118,6 +118,7 @@ app.post('/api/proof', async (c) => {
       source,
       calculus: calculus || 'ill',
       profile: profile || 'default',
+      mode: mode || 'sequent',
       cacheDir: PROOF_CACHE_DIR,
     });
     return c.json(r);
