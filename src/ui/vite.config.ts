@@ -19,7 +19,7 @@ export default defineConfig({
     tailwindcss(),
   ],
   root: path.resolve(__dirname),
-  base: './',
+  base: '/',
   build: {
     outDir: '../../out/ui',
     emptyOutDir: true,
