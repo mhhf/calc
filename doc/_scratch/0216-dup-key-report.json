@@ -1,0 +1,598 @@
+{
+  "schema": "0216-dup-key/v1",
+  "recorded": "2026-04-17T15:48:41.499Z",
+  "workers": 37,
+  "all": {
+    "total_calls": 1660632,
+    "dup_calls": 1731,
+    "first_ne_last": 1722
+  },
+  "excluding_fuzz": {
+    "total_calls": 1657232,
+    "dup_calls": 0,
+    "first_ne_last": 0
+  },
+  "safe_for_map_theta_in_production": true,
+  "examples": [
+    {
+      "theta": [
+        [
+          107,
+          1431
+        ],
+        [
+          109,
+          1432
+        ],
+        [
+          107,
+          1434
+        ]
+      ],
+      "firstNeLast": true,
+      "stack": [
+        "at TestContext.<anonymous> (/home/mhhf/src/calc/tests/kernel-apply-fuzz.test.js:184:17)",
+        "at Test.runInAsyncScope (node:async_hooks:214:14)",
+        "at Test.run (node:internal/test_runner/test:1047:25)",
+        "at async Suite.processPendingSubtests (node:internal/test_runner/test:744:7)"
+      ],
+      "fromFuzz": true
+    },
+    {
+      "theta": [
+        [
+          108,
+          1580
+        ],
+        [
+          111,
+          1565
+        ],
+        [
+          110,
+          1583
+        ],
+        [
+          111,
+          1586
+        ],
+        [
+          109,
+          1588
+        ]
+      ],
+      "firstNeLast": true,
+      "stack": [
+        "at TestContext.<anonymous> (/home/mhhf/src/calc/tests/kernel-apply-fuzz.test.js:184:17)",
+        "at Test.runInAsyncScope (node:async_hooks:214:14)",
+        "at Test.run (node:internal/test_runner/test:1047:25)",
+        "at async Suite.processPendingSubtests (node:internal/test_runner/test:744:7)"
+      ],
+      "fromFuzz": true
+    },
+    {
+      "theta": [
+        [
+          109,
+          98
+        ],
+        [
+          111,
+          1384
+        ],
+        [
+          107,
+          1613
+        ],
+        [
+          107,
+          1615
+        ],
+        [
+          110,
+          1611
+        ]
+      ],
+      "firstNeLast": true,
+      "stack": [
+        "at TestContext.<anonymous> (/home/mhhf/src/calc/tests/kernel-apply-fuzz.test.js:184:17)",
+        "at Test.runInAsyncScope (node:async_hooks:214:14)",
+        "at Test.run (node:internal/test_runner/test:1047:25)",
+        "at async Suite.processPendingSubtests (node:internal/test_runner/test:744:7)"
+      ],
+      "fromFuzz": true
+    },
+    {
+      "theta": [
+        [
+          109,
+          1743
+        ],
+        [
+          110,
+          1736
+        ],
+        [
+          111,
+          1738
+        ],
+        [
+          110,
+          1739
+        ],
+        [
+          109,
+          1745
+        ]
+      ],
+      "firstNeLast": true,
+      "stack": [
+        "at TestContext.<anonymous> (/home/mhhf/src/calc/tests/kernel-apply-fuzz.test.js:184:17)",
+        "at Test.runInAsyncScope (node:async_hooks:214:14)",
+        "at Test.run (node:internal/test_runner/test:1047:25)",
+        "at async Suite.processPendingSubtests (node:internal/test_runner/test:744:7)"
+      ],
+      "fromFuzz": true
+    },
+    {
+      "theta": [
+        [
+          110,
+          1763
+        ],
+        [
+          108,
+          1765
+        ],
+        [
+          111,
+          1758
+        ],
+        [
+          108,
+          1734
+        ],
+        [
+          110,
+          1767
+        ]
+      ],
+      "firstNeLast": true,
+      "stack": [
+        "at TestContext.<anonymous> (/home/mhhf/src/calc/tests/kernel-apply-fuzz.test.js:184:17)",
+        "at Test.runInAsyncScope (node:async_hooks:214:14)",
+        "at Test.run (node:internal/test_runner/test:1047:25)",
+        "at async Suite.processPendingSubtests (node:internal/test_runner/test:744:7)"
+      ],
+      "fromFuzz": true
+    },
+    {
+      "theta": [
+        [
+          110,
+          1779
+        ],
+        [
+          109,
+          1783
+        ],
+        [
+          108,
+          1786
+        ],
+        [
+          110,
+          1779
+        ],
+        [
+          110,
+          97
+        ]
+      ],
+      "firstNeLast": true,
+      "stack": [
+        "at TestContext.<anonymous> (/home/mhhf/src/calc/tests/kernel-apply-fuzz.test.js:184:17)",
+        "at Test.runInAsyncScope (node:async_hooks:214:14)",
+        "at Test.run (node:internal/test_runner/test:1047:25)",
+        "at async Suite.processPendingSubtests (node:internal/test_runner/test:744:7)"
+      ],
+      "fromFuzz": true
+    },
+    {
+      "theta": [
+        [
+          107,
+          1847
+        ],
+        [
+          110,
+          1852
+        ],
+        [
+          107,
+          1854
+        ],
+        [
+          110,
+          1855
+        ]
+      ],
+      "firstNeLast": true,
+      "stack": [
+        "at TestContext.<anonymous> (/home/mhhf/src/calc/tests/kernel-apply-fuzz.test.js:184:17)",
+        "at Test.runInAsyncScope (node:async_hooks:214:14)",
+        "at Test.run (node:internal/test_runner/test:1047:25)",
+        "at async Suite.processPendingSubtests (node:internal/test_runner/test:744:7)"
+      ],
+      "fromFuzz": true
+    },
+    {
+      "theta": [
+        [
+          108,
+          1894
+        ],
+        [
+          107,
+          1899
+        ],
+        [
+          107,
+          1913
+        ],
+        [
+          109,
+          1918
+        ],
+        [
+          108,
+          1909
+        ]
+      ],
+      "firstNeLast": true,
+      "stack": [
+        "at TestContext.<anonymous> (/home/mhhf/src/calc/tests/kernel-apply-fuzz.test.js:184:17)",
+        "at Test.runInAsyncScope (node:async_hooks:214:14)",
+        "at Test.run (node:internal/test_runner/test:1047:25)",
+        "at async Suite.processPendingSubtests (node:internal/test_runner/test:744:7)"
+      ],
+      "fromFuzz": true
+    },
+    {
+      "theta": [
+        [
+          109,
+          1939
+        ],
+        [
+          107,
+          1947
+        ],
+        [
+          107,
+          1944
+        ],
+        [
+          110,
+          1949
+        ],
+        [
+          108,
+          334
+        ]
+      ],
+      "firstNeLast": true,
+      "stack": [
+        "at TestContext.<anonymous> (/home/mhhf/src/calc/tests/kernel-apply-fuzz.test.js:184:17)",
+        "at Test.runInAsyncScope (node:async_hooks:214:14)",
+        "at Test.run (node:internal/test_runner/test:1047:25)",
+        "at async Suite.processPendingSubtests (node:internal/test_runner/test:744:7)"
+      ],
+      "fromFuzz": true
+    },
+    {
+      "theta": [
+        [
+          109,
+          1987
+        ],
+        [
+          109,
+          1988
+        ],
+        [
+          108,
+          1990
+        ],
+        [
+          107,
+          1991
+        ],
+        [
+          110,
+          1993
+        ]
+      ],
+      "firstNeLast": true,
+      "stack": [
+        "at TestContext.<anonymous> (/home/mhhf/src/calc/tests/kernel-apply-fuzz.test.js:184:17)",
+        "at Test.runInAsyncScope (node:async_hooks:214:14)",
+        "at Test.run (node:internal/test_runner/test:1047:25)",
+        "at async Suite.processPendingSubtests (node:internal/test_runner/test:744:7)"
+      ],
+      "fromFuzz": true
+    },
+    {
+      "theta": [
+        [
+          108,
+          2078
+        ],
+        [
+          110,
+          2077
+        ],
+        [
+          110,
+          262
+        ]
+      ],
+      "firstNeLast": true,
+      "stack": [
+        "at TestContext.<anonymous> (/home/mhhf/src/calc/tests/kernel-apply-fuzz.test.js:184:17)",
+        "at Test.runInAsyncScope (node:async_hooks:214:14)",
+        "at Test.run (node:internal/test_runner/test:1047:25)",
+        "at async Suite.processPendingSubtests (node:internal/test_runner/test:744:7)"
+      ],
+      "fromFuzz": true
+    },
+    {
+      "theta": [
+        [
+          111,
+          2093
+        ],
+        [
+          107,
+          2095
+        ],
+        [
+          107,
+          1067
+        ]
+      ],
+      "firstNeLast": true,
+      "stack": [
+        "at TestContext.<anonymous> (/home/mhhf/src/calc/tests/kernel-apply-fuzz.test.js:184:17)",
+        "at Test.runInAsyncScope (node:async_hooks:214:14)",
+        "at Test.run (node:internal/test_runner/test:1047:25)",
+        "at async Suite.processPendingSubtests (node:internal/test_runner/test:744:7)"
+      ],
+      "fromFuzz": true
+    },
+    {
+      "theta": [
+        [
+          110,
+          2104
+        ],
+        [
+          108,
+          2109
+        ],
+        [
+          108,
+          585
+        ],
+        [
+          109,
+          2111
+        ]
+      ],
+      "firstNeLast": true,
+      "stack": [
+        "at TestContext.<anonymous> (/home/mhhf/src/calc/tests/kernel-apply-fuzz.test.js:184:17)",
+        "at Test.runInAsyncScope (node:async_hooks:214:14)",
+        "at Test.run (node:internal/test_runner/test:1047:25)",
+        "at async Suite.processPendingSubtests (node:internal/test_runner/test:744:7)"
+      ],
+      "fromFuzz": true
+    },
+    {
+      "theta": [
+        [
+          109,
+          2137
+        ],
+        [
+          108,
+          2139
+        ],
+        [
+          108,
+          124
+        ],
+        [
+          111,
+          2140
+        ]
+      ],
+      "firstNeLast": true,
+      "stack": [
+        "at TestContext.<anonymous> (/home/mhhf/src/calc/tests/kernel-apply-fuzz.test.js:184:17)",
+        "at Test.runInAsyncScope (node:async_hooks:214:14)",
+        "at Test.run (node:internal/test_runner/test:1047:25)",
+        "at async Suite.processPendingSubtests (node:internal/test_runner/test:744:7)"
+      ],
+      "fromFuzz": true
+    },
+    {
+      "theta": [
+        [
+          107,
+          1132
+        ],
+        [
+          110,
+          2151
+        ],
+        [
+          107,
+          2157
+        ],
+        [
+          111,
+          2159
+        ]
+      ],
+      "firstNeLast": true,
+      "stack": [
+        "at TestContext.<anonymous> (/home/mhhf/src/calc/tests/kernel-apply-fuzz.test.js:184:17)",
+        "at Test.runInAsyncScope (node:async_hooks:214:14)",
+        "at Test.run (node:internal/test_runner/test:1047:25)",
+        "at async Suite.processPendingSubtests (node:internal/test_runner/test:744:7)"
+      ],
+      "fromFuzz": true
+    },
+    {
+      "theta": [
+        [
+          109,
+          2184
+        ],
+        [
+          107,
+          2176
+        ],
+        [
+          110,
+          2186
+        ],
+        [
+          110,
+          2191
+        ]
+      ],
+      "firstNeLast": true,
+      "stack": [
+        "at TestContext.<anonymous> (/home/mhhf/src/calc/tests/kernel-apply-fuzz.test.js:184:17)",
+        "at Test.runInAsyncScope (node:async_hooks:214:14)",
+        "at Test.run (node:internal/test_runner/test:1047:25)",
+        "at async Suite.processPendingSubtests (node:internal/test_runner/test:744:7)"
+      ],
+      "fromFuzz": true
+    },
+    {
+      "theta": [
+        [
+          110,
+          2224
+        ],
+        [
+          108,
+          2225
+        ],
+        [
+          110,
+          2231
+        ],
+        [
+          107,
+          2237
+        ]
+      ],
+      "firstNeLast": true,
+      "stack": [
+        "at TestContext.<anonymous> (/home/mhhf/src/calc/tests/kernel-apply-fuzz.test.js:184:17)",
+        "at Test.runInAsyncScope (node:async_hooks:214:14)",
+        "at Test.run (node:internal/test_runner/test:1047:25)",
+        "at async Suite.processPendingSubtests (node:internal/test_runner/test:744:7)"
+      ],
+      "fromFuzz": true
+    },
+    {
+      "theta": [
+        [
+          110,
+          2266
+        ],
+        [
+          108,
+          2267
+        ],
+        [
+          107,
+          2270
+        ],
+        [
+          108,
+          2272
+        ],
+        [
+          108,
+          2265
+        ]
+      ],
+      "firstNeLast": true,
+      "stack": [
+        "at TestContext.<anonymous> (/home/mhhf/src/calc/tests/kernel-apply-fuzz.test.js:184:17)",
+        "at Test.runInAsyncScope (node:async_hooks:214:14)",
+        "at Test.run (node:internal/test_runner/test:1047:25)",
+        "at async Suite.processPendingSubtests (node:internal/test_runner/test:744:7)"
+      ],
+      "fromFuzz": true
+    },
+    {
+      "theta": [
+        [
+          108,
+          109
+        ],
+        [
+          111,
+          2276
+        ],
+        [
+          108,
+          102
+        ]
+      ],
+      "firstNeLast": true,
+      "stack": [
+        "at TestContext.<anonymous> (/home/mhhf/src/calc/tests/kernel-apply-fuzz.test.js:184:17)",
+        "at Test.runInAsyncScope (node:async_hooks:214:14)",
+        "at Test.run (node:internal/test_runner/test:1047:25)",
+        "at async Suite.processPendingSubtests (node:internal/test_runner/test:744:7)"
+      ],
+      "fromFuzz": true
+    },
+    {
+      "theta": [
+        [
+          110,
+          2371
+        ],
+        [
+          108,
+          2356
+        ],
+        [
+          110,
+          2374
+        ],
+        [
+          111,
+          2377
+        ]
+      ],
+      "firstNeLast": true,
+      "stack": [
+        "at TestContext.<anonymous> (/home/mhhf/src/calc/tests/kernel-apply-fuzz.test.js:184:17)",
+        "at Test.runInAsyncScope (node:async_hooks:214:14)",
+        "at Test.run (node:internal/test_runner/test:1047:25)",
+        "at async Suite.processPendingSubtests (node:internal/test_runner/test:744:7)"
+      ],
+      "fromFuzz": true
+    }
+  ]
+}
