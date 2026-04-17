@@ -22,14 +22,24 @@ const PROOF_CACHE_DIR = path.resolve(__dirname, '../../../out/doc-cache');
 
 // @ts-expect-error - CJS module shared with production server.js
 import proveSourceMod from '../../../lib/prover/prove-source.js';
-const { proveSource } = proveSourceMod as {
+const { proveSource, proveSubtree } = proveSourceMod as {
   proveSource: (opts: {
     source: string;
     calculus?: string;
     profile?: string;
     mode?: string;
     cacheDir?: string;
+    elideBelowDepth?: number;
   }) => Promise<{ ok: boolean; tree?: unknown; key: string; cacheHit: boolean; error?: string }>;
+  proveSubtree: (opts: {
+    source: string;
+    calculus?: string;
+    profile?: string;
+    mode?: string;
+    cacheDir?: string;
+    nodeId: string;
+    elideBelowDepth?: number;
+  }) => Promise<{ ok: boolean; tree?: unknown; key?: string; cacheHit?: boolean; error?: string }>;
 };
 
 const ALLOWED_FOLDERS: Record<string, string> = {
@@ -88,7 +98,7 @@ export default function viteDocs(): Plugin {
           let raw = '';
           reqAny.on('data', (chunk) => { raw += String(chunk); });
           reqAny.on('end', async () => {
-            let body: { source?: string; calculus?: string; profile?: string; mode?: string };
+            let body: { source?: string; calculus?: string; profile?: string; mode?: string; elideBelowDepth?: number };
             try {
               body = JSON.parse(raw || '{}');
             } catch {
@@ -114,6 +124,59 @@ export default function viteDocs(): Plugin {
                 profile: body.profile || 'default',
                 mode: body.mode || 'sequent',
                 cacheDir: PROOF_CACHE_DIR,
+                elideBelowDepth: typeof body.elideBelowDepth === 'number' ? body.elideBelowDepth : undefined,
+              });
+              res.setHeader('Content-Type', 'application/json');
+              res.end(JSON.stringify(r));
+            } catch (e) {
+              res.statusCode = 500;
+              res.end(JSON.stringify({ ok: false, error: (e as Error).message }));
+            }
+          });
+          return;
+        }
+
+        // POST /api/proof/subtree — return a subtree by nodeId. Mirrors
+        // the server.js implementation; kept here so `vite dev` has the
+        // same lazy-load capability as the production server.
+        if (url === '/api/proof/subtree' && reqAny.method === 'POST') {
+          let raw = '';
+          reqAny.on('data', (chunk) => { raw += String(chunk); });
+          reqAny.on('end', async () => {
+            let body: { source?: string; calculus?: string; profile?: string; mode?: string; nodeId?: string; elideBelowDepth?: number };
+            try {
+              body = JSON.parse(raw || '{}');
+            } catch {
+              res.statusCode = 400;
+              res.end(JSON.stringify({ ok: false, error: 'invalid JSON body' }));
+              return;
+            }
+            const source = body.source;
+            const nodeId = body.nodeId;
+            if (typeof source !== 'string' || source.length === 0) {
+              res.statusCode = 400;
+              res.end(JSON.stringify({ ok: false, error: 'source (string) required' }));
+              return;
+            }
+            if (typeof nodeId !== 'string' || nodeId.length === 0) {
+              res.statusCode = 400;
+              res.end(JSON.stringify({ ok: false, error: 'nodeId (string) required' }));
+              return;
+            }
+            if (source.length > 4096) {
+              res.statusCode = 413;
+              res.end(JSON.stringify({ ok: false, error: 'source too large' }));
+              return;
+            }
+            try {
+              const r = await proveSubtree({
+                source,
+                calculus: body.calculus || 'ill',
+                profile: body.profile || 'default',
+                mode: body.mode || 'sequent',
+                nodeId,
+                cacheDir: PROOF_CACHE_DIR,
+                elideBelowDepth: typeof body.elideBelowDepth === 'number' ? body.elideBelowDepth : undefined,
               });
               res.setHeader('Content-Type', 'application/json');
               res.end(JSON.stringify(r));

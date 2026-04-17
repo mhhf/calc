@@ -97,7 +97,7 @@ app.get('/api/docs/:folder/:slug', (c) => {
 
 // Proof block API — run the prover on a sequent string and return
 // proof-tree/v1 JSON. Cached on disk under out/doc-cache/.
-const { proveSource } = require('./lib/prover/prove-source');
+const { proveSource, proveSubtree } = require('./lib/prover/prove-source');
 const PROOF_CACHE_DIR = path.join(__dirname, 'out/doc-cache');
 app.post('/api/proof', async (c) => {
   let body;
@@ -106,7 +106,7 @@ app.post('/api/proof', async (c) => {
   } catch {
     return c.json({ ok: false, error: 'invalid JSON body' }, 400);
   }
-  const { source, calculus, profile, mode } = body || {};
+  const { source, calculus, profile, mode, elideBelowDepth } = body || {};
   if (typeof source !== 'string' || source.length === 0) {
     return c.json({ ok: false, error: 'source (string) required' }, 400);
   }
@@ -120,6 +120,42 @@ app.post('/api/proof', async (c) => {
       profile: profile || 'default',
       mode: mode || 'sequent',
       cacheDir: PROOF_CACHE_DIR,
+      elideBelowDepth: typeof elideBelowDepth === 'number' ? elideBelowDepth : undefined,
+    });
+    return c.json(r);
+  } catch (e) {
+    return c.json({ ok: false, error: e.message }, 500);
+  }
+});
+// Lazy subtree fetch — proves (and caches) the full source first, then
+// returns the subtree rooted at `nodeId`. `elideBelowDepth` (relative to
+// the subtree root) allows recursive lazy expansion.
+app.post('/api/proof/subtree', async (c) => {
+  let body;
+  try {
+    body = await c.req.json();
+  } catch {
+    return c.json({ ok: false, error: 'invalid JSON body' }, 400);
+  }
+  const { source, calculus, profile, mode, nodeId, elideBelowDepth } = body || {};
+  if (typeof source !== 'string' || source.length === 0) {
+    return c.json({ ok: false, error: 'source (string) required' }, 400);
+  }
+  if (typeof nodeId !== 'string' || nodeId.length === 0) {
+    return c.json({ ok: false, error: 'nodeId (string) required' }, 400);
+  }
+  if (source.length > 4096) {
+    return c.json({ ok: false, error: 'source too large' }, 413);
+  }
+  try {
+    const r = await proveSubtree({
+      source,
+      calculus: calculus || 'ill',
+      profile: profile || 'default',
+      mode: mode || 'sequent',
+      nodeId,
+      cacheDir: PROOF_CACHE_DIR,
+      elideBelowDepth: typeof elideBelowDepth === 'number' ? elideBelowDepth : undefined,
     });
     return c.json(r);
   } catch (e) {

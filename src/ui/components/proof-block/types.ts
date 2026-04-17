@@ -31,6 +31,10 @@ export interface ProofNode {
   rule: string | null;
   premises: ProofNode[];
   proven: boolean;
+  /** True when this node is a lazy-load stub: its real premises are
+   *  held on the server. The viewer renders a fetch button in place
+   *  of the normal fold-stub; click routes through POST /api/proof/subtree. */
+  elided?: boolean;
 }
 
 export interface ProofTreeV1 {

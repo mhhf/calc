@@ -39,6 +39,66 @@ export interface RenderOpts {
   stats: StatsMap;
   /** Search result: matching node ids + their ancestors. */
   search: SearchIndex;
+  /** Lazy-subtree support. When a node has `elided: true`, the renderer
+   *  looks it up in `loadedSubtrees` first; on a hit, the loaded node's
+   *  premises are used as the real premises. On a miss, a fetch button
+   *  is rendered in place of the normal fold-stub. Click routes through
+   *  `onElidedExpand(nodeId)` which the parent wires to POST
+   *  /api/proof/subtree. Both fields are optional — unset ⇒ standard
+   *  (non-lazy) rendering, elided flag is then just a display hint. */
+  loadedSubtrees?: Map<string, ProofNode>;
+  onElidedExpand?: (nodeId: string) => void;
+  /** Set of nodeIds currently being fetched — renderer uses this to
+   *  show a spinner glyph in place of the fetch button. */
+  pendingSubtrees?: Set<string>;
+}
+
+/** True when `node` originally had premises, even if they're now elided
+ *  or not yet rendered — used by layouts to decide whether to draw the
+ *  rule bar at all. */
+function hadPremises(node: ProofNode): boolean {
+  return (node.premises && node.premises.length > 0) || !!node.elided;
+}
+
+/** Effective premises: loaded-subtree's premises if the node is elided
+ *  and its subtree has arrived, otherwise the node's own premises. */
+function effectivePremises(node: ProofNode, opts: RenderOpts): ProofNode[] {
+  if (node.elided && opts.loadedSubtrees) {
+    const loaded = opts.loadedSubtrees.get(node.id);
+    if (loaded) return loaded.premises;
+  }
+  return node.premises || [];
+}
+
+/** Elided node whose subtree hasn't been fetched yet — renders a
+ *  fetch-stub instead of expanding. */
+function isElidedStub(node: ProofNode, opts: RenderOpts): boolean {
+  if (!node.elided) return false;
+  return !opts.loadedSubtrees || !opts.loadedSubtrees.has(node.id);
+}
+
+/** Fetch button — alternate fold-stub for elided nodes. Shows a spinner
+ *  while the server's POST /api/proof/subtree is in flight. */
+function FetchButton(props: {
+  nodeId: string;
+  opts: RenderOpts;
+  style?: string;
+}) {
+  const s = props.opts.stats.get(props.nodeId);
+  const pending = () => !!props.opts.pendingSubtrees && props.opts.pendingSubtrees.has(props.nodeId);
+  return (
+    <button
+      type="button"
+      class="calc-proof-lazy-stub"
+      aria-expanded={false}
+      disabled={pending()}
+      onClick={() => { if (props.opts.onElidedExpand) props.opts.onElidedExpand(props.nodeId); }}
+      title={pending() ? 'Loading subtree…' : `Load subtree — ${statsTooltip(s)}`}
+      style={`font-family:ui-monospace,monospace;font-size:0.75em;padding:0.1em 0.4em;border:1px dashed #789;background:#eef4fa;color:#245;border-radius:3px;cursor:${pending() ? 'wait' : 'pointer'};white-space:nowrap;${props.style || ''}`}
+    >
+      {pending() ? '…' : '↓'} {statsBadge(s)}
+    </button>
+  );
 }
 
 // Highlight style for nodes that match the active search. Applied to the
@@ -113,28 +173,38 @@ function FoldButton(props: {
 function BussNode(props: { node: ProofNode; pool: Pool; depth: number; opts: RenderOpts }) {
   const { node, pool, opts } = props;
   const [expanded, setExpanded] = createSignal(false);
+  const effective = () => effectivePremises(node, opts);
+  const hasContent = () => hadPremises(node);
+  const isStub = () => isElidedStub(node, opts);
   const shouldFold = () =>
+    !isStub() &&
     props.depth >= opts.foldDepth &&
-    node.premises.length > 0 &&
+    effective().length > 0 &&
     !expanded() &&
     !forceOpen(node.id, opts);
   const seq = () =>
     opts.skeleton ? SKELETON_GLYPH : renderSequent(node.sequent, pool);
   return (
     <div data-proof-node={node.id} class="buss-node" style="display:inline-flex;flex-direction:column;align-items:center;margin:0 0.75em;vertical-align:bottom">
-      <Show when={node.premises.length > 0}>
-        <Show
-          when={!shouldFold()}
-          fallback={
-            <div style="padding:0 0.5em 0.35em 0.5em">
-              <FoldButton onClick={() => setExpanded(true)} nodeId={node.id} opts={opts} />
+      <Show when={hasContent()}>
+        <Show when={isStub()} fallback={
+          <Show
+            when={!shouldFold()}
+            fallback={
+              <div style="padding:0 0.5em 0.35em 0.5em">
+                <FoldButton onClick={() => setExpanded(true)} nodeId={node.id} opts={opts} />
+              </div>
+            }
+          >
+            <div class="buss-premises" style="display:flex;flex-direction:row;align-items:flex-end">
+              <For each={effective()}>
+                {(p) => <BussNode node={p} pool={pool} depth={props.depth + 1} opts={opts} />}
+              </For>
             </div>
-          }
-        >
-          <div class="buss-premises" style="display:flex;flex-direction:row;align-items:flex-end">
-            <For each={node.premises}>
-              {(p) => <BussNode node={p} pool={pool} depth={props.depth + 1} opts={opts} />}
-            </For>
+          </Show>
+        }>
+          <div style="padding:0 0.5em 0.35em 0.5em">
+            <FetchButton nodeId={node.id} opts={opts} />
           </div>
         </Show>
         <div
@@ -174,28 +244,38 @@ function BussproofsLayout(props: { tree: ProofTreeV1; opts: RenderOpts }) {
 function GentzenNode(props: { node: ProofNode; pool: Pool; depth: number; opts: RenderOpts }) {
   const { node, pool, opts } = props;
   const [expanded, setExpanded] = createSignal(false);
+  const effective = () => effectivePremises(node, opts);
+  const hasContent = () => hadPremises(node);
+  const isStub = () => isElidedStub(node, opts);
   const shouldFold = () =>
+    !isStub() &&
     props.depth >= opts.foldDepth &&
-    node.premises.length > 0 &&
+    effective().length > 0 &&
     !expanded() &&
     !forceOpen(node.id, opts);
   const seq = () =>
     opts.skeleton ? SKELETON_GLYPH : renderSequent(node.sequent, pool);
   return (
     <div data-proof-node={node.id} class="gentzen-node" style="display:inline-flex;flex-direction:column;align-items:stretch;margin:0 0.5em">
-      <Show when={node.premises.length > 0}>
-        <Show
-          when={!shouldFold()}
-          fallback={
-            <div style="padding:0 0.5em 0.3em 0.5em;text-align:center">
-              <FoldButton onClick={() => setExpanded(true)} nodeId={node.id} opts={opts} />
+      <Show when={hasContent()}>
+        <Show when={isStub()} fallback={
+          <Show
+            when={!shouldFold()}
+            fallback={
+              <div style="padding:0 0.5em 0.3em 0.5em;text-align:center">
+                <FoldButton onClick={() => setExpanded(true)} nodeId={node.id} opts={opts} />
+              </div>
+            }
+          >
+            <div style="display:flex;flex-direction:row;align-items:flex-end;justify-content:center">
+              <For each={effective()}>
+                {(p) => <GentzenNode node={p} pool={pool} depth={props.depth + 1} opts={opts} />}
+              </For>
             </div>
-          }
-        >
-          <div style="display:flex;flex-direction:row;align-items:flex-end;justify-content:center">
-            <For each={node.premises}>
-              {(p) => <GentzenNode node={p} pool={pool} depth={props.depth + 1} opts={opts} />}
-            </For>
+          </Show>
+        }>
+          <div style="padding:0 0.5em 0.3em 0.5em;text-align:center">
+            <FetchButton nodeId={node.id} opts={opts} />
           </div>
         </Show>
         <div style="display:flex;flex-direction:row;align-items:center;gap:0.5em;border-top:1px solid currentColor;margin-top:0.15em;padding-top:0.1em">
@@ -233,9 +313,12 @@ function GentzenLayout(props: { tree: ProofTreeV1; opts: RenderOpts }) {
 function TacticEntry(props: { node: ProofNode; pool: Pool; depth: number; opts: RenderOpts }) {
   const { node, pool, opts } = props;
   const [expanded, setExpanded] = createSignal(false);
+  const effective = () => effectivePremises(node, opts);
+  const isStub = () => isElidedStub(node, opts);
   const shouldFold = () =>
+    !isStub() &&
     props.depth >= opts.foldDepth &&
-    node.premises.length > 0 &&
+    effective().length > 0 &&
     !expanded() &&
     !forceOpen(node.id, opts);
   const pad = '  '.repeat(props.depth);
@@ -243,6 +326,7 @@ function TacticEntry(props: { node: ProofNode; pool: Pool; depth: number; opts: 
   const spacer = ' '.repeat(Math.max(1, 14 - ruleName.length));
   const slug = node.rule ? opts.slugs[node.rule] : undefined;
   const stats = opts.stats.get(node.id);
+  const pending = () => !!opts.pendingSubtrees && opts.pendingSubtrees.has(node.id);
   const seq = () =>
     opts.skeleton ? '' : renderSequent(node.sequent, pool);
   const hl = matchStyle(node.id, opts);
@@ -258,19 +342,32 @@ function TacticEntry(props: { node: ProofNode; pool: Pool; depth: number; opts: 
         <span>{spacer}{seq()}</span>
       </span>
       <span>{'\n'}</span>
-      <Show when={shouldFold()} fallback={
-        <For each={node.premises}>
-          {(p) => <TacticEntry node={p} pool={pool} depth={props.depth + 1} opts={opts} />}
-        </For>
+      <Show when={isStub()} fallback={
+        <Show when={shouldFold()} fallback={
+          <For each={effective()}>
+            {(p) => <TacticEntry node={p} pool={pool} depth={props.depth + 1} opts={opts} />}
+          </For>
+        }>
+          <span>{'  '.repeat(props.depth + 1)}</span>
+          <button
+            type="button"
+            class="calc-proof-fold"
+            onClick={() => setExpanded(true)}
+            title={`Expand — ${statsTooltip(stats)}`}
+            style="font-family:inherit;font-size:inherit;background:#f0f0f5;color:#555;border:1px dashed #aaa;border-radius:3px;padding:0 0.4em;cursor:pointer"
+          >⋯ {statsBadge(stats)}</button>
+          <span>{'\n'}</span>
+        </Show>
       }>
         <span>{'  '.repeat(props.depth + 1)}</span>
         <button
           type="button"
-          class="calc-proof-fold"
-          onClick={() => setExpanded(true)}
-          title={`Expand — ${statsTooltip(stats)}`}
-          style="font-family:inherit;font-size:inherit;background:#f0f0f5;color:#555;border:1px dashed #aaa;border-radius:3px;padding:0 0.4em;cursor:pointer"
-        >⋯ {statsBadge(stats)}</button>
+          class="calc-proof-lazy-stub"
+          disabled={pending()}
+          onClick={() => { if (opts.onElidedExpand) opts.onElidedExpand(node.id); }}
+          title={pending() ? 'Loading subtree…' : `Load subtree — ${statsTooltip(stats)}`}
+          style={`font-family:inherit;font-size:inherit;background:#eef4fa;color:#245;border:1px dashed #789;border-radius:3px;padding:0 0.4em;cursor:${pending() ? 'wait' : 'pointer'}`}
+        >{pending() ? '…' : '↓'} {statsBadge(stats)}</button>
         <span>{'\n'}</span>
       </Show>
     </>
@@ -294,14 +391,17 @@ function IndentedNode(props: { node: ProofNode; pool: Pool; depth: number; opts:
   const [open, setOpen] = createSignal(depth < opts.foldDepth);
   const seq = () =>
     opts.skeleton ? '' : renderSequent(node.sequent, pool);
-  const hasKids = node.premises.length > 0;
+  const effective = () => effectivePremises(node, opts);
+  const hasKids = () => hadPremises(node);
+  const isStub = () => isElidedStub(node, opts);
+  const pending = () => !!opts.pendingSubtrees && opts.pendingSubtrees.has(node.id);
   const stats = opts.stats.get(node.id);
   // Force-open whenever this subtree contains a search match.
   const isOpen = () => open() || forceOpen(node.id, opts);
   return (
     <div data-proof-node={node.id} style={`margin-left:${depth * 1.25}em;font-family:ui-monospace,monospace;font-size:0.9em;line-height:1.5`}>
       <div style={`display:flex;gap:0.5em;align-items:baseline;white-space:nowrap${matchStyle(node.id, opts)}`}>
-        <Show when={hasKids}>
+        <Show when={hasKids() && !isStub()}>
           <button
             type="button"
             onClick={() => setOpen(!open())}
@@ -312,7 +412,19 @@ function IndentedNode(props: { node: ProofNode; pool: Pool; depth: number; opts:
             {isOpen() ? '▾' : '▸'}
           </button>
         </Show>
-        <Show when={!hasKids}>
+        <Show when={isStub()}>
+          <button
+            type="button"
+            disabled={pending()}
+            onClick={() => { if (opts.onElidedExpand) opts.onElidedExpand(node.id); }}
+            title={pending() ? 'Loading subtree…' : `Load subtree — ${statsTooltip(stats)}`}
+            style={`border:none;background:none;font-family:inherit;cursor:${pending() ? 'wait' : 'pointer'};padding:0;width:1em;color:#458`}
+            aria-label="load subtree"
+          >
+            {pending() ? '…' : '↓'}
+          </button>
+        </Show>
+        <Show when={!hasKids()}>
           <span style="width:1em">·</span>
         </Show>
         <Show when={node.rule}>
@@ -323,13 +435,13 @@ function IndentedNode(props: { node: ProofNode; pool: Pool; depth: number; opts:
             style: 'color:#4a6;font-style:italic',
           })}
         </Show>
-        <Show when={hasKids && !isOpen()}>
+        <Show when={(hasKids() && !isOpen()) || isStub()}>
           <span style="color:#999;font-size:0.85em">{statsBadge(stats)}</span>
         </Show>
         <span>{seq()}</span>
       </div>
-      <Show when={isOpen() && hasKids}>
-        <For each={node.premises}>
+      <Show when={isOpen() && hasKids() && !isStub()}>
+        <For each={effective()}>
           {(p) => <IndentedNode node={p} pool={pool} depth={depth + 1} opts={opts} />}
         </For>
       </Show>
@@ -351,9 +463,13 @@ function IndentedLayout(props: { tree: ProofTreeV1; opts: RenderOpts }) {
 function FlippedNode(props: { node: ProofNode; pool: Pool; depth: number; opts: RenderOpts }) {
   const { node, pool, opts } = props;
   const [expanded, setExpanded] = createSignal(false);
+  const effective = () => effectivePremises(node, opts);
+  const hasContent = () => hadPremises(node);
+  const isStub = () => isElidedStub(node, opts);
   const shouldFold = () =>
+    !isStub() &&
     props.depth >= opts.foldDepth &&
-    node.premises.length > 0 &&
+    effective().length > 0 &&
     !expanded() &&
     !forceOpen(node.id, opts);
   const seq = () =>
@@ -363,7 +479,7 @@ function FlippedNode(props: { node: ProofNode; pool: Pool; depth: number; opts: 
       <div style={`padding:0.15em 0.3em;font-family:ui-monospace,monospace;white-space:nowrap${matchStyle(node.id, opts)}`}>
         {seq()}
       </div>
-      <Show when={node.premises.length > 0}>
+      <Show when={hasContent()}>
         <div
           style="border-bottom:1px solid currentColor;width:100%;min-width:4em;position:relative;margin-bottom:0.15em;padding-bottom:0.1em"
         >
@@ -376,18 +492,24 @@ function FlippedNode(props: { node: ProofNode; pool: Pool; depth: number; opts: 
             })}
           </Show>
         </div>
-        <Show
-          when={!shouldFold()}
-          fallback={
-            <div style="padding:0.3em 0.5em">
-              <FoldButton onClick={() => setExpanded(true)} nodeId={node.id} opts={opts} />
+        <Show when={isStub()} fallback={
+          <Show
+            when={!shouldFold()}
+            fallback={
+              <div style="padding:0.3em 0.5em">
+                <FoldButton onClick={() => setExpanded(true)} nodeId={node.id} opts={opts} />
+              </div>
+            }
+          >
+            <div style="display:flex;flex-direction:row;align-items:flex-start">
+              <For each={effective()}>
+                {(p) => <FlippedNode node={p} pool={pool} depth={props.depth + 1} opts={opts} />}
+              </For>
             </div>
-          }
-        >
-          <div style="display:flex;flex-direction:row;align-items:flex-start">
-            <For each={node.premises}>
-              {(p) => <FlippedNode node={p} pool={pool} depth={props.depth + 1} opts={opts} />}
-            </For>
+          </Show>
+        }>
+          <div style="padding:0.3em 0.5em">
+            <FetchButton nodeId={node.id} opts={opts} />
           </div>
         </Show>
       </Show>

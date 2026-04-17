@@ -119,15 +119,26 @@ plus (i e) (i e) R
 
 ## Deep / wide trees — viewer defaults
 
-The Phase A + B defaults (TODO_0213) are visible in the examples below.
-Each of the five layouts (see the tabs top-right) collapses premises past
-depth 3 into a clickable `⋮` stub; the **skeleton** toggle hides sequent
-text and renders only the rule chips; the **search** box matches rules
-and sequent text (substring, case-insensitive) — prefix with `/` for
-regex (e.g. `/tensor|loli/`). Matches highlight yellow, their ancestors
-force-expand so nothing stays hidden, and the first hit scrolls into
-view. ESC clears the query. See [`large-proof-trees.md`](large-proof-trees.md)
-for the design notes.
+The Phase A + B + C toggles (TODO_0213) live in the header bar and
+persist per-browser in `localStorage`:
+
+- **search** — substring match across rules + rendered sequent text,
+  case-insensitive. Prefix with `/` for regex (e.g. `/tensor|loli/`).
+  Matches highlight yellow, ancestors force-expand so nothing stays
+  hidden, first hit scrolls into view, ESC clears.
+- **skeleton** — hide sequent text, render rule chips only. Useful for
+  orienting on proof *structure* at high density.
+- **pan + zoom** — drag the proof body to pan, wheel to zoom
+  (`0.1×–4×`, cursor-centered). Preserves text selection and Ctrl+F.
+- **lazy** — ship only the top 3 levels of the tree; each deep
+  subtree becomes a blue `↓` fetch button that pulls its contents on
+  click. Wire savings: 65–93% raw, 34–63% gzipped on the
+  `tensor_N` family.
+- Every layout also collapses premises past depth 3 into a grey `⋮`
+  fold-stub regardless of the lazy toggle.
+
+See [`large-proof-trees.md`](large-proof-trees.md) for the design
+notes and measured savings.
 
 ### Tensor associativity (7 nodes, depth 5)
 
@@ -151,6 +162,16 @@ stub to expand. Toggle **skeleton** to see the branching shape.
 
 ```{proof ill}
 A1, A2, A3, A4, A5, A6, A7, A8 |- A1 * A2 * A3 * A4 * A5 * A6 * A7 * A8
+```
+
+### Wide tensor — 32-way split (63 nodes, depth 32)
+
+Deep enough that lazy mode pays its rent: full JSON is 19 KB, lazy JSON
+is 4 KB. Flip the **lazy** toggle and expand a `↓` stub to watch a
+subtree fetch on click.
+
+```{proof ill}
+A1, A2, A3, A4, A5, A6, A7, A8, A9, A10, A11, A12, A13, A14, A15, A16, A17, A18, A19, A20, A21, A22, A23, A24, A25, A26, A27, A28, A29, A30, A31, A32 |- A1 * A2 * A3 * A4 * A5 * A6 * A7 * A8 * A9 * A10 * A11 * A12 * A13 * A14 * A15 * A16 * A17 * A18 * A19 * A20 * A21 * A22 * A23 * A24 * A25 * A26 * A27 * A28 * A29 * A30 * A31 * A32
 ```
 
 ## Architecture

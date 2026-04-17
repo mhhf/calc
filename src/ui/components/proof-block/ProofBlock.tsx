@@ -20,10 +20,13 @@ import { renderLayout } from './layouts';
 import { PROOF_LAYOUTS } from './types';
 import { computeStats, tooltip as statsTooltip } from './stats';
 import { buildSearch, EMPTY_SEARCH } from './search';
-import type { ProofLayout, ProofTreeV1 } from './types';
+import { PanZoom } from './PanZoom';
+import type { ProofLayout, ProofNode, ProofTreeV1 } from './types';
 
 const LS_LAYOUT = 'calc.proofBlock.layout';
 const LS_SKELETON = 'calc.proofBlock.skeleton';
+const LS_PANZOOM = 'calc.proofBlock.panzoom';
+const LS_LAZY = 'calc.proofBlock.lazy';
 
 // Phase A default: fold beyond depth 3. Deep enough to show the overall
 // shape of most proofs without pre-expanding ladders hundreds of levels
@@ -51,6 +54,28 @@ function writeSkeleton(on: boolean) {
   try { localStorage.setItem(LS_SKELETON, on ? '1' : '0'); } catch {}
 }
 
+function readPanZoom(): boolean {
+  try { return localStorage.getItem(LS_PANZOOM) === '1'; } catch { return false; }
+}
+
+function writePanZoom(on: boolean) {
+  try { localStorage.setItem(LS_PANZOOM, on ? '1' : '0'); } catch {}
+}
+
+function readLazy(): boolean {
+  try { return localStorage.getItem(LS_LAZY) === '1'; } catch { return false; }
+}
+
+function writeLazy(on: boolean) {
+  try { localStorage.setItem(LS_LAZY, on ? '1' : '0'); } catch {}
+}
+
+// Default elision depth when lazy mode is on. Matches DEFAULT_FOLD_DEPTH so
+// first paint renders the *same* nodes as the fold would — the only
+// difference is that deep premises aren't shipped at all until the user
+// clicks through a stub's Fetch button.
+const LAZY_ELIDE_DEPTH = 3;
+
 interface ProofApiResult {
   ok: boolean;
   tree?: ProofTreeV1;
@@ -63,8 +88,33 @@ async function fetchProof(args: {
   calculus: string;
   profile: string;
   mode: string;
+  elideBelowDepth?: number;
 }): Promise<ProofApiResult> {
   const res = await fetch('/api/proof', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(args),
+  });
+  if (!res.ok) return { ok: false, error: `HTTP ${res.status}` };
+  return res.json();
+}
+
+interface SubtreeApiResult {
+  ok: boolean;
+  tree?: ProofTreeV1;
+  error?: string;
+  cacheHit?: boolean;
+}
+
+async function fetchSubtree(args: {
+  source: string;
+  calculus: string;
+  profile: string;
+  mode: string;
+  nodeId: string;
+  elideBelowDepth?: number;
+}): Promise<SubtreeApiResult> {
+  const res = await fetch('/api/proof/subtree', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(args),
@@ -102,13 +152,42 @@ export function ProofBlock(props: {
   profile: string;
   mode: string;
 }) {
+  const [lazy, setLazy] = createSignal<boolean>(readLazy());
+  // Re-fetches only when the (source, lazy) pair changes. Flipping lazy off
+  // pulls the full tree once and then behaves exactly like non-lazy mode,
+  // which keeps the UI stable across toggles.
   const [result] = createResource(
-    () => ({ source: props.source, calculus: props.calculus, profile: props.profile, mode: props.mode }),
+    () => ({
+      source: props.source, calculus: props.calculus, profile: props.profile, mode: props.mode,
+      elideBelowDepth: lazy() ? LAZY_ELIDE_DEPTH : undefined,
+    }),
     fetchProof,
   );
   const [ruleSlugs] = createResource(fetchRuleSlugs);
   const [layout, setLayout] = createSignal<ProofLayout>(readLayout());
   const [skeleton, setSkeleton] = createSignal<boolean>(readSkeleton());
+  const [panZoom, setPanZoom] = createSignal<boolean>(readPanZoom());
+  // Lazy-load bookkeeping. Keyed by ProofNode.id (FNV-1a content hash, stable
+  // across subtree fetches because the server caches the full tree JSON and
+  // elide is a pure view transform).
+  const [loadedSubtrees, setLoadedSubtrees] = createSignal<Map<string, ProofNode>>(new Map());
+  const [pendingSubtrees, setPendingSubtrees] = createSignal<Set<string>>(new Set());
+
+  async function onElidedExpand(nodeId: string) {
+    if (loadedSubtrees().has(nodeId) || pendingSubtrees().has(nodeId)) return;
+    setPendingSubtrees((s) => { const n = new Set(s); n.add(nodeId); return n; });
+    try {
+      const r = await fetchSubtree({
+        source: props.source, calculus: props.calculus, profile: props.profile, mode: props.mode,
+        nodeId, elideBelowDepth: LAZY_ELIDE_DEPTH,
+      });
+      if (r.ok && r.tree) {
+        setLoadedSubtrees((m) => { const n = new Map(m); n.set(nodeId, r.tree!.root); return n; });
+      }
+    } finally {
+      setPendingSubtrees((s) => { const n = new Set(s); n.delete(nodeId); return n; });
+    }
+  }
   // Search state is ephemeral — not persisted, not cached across mounts. A
   // single input box drives both substring + `/regex/` modes; the index is
   // derived lazily so idle blocks pay zero cost.
@@ -201,6 +280,24 @@ export function ProofBlock(props: {
         >
           skeleton
         </button>
+        <button
+          type="button"
+          aria-pressed={panZoom()}
+          title={panZoom() ? 'Disable pan + zoom' : 'Pan & zoom: drag to pan, wheel to zoom'}
+          onClick={() => { const v = !panZoom(); setPanZoom(v); writePanZoom(v); }}
+          style={`font-size:inherit;padding:0.1em 0.45em;border:1px solid ${panZoom() ? '#558' : '#ccc'};background:${panZoom() ? '#e4e6f5' : '#fff'};color:${panZoom() ? '#224' : '#555'};border-radius:3px;cursor:pointer;font-family:inherit;margin-right:0.4em`}
+        >
+          pan + zoom
+        </button>
+        <button
+          type="button"
+          aria-pressed={lazy()}
+          title={lazy() ? 'Disable lazy subtree load (always ship full tree)' : 'Lazy: elide depth>3, fetch subtrees on demand'}
+          onClick={() => { const v = !lazy(); setLazy(v); writeLazy(v); }}
+          style={`font-size:inherit;padding:0.1em 0.45em;border:1px solid ${lazy() ? '#558' : '#ccc'};background:${lazy() ? '#e4e6f5' : '#fff'};color:${lazy() ? '#224' : '#555'};border-radius:3px;cursor:pointer;font-family:inherit;margin-right:0.4em`}
+        >
+          lazy
+        </button>
         <div role="tablist" aria-label="Layout" style="display:flex;gap:0.25em">
           <For each={PROOF_LAYOUTS}>
             {(l) => (
@@ -230,13 +327,32 @@ export function ProofBlock(props: {
           </pre>
         </Show>
         <Show when={result() && result()!.ok && result()!.tree}>
-          {renderLayout(layout(), result()!.tree!, {
-            slugs: ruleSlugs() || {},
-            skeleton: skeleton(),
-            foldDepth: DEFAULT_FOLD_DEPTH,
-            stats: stats(),
-            search: search(),
-          })}
+          <Show
+            when={panZoom()}
+            fallback={renderLayout(layout(), result()!.tree!, {
+              slugs: ruleSlugs() || {},
+              skeleton: skeleton(),
+              foldDepth: DEFAULT_FOLD_DEPTH,
+              stats: stats(),
+              search: search(),
+              loadedSubtrees: loadedSubtrees(),
+              pendingSubtrees: pendingSubtrees(),
+              onElidedExpand,
+            })}
+          >
+            <PanZoom>
+              {renderLayout(layout(), result()!.tree!, {
+                slugs: ruleSlugs() || {},
+                skeleton: skeleton(),
+                foldDepth: DEFAULT_FOLD_DEPTH,
+                stats: stats(),
+                search: search(),
+                loadedSubtrees: loadedSubtrees(),
+                pendingSubtrees: pendingSubtrees(),
+                onElidedExpand,
+              })}
+            </PanZoom>
+          </Show>
         </Show>
       </div>
       <Show when={result() && result()!.cacheHit}>
