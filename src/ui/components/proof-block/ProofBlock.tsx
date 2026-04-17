@@ -14,11 +14,12 @@
  *   never re-fetches — the tree JSON is the shared source of truth, and each
  *   renderer is a pure function.
  */
-import { createMemo, createSignal, createResource, Show, For } from 'solid-js';
+import { createEffect, createMemo, createSignal, createResource, Show, For } from 'solid-js';
 import { render } from 'solid-js/web';
 import { renderLayout } from './layouts';
 import { PROOF_LAYOUTS } from './types';
 import { computeStats, tooltip as statsTooltip } from './stats';
+import { buildSearch, EMPTY_SEARCH } from './search';
 import type { ProofLayout, ProofTreeV1 } from './types';
 
 const LS_LAYOUT = 'calc.proofBlock.layout';
@@ -106,6 +107,11 @@ export function ProofBlock(props: {
   const [ruleSlugs] = createResource(fetchRuleSlugs);
   const [layout, setLayout] = createSignal<ProofLayout>(readLayout());
   const [skeleton, setSkeleton] = createSignal<boolean>(readSkeleton());
+  // Search state is ephemeral — not persisted, not cached across mounts. A
+  // single input box drives both substring + `/regex/` modes; the index is
+  // derived lazily so idle blocks pay zero cost.
+  const [query, setQuery] = createSignal('');
+  let bodyRef: HTMLDivElement | undefined;
 
   // Stats recompute only when the tree changes — not on layout / skeleton /
   // fold toggles. Keeps click-to-expand O(1) for known-size subtrees.
@@ -118,6 +124,30 @@ export function ProofBlock(props: {
     if (!r || !r.ok || !r.tree) return undefined;
     return stats().get(r.tree.root.id);
   };
+
+  // Search index — recomputes on (tree, query). Cheap enough to inline: a
+  // single pre-order walk with a substring test per node, no allocations
+  // in the hot path beyond the two Sets. `renderSequent` cost is paid once
+  // per node per query edit; for the 255-node tensor128 tree that's ≪1 ms.
+  const search = createMemo(() => {
+    const r = result();
+    if (!r || !r.ok || !r.tree) return EMPTY_SEARCH;
+    return buildSearch(r.tree, query());
+  });
+
+  // When the search index resolves to a concrete first match, scroll its
+  // DOM node into view. The layouts tag each node with `data-proof-node`
+  // so we can find them without a react-style ref registry.
+  createEffect(() => {
+    const s = search();
+    if (!s.first || !bodyRef) return;
+    const el = bodyRef.querySelector<HTMLElement>(
+      `[data-proof-node="${CSS.escape(s.first)}"]`,
+    );
+    if (el && typeof el.scrollIntoView === 'function') {
+      el.scrollIntoView({ block: 'nearest', inline: 'nearest', behavior: 'smooth' });
+    }
+  });
 
   return (
     <div class="calc-proof-block" style="border:1px solid #ddd;border-radius:6px;margin:1em 0;background:#fff">
@@ -138,6 +168,24 @@ export function ProofBlock(props: {
           </span>
         </Show>
         <div style="flex:1" />
+        <input
+          type="search"
+          placeholder="search · /regex/"
+          value={query()}
+          aria-label="Search nodes"
+          title="Substring match across rules + sequent text. Prefix with / for regex (e.g. /plus|inc/)."
+          onInput={(e) => setQuery(e.currentTarget.value)}
+          onKeyDown={(e) => { if (e.key === 'Escape') { setQuery(''); (e.currentTarget as HTMLInputElement).blur(); } }}
+          style="font-size:inherit;font-family:inherit;padding:0.1em 0.4em;border:1px solid #ccc;border-radius:3px;width:10em;margin-right:0.4em"
+        />
+        <Show when={query()}>
+          <span
+            style={`font-size:0.85em;color:${search().error ? '#a33' : search().count === 0 ? '#999' : '#558'};margin-right:0.4em;white-space:nowrap`}
+            title={search().error || ''}
+          >
+            {search().error ? 'regex err' : `${search().count} hit${search().count === 1 ? '' : 's'}`}
+          </span>
+        </Show>
         <button
           type="button"
           aria-pressed={skeleton()}
@@ -163,7 +211,7 @@ export function ProofBlock(props: {
           </For>
         </div>
       </div>
-      <div class="calc-proof-body">
+      <div class="calc-proof-body" ref={bodyRef}>
         <Show when={result.loading}>
           <div style="padding:1em;color:#888;font-style:italic">Proving…</div>
         </Show>
@@ -181,6 +229,7 @@ export function ProofBlock(props: {
             skeleton: skeleton(),
             foldDepth: DEFAULT_FOLD_DEPTH,
             stats: stats(),
+            search: search(),
           })}
         </Show>
       </div>
