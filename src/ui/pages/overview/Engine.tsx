@@ -14,6 +14,7 @@ import Page from './blocks/Page';
 import SectionCard from './blocks/SectionCard';
 import LayerBand from './blocks/LayerBand';
 import DetailPanel from './blocks/DetailPanel';
+import Intro from './blocks/Intro';
 import ComponentBox from './blocks/ComponentBox';
 import { DEEP_DIVES } from './data/meta';
 import { DEEPDIVE_ACCENT } from './data/palette';
@@ -195,6 +196,16 @@ export default function Engine() {
       subtitle="Stackified forward + symbolic engine. A generic core is parameterized by matchOpts — four factories that LNL and ILL layers provide. Optimization wraps, never inserts."
       accentClass={DEEPDIVE_ACCENT.engine}
     >
+      <DetailPanel component={selected()} onClose={() => setSelected(null)} />
+
+      <Intro>
+        The <strong>forward engine</strong> runs a program from an initial state toward a final one by applying
+        rules. It's three strict layers: a <em>generic core</em> (match / strategy / forward / explore), an
+        <em> LNL</em> layer that adds the linear-vs-persistent distinction, and an <em>ILL</em> layer that plugs
+        in connectives, theories, and FFI. Optimizations <em>wrap</em> layers at the composition root — they
+        never add their own layer. Turn them off (bare profile) and the engine is slower, never less sound.
+      </Intro>
+
       <SectionCard
         title="Three-layer stack"
         subtitle="Bottom-up: Generic Core is the core loop; LNL adds the linear/persistent distinction; ILL plugs in connectives, theories, and FFI. Each higher layer PROVIDES callbacks to the next lower one."
@@ -310,7 +321,6 @@ export default function Engine() {
         </div>
       </SectionCard>
 
-      <DetailPanel component={selected()} onClose={() => setSelected(null)} />
     </Page>
   );
 }

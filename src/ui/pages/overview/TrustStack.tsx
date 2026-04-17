@@ -17,6 +17,7 @@ import Page from './blocks/Page';
 import SectionCard from './blocks/SectionCard';
 import LayerBand from './blocks/LayerBand';
 import DetailPanel from './blocks/DetailPanel';
+import Intro from './blocks/Intro';
 import ComponentBox from './blocks/ComponentBox';
 import { TrustBadge } from './blocks/Badge';
 import { useHashComponent } from './blocks/useHashComponent';
@@ -117,6 +118,15 @@ export default function TrustStack() {
       subtitle="Two genuine stacks — enforced by tests/engine/layer-dag.test.js — on a shared kernel foundation. The narrow green wedge is the trust anchor; a bug in the kernel compromises soundness, a bug in opt only compromises performance."
       rightSlot={<Legend />}
     >
+      <DetailPanel component={selected()} onClose={() => setSelected(null)} />
+
+      <Intro>
+        This view groups every component in CALC by <strong>trust</strong> — the blast radius of a bug.
+        The <em>kernel</em> (green) is the trust anchor: a bug here can accept an invalid proof.
+        Everything else can fail (infrastructure yellow), mis-optimize (opt orange), or mis-render (UI gray),
+        but cannot lie about what's provable. Click any component box to pin its details at the top of the page.
+      </Intro>
+
       <SectionCard
         title="Two genuine stacks"
         subtitle="Backward prover (left) is a 4-layer pyramid over the kernel. Forward engine (right) is a 3-layer pyramid. The monad bridge connects them at the {·} connective."
@@ -195,7 +205,6 @@ export default function TrustStack() {
         </div>
       </SectionCard>
 
-      <DetailPanel component={selected()} onClose={() => setSelected(null)} />
     </Page>
   );
 }

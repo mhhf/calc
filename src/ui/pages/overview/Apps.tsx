@@ -13,6 +13,7 @@ import { createMemo, For, Show } from 'solid-js';
 import Page from './blocks/Page';
 import SectionCard from './blocks/SectionCard';
 import DetailPanel from './blocks/DetailPanel';
+import Intro from './blocks/Intro';
 import ComponentBox from './blocks/ComponentBox';
 import { useHashComponent } from './blocks/useHashComponent';
 import { DEEP_DIVES } from './data/meta';
@@ -173,6 +174,16 @@ export default function Apps() {
       subtitle="CALC ships with one logic (ILL) and one fully-developed program family (EVM). New programs plug in at the ill/ layer — theories and FFI are optional."
       accentClass={DEEPDIVE_ACCENT.applications}
     >
+      <DetailPanel component={selected()} onClose={() => setSelected(null)} />
+
+      <Intro>
+        <strong>Applications</strong> are where the framework meets a specific domain. CALC ships with one logic
+        (<em>ILL</em> — intuitionistic linear logic), one equational theory on top (<em>binary arithmetic</em>),
+        one program family (<em>EVM</em>), and one instance of that family (<em>multisig</em>). This page shows
+        them in layered order: each commits more than the one above it, in exchange for richer semantics and
+        faster execution.
+      </Intro>
+
       <SectionCard
         title="ILL connective palette"
         subtitle="Loaded live from the bundled calculus. Polarity drives the focusing phase (green = eager, red = invertible)."
@@ -256,7 +267,6 @@ export default function Apps() {
         </ol>
       </SectionCard>
 
-      <DetailPanel component={selected()} onClose={() => setSelected(null)} />
     </Page>
   );
 }

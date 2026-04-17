@@ -14,6 +14,7 @@ import { createSignal, For, Show } from 'solid-js';
 import Page from './blocks/Page';
 import SectionCard from './blocks/SectionCard';
 import DetailPanel from './blocks/DetailPanel';
+import Intro from './blocks/Intro';
 import ComponentBox from './blocks/ComponentBox';
 import { SpecificityBadge } from './blocks/Badge';
 import { useHashComponent } from './blocks/useHashComponent';
@@ -179,6 +180,16 @@ export default function Specificity() {
       subtitle={meta.blurb}
       rightSlot={<AxisLegend />}
     >
+      <DetailPanel component={selected()} onClose={() => setSelected(null)} />
+
+      <Intro>
+        The <strong>specificity</strong> axis measures how much domain knowledge is baked into each piece of code.
+        At the top: <em>framework</em> — logic-agnostic machinery that runs for any calculus.
+        Each level down commits to more assumptions (a logic, a theory, a program, a concrete instance)
+        in exchange for more specific optimizations. The tree below shows which components live at each level,
+        plus the strategies, optimizations, and ZK chips that apply there.
+      </Intro>
+
       <SectionCard
         title="CALC's specificity lattice"
         subtitle="Each level down the tree adds a commitment. Framework code runs for every calculus; logic code runs for every ILL program; theory code runs whenever the corresponding equational theory is active; program/instance code is scoped to one domain."
@@ -225,7 +236,6 @@ export default function Specificity() {
         </div>
       </SectionCard>
 
-      <DetailPanel component={selected()} onClose={() => setSelected(null)} />
     </Page>
   );
 }

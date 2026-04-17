@@ -11,6 +11,7 @@ import Page from './blocks/Page';
 import SectionCard from './blocks/SectionCard';
 import LayerBand from './blocks/LayerBand';
 import DetailPanel from './blocks/DetailPanel';
+import Intro from './blocks/Intro';
 import { useHashComponent } from './blocks/useHashComponent';
 import { layersByStack } from './data/layers';
 import { DEEP_DIVES } from './data/meta';
@@ -130,6 +131,15 @@ export default function Prover() {
       subtitle="Sound by construction, complete via focusing. Each layer adds search discipline on top of a verified kernel. Layer DAG: kernel ← generic ← focused ← strategy (enforced in layer-dag.test.js)."
       accentClass={DEEPDIVE_ACCENT.prover}
     >
+      <DetailPanel component={selected()} onClose={() => setSelected(null)} />
+
+      <Intro>
+        The <strong>backward prover</strong> searches for a proof of a goal sequent. It's built as four strict
+        layers — <em>L1 Kernel</em> verifies, <em>L2 Generic</em> searches, <em>L3 Focused</em> disciplines the
+        search with Andreoli focusing, and <em>L4 Strategy</em> picks which rules to try. L1 is the trust anchor;
+        L2–L4 can fail to find a proof but cannot accept an invalid one.
+      </Intro>
+
       <SectionCard
         title="The four layers"
         subtitle="Reading bottom-up: kernel verifies, generic searches, focused disciplines, strategy drives."
@@ -182,7 +192,6 @@ export default function Prover() {
         </div>
       </SectionCard>
 
-      <DetailPanel component={selected()} onClose={() => setSelected(null)} />
     </Page>
   );
 }
