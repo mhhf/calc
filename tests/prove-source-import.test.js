@@ -139,6 +139,25 @@ describe('proveSource — backchain mode', () => {
     assert.strictEqual(r.ok, false);
     assert.match(r.error, /multiple #import/);
   });
+
+  // Regression: the Backchainer singleton held per-call metavar-slot
+  // state (`_mvSlots` / `_slotMV`) across invocations. Content-addressed
+  // queryMV hashes got reused between calls, so a second identical
+  // backchain query saw stale `_mvSlots[h] → slot` mappings aliasing
+  // its fresh query slots — producing "no derivation found" on
+  // every call after the first. See lib/engine/backchain.js `backchain()`.
+  it('repeated identical backchain calls all succeed (slot-state leak)', async () => {
+    const source = '#import(programs/bin.ill)\n\nplus (i (i (i e))) (i (i (i e))) R';
+    for (let i = 0; i < 5; i++) {
+      const iterCache = fs.mkdtempSync(path.join(os.tmpdir(), 'calc-slot-leak-'));
+      const r = await proveSource({
+        source, mode: 'backchain', profile: 'teaching', cacheDir: iterCache,
+      });
+      fs.rmSync(iterCache, { recursive: true, force: true });
+      assert.strictEqual(r.ok, true,
+        `iter ${i}: expected ok=true, got error: ${r.error}`);
+    }
+  });
 });
 
 describe('proveSource — sequent mode rejects imports', () => {

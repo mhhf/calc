@@ -40,6 +40,21 @@ const FIXTURES = [
     source: '#import(programs/bin.ill)\n\nplus (i e) (i e) R' },
   { label: 'plus_3_3',      mode: 'backchain', profile: 'teaching',
     source: '#import(programs/bin.ill)\n\nplus (i (i e)) (i (i e)) R' },
+
+  // Real-program proofs against bin.ill — large trees (≥500 nodes) that
+  // exercise the 500-node acceptance criterion for TODO_0213.
+  // bin.ill is the arithmetic layer transitively imported by evm.ill and
+  // the multisig / solc-symbolic programs, so these are the same clauses
+  // those programs fire at scale.
+  // nat(n): LSB-first i/o/e Peano encoding. Expanded inline for readability.
+  { label: 'mul_255_255',   mode: 'backchain', profile: 'teaching', maxDepth: 2000,
+    source: '#import(programs/bin.ill)\n\nmul (i (i (i (i (i (i (i (i e)))))))) (i (i (i (i (i (i (i (i e)))))))) R' },
+  { label: 'mul_65535_65535', mode: 'backchain', profile: 'teaching', maxDepth: 2000,
+    source: '#import(programs/bin.ill)\n\nmul (i (i (i (i (i (i (i (i (i (i (i (i (i (i (i (i e)))))))))))))))) (i (i (i (i (i (i (i (i (i (i (i (i (i (i (i (i e)))))))))))))))) R' },
+  // exp 3 15 = 14_348_907: real arithmetic, ~627 nodes, depth 43. The
+  // canonical "real-program" fixture referenced in large-proof-trees.md.
+  { label: 'exp_3_15',      mode: 'backchain', profile: 'teaching', maxDepth: 2000,
+    source: '#import(programs/bin.ill)\n\nexp (i (i e)) (i (i (i (i e)))) R' },
 ];
 
 const FOLD_DEPTH = 3; // DEFAULT_FOLD_DEPTH in ProofBlock.tsx
@@ -130,7 +145,7 @@ function visiblePoolBytes(tree, fold) {
         profile: fx.profile || 'default',
         mode: fx.mode || 'sequent',
         cacheDir: CACHE,
-        maxDepth: 500,
+        maxDepth: fx.maxDepth || 500,
       });
     } catch (e) {
       if (!asJson) console.log(fx.label.padEnd(16), '(error)', e.message.slice(0, 60));
