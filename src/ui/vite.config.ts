@@ -20,6 +20,12 @@ export default defineConfig({
   ],
   root: path.resolve(__dirname),
   base: '/',
+  define: {
+    // Inlined at build time; flake.nix sets GIT_COMMIT to self.shortRev /
+    // dirtyShortRev / "dev". npm run dev inherits the shell env (or falls
+    // back to "dev"), so developers see "dev" unless they export it.
+    __GIT_COMMIT__: JSON.stringify(process.env.GIT_COMMIT || 'dev'),
+  },
   build: {
     outDir: '../../out/ui',
     emptyOutDir: true,

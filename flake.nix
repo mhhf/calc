@@ -28,10 +28,16 @@
           npmFlags = [ "--ignore-scripts" ];
           makeCacheWritable = true;
 
-          # Patch shebangs and create output directory for parser
+          # Patch shebangs and create output directory for parser.
+          # GIT_COMMIT is read by src/ui/vite.config.ts and inlined into the
+          # bundle as __GIT_COMMIT__ so the UI can show which revision it is
+          # running. `self.shortRev` is present for clean flake checkouts;
+          # `dirtyShortRev` covers local/uncommitted builds; "dev" is the
+          # last-resort fallback (and what `npm run dev` sees).
           preBuild = ''
             patchShebangs libexec/
             mkdir -p out
+            export GIT_COMMIT="${self.shortRev or self.dirtyShortRev or "dev"}"
           '';
 
           # Build the SolidStart SSR app
