@@ -95,6 +95,37 @@ app.get('/api/docs/:folder/:slug', (c) => {
   }
 });
 
+// Proof block API — run the prover on a sequent string and return
+// proof-tree/v1 JSON. Cached on disk under out/doc-cache/.
+const { proveSource } = require('./lib/prover/prove-source');
+const PROOF_CACHE_DIR = path.join(__dirname, 'out/doc-cache');
+app.post('/api/proof', async (c) => {
+  let body;
+  try {
+    body = await c.req.json();
+  } catch {
+    return c.json({ ok: false, error: 'invalid JSON body' }, 400);
+  }
+  const { source, calculus, profile } = body || {};
+  if (typeof source !== 'string' || source.length === 0) {
+    return c.json({ ok: false, error: 'source (string) required' }, 400);
+  }
+  if (source.length > 4096) {
+    return c.json({ ok: false, error: 'source too large' }, 413);
+  }
+  try {
+    const r = await proveSource({
+      source,
+      calculus: calculus || 'ill',
+      profile: profile || 'default',
+      cacheDir: PROOF_CACHE_DIR,
+    });
+    return c.json(r);
+  } catch (e) {
+    return c.json({ ok: false, error: e.message }, 500);
+  }
+});
+
 // Serve static UI build
 app.use('/*', serveStatic({ root: './out/ui' }));
 
