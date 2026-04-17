@@ -1,0 +1,175 @@
+{
+  "schema": "0216-ic-baseline/v1",
+  "recorded": "2026-04-17T15:43:23.536Z",
+  "node": "v22.22.0",
+  "megaCount": 58,
+  "polyCount": 173,
+  "megaSites": {
+    "KeyedLoadIC:186:25": 1,
+    "KeyedLoadIC:96:36": 1,
+    "KeyedLoadIC:34:10": 1,
+    "KeyedStoreIC:36:13": 1,
+    "KeyedLoadIC:678:34": 1,
+    "KeyedStoreIC:768:35": 1,
+    "KeyedLoadIC:1177:42": 1,
+    "KeyedLoadIC:1204:37": 1,
+    "KeyedLoadIC:250:18": 1,
+    "KeyedLoadIC:357:20": 1,
+    "KeyedLoadIC:357:49": 1,
+    "KeyedLoadIC:281:20": 1,
+    "KeyedStoreIC:58:23": 1,
+    "KeyedStoreIC:162:28": 1,
+    "KeyedStoreIC:160:25": 1,
+    "KeyedStoreIC:168:28": 1,
+    "KeyedStoreIC:132:30": 1,
+    "KeyedStoreIC:139:41": 1,
+    "KeyedStoreIC:82:23": 1,
+    "KeyedStoreIC:1249:29": 1,
+    "KeyedStoreIC:1258:53": 1,
+    "KeyedStoreIC:144:37": 1,
+    "KeyedLoadIC:222:21": 1,
+    "KeyedLoadIC:222:65": 1,
+    "KeyedLoadIC:198:23": 1,
+    "KeyedLoadIC:198:70": 1,
+    "KeyedStoreIC:80:31": 1,
+    "LoadIC:168:34": 1,
+    "LoadIC:179:31": 1,
+    "LoadIC:180:27": 1,
+    "LoadIC:182:27": 1,
+    "KeyedStoreIC:44:17": 1,
+    "LoadIC:71:22": 6,
+    "LoadIC:74:22": 6,
+    "KeyedStoreIC:79:22": 1,
+    "KeyedStoreIC:143:27": 1,
+    "KeyedStoreIC:150:27": 1,
+    "LoadIC:1641:14": 2,
+    "KeyedStoreIC:39:35": 1,
+    "KeyedLoadIC:61:23": 1,
+    "KeyedLoadIC:245:25": 2,
+    "KeyedLoadIC:263:16": 3,
+    "KeyedStoreIC:266:19": 1,
+    "KeyedStoreIC:188:32": 1
+  },
+  "samples": [
+    {
+      "site": "KeyedLoadIC:186:25",
+      "raw": "KeyedLoadIC,0xd576ef45057,10953,186,25,1,N,0x2a47e8dc4439,config,,"
+    },
+    {
+      "site": "KeyedLoadIC:96:36",
+      "raw": "KeyedLoadIC,0xd576ef5a3d1,11088,96,36,1,N,0x1549d6e1c809,--trace-deprecation,,"
+    },
+    {
+      "site": "KeyedLoadIC:34:10",
+      "raw": "KeyedLoadIC,0x2c32f6186a67,25597,34,10,1,N,0x2a47e8dc4439,monad,,"
+    },
+    {
+      "site": "KeyedStoreIC:36:13",
+      "raw": "KeyedStoreIC,0x2c32f6186a88,25599,36,13,1,N,0x2a47e8dc4439,monad,,"
+    },
+    {
+      "site": "KeyedLoadIC:678:34",
+      "raw": "KeyedLoadIC,0x28f650d09676,31218,678,34,1,N,0x2a47e8dc4439,../engine/grades\\x00/home/mhhf/src/calc/lib/parser,,"
+    },
+    {
+      "site": "KeyedStoreIC:768:35",
+      "raw": "KeyedStoreIC,0x28f650d098cd,31256,768,35,1,N,0x2a47e8dc4439,../engine/grades\\x00/home/mhhf/src/calc/lib/parser,,"
+    },
+    {
+      "site": "KeyedLoadIC:1177:42",
+      "raw": "KeyedLoadIC,0x28f650d0ae86,33185,1177,42,1,N,0x2a47e8dc4439,/home/mhhf/src/calc/lib/meta-parser\\x00path,,"
+    },
+    {
+      "site": "KeyedLoadIC:1204:37",
+      "raw": "KeyedLoadIC,0x28f650d0af21,33196,1204,37,1,N,0x2a47e8dc4439,path,,"
+    },
+    {
+      "site": "KeyedLoadIC:250:18",
+      "raw": "KeyedLoadIC,0x2c32f61883ff,37918,250,18,1,N,0x2a47e8dc4439,arrow,,"
+    },
+    {
+      "site": "KeyedLoadIC:357:20",
+      "raw": "KeyedLoadIC,0x360c9798bdf2,38969,357,20,1,N,0x2a47e8dc4439,arrow,,"
+    },
+    {
+      "site": "KeyedLoadIC:357:49",
+      "raw": "KeyedLoadIC,0x360c9798bdfc,38973,357,49,1,N,0x2a47e8dc4439,arrow,,"
+    },
+    {
+      "site": "KeyedLoadIC:281:20",
+      "raw": "KeyedLoadIC,0x2c32f6192a97,39216,281,20,1,N,0x2a47e8dc4439,arrow,,"
+    },
+    {
+      "site": "KeyedStoreIC:58:23",
+      "raw": "KeyedStoreIC,0x2c32f61942a8,39893,58,23,1,N,0x1be147758731,latex,,"
+    },
+    {
+      "site": "KeyedStoreIC:162:28",
+      "raw": "KeyedStoreIC,0x2c32f6194011,40168,162,28,1,N,0x1be14775a3c1,forall,,"
+    },
+    {
+      "site": "KeyedStoreIC:160:25",
+      "raw": "KeyedStoreIC,0x2c32f6193feb,43726,160,25,1,N,0x2a47e8dfcd49,structure,,"
+    },
+    {
+      "site": "KeyedStoreIC:168:28",
+      "raw": "KeyedStoreIC,0x2c32f6194043,43745,168,28,1,N,0x02c63c766a11,empty,,"
+    },
+    {
+      "site": "KeyedStoreIC:132:30",
+      "raw": "KeyedStoreIC,0x2c32f6193eb7,43793,132,30,1,N,0x02c63c766d81,examples,,"
+    },
+    {
+      "site": "KeyedStoreIC:139:41",
+      "raw": "KeyedStoreIC,0x2c32f6193f6e,43858,139,41,1,N,0x02c63c766fb1,freevar_entries,,"
+    },
+    {
+      "site": "KeyedStoreIC:82:23",
+      "raw": "KeyedStoreIC,0x2c32f61967d5,44562,82,23,1,N,0x2a47e8dfa311,forall,,"
+    },
+    {
+      "site": "KeyedStoreIC:1249:29",
+      "raw": "KeyedStoreIC,0x28f650d0b00c,45284,1249,29,1,N,0x2a47e8dc4439,/home/mhhf/src/calc/lib/rules/rules2-parser.js,,"
+    },
+    {
+      "site": "KeyedStoreIC:1258:53",
+      "raw": "KeyedStoreIC,0x28f650d0b03b,45291,1258,53,1,N,0x2a47e8dc4439,/home/mhhf/src/calc/lib/calculus\\x00../rules/rules2-parser,,"
+    },
+    {
+      "site": "KeyedStoreIC:144:37",
+      "raw": "KeyedStoreIC,0x2c32f6198b3e,47929,144,37,1,N,0x0a8ea0eb6281,B,,"
+    },
+    {
+      "site": "KeyedLoadIC:222:21",
+      "raw": "KeyedLoadIC,0x2c32f6199e7b,47987,222,21,1,N,0x0a8ea0eb62c9,B,,"
+    },
+    {
+      "site": "KeyedLoadIC:222:65",
+      "raw": "KeyedLoadIC,0x2c32f6199e87,47991,222,65,1,N,0x0a8ea0eb62c9,B,,"
+    },
+    {
+      "site": "KeyedLoadIC:198:23",
+      "raw": "KeyedLoadIC,0x2c32f6199c97,48262,198,23,1,N,0x0a8ea0eb62c9,A,,"
+    },
+    {
+      "site": "KeyedLoadIC:198:70",
+      "raw": "KeyedLoadIC,0x2c32f6199ca9,48265,198,70,1,N,0x0a8ea0eb62c9,A,,"
+    },
+    {
+      "site": "KeyedStoreIC:80:31",
+      "raw": "KeyedStoreIC,0x2c32f61987ed,48284,80,31,1,N,0x2a47e8dcdbc9,pretty,,"
+    },
+    {
+      "site": "LoadIC:168:34",
+      "raw": "LoadIC,0x2c32f6198bc3,48899,168,34,P,N,0x02c63c748741,structural,,"
+    },
+    {
+      "site": "LoadIC:179:31",
+      "raw": "LoadIC,0x2c32f6198c1b,48956,179,31,P,N,0x02c63c748741,invertible,,"
+    },
+    {
+      "site": "LoadIC:180:27",
+      "raw": "LoadIC,0x2c32f6198c30,48967,180,27,P,N,0x02c63c748741,pretty,,"
+    }
+  ]
+}
