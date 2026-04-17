@@ -55,6 +55,29 @@ async function fetchProof(args: {
   return res.json();
 }
 
+// Module-level singleton — rule→slug map derived from the doc-manifest's
+// `def/` folder entries. Each rule doc is slugged `<NNNN>_rule-<name>`, so we
+// build `{ <name>: "<NNNN>_rule-<name>" }` once per session. Returns {} on
+// failure so layouts fall back to plain (unlinked) chips.
+let ruleSlugPromise: Promise<Record<string, string>> | null = null;
+function fetchRuleSlugs(): Promise<Record<string, string>> {
+  if (!ruleSlugPromise) {
+    ruleSlugPromise = fetch('/api/doc-manifest')
+      .then((r) => (r.ok ? r.json() : {}))
+      .then((m: Record<string, string[]>) => {
+        const slugs: string[] = m['def'] || m['/def'] || [];
+        const out: Record<string, string> = {};
+        for (const s of slugs) {
+          const mm = s.match(/^(\d+)_rule-(.+)$/);
+          if (mm) out[mm[2]] = s;
+        }
+        return out;
+      })
+      .catch(() => ({}));
+  }
+  return ruleSlugPromise;
+}
+
 export function ProofBlock(props: {
   source: string;
   calculus: string;
@@ -64,6 +87,7 @@ export function ProofBlock(props: {
     () => ({ source: props.source, calculus: props.calculus, profile: props.profile }),
     fetchProof,
   );
+  const [ruleSlugs] = createResource(fetchRuleSlugs);
   const [layout, setLayout] = createSignal<ProofLayout>(readLayout());
 
   return (
@@ -106,7 +130,7 @@ export function ProofBlock(props: {
           </pre>
         </Show>
         <Show when={result() && result()!.ok && result()!.tree}>
-          {renderLayout(layout(), result()!.tree!)}
+          {renderLayout(layout(), result()!.tree!, ruleSlugs() || {})}
         </Show>
       </div>
       <Show when={result() && result()!.cacheHit}>
