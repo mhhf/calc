@@ -14,24 +14,40 @@
  *   never re-fetches — the tree JSON is the shared source of truth, and each
  *   renderer is a pure function.
  */
-import { createSignal, createResource, Show, For } from 'solid-js';
+import { createMemo, createSignal, createResource, Show, For } from 'solid-js';
 import { render } from 'solid-js/web';
 import { renderLayout } from './layouts';
 import { PROOF_LAYOUTS } from './types';
+import { computeStats, tooltip as statsTooltip } from './stats';
 import type { ProofLayout, ProofTreeV1 } from './types';
 
-const LS_KEY = 'calc.proofBlock.layout';
+const LS_LAYOUT = 'calc.proofBlock.layout';
+const LS_SKELETON = 'calc.proofBlock.skeleton';
+
+// Phase A default: fold beyond depth 3. Deep enough to show the overall
+// shape of most proofs without pre-expanding ladders hundreds of levels
+// deep (`tensor128` weighs in at depth 128 — see
+// doc/documentation/large-proof-trees.md).
+const DEFAULT_FOLD_DEPTH = 3;
 
 function readLayout(): ProofLayout {
   try {
-    const raw = localStorage.getItem(LS_KEY);
+    const raw = localStorage.getItem(LS_LAYOUT);
     if (raw && PROOF_LAYOUTS.some((l) => l.id === raw)) return raw as ProofLayout;
   } catch {}
   return 'bussproofs';
 }
 
 function writeLayout(l: ProofLayout) {
-  try { localStorage.setItem(LS_KEY, l); } catch {}
+  try { localStorage.setItem(LS_LAYOUT, l); } catch {}
+}
+
+function readSkeleton(): boolean {
+  try { return localStorage.getItem(LS_SKELETON) === '1'; } catch { return false; }
+}
+
+function writeSkeleton(on: boolean) {
+  try { localStorage.setItem(LS_SKELETON, on ? '1' : '0'); } catch {}
 }
 
 interface ProofApiResult {
@@ -89,6 +105,19 @@ export function ProofBlock(props: {
   );
   const [ruleSlugs] = createResource(fetchRuleSlugs);
   const [layout, setLayout] = createSignal<ProofLayout>(readLayout());
+  const [skeleton, setSkeleton] = createSignal<boolean>(readSkeleton());
+
+  // Stats recompute only when the tree changes — not on layout / skeleton /
+  // fold toggles. Keeps click-to-expand O(1) for known-size subtrees.
+  const stats = createMemo(() => {
+    const r = result();
+    return r && r.ok && r.tree ? computeStats(r.tree.root) : new Map();
+  });
+  const rootStats = () => {
+    const r = result();
+    if (!r || !r.ok || !r.tree) return undefined;
+    return stats().get(r.tree.root.id);
+  };
 
   return (
     <div class="calc-proof-block" style="border:1px solid #ddd;border-radius:6px;margin:1em 0;background:#fff">
@@ -100,7 +129,24 @@ export function ProofBlock(props: {
           <span style="opacity:0.7">·</span>
           <span>{props.profile}</span>
         </Show>
+        <Show when={rootStats()}>
+          <span
+            style="opacity:0.7"
+            title={statsTooltip(rootStats())}
+          >
+            · {rootStats()!.nodes}n · ↓{rootStats()!.depth}
+          </span>
+        </Show>
         <div style="flex:1" />
+        <button
+          type="button"
+          aria-pressed={skeleton()}
+          title={skeleton() ? 'Show sequents' : 'Skeleton: rule names only'}
+          onClick={() => { const v = !skeleton(); setSkeleton(v); writeSkeleton(v); }}
+          style={`font-size:inherit;padding:0.1em 0.45em;border:1px solid ${skeleton() ? '#558' : '#ccc'};background:${skeleton() ? '#e4e6f5' : '#fff'};color:${skeleton() ? '#224' : '#555'};border-radius:3px;cursor:pointer;font-family:inherit;margin-right:0.4em`}
+        >
+          skeleton
+        </button>
         <div role="tablist" aria-label="Layout" style="display:flex;gap:0.25em">
           <For each={PROOF_LAYOUTS}>
             {(l) => (
@@ -130,7 +176,12 @@ export function ProofBlock(props: {
           </pre>
         </Show>
         <Show when={result() && result()!.ok && result()!.tree}>
-          {renderLayout(layout(), result()!.tree!, ruleSlugs() || {})}
+          {renderLayout(layout(), result()!.tree!, {
+            slugs: ruleSlugs() || {},
+            skeleton: skeleton(),
+            foldDepth: DEFAULT_FOLD_DEPTH,
+            stats: stats(),
+          })}
         </Show>
       </div>
       <Show when={result() && result()!.cacheHit}>
