@@ -1,7 +1,7 @@
+#!/usr/bin/env node
 // Hoisted by tools/esm-hoist.js:
 import { fromObject, toObject, Arena } from '../../lib/engine/fact-set.js';
 
-#!/usr/bin/env node
 /**
  * Explore Tree Benchmark — Multisig EVM
  *

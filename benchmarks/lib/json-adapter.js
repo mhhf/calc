@@ -1,3 +1,4 @@
+#!/usr/bin/env node
 // Hoisted by tools/esm-hoist.js:
 import { BenchmarkRunner } from './runner.js';
 import { runV2ProofBenchmarks } from '../proof/proofs-v2.bench.js';
@@ -8,7 +9,6 @@ import mde from '../../lib/engine/index.js';
 import fs from 'fs';
 import { loadBytecode, bytecodeArrGetGuard } from '../../lib/engine/ill/bytecode-loader.js';
 
-#!/usr/bin/env node
 /**
  * JSON Benchmark Adapter
  *

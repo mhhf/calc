@@ -1,9 +1,9 @@
+#!/usr/bin/env node
 // Hoisted by tools/esm-hoist.js:
 import mde from './lib/engine';
 import { loadBytecode, bytecodeArrGetGuard } from './lib/engine/ill/bytecode-loader';
 import treeUtils from './lib/engine/tree-utils';
 
-#!/usr/bin/env node
 /**
  * Benchmark History — explore solc_symbolic across N commits.
  *

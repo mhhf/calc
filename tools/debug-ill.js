@@ -1,3 +1,4 @@
+#!/usr/bin/env node
 // Hoisted by tools/esm-hoist.js:
 import { predHead } from '../lib/kernel/ast.js';
 import ffiProfile from '../lib/engine/opt/ffi.js';
@@ -5,7 +6,6 @@ import { getCacheProfile, resetCacheProfile } from '../lib/engine/backward-cache
 import fs from 'fs';
 import { loadBytecode, bytecodeArrGetGuard } from '../lib/engine/ill/bytecode-loader.js';
 
-#!/usr/bin/env node
 /**
  * ILL-native debug runner — observation directives + verbose judgment output.
  *
