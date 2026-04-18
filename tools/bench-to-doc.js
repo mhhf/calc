@@ -27,6 +27,25 @@ function parseArgs() {
 
 // ─── Aggregation ──────────────────────────────────────────────────────────────
 
+// Cap on commits emitted into the chart. Older commits are dropped — the chart
+// becomes unreadable beyond ~35 entries (tick rotation + density), and recent
+// improvements get visually compressed into the rightmost few pixels otherwise.
+const MAX_COMMITS = 35;
+
+// Scenarios we track end-to-end (each maps to a top-level field on the run
+// data record). Adding a scenario here automatically wires it through
+// aggregation, output JSON, and the renderer.
+const SCENARIOS = [
+  { key: 'e2e',          field: 'e2e',          label: 'cold' },          // alias for nocache
+  { key: 'e2eCacheMiss', field: 'e2eCacheMiss', label: 'cache-miss' },
+  { key: 'e2eCacheHit',  field: 'e2eCacheHit',  label: 'cache-hit' },
+  { key: 'e2eNoOpts',    field: 'e2eNoOpts',    label: 'no-opts' },
+];
+
+// Sub-metrics carved out of the e2e (nocache) record. These are stats blocks
+// emitted by bench-history.runner.mjs alongside the top-level mean.
+const E2E_SUBFIELDS = ['load', 'decompose', 'explore', 'parentWall', 'loadPlusExplore'];
+
 // Extract symex/e2e stats from a data record supporting both
 // legacy flat format (pre-e2e: { mean, stddev, ... }) and new nested
 // ({ symex: {...}, e2e: {...} }) format.
@@ -39,9 +58,10 @@ function extractSymex(data) {
   return null;
 }
 
-function extractE2E(data) {
+function extractScenario(data, field) {
   if (!data || data.error) return null;
-  return data.e2e || null;
+  const s = data[field];
+  return (s && typeof s.mean === 'number') ? s : null;
 }
 
 function avg(xs) {
@@ -126,19 +146,26 @@ function aggregate(runsDir) {
       if (!result.data || result.data.error) continue;
 
       if (!commitMap.has(result.fullHash)) {
-        commitMap.set(result.fullHash, {
+        const initial = {
           fullHash: result.fullHash,
           shortHash: result.shortHash,
           date: result.date,
           subject: result.subject,
           symexMeans: [],
           symexStddevs: [],
-          e2eMeans: [],
-          e2eStddevs: [],
           e2ePhasesList: [],
           nodes: result.data.nodes,
           branches: result.data.branches,
-        });
+        };
+        for (const sc of SCENARIOS) {
+          initial[`${sc.key}Means`] = [];
+          initial[`${sc.key}Stddevs`] = [];
+        }
+        for (const sub of E2E_SUBFIELDS) {
+          initial[`${sub}Means`] = [];
+          initial[`${sub}Stddevs`] = [];
+        }
+        commitMap.set(result.fullHash, initial);
       }
 
       const entry = commitMap.get(result.fullHash);
@@ -147,10 +174,23 @@ function aggregate(runsDir) {
         entry.symexMeans.push(s.mean);
         entry.symexStddevs.push(s.stddev);
       }
-      const e = extractE2E(result.data);
+      for (const sc of SCENARIOS) {
+        const v = extractScenario(result.data, sc.field);
+        if (v) {
+          entry[`${sc.key}Means`].push(v.mean);
+          entry[`${sc.key}Stddevs`].push(v.stddev);
+        }
+      }
+      // Sub-field stats live on the e2e (nocache) record
+      const e = extractScenario(result.data, 'e2e');
       if (e) {
-        entry.e2eMeans.push(e.mean);
-        entry.e2eStddevs.push(e.stddev);
+        for (const sub of E2E_SUBFIELDS) {
+          const v = e[sub];
+          if (v && typeof v.mean === 'number') {
+            entry[`${sub}Means`].push(v.mean);
+            entry[`${sub}Stddevs`].push(v.stddev || 0);
+          }
+        }
         if (e.phases) entry.e2ePhasesList.push(e.phases);
       }
     }
@@ -162,13 +202,33 @@ function aggregate(runsDir) {
     .map(c => {
       const symexMean = avg(c.symexMeans);
       const symexStddev = avg(c.symexStddevs);
-      const e2eMean = avg(c.e2eMeans);
-      const e2eStddev = avg(c.e2eStddevs);
       const phases = mergePhases(c.e2ePhasesList);
-      const e2e = e2eMean !== null
-        ? { mean: e2eMean, stddev: e2eStddev, runCount: c.e2eMeans.length }
-        : null;
-      if (e2e && phases) e2e.phases = phases;
+
+      const scenarioOut = {};
+      for (const sc of SCENARIOS) {
+        const means = c[`${sc.key}Means`];
+        if (means.length === 0) { scenarioOut[sc.key] = null; continue; }
+        scenarioOut[sc.key] = {
+          mean: avg(means),
+          stddev: avg(c[`${sc.key}Stddevs`]),
+          runCount: means.length,
+        };
+      }
+      // Attach phases to the canonical e2e (nocache) record
+      if (scenarioOut.e2e && phases) scenarioOut.e2e.phases = phases;
+
+      // E2E sub-field aggregates (load / decompose / explore / parentWall / loadPlusExplore)
+      const partsOut = {};
+      for (const sub of E2E_SUBFIELDS) {
+        const means = c[`${sub}Means`];
+        if (means.length === 0) continue;
+        partsOut[sub] = {
+          mean: avg(means),
+          stddev: avg(c[`${sub}Stddevs`]),
+          runCount: means.length,
+        };
+      }
+
       return {
         fullHash: c.fullHash,
         shortHash: c.shortHash,
@@ -180,7 +240,13 @@ function aggregate(runsDir) {
         runCount: c.symexMeans.length,
         // Explicit nested series
         symex: { mean: symexMean, stddev: symexStddev, runCount: c.symexMeans.length },
-        e2e,
+        // Scenarios — e2e/cache-miss/cache-hit/no-opts
+        e2e: scenarioOut.e2e,
+        e2eCacheMiss: scenarioOut.e2eCacheMiss,
+        e2eCacheHit: scenarioOut.e2eCacheHit,
+        e2eNoOpts: scenarioOut.e2eNoOpts,
+        // E2E sub-phase splits (load/decompose/explore/etc.)
+        e2eParts: Object.keys(partsOut).length > 0 ? partsOut : undefined,
         nodes: c.nodes,
         branches: c.branches,
       };
@@ -199,7 +265,11 @@ function aggregate(runsDir) {
     return ib - ia;  // oldest first (higher git log index = older commit)
   });
 
-  return { totalCommits: commits.length, totalRuns: files.length, commits };
+  // Cap to MAX_COMMITS most-recent entries (chart density)
+  const totalCommits = commits.length;
+  const capped = commits.slice(-MAX_COMMITS);
+
+  return { totalCommits, totalRuns: files.length, commits: capped };
 }
 
 // ─── Document generation ──────────────────────────────────────────────────────
@@ -213,10 +283,8 @@ function fmtMs(ms) {
 
 function buildDocument(agg) {
   const { totalCommits, totalRuns, commits } = agg;
+  const shown = commits.length;
   const dateStr = new Date().toISOString().slice(0, 10);
-
-  const symexVals = commits.map(c => c.symex?.mean).filter(v => typeof v === 'number');
-  const e2eVals = commits.map(c => c.e2e?.mean).filter(v => typeof v === 'number');
 
   const lines = [];
 
@@ -236,19 +304,28 @@ function buildDocument(agg) {
   // Body
   lines.push('## Benchmark: explore solc_symbolic');
   lines.push('');
-  lines.push('Two scenarios per commit (FFI + all optimizations enabled):');
+  lines.push('Per commit (FFI + all optimizations enabled, multiple scenarios):');
   lines.push('');
   lines.push('- **Symex**: `explore()` on a pre-loaded state (hot-path only).');
-  lines.push('- **End-to-end**: full `load()` + `decomposeQuery()` + `explore()` with `cache: false` — measures the cold-start cost users pay on first invocation.');
+  lines.push('- **Cold (nocache)**: full `load()` + `decomposeQuery()` + `explore()` with `cache: false` — first-invocation cost.');
+  lines.push('- **Cache-miss**: cold load with compose disk cache enabled, miss path (writes cache).');
+  lines.push('- **Cache-hit**: warm load with compose disk cache primed (where the recent 10× wins live).');
+  lines.push('- **No-opts**: cold load with all optimizations disabled (regression detector).');
   lines.push('');
-  lines.push(`- **Commits**: ${totalCommits}`);
+  lines.push(`- **Commits sampled**: ${totalCommits}${shown < totalCommits ? ` (chart shows last ${shown})` : ''}`);
   lines.push(`- **Benchmark runs**: ${totalRuns}`);
   lines.push(`- **Last updated**: ${dateStr}`);
-  if (symexVals.length > 0) {
-    lines.push(`- **Symex range**: ${fmtMs(Math.min(...symexVals))} — ${fmtMs(Math.max(...symexVals))}`);
+
+  // Per-scenario range across the visible window
+  for (const sc of SCENARIOS) {
+    const vs = commits.map(c => c[sc.key]?.mean).filter(v => typeof v === 'number');
+    if (vs.length > 0) {
+      lines.push(`- **${sc.label} range**: ${fmtMs(Math.min(...vs))} — ${fmtMs(Math.max(...vs))} (n=${vs.length})`);
+    }
   }
-  if (e2eVals.length > 0) {
-    lines.push(`- **E2E range**: ${fmtMs(Math.min(...e2eVals))} — ${fmtMs(Math.max(...e2eVals))}`);
+  const symexVals = commits.map(c => c.symex?.mean).filter(v => typeof v === 'number');
+  if (symexVals.length > 0) {
+    lines.push(`- **symex range**: ${fmtMs(Math.min(...symexVals))} — ${fmtMs(Math.max(...symexVals))}`);
   }
   lines.push('');
 
