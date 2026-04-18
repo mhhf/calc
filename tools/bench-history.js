@@ -477,12 +477,10 @@ function _aggregateMeta(metas) {
     if (typeof first === 'number') {
       const sum = vals.reduce((a, b) => a + (typeof b === 'number' ? b : 0), 0);
       out[k] = sum / vals.length;
-    } else if (typeof first === 'boolean') {
-      // majority (or last)
-      out[k] = vals[vals.length - 1];
-    } else if (Array.isArray(first)) {
-      out[k] = vals[vals.length - 1];  // last-iter snapshot
     } else {
+      // Non-numeric (boolean / array / string): last iter's value as a
+      // representative snapshot. Not a majority vote — previous comment
+      // promised that but the code always returned last.
       out[k] = vals[vals.length - 1];
     }
   }
