@@ -86,6 +86,8 @@ function hoistFile(filepath) {
   // the file-leading comment/directive block.
   const lines = newSrc.split('\n');
   let insertAt = 0;
+  // Skip a leading shebang (must stay on line 1 for Node ESM).
+  if (lines[0] && lines[0].startsWith('#!')) insertAt = 1;
   // Skip JSDoc/banner comments and 'use strict';
   while (insertAt < lines.length) {
     const l = lines[insertAt].trim();

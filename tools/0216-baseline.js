@@ -1,9 +1,9 @@
+#!/usr/bin/env node
 // Hoisted by tools/esm-hoist.js:
 import mde from '../lib/engine/index.js';
 import Store from '../lib/kernel/store.js';
 import { loadBytecode, bytecodeArrGetGuard } from '../lib/engine/ill/bytecode-loader.js';
 
-#!/usr/bin/env node
 /**
  * TODO_0216 Phase 0 H9 — baseline snapshot
  *

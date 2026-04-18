@@ -1,7 +1,7 @@
+#!/usr/bin/env node
 // Hoisted by tools/esm-hoist.js:
 import calc from '../lib/index.js';
 
-#!/usr/bin/env node
 /**
  * gen-rule-docs — generate one `doc/def/<NNNN>_rule-<name>.md` per ILL
  * inference rule.
