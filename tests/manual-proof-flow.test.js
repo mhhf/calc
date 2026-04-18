@@ -4,17 +4,19 @@
  * Simulates the full UI flow using ASCII sequent parsing.
  * Tests both focused and unfocused complete proof paths.
  */
-const { describe, it, before } = require('node:test');
-const assert = require('node:assert');
-const browser = require('../lib/browser');
-const Seq = require('../lib/kernel/sequent');
-const Store = require('../lib/kernel/store');
+import { describe, it, before } from 'node:test';
+import assert from 'node:assert';
+import browser from '../lib/browser.js';
+import Seq from '../lib/kernel/sequent.js';
+import Store from '../lib/kernel/store.js';
+// Hoisted by tools/esm-hoist.js:
+import bundle from '../out/ill.json' with { type: 'json' };
 
 describe('Manual Proof Flows (browser simulation)', () => {
   let api;
 
   before(() => {
-    const bundle = require('../out/ill.json');
+
     browser.initFromBundle(bundle);
     api = browser.getManualProofAPI();
   });

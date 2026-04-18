@@ -4,12 +4,11 @@
  * Covers: parseSequent, parseHyp, formatSequent,
  * nested turnstile handling (C32 fix).
  */
-const { describe, it, before } = require('node:test');
-const assert = require('node:assert/strict');
-const calculus = require('../lib/calculus');
-const { sequentParser } = require('../lib/parser/sequent-parser');
-const Seq = require('../lib/kernel/sequent');
-
+import { describe, it, before } from 'node:test';
+import assert from 'node:assert/strict';
+import calculus from '../lib/calculus/index.js';
+import { sequentParser } from '../lib/parser/sequent-parser.js';
+import Seq from '../lib/kernel/sequent.js';
 describe('sequent-parser', () => {
   let calc, sp;
 

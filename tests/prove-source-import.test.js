@@ -8,20 +8,12 @@
 
 'use strict';
 
-const { describe, it, before, after } = require('node:test');
-const assert = require('node:assert');
-const fs = require('fs');
-const os = require('os');
-const path = require('path');
-
-const {
-  proveSource,
-  parseHeader,
-  resolveImport,
-  SANDBOX_ROOT,
-  _resetCache,
-} = require('../lib/prover/prove-source');
-
+import { describe, it, before, after } from 'node:test';
+import assert from 'node:assert';
+import fs from 'fs';
+import os from 'os';
+import path from 'path';
+import { proveSource, parseHeader, resolveImport, SANDBOX_ROOT, _resetCache } from '../lib/prover/prove-source.js';
 describe('parseHeader', () => {
   it('extracts leading #import lines', () => {
     const src = '#import(programs/bin.ill)\n\nplus (i e) (i e) R';

@@ -2,14 +2,18 @@
  * Tests for SELL subexponential context construction (TODO 151).
  * Tier 1: import-label filtering, Tier 2: module algebra.
  */
-const { describe, it, beforeEach } = require('node:test');
-const assert = require('node:assert/strict');
-const path = require('path');
-const Store = require('../../lib/kernel/store');
-const mde = require('../../lib/engine/index');
-const { parseDecls } = require('../../lib/parser/declarations');
+import { describe, it, beforeEach } from 'node:test';
+import assert from 'node:assert/strict';
+import path from 'path';
+import Store from '../../lib/kernel/store.js';
+import mde from '../../lib/engine/index.js';
+import { parseDecls } from '../../lib/parser/declarations.js';
+// Hoisted by tools/esm-hoist.js:
+import convert from '../../lib/engine/convert.js';
+import fs from 'fs';
+import os from 'os';
 
-const FIXTURES = path.join(__dirname, 'fixtures', 'sell');
+const FIXTURES = path.join(import.meta.dirname, 'fixtures', 'sell');
 
 // Dummy expression parser for declaration-level tests (returns pos-based hash)
 let _exprParser;
@@ -17,7 +21,7 @@ beforeEach(() => {
   Store.clear();
   // Lazy-init the real expression parser from the engine
   if (!_exprParser) {
-    const convert = require('../../lib/engine/convert');
+
     _exprParser = convert.parseExpr;
   }
 });
@@ -146,8 +150,8 @@ describe('SELL: Source Label Tracking (T1-T4)', () => {
   });
 
   it('sourceLabel survives binary cache round-trip (T22)', () => {
-    const fs = require('fs');
-    const os = require('os');
+
+
     const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'sell-cache-'));
     const mainPath = path.join(FIXTURES, 'main.ill');
 
@@ -277,8 +281,8 @@ describe('SELL: Module Algebra — Tier 2 (T13, T24-T28)', () => {
 
   it('module name shadows label name — D7 precedence (T28)', () => {
     // Create a file where a module has the same name as an import label
-    const fs = require('fs');
-    const os = require('os');
+
+
     const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'sell-d7-'));
 
     // Write base
@@ -334,11 +338,10 @@ describe('SELL: QuerySettings Threading (T10)', () => {
 // SELL Graded Modality — TODO 155
 // =============================================================================
 
-const { GRADE_0, GRADE_W } = require('../../lib/engine/grades');
-const { ILL_CONNECTIVES } = require('../../lib/engine/ill/connectives');
-const { resolveConn, flattenAnte, compileRule } = require('../../lib/engine/compile');
-const { getModes } = require('../../lib/engine/ill/ffi');
-
+import { GRADE_0, GRADE_W } from '../../lib/engine/grades.js';
+import { ILL_CONNECTIVES } from '../../lib/engine/ill/connectives.js';
+import { resolveConn, flattenAnte, compileRule } from '../../lib/engine/compile.js';
+import { getModes } from '../../lib/engine/ill/ffi/index.js';
 describe('SELL: Graded modality parsing (TODO 155)', () => {
   beforeEach(() => Store.clear());
 
@@ -501,8 +504,8 @@ describe('SELL: hasGrade0 flag on compiled rules (TODO 155)', () => {
 describe('SELL: Grade-0 filtering (TODO 155)', () => {
   it('filterRules excludes hasGrade0 rules from exec/explore', () => {
     Store.clear();
-    const fs = require('fs');
-    const os = require('os');
+
+
     const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'sell-g0-'));
 
     // Write a program with a grade-0 rule and a normal rule

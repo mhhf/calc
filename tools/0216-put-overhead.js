@@ -18,10 +18,9 @@
  * Usage: node tools/0216-put-overhead.js
  */
 
-const fs = require('fs');
-const path = require('path');
-
-const ROOT = path.resolve(__dirname, '..');
+import fs from 'fs';
+import path from 'path';
+const ROOT = path.resolve(import.meta.dirname, '..');
 const OUT  = path.join(ROOT, 'doc/_scratch/0216-put-overhead.json');
 
 const N        = 2_000_000;  // puts per trial

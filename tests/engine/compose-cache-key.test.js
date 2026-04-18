@@ -4,11 +4,10 @@
  * Covers: _tablingCacheKey, _composeFullKey — canonical string keys,
  * collision resistance vs old 32-bit hash.
  */
-const { describe, it, beforeEach } = require('node:test');
-const assert = require('node:assert/strict');
-const Store = require('../../lib/kernel/store');
-const { _tablingCacheKey, _composeFullKey } = require('../../lib/engine/compose');
-
+import { describe, it, beforeEach } from 'node:test';
+import assert from 'node:assert/strict';
+import Store from '../../lib/kernel/store.js';
+import { _tablingCacheKey, _composeFullKey } from '../../lib/engine/compose.js';
 describe('compose cache keys (C22)', () => {
   beforeEach(() => Store.clear());
 

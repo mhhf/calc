@@ -10,11 +10,7 @@
  * the composition root (lib/engine/index.js).
  */
 
-const {
-  buildGenericProtocol, buildLnlProtocol, buildOptProtocol,
-  buildFfiProtocol, buildMatchOpts,
-} = require('../../lib/engine/match');
-
+import { buildGenericProtocol, buildLnlProtocol, buildOptProtocol, buildFfiProtocol, buildMatchOpts } from '../../lib/engine/match.js';
 /**
  * @param {Object} [opts]
  * @param {Object} [opts.rc]               - Resolved connective table
@@ -60,4 +56,5 @@ function makeMatchOpts(opts = {}) {
   });
 }
 
-module.exports = { makeMatchOpts };
+export { makeMatchOpts };
+export default { makeMatchOpts };

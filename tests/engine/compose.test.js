@@ -2,15 +2,20 @@
  * Tests for grade-0 cut elimination (TODO 156).
  * L1: cutPair, L2: predMap, L3: compose0
  */
-const { describe, it, beforeEach } = require('node:test');
-const assert = require('node:assert/strict');
-const Store = require('../../lib/kernel/store');
-const { GRADE_0, GRADE_W } = require('../../lib/engine/grades');
-const { ILL_CONNECTIVES } = require('../../lib/engine/ill/connectives');
-const { resolveConn, compileRule, flattenAnte, unwrapComp } = require('../../lib/engine/compile');
-const { predHead } = require('../../lib/kernel/ast');
-const { cutPair, specialize, predMap, elimOrder, compose0, _tablingCacheKey, _composeFullKey } = require('../../lib/engine/compose');
-const { getModes } = require('../../lib/engine/ill/ffi');
+import { describe, it, beforeEach } from 'node:test';
+import assert from 'node:assert/strict';
+import Store from '../../lib/kernel/store.js';
+import { GRADE_0, GRADE_W } from '../../lib/engine/grades.js';
+import { ILL_CONNECTIVES } from '../../lib/engine/ill/connectives.js';
+import { resolveConn, compileRule, flattenAnte, unwrapComp } from '../../lib/engine/compile.js';
+import { predHead } from '../../lib/kernel/ast.js';
+import { cutPair, specialize, predMap, elimOrder, compose0, _tablingCacheKey, _composeFullKey } from '../../lib/engine/compose.js';
+import { getModes } from '../../lib/engine/ill/ffi/index.js';
+// Hoisted by tools/esm-hoist.js:
+import fs from 'fs';
+import os from 'os';
+import path from 'path';
+import mde from '../../lib/engine/index.js';
 
 const COMPILE_OPTS = { connectives: ILL_CONNECTIVES, getModes };
 
@@ -738,10 +743,10 @@ describe('compose L3: persistent specialization (pass 2)', () => {
 describe('compose integration: persistent specialization', () => {
   it('specializes lookup clauses in loaded program', () => {
     Store.clear();
-    const fs = require('fs');
-    const os = require('os');
-    const path = require('path');
-    const mde = require('../../lib/engine/index');
+
+
+
+
     const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'spec-'));
 
     // Program with grade-0 lookup clauses + parameterized consumer
@@ -791,10 +796,10 @@ describe('compose integration: persistent specialization', () => {
 
   it('grade-0 clauses remain available for backward chaining', () => {
     Store.clear();
-    const fs = require('fs');
-    const os = require('os');
-    const path = require('path');
-    const mde = require('../../lib/engine/index');
+
+
+
+
     const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'spec-bc-'));
 
     // Grade-0 clause + backward query
@@ -819,10 +824,10 @@ describe('compose integration: persistent specialization', () => {
 describe('compose integration', () => {
   it('composed rules pass runtime filter, originals filtered out', () => {
     Store.clear();
-    const fs = require('fs');
-    const os = require('os');
-    const path = require('path');
-    const mde = require('../../lib/engine/index');
+
+
+
+
     const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'compose-'));
 
     // Write a program with grade-0 composition.
@@ -873,10 +878,10 @@ describe('compose integration', () => {
 
   it('conservative extension: composed system equals expanded system', () => {
     Store.clear();
-    const fs = require('fs');
-    const os = require('os');
-    const path = require('path');
-    const mde = require('../../lib/engine/index');
+
+
+
+
     const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'compose-ce-'));
 
     // Composed version (with grade-0 intermediate).

@@ -8,9 +8,8 @@
  * Defaults output to out/cache/<basename>.bin
  */
 
-const path = require('path');
-const mde = require('../lib/engine');
-
+import path from 'path';
+import mde from '../lib/engine/index.js';
 async function main() {
   const args = process.argv.slice(2);
   if (args.length === 0) {

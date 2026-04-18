@@ -4,19 +4,21 @@
  * Covers: chain compilation, execExStep, FFI failure fallback,
  * compiled vs non-compiled equivalence.
  */
-const { describe, it, before, beforeEach } = require('node:test');
-const assert = require('node:assert/strict');
-const path = require('path');
-const Store = require('../../lib/kernel/store');
-const { compileExChain, execExStep } = require('../../lib/engine/opt/existential-compile');
+import { describe, it, before, beforeEach } from 'node:test';
+import assert from 'node:assert/strict';
+import path from 'path';
+import Store from '../../lib/kernel/store.js';
+import { compileExChain, execExStep } from '../../lib/engine/opt/existential-compile.js';
+// Hoisted by tools/esm-hoist.js:
+import mde from '../../lib/engine/index.js';
 
 describe('opt/existential-compile', () => {
   let calc, ffiContext;
 
   before(() => {
     Store.clear();
-    const mde = require('../../lib/engine/index');
-    calc = mde.load(path.join(__dirname, '../../calculus/ill/programs/evm.ill'), { cache: true });
+
+    calc = mde.load(path.join(import.meta.dirname, '../../calculus/ill/programs/evm.ill'), { cache: true });
     ffiContext = calc._calcContext.ffiContext;
   });
 

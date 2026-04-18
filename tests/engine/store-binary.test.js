@@ -1,14 +1,16 @@
 /**
  * Tests for Store binary serialization/deserialization and auto-caching
  */
-const { describe, it, beforeEach, afterEach } = require('node:test');
-const assert = require('node:assert');
-const path = require('path');
-const fs = require('fs');
-const os = require('os');
-const Store = require('../../lib/kernel/store');
-const { serialize, deserialize, crc32 } = require('../../lib/engine/store-binary');
-const mde = require('../../lib/engine');
+import { describe, it, beforeEach, afterEach } from 'node:test';
+import assert from 'node:assert';
+import path from 'path';
+import fs from 'fs';
+import os from 'os';
+import Store from '../../lib/kernel/store.js';
+import { serialize, deserialize, crc32 } from '../../lib/engine/store-binary.js';
+import mde from '../../lib/engine/index.js';
+// Hoisted by tools/esm-hoist.js:
+import treeUtils from '../../lib/engine/tree-utils.js';
 
 describe('Store Binary Format', () => {
   beforeEach(() => {
@@ -321,7 +323,7 @@ describe('Store Binary Format', () => {
       const tmpFile = path.join(os.tmpdir(), `store-binary-test-${Date.now()}.bin`);
       try {
         Store.clear();
-        const binPath = path.join(__dirname, '../../calculus/ill/programs/bin.ill');
+        const binPath = path.join(import.meta.dirname, '../../calculus/ill/programs/bin.ill');
         mde.precompile(binPath, tmpFile);
 
         // Record what the parse produced
@@ -347,7 +349,7 @@ describe('Store Binary Format', () => {
     it('precompiled calc produces same results as source load', () => {
       const tmpFile = path.join(os.tmpdir(), `store-binary-test2-${Date.now()}.bin`);
       try {
-        const binPath = path.join(__dirname, '../../calculus/ill/programs/bin.ill');
+        const binPath = path.join(import.meta.dirname, '../../calculus/ill/programs/bin.ill');
 
         // Load from source (no caching)
         Store.clear();
@@ -370,10 +372,10 @@ describe('Store Binary Format', () => {
     });
 
     it('precompiled explore produces same tree as source load', () => {
-      const treeUtils = require('../../lib/engine/tree-utils');
+
       const tmpFile = path.join(os.tmpdir(), `store-binary-explore-${Date.now()}.bin`);
       try {
-        const msPath = path.join(__dirname, '../../calculus/ill/programs/multisig.ill');
+        const msPath = path.join(import.meta.dirname, '../../calculus/ill/programs/multisig.ill');
 
         // Source load + explore (no caching)
         Store.clear();
@@ -418,7 +420,7 @@ describe('Store Binary Format', () => {
     });
 
     it('writes and reads full cache (load twice)', () => {
-      const binPath = path.join(__dirname, '../../calculus/ill/programs/bin.ill');
+      const binPath = path.join(import.meta.dirname, '../../calculus/ill/programs/bin.ill');
 
       // First load: miss, writes cache
       const calc1 = mde.load(binPath, { cacheDir: tmpDir });
@@ -485,7 +487,7 @@ describe('Store Binary Format', () => {
     });
 
     it('cached load produces same types/clauses as fresh load', () => {
-      const binPath = path.join(__dirname, '../../calculus/ill/programs/bin.ill');
+      const binPath = path.join(import.meta.dirname, '../../calculus/ill/programs/bin.ill');
 
       // Fresh load
       Store.clear();
@@ -503,7 +505,7 @@ describe('Store Binary Format', () => {
     });
 
     it('corrupted cache file falls back to fresh parse', () => {
-      const binPath = path.join(__dirname, '../../calculus/ill/programs/bin.ill');
+      const binPath = path.join(import.meta.dirname, '../../calculus/ill/programs/bin.ill');
 
       // First load: writes cache
       const calc1 = mde.load(binPath, { cacheDir: tmpDir });
@@ -543,7 +545,7 @@ describe('Store Binary Format', () => {
     });
 
     it('cache:imports with real EVM files', () => {
-      const msPath = path.join(__dirname, '../../calculus/ill/programs/multisig.ill');
+      const msPath = path.join(import.meta.dirname, '../../calculus/ill/programs/multisig.ill');
 
       // First load: miss, writes imports cache
       const calc1 = mde.load(msPath, { cache: 'imports', cacheDir: tmpDir });
@@ -563,8 +565,8 @@ describe('Store Binary Format', () => {
     });
 
     it('auto-cached explore produces same tree as fresh', () => {
-      const treeUtils = require('../../lib/engine/tree-utils');
-      const msPath = path.join(__dirname, '../../calculus/ill/programs/multisig.ill');
+
+      const msPath = path.join(import.meta.dirname, '../../calculus/ill/programs/multisig.ill');
 
       // Fresh load
       Store.clear();
@@ -590,7 +592,7 @@ describe('Store Binary Format', () => {
     });
 
     it('two-tier cache: full miss → imports hit → full hit', () => {
-      const msPath = path.join(__dirname, '../../calculus/ill/programs/multisig.ill');
+      const msPath = path.join(import.meta.dirname, '../../calculus/ill/programs/multisig.ill');
 
       // First load: double miss → writes both imports and full caches
       const calc1 = mde.load(msPath, { cacheDir: tmpDir });

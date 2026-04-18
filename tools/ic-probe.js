@@ -15,11 +15,10 @@
  *   node tools/ic-probe.js --compare   # compare against saved baseline
  */
 
-const path = require('path');
-const fs = require('fs');
-const { spawnSync } = require('child_process');
-
-const ROOT = path.resolve(__dirname, '..');
+import path from 'path';
+import fs from 'fs';
+import { spawnSync } from 'child_process';
+const ROOT = path.resolve(import.meta.dirname, '..');
 const BASELINE_PATH = path.join(ROOT, 'doc/_scratch/0216-ic-baseline.json');
 
 function parseArgs() {

@@ -3,19 +3,18 @@
  *
  * Covers: parseMode, checkMode — mode classification for FFI.
  */
-const { describe, it, before } = require('node:test');
-const assert = require('node:assert/strict');
-const Store = require('../../lib/kernel/store');
-
+import { describe, it, before } from 'node:test';
+import assert from 'node:assert/strict';
+import Store from '../../lib/kernel/store.js';
+import backchainIll from '../../lib/engine/ill/backchain-ill.js';
+import { parseMode, checkMode } from '../../lib/engine/ill/ffi/mode.js';
 // mode.js uses isGround from ill/ffi/convert — needs ILL atoms registered
-let parseMode, checkMode;
 
 describe('ffi/mode', () => {
   before(() => {
     Store.clear();
     // Register ILL atoms needed by isGround (binlit theory)
-    require('../../lib/engine/ill/backchain-ill').initILL();
-    ({ parseMode, checkMode } = require('../../lib/engine/ill/ffi/mode'));
+    backchainIll.initILL();
   });
 
   describe('parseMode', () => {

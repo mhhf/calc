@@ -11,10 +11,9 @@
  *   node tools/bench-to-doc.js --runs-dir=<dir>
  */
 
-const { execSync } = require('child_process');
-const fs = require('fs');
-const path = require('path');
-
+import { execSync } from 'child_process';
+import fs from 'fs';
+import path from 'path';
 // ─── Arg parsing ──────────────────────────────────────────────────────────────
 
 function parseArgs() {

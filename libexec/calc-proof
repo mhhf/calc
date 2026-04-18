@@ -8,9 +8,8 @@
  *   calc proof --profile "complex formula"
  */
 
-const v2 = require('../lib');
-const clc = require('cli-color');
-
+import v2 from '../lib/index.js';
+import clc from 'cli-color';
 async function main() {
   let args = process.argv.slice(2);
 

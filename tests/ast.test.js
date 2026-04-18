@@ -2,13 +2,11 @@
  * Tests for v2 AST utilities
  */
 
-const { describe, it, before } = require('node:test');
-const assert = require('node:assert');
-
-const ast = require('../lib/kernel/ast');
-const calculus = require('../lib/calculus');
-const { GRADE_W } = require('../lib/engine/grades');
-
+import { describe, it, before } from 'node:test';
+import assert from 'node:assert';
+import ast from '../lib/kernel/ast.js';
+import calculus from '../lib/calculus/index.js';
+import { GRADE_W } from '../lib/engine/grades.js';
 describe('v2 AST utilities', () => {
   let AST;
 

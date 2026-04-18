@@ -3,19 +3,21 @@
  *
  * Covers: control hash computation, memo hit/miss, recordMemo behavior.
  */
-const { describe, it, before } = require('node:test');
-const assert = require('node:assert/strict');
-const path = require('path');
-const Store = require('../../lib/kernel/store');
-const { FactSet } = require('../../lib/engine/fact-set');
-const { controlHash, createMemoCtx, recordMemo } = require('../../lib/engine/opt/structural-memo');
+import { describe, it, before } from 'node:test';
+import assert from 'node:assert/strict';
+import path from 'path';
+import Store from '../../lib/kernel/store.js';
+import { FactSet } from '../../lib/engine/fact-set.js';
+import { controlHash, createMemoCtx, recordMemo } from '../../lib/engine/opt/structural-memo.js';
+// Hoisted by tools/esm-hoist.js:
+import mde from '../../lib/engine/index.js';
 
 describe('structural-memo', () => {
   // Load ILL once to register predicate tags (pc, gas, etc.)
   before(() => {
     Store.clear();
-    const mde = require('../../lib/engine/index');
-    mde.load(path.join(__dirname, '../../calculus/ill/programs/evm.ill'), { cache: true });
+
+    mde.load(path.join(import.meta.dirname, '../../calculus/ill/programs/evm.ill'), { cache: true });
   });
 
   describe('controlHash', () => {

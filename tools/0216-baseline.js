@@ -1,3 +1,8 @@
+// Hoisted by tools/esm-hoist.js:
+import mde from '../lib/engine/index.js';
+import Store from '../lib/kernel/store.js';
+import { loadBytecode, bytecodeArrGetGuard } from '../lib/engine/ill/bytecode-loader.js';
+
 #!/usr/bin/env node
 /**
  * TODO_0216 Phase 0 H9 — baseline snapshot
@@ -11,12 +16,11 @@
  *   node --expose-gc tools/0216-baseline.js [--iterations=N]
  */
 
-const path = require('path');
-const fs = require('fs');
-const { execSync } = require('child_process');
-const { performance } = require('perf_hooks');
-
-const ROOT = path.resolve(__dirname, '..');
+import path from 'path';
+import fs from 'fs';
+import { execSync } from 'child_process';
+import { performance } from 'perf_hooks';
+const ROOT = path.resolve(import.meta.dirname, '..');
 const OUT = path.join(ROOT, 'doc/_scratch/0216-baseline.json');
 
 function parseArgs() {
@@ -59,8 +63,7 @@ async function main() {
   const shortSha = commit.slice(0, 7);
   const subject = execSync(`git log -1 --format=%s`, { cwd: ROOT, encoding: 'utf8' }).trim();
 
-  const mde = require('../lib/engine');
-  const Store = require('../lib/kernel/store');
+
 
   const results = {};
 
@@ -94,7 +97,7 @@ async function main() {
   // 4. Explore runtime — symex of the symbolic multisig
   {
     Store.clear();
-    const { loadBytecode, bytecodeArrGetGuard } = require('../lib/engine/ill/bytecode-loader');
+
     const codePath = path.join(ROOT, 'calculus/ill/programs/multisig_nocall_solc_code.ill');
     const hex = fs.readFileSync(codePath, 'utf8').match(/bytecode\s+0x([0-9a-fA-F]+)/)[1];
     const bc = loadBytecode(hex);

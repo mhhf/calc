@@ -4,18 +4,20 @@
  * Verifies: a guided-mode proof term containing loli_match validates
  * through check-term.js without returning 'unknown rule'.
  */
-const { describe, it, before } = require('node:test');
-const assert = require('node:assert/strict');
-const Store = require('../../lib/kernel/store');
-const Seq = require('../../lib/kernel/sequent');
-const { createChecker } = require('../../lib/prover/check-term');
+import { describe, it, before } from 'node:test';
+import assert from 'node:assert/strict';
+import Store from '../../lib/kernel/store.js';
+import Seq from '../../lib/kernel/sequent.js';
+import { createChecker } from '../../lib/prover/check-term.js';
+// Hoisted by tools/esm-hoist.js:
+import calculus from '../../lib/calculus/index.js';
 
 describe('check-term loli_match (C2)', () => {
   let checker;
 
   before(async () => {
     Store.clear();
-    const calculus = require('../../lib/calculus');
+
     const calc = await calculus.loadILL();
     checker = createChecker(calc);
   });

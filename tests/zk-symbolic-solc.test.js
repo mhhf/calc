@@ -10,23 +10,21 @@
  *   - Rust binary: prove_symbolic (parallel proving)
  */
 
-const { describe, it, before } = require('node:test');
-const assert = require('node:assert');
-const path = require('path');
-const fs = require('fs');
-
-const mde = require('../lib/engine');
-const { getAllLeaves } = require('../lib/engine/tree-utils');
-const { classifyLeaf } = require('../lib/engine/show');
-const Store = require('../lib/kernel/store');
-const Seq = require('../lib/kernel/sequent');
-const calculus = require('../lib/calculus');
-const { guidedTerm } = require('../lib/prover/guided-term');
-const { rightFocusTerm } = require('../lib/prover/bridge');
-const { generateWitness } = require('../lib/zk/witness');
-const { toObject } = require('../lib/engine/fact-set');
-
-const FIXTURE_DIR = path.join(__dirname, '..', 'zk', 'sequent-certifier', 'tests', 'fixtures');
+import { describe, it, before } from 'node:test';
+import assert from 'node:assert';
+import path from 'path';
+import fs from 'fs';
+import mde from '../lib/engine/index.js';
+import { getAllLeaves } from '../lib/engine/tree-utils.js';
+import { classifyLeaf } from '../lib/engine/show.js';
+import Store from '../lib/kernel/store.js';
+import Seq from '../lib/kernel/sequent.js';
+import calculus from '../lib/calculus/index.js';
+import { guidedTerm } from '../lib/prover/guided-term.js';
+import { rightFocusTerm } from '../lib/prover/bridge.js';
+import { generateWitness } from '../lib/zk/witness.js';
+import { toObject } from '../lib/engine/fact-set.js';
+const FIXTURE_DIR = path.join(import.meta.dirname, '..', 'zk', 'sequent-certifier', 'tests', 'fixtures');
 
 function ensureFixtureDir() {
   if (!fs.existsSync(FIXTURE_DIR)) {
@@ -66,7 +64,7 @@ describe('ZK symbolic solc: 31-path witness generation', { timeout: 1800000 }, (
   before(async () => {
     Store.clear();
     engineCalc = await mde.load(
-      path.join(__dirname, '../calculus/ill/programs/multisig_nocall_solc_symbolic.ill')
+      path.join(import.meta.dirname, '../calculus/ill/programs/multisig_nocall_solc_symbolic.ill')
     );
     illCalc = await calculus.loadILL();
     initialState = mde.decomposeQuery(engineCalc.queries.get('symex'));

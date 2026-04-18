@@ -5,22 +5,21 @@
  * and that the prediction infrastructure works correctly.
  */
 
-const { describe, it, before } = require('node:test');
-const assert = require('node:assert');
-const path = require('path');
-const mde = require('../../lib/engine');
-const { countNodes, getAllLeaves } = require('../../lib/engine/tree-utils');
-const { classifyLeaf } = require('../../lib/engine/show');
-const { detectStrategy } = require('../../lib/engine/strategy');
-const { discIndex, fpDetect } = require('../../lib/engine/match');
-const Store = require('../../lib/kernel/store');
-
+import { describe, it, before } from 'node:test';
+import assert from 'node:assert';
+import path from 'path';
+import mde from '../../lib/engine/index.js';
+import { countNodes, getAllLeaves } from '../../lib/engine/tree-utils.js';
+import { classifyLeaf } from '../../lib/engine/show.js';
+import { detectStrategy } from '../../lib/engine/strategy.js';
+import { discIndex, fpDetect } from '../../lib/engine/match.js';
+import Store from '../../lib/kernel/store.js';
 describe('fingerprint prediction (Opt_H)', { timeout: 30000 }, () => {
   describe('attachPred', () => {
     it('attaches nextPointerSlot to rules with virtual discriminator', async () => {
       Store.clear();
       const calc = await mde.load(
-        path.join(__dirname, '../../calculus/ill/programs/multisig_nocall_solc.ill')
+        path.join(import.meta.dirname, '../../calculus/ill/programs/multisig_nocall_solc.ill')
       );
 
       const ruleList = calc.forwardRules;
@@ -43,7 +42,7 @@ describe('fingerprint prediction (Opt_H)', { timeout: 30000 }, () => {
     it('does not attach to multi-alt rules', async () => {
       Store.clear();
       const calc = await mde.load(
-        path.join(__dirname, '../../calculus/ill/programs/multisig_nocall_solc.ill')
+        path.join(import.meta.dirname, '../../calculus/ill/programs/multisig_nocall_solc.ill')
       );
 
       detectStrategy(calc.forwardRules);
@@ -60,7 +59,7 @@ describe('fingerprint prediction (Opt_H)', { timeout: 30000 }, () => {
     it('maps opcode ground values to rules', async () => {
       Store.clear();
       const calc = await mde.load(
-        path.join(__dirname, '../../calculus/ill/programs/multisig_nocall_solc.ill')
+        path.join(import.meta.dirname, '../../calculus/ill/programs/multisig_nocall_solc.ill')
       );
 
       const index = discIndex(calc.forwardRules);
@@ -82,7 +81,7 @@ describe('fingerprint prediction (Opt_H)', { timeout: 30000 }, () => {
     before(async () => {
       Store.clear();
       const calc = await mde.load(
-        path.join(__dirname, '../../calculus/ill/programs/multisig_nocall_solc.ill')
+        path.join(import.meta.dirname, '../../calculus/ill/programs/multisig_nocall_solc.ill')
       );
       const state = mde.decomposeQuery(calc.queries.get('symex'));
       // Both trees use the same code path — prediction is automatic.
@@ -110,7 +109,7 @@ describe('fingerprint prediction (Opt_H)', { timeout: 30000 }, () => {
     before(async () => {
       Store.clear();
       const calc = await mde.load(
-        path.join(__dirname, '../../calculus/ill/programs/multisig_nocall_solc_symbolic.ill')
+        path.join(import.meta.dirname, '../../calculus/ill/programs/multisig_nocall_solc_symbolic.ill')
       );
       const state = mde.decomposeQuery(calc.queries.get('symex'));
       treeMemo = calc.explore(state, {

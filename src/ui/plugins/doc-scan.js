@@ -21,8 +21,8 @@
  * scheme used elsewhere in the UI.
  */
 
-const fs = require('fs');
-const path = require('path');
+import fs from 'fs';
+import path from 'path';
 
 const ROUTE_TO_DISK = { theory: 'theory', def: 'def', docs: 'documentation' };
 const RESOLVE_ROUTE = { theory: 'theory', def: 'def', docs: 'docs', documentation: 'docs' };
@@ -192,7 +192,17 @@ function getCachedManifest(docRoot) {
   return manifest;
 }
 
-module.exports = {
+export {
+  scanDocs,
+  resolveTarget,
+  buildBacklinkIndex,
+  getCachedIndex,
+  getDocManifest,
+  getCachedManifest,
+  extractFrontmatter,
+};
+
+export default {
   scanDocs,
   resolveTarget,
   buildBacklinkIndex,

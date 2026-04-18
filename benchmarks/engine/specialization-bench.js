@@ -15,14 +15,13 @@
 
 'use strict';
 
-const path = require('path');
-const { performance } = require('perf_hooks');
-const Store = require('../../lib/kernel/store');
-const mde = require('../../lib/engine');
-const { loadBytecode, bytecodeArrGetGuard } = require('../../lib/engine/ill/bytecode-loader');
-const { intToBin } = require('../../lib/engine/ill/ffi/convert');
-
-const EVM_PATH = path.join(__dirname, '../../calculus/ill/programs/evm.ill');
+import path from 'path';
+import { performance } from 'perf_hooks';
+import Store from '../../lib/kernel/store.js';
+import mde from '../../lib/engine/index.js';
+import { loadBytecode, bytecodeArrGetGuard } from '../../lib/engine/ill/bytecode-loader.js';
+import { intToBin } from '../../lib/engine/ill/ffi/convert.js';
+const EVM_PATH = path.join(import.meta.dirname, '../../calculus/ill/programs/evm.ill');
 
 // ── Benchmark bytecodes ─────────────────────────────────────────────────────
 

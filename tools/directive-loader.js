@@ -5,17 +5,16 @@
  * Used by both test-ill.js (judgments) and debug-ill.js (observations).
  */
 
-const path = require('path');
-const fs = require('fs');
-const mde = require('../lib/engine');
-const convert = require('../lib/engine/convert');
-const Store = require('../lib/kernel/store');
-const { toObject } = require('../lib/engine/fact-set');
-const { getAllLeaves, countLeaves, maxDepth, countNodes } = require('../lib/engine/tree-utils');
-const { showInteresting, classifyLeaf, show } = require('../lib/engine/show');
-const { predHead } = require('../lib/kernel/ast');
-
-const ROOT = path.join(__dirname, '..');
+import path from 'path';
+import fs from 'fs';
+import mde from '../lib/engine/index.js';
+import convert from '../lib/engine/convert.js';
+import Store from '../lib/kernel/store.js';
+import { toObject } from '../lib/engine/fact-set.js';
+import { getAllLeaves, countLeaves, maxDepth, countNodes } from '../lib/engine/tree-utils.js';
+import { showInteresting, classifyLeaf, show } from '../lib/engine/show.js';
+import { predHead } from '../lib/kernel/ast.js';
+const ROOT = path.join(import.meta.dirname, '..');
 const DEFAULT_PROGRAM = path.join(ROOT, 'calculus', 'ill', 'programs', 'evm.ill');
 let PROGRAM = DEFAULT_PROGRAM;
 function setProgram(p) { PROGRAM = p; }
@@ -236,7 +235,40 @@ function buildProveOpts(settings) {
   return opts;
 }
 
-module.exports = {
+const decomposeQuery = mde.decomposeQuery;
+
+export {
+  ROOT,
+  setProgram,
+  DEFAULT_PROGRAM,
+  MAX_STEPS,
+  MAX_DEPTH,
+  findIllFiles,
+  scanDirectives,
+  detectDuplicates,
+  loadProgram,
+  parseModality,
+  resolveQueryHash,
+  resolveExecOpts,
+  normalizeLeafState,
+  extractGoals,
+  buildProveOpts,
+  stateHasFreevars,
+  isSubset,
+  formatState,
+  groupByPredicate,
+  decomposeQuery,
+  show,
+  classifyLeaf,
+  showInteresting,
+  toObject,
+  getAllLeaves,
+  countLeaves,
+  maxDepth,
+  countNodes,
+};
+
+export default {
   ROOT,
   get PROGRAM() { return PROGRAM; },
   setProgram,
@@ -257,8 +289,7 @@ module.exports = {
   isSubset,
   formatState,
   groupByPredicate,
-  // Re-exports for convenience
-  decomposeQuery: mde.decomposeQuery,
+  decomposeQuery,
   show,
   classifyLeaf,
   showInteresting,

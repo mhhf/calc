@@ -2,28 +2,33 @@
  * Tests for compiled clause dispatch (Tier 1).
  * Validates zero-subgoal clause dispatch via mode-driven matching.
  */
-const { describe, it, before } = require('node:test');
-const assert = require('node:assert/strict');
-const path = require('path');
-const mde = require('../../lib/engine');
-const Store = require('../../lib/kernel/store');
-const { clauseDispatch, tryCCDispatch } = require('../../lib/engine/opt/compiled-clauses');
-const { buildTheoryLookup, defaultTheories } = require('../../lib/kernel/eq-theory');
-const { binlitTheory } = require('../../lib/engine/ill/binlit-theory');
-const { show } = require('../../lib/engine/show');
+import { describe, it, before } from 'node:test';
+import assert from 'node:assert/strict';
+import path from 'path';
+import mde from '../../lib/engine/index.js';
+import Store from '../../lib/kernel/store.js';
+import { clauseDispatch, tryCCDispatch } from '../../lib/engine/opt/compiled-clauses.js';
+import { buildTheoryLookup, defaultTheories } from '../../lib/kernel/eq-theory.js';
+import { binlitTheory } from '../../lib/engine/ill/binlit-theory.js';
+import { show } from '../../lib/engine/show.js';
+// Hoisted by tools/esm-hoist.js:
+import { parsedModes as ffiParsedModes } from '../../lib/engine/ill/ffi/index.js';
+import { intToBin } from '../../lib/engine/ill/ffi/convert.js';
+import { collectMetavars } from '../../lib/engine/pattern-utils.js';
+import { buildIndex } from '../../lib/engine/backchain.js';
 
-const PROGRAM = path.join(__dirname, '..', '..', 'calculus', 'ill', 'programs', 'evm.ill');
+const PROGRAM = path.join(import.meta.dirname, '..', '..', 'calculus', 'ill', 'programs', 'evm.ill');
 
 describe('Compiled Clause Dispatch', { timeout: 10000 }, () => {
   let calc, dispatch, theoryLookup, parsedModes;
 
   before(() => {
     calc = mde.load(PROGRAM, { cache: true });
-    const { parsedModes: ffiParsedModes } = require('../../lib/engine/ill/ffi');
+
     parsedModes = ffiParsedModes;
     theoryLookup = calc.theoryLookup || buildTheoryLookup([...defaultTheories, binlitTheory]);
     dispatch = calc.clauseDispatch || clauseDispatch(
-      require('../../lib/engine/backchain').buildIndex(calc.clauses, calc.definitions),
+      buildIndex(calc.clauses, calc.definitions),
       parsedModes
     );
   });
@@ -59,7 +64,7 @@ describe('Compiled Clause Dispatch', { timeout: 10000 }, () => {
 
   describe('tryCCDispatch — ground goals', () => {
     it('resolves inc(0, ?) base case', () => {
-      const { intToBin } = require('../../lib/engine/ill/ffi/convert');
+
       const zero = intToBin(0n);
       const mv = Store.put('metavar', ['test_out']);
       const goal = Store.put('inc', [zero, mv]);
@@ -78,7 +83,7 @@ describe('Compiled Clause Dispatch', { timeout: 10000 }, () => {
     });
 
     it('resolves inc(2, ?) = 3 via o(X) → i(X) clause', () => {
-      const { intToBin } = require('../../lib/engine/ill/ffi/convert');
+
       const two = intToBin(2n);
       const mv = Store.put('metavar', ['test_out2']);
       const goal = Store.put('inc', [two, mv]);
@@ -95,7 +100,7 @@ describe('Compiled Clause Dispatch', { timeout: 10000 }, () => {
     });
 
     it('resolves inc(1, ?) = 2 via carry (Tier 2 recursive)', () => {
-      const { intToBin } = require('../../lib/engine/ill/ffi/convert');
+
       const one = intToBin(1n);
       const mv = Store.put('metavar', ['test_out3']);
       const goal = Store.put('inc', [one, mv]);
@@ -111,7 +116,7 @@ describe('Compiled Clause Dispatch', { timeout: 10000 }, () => {
     });
 
     it('verifies ground output for fully ground goal', () => {
-      const { intToBin } = require('../../lib/engine/ill/ffi/convert');
+
       const zero = intToBin(0n);
       const one = intToBin(1n);
       // inc(0, 1) — fully ground, should succeed
@@ -127,7 +132,7 @@ describe('Compiled Clause Dispatch', { timeout: 10000 }, () => {
     });
 
     it('rejects wrong ground output', () => {
-      const { intToBin } = require('../../lib/engine/ill/ffi/convert');
+
       const zero = intToBin(0n);
       const five = intToBin(5n);
       // inc(0, 5) — should fail (0+1 ≠ 5)
@@ -166,7 +171,7 @@ describe('Compiled Clause Dispatch', { timeout: 10000 }, () => {
 
   describe('Tier 2 — recursive clauses', () => {
     it('resolves inc(3) = 4 via carry propagation', () => {
-      const { intToBin } = require('../../lib/engine/ill/ffi/convert');
+
       const three = intToBin(3n);
       const mv = Store.put('metavar', ['t2_inc3']);
       const goal = Store.put('inc', [three, mv]);
@@ -182,7 +187,7 @@ describe('Compiled Clause Dispatch', { timeout: 10000 }, () => {
     });
 
     it('resolves inc(255) = 256 (8-bit carry chain)', () => {
-      const { intToBin } = require('../../lib/engine/ill/ffi/convert');
+
       const mv = Store.put('metavar', ['t2_inc255']);
       const goal = Store.put('inc', [intToBin(255n), mv]);
       const theta = [undefined];
@@ -194,7 +199,7 @@ describe('Compiled Clause Dispatch', { timeout: 10000 }, () => {
     });
 
     it('resolves plus(2,4) = 6 (no carry, Tier 2 recursion)', () => {
-      const { intToBin } = require('../../lib/engine/ill/ffi/convert');
+
       const mv = Store.put('metavar', ['t2_plus']);
       const goal = Store.put('plus', [intToBin(2n), intToBin(4n), mv]);
       const theta = [undefined];
@@ -207,7 +212,7 @@ describe('Compiled Clause Dispatch', { timeout: 10000 }, () => {
     });
 
     it('falls through for plus(1,1) — carry needs Tier 3 (plus/s4)', () => {
-      const { intToBin } = require('../../lib/engine/ill/ffi/convert');
+
       const mv = Store.put('metavar', ['t2_carry']);
       const goal = Store.put('plus', [intToBin(1n), intToBin(1n), mv]);
       const theta = [undefined];
@@ -219,7 +224,7 @@ describe('Compiled Clause Dispatch', { timeout: 10000 }, () => {
     });
 
     it('resolves trie_get for nested trie', () => {
-      const { intToBin } = require('../../lib/engine/ill/ffi/convert');
+
       // Build: tn (tn tn_nil 0x10 tn_nil) 0x42 (tn tn_nil 0x20 tn_nil)
       const nil = Store.put('atom', ['tn_nil']);
       const inner_l = Store.put('tn', [nil, intToBin(0x10n), nil]);
@@ -257,7 +262,6 @@ describe('Compiled Clause Dispatch', { timeout: 10000 }, () => {
     // peel(pair(a, pair(b, e)), ?) should give cons(a, cons(b, nil))
     // Without savedTheta: cons(b, cons(b, nil)) — outer H clobbered by inner H.
     it('output referencing input metavar across recursion depth (B7)', () => {
-      const { collectMetavars } = require('../../lib/engine/pattern-utils');
 
       const H = Store.put('metavar', ['_H']);
       const T = Store.put('metavar', ['_T']);

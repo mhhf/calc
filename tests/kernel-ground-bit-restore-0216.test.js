@@ -11,11 +11,10 @@
  * automatically.
  */
 
-const { describe, it, before } = require('node:test');
-const assert = require('node:assert');
-const Store = require('../lib/kernel/store');
-const StoreBinary = require('../lib/engine/store-binary');
-
+import { describe, it, before } from 'node:test';
+import assert from 'node:assert';
+import Store from '../lib/kernel/store.js';
+import StoreBinary from '../lib/engine/store-binary.js';
 const HAS_GROUND = typeof Store.isGround === 'function';
 const skip = !HAS_GROUND;
 

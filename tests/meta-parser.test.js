@@ -4,21 +4,19 @@
  * Covers: @extends chain resolution, declaration extraction from Store hashes,
  * child-wins merge semantics.
  */
-const { describe, it, before } = require('node:test');
-const assert = require('node:assert/strict');
-const path = require('path');
-const Store = require('../lib/kernel/store');
+import { describe, it, before } from 'node:test';
+import assert from 'node:assert/strict';
+import path from 'path';
+import Store from '../lib/kernel/store.js';
+import { loadChain } from '../lib/meta-parser/loader.js';
 
 describe('meta-parser/loader', () => {
-  let loadChain;
-
   before(() => {
     Store.clear();
-    loadChain = require('../lib/meta-parser/loader').loadChain;
   });
 
   describe('loadChain — lnl.family', () => {
-    const familyPath = path.join(__dirname, '..', 'calculus', 'ill', 'lnl.family');
+    const familyPath = path.join(import.meta.dirname, '..', 'calculus', 'ill', 'lnl.family');
 
     it('loads family file and extracts base types', () => {
       const result = loadChain(familyPath);
@@ -48,7 +46,7 @@ describe('meta-parser/loader', () => {
   });
 
   describe('loadChain — ill.calc with @extends', () => {
-    const calcPath = path.join(__dirname, '..', 'calculus', 'ill', 'ill.calc');
+    const calcPath = path.join(import.meta.dirname, '..', 'calculus', 'ill', 'ill.calc');
 
     it('merges parent and child declarations (child-wins)', () => {
       const result = loadChain(calcPath);
@@ -58,7 +56,7 @@ describe('meta-parser/loader', () => {
       const constructorCount = Object.keys(result.constructors).length;
       // Should be more constructors than lnl.family alone
       const parentResult = loadChain(
-        path.join(__dirname, '..', 'calculus', 'ill', 'lnl.family')
+        path.join(import.meta.dirname, '..', 'calculus', 'ill', 'lnl.family')
       );
       assert.ok(constructorCount >= Object.keys(parentResult.constructors).length,
         'child should have at least as many constructors as parent');
@@ -68,7 +66,7 @@ describe('meta-parser/loader', () => {
       const result = loadChain(calcPath);
       assert.ok(Array.isArray(result.directives.metavars));
       const parentResult = loadChain(
-        path.join(__dirname, '..', 'calculus', 'ill', 'lnl.family')
+        path.join(import.meta.dirname, '..', 'calculus', 'ill', 'lnl.family')
       );
       // Merged metavars should be >= parent's
       assert.ok(result.directives.metavars.length >= parentResult.directives.metavars.length);

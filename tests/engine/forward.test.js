@@ -1,19 +1,21 @@
 /**
  * Tests for Forward Chaining Engine
  */
-const { describe, it } = require('node:test');
-const assert = require('node:assert');
-const path = require('path');
-const forward = require('../../lib/engine/forward');
-const mde = require('../../lib/engine');
-const Store = require('../../lib/kernel/store');
-const ffi = require('../../lib/engine/ill/ffi');
-const { tryMatch, buildMatchOpts, buildGenericProtocol, buildLnlProtocol, buildOptProtocol, buildFfiProtocol } = require('../../lib/engine/match');
-const { ILL_CONNECTIVES } = require('../../lib/engine/ill/connectives');
-const { resolveConn, flattenAnte } = require('../../lib/engine/formula-utils');
-const ILL_RC = resolveConn(ILL_CONNECTIVES);
-const { proveNaive } = require('../../lib/engine/lnl/persistent');
+import { describe, it } from 'node:test';
+import assert from 'node:assert';
+import path from 'path';
+import forward from '../../lib/engine/forward.js';
+import mde from '../../lib/engine/index.js';
+import Store from '../../lib/kernel/store.js';
+import ffi from '../../lib/engine/ill/ffi/index.js';
+import { tryMatch, buildMatchOpts, buildGenericProtocol, buildLnlProtocol, buildOptProtocol, buildFfiProtocol } from '../../lib/engine/match.js';
+import { ILL_CONNECTIVES } from '../../lib/engine/ill/connectives.js';
+import { resolveConn, flattenAnte } from '../../lib/engine/formula-utils.js';
+// Hoisted by tools/esm-hoist.js:
+import { buildMatchOpts as bmo, buildGenericProtocol as bgp, buildLnlProtocol as blp, buildOptProtocol as bop, buildFfiProtocol as bfp } from '../../lib/engine/match.js';
 
+const ILL_RC = resolveConn(ILL_CONNECTIVES);
+import { proveNaive } from '../../lib/engine/lnl/persistent.js';
 describe('Forward Chaining', { timeout: 10000 }, () => {
   describe('flattenAnte', () => {
     it('flattens simple tensor', async () => {
@@ -236,8 +238,8 @@ describe('Forward Chaining', { timeout: 10000 }, () => {
 
       // FFI can't convert sym to BigInt → conversion_failed (non-definitive).
       // tryMatch falls through to persistent state lookup, finds inc(sym, sym_plus_1).
-      const { proveNaive } = require('../../lib/engine/lnl/persistent');
-      const { buildMatchOpts: bmo, buildGenericProtocol: bgp, buildLnlProtocol: blp, buildOptProtocol: bop, buildFfiProtocol: bfp } = require('../../lib/engine/match');
+
+
       const matchOpts = bmo({
         ...bgp({ evidence: false, canonicalize: null }),
         ...blp({ rc: ILL_RC }),
@@ -255,7 +257,7 @@ describe('Forward Chaining', { timeout: 10000 }, () => {
   describe('EVM multi-step execution', { timeout: 30000 }, () => {
     it('executes 5+ steps from multisig query', async () => {
       const calc = await mde.load(
-        path.join(__dirname, '../../calculus/ill/programs/multisig.ill')
+        path.join(import.meta.dirname, '../../calculus/ill/programs/multisig.ill')
       );
 
       const state = mde.decomposeQuery(calc.queries.get('symex'));

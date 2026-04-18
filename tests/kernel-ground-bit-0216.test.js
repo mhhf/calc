@@ -15,10 +15,9 @@
  *   • post-collision rehash     → classification must match canonical form
  */
 
-const { describe, it, before } = require('node:test');
-const assert = require('node:assert');
-const Store = require('../lib/kernel/store');
-
+import { describe, it, before } from 'node:test';
+import assert from 'node:assert';
+import Store from '../lib/kernel/store.js';
 const HAS_GROUND = typeof Store.isGround === 'function';
 const skip = !HAS_GROUND;
 

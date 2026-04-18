@@ -2,22 +2,25 @@
  * Tests for compile-time SLD resolution (tabling) — resolve-all.js.
  * Phase A of TODO_0160: cross-stage specialization.
  */
-const { describe, it } = require('node:test');
-const assert = require('node:assert/strict');
-const path = require('path');
-const { resolve } = require('../../lib/engine/resolve-all');
-const { load, parseExpr } = require('../../lib/engine/convert');
-const { apply } = require('../../lib/kernel/substitute');
-const { unify } = require('../../lib/kernel/unify');
-const { binlitTheory } = require('../../lib/engine/ill/binlit-theory');
-const { show } = require('../../lib/engine/show');
-const illFfi = require('../../lib/engine/ill/ffi');
-const { ffiDirect } = require('../../lib/engine/opt/ffi');
-const { makeILLBackchainOpts } = require('../../lib/engine/ill/backchain-ill');
-const { binToInt, intToBin } = require('../../lib/engine/ill/ffi/convert');
-const Store = require('../../lib/kernel/store');
+import { describe, it } from 'node:test';
+import assert from 'node:assert/strict';
+import path from 'path';
+import { resolve } from '../../lib/engine/resolve-all.js';
+import { load, parseExpr } from '../../lib/engine/convert.js';
+import { apply } from '../../lib/kernel/substitute.js';
+import { unify } from '../../lib/kernel/unify.js';
+import { binlitTheory } from '../../lib/engine/ill/binlit-theory.js';
+import { show } from '../../lib/engine/show.js';
+import illFfi from '../../lib/engine/ill/ffi/index.js';
+import { ffiDirect } from '../../lib/engine/opt/ffi.js';
+import { makeILLBackchainOpts } from '../../lib/engine/ill/backchain-ill.js';
+import { binToInt, intToBin } from '../../lib/engine/ill/ffi/convert.js';
+import Store from '../../lib/kernel/store.js';
+// Hoisted by tools/esm-hoist.js:
+import { apply as subApply } from '../../lib/kernel/substitute.js';
+import { isGround } from '../../lib/engine/pattern-utils.js';
 
-const EVM_PATH = path.join(__dirname, '../../calculus/ill/programs/evm.ill');
+const EVM_PATH = path.join(import.meta.dirname, '../../calculus/ill/programs/evm.ill');
 let clauses, definitions;
 
 // ILL-specific resolve opts (canonicalize + between handler + FFI + backchain)
@@ -48,8 +51,8 @@ const illResolveOpts = {
           const valHash = intToBin(n);
           const theta2 = unify(x, valHash);
           if (theta2) {
-            const { apply: subApply } = require('../../lib/kernel/substitute');
-            const { isGround } = require('../../lib/engine/pattern-utils');
+
+
             const newMap = new Map();
             for (const [mv, val] of thetaMap) {
               newMap.set(mv, isGround(val) ? val : subApply(val, theta2));

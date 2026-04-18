@@ -17,15 +17,14 @@
  *      lib/ must not import from src/ui/
  */
 
-const { describe, it } = require('node:test');
-const assert = require('node:assert');
-const fs = require('fs');
-const path = require('path');
-
-const ENGINE_DIR = path.join(__dirname, '../../lib/engine');
-const PROVER_DIR = path.join(__dirname, '../../lib/prover');
-const LIB_DIR = path.join(__dirname, '../../lib');
-const UI_DIR = path.resolve(__dirname, '../../src/ui');
+import { describe, it } from 'node:test';
+import assert from 'node:assert';
+import fs from 'fs';
+import path from 'path';
+const ENGINE_DIR = path.join(import.meta.dirname, '../../lib/engine');
+const PROVER_DIR = path.join(import.meta.dirname, '../../lib/prover');
+const LIB_DIR = path.join(import.meta.dirname, '../../lib');
+const UI_DIR = path.resolve(import.meta.dirname, '../../src/ui');
 
 // ─── Shared helpers ─────────────────────────────────────────────────
 
@@ -45,19 +44,27 @@ function collectJSFiles(dir) {
 }
 
 /**
- * Extract local require() paths from a JS file.
- * Only captures relative requires (starting with './' or '../').
+ * Extract local import/require paths from a JS file.
+ * Captures relative imports (starting with './' or '../') from ESM
+ * `import ... from '...'`, bare `import '...'`, dynamic `import('...')`,
+ * and legacy `require('...')` calls.
  * Ignores comments and string literals (good enough for this codebase).
  */
 function extractRequires(filePath) {
   const src = fs.readFileSync(filePath, 'utf8');
   const requires = [];
-  const re = /require\(\s*['"]([^'"]+)['"]\s*\)/g;
-  let m;
-  while ((m = re.exec(src)) !== null) {
-    const target = m[1];
-    if (target.startsWith('./') || target.startsWith('../')) {
-      requires.push(target);
+  const patterns = [
+    /require\(\s*['"]([^'"]+)['"]\s*\)/g,
+    /import\s+(?:[^'"`;]+?\s+from\s+)?['"]([^'"]+)['"]/g,
+    /import\(\s*['"]([^'"]+)['"]\s*\)/g,
+  ];
+  for (const re of patterns) {
+    let m;
+    while ((m = re.exec(src)) !== null) {
+      const target = m[1];
+      if (target.startsWith('./') || target.startsWith('../')) {
+        requires.push(target);
+      }
     }
   }
   return requires;
@@ -230,7 +237,7 @@ describe('prover layer DAG enforcement', () => {
 // Field shapes come from match.js factory exports (single source of truth).
 // Per-layer consumption extras are explicitly documented below.
 
-const _match = require('../../lib/engine/match');
+import _match from '../../lib/engine/match.js';
 const { GENERIC_FIELDS, LNL_FIELDS, OPT_FIELDS, FFI_FIELDS } = _match;
 
 // Generic layer access: generic fields (includes provePersistent — the interface

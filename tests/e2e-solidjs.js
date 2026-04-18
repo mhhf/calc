@@ -11,14 +11,13 @@
  * 5. Reports any console errors
  */
 
-const { chromium } = require('playwright');
-const http = require('http');
-const fs = require('fs');
-const path = require('path');
-const { execSync, execFileSync } = require('child_process');
-
+import { chromium } from 'playwright';
+import http from 'http';
+import fs from 'fs';
+import path from 'path';
+import { execSync, execFileSync } from 'child_process';
 const PORT = 8082;
-const BUILD_DIR = path.join(__dirname, '../out/ui');
+const BUILD_DIR = path.join(import.meta.dirname, '../out/ui');
 
 // Find system Chromium executable (needed for NixOS and other systems where
 // Playwright's bundled Chromium doesn't work)
@@ -92,7 +91,7 @@ function ensureBuild() {
     console.log('Building SolidJS UI...');
     try {
       execSync('npm run build:ui', {
-        cwd: path.join(__dirname, '..'),
+        cwd: path.join(import.meta.dirname, '..'),
         stdio: 'inherit'
       });
     } catch (err) {

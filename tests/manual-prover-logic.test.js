@@ -4,14 +4,13 @@
  * Tests rule suggestions and proof flows in both focused and unfocused modes.
  * Uses the core API directly (no UI dependency).
  */
-const { describe, it, before } = require('node:test');
-const assert = require('node:assert');
-const calculus = require('../lib/calculus');
-const { createManualProofAPI } = require('../lib/prover/strategy/manual');
-const Seq = require('../lib/kernel/sequent');
-const Store = require('../lib/kernel/store');
-const { GRADE_W } = require('../lib/engine/grades');
-
+import { describe, it, before } from 'node:test';
+import assert from 'node:assert';
+import calculus from '../lib/calculus/index.js';
+import { createManualProofAPI } from '../lib/prover/strategy/manual.js';
+import Seq from '../lib/kernel/sequent.js';
+import Store from '../lib/kernel/store.js';
+import { GRADE_W } from '../lib/engine/grades.js';
 describe('ManualProofAPI - Rule Suggestions', () => {
   let calc, AST, api;
 

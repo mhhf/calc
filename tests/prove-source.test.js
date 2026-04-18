@@ -3,15 +3,13 @@
  * with on-disk cache.
  */
 
-const { describe, it, before, after } = require('node:test');
-const assert = require('node:assert');
-const fs = require('fs');
-const os = require('os');
-const path = require('path');
-
-const { proveSource, hashKey } = require('../lib/prover/prove-source');
-const { FORMAT_VERSION } = require('../lib/prover/serialize-tree');
-
+import { describe, it, before, after } from 'node:test';
+import assert from 'node:assert';
+import fs from 'fs';
+import os from 'os';
+import path from 'path';
+import { proveSource, hashKey } from '../lib/prover/prove-source.js';
+import { FORMAT_VERSION } from '../lib/prover/serialize-tree.js';
 describe('prove-source', () => {
   let cacheDir;
 

@@ -1,13 +1,12 @@
 /**
  * Test ManualProofAPI - single source of truth for interactive proofs
  */
-const { describe, it, before } = require('node:test');
-const assert = require('node:assert');
-const calculus = require('../lib/calculus');
-const { createManualProofAPI } = require('../lib/prover/strategy/manual');
-const Seq = require('../lib/kernel/sequent');
-const Store = require('../lib/kernel/store');
-
+import { describe, it, before } from 'node:test';
+import assert from 'node:assert';
+import calculus from '../lib/calculus/index.js';
+import { createManualProofAPI } from '../lib/prover/strategy/manual.js';
+import Seq from '../lib/kernel/sequent.js';
+import Store from '../lib/kernel/store.js';
 describe('ManualProofAPI', () => {
   let calc;
   let api;

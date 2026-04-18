@@ -7,10 +7,9 @@
 
 'use strict';
 
-const { describe, it } = require('node:test');
-const assert = require('node:assert/strict');
-const { T, NT, grammar, tokenize, earleyParse, createParser } = require('../lib/parser/earley');
-
+import { describe, it } from 'node:test';
+import assert from 'node:assert/strict';
+import { T, NT, grammar, tokenize, earleyParse, createParser } from '../lib/parser/earley.js';
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
 // Nonterminal IDs (arbitrary integers)

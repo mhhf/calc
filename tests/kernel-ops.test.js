@@ -2,14 +2,12 @@
  * Tests for v2 Kernel (substitute, unify)
  */
 
-const { describe, it, before } = require('node:test');
-const assert = require('node:assert');
-
-const calculus = require('../lib/calculus');
-const Store = require('../lib/kernel/store');
-const { sub, apply, eq, copy, occurs } = require('../lib/kernel/substitute');
-const { unify, match, isMetavar } = require('../lib/kernel/unify');
-
+import { describe, it, before } from 'node:test';
+import assert from 'node:assert';
+import calculus from '../lib/calculus/index.js';
+import Store from '../lib/kernel/store.js';
+import { sub, apply, eq, copy, occurs } from '../lib/kernel/substitute.js';
+import { unify, match, isMetavar } from '../lib/kernel/unify.js';
 describe('v2 Kernel', () => {
   let AST;
 

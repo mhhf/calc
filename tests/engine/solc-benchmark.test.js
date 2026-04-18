@@ -3,21 +3,20 @@
  * MultisigNoCall.sol compiled with solc 0.8.28.
  */
 
-const { describe, it, before } = require('node:test');
-const assert = require('node:assert');
-const path = require('path');
-const mde = require('../../lib/engine');
-const { getAllLeaves, countNodes } = require('../../lib/engine/tree-utils');
-const { classifyLeaf } = require('../../lib/engine/show');
-const Store = require('../../lib/kernel/store');
-
+import { describe, it, before } from 'node:test';
+import assert from 'node:assert';
+import path from 'path';
+import mde from '../../lib/engine/index.js';
+import { getAllLeaves, countNodes } from '../../lib/engine/tree-utils.js';
+import { classifyLeaf } from '../../lib/engine/show.js';
+import Store from '../../lib/kernel/store.js';
 describe('Solc multisig explore', { timeout: 30000, concurrency: 1 }, () => {
   let tree, allLeaves, classes;
 
   before(async () => {
     Store.clear();
     const calc = await mde.load(
-      path.join(__dirname, '../../calculus/ill/programs/multisig_nocall_solc.ill')
+      path.join(import.meta.dirname, '../../calculus/ill/programs/multisig_nocall_solc.ill')
     );
     const state = mde.decomposeQuery(calc.queries.get('symex'));
 
@@ -71,7 +70,7 @@ describe('Solc multisig explore', { timeout: 30000, concurrency: 1 }, () => {
   it('completes under 1s', async () => {
     Store.clear();
     const calc = await mde.load(
-      path.join(__dirname, '../../calculus/ill/programs/multisig_nocall_solc.ill')
+      path.join(import.meta.dirname, '../../calculus/ill/programs/multisig_nocall_solc.ill')
     );
     const state = mde.decomposeQuery(calc.queries.get('symex'));
 
@@ -92,7 +91,7 @@ describe('Solc multisig symbolic (structural memo)', { timeout: 30000, concurren
   before(async () => {
     Store.clear();
     const calc = await mde.load(
-      path.join(__dirname, '../../calculus/ill/programs/multisig_nocall_solc_symbolic.ill')
+      path.join(import.meta.dirname, '../../calculus/ill/programs/multisig_nocall_solc_symbolic.ill')
     );
     const state = mde.decomposeQuery(calc.queries.get('symex'));
 
@@ -114,7 +113,6 @@ describe('Solc multisig symbolic (structural memo)', { timeout: 30000, concurren
     const leaves = getAllLeaves(treeFull);
     const classes = {};
     for (const l of leaves) {
-      const { classifyLeaf } = require('../../lib/engine/show');
       const cl = classifyLeaf(l.state);
       classes[cl] = (classes[cl] || 0) + 1;
     }
@@ -133,7 +131,7 @@ describe('Solc multisig symbolic (structural memo)', { timeout: 30000, concurren
   it('completes under 1s with structural memo', async () => {
     Store.clear();
     const calc = await mde.load(
-      path.join(__dirname, '../../calculus/ill/programs/multisig_nocall_solc_symbolic.ill')
+      path.join(import.meta.dirname, '../../calculus/ill/programs/multisig_nocall_solc_symbolic.ill')
     );
     const state = mde.decomposeQuery(calc.queries.get('symex'));
 

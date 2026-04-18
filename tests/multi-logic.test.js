@@ -2,13 +2,14 @@
  * Multi-logic tests: connective roles, graceful degradation, coexistence.
  */
 
-const { describe, it, before } = require('node:test');
-const assert = require('node:assert');
-const path = require('path');
-
-const calculus = require('../lib/calculus');
-const Store = require('../lib/kernel/store');
-const { ILL_CONNECTIVES } = require('../lib/engine/ill/connectives');
+import { describe, it, before } from 'node:test';
+import assert from 'node:assert';
+import path from 'path';
+import calculus from '../lib/calculus/index.js';
+import Store from '../lib/kernel/store.js';
+import { ILL_CONNECTIVES } from '../lib/engine/ill/connectives.js';
+// Hoisted by tools/esm-hoist.js:
+import { rightFocus } from '../lib/prover/bridge.js';
 
 describe('deriveRoles', () => {
   let ill;
@@ -50,7 +51,7 @@ describe('minimal-prop calculus (graceful degradation)', () => {
   before(() => {
     calculus.clearCache();
     prop = calculus.load(
-      path.join(__dirname, 'fixtures/minimal-prop.calc')
+      path.join(import.meta.dirname, 'fixtures/minimal-prop.calc')
     );
   });
 
@@ -82,7 +83,7 @@ describe('two calculi coexist', () => {
     // Load both — they share the same Store
     ill = calculus.loadILL();
     prop = calculus.load(
-      path.join(__dirname, 'fixtures/minimal-prop.calc')
+      path.join(import.meta.dirname, 'fixtures/minimal-prop.calc')
     );
   });
 
@@ -108,7 +109,6 @@ describe('two calculi coexist', () => {
 });
 
 describe('rightFocus with roles', () => {
-  const { rightFocus } = require('../lib/prover/bridge');
 
   it('should decompose product with ILL roles', () => {
     const ill = calculus.loadILL();

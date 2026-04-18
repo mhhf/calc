@@ -22,10 +22,9 @@
 
 'use strict';
 
-const { spawnSync } = require('child_process');
-const path = require('path');
-const fs = require('fs');
-
+import { spawnSync } from 'child_process';
+import path from 'path';
+import fs from 'fs';
 // ── CLI args ────────────────────────────────────────────────────────────
 
 function parseArgs() {
@@ -244,7 +243,7 @@ function printTable(results) {
 
 function main() {
   const args = parseArgs();
-  const rootDir = path.join(__dirname, '..');
+  const rootDir = path.join(import.meta.dirname, '..');
   let files = discoverTestFiles(rootDir);
 
   // Filters
@@ -311,7 +310,7 @@ function main() {
   }
 
   if (args.save) {
-    const outPath = path.join(__dirname, 'test-timing-report.json');
+    const outPath = path.join(import.meta.dirname, 'test-timing-report.json');
     fs.writeFileSync(outPath, JSON.stringify(report, null, 2) + '\n');
     console.log(`Report saved to ${outPath}`);
   }

@@ -11,14 +11,13 @@
  * Usage: calc bundle [output-path]
  */
 
-const fs = require('fs');
-const path = require('path');
-const calculus = require('../lib/calculus');
-const { parserTables: computeParserTables, rendererFormats: computeRendererFormats, connByType: computeConnectivesByType } = require('../lib/calculus/builders');
-const { specMeta: computeRuleSpecMeta } = require('../lib/prover/rule-interpreter');
-
+import fs from 'fs';
+import path from 'path';
+import calculus from '../lib/calculus/index.js';
+import { parserTables as computeParserTables, rendererFormats as computeRendererFormats, connByType as computeConnectivesByType } from '../lib/calculus/builders.js';
+import { specMeta as computeRuleSpecMeta } from '../lib/prover/rule-interpreter.js';
 async function main() {
-  const outputPath = process.argv[2] || path.join(__dirname, '../out/ill.json');
+  const outputPath = process.argv[2] || path.join(import.meta.dirname, '../out/ill.json');
 
   console.log('Loading ILL calculus...');
   const ill = await calculus.loadILL();

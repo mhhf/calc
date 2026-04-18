@@ -6,21 +6,13 @@
  * in zk/sequent-certifier/tests/p6_uint256.rs.
  */
 
-const { describe, it, before } = require('node:test');
-const assert = require('node:assert');
-const path = require('path');
-const fs = require('fs');
-
-const Store = require('../lib/kernel/store');
-const {
-  extractUint256PredMeta,
-  bigintToLimbs,
-  computeAdditionCarries,
-  computeIncrementCarries,
-  computeMultiplicationCarries,
-} = require('../lib/zk/witness');
-
-const FIXTURE_DIR = path.join(__dirname, '..', 'zk', 'sequent-certifier', 'tests', 'fixtures');
+import { describe, it, before } from 'node:test';
+import assert from 'node:assert';
+import path from 'path';
+import fs from 'fs';
+import Store from '../lib/kernel/store.js';
+import { extractUint256PredMeta, bigintToLimbs, computeAdditionCarries, computeIncrementCarries, computeMultiplicationCarries } from '../lib/zk/witness.js';
+const FIXTURE_DIR = path.join(import.meta.dirname, '..', 'zk', 'sequent-certifier', 'tests', 'fixtures');
 
 function ensureFixtureDir() {
   if (!fs.existsSync(FIXTURE_DIR)) {

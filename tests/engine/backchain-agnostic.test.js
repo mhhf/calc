@@ -7,11 +7,13 @@
  * metavar binding, multi-premise clauses, and proof term output.
  */
 
-const { describe, it } = require('node:test');
-const assert = require('node:assert/strict');
-const Store = require('../../lib/kernel/store');
-const { prove } = require('../../lib/engine/backchain');
-const { binlitTheory } = require('../../lib/engine/ill/binlit-theory');
+import { describe, it } from 'node:test';
+import assert from 'node:assert/strict';
+import Store from '../../lib/kernel/store.js';
+import { prove } from '../../lib/engine/backchain.js';
+import { binlitTheory } from '../../lib/engine/ill/binlit-theory.js';
+// Hoisted by tools/esm-hoist.js:
+import { defaultTheories } from '../../lib/kernel/eq-theory.js';
 
 // ── Helpers ──────────────────────────────────────────────────────────
 
@@ -275,7 +277,7 @@ describe('Backward Prover — Calculus Agnostic', () => {
       ];
       // plus(0, 5, ?Z) should match via equational normalization (0 = e)
       // Needs binlit theory for binlit ↔ o/i/e equational matching
-      const { defaultTheories } = require('../../lib/kernel/eq-theory');
+
       const r = proveGoal(
         pred('plus', Store.put1('binlit', 0n), Store.put1('binlit', 5n), metavar('Z')),
         SPEC,

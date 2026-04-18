@@ -5,23 +5,14 @@
  * the serializer can be exercised without driving the full prover.
  */
 
-const { describe, it, before } = require('node:test');
-const assert = require('node:assert');
-
-const Store = require('../lib/kernel/store');
-const Seq = require('../lib/kernel/sequent');
-const { ProofTree, fromGoal, leaf } = require('../lib/prover/pt');
-const {
-  FORMAT_VERSION,
-  serializeTree,
-  serializeFormula,
-  serializeSequent,
-  computeNodeId,
-  _newContext,
-} = require('../lib/prover/serialize-tree');
-const calculus = require('../lib/calculus');
-const { GRADE_W } = require('../lib/engine/grades');
-
+import { describe, it, before } from 'node:test';
+import assert from 'node:assert';
+import Store from '../lib/kernel/store.js';
+import Seq from '../lib/kernel/sequent.js';
+import { ProofTree, fromGoal, leaf } from '../lib/prover/pt.js';
+import { FORMAT_VERSION, serializeTree, serializeFormula, serializeSequent, computeNodeId, _newContext } from '../lib/prover/serialize-tree.js';
+import calculus from '../lib/calculus/index.js';
+import { GRADE_W } from '../lib/engine/grades.js';
 describe('serialize-tree / proof-tree/v1', () => {
   let AST;
 

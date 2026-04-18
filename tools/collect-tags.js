@@ -8,11 +8,10 @@
  * Usage: node tools/collect-tags.js
  */
 
-const fs = require('fs');
-const path = require('path');
-const matter = require('gray-matter');
-
-const ROOT = path.resolve(__dirname, '..');
+import fs from 'fs';
+import path from 'path';
+import matter from 'gray-matter';
+const ROOT = path.resolve(import.meta.dirname, '..');
 const DOC_DIR = path.join(ROOT, 'doc');
 const OUTPUT = path.join(DOC_DIR, 'tags.yaml');
 

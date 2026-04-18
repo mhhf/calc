@@ -2,20 +2,14 @@
  * Tests for discrimination tree rule indexing
  */
 
-const { describe, it, beforeEach } = require('node:test');
-const assert = require('node:assert');
-const path = require('path');
-const Store = require('../../lib/kernel/store');
-const {
-  createNode, insert, flattenPattern, flattenFact,
-  subtreeSize, queryFlat, collectAll, makeDiscTreeLayer
-} = require('../../lib/engine/disc-tree');
-const {
-  countNodes, countLeaves, maxDepth, getAllLeaves
-} = require('../../lib/engine/tree-utils');
-const { fromObject } = require('../../lib/engine/fact-set');
-const mde = require('../../lib/engine');
-
+import { describe, it, beforeEach } from 'node:test';
+import assert from 'node:assert';
+import path from 'path';
+import Store from '../../lib/kernel/store.js';
+import { createNode, insert, flattenPattern, flattenFact, subtreeSize, queryFlat, collectAll, makeDiscTreeLayer } from '../../lib/engine/disc-tree.js';
+import { countNodes, countLeaves, maxDepth, getAllLeaves } from '../../lib/engine/tree-utils.js';
+import { fromObject } from '../../lib/engine/fact-set.js';
+import mde from '../../lib/engine/index.js';
 describe('disc-tree', () => {
   beforeEach(() => Store.clear());
 
@@ -302,7 +296,7 @@ describe('disc-tree', () => {
     it('explores EVM multisig tree from declarative query', async () => {
       Store.clear();
       const calc = await mde.load(
-        path.join(__dirname, '../../calculus/ill/programs/multisig.ill')
+        path.join(import.meta.dirname, '../../calculus/ill/programs/multisig.ill')
       );
 
       const state = mde.decomposeQuery(calc.queries.get('symex'));

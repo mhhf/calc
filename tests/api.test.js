@@ -2,11 +2,9 @@
  * Tests for v2 API
  */
 
-const { describe, it, before } = require('node:test');
-const assert = require('node:assert');
-
-const calc = require('../lib');
-
+import { describe, it, before } from 'node:test';
+import assert from 'node:assert';
+import calc from '../lib/index.js';
 describe('v2 API', () => {
   let ill;
 

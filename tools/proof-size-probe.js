@@ -7,12 +7,11 @@
  */
 'use strict';
 
-const fs = require('fs');
-const path = require('path');
-const zlib = require('zlib');
-const { proveSource } = require('../lib/prover/prove-source');
-
-const FIXTURE_DIR = path.resolve(__dirname, '../tests/fixtures/proof-trees');
+import fs from 'fs';
+import path from 'path';
+import zlib from 'zlib';
+import { proveSource } from '../lib/prover/prove-source.js';
+const FIXTURE_DIR = path.resolve(import.meta.dirname, '../tests/fixtures/proof-trees');
 const FIXTURE_LABELS = new Set(['tensor32', 'tensor64', 'tensor128', 'chain32']);
 
 function countNodes(node) {

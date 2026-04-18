@@ -5,16 +5,14 @@
  * Fixtures must be fetched first: bash tools/fetch-vmtests.sh
  */
 
-const { describe, it, before } = require('node:test');
-const assert = require('node:assert/strict');
-const path = require('path');
-const fs = require('fs');
-
-const mde = require('../../../lib/engine');
-const { fixtureToState, hexToBigInt } = require('./translate');
-const { extractResult, parseExpectedStorage } = require('./extract');
-
-const FIXTURES_DIR = path.join(__dirname, '../../fixtures/VMTests');
+import { describe, it, before } from 'node:test';
+import assert from 'node:assert/strict';
+import path from 'path';
+import fs from 'fs';
+import mde from '../../../lib/engine/index.js';
+import { fixtureToState, hexToBigInt } from './translate.js';
+import { extractResult, parseExpectedStorage } from './extract.js';
+const FIXTURES_DIR = path.join(import.meta.dirname, '../../fixtures/VMTests');
 
 // Skip all tests if fixtures not fetched
 const fixturesExist = fs.existsSync(FIXTURES_DIR);
@@ -95,7 +93,7 @@ describe('VMTest Conformance', { skip: !fixturesExist && 'Fixtures not fetched (
   let calc;
 
   before(() => {
-    calc = mde.load(path.join(__dirname, '../../../calculus/ill/programs/evm.ill'));
+    calc = mde.load(path.join(import.meta.dirname, '../../../calculus/ill/programs/evm.ill'));
   });
 
   /**
@@ -108,7 +106,9 @@ describe('VMTest Conformance', { skip: !fixturesExist && 'Fixtures not fetched (
     const isKnown = KNOWN_FAILURES.has(knownKey);
     const maxSteps = STEP_OVERRIDES[knownKey] || 10000;
 
-    it(testName, { todo: isKnown && 'known failure' }, () => {
+    // Bun's node:test shim doesn't honor `{ todo }` option; use it.todo for cross-runner parity.
+    const itFn = isKnown ? it.todo : it;
+    itFn(testName, () => {
       const tests = loadFixture(category, file);
       for (const { name, fixture } of tests) {
         if (!fixture.post) {

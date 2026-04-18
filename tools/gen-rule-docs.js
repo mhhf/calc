@@ -1,3 +1,6 @@
+// Hoisted by tools/esm-hoist.js:
+import calc from '../lib/index.js';
+
 #!/usr/bin/env node
 /**
  * gen-rule-docs — generate one `doc/def/<NNNN>_rule-<name>.md` per ILL
@@ -30,12 +33,11 @@
 
 'use strict';
 
-const fs = require('fs');
-const path = require('path');
-
-const DEF_DIR = path.resolve(__dirname, '../doc/def');
+import fs from 'fs';
+import path from 'path';
+const DEF_DIR = path.resolve(import.meta.dirname, '../doc/def');
 const META_PATH = path.join(DEF_DIR, 'meta.yaml');
-const RULES_SRC = path.resolve(__dirname, '../calculus/ill/ill.rules');
+const RULES_SRC = path.resolve(import.meta.dirname, '../calculus/ill/ill.rules');
 
 const DRY_RUN = process.argv.includes('--dry-run');
 
@@ -323,7 +325,7 @@ async function loadCalculusMeta() {
   // which are derived from the same source (ill.rules) but may include
   // post-processing. We prefer the calculus loader's view where it disagrees
   // with the raw file, since that's what the prover actually uses.
-  const calc = require('../lib');
+
   const ill = await calc.loadILL();
   return ill.rules || {};
 }

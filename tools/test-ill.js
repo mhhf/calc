@@ -10,19 +10,12 @@
  * See doc/documentation/ill-test-framework.md and TODO_0143.
  */
 
-const { describe, it } = require('node:test');
-const assert = require('node:assert/strict');
-const path = require('path');
-const {
-  ROOT, PROGRAM, MAX_STEPS, MAX_DEPTH,
-  findIllFiles, scanDirectives, detectDuplicates, loadProgram,
-  parseModality, decomposeQuery, extractGoals, buildProveOpts,
-  resolveExecOpts, normalizeLeafState,
-  stateHasFreevars, isSubset, formatState,
-  show, getAllLeaves,
-} = require('./directive-loader');
-
-const TEST_DIR = path.join(__dirname, '..', 'calculus', 'ill', 'tests');
+import { describe, it } from 'node:test';
+import assert from 'node:assert/strict';
+import path from 'path';
+import dl from './directive-loader.js';
+const { ROOT, PROGRAM, MAX_STEPS, MAX_DEPTH, findIllFiles, scanDirectives, detectDuplicates, loadProgram, parseModality, decomposeQuery, extractGoals, buildProveOpts, resolveExecOpts, normalizeLeafState, stateHasFreevars, isSubset, formatState, show, getAllLeaves } = dl;
+const TEST_DIR = path.join(import.meta.dirname, '..', 'calculus', 'ill', 'tests');
 
 // ─── Backward Dispatch (|-) ─────────────────────────────────────────────────
 

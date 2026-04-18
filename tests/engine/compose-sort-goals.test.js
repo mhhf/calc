@@ -3,11 +3,10 @@
  *
  * Covers: mode-aware ordering, cycle handling, multiModal scenarios.
  */
-const { describe, it, beforeEach } = require('node:test');
-const assert = require('node:assert/strict');
-const Store = require('../../lib/kernel/store');
-const { sortGoals } = require('../../lib/engine/compose');
-
+import { describe, it, beforeEach } from 'node:test';
+import assert from 'node:assert/strict';
+import Store from '../../lib/kernel/store.js';
+import { sortGoals } from '../../lib/engine/compose.js';
 describe('sortGoals', () => {
   beforeEach(() => Store.clear());
 

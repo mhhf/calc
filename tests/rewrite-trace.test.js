@@ -6,19 +6,17 @@
  * generateFlatWitness (flat certificate → ZK witness).
  */
 
-const { describe, it, before } = require('node:test');
-const assert = require('node:assert');
-const path = require('path');
-const fs = require('fs');
-
-const mde = require('../lib/engine');
-const Store = require('../lib/kernel/store');
-const Seq = require('../lib/kernel/sequent');
-const calculus = require('../lib/calculus');
-const { rwTrace, checkRW } = require('../lib/prover/rewrite-trace');
-const { generateFlatWitness, MAX_CONSUMED, MAX_PRODUCED } = require('../lib/zk/flat-witness');
-
-const FIXTURE_DIR = path.join(__dirname, '..', 'zk', 'sequent-certifier', 'tests', 'fixtures');
+import { describe, it, before } from 'node:test';
+import assert from 'node:assert';
+import path from 'path';
+import fs from 'fs';
+import mde from '../lib/engine/index.js';
+import Store from '../lib/kernel/store.js';
+import Seq from '../lib/kernel/sequent.js';
+import calculus from '../lib/calculus/index.js';
+import { rwTrace, checkRW } from '../lib/prover/rewrite-trace.js';
+import { generateFlatWitness, MAX_CONSUMED, MAX_PRODUCED } from '../lib/zk/flat-witness.js';
+const FIXTURE_DIR = path.join(import.meta.dirname, '..', 'zk', 'sequent-certifier', 'tests', 'fixtures');
 
 function saveFixture(name, data) {
   if (!fs.existsSync(FIXTURE_DIR)) fs.mkdirSync(FIXTURE_DIR, { recursive: true });
@@ -134,7 +132,7 @@ describe('rewrite-trace: solc forward integration', { timeout: 60000 }, () => {
   before(async () => {
     Store.clear();
     engineCalc = await mde.load(
-      path.join(__dirname, '../calculus/ill/programs/multisig_nocall_solc.ill')
+      path.join(import.meta.dirname, '../calculus/ill/programs/multisig_nocall_solc.ill')
     );
     illCalc = await calculus.loadILL();
     state = mde.decomposeQuery(engineCalc.queries.get('symex'));

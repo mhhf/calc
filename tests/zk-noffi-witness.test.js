@@ -6,21 +6,19 @@
  * Phase 6-3: soundness validation — zero-FFI assertion, pure linear baseline.
  */
 
-const { describe, it, before } = require('node:test');
-const assert = require('node:assert');
-const path = require('path');
-const fs = require('fs');
-
-const mde = require('../lib/engine');
-const Store = require('../lib/kernel/store');
-const Seq = require('../lib/kernel/sequent');
-const calculus = require('../lib/calculus');
-const { guidedTerm } = require('../lib/prover/guided-term');
-const { rightFocusTerm } = require('../lib/prover/bridge');
-const { createChecker } = require('../lib/prover/check-term');
-const { generateWitness } = require('../lib/zk/witness');
-
-const FIXTURE_DIR = path.join(__dirname, '..', 'zk', 'sequent-certifier', 'tests', 'fixtures');
+import { describe, it, before } from 'node:test';
+import assert from 'node:assert';
+import path from 'path';
+import fs from 'fs';
+import mde from '../lib/engine/index.js';
+import Store from '../lib/kernel/store.js';
+import Seq from '../lib/kernel/sequent.js';
+import calculus from '../lib/calculus/index.js';
+import { guidedTerm } from '../lib/prover/guided-term.js';
+import { rightFocusTerm } from '../lib/prover/bridge.js';
+import { createChecker } from '../lib/prover/check-term.js';
+import { generateWitness } from '../lib/zk/witness.js';
+const FIXTURE_DIR = path.join(import.meta.dirname, '..', 'zk', 'sequent-certifier', 'tests', 'fixtures');
 
 function ensureFixtureDir() {
   if (!fs.existsSync(FIXTURE_DIR)) {
@@ -78,7 +76,7 @@ describe('ZK noFFI witness: noffi_tiny (2-step clause resolution)', { timeout: 3
   before(async () => {
     Store.clear();
     calc = await mde.load(
-      path.join(__dirname, '../calculus/ill/programs/noffi_tiny.ill')
+      path.join(import.meta.dirname, '../calculus/ill/programs/noffi_tiny.ill')
     );
     illCalc = await calculus.loadILL();
     state = mde.decomposeQuery(calc.queries.get('symex'));
@@ -226,7 +224,7 @@ describe('ZK noFFI witness: pure_linear (no clause resolution)', { timeout: 3000
   before(async () => {
     Store.clear();
     calc = await mde.load(
-      path.join(__dirname, '../calculus/ill/programs/pure_linear.ill')
+      path.join(import.meta.dirname, '../calculus/ill/programs/pure_linear.ill')
     );
     illCalc = await calculus.loadILL();
     state = mde.decomposeQuery(calc.queries.get('symex'));

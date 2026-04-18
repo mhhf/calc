@@ -8,9 +8,8 @@
  * Expressions are MDE syntax strings that get parsed.
  */
 
-const fs = require('fs');
-const mde = require('../lib/engine');
-
+import fs from 'fs';
+import mde from '../lib/engine/index.js';
 async function main() {
   const args = process.argv.slice(2);
 

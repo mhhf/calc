@@ -6,20 +6,19 @@
  *   checked_sub(G, 3, G2) * checked_sub(G2, 5, G3) → checked_sub(G, 8, G3)
  *   plus(X, 2, X2) * plus(X2, 3, X3) → plus(X, 5, X3)
  */
-const { describe, it, beforeEach } = require('node:test');
-const assert = require('node:assert/strict');
-const Store = require('../../lib/kernel/store');
-const { GRADE_W } = require('../../lib/engine/grades');
-const { ILL_CONNECTIVES } = require('../../lib/engine/ill/connectives');
-const { resolveConn, flattenAnte } = require('../../lib/engine/compile');
-const { predHead } = require('../../lib/kernel/ast');
-const { _fuseChains } = require('../../lib/engine/compose');
-const { _resolveOnce } = require('../../lib/engine/compose');
-const { getModeMeta: _illGetModeMeta } = require('../../lib/engine/ill/ffi');
-const { ILL_CHAIN_CONFIGS } = require('../../lib/engine/ill/compose-config');
-const { intToBin, binToInt } = require('../../lib/engine/ill/ffi/convert');
-const { residualResolver } = require('../../lib/engine/ill/residual-resolver');
-
+import { describe, it, beforeEach } from 'node:test';
+import assert from 'node:assert/strict';
+import Store from '../../lib/kernel/store.js';
+import { GRADE_W } from '../../lib/engine/grades.js';
+import { ILL_CONNECTIVES } from '../../lib/engine/ill/connectives.js';
+import { resolveConn, flattenAnte } from '../../lib/engine/compile.js';
+import { predHead } from '../../lib/kernel/ast.js';
+import { _fuseChains } from '../../lib/engine/compose.js';
+import { _resolveOnce } from '../../lib/engine/compose.js';
+import { getModeMeta as _illGetModeMeta } from '../../lib/engine/ill/ffi/index.js';
+import { ILL_CHAIN_CONFIGS } from '../../lib/engine/ill/compose-config.js';
+import { intToBin, binToInt } from '../../lib/engine/ill/ffi/convert.js';
+import { residualResolver } from '../../lib/engine/ill/residual-resolver.js';
 function makeRule(name, anteHash, conseqBodyHash) {
   const conseqHash = Store.put('monad', [conseqBodyHash]);
   const hash = Store.put('loli', [anteHash, conseqHash]);

@@ -3,12 +3,11 @@
  *
  * Covers: feedPers (arena → solver), satFilter (oplus pruning).
  */
-const { describe, it, beforeEach } = require('node:test');
-const assert = require('node:assert/strict');
-const Store = require('../../lib/kernel/store');
-const { FactSet, Arena } = require('../../lib/engine/fact-set');
-const { feedPers, satFilter } = require('../../lib/engine/constraint-feed');
-
+import { describe, it, beforeEach } from 'node:test';
+import assert from 'node:assert/strict';
+import Store from '../../lib/kernel/store.js';
+import { FactSet, Arena } from '../../lib/engine/fact-set.js';
+import { feedPers, satFilter } from '../../lib/engine/constraint-feed.js';
 // Minimal EqNeqSolver stub — tracks constraints + SAT state
 function makeSolver(satResult = true) {
   const constraints = [];

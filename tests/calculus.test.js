@@ -5,11 +5,14 @@
  * not hardcoded.
  */
 
-const { describe, it, before } = require('node:test');
-const assert = require('node:assert');
-
-const calculus = require('../lib/calculus');
-const { GRADE_W } = require('../lib/engine/grades');
+import { describe, it, before } from 'node:test';
+import assert from 'node:assert';
+import calculus from '../lib/calculus/index.js';
+import { GRADE_W } from '../lib/engine/grades.js';
+// Hoisted by tools/esm-hoist.js:
+import { parserFromTables, parserTables } from '../lib/calculus/builders.js';
+import Store from '../lib/kernel/store.js';
+import { parseDecls } from '../lib/parser/declarations.js';
 
 describe('v2 Calculus (generated from spec)', () => {
   let ill;
@@ -64,7 +67,7 @@ describe('v2 Calculus (generated from spec)', () => {
 
     it('should generate bang constructor (arity 2: grade + formula)', () => {
       const A = ill.AST.freevar('A');
-      const { GRADE_W } = require('../lib/engine/grades');
+
       const bangA = ill.AST.bang(GRADE_W, A);
       assert.strictEqual(ill.AST.tag(bangA), 'bang');
       assert.strictEqual(ill.AST.children(bangA).length, 2);
@@ -176,7 +179,7 @@ describe('v2 Calculus (generated from spec)', () => {
     let extParse;
 
     before(() => {
-      const { parserFromTables, parserTables } = require('../lib/calculus/builders');
+
       const tables = parserTables(ill.constructors);
       tables.binders = { exists: 'exists', forall: 'forall' };
       tables.multiCharFreevars = true;
@@ -185,7 +188,7 @@ describe('v2 Calculus (generated from spec)', () => {
     });
 
     it('should parse exists X. body as binder with de Bruijn', () => {
-      const Store = require('../lib/kernel/store');
+
       const ast = extParse('exists X. X');
       assert.strictEqual(Store.tag(ast), 'exists');
       const body = Store.child(ast, 0);
@@ -194,7 +197,7 @@ describe('v2 Calculus (generated from spec)', () => {
     });
 
     it('should handle nested binders', () => {
-      const Store = require('../lib/kernel/store');
+
       const ast = extParse('forall Y. exists X. X');
       assert.strictEqual(Store.tag(ast), 'forall');
       const inner = Store.child(ast, 0);
@@ -205,7 +208,7 @@ describe('v2 Calculus (generated from spec)', () => {
     });
 
     it('should reference outer binder at depth 1', () => {
-      const Store = require('../lib/kernel/store');
+
       const ast = extParse('forall Y. exists X. Y');
       const inner = Store.child(ast, 0);
       const body = Store.child(inner, 0);
@@ -214,28 +217,28 @@ describe('v2 Calculus (generated from spec)', () => {
     });
 
     it('should parse multi-char uppercase as metavar', () => {
-      const Store = require('../lib/kernel/store');
+
       const ast = extParse('Sender');
       assert.strictEqual(Store.tag(ast), 'metavar');
       assert.strictEqual(Store.child(ast, 0), 'Sender');
     });
 
     it('should parse number literals', () => {
-      const Store = require('../lib/kernel/store');
+
       const ast = extParse('42');
       assert.strictEqual(Store.tag(ast), 'binlit');
       assert.strictEqual(Store.child(ast, 0), 42n);
     });
 
     it('should parse hex literals', () => {
-      const Store = require('../lib/kernel/store');
+
       const ast = extParse('0x60');
       assert.strictEqual(Store.tag(ast), 'binlit');
       assert.strictEqual(Store.child(ast, 0), 96n);
     });
 
     it('binder body extends to full expression', () => {
-      const Store = require('../lib/kernel/store');
+
       // exists X. X * X should be exists(tensor(X, X))
       const ast = extParse('exists X. X * X');
       assert.strictEqual(Store.tag(ast), 'exists');
@@ -244,7 +247,7 @@ describe('v2 Calculus (generated from spec)', () => {
     });
 
     it('unbound uppercase stays metavar (not bound)', () => {
-      const Store = require('../lib/kernel/store');
+
       const ast = extParse('exists X. Y');
       const body = Store.child(ast, 0);
       assert.strictEqual(Store.tag(body), 'metavar');
@@ -254,10 +257,9 @@ describe('v2 Calculus (generated from spec)', () => {
 
   describe('extended parser (application, arrows, forward rules, binary norm)', () => {
     let engineParse;
-    const Store = require('../lib/kernel/store');
 
     before(() => {
-      const { parserFromTables, parserTables } = require('../lib/calculus/builders');
+
       const tables = parserTables(ill.constructors);
       tables.binders = { exists: 'exists', forall: 'forall' };
       tables.multiCharFreevars = true;
@@ -352,8 +354,8 @@ describe('v2 Calculus (generated from spec)', () => {
   });
 
   describe('declaration parser', () => {
-    const { parseDecls } = require('../lib/parser/declarations');
-    const Store = require('../lib/kernel/store');
+
+
     const id = (x) => Store.put('atom', [x]);
 
     it('should parse simple declaration', () => {

@@ -8,13 +8,10 @@
 
 'use strict';
 
-const { describe, it } = require('node:test');
-const assert = require('node:assert/strict');
-const {
-  ENV_FLAGS, OPT_FLAGS, cacheFlagFingerprint,
-} = require('../../lib/engine/cache-flags');
-const { engineVersion, _resetEngineVersionCache } = require('../../lib/engine/engine-version');
-
+import { describe, it } from 'node:test';
+import assert from 'node:assert/strict';
+import { ENV_FLAGS, OPT_FLAGS, cacheFlagFingerprint } from '../../lib/engine/cache-flags.js';
+import { engineVersion, _resetEngineVersionCache } from '../../lib/engine/engine-version.js';
 describe('TODO_0218 Phase 3 — cache-flag registry', () => {
   it('baseline fingerprint is deterministic', () => {
     const a = cacheFlagFingerprint({});

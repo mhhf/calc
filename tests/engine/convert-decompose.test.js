@@ -3,17 +3,16 @@
  *
  * Verifies de Bruijn depth-aware substitution correctly handles nested quantifiers.
  */
-const { describe, it, before } = require('node:test');
-const assert = require('node:assert/strict');
-const Store = require('../../lib/kernel/store');
+import { describe, it, before } from 'node:test';
+import assert from 'node:assert/strict';
+import Store from '../../lib/kernel/store.js';
+import backchainIll from '../../lib/engine/ill/backchain-ill.js';
+import { decomposeQuery } from '../../lib/engine/convert.js';
 
 describe('decomposeQuery — nested quantifiers (B9)', () => {
-  let decomposeQuery;
-
   before(() => {
     Store.clear();
-    require('../../lib/engine/ill/backchain-ill').initILL();
-    decomposeQuery = require('../../lib/engine/convert').decomposeQuery;
+    backchainIll.initILL();
   });
 
   it('decomposes flat forall X. forall Y. tensor(P(X), Q(Y))', () => {

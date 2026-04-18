@@ -4,18 +4,17 @@
  * Fuses !inc(X,Y) * !inc(Y,Z) → !plus(X, 2, Z) at compile time.
  * This is algebraic simplification on persistent goals — no grounding required.
  */
-const { describe, it, beforeEach } = require('node:test');
-const assert = require('node:assert/strict');
-const Store = require('../../lib/kernel/store');
-const { GRADE_W } = require('../../lib/engine/grades');
-const { ILL_CONNECTIVES } = require('../../lib/engine/ill/connectives');
-const { resolveConn, compileRule, flattenAnte } = require('../../lib/engine/compile');
-const { predHead } = require('../../lib/kernel/ast');
-const { _fuseChains } = require('../../lib/engine/compose');
-const { ILL_CHAIN_CONFIGS } = require('../../lib/engine/ill/compose-config');
-const { getModes, getModeMeta: _illGetModeMeta } = require('../../lib/engine/ill/ffi');
-const { show } = require('../../lib/engine/show');
-
+import { describe, it, beforeEach } from 'node:test';
+import assert from 'node:assert/strict';
+import Store from '../../lib/kernel/store.js';
+import { GRADE_W } from '../../lib/engine/grades.js';
+import { ILL_CONNECTIVES } from '../../lib/engine/ill/connectives.js';
+import { resolveConn, compileRule, flattenAnte } from '../../lib/engine/compile.js';
+import { predHead } from '../../lib/kernel/ast.js';
+import { _fuseChains } from '../../lib/engine/compose.js';
+import { ILL_CHAIN_CONFIGS } from '../../lib/engine/ill/compose-config.js';
+import { getModes, getModeMeta as _illGetModeMeta } from '../../lib/engine/ill/ffi/index.js';
+import { show } from '../../lib/engine/show.js';
 const COMPILE_OPTS = { connectives: ILL_CONNECTIVES, getModes };
 
 /**

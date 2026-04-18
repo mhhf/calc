@@ -4,10 +4,14 @@
  * Covers: cache hit, miss, negative cache (failed lookup cached),
  * invalidation on Store.clear, profile tracking.
  */
-const { describe, it, before, beforeEach } = require('node:test');
-const assert = require('node:assert/strict');
-const Store = require('../../lib/kernel/store');
-const { tryBWCache, clearBWCache, getCacheProfile, resetCacheProfile } = require('../../lib/engine/backward-cache');
+import { describe, it, before, beforeEach } from 'node:test';
+import assert from 'node:assert/strict';
+import Store from '../../lib/kernel/store.js';
+import { tryBWCache, clearBWCache, getCacheProfile, resetCacheProfile } from '../../lib/engine/backward-cache.js';
+// Hoisted by tools/esm-hoist.js:
+import path from 'path';
+import mde from '../../lib/engine/index.js';
+import { parsedModes as _ffiParsedModes } from '../../lib/engine/ill/ffi/index.js';
 
 describe('backward-cache', () => {
   beforeEach(() => {
@@ -102,16 +106,16 @@ describe('backward-cache', () => {
 });
 
 describe('backward-cache — positive hit with real calc', () => {
-  const path = require('path');
+
   let calc, modes;
 
   before(() => {
     Store.clear();
-    const mde = require('../../lib/engine/index');
-    const loaded = mde.load(path.join(__dirname, '../../calculus/ill/programs/evm.ill'), { cache: true });
+
+    const loaded = mde.load(path.join(import.meta.dirname, '../../calculus/ill/programs/evm.ill'), { cache: true });
     // Use _calcContext which includes backwardOpts with ILL theories
     calc = loaded._calcContext;
-    modes = calc.ffiContext ? calc.ffiContext.parsedModes : require('../../lib/engine/ill/ffi').parsedModes;
+    modes = calc.ffiContext ? calc.ffiContext.parsedModes : _ffiParsedModes;
   });
 
   it('caches successful resolution and returns hit on second call', () => {

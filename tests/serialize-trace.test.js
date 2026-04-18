@@ -6,18 +6,11 @@
 
 'use strict';
 
-const { describe, it, before } = require('node:test');
-const assert = require('node:assert');
-const path = require('path');
-
-const Store = require('../lib/kernel/store');
-const {
-  serializeExploreTree,
-  serializeExecTrace,
-  extractLeafTrace,
-  FORMAT_VERSION,
-} = require('../lib/prover/serialize-trace');
-
+import { describe, it, before } from 'node:test';
+import assert from 'node:assert';
+import path from 'path';
+import Store from '../lib/kernel/store.js';
+import { serializeExploreTree, serializeExecTrace, extractLeafTrace, FORMAT_VERSION } from '../lib/prover/serialize-trace.js';
 function put(tag, args) { return Store.put(tag, args); }
 
 describe('serializeExploreTree — hand-built tree', () => {

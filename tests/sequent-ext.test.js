@@ -2,14 +2,12 @@
  * Tests for v2 Sequent (generic) and focused/context (multiset)
  */
 
-const { describe, it, before } = require('node:test');
-const assert = require('node:assert');
-
-const Seq = require('../lib/kernel/sequent');
-const Context = require('../lib/prover/context');
-const calculus = require('../lib/calculus');
-const Store = require('../lib/kernel/store');
-
+import { describe, it, before } from 'node:test';
+import assert from 'node:assert';
+import Seq from '../lib/kernel/sequent.js';
+import Context from '../lib/prover/context.js';
+import calculus from '../lib/calculus/index.js';
+import Store from '../lib/kernel/store.js';
 describe('v2 Sequent (generic arrays)', () => {
   let AST;
 

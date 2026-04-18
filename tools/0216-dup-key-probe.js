@@ -21,11 +21,10 @@
  * first_ne_last === 0 ⇒ Map-θ is behaviourally safe.
  */
 
-const fs = require('fs');
-const path = require('path');
-const Module = require('module');
-
-const ROOT = path.resolve(__dirname, '..');
+import fs from 'fs';
+import path from 'path';
+import Module from 'module';
+const ROOT = path.resolve(import.meta.dirname, '..');
 // node --test spawns a fresh worker per file; each one writes its own report
 // line to a JSONL file (pre-cleared via 0216-dup-key-reset). After the suite
 // the separate tools/0216-dup-key-report.js aggregator reads + summarises.

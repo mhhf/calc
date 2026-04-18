@@ -4,23 +4,28 @@
  * Covers: trigger formula decomposition, linear antecedent match,
  * persistent guard proving.
  */
-const { describe, it, before } = require('node:test');
-const assert = require('node:assert/strict');
-const path = require('path');
-const Store = require('../../lib/kernel/store');
-const { FactSet } = require('../../lib/engine/fact-set');
-const { matchLoli } = require('../../lib/engine/lnl/loli');
-const { resolveConn } = require('../../lib/engine/compile');
-const { makeMatchOpts } = require('./_match-opts');
+import { describe, it, before } from 'node:test';
+import assert from 'node:assert/strict';
+import path from 'path';
+import Store from '../../lib/kernel/store.js';
+import { FactSet } from '../../lib/engine/fact-set.js';
+import { matchLoli } from '../../lib/engine/lnl/loli.js';
+import { resolveConn } from '../../lib/engine/compile.js';
+import { makeMatchOpts } from './_match-opts.js';
+// Hoisted by tools/esm-hoist.js:
+import mde from '../../lib/engine/index.js';
+import ccfg from '../../lib/engine/ill/calculus-config.js';
+import { GRADE_W } from '../../lib/engine/grades.js';
+import { proveNaive } from '../../lib/engine/lnl/persistent.js';
 
 describe('lnl/loli — matchLoli', () => {
   let calc, rc;
 
   before(() => {
     Store.clear();
-    const mde = require('../../lib/engine/index');
-    calc = mde.load(path.join(__dirname, '../../calculus/ill/programs/evm.ill'), { cache: true });
-    const ccfg = require('../../lib/engine/ill/calculus-config');
+
+    calc = mde.load(path.join(import.meta.dirname, '../../calculus/ill/programs/evm.ill'), { cache: true });
+
     rc = resolveConn(ccfg.connectives);
   });
 
@@ -124,7 +129,7 @@ describe('lnl/loli — matchLoli', () => {
   });
 
   it('returns null when persistent guard cannot be proved', () => {
-    const { GRADE_W } = require('../../lib/engine/grades');
+
     const guard = Store.put('foo_guard', [Store.put('atom', ['k'])]);
     const bangGuard = Store.put('bang', [GRADE_W, guard]);
     const val = Store.put('atom', ['v']);
@@ -151,7 +156,7 @@ describe('lnl/loli — matchLoli', () => {
   });
 
   it('matches loli with tensor(!guard, trigger) when guard in persistent state', () => {
-    const { GRADE_W } = require('../../lib/engine/grades');
+
     const guard = Store.put('foo_guard2', [Store.put('atom', ['k2'])]);
     const bangGuard = Store.put('bang', [GRADE_W, guard]);
     const val = Store.put('atom', ['v2']);
@@ -176,7 +181,7 @@ describe('lnl/loli — matchLoli', () => {
       },
     };
 
-    const { proveNaive } = require('../../lib/engine/lnl/persistent');
+
     const result = matchLoli(loliHash, state, null, makeMatchOpts({ rc, provePersistent: proveNaive }));
     assert.ok(result, 'should match when guard is in persistent state');
     assert.ok(result.consumed[loliHash], 'loli should be consumed');
@@ -185,7 +190,7 @@ describe('lnl/loli — matchLoli', () => {
   });
 
   it('calls provePersistent with inner formula of !guard', () => {
-    const { GRADE_W } = require('../../lib/engine/grades');
+
     const guard = Store.put('foo_guard3', [Store.put('atom', ['x3'])]);
     const bangGuard = Store.put('bang', [GRADE_W, guard]);
     const val = Store.put('atom', ['w3']);

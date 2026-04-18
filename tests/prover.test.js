@@ -2,14 +2,12 @@
  * Tests for v2 ProofTree and FocusedProofState
  */
 
-const { describe, it, before } = require('node:test');
-const assert = require('node:assert');
-
-const { ProofTree, fromGoal, leaf } = require('../lib/prover/pt');
-const { inversion, focus } = require('../lib/prover/state');
-const Seq = require('../lib/kernel/sequent');
-const calculus = require('../lib/calculus');
-
+import { describe, it, before } from 'node:test';
+import assert from 'node:assert';
+import { ProofTree, fromGoal, leaf } from '../lib/prover/pt.js';
+import { inversion, focus } from '../lib/prover/state.js';
+import Seq from '../lib/kernel/sequent.js';
+import calculus from '../lib/calculus/index.js';
 describe('v2 ProofTree', () => {
   let AST;
 

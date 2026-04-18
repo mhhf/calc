@@ -4,20 +4,22 @@
  * Covers: consume, produce, producePers, mutateState,
  * and deltaBypass.
  */
-const { describe, it, before, beforeEach } = require('node:test');
-const assert = require('node:assert/strict');
-const path = require('path');
-const Store = require('../../lib/kernel/store');
-const { FactSet, Arena } = require('../../lib/engine/fact-set');
-const { consume, produce, producePers } = require('../../lib/engine/state-ops');
-const { deltaBypass } = require('../../lib/engine/delta-bypass');
+import { describe, it, before, beforeEach } from 'node:test';
+import assert from 'node:assert/strict';
+import path from 'path';
+import Store from '../../lib/kernel/store.js';
+import { FactSet, Arena } from '../../lib/engine/fact-set.js';
+import { consume, produce, producePers } from '../../lib/engine/state-ops.js';
+import { deltaBypass } from '../../lib/engine/delta-bypass.js';
+// Hoisted by tools/esm-hoist.js:
+import mde from '../../lib/engine/index.js';
 
 describe('state-ops', () => {
   // Load ILL to register predicate tags
   before(() => {
     Store.clear();
-    const mde = require('../../lib/engine/index');
-    mde.load(path.join(__dirname, '../../calculus/ill/programs/evm.ill'), { cache: true });
+
+    mde.load(path.join(import.meta.dirname, '../../calculus/ill/programs/evm.ill'), { cache: true });
   });
 
   describe('consume', () => {
@@ -96,8 +98,8 @@ describe('state-ops', () => {
 describe('delta-bypass', () => {
   before(() => {
     Store.clear();
-    const mde = require('../../lib/engine/index');
-    mde.load(path.join(__dirname, '../../calculus/ill/programs/evm.ill'), { cache: true });
+
+    mde.load(path.join(import.meta.dirname, '../../calculus/ill/programs/evm.ill'), { cache: true });
   });
 
   describe('deltaBypass', () => {

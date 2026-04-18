@@ -2,33 +2,28 @@
  * Tests for execution tree exploration
  */
 
-const { describe, it, before, beforeEach } = require('node:test');
-const assert = require('node:assert');
-const path = require('path');
-const mde = require('../../lib/engine');
-const {
-  explore, stateHashStr
-} = require('../../lib/engine/explore');
-const { ILL_CONNECTIVES } = require('../../lib/engine/ill/connectives');
-const { resolveConn, expandChoice, expandConsqChoices } = require('../../lib/engine/formula-utils');
-const { GRADE_W } = require('../../lib/engine/grades');
+import { describe, it, before, beforeEach } from 'node:test';
+import assert from 'node:assert';
+import path from 'path';
+import mde from '../../lib/engine/index.js';
+import { explore, stateHashStr } from '../../lib/engine/explore.js';
+import { ILL_CONNECTIVES } from '../../lib/engine/ill/connectives.js';
+import { resolveConn, expandChoice, expandConsqChoices } from '../../lib/engine/formula-utils.js';
+import { GRADE_W } from '../../lib/engine/grades.js';
 const ILL_RC = resolveConn(ILL_CONNECTIVES);
-const {
-  countLeaves, getAllLeaves, maxDepth, countNodes, toDot
-} = require('../../lib/engine/tree-utils');
-const forward = require('../../lib/engine/forward');
-const { matchLoli } = require('../../lib/engine/lnl/loli');
-const { drainLolis } = require('../../lib/engine/lnl/loli-drain');
-const { proveNaive } = require('../../lib/engine/lnl/persistent');
-const { buildMatchOpts, buildGenericProtocol, buildLnlProtocol, buildOptProtocol, buildFfiProtocol } = require('../../lib/engine/match');
-const { makeMatchOpts } = require('./_match-opts');
-const Store = require('../../lib/kernel/store');
-
+import { countLeaves, getAllLeaves, maxDepth, countNodes, toDot } from '../../lib/engine/tree-utils.js';
+import forward from '../../lib/engine/forward.js';
+import { matchLoli } from '../../lib/engine/lnl/loli.js';
+import { drainLolis } from '../../lib/engine/lnl/loli-drain.js';
+import { proveNaive } from '../../lib/engine/lnl/persistent.js';
+import { buildMatchOpts, buildGenericProtocol, buildLnlProtocol, buildOptProtocol, buildFfiProtocol } from '../../lib/engine/match.js';
+import { makeMatchOpts } from './_match-opts.js';
+import Store from '../../lib/kernel/store.js';
 describe('explore', { timeout: 10000 }, () => {
   describe('deterministic execution', () => {
     it('single path to quiescence', async () => {
       const calc = await mde.load([
-        path.join(__dirname, '../../calculus/ill/programs/bin.ill')
+        path.join(import.meta.dirname, '../../calculus/ill/programs/bin.ill')
       ]);
 
       Store.clear();
@@ -52,7 +47,7 @@ describe('explore', { timeout: 10000 }, () => {
     before(async () => {
       Store.clear();
       calc = await mde.load([
-        path.join(__dirname, 'fixtures/nondet.ill')
+        path.join(import.meta.dirname, 'fixtures/nondet.ill')
       ]);
     });
 
@@ -76,7 +71,7 @@ describe('explore', { timeout: 10000 }, () => {
   describe('depth bounding', () => {
     it('respects maxDepth', async () => {
       const calc = await mde.load([
-        path.join(__dirname, '../../calculus/ill/programs/bin.ill')
+        path.join(import.meta.dirname, '../../calculus/ill/programs/bin.ill')
       ]);
 
       Store.clear();
@@ -230,7 +225,7 @@ describe('explore', { timeout: 10000 }, () => {
     it('forks on A & B consequent', async () => {
       Store.clear();
       const calc = await mde.load([
-        path.join(__dirname, 'fixtures/choice.ill')
+        path.join(import.meta.dirname, 'fixtures/choice.ill')
       ]);
 
       const startHash = await mde.parseExpr('start');
@@ -257,7 +252,7 @@ describe('explore', { timeout: 10000 }, () => {
     it('forks on A + B consequent', async () => {
       Store.clear();
       const calc = await mde.load([
-        path.join(__dirname, 'fixtures/choice_plus.ill')
+        path.join(import.meta.dirname, 'fixtures/choice_plus.ill')
       ]);
 
       const startHash = await mde.parseExpr('start');

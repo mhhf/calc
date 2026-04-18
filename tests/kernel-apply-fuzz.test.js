@@ -22,13 +22,11 @@
  * When Phases 1-3 land, rerun this file — any failure is a correctness regression.
  */
 
-const { describe, it, before } = require('node:test');
-const assert = require('node:assert');
-
-const calculus = require('../lib/calculus');
-const Store = require('../lib/kernel/store');
-const { apply } = require('../lib/kernel/substitute');
-
+import { describe, it, before } from 'node:test';
+import assert from 'node:assert';
+import calculus from '../lib/calculus/index.js';
+import Store from '../lib/kernel/store.js';
+import { apply } from '../lib/kernel/substitute.js';
 // ── Frozen reference apply — DO NOT EDIT ────────────────────────────────────
 //
 // Literal copy of lib/kernel/substitute.js::apply at commit 92dd11e. Used as

@@ -2,17 +2,21 @@
  * Tests for compose disk cache — persisting compose0 results to disk
  * so cold E2E skips the ~60ms compose overhead.
  */
-const { describe, it, beforeEach, afterEach } = require('node:test');
-const assert = require('node:assert/strict');
-const fs = require('fs');
-const path = require('path');
-const os = require('os');
-const Store = require('../../lib/kernel/store');
-const mde = require('../../lib/engine');
+import { describe, it, beforeEach, afterEach } from 'node:test';
+import assert from 'node:assert/strict';
+import fs from 'fs';
+import path from 'path';
+import os from 'os';
+import Store from '../../lib/kernel/store.js';
+import mde from '../../lib/engine/index.js';
+// Hoisted by tools/esm-hoist.js:
+import { loadBytecode, bytecodeArrGetGuard } from '../../lib/engine/ill/bytecode-loader.js';
+import { intToBin } from '../../lib/engine/ill/ffi/convert.js';
+
 const { _composeCacheKey } = mde;
 
-const SYMEX_PATH = path.join(__dirname, '../../calculus/ill/programs/multisig_nocall_solc_symbolic.ill');
-const CODE_PATH = path.join(__dirname, '../../calculus/ill/programs/multisig_nocall_solc_code.ill');
+const SYMEX_PATH = path.join(import.meta.dirname, '../../calculus/ill/programs/multisig_nocall_solc_symbolic.ill');
+const CODE_PATH = path.join(import.meta.dirname, '../../calculus/ill/programs/multisig_nocall_solc_code.ill');
 
 let tmpDir;
 
@@ -23,19 +27,19 @@ function freshTmpDir() {
 
 function loadBytecodeHex() {
   const hex = fs.readFileSync(CODE_PATH, 'utf8').match(/bytecode\s+0x([0-9a-fA-F]+)/)[1];
-  const { loadBytecode } = require('../../lib/engine/ill/bytecode-loader');
+
   return loadBytecode(hex);
 }
 
 function loadWithCompose(cacheDir) {
   const bc = loadBytecodeHex();
-  const { intToBin } = require('../../lib/engine/ill/ffi/convert');
+
   const barriers = new Set();
   for (const pc of bc.entryPoints) barriers.add(intToBin(BigInt(pc)));
   return mde.load(SYMEX_PATH, {
     cache: false,
     extraGrade0Facts: bc.facts,
-    scopeGuard: require('../../lib/engine/ill/bytecode-loader').bytecodeArrGetGuard,
+    scopeGuard: bytecodeArrGetGuard,
     fuseBasicBlocks: true,
     fusionBarriers: barriers,
     composeDiskCache: cacheDir
@@ -87,13 +91,13 @@ describe('Compose disk cache', () => {
     Store.clear();
     const t0 = performance.now();
     const bcMiss = loadBytecodeHex();
-    const { intToBin } = require('../../lib/engine/ill/ffi/convert');
+
     const barriersMiss = new Set();
     for (const pc of bcMiss.entryPoints) barriersMiss.add(intToBin(BigInt(pc)));
     const calc1 = mde.load(SYMEX_PATH, {
       cache: false,
       extraGrade0Facts: bcMiss.facts,
-      scopeGuard: require('../../lib/engine/ill/bytecode-loader').bytecodeArrGetGuard,
+      scopeGuard: bytecodeArrGetGuard,
       fuseBasicBlocks: true,
       fusionBarriers: barriersMiss
     });
@@ -205,7 +209,7 @@ describe('Compose disk cache', () => {
     const calc = mde.load(SYMEX_PATH, {
       cache: false,
       extraGrade0Facts: bc.facts,
-      scopeGuard: require('../../lib/engine/ill/bytecode-loader').bytecodeArrGetGuard,
+      scopeGuard: bytecodeArrGetGuard,
       fuseBasicBlocks: true,
       composeDiskCache: true
     });

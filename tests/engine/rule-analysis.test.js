@@ -4,16 +4,15 @@
  * Phase 1: Inspect real EVM rules and synthetic rules to understand
  * the flattened structure before building the analysis function.
  */
-const { describe, it, before } = require('node:test');
-const assert = require('node:assert');
-const path = require('path');
-const forward = require('../../lib/engine/forward');
-const { predHead } = require('../../lib/kernel/ast');
-const { analyzeRule, deltaAnalysis } = require('../../lib/engine/rule-analysis');
-const mde = require('../../lib/engine');
-const Store = require('../../lib/kernel/store');
-const { ILL_CONNECTIVES } = require('../../lib/engine/ill/connectives');
-
+import { describe, it, before } from 'node:test';
+import assert from 'node:assert';
+import path from 'path';
+import forward from '../../lib/engine/forward.js';
+import { predHead } from '../../lib/kernel/ast.js';
+import { analyzeRule, deltaAnalysis } from '../../lib/engine/rule-analysis.js';
+import mde from '../../lib/engine/index.js';
+import Store from '../../lib/kernel/store.js';
+import { ILL_CONNECTIVES } from '../../lib/engine/ill/connectives.js';
 // Helper: parse a lollipop rule string and compile it
 async function makeRule(name, expr) {
   const h = await mde.parseExpr(expr);
@@ -58,7 +57,7 @@ describe('Rule Analysis', { timeout: 10000 }, () => {
   let calc;
 
   before(async () => {
-    calc = await mde.load(path.join(__dirname, '../../calculus/ill/programs/evm.ill'));
+    calc = await mde.load(path.join(import.meta.dirname, '../../calculus/ill/programs/evm.ill'));
   });
 
   describe('EVM rule structure inspection', () => {
@@ -1277,7 +1276,7 @@ describe('Rule Analysis', { timeout: 10000 }, () => {
 
     it('EVM multisig: full execution cross-check', async () => {
       const calc = await mde.load(
-        path.join(__dirname, '../../calculus/ill/programs/multisig.ill')
+        path.join(import.meta.dirname, '../../calculus/ill/programs/multisig.ill')
       );
 
       const initState = mde.decomposeQuery(calc.queries.get('symex'));

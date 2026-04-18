@@ -8,12 +8,11 @@
  * Profile: npm run profile:mde
  */
 
-const mde = require('../../lib/engine');
-const prove = require('../../lib/engine/backchain');
-const Store = require('../../lib/kernel/store');
-const { performance } = require('perf_hooks');
-const path = require('path');
-
+import mde from '../../lib/engine/index.js';
+import prove from '../../lib/engine/backchain.js';
+import Store from '../../lib/kernel/store.js';
+import { performance } from 'perf_hooks';
+import path from 'path';
 // Binary representation helpers
 function decToBin(n) {
   function inner(n) {
@@ -105,7 +104,7 @@ async function runBenchmarks(opts = {}) {
   } = opts;
 
   // Load calculus
-  const calc = mde.load(path.join(__dirname, '../../calculus/ill/programs/bin.ill'));
+  const calc = mde.load(path.join(import.meta.dirname, '../../calculus/ill/programs/bin.ill'));
   const idx = prove.buildIndex(calc.clauses, calc.definitions);
 
   console.log('='.repeat(70));
@@ -197,7 +196,7 @@ async function runBenchmarks(opts = {}) {
 async function profileBenchmark(query, desc, opts = {}) {
   const { iterations = 10 } = opts;
 
-  const calc = mde.load(path.join(__dirname, '../../calculus/ill/programs/bin.ill'));
+  const calc = mde.load(path.join(import.meta.dirname, '../../calculus/ill/programs/bin.ill'));
   const idx = prove.buildIndex(calc.clauses, calc.definitions);
   const goal = mde.parseExpr(query);
 
@@ -275,10 +274,9 @@ async function profileBenchmark(query, desc, opts = {}) {
   return { metrics, times, mean };
 }
 
-module.exports = { runBenchmarks, profileBenchmark, BENCHMARKS };
-
+export { runBenchmarks, profileBenchmark, BENCHMARKS };
 // CLI entry point
-if (require.main === module) {
+if (import.meta.url === `file://${process.argv[1]}`) {
   const args = process.argv.slice(2);
   const categories = args.filter(a => !a.startsWith('--'));
   const profile = args.includes('--profile');
@@ -295,3 +293,4 @@ if (require.main === module) {
     .then(() => process.exit(0))
     .catch(e => { console.error(e); process.exit(1); });
 }
+export default { runBenchmarks, profileBenchmark, BENCHMARKS };

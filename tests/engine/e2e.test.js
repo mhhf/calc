@@ -1,10 +1,10 @@
 /**
  * End-to-end tests for MDE loading and execution
  */
-const { describe, it, before } = require('node:test');
-const assert = require('node:assert');
-const path = require('path');
-const mde = require('../../lib/engine');
+import { describe, it, before } from 'node:test';
+import assert from 'node:assert';
+import path from 'path';
+import mde from '../../lib/engine/index.js';
 const Store = mde.Store;
 
 describe('MDE End-to-End', { timeout: 10000 }, () => {
@@ -12,7 +12,7 @@ describe('MDE End-to-End', { timeout: 10000 }, () => {
     let calc;
 
     before(async () => {
-      calc = await mde.load(path.join(__dirname, '../../calculus/ill/programs/bin.ill'));
+      calc = await mde.load(path.join(import.meta.dirname, '../../calculus/ill/programs/bin.ill'));
     });
 
     it('loads types', () => {
@@ -36,7 +36,7 @@ describe('MDE End-to-End', { timeout: 10000 }, () => {
     let calc;
 
     before(async () => {
-      calc = await mde.load(path.join(__dirname, '../../calculus/ill/programs/evm.ill'));
+      calc = await mde.load(path.join(import.meta.dirname, '../../calculus/ill/programs/evm.ill'));
     });
 
     it('loads types', () => {
@@ -71,8 +71,8 @@ describe('MDE End-to-End', { timeout: 10000 }, () => {
 
   describe('Multi-file loading', () => {
     it('can load multiple files', async () => {
-      const bin = await mde.load(path.join(__dirname, '../../calculus/ill/programs/bin.ill'));
-      const evm = await mde.load(path.join(__dirname, '../../calculus/ill/programs/evm.ill'));
+      const bin = await mde.load(path.join(import.meta.dirname, '../../calculus/ill/programs/bin.ill'));
+      const evm = await mde.load(path.join(import.meta.dirname, '../../calculus/ill/programs/evm.ill'));
 
       // Store is shared - interning works across files
       const binType = bin.definitions.get('bin');
@@ -86,7 +86,7 @@ describe('MDE End-to-End', { timeout: 10000 }, () => {
   describe('Performance', () => {
     it('loads evm.mde in < 100ms', async () => {
       const start = Date.now();
-      await mde.load(path.join(__dirname, '../../calculus/ill/programs/evm.ill'));
+      await mde.load(path.join(import.meta.dirname, '../../calculus/ill/programs/evm.ill'));
       const elapsed = Date.now() - start;
 
       console.log(`  Load time: ${elapsed}ms`);
@@ -94,7 +94,7 @@ describe('MDE End-to-End', { timeout: 10000 }, () => {
     });
 
     it('forward step is fast', async () => {
-      const calc = await mde.load(path.join(__dirname, '../../calculus/ill/programs/evm.ill'));
+      const calc = await mde.load(path.join(import.meta.dirname, '../../calculus/ill/programs/evm.ill'));
 
       const pc = await mde.parseExpr('pc 0');
       const bytecode = await mde.parseExpr('bytecode [0x00]');

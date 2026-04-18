@@ -2,15 +2,13 @@
  * Test the UI flow using the proofLogic approach
  * This mimics what the browser does
  */
-const { describe, it, before } = require('node:test');
-const assert = require('node:assert');
-
+import { describe, it, before } from 'node:test';
+import assert from 'node:assert';
 // Simulate browser module loading
-const browser = require('../lib/browser');
-const illBundle = require('../out/ill.json');
-const Seq = require('../lib/kernel/sequent');
-const Store = require('../lib/kernel/store');
-
+import browser from '../lib/browser.js';
+import illBundle from '../out/ill.json' with { type: 'json' };
+import Seq from '../lib/kernel/sequent.js';
+import Store from '../lib/kernel/store.js';
 describe('UI Flow (browser simulation)', () => {
   before(() => {
     browser.initFromBundle(illBundle);

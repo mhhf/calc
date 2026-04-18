@@ -5,19 +5,20 @@
  * produce identical results to the generic matching pipeline.
  */
 
-const { describe, it, beforeEach } = require('node:test');
-const assert = require('node:assert');
-const path = require('path');
-const Store = require('../../lib/kernel/store');
-const mde = require('../../lib/engine');
-const forward = require('../../lib/engine/forward');
-const {
-  compilePM, execPM,
-} = require('../../lib/engine/compile');
-const { tryMatch } = require('../../lib/engine/match');
-const { makeMatchOpts } = require('./_match-opts');
-const { execPS, compilePS } = require('../../lib/engine/opt/ffi');
-const illFfi = require('../../lib/engine/ill/ffi');
+import { describe, it, beforeEach } from 'node:test';
+import assert from 'node:assert';
+import path from 'path';
+import Store from '../../lib/kernel/store.js';
+import mde from '../../lib/engine/index.js';
+import forward from '../../lib/engine/forward.js';
+import { compilePM, execPM } from '../../lib/engine/compile.js';
+import { tryMatch } from '../../lib/engine/match.js';
+import { makeMatchOpts } from './_match-opts.js';
+import { execPS, compilePS } from '../../lib/engine/opt/ffi.js';
+import illFfi from '../../lib/engine/ill/ffi/index.js';
+// Hoisted by tools/esm-hoist.js:
+import { proveWithFFI } from '../../lib/engine/opt/ffi.js';
+
 const illFfiContext = {
   meta: illFfi.defaultMeta,
   parsedModes: illFfi.parsedModes,
@@ -25,8 +26,7 @@ const illFfiContext = {
   isFFIGround: illFfi.convert.isGround,
 };
 const illMatchOpts = makeMatchOpts({ ffi: illFfiContext });
-const { countNodes, getAllLeaves } = require('../../lib/engine/tree-utils');
-
+import { countNodes, getAllLeaves } from '../../lib/engine/tree-utils.js';
 // ─── compilePM ─────────────────────────────────────────────
 
 describe('compilePM', () => {
@@ -309,7 +309,6 @@ describe('structured output patterns in FFI', () => {
 
   it('proveWithFFI handles structured output pattern', () => {
     Store.registerTag('arr_set');
-    const { proveWithFFI } = require('../../lib/engine/opt/ffi');
 
     const arrVar = Store.put('metavar', ['Arr']);
     const idxVar = Store.put('metavar', ['Idx']);
@@ -332,7 +331,7 @@ describe('structured output patterns in FFI', () => {
     const theta = [arr, idx, newVal, undefined, undefined];
 
     // Minimal state object with empty persistent facts
-    const forward = require('../../lib/engine/forward');
+
     const state = forward.createState({}, {});
 
     const result = proveWithFFI([pattern], 0, theta, slots, state, null, null, illMatchOpts);
@@ -349,7 +348,7 @@ describe('persistentSteps attachment', { timeout: 10000 }, () => {
   it('attaches persistentSteps for rules with FFI antecedents', async () => {
     Store.clear();
     const calc = await mde.load(
-      path.join(__dirname, '../../calculus/ill/programs/multisig_nocall_solc.ill')
+      path.join(import.meta.dirname, '../../calculus/ill/programs/multisig_nocall_solc.ill')
     );
 
     let withSteps = 0, total = 0;
@@ -366,7 +365,7 @@ describe('persistentSteps attachment', { timeout: 10000 }, () => {
   it('does not attach for rules without persistent antecedents', async () => {
     Store.clear();
     const calc = await mde.load(
-      path.join(__dirname, '../../calculus/ill/programs/multisig_nocall_solc.ill')
+      path.join(import.meta.dirname, '../../calculus/ill/programs/multisig_nocall_solc.ill')
     );
 
     for (const rule of calc.forwardRules) {
@@ -381,7 +380,7 @@ describe('persistentSteps attachment', { timeout: 10000 }, () => {
   it('persistentSteps length matches persistent antecedent count', async () => {
     Store.clear();
     const calc = await mde.load(
-      path.join(__dirname, '../../calculus/ill/programs/multisig_nocall_solc.ill')
+      path.join(import.meta.dirname, '../../calculus/ill/programs/multisig_nocall_solc.ill')
     );
 
     for (const rule of calc.forwardRules) {
@@ -399,7 +398,7 @@ describe('persistent step integration', { timeout: 10000 }, () => {
   it('tryMatch produces same results with and without persistentSteps', async () => {
     Store.clear();
     const calc = await mde.load(
-      path.join(__dirname, '../../calculus/ill/programs/multisig_nocall_solc.ill')
+      path.join(import.meta.dirname, '../../calculus/ill/programs/multisig_nocall_solc.ill')
     );
     const plainState = mde.decomposeQuery(calc.queries.get('symex'));
     const state = forward.createState(plainState.linear, plainState.persistent);
@@ -446,7 +445,7 @@ describe('E2E persistent step correctness', { timeout: 30000, concurrency: 1 }, 
   it('multisig tree identical with persistent steps (267 nodes)', async () => {
     Store.clear();
     const calc = await mde.load(
-      path.join(__dirname, '../../calculus/ill/programs/multisig_nocall_solc.ill')
+      path.join(import.meta.dirname, '../../calculus/ill/programs/multisig_nocall_solc.ill')
     );
     const state = mde.decomposeQuery(calc.queries.get('symex'));
 
@@ -462,7 +461,7 @@ describe('E2E persistent step correctness', { timeout: 30000, concurrency: 1 }, 
   it('symbolic multisig (structural memo) unchanged', async () => {
     Store.clear();
     const calc = await mde.load(
-      path.join(__dirname, '../../calculus/ill/programs/multisig_nocall_solc_symbolic.ill')
+      path.join(import.meta.dirname, '../../calculus/ill/programs/multisig_nocall_solc_symbolic.ill')
     );
     const state = mde.decomposeQuery(calc.queries.get('symex'));
 

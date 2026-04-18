@@ -8,21 +8,23 @@
  * Phase 5: Bridge integration (monad_r term construction, kernel verification).
  * Phase 6: End-to-end bridge term construction, zero-overhead.
  */
-const { describe, it, before } = require('node:test');
-const assert = require('node:assert');
-const calculus = require('../lib/calculus');
-const { sigMap, formatSignature, flattenedArity, extractTerm,
-        monadicTerm, exploreTerm } = require('../lib/prover/generic-term');
-const { createProver } = require('../lib/prover/focused');
-const { buildRuleSpecs } = require('../lib/prover/rule-interpreter');
-const { rightFocusTerm, modeSwitch } = require('../lib/prover/bridge');
-const { compileRule } = require('../lib/engine/compile');
-const { ILL_CONNECTIVES } = require('../lib/engine/ill/connectives');
-const { createChecker, expand } = require('../lib/prover/check-term');
-const { createKernel } = require('../lib/prover/kernel');
-const Seq = require('../lib/kernel/sequent');
-const Store = require('../lib/kernel/store');
-const { GRADE_W } = require('../lib/engine/grades');
+import { describe, it, before } from 'node:test';
+import assert from 'node:assert';
+import calculus from '../lib/calculus/index.js';
+import { sigMap, formatSignature, flattenedArity, extractTerm, monadicTerm, exploreTerm } from '../lib/prover/generic-term.js';
+import { createProver } from '../lib/prover/focused.js';
+import { buildRuleSpecs } from '../lib/prover/rule-interpreter.js';
+import { rightFocusTerm, modeSwitch } from '../lib/prover/bridge.js';
+import { compileRule } from '../lib/engine/compile.js';
+import { ILL_CONNECTIVES } from '../lib/engine/ill/connectives.js';
+import { createChecker, expand } from '../lib/prover/check-term.js';
+import { createKernel } from '../lib/prover/kernel.js';
+import Seq from '../lib/kernel/sequent.js';
+import Store from '../lib/kernel/store.js';
+import { GRADE_W } from '../lib/engine/grades.js';
+// Hoisted by tools/esm-hoist.js:
+import { ProofTree } from '../lib/prover/pt.js';
+import { fromGoal } from '../lib/prover/pt.js';
 
 describe('Generic Term Signatures', () => {
   let calc, sigs;
@@ -288,7 +290,7 @@ describe('Backward Term Extraction', () => {
     // Manual proof tree: ∃X.p(X) ⊢ ∃X.p(X)
     // exists_l opens ∃X.p(X) on left with eigenvariable c
     // Succedent stays ∃X.p(X) (doesn't contain eigenvariable)
-    const { ProofTree } = require('../lib/prover/pt');
+
     const b0 = Store.put('bound', [0n]);
     const pb = Store.put('p', [b0]);
     const ex = Store.put('exists', [pb]);
@@ -369,7 +371,7 @@ describe('Backward Term Extraction', () => {
   // --- Null safety ---
 
   it('returns null for unproven tree', () => {
-    const { fromGoal } = require('../lib/prover/pt');
+
     const A = AST.freevar('A');
     const tree = fromGoal(seq([A], AST.freevar('B')));
     const term = extractTerm(tree, calc);
@@ -925,7 +927,7 @@ describe('Bridge Integration', () => {
     });
 
     it('verifyTree passes state to verifyStep for monad_r', () => {
-      const { ProofTree } = require('../lib/prover/pt');
+
       const succ = AST.monad(AST.atom('p'));
       const s = Seq.fromArrays([], [], succ);
       const monadicTerm = { rule: 'id', principal: AST.atom('p'), subterms: [] };

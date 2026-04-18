@@ -1,17 +1,22 @@
 /**
  * Tests for bytecode loader + extraGrade0Facts compose integration (Phase C+D of TODO_0160).
  */
-const { describe, it, beforeEach } = require('node:test');
-const assert = require('node:assert/strict');
-const Store = require('../../lib/kernel/store');
-const { loadBytecode, bytecodeArrGetGuard } = require('../../lib/engine/ill/bytecode-loader');
-const { intToBin, binToInt } = require('../../lib/engine/ill/ffi/convert');
-const { GRADE_W } = require('../../lib/engine/grades');
-const { ILL_CONNECTIVES } = require('../../lib/engine/ill/connectives');
-const { resolveConn, compileRule, flattenAnte } = require('../../lib/engine/compile');
-const { predHead } = require('../../lib/kernel/ast');
-const { compose0 } = require('../../lib/engine/compose');
-const { getModes } = require('../../lib/engine/ill/ffi');
+import { describe, it, beforeEach } from 'node:test';
+import assert from 'node:assert/strict';
+import Store from '../../lib/kernel/store.js';
+import { loadBytecode, bytecodeArrGetGuard } from '../../lib/engine/ill/bytecode-loader.js';
+import { intToBin, binToInt } from '../../lib/engine/ill/ffi/convert.js';
+import { GRADE_W } from '../../lib/engine/grades.js';
+import { ILL_CONNECTIVES } from '../../lib/engine/ill/connectives.js';
+import { resolveConn, compileRule, flattenAnte } from '../../lib/engine/compile.js';
+import { predHead } from '../../lib/kernel/ast.js';
+import { compose0 } from '../../lib/engine/compose.js';
+import { getModes } from '../../lib/engine/ill/ffi/index.js';
+// Hoisted by tools/esm-hoist.js:
+import path from 'path';
+import mde from '../../lib/engine/index.js';
+import fs from 'fs';
+import os from 'os';
 
 const COMPILE_OPTS = { connectives: ILL_CONNECTIVES, getModes };
 
@@ -597,10 +602,9 @@ describe('bytecode-loader: bytecodeArrGetGuard', () => {
 describe('bytecode specialization: EVM integration', { timeout: 30000 }, () => {
   it('specializes real EVM rules with bytecode facts via load opts', () => {
     Store.clear();
-    const path = require('path');
-    const mde = require('../../lib/engine/index');
 
-    const evmPath = path.join(__dirname, '../../calculus/ill/programs/evm.ill');
+
+    const evmPath = path.join(import.meta.dirname, '../../calculus/ill/programs/evm.ill');
 
     // PUSH1 0x40 STOP = 60 40 00
     const bc = loadBytecode('604000');
@@ -633,10 +637,9 @@ describe('bytecode specialization: EVM integration', { timeout: 30000 }, () => {
 
   it('bytecode specialization via load opts', () => {
     Store.clear();
-    const path = require('path');
-    const fs = require('fs');
-    const os = require('os');
-    const mde = require('../../lib/engine/index');
+
+
+
 
     // Minimal program with bytecode-dependent rule
     const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'bc-int-'));
@@ -671,10 +674,9 @@ describe('bytecode specialization: EVM integration', { timeout: 30000 }, () => {
 describe('bytecode specialization: benchmark', { timeout: 30000 }, () => {
   it('measures load+compose time with bytecode facts', () => {
     Store.clear();
-    const path = require('path');
-    const mde = require('../../lib/engine/index');
 
-    const evmPath = path.join(__dirname, '../../calculus/ill/programs/evm.ill');
+
+    const evmPath = path.join(import.meta.dirname, '../../calculus/ill/programs/evm.ill');
 
     // ~40 byte contract: enough to measure
     const hex = '6080604052348015600f57600080fd5b5060' +

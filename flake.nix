@@ -230,6 +230,7 @@
         devShells.default = pkgs.mkShell {
           buildInputs = with pkgs; [
             nodejs_22
+            bun
             tree-sitter
             gcc
             emscripten
@@ -243,15 +244,20 @@
             echo ""
             echo "Available tools:"
             echo "  node --version     : $(node --version)"
+            echo "  bun --version      : $(bun --version)"
             echo "  npm --version      : $(npm --version)"
             echo "  tree-sitter        : $(tree-sitter --version 2>/dev/null || echo 'available')"
             echo ""
             echo "Commands:"
             echo "  npm run dev          # Start dev server (hot reload)"
             echo "  npm run build        # Build production server"
-            echo "  npm test             # Run tests"
+            echo "  npm test             # Run tests (node --test)"
             echo "  nix run .#serve      # Build and run production server"
             echo "  nix build                  # Build package"
+            echo ""
+            echo "Runtime notes (see doc/documentation/runtime-evaluation.md):"
+            echo "  bun <file.js>            # ~15% faster cold-start for engine invocations"
+            echo "  bun libexec/calc-bundle  # rebuild out/ill.json faster"
             echo ""
           '';
 
