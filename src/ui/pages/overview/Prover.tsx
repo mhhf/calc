@@ -177,9 +177,9 @@ export default function Prover() {
 
       <SectionCard
         title="Monad bridge to the forward engine"
-        subtitle="The lax monad {A} is the polarity shift point. Three profiles: full (opaque to backward), guided (backward asks the forward engine for witnesses), off (pure backward)."
+        subtitle={'The lax monad {A} is the polarity shift point where the backward prover hands control to the forward engine. Three execution profiles control how the handoff is verified.'}
       >
-        <div class="flex flex-col md:flex-row items-stretch gap-3">
+        <div class="flex flex-col md:flex-row items-stretch gap-3 mb-4">
           <div class="flex-1 rounded border border-gray-200 dark:border-gray-700 p-3 bg-gray-50 dark:bg-gray-900/30">
             <div class="font-semibold text-gray-900 dark:text-white text-sm">Backward (search) side</div>
             <p class="text-xs text-gray-600 dark:text-gray-400 mt-1">Focused prover hits {`{A}`} connective in L3 and invokes the bridge.</p>
@@ -187,9 +187,63 @@ export default function Prover() {
           <div class="md:self-center text-gray-400 dark:text-gray-500 text-2xl text-center">↔</div>
           <div class="flex-1 rounded border border-gray-200 dark:border-gray-700 p-3 bg-gray-50 dark:bg-gray-900/30">
             <div class="font-semibold text-gray-900 dark:text-white text-sm">Forward (execute) side</div>
-            <p class="text-xs text-gray-600 dark:text-gray-400 mt-1">Forward engine runs to completion and returns the result as a verified witness.</p>
+            <p class="text-xs text-gray-600 dark:text-gray-400 mt-1">Forward engine runs to quiescence; residual state is verified against the inner succedent.</p>
           </div>
         </div>
+
+        <div class="overflow-x-auto">
+          <table class="w-full text-xs border-collapse">
+            <thead>
+              <tr class="text-left">
+                <th class="pb-2 pr-3 font-semibold text-gray-600 dark:text-gray-400">Profile</th>
+                <th class="pb-2 pr-3 font-semibold text-gray-600 dark:text-gray-400">Forward engine used?</th>
+                <th class="pb-2 pr-3 font-semibold text-gray-600 dark:text-gray-400">Verification at the monad step</th>
+                <th class="pb-2 pl-3 font-semibold text-gray-600 dark:text-gray-400">Kernel output</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr class="border-t border-gray-200 dark:border-gray-700 align-top">
+                <td class="py-2 pr-3 font-mono font-semibold text-emerald-700 dark:text-emerald-400">full (default)</td>
+                <td class="py-2 pr-3 text-gray-700 dark:text-gray-300 leading-snug max-w-xs">Yes — runs to quiescence. Opaque leaf from the backward prover's perspective.</td>
+                <td class="py-2 pr-3 text-gray-700 dark:text-gray-300 leading-snug max-w-md"><code class="font-mono">rightFocus()</code> checks that the residual linear state matches the inner succedent S of {`{S}`}.</td>
+                <td class="py-2 pl-3 text-gray-700 dark:text-gray-300 font-mono text-[11px]">{`{ valid: true, unverified: 'modeSwitch' }`}</td>
+              </tr>
+              <tr class="border-t border-gray-200 dark:border-gray-700 align-top">
+                <td class="py-2 pr-3 font-mono font-semibold text-blue-700 dark:text-blue-400">guided</td>
+                <td class="py-2 pr-3 text-gray-700 dark:text-gray-300 leading-snug max-w-xs">Yes — with evidence collection (oracle mode).</td>
+                <td class="py-2 pr-3 text-gray-700 dark:text-gray-300 leading-snug max-w-md"><code class="font-mono">guidedTerm()</code> synthesises a complete ILL proof term (copy → loli_l → tensor_r → monad_l chain). <code class="font-mono">check-term.js</code> re-verifies every step.</td>
+                <td class="py-2 pl-3 text-gray-700 dark:text-gray-300 font-mono text-[11px]">{`{ valid: true }`} — no unverified gap</td>
+              </tr>
+              <tr class="border-t border-gray-200 dark:border-gray-700 align-top">
+                <td class="py-2 pr-3 font-mono font-semibold text-gray-700 dark:text-gray-400">off</td>
+                <td class="py-2 pr-3 text-gray-700 dark:text-gray-300 leading-snug max-w-xs">No — forward engine is bypassed entirely.</td>
+                <td class="py-2 pr-3 text-gray-700 dark:text-gray-300 leading-snug max-w-md">Pure backward search inside the monad; intractable for realistic programs. See TODO_0082.</td>
+                <td class="py-2 pl-3 text-gray-700 dark:text-gray-300 font-mono text-[11px]">{`{ valid: true }`} if a proof is found at all</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-3 mt-4 text-xs">
+          <div class="rounded border border-emerald-200 dark:border-emerald-700 bg-emerald-50 dark:bg-emerald-900/15 p-3">
+            <div class="font-semibold text-emerald-800 dark:text-emerald-200 uppercase tracking-wider">full</div>
+            <p class="text-gray-700 dark:text-gray-300 mt-1 leading-snug">Fastest. The kernel admits a single unverified <em>modeSwitch</em> step at the monad, justified by the residual-state check.</p>
+          </div>
+          <div class="rounded border border-blue-200 dark:border-blue-700 bg-blue-50 dark:bg-blue-900/15 p-3">
+            <div class="font-semibold text-blue-800 dark:text-blue-200 uppercase tracking-wider">guided</div>
+            <p class="text-gray-700 dark:text-gray-300 mt-1 leading-snug">Fully verified. The forward engine acts as an oracle; every step it took is elaborated into a kernel-checkable ILL term.</p>
+          </div>
+          <div class="rounded border border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-900/20 p-3">
+            <div class="font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wider">off</div>
+            <p class="text-gray-700 dark:text-gray-300 mt-1 leading-snug">Reference semantics. Useful only on toy goals; kept to prove the bridge is a strict optimisation, not a requirement.</p>
+          </div>
+        </div>
+
+        <p class="text-xs text-gray-600 dark:text-gray-400 mt-3 leading-snug">
+          Bridge source: <code class="font-mono">lib/prover/bridge.js</code>. The bridge profile is independent
+          from the forward-engine optimisation profile (<code class="font-mono">bare</code> /
+          <code class="font-mono"> fast</code> / <code class="font-mono">evm</code>) — they compose freely.
+        </p>
       </SectionCard>
 
     </Page>
