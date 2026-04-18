@@ -27,7 +27,9 @@ import path from 'path';
 import { spawnSync } from 'child_process';
 const ROOT = path.resolve(import.meta.dirname, '..');
 const BUN = process.env.BUN_BIN || '/nix/store/4b7jvqsqywnsb273svingfmpqschkszi-bun-1.3.11/bin/bun';
-const NODE = process.execPath;
+const NODE = process.env.NODE_BIN || 'node';
+// Probe (sibling .mjs) reads CALC_ROOT to resolve engine modules.
+process.env.CALC_ROOT = ROOT;
 
 // ─── Args ───────────────────────────────────────────────────────────
 
@@ -44,55 +46,20 @@ function parseArgs(argv) {
 }
 
 // ─── Probe ──────────────────────────────────────────────────────────
+//
+// Probe source lives in a sibling .mjs file. CALC_ROOT env var tells the
+// probe (or its bundled/compiled form) where to resolve engine modules.
 
-const PROBE_SOURCE = `
-import path from 'path';
-import fs from 'fs';
-import { performance } from 'perf_hooks';
-import mde from ${JSON.stringify(path.join(ROOT, 'lib/engine/index.js'))};
-import { loadBytecode, bytecodeArrGetGuard } from ${JSON.stringify(path.join(ROOT, 'lib/engine/ill/bytecode-loader.js'))};
-const tFull0 = performance.now();
-const ROOT = ${JSON.stringify(ROOT)};
-
-const codePath = path.join(ROOT, 'calculus/ill/programs/multisig_nocall_solc_code.ill');
-const srcPath  = path.join(ROOT, 'calculus/ill/programs/multisig_nocall_solc_symbolic.ill');
-
-const loadOpts = {};
-try {
-  const hex = fs.readFileSync(codePath, 'utf8').match(/bytecode\\s+0x([0-9a-fA-F]+)/)[1];
-  const bc = loadBytecode(hex);
-  loadOpts.extraGrade0Facts = bc.facts;
-  loadOpts.scopeGuard = bytecodeArrGetGuard;
-} catch (e) { console.error('bc fail:', e.message); }
-
-const tLoad0 = performance.now();
-const calc = mde.load(srcPath, loadOpts);
-const loadMs = performance.now() - tLoad0;
-
-const tDec0 = performance.now();
-const st = mde.decomposeQuery(calc.queries.get('symex'));
-const decMs = performance.now() - tDec0;
-
-const tExp0 = performance.now();
-calc.explore(st);
-const expMs = performance.now() - tExp0;
-
-const totalMs = performance.now() - tFull0;
-
-process.stdout.write(JSON.stringify({
-  runtime: typeof Bun !== 'undefined' ? 'bun' : 'node',
-  loadMs, decMs, expMs, totalMs
-}) + '\\n');
-`;
+const PROBE_SRC_PATH = path.join(import.meta.dirname, 'bench-runtime.probe.mjs');
 
 // ─── Build artifacts ────────────────────────────────────────────────
 
 function ensureArtifacts(skipBuild) {
   const tmp = path.join(os.tmpdir(), 'calc-bench-runtime');
   fs.mkdirSync(tmp, { recursive: true });
-  // .mjs so node treats it as ESM (tmpdir has no package.json).
+  // Copy probe into tmp so bun build emits artifacts next to it.
   const probePath = path.join(tmp, 'probe.mjs');
-  fs.writeFileSync(probePath, PROBE_SOURCE);
+  fs.copyFileSync(PROBE_SRC_PATH, probePath);
 
   const bundledPath = path.join(tmp, 'probe-bundled.js');
   const compiledPath = path.join(tmp, 'probe-compiled');
