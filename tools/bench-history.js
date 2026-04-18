@@ -191,43 +191,82 @@ function cleanupAll() {
 // when embedding this into the runner script template.
 const E2E_CHILD_SOURCE = `'use strict';
 // Runs exactly ONE e2e iteration from a cold Node process:
-//   load(sourcePath, { cache: false, onPhase, extraGrade0Facts, scopeGuard })
+//   load(sourcePath, { cache: <mode>, onPhase, extraGrade0Facts, scopeGuard })
 //   decomposeQuery(symex)
 //   explore()
-// Prints per-phase timings via onPhase callback inside load(), plus externally
-// measured decompose/explore durations. All values are emitted as JSON delimited
-// by a marker so any incidental stdout from deep engine code can't poison the
-// parse. Bytecode-loader setup happens outside the timer.
 //
-// Phase schema (paths use '/' to mark nesting):
-//   load/parse, load/rule-compile, load/compose/{pass1-linear,grade0-facts,
-//     specialize,residual,fuse-blocks,fuse-chains,sroa}, load/type-check,
-//     load/backchain-index, load/clause-dispatch, load/persistent-steps,
-//     load/ex-chains, load/engine-init, load/label-index,
-//   decompose, explore
+// Cache mode is selected by env (all four scenarios reuse the same child):
+//   BENCH_CACHE_MODE=nocache     → cache:false             (no compose cache r/w)
+//   BENCH_CACHE_MODE=cache-miss  → CALC_COMPOSE_CACHE=1    (cache dir pre-wiped
+//                                                           by parent → cold build)
+//   BENCH_CACHE_MODE=cache-hit   → CALC_COMPOSE_CACHE=1    (cache dir pre-warmed
+//                                                           by parent → hit)
+//   BENCH_CACHE_MODE=noopts      → cache:false, fuseBasicBlocks:false,
+//                                  skipSpecialize:true    (no post-parse
+//                                                          compose optimizations
+//                                                          — baseline pipeline
+//                                                          cost without fuse
+//                                                          and specialize)
+// Cache dir (isolated, per-commit): BENCH_CACHE_DIR=<tmp>
 //
-// Older commits without onPhase support simply emit no phase entries — the
-// runner treats missing phases as a non-fatal "phases unavailable" signal.
+// Emits one line per top-level metric so the parent can extract without relying
+// on phase-ordering contracts (older commits emit no phases; newer commits
+// might add more):
+//   BENCH_E2E_RESULT=<elapsed ms>         overall t0..end (inside child, no
+//                                         node startup / require / loadBytecode)
+//   BENCH_E2E_LOAD=<ms>
+//   BENCH_E2E_DECOMPOSE=<ms>
+//   BENCH_E2E_EXPLORE=<ms>
+//   BENCH_E2E_CACHEHIT=<0|1>              1 if load/compose phase was absent
+//                                         (snapshot restore path, no compose)
+//   BENCH_E2E_REQUIRE=<ms>                require('./lib/engine')
+//   BENCH_E2E_BYTECODE=<ms>               loadBytecode(hex)
+//   BENCH_E2E_PHASES=<json>               full tree, optional on older commits
 
 const path = require('path');
 const fs = require('fs');
 const { performance } = require('perf_hooks');
 
 try {
+  const cacheMode = process.env.BENCH_CACHE_MODE || 'nocache';
+
+  const tReq0 = performance.now();
   const mde = require('./lib/engine');
+  const requireMs = performance.now() - tReq0;
+
   const codePath = path.join(__dirname, 'calculus/ill/programs/multisig_nocall_solc_code.ill');
   const sourcePath = path.join(__dirname, 'calculus/ill/programs/multisig_nocall_solc_symbolic.ill');
 
   const phases = [];
   const onPhase = (pathName, ms, meta) => phases.push(meta ? [pathName, ms, meta] : [pathName, ms]);
 
-  const loadOpts = { cache: false, onPhase };
+  // Cache option: 'nocache'/'noopts' → false (no r/w); cache-miss/cache-hit
+  // both use the env-driven CALC_COMPOSE_CACHE=1 path — we just leave
+  // opts.cache undefined so engine respects the env var. Parent sets
+  // CALC_COMPOSE_CACHE=1 and CALC_CACHE_DIR before spawning, and wipes/warms
+  // the dir appropriately.
+  const loadOpts = { onPhase };
+  if (cacheMode === 'nocache' || cacheMode === 'noopts') loadOpts.cache = false;
+  if (cacheMode === 'noopts') {
+    // Disable post-parse compose optimizations. fuseBasicBlocks defaults to
+    // true when extraGrade0Facts is present (see mde.load); force false here.
+    // skipSpecialize is a new opt that short-circuits the per-pred specialize
+    // pipeline. Older commits without skipSpecialize simply ignore it; in
+    // that case this scenario effectively measures nofuse only (compose
+    // specialize still runs), tagged with cacheHit=false and logged clearly.
+    loadOpts.fuseBasicBlocks = false;
+    loadOpts.skipSpecialize = true;
+  }
+
+  let bytecodeMs = 0;
   try {
     const loaderFile = path.join(__dirname, 'lib/engine/ill/bytecode-loader.js');
     if (fs.existsSync(loaderFile) && fs.existsSync(codePath)) {
       const { loadBytecode, bytecodeArrGetGuard } = require('./lib/engine/ill/bytecode-loader');
+      const tBc0 = performance.now();
       const hex = fs.readFileSync(codePath, 'utf8').match(/bytecode\\s+0x([0-9a-fA-F]+)/)[1];
       const bc = loadBytecode(hex);
+      bytecodeMs = performance.now() - tBc0;
       loadOpts.extraGrade0Facts = bc.facts;
       loadOpts.scopeGuard = bytecodeArrGetGuard;
     }
@@ -257,8 +296,13 @@ try {
 
   const elapsed = performance.now() - t0;
 
-  // Add a synthetic 'load' bucket if the engine emitted any load/* phases.
-  // Not strictly needed (sunburst derives it), but keeps the flat log complete.
+  // Cache-hit detection: snapshot-restore path skips compose entirely, so no
+  // 'load/compose' phase will have been emitted. This is a reliable signal that
+  // _loadCSnap returned a cached calc rather than running the cold pipeline.
+  const hasComposePhase = phases.some(p => p[0] === 'load/compose' || p[0].startsWith('load/compose/'));
+  const cacheHit = !hasComposePhase;
+
+  // Synthetic 'load' bucket (kept for sunburst/flat-log consumers).
   const hasLoadPhases = phases.some(p => p[0].startsWith('load/'));
   if (hasLoadPhases) phases.unshift(['load', loadMs, {
     rules: (calc && calc.compiledRules) ? calc.compiledRules.length : 0,
@@ -267,6 +311,12 @@ try {
   }]);
 
   process.stdout.write('BENCH_E2E_RESULT=' + elapsed + '\\n');
+  process.stdout.write('BENCH_E2E_LOAD=' + loadMs + '\\n');
+  process.stdout.write('BENCH_E2E_DECOMPOSE=' + decMs + '\\n');
+  process.stdout.write('BENCH_E2E_EXPLORE=' + expMs + '\\n');
+  process.stdout.write('BENCH_E2E_CACHEHIT=' + (cacheHit ? 1 : 0) + '\\n');
+  process.stdout.write('BENCH_E2E_REQUIRE=' + requireMs + '\\n');
+  process.stdout.write('BENCH_E2E_BYTECODE=' + bytecodeMs + '\\n');
   process.stdout.write('BENCH_E2E_PHASES=' + JSON.stringify(phases) + '\\n');
 } catch (err) {
   process.stderr.write('E2E_CHILD_ERROR: ' + (err && err.stack || err && err.message || String(err)) + '\\n');
@@ -337,25 +387,44 @@ function benchSymex(state, calc) {
   return { ...stats(times), nodes, branches };
 }
 
-// Run one e2e iteration in a fresh Node subprocess. Returns { t, phases } where
-// t is the total elapsed ms and phases is an array of [path, ms]. On older
-// commits without onPhase support, phases is [].
-function runE2EChild(scriptPath) {
+// Run one e2e iteration in a fresh Node subprocess. Returns
+//   { t,           // child-reported elapsed ms (post-require t0)
+//     parentWall,  // wall time incl. node startup + require + bytecode + exit
+//     loadMs, decMs, expMs,
+//     requireMs, bytecodeMs,  // externalities to the reported e2e number
+//     cacheHit,    // 1 when _loadCSnap returned early (no compose ran)
+//     phases }
+// Older commits that only emit BENCH_E2E_RESULT degrade gracefully: unknown
+// fields become undefined and aggregation skips them.
+function runE2EChild(scriptPath, extraEnv) {
+  const env = { ...process.env, NODE_PATH: path.join(__dirname, 'node_modules') };
+  if (extraEnv) Object.assign(env, extraEnv);
+  const parentT0 = performance.now();
   const r = spawnSync(process.execPath, [scriptPath], {
-    cwd: __dirname,
-    env: { ...process.env, NODE_PATH: path.join(__dirname, 'node_modules') },
-    timeout: 60_000,
+    cwd: __dirname, env, timeout: 60_000,
   });
+  const parentWall = performance.now() - parentT0;
   if (r.error) throw new Error('spawn: ' + r.error.message);
   if (r.status !== 0) {
     const stderr = (r.stderr || Buffer.alloc(0)).toString();
     throw new Error('exit ' + r.status + ': ' + stderr.slice(0, 300).trim());
   }
   const stdout = (r.stdout || Buffer.alloc(0)).toString();
-  const m = stdout.match(/BENCH_E2E_RESULT=([\\d.eE+-]+)/);
-  if (!m) throw new Error('no BENCH_E2E_RESULT in stdout: ' + stdout.slice(0, 200));
-  const t = parseFloat(m[1]);
-  if (!isFinite(t)) throw new Error('bad e2e time: ' + m[1]);
+  const numField = (re) => {
+    const m = stdout.match(re);
+    if (!m) return undefined;
+    const v = parseFloat(m[1]);
+    return isFinite(v) ? v : undefined;
+  };
+  const t = numField(/BENCH_E2E_RESULT=([\\d.eE+-]+)/);
+  if (t === undefined) throw new Error('no BENCH_E2E_RESULT in stdout: ' + stdout.slice(0, 200));
+  const loadMs    = numField(/BENCH_E2E_LOAD=([\\d.eE+-]+)/);
+  const decMs     = numField(/BENCH_E2E_DECOMPOSE=([\\d.eE+-]+)/);
+  const expMs     = numField(/BENCH_E2E_EXPLORE=([\\d.eE+-]+)/);
+  const requireMs = numField(/BENCH_E2E_REQUIRE=([\\d.eE+-]+)/);
+  const bytecodeMs= numField(/BENCH_E2E_BYTECODE=([\\d.eE+-]+)/);
+  const hitField  = stdout.match(/BENCH_E2E_CACHEHIT=(\\d)/);
+  const cacheHit  = hitField ? hitField[1] === '1' : undefined;
 
   // Phases are optional — older commits won't emit the line.
   let phases = [];
@@ -363,7 +432,7 @@ function runE2EChild(scriptPath) {
   if (pm) {
     try { phases = JSON.parse(pm[1]); } catch { phases = []; }
   }
-  return { t, phases };
+  return { t, parentWall, loadMs, decMs, expMs, requireMs, bytecodeMs, cacheHit, phases };
 }
 
 // Aggregate per-phase stats across iterations.
@@ -420,27 +489,88 @@ function _aggregateMeta(metas) {
   return out;
 }
 
-function benchE2EChildSpawned() {
-  // Write the child script once per commit; reuse across all warmup+timed iterations.
+// Cleanly remove an isolated per-bench cache dir. Only touches paths we own.
+function _wipeCacheDir(dir) {
+  if (!dir || !fs.existsSync(dir)) return;
+  try { fs.rmSync(dir, { recursive: true, force: true }); } catch {}
+}
+
+// Run the full e2e child-spawn benchmark under a given cache scenario.
+//
+// mode = 'nocache'     → cache:false, each iter is a pure cold compose.
+// mode = 'cache-miss'  → CALC_COMPOSE_CACHE=1; cache dir wiped BEFORE every
+//                        timed iter so each is a first-write (cold build).
+// mode = 'cache-hit'   → CALC_COMPOSE_CACHE=1; cache dir wiped ONCE, primed
+//                        via warmup spawns, then every timed iter restores
+//                        from the warm snapshot.
+//
+// Older commits: nocache works everywhere; cache modes degrade gracefully —
+// unknown env vars are ignored, so cache-miss/cache-hit on a pre-cache commit
+// simply re-measure the nocache path (tagged with mode but scenarios collapse).
+function benchE2EChildSpawned(mode) {
+  mode = mode || 'nocache';
   const scriptPath = path.join(__dirname, '_bench_e2e_iter.js');
   fs.writeFileSync(scriptPath, E2E_CHILD_SCRIPT);
 
-  try {
-    // Warmup: each spawn is a cold Node process, so these don't warm any JS
-    // state — they only prime the OS page cache for the .ill source files,
-    // reducing filesystem variance across the timed runs. Results discarded.
-    for (let i = 0; i < E2E_WARMUP; i++) runE2EChild(scriptPath);
+  // Per-commit isolated cache dir — avoids touching the user's ~/.cache/calc.
+  const cacheDir = (mode === 'nocache') ? null
+    : path.join(require('os').tmpdir(), 'bench-history-cache-' + process.pid + '-' + mode);
+  const extraEnv = { BENCH_CACHE_MODE: mode };
+  if (mode === 'cache-miss' || mode === 'cache-hit') {
+    extraEnv.CALC_COMPOSE_CACHE = '1';
+    extraEnv.CALC_CACHE_DIR = cacheDir;
+  }
 
-    // Timed runs — each a fresh process, parent records child-reported ms + phases.
+  try {
+    if (cacheDir) _wipeCacheDir(cacheDir);
+
+    // Warmup
+    //   nocache / cache-miss: primes OS page cache only (JS state is per-child).
+    //   cache-hit: first warmup builds the snapshot; subsequent warmup+timed
+    //              iters read it back. Results discarded either way.
+    for (let i = 0; i < E2E_WARMUP; i++) runE2EChild(scriptPath, extraEnv);
+
+    // For cache-miss we need every TIMED iter to start with an empty cache.
+    // For cache-hit the warmup builds the snapshot and we must NOT wipe.
     const iters = [];
-    for (let i = 0; i < E2E_RUNS; i++) iters.push(runE2EChild(scriptPath));
-    const times = iters.map(x => x.t);
+    for (let i = 0; i < E2E_RUNS; i++) {
+      if (mode === 'cache-miss' && cacheDir) _wipeCacheDir(cacheDir);
+      iters.push(runE2EChild(scriptPath, extraEnv));
+    }
+
+    const times      = iters.map(x => x.t);
+    const parentWall = iters.map(x => x.parentWall).filter(v => typeof v === 'number');
+    const loadV      = iters.map(x => x.loadMs).filter(v => typeof v === 'number');
+    const decV       = iters.map(x => x.decMs).filter(v => typeof v === 'number');
+    const expV       = iters.map(x => x.expMs).filter(v => typeof v === 'number');
+    const reqV       = iters.map(x => x.requireMs).filter(v => typeof v === 'number');
+    const bcV        = iters.map(x => x.bytecodeMs).filter(v => typeof v === 'number');
+    const hitV       = iters.map(x => x.cacheHit).filter(v => typeof v === 'boolean');
+
     const s = stats(times);
+    s.mode = mode;
+    if (parentWall.length) s.parentWall = stats(parentWall.slice());
+    if (loadV.length)      s.load       = stats(loadV.slice());
+    if (decV.length)       s.decompose  = stats(decV.slice());
+    if (expV.length)       s.explore    = stats(expV.slice());
+    if (reqV.length)       s.require    = stats(reqV.slice());
+    if (bcV.length)        s.bytecode   = stats(bcV.slice());
+    if (hitV.length)       s.cacheHitRate = hitV.filter(v => v).length / hitV.length;
+
+    // Synthetic composite: load+explore, excluding the trivial decompose step.
+    // Useful when evaluating optimization that moves work between phases but
+    // ignoring decompose noise (usually <1ms).
+    if (loadV.length && expV.length && loadV.length === expV.length) {
+      const combined = loadV.map((l, i) => l + expV[i]);
+      s.loadPlusExplore = stats(combined);
+    }
+
     const phases = aggregatePhases(iters);
     if (Object.keys(phases).length > 0) s.phases = phases;
     return s;
   } finally {
     try { fs.unlinkSync(scriptPath); } catch {}
+    if (cacheDir) _wipeCacheDir(cacheDir);
   }
 }
 
@@ -480,12 +610,23 @@ async function main() {
     result.branches = symex.branches;
 
     // E2E: cold subprocess per iteration — measures true first-invocation cost.
+    // Three scenarios, each a separate cold bench so a failure in one doesn't
+    // contaminate the others. 'e2e' is kept as the nocache alias for
+    // backward-compat with existing displays / resume files.
     if (E2E_ENABLED) {
       try {
-        result.e2e = benchE2EChildSpawned();
+        const nocache = benchE2EChildSpawned('nocache');
+        result.e2e = nocache;
+        result.e2eNoCache = nocache;
       } catch (err) {
         result.e2eError = err.message;
       }
+      try { result.e2eCacheMiss = benchE2EChildSpawned('cache-miss'); }
+      catch (err) { result.e2eCacheMissError = err.message; }
+      try { result.e2eCacheHit = benchE2EChildSpawned('cache-hit'); }
+      catch (err) { result.e2eCacheHitError = err.message; }
+      try { result.e2eNoOpts = benchE2EChildSpawned('noopts'); }
+      catch (err) { result.e2eNoOptsError = err.message; }
     }
   } catch (err) {
     result.error = err.message;
@@ -600,8 +741,18 @@ function displayTable(results) {
 
   const maxSubj = Math.min(40, Math.max(20, ...results.map(r => r.subject.length)));
 
+  // Column schema:
+  //   Explore  = warm in-proc symex (hot path only)
+  //   Load     = mde.load() from cold subprocess (no compose cache)
+  //   L+E      = load + explore, cold subprocess (composite for nocache mode)
+  //   E2E      = total cold child-reported (nocache)
+  //   Wall     = parent wall (incl. node startup/require/bytecode/exit)
+  //   Miss     = cold subprocess with CALC_COMPOSE_CACHE=1, cache pre-wiped (build cost)
+  //   Hit      = cold subprocess with CALC_COMPOSE_CACHE=1, cache warm (hit cost)
+  //   NoOpt    = cold subprocess, fuseBasicBlocks=false + skipSpecialize=true
+  //              (baseline pipeline cost without fuse and specialize opts)
   const cols = ['#', 'Commit', 'Date', 'Message', 'Nodes', 'Leaves',
-    'Symex', 'σs', 'E2E', 'σe', 'vs HEAD'];
+    'Explore', 'Load', 'L+E', 'E2E', 'Wall', 'Miss', 'Hit', 'NoOpt', 'vs HEAD'];
   const rows = [];
 
   for (let i = 0; i < results.length; i++) {
@@ -615,21 +766,31 @@ function displayTable(results) {
 
     const s = getSymex(r.data);
     const e = getE2E(r.data);
+    const miss = r.data && r.data.e2eCacheMiss;
+    const hit  = r.data && r.data.e2eCacheHit;
+    const noopt = r.data && r.data.e2eNoOpts;
 
     if (r.data && r.data.error) {
-      row.push('—', '—', 'ERROR', '—', '—', '—', '—');
+      row.push('—', '—', 'ERROR', '—', '—', '—', '—', '—', '—', '—', '—');
     } else if (!r.data) {
-      row.push('—', '—', '—', '—', '—', '—', '—');
+      row.push('—', '—', '—', '—', '—', '—', '—', '—', '—', '—', '—');
     } else {
       const nodes = r.data.nodes !== undefined ? String(r.data.nodes) : '—';
       const branches = r.data.branches !== undefined ? String(r.data.branches) : '—';
+      const loadMean = e && e.load ? e.load.mean : undefined;
+      const lePlus   = e && e.loadPlusExplore ? e.loadPlusExplore.mean : undefined;
+      const wallMean = e && e.parentWall ? e.parentWall.mean : undefined;
       row.push(
         nodes,
         branches,
         s ? fmtMs(s.mean) : '—',
-        s ? fmtMs(s.stddev) : '—',
+        loadMean !== undefined ? fmtMs(loadMean) : '—',
+        lePlus   !== undefined ? fmtMs(lePlus)   : '—',
         e ? fmtMs(e.mean) : '—',
-        e ? fmtMs(e.stddev) : '—',
+        wallMean !== undefined ? fmtMs(wallMean) : '—',
+        miss ? fmtMs(miss.mean) : '—',
+        hit  ? fmtMs(hit.mean)  : '—',
+        noopt ? fmtMs(noopt.mean) : '—',
         s ? fmtChange(s.mean, baselineSymex) : '—',
       );
     }
@@ -648,7 +809,7 @@ function displayTable(results) {
 
   for (const row of rows) {
     console.log(row.map((c, i) => {
-      // Right-align numeric columns
+      // Right-align numeric columns (all after Message, idx >= 4)
       if (i >= 4) return (c || '').padStart(widths[i]);
       return (c || '').padEnd(widths[i]);
     }).join('  '));
@@ -656,15 +817,21 @@ function displayTable(results) {
 
   console.log(widths.map(w => '─'.repeat(w)).join('──'));
 
-  // Summary stats
-  const symexVals = results.map(r => getSymex(r.data)).filter(Boolean).map(s => s.mean);
-  if (symexVals.length > 0) {
-    console.log(`symex: min=${fmtMs(Math.min(...symexVals))} max=${fmtMs(Math.max(...symexVals))} range=${((Math.max(...symexVals)/Math.min(...symexVals) - 1)*100).toFixed(1)}%`);
-  }
-  const e2eVals = results.map(r => getE2E(r.data)).filter(Boolean).map(e => e.mean);
-  if (e2eVals.length > 0) {
-    console.log(`e2e:   min=${fmtMs(Math.min(...e2eVals))} max=${fmtMs(Math.max(...e2eVals))} range=${((Math.max(...e2eVals)/Math.min(...e2eVals) - 1)*100).toFixed(1)}%`);
-  }
+  // Summary ranges — one line per metric, skipped when no data.
+  const summaryLine = (label, vals) => {
+    if (vals.length === 0) return;
+    const min = Math.min(...vals), max = Math.max(...vals);
+    const range = min > 0 ? ((max / min - 1) * 100).toFixed(1) + '%' : '—';
+    console.log(`${label.padEnd(8)} min=${fmtMs(min)} max=${fmtMs(max)} range=${range}`);
+  };
+  summaryLine('symex:',  results.map(r => getSymex(r.data)).filter(Boolean).map(s => s.mean));
+  summaryLine('e2e:',    results.map(r => getE2E(r.data)).filter(Boolean).map(e => e.mean));
+  summaryLine('load:',   results.map(r => getE2E(r.data)).filter(e => e && e.load).map(e => e.load.mean));
+  summaryLine('wall:',   results.map(r => getE2E(r.data)).filter(e => e && e.parentWall).map(e => e.parentWall.mean));
+  summaryLine('miss:',   results.map(r => r.data && r.data.e2eCacheMiss).filter(Boolean).map(m => m.mean));
+  summaryLine('hit:',    results.map(r => r.data && r.data.e2eCacheHit).filter(Boolean).map(h => h.mean));
+  summaryLine('noopt:',  results.map(r => r.data && r.data.e2eNoOpts).filter(Boolean).map(n => n.mean));
+
   const successful = results.filter(r => getSymex(r.data));
   console.log(`${successful.length}/${results.length} commits benchmarked successfully.`);
   console.log();
@@ -686,7 +853,8 @@ async function main() {
   console.log(`  Commits:     ${commits.length} (from ${opts.branch})`);
   console.log(`  Symex:       ${opts.warmup} warmup, ${opts.runs} timed (hot explore-only)`);
   if (opts.e2eEnabled) {
-    console.log(`  E2E:         ${opts.e2eWarmup} warmup, ${opts.e2eRuns} timed (cold: fresh Node per iter, load+decompose+explore)`);
+    console.log(`  E2E:         ${opts.e2eWarmup} warmup, ${opts.e2eRuns} timed (cold: fresh Node per iter)`);
+    console.log(`               × 4 scenarios: nocache / cache-miss (build) / cache-hit (restore) / noopts (no fuse/specialize)`);
   } else {
     console.log(`  E2E:         disabled (--no-e2e)`);
   }
@@ -757,15 +925,22 @@ async function main() {
 
     const elapsed = ((performance.now() - t0) / 1000).toFixed(1);
 
-    // Format inline result
+    // Format inline result — show symex, e2e nocache, cache miss, cache hit.
     if (data.error) {
       process.stdout.write(`ERROR (${elapsed}s)\n`);
     } else {
       const s = getSymex(data);
       const e = getE2E(data);
+      const miss = data.e2eCacheMiss;
+      const hit = data.e2eCacheHit;
+      const noopt = data.e2eNoOpts;
       const symexStr = s ? `${fmtMs(s.mean)} ±${fmtMs(s.stddev)}` : 'n/a';
-      const e2eStr = e ? ` · e2e ${fmtMs(e.mean)} ±${fmtMs(e.stddev)}` : (data.e2eError ? ' · e2e ERROR' : '');
-      process.stdout.write(`${symexStr}${e2eStr} [${data.nodes} nodes, ${data.branches} leaves] (${elapsed}s)\n`);
+      const loadStr = (e && e.load) ? ` · load ${fmtMs(e.load.mean)}` : '';
+      const e2eStr  = e ? ` · e2e ${fmtMs(e.mean)}` : (data.e2eError ? ' · e2e ERROR' : '');
+      const missStr = miss ? ` · miss ${fmtMs(miss.mean)}` : '';
+      const hitStr  = hit ? ` · hit ${fmtMs(hit.mean)}` : '';
+      const noStr   = noopt ? ` · noopt ${fmtMs(noopt.mean)}` : '';
+      process.stdout.write(`${symexStr}${loadStr}${e2eStr}${missStr}${hitStr}${noStr} [${data.nodes}n,${data.branches}l] (${elapsed}s)\n`);
     }
 
     results.push({ ...c, data });
