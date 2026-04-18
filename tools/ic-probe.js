@@ -25,62 +25,9 @@ function parseArgs() {
   return { compare: process.argv.includes('--compare') };
 }
 
-// The child script: load calculus, build a varied mix of terms and thetas,
-// and hammer apply() hard enough to force IC evolution past premonomorphic.
-const CHILD_SCRIPT = `
-(async () => {
-  const calculus = require(${JSON.stringify(path.resolve(ROOT, 'lib/calculus/index'))});
-  const Store = require(${JSON.stringify(path.resolve(ROOT, 'lib/kernel/store'))});
-  const { apply } = require(${JSON.stringify(path.resolve(ROOT, 'lib/kernel/substitute'))});
-
-  const ill = await calculus.loadILL();
-  const AST = ill.AST;
-
-  function rng(seed) {
-    let a = seed >>> 0;
-    return () => {
-      a = (a + 0x6D2B79F5) >>> 0;
-      let t = a;
-      t = Math.imul(t ^ (t >>> 15), t | 1);
-      t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
-      return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
-    };
-  }
-  function pick(r, arr) { return arr[Math.floor(r() * arr.length)]; }
-
-  const atoms = ['p','q','r','s'].map(n => AST.atom(n));
-  const mvs = ['m0','m1','m2','m3','m4','m5'].map(n => AST.metavar(n));
-
-  function genTerm(r, d) {
-    if (d <= 0) return r() < 0.4 ? pick(r, mvs) : pick(r, atoms);
-    const k = r();
-    if (k < 0.2) {
-      const n = 2 + Math.floor(r() * 3);
-      const arr = new Uint32Array(n);
-      for (let i = 0; i < n; i++) arr[i] = genTerm(r, d-1);
-      return Store.putArray(arr);
-    }
-    if (k < 0.45) return AST.tensor(genTerm(r, d-1), genTerm(r, d-1));
-    if (k < 0.7) return AST.loli(genTerm(r, d-1), genTerm(r, d-1));
-    if (k < 0.85) return AST.with(genTerm(r, d-1), genTerm(r, d-1));
-    return AST.oplus(genTerm(r, d-1), genTerm(r, d-1));
-  }
-
-  const r = rng(42);
-  // Warmup — pass many shapes so IC moves past monomorphic.
-  for (let i = 0; i < 5000; i++) {
-    const h = genTerm(r, 3 + Math.floor(r() * 3));
-    const n = Math.floor(r() * 8);
-    const theta = [];
-    for (let k = 0; k < n; k++) theta.push([pick(r, mvs), genTerm(r, 1 + Math.floor(r() * 2))]);
-    for (let k = 0; k < theta.length; k++) {
-      theta[k][1] = apply(theta[k][1], theta);
-    }
-    apply(h, theta);
-  }
-  console.log('__IC_PROBE_DONE__');
-})().catch(err => { console.error('CHILD_FAIL:', err && err.stack || err); process.exit(1); });
-`;
+// Child script lives in a sibling .mjs file so codemods don't see source as
+// data and rewrite imports inside string contents. See ic-probe.child.mjs.
+const CHILD_SCRIPT_PATH = path.join(import.meta.dirname, 'ic-probe.child.mjs');
 
 // V8 --log-ic CSV format (Node 22 / V8 12.x):
 //   <ICType>,<pc>,<time>,<line>,<col>,<state-from>,<state-to>,<map>,<name>,<modifier>,<slow_reason>
@@ -128,9 +75,12 @@ function main() {
   fs.mkdirSync(path.dirname(logPath), { recursive: true });
   try { fs.unlinkSync(logPath); } catch { /* ignore */ }
 
+  // V8 IC probing requires node (`--log-ic` is V8-specific; bun has no
+  // equivalent). Hardcode `node` rather than using process.execPath so the
+  // tool works correctly when this file is invoked under bun too.
   const res = spawnSync(
-    process.execPath,
-    ['--log-ic', `--logfile=${logPath}`, '--no-logfile-per-isolate', '-e', CHILD_SCRIPT],
+    'node',
+    ['--log-ic', `--logfile=${logPath}`, '--no-logfile-per-isolate', CHILD_SCRIPT_PATH],
     {
       cwd: ROOT,
       encoding: 'utf8',
