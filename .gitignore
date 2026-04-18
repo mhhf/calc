@@ -26,6 +26,7 @@ lib/tree-sitter-mde/bindings/
 
 # Benchmark comparison worktrees
 .bench-compare/
+.bench-history/
 
 # Rust build artifacts
 zk/target/
