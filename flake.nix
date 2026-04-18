@@ -21,7 +21,8 @@
           npmDeps = pkgs.importNpmLock { npmRoot = ./.; };
           npmConfigHook = pkgs.importNpmLock.npmConfigHook;
 
-          nativeBuildInputs = [ pkgs.jq pkgs.makeWrapper ];
+          # bun is required by `npm run build:bundle` (calls `bun libexec/calc-bundle`)
+          nativeBuildInputs = [ pkgs.jq pkgs.makeWrapper pkgs.bun ];
 
           # Skip native compilation - tree-sitter isn't used in the browser
           # The UI uses web-tree-sitter (WASM) instead
