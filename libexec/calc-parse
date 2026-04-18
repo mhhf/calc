@@ -8,8 +8,7 @@
  *   calc parse --latex "A * B" # Output LaTeX
  */
 
-const v2 = require('../lib');
-
+import v2 from '../lib/index.js';
 async function main() {
   let args = process.argv.slice(2);
 

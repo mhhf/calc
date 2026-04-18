@@ -3,10 +3,9 @@
  *
  * Validates monad_r/monad_l descriptor structure.
  */
-const { describe, it } = require('node:test');
-const assert = require('node:assert/strict');
-const { monadRules } = require('../lib/calculus/modes');
-
+import { describe, it } from 'node:test';
+import assert from 'node:assert/strict';
+import { monadRules } from '../lib/calculus/modes.js';
 describe('monadRules', () => {
   const rules = monadRules();
 

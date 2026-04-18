@@ -5,12 +5,10 @@
  * correctly extracted from spec files and can be inferred from rule structure.
  */
 
-const { describe, it, before } = require('node:test');
-const assert = require('node:assert');
-
-const calculus = require('../lib/calculus');
-const { buildFocusingMeta } = require('../lib/meta/focusing');
-
+import { describe, it, before } from 'node:test';
+import assert from 'node:assert';
+import calculus from '../lib/calculus/index.js';
+import { buildFocusingMeta } from '../lib/meta/focusing.js';
 describe('v2 Focusing Metadata', () => {
   let ill;
   let meta;

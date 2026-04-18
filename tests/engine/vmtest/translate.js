@@ -5,11 +5,10 @@
  * for forward execution. Pure function, no test dependencies.
  */
 
-const Store = require('../../../lib/kernel/store');
-const { intToBin } = require('../../../lib/engine/ill/ffi/convert');
-const { bytesToSemantic } = require('../../../lib/engine/index');
-const { arrToTrie } = require('../../../lib/engine/ill/ffi/array');
-
+import Store from '../../../lib/kernel/store.js';
+import { intToBin } from '../../../lib/engine/ill/ffi/convert.js';
+import { bytesToSemantic } from '../../../lib/engine/index.js';
+import { arrToTrie } from '../../../lib/engine/ill/ffi/array.js';
 /**
  * Convert a hex string (with or without 0x prefix) to a BigInt.
  */
@@ -192,4 +191,5 @@ function fixtureToState(fixture, calc) {
   return state;
 }
 
-module.exports = { fixtureToState, hexToBigInt, hexToBinHash };
+export { fixtureToState, hexToBigInt, hexToBinHash };
+export default { fixtureToState, hexToBigInt, hexToBinHash };

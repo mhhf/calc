@@ -6,20 +6,20 @@
  * See TODO_0068 §10.5 for the guided profile design.
  */
 
-const { describe, it, beforeEach } = require('node:test');
-const assert = require('node:assert/strict');
-const Store = require('../../lib/kernel/store');
-const forward = require('../../lib/engine/forward');
-const { matchLoli } = require('../../lib/engine/lnl/loli');
-const { proveWithFFI } = require('../../lib/engine/opt/ffi');
-const illFfi = require('../../lib/engine/ill/ffi');
-const { drainLolis } = require('../../lib/engine/lnl/loli-drain');
-const { GRADE_W } = require('../../lib/engine/grades');
-const { ILL_CONNECTIVES } = require('../../lib/engine/ill/connectives');
-const { resolveConn } = require('../../lib/engine/compile');
+import { describe, it, beforeEach } from 'node:test';
+import assert from 'node:assert/strict';
+import Store from '../../lib/kernel/store.js';
+import forward from '../../lib/engine/forward.js';
+import { matchLoli } from '../../lib/engine/lnl/loli.js';
+import { proveWithFFI } from '../../lib/engine/opt/ffi.js';
+import illFfi from '../../lib/engine/ill/ffi/index.js';
+import { drainLolis } from '../../lib/engine/lnl/loli-drain.js';
+import { GRADE_W } from '../../lib/engine/grades.js';
+import { ILL_CONNECTIVES } from '../../lib/engine/ill/connectives.js';
+import { resolveConn } from '../../lib/engine/compile.js';
 const ILL_RC = resolveConn(ILL_CONNECTIVES);
-const { Arena } = require('../../lib/engine/fact-set');
-const { makeMatchOpts } = require('./_match-opts');
+import { Arena } from '../../lib/engine/fact-set.js';
+import { makeMatchOpts } from './_match-opts.js';
 const illMatchOpts = makeMatchOpts({
   ffi: {
     meta: illFfi.defaultMeta,

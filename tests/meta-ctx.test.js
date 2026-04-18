@@ -1,11 +1,9 @@
-const { describe, it } = require('node:test');
-const assert = require('node:assert');
-
-const { MetaCtx } = require('../lib/prover/meta-ctx');
-const Store = require('../lib/kernel/store');
-const Seq = require('../lib/kernel/sequent');
-const { freshMetavar, resetMetavar } = require('../lib/kernel/fresh');
-
+import { describe, it } from 'node:test';
+import assert from 'node:assert';
+import { MetaCtx } from '../lib/prover/meta-ctx.js';
+import Store from '../lib/kernel/store.js';
+import Seq from '../lib/kernel/sequent.js';
+import { freshMetavar, resetMetavar } from '../lib/kernel/fresh.js';
 describe('MetaCtx', () => {
   it('bind + resolve direct metavar', () => {
     const mc = new MetaCtx();

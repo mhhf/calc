@@ -4,10 +4,9 @@
  * Covers: bracket depth tracking (parens, braces, brackets after C33 fix),
  * nested separators, edge cases.
  */
-const { describe, it } = require('node:test');
-const assert = require('node:assert/strict');
-const { balancedSplit } = require('../lib/parser/balanced-split');
-
+import { describe, it } from 'node:test';
+import assert from 'node:assert/strict';
+import { balancedSplit } from '../lib/parser/balanced-split.js';
 describe('balancedSplit', () => {
   it('splits simple comma-separated tokens', () => {
     assert.deepEqual(balancedSplit('A, B, C', ','), ['A', ' B', ' C']);

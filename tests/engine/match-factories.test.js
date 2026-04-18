@@ -14,9 +14,12 @@
  *   5. Single source of truth — exported FIELD constants match factory outputs.
  */
 
-const { describe, it } = require('node:test');
-const assert = require('node:assert');
-const match = require('../../lib/engine/match');
+import { describe, it } from 'node:test';
+import assert from 'node:assert';
+import match from '../../lib/engine/match.js';
+// Hoisted by tools/esm-hoist.js:
+import fs from 'fs';
+import path from 'path';
 
 const {
   buildGenericProtocol, buildLnlProtocol, buildOptProtocol,
@@ -168,7 +171,8 @@ describe('buildMatchOpts and EMPTY_MATCH_OPTS', () => {
       'use strict';
       m.canonicalize = x => x;
     }
-    assert.throws(strictAssign, /read only|assign.*read.only|Cannot/i);
+    // Node: "Cannot assign to read only property"; Bun: "Attempted to assign to readonly property".
+    assert.throws(strictAssign, /read ?only|Cannot/i);
   });
 
   it('EMPTY_MATCH_OPTS is frozen', () => {
@@ -301,8 +305,7 @@ describe('U — usage coverage (every field has a consumer)', () => {
    * either pattern since cached field extractions at function entry
    * (`const { foo } = matchOpts`) are the canonical low-cost access pattern.
    */
-  const fs = require('fs');
-  const path = require('path');
+
 
   function walkJs(dir) {
     const out = [];
@@ -314,7 +317,7 @@ describe('U — usage coverage (every field has a consumer)', () => {
     return out;
   }
 
-  const ENGINE_DIR = path.resolve(__dirname, '..', '..', 'lib', 'engine');
+  const ENGINE_DIR = path.resolve(import.meta.dirname, '..', '..', 'lib', 'engine');
   const engineFiles = walkJs(ENGINE_DIR);
   const corpus = engineFiles.map(f => fs.readFileSync(f, 'utf8')).join('\n');
 

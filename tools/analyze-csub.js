@@ -1,12 +1,11 @@
 #!/usr/bin/env node
-const path = require("path");
-const Store = require("../lib/kernel/store");
-const mde = require("../lib/engine");
-const { loadBytecode, bytecodeArrGetGuard } = require("../lib/engine/ill/bytecode-loader");
-const { intToBin, binToInt } = require("../lib/engine/ill/ffi/convert");
-
-const EVM_PATH = path.join(__dirname, "../calculus/ill/programs/evm.ill");
-const fixturePath = path.join(__dirname, "../tests/fixtures/VMTests/vmPerformance/loop-add-10M.json");
+import path from 'path';
+import Store from '../lib/kernel/store.js';
+import mde from '../lib/engine/index.js';
+import { loadBytecode, bytecodeArrGetGuard } from '../lib/engine/ill/bytecode-loader.js';
+import { intToBin, binToInt } from '../lib/engine/ill/ffi/convert.js';
+const EVM_PATH = path.join(import.meta.dirname, "../calculus/ill/programs/evm.ill");
+const fixturePath = path.join(import.meta.dirname, "../tests/fixtures/VMTests/vmPerformance/loop-add-10M.json");
 const data = JSON.parse(require("fs").readFileSync(fixturePath, "utf8"));
 const fixture = Object.values(data)[0];
 const hex = fixture.exec.code.startsWith("0x") ? fixture.exec.code.slice(2) : fixture.exec.code;

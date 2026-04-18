@@ -5,8 +5,7 @@
  * Usage: calc-mde-parse <file.mde>
  */
 
-const mde = require('../lib/engine');
-
+import mde from '../lib/engine/index.js';
 const file = process.argv[2];
 if (!file) {
   console.error('Usage: calc-mde-parse <file.mde>');

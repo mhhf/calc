@@ -3,15 +3,13 @@
  * Verifies against v1's proofstate.js test cases
  */
 
-const { describe, it, before } = require('node:test');
-const assert = require('node:assert');
-
-const { createProver } = require('../lib/prover/focused');
-const { buildRuleSpecs } = require('../lib/prover/rule-interpreter');
-const Seq = require('../lib/kernel/sequent');
-const calculus = require('../lib/calculus');
-const { GRADE_W } = require('../lib/engine/grades');
-
+import { describe, it, before } from 'node:test';
+import assert from 'node:assert';
+import { createProver } from '../lib/prover/focused.js';
+import { buildRuleSpecs } from '../lib/prover/rule-interpreter.js';
+import Seq from '../lib/kernel/sequent.js';
+import calculus from '../lib/calculus/index.js';
+import { GRADE_W } from '../lib/engine/grades.js';
 describe('v2 FocusedProver', () => {
   let calc, AST, prover, ruleSpecs, alternatives;
 

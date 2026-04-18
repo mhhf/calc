@@ -5,13 +5,15 @@
  * B. makePremises produces correct premise sequents
  * C. Integration: full proof search with generated specs
  */
-const { describe, it, before } = require('node:test');
-const assert = require('node:assert');
-const calculus = require('../lib/calculus');
-const { buildRuleSpecs } = require('../lib/prover/rule-interpreter');
-const Seq = require('../lib/kernel/sequent');
-const Store = require('../lib/kernel/store');
-const { GRADE_W } = require('../lib/engine/grades');
+import { describe, it, before } from 'node:test';
+import assert from 'node:assert';
+import calculus from '../lib/calculus/index.js';
+import { buildRuleSpecs } from '../lib/prover/rule-interpreter.js';
+import Seq from '../lib/kernel/sequent.js';
+import Store from '../lib/kernel/store.js';
+import { GRADE_W } from '../lib/engine/grades.js';
+// Hoisted by tools/esm-hoist.js:
+import { createProver } from '../lib/prover/focused.js';
 
 describe('Rule Interpreter', () => {
   let calc, AST, result, specs;
@@ -199,7 +201,7 @@ describe('Rule Interpreter', () => {
     let prover;
 
     before(() => {
-      const { createProver } = require('../lib/prover/focused');
+
       prover = createProver(calc);
     });
 

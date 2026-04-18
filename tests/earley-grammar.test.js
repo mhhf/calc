@@ -11,11 +11,13 @@
 
 'use strict';
 
-const { describe, it, before, beforeEach } = require('node:test');
-const assert = require('node:assert/strict');
-const Store = require('../lib/kernel/store');
-const { parserTables, parserFromTables } = require('../lib/calculus/builders');
-const { earleyGrammar, parserFromGrammar } = require('../lib/parser/earley-grammar');
+import { describe, it, before, beforeEach } from 'node:test';
+import assert from 'node:assert/strict';
+import Store from '../lib/kernel/store.js';
+import { parserTables, parserFromTables } from '../lib/calculus/builders.js';
+import { earleyGrammar, parserFromGrammar } from '../lib/parser/earley-grammar.js';
+// Hoisted by tools/esm-hoist.js:
+import calculus from '../lib/calculus/index.js';
 
 // ─── Test fixtures ───────────────────────────────────────────────────────────
 
@@ -42,7 +44,7 @@ const BOOTSTRAP_OPTS = {
 };
 
 before(async () => {
-  const calculus = require('../lib/calculus');
+
   ill = await calculus.loadILL();
 });
 

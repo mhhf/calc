@@ -24,17 +24,20 @@
  */
 'use strict';
 
-const { describe, it, beforeEach } = require('node:test');
-const assert = require('node:assert/strict');
-const fs = require('fs');
-const path = require('path');
-const Store = require('../../lib/kernel/store');
-const { serialize, deserialize, compact } = require('../../lib/engine/store-binary');
-const mde = require('../../lib/engine');
-const fresh = require('../../lib/kernel/fresh');
+import { describe, it, beforeEach } from 'node:test';
+import assert from 'node:assert/strict';
+import fs from 'fs';
+import path from 'path';
+import Store from '../../lib/kernel/store.js';
+import { serialize, deserialize, compact } from '../../lib/engine/store-binary.js';
+import mde from '../../lib/engine/index.js';
+import fresh from '../../lib/kernel/fresh.js';
+// Hoisted by tools/esm-hoist.js:
+import { spawnSync } from 'child_process';
+import { loadBytecode, bytecodeArrGetGuard } from '../../lib/engine/ill/bytecode-loader.js';
 
-const SYMEX_PATH = path.join(__dirname, '../../calculus/ill/programs/multisig_nocall_solc_symbolic.ill');
-const CODE_PATH = path.join(__dirname, '../../calculus/ill/programs/multisig_nocall_solc_code.ill');
+const SYMEX_PATH = path.join(import.meta.dirname, '../../calculus/ill/programs/multisig_nocall_solc_symbolic.ill');
+const CODE_PATH = path.join(import.meta.dirname, '../../calculus/ill/programs/multisig_nocall_solc_code.ill');
 
 function snapshotStore() {
   const s = Store.snapshot({});
@@ -84,10 +87,10 @@ describe('TODO_0218 Phase 0 — compose cache determinism', () => {
   it('cold cross-process: rule pool byte-identical (subprocess reload)', () => {
     // REAL cache-soundness invariant: a fresh child process produces identical
     // rule hashes. This is what the disk cache needs to rely on.
-    const { spawnSync } = require('child_process');
+
     const script = `
-      const Store = require('${path.resolve(__dirname, '../../lib/kernel/store')}');
-      const mde = require('${path.resolve(__dirname, '../../lib/engine')}');
+      const Store = (await import('file://${path.resolve(import.meta.dirname, '../../lib/kernel/store.js')}')).default;
+      const mde = (await import('file://${path.resolve(import.meta.dirname, '../../lib/engine/index.js')}')).default;
       Store.clear();
       const c = mde.load(${JSON.stringify(SYMEX_PATH)}, { cache: false });
       process.stdout.write(JSON.stringify({
@@ -96,7 +99,7 @@ describe('TODO_0218 Phase 0 — compose cache determinism', () => {
       }));
     `;
     const run = () => {
-      const r = spawnSync(process.execPath, ['-e', script], { encoding: 'utf8' });
+      const r = spawnSync(process.execPath, ['--input-type=module', '-e', script], { encoding: 'utf8' });
       if (r.status !== 0) throw new Error(`child failed: ${r.stderr}`);
       return JSON.parse(r.stdout);
     };
@@ -108,7 +111,6 @@ describe('TODO_0218 Phase 0 — compose cache determinism', () => {
 
   it('bytecode + symex load: rule pool byte-identical across two cold runs', () => {
     const hex = fs.readFileSync(CODE_PATH, 'utf8').match(/bytecode\s+0x([0-9a-fA-F]+)/)[1];
-    const { loadBytecode, bytecodeArrGetGuard } = require('../../lib/engine/ill/bytecode-loader');
 
     Store.clear();
     const bc1 = loadBytecode(hex);

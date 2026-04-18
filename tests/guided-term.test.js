@@ -8,14 +8,18 @@
  * Phase 2: Integration tests with real forward execution
  */
 
-const { describe, it, beforeEach } = require('node:test');
-const assert = require('node:assert/strict');
-const Store = require('../lib/kernel/store');
-const forward = require('../lib/engine/forward');
-const { guidedTerm, loliOf } = require('../lib/prover/guided-term');
-const { rightFocusTerm, modeSwitch } = require('../lib/prover/bridge');
-const { ILL_CONNECTIVES } = require('../lib/engine/ill/connectives');
-const { GRADE_W } = require('../lib/engine/grades');
+import { describe, it, beforeEach } from 'node:test';
+import assert from 'node:assert/strict';
+import Store from '../lib/kernel/store.js';
+import forward from '../lib/engine/forward.js';
+import { guidedTerm, loliOf } from '../lib/prover/guided-term.js';
+import { rightFocusTerm, modeSwitch } from '../lib/prover/bridge.js';
+import { ILL_CONNECTIVES } from '../lib/engine/ill/connectives.js';
+import { GRADE_W } from '../lib/engine/grades.js';
+// Hoisted by tools/esm-hoist.js:
+import Seq from '../lib/kernel/sequent.js';
+import calcMain from '../lib/index.js';
+import { createChecker } from '../lib/prover/check-term.js';
 
 describe('Guided Proof Terms (TODO_0068 §10.5)', () => {
 
@@ -389,7 +393,7 @@ describe('Guided Proof Terms (TODO_0068 §10.5)', () => {
       const loli = Store.put('loli', [a, monadB]);
 
       const rules = [forward.compileRule({ name: 'r1', hash: loli, antecedent: a, consequent: monadB }, { connectives: ILL_CONNECTIVES })];
-      const Seq = require('../lib/kernel/sequent');
+
       const seq = Seq.fromArrays([a], [], monadB);
 
       const result = modeSwitch(seq, {
@@ -410,8 +414,8 @@ describe('Guided Proof Terms (TODO_0068 §10.5)', () => {
 
   describe('check-term focused loli_l', () => {
     it('verifies 2-subterm loli_l with sequential context split', () => {
-      const { createChecker } = require('../lib/prover/check-term');
-      const calculus = require('../lib/index').loadILL();
+
+      const calculus = calcMain.loadILL();
       const { check } = createChecker(calculus);
 
       // Build: x:A⊸B in delta, a in delta, prove b
@@ -422,7 +426,7 @@ describe('Guided Proof Terms (TODO_0068 §10.5)', () => {
       const b = Store.put('atom', ['b']);
       const loli = Store.put('loli', [a, b]);
 
-      const Seq = require('../lib/kernel/sequent');
+
       const seq = Seq.fromArrays([loli, a], [], b);
 
       const term = {
@@ -439,8 +443,8 @@ describe('Guided Proof Terms (TODO_0068 §10.5)', () => {
     });
 
     it('verifies 1-subterm loli_l (backward compat)', () => {
-      const { createChecker } = require('../lib/prover/check-term');
-      const calculus = require('../lib/index').loadILL();
+
+      const calculus = calcMain.loadILL();
       const { check } = createChecker(calculus);
 
       // Build: x:A⊸B in delta, prove B (invertible: adds A and B to delta)
@@ -449,7 +453,7 @@ describe('Guided Proof Terms (TODO_0068 §10.5)', () => {
       const b = Store.put('atom', ['b2']);
       const loli = Store.put('loli', [a, b]);
 
-      const Seq = require('../lib/kernel/sequent');
+
       const seq = Seq.fromArrays([loli], [], b);
 
       const term = {

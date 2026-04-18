@@ -8,12 +8,11 @@
  *  • idempotence assertion fires when CALC_0216_SUBST_ASSERT=1
  */
 
-const { describe, it, before } = require('node:test');
-const assert = require('node:assert');
-const calculus = require('../lib/calculus');
-const { apply } = require('../lib/kernel/substitute');
-const { Substitution } = require('../lib/kernel/substitution');
-
+import { describe, it, before } from 'node:test';
+import assert from 'node:assert';
+import calculus from '../lib/calculus/index.js';
+import { apply } from '../lib/kernel/substitute.js';
+import { Substitution } from '../lib/kernel/substitution.js';
 describe('TODO_0216 H7 — Substitution wrapper', () => {
   let AST;
 

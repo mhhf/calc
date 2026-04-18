@@ -5,14 +5,17 @@
  * into multiple chunk witnesses with proper context continuity.
  */
 
-const { describe, it, before } = require('node:test');
-const assert = require('node:assert');
-const path = require('path');
-const fs = require('fs');
-
-const Store = require('../lib/kernel/store');
-const Seq = require('../lib/kernel/sequent');
-const { generateFlatWitness, generateChunkedFlatWitness } = require('../lib/zk/flat-witness');
+import { describe, it, before } from 'node:test';
+import assert from 'node:assert';
+import path from 'path';
+import fs from 'fs';
+import Store from '../lib/kernel/store.js';
+import Seq from '../lib/kernel/sequent.js';
+import { generateFlatWitness, generateChunkedFlatWitness } from '../lib/zk/flat-witness.js';
+// Hoisted by tools/esm-hoist.js:
+import mde from '../lib/engine/index.js';
+import calculus from '../lib/calculus/index.js';
+import { rwTrace } from '../lib/prover/rewrite-trace.js';
 
 // ---------------------------------------------------------------------------
 // Unit tests with mock traces
@@ -312,12 +315,11 @@ describe('chunked flat witness: solc integration', { timeout: 60000 }, () => {
 
   before(async () => {
     Store.clear();
-    const mde = require('../lib/engine');
-    const calculus = require('../lib/calculus');
-    const { rwTrace } = require('../lib/prover/rewrite-trace');
+
+
 
     const engineCalc = await mde.load(
-      path.join(__dirname, '../calculus/ill/programs/multisig_nocall_solc.ill')
+      path.join(import.meta.dirname, '../calculus/ill/programs/multisig_nocall_solc.ill')
     );
     illCalc = await calculus.loadILL();
     const state = mde.decomposeQuery(engineCalc.queries.get('symex'));
@@ -428,7 +430,7 @@ describe('chunked flat witness: solc integration', { timeout: 60000 }, () => {
       maxRowsPerChunk: 100,
     });
 
-    const FIXTURE_DIR = path.join(__dirname, '..', 'zk', 'sequent-certifier', 'tests', 'fixtures');
+    const FIXTURE_DIR = path.join(import.meta.dirname, '..', 'zk', 'sequent-certifier', 'tests', 'fixtures');
     if (!fs.existsSync(FIXTURE_DIR)) fs.mkdirSync(FIXTURE_DIR, { recursive: true });
     const filepath = path.join(FIXTURE_DIR, 'multisig_chunked.json');
     fs.writeFileSync(filepath, JSON.stringify(chunks));

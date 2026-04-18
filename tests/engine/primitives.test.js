@@ -1,25 +1,16 @@
 /**
  * Tests for Primitive Storage (binlit, strlit, charlit)
  */
-const { describe, it, beforeEach } = require('node:test');
-const assert = require('node:assert');
-const Store = require('../../lib/kernel/store');
-const { unify, setTheories } = require('../../lib/kernel/unify');
-const { defaultTheories } = require('../../lib/kernel/eq-theory');
-const { binlitTheory } = require('../../lib/engine/ill/binlit-theory');
-
+import { describe, it, beforeEach } from 'node:test';
+import assert from 'node:assert';
+import Store from '../../lib/kernel/store.js';
+import { unify, setTheories } from '../../lib/kernel/unify.js';
+import { defaultTheories } from '../../lib/kernel/eq-theory.js';
+import { binlitTheory } from '../../lib/engine/ill/binlit-theory.js';
 // Register binlitTheory so unify() can handle binlit ↔ i/o/e cross-tag matching
 setTheories([...defaultTheories, binlitTheory]);
-const {
-  binToInt,
-  intToBin,
-  strToHash,
-  hashToStr,
-  charToHash,
-  hashToChar
-} = require('../../lib/engine/ill/ffi/convert');
-const arithmetic = require('../../lib/engine/ill/ffi/arithmetic');
-
+import { binToInt, intToBin, strToHash, hashToStr, charToHash, hashToChar } from '../../lib/engine/ill/ffi/convert.js';
+import arithmetic from '../../lib/engine/ill/ffi/arithmetic.js';
 describe('Primitive Storage', { timeout: 10000 }, () => {
   beforeEach(() => {
     Store.clear();

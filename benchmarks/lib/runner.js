@@ -4,10 +4,9 @@
  * Usage: node benchmarks/run.js [--category=<category>] [--iterations=<n>]
  */
 
-const { performance } = require('perf_hooks');
-const fs = require('fs');
-const path = require('path');
-
+import { performance } from 'perf_hooks';
+import fs from 'fs';
+import path from 'path';
 class BenchmarkRunner {
   constructor(opts = {}) {
     this.warmupIterations = opts.warmup ?? 3;
@@ -174,4 +173,5 @@ class BenchmarkRunner {
   }
 }
 
-module.exports = { BenchmarkRunner };
+export { BenchmarkRunner };
+export default { BenchmarkRunner };

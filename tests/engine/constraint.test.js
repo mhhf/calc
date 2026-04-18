@@ -2,11 +2,10 @@
  * Tests for constraint solver (eq/neq branch pruning)
  */
 
-const { describe, it, beforeEach } = require('node:test');
-const assert = require('node:assert');
-const Store = require('../../lib/kernel/store');
-const { EqNeqSolver } = require('../../lib/engine/constraint');
-
+import { describe, it, beforeEach } from 'node:test';
+import assert from 'node:assert';
+import Store from '../../lib/kernel/store.js';
+import { EqNeqSolver } from '../../lib/engine/constraint.js';
 describe('EqNeqSolver', () => {
   beforeEach(() => { Store.clear(); });
 

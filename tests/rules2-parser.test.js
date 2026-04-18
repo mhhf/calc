@@ -1,13 +1,16 @@
 /**
  * Tests for .rules2 parser: proof search integration + direct parser tests
  */
-const { describe, it, before } = require('node:test');
-const assert = require('node:assert');
-const calculus = require('../lib/calculus');
-const { buildRuleSpecs } = require('../lib/prover/rule-interpreter');
-const Seq = require('../lib/kernel/sequent');
-const Store = require('../lib/kernel/store');
-const { GRADE_W } = require('../lib/engine/grades');
+import { describe, it, before } from 'node:test';
+import assert from 'node:assert';
+import calculus from '../lib/calculus/index.js';
+import { buildRuleSpecs } from '../lib/prover/rule-interpreter.js';
+import Seq from '../lib/kernel/sequent.js';
+import Store from '../lib/kernel/store.js';
+import { GRADE_W } from '../lib/engine/grades.js';
+// Hoisted by tools/esm-hoist.js:
+import { createProver } from '../lib/prover/focused.js';
+import { parseRules2 as _parseRules2 } from '../lib/rules/rules2-parser.js';
 
 describe('.rules2 parser', () => {
   describe('Proof search integration', () => {
@@ -19,7 +22,7 @@ describe('.rules2 parser', () => {
       const result = buildRuleSpecs(calc);
       specs = result.specs;
       alternatives = result.alternatives;
-      const { createProver } = require('../lib/prover/focused');
+
       prover = createProver(calc);
     });
 
@@ -70,7 +73,7 @@ describe('.rules2 parser', () => {
     before(async () => {
       const calc = await calculus.loadILL();
       parse = (s) => calc.parse(s);
-      ({ parseRules2 } = require('../lib/rules/rules2-parser'));
+      parseRules2 = _parseRules2;
     });
 
     // Note: .rules2 format uses '.' ONLY to terminate the whole block.

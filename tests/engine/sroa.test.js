@@ -9,17 +9,16 @@
  * shallow), the original would also stall (arr_get OOB), so the fallback is
  * unreachable. Only rules with isFused: true are SROA'd.
  */
-const { describe, it, beforeEach } = require('node:test');
-const assert = require('node:assert/strict');
-const Store = require('../../lib/kernel/store');
-const { GRADE_W } = require('../../lib/engine/grades');
-const { ILL_CONNECTIVES } = require('../../lib/engine/ill/connectives');
-const { resolveConn, flattenAnte, unwrapComp } = require('../../lib/engine/compile');
-const { predHead } = require('../../lib/kernel/ast');
-const { _sroa } = require('../../lib/engine/compose');
-const { getModeMeta: _illGetModeMeta } = require('../../lib/engine/ill/ffi');
-const { ILL_SROA_CONFIG } = require('../../lib/engine/ill/compose-config');
-
+import { describe, it, beforeEach } from 'node:test';
+import assert from 'node:assert/strict';
+import Store from '../../lib/kernel/store.js';
+import { GRADE_W } from '../../lib/engine/grades.js';
+import { ILL_CONNECTIVES } from '../../lib/engine/ill/connectives.js';
+import { resolveConn, flattenAnte, unwrapComp } from '../../lib/engine/compile.js';
+import { predHead } from '../../lib/kernel/ast.js';
+import { _sroa } from '../../lib/engine/compose.js';
+import { getModeMeta as _illGetModeMeta } from '../../lib/engine/ill/ffi/index.js';
+import { ILL_SROA_CONFIG } from '../../lib/engine/ill/compose-config.js';
 const rc = resolveConn(ILL_CONNECTIVES);
 
 function makeRule(name, anteHash, conseqBodyHash) {

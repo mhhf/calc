@@ -10,17 +10,16 @@
 
 'use strict';
 
-const path = require('path');
-const fs = require('fs');
-const { performance } = require('perf_hooks');
-const Store = require('../../lib/kernel/store');
-const mde = require('../../lib/engine');
-const { loadBytecode, bytecodeArrGetGuard } = require('../../lib/engine/ill/bytecode-loader');
-const { intToBin } = require('../../lib/engine/ill/ffi/convert');
-const { fixtureToState, hexToBigInt } = require('../../tests/engine/vmtest/translate');
-
-const EVM_PATH = path.join(__dirname, '../../calculus/ill/programs/evm.ill');
-const FIXTURES_DIR = path.join(__dirname, '../../tests/fixtures/VMTests/vmPerformance');
+import path from 'path';
+import fs from 'fs';
+import { performance } from 'perf_hooks';
+import Store from '../../lib/kernel/store.js';
+import mde from '../../lib/engine/index.js';
+import { loadBytecode, bytecodeArrGetGuard } from '../../lib/engine/ill/bytecode-loader.js';
+import { intToBin } from '../../lib/engine/ill/ffi/convert.js';
+import { fixtureToState, hexToBigInt } from '../../tests/engine/vmtest/translate.js';
+const EVM_PATH = path.join(import.meta.dirname, '../../calculus/ill/programs/evm.ill');
+const FIXTURES_DIR = path.join(import.meta.dirname, '../../tests/fixtures/VMTests/vmPerformance');
 
 function entryPointsToBarriers(entryPoints) {
   const barriers = new Set();

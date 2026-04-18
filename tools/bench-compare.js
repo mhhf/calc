@@ -15,11 +15,10 @@
  *   node --expose-gc tools/bench-compare.js abc123 --suite=engine --iterations=10
  */
 
-const { execSync, spawn } = require('child_process');
-const path = require('path');
-const fs = require('fs');
-
-const ROOT = path.resolve(__dirname, '..');
+import { execSync, spawn } from 'child_process';
+import path from 'path';
+import fs from 'fs';
+const ROOT = path.resolve(import.meta.dirname, '..');
 const WORKTREE_DIR = path.join(ROOT, '.bench-compare');
 const ADAPTER = path.join(ROOT, 'benchmarks/lib/json-adapter.js');
 const START_MARKER = '---BENCH-JSON---';

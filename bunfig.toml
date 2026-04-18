@@ -1,0 +1,13 @@
+# Bun runtime configuration.
+#
+# Testing: don't run `bun test` on the whole directory. Bun runs all test
+# files in a single process, which leaks module-scope state (Store arena,
+# parser caches, cached calculi) across files. Use `npm run test:bun`, which
+# invokes bun once per file via `tools/test-bun.sh` for node-parity isolation.
+#
+# Installs: we use npm (package-lock.json) as the source of truth; bun artifacts
+# (bun.lockb, bun.lock) are gitignored.
+
+[test]
+# Match node --test's 30s per-test default for parity.
+timeout = 30000

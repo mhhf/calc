@@ -2,14 +2,13 @@
  * Tests for engine hooks API (onStep, onProveFail).
  * Validates TODO_0147 Layer 1 — opt-in callbacks for forward/explore.
  */
-const { describe, it, before } = require('node:test');
-const assert = require('node:assert/strict');
-const path = require('path');
-const mde = require('../../lib/engine');
-const { show } = require('../../lib/engine/show');
-const { PROVE_METHODS } = require('../../lib/engine/match');
-
-const PROGRAM = path.join(__dirname, '..', '..', 'calculus', 'ill', 'programs', 'evm.ill');
+import { describe, it, before } from 'node:test';
+import assert from 'node:assert/strict';
+import path from 'path';
+import mde from '../../lib/engine/index.js';
+import { show } from '../../lib/engine/show.js';
+import { PROVE_METHODS } from '../../lib/engine/match.js';
+const PROGRAM = path.join(import.meta.dirname, '..', '..', 'calculus', 'ill', 'programs', 'evm.ill');
 
 describe('Engine Hooks API', { timeout: 10000 }, () => {
   let calc;

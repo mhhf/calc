@@ -3,21 +3,24 @@
  *
  * Covers: exists opening, predicate matching, unification failure handling.
  */
-const { describe, it, before } = require('node:test');
-const assert = require('node:assert/strict');
-const path = require('path');
-const Store = require('../../lib/kernel/store');
-const { fusePair } = require('../../lib/engine/compose');
-const { resolveConn } = require('../../lib/engine/compile');
+import { describe, it, before } from 'node:test';
+import assert from 'node:assert/strict';
+import path from 'path';
+import Store from '../../lib/kernel/store.js';
+import { fusePair } from '../../lib/engine/compose.js';
+import { resolveConn } from '../../lib/engine/compile.js';
+// Hoisted by tools/esm-hoist.js:
+import mde from '../../lib/engine/index.js';
+import ccfg from '../../lib/engine/ill/calculus-config.js';
 
 describe('fusePair', () => {
   let rc;
 
   before(() => {
     Store.clear();
-    const mde = require('../../lib/engine/index');
-    mde.load(path.join(__dirname, '../../calculus/ill/programs/evm.ill'), { cache: true });
-    const ccfg = require('../../lib/engine/ill/calculus-config');
+
+    mde.load(path.join(import.meta.dirname, '../../calculus/ill/programs/evm.ill'), { cache: true });
+
     rc = resolveConn(ccfg.connectives);
   });
 

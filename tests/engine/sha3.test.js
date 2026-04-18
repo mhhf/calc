@@ -5,14 +5,13 @@
  * when memory is ground, via the sha3_compute FFI.
  */
 
-const { describe, it, before } = require('node:test');
-const assert = require('node:assert/strict');
-const path = require('path');
-const mde = require('../../lib/engine');
-const Store = require('../../lib/kernel/store');
-const { intToBin, binToInt } = require('../../lib/engine/ill/ffi/convert');
-const { arrToTrie } = require('../../lib/engine/ill/ffi/array');
-
+import { describe, it, before } from 'node:test';
+import assert from 'node:assert/strict';
+import path from 'path';
+import mde from '../../lib/engine/index.js';
+import Store from '../../lib/kernel/store.js';
+import { intToBin, binToInt } from '../../lib/engine/ill/ffi/convert.js';
+import { arrToTrie } from '../../lib/engine/ill/ffi/array.js';
 /**
  * Build initial EVM state from hex bytecode string.
  */
@@ -99,7 +98,7 @@ describe('SHA3 opcode (exists + sha3_compute)', { timeout: 30000 }, () => {
   let calc;
 
   before(() => {
-    calc = mde.load(path.join(__dirname, '../../calculus/ill/programs/evm.ill'));
+    calc = mde.load(path.join(import.meta.dirname, '../../calculus/ill/programs/evm.ill'));
   });
 
   it('SHA3 of 32 bytes produces concrete keccak256', () => {

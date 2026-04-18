@@ -7,18 +7,12 @@
 
 'use strict';
 
-const { describe, it, before, after } = require('node:test');
-const assert = require('node:assert');
-const fs = require('fs');
-const os = require('os');
-const path = require('path');
-
-const {
-  proveSource,
-  extractSymexLeafTrace,
-  _resetCache,
-} = require('../lib/prover/prove-source');
-
+import { describe, it, before, after } from 'node:test';
+import assert from 'node:assert';
+import fs from 'fs';
+import os from 'os';
+import path from 'path';
+import { proveSource, extractSymexLeafTrace, _resetCache } from '../lib/prover/prove-source.js';
 describe('proveSource — symex mode (tiny)', () => {
   let cacheDir;
   before(() => {

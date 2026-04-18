@@ -17,17 +17,14 @@
  * the same inputs, and asserts each agrees on the contract.
  */
 
-const { describe, it, beforeEach } = require('node:test');
-const assert = require('node:assert/strict');
-const Store = require('../../lib/kernel/store');
-const forward = require('../../lib/engine/forward');
-const {
-  stateProvePersistent, PROVE_METHOD, PROVE_METHODS,
-} = require('../../lib/engine/match');
-const { proveNaive } = require('../../lib/engine/lnl/persistent');
-const { proveWithFFI } = require('../../lib/engine/opt/ffi');
-const { makeMatchOpts } = require('./_match-opts');
-
+import { describe, it, beforeEach } from 'node:test';
+import assert from 'node:assert/strict';
+import Store from '../../lib/kernel/store.js';
+import forward from '../../lib/engine/forward.js';
+import { stateProvePersistent, PROVE_METHOD, PROVE_METHODS } from '../../lib/engine/match.js';
+import { proveNaive } from '../../lib/engine/lnl/persistent.js';
+import { proveWithFFI } from '../../lib/engine/opt/ffi.js';
+import { makeMatchOpts } from './_match-opts.js';
 /** Build a minimal state with one persistent fact + one matching pattern. */
 function scenario() {
   Store.clear();

@@ -12,9 +12,8 @@
  * --legacy: outputs individual `code PC 0xHH *` lines
  */
 
-const fs = require('fs');
-const path = require('path');
-
+import fs from 'fs';
+import path from 'path';
 // EVM opcode names for comments
 const OPCODE_NAMES = {
   0x00: 'STOP', 0x01: 'ADD', 0x02: 'MUL', 0x03: 'SUB', 0x04: 'DIV',

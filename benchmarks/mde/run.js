@@ -13,11 +13,10 @@
  *   npm run bench:mde:compare      # Compare with baseline
  */
 
-const { runBenchmarks, profileBenchmark, BENCHMARKS } = require('./backward.bench');
-const fs = require('fs');
-const path = require('path');
-
-const BASELINE_FILE = path.join(__dirname, 'baseline.json');
+import { runBenchmarks, profileBenchmark, BENCHMARKS } from './backward.bench.js';
+import fs from 'fs';
+import path from 'path';
+const BASELINE_FILE = path.join(import.meta.dirname, 'baseline.json');
 
 // Parse CLI arguments
 const args = process.argv.slice(2);

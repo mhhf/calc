@@ -5,14 +5,12 @@
  * the produced backlink index.
  */
 
-const { describe, it, before, after } = require('node:test');
-const assert = require('node:assert');
-const fs = require('fs');
-const path = require('path');
-const os = require('os');
-
-const { scanDocs, resolveTarget, buildBacklinkIndex, getDocManifest } = require('../src/ui/plugins/doc-scan');
-
+import { describe, it, before, after } from 'node:test';
+import assert from 'node:assert';
+import fs from 'fs';
+import path from 'path';
+import os from 'os';
+import { scanDocs, resolveTarget, buildBacklinkIndex, getDocManifest } from '../src/ui/plugins/doc-scan.js';
 let root;
 
 function write(rel, content) {

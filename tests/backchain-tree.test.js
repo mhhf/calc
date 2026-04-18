@@ -1,19 +1,17 @@
 'use strict';
 
-const test = require('node:test');
-const assert = require('node:assert');
-const path = require('path');
-
-const { backchainWithTree } = require('../lib/prover/backchain-tree');
-const mde = require('../lib/engine');
-const Store = require('../lib/kernel/store');
-const { initILL, makeILLBackchainOpts } = require('../lib/engine/ill/backchain-ill');
-const { FORMAT_VERSION } = require('../lib/prover/serialize-tree');
-
+import test from 'node:test';
+import assert from 'node:assert';
+import path from 'path';
+import { backchainWithTree } from '../lib/prover/backchain-tree.js';
+import mde from '../lib/engine/index.js';
+import Store from '../lib/kernel/store.js';
+import { initILL, makeILLBackchainOpts } from '../lib/engine/ill/backchain-ill.js';
+import { FORMAT_VERSION } from '../lib/prover/serialize-tree.js';
 test('backchain-tree — plus (i e) (i e) R: default is opaque FFI leaf', () => {
   Store.clear();
   initILL();
-  const prog = mde.load(path.join(__dirname, '..', 'calculus/ill/programs/bin.ill'), { cache: false });
+  const prog = mde.load(path.join(import.meta.dirname, '..', 'calculus/ill/programs/bin.ill'), { cache: false });
 
   const e = Store.put('atom', ['e']);
   const ie = Store.put('i', [e]);
@@ -37,7 +35,7 @@ test('backchain-tree — plus (i e) (i e) R: default is opaque FFI leaf', () => 
 test('backchain-tree — useFFI:false expands plus clauses into a tree', () => {
   Store.clear();
   initILL();
-  const prog = mde.load(path.join(__dirname, '..', 'calculus/ill/programs/bin.ill'), { cache: false });
+  const prog = mde.load(path.join(import.meta.dirname, '..', 'calculus/ill/programs/bin.ill'), { cache: false });
 
   const e = Store.put('atom', ['e']);
   const ie = Store.put('i', [e]);

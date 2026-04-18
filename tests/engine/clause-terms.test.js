@@ -8,16 +8,15 @@
  * - evidenceToTerm for state/clause methods (via guidedTerm)
  */
 
-const { describe, it, beforeEach } = require('node:test');
-const assert = require('node:assert/strict');
-const Store = require('../../lib/kernel/store');
-const backward = require('../../lib/engine/backchain');
-const { proveWithFFI } = require('../../lib/engine/opt/ffi');
-const { GRADE_W } = require('../../lib/engine/grades');
-const forward = require('../../lib/engine/forward');
-const { guidedTerm } = require('../../lib/prover/guided-term');
-const { makeILLBackchainOpts } = require('../../lib/engine/ill/backchain-ill');
-
+import { describe, it, beforeEach } from 'node:test';
+import assert from 'node:assert/strict';
+import Store from '../../lib/kernel/store.js';
+import backward from '../../lib/engine/backchain.js';
+import { proveWithFFI } from '../../lib/engine/opt/ffi.js';
+import { GRADE_W } from '../../lib/engine/grades.js';
+import forward from '../../lib/engine/forward.js';
+import { guidedTerm } from '../../lib/prover/guided-term.js';
+import { makeILLBackchainOpts } from '../../lib/engine/ill/backchain-ill.js';
 describe('3b.5: Clause Proof Terms', () => {
 
   beforeEach(() => { Store.clear(); });

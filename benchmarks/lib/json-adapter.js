@@ -1,3 +1,13 @@
+// Hoisted by tools/esm-hoist.js:
+import { BenchmarkRunner } from './runner.js';
+import { runV2ProofBenchmarks } from '../proof/proofs-v2.bench.js';
+import { runBenchmarks } from '../mde/backward.bench.js';
+import { performance } from 'perf_hooks';
+import path from 'path';
+import mde from '../../lib/engine/index.js';
+import fs from 'fs';
+import { loadBytecode, bytecodeArrGetGuard } from '../../lib/engine/ill/bytecode-loader.js';
+
 #!/usr/bin/env node
 /**
  * JSON Benchmark Adapter
@@ -36,8 +46,7 @@ function emitJSON(data) {
 // ─── Suite: proof ────────────────────────────────────────────────────────────
 
 async function runProof(iterations) {
-  const { BenchmarkRunner } = require('./runner');
-  const { runV2ProofBenchmarks } = require('../proof/proofs-v2.bench.js');
+
 
   const runner = new BenchmarkRunner({ iterations, warmup: 3 });
   await runV2ProofBenchmarks(runner, 'all');
@@ -58,7 +67,6 @@ async function runProof(iterations) {
 // ─── Suite: engine ───────────────────────────────────────────────────────────
 
 async function runEngine(iterations) {
-  const { runBenchmarks } = require('../mde/backward.bench.js');
 
   const raw = await runBenchmarks({
     categories: ['easy', 'medium', 'complex'],
@@ -85,7 +93,7 @@ async function runEngine(iterations) {
 // ─── Suite: explore ──────────────────────────────────────────────────────────
 
 function benchOne(_label, calc, state, exploreOpts, iterations) {
-  const { performance } = require('perf_hooks');
+
   const WARMUP = 3;
 
   for (let i = 0; i < WARMUP; i++) {
@@ -110,15 +118,14 @@ function benchOne(_label, calc, state, exploreOpts, iterations) {
 }
 
 async function runExplore(iterations) {
-  const path = require('path');
-  const mde = require('../../lib/engine');
+
 
   const results = {};
 
   // 1. Small multisig (committed-choice baseline)
   {
     const calc = mde.load(
-      path.join(__dirname, '../../calculus/ill/programs/multisig.ill')
+      path.join(import.meta.dirname, '../../calculus/ill/programs/multisig.ill')
     );
     const state = mde.decomposeQuery(calc.queries.get('symex'));
     results['explore.multisig'] = benchOne('multisig', calc, state,
@@ -130,13 +137,13 @@ async function runExplore(iterations) {
 
   // 2. Solc symbolic multisig with bytecode (realistic E2E)
   {
-    const fs = require('fs');
-    const { loadBytecode, bytecodeArrGetGuard } = require('../../lib/engine/ill/bytecode-loader');
-    const codePath = path.join(__dirname, '../../calculus/ill/programs/multisig_nocall_solc_code.ill');
+
+
+    const codePath = path.join(import.meta.dirname, '../../calculus/ill/programs/multisig_nocall_solc_code.ill');
     const hex = fs.readFileSync(codePath, 'utf8').match(/bytecode\s+0x([0-9a-fA-F]+)/)[1];
     const bc = loadBytecode(hex);
     const calc = mde.load(
-      path.join(__dirname, '../../calculus/ill/programs/multisig_nocall_solc_symbolic.ill'),
+      path.join(import.meta.dirname, '../../calculus/ill/programs/multisig_nocall_solc_symbolic.ill'),
       { extraGrade0Facts: bc.facts, scopeGuard: bytecodeArrGetGuard }
     );
     const state = mde.decomposeQuery(calc.queries.get('symex'));

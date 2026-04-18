@@ -17,19 +17,17 @@
  * Regeneration: delete the fixture, re-run, inspect, commit.
  */
 
-const { describe, it, before } = require('node:test');
-const assert = require('node:assert');
-const path = require('path');
-const fs = require('fs');
-const crypto = require('crypto');
-
-const mde = require('../../lib/engine');
-const Store = require('../../lib/kernel/store');
-const { getAllLeaves, countNodes } = require('../../lib/engine/tree-utils');
-const { classifyLeaf, showInteresting } = require('../../lib/engine/show');
-
-const FIXTURE_PATH = path.join(__dirname, '../fixtures/0216-multisig-golden.json');
-const PROGRAM = path.join(__dirname, '../../calculus/ill/programs/multisig_nocall_solc_symbolic.ill');
+import { describe, it, before } from 'node:test';
+import assert from 'node:assert';
+import path from 'path';
+import fs from 'fs';
+import crypto from 'crypto';
+import mde from '../../lib/engine/index.js';
+import Store from '../../lib/kernel/store.js';
+import { getAllLeaves, countNodes } from '../../lib/engine/tree-utils.js';
+import { classifyLeaf, showInteresting } from '../../lib/engine/show.js';
+const FIXTURE_PATH = path.join(import.meta.dirname, '../fixtures/0216-multisig-golden.json');
+const PROGRAM = path.join(import.meta.dirname, '../../calculus/ill/programs/multisig_nocall_solc_symbolic.ill');
 
 function leafSignature(leaf) {
   const cls = classifyLeaf(leaf.state);

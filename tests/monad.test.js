@@ -5,21 +5,19 @@
  * committed choice, kernel verification, bridge, rightFocus, integration.
  */
 
-const { describe, it, before } = require('node:test');
-const assert = require('node:assert');
-
-const calculus = require('../lib/calculus');
-const Store = require('../lib/kernel/store');
-const Seq = require('../lib/kernel/sequent');
-const { createGenericProver } = require('../lib/prover/generic');
-const { createKernel } = require('../lib/prover/kernel');
-const { createProver } = require('../lib/prover/focused');
-const { initRuleSpecs } = require('../lib/prover/rule-interpreter');
-const { sequentToState, stateToContext, rightFocus, modeSwitch } = require('../lib/prover/bridge');
-const { compileRule } = require('../lib/engine/compile');
-const { ILL_CONNECTIVES } = require('../lib/engine/ill/connectives');
-const { GRADE_W } = require('../lib/engine/grades');
-
+import { describe, it, before } from 'node:test';
+import assert from 'node:assert';
+import calculus from '../lib/calculus/index.js';
+import Store from '../lib/kernel/store.js';
+import Seq from '../lib/kernel/sequent.js';
+import { createGenericProver } from '../lib/prover/generic.js';
+import { createKernel } from '../lib/prover/kernel.js';
+import { createProver } from '../lib/prover/focused.js';
+import { initRuleSpecs } from '../lib/prover/rule-interpreter.js';
+import { sequentToState, stateToContext, rightFocus, modeSwitch } from '../lib/prover/bridge.js';
+import { compileRule } from '../lib/engine/compile.js';
+import { ILL_CONNECTIVES } from '../lib/engine/ill/connectives.js';
+import { GRADE_W } from '../lib/engine/grades.js';
 let ill, AST, parse, render;
 
 before(async () => {

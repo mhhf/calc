@@ -2,16 +2,14 @@
  * Tests for L2 Generic Prover (search primitives)
  */
 
-const { describe, it, before } = require('node:test');
-const assert = require('node:assert');
-
-const { createGenericProver } = require('../lib/prover/generic');
-const { buildRuleSpecs } = require('../lib/prover/rule-interpreter');
-const Seq = require('../lib/kernel/sequent');
-const calculus = require('../lib/calculus');
-const Context = require('../lib/prover/context');
-const { GRADE_W } = require('../lib/engine/grades');
-
+import { describe, it, before } from 'node:test';
+import assert from 'node:assert';
+import { createGenericProver } from '../lib/prover/generic.js';
+import { buildRuleSpecs } from '../lib/prover/rule-interpreter.js';
+import Seq from '../lib/kernel/sequent.js';
+import calculus from '../lib/calculus/index.js';
+import Context from '../lib/prover/context.js';
+import { GRADE_W } from '../lib/engine/grades.js';
 describe('L2 Generic Prover', () => {
   let calc, AST, generic, specs, alternatives;
 

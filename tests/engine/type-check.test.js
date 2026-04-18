@@ -1,18 +1,12 @@
 /**
  * Tests for sort checking (lib/engine/type-check.js)
  */
-const { describe, it, beforeEach } = require('node:test');
-const assert = require('node:assert/strict');
-const Store = require('../../lib/kernel/store');
-const {
-  _parseSignature,
-  sortTable,
-  inferSort,
-  _checkTerm,
-  checkForwardRule,
-  checkClause,
-  checkAll,
-} = require('../../lib/engine/type-check');
+import { describe, it, beforeEach } from 'node:test';
+import assert from 'node:assert/strict';
+import Store from '../../lib/kernel/store.js';
+import { _parseSignature, sortTable, inferSort, _checkTerm, checkForwardRule, checkClause, checkAll } from '../../lib/engine/type-check.js';
+// Hoisted by tools/esm-hoist.js:
+import mde from '../../lib/engine/index.js';
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
@@ -361,7 +355,7 @@ describe('checkAll', () => {
 
 describe('checkAll with real ILL', { timeout: 15000 }, () => {
   it('produces zero errors for multisig.ill', () => {
-    const mde = require('../../lib/engine');
+
     Store.clear();
     const calc = mde.load('calculus/ill/programs/multisig.ill', { cache: false });
     const result = checkAll(calc.definitions, calc.forwardRules, calc.clauses);

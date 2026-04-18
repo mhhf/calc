@@ -2,26 +2,27 @@
  * Integration tests for ∃/∀ quantifiers — Store, parser, prover, forward engine.
  */
 
-const { describe, it, before } = require('node:test');
-const assert = require('node:assert');
+import { describe, it, before } from 'node:test';
+import assert from 'node:assert';
+import Store from '../lib/kernel/store.js';
+import { debruijnSubst } from '../lib/kernel/substitute.js';
+import { freshEvar, resetFresh, getFreshCounter, resetMetavar } from '../lib/kernel/fresh.js';
+import calculus from '../lib/calculus/index.js';
+import { createProver } from '../lib/prover/focused.js';
+import { buildRuleSpecs } from '../lib/prover/rule-interpreter.js';
+import Seq from '../lib/kernel/sequent.js';
+import { parseExpr } from '../lib/engine/convert.js';
+import { resolveConn, compileRule, expandChoice } from '../lib/engine/compile.js';
+import { ILL_CONNECTIVES } from '../lib/engine/ill/connectives.js';
+// Hoisted by tools/esm-hoist.js:
+import { createGenericProver } from '../lib/prover/generic.js';
 
-const Store = require('../lib/kernel/store');
-const { debruijnSubst } = require('../lib/kernel/substitute');
-const { freshEvar, resetFresh, getFreshCounter, resetMetavar } = require('../lib/kernel/fresh');
-const calculus = require('../lib/calculus');
-const { createProver } = require('../lib/prover/focused');
-const { buildRuleSpecs } = require('../lib/prover/rule-interpreter');
-const Seq = require('../lib/kernel/sequent');
-const { parseExpr } = require('../lib/engine/convert');
-const { resolveConn, compileRule, expandChoice } = require('../lib/engine/compile');
-const { ILL_CONNECTIVES } = require('../lib/engine/ill/connectives');
 const ILL_RC = resolveConn(ILL_CONNECTIVES);
-const { createState } = require('../lib/engine/forward');
-const { tryMatch } = require('../lib/engine/match');
-const { resolveEx } = require('../lib/engine/lnl/existential');
-const { proveWithFFI: provePersistent } = require('../lib/engine/opt/ffi');
-const illFfi = require('../lib/engine/ill/ffi');
-
+import { createState } from '../lib/engine/forward.js';
+import { tryMatch } from '../lib/engine/match.js';
+import { resolveEx } from '../lib/engine/lnl/existential.js';
+import { proveWithFFI as provePersistent } from '../lib/engine/opt/ffi.js';
+import illFfi from '../lib/engine/ill/ffi/index.js';
 describe('Quantifier Store operations', () => {
   it('exists(body) creates arity-1 node', () => {
     const p = Store.put('atom', ['p']);
@@ -201,14 +202,14 @@ describe('Backward prover with quantifiers', () => {
   });
 
   it('invertibility: exists_l is invertible (positive left)', () => {
-    const { createGenericProver } = require('../lib/prover/generic');
+
     const gen = createGenericProver(calc);
     assert.strictEqual(gen.ruleIsInvertible('exists', 'l'), true);
     assert.strictEqual(gen.ruleIsInvertible('exists', 'r'), false);
   });
 
   it('invertibility: forall_r is invertible (negative right)', () => {
-    const { createGenericProver } = require('../lib/prover/generic');
+
     const gen = createGenericProver(calc);
     assert.strictEqual(gen.ruleIsInvertible('forall', 'r'), true);
     assert.strictEqual(gen.ruleIsInvertible('forall', 'l'), false);
@@ -332,7 +333,7 @@ describe('resolveEx three-level fallback', () => {
   it('resolves via FFI when inputs are ground (dangerouslyUseFFI)', async () => {
     // Rule: a X Y -o { exists Z. (b Z * !plus X Y Z) }
     // After matching a(3,4): X=3, Y=4 → FFI resolves Z=7
-    const { parseExpr } = require('../lib/engine/convert');
+
     resetMetavar();
     const ruleH = await parseExpr('a X Y -o { exists Z. (b Z * !plus X Y Z) }');
     const [ante, conseq] = Store.children(ruleH);

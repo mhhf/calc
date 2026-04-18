@@ -1,12 +1,14 @@
-const { describe, it, beforeEach } = require('node:test');
-const assert = require('node:assert/strict');
-const Store = require('../../lib/kernel/store');
-const { show } = require('../../lib/engine/show');
-const { isGround, collectMetavars, collectFreevars } = require('../../lib/engine/pattern-utils');
-const { serialize, deserialize } = require('../../lib/engine/store-binary');
-const { match, matchIndexed, undoSave, undoRestore, unify } = require('../../lib/kernel/unify');
-const { arr_get, arr_set, alen, read_bytes, arrToTrie, trieNav } = require('../../lib/engine/ill/ffi/array');
-const { parserFromTables, parserTables } = require('../../lib/calculus/builders');
+import { describe, it, beforeEach } from 'node:test';
+import assert from 'node:assert/strict';
+import Store from '../../lib/kernel/store.js';
+import { show } from '../../lib/engine/show.js';
+import { isGround, collectMetavars, collectFreevars } from '../../lib/engine/pattern-utils.js';
+import { serialize, deserialize } from '../../lib/engine/store-binary.js';
+import { match, matchIndexed, undoSave, undoRestore, unify } from '../../lib/kernel/unify.js';
+import { arr_get, arr_set, alen, read_bytes, arrToTrie, trieNav } from '../../lib/engine/ill/ffi/array.js';
+import { parserFromTables, parserTables } from '../../lib/calculus/builders.js';
+// Hoisted by tools/esm-hoist.js:
+import { bytesToSemantic } from '../../lib/engine/index.js';
 
 describe('arrlit - Stage 1: Store Infrastructure', () => {
   beforeEach(() => Store.clear());
@@ -908,7 +910,6 @@ describe('arrlit - Stage 7: Bracket Syntax + bytesToSemantic', () => {
   });
 
   describe('bytesToSemantic', () => {
-    const { bytesToSemantic } = require('../../lib/engine');
 
     it('converts PUSH1 data into single value', () => {
       const parse = makeParser();

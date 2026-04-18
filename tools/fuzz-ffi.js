@@ -10,14 +10,14 @@
  */
 'use strict';
 
-const path = require('path');
-const Store = require('../lib/kernel/store');
-const mde = require('../lib/engine');
-const backward = require('../lib/engine/backchain');
-const { makeILLBackchainOpts } = require('../lib/engine/ill/backchain-ill');
-const ffi = require('../lib/engine/ill/ffi');
-const convert = require('../lib/engine/ill/ffi/convert');
-const show = require('../lib/engine/show');
+import path from 'path';
+import Store from '../lib/kernel/store.js';
+import mde from '../lib/engine/index.js';
+import backward from '../lib/engine/backchain.js';
+import { makeILLBackchainOpts } from '../lib/engine/ill/backchain-ill.js';
+import ffi from '../lib/engine/ill/ffi/index.js';
+import convert from '../lib/engine/ill/ffi/convert.js';
+import show from '../lib/engine/show.js';
 const apply = require('../lib/kernel/substitute').apply;
 
 // Parse args
@@ -77,7 +77,7 @@ const PRED_CONFIGS = {
 };
 
 Store.clear();
-const ec = mde.load(path.join(__dirname, '../calculus/ill/programs/multisig_nocall_solc.ill'));
+const ec = mde.load(path.join(import.meta.dirname, '../calculus/ill/programs/multisig_nocall_solc.ill'));
 
 let totalTests = 0, totalPass = 0, totalFail = 0, totalSkip = 0;
 

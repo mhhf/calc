@@ -3,10 +3,9 @@
  *
  * Covers: profile (bare/fast/evm), env var override, custom profiles.
  */
-const { describe, it, beforeEach, afterEach } = require('node:test');
-const assert = require('node:assert/strict');
-const { profile } = require('../../lib/engine/optimizer');
-
+import { describe, it, beforeEach, afterEach } from 'node:test';
+import assert from 'node:assert/strict';
+import { profile } from '../../lib/engine/optimizer.js';
 describe('profile', () => {
   let savedEnv;
 

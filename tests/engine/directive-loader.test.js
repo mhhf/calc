@@ -3,14 +3,13 @@
  *
  * Covers: scanDirectives, detectDuplicates, parseModality, stateHasFreevars, isSubset.
  */
-const { describe, it, beforeEach } = require('node:test');
-const assert = require('node:assert/strict');
-const path = require('path');
-const fs = require('fs');
-const os = require('os');
-const Store = require('../../lib/kernel/store');
-const dl = require('../../tools/directive-loader');
-
+import { describe, it, beforeEach } from 'node:test';
+import assert from 'node:assert/strict';
+import path from 'path';
+import fs from 'fs';
+import os from 'os';
+import Store from '../../lib/kernel/store.js';
+import dl from '../../tools/directive-loader.js';
 describe('directive-loader', () => {
   beforeEach(() => Store.clear());
 

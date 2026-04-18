@@ -5,11 +5,13 @@
  * Profiles where time is spent: loading, parsing, matching, proving.
  */
 
-const mde = require('../../lib/engine');
-const Store = require('../../lib/kernel/store');
-const fs = require('fs');
-const path = require('path');
-const { performance } = require('perf_hooks');
+import mde from '../../lib/engine/index.js';
+import Store from '../../lib/kernel/store.js';
+import fs from 'fs';
+import path from 'path';
+import { performance } from 'perf_hooks';
+// Hoisted by tools/esm-hoist.js:
+import forward from '../../lib/engine/forward.js';
 
 // Timing utilities
 const timings = {
@@ -42,9 +44,9 @@ async function runOnce(warmup = false) {
   // Phase 1: Load rules
   const tLoad0 = performance.now();
   const calc = mde.load([
-    path.join(__dirname, '../../calculus/ill/programs/bin.ill'),
-    path.join(__dirname, '../../calculus/ill/programs/evm.ill'),
-    path.join(__dirname, '../../calculus/ill/programs/multisig_code.ill'),
+    path.join(import.meta.dirname, '../../calculus/ill/programs/bin.ill'),
+    path.join(import.meta.dirname, '../../calculus/ill/programs/evm.ill'),
+    path.join(import.meta.dirname, '../../calculus/ill/programs/multisig_code.ill'),
   ]);
   const tLoad1 = performance.now();
 
@@ -67,7 +69,7 @@ async function runOnce(warmup = false) {
   // Phase 3: Parse code facts
   const tCode0 = performance.now();
   const codeFile = fs.readFileSync(
-    path.join(__dirname, '../../calculus/ill/programs/multisig_code.ill'),
+    path.join(import.meta.dirname, '../../calculus/ill/programs/multisig_code.ill'),
     'utf8'
   );
   let codeCount = 0;
@@ -189,7 +191,7 @@ async function main() {
 
 async function runProfiled() {
   // Instrument the forward engine
-  const forward = require('../../lib/engine/forward');
+
   const originalRun = forward.run;
 
   let matchTime = 0;
@@ -200,9 +202,9 @@ async function runProfiled() {
   // so let's do a manual profiling by timing each phase more granularly
 
   const calc = mde.load([
-    path.join(__dirname, '../../calculus/ill/programs/bin.ill'),
-    path.join(__dirname, '../../calculus/ill/programs/evm.ill'),
-    path.join(__dirname, '../../calculus/ill/programs/multisig_code.ill'),
+    path.join(import.meta.dirname, '../../calculus/ill/programs/bin.ill'),
+    path.join(import.meta.dirname, '../../calculus/ill/programs/evm.ill'),
+    path.join(import.meta.dirname, '../../calculus/ill/programs/multisig_code.ill'),
   ]);
 
   const state = { linear: {}, persistent: {} };
@@ -219,7 +221,7 @@ async function runProfiled() {
   }
 
   const codeFile = fs.readFileSync(
-    path.join(__dirname, '../../calculus/ill/programs/multisig_code.ill'),
+    path.join(import.meta.dirname, '../../calculus/ill/programs/multisig_code.ill'),
     'utf8'
   );
   for (const line of codeFile.split('\n')) {

@@ -1,11 +1,13 @@
 /**
  * Tests for MDE → Hash conversion
  */
-const { describe, it, before } = require('node:test');
-const assert = require('node:assert');
-const path = require('path');
-const mde = require('../../lib/engine');
-const Store = require('../../lib/kernel/store');
+import { describe, it, before } from 'node:test';
+import assert from 'node:assert';
+import path from 'path';
+import mde from '../../lib/engine/index.js';
+import Store from '../../lib/kernel/store.js';
+// Hoisted by tools/esm-hoist.js:
+import { decomposeQuery } from '../../lib/engine/convert.js';
 
 describe('MDE Convert', { timeout: 10000 }, () => {
   describe('parseExpr', () => {
@@ -80,7 +82,7 @@ describe('MDE Convert', { timeout: 10000 }, () => {
 
   describe('load', () => {
     it('loads bin.mde', async () => {
-      const calc = await mde.load(path.join(__dirname, '../../calculus/ill/programs/bin.ill'));
+      const calc = await mde.load(path.join(import.meta.dirname, '../../calculus/ill/programs/bin.ill'));
 
       assert(calc.definitions.size > 0, 'Should have types');
       assert(calc.clauses.size > 0, 'Should have clauses');
@@ -88,7 +90,7 @@ describe('MDE Convert', { timeout: 10000 }, () => {
     });
 
     it('loads evm.mde with forward rules', async () => {
-      const calc = await mde.load(path.join(__dirname, '../../calculus/ill/programs/evm.ill'));
+      const calc = await mde.load(path.join(import.meta.dirname, '../../calculus/ill/programs/evm.ill'));
 
       assert(calc.definitions.size > 0, 'Should have types');
       assert(calc.forwardRules.length > 0, 'Should have forward rules');
@@ -179,7 +181,6 @@ describe('MDE Convert', { timeout: 10000 }, () => {
   });
 
   describe('decomposeQuery — explicit quantifiers', () => {
-    const { decomposeQuery } = require('../../lib/engine/convert');
 
     it('forall X. f(X) — X becomes freevar (eigenvariable)', () => {
       const h = mde.parseExpr('forall X. f X');

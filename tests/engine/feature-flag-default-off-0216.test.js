@@ -11,12 +11,11 @@
  * this test turns red before they reach main.
  */
 
-const { describe, it, before } = require('node:test');
-const assert = require('node:assert');
-const fs = require('fs');
-const path = require('path');
-
-const ROOT = path.resolve(__dirname, '../..');
+import { describe, it, before } from 'node:test';
+import assert from 'node:assert';
+import fs from 'fs';
+import path from 'path';
+const ROOT = path.resolve(import.meta.dirname, '../..');
 
 // Recursive file walk — plain fs, no deps.
 function walk(dir, out) {

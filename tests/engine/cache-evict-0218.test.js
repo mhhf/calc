@@ -7,18 +7,15 @@
 
 'use strict';
 
-const { describe, it, beforeEach, afterEach } = require('node:test');
-const assert = require('node:assert/strict');
-const fs = require('fs');
-const path = require('path');
-const os = require('os');
-const {
-  ensureVersionTag, lruEvict, DEFAULT_MAX_BYTES, _resetVersionTagMemo,
-} = require('../../lib/engine/cache-evict');
-const Store = require('../../lib/kernel/store');
-const mde = require('../../lib/engine');
-
-const SYMEX_PATH = path.join(__dirname, '../../calculus/ill/programs/multisig_nocall_solc_symbolic.ill');
+import { describe, it, beforeEach, afterEach } from 'node:test';
+import assert from 'node:assert/strict';
+import fs from 'fs';
+import path from 'path';
+import os from 'os';
+import { ensureVersionTag, lruEvict, DEFAULT_MAX_BYTES, _resetVersionTagMemo } from '../../lib/engine/cache-evict.js';
+import Store from '../../lib/kernel/store.js';
+import mde from '../../lib/engine/index.js';
+const SYMEX_PATH = path.join(import.meta.dirname, '../../calculus/ill/programs/multisig_nocall_solc_symbolic.ill');
 
 let tmpDir;
 

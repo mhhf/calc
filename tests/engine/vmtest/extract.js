@@ -5,8 +5,10 @@
  * forward execution, for comparison against VMTest expected values.
  */
 
-const Store = require('../../../lib/kernel/store');
-const { binToInt } = require('../../../lib/engine/ill/ffi/convert');
+import Store from '../../../lib/kernel/store.js';
+import { binToInt, intToBin } from '../../../lib/engine/ill/ffi/convert.js';
+// Hoisted by tools/esm-hoist.js:
+import { arr_get } from '../../../lib/engine/ill/ffi/array.js';
 
 /**
  * Extract all facts of a given tag from state.linear.
@@ -67,8 +69,8 @@ function extractTermination(state) {
     }
     // Trie-backed bytecode: check if arr_get(trie, pc, ?) fails
     if (pcVal !== null && !elems && Store.tagId(arrHash) >= Store.PRED_BOUNDARY) {
-      const { arr_get } = require('../../../lib/engine/ill/ffi/array');
-      const idxHash = require('../../../lib/engine/ill/ffi/convert').intToBin(pcVal);
+
+      const idxHash = intToBin(pcVal);
       const mv = Store.put('metavar', ['_extract_v']);
       if (!arr_get([arrHash, idxHash, mv]).success) {
         return 'stop'; // implicit stop: fell off end of trie bytecode
@@ -171,4 +173,5 @@ function parseExpectedStorage(storageObj) {
   return result;
 }
 
-module.exports = { extractResult, extractTermination, extractGas, extractStorage, extractStack, parseExpectedStorage };
+export { extractResult, extractTermination, extractGas, extractStorage, extractStack, parseExpectedStorage };
+export default { extractResult, extractTermination, extractGas, extractStorage, extractStack, parseExpectedStorage };

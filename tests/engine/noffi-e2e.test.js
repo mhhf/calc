@@ -5,18 +5,17 @@
  * (no FFI trusted axioms) and produce correct results identical to FFI.
  */
 
-const { describe, it, before } = require('node:test');
-const assert = require('node:assert/strict');
-const path = require('path');
-const Store = require('../../lib/kernel/store');
-const mde = require('../../lib/engine');
-const { countNodes, getAllLeaves } = require('../../lib/engine/tree-utils');
-const { classifyLeaf } = require('../../lib/engine/show');
-const { toObject } = require('../../lib/engine/fact-set');
-const { guidedTerm } = require('../../lib/prover/guided-term');
-const { rightFocusTerm } = require('../../lib/prover/bridge');
-const { rTensor } = require('../../lib/kernel/ast');
-
+import { describe, it, before } from 'node:test';
+import assert from 'node:assert/strict';
+import path from 'path';
+import Store from '../../lib/kernel/store.js';
+import mde from '../../lib/engine/index.js';
+import { countNodes, getAllLeaves } from '../../lib/engine/tree-utils.js';
+import { classifyLeaf } from '../../lib/engine/show.js';
+import { toObject } from '../../lib/engine/fact-set.js';
+import { guidedTerm } from '../../lib/prover/guided-term.js';
+import { rightFocusTerm } from '../../lib/prover/bridge.js';
+import { rTensor } from '../../lib/kernel/ast.js';
 describe('noFFI e2e: solc multisig (clause-only resolution)', { timeout: 120000 }, () => {
   let treeNoFFI, treeFFI;
 
@@ -24,7 +23,7 @@ describe('noFFI e2e: solc multisig (clause-only resolution)', { timeout: 120000 
     // Run with FFI (benchmark baseline)
     Store.clear();
     const calc = await mde.load(
-      path.join(__dirname, '../../calculus/ill/programs/multisig_nocall_solc.ill')
+      path.join(import.meta.dirname, '../../calculus/ill/programs/multisig_nocall_solc.ill')
     );
     const state = mde.decomposeQuery(calc.queries.get('symex'));
     treeFFI = calc.explore(state, {
@@ -35,7 +34,7 @@ describe('noFFI e2e: solc multisig (clause-only resolution)', { timeout: 120000 
     // Run without FFI (adversarially sound — default)
     Store.clear();
     const calc2 = await mde.load(
-      path.join(__dirname, '../../calculus/ill/programs/multisig_nocall_solc.ill')
+      path.join(import.meta.dirname, '../../calculus/ill/programs/multisig_nocall_solc.ill')
     );
     const state2 = mde.decomposeQuery(calc2.queries.get('symex'));
     treeNoFFI = calc2.explore(state2, { maxDepth: 2000 });
@@ -63,7 +62,7 @@ describe('noFFI e2e: forward.run with evidence', { timeout: 60000 }, () => {
   before(async () => {
     Store.clear();
     const calc = await mde.load(
-      path.join(__dirname, '../../calculus/ill/programs/multisig_nocall_solc.ill')
+      path.join(import.meta.dirname, '../../calculus/ill/programs/multisig_nocall_solc.ill')
     );
     const state = mde.decomposeQuery(calc.queries.get('symex'));
     result = calc.exec(state, {
@@ -123,7 +122,7 @@ describe('noFFI e2e: dangerouslyUseFFI flag resets correctly', () => {
   it('flag resets after forward.run', async () => {
     Store.clear();
     const calc = await mde.load(
-      path.join(__dirname, '../../calculus/ill/programs/multisig_nocall_solc.ill')
+      path.join(import.meta.dirname, '../../calculus/ill/programs/multisig_nocall_solc.ill')
     );
     const state = mde.decomposeQuery(calc.queries.get('symex'));
 
@@ -136,7 +135,7 @@ describe('noFFI e2e: dangerouslyUseFFI flag resets correctly', () => {
     // Run again without flag — should default to noFFI
     Store.clear();
     const calc2 = await mde.load(
-      path.join(__dirname, '../../calculus/ill/programs/multisig_nocall_solc.ill')
+      path.join(import.meta.dirname, '../../calculus/ill/programs/multisig_nocall_solc.ill')
     );
     const state2 = mde.decomposeQuery(calc2.queries.get('symex'));
     const result = calc2.exec(state2, {
@@ -172,7 +171,7 @@ describe('noFFI e2e: symbolic explore → guided terms', { timeout: 600000 }, ()
   before(async () => {
     Store.clear();
     const calc = await mde.load(
-      path.join(__dirname, '../../calculus/ill/programs/multisig_nocall_solc_symbolic.ill')
+      path.join(import.meta.dirname, '../../calculus/ill/programs/multisig_nocall_solc_symbolic.ill')
     );
     const state = mde.decomposeQuery(calc.queries.get('symex'));
     tree = calc.explore(state, {

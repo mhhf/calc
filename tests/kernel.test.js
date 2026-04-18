@@ -2,17 +2,15 @@
  * Tests for L1 Kernel (proof verification)
  */
 
-const { describe, it, before } = require('node:test');
-const assert = require('node:assert');
-
-const { createKernel } = require('../lib/prover/kernel');
-const { createProver } = require('../lib/prover/focused');
-const { buildRuleSpecs } = require('../lib/prover/rule-interpreter');
-const Seq = require('../lib/kernel/sequent');
-const calculus = require('../lib/calculus');
-const { ProofTree, leaf } = require('../lib/prover/pt');
-const { GRADE_W } = require('../lib/engine/grades');
-
+import { describe, it, before } from 'node:test';
+import assert from 'node:assert';
+import { createKernel } from '../lib/prover/kernel.js';
+import { createProver } from '../lib/prover/focused.js';
+import { buildRuleSpecs } from '../lib/prover/rule-interpreter.js';
+import Seq from '../lib/kernel/sequent.js';
+import calculus from '../lib/calculus/index.js';
+import { ProofTree, leaf } from '../lib/prover/pt.js';
+import { GRADE_W } from '../lib/engine/grades.js';
 describe('L1 Kernel - Proof Verification', () => {
   let calc, AST, kernel, prover, ruleSpecs, alternatives;
 

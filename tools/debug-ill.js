@@ -1,3 +1,10 @@
+// Hoisted by tools/esm-hoist.js:
+import { predHead } from '../lib/kernel/ast.js';
+import ffiProfile from '../lib/engine/opt/ffi.js';
+import { getCacheProfile, resetCacheProfile } from '../lib/engine/backward-cache.js';
+import fs from 'fs';
+import { loadBytecode, bytecodeArrGetGuard } from '../lib/engine/ill/bytecode-loader.js';
+
 #!/usr/bin/env node
 /**
  * ILL-native debug runner — observation directives + verbose judgment output.
@@ -12,17 +19,8 @@
  * See doc/documentation/ill-debug-framework.md.
  */
 
-const path = require('path');
-const {
-  ROOT, PROGRAM, MAX_STEPS, MAX_DEPTH,
-  scanDirectives, detectDuplicates, loadProgram,
-  parseModality, decomposeQuery, extractGoals, buildProveOpts,
-  resolveExecOpts, resolveQueryHash, normalizeLeafState,
-  stateHasFreevars, isSubset,
-  groupByPredicate, show, classifyLeaf, showInteresting, getAllLeaves,
-  countLeaves, maxDepth, countNodes,
-} = require('./directive-loader');
-
+import path from 'path';
+import { ROOT, PROGRAM, MAX_STEPS, MAX_DEPTH, scanDirectives, detectDuplicates, loadProgram, parseModality, decomposeQuery, extractGoals, buildProveOpts, resolveExecOpts, resolveQueryHash, normalizeLeafState, stateHasFreevars, isSubset, groupByPredicate, show, classifyLeaf, showInteresting, getAllLeaves, countLeaves, maxDepth, countNodes } from './directive-loader.js';
 // ─── CLI ────────────────────────────────────────────────────────────────────
 
 const args = process.argv.slice(2);
@@ -345,7 +343,7 @@ function runProfile(calc, hash, settings) {
   const byPred = {};
   let totalSuccess = 0, totalFail = 0, totalNonGround = 0;
 
-  const { predHead } = require('../lib/kernel/ast');
+
   function getPred(goalHash) {
     return predHead(goalHash) || 'unknown';
   }
@@ -382,8 +380,8 @@ function runProfile(calc, hash, settings) {
   };
 
   // Read PROFILE data from engine if available
-  const ffiProfile = require('../lib/engine/opt/ffi');
-  const { getCacheProfile, resetCacheProfile } = require('../lib/engine/backward-cache');
+
+
   ffiProfile.resetProfile();
   resetCacheProfile();
 
@@ -508,8 +506,8 @@ const programPath = flags.program ? path.resolve(flags.program) : PROGRAM;
 // Bytecode specialization: --bytecode <codefile.ill> loads hex, produces grade-0 arr_get facts
 let loadOpts = undefined;
 if (flags.bytecode) {
-  const fs = require('fs');
-  const { loadBytecode, bytecodeArrGetGuard } = require('../lib/engine/ill/bytecode-loader');
+
+
   const bcPath = path.resolve(flags.bytecode);
   const bcContent = fs.readFileSync(bcPath, 'utf8');
   const hexMatch = bcContent.match(/bytecode\s+0x([0-9a-fA-F]+)/);

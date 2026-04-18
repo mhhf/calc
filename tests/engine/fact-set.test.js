@@ -1,9 +1,8 @@
-const { describe, it, beforeEach } = require('node:test');
-const assert = require('node:assert/strict');
-const Store = require('../../lib/kernel/store');
-const { FactSet, Arena, State, zobristMix, lowerBound, fromObject, toObject } = require('../../lib/engine/fact-set');
-const { GRADE_W } = require('../../lib/engine/grades');
-
+import { describe, it, beforeEach } from 'node:test';
+import assert from 'node:assert/strict';
+import Store from '../../lib/kernel/store.js';
+import { FactSet, Arena, State, zobristMix, lowerBound, fromObject, toObject } from '../../lib/engine/fact-set.js';
+import { GRADE_W } from '../../lib/engine/grades.js';
 describe('lowerBound', () => {
   it('returns 0 for empty range', () => {
     const buf = new Int32Array(0);

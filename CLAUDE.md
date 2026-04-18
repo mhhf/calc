@@ -32,6 +32,7 @@ npm run dev           # Development server (http://localhost:3000)
 npm run build:ui      # Production build to out/ui/
 npm run build:bundle  # Regenerate out/ill.json from calculus specs
 npm test              # All fast tests (2035 tests, ~4s) — RUN THIS DURING DEVELOPMENT
+npm run test:bun      # Same suite under bun (per-file isolation via tools/test-bun.sh)
 npm run test:ill      # ILL-native tests (98 tests, ~0.2s) — .ill files as provability judgments
 npm run test:noffi    # noFFI adversarial soundness (13 tests, ~1s) — only after engine/FFI changes
 npm run test:zk       # ZK witness tests (94 tests) — only after ZK changes

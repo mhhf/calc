@@ -4,12 +4,18 @@
  * Pi-binder syntax: (name: sort) for naming argument positions.
  * Desugared to positional hashes — names never enter the engine.
  */
-const { describe, it, before, after } = require('node:test');
-const assert = require('node:assert');
-const path = require('path');
-const fs = require('fs');
-const Store = require('../../lib/kernel/store');
-const mde = require('../../lib/engine');
+import { describe, it, before, after } from 'node:test';
+import assert from 'node:assert';
+import path from 'path';
+import fs from 'fs';
+import Store from '../../lib/kernel/store.js';
+import mde from '../../lib/engine/index.js';
+// Hoisted by tools/esm-hoist.js:
+import { stripNamedArgsFromArrowChain } from '../../lib/engine/convert.js';
+import { resolveNamedArgSentinels } from '../../lib/engine/convert.js';
+import convert from '../../lib/engine/convert.js';
+import { show } from '../../lib/engine/show.js';
+import { _checkTerm, sortTable } from '../../lib/engine/type-check.js';
 
 // ─── Parser: named_arg production ────────────────────────────────────────────
 
@@ -64,7 +70,6 @@ describe('Named args — parser', () => {
 // ─── stripNamedArgsFromArrowChain ────────────────────────────────────────────
 
 describe('Named args — stripNamedArgsFromArrowChain', () => {
-  const { stripNamedArgsFromArrowChain } = require('../../lib/engine/convert');
 
   it('strips named args from fully named arrow chain', () => {
     const h = mde.parseExpr('(a: bin) -> (b: bin) -> type');
@@ -113,7 +118,6 @@ describe('Named args — stripNamedArgsFromArrowChain', () => {
 // ─── resolveNamedArgSentinels ────────────────────────────────────────────────
 
 describe('Named args — resolveNamedArgSentinels', () => {
-  const { resolveNamedArgSentinels } = require('../../lib/engine/convert');
 
   // Set up argNamesTable
   const argNamesTable = new Map();
@@ -207,7 +211,7 @@ describe('Named args — resolveNamedArgSentinels', () => {
 // ─── Two-pass loadFile integration ───────────────────────────────────────────
 
 describe('Named args — loadFile integration', () => {
-  const tmpDir = path.join(__dirname, '../../.tmp-test-named-args');
+  const tmpDir = path.join(import.meta.dirname, '../../.tmp-test-named-args');
 
   before(() => {
     fs.mkdirSync(tmpDir, { recursive: true });
@@ -216,7 +220,7 @@ describe('Named args — loadFile integration', () => {
   function writeAndLoad(source) {
     const filePath = path.join(tmpDir, `test-${Date.now()}-${Math.random().toString(36).slice(2)}.ill`);
     fs.writeFileSync(filePath, source);
-    const convert = require('../../lib/engine/convert');
+
     return convert.load(filePath);
   }
 
@@ -351,7 +355,6 @@ storage: (key: bin) -> (value: bin) -> type.
 // ─── Sort table integration ──────────────────────────────────────────────────
 
 describe('Named args — sort table', () => {
-  const { sortTable } = require('../../lib/engine/type-check');
 
   it('includes argNames in sort entries', () => {
     const argNamesTable = new Map();
@@ -388,7 +391,6 @@ describe('Named args — sort table', () => {
 // ─── show.js with argNamesTable ──────────────────────────────────────────────
 
 describe('Named args — show', () => {
-  const { show } = require('../../lib/engine/show');
 
   it('displays named arguments when argNamesTable provided', () => {
     const argNamesTable = new Map();
@@ -420,7 +422,6 @@ describe('Named args — show', () => {
 // ─── Type-check error messages with arg names ────────────────────────────────
 
 describe('Named args — type-check errors', () => {
-  const { _checkTerm, sortTable } = require('../../lib/engine/type-check');
 
   it('arity error includes arg names', () => {
     const argNamesTable = new Map();

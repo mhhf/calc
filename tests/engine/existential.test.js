@@ -3,13 +3,12 @@
  *
  * Covers: compiled chain dispatch, provePersistent fallback, freshEvar handling.
  */
-const { describe, it, beforeEach } = require('node:test');
-const assert = require('node:assert/strict');
-const Store = require('../../lib/kernel/store');
-const { resolveEx } = require('../../lib/engine/lnl/existential');
-const { execExStep } = require('../../lib/engine/opt/existential-compile');
-const { makeMatchOpts } = require('./_match-opts');
-
+import { describe, it, beforeEach } from 'node:test';
+import assert from 'node:assert/strict';
+import Store from '../../lib/kernel/store.js';
+import { resolveEx } from '../../lib/engine/lnl/existential.js';
+import { execExStep } from '../../lib/engine/opt/existential-compile.js';
+import { makeMatchOpts } from './_match-opts.js';
 describe('lnl/existential — resolveEx', () => {
   beforeEach(() => Store.clear());
 

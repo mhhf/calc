@@ -9,8 +9,7 @@
  * 5. Tag-based child type inference cost
  */
 
-const { performance } = require('perf_hooks');
-
+import { performance } from 'perf_hooks';
 function median(arr) {
   const s = [...arr].sort((a, b) => a - b);
   return s[Math.floor(s.length / 2)];

@@ -1,3 +1,6 @@
+// Hoisted by tools/esm-hoist.js:
+import { fromObject, toObject, Arena } from '../../lib/engine/fact-set.js';
+
 #!/usr/bin/env node
 /**
  * Explore Tree Benchmark — Multisig EVM
@@ -13,18 +16,17 @@
  *   CALC_PERF_PROFILE=1 node benchmarks/engine/explore-bench.js --profile  # with forward internals
  */
 
-const path = require('path');
-const fs = require('fs');
-const { performance } = require('perf_hooks');
-const mde = require('../../lib/engine');
-const { findAllMatches } = require('../../lib/engine/strategy');
-const { mutateState } = require('../../lib/engine/state-ops');
-const match = require('../../lib/engine/match');
-const { detectStrategy } = require('../../lib/engine/strategy');
-const { buildFingerprintIndex } = require('../../lib/engine/forward');
-const treeUtils = require('../../lib/engine/tree-utils');
-
-const BASELINE_PATH = path.join(__dirname, 'explore-baseline.json');
+import path from 'path';
+import fs from 'fs';
+import { performance } from 'perf_hooks';
+import mde from '../../lib/engine/index.js';
+import { findAllMatches } from '../../lib/engine/strategy.js';
+import { mutateState } from '../../lib/engine/state-ops.js';
+import match from '../../lib/engine/match.js';
+import { detectStrategy } from '../../lib/engine/strategy.js';
+import { buildFingerprintIndex } from '../../lib/engine/forward.js';
+import treeUtils from '../../lib/engine/tree-utils.js';
+const BASELINE_PATH = path.join(import.meta.dirname, 'explore-baseline.json');
 const WARMUP = 3;
 const RUNS = 10;
 
@@ -55,7 +57,7 @@ function stats(arr) {
 
 function setupState() {
   const calc = mde.load(
-    path.join(__dirname, '../../calculus/ill/programs/multisig.ill')
+    path.join(import.meta.dirname, '../../calculus/ill/programs/multisig.ill')
   );
 
   const state = mde.decomposeQuery(calc.queries.get('symex'));
@@ -75,7 +77,6 @@ function setupState() {
  * for persistent goal proving (without it, rules with !bang goals fail silently).
  */
 function instrumentedExplore(initialState, rules, calcCtx, maxDepth, matchOpts) {
-  const { fromObject, toObject, Arena } = require('../../lib/engine/fact-set');
 
   const timers = {
     findAllMatches: { time: 0, calls: 0 },

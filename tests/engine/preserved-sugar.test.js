@@ -4,16 +4,15 @@
  * The $ prefix marks a linear resource as preserved across a forward rule:
  * $P on the antecedent desugars to P on both LHS and RHS.
  */
-const { describe, it } = require('node:test');
-const assert = require('node:assert');
-const path = require('path');
-const Store = require('../../lib/kernel/store');
-const mde = require('../../lib/engine');
-const { parseExpr, desugarPreserved } = require('../../lib/engine/convert');
-const forward = require('../../lib/engine/forward');
-const { ILL_CONNECTIVES } = require('../../lib/engine/ill/connectives');
-const { resolveConn, flattenAnte, compileRule } = require('../../lib/engine/compile');
-
+import { describe, it } from 'node:test';
+import assert from 'node:assert';
+import path from 'path';
+import Store from '../../lib/kernel/store.js';
+import mde from '../../lib/engine/index.js';
+import { parseExpr, desugarPreserved } from '../../lib/engine/convert.js';
+import forward from '../../lib/engine/forward.js';
+import { ILL_CONNECTIVES } from '../../lib/engine/ill/connectives.js';
+import { resolveConn, flattenAnte, compileRule } from '../../lib/engine/compile.js';
 const ILL_RC = resolveConn(ILL_CONNECTIVES);
 
 // Helper: compile a forward rule from a formula string
@@ -225,7 +224,7 @@ describe('Preserved resource sugar ($prefix)', { timeout: 10000 }, () => {
   describe('EVM integration', { timeout: 30000 }, () => {
     it('loads evm.ill with $ syntax and executes', async () => {
       const calc = await mde.load(
-        path.join(__dirname, '../../calculus/ill/programs/multisig.ill')
+        path.join(import.meta.dirname, '../../calculus/ill/programs/multisig.ill')
       );
 
       const state = mde.decomposeQuery(calc.queries.get('symex'));

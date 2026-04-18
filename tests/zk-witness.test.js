@@ -6,20 +6,18 @@
  * for Rust integration tests (p1f_e2e).
  */
 
-const { describe, it, before } = require('node:test');
-const assert = require('node:assert');
-const path = require('path');
-const fs = require('fs');
-
-const calculus = require('../lib/calculus');
-const Seq = require('../lib/kernel/sequent');
-const { sequentParser } = require('../lib/parser/sequent-parser');
-const { createProver } = require('../lib/prover/focused');
-const { buildRuleSpecs } = require('../lib/prover/rule-interpreter');
-const { extractTerm } = require('../lib/prover/generic-term');
-const { createChecker } = require('../lib/prover/check-term');
-const { generateWitness, deriveZkTags } = require('../lib/zk/witness');
-
+import { describe, it, before } from 'node:test';
+import assert from 'node:assert';
+import path from 'path';
+import fs from 'fs';
+import calculus from '../lib/calculus/index.js';
+import Seq from '../lib/kernel/sequent.js';
+import { sequentParser } from '../lib/parser/sequent-parser.js';
+import { createProver } from '../lib/prover/focused.js';
+import { buildRuleSpecs } from '../lib/prover/rule-interpreter.js';
+import { extractTerm } from '../lib/prover/generic-term.js';
+import { createChecker } from '../lib/prover/check-term.js';
+import { generateWitness, deriveZkTags } from '../lib/zk/witness.js';
 let calc;
 let seqParser;
 let prover;
@@ -28,7 +26,7 @@ let ruleSpecs;
 let alternatives;
 let ZK_TAGS;
 
-const FIXTURE_DIR = path.join(__dirname, '..', 'zk', 'sequent-certifier', 'tests', 'fixtures');
+const FIXTURE_DIR = path.join(import.meta.dirname, '..', 'zk', 'sequent-certifier', 'tests', 'fixtures');
 
 function ensureFixtureDir() {
   if (!fs.existsSync(FIXTURE_DIR)) {

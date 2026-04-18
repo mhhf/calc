@@ -2,17 +2,19 @@
  * Tests for EVM memory model (write-log with McCarthy axiom traversal)
  */
 
-const { describe, it, before, beforeEach } = require('node:test');
-const assert = require('node:assert');
-const path = require('path');
-const mde = require('../../lib/engine');
-const backward = require('../../lib/engine/backchain');
-const { makeILLBackchainOpts } = require('../../lib/engine/ill/backchain-ill');
-const { getAllLeaves, countNodes } = require('../../lib/engine/tree-utils');
-const Store = require('../../lib/kernel/store');
-const { apply: subApply } = require('../../lib/kernel/substitute');
-const { intToBin, binToInt } = require('../../lib/engine/ill/ffi/convert');
-const memory = require('../../lib/engine/ill/ffi/memory');
+import { describe, it, before, beforeEach } from 'node:test';
+import assert from 'node:assert';
+import path from 'path';
+import mde from '../../lib/engine/index.js';
+import backward from '../../lib/engine/backchain.js';
+import { makeILLBackchainOpts } from '../../lib/engine/ill/backchain-ill.js';
+import { getAllLeaves, countNodes } from '../../lib/engine/tree-utils.js';
+import Store from '../../lib/kernel/store.js';
+import { apply as subApply } from '../../lib/kernel/substitute.js';
+import { intToBin, binToInt } from '../../lib/engine/ill/ffi/convert.js';
+import memory from '../../lib/engine/ill/ffi/memory.js';
+// Hoisted by tools/esm-hoist.js:
+import { classifyLeaf } from '../../lib/engine/show.js';
 
 // ============================================================================
 // FFI Unit Tests
@@ -131,7 +133,7 @@ describe('Memory Backward Clauses', { timeout: 30000 }, () => {
   before(async () => {
     Store.clear();
     calc = await mde.load(
-      path.join(__dirname, '../../calculus/ill/programs/evm.ill')
+      path.join(import.meta.dirname, '../../calculus/ill/programs/evm.ill')
     );
   });
 
@@ -231,6 +233,7 @@ describe('Memory Backward Clauses', { timeout: 30000 }, () => {
 // ============================================================================
 
 describe('EVM Memory Integration', { timeout: 30000, concurrency: 1 }, () => {
+  let calc;
   /**
    * Build a minimal EVM initial state with bytecode.
    * bytecodeMap: { address: opcode, ... }  e.g. { 0: 0x60, 1: 0x42, 2: 0x60, 3: 0x00, 4: 0x52 }
@@ -271,7 +274,7 @@ describe('EVM Memory Integration', { timeout: 30000, concurrency: 1 }, () => {
     it('MSTORE then MLOAD at same offset returns correct value', async () => {
       Store.clear();
       calc = await mde.load(
-        path.join(__dirname, '../../calculus/ill/programs/evm.ill')
+        path.join(import.meta.dirname, '../../calculus/ill/programs/evm.ill')
       );
 
       // Bytecode: PUSH1 0x42, PUSH1 0x00, MSTORE, PUSH1 0x00, MLOAD
@@ -315,7 +318,7 @@ describe('EVM Memory Integration', { timeout: 30000, concurrency: 1 }, () => {
     it('MLOAD at unwritten offset returns 0', async () => {
       Store.clear();
       calc = await mde.load(
-        path.join(__dirname, '../../calculus/ill/programs/evm.ill')
+        path.join(import.meta.dirname, '../../calculus/ill/programs/evm.ill')
       );
 
       // Bytecode: PUSH1 0x42, PUSH1 0x00, MSTORE, PUSH1 0x20, MLOAD
@@ -359,7 +362,7 @@ describe('EVM Memory Integration', { timeout: 30000, concurrency: 1 }, () => {
     it('two MSTOREs then MLOAD returns latest value', async () => {
       Store.clear();
       calc = await mde.load(
-        path.join(__dirname, '../../calculus/ill/programs/evm.ill')
+        path.join(import.meta.dirname, '../../calculus/ill/programs/evm.ill')
       );
 
       // Bytecode: PUSH1 0xAA, PUSH1 0x00, MSTORE, PUSH1 0xBB, PUSH1 0x00, MSTORE, PUSH1 0x00, MLOAD
@@ -407,7 +410,7 @@ describe('EVM Memory Integration', { timeout: 30000, concurrency: 1 }, () => {
     it('MSTORE at offset 0 expands to 32', async () => {
       Store.clear();
       calc = await mde.load(
-        path.join(__dirname, '../../calculus/ill/programs/evm.ill')
+        path.join(import.meta.dirname, '../../calculus/ill/programs/evm.ill')
       );
 
       // PUSH1 0x42, PUSH1 0x00, MSTORE, MSIZE
@@ -451,7 +454,7 @@ describe('EVM Memory Integration', { timeout: 30000, concurrency: 1 }, () => {
     it('CALL produces nondeterministic fork with memory preserved', async () => {
       Store.clear();
       const calc = await mde.load(
-        path.join(__dirname, '../../calculus/ill/programs/evm.ill')
+        path.join(import.meta.dirname, '../../calculus/ill/programs/evm.ill')
       );
 
       // PUSH1 0x42, PUSH1 0x00, MSTORE → non-empty memory
@@ -522,7 +525,7 @@ describe('EVM Memory Integration', { timeout: 30000, concurrency: 1 }, () => {
     it('explores to exact expected tree shape', async () => {
       Store.clear();
       const msCalc = await mde.load(
-        path.join(__dirname, '../../calculus/ill/programs/multisig_nocall.ill')
+        path.join(import.meta.dirname, '../../calculus/ill/programs/multisig_nocall.ill')
       );
 
       const state = mde.decomposeQuery(msCalc.queries.get('symex'));
@@ -540,7 +543,7 @@ describe('EVM Memory Integration', { timeout: 30000, concurrency: 1 }, () => {
     });
 
     it('has exactly 1 STOP leaf (successful termination)', async () => {
-      const { classifyLeaf } = require('../../lib/engine/show');
+
       const stopLeaves = allLeaves.filter(l => classifyLeaf(l.state) === 'STOP');
       assert.strictEqual(stopLeaves.length, 1,
         `Expected 1 STOP leaf, got ${stopLeaves.length}`);
@@ -560,7 +563,7 @@ describe('EVM Memory Integration', { timeout: 30000, concurrency: 1 }, () => {
     it('explores past CALL with no stuck call facts', async () => {
       Store.clear();
       const msCalc = await mde.load(
-        path.join(__dirname, '../../calculus/ill/programs/multisig.ill')
+        path.join(import.meta.dirname, '../../calculus/ill/programs/multisig.ill')
       );
 
       const state = mde.decomposeQuery(msCalc.queries.get('symex'));
@@ -589,7 +592,7 @@ describe('EVM Memory Integration', { timeout: 30000, concurrency: 1 }, () => {
     });
 
     it('has exactly 1 STOP leaf', async () => {
-      const { classifyLeaf } = require('../../lib/engine/show');
+
       const stopLeaves = allLeaves.filter(l => classifyLeaf(l.state) === 'STOP');
       assert.strictEqual(stopLeaves.length, 1,
         `Expected 1 STOP leaf, got ${stopLeaves.length}`);

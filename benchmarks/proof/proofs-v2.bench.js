@@ -4,13 +4,11 @@
  * Uses the refactored v2 prover with focused proof search
  */
 
-const { BenchmarkRunner } = require('../lib/runner');
-
+import { BenchmarkRunner } from '../lib/runner.js';
 // v2 imports
-const calcV2 = require('../../lib/calculus');
-const proverV2 = require('../../lib/prover/strategy/auto');
-const SeqV2 = require('../../lib/kernel/sequent');
-
+import calcV2 from '../../lib/calculus/index.js';
+import proverV2 from '../../lib/prover/strategy/auto.js';
+import SeqV2 from '../../lib/kernel/sequent.js';
 // Cached calculus and prover (initialized lazily)
 let _calc = null;
 let _prover = null;
@@ -146,16 +144,9 @@ async function runV2WithProfiling(category = 'all') {
   return results;
 }
 
-module.exports = {
-  runV2ProofBenchmarks,
-  runV2WithProfiling,
-  proveV2,
-  fixtures,
-  getProver,
-};
-
+export { runV2ProofBenchmarks, runV2WithProfiling, proveV2, fixtures, getProver };
 // CLI entry point
-if (require.main === module) {
+if (import.meta.url === `file://${process.argv[1]}`) {
   const category = process.argv[2] || 'all';
 
   (async () => {
@@ -172,3 +163,4 @@ if (require.main === module) {
     }
   })();
 }
+export default { runV2ProofBenchmarks, runV2WithProfiling, proveV2, fixtures, getProver };

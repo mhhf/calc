@@ -1,3 +1,8 @@
+// Hoisted by tools/esm-hoist.js:
+import mde from './lib/engine';
+import { loadBytecode, bytecodeArrGetGuard } from './lib/engine/ill/bytecode-loader';
+import treeUtils from './lib/engine/tree-utils';
+
 #!/usr/bin/env node
 /**
  * Benchmark History — explore solc_symbolic across N commits.
@@ -31,12 +36,11 @@
  *   node --expose-gc tools/bench-history.js --resume=bench-history.json --commits=60
  */
 
-const { execSync, spawn } = require('child_process');
-const path = require('path');
-const fs = require('fs');
-const { performance } = require('perf_hooks');
-
-const ROOT = path.resolve(__dirname, '..');
+import { execSync, spawn } from 'child_process';
+import path from 'path';
+import fs from 'fs';
+import { performance } from 'perf_hooks';
+const ROOT = path.resolve(import.meta.dirname, '..');
 const WORKTREE_DIR = path.join(ROOT, '.bench-history');
 const MARKER = '---BENCH-HISTORY---';
 
@@ -223,19 +227,18 @@ const E2E_CHILD_SOURCE = `'use strict';
 //   BENCH_E2E_BYTECODE=<ms>               loadBytecode(hex)
 //   BENCH_E2E_PHASES=<json>               full tree, optional on older commits
 
-const path = require('path');
-const fs = require('fs');
-const { performance } = require('perf_hooks');
-
+import path from 'path';
+import fs from 'fs';
+import { performance } from 'perf_hooks';
 try {
   const cacheMode = process.env.BENCH_CACHE_MODE || 'nocache';
 
   const tReq0 = performance.now();
-  const mde = require('./lib/engine');
+
   const requireMs = performance.now() - tReq0;
 
-  const codePath = path.join(__dirname, 'calculus/ill/programs/multisig_nocall_solc_code.ill');
-  const sourcePath = path.join(__dirname, 'calculus/ill/programs/multisig_nocall_solc_symbolic.ill');
+  const codePath = path.join(import.meta.dirname, 'calculus/ill/programs/multisig_nocall_solc_code.ill');
+  const sourcePath = path.join(import.meta.dirname, 'calculus/ill/programs/multisig_nocall_solc_symbolic.ill');
 
   const phases = [];
   const onPhase = (pathName, ms, meta) => phases.push(meta ? [pathName, ms, meta] : [pathName, ms]);
@@ -260,9 +263,9 @@ try {
 
   let bytecodeMs = 0;
   try {
-    const loaderFile = path.join(__dirname, 'lib/engine/ill/bytecode-loader.js');
+    const loaderFile = path.join(import.meta.dirname, 'lib/engine/ill/bytecode-loader.js');
     if (fs.existsSync(loaderFile) && fs.existsSync(codePath)) {
-      const { loadBytecode, bytecodeArrGetGuard } = require('./lib/engine/ill/bytecode-loader');
+
       const tBc0 = performance.now();
       const hex = fs.readFileSync(codePath, 'utf8').match(/bytecode\\s+0x([0-9a-fA-F]+)/)[1];
       const bc = loadBytecode(hex);
@@ -289,7 +292,7 @@ try {
   const tExp0 = performance.now();
   const tree = calc.explore(state, EXPLORE_OPTS);
   const expMs = performance.now() - tExp0;
-  const treeUtils = require('./lib/engine/tree-utils');
+
   const nodes = treeUtils && treeUtils.countNodes ? treeUtils.countNodes(tree) : 0;
   const branches = treeUtils && treeUtils.countLeaves ? treeUtils.countLeaves(tree) : 0;
   phases.push(['explore', expMs, { nodes, branches, maxDepth: EXPLORE_OPTS.maxDepth }]);
@@ -341,10 +344,9 @@ const EXPLORE_OPTS = {
   dangerouslyUseFFI: true,
 };
 
-const { spawnSync } = require('child_process');
-const path = require('path');
-const fs = require('fs');
-
+import { spawnSync } from 'child_process';
+import path from 'path';
+import fs from 'fs';
 function stats(times) {
   times.sort((a, b) => a - b);
   const mean = times.reduce((a, b) => a + b, 0) / times.length;
@@ -363,7 +365,6 @@ function stats(times) {
 }
 
 function benchSymex(state, calc) {
-  const treeUtils = require('./lib/engine/tree-utils');
 
   // Warmup
   for (let i = 0; i < WARMUP; i++) {
@@ -397,11 +398,11 @@ function benchSymex(state, calc) {
 // Older commits that only emit BENCH_E2E_RESULT degrade gracefully: unknown
 // fields become undefined and aggregation skips them.
 function runE2EChild(scriptPath, extraEnv) {
-  const env = { ...process.env, NODE_PATH: path.join(__dirname, 'node_modules') };
+  const env = { ...process.env, NODE_PATH: path.join(import.meta.dirname, 'node_modules') };
   if (extraEnv) Object.assign(env, extraEnv);
   const parentT0 = performance.now();
   const r = spawnSync(process.execPath, [scriptPath], {
-    cwd: __dirname, env, timeout: 60_000,
+    cwd: import.meta.dirname, env, timeout: 60_000,
   });
   const parentWall = performance.now() - parentT0;
   if (r.error) throw new Error('spawn: ' + r.error.message);
@@ -507,7 +508,7 @@ function _wipeCacheDir(dir) {
 // simply re-measure the nocache path (tagged with mode but scenarios collapse).
 function benchE2EChildSpawned(mode) {
   mode = mode || 'nocache';
-  const scriptPath = path.join(__dirname, '_bench_e2e_iter.js');
+  const scriptPath = path.join(import.meta.dirname, '_bench_e2e_iter.js');
   fs.writeFileSync(scriptPath, E2E_CHILD_SCRIPT);
 
   // Per-commit isolated cache dir — avoids touching the user's ~/.cache/calc.
@@ -576,16 +577,15 @@ async function main() {
   const result = {};
 
   try {
-    const mde = require('./lib/engine');
 
     // Load with bytecode if bytecode-loader exists (post-compose era)
-    const codePath = path.join(__dirname, 'calculus/ill/programs/multisig_nocall_solc_code.ill');
-    const sourcePath = path.join(__dirname, 'calculus/ill/programs/multisig_nocall_solc_symbolic.ill');
+    const codePath = path.join(import.meta.dirname, 'calculus/ill/programs/multisig_nocall_solc_code.ill');
+    const sourcePath = path.join(import.meta.dirname, 'calculus/ill/programs/multisig_nocall_solc_symbolic.ill');
     let loadOpts = { cache: false };
     try {
       const codeExists = fs.existsSync(codePath);
       const loaderPath = './lib/engine/ill/bytecode-loader';
-      const hasLoader = fs.existsSync(path.join(__dirname, 'lib/engine/ill/bytecode-loader.js'));
+      const hasLoader = fs.existsSync(path.join(import.meta.dirname, 'lib/engine/ill/bytecode-loader.js'));
       if (codeExists && hasLoader) {
         const { loadBytecode, bytecodeArrGetGuard } = require(loaderPath);
         const hex = fs.readFileSync(codePath, 'utf8').match(/bytecode\\s+0x([0-9a-fA-F]+)/)[1];

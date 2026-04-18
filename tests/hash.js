@@ -1,11 +1,6 @@
-const { describe, it } = require('node:test');
-const assert = require('node:assert');
-const {
-  hashString,
-  hashBigInt,
-  hashCombine,
-} = require('../lib/hash');
-
+import { describe, it } from 'node:test';
+import assert from 'node:assert';
+import { hashString, hashBigInt, hashCombine } from '../lib/hash.js';
 describe('Hash', () => {
   describe('hashString', () => {
     it('should produce consistent hashes for same input', () => {

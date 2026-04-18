@@ -2,12 +2,10 @@
  * Tests for v2 Sequent
  */
 
-const { describe, it, before } = require('node:test');
-const assert = require('node:assert');
-
-const { seq, hash, eq } = require('../lib/kernel/sequent');
-const calculus = require('../lib/calculus');
-
+import { describe, it, before } from 'node:test';
+import assert from 'node:assert';
+import { seq, hash, eq } from '../lib/kernel/sequent.js';
+import calculus from '../lib/calculus/index.js';
 describe('v2 Sequent', () => {
   let AST;
 

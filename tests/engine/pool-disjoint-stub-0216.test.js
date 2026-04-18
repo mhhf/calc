@@ -11,11 +11,16 @@
  * set before module load.
  */
 
-const { describe, it, before } = require('node:test');
-const assert = require('node:assert');
-const path = require('path');
-const { execFileSync } = require('child_process');
-const Store = require('../../lib/kernel/store');
+import { describe, it, before } from 'node:test';
+import assert from 'node:assert';
+import path from 'path';
+import { execFileSync } from 'child_process';
+import Store from '../../lib/kernel/store.js';
+// Hoisted by tools/esm-hoist.js:
+import mde from '../../lib/engine/index.js';
+import ccfg from '../../lib/engine/ill/calculus-config.js';
+import { resolveConn } from '../../lib/engine/compile.js';
+import { fusePair as _fusePair } from '../../lib/engine/compose.js';
 
 describe('TODO_0216 H3 — pool-disjoint assertion stub', () => {
   let fusePair, rc;
@@ -23,12 +28,12 @@ describe('TODO_0216 H3 — pool-disjoint assertion stub', () => {
   before(() => {
     Store.clear();
     delete process.env.CALC_POOL_DISJOINT; // ensure flag off in-process
-    const mde = require('../../lib/engine/index');
-    mde.load(path.join(__dirname, '../../calculus/ill/programs/evm.ill'), { cache: true });
-    const ccfg = require('../../lib/engine/ill/calculus-config');
-    const { resolveConn } = require('../../lib/engine/compile');
+
+    mde.load(path.join(import.meta.dirname, '../../calculus/ill/programs/evm.ill'), { cache: true });
+
+
     rc = resolveConn(ccfg.connectives);
-    ({ fusePair } = require('../../lib/engine/compose'));
+    fusePair = _fusePair;
   });
 
   it('no-op when CALC_POOL_DISJOINT unset (default): fusion succeeds without meta tag', () => {
@@ -59,13 +64,13 @@ describe('TODO_0216 H3 — pool-disjoint assertion stub', () => {
     // assertion fires when fusePair is called with an untagged rule.
     const script = `
     (async () => {
-      const path = require('path');
-      const Store = require('${path.resolve(__dirname, '../../lib/kernel/store').replace(/\\\\/g, '/')}');
-      const calculus = require('${path.resolve(__dirname, '../../lib/calculus/index').replace(/\\\\/g, '/')}');
+
+      const Store = (await import('file://${path.resolve(import.meta.dirname, '../../lib/kernel/store.js').replace(/\\\\/g, '/')}')).default;
+      const calculus = (await import('file://${path.resolve(import.meta.dirname, '../../lib/calculus/index.js').replace(/\\\\/g, '/')}')).default;
       await calculus.loadILL();
-      const ccfg = require('${path.resolve(__dirname, '../../lib/engine/ill/calculus-config').replace(/\\\\/g, '/')}');
-      const { resolveConn } = require('${path.resolve(__dirname, '../../lib/engine/compile').replace(/\\\\/g, '/')}');
-      const { fusePair } = require('${path.resolve(__dirname, '../../lib/engine/compose').replace(/\\\\/g, '/')}');
+      const ccfg = (await import('file://${path.resolve(import.meta.dirname, '../../lib/engine/ill/calculus-config.js').replace(/\\\\/g, '/')}')).default;
+      const { resolveConn } = await import('file://${path.resolve(import.meta.dirname, '../../lib/engine/compile.js').replace(/\\\\/g, '/')}');
+      const { fusePair } = await import('file://${path.resolve(import.meta.dirname, '../../lib/engine/compose.js').replace(/\\\\/g, '/')}');
       const rc = resolveConn(ccfg.connectives);
       const a = Store.put('atom', ['a']);
       const mvX = Store.put('metavar', ['X']);
@@ -90,7 +95,7 @@ describe('TODO_0216 H3 — pool-disjoint assertion stub', () => {
       }
     })();
     `;
-    const out = execFileSync(process.execPath, ['-e', script], {
+    const out = execFileSync(process.execPath, ['--input-type=module', '-e', script], {
       env: { ...process.env, CALC_POOL_DISJOINT: 'strict' },
       encoding: 'utf8',
       stdio: ['ignore', 'pipe', 'pipe'],
@@ -102,13 +107,13 @@ describe('TODO_0216 H3 — pool-disjoint assertion stub', () => {
   it('strict mode: tagged rule (meta.disjointInPool=true) passes without throwing', () => {
     const script = `
     (async () => {
-      const path = require('path');
-      const Store = require('${path.resolve(__dirname, '../../lib/kernel/store').replace(/\\\\/g, '/')}');
-      const calculus = require('${path.resolve(__dirname, '../../lib/calculus/index').replace(/\\\\/g, '/')}');
+
+      const Store = (await import('file://${path.resolve(import.meta.dirname, '../../lib/kernel/store.js').replace(/\\\\/g, '/')}')).default;
+      const calculus = (await import('file://${path.resolve(import.meta.dirname, '../../lib/calculus/index.js').replace(/\\\\/g, '/')}')).default;
       await calculus.loadILL();
-      const ccfg = require('${path.resolve(__dirname, '../../lib/engine/ill/calculus-config').replace(/\\\\/g, '/')}');
-      const { resolveConn } = require('${path.resolve(__dirname, '../../lib/engine/compile').replace(/\\\\/g, '/')}');
-      const { fusePair } = require('${path.resolve(__dirname, '../../lib/engine/compose').replace(/\\\\/g, '/')}');
+      const ccfg = (await import('file://${path.resolve(import.meta.dirname, '../../lib/engine/ill/calculus-config.js').replace(/\\\\/g, '/')}')).default;
+      const { resolveConn } = await import('file://${path.resolve(import.meta.dirname, '../../lib/engine/compile.js').replace(/\\\\/g, '/')}');
+      const { fusePair } = await import('file://${path.resolve(import.meta.dirname, '../../lib/engine/compose.js').replace(/\\\\/g, '/')}');
       const rc = resolveConn(ccfg.connectives);
       const a = Store.put('atom', ['a']);
       const mvX = Store.put('metavar', ['X']);
@@ -130,7 +135,7 @@ describe('TODO_0216 H3 — pool-disjoint assertion stub', () => {
       }
     })();
     `;
-    const out = execFileSync(process.execPath, ['-e', script], {
+    const out = execFileSync(process.execPath, ['--input-type=module', '-e', script], {
       env: { ...process.env, CALC_POOL_DISJOINT: 'strict' },
       encoding: 'utf8',
       stdio: ['ignore', 'pipe', 'pipe'],

@@ -2,6 +2,10 @@ out/
 *.*~
 node_modules/
 
+# bun artifacts — we stick with npm / package-lock.json for installs
+bun.lockb
+bun.lock
+
 # Nix/direnv
 .direnv/
 result

@@ -3,16 +3,21 @@
  * Turnstile = backward entailment, fat arrow = forward reachability.
  * Part of TODO_0143/TODO_0147 infrastructure.
  */
-const { describe, it, beforeEach } = require('node:test');
-const assert = require('node:assert/strict');
-const Store = require('../../lib/kernel/store');
-const { parseDecls, _findSep } = require('../../lib/parser/declarations');
+import { describe, it, beforeEach } from 'node:test';
+import assert from 'node:assert/strict';
+import Store from '../../lib/kernel/store.js';
+import { parseDecls, _findSep } from '../../lib/parser/declarations.js';
+// Hoisted by tools/esm-hoist.js:
+import convert from '../../lib/engine/convert.js';
+import fs from 'fs';
+import os from 'os';
+import pathMod from 'path';
 
 let _exprParser;
 beforeEach(() => {
   Store.clear();
   if (!_exprParser) {
-    const convert = require('../../lib/engine/convert');
+
     _exprParser = convert.parseExpr;
   }
 });
@@ -205,9 +210,8 @@ describe('Backward compatibility', () => {
 describe('convert.load: splitQueries integration', () => {
   it('split query flows through to load() result', () => {
     Store.clear();
-    const fs = require('fs');
-    const os = require('os');
-    const pathMod = require('path');
+
+
 
     // Write a temporary .ill file with separator directives
     const tmpDir = fs.mkdtempSync(pathMod.join(os.tmpdir(), 'calc-sep-'));
@@ -220,7 +224,7 @@ describe('convert.load: splitQueries integration', () => {
     ].join('\n'));
 
     try {
-      const convert = require('../../lib/engine/convert');
+
       const result = convert.load(tmpFile);
       // #prove with |- → splitQueries
       assert.ok(result.splitQueries.has('prove'), 'splitQueries should have prove');

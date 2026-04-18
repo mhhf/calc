@@ -19,12 +19,11 @@
  * allowlist. Anything outside the allowlist is a regression.
  */
 
-const { describe, it } = require('node:test');
-const assert = require('node:assert');
-const fs = require('fs');
-const path = require('path');
-
-const REPO = path.resolve(__dirname, '..', '..');
+import { describe, it } from 'node:test';
+import assert from 'node:assert';
+import fs from 'fs';
+import path from 'path';
+const REPO = path.resolve(import.meta.dirname, '..', '..');
 
 /** Recursively collect .js files under a directory. */
 function walkJs(dir) {

@@ -4,26 +4,29 @@
  * Covers: state lookup path, clause resolution path,
  * multiple goals, hooks — each stage independently.
  */
-const { describe, it, before, beforeEach } = require('node:test');
-const assert = require('node:assert/strict');
-const path = require('path');
-const Store = require('../../lib/kernel/store');
-const { FactSet } = require('../../lib/engine/fact-set');
-const { proveNaive } = require('../../lib/engine/lnl/persistent');
-const { makeMatchOpts } = require('./_match-opts');
+import { describe, it, before, beforeEach } from 'node:test';
+import assert from 'node:assert/strict';
+import path from 'path';
+import Store from '../../lib/kernel/store.js';
+import { FactSet } from '../../lib/engine/fact-set.js';
+import { proveNaive } from '../../lib/engine/lnl/persistent.js';
+import { makeMatchOpts } from './_match-opts.js';
+// Hoisted by tools/esm-hoist.js:
+import mde from '../../lib/engine/index.js';
+import { clearBWCache } from '../../lib/engine/backward-cache.js';
 
 describe('lnl/persistent — proveNaive', () => {
   let calc;
 
   before(() => {
     Store.clear();
-    const mde = require('../../lib/engine/index');
-    const loaded = mde.load(path.join(__dirname, '../../calculus/ill/programs/evm.ill'), { cache: true });
+
+    const loaded = mde.load(path.join(import.meta.dirname, '../../calculus/ill/programs/evm.ill'), { cache: true });
     calc = loaded._calcContext;
   });
 
   beforeEach(() => {
-    require('../../lib/engine/backward-cache').clearBWCache();
+    clearBWCache();
   });
 
   describe('state lookup path', () => {
