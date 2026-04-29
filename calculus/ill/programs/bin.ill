@@ -104,6 +104,12 @@ checked_sub/ok: checked_sub A B C <- le B A <- sub A B C.
 % byte_size256 X N: N = number of bytes needed to represent X
 % byte_size(0) = 0. Used by EVM EXP gas: cost = 10 + 50 * byte_size(exponent)
 byte_size256: (value: bin) -> (bytes: bin) -> type.
+byte_size256/zero: byte_size256 e e.
+byte_size256/step: byte_size256 X N
+  <- gt X e e (i e)        % X > 0
+  <- shr 0x8 X X'
+  <- byte_size256 X' N'
+  <- inc N' N.
 
 between: (x: bin) -> (lo: bin) -> (hi: bin) -> type.
 between/eq: between Lo Lo Hi <- le Lo Hi.
@@ -244,6 +250,23 @@ not/so: not (o X) (i Y)
 not256: (value: bin) -> (result: bin) -> type.
 not256/z: not256 X Y
   <- xor X 0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff Y.
+
+% 256-bit two's-complement negation: R = -X mod 2^256.
+% R = ~X + 1, truncated to 256 bits. neg256(0) = 0.
+% trim strips high-bit padding so subsequent arithmetic clauses (sub, divmod)
+% match canonical forms — see notes in neg_if / sdiv256/nz.
+neg256: (value: bin) -> (result: bin) -> type.
+neg256/z: neg256 V R
+  <- not256 V NV
+  <- inc NV Inc
+  <- to256 Inc Padded
+  <- trim Padded R.
+
+% Conditional negation: if Sign = e, R = V; if Sign = (i e), R = -V mod 2^256.
+% Used by sdiv256/smod256 to combine sign bits with absolute-value arithmetic.
+neg_if: (sign: bin) -> (value: bin) -> (result: bin) -> type.
+neg_if/zero: neg_if e V V.
+neg_if/one: neg_if (i e) V R <- neg256 V R.
 
 % XOR: bitwise exclusive-or
 xor: (a: bin) -> (b: bin) -> (result: bin) -> type.
