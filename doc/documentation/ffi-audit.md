@@ -30,6 +30,7 @@ signextend256, byte_size256 now have full inductive clause backup).
 | **0** | predicates with **only a zero-case clause** (TODO_0228 Group A closed `sdiv256`/`smod256`) |
 | **0** | FFI predicates that consume linear resources (all are persistent / term-level) |
 | **4** | target native representations currently produced by FFI code (`BigInt`, `Uint32Array`, `Uint8Array` / `Buffer`, JS `string`) |
+| **43 / 13 / 0** | Phase-1 fuzz coverage (TODO_0223): fuzzed (29 clause-mode, 13 spec-mode, 1 custom runner) / declared skip stubs / unfuzzed. `tools/fuzz-ffi.js` walks `defaultMeta` automatically; `--list` prints the per-cluster coverage map, `--cluster §3.x` filters. |
 
 ## 2. Current FFI architecture (one glance)
 
