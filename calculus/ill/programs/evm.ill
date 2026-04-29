@@ -166,10 +166,38 @@ exp256/clause: exp256 Base Exp Result
 % INT256_MIN / -1 = INT256_MIN (overflow wraps, per EVM spec)
 sdiv256: (a: bin) -> (b: bin) -> (result: bin) -> type.
 sdiv256/zero: sdiv256 A e e.
+% Non-zero divisor: dispatch to abs-div + sign-reattach.
+% Sign of result = sign(A) XOR sign(B). Use explicit sdiv_combine to avoid
+% structural-vs-canonical zero issues (xor of (i e) (i e) yields (o e), not e).
+sdiv256/nz: sdiv256 A B Q
+  <- neq B e
+  <- shr 0xff A SA
+  <- shr 0xff B SB
+  <- neg_if SA A AbsA
+  <- neg_if SB B AbsB
+  <- div AbsA AbsB QAbs
+  <- sdiv_combine SA SB QAbs Q.
+
+% sdiv_combine SA SB QAbs Q: re-attach sign of quotient.
+% Same sign on both inputs → positive; different sign → negate.
+sdiv_combine: (sa: bin) -> (sb: bin) -> (q_abs: bin) -> (result: bin) -> type.
+sdiv_combine/pp: sdiv_combine e e Q Q.
+sdiv_combine/pn: sdiv_combine e (i e) Q R <- neg256 Q R.
+sdiv_combine/np: sdiv_combine (i e) e Q R <- neg256 Q R.
+sdiv_combine/nn: sdiv_combine (i e) (i e) Q Q.
 
 % smod256 A B R: R = signed(A) % signed(B), sign follows A; 0 when B = 0
 smod256: (a: bin) -> (b: bin) -> (result: bin) -> type.
 smod256/zero: smod256 A e e.
+% Non-zero divisor: abs-mod, then re-attach the sign of the dividend.
+smod256/nz: smod256 A B R
+  <- neq B e
+  <- shr 0xff A SA
+  <- shr 0xff B SB
+  <- neg_if SA A AbsA
+  <- neg_if SB B AbsB
+  <- mod AbsA AbsB RAbs
+  <- neg_if SA RAbs R.
 
 % addmod256 A B N R: R = (A + B) mod N, unbounded intermediate; 0 when N = 0
 addmod256: (a: bin) -> (b: bin) -> (n: bin) -> (result: bin) -> type.
@@ -190,6 +218,33 @@ mulmod256/nz: mulmod256 A B N R
 % signextend256 B X Y: sign-extend X at byte B
 % B >= 31 → Y = X unchanged. Otherwise, bit (B*8+7) is sign bit.
 signextend256: (byte_pos: bin) -> (value: bin) -> (result: bin) -> type.
+% B >= 31: no extension, just truncate X to 256 bits.
+signextend256/big: signextend256 B X Y
+  <- gt B 0x1e e (i e)              % B > 30 (i.e., B >= 31)
+  <- to256 X Y.
+% B <= 30: compute bit position, sign bit, low mask, then case-split on sign.
+signextend256/small: signextend256 B X Y
+  <- gt 0x1f B e (i e)              % 31 > B (i.e., B <= 30)
+  <- shl 0x3 B P8                    % P8 = B * 8
+  <- plus P8 0x7 BPos                % BPos = B*8 + 7 (the sign bit position)
+  <- shr BPos X RawSign
+  <- and RawSign 0x1 SignRaw
+  <- trim SignRaw SignBit            % canonicalize: (o e) → e for zero-sign case
+  <- inc BPos BPos1
+  <- shl BPos1 0x1 OneShifted        % 1 << (BPos+1)
+  <- dec OneShifted LowMask          % LowMask = (1 << (BPos+1)) - 1
+  <- signextend256_h SignBit X LowMask Y.
+
+% signextend256_h Sign X LowMask Y: case split on sign bit.
+% Sign = e (positive): Y = X & LowMask (clear high bits).
+% Sign = (i e) (negative): Y = X | HighMask (set high bits to 1).
+signextend256_h: (sign: bin) -> (value: bin) -> (low_mask: bin) -> (result: bin) -> type.
+signextend256_h/zero: signextend256_h e X LowMask Y
+  <- and X LowMask Y.
+signextend256_h/one: signextend256_h (i e) X LowMask Y
+  <- xor 0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff LowMask HighMask
+  <- or X HighMask Y'
+  <- trim Y' Y.
 
 % byte256 Idx X Z: extract Ith byte (big-endian) from 256-bit value X
 % I >= 32 → Z = 0. Otherwise Z = (X >> ((31-I)*8)) & 0xFF.

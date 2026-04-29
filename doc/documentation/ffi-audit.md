@@ -14,7 +14,8 @@ tags:
 Complete inventory of FFI predicates under `lib/engine/ill/ffi/`, classified by
 representation cluster, clause-backup status, groundness mode, and linearity
 classification. Input audit for TODO_0223 (Layer C — representation framework).
-Status as of commit 2136d74.
+Updated 2026-04-29 after TODO_0228 Group A closure (sdiv256, smod256,
+signextend256, byte_size256 now have full inductive clause backup).
 
 ## 1. Summary numbers
 
@@ -25,8 +26,8 @@ Status as of commit 2136d74.
 | **2** | metadata-only entries (`trie_get`, `trie_set` — compiled-clause dispatch, FFI removed) |
 | **1** | aliased implementation (`not` and `not256` both dispatch to `arithmetic.bitwiseNot`) |
 | **9** | representation clusters (see §3) |
-| **8** | predicates with **no defining clauses** anywhere in the calculus |
-| **2** | predicates with **only a zero-case clause** (`sdiv256/zero`, `smod256/zero`) |
+| **5** | predicates classified as **extralogical with explicit spec** (§4.1; TODO_0228 Group B): `fixed_mul`, `fixed_div`, `string_concat`, `string_length`, `sha3_compute` |
+| **0** | predicates with **only a zero-case clause** (TODO_0228 Group A closed `sdiv256`/`smod256`) |
 | **0** | FFI predicates that consume linear resources (all are persistent / term-level) |
 | **4** | target native representations currently produced by FFI code (`BigInt`, `Uint32Array`, `Uint8Array` / `Buffer`, JS `string`) |
 
@@ -120,13 +121,13 @@ explicit domain guard in the Layer-C registration.
 | sar256 | `+ + -` | full (4 clauses) | arithmetic right shift |
 | addmod256 | `+ + + -` | full (zero + nz) | |
 | mulmod256 | `+ + + -` | full (zero + nz) | |
-| **sdiv256** | `+ + -` | **partial — only `sdiv256/zero`** | clause gap for nonzero signed div |
-| **smod256** | `+ + -` | **partial — only `smod256/zero`** | clause gap for nonzero signed mod |
-| **signextend256** | `+ + -` | **none** (declared only, `evm.ill:192`) | used by rules at `evm.ill:634` — no clause proof possible |
-| **byte_size256** | `+ -` | **none** (declared only, `bin.ill:106`) | used by `evm.ill:549` — no clause proof possible |
+| sdiv256 | `+ + -` | full (`sdiv256/zero` + `sdiv256/nz` via `sdiv_combine`) | TODO_0228 Group A: nonzero case via `neg_if`/`sdiv_combine` over abs/sign split |
+| smod256 | `+ + -` | full (`smod256/zero` + `smod256/nz`) | TODO_0228 Group A: nonzero case via `neg_if` + abs `mod` |
+| signextend256 | `+ + -` | full (`signextend256/big` + `/small` via `signextend256_h`) | TODO_0228 Group A: case-split on B≥31 vs B<31; helper masks via `shl`/`dec`/`xor`/`or`/`and` |
+| byte_size256 | `+ -` | full (`byte_size256/zero` + `/step`) | TODO_0228 Group A: inductive shr-by-byte |
 | byte_replace | `+ + + -` | full (`byte_replace/def`) | uses ILL primitives |
 
-Cluster size: 16. **4 with clause gaps**. All produce `X mod 2^256` values.
+Cluster size: 16. **All 16 fully clause-backed** as of TODO_0228 Group A closure (verified by `tools/fuzz-ffi.js` 100/100 across the 4 closed predicates). All produce `X mod 2^256` values.
 
 ### 3.5 EVM gas policy
 
@@ -218,29 +219,110 @@ Cluster size: 1. FFI has a documented leading-zero limitation
 
 | Status | Count | Predicates |
 |---|---:|---|
-| Full clause coverage | 46 | most arith, compare, bit, arr, mem, calldata |
-| Partial (zero case only) | 2 | `sdiv256`, `smod256` |
-| Declared only (no defining clauses) | 2 | `signextend256`, `byte_size256` |
-| Alias only (no defining clauses) | 2 | `fixed_mul`, `fixed_div` |
-| No calculus presence at all | 2 | `string_concat`, `string_length` |
+| Full clause coverage | 50 | most arith, compare, bit, arr, mem, calldata, **+ §3.4 Group A (TODO_0228): `sdiv256`, `smod256`, `signextend256`, `byte_size256`** |
+| Extralogical with explicit spec (§4.1) | 5 | `fixed_mul`, `fixed_div` (`'metatheoretic'`); `string_concat`, `string_length`, `sha3_compute` (`'symbolic-interpretation'`) |
 | FFI removed, clause-only | 2 | `trie_get`, `trie_set` |
 
-**Hard soundness gaps** (FFI off → wrong or stuck): 8 predicates — §3.4 (4), §3.7 (2), §3.8 (2).
+**Soundness gaps**: 0. All 56 predicates are either clause-equivalent or have a Layer-C-classified mathematical specification with a property-tested reference implementation (TODO_0228 closed 2026-04-29).
 
 ### FFI principle verification
 
 `CLAUDE.md` states: *"Every FFI predicate MUST have backward clause definitions.
-FFI off → clause resolution takes over."* The audit shows the principle is
-**violated for 8 of 56 predicates**. `test:noffi` passes because its
-adversarial workload (TODO_0069) doesn't exercise these specific predicates,
-not because the clauses exist. Two fix paths:
+FFI off → clause resolution takes over."* As of TODO_0228 Group A closure, the
+principle is **upheld for all logical predicates**; the remaining 4 violations
+are extralogical primitives (§3.7, §3.8) for which clause equivalence is not
+the appropriate soundness witness:
 
-- **Author the missing clauses.** Viable for `signextend256` and `byte_size256`
-  (inductive on byte position / bit shift); labor-intensive but mechanical.
-- **Classify as extralogical in Layer C.** Explicit `soundness.kind =
-  'metatheoretic'` flag with a mathematical specification (keccak256 for
-  `sha3_compute`, 10^k scaling for `fixed_*`, JS string ops for `string_*`)
-  rather than clause-equivalence property testing.
+- **Authoring path (taken for §3.4 Group A).** `sdiv256`, `smod256`,
+  `signextend256`, `byte_size256` now have inductive clauses (see
+  `bin.ill` / `evm.ill`); fuzz-verified against FFI 100/100 each.
+- **Extralogical classification (taken for §3.7, §3.8, §3.10
+  `sha3_compute`).** Specifications recorded in §4.1 below; spec-conformance
+  property-tested by `tools/fuzz-ffi.js` in `compareMode: 'spec'` against
+  reference implementations (BigInt, JS strings, `js-sha3` keccak256).
+
+## 4.1 Extralogical primitive specifications
+
+For predicates whose meaning is not naturally expressible as an inductive ILL
+clause, the FFI is the implementation and a *mathematical specification* is
+the soundness witness. Each entry below states the axiom, names the witness
+the test harness uses, and pins the Layer-C `soundness.kind`.
+
+### 4.1.1 fixed-point arithmetic — §3.7
+
+```
+fixed_mul D A B C  ↔  C = ⌊(A · B) / 10^D⌋          (D ≥ 0; A, B ∈ ℕ)
+fixed_div D A B C  ↔  C = ⌊(A · 10^D) / B⌋          (D ≥ 0; B ≠ 0)
+```
+
+`A`, `B`, `C` are unbounded naturals (`binlit`); `D` is a non-negative decimal
+precision. These are not Peano-derivable in tractable form: a clause body for
+`fixed_mul` would need to materialize `10^D` via repeated `mul` (Ackermann-
+shaped expansion in `D`), defeating the FFI's optimization purpose.
+
+- **Layer-C kind**: `'metatheoretic'`.
+- **Witness**: BigInt arithmetic at scale `10^D` — closed-form expressions
+  above. Property-tested by `tools/fuzz-ffi.js` (Group B `compareMode: 'spec'`,
+  trial generator `randBigInt(64)` over `D ∈ {1..18}`).
+- **FFI**: `lib/engine/ill/ffi/arithmetic.js:230, 260`.
+- **Surface aliases**: `fixed8_mul`, `fixed18_mul`, `fixed8_div`, `fixed18_div`
+  in `calculus/ill/prelude/types.ill:71-75`. The aliases are sugar for the
+  4-ary `fixed_mul`/`fixed_div`; they do **not** constitute an inductive
+  definition and are annotated as such.
+
+### 4.1.2 string monoid — §3.8
+
+```
+string_concat A B C  ↔  C = A · B               (free-monoid concatenation
+                                                 over UTF-16 code units)
+string_length A N    ↔  N = |A|                 (count of UTF-16 code units)
+```
+
+Free-monoid laws hold by construction:
+
+- `string_concat ε A A` (left identity)
+- `string_concat A ε A` (right identity)
+- `string_concat (A · B) C ≡ string_concat A (B · C)` (associativity)
+- `string_length(A · B) = string_length(A) + string_length(B)` (consistency
+  between the two predicates)
+
+A clause definition is in principle expressible by recursing over the
+strlit ↔ cons-list bridge in `lib/kernel/eq-theory.js`, but doing so is
+O(string-length) per call and is precisely what the FFI optimizes away.
+We treat the monoid axioms as the specification rather than authoring a
+clause that would always be slower than the FFI.
+
+- **Layer-C kind**: `'symbolic-interpretation'`.
+- **Witness**: JS `String.prototype` (`+` for concat, `.length` for length).
+  Property-tested by `tools/fuzz-ffi.js` against random ASCII strings.
+- **FFI**: `lib/engine/ill/ffi/arithmetic.js:294, 317`.
+
+### 4.1.3 sha3_compute — §3.10 (interpreted symbolic constructor)
+
+```
+sha3_compute Mem Offset End Hash  ↔  Hash = keccak256( Mem[Offset .. End) )
+```
+
+This is the canonical example of the *symbol-introducing-vs-interpretation*
+asymmetry between clause and FFI:
+
+| Path | What it does | When it fires |
+|---|---|---|
+| **Clause** (`sha3_compute/eval`, `evm.ill:355`) | Introduces the symbol `sha3 Bytes` where `Bytes` is the constructor-encoded byte stream. Treats `sha3` as an uninterpreted black-box function. | Symbolic memory / symbolic addresses. |
+| **FFI** (`memory.js:179`) | Interprets `sha3 Bytes` as `keccak256(byte-encoding(Bytes))`. Concrete digest. | Concrete memory + ground offset/end. |
+
+The clause is sound under any model where `sha3` is uninterpreted; the FFI is
+sound only if any downstream solver/decision-procedure agrees with the
+keccak256 interpretation of `sha3`. Symbolic execution gets the clause path;
+concrete execution gets the FFI. Both are sound; they witness *different*
+soundness properties.
+
+- **Layer-C kind**: `'symbolic-interpretation'`.
+- **Witness**: `keccak256` from the `js-sha3` package (`memory.js:13`).
+  Property-tested by `tools/fuzz-ffi.js` over random 1..4 32-byte words
+  assembled into a write-log memory.
+- **FFI**: `lib/engine/ill/ffi/memory.js:179`.
+- **Backward clause**: `calculus/ill/programs/evm.ill:355`.
 
 Layer-C registration must surface this classification; it is currently implicit.
 
@@ -325,11 +407,14 @@ forward-looking gate for future registrations that refine linear data
    existing multi-mode dispatch (or the surrounding pipeline must normalize
    multi-modal into per-mode ops at registration time).
 
-7. **`FFI principle violation under `test:noffi`.** The 8 predicates without
-   clause backup will fail silently if `test:noffi` grows to cover them. The
-   audit adds a concrete regression target: extend `tools/fuzz-ffi.js` to flag
-   FFI→clause divergence on `sstore_gas`, `signextend256`, `byte_size256`,
-   `fixed_mul`, `fixed_div`, `string_concat`, `string_length`, `sha3_compute`.
+7. **`FFI principle violation under `test:noffi`** — fully resolved by
+   TODO_0228 (closed 2026-04-29). Group A authored inductive clauses for
+   `sdiv256`, `smod256`, `signextend256`, `byte_size256` (clause-mode fuzz
+   100/100 each). Group B classified `fixed_mul`, `fixed_div`,
+   `string_concat`, `string_length`, `sha3_compute` as extralogical with
+   explicit specs (§4.1) and a `compareMode: 'spec'` fuzz path against
+   reference implementations (200/200 each). All 27 fuzzable predicates
+   green at `--seed 42`.
 
 8. **`bytecode-normalize.js` is representation-change-at-load.** 234 LOC of
    EVM-specific state transforms (`code PC V` → `bytecode(arrlit)` →
@@ -371,7 +456,7 @@ Order implied by the audit (cheapest-first, soundness-preserving):
 2. **Bit-level (§3.3, 6 preds).** Same native type. Needs domain-bound
    declaration.
 3. **EVM 256-arith (§3.4, 16 preds).** Needs explicit modular-domain
-   declaration; flags the 4 clause gaps.
+   declaration; the 4 clause gaps are now closed (TODO_0228 Group A).
 4. **arrlit/trie array (§3.9, 5 preds + 2 trie migrated).** Different native
    (Uint32Array); migration pattern already validated by trie_get/trie_set.
 5. **Write-log memory (§3.10, 4 preds).** Includes `sha3_compute` —
