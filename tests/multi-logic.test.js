@@ -24,12 +24,12 @@ describe('deriveRoles', () => {
     assert.strictEqual(r.product, 'tensor');
     assert.strictEqual(r.implication, 'loli');
     assert.strictEqual(r.unit, 'one');
-    assert.strictEqual(r['internal-choice'], 'oplus');
-    assert.strictEqual(r['external-choice'], 'with');
+    assert.strictEqual(r.internalChoice, 'oplus');
+    assert.strictEqual(r.externalChoice, 'with');
     assert.strictEqual(r.exponential, 'bang');
     assert.deepStrictEqual(r.computation, { tag: 'monad', bodyIdx: 0, gradeIdx: null });
     assert.strictEqual(r.existential, 'exists');
-    assert.strictEqual(r['additive-zero'], 'zero');
+    assert.strictEqual(r.additiveZero, 'zero');
   });
 
   it('should have ILL_CONNECTIVES as tag → structural info table', () => {
@@ -64,8 +64,8 @@ describe('minimal-prop calculus (graceful degradation)', () => {
     assert.strictEqual(prop.roles.computation, undefined);
     assert.strictEqual(prop.roles.exponential, undefined);
     assert.strictEqual(prop.roles.implication, undefined);
-    assert.strictEqual(prop.roles['internal-choice'], undefined);
-    assert.strictEqual(prop.roles['external-choice'], undefined);
+    assert.strictEqual(prop.roles.internalChoice, undefined);
+    assert.strictEqual(prop.roles.externalChoice, undefined);
   });
 
   it('should not inject monad rules', () => {
