@@ -74,6 +74,16 @@ describe('timed parser (gtoy fixture + timedAnnotations)', () => {
     assert.equal(parse('read a'), Store.put('readPreserved', [atom('a')]));
   });
 
+  it('rational literals are ordinary term arguments too (facts: price 1/2)', () => {
+    const gt = calculus.load(FIXTURE);
+    const parseApp = buildParser(gt.constructors, {
+      gradeUnit: () => putRat(0n, 1n), timedAnnotations: true, application: true,
+    });
+    assert.equal(parseApp('price 1/2'), Store.put('price', [putRat(1n, 2n)]));
+    assert.equal(parseApp('p 0.5'), Store.put('p', [putRat(1n, 2n)]));
+    assert.equal(parseApp('price (1/2)'), Store.put('price', [putRat(1n, 2n)]));
+  });
+
   it('rejects: !A@t (D15), double stamps, @ on stamped node via parens', () => {
     assert.throws(() => parse('! a@3'), /D15/);
     assert.throws(() => parse('!_0 a@3'), /D15/);
@@ -84,6 +94,27 @@ describe('timed parser (gtoy fixture + timedAnnotations)', () => {
   it('float-formatted junk does not lex as a rational', () => {
     assert.throws(() => parse('a@1e5'), /Parse error/);
     assert.throws(() => parse('a@.5'), /Parse error/);
+  });
+
+  it('count-grade suffixes are RESERVED until Phase 4 — loud error, no silent misparse', () => {
+    // Pre-fix, `!_2 wood` parsed as bang(ω, _2(wood)) — the phantom-wart class.
+    assert.throws(() => parse('!_2 a'), /Parse error/);
+    assert.throws(() => parse('!_W a'), /Parse error/);
+  });
+
+  it('zero denominator is a Parse error, not a leaked RangeError', () => {
+    assert.throws(() => parse('a@3/0'), /Parse error: zero denominator/);
+    assert.throws(() => parse('a@(3/0)'), /Parse error: zero denominator/);
+  });
+
+  it("'@' on an ungraded (1-ary) computation is rejected", async () => {
+    const { earleyGrammarFromTables, parserFromGrammar } = await import('../../lib/parser/earley-grammar.js');
+    const p = parserFromGrammar(earleyGrammarFromTables({
+      operators: [], nullary: {}, unaryPrefix: {},
+      circumfix: [{ open: '{', close: '}', name: 'monad', arity: 1 }],
+      timedAnnotations: true,
+    }));
+    assert.throws(() => p('{ b }@3'), /ungraded computation/);
   });
 });
 
