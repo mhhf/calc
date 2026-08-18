@@ -341,7 +341,9 @@ const PRED_CONFIGS = {
   qdiv:  { cluster: '§3.12', skip: 'covered by the §3.12 rational trials section' },
   qlt:   { cluster: '§3.12', skip: 'covered by the §3.12 rational trials section' },
   qle:   { cluster: '§3.12', skip: 'covered by the §3.12 rational trials section' },
+  qeq:   { cluster: '§3.12', skip: 'covered by the §3.12 rational trials section' },
   qneq:  { cluster: '§3.12', skip: 'covered by the §3.12 rational trials section' },
+  qeq_bool: { cluster: '§3.12', skip: 'covered by the §3.12 rational trials section' },
 };
 
 // ============================================================================
@@ -572,10 +574,11 @@ for (const pred of predList) {
 // ============================================================================
 //
 // Property: φ ∘ FFI = φ ∘ clause where φ is the composed binlit+ratlit
-// canonicalizer, over goals mixing ratlit and bin arguments. Clause
-// resolution runs against bin.ill + rat.ill (a separate load — the base
-// corpus above stays rat-free, proving bin behavior is untouched).
-// Overloaded predicates and explicit q-operations are both walked.
+// canonicalizer, over goals mixing ratlit and bin arguments (q-ops coerce
+// bins to n/1). Clause resolution runs against bin.ill + rat.ill (a
+// separate load — the base corpus above stays rat-free, proving bin
+// behavior is untouched). Split namespaces (D8.1 revised): only the
+// q-family accepts rationals; the bin family is fuzzed in §3.1/§3.2.
 
 {
   const { binlitTheory } = await import('../lib/engine/ill/binlit-theory.js');
@@ -598,10 +601,9 @@ for (const pred of predList) {
 
   // pred → [nInputs, hasOutput]
   const RAT_PREDS = {
-    plus: [2, true], mul: [2, true], lt: [2, false], le: [2, false],
-    eq: [2, false], neq: [2, false], eq_bool: [2, true],
     qplus: [2, true], qsub: [2, true], qmul: [2, true], qdiv: [2, true],
-    qlt: [2, false], qle: [2, false], qneq: [2, false],
+    qlt: [2, false], qle: [2, false], qeq: [2, false], qneq: [2, false],
+    qeq_bool: [2, true],
   };
 
   for (const pred of Object.keys(RAT_PREDS)) {
