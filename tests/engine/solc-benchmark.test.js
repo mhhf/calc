@@ -18,7 +18,7 @@ describe('Solc multisig explore', { timeout: 30000, concurrency: 1 }, () => {
     const calc = await mde.load(
       path.join(import.meta.dirname, '../../calculus/ill/programs/multisig_nocall_solc.ill')
     );
-    const state = mde.decomposeQuery(calc.queries.get('symex'));
+    const state = mde.normalizeQuery(calc.queries.get('symex'));
 
     tree = calc.explore(state, {
       maxDepth: 2000,
@@ -72,7 +72,7 @@ describe('Solc multisig explore', { timeout: 30000, concurrency: 1 }, () => {
     const calc = await mde.load(
       path.join(import.meta.dirname, '../../calculus/ill/programs/multisig_nocall_solc.ill')
     );
-    const state = mde.decomposeQuery(calc.queries.get('symex'));
+    const state = mde.normalizeQuery(calc.queries.get('symex'));
 
     const t0 = performance.now();
     calc.explore(state, {
@@ -93,7 +93,7 @@ describe('Solc multisig symbolic (structural memo)', { timeout: 30000, concurren
     const calc = await mde.load(
       path.join(import.meta.dirname, '../../calculus/ill/programs/multisig_nocall_solc_symbolic.ill')
     );
-    const state = mde.decomposeQuery(calc.queries.get('symex'));
+    const state = mde.normalizeQuery(calc.queries.get('symex'));
 
     treeFull = calc.explore(state, { maxDepth: 500, dangerouslyUseFFI: true, structuralMemo: false });
     treeMemo = calc.explore(state, { maxDepth: 500, dangerouslyUseFFI: true, structuralMemo: true });
@@ -133,7 +133,7 @@ describe('Solc multisig symbolic (structural memo)', { timeout: 30000, concurren
     const calc = await mde.load(
       path.join(import.meta.dirname, '../../calculus/ill/programs/multisig_nocall_solc_symbolic.ill')
     );
-    const state = mde.decomposeQuery(calc.queries.get('symex'));
+    const state = mde.normalizeQuery(calc.queries.get('symex'));
 
     const t0 = performance.now();
     calc.explore(state, {

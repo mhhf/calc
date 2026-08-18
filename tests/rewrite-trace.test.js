@@ -135,7 +135,7 @@ describe('rewrite-trace: solc forward integration', { timeout: 60000 }, () => {
       path.join(import.meta.dirname, '../calculus/ill/programs/multisig_nocall_solc.ill')
     );
     illCalc = await calculus.loadILL();
-    state = mde.decomposeQuery(engineCalc.queries.get('symex'));
+    state = mde.normalizeQuery(engineCalc.queries.get('symex'));
 
     forwardResult = engineCalc.exec(state, {
       maxSteps: 2000,

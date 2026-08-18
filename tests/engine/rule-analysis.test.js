@@ -1279,7 +1279,7 @@ describe('Rule Analysis', { timeout: 10000 }, () => {
         path.join(import.meta.dirname, '../../calculus/ill/programs/multisig.ill')
       );
 
-      const initState = mde.decomposeQuery(calc.queries.get('symex'));
+      const initState = mde.normalizeQuery(calc.queries.get('symex'));
 
       const r1 = calc.exec(
         { linear: { ...initState.linear }, persistent: { ...initState.persistent } },

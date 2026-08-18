@@ -67,7 +67,7 @@ describe('ZK symbolic solc: 31-path witness generation', { timeout: 1800000 }, (
       path.join(import.meta.dirname, '../calculus/ill/programs/multisig_nocall_solc_symbolic.ill')
     );
     illCalc = await calculus.loadILL();
-    initialState = mde.decomposeQuery(engineCalc.queries.get('symex'));
+    initialState = mde.normalizeQuery(engineCalc.queries.get('symex'));
   });
 
   it('explores with evidence → 31 leaves', () => {

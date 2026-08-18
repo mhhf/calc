@@ -63,7 +63,7 @@ describe('ZK custom chip: solc with all predicates', { timeout: 600000 }, () => 
       path.join(import.meta.dirname, '../calculus/ill/programs/multisig_nocall_solc.ill')
     );
     illCalc = await calculus.loadILL();
-    state = mde.decomposeQuery(engineCalc.queries.get('symex'));
+    state = mde.normalizeQuery(engineCalc.queries.get('symex'));
   });
 
   it('runs noFFI forward execution with evidence', () => {

@@ -189,7 +189,7 @@ describe('SELL: Rule Filtering — Tier 1 (T14-T16, T17-T21)', () => {
   });
 
   it('(rules: [alpha]) excludes beta rules, includes alpha + root (T17)', () => {
-    const state = mde.decomposeQuery(mde.parseExpr('counter 1'));
+    const state = mde.normalizeQuery(mde.parseExpr('counter 1'));
     const result = calc.exec(state, { rules: ['alpha'], maxSteps: 1, trace: true });
     assert.ok(result);
     assert.ok(result.state);
@@ -203,19 +203,19 @@ describe('SELL: Rule Filtering — Tier 1 (T14-T16, T17-T21)', () => {
   });
 
   it('(rules: [alpha, beta]) includes both (T18)', () => {
-    const state = mde.decomposeQuery(mde.parseExpr('counter 1'));
+    const state = mde.normalizeQuery(mde.parseExpr('counter 1'));
     const result = calc.exec(state, { rules: ['alpha', 'beta'], maxSteps: 1 });
     assert.ok(result);
   });
 
   it('omitted rules: includes everything — backward-compat (T19)', () => {
-    const state = mde.decomposeQuery(mde.parseExpr('counter 1'));
+    const state = mde.normalizeQuery(mde.parseExpr('counter 1'));
     const result = calc.exec(state, { maxSteps: 1 });
     assert.ok(result);
   });
 
   it('unknown label → clear error (T20)', () => {
-    const state = mde.decomposeQuery(mde.parseExpr('counter 1'));
+    const state = mde.normalizeQuery(mde.parseExpr('counter 1'));
     assert.throws(
       () => calc.exec(state, { rules: ['nonexistent'] }),
       /Unknown rule label.*nonexistent/
@@ -223,7 +223,7 @@ describe('SELL: Rule Filtering — Tier 1 (T14-T16, T17-T21)', () => {
   });
 
   it('root file rules always participate regardless of filter (T21)', () => {
-    const state = mde.decomposeQuery(mde.parseExpr('counter 1'));
+    const state = mde.normalizeQuery(mde.parseExpr('counter 1'));
     // Filter to alpha only, but root_rule (from 'main') should still participate.
     // Both inc (+1) and root_rule (+100) fire, so counter grows beyond 1.
     const result = calc.exec(state, { rules: ['alpha'], maxSteps: 3 });
@@ -237,7 +237,7 @@ describe('SELL: Rule Filtering — Tier 1 (T14-T16, T17-T21)', () => {
   });
 
   it('explore wrapper also supports rule filtering (T16)', () => {
-    const state = mde.decomposeQuery(mde.parseExpr('counter 1'));
+    const state = mde.normalizeQuery(mde.parseExpr('counter 1'));
     const tree = calc.explore(state, { rules: ['alpha'], maxDepth: 3 });
     assert.ok(tree);
     assert.ok(tree.type); // Should be a valid tree node
@@ -272,7 +272,7 @@ describe('SELL: Module Algebra — Tier 2 (T13, T24-T28)', () => {
   });
 
   it('unknown module name → clear error (T27)', () => {
-    const state = mde.decomposeQuery(mde.parseExpr('counter 1'));
+    const state = mde.normalizeQuery(mde.parseExpr('counter 1'));
     assert.throws(
       () => calc.exec(state, { rules: 'nonexistent_module' }),
       /Unknown rule label or module.*nonexistent_module/
@@ -312,7 +312,7 @@ describe('SELL: Module Algebra — Tier 2 (T13, T24-T28)', () => {
   });
 
   it('exec with module name filters correctly', () => {
-    const state = mde.decomposeQuery(mde.parseExpr('counter 1'));
+    const state = mde.normalizeQuery(mde.parseExpr('counter 1'));
     // only_inc has {inc} + root_mod. Both fire repeatedly — just check it works.
     const result = calc.exec(state, { rules: 'only_inc', maxSteps: 3 });
     assert.ok(result.state);
@@ -528,7 +528,7 @@ describe('SELL: Grade-0 filtering (TODO 155)', () => {
     assert.equal(incRule.hasGrade0, false, 'inc rule should NOT have hasGrade0');
 
     // When executing, only inc should fire (stage is filtered out)
-    const state = mde.decomposeQuery(mde.parseExpr('counter 1'));
+    const state = mde.normalizeQuery(mde.parseExpr('counter 1'));
     const result = calc.exec(state, { maxSteps: 3, trace: true });
     assert.ok(result.steps > 0, 'should execute at least one step');
     // Trace should only show 'inc', never 'stage'
@@ -586,7 +586,7 @@ describe('SELL: Grade-0 in queries rejected (TODO 155)', () => {
     const A = Store.put('atom', ['a']);
     const bang0A = Store.put('bang', [grade0(), A]);
     assert.throws(
-      () => mde.decomposeQuery(bang0A),
+      () => mde.normalizeQuery(bang0A),
       /Grade-0 resources.*cannot appear in queries/
     );
   });
@@ -598,7 +598,7 @@ describe('SELL: Grade-0 in queries rejected (TODO 155)', () => {
     const bang0A = Store.put('bang', [grade0(), A]);
     const h = Store.put('tensor', [B, bang0A]);
     assert.throws(
-      () => mde.decomposeQuery(h),
+      () => mde.normalizeQuery(h),
       /Grade-0 resources.*cannot appear in queries/
     );
   });
@@ -607,7 +607,7 @@ describe('SELL: Grade-0 in queries rejected (TODO 155)', () => {
     Store.clear();
     const A = Store.put('atom', ['a']);
     const bangWA = Store.put('bang', [gradeW(), A]);
-    const result = mde.decomposeQuery(bangWA);
+    const result = mde.normalizeQuery(bangWA);
     assert.ok(result.persistent[A], 'should classify as persistent');
   });
 });

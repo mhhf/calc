@@ -6,6 +6,7 @@
  */
 
 import { describe, it, before } from 'node:test';
+import { bytesToSemantic } from '../../lib/engine/ill/bytecode-normalize.js';
 import assert from 'node:assert/strict';
 import path from 'path';
 import mde from '../../lib/engine/index.js';
@@ -46,7 +47,7 @@ function makeState(hexCode, calc, { gas = 0xFFFFn } = {}) {
   linear[Store.put('bytecode', [Store.putArray(elems)])] = 1;
 
   let state = { linear, persistent };
-  state = mde.bytesToSemantic(state);
+  state = bytesToSemantic(state);
 
   // Convert bytecode arrlit → bit-indexed trie
   const bcTagId = Store.TAG['bytecode'];

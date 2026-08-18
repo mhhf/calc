@@ -72,7 +72,7 @@ describe('ZK custom chip: fact_axiom replaces clause proofs', { timeout: 30000 }
       path.join(import.meta.dirname, '../calculus/ill/programs/noffi_tiny.ill')
     );
     illCalc = await calculus.loadILL();
-    state = mde.decomposeQuery(calc.queries.get('symex'));
+    state = mde.normalizeQuery(calc.queries.get('symex'));
   });
 
   it('runs forward execution and builds guided term', () => {

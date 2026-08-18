@@ -785,7 +785,7 @@ describe('compose integration: persistent specialization', () => {
 
     // Execution should work: spec_in(1) → step → !_0 spec_mid(1,1) → consume → !spec_lk(1,0xa) → spec_out(0xa)
     const queryHash = calc.queries.get('symex');
-    const state = mde.decomposeQuery(queryHash);
+    const state = mde.normalizeQuery(queryHash);
     const result = calc.exec(state, { maxSteps: 5, trace: true });
     assert.ok(result.steps > 0, 'should execute');
 
@@ -858,7 +858,7 @@ describe('compose integration', () => {
     // Use the calc's own queries — parsed during load with correct Store state.
     const queryHash = calc.queries.get('symex');
     assert.ok(queryHash, 'should have a symex query');
-    const state = mde.decomposeQuery(queryHash);
+    const state = mde.normalizeQuery(queryHash);
     const result = calc.exec(state, { maxSteps: 5, trace: true });
     assert.ok(result.steps > 0, 'should execute');
 
@@ -907,8 +907,8 @@ describe('compose integration', () => {
     const calcExpanded = mde.load(path.join(tmpDir, 'expanded.ill'), { cache: false });
 
     // Use queries from the loaded calcs (parsed with correct Store state)
-    const stateC = mde.decomposeQuery(calcComposed.queries.get('symex'));
-    const stateE = mde.decomposeQuery(calcExpanded.queries.get('symex'));
+    const stateC = mde.normalizeQuery(calcComposed.queries.get('symex'));
+    const stateE = mde.normalizeQuery(calcExpanded.queries.get('symex'));
 
     // Collect leaves from explore tree (branches have children with { rule, child } shape)
     function collectLeaves(node) {

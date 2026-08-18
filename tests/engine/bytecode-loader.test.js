@@ -660,7 +660,7 @@ describe('bytecode specialization: EVM integration', { timeout: 30000 }, () => {
 
     // Execute and verify
     const queryHash = calc.queries.get('symex');
-    const state = mde.decomposeQuery(queryHash);
+    const state = mde.normalizeQuery(queryHash);
     const result = calc.exec(state, { maxSteps: 5, trace: true });
     assert.ok(result.steps > 0, 'should execute');
 

@@ -400,7 +400,7 @@ describe('persistent step integration', { timeout: 10000 }, () => {
     const calc = await mde.load(
       path.join(import.meta.dirname, '../../calculus/ill/programs/multisig_nocall_solc.ill')
     );
-    const plainState = mde.decomposeQuery(calc.queries.get('symex'));
+    const plainState = mde.normalizeQuery(calc.queries.get('symex'));
     const state = forward.createState(plainState.linear, plainState.persistent);
 
     let testedCount = 0;
@@ -447,7 +447,7 @@ describe('E2E persistent step correctness', { timeout: 30000, concurrency: 1 }, 
     const calc = await mde.load(
       path.join(import.meta.dirname, '../../calculus/ill/programs/multisig_nocall_solc.ill')
     );
-    const state = mde.decomposeQuery(calc.queries.get('symex'));
+    const state = mde.normalizeQuery(calc.queries.get('symex'));
 
     const tree = calc.explore(state, {
       maxDepth: 2000,
@@ -463,7 +463,7 @@ describe('E2E persistent step correctness', { timeout: 30000, concurrency: 1 }, 
     const calc = await mde.load(
       path.join(import.meta.dirname, '../../calculus/ill/programs/multisig_nocall_solc_symbolic.ill')
     );
-    const state = mde.decomposeQuery(calc.queries.get('symex'));
+    const state = mde.normalizeQuery(calc.queries.get('symex'));
 
     // Full exploration
     const treeFull = calc.explore(state, {

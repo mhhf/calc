@@ -260,7 +260,7 @@ describe('Forward Chaining', { timeout: 10000 }, () => {
         path.join(import.meta.dirname, '../../calculus/ill/programs/multisig.ill')
       );
 
-      const state = mde.decomposeQuery(calc.queries.get('symex'));
+      const state = mde.normalizeQuery(calc.queries.get('symex'));
 
       const result = calc.exec(state, { maxSteps: 10, trace: true });
 

@@ -154,7 +154,7 @@ describe('Compose disk cache', () => {
     const dir = freshTmpDir();
 
     function runExplore(calc) {
-      const state = mde.decomposeQuery(calc.queries.get('symex'));
+      const state = mde.normalizeQuery(calc.queries.get('symex'));
       return calc.explore(state, {
         maxDepth: 500,
         dangerouslyUseFFI: true

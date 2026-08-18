@@ -252,7 +252,7 @@ async function main() {
     } catch (e) { /* older commit without bytecode support — run without */ }
 
     const calc = mde.load(sourcePath, loadOpts);
-    const state = mde.decomposeQuery(calc.queries.get('symex'));
+    const state = (mde.normalizeQuery || mde.decomposeQuery)(calc.queries.get('symex'));
 
     const symex = benchSymex(state, calc, treeUtils);
     result.symex = {
