@@ -1,3 +1,5 @@
+#import(../../prelude/rat.ill)
+
 % spoilage.ill — till executable spec: windows on ONE logical timeline (C1/C2, D8).
 %
 % STATUS: written ahead of the engine (TDD) — see schedule.ill header.
@@ -27,8 +29,10 @@ spoil: food@Q * after (Q + 2) -o { rotten }.
   =>
   rotten@2 .
 
-% FIFO cohort selection (C3/D12): the oldest food cohort is consumed first
-#expect_fifo (settle: 5)
+% FIFO cohort selection (C3/D12): the oldest food cohort is consumed first.
+% Horizon 2: eat (a=0) took food@0; spoil of the surviving food@1 (a=3)
+% stays pending — at settle 5 it would legitimately rot.
+#expect_fifo (settle: 2)
   food * food@1 * meal_order
   =>
   eaten@0 * food@1 .

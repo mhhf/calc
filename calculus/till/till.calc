@@ -1,0 +1,54 @@
+% =============================================================================
+% till — Timed Intuitionistic Linear Logic (TODO_0265, D2/D6/D10)
+% =============================================================================
+%
+% ILL's multiplicative core plus the GRADED lax monad `{B}@d` (duration as an
+% effect grade, E2) and the graded exponential `!_g A` (count parcels, D4).
+% Availability stamps `A@t` (E1), windows `after E` / `before E` (D8), and
+% the `read` marker (E7.2) are timedAnnotations grammar forms over kernel
+% tags (at/after/before/readPreserved) — not connectives, so they are not
+% declared here.
+%
+% tensor/loli/one/bang reuse ILL's store tags deliberately (shared Store);
+% gmonad is till's OWN 2-ary monad tag — ILL's unary `{A}` is untouched (D6).
+% Additives (oplus/with/zero) are deliberately absent from v1: weighted
+% internal choice arrives as `woplus` (Phase 4b).
+
+@family till.
+
+formula: type.
+grade: type.
+
+tensor: formula -> formula -> formula
+  @ascii "_ * _"
+  @prec 60 left
+  @category multiplicative
+  @polarity positive.
+
+loli: formula -> formula -> formula
+  @ascii "_ -o _"
+  @prec 50 right
+  @category multiplicative
+  @polarity negative.
+
+one: formula
+  @ascii "I"
+  @category multiplicative
+  @polarity positive.
+
+% Graded lax monad: {B} = gmonad(unit, B) (delay 0); {B}@d replaces the grade.
+gmonad: grade -> formula -> formula
+  @ascii "{ #2 }"
+  @category monad
+  @polarity negative.
+
+% Graded exponential: ! = ω (persistent), !_0 (compile-time), !_k / !_W
+% (counted linear parcels, D4 — timed-matcher-only).
+bang: grade -> formula -> formula
+  @ascii "! #2"
+  @prec 80
+  @category exponential.
+
+atom: string -> formula
+  @ascii "_"
+  @prec 100.

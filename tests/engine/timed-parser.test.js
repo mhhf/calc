@@ -96,10 +96,18 @@ describe('timed parser (gtoy fixture + timedAnnotations)', () => {
     assert.throws(() => parse('a@.5'), /Parse error/);
   });
 
-  it('count-grade suffixes are RESERVED until Phase 4 — loud error, no silent misparse', () => {
-    // Pre-fix, `!_2 wood` parsed as bang(ω, _2(wood)) — the phantom-wart class.
-    assert.throws(() => parse('!_2 a'), /Parse error/);
-    assert.throws(() => parse('!_W a'), /Parse error/);
+  it('count grades !_k / !_W parse as counted parcels (D4, Phase 4)', () => {
+    // Pre-Phase-3, `!_2 wood` silently misparsed as bang(ω, _2(wood)); the
+    // reserved-token era made it a loud error; Phase 4 gives it semantics.
+    assert.equal(parse('!_2 a'), Store.put('bang', [putRat(2n, 1n), atom('a')]));
+    assert.equal(parse('!_W a'), Store.put('bang', [fv('W'), atom('a')]));
+    // counted parcels are LINEAR — stamps under them are allowed (no D15)
+    assert.equal(parse('!_2 a@4'),
+      Store.put('bang', [putRat(2n, 1n), Store.put('at', [atom('a'), putRat(4n, 1n)])]));
+    // fractional counts (ℚ parcels) are post-v1 — loud error
+    assert.throws(() => parse('!_1/2 a'), /Parse error: fractional count grade/);
+    // '!_0' stays the reserved grade-0 literal (longest-match before '!_')
+    assert.throws(() => parse('!_0 a@3'), /D15/);
   });
 
   it('zero denominator is a Parse error, not a leaked RangeError', () => {
