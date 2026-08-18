@@ -595,9 +595,17 @@ for (const pred of predList) {
   // Small magnitudes: clause-mode qnorm runs Euclid over divmod clauses,
   // whose recursion depth is linear in the quotient — cross-multiplied
   // numerators must stay a few hundred at most.
-  const genRatArg = () => rand() > 0.5
-    ? putRat(randBigInt(4), 1n + randBigInt(3))
-    : Store.put('binlit', [randBigInt(4)]);
+  // Shapes: canonical ratlit, structural rat(N,D) (possibly unreduced —
+  // ratParts decodes it, to_q/rat matches it directly), and plain bins.
+  const genRatArg = () => {
+    const r = rand();
+    if (r > 0.6) return putRat(randBigInt(4), 1n + randBigInt(3));
+    if (r > 0.45) return Store.put('rat', [
+      Store.put('binlit', [randBigInt(4)]),
+      Store.put('binlit', [1n + randBigInt(3)]),
+    ]);
+    return Store.put('binlit', [randBigInt(4)]);
+  };
 
   // pred → [nInputs, hasOutput]
   const RAT_PREDS = {
@@ -663,6 +671,83 @@ for (const pred of predList) {
     console.log(status + ' ' + pred + ' [rat]: ' + pass + '/' + (pass + fail) + ' passed');
     bumpCluster('§3.12', { pred: pred + '@rat', status, pass, fail, skip: 0,
                            summary: pass + '/' + (pass + fail) + ' [rat]' });
+  }
+
+  // ── §3.12b Out-of-contract: negative numerators ──────────────────────
+  // v1 contract is ℚ≥0 (rat(N,D) ranges over bin = ℕ). The FFI guard
+  // (_decode2) and the clause layer must BOTH refuse — parity of failure.
+  if (!PRED_FILTER || PRED_FILTER in RAT_PREDS) {
+    let negPass = 0, negFail = 0;
+    for (const pred of ['qplus', 'qsub', 'qmul', 'qdiv', 'qlt', 'qeq']) {
+      const [nIn, hasOut] = RAT_PREDS[pred];
+      const meta = ffi.defaultMeta[pred];
+      const handler = ffi.get(meta.ffi);
+      for (let trial = 0; trial < Math.max(10, COUNT / 5); trial++) {
+        const negAt = trial % nIn;
+        const ins = Array.from({ length: nIn }, (_, k) => k === negAt
+          ? Store.put('ratlit', [-(1n + randBigInt(4)), 1n + randBigInt(3)])
+          : genRatArg());
+        const args = hasOut ? [...ins, Store.put('metavar', ['qout'])] : ins;
+        const goal = Store.put(pred, args);
+        const ffiResult = handler(args);
+        const clauseResult = backward.prove(goal, ecRat.clauses, ecRat.definitions, {
+          ...ratOpts, maxDepth: 20000, allBuckets: true, useFFI: false,
+        });
+        if ((ffiResult && ffiResult.success) || clauseResult.success) {
+          negFail++;
+          console.log('NEG-LEAK ' + pred + ': FFI=' + !!(ffiResult && ffiResult.success) +
+                      ' clause=' + clauseResult.success);
+        } else negPass++;
+      }
+    }
+    totalTests += negPass + negFail;
+    totalPass += negPass;
+    totalFail += negFail;
+    const negStatus = negFail > 0 ? 'FAIL' : 'ok';
+    console.log(negStatus + ' q-negative [both refuse]: ' + negPass + '/' + (negPass + negFail) + ' passed');
+    bumpCluster('§3.12', { pred: 'q@negative', status: negStatus, pass: negPass, fail: negFail, skip: 0 });
+  }
+
+  // ── §3.12c Representation variants: o/i-wrapped rational leaves ──────
+  // Ill-sorted goals (mul/s1-style capture). FFI is conservative (ratParts
+  // returns null → advisory fail); clauses MAY derive via the semiring-
+  // generic digit algorithms. One-sided FFI-principle check: whenever FFI
+  // succeeds, the clause value must agree canonically; FFI failure alone is
+  // never a mismatch.
+  if (!PRED_FILTER || PRED_FILTER in RAT_PREDS) {
+    let wrapPass = 0, wrapFail = 0;
+    for (const pred of ['qplus', 'qmul']) {
+      const meta = ffi.defaultMeta[pred];
+      const handler = ffi.get(meta.ffi);
+      for (let trial = 0; trial < Math.max(10, COUNT / 5); trial++) {
+        const wrapped = Store.put(rand() > 0.5 ? 'o' : 'i',
+          [putRat(randBigInt(3), 1n + randBigInt(2))]);
+        const ins = trial % 2 === 0 ? [wrapped, genRatArg()] : [genRatArg(), wrapped];
+        const out = Store.put('metavar', ['qout']);
+        const args = [...ins, out];
+        const goal = Store.put(pred, args);
+        const ffiResult = handler(args);
+        if (!(ffiResult && ffiResult.success)) { wrapPass++; continue; }
+        const clauseResult = backward.prove(goal, ecRat.clauses, ecRat.definitions, {
+          ...ratOpts, maxDepth: 20000, allBuckets: true, useFFI: false,
+        });
+        if (!clauseResult.success) { wrapFail++; console.log('WRAP-DIVERGE ' + pred); continue; }
+        let clauseVal = out;
+        for (let i = 0; i < 500; i++) {
+          const n = apply(clauseVal, clauseResult.theta);
+          if (n === clauseVal) break;
+          clauseVal = n;
+        }
+        if (ratCanon(ffiResult.theta[0][1]) === ratCanon(clauseVal)) wrapPass++;
+        else { wrapFail++; console.log('WRAP-MISMATCH ' + pred); }
+      }
+    }
+    totalTests += wrapPass + wrapFail;
+    totalPass += wrapPass;
+    totalFail += wrapFail;
+    const wrapStatus = wrapFail > 0 ? 'FAIL' : 'ok';
+    console.log(wrapStatus + ' q-wrapped [one-sided]: ' + wrapPass + '/' + (wrapPass + wrapFail) + ' passed');
+    bumpCluster('§3.12', { pred: 'q@wrapped', status: wrapStatus, pass: wrapPass, fail: wrapFail, skip: 0 });
   }
 }
 

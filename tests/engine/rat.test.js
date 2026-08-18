@@ -55,6 +55,35 @@ describe('lib/rat.js — pure rational arithmetic', () => {
   });
 });
 
+describe('lib/rat.js — algebraic properties (sample grid)', () => {
+  const SAMPLES = [];
+  for (const n of [0n, 1n, 2n, 3n, 7n, 12n, 101n])
+    for (const d of [1n, 2n, 3n, 5n, 12n]) SAMPLES.push([n, d]);
+
+  it('norm is idempotent over the grid', () => {
+    for (const [n, d] of SAMPLES) {
+      const r1 = rat.norm(n, d);
+      assert.deepEqual(rat.norm(r1[0], r1[1]), r1);
+    }
+  });
+
+  it('add/mul are commutative over the grid', () => {
+    for (const a of SAMPLES.slice(0, 12)) for (const b of SAMPLES.slice(0, 12)) {
+      assert.deepEqual(rat.add(a, b), rat.add(b, a));
+      assert.deepEqual(rat.mul(a, b), rat.mul(b, a));
+    }
+  });
+
+  it('gcd zero cases are symmetric; isInt agrees with den=1', () => {
+    assert.equal(rat.gcd(5n, 0n), 5n);
+    assert.equal(rat.gcd(0n, 5n), 5n);
+    for (const [n, d] of SAMPLES) {
+      const r = rat.norm(n, d);
+      assert.equal(rat.isInt(r), r[1] === 1n);
+    }
+  });
+});
+
 describe('store — till kernel tag commit', () => {
   it('PRED_BOUNDARY covers exactly the pre-registered tags (regression)', () => {
     assert.equal(Store.PRED_BOUNDARY, 36);
@@ -207,6 +236,30 @@ describe('FFI — split namespaces (bin family vs q-family)', () => {
     assert.equal(ratlitTheory.canonicalize(wrapped), bin(3n)); // 4 · 3/4
     const iWrapped = Store.put('i', [putRat(1n, 4n)]);
     assert.equal(ratlitTheory.canonicalize(iWrapped), putRat(3n, 2n)); // 2·1/4 + 1
+  });
+});
+
+describe('negative rationals — ℚ≥0 contract (audit round 11)', () => {
+  it('storage is signed (D14: no migration later) but q-op FFI refuses negatives', () => {
+    const neg = putRat(-7n, 3n);
+    assert.equal(Store.tag(neg), 'ratlit');
+    assert.equal(Store.child(neg, 0), -7n);
+    // FFI parity with the ℕ-ranged clause layer: both must refuse.
+    for (const [name, arity] of [['qplus', 3], ['qsub', 3], ['qmul', 3], ['qdiv', 3], ['qlt', 2], ['qeq', 2]]) {
+      const args = arity === 3 ? [neg, bin(1n), mv('R')] : [neg, bin(1n)];
+      const res = ratFFI[name](args);
+      assert.ok(!res.success, `${name} refuses a negative numerator`);
+    }
+    // Symmetric: negative in the second position
+    assert.ok(!ratFFI.qplus([bin(1n), neg, mv('R')]).success);
+  });
+
+  it('rewrite still refuses negatives (clause layer cannot represent them)', () => {
+    const neg = putRat(-1n, 2n);
+    const tr = Store.TAG.rat;
+    if (tr !== undefined) {
+      assert.equal(ratlitTheory.rewrite(Store.tagId(neg), neg, tr, 2), null);
+    }
   });
 });
 

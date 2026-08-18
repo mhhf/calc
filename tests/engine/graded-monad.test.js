@@ -31,6 +31,9 @@ import { rightFocus } from '../../lib/prover/bridge.js';
 import { createKernel } from '../../lib/prover/kernel.js';
 import { createChecker } from '../../lib/prover/check-term.js';
 import { ILL_CONNECTIVES } from '../../lib/engine/ill/connectives.js';
+import { FactSet } from '../../lib/engine/fact-set.js';
+import { matchLoli } from '../../lib/engine/lnl/loli.js';
+import { makeMatchOpts } from './_match-opts.js';
 
 const FIXTURE = path.join(import.meta.dirname, '../fixtures/graded-comp.calc');
 
@@ -326,5 +329,51 @@ describe('gtoy fixture calculus (end-to-end: loader → kernel → checker)', ()
     // plain atoms still decompose
     const a = atom('a');
     assert.deepEqual(rightFocus({ [a]: 1 }, {}, a, gtoy.roles), {});
+  });
+});
+
+describe('calculus-built parser threads the computation record (audit round 11, F1)', () => {
+  let gtoy;
+
+  before(() => {
+    calculus.clearCache();
+    gtoy = calculus.load(FIXTURE);
+  });
+
+  it('{ b } through the auto-built parser throws (graded needs gradeUnit) instead of silently building ILL monad', () => {
+    assert.throws(() => gtoy.parse('{ b }'), /gradeUnit/);
+  });
+
+  it('non-monadic syntax still parses through the auto-built parser', () => {
+    const h = gtoy.parse('a * b');
+    assert.equal(Store.tag(h), 'tensor');
+  });
+});
+
+describe('matchLoli fires a graded-consequent dynamic rule (integration)', () => {
+  it('trigger consumed, body facts produced, grade rides opaquely', () => {
+    const rc = resolveConn(TILL_CT);
+    const val = atom('v1');
+    const trigger = Store.put('gas', [val]);
+    const body = Store.put('pc', [val]);
+    const loliHash = Store.put('loli', [trigger, gm(atom('g'), body)]);
+
+    const linear = new FactSet(Store.TAG_NAMES.length);
+    linear.insert(Store.tagId(loliHash), loliHash, null);
+    linear.insert(Store.tagId(trigger), trigger, null);
+    const state = {
+      linear,
+      persistent: new FactSet(Store.TAG_NAMES.length),
+      groupForPred: (pred) => {
+        const tid = Store.TAG[pred];
+        return (tid !== undefined) ? linear.group(tid) : [];
+      },
+    };
+
+    const m = matchLoli(loliHash, state, null, makeMatchOpts({ rc }));
+    assert.ok(m, 'graded loli matches');
+    assert.equal(m.rule.consequentAlts.length, 1);
+    assert.deepEqual(m.rule.consequentAlts[0].linear, [body],
+      'body extracted via bodyIdx=1, grade not treated as a produced fact');
   });
 });

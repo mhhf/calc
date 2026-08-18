@@ -159,6 +159,15 @@ describe('split-namespace contract', () => {
     agreeBool('lt', [bin(1n), bin(2n)], true);
   });
 
+  it('negative numerators fail on BOTH paths (ℚ≥0 contract, audit round 11)', () => {
+    const neg = putRat(-1n, 2n);
+    const goal = Store.put('qplus', [neg, bin(1n), mv('R')]);
+    for (const useFFI of [true, false]) {
+      assert.ok(!prove(goal, useFFI).success,
+        `qplus on a negative numerator refuses (useFFI=${useFFI})`);
+    }
+  });
+
   it('eq on canonical rationals holds by pure canonicity (eq/z, not an overload)', () => {
     // putRat gives equal rationals equal hashes, so eq X X covers them with
     // zero rational clauses — FFI fails advisorily and clause resolution
