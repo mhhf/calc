@@ -15,7 +15,7 @@ import forward from '../lib/engine/forward.js';
 import { guidedTerm, loliOf } from '../lib/prover/guided-term.js';
 import { rightFocusTerm, modeSwitch } from '../lib/prover/bridge.js';
 import { ILL_CONNECTIVES } from '../lib/engine/ill/connectives.js';
-import { GRADE_W } from '../lib/engine/grades.js';
+import { gradeW } from '../lib/engine/grades.js';
 // Hoisted by tools/esm-hoist.js:
 import Seq from '../lib/kernel/sequent.js';
 import calcMain from '../lib/index.js';
@@ -39,7 +39,7 @@ describe('Guided Proof Terms (TODO_0068 §10.5)', () => {
       const A = Store.put('atom', ['a']);
       const B = Store.put('monad', [Store.put('atom', ['b'])]);
       const loli = Store.put('loli', [A, B]);
-      const banged = Store.put('bang', [GRADE_W,loli]);
+      const banged = Store.put('bang', [gradeW(),loli]);
       assert.strictEqual(loliOf(banged), loli);
     });
 
@@ -137,7 +137,7 @@ describe('Guided Proof Terms (TODO_0068 §10.5)', () => {
       // Rule: !p -o { q }
       const p = Store.put('atom', ['p']);
       const q = Store.put('atom', ['q']);
-      const bangP = Store.put('bang', [GRADE_W,p]);
+      const bangP = Store.put('bang', [gradeW(),p]);
       const monadQ = Store.put('monad', [q]);
       const loli = Store.put('loli', [bangP, monadQ]);
 
@@ -169,7 +169,7 @@ describe('Guided Proof Terms (TODO_0068 §10.5)', () => {
       const a = Store.put('atom', ['a']);
       const p = Store.put('atom', ['p']);
       const b = Store.put('atom', ['b']);
-      const bangP = Store.put('bang', [GRADE_W,p]);
+      const bangP = Store.put('bang', [gradeW(),p]);
       const tensor = Store.put('tensor', [a, bangP]);
       const monadB = Store.put('monad', [b]);
       const loli = Store.put('loli', [tensor, monadB]);

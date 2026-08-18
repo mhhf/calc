@@ -8,7 +8,7 @@
 import { describe, it, before } from 'node:test';
 import assert from 'node:assert';
 import calculus from '../lib/calculus/index.js';
-import { GRADE_W } from '../lib/engine/grades.js';
+import { gradeW } from '../lib/engine/grades.js';
 // Hoisted by tools/esm-hoist.js:
 import { parserFromTables, parserTables } from '../lib/calculus/builders.js';
 import Store from '../lib/kernel/store.js';
@@ -68,7 +68,7 @@ describe('v2 Calculus (generated from spec)', () => {
     it('should generate bang constructor (arity 2: grade + formula)', () => {
       const A = ill.AST.freevar('A');
 
-      const bangA = ill.AST.bang(GRADE_W, A);
+      const bangA = ill.AST.bang(gradeW(), A);
       assert.strictEqual(ill.AST.tag(bangA), 'bang');
       assert.strictEqual(ill.AST.children(bangA).length, 2);
     });
@@ -165,7 +165,7 @@ describe('v2 Calculus (generated from spec)', () => {
     });
 
     it('should render bang correctly', () => {
-      const ast = ill.AST.bang(GRADE_W, ill.AST.freevar('A'));
+      const ast = ill.AST.bang(gradeW(), ill.AST.freevar('A'));
       assert.strictEqual(ill.render(ast, 'ascii'), '! A');
     });
 

@@ -6,7 +6,7 @@ import assert from 'node:assert/strict';
 import Store from '../../lib/kernel/store.js';
 import { loadBytecode, bytecodeArrGetGuard } from '../../lib/engine/ill/bytecode-loader.js';
 import { intToBin, binToInt } from '../../lib/engine/ill/ffi/convert.js';
-import { GRADE_W } from '../../lib/engine/grades.js';
+import { gradeW } from '../../lib/engine/grades.js';
 import { ILL_CONNECTIVES } from '../../lib/engine/ill/connectives.js';
 import { resolveConn, compileRule, flattenAnte } from '../../lib/engine/compile.js';
 import { predHead } from '../../lib/kernel/ast.js';
@@ -148,7 +148,7 @@ describe('compose: extraGrade0Facts parameter', () => {
     const PC = Store.put('metavar', ['PC']);
     const Val = Store.put('metavar', ['Val']);
     const arr_get_BC_PC_Val = Store.put('arr_get', [BC, PC, Val]);
-    const bang_arr_get = Store.put('bang', [GRADE_W, arr_get_BC_PC_Val]);
+    const bang_arr_get = Store.put('bang', [gradeW(), arr_get_BC_PC_Val]);
     const foo_PC = Store.put('foo', [PC]);
     const bar_Val = Store.put('bar', [Val]);
     const rule = makeRule('r', tensor(bang_arr_get, foo_PC), bar_Val);
@@ -191,8 +191,8 @@ describe('compose: extraGrade0Facts parameter', () => {
     const Val = Store.put('metavar', ['Val']);
     const is_push = Store.put('is_push', [OP, N]);
     const arr_get = Store.put('arr_get', [BC, PC, Val]);
-    const bang_is_push = Store.put('bang', [GRADE_W, is_push]);
-    const bang_arr_get = Store.put('bang', [GRADE_W, arr_get]);
+    const bang_is_push = Store.put('bang', [gradeW(), is_push]);
+    const bang_arr_get = Store.put('bang', [gradeW(), arr_get]);
     const foo = Store.put('atom', ['foo']);
     const bar = Store.put('bar', [N, Val]);
     const rule = makeRule('r', tensor(bang_is_push, bang_arr_get, foo), bar);
@@ -225,7 +225,7 @@ describe('compose: extraGrade0Facts parameter', () => {
     const KEY = Store.put('metavar', ['KEY']);
     const Val = Store.put('metavar', ['Val']);
     const lookup = Store.put('lookup', [KEY, Val]);
-    const bang_lookup = Store.put('bang', [GRADE_W, lookup]);
+    const bang_lookup = Store.put('bang', [gradeW(), lookup]);
     const foo = Store.put('atom', ['foo']);
     const bar = Store.put('bar', [Val]);
     const rule = makeRule('r', tensor(bang_lookup, foo), bar);
@@ -238,7 +238,7 @@ describe('compose: extraGrade0Facts parameter', () => {
     const KEY2 = Store.put('metavar', ['KEY2']);
     const Val2 = Store.put('metavar', ['Val2']);
     const lookup2 = Store.put('lookup', [KEY2, Val2]);
-    const bang_lookup2 = Store.put('bang', [GRADE_W, lookup2]);
+    const bang_lookup2 = Store.put('bang', [gradeW(), lookup2]);
     const baz = Store.put('atom', ['baz']);
     const done = Store.put('done', [Val2]);
     const rule2 = makeRule('r2', tensor(bang_lookup2, baz), done);
@@ -276,9 +276,9 @@ describe('compose: extraGrade0Facts parameter', () => {
 
     const rule = makeRule('r',
       tensor(
-        Store.put('bang', [GRADE_W, step_goal]),
-        Store.put('bang', [GRADE_W, is_push_goal]),
-        Store.put('bang', [GRADE_W, arr_get_goal]),
+        Store.put('bang', [gradeW(), step_goal]),
+        Store.put('bang', [gradeW(), is_push_goal]),
+        Store.put('bang', [gradeW(), arr_get_goal]),
         resource
       ),
       result_term
@@ -330,7 +330,7 @@ describe('compose: extraGrade0Facts parameter', () => {
     const codeArr = Store.put('code_arr', [Store.put('atom', ['h1'])]);
     const arr_get1 = Store.put('arr_get', [codeArr, PC, Val]);
     const rule1 = makeRule('code_rule',
-      tensor(Store.put('bang', [GRADE_W, arr_get1]), Store.put('atom', ['a'])),
+      tensor(Store.put('bang', [gradeW(), arr_get1]), Store.put('atom', ['a'])),
       Store.put('atom', ['b'])
     );
 
@@ -340,7 +340,7 @@ describe('compose: extraGrade0Facts parameter', () => {
     const Val2 = Store.put('metavar', ['Val2']);
     const arr_get2 = Store.put('arr_get', [stackArr, PC2, Val2]);
     const rule2 = makeRule('stack_rule',
-      tensor(Store.put('bang', [GRADE_W, arr_get2]), Store.put('atom', ['c'])),
+      tensor(Store.put('bang', [gradeW(), arr_get2]), Store.put('atom', ['c'])),
       Store.put('atom', ['d'])
     );
 
@@ -377,7 +377,7 @@ describe('compose: extraGrade0Facts parameter', () => {
     const resource = Store.put('resource', [PC]);
     const out = Store.put('out', [Val]);
     const rule = makeRule('read_bc',
-      tensor(Store.put('bang', [GRADE_W, arr_get_goal]), resource),
+      tensor(Store.put('bang', [gradeW(), arr_get_goal]), resource),
       out
     );
 
@@ -424,7 +424,7 @@ describe('bytecode-loader: entry point pre-filter', () => {
     const resource = Store.put('resource', [PC]);
     const out = Store.put('out', [Val]);
     const rule = makeRule('r',
-      tensor(Store.put('bang', [GRADE_W, arr_get_goal]), resource),
+      tensor(Store.put('bang', [gradeW(), arr_get_goal]), resource),
       out
     );
 
@@ -446,7 +446,7 @@ describe('bytecode-loader: entry point pre-filter', () => {
     const Val2 = Store.put('metavar', ['Val2']);
     const rule2 = makeRule('r2',
       tensor(
-        Store.put('bang', [GRADE_W, Store.put('arr_get', [BC2, PC2, Val2])]),
+        Store.put('bang', [gradeW(), Store.put('arr_get', [BC2, PC2, Val2])]),
         Store.put('resource', [PC2])
       ),
       Store.put('out', [Val2])
@@ -468,7 +468,7 @@ describe('bytecode-loader: bytecodeArrGetGuard', () => {
     const PC = Store.put('metavar', ['PC']);
     const Val = Store.put('metavar', ['Val']);
     const arr_get_goal = Store.put('arr_get', [BC, PC, Val]);
-    const bang_arr_get = Store.put('bang', [GRADE_W, arr_get_goal]);
+    const bang_arr_get = Store.put('bang', [gradeW(), arr_get_goal]);
     const bytecode_BC = Store.put('bytecode', [BC]);
     const out = Store.put('out', [Val]);
     const rule = makeRule('bc_rule', tensor(bang_arr_get, bytecode_BC), out);
@@ -490,7 +490,7 @@ describe('bytecode-loader: bytecodeArrGetGuard', () => {
     const I = Store.put('metavar', ['I']);
     const Val = Store.put('metavar', ['Val']);
     const arr_get_goal = Store.put('arr_get', [S, I, Val]);
-    const bang_arr_get = Store.put('bang', [GRADE_W, arr_get_goal]);
+    const bang_arr_get = Store.put('bang', [gradeW(), arr_get_goal]);
     const stack_S = Store.put('stack', [S]);
     const peeked = Store.put('peeked', [Val]);
     const rule = makeRule('stack_rule', tensor(bang_arr_get, stack_S), peeked);
@@ -520,7 +520,7 @@ describe('bytecode-loader: bytecodeArrGetGuard', () => {
     const Val = Store.put('metavar', ['Val']);
     const rule1 = makeRule('bc_read',
       tensor(
-        Store.put('bang', [GRADE_W, Store.put('arr_get', [BC, PC, Val])]),
+        Store.put('bang', [gradeW(), Store.put('arr_get', [BC, PC, Val])]),
         Store.put('bytecode', [BC])
       ),
       Store.put('read', [Val])
@@ -531,7 +531,7 @@ describe('bytecode-loader: bytecodeArrGetGuard', () => {
     const Val2 = Store.put('metavar', ['Val2']);
     const rule2 = makeRule('stack_peek',
       tensor(
-        Store.put('bang', [GRADE_W, Store.put('arr_get', [S, I, Val2])]),
+        Store.put('bang', [gradeW(), Store.put('arr_get', [S, I, Val2])]),
         Store.put('stack', [S])
       ),
       Store.put('peek', [Val2])
@@ -557,7 +557,7 @@ describe('bytecode-loader: bytecodeArrGetGuard', () => {
     const Val3 = Store.put('metavar', ['Val3']);
     const rule1b = makeRule('bc_read',
       tensor(
-        Store.put('bang', [GRADE_W, Store.put('arr_get', [BC2, PC2, Val3])]),
+        Store.put('bang', [gradeW(), Store.put('arr_get', [BC2, PC2, Val3])]),
         Store.put('bytecode', [BC2])
       ),
       Store.put('read', [Val3])
@@ -568,7 +568,7 @@ describe('bytecode-loader: bytecodeArrGetGuard', () => {
     const Val4 = Store.put('metavar', ['Val4']);
     const rule2b = makeRule('stack_peek',
       tensor(
-        Store.put('bang', [GRADE_W, Store.put('arr_get', [S2, I2, Val4])]),
+        Store.put('bang', [gradeW(), Store.put('arr_get', [S2, I2, Val4])]),
         Store.put('stack', [S2])
       ),
       Store.put('peek', [Val4])

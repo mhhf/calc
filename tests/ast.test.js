@@ -6,7 +6,7 @@ import { describe, it, before } from 'node:test';
 import assert from 'node:assert';
 import ast from '../lib/kernel/ast.js';
 import calculus from '../lib/calculus/index.js';
-import { GRADE_W } from '../lib/engine/grades.js';
+import { gradeW } from '../lib/engine/grades.js';
 describe('v2 AST utilities', () => {
   let AST;
 
@@ -73,7 +73,7 @@ describe('v2 AST utilities', () => {
     });
 
     it('should return false for bang', () => {
-      const f = AST.bang(GRADE_W,AST.freevar('A'));
+      const f = AST.bang(gradeW(),AST.freevar('A'));
       assert.strictEqual(ast.isAtomic(f), false);
     });
 

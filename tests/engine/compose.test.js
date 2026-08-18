@@ -5,7 +5,7 @@
 import { describe, it, beforeEach } from 'node:test';
 import assert from 'node:assert/strict';
 import Store from '../../lib/kernel/store.js';
-import { GRADE_0, GRADE_W } from '../../lib/engine/grades.js';
+import { grade0, gradeW } from '../../lib/engine/grades.js';
 import { ILL_CONNECTIVES } from '../../lib/engine/ill/connectives.js';
 import { resolveConn, compileRule, flattenAnte, unwrapComp } from '../../lib/engine/compile.js';
 import { predHead } from '../../lib/kernel/ast.js';
@@ -58,14 +58,14 @@ describe('compose L2: predMap', () => {
     const a = Store.put('atom', ['a']);
     const X = Store.put('metavar', ['X']);
     const stepX = Store.put('step', [X]);
-    const bang0step = Store.put('bang', [GRADE_0, stepX]);
+    const bang0step = Store.put('bang', [grade0(), stepX]);
 
     const producer = makeRule('prod', a, bang0step);
 
     // Consumer: !_0 step Y -o { b }
     const Y = Store.put('metavar', ['Y']);
     const stepY = Store.put('step', [Y]);
-    const bang0stepY = Store.put('bang', [GRADE_0, stepY]);
+    const bang0stepY = Store.put('bang', [grade0(), stepY]);
     const b = Store.put('atom', ['b']);
 
     const consumer = makeRule('cons', bang0stepY, b);
@@ -85,9 +85,9 @@ describe('compose L2: predMap', () => {
     // Bridge: !_0 raw OP -o { !_0 step OP }
     const OP = Store.put('metavar', ['OP']);
     const rawOP = Store.put('raw', [OP]);
-    const bang0raw = Store.put('bang', [GRADE_0, rawOP]);
+    const bang0raw = Store.put('bang', [grade0(), rawOP]);
     const stepOP = Store.put('step', [OP]);
-    const bang0step = Store.put('bang', [GRADE_0, stepOP]);
+    const bang0step = Store.put('bang', [grade0(), stepOP]);
 
     const bridge = makeRule('bridge', bang0raw, bang0step);
 
@@ -125,13 +125,13 @@ describe('compose L1: cutPair', () => {
     const X = Store.put('metavar', ['X']);
     const aX = Store.put('a', [X]);
     const midX = Store.put('mid', [X]);
-    const bang0mid = Store.put('bang', [GRADE_0, midX]);
+    const bang0mid = Store.put('bang', [grade0(), midX]);
     const producer = makeRule('prod', aX, bang0mid);
 
     // Consumer: !_0 mid Y * b Y -o { c Y }
     const Y = Store.put('metavar', ['Y']);
     const midY = Store.put('mid', [Y]);
-    const bang0midY = Store.put('bang', [GRADE_0, midY]);
+    const bang0midY = Store.put('bang', [grade0(), midY]);
     const bY = Store.put('b', [Y]);
     const cY = Store.put('c', [Y]);
     const consumer = makeRule('cons', tensor(bang0midY, bY), cY);
@@ -166,12 +166,12 @@ describe('compose L1: cutPair', () => {
     const X = Store.put('metavar', ['X']);
     const pX = Store.put('p', [X]);
     const midX = Store.put('mid', [X]);
-    const producer = makeRule('prod', pX, Store.put('bang', [GRADE_0, midX]));
+    const producer = makeRule('prod', pX, Store.put('bang', [grade0(), midX]));
 
     const Y = Store.put('metavar', ['Y']);
     const midY = Store.put('mid', [Y]);
     const qY = Store.put('q', [Y]);
-    const consumer = makeRule('cons', Store.put('bang', [GRADE_0, midY]), qY);
+    const consumer = makeRule('cons', Store.put('bang', [grade0(), midY]), qY);
 
     const composed = cutPair(producer, consumer, 'mid', rc);
     assert.ok(composed);
@@ -198,15 +198,15 @@ describe('compose L1: cutPair', () => {
   it('persistent hypotheses pass through', () => {
     // Producer: !foo * a -o { !_0 mid }
     const foo = Store.put('atom', ['foo']);
-    const bangFoo = Store.put('bang', [GRADE_W, foo]);
+    const bangFoo = Store.put('bang', [gradeW(), foo]);
     const a = Store.put('atom', ['a']);
     const mid = Store.put('atom', ['mid']);
-    const bang0mid = Store.put('bang', [GRADE_0, mid]);
+    const bang0mid = Store.put('bang', [grade0(), mid]);
     const producer = makeRule('prod', tensor(bangFoo, a), bang0mid);
 
     // Consumer: !_0 mid -o { b }
     const b = Store.put('atom', ['b']);
-    const consumer = makeRule('cons', Store.put('bang', [GRADE_0, mid]), b);
+    const consumer = makeRule('cons', Store.put('bang', [grade0(), mid]), b);
 
     const result = cutPair(producer, consumer, 'mid', rc);
     assert.ok(result);
@@ -229,12 +229,12 @@ describe('compose L1: cutPair', () => {
     const X = Store.put('metavar', ['X']);
     const pX = Store.put('p', [X]);
     const midX = Store.put('mid', [X]);
-    const producer = makeRule('prod', pX, Store.put('bang', [GRADE_0, midX]));
+    const producer = makeRule('prod', pX, Store.put('bang', [grade0(), midX]));
 
     const qX = Store.put('q', [X]);
     const rX = Store.put('r', [X]);
     const consumer = makeRule('cons',
-      tensor(Store.put('bang', [GRADE_0, midX]), qX),
+      tensor(Store.put('bang', [grade0(), midX]), qX),
       rX
     );
 
@@ -264,8 +264,8 @@ describe('compose L1: cutPair', () => {
     const b = Store.put('atom', ['b']);
     const mid1 = Store.put('mid', [one]);
     const mid2 = Store.put('mid', [two]);
-    const producer = makeRule('prod', a, Store.put('bang', [GRADE_0, mid1]));
-    const consumer = makeRule('cons', Store.put('bang', [GRADE_0, mid2]), b);
+    const producer = makeRule('prod', a, Store.put('bang', [grade0(), mid1]));
+    const consumer = makeRule('cons', Store.put('bang', [grade0(), mid2]), b);
 
     const result = cutPair(producer, consumer, 'mid', rc);
     assert.equal(result, null, 'unification failure should return null');
@@ -280,14 +280,14 @@ describe('compose L1: cutPair', () => {
     const X = Store.put('metavar', ['X']);
     const aX = Store.put('a', [X]);
     const midX = Store.put('mid', [X]);
-    const producer = makeRule('prod', aX, Store.put('bang', [GRADE_0, midX]));
+    const producer = makeRule('prod', aX, Store.put('bang', [grade0(), midX]));
 
     const Y = Store.put('metavar', ['Y']);
     const midY = Store.put('mid', [Y]);
     const bY = Store.put('b', [Y]);
     const existsNode = Store.put('exists', [bY]);
 
-    const consumer = makeRule('cons', Store.put('bang', [GRADE_0, midY]), existsNode);
+    const consumer = makeRule('cons', Store.put('bang', [grade0(), midY]), existsNode);
 
     const result = cutPair(producer, consumer, 'mid', rc);
     assert.ok(result, 'should compose with exists in consequent');
@@ -306,12 +306,12 @@ describe('compose L1: cutPair', () => {
     const a = Store.put('atom', ['a']);
     const mid = Store.put('atom', ['mid']);
     const bar = Store.put('atom', ['bar']);
-    const bang0mid = Store.put('bang', [GRADE_0, mid]);
-    const bangBar = Store.put('bang', [GRADE_W, bar]);
+    const bang0mid = Store.put('bang', [grade0(), mid]);
+    const bangBar = Store.put('bang', [gradeW(), bar]);
     const c = Store.put('atom', ['c']);
 
     const producer = makeRule('prod', a, tensor(bang0mid, bangBar));
-    const consumer = makeRule('cons', Store.put('bang', [GRADE_0, mid]), c);
+    const consumer = makeRule('cons', Store.put('bang', [grade0(), mid]), c);
 
     const result = cutPair(producer, consumer, 'mid', rc);
     assert.ok(result);
@@ -338,7 +338,7 @@ describe('compose L1: specialize', () => {
     const OP = Store.put('metavar', ['OP']);
     const N = Store.put('metavar', ['N']);
     const is_push_OP_N = Store.put('is_push', [OP, N]);
-    const bang_is_push = Store.put('bang', [GRADE_W, is_push_OP_N]);
+    const bang_is_push = Store.put('bang', [gradeW(), is_push_OP_N]);
     const foo_OP = Store.put('foo', [OP]);
     const bar_N = Store.put('bar', [N]);
     const rule = makeRule('test_rule', tensor(bang_is_push, foo_OP), bar_N);
@@ -378,8 +378,8 @@ describe('compose L1: specialize', () => {
     const is_push_OP_N = Store.put('is_push', [OP, N]);
     const one = Store.put('atom', ['one']);
     const plus_N_1_M = Store.put('plus', [N, one, M]);
-    const bang_is_push = Store.put('bang', [GRADE_W, is_push_OP_N]);
-    const bang_plus = Store.put('bang', [GRADE_W, plus_N_1_M]);
+    const bang_is_push = Store.put('bang', [gradeW(), is_push_OP_N]);
+    const bang_plus = Store.put('bang', [gradeW(), plus_N_1_M]);
     const foo_OP = Store.put('foo', [OP]);
     const bar_M = Store.put('bar', [M]);
     const rule = makeRule('r', tensor(bang_is_push, bang_plus, foo_OP), bar_M);
@@ -415,7 +415,7 @@ describe('compose L1: specialize', () => {
     const val60 = Store.put('atom', ['h60']);
     const N = Store.put('metavar', ['N']);
     const is_push_60_N = Store.put('is_push', [val60, N]);
-    const bang_is_push = Store.put('bang', [GRADE_W, is_push_60_N]);
+    const bang_is_push = Store.put('bang', [gradeW(), is_push_60_N]);
     const foo = Store.put('atom', ['foo']);
     const bar = Store.put('atom', ['bar']);
     const rule = makeRule('r', tensor(bang_is_push, foo), bar);
@@ -434,9 +434,9 @@ describe('compose L1: specialize', () => {
     const OP = Store.put('metavar', ['OP']);
     const N = Store.put('metavar', ['N']);
     const step_OP = Store.put('step', [OP]);
-    const bang0_step = Store.put('bang', [GRADE_0, step_OP]);
+    const bang0_step = Store.put('bang', [grade0(), step_OP]);
     const is_push_OP_N = Store.put('is_push', [OP, N]);
-    const bang_is_push = Store.put('bang', [GRADE_W, is_push_OP_N]);
+    const bang_is_push = Store.put('bang', [gradeW(), is_push_OP_N]);
     const done_N = Store.put('done', [N]);
     const rule = makeRule('r', tensor(bang0_step, bang_is_push), done_N);
 
@@ -465,13 +465,13 @@ describe('compose L3: compose0', () => {
     const X = Store.put('metavar', ['X']);
     const aX = Store.put('a', [X]);
     const midX = Store.put('mid', [X]);
-    const bang0mid = Store.put('bang', [GRADE_0, midX]);
+    const bang0mid = Store.put('bang', [grade0(), midX]);
     const producer = makeRule('prod', aX, bang0mid);
 
     const Y = Store.put('metavar', ['Y']);
     const midY = Store.put('mid', [Y]);
     const bY = Store.put('b', [Y]);
-    const consumer = makeRule('cons', Store.put('bang', [GRADE_0, midY]), bY);
+    const consumer = makeRule('cons', Store.put('bang', [grade0(), midY]), bY);
 
     const result = compose0([producer, consumer], ILL_CONNECTIVES);
     assert.equal(result.diagnostics.errors.length, 0, 'no errors');
@@ -487,7 +487,7 @@ describe('compose L3: compose0', () => {
     const a1 = Store.put('a1', [X]);
     const a2 = Store.put('a2', [X]);
     const midX = Store.put('mid', [X]);
-    const bang0mid = Store.put('bang', [GRADE_0, midX]);
+    const bang0mid = Store.put('bang', [grade0(), midX]);
 
     const prod1 = makeRule('prod1', a1, bang0mid);
     const prod2 = makeRule('prod2', a2, bang0mid);
@@ -495,7 +495,7 @@ describe('compose L3: compose0', () => {
     const Y = Store.put('metavar', ['Y']);
     const midY = Store.put('mid', [Y]);
     const bY = Store.put('b', [Y]);
-    const consumer = makeRule('cons', Store.put('bang', [GRADE_0, midY]), bY);
+    const consumer = makeRule('cons', Store.put('bang', [grade0(), midY]), bY);
 
     const result = compose0([prod1, prod2, consumer], ILL_CONNECTIVES);
     assert.equal(result.diagnostics.errors.length, 0);
@@ -507,7 +507,7 @@ describe('compose L3: compose0', () => {
   it('error on producer-only grade-0 predicate', () => {
     const a = Store.put('atom', ['a']);
     const mid = Store.put('mid', [Store.put('metavar', ['X'])]);
-    const producer = makeRule('prod', a, Store.put('bang', [GRADE_0, mid]));
+    const producer = makeRule('prod', a, Store.put('bang', [grade0(), mid]));
 
     const result = compose0([producer], ILL_CONNECTIVES);
     assert.equal(result.diagnostics.errors.length, 1);
@@ -518,7 +518,7 @@ describe('compose L3: compose0', () => {
   it('error on consumer-only grade-0 predicate', () => {
     const mid = Store.put('mid', [Store.put('metavar', ['X'])]);
     const b = Store.put('atom', ['b']);
-    const consumer = makeRule('cons', Store.put('bang', [GRADE_0, mid]), b);
+    const consumer = makeRule('cons', Store.put('bang', [grade0(), mid]), b);
 
     const result = compose0([consumer], ILL_CONNECTIVES);
     assert.equal(result.diagnostics.errors.length, 1);
@@ -533,22 +533,22 @@ describe('compose L3: compose0', () => {
 
     // Source: x -o { !_0 raw X }
     const x = Store.put('atom', ['x']);
-    const source = makeRule('source', x, Store.put('bang', [GRADE_0, rawOP]));
+    const source = makeRule('source', x, Store.put('bang', [grade0(), rawOP]));
 
     // Bridge: !_0 raw Y -o { !_0 step Y }
     const Y = Store.put('metavar', ['Y']);
     const rawY = Store.put('raw', [Y]);
     const stepY = Store.put('step', [Y]);
     const bridge = makeRule('bridge',
-      Store.put('bang', [GRADE_0, rawY]),
-      Store.put('bang', [GRADE_0, stepY])
+      Store.put('bang', [grade0(), rawY]),
+      Store.put('bang', [grade0(), stepY])
     );
 
     // Sink: !_0 step Z -o { result Z }
     const Z = Store.put('metavar', ['Z']);
     const stepZ = Store.put('step', [Z]);
     const resultZ = Store.put('result', [Z]);
-    const sink = makeRule('sink', Store.put('bang', [GRADE_0, stepZ]), resultZ);
+    const sink = makeRule('sink', Store.put('bang', [grade0(), stepZ]), resultZ);
 
     const result = compose0([source, bridge, sink], ILL_CONNECTIVES);
     assert.ok(result.diagnostics.errors.length > 0, 'should have bridge errors');
@@ -563,19 +563,19 @@ describe('compose L3: compose0', () => {
     const aX = Store.put('a', [X]);
     const midX = Store.put('mid', [X]);
     const otherX = Store.put('other', [X]);
-    const bang0mid = Store.put('bang', [GRADE_0, midX]);
-    const bang0other = Store.put('bang', [GRADE_0, otherX]);
+    const bang0mid = Store.put('bang', [grade0(), midX]);
+    const bang0other = Store.put('bang', [grade0(), otherX]);
     const producer = makeRule('prod', aX, tensor(bang0mid, bang0other));
 
     const Y = Store.put('metavar', ['Y']);
     const midY = Store.put('mid', [Y]);
     const bY = Store.put('b', [Y]);
-    const midConsumer = makeRule('mid_cons', Store.put('bang', [GRADE_0, midY]), bY);
+    const midConsumer = makeRule('mid_cons', Store.put('bang', [grade0(), midY]), bY);
 
     const Z = Store.put('metavar', ['Z']);
     const otherZ = Store.put('other', [Z]);
     const cZ = Store.put('c', [Z]);
-    const otherConsumer = makeRule('other_cons', Store.put('bang', [GRADE_0, otherZ]), cZ);
+    const otherConsumer = makeRule('other_cons', Store.put('bang', [grade0(), otherZ]), cZ);
 
     const result = compose0([producer, midConsumer, otherConsumer], ILL_CONNECTIVES);
     assert.ok(result.diagnostics.errors.length > 0, 'should have residual errors');
@@ -587,12 +587,12 @@ describe('compose L3: compose0', () => {
     const X = Store.put('metavar', ['X']);
     const aX = Store.put('a', [X]);
     const midX = Store.put('mid', [X]);
-    const producer = makeRule('prod', aX, Store.put('bang', [GRADE_0, midX]));
+    const producer = makeRule('prod', aX, Store.put('bang', [grade0(), midX]));
 
     const Y = Store.put('metavar', ['Y']);
     const midY = Store.put('mid', [Y]);
     const bY = Store.put('b', [Y]);
-    const consumer = makeRule('cons', Store.put('bang', [GRADE_0, midY]), bY);
+    const consumer = makeRule('cons', Store.put('bang', [grade0(), midY]), bY);
 
     const result = compose0([producer, consumer], ILL_CONNECTIVES);
     assert.equal(result.composedRules.length, 1);
@@ -616,9 +616,9 @@ describe('compose L3: compose0', () => {
     const mid1 = Store.put('mid', [one]);
     const mid2 = Store.put('mid', [two]);
 
-    const producer = makeRule('prod', a, Store.put('bang', [GRADE_0, mid1]));
-    const cons1 = makeRule('cons1', Store.put('bang', [GRADE_0, Store.put('mid', [one])]), b);
-    const cons2 = makeRule('cons2', Store.put('bang', [GRADE_0, mid2]), c);
+    const producer = makeRule('prod', a, Store.put('bang', [grade0(), mid1]));
+    const cons1 = makeRule('cons1', Store.put('bang', [grade0(), Store.put('mid', [one])]), b);
+    const cons2 = makeRule('cons2', Store.put('bang', [grade0(), mid2]), c);
 
     const result = compose0([producer, cons1, cons2], ILL_CONNECTIVES);
     assert.equal(result.diagnostics.errors.length, 0);
@@ -649,7 +649,7 @@ describe('compose L3: persistent specialization (pass 2)', () => {
     const OP = Store.put('metavar', ['OP']);
     const N = Store.put('metavar', ['N']);
     const is_push_OP_N = Store.put('is_push', [OP, N]);
-    const bang_is_push = Store.put('bang', [GRADE_W, is_push_OP_N]);
+    const bang_is_push = Store.put('bang', [gradeW(), is_push_OP_N]);
     const foo_OP = Store.put('foo', [OP]);
     const bar_N = Store.put('bar', [N]);
     const rule = makeRule('r', tensor(bang_is_push, foo_OP), bar_N);
@@ -684,15 +684,15 @@ describe('compose L3: persistent specialization (pass 2)', () => {
     const OP = Store.put('metavar', ['OP']);
     const src = Store.put('atom', ['src']);
     const mid_OP = Store.put('mid', [OP]);
-    const bang0_mid = Store.put('bang', [GRADE_0, mid_OP]);
+    const bang0_mid = Store.put('bang', [grade0(), mid_OP]);
     const producer = makeRule('prod', src, bang0_mid);
 
     // Consumer: !_0 mid OP * !lookup OP V -o { done V }
     const V = Store.put('metavar', ['V']);
     const mid_OP2 = Store.put('mid', [Store.put('metavar', ['OP2'])]);
-    const bang0_mid2 = Store.put('bang', [GRADE_0, mid_OP2]);
+    const bang0_mid2 = Store.put('bang', [grade0(), mid_OP2]);
     const lookup_OP2_V = Store.put('lookup', [Store.put('metavar', ['OP2']), V]);
-    const bang_lookup = Store.put('bang', [GRADE_W, lookup_OP2_V]);
+    const bang_lookup = Store.put('bang', [gradeW(), lookup_OP2_V]);
     const done_V = Store.put('done', [V]);
     const consumer = makeRule('cons', tensor(bang0_mid2, bang_lookup), done_V);
 
@@ -983,8 +983,8 @@ describe('compose L2.5: elimOrder', () => {
     const V = Store.put('metavar', ['V']);
     const is_push_OP_N = Store.put('is_push', [OP, N]);
     const arr_get_OP_N_V = Store.put('arr_get', [OP, N, V]);
-    const bang_is_push = Store.put('bang', [GRADE_W, is_push_OP_N]);
-    const bang_arr_get = Store.put('bang', [GRADE_W, arr_get_OP_N_V]);
+    const bang_is_push = Store.put('bang', [gradeW(), is_push_OP_N]);
+    const bang_arr_get = Store.put('bang', [gradeW(), arr_get_OP_N_V]);
     const out = Store.put('atom', ['out']);
     const rule = makeRule('r', tensor(bang_is_push, bang_arr_get), out);
 
@@ -1010,8 +1010,8 @@ describe('compose L2.5: elimOrder', () => {
     // Rule 1: !alpha X * !beta X Y — alpha(1mv) < beta(2mv) → alpha before beta
     const rule1 = makeRule('r1',
       tensor(
-        Store.put('bang', [GRADE_W, Store.put('alpha', [X])]),
-        Store.put('bang', [GRADE_W, Store.put('beta', [X, Y])])
+        Store.put('bang', [gradeW(), Store.put('alpha', [X])]),
+        Store.put('bang', [gradeW(), Store.put('beta', [X, Y])])
       ),
       Store.put('atom', ['out1'])
     );
@@ -1019,8 +1019,8 @@ describe('compose L2.5: elimOrder', () => {
     // Rule 2: !beta Z * !alpha Z Y — beta(1mv) < alpha(2mv) → beta before alpha
     const rule2 = makeRule('r2',
       tensor(
-        Store.put('bang', [GRADE_W, Store.put('beta', [Z])]),
-        Store.put('bang', [GRADE_W, Store.put('alpha', [Z, Y])])
+        Store.put('bang', [gradeW(), Store.put('beta', [Z])]),
+        Store.put('bang', [gradeW(), Store.put('alpha', [Z, Y])])
       ),
       Store.put('atom', ['out2'])
     );
@@ -1049,8 +1049,8 @@ describe('compose L3: multi-stage persistent specialization', () => {
     const V = Store.put('metavar', ['V']);
     const is_push_OP_N = Store.put('is_push', [OP, N]);
     const lookup_OP_V = Store.put('lookup', [OP, V]);
-    const bang_is_push = Store.put('bang', [GRADE_W, is_push_OP_N]);
-    const bang_lookup = Store.put('bang', [GRADE_W, lookup_OP_V]);
+    const bang_is_push = Store.put('bang', [gradeW(), is_push_OP_N]);
+    const bang_lookup = Store.put('bang', [gradeW(), lookup_OP_V]);
     const foo = Store.put('atom', ['foo']);
     const bar_N_V = Store.put('bar', [N, V]);
     const rule = makeRule('r', tensor(bang_is_push, bang_lookup, foo), bar_N_V);
@@ -1102,7 +1102,7 @@ describe('compose L3: multi-stage persistent specialization', () => {
     // Create a situation with explosive expansion
     const OP = Store.put('metavar', ['OP']);
     const is_push_OP = Store.put('is_push', [OP]);
-    const bang_is_push = Store.put('bang', [GRADE_W, is_push_OP]);
+    const bang_is_push = Store.put('bang', [gradeW(), is_push_OP]);
     const out = Store.put('atom', ['out']);
     const rule = makeRule('r', bang_is_push, out);
 

@@ -9,7 +9,7 @@ import { buildRuleSpecs } from '../lib/prover/rule-interpreter.js';
 import Seq from '../lib/kernel/sequent.js';
 import calculus from '../lib/calculus/index.js';
 import Context from '../lib/prover/context.js';
-import { GRADE_W } from '../lib/engine/grades.js';
+import { gradeW } from '../lib/engine/grades.js';
 describe('L2 Generic Prover', () => {
   let calc, AST, generic, specs, alternatives;
 
@@ -179,14 +179,14 @@ describe('L2 Generic Prover', () => {
     it('bang_r returns null with non-empty linear (requiresEmptyDelta)', () => {
       const A = AST.freevar('A');
       const B = AST.freevar('B');
-      const s = seq([B], AST.bang(GRADE_W,A));
+      const s = seq([B], AST.bang(gradeW(),A));
       const result = generic.applyRule(s, 'R', -1, specs['bang_r']);
       assert.strictEqual(result, null);
     });
 
     it('bang_r succeeds with empty linear', () => {
       const A = AST.freevar('A');
-      const s = seq([], AST.bang(GRADE_W,A));
+      const s = seq([], AST.bang(gradeW(),A));
       const result = generic.applyRule(s, 'R', -1, specs['bang_r']);
       assert.ok(result?.success);
       assert.strictEqual(result.premises.length, 1);

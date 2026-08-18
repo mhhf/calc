@@ -9,7 +9,7 @@ import { createProver } from '../lib/prover/focused.js';
 import { buildRuleSpecs } from '../lib/prover/rule-interpreter.js';
 import Seq from '../lib/kernel/sequent.js';
 import calculus from '../lib/calculus/index.js';
-import { GRADE_W } from '../lib/engine/grades.js';
+import { gradeW } from '../lib/engine/grades.js';
 describe('v2 FocusedProver', () => {
   let calc, AST, prover, ruleSpecs, alternatives;
 
@@ -331,7 +331,7 @@ describe('v2 FocusedProver', () => {
   describe('proof search - bang (exponential)', () => {
     it('should prove !A ⊢ A (dereliction)', () => {
       const A = AST.freevar('A');
-      const s = seq([AST.bang(GRADE_W,A)], A);
+      const s = seq([AST.bang(gradeW(),A)], A);
       const result = prover.prove(s, { rules: ruleSpecs, alternatives });
       assert.strictEqual(result.success, true);
     });
@@ -340,7 +340,7 @@ describe('v2 FocusedProver', () => {
       // !A ⊢ !A works via identity on matching formulas
       // Identity is tried BEFORE inversion, so !A = !A matches directly
       const A = AST.freevar('A');
-      const bangA = AST.bang(GRADE_W,A);
+      const bangA = AST.bang(gradeW(),A);
       const s = seq([bangA], bangA);
       const result = prover.prove(s, { rules: ruleSpecs, alternatives });
       assert.strictEqual(result.success, true);
@@ -351,7 +351,7 @@ describe('v2 FocusedProver', () => {
       // This is NOT provable in standard ILL
       // A ⊸ !A means "given A, produce unlimited A" - not valid
       const A = AST.freevar('A');
-      const s = seq([], AST.loli(A, AST.bang(GRADE_W,A)));
+      const s = seq([], AST.loli(A, AST.bang(gradeW(),A)));
       const result = prover.prove(s, { rules: ruleSpecs, alternatives });
       // This should fail: after loli_r, we have A ⊢ !A
       // But promotion requires empty linear context
@@ -360,7 +360,7 @@ describe('v2 FocusedProver', () => {
 
     it('should prove !A, !A ⊢ A ⊗ A (can use bang multiple times)', () => {
       const A = AST.freevar('A');
-      const s = seq([AST.bang(GRADE_W,A), AST.bang(GRADE_W,A)], AST.tensor(A, A));
+      const s = seq([AST.bang(gradeW(),A), AST.bang(gradeW(),A)], AST.tensor(A, A));
       const result = prover.prove(s, { rules: ruleSpecs, alternatives });
       assert.strictEqual(result.success, true);
     });
@@ -368,7 +368,7 @@ describe('v2 FocusedProver', () => {
     it('should fail !A ⊢ A ⊗ A (single bang cannot duplicate)', () => {
       // With just dereliction, !A becomes A, and we can't duplicate
       const A = AST.freevar('A');
-      const s = seq([AST.bang(GRADE_W,A)], AST.tensor(A, A));
+      const s = seq([AST.bang(gradeW(),A)], AST.tensor(A, A));
       const result = prover.prove(s, { rules: ruleSpecs, alternatives });
       // Without copy rule from cartesian, this should fail
       assert.strictEqual(result.success, false);
@@ -399,7 +399,7 @@ describe('v2 FocusedProver', () => {
     it('should prove ·; A ⊢ !A (promotion with cartesian)', () => {
       // Empty linear + A in cartesian = can promote!
       const A = AST.freevar('A');
-      const s = seqWithCart([], [A], AST.bang(GRADE_W,A));
+      const s = seqWithCart([], [A], AST.bang(gradeW(),A));
       const result = prover.prove(s, { rules: ruleSpecs, alternatives });
       assert.strictEqual(result.success, true);
       assert.strictEqual(result.proofTree.rule, 'bang_r');

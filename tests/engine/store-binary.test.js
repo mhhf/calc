@@ -7,7 +7,8 @@ import path from 'path';
 import fs from 'fs';
 import os from 'os';
 import Store from '../../lib/kernel/store.js';
-import { serialize, deserialize, crc32 } from '../../lib/engine/store-binary.js';
+import { serialize, deserialize, crc32, compact } from '../../lib/engine/store-binary.js';
+import { grade0, gradeW } from '../../lib/engine/grades.js';
 import mde from '../../lib/engine/index.js';
 // Hoisted by tools/esm-hoist.js:
 import treeUtils from '../../lib/engine/tree-utils.js';
@@ -208,6 +209,41 @@ describe('Store Binary Format', () => {
       Store.clear();
       Store.restore(restored);
       assert.deepStrictEqual(Store.children(b), [big]);
+    });
+  });
+
+  describe('grade labels survive compact + restore that prunes them (TODO_0267)', () => {
+    // The binary-cache save path runs compact() (GC) before serialize. The SELL
+    // grade atoms (atom g0/gw) are unreferenced by any surviving rule, so compact
+    // prunes them and restore reindexes the Store. Because grade0()/gradeW()
+    // recompute on demand via idempotent content-addressing (rather than holding
+    // a captured Store ID that would go stale and alias a foreign node), they
+    // resolve correctly regardless of the reindex — so `!A` never desugars to
+    // bang(<garbage>, A). This is the root-cause guard.
+    it('gradeW()/grade0() resolve correctly after compact prunes them', () => {
+      // Content the metadata roots reference — grades are NOT among them.
+      const foo = Store.put('atom', ['foo']);
+      const bar = Store.put('metavar', ['C']);
+      const t = Store.put('tensor', [foo, bar]);
+      Store.put('atom', ['orphan']); // forces real compaction
+
+      const snap = Store.snapshot({ root: t });
+      const compacted = compact(snap);
+      assert.ok(compacted.nodeCount < snap.nodeCount, 'compaction must actually run');
+
+      Store.clear();
+      Store.restore(compacted);
+
+      // Recomputed on demand → always the current correct node, whatever the
+      // reindex did to IDs.
+      assert.strictEqual(Store.tag(gradeW()), 'atom');
+      assert.deepStrictEqual(Store.children(gradeW()), ['gw']);
+      assert.deepStrictEqual(Store.children(grade0()), ['g0']);
+      assert.strictEqual(gradeW(), gradeW(), 'idempotent after restore');
+
+      // The real symptom: !A desugars to bang(gradeW(), A); grade child is gw.
+      const bang = Store.put('bang', [gradeW(), Store.put('atom', ['foo'])]);
+      assert.deepStrictEqual(Store.children(Store.child(bang, 0)), ['gw']);
     });
   });
 

@@ -7,7 +7,7 @@
 import { describe, it, beforeEach } from 'node:test';
 import assert from 'node:assert/strict';
 import Store from '../../lib/kernel/store.js';
-import { GRADE_W } from '../../lib/engine/grades.js';
+import { gradeW } from '../../lib/engine/grades.js';
 import { ILL_CONNECTIVES } from '../../lib/engine/ill/connectives.js';
 import { resolveConn, compileRule, flattenAnte } from '../../lib/engine/compile.js';
 import { predHead } from '../../lib/kernel/ast.js';
@@ -37,7 +37,7 @@ function tensor(...hashes) {
 }
 
 function bang(h) {
-  return Store.put('bang', [GRADE_W, h]);
+  return Store.put('bang', [gradeW(), h]);
 }
 
 function mv(name) {

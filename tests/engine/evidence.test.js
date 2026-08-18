@@ -14,7 +14,7 @@ import { matchLoli } from '../../lib/engine/lnl/loli.js';
 import { proveWithFFI } from '../../lib/engine/opt/ffi.js';
 import illFfi from '../../lib/engine/ill/ffi/index.js';
 import { drainLolis } from '../../lib/engine/lnl/loli-drain.js';
-import { GRADE_W } from '../../lib/engine/grades.js';
+import { gradeW } from '../../lib/engine/grades.js';
 import { ILL_CONNECTIVES } from '../../lib/engine/ill/connectives.js';
 import { resolveConn } from '../../lib/engine/compile.js';
 const ILL_RC = resolveConn(ILL_CONNECTIVES);
@@ -137,7 +137,7 @@ describe('Evidence collection (TODO_0068 §10.5)', () => {
 
     it('collects persistent evidence for bang-trigger lolis', () => {
       const guard = Store.put('atom', ['check']);
-      const bangGuard = Store.put('bang', [GRADE_W,guard]);
+      const bangGuard = Store.put('bang', [gradeW(),guard]);
       const result = Store.put('atom', ['guarded']);
       const body = Store.put('monad', [result]);
       const loli = Store.put('loli', [bangGuard, body]);
@@ -158,7 +158,7 @@ describe('Evidence collection (TODO_0068 §10.5)', () => {
     it('collects persistent evidence for mixed trigger', () => {
       const linTrigger = Store.put('atom', ['resource']);
       const guard = Store.put('atom', ['condition']);
-      const bangGuard = Store.put('bang', [GRADE_W,guard]);
+      const bangGuard = Store.put('bang', [gradeW(),guard]);
       const trigger = Store.put('tensor', [linTrigger, bangGuard]);
       const result = Store.put('atom', ['mixed_result']);
       const body = Store.put('monad', [result]);
@@ -219,7 +219,7 @@ describe('Evidence collection (TODO_0068 §10.5)', () => {
     it('collects drain evidence for persistent-trigger lolis', () => {
       // Create: !guard -o { result }
       const guard = Store.put('atom', ['check']);
-      const bangGuard = Store.put('bang', [GRADE_W,guard]);
+      const bangGuard = Store.put('bang', [gradeW(),guard]);
       const result = Store.put('atom', ['drained']);
       const body = Store.put('monad', [result]);
       const loli = Store.put('loli', [bangGuard, body]);
@@ -243,7 +243,7 @@ describe('Evidence collection (TODO_0068 §10.5)', () => {
 
     it('does not collect evidence when evidenceOut is null', () => {
       const guard = Store.put('atom', ['check']);
-      const bangGuard = Store.put('bang', [GRADE_W,guard]);
+      const bangGuard = Store.put('bang', [gradeW(),guard]);
       const result = Store.put('atom', ['drained']);
       const body = Store.put('monad', [result]);
       const loli = Store.put('loli', [bangGuard, body]);
@@ -265,8 +265,8 @@ describe('Evidence collection (TODO_0068 §10.5)', () => {
       // Two lolis with different persistent guards
       const guard1 = Store.put('atom', ['check1']);
       const guard2 = Store.put('atom', ['check2']);
-      const bang1 = Store.put('bang', [GRADE_W,guard1]);
-      const bang2 = Store.put('bang', [GRADE_W,guard2]);
+      const bang1 = Store.put('bang', [gradeW(),guard1]);
+      const bang2 = Store.put('bang', [gradeW(),guard2]);
       const result1 = Store.put('atom', ['r1']);
       const result2 = Store.put('atom', ['r2']);
       const body1 = Store.put('monad', [result1]);

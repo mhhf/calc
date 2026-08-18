@@ -21,7 +21,7 @@ import { createChecker, expand } from '../lib/prover/check-term.js';
 import { createKernel } from '../lib/prover/kernel.js';
 import Seq from '../lib/kernel/sequent.js';
 import Store from '../lib/kernel/store.js';
-import { GRADE_W } from '../lib/engine/grades.js';
+import { gradeW } from '../lib/engine/grades.js';
 // Hoisted by tools/esm-hoist.js:
 import { ProofTree } from '../lib/prover/pt.js';
 import { fromGoal } from '../lib/prover/pt.js';
@@ -238,7 +238,7 @@ describe('Backward Term Extraction', () => {
 
   it('!A ⊢ A → bang_l(_, id)', () => {
     const A = AST.freevar('A');
-    const term = proveAndExtract(seq([AST.bang(GRADE_W,A)], A));
+    const term = proveAndExtract(seq([AST.bang(gradeW(),A)], A));
     // Prover uses spec key bang_l (= absorption, the primary !L rule)
     assert.ok(term.rule === 'bang_l' || term.rule === 'dereliction' || term.rule === 'absorption',
       `expected bang_l/dereliction/absorption, got ${term.rule}`);
@@ -436,7 +436,7 @@ describe('Forward Term Builders', () => {
 
     it('bang: promotion(id(a)) from persistent', () => {
       const p = AST.atom('p');
-      const bangP = AST.bang(GRADE_W,p);
+      const bangP = AST.bang(gradeW(),p);
       const result = rightFocusTerm({}, { [p]: 1 }, bangP, roles);
       assert.ok(result, 'should succeed');
       assert.strictEqual(result.term.rule, 'promotion');
@@ -447,7 +447,7 @@ describe('Forward Term Builders', () => {
     it('nested: tensor(atom, bang(atom))', () => {
       const p = AST.atom('p');
       const q = AST.atom('q');
-      const goal = AST.tensor(p, AST.bang(GRADE_W,q));
+      const goal = AST.tensor(p, AST.bang(gradeW(),q));
       const result = rightFocusTerm({ [p]: 1 }, { [q]: 1 }, goal, roles);
       assert.ok(result, 'should succeed');
       assert.strictEqual(result.term.rule, 'tensor_r');
@@ -638,7 +638,7 @@ describe('Type Checker', () => {
 
     it('expands bang (arity 2: grade + formula)', () => {
       const p = AST.atom('p');
-      const e = expand(AST.bang(GRADE_W,p));
+      const e = expand(AST.bang(gradeW(),p));
       assert.strictEqual(e.tag, 'bang');
       assert.strictEqual(e.children.length, 2);
       assert.strictEqual(e.children[1].hash, p);
@@ -654,7 +654,7 @@ describe('Type Checker', () => {
 
     it('expands nested structure recursively', () => {
       const p = AST.atom('p'), q = AST.atom('q');
-      const e = expand(AST.bang(GRADE_W,AST.tensor(p, q)));
+      const e = expand(AST.bang(gradeW(),AST.tensor(p, q)));
       assert.strictEqual(e.tag, 'bang');
       assert.strictEqual(e.children[1].tag, 'tensor');
       assert.strictEqual(e.children[1].children[0].hash, p);

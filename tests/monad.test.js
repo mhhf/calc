@@ -17,7 +17,7 @@ import { initRuleSpecs } from '../lib/prover/rule-interpreter.js';
 import { sequentToState, stateToContext, rightFocus, modeSwitch } from '../lib/prover/bridge.js';
 import { compileRule } from '../lib/engine/compile.js';
 import { ILL_CONNECTIVES } from '../lib/engine/ill/connectives.js';
-import { GRADE_W } from '../lib/engine/grades.js';
+import { gradeW } from '../lib/engine/grades.js';
 let ill, AST, parse, render;
 
 before(async () => {
@@ -549,7 +549,7 @@ describe('rightFocus succedent decomposition', () => {
 
   it('bang: atom in persistent state matches', () => {
     const a = AST.atom('a');
-    const bangA = AST.bang(GRADE_W,a);
+    const bangA = AST.bang(gradeW(),a);
     const remaining = rightFocus({}, { [a]: 1 }, bangA, roles);
     assert.ok(remaining !== null, 'should succeed');
   });
@@ -557,7 +557,7 @@ describe('rightFocus succedent decomposition', () => {
   it('bang: missing from persistent fails', () => {
     const a = AST.atom('a');
     const b = AST.atom('b');
-    const bangA = AST.bang(GRADE_W,a);
+    const bangA = AST.bang(gradeW(),a);
     const remaining = rightFocus({}, { [b]: 1 }, bangA, roles);
     assert.strictEqual(remaining, null, 'should fail — a not in persistent');
   });
@@ -565,7 +565,7 @@ describe('rightFocus succedent decomposition', () => {
   it('bang: does not consume linear resources', () => {
     const a = AST.atom('a');
     const b = AST.atom('b');
-    const bangA = AST.bang(GRADE_W,a);
+    const bangA = AST.bang(gradeW(),a);
     const remaining = rightFocus({ [b]: 1 }, { [a]: 1 }, bangA, roles);
     assert.ok(remaining !== null);
     assert.strictEqual(remaining[b], 1, 'linear b should remain untouched');
@@ -575,7 +575,7 @@ describe('rightFocus succedent decomposition', () => {
     const a = AST.atom('a');
     const b = AST.atom('b');
     // a * !b
-    const succ = AST.tensor(a, AST.bang(GRADE_W,b));
+    const succ = AST.tensor(a, AST.bang(gradeW(),b));
     const remaining = rightFocus({ [a]: 1 }, { [b]: 1 }, succ, roles);
     assert.ok(remaining !== null, 'should succeed');
     assert.strictEqual(Object.keys(remaining).length, 0);
