@@ -1,0 +1,22 @@
+% productivity.ill — till executable spec: positive delay = guardedness (D16, E2).
+%
+% STATUS: written ahead of the engine (TDD) — see schedule.ill header.
+% Ground truth: tests/engine/till-oracle.test.js ("in-flight atomicity and productivity").
+%
+% A self-loop with delay 1 is PRODUCTIVE: each firing advances logical time
+% (events at 0,1,2,3 under settle 3; the token ends at stamp 4). The same rule
+% with @0 is a Zeno cycle — settle diverges at the instant and must be caught
+% by the maxSteps guard (negative test lives in the JS oracle suite; .ill tests
+% stay positive).
+
+ping: a -o { a }@1.
+
+#expect_productive (settle: 3)
+  a
+  =>
+  a@4 .
+
+#expect_not_stuck_at_zero (settle: 3)
+  a
+  =>
+  a@0 .

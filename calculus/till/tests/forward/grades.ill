@@ -1,0 +1,26 @@
+% grades.ill — till executable spec: count grades as graded parcels (D4).
+%
+% STATUS: written ahead of the engine (TDD) — see schedule.ill header.
+% Ground truth: tests/engine/till-oracle.test.js ("count grades").
+%
+% !_k A  = split k off ONE matched cohort (multiplicity decrement).
+% !_W A  = take the WHOLE matched cohort; W binds its count AT FIRING TIME.
+% Arithmetic on bound counts uses the ordinary overloaded predicates (D8.1).
+
+pair: !_2 wood -o { bundle }.
+
+% 5 wood -> two bundles + residual cohort of 1 (5 -> 3 -> 1, then quiescent)
+#expect_split_residual (settle: 0)
+  !_5 wood
+  =>
+  !_1 wood * !_2 bundle .
+
+% whole-cohort bind: sawmill converts W wood into floor(3W/2) planks (@10).
+% Cohorts at distinct stamps are distinct parcels: W=3 (at 0) then W=5 (at 10,
+% after the sawmill returns) — floor(4.5)+floor(7.5) = 4+7 planks.
+sawmill: $sawmill * !_W wood * !mul W 3 T * !div T 2 Y -o { !_Y plank }@10.
+
+#expect_whole_cohort (settle: 20)
+  sawmill * !_3 wood * !_5 wood@1
+  =>
+  !_4 plank@10 * !_7 plank@20 * sawmill@20 .

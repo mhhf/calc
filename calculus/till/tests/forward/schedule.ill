@@ -1,0 +1,36 @@
+% schedule.ill — till executable spec: basic timed scheduling (todo 0265, Phase 5).
+%
+% STATUS: written ahead of the engine (TDD). Runs under tools/test-till.js once
+% Phase 4 lands. Uses the planned per-directive setting `settle: T` (run
+% settle(state, T) instead of exec) — spec'd in todo 0265 Phase 5. Semantics
+% ground truth: tools/till-oracle.mjs (tests/engine/till-oracle.test.js).
+%
+% Scenario (hand-computed): one sawmill, two wood. Each job takes 1/2.
+%   job1: a=0,   sawmill+wood consumed at 0,   sawmill & plank re-emitted @ 1/2
+%   job2: a=1/2, consumed at 1/2,              sawmill & plank re-emitted @ 1
+
+sawmill_rule: $sawmill * wood -o { plank }@(1/2).
+
+% full horizon: both jobs fired; final timed multiset is exact
+#expect_two_jobs (settle: 1)
+  sawmill * wood * wood
+  =>
+  plank@(1/2) * plank@1 * sawmill@1 .
+
+% same final state from a mid-run horizon that covers job2's activation (a=1/2 <= 0.7)
+#expect_composable (settle: 0.7)
+  sawmill * wood * wood
+  =>
+  plank@(1/2) * plank@1 * sawmill@1 .
+
+% early horizon: only job1 fired; wood@0 still present, outputs stamped in the future
+#expect_one_job (settle: 0.4)
+  sawmill * wood * wood
+  =>
+  wood * plank@(1/2) * sawmill@(1/2) .
+
+% unstamped initial atoms default to stamp 0 (D11): wood matches wood@0
+#expect_not_early_plank (settle: 0.4)
+  sawmill * wood * wood
+  =>
+  plank@1 .
