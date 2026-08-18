@@ -13,7 +13,7 @@ import path from 'path';
 import Store from '../../lib/kernel/store.js';
 import calculus from '../../lib/calculus/index.js';
 import { buildParser } from '../../lib/calculus/builders.js';
-import { desugarTimed } from '../../lib/engine/convert.js';
+import { desugarTimed, desugarPreserved } from '../../lib/engine/convert.js';
 import { putRat } from '../../lib/kernel/rat-term.js';
 import { gradeW } from '../../lib/engine/grades.js';
 
@@ -85,6 +85,28 @@ describe('desugarTimed', () => {
     assert.throws(() => desugarTimed(parse('a -o { b@5 }'), CT), /scheduler/);
   });
 
+  it('timed $A@Q: antecedent keeps the stamped pattern, consequent copy is UNSTAMPED (E3)', () => {
+    // Parse with forwardRules for the $ sugar; desugarPreserved(stripStamps=true)
+    // is what a timed loader (loaderConfig.timed) applies.
+    const gt2 = calculus.load(FIXTURE);
+    const parseF = buildParser(gt2.constructors, {
+      gradeUnit: () => putRat(0n, 1n), timedAnnotations: true, forwardRules: true,
+    });
+    const h = parseF('$m@Q * w -o { p }');
+    const out = desugarTimed(desugarPreserved(h, CT.computation, CT, true), CT);
+    const mv = Store.put('freevar', ['Q']);
+    assert.equal(Store.child(out, 0),
+      Store.put('tensor', [Store.put('at', [atom('m'), mv]), atom('w')]),
+      'antecedent pattern stays stamped (binds Q)');
+    assert.equal(Store.child(Store.child(out, 1), 1),
+      Store.put('tensor', [atom('m'), atom('p')]),
+      'consequent copy is unstamped — the scheduler stamps at a(m)+d');
+    // Without stripStamps (an untimed loader) the stamped injection is
+    // caught by validation instead of silently freezing the stamp.
+    assert.throws(() => desugarTimed(desugarPreserved(h, CT.computation, CT), CT),
+      /scheduler/);
+  });
+
   it('rejects stamped persistents (D15 backstop) and read of persistents', () => {
     const at = Store.put('at', [atom('a'), putRat(1n, 1n)]);
     const bad = Store.put('loli', [
@@ -92,5 +114,21 @@ describe('desugarTimed', () => {
       Store.put('gmonad', [putRat(0n, 1n), atom('b')])]);
     assert.throws(() => desugarTimed(bad, CT), /D15/);
     assert.throws(() => desugarTimed(parse('read !p -o { b }'), CT), /meaningless/);
+  });
+
+  it('D15 is transitive: stamps nested anywhere under ! are rejected (audit r12)', () => {
+    assert.throws(() => desugarTimed(parse('! (a@3 * b) -o { c }'), CT), /D15/);
+    assert.throws(() => desugarTimed(parse('! (b * (a@3 * d)) -o { c }'), CT), /D15/);
+  });
+
+  it('read $P is contradictory; read of a stamped pattern is deliberately legal (E7.2)', () => {
+    const parseF = buildParser(calculus.load(FIXTURE).constructors, {
+      gradeUnit: () => putRat(0n, 1n), timedAnnotations: true, forwardRules: true,
+    });
+    assert.throws(() => desugarTimed(parseF('read $a -o { b }'), CT), /contradictory/);
+    // read A@Q: matches the stamped cohort without consuming; its stamp
+    // joins the activation max — intended.
+    const ok = parse('read a@3 * b -o { c }');
+    assert.equal(desugarTimed(ok, CT), ok);
   });
 });

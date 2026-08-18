@@ -216,6 +216,32 @@ describe('index equivalence: policies never change WHICH matches exist', () => {
     assert.deepEqual(names(states[0], full), ['sell'], 'cross-tag match is found at all');
   });
 
+  // At-patterns report the INNER predicate (audit r12, F1): triggers,
+  // linearMeta and the policy's groupKey all agree, so plain (untimed)
+  // matching of stamped facts already works end-to-end under TILL_POLICY.
+  it('at-pattern rules match at-wrapped facts under the till policy (inner-pred triggers)', () => {
+    const w = atom('wood');
+    const pat = Store.put('at', [w, Store.put('metavar', ['Q'])]);
+    const rule = mkRule('use', t2(pat, atom('saw')), monad(atom('plank')));
+    assert.deepEqual(rule.triggerPreds.sort(), ['saw', 'wood'], 'inner pred, not at');
+    assert.equal(rule.linearMeta[pat].pred, 'wood');
+
+    const fact = at(w, 3n, 1n);
+    const state = fromObject({ [fact]: 1, [atom('saw')]: 1 }, {}, TILL_POLICY);
+    const result = forward.run(state, [rule]);
+    assert.equal(result.steps, 1, 'stamped fact found via inner-pred group');
+    assert.equal(result.state.linear[fact], undefined, 'stamped cohort consumed');
+    assert.equal(result.state.linear[atom('plank')], 1);
+  });
+
+  it('window rules are LOUDLY rejected by the untimed engine (audit r12, F2)', () => {
+    const ante = t2(atom('a'), Store.put('after', [putRat(2n, 1n)]));
+    const rule = mkRule('guarded', ante, monad(atom('b')));
+    const state = fromObject({ [atom('a')]: 1 }, {});
+    assert.throws(() => forward.run(state, [rule]), /timed matcher/);
+    assert.throws(() => explore(state, [rule], { maxDepth: 3 }), /timed matcher/);
+  });
+
   it('explore produces the same leaf-state set under every policy', () => {
     const rules = [
       mkRule('e1', t2(atom('a'), atom('b')), monad(atom('c'))),

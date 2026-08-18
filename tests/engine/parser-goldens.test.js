@@ -46,6 +46,14 @@ test('calculus parser goldens (ILL formula parser)', () => {
   }
 });
 
+test('ILL parserTables structural golden (circumfix + gradedPrefix)', async () => {
+  const { parserTables } = await import('../../lib/calculus/builders.js');
+  const tables = parserTables(calculus.loadILL().constructors);
+  assert.deepStrictEqual(tables.circumfix,
+    [{ open: '{', close: '}', name: 'monad', arity: 1 }]);
+  assert.deepStrictEqual(tables.gradedPrefix, { op: '!', name: 'bang' });
+});
+
 test('expr parser goldens (.ill expression parser)', () => {
   const p = convert.parseExpr;
   const cases = [
