@@ -10,7 +10,7 @@ import { buildRuleSpecs } from '../lib/prover/rule-interpreter.js';
 import Seq from '../lib/kernel/sequent.js';
 import calculus from '../lib/calculus/index.js';
 import { ProofTree, leaf } from '../lib/prover/pt.js';
-import { GRADE_W } from '../lib/engine/grades.js';
+import { gradeW } from '../lib/engine/grades.js';
 describe('L1 Kernel - Proof Verification', () => {
   let calc, AST, kernel, prover, ruleSpecs, alternatives;
 
@@ -158,7 +158,7 @@ describe('L1 Kernel - Proof Verification', () => {
 
     it('should verify !A |- A (dereliction)', () => {
       const A = AST.freevar('A');
-      const v = proveAndVerify(seq([AST.bang(GRADE_W,A)], A));
+      const v = proveAndVerify(seq([AST.bang(gradeW(),A)], A));
       assert.strictEqual(v.valid, true);
     });
 

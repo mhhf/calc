@@ -36,7 +36,7 @@ describe('MDE Convert', { timeout: 10000 }, () => {
       const h = await mde.parseExpr('!A');
       assert.strictEqual(Store.tag(h), 'bang');
       const [grade, inner] = Store.children(h);
-      assert.strictEqual(Store.tag(grade), 'atom'); // GRADE_W = atom('gw')
+      assert.strictEqual(Store.tag(grade), 'atom'); // gradeW() = atom('gw')
       assert.strictEqual(Store.tag(inner), 'metavar');
     });
 
@@ -44,7 +44,7 @@ describe('MDE Convert', { timeout: 10000 }, () => {
       const h = await mde.parseExpr('!!A');
       assert.strictEqual(Store.tag(h), 'bang');
       const [grade, inner] = Store.children(h);
-      assert.strictEqual(Store.tag(grade), 'atom'); // GRADE_W
+      assert.strictEqual(Store.tag(grade), 'atom'); // gradeW()
       assert.strictEqual(Store.tag(inner), 'bang');
     });
 

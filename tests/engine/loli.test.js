@@ -15,7 +15,7 @@ import { makeMatchOpts } from './_match-opts.js';
 // Hoisted by tools/esm-hoist.js:
 import mde from '../../lib/engine/index.js';
 import ccfg from '../../lib/engine/ill/calculus-config.js';
-import { GRADE_W } from '../../lib/engine/grades.js';
+import { gradeW } from '../../lib/engine/grades.js';
 import { proveNaive } from '../../lib/engine/lnl/persistent.js';
 
 describe('lnl/loli — matchLoli', () => {
@@ -131,7 +131,7 @@ describe('lnl/loli — matchLoli', () => {
   it('returns null when persistent guard cannot be proved', () => {
 
     const guard = Store.put('foo_guard', [Store.put('atom', ['k'])]);
-    const bangGuard = Store.put('bang', [GRADE_W, guard]);
+    const bangGuard = Store.put('bang', [gradeW(), guard]);
     const val = Store.put('atom', ['v']);
     const gasF = Store.put('gas', [val]);
     const trigger = Store.put('tensor', [bangGuard, gasF]);
@@ -158,7 +158,7 @@ describe('lnl/loli — matchLoli', () => {
   it('matches loli with tensor(!guard, trigger) when guard in persistent state', () => {
 
     const guard = Store.put('foo_guard2', [Store.put('atom', ['k2'])]);
-    const bangGuard = Store.put('bang', [GRADE_W, guard]);
+    const bangGuard = Store.put('bang', [gradeW(), guard]);
     const val = Store.put('atom', ['v2']);
     const gasF = Store.put('gas', [val]);
     const trigger = Store.put('tensor', [bangGuard, gasF]);
@@ -192,7 +192,7 @@ describe('lnl/loli — matchLoli', () => {
   it('calls provePersistent with inner formula of !guard', () => {
 
     const guard = Store.put('foo_guard3', [Store.put('atom', ['x3'])]);
-    const bangGuard = Store.put('bang', [GRADE_W, guard]);
+    const bangGuard = Store.put('bang', [gradeW(), guard]);
     const val = Store.put('atom', ['w3']);
     const gasF = Store.put('gas', [val]);
     const trigger = Store.put('tensor', [bangGuard, gasF]);

@@ -12,7 +12,7 @@ import Seq from '../lib/kernel/sequent.js';
 import { ProofTree, fromGoal, leaf } from '../lib/prover/pt.js';
 import { FORMAT_VERSION, serializeTree, serializeFormula, serializeSequent, computeNodeId, _newContext } from '../lib/prover/serialize-tree.js';
 import calculus from '../lib/calculus/index.js';
-import { GRADE_W } from '../lib/engine/grades.js';
+import { gradeW } from '../lib/engine/grades.js';
 describe('serialize-tree / proof-tree/v1', () => {
   let AST;
 
@@ -97,9 +97,9 @@ describe('serialize-tree / proof-tree/v1', () => {
       assert.strictEqual(ctx.formulas[key].args.length, 2);
     });
 
-    it('bang(GRADE_W, A) → two-arg generic form (grade is an atom ref)', () => {
+    it('bang(gradeW(), A) → two-arg generic form (grade is an atom ref)', () => {
       const ctx = _newContext({});
-      const h = Store.put('bang', [GRADE_W, AST.freevar('A')]);
+      const h = Store.put('bang', [gradeW(), AST.freevar('A')]);
       const key = serializeFormula(h, ctx);
       const top = ctx.formulas[key];
       assert.strictEqual(top.tag, 'bang');

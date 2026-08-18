@@ -338,34 +338,34 @@ describe('SELL: QuerySettings Threading (T10)', () => {
 // SELL Graded Modality — TODO 155
 // =============================================================================
 
-import { GRADE_0, GRADE_W } from '../../lib/engine/grades.js';
+import { grade0, gradeW } from '../../lib/engine/grades.js';
 import { ILL_CONNECTIVES } from '../../lib/engine/ill/connectives.js';
 import { resolveConn, flattenAnte, compileRule } from '../../lib/engine/compile.js';
 import { getModes } from '../../lib/engine/ill/ffi/index.js';
 describe('SELL: Graded modality parsing (TODO 155)', () => {
   beforeEach(() => Store.clear());
 
-  it('!A parses as bang(GRADE_W, A)', () => {
+  it('!A parses as bang(gradeW(), A)', () => {
     Store.clear();
     const h = _exprParser('!foo');
     assert.equal(Store.tag(h), 'bang');
     const [grade, inner] = Store.children(h);
-    assert.equal(grade, GRADE_W);
+    assert.equal(grade, gradeW());
     assert.equal(Store.tag(inner), 'atom');
     assert.deepEqual(Store.children(inner), ['foo']);
   });
 
-  it('!_0 A parses as bang(GRADE_0, A)', () => {
+  it('!_0 A parses as bang(grade0(), A)', () => {
     Store.clear();
     const h = _exprParser('!_0 foo');
     assert.equal(Store.tag(h), 'bang');
     const [grade, inner] = Store.children(h);
-    assert.equal(grade, GRADE_0);
+    assert.equal(grade, grade0());
     assert.equal(Store.tag(inner), 'atom');
     assert.deepEqual(Store.children(inner), ['foo']);
   });
 
-  it('!_ω A parses as bang(GRADE_W, A) — same hash as !A', () => {
+  it('!_ω A parses as bang(gradeW(), A) — same hash as !A', () => {
     Store.clear();
     const h1 = _exprParser('!foo');
     const h2 = _exprParser('!_ω foo');
@@ -379,15 +379,15 @@ describe('SELL: Graded modality parsing (TODO 155)', () => {
     assert.notEqual(h0, hw, '!_0 and !_ω should differ');
   });
 
-  it('nested: !_0 !A parses as bang(GRADE_0, bang(GRADE_W, A))', () => {
+  it('nested: !_0 !A parses as bang(grade0(), bang(gradeW(), A))', () => {
     Store.clear();
     const h = _exprParser('!_0 !foo');
     assert.equal(Store.tag(h), 'bang');
     const [outerGrade, innerBang] = Store.children(h);
-    assert.equal(outerGrade, GRADE_0);
+    assert.equal(outerGrade, grade0());
     assert.equal(Store.tag(innerBang), 'bang');
     const [innerGrade, atom] = Store.children(innerBang);
-    assert.equal(innerGrade, GRADE_W);
+    assert.equal(innerGrade, gradeW());
     assert.equal(Store.tag(atom), 'atom');
   });
 
@@ -396,7 +396,7 @@ describe('SELL: Graded modality parsing (TODO 155)', () => {
     const h = _exprParser('!_0 eq A B');
     assert.equal(Store.tag(h), 'bang');
     const [grade, inner] = Store.children(h);
-    assert.equal(grade, GRADE_0);
+    assert.equal(grade, grade0());
     assert.equal(Store.tag(inner), 'eq');
     assert.equal(Store.children(inner).length, 2);
   });
@@ -405,22 +405,22 @@ describe('SELL: Graded modality parsing (TODO 155)', () => {
 describe('SELL: flattenAnte grade classification (TODO 155)', () => {
   beforeEach(() => Store.clear());
 
-  it('bang(GRADE_W, A) → persistent', () => {
+  it('bang(gradeW(), A) → persistent', () => {
     Store.clear();
     const rc = resolveConn(ILL_CONNECTIVES);
     const A = Store.put('atom', ['a']);
-    const h = Store.put('bang', [GRADE_W, A]);
+    const h = Store.put('bang', [gradeW(), A]);
     const flat = flattenAnte(h, rc);
     assert.deepEqual(flat.linear, []);
     assert.deepEqual(flat.persistent, [A]);
     assert.deepEqual(flat.grade0, []);
   });
 
-  it('bang(GRADE_0, A) → grade0', () => {
+  it('bang(grade0(), A) → grade0', () => {
     Store.clear();
     const rc = resolveConn(ILL_CONNECTIVES);
     const A = Store.put('atom', ['a']);
-    const h = Store.put('bang', [GRADE_0, A]);
+    const h = Store.put('bang', [grade0(), A]);
     const flat = flattenAnte(h, rc);
     assert.deepEqual(flat.linear, []);
     assert.deepEqual(flat.persistent, []);
@@ -433,8 +433,8 @@ describe('SELL: flattenAnte grade classification (TODO 155)', () => {
     const A = Store.put('atom', ['a']);
     const B = Store.put('atom', ['b']);
     const C = Store.put('atom', ['c']);
-    const bangB = Store.put('bang', [GRADE_W, B]);
-    const bang0C = Store.put('bang', [GRADE_0, C]);
+    const bangB = Store.put('bang', [gradeW(), B]);
+    const bang0C = Store.put('bang', [grade0(), C]);
     const h = Store.put('tensor', [A, Store.put('tensor', [bangB, bang0C])]);
     const flat = flattenAnte(h, rc);
     assert.deepEqual(flat.linear, [A]);
@@ -460,7 +460,7 @@ describe('SELL: hasGrade0 flag on compiled rules (TODO 155)', () => {
     Store.clear();
     const A = Store.put('atom', ['a']);
     const B = Store.put('atom', ['b']);
-    const bang0A = Store.put('bang', [GRADE_0, A]);
+    const bang0A = Store.put('bang', [grade0(), A]);
     const ante = Store.put('tensor', [bang0A, B]);
     const conseq = Store.put('monad', [Store.put('atom', ['c'])]);
     const rule = { name: 'test_g0', antecedent: ante, consequent: conseq };
@@ -472,7 +472,7 @@ describe('SELL: hasGrade0 flag on compiled rules (TODO 155)', () => {
     Store.clear();
     const A = Store.put('atom', ['a']);
     const B = Store.put('atom', ['b']);
-    const bangWA = Store.put('bang', [GRADE_W, A]);
+    const bangWA = Store.put('bang', [gradeW(), A]);
     const ante = Store.put('tensor', [bangWA, B]);
     const conseq = Store.put('monad', [Store.put('atom', ['c'])]);
     const rule = { name: 'test_gw', antecedent: ante, consequent: conseq };
@@ -484,7 +484,7 @@ describe('SELL: hasGrade0 flag on compiled rules (TODO 155)', () => {
     Store.clear();
     const A = Store.put('atom', ['a']);
     const B = Store.put('atom', ['b']);
-    const bang0B = Store.put('bang', [GRADE_0, B]);
+    const bang0B = Store.put('bang', [grade0(), B]);
     const conseq = Store.put('monad', [bang0B]);
     const rule = { name: 'test_g0_conseq', antecedent: A, consequent: conseq };
     const compiled = compileRule(rule, { connectives: ILL_CONNECTIVES, getModes });
@@ -545,31 +545,37 @@ describe('SELL: Grade-0 filtering (TODO 155)', () => {
   });
 });
 
-describe('SELL: Grade constants survive Store.clear() (TODO 155)', () => {
-  it('GRADE_W is valid after Store.clear()', () => {
+describe('SELL: Grade labels resolve by content, not captured ID (TODO 155, 267)', () => {
+  // Grades are recomputed on demand via grade0()/gradeW() (idempotent
+  // content-addressing), NOT captured as fixed Store IDs. So the invariant is
+  // content-correctness — "gradeW() resolves to atom('gw')" — regardless of how
+  // the Store is reindexed by clear() or a cache restore. The numeric ID may
+  // change (nothing holds it), and that is precisely why there is no staleness.
+  it('gradeW() resolves to atom("gw") after Store.clear()', () => {
     Store.clear();
-    assert.equal(Store.tag(GRADE_W), 'atom');
-    assert.deepEqual(Store.children(GRADE_W), ['gw']);
+    assert.equal(Store.tag(gradeW()), 'atom');
+    assert.deepEqual(Store.children(gradeW()), ['gw']);
   });
 
-  it('GRADE_0 is valid after Store.clear()', () => {
+  it('grade0() resolves to atom("g0") after Store.clear()', () => {
     Store.clear();
-    assert.equal(Store.tag(GRADE_0), 'atom');
-    assert.deepEqual(Store.children(GRADE_0), ['g0']);
+    assert.equal(Store.tag(grade0()), 'atom');
+    assert.deepEqual(Store.children(grade0()), ['g0']);
   });
 
-  it('GRADE_W has stable ID across clears', () => {
-    const before = GRADE_W;
+  it('gradeW() is idempotent within a Store state', () => {
     Store.clear();
-    assert.equal(GRADE_W, before, 'GRADE_W hash should be stable across Store.clear()');
+    Store.put('atom', ['noise']); // arbitrary prior population
+    assert.equal(gradeW(), gradeW(), 'repeated calls dedup to the same node');
+    assert.equal(grade0(), grade0());
   });
 
-  it('bang(GRADE_W, X) works after Store.clear()', () => {
+  it('bang(gradeW(), X) has grade child atom("gw") after Store.clear()', () => {
     Store.clear();
     const X = Store.put('atom', ['x']);
-    const h = Store.put('bang', [GRADE_W, X]);
+    const h = Store.put('bang', [gradeW(), X]);
     assert.equal(Store.tag(h), 'bang');
-    assert.equal(Store.child(h, 0), GRADE_W);
+    assert.deepEqual(Store.children(Store.child(h, 0)), ['gw']);
     assert.equal(Store.child(h, 1), X);
   });
 });
@@ -578,7 +584,7 @@ describe('SELL: Grade-0 in queries rejected (TODO 155)', () => {
   it('decomposeQuery throws on !_0 resource', () => {
     Store.clear();
     const A = Store.put('atom', ['a']);
-    const bang0A = Store.put('bang', [GRADE_0, A]);
+    const bang0A = Store.put('bang', [grade0(), A]);
     assert.throws(
       () => mde.decomposeQuery(bang0A),
       /Grade-0 resources.*cannot appear in queries/
@@ -589,7 +595,7 @@ describe('SELL: Grade-0 in queries rejected (TODO 155)', () => {
     Store.clear();
     const A = Store.put('atom', ['a']);
     const B = Store.put('atom', ['b']);
-    const bang0A = Store.put('bang', [GRADE_0, A]);
+    const bang0A = Store.put('bang', [grade0(), A]);
     const h = Store.put('tensor', [B, bang0A]);
     assert.throws(
       () => mde.decomposeQuery(h),
@@ -600,7 +606,7 @@ describe('SELL: Grade-0 in queries rejected (TODO 155)', () => {
   it('decomposeQuery accepts !_ω resource (persistent)', () => {
     Store.clear();
     const A = Store.put('atom', ['a']);
-    const bangWA = Store.put('bang', [GRADE_W, A]);
+    const bangWA = Store.put('bang', [gradeW(), A]);
     const result = mde.decomposeQuery(bangWA);
     assert.ok(result.persistent[A], 'should classify as persistent');
   });

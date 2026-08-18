@@ -9,7 +9,7 @@ import mde from '../../lib/engine/index.js';
 import { explore, stateHashStr } from '../../lib/engine/explore.js';
 import { ILL_CONNECTIVES } from '../../lib/engine/ill/connectives.js';
 import { resolveConn, expandChoice, expandConsqChoices } from '../../lib/engine/formula-utils.js';
-import { GRADE_W } from '../../lib/engine/grades.js';
+import { gradeW } from '../../lib/engine/grades.js';
 const ILL_RC = resolveConn(ILL_CONNECTIVES);
 import { countLeaves, getAllLeaves, maxDepth, countNodes, toDot } from '../../lib/engine/tree-utils.js';
 import forward from '../../lib/engine/forward.js';
@@ -132,7 +132,7 @@ describe('explore', { timeout: 10000 }, () => {
 
     it('bang(A) returns persistent alternative', () => {
       const a = Store.put('atom', ['a']);
-      const bang = Store.put('bang', [GRADE_W,a]);
+      const bang = Store.put('bang', [gradeW(),a]);
       const alts = expandChoice(bang, ILL_RC);
       assert.strictEqual(alts.length, 1);
       assert.deepStrictEqual(alts[0], { linear: [], persistent: [a], grade0: [] });
@@ -141,7 +141,7 @@ describe('explore', { timeout: 10000 }, () => {
     it('loli stays as opaque linear fact (fired by matchLoli at runtime)', () => {
       const p = Store.put('atom', ['neq']);
       const q = Store.put('atom', ['result']);
-      const bangP = Store.put('bang', [GRADE_W,p]);
+      const bangP = Store.put('bang', [gradeW(),p]);
       const monadQ = Store.put('monad', [q]);
       const loli = Store.put('loli', [bangP, monadQ]);
       const alts = expandChoice(loli, ILL_RC);
@@ -164,8 +164,8 @@ describe('explore', { timeout: 10000 }, () => {
       const q = Store.put('atom', ['eq']);
       const a = Store.put('atom', ['zero']);
       const b = Store.put('atom', ['one']);
-      const bangP = Store.put('bang', [GRADE_W,p]);
-      const bangQ = Store.put('bang', [GRADE_W,q]);
+      const bangP = Store.put('bang', [gradeW(),p]);
+      const bangQ = Store.put('bang', [gradeW(),q]);
       const branch0 = Store.put('loli', [bangP, Store.put('monad', [a])]);
       const branch1 = Store.put('loli', [bangQ, Store.put('monad', [b])]);
       const pl = Store.put('oplus', [branch0, branch1]);
@@ -181,8 +181,8 @@ describe('explore', { timeout: 10000 }, () => {
       const q = Store.put('atom', ['eq']);
       const a = Store.put('atom', ['zero']);
       const b = Store.put('atom', ['one']);
-      const bangP = Store.put('bang', [GRADE_W,p]);
-      const bangQ = Store.put('bang', [GRADE_W,q]);
+      const bangP = Store.put('bang', [gradeW(),p]);
+      const bangQ = Store.put('bang', [gradeW(),q]);
       const branch0 = Store.put('loli', [bangP, Store.put('monad', [a])]);
       const branch1 = Store.put('loli', [bangQ, Store.put('monad', [b])]);
       const w = Store.put('with', [branch0, branch1]);
@@ -448,7 +448,7 @@ describe('explore', { timeout: 10000 }, () => {
 
     it('fires loli with persistent trigger (state lookup)', () => {
       const guard = Store.put('atom', ['check']);
-      const bangGuard = Store.put('bang', [GRADE_W,guard]);
+      const bangGuard = Store.put('bang', [gradeW(),guard]);
       const result = Store.put('atom', ['guarded_result']);
       const body = Store.put('monad', [result]);
       const loli = Store.put('loli', [bangGuard, body]);
@@ -465,7 +465,7 @@ describe('explore', { timeout: 10000 }, () => {
 
     it('returns null when persistent guard fails', () => {
       const guard = Store.put('atom', ['check']);
-      const bangGuard = Store.put('bang', [GRADE_W,guard]);
+      const bangGuard = Store.put('bang', [gradeW(),guard]);
       const result = Store.put('atom', ['guarded_result']);
       const body = Store.put('monad', [result]);
       const loli = Store.put('loli', [bangGuard, body]);
@@ -495,7 +495,7 @@ describe('explore', { timeout: 10000 }, () => {
     it('handles mixed trigger (linear + persistent)', () => {
       const linTrigger = Store.put('atom', ['resource']);
       const guard = Store.put('atom', ['condition']);
-      const bangGuard = Store.put('bang', [GRADE_W,guard]);
+      const bangGuard = Store.put('bang', [gradeW(),guard]);
       const trigger = Store.put('tensor', [linTrigger, bangGuard]);
       const result = Store.put('atom', ['combined_result']);
       const body = Store.put('monad', [result]);
@@ -542,8 +542,8 @@ describe('explore', { timeout: 10000 }, () => {
       const resultA = Store.put('atom', ['result_a']);
       const resultB = Store.put('atom', ['result_b']);
 
-      const loliA = Store.put('loli', [Store.put('bang', [GRADE_W,guard]), Store.put('monad', [resultA])]);
-      const loliB = Store.put('loli', [Store.put('bang', [GRADE_W,noguard]), Store.put('monad', [resultB])]);
+      const loliA = Store.put('loli', [Store.put('bang', [gradeW(),guard]), Store.put('monad', [resultA])]);
+      const loliB = Store.put('loli', [Store.put('bang', [gradeW(),noguard]), Store.put('monad', [resultB])]);
       const choice = Store.put('oplus', [loliA, loliB]);
       const conseq = Store.put('tensor', [shared, choice]);
 

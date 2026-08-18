@@ -13,7 +13,7 @@ import assert from 'node:assert/strict';
 import Store from '../../lib/kernel/store.js';
 import backward from '../../lib/engine/backchain.js';
 import { proveWithFFI } from '../../lib/engine/opt/ffi.js';
-import { GRADE_W } from '../../lib/engine/grades.js';
+import { gradeW } from '../../lib/engine/grades.js';
 import forward from '../../lib/engine/forward.js';
 import { guidedTerm } from '../../lib/prover/guided-term.js';
 import { makeILLBackchainOpts } from '../../lib/engine/ill/backchain-ill.js';
@@ -210,7 +210,7 @@ describe('3b.5: Clause Proof Terms', () => {
       // The ground loli should reference p(a) and q(a), not p(_X) and q(_X)
       const groundLoli = term.principal;
       const groundAnt = Store.child(groundLoli, 0);
-      // bang(GRADE_W, p(a))
+      // bang(gradeW(), p(a))
       assert.strictEqual(Store.tag(groundAnt), 'bang');
       const premHash = Store.child(groundAnt, 1);
       assert.strictEqual(Store.tag(premHash), 'p');
@@ -322,7 +322,7 @@ describe('3b.5: Clause Proof Terms', () => {
       // Rule: !p -o { q }, with p proved by state lookup
       const p = Store.put('atom', ['sp']);
       const q = Store.put('atom', ['sq']);
-      const bangP = Store.put('bang', [GRADE_W,p]);
+      const bangP = Store.put('bang', [gradeW(),p]);
       const monadQ = Store.put('monad', [q]);
       const loli = Store.put('loli', [bangP, monadQ]);
 
@@ -356,7 +356,7 @@ describe('3b.5: Clause Proof Terms', () => {
       // Rule: !q -o { r }, with q proved by clause resolution
       const q = Store.put('atom', ['cq']);
       const r = Store.put('atom', ['cr']);
-      const bangQ = Store.put('bang', [GRADE_W,q]);
+      const bangQ = Store.put('bang', [gradeW(),q]);
       const monadR = Store.put('monad', [r]);
       const loli = Store.put('loli', [bangQ, monadR]);
 
@@ -398,7 +398,7 @@ describe('3b.5: Clause Proof Terms', () => {
       // Simulates pre-3b.5 evidence (no term field)
       const q = Store.put('atom', ['fq']);
       const r = Store.put('atom', ['fr']);
-      const bangQ = Store.put('bang', [GRADE_W,q]);
+      const bangQ = Store.put('bang', [gradeW(),q]);
       const monadR = Store.put('monad', [r]);
       const loli = Store.put('loli', [bangQ, monadR]);
 
@@ -443,7 +443,7 @@ describe('3b.5: Clause Proof Terms', () => {
       assert.strictEqual(Store.child(Store.child(groundLoli, 1), 0), q);
     });
 
-    it('one premise: loli(bang(GRADE_W, P), monad(Q))', () => {
+    it('one premise: loli(bang(gradeW(), P), monad(Q))', () => {
       const p = Store.put('atom', ['p']);
       const q = Store.put('atom', ['q']);
       const types = new Map([['p_type', p]]);
