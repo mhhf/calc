@@ -17,6 +17,7 @@ import { defaultTheories } from '../../lib/kernel/eq-theory.js';
 import { binlitTheory, installBinlitClassifier } from '../../lib/engine/ill/binlit-theory.js';
 import { ratlitTheory, installRatlitTheory } from '../../lib/engine/theories/ratlit-theory.js';
 import { grade0 } from '../../lib/engine/grades.js';
+import { connTagsFrom } from '../../lib/engine/formula-utils.js';
 
 const FIXTURE = path.join(import.meta.dirname, 'graded-comp.calc');
 
@@ -53,13 +54,7 @@ const gtoyConfig = {
       application: true,
       multiCharFreevars: true,
     }),
-    connTags: {
-      computation: { tag: 'gmonad', bodyIdx: 1, gradeIdx: 0 },
-      implication: 'loli',
-      product: 'tensor',
-      exponential: 'bang',
-      preserved: 'preserved',
-    },
+    connTags: connTagsFrom(GTOY_CONNECTIVES),
     grade0,
     timed: true,
   },
