@@ -20,6 +20,10 @@ import { ILL_CONNECTIVES } from '../../lib/engine/ill/connectives.js';
 import { putRat } from '../../lib/kernel/rat-term.js';
 import { ratParts } from '../../lib/engine/theories/ratlit-theory.js';
 import { cmp as ratCmp } from '../../lib/rat.js';
+import path from 'path';
+import mde from '../../lib/engine/index.js';
+import illCalculusConfig from '../../lib/engine/ill/calculus-config.js';
+import { show } from '../../lib/engine/show.js';
 
 const atom = (n) => Store.put('atom', [n]);
 const at = (a, n, d) => Store.put('at', [a, putRat(n, d)]);
@@ -141,6 +145,42 @@ describe('index equivalence: policies never change WHICH matches exist', () => {
       assert.equal(r.state.linear[atom('done')], 1);
     }
     assert.equal(new Set(results.map(r => JSON.stringify(r.state.linear))).size, 1);
+  });
+
+  // Same D13 principle, other index: the virtual-discriminator fingerprint
+  // (discriminatorPreds) is candidate-lookup optimization — turning it off
+  // must not change execution (round-11 ledger item, folded here).
+  it('discriminatorPreds [] ≡ [\'arr_get\']: identical EVM execution', () => {
+    const evmPath = path.join(import.meta.dirname, '../../calculus/ill/programs/evm.ill');
+    const noDisc = {
+      ...illCalculusConfig,
+      compile: {
+        getModes: illCalculusConfig.compile.getModes,
+        getModeMeta: illCalculusConfig.compile.getModeMeta,
+        discriminatorPreds: [],
+        cacheEpoch: 'ill-nodisc',
+      },
+    };
+    const runWith = (loadOpts) => {
+      const calc = mde.load(evmPath, { cache: false, ...loadOpts });
+      // PUSH1 2, PUSH1 3, ADD, STOP (state shape from tests/forward/evm-arithmetic.ill)
+      const linear = {};
+      for (const f of ['pc 0', 'gas 0xffffff', 'stack ae', 'mem empty_mem',
+        'memsize 0', 'bytecode [0x60, 0x02, 0x60, 0x03, 0x01, 0x00]']) {
+        linear[mde.parseExpr(f)] = 1;
+      }
+      const result = calc.exec({ linear, persistent: {} }, { trace: true, maxSteps: 50 });
+      return {
+        steps: result.steps,
+        quiescent: result.quiescent,
+        trace: result.trace.map(t => (typeof t === 'string' ? t.split(' ')[0] : t.rule)),
+        finalState: Object.keys(result.state.linear).map(h => show(Number(h))).sort(),
+      };
+    };
+    const withDisc = runWith({});
+    const without = runWith({ calculusConfig: noDisc });
+    assert.ok(withDisc.steps > 1, 'program genuinely executes');
+    assert.deepEqual(without, withDisc);
   });
 
   it('explore produces the same leaf-state set under every policy', () => {
