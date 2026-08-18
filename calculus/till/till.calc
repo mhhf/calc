@@ -49,6 +49,16 @@ bang: grade -> formula -> formula
   @prec 80
   @category exponential.
 
+% Weighted internal choice (Phase 4b): `woplus Q A B` in consequents —
+% branch A with probability Q, B with 1−Q (Q a ground rational in [0,1]).
+% Prefix form parses via application (no @ascii operator — a ternary infix
+% doesn't fit the binary-operator grammar; sugar can come later). exec
+% samples by weight through the D17 PRF; explore expands both branches
+% with the weight on the edge — the tree is the exact distribution.
+woplus: grade -> formula -> formula -> formula
+  @category additive
+  @polarity positive.
+
 atom: string -> formula
   @ascii "_"
   @prec 100.

@@ -1,0 +1,25 @@
+% chopbuild.ill — Phase 4c debug-rendering scenario (golden source).
+%
+% Two chopper servers + one builder; the third tree arrives late (@5) so
+% every activation instant has a single candidate — the schedule is fully
+% deterministic (no chooser involvement, hash-order independent):
+%   [0] chop ×2   (choppers busy 0→4)      → wood@4 ×2
+%   [4] build     (2 wood → hut@7)
+%   [5] chop      (returned chopper + tree@5) → wood@9
+% `sell` NEVER fires: its before-window (deadline Q = the wood's own birth)
+% is already missed at activation — the #why_not_sell golden shows exactly
+% that killing window.
+%
+% Renderings are exercised by tests/engine/till-render.test.js (goldens)
+% and interactively via: node tools/debug-till.js calculus/till/tests/debug/chopbuild.ill
+
+chop:  $chopper * tree * read manual -o { wood }@4.
+build: $builder * !_2 wood -o { hut }@3.
+sell:  wood@Q * before Q -o { gold }.
+
+#run (settle: 10) chopper * chopper * builder * manual * tree * tree * tree@5.
+
+#trace_run    (settle: 10, query: run) I.
+#timeline_run (settle: 10, query: run) I.
+#why_hut      (settle: 10, query: run) hut@7.
+#why_not_sell (settle: 10, query: run) sell.

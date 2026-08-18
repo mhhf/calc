@@ -28,6 +28,13 @@ Design/decisions: hq todo 0265; reference semantics: `tools/till-oracle.mjs`.
   `!_Y B` in a consequent produces `Y` copies. `!`/`!_0` keep their SELL
   meanings (persistent / compile-time); persistents are timeless — no stamp
   anywhere under `!` (D15).
+- **Weighted choice** (Phase 4b): `woplus Q A B` in consequents — branch `A`
+  with probability `Q` (ground rational in [0,1]), `B` with `1−Q`; prefix
+  form, nests and tensors (weights multiply, always summing to 1). `settle`
+  samples the branch through the same stateless PRF as the conflict chooser
+  (seed-reproducible, horizon-split invariant); `settleExplore` expands both
+  with the weight on the edge — the tree IS the exact outcome distribution
+  (leaves carry `weight`, exact `[num, den]` path products).
 
 ## Scheduler (lib/engine/timed.js)
 
@@ -60,7 +67,9 @@ const calc = mde.load(file, { calculusConfig: tillConfig });
 calc.settle(state, T, opts)      // → { state, quiescent, steps, events, next }
 calc.nextActivation(state)       // earliest pending activation (hash) | null
 calc.settleExplore(state, T)     // → { tree, leaves } — branch ONLY on genuine
-                                 //   conflicts (all chooser-reachable outcomes)
+                                 //   conflicts (all chooser-reachable outcomes);
+                                 //   woplus forks weighted; leaves = { state,
+                                 //   weight: [num, den], next? }
 calc.observable(state, T)        // stamp ≤ T slice: { innerHash: count }
 calc.pending(state, T)           // future facts [{fact, stamp, count, remaining}]
 calc.inFlight(events, T)         // running jobs [{rule, activation, done, remaining}]
@@ -72,6 +81,33 @@ calc.inFlight(events, T)         // running jobs [{rule, activation, done, remai
 plus the standard hooks (`onStep` gains `activation`/`delay`).
 `events` is the completion queue (E7.3): processes are trace nodes — rule
 name = process kind, `(done − T)` = remaining; no job tokens in the model.
+Each event records `{ rule, activation, delay, done, theta, consumed,
+reserved, produced, alt? }` — `produced` feeds provenance (`#why`), `alt`
+the sampled woplus branch.
+
+## Debugging (Phase 4c)
+
+`node tools/debug-till.js <file.ill>` runs timed observation directives —
+each takes `(settle: T)` and optionally `query: <kind>` pointing at a shared
+`#run` scenario (see `calculus/till/tests/debug/chopbuild.ill`):
+
+- `#trace_*` — log view: `[activation] rule: consumed [read r] → produced @+d`
+- `#timeline_*` — jobs lane (`rule [a→done]`) + per-predicate token
+  lifetimes (`born→consumer@a` or `born→…` if alive)
+- `#why_*` — provenance: per-instance producer chain of the body fact
+  (`hut@7 ← build @4 +3 ← wood@4 ← chop @0 …`)
+- `#why_not_*` — why the named rule isn't firing: pending activation beyond
+  the horizon, a killing `before`-window, an unprovable goal, or the
+  missing input pattern (best failed candidate, from the matcher's
+  diagnostic mode)
+
+The renderers are pure functions in `lib/engine/timed-render.js` (golden
+tests exercise them verbatim). `settle` events carry `produced` facts and
+serialize as `forward-trace/v2` steps with `activation`/`delay` pool refs
+(`lib/prover/serialize-trace.js`). Graded monads render faithfully —
+`{B}@g` unless `g` is the unit — via `buildRenderer(constructors,
+{ gradeUnit })`; browser bundles re-supply the hook at hydration:
+`initFromBundle(bundle, { parserOpts: { gradeUnit }, rendererOpts: … })`.
 
 ## Tests
 
@@ -85,10 +121,9 @@ name = process kind, `(done − T)` = remaining; no job tokens in the model.
 
 ## Not in v1 (tracked in todo 0265)
 
-Weighted choice `woplus` (Phase 4b); debug renderings `#timeline`/`#why`
-(Phase 4c); browser/bundle + renderer grade fidelity (4c); grade-0 content in
-till (compose.js ILL-tag hardcodes); ℚ-valued parcels; flowrate catch-up
-(E6); backward sequent rules (`till.rules`/`till.family` — todo 0265 Phase 6b:
-the graded fragment needs a rule-DSL side-condition extension, the timed
-judgment is gated on THY-A/THY-B; stamps are judgment structure, not a
-connective).
+Grade-0 content in till (compose.js ILL-tag hardcodes); ℚ-valued parcels;
+flowrate catch-up (E6); a till UI bundle (libexec/calc-bundle hardcodes
+loadILL — the browser gradeUnit hook is ready); backward sequent rules
+(`till.rules`/`till.family` — todo 0265 Phase 6b: the graded fragment needs
+a rule-DSL side-condition extension, the timed judgment is gated on
+THY-A/THY-B; stamps are judgment structure, not a connective).

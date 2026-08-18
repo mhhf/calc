@@ -38,6 +38,9 @@ const TILL_CONNECTIVES = {
   one:    { category: 'multiplicative', arity: 0, polarity: 'positive' },
   bang:   { category: 'exponential',    arity: 2 },
   gmonad: { category: 'monad',          arity: 2, polarity: 'negative' },
+  // Weighted internal choice `woplus Q A B` (Phase 4b) — resolveConn maps
+  // (additive, arity 3, positive) to roles.weightedChoice.
+  woplus: { category: 'additive',       arity: 3, polarity: 'positive' },
 };
 
 /** Unit of the duration monoid = stamp 0 = the D11 default stamp.
