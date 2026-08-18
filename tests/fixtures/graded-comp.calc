@@ -26,6 +26,11 @@ gmonad: grade -> formula -> formula
   @category monad
   @polarity negative.
 
+bang: grade -> formula -> formula
+  @ascii "! #2"
+  @prec 80
+  @category exponential.
+
 atom: string -> formula
   @ascii "_"
   @prec 100.

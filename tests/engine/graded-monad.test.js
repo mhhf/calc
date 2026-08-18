@@ -163,13 +163,16 @@ describe('compileRule with a graded computation', () => {
   });
 });
 
-describe('grammar: { ... } builds the configured computation node', () => {
-  it('2-ary computation with gradeUnit hook (ATOM form and loli-monad form)', () => {
+describe('grammar: { ... } builds the DECLARED computation node (circumfix)', () => {
+  const GCFX = [{ open: '{', close: '}', name: 'gmonad', arity: 2 }];
+  const ICFX = [{ open: '{', close: '}', name: 'monad', arity: 1 }];
+
+  it('2-ary circumfix with gradeUnit hook (ATOM form and A -o { B } form)', () => {
     const unit = () => atom('u0');
     const tables = {
       operators: [], nullary: {}, unaryPrefix: {},
       forwardRules: true,
-      computation: GCOMP, gradeUnit: unit,
+      circumfix: GCFX, gradeUnit: unit,
     };
     const parse = parserFromGrammar(earleyGrammarFromTables(tables));
     const h = parse('{ b }');
@@ -184,21 +187,27 @@ describe('grammar: { ... } builds the configured computation node', () => {
     assert.equal(Store.child(conseq, 0), atom('u0'));
   });
 
-  it('graded computation without gradeUnit throws a clear error', () => {
+  it('graded circumfix without gradeUnit throws a clear error', () => {
     const tables = {
       operators: [], nullary: {}, unaryPrefix: {},
-      computation: GCOMP,
+      circumfix: GCFX,
     };
     const parse = parserFromGrammar(earleyGrammarFromTables(tables));
     assert.throws(() => parse('{ b }'), /gradeUnit/);
   });
 
-  it('default tables still build ILL unary monad (regression)', () => {
+  it('1-ary circumfix builds ILL unary monad', () => {
     const parse = parserFromGrammar(earleyGrammarFromTables(
-      { operators: [], nullary: {}, unaryPrefix: {} }));
+      { operators: [], nullary: {}, unaryPrefix: {}, circumfix: ICFX }));
     const h = parse('{ b }');
     assert.equal(Store.tag(h), 'monad');
     assert.equal(Store.arity(h), 1);
+  });
+
+  it('no circumfix declared ⇒ { b } is a parse error (phantom-monad wart gone)', () => {
+    const parse = parserFromGrammar(earleyGrammarFromTables(
+      { operators: [], nullary: {}, unaryPrefix: {} }));
+    assert.throws(() => parse('{ b }'), /Parse error/);
   });
 });
 

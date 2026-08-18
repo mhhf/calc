@@ -1,0 +1,8 @@
+% gtoy fixture program — TODO_0265 Phase 3 (loaded via gtoy-config.js).
+% sell: rat(N,D)-headed pattern — fires against a compact-ratlit fact only
+%       when the forward engine's global theory set includes ratlitTheory (B6).
+% step: plain rule for the bridge modeSwitch test (B7).
+
+sell: price (rat N D) -o { sold N D }.
+
+step: a * b -o { c }.

@@ -161,8 +161,8 @@ describe('noFFI e2e: dangerouslyUseFFI flag resets correctly', () => {
 
 const ILL_ROLES = {
   product: 'tensor', unit: 'one', exponential: 'bang',
-  implication: 'loli', 'external-choice': 'with',
-  'internal-choice': 'oplus', computation: { tag: 'monad', bodyIdx: 0, gradeIdx: null }
+  implication: 'loli', externalChoice: 'with',
+  internalChoice: 'oplus', computation: { tag: 'monad', bodyIdx: 0, gradeIdx: null }
 };
 
 describe('noFFI e2e: symbolic explore → guided terms', { timeout: 600000 }, () => {
