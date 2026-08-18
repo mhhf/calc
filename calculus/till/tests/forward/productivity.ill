@@ -1,3 +1,5 @@
+#import(../../prelude/rat.ill)
+
 % productivity.ill — till executable spec: positive delay = guardedness (D16, E2).
 %
 % STATUS: written ahead of the engine (TDD) — see schedule.ill header.

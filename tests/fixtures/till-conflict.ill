@@ -1,0 +1,10 @@
+% till scheduler fixtures — genuine conflict vs independence (D12/E4).
+% Two rule types racing for the same scarce token at the same activation is
+% the ONLY nondeterminism; with enough tokens the tied set is independent.
+
+grab_a: coin -o { got_a }.
+grab_b: coin -o { got_b }.
+
+% disjoint resources — an equal-activation tied set with NO shared cohort
+take_x: tok_x -o { got_x }.
+take_y: tok_y -o { got_y }.

@@ -1,0 +1,4 @@
+% Negative fixture (E7.1 mode check): a delay variable bound by NOTHING in
+% the antecedent must be a loud compile error, not a runtime undefined.
+
+bad: a -o { b }@D.
