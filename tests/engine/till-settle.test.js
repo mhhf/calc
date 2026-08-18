@@ -135,18 +135,16 @@ describe('till explore — branch only on genuine conflicts (Phase 4)', () => {
     const { tree, leaves } = calc.settleExplore({ linear: { [coin]: 1 }, persistent: {} }, '0');
     assert.equal(tree.type, 'conflict');
     assert.equal(leaves.length, 2);
-    const outcomes = leaves.map(l => Object.keys(stamped(l)).sort().join(','));
+    const outcomes = leaves.map(l => Object.keys(stamped(l.state)).sort().join(','));
     assert.deepEqual(outcomes.sort(), ['got_a@0', 'got_b@0']);
   });
 
   it('two coins: shared cohort ⇒ all chooser-reachable outcomes (2a / ab / 2b)', () => {
     const { leaves } = calc.settleExplore({ linear: { [coin]: 2 }, persistent: {} }, '0');
-    const distinct = new Set(leaves.map(l => JSON.stringify(stamped(l))));
-    assert.deepEqual([...distinct].sort(), [
-      JSON.stringify({ 'got_a@0': 2 }),
-      JSON.stringify({ 'got_a@0': 1, 'got_b@0': 1 }),
-      JSON.stringify({ 'got_b@0': 2 }),
-    ].sort());
+    const canon = (m) => Object.entries(m).sort().map(([k, v]) => `${k}x${v}`).join(',');
+    const distinct = new Set(leaves.map(l => canon(stamped(l.state))));
+    assert.deepEqual([...distinct].sort(),
+      ['got_a@0x1,got_b@0x1', 'got_a@0x2', 'got_b@0x2']);
   });
 
   it('disjoint tied set is independent ⇒ ONE leaf (partial-order reduction)', () => {
@@ -155,7 +153,7 @@ describe('till explore — branch only on genuine conflicts (Phase 4)', () => {
     const { tree, leaves } = calc.settleExplore({ linear: { [tx]: 1, [ty]: 1 }, persistent: {} }, '0');
     assert.equal(tree.type, 'leaf');
     assert.equal(leaves.length, 1);
-    assert.deepEqual(stamped(leaves[0]), { 'got_x@0': 1, 'got_y@0': 1 });
+    assert.deepEqual(stamped(leaves[0].state), { 'got_x@0': 1, 'got_y@0': 1 });
   });
 
   it('concurrent reads never conflict (E7.2): one leaf', () => {
@@ -170,7 +168,7 @@ describe('till explore — branch only on genuine conflicts (Phase 4)', () => {
     const S = init(scalc, 'expect_two_jobs');
     const { leaves } = scalc.settleExplore(S, '1');
     assert.equal(leaves.length, 1);
-    assert.deepEqual(stamped(leaves[0]), stamped(scalc.settle(S, '1').state));
+    assert.deepEqual(stamped(leaves[0].state), stamped(scalc.settle(S, '1').state));
   });
 });
 

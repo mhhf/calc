@@ -1,0 +1,3 @@
+% Negative fixture (Phase 4b): weights outside [0, 1] are a loud compile error.
+
+bad: a -o { woplus 5/4 b c }.

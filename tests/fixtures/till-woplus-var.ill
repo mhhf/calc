@@ -1,0 +1,4 @@
+% Negative fixture (Phase 4b): weights must be GROUND rational literals —
+% a weight variable has no v1 semantics (distribution unknown at compile).
+
+bad: p W * a -o { woplus W b c }.
