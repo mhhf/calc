@@ -27,7 +27,7 @@ describe('deriveRoles', () => {
     assert.strictEqual(r['internal-choice'], 'oplus');
     assert.strictEqual(r['external-choice'], 'with');
     assert.strictEqual(r.exponential, 'bang');
-    assert.strictEqual(r.computation, 'monad');
+    assert.deepStrictEqual(r.computation, { tag: 'monad', bodyIdx: 0, gradeIdx: null });
     assert.strictEqual(r.existential, 'exists');
     assert.strictEqual(r['additive-zero'], 'zero');
   });
@@ -90,7 +90,7 @@ describe('two calculi coexist', () => {
   it('should have independent roles', () => {
     assert.strictEqual(ill.roles.product, 'tensor');
     assert.strictEqual(prop.roles.product, 'prop_and');
-    assert.strictEqual(ill.roles.computation, 'monad');
+    assert.deepStrictEqual(ill.roles.computation, { tag: 'monad', bodyIdx: 0, gradeIdx: null });
     assert.strictEqual(prop.roles.computation, undefined);
   });
 

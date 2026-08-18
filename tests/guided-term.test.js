@@ -398,7 +398,7 @@ describe('Guided Proof Terms (TODO_0068 §10.5)', () => {
 
       const result = modeSwitch(seq, {
         forwardRules: rules,
-        roles: { product: 'tensor', unit: 'one', exponential: 'bang', implication: 'loli', computation: 'monad' }
+        roles: { product: 'tensor', unit: 'one', exponential: 'bang', implication: 'loli', computation: { tag: 'monad', bodyIdx: 0, gradeIdx: null } }
       }, { forward: 'guided' });
 
       assert(result, 'mode switch should succeed');
