@@ -24,6 +24,11 @@ import path from 'path';
 import mde from '../../lib/engine/index.js';
 import illCalculusConfig from '../../lib/engine/ill/calculus-config.js';
 import { show } from '../../lib/engine/show.js';
+import { buildStack, detectStrategy, findAllMatches } from '../../lib/engine/strategy.js';
+import { setTheories } from '../../lib/kernel/unify.js';
+import { defaultTheories } from '../../lib/kernel/eq-theory.js';
+import { binlitTheory } from '../../lib/engine/ill/binlit-theory.js';
+import { ratlitTheory } from '../../lib/engine/theories/ratlit-theory.js';
 
 const atom = (n) => Store.put('atom', [n]);
 const at = (a, n, d) => Store.put('at', [a, putRat(n, d)]);
@@ -181,6 +186,34 @@ describe('index equivalence: policies never change WHICH matches exist', () => {
     const without = runWith({ calculusConfig: noDisc });
     assert.ok(withDisc.steps > 1, 'program genuinely executes');
     assert.deepEqual(without, withDisc);
+  });
+
+  // Strategy-vs-oracle differential: the full index stack (fingerprint +
+  // disc-tree) must select exactly the rules the un-indexed predicate
+  // layer finds — the canCrossMatch contract (kernel/unify.js). The
+  // cross-tag program is the case the disc-tree used to hide.
+  it('full strategy stack ≡ predicate-layer oracle (incl. cross-tag facts)', () => {
+    setTheories([...defaultTheories, binlitTheory, ratlitTheory]);
+    const rat = Store.put('rat', [Store.put('metavar', ['N']), Store.put('metavar', ['D'])]);
+    const rules = [
+      mkRule('sell', Store.put('price', [rat]),
+        monad(Store.put('sold', [Store.put('metavar', ['N']), Store.put('metavar', ['D'])]))),
+      mkRule('r1', t2(atom('a'), atom('b')), monad(atom('c'))),
+      mkRule('r2', atom('a'), monad(atom('d'))),
+    ];
+    const states = [
+      fromObject({ [Store.put('price', [putRat(1n, 2n)])]: 1 }, {}),      // cross-tag
+      fromObject({ [atom('a')]: 1, [atom('b')]: 1 }, {}),                 // plain
+      fromObject({ [atom('z')]: 1 }, {}),                                 // no match
+    ];
+    const names = (state, strat) =>
+      findAllMatches(state, rules, null, strat).map(m => m.rule.name).sort();
+    const full = detectStrategy(rules);
+    const oracle = buildStack(rules, []);
+    for (const state of states) {
+      assert.deepEqual(names(state, full), names(state, oracle));
+    }
+    assert.deepEqual(names(states[0], full), ['sell'], 'cross-tag match is found at all');
   });
 
   it('explore produces the same leaf-state set under every policy', () => {
