@@ -66,7 +66,7 @@ describe('ZK benchmark: solc forward execution', { timeout: 60000 }, () => {
       path.join(import.meta.dirname, '../calculus/ill/programs/multisig_nocall_solc.ill')
     );
     illCalc = await calculus.loadILL();
-    state = mde.decomposeQuery(engineCalc.queries.get('symex'));
+    state = mde.normalizeQuery(engineCalc.queries.get('symex'));
   });
 
   it('runs forward execution with evidence', () => {

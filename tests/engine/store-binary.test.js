@@ -416,7 +416,7 @@ describe('Store Binary Format', () => {
         // Source load + explore (no caching)
         Store.clear();
         const calcSrc = mde.load(msPath, { cache: false });
-        const stateSrc = mde.decomposeQuery(calcSrc.queries.get('symex'));
+        const stateSrc = mde.normalizeQuery(calcSrc.queries.get('symex'));
         const treeSrc = calcSrc.explore(stateSrc, {
           maxDepth: 200,
           dangerouslyUseFFI: true
@@ -427,7 +427,7 @@ describe('Store Binary Format', () => {
         mde.precompile(msPath, tmpFile);
         Store.clear();
         const calcBin = mde.loadPrecompiled(tmpFile);
-        const stateBin = mde.decomposeQuery(calcBin.queries.get('symex'));
+        const stateBin = mde.normalizeQuery(calcBin.queries.get('symex'));
         const treeBin = calcBin.explore(stateBin, {
           maxDepth: 200,
           dangerouslyUseFFI: true
@@ -607,7 +607,7 @@ describe('Store Binary Format', () => {
       // Fresh load
       Store.clear();
       const calcFresh = mde.load(msPath, { cache: false });
-      const stateFresh = mde.decomposeQuery(calcFresh.queries.get('symex'));
+      const stateFresh = mde.normalizeQuery(calcFresh.queries.get('symex'));
       const treeFresh = calcFresh.explore(stateFresh, {
         maxDepth: 200,
         dangerouslyUseFFI: true
@@ -616,7 +616,7 @@ describe('Store Binary Format', () => {
       // Auto-cached load (first call = miss + write)
       Store.clear();
       const calcCached = mde.load(msPath, { cacheDir: tmpDir });
-      const stateCached = mde.decomposeQuery(calcCached.queries.get('symex'));
+      const stateCached = mde.normalizeQuery(calcCached.queries.get('symex'));
       const treeCached = calcCached.explore(stateCached, {
         maxDepth: 200,
         dangerouslyUseFFI: true

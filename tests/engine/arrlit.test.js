@@ -8,7 +8,7 @@ import { match, matchIndexed, undoSave, undoRestore, unify } from '../../lib/ker
 import { arr_get, arr_set, alen, read_bytes, arrToTrie, trieNav } from '../../lib/engine/ill/ffi/array.js';
 import { parserFromTables, parserTables } from '../../lib/calculus/builders.js';
 // Hoisted by tools/esm-hoist.js:
-import { bytesToSemantic } from '../../lib/engine/index.js';
+import { bytesToSemantic } from '../../lib/engine/ill/bytecode-normalize.js';
 
 describe('arrlit - Stage 1: Store Infrastructure', () => {
   beforeEach(() => Store.clear());

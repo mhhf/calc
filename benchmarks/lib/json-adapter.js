@@ -127,7 +127,7 @@ async function runExplore(iterations) {
     const calc = mde.load(
       path.join(import.meta.dirname, '../../calculus/ill/programs/multisig.ill')
     );
-    const state = mde.decomposeQuery(calc.queries.get('symex'));
+    const state = mde.normalizeQuery(calc.queries.get('symex'));
     results['explore.multisig'] = benchOne('multisig', calc, state,
       { maxDepth: 200 }, iterations);
   }
@@ -146,7 +146,7 @@ async function runExplore(iterations) {
       path.join(import.meta.dirname, '../../calculus/ill/programs/multisig_nocall_solc_symbolic.ill'),
       { extraGrade0Facts: bc.facts, scopeGuard: bytecodeArrGetGuard }
     );
-    const state = mde.decomposeQuery(calc.queries.get('symex'));
+    const state = mde.normalizeQuery(calc.queries.get('symex'));
     results['explore.solc_symbolic'] = benchOne('solc_symbolic', calc, state,
       { maxDepth: 400, structuralMemo: true, dangerouslyUseFFI: true }, iterations);
   }

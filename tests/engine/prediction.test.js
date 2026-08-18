@@ -83,7 +83,7 @@ describe('fingerprint prediction (Opt_H)', { timeout: 30000 }, () => {
       const calc = await mde.load(
         path.join(import.meta.dirname, '../../calculus/ill/programs/multisig_nocall_solc.ill')
       );
-      const state = mde.decomposeQuery(calc.queries.get('symex'));
+      const state = mde.normalizeQuery(calc.queries.get('symex'));
       // Both trees use the same code path — prediction is automatic.
       // We verify the tree shape matches the known-good expected values.
       treePred = calc.explore(state, {
@@ -111,7 +111,7 @@ describe('fingerprint prediction (Opt_H)', { timeout: 30000 }, () => {
       const calc = await mde.load(
         path.join(import.meta.dirname, '../../calculus/ill/programs/multisig_nocall_solc_symbolic.ill')
       );
-      const state = mde.decomposeQuery(calc.queries.get('symex'));
+      const state = mde.normalizeQuery(calc.queries.get('symex'));
       treeMemo = calc.explore(state, {
         maxDepth: 500,
         structuralMemo: true,

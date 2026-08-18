@@ -235,7 +235,9 @@ function buildProveOpts(settings) {
   return opts;
 }
 
-const decomposeQuery = mde.decomposeQuery;
+// EVM-normalizing query decomposition (mde.decomposeQuery is now the
+// generic decomposition; these tools inspect EVM explorations).
+const decomposeQuery = mde.normalizeQuery;
 
 export {
   ROOT,

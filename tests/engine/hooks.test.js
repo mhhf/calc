@@ -18,7 +18,7 @@ describe('Engine Hooks API', { timeout: 10000 }, () => {
 
   describe('onStep — forward.run()', () => {
     it('fires with correct shape', () => {
-      const initial = mde.decomposeQuery(
+      const initial = mde.normalizeQuery(
         mde.parseExpr('pc 0 * bytecode [0x00]')
       );
       const steps = [];
@@ -44,7 +44,7 @@ describe('Engine Hooks API', { timeout: 10000 }, () => {
     });
 
     it('consumed and theta are snapshots', () => {
-      const initial = mde.decomposeQuery(
+      const initial = mde.normalizeQuery(
         mde.parseExpr('pc 0 * gas 0xffffff * stack ae * mem empty_mem * memsize 0 * bytecode [0x60, 0x05, 0x00]')
       );
       const snapshots = [];
@@ -62,7 +62,7 @@ describe('Engine Hooks API', { timeout: 10000 }, () => {
     });
 
     it('does not fire when not provided', () => {
-      const initial = mde.decomposeQuery(
+      const initial = mde.normalizeQuery(
         mde.parseExpr('pc 0 * bytecode [0x00]')
       );
       // No onStep — should not crash
@@ -72,7 +72,7 @@ describe('Engine Hooks API', { timeout: 10000 }, () => {
     });
 
     it('step counter is monotonically increasing', () => {
-      const initial = mde.decomposeQuery(
+      const initial = mde.normalizeQuery(
         mde.parseExpr('pc 0 * gas 0xffffff * stack ae * mem empty_mem * memsize 0 * bytecode [0x60, 0x05, 0x00]')
       );
       const steps = [];
@@ -88,7 +88,7 @@ describe('Engine Hooks API', { timeout: 10000 }, () => {
 
   describe('onStep — explore()', () => {
     it('fires with correct shape (depth field, not step)', () => {
-      const initial = mde.decomposeQuery(
+      const initial = mde.normalizeQuery(
         mde.parseExpr('pc 0 * bytecode [0x00]')
       );
       const steps = [];
@@ -108,7 +108,7 @@ describe('Engine Hooks API', { timeout: 10000 }, () => {
     });
 
     it('depth represents DFS nesting level', () => {
-      const initial = mde.decomposeQuery(
+      const initial = mde.normalizeQuery(
         mde.parseExpr('pc 0 * bytecode [0x00]')
       );
       const depths = [];
@@ -127,7 +127,7 @@ describe('Engine Hooks API', { timeout: 10000 }, () => {
     it('fires on out-of-gas: checked_sub(0, cost, ?) fails', () => {
       // ADD (0x01, cost 3) with gas 0 — checked_sub(0, 3, ?) is unprovable.
       // The engine tries every step/make variant; those requiring gas > 0 fail.
-      const initial = mde.decomposeQuery(
+      const initial = mde.normalizeQuery(
         mde.parseExpr('pc 0 * gas 0 * stack [0x1, 0x2] * bytecode [0x01]')
       );
       const failures = [];
@@ -147,7 +147,7 @@ describe('Engine Hooks API', { timeout: 10000 }, () => {
     });
 
     it('does not fire when not provided', () => {
-      const initial = mde.decomposeQuery(
+      const initial = mde.normalizeQuery(
         mde.parseExpr('pc 0 * bytecode [0x00]')
       );
       // No onProveFail — should not crash
@@ -158,7 +158,7 @@ describe('Engine Hooks API', { timeout: 10000 }, () => {
 
   describe('onProveSuccess', () => {
     it('fires with correct shape (goal, method) for FFI path', () => {
-      const initial = mde.decomposeQuery(
+      const initial = mde.normalizeQuery(
         mde.parseExpr('pc 0 * gas 0xffffff * stack ae * mem empty_mem * memsize 0 * bytecode [0x60, 0x05, 0x00]')
       );
       const successes = [];
@@ -179,7 +179,7 @@ describe('Engine Hooks API', { timeout: 10000 }, () => {
     });
 
     it('fires with cache/clause methods for noFFI path', () => {
-      const initial = mde.decomposeQuery(
+      const initial = mde.normalizeQuery(
         mde.parseExpr('pc 0 * gas 0xffffff * stack ae * mem empty_mem * memsize 0 * bytecode [0x60, 0x05, 0x00]')
       );
       const successes = [];
@@ -196,7 +196,7 @@ describe('Engine Hooks API', { timeout: 10000 }, () => {
     });
 
     it('does not fire when not provided', () => {
-      const initial = mde.decomposeQuery(
+      const initial = mde.normalizeQuery(
         mde.parseExpr('pc 0 * bytecode [0x00]')
       );
       // No onProveSuccess — should not crash
@@ -205,7 +205,7 @@ describe('Engine Hooks API', { timeout: 10000 }, () => {
     });
 
     it('fires in explore mode', () => {
-      const initial = mde.decomposeQuery(
+      const initial = mde.normalizeQuery(
         mde.parseExpr('pc 0 * gas 0xffffff * stack ae * mem empty_mem * memsize 0 * bytecode [0x60, 0x05, 0x00]')
       );
       const successes = [];

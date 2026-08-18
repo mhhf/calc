@@ -74,7 +74,7 @@ try {
   const loadMs = performance.now() - tLoad0;
 
   const tDec0 = performance.now();
-  const state = mde.decomposeQuery(calc.queries.get('symex'));
+  const state = (mde.normalizeQuery || mde.decomposeQuery)(calc.queries.get('symex'));
   const decMs = performance.now() - tDec0;
   const stateSize = (state && state.linear ? state.linear.length : 0) + (state && state.persistent ? state.persistent.length : 0);
   phases.push(['decompose', decMs, { stateSize, linear: state && state.linear ? state.linear.length : 0, persistent: state && state.persistent ? state.persistent.length : 0 }]);

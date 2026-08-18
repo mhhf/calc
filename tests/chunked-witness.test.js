@@ -322,7 +322,7 @@ describe('chunked flat witness: solc integration', { timeout: 60000 }, () => {
       path.join(import.meta.dirname, '../calculus/ill/programs/multisig_nocall_solc.ill')
     );
     illCalc = await calculus.loadILL();
-    const state = mde.decomposeQuery(engineCalc.queries.get('symex'));
+    const state = mde.normalizeQuery(engineCalc.queries.get('symex'));
 
     const forwardResult = engineCalc.exec(state, {
       maxSteps: 2000, trace: true, evidence: true,

@@ -45,7 +45,7 @@ const calc = mde.load(srcPath, loadOpts);
 const loadMs = performance.now() - tLoad0;
 
 const tDec0 = performance.now();
-const st = mde.decomposeQuery(calc.queries.get('symex'));
+const st = (mde.normalizeQuery || mde.decomposeQuery)(calc.queries.get('symex'));
 const decMs = performance.now() - tDec0;
 
 const tExp0 = performance.now();

@@ -63,7 +63,7 @@ if $RUN_CALC; then
       (async () => {
         const calc = await mde.load(path.resolve('${ILL_FILE}'));
         const query = calc.queries.get('symex');
-        const state = mde.decomposeQuery(query);
+        const state = (mde.normalizeQuery || mde.decomposeQuery)(query);
         const calcCtx = { clauses: calc.clauses, definitions: calc.definitions };
         const t0 = performance.now();
         const tree = explore(state, calc.forwardRules, { maxDepth: 500, calc: calcCtx, structuralMemo: true });

@@ -335,7 +335,7 @@ describe('Compiled Clause Dispatch', { timeout: 10000 }, () => {
 
   describe('end-to-end integration', () => {
     it('noFFI exec produces same result with compiled dispatch', () => {
-      const initial = mde.decomposeQuery(
+      const initial = mde.normalizeQuery(
         mde.parseExpr('pc 0 * gas 0xffffff * stack ae * mem empty_mem * memsize 0 * bytecode [0x60, 0x05, 0x00]')
       );
 
@@ -355,7 +355,7 @@ describe('Compiled Clause Dispatch', { timeout: 10000 }, () => {
     });
 
     it('compiled method appears in onProveSuccess for noFFI path', () => {
-      const initial = mde.decomposeQuery(
+      const initial = mde.normalizeQuery(
         mde.parseExpr('pc 0 * gas 0xffffff * stack ae * mem empty_mem * memsize 0 * bytecode [0x60, 0x05, 0x00]')
       );
 

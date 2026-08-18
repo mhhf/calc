@@ -105,7 +105,7 @@ async function main() {
       path.join(ROOT, 'calculus/ill/programs/multisig_nocall_solc_symbolic.ill'),
       { extraGrade0Facts: bc.facts, scopeGuard: bytecodeArrGetGuard }
     );
-    const state = mde.decomposeQuery(calc.queries.get('symex'));
+    const state = (mde.normalizeQuery || mde.decomposeQuery)(calc.queries.get('symex'));
     results['explore.solc_symbolic'] = timeOne(
       () => { calc.explore(state, { maxDepth: 400, structuralMemo: true, dangerouslyUseFFI: true }); },
       iterations

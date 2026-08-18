@@ -58,7 +58,7 @@ describe('TODO_0216 H8 — multisig symex golden canary', { timeout: 60000, conc
   before(async () => {
     Store.clear();
     const calc = await mde.load(PROGRAM);
-    const state = mde.decomposeQuery(calc.queries.get('symex'));
+    const state = mde.normalizeQuery(calc.queries.get('symex'));
     const tree = calc.explore(state, {
       maxDepth: 500,
       structuralMemo: false,

@@ -79,7 +79,7 @@ describe('ZK noFFI witness: noffi_tiny (2-step clause resolution)', { timeout: 3
       path.join(import.meta.dirname, '../calculus/ill/programs/noffi_tiny.ill')
     );
     illCalc = await calculus.loadILL();
-    state = mde.decomposeQuery(calc.queries.get('symex'));
+    state = mde.normalizeQuery(calc.queries.get('symex'));
   });
 
   it('runs forward execution with noFFI evidence', () => {
@@ -227,7 +227,7 @@ describe('ZK noFFI witness: pure_linear (no clause resolution)', { timeout: 3000
       path.join(import.meta.dirname, '../calculus/ill/programs/pure_linear.ill')
     );
     illCalc = await calculus.loadILL();
-    state = mde.decomposeQuery(calc.queries.get('symex'));
+    state = mde.normalizeQuery(calc.queries.get('symex'));
   });
 
   it('runs forward execution with zero persistent evidence', () => {

@@ -25,7 +25,7 @@ describe('noFFI e2e: solc multisig (clause-only resolution)', { timeout: 120000 
     const calc = await mde.load(
       path.join(import.meta.dirname, '../../calculus/ill/programs/multisig_nocall_solc.ill')
     );
-    const state = mde.decomposeQuery(calc.queries.get('symex'));
+    const state = mde.normalizeQuery(calc.queries.get('symex'));
     treeFFI = calc.explore(state, {
       maxDepth: 2000,
       dangerouslyUseFFI: true
@@ -36,7 +36,7 @@ describe('noFFI e2e: solc multisig (clause-only resolution)', { timeout: 120000 
     const calc2 = await mde.load(
       path.join(import.meta.dirname, '../../calculus/ill/programs/multisig_nocall_solc.ill')
     );
-    const state2 = mde.decomposeQuery(calc2.queries.get('symex'));
+    const state2 = mde.normalizeQuery(calc2.queries.get('symex'));
     treeNoFFI = calc2.explore(state2, { maxDepth: 2000 });
   });
 
@@ -64,7 +64,7 @@ describe('noFFI e2e: forward.run with evidence', { timeout: 60000 }, () => {
     const calc = await mde.load(
       path.join(import.meta.dirname, '../../calculus/ill/programs/multisig_nocall_solc.ill')
     );
-    const state = mde.decomposeQuery(calc.queries.get('symex'));
+    const state = mde.normalizeQuery(calc.queries.get('symex'));
     result = calc.exec(state, {
       maxSteps: 2000,
       trace: true,
@@ -124,7 +124,7 @@ describe('noFFI e2e: dangerouslyUseFFI flag resets correctly', () => {
     const calc = await mde.load(
       path.join(import.meta.dirname, '../../calculus/ill/programs/multisig_nocall_solc.ill')
     );
-    const state = mde.decomposeQuery(calc.queries.get('symex'));
+    const state = mde.normalizeQuery(calc.queries.get('symex'));
 
     // Run with FFI
     calc.exec(state, {
@@ -137,7 +137,7 @@ describe('noFFI e2e: dangerouslyUseFFI flag resets correctly', () => {
     const calc2 = await mde.load(
       path.join(import.meta.dirname, '../../calculus/ill/programs/multisig_nocall_solc.ill')
     );
-    const state2 = mde.decomposeQuery(calc2.queries.get('symex'));
+    const state2 = mde.normalizeQuery(calc2.queries.get('symex'));
     const result = calc2.exec(state2, {
       maxSteps: 10,
       trace: true,
@@ -173,7 +173,7 @@ describe('noFFI e2e: symbolic explore → guided terms', { timeout: 600000 }, ()
     const calc = await mde.load(
       path.join(import.meta.dirname, '../../calculus/ill/programs/multisig_nocall_solc_symbolic.ill')
     );
-    const state = mde.decomposeQuery(calc.queries.get('symex'));
+    const state = mde.normalizeQuery(calc.queries.get('symex'));
     tree = calc.explore(state, {
       maxDepth: 2000,
       evidence: true
