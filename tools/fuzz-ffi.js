@@ -330,6 +330,18 @@ const PRED_CONFIGS = {
 
   // ── §3.11 Calldata ─────────────────────────────────────────────────────
   cd_read: { cluster: '§3.11', skip: 'sconcat-chain calldata state generator out of scope for Phase-1' },
+
+  // ── §3.12 Rationals (TODO_0265 Phase 1) ────────────────────────────────
+  // Fuzzed in the dedicated rational-trials section below: goals mix ratlit
+  // and bin arguments, clause resolution runs against bin.ill + rat.ill, and
+  // results are compared as canonical hashes (outputs may be rational).
+  qplus: { cluster: '§3.12', skip: 'covered by the §3.12 rational trials section' },
+  qsub:  { cluster: '§3.12', skip: 'covered by the §3.12 rational trials section' },
+  qmul:  { cluster: '§3.12', skip: 'covered by the §3.12 rational trials section' },
+  qdiv:  { cluster: '§3.12', skip: 'covered by the §3.12 rational trials section' },
+  qlt:   { cluster: '§3.12', skip: 'covered by the §3.12 rational trials section' },
+  qle:   { cluster: '§3.12', skip: 'covered by the §3.12 rational trials section' },
+  qneq:  { cluster: '§3.12', skip: 'covered by the §3.12 rational trials section' },
 };
 
 // ============================================================================
@@ -553,6 +565,103 @@ for (const pred of predList) {
               (skip > 0 ? ' (' + skip + ' skipped)' : ''));
   bumpCluster(config.cluster, { pred, status: fail > 0 ? 'FAIL' : 'ok', pass, fail, skip,
                                 summary: pass + '/' + (pass + fail) + (skip ? ' (+' + skip + ' skip)' : '') + ' [' + mode + ']' });
+}
+
+// ============================================================================
+// §3.12 RATIONAL TRIALS (TODO_0265 Phase 1)
+// ============================================================================
+//
+// Property: φ ∘ FFI = φ ∘ clause where φ is the composed binlit+ratlit
+// canonicalizer, over goals mixing ratlit and bin arguments. Clause
+// resolution runs against bin.ill + rat.ill (a separate load — the base
+// corpus above stays rat-free, proving bin behavior is untouched).
+// Overloaded predicates and explicit q-operations are both walked.
+
+{
+  const { binlitTheory } = await import('../lib/engine/ill/binlit-theory.js');
+  const { ratlitTheory, putRat, installRatlitTheory } =
+    await import('../lib/engine/theories/ratlit-theory.js');
+  const { defaultTheories, buildCanonicalizer } = await import('../lib/kernel/eq-theory.js');
+
+  installRatlitTheory();
+  const ecRat = mde.load(path.join(import.meta.dirname, '../calculus/till/prelude/rat.ill'));
+  const ratTheories = [...defaultTheories, binlitTheory, ratlitTheory];
+  const ratCanon = buildCanonicalizer(ratTheories);
+  const ratOpts = makeILLBackchainOpts({ theories: ratTheories, normalize: ratCanon });
+
+  // Small magnitudes: clause-mode qnorm runs Euclid over divmod clauses,
+  // whose recursion depth is linear in the quotient — cross-multiplied
+  // numerators must stay a few hundred at most.
+  const genRatArg = () => rand() > 0.5
+    ? putRat(randBigInt(4), 1n + randBigInt(3))
+    : Store.put('binlit', [randBigInt(4)]);
+
+  // pred → [nInputs, hasOutput]
+  const RAT_PREDS = {
+    plus: [2, true], mul: [2, true], lt: [2, false], le: [2, false],
+    eq: [2, false], neq: [2, false], eq_bool: [2, true],
+    qplus: [2, true], qsub: [2, true], qmul: [2, true], qdiv: [2, true],
+    qlt: [2, false], qle: [2, false], qneq: [2, false],
+  };
+
+  for (const pred of Object.keys(RAT_PREDS)) {
+    if (PRED_FILTER && pred !== PRED_FILTER) continue;
+    if (CLUSTER_FILTER && CLUSTER_FILTER !== '§3.12') continue;
+    const [nIn, hasOut] = RAT_PREDS[pred];
+    const meta = ffi.defaultMeta[pred];
+    const handler = ffi.get(meta.ffi);
+    let pass = 0, fail = 0;
+
+    for (let trial = 0; trial < COUNT; trial++) {
+      const ins = Array.from({ length: nIn }, genRatArg);
+      const out = hasOut ? Store.put('metavar', ['qout']) : null;
+      const args = hasOut ? [...ins, out] : ins;
+      const goal = Store.put(pred, args);
+
+      const ffiResult = handler(args);
+      const clauseResult = backward.prove(goal, ecRat.clauses, ecRat.definitions, {
+        ...ratOpts, maxDepth: 20000, allBuckets: true, useFFI: false,
+      });
+
+      const ffiOk = !!(ffiResult && ffiResult.success);
+      const dumpIns = () => ins.map(h => Store.tag(h) === 'ratlit'
+        ? Store.child(h, 0) + '/' + Store.child(h, 1)
+        : String(Store.child(h, 0))).join(', ');
+
+      if (ffiOk !== clauseResult.success) {
+        fail++;
+        console.log('MISMATCH ' + pred + '(' + dumpIns() + '): FFI=' + ffiOk +
+                    ' clause=' + clauseResult.success);
+        continue;
+      }
+      if (!ffiOk) { pass++; continue; }
+      if (!hasOut) { pass++; continue; }
+
+      const ffiVal = ratCanon(ffiResult.theta[0][1]);
+      let clauseVal = out;
+      for (let i = 0; i < 500; i++) {
+        const n = apply(clauseVal, clauseResult.theta);
+        if (n === clauseVal) break;
+        clauseVal = n;
+      }
+      clauseVal = ratCanon(clauseVal);
+      if (ffiVal === clauseVal) {
+        pass++;
+      } else {
+        fail++;
+        console.log('MISMATCH ' + pred + '(' + dumpIns() + '): canonical hash ' +
+                    'FFI=' + ffiVal + ' clause=' + clauseVal);
+      }
+    }
+
+    totalTests += pass + fail;
+    totalPass += pass;
+    totalFail += fail;
+    const status = fail > 0 ? 'FAIL' : 'ok';
+    console.log(status + ' ' + pred + ' [rat]: ' + pass + '/' + (pass + fail) + ' passed');
+    bumpCluster('§3.12', { pred: pred + '@rat', status, pass, fail, skip: 0,
+                           summary: pass + '/' + (pass + fail) + ' [rat]' });
+  }
 }
 
 // ============================================================================
