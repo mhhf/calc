@@ -88,5 +88,7 @@ name = process kind, `(done − T)` = remaining; no job tokens in the model.
 Weighted choice `woplus` (Phase 4b); debug renderings `#timeline`/`#why`
 (Phase 4c); browser/bundle + renderer grade fidelity (4c); grade-0 content in
 till (compose.js ILL-tag hardcodes); ℚ-valued parcels; flowrate catch-up
-(E6); backward sequent rules for the timed connectives (THY-A/THY-B — the
-`till.rules`/family file lands with the backward-prover integration).
+(E6); backward sequent rules (`till.rules`/`till.family` — todo 0265 Phase 6b:
+the graded fragment needs a rule-DSL side-condition extension, the timed
+judgment is gated on THY-A/THY-B; stamps are judgment structure, not a
+connective).
