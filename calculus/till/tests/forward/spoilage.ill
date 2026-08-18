@@ -1,0 +1,43 @@
+% spoilage.ill — till executable spec: windows on ONE logical timeline (C1/C2, D8).
+%
+% STATUS: written ahead of the engine (TDD) — see schedule.ill header.
+% Ground truth: tests/engine/till-oracle.test.js ("windows and spoilage").
+%
+% The worked example (todo 0265 Matching spec): host closes at T=0, reopens at
+% T=5. Activation order must reproduce the small-step history: eat at a=1
+% (max(0,1)), spoil would only activate at a=2 — food is EATEN, never rotten,
+% regardless of the horizon jump.
+
+eat:   food * meal_order -o { eaten }.
+spoil: food@Q * after (Q + 2) -o { rotten }.
+
+#expect_eaten_not_rotten (settle: 5)
+  food * meal_order@1
+  =>
+  eaten@1 .
+
+#expect_not_rotten (settle: 5)
+  food * meal_order@1
+  =>
+  rotten .
+
+% without the order, spoil fires at exactly Q+2 = 2
+#expect_rots_at_two (settle: 5)
+  food
+  =>
+  rotten@2 .
+
+% FIFO cohort selection (C3/D12): the oldest food cohort is consumed first
+#expect_fifo (settle: 5)
+  food * food@1 * meal_order
+  =>
+  eaten@0 * food@1 .
+
+% hard expiry (C2): a before-window consumer skips stale cohorts entirely —
+% bakery starts at 3; food@0 is stale (deadline 2), food@2 is fresh until 4.
+bakery: $bakery * food@Q * after 3 * before (Q + 2) -o { bread }@1.
+
+#expect_fresh_only (settle: 10)
+  bakery * food * food@2
+  =>
+  rotten@2 * bread@4 * bakery@4 .

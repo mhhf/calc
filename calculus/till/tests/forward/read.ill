@@ -1,0 +1,33 @@
+% read.ill — till executable spec: read arcs (E7.2) and in-flight atomicity (E7.3).
+%
+% STATUS: written ahead of the engine (TDD) — see schedule.ill header.
+% Ground truth: tests/engine/till-oracle.test.js ("read arcs", "in-flight atomicity").
+
+% read = instantaneous measurement: never consumed, re-emitted bit-identically
+% (original stamp — the preserved/reserved machinery, NOT the $ path). Two
+% choppers read one manual in the SAME instant — no false serialization.
+% `tree` makes each job one-shot so the schedule below is exact.
+chop: $chopper * tree * read manual -o { wood }@4.
+
+#expect_concurrent_reads (settle: 0)
+  chopper * chopper * tree * tree * manual
+  =>
+  manual@0 * !_2 wood@4 .
+
+% a read cannot happen before the token exists: its stamp joins the activation max
+gate: x * read late -o { y }.
+
+#expect_read_joins_max (settle: 10)
+  x * late@7
+  =>
+  y@7 .
+
+% in-flight atomicity: the consumer of a fused job's output activates at >=
+% completion — wood produced at 4 is eaten at 4, never mid-flight; the chopper
+% (one tree = one job) is back and idle at 4.
+eat_wood: wood -o { eaten }.
+
+#expect_atomic (settle: 10)
+  chopper * tree * manual
+  =>
+  eaten@4 * manual@0 * chopper@4 .
