@@ -1,0 +1,186 @@
+#import(../../ill/programs/bin.ill)
+
+% Exact non-negative rationals over bin — TODO_0265 Phase 1 (D3/D8.1/D14).
+%
+% Two representations of ONE object (the rationals, restricted to Q>=0):
+%   rat(N, D)  — constructor term over bin; what these clauses match (semantics)
+%   ratlit     — compact kernel leaf (num, den bigints); storage + FFI fast path
+% bridged by ratlitTheory (lib/engine/theories/ratlit-theory.js), the exact
+% analogue of i/o/e <-> binlit via binlitTheory.
+%
+% Canonical form: gcd-reduced, den > 0, den = 1 collapses to bin (Q contains N,
+% one hash per value). Clauses assume canonicalized goals — the same engine
+% invariant binlit clauses rely on — but derive canonical results themselves
+% via qnorm, so FFI-off resolution agrees with the FFI hash-for-hash.
+%
+% Overload, don't duplicate — but ONLY where bin and rational semantics
+% coincide as relations: plus, mul, lt, le, eq, neq, eq_bool. First-argument
+% indexing keeps the families apart — rat-first clauses live in the 'rat'
+% bucket (ratlit goals classify there via the eq-theory first-arg registry);
+% bin-first rat-second dispatch needs one clause per bin head (e / o X / i X).
+% Base clauses with unconstrained variables (mul/s1's Y) can still capture a
+% rational and derive o/i-wrapped forms; those are VALUE-correct (the digit
+% algorithms are semiring-generic: o(x) = 2x, i(x) = 2x+1 over Q) and
+% ratlitTheory.canonicalize folds them, so all derivations agree canonically.
+%
+% NOT overloaded (deliberate): sub (bin sub is a saturating monus), div/mod
+% (bin div is Euclidean) — neither lifts coherently to Q; overloading them
+% would make the relation non-functional (e.g. div (rat 1 2) (rat 3 4) would
+% have both the Euclidean answer 0 and the field answer 2/3). The rational
+% operations are the EXPLICIT predicates qsub (checked: fails on negative)
+% and qdiv (exact: fails on zero divisor), clauses + FFI. Also not
+% overloaded: gt (EVM carry contract), inc (plus covers), checked_sub
+% (gas-model specific). plus reverse mode (- + +) works on rationals in FFI
+% and fails in clauses for bins too obscure modes — symmetric either way.
+
+% Sorting: the declaration language has no subsorting, so `bin` is read as
+% THE numeric sort — e/i/o construct the naturals, rat constructs the
+% non-integral rationals. One sort, disjoint constructor families; the
+% canonical-form policy (den = 1 collapses) keeps the integer fragment
+% entirely inside e/i/o.
+rat: (num: bin) -> (den: bin) -> bin.
+
+% === Internals ===
+
+% gcd A B G — Euclid; gcd(X, 0) = X. B strictly decreases: terminating.
+% Clause-produced bins can carry leading-zero padding (e.g. sub 2 2 = (o e),
+% value 0 — see the trim notes in bin.ill), so the recursion guards by VALUE
+% (gt, which walks padded zeros correctly) and trims the remainder before
+% recursing, keeping the structural e-match in gcd/z reachable.
+gcd: (a: bin) -> (b: bin) -> (g: bin) -> type.
+gcd/z: gcd X e X.
+gcd/s: gcd X Y G
+  <- gt Y e e (i e)
+  <- mod X Y R
+  <- trim R R'
+  <- gcd Y R' G.
+
+% qnorm N D R — R is N/D in canonical form: gcd-reduced, den = 1 collapses
+% to the bare bin numerator. Guarded on D > 0 (a zero denominator FAILS —
+% this is how qdiv rejects division by zero).
+qnorm: (num: bin) -> (den: bin) -> (r: bin) -> type.
+% den = 1 shortcut: N/1 is already canonical — skips Euclid entirely, which
+% matters in clause mode where div/mod resolve via repeated subtraction
+% (depth linear in the quotient). Overlaps qnorm/int on den = 1; both derive
+% the same R (confluent).
+qnorm/one: qnorm N (i e) N.
+qnorm/int: qnorm N D R
+  <- neq D e
+  <- gcd N D G
+  <- div D G (i e)
+  <- div N G R.
+qnorm/frac: qnorm N D (rat N' D')
+  <- neq D e
+  <- gcd N D G
+  <- div D G D'
+  <- neq D' (i e)
+  <- div N G N'.
+
+% to_q X Q — coerce bin or rat to rat form (n |-> n/1).
+to_q: (x: bin) -> (r: bin) -> type.
+to_q/q: to_q (rat N D) (rat N D).
+to_q/e: to_q e (rat e (i e)).
+to_q/o: to_q (o X) (rat (o X) (i e)).
+to_q/i: to_q (i X) (rat (i X) (i e)).
+
+% === Explicit q-operations ===
+% Cross-multiplication over coerced arguments; dens > 0 preserve order.
+% These are the user-facing rational operations (both arguments coerce, so
+% mixed bin/rat goals work directly) and the semantic definitions behind
+% both the overload dispatch below and the q-FFI handlers.
+
+qplus: (a: bin) -> (b: bin) -> (r: bin) -> type.
+qplus/z: qplus U V R
+  <- to_q U (rat A B)
+  <- to_q V (rat C D)
+  <- mul A D X
+  <- mul C B Y
+  <- plus X Y N
+  <- mul B D M
+  <- qnorm N M R.
+
+% Checked subtraction: FAILS on negative results (Q>=0 — debt/dual grades
+% deferred). Deliberately not saturating: a saturating rational monus fed
+% into repeated-subtraction loops (divmod-style) derives wrong quotients.
+qsub: (a: bin) -> (b: bin) -> (r: bin) -> type.
+qsub/z: qsub U V R
+  <- to_q U (rat A B)
+  <- to_q V (rat C D)
+  <- mul A D X
+  <- mul C B Y
+  <- checked_sub X Y N
+  <- mul B D M
+  <- qnorm N M R.
+
+qmul: (a: bin) -> (b: bin) -> (r: bin) -> type.
+qmul/z: qmul U V R
+  <- to_q U (rat A B)
+  <- to_q V (rat C D)
+  <- mul A C N
+  <- mul B D M
+  <- qnorm N M R.
+
+% Exact (field) division; C = 0 makes the qnorm den-guard fail.
+qdiv: (a: bin) -> (b: bin) -> (r: bin) -> type.
+qdiv/z: qdiv U V R
+  <- to_q U (rat A B)
+  <- to_q V (rat C D)
+  <- mul A D N
+  <- mul B C M
+  <- qnorm N M R.
+
+qlt: (a: bin) -> (b: bin) -> type.
+qlt/z: qlt U V
+  <- to_q U (rat A B)
+  <- to_q V (rat C D)
+  <- mul A D X
+  <- mul C B Y
+  <- lt X Y.
+
+qle: (a: bin) -> (b: bin) -> type.
+qle/z: qle U V
+  <- to_q U (rat A B)
+  <- to_q V (rat C D)
+  <- mul A D X
+  <- mul C B Y
+  <- le X Y.
+
+qneq: (a: bin) -> (b: bin) -> type.
+qneq/z: qneq U V
+  <- to_q U (rat A B)
+  <- to_q V (rat C D)
+  <- mul A D X
+  <- mul C B Y
+  <- neq X Y.
+
+% === Overload dispatch (plus, mul, lt, le, neq only — see header) ===
+% One rat-first clause + three bin-first clauses per predicate; the head
+% constraint is what keeps bin×bin goals out (they never reach a q-core).
+% eq needs NO overload: canonical forms make rational equality structural,
+% so eq/z (eq X X) already covers it. eq_bool/false reaches the rational
+% case through the neq overloads below.
+
+plus/qq: plus (rat A B) Y R <- qplus (rat A B) Y R.
+plus/qe: plus e (rat C D) R <- qplus e (rat C D) R.
+plus/qo: plus (o X) (rat C D) R <- qplus (o X) (rat C D) R.
+plus/qi: plus (i X) (rat C D) R <- qplus (i X) (rat C D) R.
+
+mul/qq: mul (rat A B) Y R <- qmul (rat A B) Y R.
+mul/qe: mul e (rat C D) R <- qmul e (rat C D) R.
+mul/qo: mul (o X) (rat C D) R <- qmul (o X) (rat C D) R.
+mul/qi: mul (i X) (rat C D) R <- qmul (i X) (rat C D) R.
+
+lt/qq: lt (rat A B) Y <- qlt (rat A B) Y.
+lt/qe: lt e (rat C D) <- qlt e (rat C D).
+lt/qo: lt (o X) (rat C D) <- qlt (o X) (rat C D).
+lt/qi: lt (i X) (rat C D) <- qlt (i X) (rat C D).
+
+le/qq: le (rat A B) Y <- qle (rat A B) Y.
+le/qe: le e (rat C D) <- qle e (rat C D).
+le/qo: le (o X) (rat C D) <- qle (o X) (rat C D).
+le/qi: le (i X) (rat C D) <- qle (i X) (rat C D).
+
+neq/qq: neq (rat A B) Y <- qneq (rat A B) Y.
+neq/qe: neq e (rat C D) <- qneq e (rat C D).
+neq/qo: neq (o X) (rat C D) <- qneq (o X) (rat C D).
+neq/qi: neq (i X) (rat C D) <- qneq (i X) (rat C D).
