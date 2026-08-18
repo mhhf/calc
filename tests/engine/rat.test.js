@@ -138,52 +138,36 @@ describe('ratlit-theory — codec and canonical form', () => {
   });
 });
 
-describe('FFI rational overloads (via arithmetic.js)', () => {
+describe('FFI — split namespaces (bin family vs q-family)', () => {
   const half = () => putRat(1n, 2n);
   const third = () => putRat(1n, 3n);
 
-  it('plus: rat×rat, mixed, and den-collapse', () => {
-    let r = arithmetic.plus([half(), third(), mv('R')]);
-    assert.ok(r.success);
+  it('bin family rejects rationals (no overloading — D8.1 revised)', () => {
+    assert.ok(!arithmetic.plus([half(), third(), mv('R')]).success);
+    assert.ok(!arithmetic.mul([half(), bin(4n), mv('R')]).success);
+    assert.ok(!arithmetic.sub([half(), third(), mv('R')]).success);
+    assert.ok(!arithmetic.div([half(), bin(3n), mv('R')]).success);
+    assert.ok(!arithmetic.lt([third(), half()]).success);
+    assert.ok(!arithmetic.eq([putRat(2n, 4n), half()]).success);
+    // and bin×bin semantics are byte-identical to before Phase 1
+    assert.equal(arithmetic.plus([bin(3n), bin(4n), mv('R')]).theta[0][1], bin(7n));
+    assert.equal(arithmetic.div([bin(7n), bin(2n), mv('R')]).theta[0][1], bin(3n));
+  });
+
+  it('qplus/qmul: exact, bins coerce, den=1 collapses', () => {
+    let r = ratFFI.qplus([half(), third(), mv('R')]);
     assert.equal(r.theta[0][1], putRat(5n, 6n));
-
-    r = arithmetic.plus([bin(3n), half(), mv('R')]);
+    r = ratFFI.qplus([bin(3n), half(), mv('R')]);
     assert.equal(r.theta[0][1], putRat(7n, 2n));
-
-    r = arithmetic.plus([half(), half(), mv('R')]);
+    r = ratFFI.qplus([half(), half(), mv('R')]);
     assert.equal(r.theta[0][1], bin(1n)); // collapses to binlit
-  });
-
-  it('plus reverse mode (- + +) mirrors bin: fails on negative', () => {
-    let r = arithmetic.plus([mv('A'), third(), putRat(1n, 2n)]);
-    assert.ok(r.success);
-    assert.equal(r.theta[0][1], putRat(1n, 6n));
-
-    r = arithmetic.plus([mv('A'), putRat(1n, 2n), third()]);
-    assert.ok(!r.success);
-    assert.equal(r.reason, 'negative_result');
-  });
-
-  it('sub and div are NOT overloaded (monus/Euclidean do not lift to ℚ)', () => {
-    let r = arithmetic.sub([half(), third(), mv('R')]);
-    assert.ok(!r.success);
-    assert.equal(r.reason, 'conversion_failed');
-
-    r = arithmetic.div([half(), bin(3n), mv('R')]);
-    assert.ok(!r.success);
-
-    r = arithmetic.div([bin(7n), bin(2n), mv('R')]);
-    assert.equal(r.theta[0][1], bin(3n)); // INTEGER division preserved
-  });
-
-  it('mul is exact on rationals and mixed', () => {
-    let r = arithmetic.mul([putRat(2n, 3n), putRat(3n, 4n), mv('R')]);
+    r = ratFFI.qmul([putRat(2n, 3n), putRat(3n, 4n), mv('R')]);
     assert.equal(r.theta[0][1], putRat(1n, 2n));
-    r = arithmetic.mul([bin(4n), putRat(3n, 4n), mv('R')]);
+    r = ratFFI.qmul([bin(4n), putRat(3n, 4n), mv('R')]);
     assert.equal(r.theta[0][1], bin(3n));
   });
 
-  it('explicit q-operations: qsub checked, qdiv exact, bins coerce', () => {
+  it('qsub is checked (fails on negative), qdiv is exact field division', () => {
     let r = ratFFI.qsub([half(), third(), mv('R')]);
     assert.equal(r.theta[0][1], putRat(1n, 6n));
 
@@ -198,16 +182,24 @@ describe('FFI rational overloads (via arithmetic.js)', () => {
     assert.equal(r.theta[0][1], bin(6n));
 
     r = ratFFI.qdiv([bin(7n), bin(2n), mv('R')]);
-    assert.equal(r.theta[0][1], putRat(7n, 2n)); // exact, unlike div
+    assert.equal(r.theta[0][1], putRat(7n, 2n)); // exact, unlike Euclidean div
 
     r = ratFFI.qdiv([half(), bin(0n), mv('R')]);
     assert.ok(!r.success);
     assert.equal(r.reason, 'division_by_zero');
+  });
 
+  it('q-comparisons: qlt/qle/qeq/qneq/qeq_bool by value', () => {
     assert.ok(ratFFI.qlt([third(), half()]).success);
+    assert.ok(!ratFFI.qlt([half(), third()]).success);
+    assert.ok(ratFFI.qlt([third(), bin(1n)]).success);
     assert.ok(ratFFI.qle([half(), half()]).success);
+    assert.ok(ratFFI.qeq([putRat(2n, 4n), half()]).success);
+    assert.ok(ratFFI.qeq([bin(3n), bin(3n)]).success);
     assert.ok(ratFFI.qneq([half(), third()]).success);
     assert.ok(!ratFFI.qneq([half(), putRat(2n, 4n)]).success);
+    assert.equal(ratFFI.qeq_bool([half(), third(), mv('Z')]).theta[0][1], bin(0n));
+    assert.equal(ratFFI.qeq_bool([half(), half(), mv('Z')]).theta[0][1], bin(1n));
   });
 
   it('canonicalize folds o/i numerals over rational leaves (o(x)=2x, i(x)=2x+1)', () => {
@@ -215,18 +207,6 @@ describe('FFI rational overloads (via arithmetic.js)', () => {
     assert.equal(ratlitTheory.canonicalize(wrapped), bin(3n)); // 4 · 3/4
     const iWrapped = Store.put('i', [putRat(1n, 4n)]);
     assert.equal(ratlitTheory.canonicalize(iWrapped), putRat(3n, 2n)); // 2·1/4 + 1
-  });
-
-  it('comparisons: lt/le/eq/neq/eq_bool by value', () => {
-    assert.ok(arithmetic.lt([third(), half()]).success);
-    assert.ok(!arithmetic.lt([half(), third()]).success);
-    assert.ok(arithmetic.lt([third(), bin(1n)]).success);
-    assert.ok(arithmetic.le([half(), half()]).success);
-    assert.ok(arithmetic.eq([putRat(2n, 4n), half()]).success);
-    assert.ok(arithmetic.neq([half(), third()]).success);
-    assert.ok(!arithmetic.neq([half(), putRat(2n, 4n)]).success);
-    assert.equal(arithmetic.eq_bool([half(), third(), mv('Z')]).theta[0][1], bin(0n));
-    assert.equal(arithmetic.eq_bool([half(), half(), mv('Z')]).theta[0][1], bin(1n));
   });
 });
 
