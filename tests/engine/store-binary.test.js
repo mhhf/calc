@@ -284,6 +284,16 @@ describe('Store Binary Format', () => {
       buf.writeUInt16LE(99, 4); // version 99
       assert.throws(() => deserialize(buf), /Unsupported version/);
     });
+
+    it('rejects a stale v6 snapshot (pre-till PRED_BOUNDARY — self-reject gate)', () => {
+      // A real serialized snapshot with only the version field patched to 6:
+      // exactly the shape of a pre-Phase-1 cache file after the tag commit.
+      Store.clear();
+      Store.put('tensor', [Store.put('atom', ['a']), Store.put('atom', ['b'])]);
+      const buf = serialize(Store.snapshot({ version: '1.0' }));
+      buf.writeUInt16LE(6, 4);
+      assert.throws(() => deserialize(buf), /Unsupported version: 6/);
+    });
   });
 
   describe('tag registry reset', () => {
