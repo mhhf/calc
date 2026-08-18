@@ -172,7 +172,7 @@ FFI is optimization, theory is semantics. Every FFI predicate MUST have backward
 ## Common Gotchas
 
 - `Store.tagId()` returns 0 for both invalid IDs and `atom` tag — use `isTerm()` first
-- Atoms share tag 0, predicates have tag >= `PRED_BOUNDARY` (31) — use `hasPredicate`/`groupForPred`
+- Atoms share tag 0, predicates have tag >= `PRED_BOUNDARY` (36) — use `hasPredicate`/`groupForPred`. Appending kernel tags shifts the boundary and invalidates every serialized Store — batch into one commit and bump the store-binary VERSION
 - Nullary constructors (e.g. `empty_mem`) are `atom('empty_mem')` not tag — use helpers
 - `code` facts are **linear** in EVM rules (consumed and re-produced)
 - `linearMeta.persistentDeps` (Set) needs Array↔Set conversion for JSON serialization
