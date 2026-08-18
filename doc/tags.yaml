@@ -1,34 +1,34 @@
 tags:
   ill: 26
   inference-rule: 24
-  linear-logic: 23
-  forward-chaining: 19
+  linear-logic: 24
+  forward-chaining: 21
   architecture: 14
   chr: 13
+  proof-theory: 11
   left-rule: 10
   positive-connective: 10
   implementation: 9
   negative-connective: 9
   optimization: 9
-  proof-theory: 9
   right-rule: 9
-  engine: 7
+  engine: 8
   oplus: 7
   soundness: 7
   symbolic-execution: 7
+  cut-elimination: 6
+  graded-types: 6
   ownership: 6
-  cut-elimination: 5
-  graded-types: 5
+  lax-monad: 5
   structural-rule: 5
   verification: 5
   with: 5
+  clf: 4
   ffi: 4
-  lax-monad: 4
   partial-evaluation: 4
   performance: 4
   symexec: 4
   authorization: 3
-  clf: 3
   Curry-Howard: 3
   evm: 3
   loli: 3
@@ -40,6 +40,7 @@ tags:
   accounting: 2
   backward: 2
   bridge: 2
+  determinism: 2
   eigenvariable: 2
   existential: 2
   exists: 2
@@ -57,6 +58,9 @@ tags:
   session-types: 2
   supercompilation: 2
   tensor: 2
+  till: 2
+  time: 2
+  tropical: 2
   type-checking: 2
   adjoint-logic: 1
   anki: 1
@@ -86,7 +90,6 @@ tags:
   delegation: 1
   derivatives: 1
   design: 1
-  determinism: 1
   digital-assets: 1
   disjunction: 1
   documentation: 1
@@ -117,6 +120,7 @@ tags:
   location: 1
   logical-framework: 1
   markets: 1
+  matching: 1
   memoization: 1
   metalogic: 1
   modalities: 1
@@ -142,6 +146,7 @@ tags:
   quantifiers: 1
   representation: 1
   roadmap: 1
+  scheduling: 1
   Skolem: 1
   smt: 1
   specialization: 1
