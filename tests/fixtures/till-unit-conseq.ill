@@ -1,0 +1,6 @@
+% Multiplicative unit in rule bodies (Phase 6): `I` decomposes to NOTHING —
+% an affine discard `A -o { I }` must not leak a literal unit fact.
+
+kill: junk -o { I }.
+tick: src -o { out * I }.
+noop: I * pulse -o { done }.
