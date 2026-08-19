@@ -1,11 +1,13 @@
 /**
  * Timed surface syntax — TODO_0265 Phase 3 acceptance (parser round-trip).
  *
- * `timedAnnotations`-gated grammar: postfix `A@t` stamps, `{B}@d` monad
- * grades, `after`/`before` windows with rational-expression args, the
- * `read` marker, and exact rational literals (digit-wise, never a float).
- * Also pins the rejections: `!A@t` (D15), double stamps, and that a
- * calculus without the gate parses none of it.
+ * DECLARATION-derived grammar (TODO_0268 item A — the former
+ * `timedAnnotations` flag): postfix `A@t` stamps, `{B}@d` monad grades,
+ * `after`/`before` windows with rational-expression args, the `read`
+ * marker, and exact rational literals (digit-wise, never a float) — all
+ * from sorted @ascii templates in the .calc file. Also pins the
+ * rejections: `!A@t` (D15), double stamps, and that a calculus without
+ * the declarations parses none of it.
  */
 
 import { describe, it, before } from 'node:test';
@@ -21,13 +23,12 @@ const FIXTURE = path.join(import.meta.dirname, '../fixtures/graded-comp.calc');
 const atom = (n) => Store.put('atom', [n]);
 const fv = (n) => Store.put('freevar', [n]);
 
-describe('timed parser (gtoy fixture + timedAnnotations)', () => {
+describe('timed parser (gtoy fixture, declaration-derived)', () => {
   let parse;
   before(() => {
     const gt = calculus.load(FIXTURE);
     parse = buildParser(gt.constructors, {
       gradeUnit: () => putRat(0n, 1n),
-      timedAnnotations: true,
     });
   });
 
@@ -77,7 +78,7 @@ describe('timed parser (gtoy fixture + timedAnnotations)', () => {
   it('rational literals are ordinary term arguments too (facts: price 1/2)', () => {
     const gt = calculus.load(FIXTURE);
     const parseApp = buildParser(gt.constructors, {
-      gradeUnit: () => putRat(0n, 1n), timedAnnotations: true, application: true,
+      gradeUnit: () => putRat(0n, 1n), application: true,
     });
     assert.equal(parseApp('price 1/2'), Store.put('price', [putRat(1n, 2n)]));
     assert.equal(parseApp('p 0.5'), Store.put('p', [putRat(1n, 2n)]));
@@ -116,13 +117,22 @@ describe('timed parser (gtoy fixture + timedAnnotations)', () => {
   });
 
   it("'@' on an ungraded (1-ary) computation is rejected", async () => {
-    const { earleyGrammarFromTables, parserFromGrammar } = await import('../../lib/parser/earley-grammar.js');
-    const p = parserFromGrammar(earleyGrammarFromTables({
-      operators: [], nullary: {}, unaryPrefix: {},
-      circumfix: [{ open: '{', close: '}', name: 'monad', arity: 1 }],
-      timedAnnotations: true,
-    }));
+    const { extractParserTables, earleyGrammarFromTables, parserFromGrammar } =
+      await import('../../lib/parser/earley-grammar.js');
+    // A calculus that declares the `at` template but whose computation is
+    // UNGRADED (1-ary circumfix): `{b}@3` has no grade slot to fill.
+    const tables = extractParserTables({
+      monad: { name: 'monad', argTypes: ['formula'], returnType: 'formula',
+               annotations: { ascii: '{ _ }' } },
+      at: { name: 'at', argTypes: ['formula', 'grade'], returnType: 'formula',
+            annotations: { ascii: '#1@#2', prec: { precedence: 90, associativity: 'left' } } },
+    });
+    const p = parserFromGrammar(earleyGrammarFromTables(tables));
     assert.throws(() => p('{ b }@3'), /ungraded computation/);
+  });
+
+  it('a second grade regrade `{b}@2@3` is a loud error, not a silent regrade', () => {
+    assert.throws(() => parse('{ b }@2@3'), /double grade/);
   });
 });
 
@@ -136,7 +146,7 @@ describe('show.js renders timed forms exactly (no floats, no hex stamps)', () =>
   });
 });
 
-describe('timed syntax absent without the gate', () => {
+describe('timed syntax absent without the declarations', () => {
   it('ILL parser rejects @, after, read', () => {
     const ill = calculus.loadILL();
     assert.throws(() => ill.parse('A@3'), /Parse error/);

@@ -140,7 +140,7 @@ describe('graded-monad render fidelity (Phase 4c)', () => {
     const gt = calculus.load(path.join(import.meta.dirname, '../fixtures/graded-comp.calc'));
     const gradeUnit = () => putRat(0n, 1n);
     render = buildRenderer(gt.constructors, { gradeUnit });
-    parse = buildParser(gt.constructors, { gradeUnit, timedAnnotations: true });
+    parse = buildParser(gt.constructors, { gradeUnit });
   });
 
   it('unit grade renders bare; non-unit grades render as {B}@g', async () => {
@@ -178,7 +178,7 @@ describe('browser hydration — gradeUnit hook (Phase 4c)', () => {
     const bundle = {
       name: 'gtoy', baseTypes: ['formula', 'grade'],
       constructors: gt.constructors,
-      parserTables: { ...parserTables(gt.constructors), timedAnnotations: true },
+      parserTables: { ...parserTables(gt.constructors) },
       rendererFormats: rendererFormats(gt.constructors),
       rules: {}, polarity: {}, invertible: {}, directives: {},
     };

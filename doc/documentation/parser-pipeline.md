@@ -81,6 +81,8 @@ ill.rules → custom parser (uses buildParser for formula fragments) → rule de
 
 **Grammar generation:** `lib/parser/earley-grammar.js` — generates a stratified CFG from `.calc` constructor annotations (Danielsson-Norell style). Each precedence level becomes a distinct nonterminal; associativity is encoded via same/next references. Binder scoping uses open/closed nonterminals.
 
+**Sorted mixfix templates** (TODO_0268 item A): any `#N`-hole `@ascii` template not claimed by the legacy families (binary/prefix/nullary/circumfix/gradedPrefix) classifies by the position of its SAME-SORT holes — none → closed (ATOM), right edge → prefix (UNARY), left edge → postfix (tight level above UNARY), both edges → infix (precedence chain). Cross-sort holes target the auxiliary grade chain (v1: one auxiliary sort; per-sort chains ride with TODO_0011). This is how till declares its timed surface (`at: formula -> grade -> formula @ascii "#1@#2"`, `after`, `before`, `readPreserved`) and woplus's `A +[Q] B` — the former `timedAnnotations` parser flag is gone; a calculus parses what it declares. `at`'s stamp/grade pun (`{B}@d` regrades the computation) stays kernel-owned in the grammar's atAction, like `$`/preserved.
+
 **Factory:** `lib/calculus/builders.js:buildParserFromTables(tables)` — delegates to `computeEarleyGrammarFromTables` + `buildParserFromGrammar`. Same interface for all three parser paths. Opt-in extensions via tables fields:
 
 | Extension | Tables field | Example |

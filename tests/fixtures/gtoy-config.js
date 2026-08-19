@@ -50,7 +50,6 @@ const gtoyConfig = {
   loader: {
     buildParser: () => buildParser(calculus.load(FIXTURE).constructors, {
       gradeUnit: gtoyGradeUnit,
-      timedAnnotations: true,
       application: true,
       multiCharFreevars: true,
     }),

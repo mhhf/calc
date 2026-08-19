@@ -31,6 +31,21 @@ bang: grade -> formula -> formula
   @prec 80
   @category exponential.
 
+% Timed surface (sorted templates over kernel wrapper tags, TODO_0268 A) —
+% mirrors till.calc so the timed-grammar tests run on the fixture.
+at: formula -> grade -> formula
+  @ascii "#1@#2"
+  @prec 90 left.
+
+after: grade -> formula
+  @ascii "after #1".
+
+before: grade -> formula
+  @ascii "before #1".
+
+readPreserved: formula -> formula
+  @ascii "read #1".
+
 atom: string -> formula
   @ascii "_"
   @prec 100.
