@@ -7,10 +7,17 @@
  * "the delay grade is the stamp of the future"). gmonad_r2 (@modeShift)
  * bridges to the TIMED engine: settle(Δ, T) then exact rightFocus of S
  * against the residual timed multiset — each firing is one @fire instance,
- * so bridge success = settle-reachability (adequacy direction of the
- * Stage 2 acceptance: settle-reachable ⇒ derivable; refutations are
- * underivability). Ground truth: the executable specs' #expect gates —
- * the SAME lhs/rhs hashes are wrapped here as sequents.
+ * so bridge success implies settle-reachability AND derivability
+ * (THY_0018 §5 bridge soundness: the bridge is a sound but NOT complete
+ * oracle — gmonad_r derives subeffected goals with no forward step, so
+ * derivable ⇏ settle-reachable). A prove() failure refutes the sequent
+ * because BOTH the pure-backward and bridge routes are searched. These
+ * tests witness the SOUNDNESS direction of the Stage 2 acceptance
+ * (settle-reachable ⇒ derivable) plus refutations; they exercise settle
+ * THROUGH the prover, so the non-circular content is the
+ * rightFocus/retiming/decomposition layer around it. Ground truth: the
+ * executable specs' #expect gates — the SAME lhs/rhs hashes are wrapped
+ * here as sequents.
  *
  * THY_0018 theorems witnessed as (under)derivability:
  *   Thm 5 in-flight atomicity — no interaction inside (a, a+d)
