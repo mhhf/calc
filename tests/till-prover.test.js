@@ -48,6 +48,9 @@ describe('till sequent calculus (graded fragment, Stage 1)', () => {
     assert.ok(r.success, `expected provable: ${desc}`);
     const v = kernel.verifyTree(r.proofTree);
     assert.ok(v.valid, `kernel rejected ${desc}: ${v.errors.join('; ')}`);
+    // pure sequent proofs (no bridge) must be FULLY verified — no
+    // unverified steps (round-15 F1)
+    assert.equal(v.unverified, undefined, `unverified steps in ${desc}`);
   });
   const refuted = (desc, linear, succ) => it(desc, () => {
     assert.ok(!prove(linear, succ).success, `expected refuted: ${desc}`);
@@ -163,6 +166,39 @@ describe('till sequent calculus (graded fragment, Stage 1)', () => {
       const r = prove(['{a}@2'], '{a}@2');
       assert.ok(r.success);
       assert.ok(kernel.verifyTree(r.proofTree).valid);
+    });
+
+    // Round-15 F1: the kernel threads the linear resource discipline —
+    // shape-valid steps that leak context are rejected at the root.
+    it('rejects a forged at_l with unconsumed context: a@1, b |- a@2', () => {
+      const bad = new ProofTree({
+        conclusion: Seq.fromArrays([P('a@1'), P('b')], [], P('a@2')),
+        rule: 'at_l', proven: true, premises: [],
+      });
+      const v = kernel.verifyTree(bad);
+      assert.ok(!v.valid);
+      assert.ok(v.errors.some(e => /unconsumed/.test(e)), v.errors.join('; '));
+    });
+
+    it('rejects a forged id with unconsumed context: a, b |- a', () => {
+      const bad = new ProofTree({
+        conclusion: Seq.fromArrays([P('a'), P('b')], [], P('a')),
+        rule: 'id', proven: true, premises: [],
+      });
+      assert.ok(!kernel.verifyTree(bad).valid);
+    });
+
+    it('flags a forged gmonad_r2 bridge node as unverified, never as proven', () => {
+      // the kernel cannot re-run settle: a zero-premise modeShift node
+      // passes shape checks but MUST carry the modeSwitch flag — callers
+      // claiming full verification assert `valid && !unverified`
+      const bad = new ProofTree({
+        conclusion: Seq.fromArrays([P('b')], [], P('{a}@5')),
+        rule: 'gmonad_r2', proven: true, premises: [],
+      });
+      const v = kernel.verifyTree(bad);
+      assert.ok(v.valid);
+      assert.deepEqual(v.unverified, ['modeSwitch']);
     });
   });
 });

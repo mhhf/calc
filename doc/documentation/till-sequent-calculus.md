@@ -74,5 +74,20 @@ at load time. Template rules require the metavar-producing parser
 (`multiCharFreevars`) — test sequents therefore use lowercase atoms;
 uppercase identifiers are pattern variables.
 
+## Kernel verification contract
+
+`verifyTree` checks rule shapes **and** linear resource accounting: it
+re-threads the prover's lazy delta discipline (each premise context =
+rule-introduced formulas ⊎ a sub-multiset of the unconsumed pool;
+leftovers flow through siblings; the root leftover must be empty), so
+forged trees that leak context (`a ⊗ b ⊢ a` via id) are rejected. Steps
+the kernel cannot re-derive are accepted but reported in
+`result.unverified`: settle-bridge steps (`'modeSwitch'` — the forward
+run is the engine's responsibility) and quantifier steps with fresh
+eigenvariables (`'binding'`). **Full verification = `valid &&
+!unverified`**; pure sequent proofs (all of Stage 1) meet it, bridge
+trees (Stage 2 adequacy) are verified modulo the settle step by design.
+`verifyStep` alone is shape-only — never a resource check.
+
 Tests: `tests/till-prover.test.js` (provability grid, kernel gates),
 `tests/rules2-template.test.js` (DSL compilation + validation).
