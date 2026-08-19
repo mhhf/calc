@@ -124,6 +124,19 @@ describe('till conflict chooser (P5/D17)', () => {
     const pickB = (tied) => tied.find(m => m.rule.name === 'grab_b');
     assert.equal(calc.settle(one, '0', { chooser: pickB }).events[0].rule, 'grab_b');
   });
+
+  it('PRF golden pins: exact winner per seed (round-13 residue i)', () => {
+    // Pins the concrete PRF draw, not just reproducibility — a _mix32/
+    // _thetaHash/store-hashing change re-samples every trace and ONLY this
+    // test notices. On such a change: verify intent, then re-pin. (The PRF
+    // mixes state.stateHash = arena-layout dependent — values are stable
+    // for THIS file's load order only; re-pin if earlier tests change.
+    // node-only: bun's module evaluation interns in a different order.)
+    if (typeof Bun !== 'undefined') return;
+    assert.equal(calc.settle(one, '0', { seed: 0 }).events[0].rule, 'grab_b');
+    assert.equal(calc.settle(one, '0', { seed: 7 }).events[0].rule, 'grab_b');
+    assert.equal(calc.settle(one, '0', { seed: 42 }).events[0].rule, 'grab_a');
+  });
 });
 
 describe('till explore — branch only on genuine conflicts (Phase 4)', () => {
@@ -161,6 +174,17 @@ describe('till explore — branch only on genuine conflicts (Phase 4)', () => {
     const S = init(rcalc, 'expect_concurrent_reads');   // 2 choppers, 2 trees, 1 manual
     const { leaves } = rcalc.settleExplore(S, '0');
     assert.equal(leaves.length, 1);
+  });
+
+  it('read starvation: consumer vs reader of the last copy ⇒ conflict node (round-13 residue iv)', () => {
+    // look: read t * probe -o {seen}.  take: t -o {gone}.  One t: take-first
+    // starves the read ({gone, probe}); look-first preserves t ({seen, gone}).
+    const rcalc = load(FIX('till-read-starve.ill'));
+    const S = { linear: { [Store.put('atom', ['t'])]: 1, [Store.put('atom', ['probe'])]: 1 }, persistent: {} };
+    const { tree, leaves } = rcalc.settleExplore(S, '0');
+    assert.equal(tree.type, 'conflict');
+    const outcomes = leaves.map(l => Object.keys(stamped(l.state)).sort().join(',')).sort();
+    assert.deepEqual(outcomes, ['gone@0,probe@0', 'gone@0,seen@0']);
   });
 
   it('explore leaves agree with exec on conflict-free programs (confluence)', () => {
@@ -367,6 +391,42 @@ describe('till settleExplore — instant-feeding completeness (round 13)', () =>
     const calc = load(path.join(import.meta.dirname, '../../calculus/till/tests/debug/chopbuild.ill'));
     const S = convert.decomposeQuery(calc.queries.get('run'));
     assert.equal(calc.settleExplore(S, '10').leaves.length, 1);
+  });
+});
+
+describe('till fused ≡ fissioned (E7.3 theorem, round-13 residue v)', () => {
+  it('{b}@5 lands at the same stamp as an explicit 2+3 intermediate chain', () => {
+    const calc = load(FIX('till-fission.ill'));
+    const fused = calc.settle({ linear: { [Store.put('atom', ['a'])]: 1 }, persistent: {} }, '5').state;
+    const fiss = calc.settle({ linear: { [Store.put('atom', ['a2'])]: 1 }, persistent: {} }, '5').state;
+    assert.deepEqual(stamped(fused), { 'b@5': 1 });
+    assert.deepEqual(stamped(fiss), { 'b2@5': 1 });     // same stamp, no residual m
+  });
+
+  it('fission is observable mid-flight, fusion is not (the E7.3 trade)', () => {
+    const calc = load(FIX('till-fission.ill'));
+    // horizon 1: fiss1 fired (a=0), m stamped 2 in flight; fiss2 (a=2) pending
+    const mid = calc.settle({ linear: { [Store.put('atom', ['a2'])]: 1 }, persistent: {} }, '1').state;
+    assert.deepEqual(stamped(mid), { 'm@2': 1 });
+  });
+});
+
+describe('till settle onStep hook (round-13 residue vi)', () => {
+  it('emits one record per firing with activation/delay/live state', () => {
+    const calc = load(SPEC('schedule.ill'));
+    const S = init(calc, 'expect_two_jobs');
+    const seen = [];
+    calc.settle(S, '1', { onStep: (e) => seen.push(e) });
+    assert.equal(seen.length, 2);
+    assert.deepEqual(seen.map(e => e.step), [1, 2]);
+    assert.deepEqual(seen.map(e => e.rule.name), ['sawmill_rule', 'sawmill_rule']);
+    assert.deepEqual(seen.map(e => ratParts(e.activation)), [[0n, 1n], [1n, 2n]]);
+    assert.deepEqual(seen.map(e => ratParts(e.delay)), [[1n, 2n], [1n, 2n]]);
+    for (const e of seen) {
+      assert.equal(typeof e.consumed, 'object');
+      assert.ok(Array.isArray(e.theta));
+      assert.ok(e.state.linear.group, 'state is the live State object');
+    }
   });
 });
 

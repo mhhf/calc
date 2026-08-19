@@ -74,6 +74,53 @@ describe('lib/rat.js — algebraic properties (sample grid)', () => {
     }
   });
 
+  // ℚ field axioms + the (max, +) tropical structure the scheduler runs on
+  // (round-13 testing residue ix). max is availability-⊕, add is effect-⊗.
+  const max = (a, b) => (rat.cmp(a, b) >= 0 ? a : b);
+  const b0 = [0n, 1n];
+  const G = SAMPLES.slice(0, 10).map(([n, d]) => rat.norm(n, d))
+    .concat([[-1n, 2n], [-3n, 1n]].map(([n, d]) => rat.norm(n, d)));
+
+  it('field axioms: associativity, distributivity, inverses (sample grid)', () => {
+    for (const a of G) for (const b of G) for (const c of G.slice(0, 5)) {
+      assert.deepEqual(rat.add(rat.add(a, b), c), rat.add(a, rat.add(b, c)));
+      assert.deepEqual(rat.mul(rat.mul(a, b), c), rat.mul(a, rat.mul(b, c)));
+      assert.deepEqual(rat.mul(a, rat.add(b, c)), rat.add(rat.mul(a, b), rat.mul(a, c)));
+    }
+    for (const a of G) {
+      assert.deepEqual(rat.add(a, rat.sub([0n, 1n], a)), [0n, 1n]);   // additive inverse
+      if (a[0] !== 0n) assert.deepEqual(rat.mul(a, rat.div([1n, 1n], a)), [1n, 1n]);
+      assert.deepEqual(rat.add(a, [0n, 1n]), a);                       // units
+      assert.deepEqual(rat.mul(a, [1n, 1n]), a);
+    }
+  });
+
+  it('tropical (max, +) dioid: distributivity, idempotence, unit', () => {
+    for (const a of G) for (const b of G) for (const c of G.slice(0, 5)) {
+      // ⊗ distributes over ⊕: max(a,b) + c = max(a+c, b+c)
+      assert.deepEqual(rat.add(max(a, b), c), max(rat.add(a, c), rat.add(b, c)));
+      assert.deepEqual(max(max(a, b), c), max(a, max(b, c)));
+    }
+    for (const a of G) {
+      assert.deepEqual(max(a, a), a);          // ⊕ idempotent
+      // 0 is the ⊕-unit on ℚ≥0 (the v1 stamp domain — activation starts at unit)
+      if (rat.cmp(a, b0) >= 0) assert.deepEqual(max(a, b0), a);
+    }
+  });
+
+  it('order: transitivity, totality, translation compatibility', () => {
+    for (const a of G) for (const b of G) {
+      assert.equal(rat.cmp(a, b) + rat.cmp(b, a), 0);                  // antisymmetric/total
+      for (const c of G.slice(0, 5)) {
+        if (rat.cmp(a, b) <= 0 && rat.cmp(b, c) <= 0) {
+          assert.ok(rat.cmp(a, c) <= 0, 'transitivity');
+        }
+        // compatibility: a ≤ b ⇒ a+c ≤ b+c (what makes B&B pruning sound)
+        if (rat.cmp(a, b) <= 0) assert.ok(rat.cmp(rat.add(a, c), rat.add(b, c)) <= 0);
+      }
+    }
+  });
+
   it('gcd zero cases are symmetric; isInt agrees with den=1', () => {
     assert.equal(rat.gcd(5n, 0n), 5n);
     assert.equal(rat.gcd(0n, 5n), 5n);
