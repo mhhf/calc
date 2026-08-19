@@ -1,3 +1,10 @@
+% tokens (closed-world sort checking)
+junk: type.
+src: type.
+out: type.
+pulse: type.
+done: type.
+
 % Multiplicative unit in rule bodies (Phase 6): `I` decomposes to NOTHING —
 % an affine discard `A -o { I }` must not leak a literal unit fact.
 

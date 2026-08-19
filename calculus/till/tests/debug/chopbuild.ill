@@ -1,3 +1,12 @@
+% tokens (closed-world sort checking)
+chopper: type.
+tree: type.
+manual: type.
+wood: type.
+builder: type.
+hut: type.
+gold: type.
+
 % chopbuild.ill — Phase 4c debug-rendering scenario (golden source).
 %
 % Two chopper servers + one builder; the third tree arrives late (@5) so

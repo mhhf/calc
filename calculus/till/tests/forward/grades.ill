@@ -1,5 +1,12 @@
 #import(../../prelude/rat.ill)
 
+% tokens (closed-world sort checking: every symbol is declared)
+log: type.
+bundle: type.
+sawmill: type.
+wood: type.
+plank: type.
+
 % grades.ill — till executable spec: count grades as graded parcels (D4).
 %
 % STATUS: written ahead of the engine (TDD) — see schedule.ill header.

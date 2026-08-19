@@ -20,7 +20,7 @@ import assert from 'node:assert/strict';
 import Store from '../../lib/kernel/store.js';
 import tillConfig from '../../calculus/till/calculus-config.js';
 import { ratParts } from '../../lib/engine/theories/ratlit-theory.js';
-import { SPEC, FIX, loadTill as load, initQuery as init, atom, stampedStr, traceKey } from './till-helpers.js';
+import { SPEC, FIX, loadTill as load, loadTillPermissive, initQuery as init, atom, stampedStr, traceKey } from './till-helpers.js';
 
 describe('till determinism: same seed ⇒ trace-identical', () => {
   it('economy: replay across seeds', () => {
@@ -121,7 +121,10 @@ describe('till confluence: rule declaration order is not semantics', () => {
 
 describe('till determinism: literal-fact dirty ≡ rescan (round-14 regression)', () => {
   it('a produced binary literal wakes its consumer under dirty tracking', () => {
-    const calc = load(FIX('till-litfact.ill'));
+    // strictTypes off: the fixture's POINT is a bare binary literal in fact
+    // position (sub-boundary fact keys) — ill-sorted under the closed-world
+    // checker by design, but the scheduler path must stay covered.
+    const calc = loadTillPermissive(FIX('till-litfact.ill'));
     const e = Store.put1('binlit', 0n);   // `e` = empty binary literal
     const S = { linear: { [atom('src')]: 1, [e]: 1 }, persistent: {} };
     const a = calc.settle(S, '2');

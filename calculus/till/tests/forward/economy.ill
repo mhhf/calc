@@ -1,5 +1,13 @@
 #import(../../prelude/rat.ill)
 
+% tokens (closed-world sort checking: every symbol is declared)
+sawmill: type.
+wood: type.
+plank: type.
+smith: type.
+stone: type.
+tool: type.
+
 % economy.ill — till executable spec: the time.mjs 10/10/10 scenario ported
 % (todo 0265 Phase 5; restated as Phase 6's acceptance gate on PP2). Ground
 % truth: tests/engine/till-oracle.test.js ("10/10/10 scenario"); every stamp

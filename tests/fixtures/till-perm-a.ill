@@ -1,3 +1,12 @@
+% tokens (closed-world sort checking)
+mill: type.
+wood: type.
+plank: type.
+oven: type.
+bread: type.
+cust: type.
+fed: type.
+
 % Rule-permutation confluence fixture (Phase 5): a conflict-free 3-stage
 % pipeline. till-perm-b.ill declares the SAME rules in reverse order —
 % settle must produce the identical final timed multiset and event trace

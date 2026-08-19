@@ -1,5 +1,13 @@
 #import(../../prelude/rat.ill)
 
+% tokens (closed-world sort checking: every symbol is declared)
+food: type.
+meal_order: type.
+eaten: type.
+rotten: type.
+bakery: type.
+bread: type.
+
 % spoilage.ill — till executable spec: windows on ONE logical timeline (C1/C2, D8).
 %
 % STATUS: written ahead of the engine (TDD) — see schedule.ill header.

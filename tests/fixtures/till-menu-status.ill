@@ -1,3 +1,9 @@
+% tokens (closed-world sort checking)
+actf: type.
+spc: type.
+farmx: type.
+junk: type.
+
 % menuStatus fixture (Phase 6): availability of a menu alternative tracks
 % the RESOURCES its act needs. build needs 2 spc; free supplies them late.
 
