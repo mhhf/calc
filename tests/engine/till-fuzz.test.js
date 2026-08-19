@@ -3,8 +3,11 @@
  * (round-13.5 remaining item 1).
  *
  * Generates small random till programs (plain / pair / read / count / woplus
- * arcs × zero / positive delays × 2-4 rules over 3-6 atoms) and random
- * stamped initial states, then checks the load-bearing engine laws on each:
+ * / mkloli arcs × zero / positive delays × 2-4 rules over 3-6 atoms) and
+ * random stamped initial states, then checks the load-bearing engine laws
+ * on each. mkloli rules BIRTH possessed rules (Phase 6c): the containment /
+ * replay / split / scheduler laws are thereby proven over DYNAMIC rule
+ * sets, not just static ones:
  *
  *   - CONTAINMENT: every settle() outcome (any seed) is a settleExplore leaf
  *     — the test class that would have caught round-13's partial-order
@@ -51,7 +54,7 @@ function genProgram(idx) {
   const nRules = 2 + randInt(3);                 // 2-4 rules
   const lines = [`% till-fuzz generated program #${idx} (master seed ${MASTER_SEED})`];
   for (let i = 0; i < nRules; i++) {
-    const kind = pick(['plain', 'plain', 'pair', 'read', 'count', 'woplus']);
+    const kind = pick(['plain', 'plain', 'pair', 'read', 'count', 'woplus', 'mkloli', 'mkloli']);
     const delay = pick(DELAYS);
     // Zero-delay rules produce only atoms STRICTLY LATER in the alphabet
     // than everything they consume: the zero-delay subgraph is a DAG by
@@ -70,6 +73,20 @@ function genProgram(idx) {
       : atoms;
     const B = prodPool.length ? pick(prodPool) : atoms[atoms.length - 1];
     const D = prodPool.length ? pick(prodPool) : atoms[atoms.length - 1];   // woplus alt 2
+    if (kind === 'mkloli') {
+      // Possessed-rule producer: A -o { (X -o {B}@di) }@d. The born rule is
+      // one-shot by linearity; zero-delay chains stay alphabet-increasing
+      // ACROSS rule birth (A < X when the outer delay is zero, X < B when
+      // the inner one is) — the DAG termination argument extends.
+      const innerDelay = pick(['', '@1', '@(1/2)']);
+      const poolX = zero ? atoms.slice(ia + 1) : atoms;
+      const X = poolX.length ? pick(poolX) : atoms[atoms.length - 1];
+      const poolB = innerDelay === ''
+        ? atoms.slice(atoms.indexOf(X) + 1) : atoms;
+      const B2 = poolB.length ? pick(poolB) : atoms[atoms.length - 1];
+      lines.push(`r${i}: ${A} -o { (${X} -o { ${B2} }${innerDelay}) }${delay}.`);
+      continue;
+    }
     if (kind === 'plain') lines.push(`r${i}: ${A} -o { ${B} }${delay}.`);
     else if (kind === 'pair') lines.push(`r${i}: ${A} * ${C} -o { ${B} }${delay}.`);
     else if (kind === 'read') lines.push(`r${i}: read ${C} * ${A} -o { ${B} }${delay}.`);

@@ -433,10 +433,19 @@ describe('till error contracts (round 13 pins)', () => {
     assert.throws(() => load(FIX('till-nested-gmonad.ill')), /nested graded monad/);
   });
 
-  it('rejects dynamic rules (lolis) in timed consequents at fire time', () => {
+  it('timed consequent lolis are possessed rules (Phase 6c — v1 rejection lifted)', () => {
     const calc = load(FIX('till-loli-conseq.ill'));
-    const S = { linear: { [Store.put('atom', ['a'])]: 1 }, persistent: {} };
-    assert.throws(() => calc.settle(S, '0'), /lolis.*not supported/);
+    const a = Store.put('atom', ['a']), b = Store.put('atom', ['b']);
+    // without b: the produced rule sits in the state, inert
+    const r1 = calc.settle({ linear: { [a]: 1 }, persistent: {} }, '0');
+    assert.ok(Object.keys(r1.state.linear).some(h =>
+      Store.tag(Store.child(Number(h), 0)) === 'loli'));
+    // with b: the possessed rule fires (zero delay)
+    const r2 = calc.settle({ linear: { [a]: 1, [b]: 1 }, persistent: {} }, '0');
+    assert.ok(Object.keys(r2.state.linear).some(h =>
+      Store.tag(Store.child(Number(h), 0)) === 'atom' &&
+      Store.child(Store.child(Number(h), 0), 0) === 'c'));
+    assert.equal(Object.keys(r2.state.linear).length, 1);
   });
 
   it('parseStamp rejects negative stamps (ℚ≥0 in v1)', () => {

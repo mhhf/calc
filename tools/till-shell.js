@@ -85,6 +85,33 @@ function menus(state, T) {
   return out;
 }
 
+// Compact label for a menu alternative. Costed lolis read as a shop line:
+// "5 space ⊸ farm (20s)"; everything else falls back to show().
+function parts(h) {
+  const t = Store.tag(h);
+  if (t === 'tensor') return [...parts(Store.child(h, 0)), ...parts(Store.child(h, 1))];
+  if (t === 'one') return [];
+  if (t === 'bang') {
+    const g = Store.child(h, 0), inner = Store.child(h, 1);
+    if (Store.tag(g) === 'binlit') return [`${Store.child(g, 0)} ${show(inner)}`];
+    if (Store.tag(inner) === 'with') return ['…menu'];
+    return [`!${show(inner)}`];
+  }
+  if (t === 'with') return ['…menu'];
+  return [show(h)];
+}
+function menuLabel(f) {
+  if (Store.tag(f) !== 'loli') return show(f);
+  const cost = parts(Store.child(f, 0));
+  let body = Store.child(f, 1), delay = '';
+  if (Store.tag(body) === 'gmonad') {
+    const d = secs(Store.child(body, 0));
+    if (d) delay = `  (${d}s)`;
+    body = Store.child(body, 1);
+  }
+  return `${cost.join(' + ') || '∅'} ⊸ ${parts(body).join(' + ')}${delay}`;
+}
+
 function frame(state, T, sel) {
   const lines = [];
   const now = new Map();
@@ -112,9 +139,8 @@ function frame(state, T, sel) {
     lines.push('');
     lines.push(`${cur ? '▶' : ' '} menu ${mi}${m.standing ? '' : ' (one-shot)'}:`);
     for (const [i, alt] of calc.menuStatus(state, m.fact, horizonOf(T)).entries()) {
-      const body = Store.tag(alt.formula) === 'now' ? Store.child(alt.formula, 0) : alt.formula;
       const note = alt.enabled ? '' : (alt.strict ? '   (unavailable)' : '   (would queue)');
-      lines.push(`    [${i + 1}] ${show(body)}${note}`);
+      lines.push(`    [${i + 1}] ${menuLabel(alt.formula)}${note}`);
     }
   });
   if (!ms.length) { lines.push(''); lines.push('  (no menus offered)'); }
