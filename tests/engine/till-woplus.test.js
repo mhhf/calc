@@ -88,24 +88,28 @@ describe('woplus exec — PRF branch sampling (D17)', () => {
     // Adding tests above this one may shift them; re-pin deliberately.
     // node-only: bun's module evaluation interns in a different order.
     if (typeof Bun !== 'undefined') return;
-    // Re-pinned (Phase 6): till-woplus-var.ill fixture content changed
-    // (bound-variable weights became legal), shifting the interning order.
+    // Re-pinned (TODO_0268 A): till.calc declares the timed templates →
+    // interning shift.
     assert.deepEqual({
       s4: calc.settle(duel(2, 2), '0', { seed: 4 }).events.map(e => e.alt),
       s10: calc.settle(duel(2, 2), '0', { seed: 10 }).events.map(e => e.alt),
-    }, { s4: [1, 1], s10: [0, 1, 0] });
+    }, { s4: [0, 0], s10: [1, 0, 1] });
   });
 
   it('sampler frequency matches the declared weight (chi-square-lite, residue ii)', () => {
-    // 2000 seeds on the 1v1 duel: P(rock survives) = 3/4. The draw is a
-    // 32-bit floor-discretized PRF (bias < 2⁻³², documented in till.md);
-    // tolerance is 3σ = 3·√(p(1−p)/n) ≈ 0.029.
+    // 4000 seeds on the 1v1 duel: P(rock survives) = 3/4. The draw is a
+    // 32-bit floor-discretized PRF (bias < 2⁻³², documented in till.md).
+    // Tolerance is 4σ = 4·√(p(1−p)/n) ≈ 0.027: the stream re-rolls on any
+    // interning shift (fixture/.calc edits), so a 3σ gate falsely fails
+    // ~1 in 370 unrelated edits — 4σ keeps the power, drops the noise
+    // (a genuinely mis-weighted sampler is tens of σ out, not 4).
     let rock = 0;
-    const n = 2000;
+    const n = 4000;
     for (let seed = 0; seed < n; seed++) {
       if (bag(calc.settle(duel(1, 1), '0', { seed }).state).rock) rock++;
     }
-    assert.ok(Math.abs(rock / n - 0.75) < 0.03, `rock frequency ${rock / n} not within 3σ of 3/4`);
+    assert.ok(Math.abs(rock / n - 0.75) < 4 * Math.sqrt(0.75 * 0.25 / n),
+      `rock frequency ${rock / n} not within 4σ of 3/4`);
   });
 
   it('branch draws are horizon-split invariant (delayed duel)', () => {

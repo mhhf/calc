@@ -35,7 +35,7 @@ describe('.rules template extension (graded side conditions)', () => {
     const cs = calculus.load(TILL_CALC).constructors;
     parse = buildParser(cs, {
       multiCharFreevars: true, numbers: true,
-      timedAnnotations: true, gradeUnit: tillGradeUnit,
+      gradeUnit: tillGradeUnit,
     });
   });
 

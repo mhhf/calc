@@ -36,7 +36,6 @@ describe('desugarTimed', () => {
     const gt = calculus.load(FIXTURE);
     parse = buildParser(gt.constructors, {
       gradeUnit: () => putRat(0n, 1n),
-      timedAnnotations: true,
     });
   });
 
@@ -90,7 +89,7 @@ describe('desugarTimed', () => {
     // is what a timed loader (loaderConfig.timed) applies.
     const gt2 = calculus.load(FIXTURE);
     const parseF = buildParser(gt2.constructors, {
-      gradeUnit: () => putRat(0n, 1n), timedAnnotations: true, forwardRules: true,
+      gradeUnit: () => putRat(0n, 1n), forwardRules: true,
     });
     const h = parseF('$m@Q * w -o { p }');
     const out = desugarTimed(desugarPreserved(h, CT.computation, CT, true), CT);
@@ -123,7 +122,7 @@ describe('desugarTimed', () => {
 
   it('read $P is contradictory; read of a stamped pattern is deliberately legal (E7.2)', () => {
     const parseF = buildParser(calculus.load(FIXTURE).constructors, {
-      gradeUnit: () => putRat(0n, 1n), timedAnnotations: true, forwardRules: true,
+      gradeUnit: () => putRat(0n, 1n), forwardRules: true,
     });
     assert.throws(() => desugarTimed(parseF('read $a -o { b }'), CT), /contradictory/);
     // read A@Q: matches the stamped cohort without consuming; its stamp

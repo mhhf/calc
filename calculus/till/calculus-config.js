@@ -140,7 +140,6 @@ function tillBuildParser() {
     arrows: true,
     forwardRules: true,
     binaryNormalization: true,
-    timedAnnotations: true,
     gradeUnit: tillGradeUnit,
   });
 }
@@ -237,7 +236,6 @@ function loadTillSequent() {
     parser: {
       multiCharFreevars: true,
       numbers: true,
-      timedAnnotations: true,
       gradeUnit: tillGradeUnit,
     },
     grades: tillGrades,
