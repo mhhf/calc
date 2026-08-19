@@ -81,7 +81,11 @@ lib/engine/                      # Forward execution engine (L4c/L4d)
 ├── forward.js                   # committed-choice main loop
 ├── explore.js                   # exhaustive DFS exploration + mutation/undo
 ├── timed.js                     # timed scheduler: settle, tryTimedMatch (B&B),
-│                                #   settleExplore (POR), choose/menuStatus, lint
+│                                #   settleExplore (POR), fire, choosers
+├── timed-game.js                # external choice: withProject (choose), menuStatus
+├── timed-views.js               # read-only views: observable/pending/inFlight,
+│                                #   timedSubset/timedExact (#expect harness checks)
+├── timed-lint.js                # D16 productivity lint (static Zeno warning)
 ├── timed-render.js              # trace/timeline/provenance renderers (settle events)
 ├── formula-utils.js             # connective-aware decomposition (roles, flattenAnte)
 ├── fact-set.js                  # FactSet (index-policy pluggable) + Arena undo log
