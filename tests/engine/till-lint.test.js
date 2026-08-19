@@ -33,6 +33,14 @@ describe('till D16 productivity lint', () => {
     assert.deepEqual(load(FIX('till-duel.ill')).timedLint, []);
   });
 
+  it('stays quiet on winner-return duels (self-edges are tier 1 territory)', () => {
+    // The combat duel returns the winner: 2-in/2-out per alternative (NOT
+    // token-decreasing), but each alt strictly depletes the opposing side —
+    // tier 1's pointwise-cover test correctly clears it, and tier 2 must not
+    // re-flag it through the red→red self-edge (Phase 6 false positive).
+    assert.deepEqual(load(FIX('till-duel-dyn.ill')).timedLint, []);
+  });
+
   it('stays quiet on positive-delay self-loops (productive, D16)', () => {
     assert.deepEqual(load(SPEC('productivity.ill')).timedLint, []);
   });
