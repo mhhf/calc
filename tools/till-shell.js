@@ -9,21 +9,28 @@
  *
  * Wall-clock seconds ARE the horizon (scaled by --speed): each tick
  * re-settles to now — sound by the composability law (E5), so the shell
- * never simulates, it only observes. Menus (& facts) render straight from
- * the state; digits project alternatives at the current time; menuStatus
- * greys alternatives whose act could not fire yet ("inactive").
+ * never simulates, it only observes.
+ *
+ * Display:
+ *   stock rows   — grouped by the program's own `kind X K` propositions
+ *                  (knowledge about terms — sorts without subsorting);
+ *                  every known token stays on its row, zeros included
+ *   arriving     — outputs of fired jobs whose stamp is still in the
+ *                  future (in-flight work), fixed lines, sorted by ETA
+ *   menus        — every & fact, alternatives numbered GLOBALLY: any
+ *                  visible option is one digit away; costed lolis render
+ *                  as shop lines ("5 space ⊸ farm (20s)"); greyed
+ *                  alternatives would be refused (cut) or queue (plan)
+ *   rules        — toggle with `r`: the game's static laws as cost ⊸
+ *                  product lines
  *
  * Usage:
- *   bun tools/till-shell.js <file> [--init <directive>] [--speed <x>]
- *                                  [--demo "t:i[/menu],t:i,..."]
+ *   node tools/till-shell.js <file> [--init <directive>] [--speed <x>]
+ *                                   [--demo "t:i,t:i,..."]
+ *   --demo: non-interactive scripted clicks (game-time t, GLOBAL option
+ *   number i), printing a frame per event — the testable core.
  *
- *   --init   directive whose LHS seeds the state (default: first found)
- *   --speed  game-seconds per wall-second (default 1)
- *   --demo   non-interactive: scripted clicks (game-time t, alternative i,
- *            optional menu index), printing a frame per event — the
- *            testable core; the TTY loop is a thin shell around it.
- *
- * Keys: 1-9 choose · tab/m next menu · p pause · +/- speed · q quit
+ * Keys: 1-9 choose · r rules · p pause · +/- speed · q quit
  */
 
 import path from 'path';
@@ -33,6 +40,7 @@ import tillConfig from '../calculus/till/calculus-config.js';
 import Store from '../lib/kernel/store.js';
 import { show } from '../lib/engine/show.js';
 import { ratParts } from '../lib/engine/theories/ratlit-theory.js';
+import { apply } from '../lib/kernel/substitute.js';
 
 // ─── args ───────────────────────────────────────────────────────────
 
@@ -59,47 +67,97 @@ if (!entry || !entry.lhsHash) {
 }
 let state = convert.decomposeQuery(entry.lhsHash);
 let speed = Number(opt('speed', '1'));
+const ARRIVING_LINES = 10;
 
 // ─── time and stamps ────────────────────────────────────────────────
 
 const secs = (h) => { const [n, d] = ratParts(h); return Number(n) / Number(d); };
 const horizonOf = (gameSecs) => `${Math.max(0, Math.floor(gameSecs * 1000))}/1000`;
-
-// ─── frame rendering ────────────────────────────────────────────────
-
 const innerOf = (h) => (Store.tag(h) === 'at' ? Store.child(h, 0) : h);
 const stampOf = (h) => (Store.tag(h) === 'at' ? secs(Store.child(h, 1)) : 0);
 
-function menus(state, T) {
-  const out = [];
-  for (const hStr in state.persistent) {
-    const h = Number(hStr);
-    if (Store.tag(h) === 'with') out.push({ fact: h, standing: true });
-  }
-  for (const hStr in state.linear) {
-    const h = Number(hStr);
-    if (Store.tag(innerOf(h)) === 'with' && stampOf(h) <= T + 1e-9) {
-      out.push({ fact: h, standing: false });
+// ─── kinds: the program's own `kind X K` propositions ───────────────
+
+const _kindCache = new Map();
+function kindOf(name) {
+  if (_kindCache.has(name)) return _kindCache.get(name);
+  let k = null;
+  try {
+    const mv = Store.put('metavar', ['K$shell']);
+    const res = calc.prove(Store.put('kind', [Store.put('atom', [name]), mv]));
+    if (res.success) {
+      let v = mv;
+      for (let i = 0; i < 50; i++) { const n = apply(v, res.theta); if (n === v) break; v = n; }
+      if (Store.tag(v) === 'atom') k = Store.child(v, 0);
     }
-  }
-  return out;
+  } catch { /* no kind predicate in this program */ }
+  _kindCache.set(name, k);
+  return k;
 }
 
-// Compact label for a menu alternative. Costed lolis read as a shop line:
-// "5 space ⊸ farm (20s)"; everything else falls back to show().
+// display name of a fact's head (atom name or predicate tag)
+const nameOf = (h) => {
+  let x = innerOf(h);
+  if (Store.tag(x) === 'bang') x = Store.child(x, 1);
+  x = innerOf(x);                        // !_2 plank@25 — stamp under the bang
+  const t = Store.tag(x);
+  return t === 'atom' ? Store.child(x, 0) : t;
+};
+const SKIP = new Set(['with', 'loli', 'after', 'before', 'readPreserved', 'one', 'metavar', 'freevar', 'preserved']);
+
+// vocabulary: every token the rules or the session ever mentioned — rows
+// keep their entries (zeros included), so nothing flickers
+const vocab = new Map();   // name -> kind (null = other)
+function learn(name) {
+  if (!name || SKIP.has(name)) return;
+  if (!vocab.has(name)) vocab.set(name, kindOf(name));
+}
+for (const r of calc.forwardRules) {
+  const lists = [r.antecedent.linear || []];
+  for (const alt of (r.consequentAlts || [r.consequent])) lists.push(alt.linear || []);
+  for (const list of lists) for (const h of list) learn(nameOf(h));
+}
+// … and from the initial state, INCLUDING menu lolis (so tokens that only
+// exist behind a build order still hold a stable 0-entry on their row)
+(function walk(h) {
+  const t = Store.tag(h);
+  if (!t) return;
+  if (t === 'with' || t === 'loli' || t === 'tensor' || t === 'gmonad' ||
+      t === 'bang' || t === 'at' || t === 'woplus') {
+    for (let i = 0; i < Store.arity(h); i++) {
+      const c = Store.child(h, i);
+      if (typeof c === 'number' && Store.isTerm(c)) walk(c);
+    }
+    return;
+  }
+  if (t === 'atom' || t >= '') learn(nameOf(h));
+})(entry.lhsHash);
+
+// ─── frame rendering ────────────────────────────────────────────────
+
 function parts(h) {
   const t = Store.tag(h);
   if (t === 'tensor') return [...parts(Store.child(h, 0)), ...parts(Store.child(h, 1))];
   if (t === 'one') return [];
+  if (t === 'gmonad') return parts(Store.child(h, 1));
+  if (t === 'at') return parts(Store.child(h, 0));
+  if (t === 'after' || t === 'before') return [`[${t} ${show(Store.child(h, 0))}]`];
+  if (t === 'readPreserved') return [`read ${show(Store.child(h, 0))}`];
+  if (t === 'preserved') return [`$${show(Store.child(h, 0))}`];
   if (t === 'bang') {
     const g = Store.child(h, 0), inner = Store.child(h, 1);
     if (Store.tag(g) === 'binlit') return [`${Store.child(g, 0)} ${show(inner)}`];
+    if (Store.tag(g) === 'metavar' || Store.tag(g) === 'freevar') {
+      return [`all ${parts(inner).join(' ')}`];   // !_W — whole-cohort bind
+    }
     if (Store.tag(inner) === 'with') return ['…menu'];
     return [`!${show(inner)}`];
   }
   if (t === 'with') return ['…menu'];
+  if (t === 'loli') return [`(${menuLabel(h)})`];
   return [show(h)];
 }
+
 function menuLabel(f) {
   if (Store.tag(f) !== 'loli') return show(f);
   const cost = parts(Store.child(f, 0));
@@ -112,47 +170,126 @@ function menuLabel(f) {
   return `${cost.join(' + ') || '∅'} ⊸ ${parts(body).join(' + ')}${delay}`;
 }
 
-function frame(state, T, sel) {
-  const lines = [];
-  const now = new Map();
-  const flight = [];
+function ruleLabel(r) {
+  const ante = (r.antecedent.linear || []).flatMap(parts)
+    .concat((r.antecedent.persistent || []).map(h => `!${show(h)}`));
+  const alts = (r.weighted && r.consequentAlts) ? r.consequentAlts : [r.consequent];
+  const conseq = alts.map(a =>
+    ((a.linear || []).flatMap(parts))
+      .concat((a.persistent || []).map(h => `!${show(h)}`))
+      .join(' + ') || '∅'
+  ).join('  |  ');
+  let delay = '';
+  if (r.delay) delay = r.delay.ground !== undefined ? `  (${secs(r.delay.ground)}s)` : '  (var)';
+  return `${r.name}: ${ante.join(' + ') || '∅'} ⊸ ${conseq}${delay}`;
+}
+
+// all menus + a GLOBAL flat option list (digit k = options[k-1])
+function menuOptions(state, T) {
+  const menus = [];
+  for (const hStr in state.persistent) {
+    if (Store.tag(Number(hStr)) === 'with') menus.push({ fact: Number(hStr), standing: true });
+  }
   for (const hStr in state.linear) {
     const h = Number(hStr);
+    if (Store.tag(innerOf(h)) === 'with' && stampOf(h) <= T + 1e-9) {
+      menus.push({ fact: h, standing: false });
+    }
+  }
+  const options = [];
+  for (const m of menus) {
+    m.alts = calc.menuStatus(state, m.fact, horizonOf(T));
+    for (const [i, alt] of m.alts.entries()) options.push({ menu: m, alt: i, info: alt });
+  }
+  return { menus, options };
+}
+
+function frame(state, T) {
+  const lines = [];
+  // stock (stamp ≤ T) and arriving (stamp > T)
+  const stock = new Map();      // display term -> { name, have, future }
+  const arriving = [];
+  for (const hStr in state.linear) {
+    const h = Number(hStr);
+    const inner = innerOf(h);
+    if (Store.tag(inner) === 'with' || Store.tag(inner) === 'loli') continue;
     const c = state.linear[hStr];
     const s = stampOf(h);
-    const name = show(innerOf(h));
-    if (s <= T + 1e-9) now.set(name, (now.get(name) || 0) + c);
-    else flight.push({ name, at: s, c });
+    const name = nameOf(h);
+    learn(name);
+    const key = show(inner);
+    const e = stock.get(key) || { name, have: 0, future: 0 };
+    if (s <= T + 1e-9) e.have += c;
+    else { e.future += c; arriving.push({ label: key, at: s, c }); }
+    stock.set(key, e);
   }
-  lines.push(`t = ${T.toFixed(1)}s   [speed ${speed}x]   1-9 choose · tab menu · p pause · q quit`);
-  lines.push('─'.repeat(72));
-  const bag = [...now.entries()].filter(([n]) => !n.includes('&')).sort()
-    .map(([n, c]) => (c > 1 ? `${n} ×${c}` : n));
-  lines.push(`now:       ${bag.join('   ') || '(empty)'}`);
-  if (flight.length) {
-    flight.sort((a, b) => a.at - b.at);
-    lines.push(`in flight: ${flight.map(f => `${f.name}${f.c > 1 ? ` ×${f.c}` : ''} @${f.at.toFixed(1)} (+${(f.at - T).toFixed(1)}s)`).join('   ')}`);
-  }
-  const ms = menus(state, T);
-  ms.forEach((m, mi) => {
-    const cur = mi === (sel % Math.max(1, ms.length));
-    lines.push('');
-    lines.push(`${cur ? '▶' : ' '} menu ${mi}${m.standing ? '' : ' (one-shot)'}:`);
-    for (const [i, alt] of calc.menuStatus(state, m.fact, horizonOf(T)).entries()) {
-      const note = alt.enabled ? '' : (alt.strict ? '   (unavailable)' : '   (would queue)');
-      lines.push(`    [${i + 1}] ${menuLabel(alt.formula)}${note}`);
+  const fmt = (e, key) => `${e.have}${e.future ? `(+${e.future})` : ''} ${key}`;
+  lines.push(`t = ${T.toFixed(1)}s   [${speed}x]   1-9 choose · r rules · p pause · +/- speed · q quit`);
+  lines.push('─'.repeat(74));
+
+  // stock rows grouped by kind; vocabulary entries always shown (0 included)
+  const rows = new Map();       // kind (or 'other') -> [text]
+  const rowOf = (k) => { const key = k || 'other'; if (!rows.has(key)) rows.set(key, []); return rows.get(key); };
+  for (const [name, kind] of vocab) {
+    // atoms render one fixed entry; predicate families render their live terms
+    const terms = [...stock.entries()].filter(([, e]) => e.name === name);
+    if (terms.length === 0) {
+      rowOf(kind).push(`0 ${name}`);
+    } else {
+      for (const [key, e] of terms) rowOf(kind).push(fmt(e, key));
     }
-  });
-  if (!ms.length) { lines.push(''); lines.push('  (no menus offered)'); }
+  }
+  for (const [key, e] of stock) {
+    if (!vocab.has(e.name)) rowOf(kindOf(e.name)).push(fmt(e, key));
+  }
+  const rowOrder = [...rows.keys()].sort((a, b) =>
+    (a === 'other') - (b === 'other') || a.localeCompare(b));
+  for (const kind of rowOrder) {
+    lines.push(`${kind.padEnd(9)}  ${rows.get(kind).join('   ')}`);
+  }
+
+  // arriving: fixed lines, ETA-sorted
+  arriving.sort((a, b) => a.at - b.at);
+  lines.push('');
+  lines.push('arriving:');
+  for (let i = 0; i < ARRIVING_LINES; i++) {
+    const f = arriving[i];
+    if (!f) { lines.push(''); continue; }
+    if (i === ARRIVING_LINES - 1 && arriving.length > ARRIVING_LINES) {
+      lines.push(`   +${arriving.length - ARRIVING_LINES + 1} more`);
+    } else {
+      lines.push(`   ${(f.c > 1 ? `${f.c} ` : '') + f.label}`.padEnd(28) + `@${f.at.toFixed(1)}  (+${(f.at - T).toFixed(1)}s)`);
+    }
+  }
+
+  // menus with GLOBAL numbering
+  const { menus, options } = menuOptions(state, T);
+  let n = 0;
+  for (const m of menus) {
+    lines.push('');
+    lines.push(`menu${m.standing ? '' : ' (one-shot)'}:`);
+    for (const alt of m.alts) {
+      n++;
+      const note = alt.enabled ? '' : (alt.strict ? '   (unavailable)' : '   (would queue)');
+      lines.push(`  [${n}] ${menuLabel(alt.formula)}${note}`);
+    }
+  }
+  if (!menus.length) { lines.push(''); lines.push('  (no menus offered)'); }
+
+  if (showRules) {
+    lines.push('');
+    lines.push('rules:');
+    for (const r of calc.forwardRules) lines.push(`  ${ruleLabel(r)}`);
+  }
   return lines.join('\n');
 }
 
-function click(T, alt, menuIdx, sel) {
-  const ms = menus(state, T);
-  if (!ms.length) return 'no menu to choose from';
-  const m = ms[(menuIdx !== undefined ? menuIdx : sel) % ms.length];
+function click(T, globalIdx) {
+  const { options } = menuOptions(state, T);
+  const o = options[globalIdx];
+  if (!o) return `no option [${globalIdx + 1}]`;
   try {
-    state = calc.choose(state, m.fact, alt, { at: horizonOf(T) });
+    state = calc.choose(state, o.menu.fact, o.alt, { at: horizonOf(T) });
     state = calc.settle(state, horizonOf(T)).state;
     return null;
   } catch (e) {
@@ -160,25 +297,26 @@ function click(T, alt, menuIdx, sel) {
   }
 }
 
+let showRules = false;
+
 // ─── demo mode (scripted, non-interactive — the testable core) ──────
 
 const demo = opt('demo', null);
 if (demo) {
   const events = demo.split(',').map(s => {
-    const [t, rest] = s.split(':');
-    const [i, m] = rest.split('/');
-    return { t: Number(t), alt: Number(i) - 1, menu: m !== undefined ? Number(m) : undefined };
+    const [t, i] = s.split(':');
+    return { t: Number(t), idx: Number(i) - 1 };
   }).sort((a, b) => a.t - b.t);
   for (const e of events) {
     state = calc.settle(state, horizonOf(e.t)).state;
-    const err = click(e.t, e.alt, e.menu, 0);
-    console.log(`\n══ click [${e.alt + 1}]${e.menu !== undefined ? ` on menu ${e.menu}` : ''} at t=${e.t} ${err ? `→ ${err}` : ''}`);
-    console.log(frame(state, e.t, 0));
+    const err = click(e.t, e.idx);
+    console.log(`\n══ click [${e.idx + 1}] at t=${e.t} ${err ? `→ ${err}` : ''}`);
+    console.log(frame(state, e.t));
   }
   const tail = (events.at(-1)?.t ?? 0) + 5;
   state = calc.settle(state, horizonOf(tail)).state;
   console.log(`\n══ +5s later`);
-  console.log(frame(state, tail, 0));
+  console.log(frame(state, tail));
   process.exit(0);
 }
 
@@ -186,7 +324,6 @@ if (demo) {
 
 let start = Date.now();
 let pausedAt = null;
-let sel = 0;
 let lastMsg = null;
 const gameNow = () => (((pausedAt ?? Date.now()) - start) / 1000) * speed;
 
@@ -194,7 +331,7 @@ function tick() {
   const T = gameNow();
   state = calc.settle(state, horizonOf(T)).state;
   const extra = lastMsg ? `\n  ⚠ ${lastMsg}\n` : '\n';
-  process.stdout.write('\x1b[2J\x1b[H' + frame(state, T, sel) + extra);
+  process.stdout.write('\x1b[2J\x1b[H' + frame(state, T) + extra);
 }
 
 if (!process.stdin.isTTY) {
@@ -209,13 +346,13 @@ process.stdin.on('data', (b) => {
   else if (k === 'p') {
     if (pausedAt === null) pausedAt = Date.now();
     else { start += Date.now() - pausedAt; pausedAt = null; }
-  } else if (k === '\t' || k === 'm') sel++;
+  } else if (k === 'r') showRules = !showRules;
   else if (k === '+') speed *= 2;
   else if (k === '-') speed /= 2;
   else if (k >= '1' && k <= '9') {
     const T = gameNow();
     state = calc.settle(state, horizonOf(T)).state;
-    lastMsg = click(T, Number(k) - 1, undefined, sel);
+    lastMsg = click(T, Number(k) - 1);
   }
   tick();
 });
