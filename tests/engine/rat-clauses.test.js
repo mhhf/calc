@@ -62,6 +62,11 @@ function agreeBool(pred, inputs, expected) {
 }
 
 before(() => {
+  // LATENT CROSS-FILE COUPLING (round-15 F6): Store is process-global and
+  // content-addressed; clear() invalidates every hash interned before this
+  // file when the runner shares a process. Safe today only because no
+  // earlier suite carries hashes across file boundaries — do NOT copy this
+  // pattern into new tests (parse fresh instead of clearing).
   Store.clear();
   installRatlitTheory();
   ec = mde.load(RAT_ILL);

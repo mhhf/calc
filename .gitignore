@@ -55,8 +55,11 @@ zk/hooks
 zk/objects
 zk/refs
 
-# VMTest fixtures (fetched via tools/fetch-vmtests.sh)
-tests/fixtures/
+# fetched/generated fixture subdirs ONLY — checked-in fixtures (till-*.ill,
+# goldens, .rules/.calc) track normally, no `git add -f` needed (round-15)
+tests/fixtures/vmtests/
+tests/fixtures/VMTests/
+tests/fixtures/proof-trees/
 
 # Claude Code config
 .claude/settings.local.json
