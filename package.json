@@ -13,6 +13,7 @@
     "test:till": "node --test --test-concurrency=1 tools/test-till.js",
     "test:noffi:till": "CALC_NOFFI=1 node --test --test-concurrency=1 tools/test-till.js",
     "debug:ill": "bun tools/debug-ill.js",
+    "shell:till": "node tools/till-shell.js",
     "test:all": "npm test && npm run test:ill && npm run test:till && npm run test:noffi && npm run test:noffi:till && npm run test:zk && npm run test:heavy",
     "test:bun": "bash tools/test-bun.sh",
     "test:e2e": "bun tests/e2e-solidjs.js",
