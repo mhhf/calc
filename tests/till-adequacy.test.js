@@ -51,10 +51,18 @@ describe('till timed judgment: settle bridge (Stage 2)', () => {
   };
   const gate = (engineCalc, kind) => engineCalc.splitQueries.get(kind);
 
+  // Kernel-verification contract (round-15 F1): trees through the settle
+  // bridge contain a gmonad_r2 modeShift step the kernel accepts at face
+  // value — the settle run is the ENGINE's responsibility, not the
+  // kernel's. verifyTree reports this honestly via `unverified:
+  // ['modeSwitch']`; everything around the bridge step (retiming, tensor
+  // decomposition, resource accounting) IS fully re-checked.
   const derivable = (r, desc) => {
     assert.ok(r.success, `expected derivable: ${desc}`);
     const v = kernel.verifyTree(r.proofTree);
     assert.ok(v.valid, `kernel rejected ${desc}: ${v.errors.join('; ')}`);
+    assert.deepEqual(v.unverified, ['modeSwitch'],
+      `bridge trees are verified modulo the settle step: ${desc}`);
   };
 
   describe('adequacy: executable-spec gates as sequents', () => {
