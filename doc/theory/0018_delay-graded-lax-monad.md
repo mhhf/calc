@@ -328,3 +328,11 @@ See frontmatter; plus, for the operational side and all scheduling metatheory,
 THY_0019. The executable ground truth for §6–7 is `tools/till-oracle.mjs` with
 `tests/engine/till-oracle.test.js` (the 10/10/10 oracle, composability, atomicity,
 read-arc and productivity scenarios are each a test there).
+
+Implementation (TODO_0265 Phase 6b): §4's rules are `calculus/till/till.rules`
+(gmonad_l = {}L, gmonad_r = lax·sub·{}R fused; retiming = the at_l axiom), the
+§5 `@fire` rule is realised by the settle bridge (`lib/prover/bridge.js`
+timedSwitch — succedent grade = observation horizon), and Theorems 3/5 are
+witnessed as (under)derivability in `tests/till-adequacy.test.js`; the graded
+provability grid is `tests/till-prover.test.js`. See
+`doc/documentation/till-sequent-calculus.md`.
