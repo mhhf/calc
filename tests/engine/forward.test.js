@@ -9,12 +9,12 @@ import mde from '../../lib/engine/index.js';
 import Store from '../../lib/kernel/store.js';
 import ffi from '../../lib/engine/ill/ffi/index.js';
 import { tryMatch, buildMatchOpts, buildGenericProtocol, buildLnlProtocol, buildOptProtocol, buildFfiProtocol } from '../../lib/engine/match.js';
-import { ILL_CONNECTIVES } from '../../lib/engine/ill/connectives.js';
+import { illConnectives } from '../../lib/engine/ill/connectives.js';
 import { resolveConn, flattenAnte } from '../../lib/engine/formula-utils.js';
 // Hoisted by tools/esm-hoist.js:
 import { buildMatchOpts as bmo, buildGenericProtocol as bgp, buildLnlProtocol as blp, buildOptProtocol as bop, buildFfiProtocol as bfp } from '../../lib/engine/match.js';
 
-const ILL_RC = resolveConn(ILL_CONNECTIVES);
+const ILL_RC = resolveConn(illConnectives());
 import { proveNaive } from '../../lib/engine/lnl/persistent.js';
 describe('Forward Chaining', { timeout: 10000 }, () => {
   describe('flattenAnte', () => {
@@ -45,7 +45,7 @@ describe('Forward Chaining', { timeout: 10000 }, () => {
         consequent: Store.children(h)[1]
       };
 
-      const compiled = forward.compileRule(rule, { connectives: ILL_CONNECTIVES });
+      const compiled = forward.compileRule(rule, { connectives: illConnectives() });
 
       assert.strictEqual(compiled.antecedent.linear.length, 1, 'Should have 1 linear ante');
       assert.strictEqual(compiled.antecedent.persistent.length, 1, 'Should have 1 persistent ante');
@@ -63,7 +63,7 @@ describe('Forward Chaining', { timeout: 10000 }, () => {
         hash: ruleH,
         antecedent: ante,
         consequent: conseq
-      }, { connectives: ILL_CONNECTIVES });
+      }, { connectives: illConnectives() });
 
       // State: foo
       const foo = await mde.parseExpr('foo');
@@ -87,7 +87,7 @@ describe('Forward Chaining', { timeout: 10000 }, () => {
         hash: ruleH,
         antecedent: ante,
         consequent: conseq
-      }, { connectives: ILL_CONNECTIVES });
+      }, { connectives: illConnectives() });
 
       // State: baz (not foo)
       const baz = await mde.parseExpr('baz');
@@ -109,7 +109,7 @@ describe('Forward Chaining', { timeout: 10000 }, () => {
         hash: ruleH,
         antecedent: ante,
         consequent: conseq
-      }, { connectives: ILL_CONNECTIVES });
+      }, { connectives: illConnectives() });
 
       const foo = await mde.parseExpr('foo');
       const guard = await mde.parseExpr('guard');
@@ -145,7 +145,7 @@ describe('Forward Chaining', { timeout: 10000 }, () => {
         hash: ruleH,
         antecedent: ante,
         consequent: conseq
-      }, { connectives: ILL_CONNECTIVES });
+      }, { connectives: illConnectives() });
 
       const foo = await mde.parseExpr('foo');
       const state = forward.createState({ [foo]: 1 }, {});
@@ -164,7 +164,7 @@ describe('Forward Chaining', { timeout: 10000 }, () => {
         hash: ruleH,
         antecedent: ante,
         consequent: conseq
-      }, { connectives: ILL_CONNECTIVES });
+      }, { connectives: illConnectives() });
 
       const foo = await mde.parseExpr('foo');
       const state = forward.createState({ [foo]: 1 }, {});
@@ -221,7 +221,7 @@ describe('Forward Chaining', { timeout: 10000 }, () => {
         hash: ruleH,
         antecedent: ante,
         consequent: conseq
-      }, { connectives: ILL_CONNECTIVES });
+      }, { connectives: illConnectives() });
 
       // Create a ground but non-numeric term as the value of foo
       const sym = Store.put('atom', ['sym']);

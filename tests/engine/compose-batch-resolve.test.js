@@ -8,7 +8,7 @@ import { describe, it, beforeEach } from 'node:test';
 import assert from 'node:assert/strict';
 import Store from '../../lib/kernel/store.js';
 import { gradeW } from '../../lib/engine/grades.js';
-import { ILL_CONNECTIVES } from '../../lib/engine/ill/connectives.js';
+import { illConnectives } from '../../lib/engine/ill/connectives.js';
 import { resolveConn, flattenAnte } from '../../lib/engine/compile.js';
 import { predHead } from '../../lib/kernel/ast.js';
 import { _resolveOnce, _resolveBatch } from '../../lib/engine/compose.js';
@@ -59,7 +59,7 @@ describe('_resolveOnce', () => {
 
   beforeEach(() => {
     Store.clear();
-    rc = resolveConn(ILL_CONNECTIVES);
+    rc = resolveConn(illConnectives());
   });
 
   it('resolves single ground inc goal', () => {
@@ -174,7 +174,7 @@ describe('_resolveBatch', () => {
 
   beforeEach(() => {
     Store.clear();
-    rc = resolveConn(ILL_CONNECTIVES);
+    rc = resolveConn(illConnectives());
   });
 
   it('resolves across a pool of rules', () => {

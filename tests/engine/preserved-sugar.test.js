@@ -11,9 +11,9 @@ import Store from '../../lib/kernel/store.js';
 import mde from '../../lib/engine/index.js';
 import { parseExpr, desugarPreserved } from '../../lib/engine/convert.js';
 import forward from '../../lib/engine/forward.js';
-import { ILL_CONNECTIVES } from '../../lib/engine/ill/connectives.js';
+import { illConnectives } from '../../lib/engine/ill/connectives.js';
 import { resolveConn, flattenAnte, compileRule } from '../../lib/engine/compile.js';
-const ILL_RC = resolveConn(ILL_CONNECTIVES);
+const ILL_RC = resolveConn(illConnectives());
 
 // Helper: compile a forward rule from a formula string
 function compileFromExpr(name, exprStr) {
@@ -21,7 +21,7 @@ function compileFromExpr(name, exprStr) {
   const desugared = desugarPreserved(h);
   const [ante, conseq] = Store.children(desugared);
   return compileRule({ name, hash: desugared, antecedent: ante, consequent: conseq },
-    { connectives: ILL_CONNECTIVES });
+    { connectives: illConnectives() });
 }
 
 describe('Preserved resource sugar ($prefix)', { timeout: 10000 }, () => {

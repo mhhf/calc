@@ -8,14 +8,14 @@ import { describe, it, beforeEach } from 'node:test';
 import assert from 'node:assert/strict';
 import Store from '../../lib/kernel/store.js';
 import { gradeW } from '../../lib/engine/grades.js';
-import { ILL_CONNECTIVES } from '../../lib/engine/ill/connectives.js';
+import { illConnectives } from '../../lib/engine/ill/connectives.js';
 import { resolveConn, compileRule, flattenAnte } from '../../lib/engine/compile.js';
 import { predHead } from '../../lib/kernel/ast.js';
 import { _fuseChains } from '../../lib/engine/compose.js';
 import { ILL_CHAIN_CONFIGS } from '../../lib/engine/ill/compose-config.js';
 import { getModes, getModeMeta as _illGetModeMeta } from '../../lib/engine/ill/ffi/index.js';
 import { show } from '../../lib/engine/show.js';
-const COMPILE_OPTS = { connectives: ILL_CONNECTIVES, getModes };
+const COMPILE_OPTS = { connectives: illConnectives(), getModes };
 
 /**
  * Helper: build a raw forward rule from Store hashes.
@@ -53,7 +53,7 @@ describe('_fuseChains (inc-only)', () => {
 
   beforeEach(() => {
     Store.clear();
-    rc = resolveConn(ILL_CONNECTIVES);
+    rc = resolveConn(illConnectives());
   });
 
   it('fuses 2-inc chain: !inc(X,Y) * !inc(Y,Z) → !plus(X, 2, Z)', () => {

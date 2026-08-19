@@ -339,7 +339,7 @@ describe('SELL: QuerySettings Threading (T10)', () => {
 // =============================================================================
 
 import { grade0, gradeW } from '../../lib/engine/grades.js';
-import { ILL_CONNECTIVES } from '../../lib/engine/ill/connectives.js';
+import { illConnectives } from '../../lib/engine/ill/connectives.js';
 import { resolveConn, flattenAnte, compileRule } from '../../lib/engine/compile.js';
 import { getModes } from '../../lib/engine/ill/ffi/index.js';
 describe('SELL: Graded modality parsing (TODO 155)', () => {
@@ -407,7 +407,7 @@ describe('SELL: flattenAnte grade classification (TODO 155)', () => {
 
   it('bang(gradeW(), A) → persistent', () => {
     Store.clear();
-    const rc = resolveConn(ILL_CONNECTIVES);
+    const rc = resolveConn(illConnectives());
     const A = Store.put('atom', ['a']);
     const h = Store.put('bang', [gradeW(), A]);
     const flat = flattenAnte(h, rc);
@@ -418,7 +418,7 @@ describe('SELL: flattenAnte grade classification (TODO 155)', () => {
 
   it('bang(grade0(), A) → grade0', () => {
     Store.clear();
-    const rc = resolveConn(ILL_CONNECTIVES);
+    const rc = resolveConn(illConnectives());
     const A = Store.put('atom', ['a']);
     const h = Store.put('bang', [grade0(), A]);
     const flat = flattenAnte(h, rc);
@@ -429,7 +429,7 @@ describe('SELL: flattenAnte grade classification (TODO 155)', () => {
 
   it('A * !B * !_0 C → linear:[A], persistent:[B], grade0:[C]', () => {
     Store.clear();
-    const rc = resolveConn(ILL_CONNECTIVES);
+    const rc = resolveConn(illConnectives());
     const A = Store.put('atom', ['a']);
     const B = Store.put('atom', ['b']);
     const C = Store.put('atom', ['c']);
@@ -444,7 +444,7 @@ describe('SELL: flattenAnte grade classification (TODO 155)', () => {
 
   it('bare atom → linear', () => {
     Store.clear();
-    const rc = resolveConn(ILL_CONNECTIVES);
+    const rc = resolveConn(illConnectives());
     const A = Store.put('atom', ['a']);
     const flat = flattenAnte(A, rc);
     assert.deepEqual(flat.linear, [A]);
@@ -464,7 +464,7 @@ describe('SELL: hasGrade0 flag on compiled rules (TODO 155)', () => {
     const ante = Store.put('tensor', [bang0A, B]);
     const conseq = Store.put('monad', [Store.put('atom', ['c'])]);
     const rule = { name: 'test_g0', antecedent: ante, consequent: conseq };
-    const compiled = compileRule(rule, { connectives: ILL_CONNECTIVES, getModes });
+    const compiled = compileRule(rule, { connectives: illConnectives(), getModes });
     assert.equal(compiled.hasGrade0, true);
   });
 
@@ -476,7 +476,7 @@ describe('SELL: hasGrade0 flag on compiled rules (TODO 155)', () => {
     const ante = Store.put('tensor', [bangWA, B]);
     const conseq = Store.put('monad', [Store.put('atom', ['c'])]);
     const rule = { name: 'test_gw', antecedent: ante, consequent: conseq };
-    const compiled = compileRule(rule, { connectives: ILL_CONNECTIVES, getModes });
+    const compiled = compileRule(rule, { connectives: illConnectives(), getModes });
     assert.equal(compiled.hasGrade0, false);
   });
 
@@ -487,7 +487,7 @@ describe('SELL: hasGrade0 flag on compiled rules (TODO 155)', () => {
     const bang0B = Store.put('bang', [grade0(), B]);
     const conseq = Store.put('monad', [bang0B]);
     const rule = { name: 'test_g0_conseq', antecedent: A, consequent: conseq };
-    const compiled = compileRule(rule, { connectives: ILL_CONNECTIVES, getModes });
+    const compiled = compileRule(rule, { connectives: illConnectives(), getModes });
     assert.equal(compiled.hasGrade0, true);
   });
 
@@ -496,7 +496,7 @@ describe('SELL: hasGrade0 flag on compiled rules (TODO 155)', () => {
     const A = Store.put('atom', ['a']);
     const conseq = Store.put('monad', [Store.put('atom', ['b'])]);
     const rule = { name: 'test_nobang', antecedent: A, consequent: conseq };
-    const compiled = compileRule(rule, { connectives: ILL_CONNECTIVES, getModes });
+    const compiled = compileRule(rule, { connectives: illConnectives(), getModes });
     assert.equal(compiled.hasGrade0, false);
   });
 });

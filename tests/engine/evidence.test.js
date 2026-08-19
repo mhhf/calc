@@ -15,9 +15,9 @@ import { proveWithFFI } from '../../lib/engine/opt/ffi.js';
 import illFfi from '../../lib/engine/ill/ffi/index.js';
 import { drainLolis } from '../../lib/engine/lnl/loli-drain.js';
 import { gradeW } from '../../lib/engine/grades.js';
-import { ILL_CONNECTIVES } from '../../lib/engine/ill/connectives.js';
+import { illConnectives } from '../../lib/engine/ill/connectives.js';
 import { resolveConn } from '../../lib/engine/compile.js';
-const ILL_RC = resolveConn(ILL_CONNECTIVES);
+const ILL_RC = resolveConn(illConnectives());
 import { Arena } from '../../lib/engine/fact-set.js';
 import { makeMatchOpts } from './_match-opts.js';
 const illMatchOpts = makeMatchOpts({
@@ -207,7 +207,7 @@ describe('Evidence collection (TODO_0068 §10.5)', () => {
         {}
       );
 
-      const m = matchLoli(loli, state, { connectives: ILL_CONNECTIVES }, makeMatchOpts({ rc: ILL_RC, evidence: true }));
+      const m = matchLoli(loli, state, { connectives: illConnectives() }, makeMatchOpts({ rc: ILL_RC, evidence: true }));
       assert(m, 'should find a match');
       assert(Array.isArray(m.persistentEvidence), 'should have persistentEvidence');
     });
@@ -233,7 +233,7 @@ describe('Evidence collection (TODO_0068 §10.5)', () => {
       const perArena = new Arena(256);
       const evidenceOut = [];
 
-      drainLolis(state, linArena, perArena, { connectives: ILL_CONNECTIVES }, evidenceOut, makeMatchOpts({ rc: ILL_RC }));
+      drainLolis(state, linArena, perArena, { connectives: illConnectives() }, evidenceOut, makeMatchOpts({ rc: ILL_RC }));
 
       assert.strictEqual(evidenceOut.length, 1, 'should have 1 drain firing');
       assert.strictEqual(evidenceOut[0].loliHash, loli);
@@ -257,8 +257,8 @@ describe('Evidence collection (TODO_0068 §10.5)', () => {
       const perArena = new Arena(256);
 
       // Should not throw when evidenceOut is null/undefined
-      drainLolis(state, linArena, perArena, { connectives: ILL_CONNECTIVES }, null, makeMatchOpts({ rc: ILL_RC }));
-      drainLolis(state, linArena, perArena, { connectives: ILL_CONNECTIVES }, undefined, makeMatchOpts({ rc: ILL_RC }));
+      drainLolis(state, linArena, perArena, { connectives: illConnectives() }, null, makeMatchOpts({ rc: ILL_RC }));
+      drainLolis(state, linArena, perArena, { connectives: illConnectives() }, undefined, makeMatchOpts({ rc: ILL_RC }));
     });
 
     it('collects multiple drain firings', () => {
@@ -283,7 +283,7 @@ describe('Evidence collection (TODO_0068 §10.5)', () => {
       const perArena = new Arena(256);
       const evidenceOut = [];
 
-      drainLolis(state, linArena, perArena, { connectives: ILL_CONNECTIVES }, evidenceOut, makeMatchOpts({ rc: ILL_RC }));
+      drainLolis(state, linArena, perArena, { connectives: illConnectives() }, evidenceOut, makeMatchOpts({ rc: ILL_RC }));
 
       assert.strictEqual(evidenceOut.length, 2, 'should drain both lolis');
     });

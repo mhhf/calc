@@ -16,7 +16,7 @@ import { createProver } from '../lib/prover/focused.js';
 import { initRuleSpecs } from '../lib/prover/rule-interpreter.js';
 import { sequentToState, stateToContext, rightFocus, modeSwitch } from '../lib/prover/bridge.js';
 import { compileRule } from '../lib/engine/compile.js';
-import { ILL_CONNECTIVES } from '../lib/engine/ill/connectives.js';
+import { illConnectives } from '../lib/engine/ill/connectives.js';
 import { gradeW } from '../lib/engine/grades.js';
 let ill, AST, parse, render;
 
@@ -221,7 +221,7 @@ describe('Monad mode switch', () => {
       hash: ruleH,
       antecedent: a,
       consequent: AST.monad(b)
-    }, { connectives: ILL_CONNECTIVES });
+    }, { connectives: illConnectives() });
 
     const monadB = AST.monad(b);
     const seq = Seq.fromArrays([a], [], monadB);
@@ -251,7 +251,7 @@ describe('Monad committed choice', () => {
       hash: AST.loli(a, AST.monad(a)),
       antecedent: a,
       consequent: AST.monad(a)
-    }, { connectives: ILL_CONNECTIVES });
+    }, { connectives: illConnectives() });
 
     const seq = Seq.fromArrays([a], [], monadA);
     const result = focused.prove(seq, {
@@ -273,7 +273,7 @@ describe('Monad committed choice', () => {
       hash: AST.loli(a, AST.monad(a)),
       antecedent: a,
       consequent: AST.monad(a)
-    }, { connectives: ILL_CONNECTIVES });
+    }, { connectives: illConnectives() });
 
     const focused = createProver(ill);
     const seq = Seq.fromArrays([a], [], monadA);
@@ -384,7 +384,7 @@ describe('Monad integration', () => {
       hash: AST.loli(a, AST.monad(b)),
       antecedent: a,
       consequent: AST.monad(b)
-    }, { connectives: ILL_CONNECTIVES });
+    }, { connectives: illConnectives() });
 
     const seq = Seq.fromArrays([a], [], monadB);
     const result = focused.prove(seq, {
@@ -425,7 +425,7 @@ describe('Monad integration', () => {
       hash: AST.loli(a, AST.monad(a)),
       antecedent: a,
       consequent: AST.monad(a)
-    }, { connectives: ILL_CONNECTIVES });
+    }, { connectives: illConnectives() });
 
     const seq = Seq.fromArrays([a], [], monadA);
     const result = focused.prove(seq, {
@@ -467,7 +467,7 @@ describe('Monad integration', () => {
       hash: AST.loli(a, AST.monad(b)),
       antecedent: a,
       consequent: AST.monad(b)
-    }, { connectives: ILL_CONNECTIVES });
+    }, { connectives: illConnectives() });
 
     const seq = Seq.fromArrays([a], [], AST.monad(b));
     const result = focused.prove(seq, {
@@ -626,7 +626,7 @@ describe('rightFocus integration', () => {
       hash: AST.loli(a, AST.monad(b)),
       antecedent: a,
       consequent: AST.monad(b)
-    }, { connectives: ILL_CONNECTIVES });
+    }, { connectives: illConnectives() });
 
     // Prove: a |- {b}
     const seq = Seq.fromArrays([a], [], AST.monad(b));
@@ -652,7 +652,7 @@ describe('rightFocus integration', () => {
       hash: AST.loli(a, AST.monad(b)),
       antecedent: a,
       consequent: AST.monad(b)
-    }, { connectives: ILL_CONNECTIVES });
+    }, { connectives: illConnectives() });
 
     // Prove: a |- {c} — forward produces b, but succedent wants c
     const seq = Seq.fromArrays([a], [], AST.monad(c));
@@ -678,7 +678,7 @@ describe('rightFocus integration', () => {
       hash: AST.loli(a, AST.monad(AST.tensor(a, b))),
       antecedent: a,
       consequent: AST.monad(AST.tensor(a, b))
-    }, { connectives: ILL_CONNECTIVES });
+    }, { connectives: illConnectives() });
 
     // Prove: a |- {a} — forward produces a and b, but succedent only wants a
     const seq = Seq.fromArrays([a], [], AST.monad(a));
@@ -705,14 +705,14 @@ describe('rightFocus integration', () => {
       hash: AST.loli(a, AST.monad(b)),
       antecedent: a,
       consequent: AST.monad(b)
-    }, { connectives: ILL_CONNECTIVES });
+    }, { connectives: illConnectives() });
     // Rule 2: b -o {c}
     const r2 = compileRule({
       name: 'rf_chain2',
       hash: AST.loli(b, AST.monad(c)),
       antecedent: b,
       consequent: AST.monad(c)
-    }, { connectives: ILL_CONNECTIVES });
+    }, { connectives: illConnectives() });
 
     // Prove: a |- {c} — forward chains a→b→c
     const seq = Seq.fromArrays([a], [], AST.monad(c));
@@ -738,7 +738,7 @@ describe('rightFocus integration', () => {
       hash: AST.loli(a, AST.monad(AST.tensor(b, c))),
       antecedent: a,
       consequent: AST.monad(AST.tensor(b, c))
-    }, { connectives: ILL_CONNECTIVES });
+    }, { connectives: illConnectives() });
 
     // Prove: a |- {b * c}
     const seq = Seq.fromArrays([a], [], AST.monad(AST.tensor(b, c)));
