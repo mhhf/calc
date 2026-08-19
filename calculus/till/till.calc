@@ -11,8 +11,9 @@
 %
 % tensor/loli/one/bang reuse ILL's store tags deliberately (shared Store);
 % gmonad is till's OWN 2-ary monad tag — ILL's unary `{A}` is untouched (D6).
-% Additives (oplus/with/zero) are deliberately absent from v1: weighted
-% internal choice arrives as `woplus` (Phase 4b).
+% Additives: internal choice is the weighted `woplus` (Phase 4b); external
+% choice is `with` (Phase 6 — inert menus collapsed by choose()); oplus/zero
+% stay absent.
 
 @family till.
 
@@ -48,6 +49,17 @@ bang: grade -> formula -> formula
   @ascii "! #2"
   @prec 80
   @category exponential.
+
+% External choice (Phase 6): the ENVIRONMENT's connective. A forward rule
+% OFFERS `A & B` as ONE inert linear fact — settle never collapses it (that
+% is what makes a menu a renderable decision surface); the host collapses
+% it via choose() (with-projection), and only among offered alternatives.
+% Decisions are projections of offered choices, never fabricated tokens.
+with: formula -> formula -> formula
+  @ascii "_ & _"
+  @prec 70 left
+  @category additive
+  @polarity negative.
 
 % Weighted internal choice (Phase 4b): `woplus Q A B` in consequents —
 % branch A with probability Q, B with 1−Q (Q a ground rational in [0,1]).

@@ -98,36 +98,40 @@ describe('explore', { timeout: 10000 }, () => {
       assert.deepStrictEqual(alts[0], { linear: [h], persistent: [], grade0: [] });
     });
 
-    it('with(A,B) returns two alternatives', () => {
+    // External choice (`with`) is the ENVIRONMENT's move — a consequent
+    // OFFERS the menu as ONE inert fact (collapsed only by the host via
+    // with-projection); the engine must not expand it into alternatives
+    // (TODO_0265 Phase 6, Denis: exec silently took alt 0 of the
+    // environment's choice before — that was never the engine's call).
+    it('with(A,B) stays ONE inert menu fact', () => {
       const a = Store.put('atom', ['a']);
       const b = Store.put('atom', ['b']);
       const w = Store.put('with', [a, b]);
       const alts = expandChoice(w, ILL_RC);
-      assert.strictEqual(alts.length, 2);
-      assert.deepStrictEqual(alts[0], { linear: [a], persistent: [], grade0: [] });
-      assert.deepStrictEqual(alts[1], { linear: [b], persistent: [], grade0: [] });
+      assert.strictEqual(alts.length, 1);
+      assert.deepStrictEqual(alts[0], { linear: [w], persistent: [], grade0: [] });
     });
 
-    it('tensor(A, with(B,C)) returns cross-product', () => {
+    it('tensor(A, with(B,C)) keeps the menu opaque inside the product', () => {
       const a = Store.put('atom', ['a']);
       const b = Store.put('atom', ['b']);
       const c = Store.put('atom', ['c']);
       const w = Store.put('with', [b, c]);
       const t = Store.put('tensor', [a, w]);
       const alts = expandChoice(t, ILL_RC);
-      assert.strictEqual(alts.length, 2);
-      assert.deepStrictEqual(alts[0].linear, [a, b]);
-      assert.deepStrictEqual(alts[1].linear, [a, c]);
+      assert.strictEqual(alts.length, 1);
+      assert.deepStrictEqual(alts[0].linear, [a, w]);
     });
 
-    it('with(with(A,B), C) returns three alternatives', () => {
+    it('nested with stays one fact (the whole spine is one menu)', () => {
       const a = Store.put('atom', ['a']);
       const b = Store.put('atom', ['b']);
       const c = Store.put('atom', ['c']);
       const w1 = Store.put('with', [a, b]);
       const w2 = Store.put('with', [w1, c]);
       const alts = expandChoice(w2, ILL_RC);
-      assert.strictEqual(alts.length, 3);
+      assert.strictEqual(alts.length, 1);
+      assert.deepStrictEqual(alts[0].linear, [w2]);
     });
 
     it('bang(A) returns persistent alternative', () => {
@@ -176,7 +180,7 @@ describe('explore', { timeout: 10000 }, () => {
       assert.deepStrictEqual(alts[1], { linear: [branch1], persistent: [], grade0: [] });
     });
 
-    it('with(loli(!P,{A}), loli(!Q,{B})) gives two loli alternatives', () => {
+    it('with over lolis stays one inert menu (the host projects a loli)', () => {
       const p = Store.put('atom', ['neq']);
       const q = Store.put('atom', ['eq']);
       const a = Store.put('atom', ['zero']);
@@ -187,10 +191,8 @@ describe('explore', { timeout: 10000 }, () => {
       const branch1 = Store.put('loli', [bangQ, Store.put('monad', [b])]);
       const w = Store.put('with', [branch0, branch1]);
       const alts = expandChoice(w, ILL_RC);
-      assert.strictEqual(alts.length, 2);
-      // Each branch is a loli fact (fired by matchLoli at runtime)
-      assert.deepStrictEqual(alts[0], { linear: [branch0], persistent: [], grade0: [] });
-      assert.deepStrictEqual(alts[1], { linear: [branch1], persistent: [], grade0: [] });
+      assert.strictEqual(alts.length, 1);
+      assert.deepStrictEqual(alts[0], { linear: [w], persistent: [], grade0: [] });
     });
   });
 
@@ -204,12 +206,13 @@ describe('explore', { timeout: 10000 }, () => {
       assert.deepStrictEqual(alts[0].linear, [a]);
     });
 
-    it('single with in linear produces two alternatives', () => {
+    it('single with in linear stays one alternative (inert menu)', () => {
       const a = Store.put('atom', ['a']);
       const b = Store.put('atom', ['b']);
       const w = Store.put('with', [a, b]);
       const alts = expandConsqChoices({ linear: [w], persistent: [] }, ILL_RC);
-      assert.strictEqual(alts.length, 2);
+      assert.strictEqual(alts.length, 1);
+      assert.deepStrictEqual(alts[0].linear, [w]);
     });
 
     it('preserves original persistent items', () => {
@@ -221,8 +224,8 @@ describe('explore', { timeout: 10000 }, () => {
     });
   });
 
-  describe('choice forking via fixture', () => {
-    it('forks on A & B consequent', async () => {
+  describe('external choice is offered, not explored (Phase 6)', () => {
+    it('A & B consequent lands as one inert menu fact — no fork', async () => {
       Store.clear();
       const calc = await mde.load([
         path.join(import.meta.dirname, 'fixtures/choice.ill')
@@ -236,15 +239,15 @@ describe('explore', { timeout: 10000 }, () => {
         calc: calc._calcContext
       });
 
-      // Root should branch — the 'choose' rule produces left & right
-      assert.strictEqual(tree.type, 'branch');
-      // Should have 2 children (one per choice)
-      assert.strictEqual(tree.children.length, 2);
-      // Both should be annotated with choice index
-      assert.strictEqual(tree.children[0].choice, 0);
-      assert.strictEqual(tree.children[1].choice, 1);
-      // Each choice path should eventually reach a leaf (done)
-      assert.strictEqual(countLeaves(tree), 2);
+      // The environment's choice is not the engine's to enumerate: the
+      // 'choose' rule OFFERS left & right as one fact, finish_left/right
+      // cannot consume it, and the run quiesces holding the menu.
+      assert.strictEqual(countLeaves(tree), 1);
+      const menu = Store.put('with',
+        [await mde.parseExpr('left'), await mde.parseExpr('right')]);
+      const { toObject } = await import('../../lib/engine/fact-set.js');
+      const [leaf] = getAllLeaves(tree);
+      assert.ok(toObject(leaf.state).linear[menu] > 0, 'leaf holds the offered menu');
     });
   });
 

@@ -41,6 +41,11 @@ const TILL_CONNECTIVES = {
   // Weighted internal choice `woplus Q A B` (Phase 4b) — resolveConn maps
   // (additive, arity 3, positive) to roles.weightedChoice.
   woplus: { category: 'additive',       arity: 3, polarity: 'positive' },
+  // External choice `A & B` (Phase 6) — an OFFERED menu: one inert fact in
+  // forward consequents, collapsed only by the host via calc.choose
+  // (with-projection). resolveConn maps (additive, 2, negative) to
+  // roles.externalChoice.
+  with:   { category: 'additive',       arity: 2, polarity: 'negative' },
 };
 
 /** Unit of the duration monoid = stamp 0 = the D11 default stamp.
