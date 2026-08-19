@@ -286,7 +286,7 @@ describe('SELL: Module Algebra — Tier 2 (T13, T24-T28)', () => {
     const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'sell-d7-'));
 
     // Write base
-    fs.writeFileSync(path.join(tmpDir, 'base.ill'), 'counter: type.\n');
+    fs.writeFileSync(path.join(tmpDir, 'base.ill'), 'counter: (x: bin) -> type.\n');
     // Write alpha
     fs.writeFileSync(path.join(tmpDir, 'alpha.ill'),
       '#import(base.ill)\ninc: counter X -o { counter (X + 1) }.\n');
@@ -510,7 +510,7 @@ describe('SELL: Grade-0 filtering (TODO 155)', () => {
 
     // Write a program with a grade-0 rule and a normal rule
     fs.writeFileSync(path.join(tmpDir, 'g0test.ill'),
-      'counter: type.\n' +
+      'counter: (x: bin) -> type.\n' +
       'inc: counter X -o { counter (X + 1) }.\n' +
       'stage: !_0 eq X X * counter X -o { counter X }.\n' +
       '#symex counter 1.\n'
