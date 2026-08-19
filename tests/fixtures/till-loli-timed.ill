@@ -6,6 +6,9 @@ spc: type.
 seed: type.
 token: type.
 relic: type.
+farmz: type.
+gate: type.
+opened: type.
 
 
 % Timed possessed rules (Phase 6c): a loli FACT in the state is a rule you

@@ -30,23 +30,28 @@ import * as ffi from '../../lib/engine/ill/ffi/index.js';
 
 const TILL_CALC = path.join(import.meta.dirname, 'till.calc');
 
+// Connective table DERIVED from till.calc — one source of truth: a
+// connective exists iff it is declared there with a @category annotation
+// (the former hand-written duplicate required every addition twice —
+// with/Phase 6 needed edits in BOTH places, which is how tables drift).
 // tensor/loli/one/bang share ILL's store tags (one Store, shared numeric
 // prelude); gmonad is till's own 2-ary monad (D6 — ILL's unary {A} untouched).
-const TILL_CONNECTIVES = {
-  tensor: { category: 'multiplicative', arity: 2, polarity: 'positive' },
-  loli:   { category: 'multiplicative', arity: 2, polarity: 'negative' },
-  one:    { category: 'multiplicative', arity: 0, polarity: 'positive' },
-  bang:   { category: 'exponential',    arity: 2 },
-  gmonad: { category: 'monad',          arity: 2, polarity: 'negative' },
-  // Weighted internal choice `woplus Q A B` (Phase 4b) — resolveConn maps
-  // (additive, arity 3, positive) to roles.weightedChoice.
-  woplus: { category: 'additive',       arity: 3, polarity: 'positive' },
-  // External choice `A & B` (Phase 6) — an OFFERED menu: one inert fact in
-  // forward consequents, collapsed only by the host via calc.choose
-  // (with-projection). resolveConn maps (additive, 2, negative) to
-  // roles.externalChoice.
-  with:   { category: 'additive',       arity: 2, polarity: 'negative' },
-};
+let _tillConnectives = null;
+function tillConnectives() {
+  if (_tillConnectives) return _tillConnectives;
+  const cs = calculus.load(TILL_CALC).constructors;
+  const table = {};
+  for (const [name, c] of Object.entries(cs)) {
+    const ann = c.annotations || {};
+    if (c.returnType !== 'formula' || !ann.category) continue;
+    table[name] = {
+      category: ann.category, arity: c.argTypes.length,
+      ...(ann.polarity ? { polarity: ann.polarity } : {}),
+    };
+  }
+  _tillConnectives = table;
+  return table;
+}
 
 /** Unit of the duration monoid = stamp 0 = the D11 default stamp.
  *  `{B}` (bare braces) elides this grade; rules carrying it stay untimed. */
@@ -151,7 +156,7 @@ const tillCalculusConfig = {
   },
 
   // ── L1: Structural ───────────────────────────────────────────
-  connectives: TILL_CONNECTIVES,
+  get connectives() { return tillConnectives(); },
   // Closed-world sort checking: undeclared symbols in rules/clauses FAIL
   // the load (Phase 6 post-mortem — the open-world checker let every typo
   // self-introduce a resource).
@@ -213,11 +218,11 @@ const tillCalculusConfig = {
   // ── Loader (convert.js) ──────────────────────────────────────
   loader: {
     buildParser: tillBuildParser,
-    connTags: connTagsFrom(TILL_CONNECTIVES),
+    get connTags() { return connTagsFrom(tillConnectives()); },
     grade0,
     timed: true,
   },
 };
 
-export { tillCalculusConfig, tillGrades, tillFactSetPolicy, tillGradeUnit, TILL_CONNECTIVES };
+export { tillCalculusConfig, tillGrades, tillFactSetPolicy, tillGradeUnit, tillConnectives };
 export default tillCalculusConfig;

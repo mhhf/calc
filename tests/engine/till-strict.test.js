@@ -80,3 +80,18 @@ describe('closed-world sort checking (till strict mode)', () => {
     assert.throws(() => loadStrict(p), /unknown atom/);
   });
 });
+
+describe('closed world covers directives too', () => {
+  let dir;
+  before(() => { dir = fs.mkdtempSync(path.join(os.tmpdir(), 'till-strict-q-')); });
+  after(() => { fs.rmSync(dir, { recursive: true, force: true }); });
+
+  it('a typo in a gate fails the load, not the gate', () => {
+    const p = path.join(dir, 'bad-gate.ill');
+    fs.writeFileSync(p,
+      'wood: type.\nplank: type.\nr: wood -o { plank }@1.\n' +
+      '#expect_x (settle: 2)\n  wod\n  =>\n  plank@1 .\n');
+    assert.throws(() => mde.load(p, { calculusConfig: tillConfig, cache: false }),
+      /directive 'expect_x'.*unknown atom 'wod'/s);
+  });
+});
