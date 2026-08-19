@@ -81,6 +81,8 @@ describe('till sequent calculus (graded fragment, Stage 1)', () => {
     refuted('|-/ !_1 a', [], '!_1 a');
     refuted('!_5 a |-/ !_2 a * !_2 a  (leftover)', ['!_5 a'], '!_2 a * !_2 a');
     refuted('!_2 b |-/ !_2 a  (wrong atom)', ['!_2 b'], '!_2 a');
+    refuted('!_2 a |-/ (a * a) & a  (with-branches must consume equally)',
+      ['!_2 a'], '(a * a) & a');
   });
 
   describe('ω bang: promotion / dereliction / absorption, ω-restricted', () => {
