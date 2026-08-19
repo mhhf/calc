@@ -13,8 +13,8 @@
 %                 parcels: left peel/weaken, right peel/zero. Grade
 %                 side conditions (@grade) evaluate through the SAME
 %                 tillGrades record the timed scheduler reads (D13).
-%   graded monad — gmonad_l is the graded bind (delay composition d+e as a
-%                 monus on the conclusion grade), gmonad_r the unit at
+%   graded monad — monad_l is the graded bind (delay composition d+e as a
+%                 monus on the conclusion grade), monad_r the unit at
 %                 grade 0. The graded-μ {{A}@d}@e ⊢ {A}@(d+e) is derivable;
 %                 accounting is EXACT — availability monotonicity
 %                 (subeffecting) is Stage 2 / THY-B territory, not v1.
@@ -124,24 +124,24 @@ bang_r3: G ; D |- !_K A
 
 % ── graded lax monad (THY_0018 §4): bind + unit·sub ──
 % The delay grade is an UPPER BOUND ("achievable within E" — the lax@d
-% judgment); gmonad_r fuses lax + sub + {}R: what is true now is achievable
+% judgment); monad_r fuses lax + sub + {}R: what is true now is achievable
 % within ANY bound (subeffecting — Theorem 1 needs it: operational stamps
-% are the LEAST derivable grades). gmonad_l is {}L: binds compose delays,
+% are the LEAST derivable grades). monad_l is {}L: binds compose delays,
 % and the monus keeps the critical path a strict LOWER bound ({A}@4 from
-% {{A}@2}@3 stays refuted). gmonad_l's side condition F >= E (equivalently
+% {{A}@2}@3 stays refuted). monad_l's side condition F >= E (equivalently
 % H >= 0) is IMPLICIT in the monus — `-` fails on a negative result,
 % making the rule inapplicable (THY_0018 §4 implementation-encoding note).
 % The E >= 0 guard's content on non-numeric
 % grades is the ground fence (ω/metavar grades fail isStamp).
 
-gmonad_l: G ; D, {A}@E |- {C}@F
+monad_l: G ; D, {A}@E |- {C}@F
   <- G ; D, A |- {C}@H
   @side l
   @pretty "{}L"
   @invertible false
   @grade H := F - E.
 
-gmonad_r: G ; D |- {A}@E
+monad_r: G ; D |- {A}@E
   <- G ; D |- A
   @pretty "{}R"
   @invertible false
@@ -151,7 +151,7 @@ gmonad_r: G ; D |- {A}@E
 % horizon — settle(Δ, T) then exact rightFocus of S against the residual
 % timed multiset (each firing = one @fire instance, THY_0018 §5). Tried
 % after the backward unit; inapplicable without an engineCalc.
-gmonad_r2: G ; D |- {A}@E
+monad_r2: G ; D |- {A}@E
   @pretty "{}settle"
   @invertible false
   @modeShift true.

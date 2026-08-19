@@ -14,8 +14,9 @@ import { predHead } from '../../lib/kernel/ast.js';
 import { _resolveOnce, _resolveBatch } from '../../lib/engine/compose.js';
 import { getModeMeta as _illGetModeMeta } from '../../lib/engine/ill/ffi/index.js';
 import { intToBin, binToInt } from '../../lib/engine/ill/ffi/convert.js';
+import { monadUnit as U } from '../../lib/engine/grades.js';
 function makeRule(name, anteHash, conseqBodyHash) {
-  const conseqHash = Store.put('monad', [conseqBodyHash]);
+  const conseqHash = Store.put('monad', [U(), conseqBodyHash]);
   const hash = Store.put('loli', [anteHash, conseqHash]);
   return { name, hash, antecedent: anteHash, consequent: conseqHash };
 }
@@ -78,7 +79,7 @@ describe('_resolveOnce', () => {
     assert.equal(newAnte.persistent.length, 0, 'inc goal should be resolved');
 
     // Consequent should have pc(6)
-    const conseqBody = Store.child(Store.child(result.hash, 1), 0);
+    const conseqBody = Store.child(Store.child(result.hash, 1), 1); // monad body (child 0 = unit)
     const newConseq = flattenAnte(conseqBody, rc);
     const pcOut = newConseq.linear.find(h => predHead(h) === 'pc');
     assert.ok(pcOut, 'should have pc in consequent');
@@ -101,7 +102,7 @@ describe('_resolveOnce', () => {
     assert.equal(newAnte.persistent.length, 0, 'both goals should be resolved');
 
     // Z = 6 + 2 = 8
-    const conseqBody = Store.child(Store.child(result.hash, 1), 0);
+    const conseqBody = Store.child(Store.child(result.hash, 1), 1); // monad body (child 0 = unit)
     const newConseq = flattenAnte(conseqBody, rc);
     const pcOut = newConseq.linear.find(h => predHead(h) === 'pc');
     assert.equal(binToInt(Store.child(pcOut, 0)), 8n, 'pc should be 8');
@@ -123,7 +124,7 @@ describe('_resolveOnce', () => {
     assert.equal(newAnte.persistent.length, 0, 'both inc goals should be resolved');
 
     // Z = 7
-    const conseqBody = Store.child(Store.child(result.hash, 1), 0);
+    const conseqBody = Store.child(Store.child(result.hash, 1), 1); // monad body (child 0 = unit)
     const newConseq = flattenAnte(conseqBody, rc);
     const pcOut = newConseq.linear.find(h => predHead(h) === 'pc');
     assert.equal(binToInt(Store.child(pcOut, 0)), 7n, 'pc should be 7');

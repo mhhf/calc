@@ -119,7 +119,7 @@ for (const r of calc.forwardRules) {
   if (!t) return;
   // structural wrappers: recurse into BODY positions only (grades, stamps
   // and weights are not tokens)
-  const bodies = { bang: [1], at: [0], gmonad: [1], woplus: [1, 2] }[t]
+  const bodies = { bang: [1], at: [0], monad: [1], woplus: [1, 2] }[t]
     || (t === 'with' || t === 'loli' || t === 'tensor'
       ? [...Array(Store.arity(h)).keys()] : null);
   if (bodies) {
@@ -138,7 +138,7 @@ function parts(h) {
   const t = Store.tag(h);
   if (t === 'tensor') return [...parts(Store.child(h, 0)), ...parts(Store.child(h, 1))];
   if (t === 'one') return [];
-  if (t === 'gmonad') return parts(Store.child(h, 1));
+  if (t === 'monad') return parts(Store.child(h, 1));
   if (t === 'at') return parts(Store.child(h, 0));
   if (t === 'after' || t === 'before') return [`[${t} ${show(Store.child(h, 0))}]`];
   if (t === 'readPreserved') return [`read ${show(Store.child(h, 0))}`];
@@ -161,7 +161,7 @@ function menuLabel(f) {
   if (Store.tag(f) !== 'loli') return show(f);
   const cost = parts(Store.child(f, 0));
   let body = Store.child(f, 1), delay = '';
-  if (Store.tag(body) === 'gmonad') {
+  if (Store.tag(body) === 'monad') {
     const d = secs(Store.child(body, 0));
     if (d) delay = `  (${d}s)`;
     body = Store.child(body, 1);

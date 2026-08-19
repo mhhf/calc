@@ -961,7 +961,8 @@ pub struct FlatWitnessJson {
     pub canon_cons_rom: Vec<Vec<u32>>,
     /// Connective name → ZK tag integer (needed for FlatStepChip struct fields).
     pub tags: HashMap<String, u32>,
-    /// Constants: { one_hash: Store.put('one', []) }.
+    /// Constants: { one_hash: Store.put('one', []),
+    ///              monad_unit_hash: monadUnit() (binlit 0 — the D6 graded-monad unit) }.
     #[serde(default)]
     pub constants: HashMap<String, u32>,
     /// Max context size for PV normalization (Phase 4a-5).
@@ -980,6 +981,7 @@ pub fn build_flat_witness_inputs(witness: &FlatWitnessJson) -> Result<(Vec<AirRe
     let monad_tag = witness.tags.get("monad").copied().unwrap_or(0);
     let tensor_tag = witness.tags.get("tensor").copied().unwrap_or(0);
     let one_hash = witness.constants.get("one_hash").copied().unwrap_or(0);
+    let monad_unit_hash = witness.constants.get("monad_unit_hash").copied().unwrap_or(0);
 
     let mut airs: Vec<AirRef<_>> = Vec::new();
     let mut traces: Vec<RowMajorMatrix<BabyBear>> = Vec::new();
@@ -1028,7 +1030,7 @@ pub fn build_flat_witness_inputs(witness: &FlatWitnessJson) -> Result<(Vec<AirRe
     // 2. FlatStepChip (tag constants only — no preprocessed trace since Phase 4a-5)
     let step_rows = witness.chips.get("flat_step").ok_or("missing flat_step chip")?;
     airs.push(Arc::new(FlatStepChip {
-        loli_tag, monad_tag, tensor_tag, one_hash,
+        loli_tag, monad_tag, tensor_tag, one_hash, monad_unit_hash,
     }) as AirRef<_>);
     traces.push(if step_rows.is_empty() {
         empty_trace(crate::chips::flat_step::WIDTH, min_rows)

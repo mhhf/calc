@@ -4,12 +4,12 @@
  * The timed sequent: context entries are stamped atoms at(A,t) (D5 —
  * content-addressed (formula, stamp) pairs), the succedent {S}@T carries
  * the observation horizon as the monad grade (THY_0018 §5, n=0 boundary:
- * "the delay grade is the stamp of the future"). gmonad_r2 (@modeShift)
+ * "the delay grade is the stamp of the future"). monad_r2 (@modeShift)
  * bridges to the TIMED engine: settle(Δ, T) then exact rightFocus of S
  * against the residual timed multiset — each firing is one @fire instance,
  * so bridge success implies settle-reachability AND derivability
  * (THY_0018 §5 bridge soundness: the bridge is a sound but NOT complete
- * oracle — gmonad_r derives subeffected goals with no forward step, so
+ * oracle — monad_r derives subeffected goals with no forward step, so
  * derivable ⇏ settle-reachable). A prove() failure refutes the sequent
  * because BOTH the pure-backward and bridge routes are searched. These
  * tests witness the SOUNDNESS direction of the Stage 2 acceptance
@@ -50,16 +50,16 @@ describe('till timed judgment: settle bridge (Stage 2)', () => {
   });
 
   // Δ ⊢ {S}@T from a gate's canonical hashes: context = lhs (one tensor
-  // entry, tensor_l inverts), succedent = gmonad(T, rhs).
+  // entry, tensor_l inverts), succedent = monad(T, rhs).
   const judge = (engineCalc, lhs, rhs, T) => {
-    const succ = Store.put('gmonad', [tillGrades.parseStamp(T), rhs]);
+    const succ = Store.put('monad', [tillGrades.parseStamp(T), rhs]);
     const seq = Seq.fromArrays([lhs], [], succ);
     return prover.prove(seq, { rules: specs, alternatives, engineCalc });
   };
   const gate = (engineCalc, kind) => engineCalc.splitQueries.get(kind);
 
   // Kernel-verification contract (round-15 F1): trees through the settle
-  // bridge contain a gmonad_r2 modeShift step the kernel accepts at face
+  // bridge contain a monad_r2 modeShift step the kernel accepts at face
   // value — the settle run is the ENGINE's responsibility, not the
   // kernel's. verifyTree reports this honestly via `unverified:
   // ['modeSwitch']`; everything around the bridge step (retiming, tensor

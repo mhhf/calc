@@ -137,16 +137,16 @@ grades made explicit.
 **Implementation encoding (single-level).** The implemented sequent calculus
 (`calculus/till/till.rules`) uses a single-level encoding: the judgment `S lax@d`
 is represented as the formula `{S}@d` in the `true` judgment, and the four
-primitive rules collapse to two. `gmonad_r` fuses `lax + sub + {}R` — any
+primitive rules collapse to two. `monad_r` fuses `lax + sub + {}R` — any
 `{S}@E` with `E ≥ 0` is provable from `S` in one step (the guard `E ≥ 0` IS the
-fused subeffecting). `gmonad_l` is `{}L` read bottom-up: from conclusion grade
+fused subeffecting). `monad_l` is `{}L` read bottom-up: from conclusion grade
 `F` and principal grade `E` it derives the premise grade `H := F − E` by the
 MONUS — the implicit side condition `F ≥ E` (equivalently `H ≥ 0`) is encoded as
 the monus failing on negative results, which is what guards the critical-path
 lower bound. The encoding is conservative both ways: a two-level derivation maps
 to a single-level one by fusing each `{}R` with the `lax`/`sub` steps above it,
-and a single-level derivation unfolds by reading each `gmonad_r` as
-`lax; sub; {}R` and each `gmonad_l` as `{}L`.
+and a single-level derivation unfolds by reading each `monad_r` as
+`lax; sub; {}R` and each `monad_l` as `{}L`.
 
 ## 5. Stamps and the timed promotion rule
 
@@ -199,14 +199,14 @@ THY_0019 §windows. Persistent hypotheses carry no stamps (TODO_0265 D15): `!A@t
 rejected; the grade-product interaction of `ω` with time is future work (TODO_0157).
 
 **Theorem (bridge soundness; the @fire oracle).** The implementation realises
-`@fire` as an ORACLE rule (`gmonad_r2`, the settle bridge): for a goal
+`@fire` as an ORACLE rule (`monad_r2`, the settle bridge): for a goal
 `Γ; Δ ⊢ {S}@T` it runs `settle(|Δ|, T)` — a chain of `@fire` instances — and
 then proves `S` against the residual timed multiset by the pure sequent
 calculus (retiming + tensor decomposition + identity). If the bridge succeeds,
 `Γ; Δ ⊢ {S}@T` is derivable — each settle step is an `@fire` instance and the
 residual match is an ordinary derivation, so the oracle only ever asserts
 derivable sequents. The CONVERSE IS FALSE and must not be claimed: the backward
-calculus is strictly stronger than settle-reachability — `gmonad_r` derives
+calculus is strictly stronger than settle-reachability — `monad_r` derives
 `a ⊢ {a}@d` for every `d ≥ 0` with no forward step at all (subeffecting), so
 derivability does not imply that settle produces the goal state. The bridge is
 a sound but incomplete proof procedure; refutation by the bridge is
@@ -241,7 +241,7 @@ derivable. Minimality: by induction on derivations — every rule that touches a
 operational recurrence `u = max(inputs) + d`, which the scheduler computes exactly.
 The two directions split over the two monad rules: `{}L`'s monus PRESERVES the
 lower bound (a grade below the critical path makes the rule inapplicable), while
-`sub` (fused into the implementation's `gmonad_r`) supplies the completeness
+`sub` (fused into the implementation's `monad_r`) supplies the completeness
 direction — every bound ≥ the principal one is also derivable.
 Stamps are max-plus polynomial evaluations; the scheduler evaluates them, the logic
 bounds them. ∎(sketch)
@@ -345,12 +345,12 @@ formula `A@t'` is the conclusion of `at_l` from `A@t` (t ≤ t') reduces by
 re-deriving — substitute the left subderivation of `A@t` and re-apply `at_l`;
 transitivity of `≤` is the only fact used, and no grade arithmetic is
 introduced. Two stacked retimings compose into one (t ≤ t' ≤ t''), so the
-reduction terminates. (vi) The bridge oracle (`gmonad_r2` / `@fire`-as-oracle)
+reduction terminates. (vi) The bridge oracle (`monad_r2` / `@fire`-as-oracle)
 is EXCLUDED from the cut-elimination claim: it is an admissible extra-logical
 rule whose soundness is the §5 bridge-soundness theorem — cut elimination is a
-property of the pure syntactic calculus (id through `gmonad_r`, `at_l`, `copy`
+property of the pure syntactic calculus (id through `monad_r`, `at_l`, `copy`
 and the ILL rules). (vii) In the single-level implementation encoding (§4), the
-`sub` cases of (iii) appear as `gmonad_r`'s slack `E ≥ 0`; the same monotonicity
+`sub` cases of (iii) appear as `monad_r`'s slack `E ≥ 0`; the same monotonicity
 fact (`d ≤ d' ⟹ d + e ≤ d' + e`) discharges them. A full syntactic proof is
 future work for the paper write-up; nothing in it is expected to exceed routine
 verification of (i)–(vii). ∎(sketch)
@@ -410,7 +410,7 @@ THY_0019. The executable ground truth for §6–7 is `tools/till-oracle.mjs` wit
 read-arc and productivity scenarios are each a test there).
 
 Implementation (TODO_0265 Phase 6b): §4's rules are `calculus/till/till.rules`
-(gmonad_l = {}L, gmonad_r = lax·sub·{}R fused; retiming = the at_l axiom), the
+(monad_l = {}L, monad_r = lax·sub·{}R fused; retiming = the at_l axiom), the
 §5 `@fire` rule is realised by the settle bridge (`lib/prover/bridge.js`
 timedSwitch — succedent grade = observation horizon), and Theorems 3/5 are
 witnessed as (under)derivability in `tests/till-adequacy.test.js`; the graded

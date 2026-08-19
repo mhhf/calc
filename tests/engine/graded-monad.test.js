@@ -4,7 +4,7 @@
  * The one shape every monad-aware site reads:
  *   roles.computation = { tag, bodyIdx, gradeIdx }
  *     ILL:  { 'monad',  bodyIdx: 0, gradeIdx: null }
- *     till: { 'gmonad', bodyIdx: 1, gradeIdx: 0 }
+ *     till: { 'monad', bodyIdx: 1, gradeIdx: 0 }
  * plus the grade classification record { grade0, gradeOmega } (functions —
  * recompute-on-demand invariant) carried on the resolved connectives.
  *
@@ -37,7 +37,7 @@ import { makeMatchOpts } from './_match-opts.js';
 
 const FIXTURE = path.join(import.meta.dirname, '../fixtures/graded-comp.calc');
 
-const GCOMP = { tag: 'gmonad', bodyIdx: 1, gradeIdx: 0 };
+const GCOMP = { tag: 'monad', bodyIdx: 1, gradeIdx: 0 };
 const ICOMP = { tag: 'monad', bodyIdx: 0, gradeIdx: null };
 
 // A 2-ary-monad connective table (till shape: ILL connectives, graded monad)
@@ -45,23 +45,23 @@ const TILL_CT = {
   tensor: { category: 'multiplicative', arity: 2, polarity: 'positive' },
   loli: { category: 'multiplicative', arity: 2, polarity: 'negative' },
   bang: { category: 'exponential', arity: 2 },
-  gmonad: { category: 'monad', arity: 2 },
+  monad: { category: 'monad', arity: 2 },
 };
 
 const atom = (n) => Store.put('atom', [n]);
-const gm = (g, b) => Store.put('gmonad', [g, b]);
+const gm = (g, b) => Store.put('monad', [g, b]);
 
 describe('computationRole / resolveConn', () => {
   it('derives the record by arity; other arities get no role', () => {
     assert.deepEqual(computationRole('monad', 1), ICOMP);
-    assert.deepEqual(computationRole('gmonad', 2), GCOMP);
+    assert.deepEqual(computationRole('monad', 2), GCOMP);
     assert.equal(computationRole('weird', 3), null);
     assert.equal(computationRole('weird', 0), null);
   });
 
-  it('resolveConn: ILL yields the unary record + default grade functions', () => {
+  it('resolveConn: ILL yields the graded record (D6 merge-back) + default grade functions', () => {
     const rc = resolveConn(illConnectives());
-    assert.deepEqual(rc.computation, ICOMP);
+    assert.deepEqual(rc.computation, GCOMP);
     assert.equal(rc.grade0, defaultGradeConfig.grade0);
     assert.equal(rc.grade0(), grade0());
     assert.equal(rc.gradeOmega(), gradeW());
@@ -83,7 +83,7 @@ describe('walkers: unwrapComp / flattenAnte', () => {
     const rcI = resolveConn(illConnectives());
     const rcG = resolveConn(TILL_CT);
     const b = atom('b');
-    assert.equal(unwrapComp(Store.put('monad', [b]), rcI), b);
+    assert.equal(unwrapComp(gm(atom('u'), b), rcI), b);
     assert.equal(unwrapComp(gm(atom('g'), b), rcG), b);
     assert.equal(unwrapComp(b, rcG), b); // non-computation unchanged
   });
@@ -112,32 +112,32 @@ describe('walkers: unwrapComp / flattenAnte', () => {
 });
 
 describe('monadRules descriptors', () => {
-  it('default is ILL, bit-identical to the historical shape', () => {
+  it('default is the graded ILL record (D6 merge-back)', () => {
     const r = monadRules();
     assert.deepEqual(Object.keys(r), ['monad_r', 'monad_l']);
     assert.deepEqual(r.monad_r.descriptor, {
-      connective: 'monad', side: 'r', arity: 1,
+      connective: 'monad', side: 'r', arity: 2,
       copyContext: false, emptyLinear: false, contextSplit: false,
       contextFlow: 'axiom', modeShift: true,
       premises: [],
     });
     assert.deepEqual(r.monad_l.descriptor, {
-      connective: 'monad', side: 'l', arity: 1,
+      connective: 'monad', side: 'l', arity: 2,
       copyContext: false, emptyLinear: false, contextSplit: false,
       contextFlow: 'preserved',
       requiresSuccedentTag: 'monad',
-      premises: [{ linear: [0] }],
+      premises: [{ linear: [1] }],
     });
   });
 
   it('graded computation: names, arity, sticky tag, body premise index follow the record', () => {
     const r = monadRules(GCOMP);
-    assert.deepEqual(Object.keys(r), ['gmonad_r', 'gmonad_l']);
-    assert.equal(r.gmonad_r.descriptor.connective, 'gmonad');
-    assert.equal(r.gmonad_r.descriptor.arity, 2);
-    assert.equal(r.gmonad_r.descriptor.modeShift, true);
-    assert.equal(r.gmonad_l.descriptor.requiresSuccedentTag, 'gmonad');
-    assert.deepEqual(r.gmonad_l.descriptor.premises, [{ linear: [1] }]);
+    assert.deepEqual(Object.keys(r), ['monad_r', 'monad_l']);
+    assert.equal(r.monad_r.descriptor.connective, 'monad');
+    assert.equal(r.monad_r.descriptor.arity, 2);
+    assert.equal(r.monad_r.descriptor.modeShift, true);
+    assert.equal(r.monad_l.descriptor.requiresSuccedentTag, 'monad');
+    assert.deepEqual(r.monad_l.descriptor.premises, [{ linear: [1] }]);
   });
 });
 
@@ -164,7 +164,7 @@ describe('compileRule with a graded computation', () => {
 });
 
 describe('grammar: { ... } builds the DECLARED computation node (circumfix)', () => {
-  const GCFX = [{ open: '{', close: '}', name: 'gmonad', arity: 2 }];
+  const GCFX = [{ open: '{', close: '}', name: 'monad', arity: 2 }];
   const ICFX = [{ open: '{', close: '}', name: 'monad', arity: 1 }];
 
   it('2-ary circumfix with gradeUnit hook (ATOM form and A -o { B } form)', () => {
@@ -176,24 +176,25 @@ describe('grammar: { ... } builds the DECLARED computation node (circumfix)', ()
     };
     const parse = parserFromGrammar(earleyGrammarFromTables(tables));
     const h = parse('{ b }');
-    assert.equal(Store.tag(h), 'gmonad');
+    assert.equal(Store.tag(h), 'monad');
     assert.equal(Store.child(h, 0), atom('u0'));
     assert.equal(Store.tag(Store.child(h, 1)), 'atom');
 
     const fwd = parse('a -o { b }');
     assert.equal(Store.tag(fwd), 'loli');
     const conseq = Store.child(fwd, 1);
-    assert.equal(Store.tag(conseq), 'gmonad');
+    assert.equal(Store.tag(conseq), 'monad');
     assert.equal(Store.child(conseq, 0), atom('u0'));
   });
 
-  it('graded circumfix without gradeUnit throws a clear error', () => {
+  it('graded circumfix without gradeUnit defaults to the shared unit (binlit 0)', () => {
     const tables = {
       operators: [], nullary: {}, unaryPrefix: {},
       circumfix: GCFX,
     };
     const parse = parserFromGrammar(earleyGrammarFromTables(tables));
-    assert.throws(() => parse('{ b }'), /gradeUnit/);
+    const h = parse('{ b }');
+    assert.equal(Store.child(h, 0), Store.put('binlit', [0n]));
   });
 
   it('1-ary circumfix builds ILL unary monad', () => {
@@ -220,20 +221,21 @@ describe('desugarPreserved threads the grade (D7: timed-$)', () => {
     ]);
     const out = desugarPreserved(h, GCOMP);
     const conseq = Store.child(out, 1);
-    assert.equal(Store.tag(conseq), 'gmonad');
+    assert.equal(Store.tag(conseq), 'monad');
     assert.equal(Store.child(conseq, 0), g, 'grade preserved');
     assert.equal(Store.child(conseq, 1), Store.put('tensor', [p, b]));
     assert.equal(Store.child(out, 0), Store.put('tensor', [p, a]));
   });
 
-  it('default stays unary monad (regression)', () => {
+  it('default is the graded record: the unit grade threads through (D6)', () => {
     const p = atom('p'), b = atom('b');
+    const u = Store.put('binlit', [0n]);
     const h = Store.put('loli', [
       Store.put('preserved', [p]),
-      Store.put('monad', [b]),
+      Store.put('monad', [u, b]),
     ]);
     const out = desugarPreserved(h);
-    assert.equal(out, Store.put('loli', [p, Store.put('monad', [Store.put('tensor', [p, b])])]));
+    assert.equal(out, Store.put('loli', [p, Store.put('monad', [u, Store.put('tensor', [p, b])])]));
   });
 });
 
@@ -257,8 +259,8 @@ describe('clause term builder', () => {
     const idTerm = { rule: 'id', principal: prem, subterms: [] };
     const t = build([prem], [idTerm], head);
     const monadBody = t.subterms[0].subterms[1];
-    assert.equal(monadBody.rule, 'gmonad_l');
-    assert.equal(Store.tag(monadBody.principal), 'gmonad');
+    assert.equal(monadBody.rule, 'monad_l');
+    assert.equal(Store.tag(monadBody.principal), 'monad');
     assert.equal(Store.child(monadBody.principal, 0), atom('u0'));
     assert.equal(Store.child(monadBody.principal, 1), head);
   });
@@ -279,23 +281,22 @@ describe('gtoy fixture calculus (end-to-end: loader → kernel → checker)', ()
 
   it('derives the graded computation role and injects <tag>_r/<tag>_l rules', () => {
     assert.deepEqual(gtoy.roles.computation, GCOMP);
-    assert.ok(gtoy.rules.gmonad_r, 'gmonad_r injected');
-    assert.ok(gtoy.rules.gmonad_l, 'gmonad_l injected');
-    assert.equal(gtoy.rules.monad_r, undefined, 'no ILL-named monad rules');
-    assert.equal(gtoy.rules.gmonad_r.descriptor.arity, 2);
-    assert.deepEqual(gtoy.rules.gmonad_l.descriptor.premises, [{ linear: [1] }]);
+    assert.ok(gtoy.rules.monad_r, 'monad_r injected');
+    assert.ok(gtoy.rules.monad_l, 'monad_l injected');
+    assert.equal(gtoy.rules.monad_r.descriptor.arity, 2);
+    assert.deepEqual(gtoy.rules.monad_l.descriptor.premises, [{ linear: [1] }]);
   });
 
   it('kernel verifies the mode-switch step against the graded succedent tag', () => {
     const kernel = createKernel(gtoy);
     const node = gm(atom('g'), atom('b'));
-    const good = kernel.verifyStep(Seq.fromArrays([], [], node), 'gmonad_r', [], null);
+    const good = kernel.verifyStep(Seq.fromArrays([], [], node), 'monad_r', [], null);
     assert.equal(good.valid, true);
     assert.equal(good.unverified, 'modeSwitch');
 
     const bad = kernel.verifyStep(
       Seq.fromArrays([], [], Store.put('tensor', [atom('a'), atom('b')])),
-      'gmonad_r', [], null);
+      'monad_r', [], null);
     assert.equal(bad.valid, false);
     assert.match(bad.error, /succedent is not monadic/);
   });
@@ -304,12 +305,12 @@ describe('gtoy fixture calculus (end-to-end: loader → kernel → checker)', ()
     const { check } = createChecker(gtoy);
     const b = atom('b');
     const node = gm(atom('g'), b);
-    // ⊢ {b}@g from {b}@g: gmonad_r whose evidence opens the linear copy
-    // via gmonad_l and closes with id on the body.
+    // ⊢ {b}@g from {b}@g: monad_r whose evidence opens the linear copy
+    // via monad_l and closes with id on the body.
     const term = {
-      rule: 'gmonad_r', principal: null, subterms: [],
+      rule: 'monad_r', principal: null, subterms: [],
       evidence: {
-        rule: 'gmonad_l', principal: node,
+        rule: 'monad_l', principal: node,
         subterms: [{ rule: 'id', principal: b, subterms: [] }],
       },
     };
@@ -322,9 +323,9 @@ describe('gtoy fixture calculus (end-to-end: loader → kernel → checker)', ()
     const { check } = createChecker(gtoy);
     const b = atom('b');
     const node = gm(atom('g'), b);
-    // gmonad_l at top level (outside gmonad_r) must fail — |-_lax only.
+    // monad_l at top level (outside monad_r) must fail — |-_lax only.
     const term = {
-      rule: 'gmonad_l', principal: node,
+      rule: 'monad_l', principal: node,
       subterms: [{ rule: 'id', principal: b, subterms: [] }],
     };
     const res = check(term, Seq.fromArrays([node], [], b));
@@ -349,8 +350,10 @@ describe('calculus-built parser threads the computation record (audit round 11, 
     gtoy = calculus.load(FIXTURE);
   });
 
-  it('{ b } through the auto-built parser throws (graded needs gradeUnit) instead of silently building ILL monad', () => {
-    assert.throws(() => gtoy.parse('{ b }'), /gradeUnit/);
+  it('{ b } through the auto-built parser takes the shared default unit (binlit 0)', () => {
+    const h = gtoy.parse('{ b }');
+    assert.equal(Store.tag(h), 'monad');
+    assert.equal(Store.child(h, 0), Store.put('binlit', [0n]));
   });
 
   it('non-monadic syntax still parses through the auto-built parser', () => {

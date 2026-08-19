@@ -20,6 +20,7 @@ import calculus from '../lib/calculus/index.js';
 import { guidedTerm } from '../lib/prover/guided-term.js';
 import { rightFocusTerm } from '../lib/prover/bridge.js';
 import { generateWitness } from '../lib/zk/witness.js';
+import { monadUnit as U } from '../lib/engine/grades.js';
 const FIXTURE_DIR = path.join(import.meta.dirname, '..', 'zk', 'sequent-certifier', 'tests', 'fixtures');
 
 function ensureFixtureDir() {
@@ -131,7 +132,7 @@ describe('ZK benchmark: solc forward execution', { timeout: 60000 }, () => {
     }
 
     const succFormula = buildSuccedentFromState(forwardResult.state);
-    const monadSucc = Store.put('monad', [succFormula]);
+    const monadSucc = Store.put('monad', [U(), succFormula]);
     const sequent = Seq.fromArrays(linearCtx, cartesianCtx, monadSucc);
 
     const t0 = performance.now();

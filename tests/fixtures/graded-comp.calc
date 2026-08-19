@@ -21,7 +21,7 @@ loli: formula -> formula -> formula
   @category multiplicative
   @polarity negative.
 
-gmonad: grade -> formula -> formula
+monad: grade -> formula -> formula
   @ascii "{ #2 }"
   @category monad
   @polarity negative.

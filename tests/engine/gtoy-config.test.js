@@ -32,7 +32,7 @@ describe('gtoy config through mde.load (P6)', () => {
 
   it('B5/B7: the engine calc carries the toy roles (not ILL fallback)', () => {
     assert.deepEqual(calc.roles.computation,
-      { tag: 'gmonad', bodyIdx: 1, gradeIdx: 0 });
+      { tag: 'monad', bodyIdx: 1, gradeIdx: 0 });
     assert.equal(calc.roles.product, 'tensor');
     assert.equal(calc.roles.exponential, 'bang');
   });
@@ -40,7 +40,7 @@ describe('gtoy config through mde.load (P6)', () => {
   it('B5: rules are parsed by the toy loader and compiled under the toy connectives', () => {
     assert.equal(calc.forwardRules.length, 2);
     const sell = calc.forwardRules.find(r => r.name === 'sell');
-    // consequent unwrapped through gmonad's bodyIdx (grade = unit rational)
+    // consequent unwrapped through monad's bodyIdx (grade = unit rational)
     assert.deepEqual(sell.consequent.linear, [Store.put('sold', [mv('N'), mv('D')])]);
     // antecedent pattern kept the structural rat(N, D) form
     assert.deepEqual(sell.antecedent.linear,
@@ -62,12 +62,12 @@ describe('gtoy config through mde.load (P6)', () => {
     assert.equal(hot.state.linear[Store.put('sold', [bin(1n), bin(2n)])], 1);
   });
 
-  it('B7: bridge modeSwitch reads the graded bodyIdx (gmonad_r)', () => {
-    const goal = Store.put('gmonad', [gtoyGradeUnit(), atom('c')]);
+  it('B7: bridge modeSwitch reads the graded bodyIdx (monad_r)', () => {
+    const goal = Store.put('monad', [gtoyGradeUnit(), atom('c')]);
     const seq = Seq.fromArrays([atom('a'), atom('b')], [], goal);
     const result = modeSwitch(seq, calc);
     assert.ok(result, 'modeSwitch verifies against the BODY child (idx 1), not the grade');
-    assert.equal(result.proofNode.rule, 'gmonad_r');
+    assert.equal(result.proofNode.rule, 'monad_r');
     assert.equal(result.proofNode.proven, true);
   });
 });

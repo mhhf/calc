@@ -16,6 +16,7 @@ import fs from 'fs';
 import os from 'os';
 import path from 'path';
 import mde from '../../lib/engine/index.js';
+import { monadUnit as U } from '../../lib/engine/grades.js';
 
 const COMPILE_OPTS = { connectives: illConnectives(), getModes };
 
@@ -27,7 +28,7 @@ const COMPILE_OPTS = { connectives: illConnectives(), getModes };
  * @returns {Object} compiled rule
  */
 function makeRule(name, anteHash, conseqBodyHash) {
-  const conseqHash = Store.put('monad', [conseqBodyHash]);
+  const conseqHash = Store.put('monad', [U(), conseqBodyHash]);
   const hash = Store.put('loli', [anteHash, conseqHash]);
   return compileRule(
     { name, hash, antecedent: anteHash, consequent: conseqHash },

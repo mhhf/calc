@@ -10,8 +10,9 @@
 % (TODO_0268 item A); the semantics stay kernel-owned (convert desugars,
 % compile strips, the scheduler fires), like $/preserved.
 %
-% tensor/loli/one/bang reuse ILL's store tags deliberately (shared Store);
-% gmonad is till's OWN 2-ary monad tag — ILL's unary `{A}` is untouched (D6).
+% tensor/loli/one/bang/monad reuse ILL's store tags deliberately (shared
+% Store) — the monad is the ONE binary graded node since the D6 merge-back
+% (TODO_0157); ILL's `{A}` is its trivial-grade (delay-0) instance.
 % Additives: internal choice is the weighted `woplus` (Phase 4b); external
 % choice is `with` (Phase 6 — inert menus collapsed by choose()); oplus/zero
 % stay absent.
@@ -38,8 +39,8 @@ one: formula
   @category multiplicative
   @polarity positive.
 
-% Graded lax monad: {B} = gmonad(unit, B) (delay 0); {B}@d replaces the grade.
-gmonad: grade -> formula -> formula
+% Graded lax monad: {B} = monad(unit, B) (delay 0); {B}@d replaces the grade.
+monad: grade -> formula -> formula
   @ascii "{ #2 }"
   @category monad
   @polarity negative.

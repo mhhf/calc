@@ -36,7 +36,7 @@ const TILL_RULES = path.join(import.meta.dirname, 'till.rules');
 // (the former hand-written duplicate required every addition twice —
 // with/Phase 6 needed edits in BOTH places, which is how tables drift).
 // tensor/loli/one/bang share ILL's store tags (one Store, shared numeric
-// prelude); gmonad is till's own 2-ary monad (D6 — ILL's unary {A} untouched).
+// prelude); monad is till's own 2-ary monad (D6 — ILL's unary {A} untouched).
 let _tillConnectives = null;
 function tillConnectives() {
   if (_tillConnectives) return _tillConnectives;

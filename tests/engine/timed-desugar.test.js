@@ -19,7 +19,7 @@ import { gradeW } from '../../lib/engine/grades.js';
 
 const FIXTURE = path.join(import.meta.dirname, '../fixtures/graded-comp.calc');
 const CT = {
-  computation: { tag: 'gmonad', bodyIdx: 1, gradeIdx: 0 },
+  computation: { tag: 'monad', bodyIdx: 1, gradeIdx: 0 },
   implication: 'loli',
   product: 'tensor',
   exponential: 'bang',
@@ -110,7 +110,7 @@ describe('desugarTimed', () => {
     const at = Store.put('at', [atom('a'), putRat(1n, 1n)]);
     const bad = Store.put('loli', [
       Store.put('bang', [gradeW(), at]),
-      Store.put('gmonad', [putRat(0n, 1n), atom('b')])]);
+      Store.put('monad', [putRat(0n, 1n), atom('b')])]);
     assert.throws(() => desugarTimed(bad, CT), /D15/);
     assert.throws(() => desugarTimed(parse('read !p -o { b }'), CT), /meaningless/);
   });

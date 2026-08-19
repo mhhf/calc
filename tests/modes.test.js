@@ -19,8 +19,8 @@ describe('monadRules', () => {
       assert.equal(rules.monad_r.descriptor.side, 'r');
     });
 
-    it('has arity 1', () => {
-      assert.equal(rules.monad_r.descriptor.arity, 1);
+    it('has arity 2 (graded monad, D6 merge-back)', () => {
+      assert.equal(rules.monad_r.descriptor.arity, 2);
     });
 
     it('is invertible (negative polarity)', () => {
@@ -55,9 +55,9 @@ describe('monadRules', () => {
       assert.equal(rules.monad_l.invertible, false);
     });
 
-    it('has one premise with linear child 0', () => {
+    it('has one premise with the body child (bodyIdx 1)', () => {
       assert.equal(rules.monad_l.numPremises, 1);
-      assert.deepEqual(rules.monad_l.descriptor.premises, [{ linear: [0] }]);
+      assert.deepEqual(rules.monad_l.descriptor.premises, [{ linear: [1] }]);
     });
 
     it('requires succedent to be monad (sticky)', () => {

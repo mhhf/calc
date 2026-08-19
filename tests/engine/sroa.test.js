@@ -19,10 +19,11 @@ import { predHead } from '../../lib/kernel/ast.js';
 import { _sroa } from '../../lib/engine/compose.js';
 import { getModeMeta as _illGetModeMeta } from '../../lib/engine/ill/ffi/index.js';
 import { ILL_SROA_CONFIG } from '../../lib/engine/ill/compose-config.js';
+import { monadUnit as U } from '../../lib/engine/grades.js';
 const rc = resolveConn(illConnectives());
 
 function makeRule(name, anteHash, conseqBodyHash) {
-  const conseqHash = Store.put('monad', [conseqBodyHash]);
+  const conseqHash = Store.put('monad', [U(), conseqBodyHash]);
   const hash = Store.put('loli', [anteHash, conseqHash]);
   return { name, hash, antecedent: anteHash, consequent: conseqHash, isFused: true };
 }
@@ -76,7 +77,7 @@ describe('SROA — stack decomposition', () => {
     Store.registerTag('out');
     const conseq = Store.put('out', [X]);
     // Non-fused rule — no isFused flag, should be passed through unchanged
-    const conseqHash = Store.put('monad', [conseq]);
+    const conseqHash = Store.put('monad', [U(), conseq]);
     const hash = Store.put('loli', [ante, conseqHash]);
     const rule = { name: 'individual_rule', hash, antecedent: ante, consequent: conseqHash };
 

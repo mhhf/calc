@@ -112,12 +112,16 @@ bang: grade -> formula -> formula
 % Monad
 % =============================================================================
 
-% Lax monad (computation): {A}
-% "A computation that produces A"
+% Graded lax monad (computation): {A} = monad(unit, A)
+% "A computation that produces A" — ILL is the trivial-grade instance of
+% the graded monad (TODO_0157 D6 merge-back): one binary node shared with
+% till, whose `{A}@d` fills the grade child. The unit grade is binlit 0
+% (= till's putRat(0,1) canonical form, so shared-prelude hashes agree);
+% the parser/renderer elide it ("{ #2 }").
 % Polarity: negative (right-rule invertible, fires eagerly in inversion)
-monad: formula -> formula
-  @ascii "{ _ }"
-  @latex "\\{#1\\}"
+monad: grade -> formula -> formula
+  @ascii "{ #2 }"
+  @latex "\\{#2\\}"
   @prec 90
   @category monad
   @polarity negative.

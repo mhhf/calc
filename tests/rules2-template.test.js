@@ -88,15 +88,15 @@ describe('.rules template extension (graded side conditions)', () => {
 
   it('@side l overrides principal detection (monadic succedent stays a pattern)', () => {
     const r = rules(
-      'gmonad_l: G ; D, {A}@E |- {C}@F\n' +
+      'monad_l: G ; D, {A}@E |- {C}@F\n' +
       '  <- G ; D, A |- {C}@H\n' +
       '  @side l\n' +
       '  @grade H := F - E.\n');
-    const d = r.gmonad_l.descriptor;
+    const d = r.monad_l.descriptor;
     assert.strictEqual(d.side, 'l');
-    assert.strictEqual(d.connective, 'gmonad');
-    assert.strictEqual(Store.tag(d.template.principal), 'gmonad');
-    assert.strictEqual(Store.tag(d.template.succedent), 'gmonad');
+    assert.strictEqual(d.connective, 'monad');
+    assert.strictEqual(Store.tag(d.template.principal), 'monad');
+    assert.strictEqual(Store.tag(d.template.succedent), 'monad');
   });
 
   it('plain rules stay index-based (zero-delta): no template field', () => {

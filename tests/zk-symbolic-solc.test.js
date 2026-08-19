@@ -24,6 +24,7 @@ import { guidedTerm } from '../lib/prover/guided-term.js';
 import { rightFocusTerm } from '../lib/prover/bridge.js';
 import { generateWitness } from '../lib/zk/witness.js';
 import { toObject } from '../lib/engine/fact-set.js';
+import { monadUnit as U } from '../lib/engine/grades.js';
 const FIXTURE_DIR = path.join(import.meta.dirname, '..', 'zk', 'sequent-certifier', 'tests', 'fixtures');
 
 function ensureFixtureDir() {
@@ -132,7 +133,7 @@ describe('ZK symbolic solc: 31-path witness generation', { timeout: 1800000 }, (
       };
 
       // Build sequent and generate witness
-      const monadSucc = Store.put('monad', [succFormula]);
+      const monadSucc = Store.put('monad', [U(), succFormula]);
       const sequent = Seq.fromArrays(linearCtx, cartesianCtx, monadSucc);
       const witness = generateWitness(gTerm, sequent, {
         calculus: illCalc,

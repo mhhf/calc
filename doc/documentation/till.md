@@ -10,7 +10,7 @@ Design/decisions: hq todo 0265; reference semantics: `tools/till-oracle.mjs`.
 - **Stamp** `A@t` — availability: the token exists from logical time `t` (exact
   rational; canonical `ratlit`/`binlit` hash). Unstamped facts in an initial
   state default to stamp 0. Unstamped LHS *patterns* are stamp wildcards.
-- **Duration** `{B}@d` — the graded lax monad (`gmonad(d, body)`, till-local tag):
+- **Duration** `{B}@d` — the graded lax monad (`monad(d, body)`, till-local tag):
   outputs materialize `d` after the rule fires. `{B}` = delay 0. `d` may be a
   term (`@D` with `!qdiv 10 N D` — E7.1): it must be a ground rational after
   matching (compile checks the variable is antecedent-bound).

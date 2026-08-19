@@ -23,6 +23,7 @@ import { tryMatch } from '../lib/engine/match.js';
 import { resolveEx } from '../lib/engine/lnl/existential.js';
 import { proveWithFFI as provePersistent } from '../lib/engine/opt/ffi.js';
 import illFfi from '../lib/engine/ill/ffi/index.js';
+import { monadUnit as U } from '../lib/engine/grades.js';
 describe('Quantifier Store operations', () => {
   it('exists(body) creates arity-1 node', () => {
     const p = Store.put('atom', ['p']);
@@ -249,7 +250,7 @@ describe('Forward engine with exists', () => {
     const b0 = Store.put('bound', [0n]);
     const pb = Store.put('p', [b0]);
     const ex = Store.put('exists', [pb]);
-    const monad = Store.put('monad', [ex]);
+    const monad = Store.put('monad', [U(), ex]);
     const loli = Store.put('loli', [a, monad]);
 
     const rule = { name: 'test', hash: loli, antecedent: a, consequent: monad };
@@ -268,10 +269,10 @@ describe('Loli variables are NOT existential slots', () => {
     const b = Store.put('atom', ['b']);
     const cz = Store.put('c', [z]);
     const dz = Store.put('d', [z]);
-    const monadBody = Store.put('monad', [dz]);
+    const monadBody = Store.put('monad', [U(), dz]);
     const loli = Store.put('loli', [cz, monadBody]);
     const body = Store.put('tensor', [b, loli]);
-    const monad = Store.put('monad', [body]);
+    const monad = Store.put('monad', [U(), body]);
 
     const rule = { name: 'test_loli', hash: Store.put('loli', [a, monad]), antecedent: a, consequent: monad };
     const compiled = compileRule(rule, { connectives: illConnectives() });
@@ -289,12 +290,12 @@ describe('Loli variables are NOT existential slots', () => {
     const px = Store.put('p', [x]);
     const qz = Store.put('q', [z]);
     const rz = Store.put('r', [z]);
-    const loliBody = Store.put('monad', [rz]);
+    const loliBody = Store.put('monad', [U(), rz]);
     const loli = Store.put('loli', [qz, loliBody]);
     const tensor = Store.put('tensor', [px, loli]);
     // exists wraps the tensor — after expandChoice, X becomes a fresh metavar
     const ex = Store.put('exists', [tensor]);
-    const monad = Store.put('monad', [ex]);
+    const monad = Store.put('monad', [U(), ex]);
 
     const rule = { name: 'test_mixed', hash: Store.put('loli', [a, monad]), antecedent: a, consequent: monad };
     const compiled = compileRule(rule, { connectives: illConnectives() });
@@ -313,7 +314,7 @@ describe('resolveEx three-level fallback', () => {
     const b0 = Store.put('bound', [0n]);
     const pb = Store.put('p', [b0]);
     const ex = Store.put('exists', [pb]);
-    const monad = Store.put('monad', [ex]);
+    const monad = Store.put('monad', [U(), ex]);
 
     resetMetavar();
     const rule = { name: 'test', hash: Store.put('loli', [a, monad]), antecedent: a, consequent: monad };

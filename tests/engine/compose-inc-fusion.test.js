@@ -15,13 +15,14 @@ import { _fuseChains } from '../../lib/engine/compose.js';
 import { ILL_CHAIN_CONFIGS } from '../../lib/engine/ill/compose-config.js';
 import { getModes, getModeMeta as _illGetModeMeta } from '../../lib/engine/ill/ffi/index.js';
 import { show } from '../../lib/engine/show.js';
+import { monadUnit as U } from '../../lib/engine/grades.js';
 const COMPILE_OPTS = { connectives: illConnectives(), getModes };
 
 /**
  * Helper: build a raw forward rule from Store hashes.
  */
 function makeRule(name, anteHash, conseqBodyHash) {
-  const conseqHash = Store.put('monad', [conseqBodyHash]);
+  const conseqHash = Store.put('monad', [U(), conseqBodyHash]);
   const hash = Store.put('loli', [anteHash, conseqHash]);
   return { name, hash, antecedent: anteHash, consequent: conseqHash };
 }

@@ -25,6 +25,7 @@ import { gradeW } from '../lib/engine/grades.js';
 // Hoisted by tools/esm-hoist.js:
 import { ProofTree } from '../lib/prover/pt.js';
 import { fromGoal } from '../lib/prover/pt.js';
+import { monadUnit as U } from '../lib/engine/grades.js';
 
 describe('Generic Term Signatures', () => {
   let calc, sigs;
@@ -55,7 +56,7 @@ describe('Generic Term Signatures', () => {
     dereliction: { notation: 'dereliction(z, x1 -> u0)',           arity: 2 },
     copy:        { notation: 'copy(u, x0 -> u0)',                   arity: 2 },
     monad_r:     { notation: 'monad_r()',                           arity: 0 },
-    monad_l:     { notation: 'monad_l(z, x0 -> u0)',               arity: 2 },
+    monad_l:     { notation: 'monad_l(z, x1 -> u0)',               arity: 2 }, // body child 1 (D6)
     exists_r:    { notation: 'exists_r(s, u0)',                     arity: 2 },
     exists_l:    { notation: 'exists_l(z, a, x0 -> u0)',           arity: 3 },
     forall_r:    { notation: 'forall_r(a, u0)',                     arity: 2 },
@@ -644,12 +645,12 @@ describe('Type Checker', () => {
       assert.strictEqual(e.children[1].hash, p);
     });
 
-    it('expands monad (arity 1)', () => {
+    it('expands monad (arity 2: grade + body, D6)', () => {
       const p = AST.atom('p');
-      const e = expand(AST.monad(p));
+      const e = expand(AST.monad(U(), p));
       assert.strictEqual(e.tag, 'monad');
-      assert.strictEqual(e.children.length, 1);
-      assert.strictEqual(e.children[0].hash, p);
+      assert.strictEqual(e.children.length, 2);
+      assert.strictEqual(e.children[1].hash, p);
     });
 
     it('expands nested structure recursively', () => {
@@ -753,7 +754,7 @@ describe('Type Checker', () => {
       //   1. antecedent proof: id(a) — consumes a from delta
       //   2. consequent {b} added to delta, then monad_l unwraps to b, id(b)
       const a = AST.atom('a'), b = AST.atom('b');
-      const monadB = AST.monad(b);
+      const monadB = AST.monad(U(), b);
       const loli = AST.loli(a, monadB);
 
       const evidence = {
@@ -777,7 +778,7 @@ describe('Type Checker', () => {
 
     it('rejects loli_match with wrong antecedent proof', () => {
       const a = AST.atom('a'), b = AST.atom('b'), c = AST.atom('c');
-      const monadB = AST.monad(b);
+      const monadB = AST.monad(U(), b);
       const loli = AST.loli(a, monadB);
 
       const evidence = {
@@ -908,7 +909,7 @@ describe('Bridge Integration', () => {
 
   describe('kernel monad_r verification upgrade', () => {
     it('monad_r returns unverified without term evidence', () => {
-      const succ = AST.monad(AST.atom('p'));
+      const succ = AST.monad(U(), AST.atom('p'));
       const s = Seq.fromArrays([], [], succ);
       const result = kernel.verifyStep(s, 'monad_r', []);
       assert.strictEqual(result.valid, true);
@@ -916,7 +917,7 @@ describe('Bridge Integration', () => {
     });
 
     it('monad_r returns verified with termVerified state', () => {
-      const succ = AST.monad(AST.atom('p'));
+      const succ = AST.monad(U(), AST.atom('p'));
       const s = Seq.fromArrays([], [], succ);
       const monadicTerm = { rule: 'id', principal: AST.atom('p'), subterms: [] };
       const state = { termVerified: true, monadicTerm };
@@ -928,7 +929,7 @@ describe('Bridge Integration', () => {
 
     it('verifyTree passes state to verifyStep for monad_r', () => {
 
-      const succ = AST.monad(AST.atom('p'));
+      const succ = AST.monad(U(), AST.atom('p'));
       const s = Seq.fromArrays([], [], succ);
       const monadicTerm = { rule: 'id', principal: AST.atom('p'), subterms: [] };
       const tree = new ProofTree({
@@ -956,17 +957,17 @@ describe('End-to-end bridge term construction', () => {
 
   // Helper: compile a simple forward rule  a -o {b}
   function makeRule(a, b) {
-    const ruleH = AST.loli(a, AST.monad(b));
+    const ruleH = AST.loli(a, AST.monad(U(), b));
     return compileRule({
       name: 'test_fwd', hash: ruleH,
-      antecedent: a, consequent: AST.monad(b)
+      antecedent: a, consequent: AST.monad(U(), b)
     }, { connectives: illConnectives() });
   }
 
   it('modeSwitch with terms:true produces monadicTerm', () => {
     const a = AST.atom('a'), b = AST.atom('b');
     const compiled = makeRule(a, b);
-    const seq = Seq.fromArrays([a], [], AST.monad(b));
+    const seq = Seq.fromArrays([a], [], AST.monad(U(), b));
 
     const result = modeSwitch(seq, { forwardRules: [compiled] }, { terms: true });
     assert.ok(result, 'should produce a result');
@@ -979,7 +980,7 @@ describe('End-to-end bridge term construction', () => {
   it('monadicTerm has correct structure: let-binding wrapping rightFocus id', () => {
     const a = AST.atom('a'), b = AST.atom('b');
     const compiled = makeRule(a, b);
-    const seq = Seq.fromArrays([a], [], AST.monad(b));
+    const seq = Seq.fromArrays([a], [], AST.monad(U(), b));
 
     const result = modeSwitch(seq, { forwardRules: [compiled] }, { terms: true });
     const mt = result.proofNode.state.monadicTerm;
@@ -995,7 +996,7 @@ describe('End-to-end bridge term construction', () => {
   it('extractTerm on modeSwitch result attaches evidence', () => {
     const a = AST.atom('a'), b = AST.atom('b');
     const compiled = makeRule(a, b);
-    const seq = Seq.fromArrays([a], [], AST.monad(b));
+    const seq = Seq.fromArrays([a], [], AST.monad(U(), b));
 
     const result = modeSwitch(seq, { forwardRules: [compiled] }, { terms: true });
     const term = extractTerm(result.proofNode, calc);
@@ -1008,7 +1009,7 @@ describe('End-to-end bridge term construction', () => {
   it('kernel verifies modeSwitch proof node with termVerified', () => {
     const a = AST.atom('a'), b = AST.atom('b');
     const compiled = makeRule(a, b);
-    const seq = Seq.fromArrays([a], [], AST.monad(b));
+    const seq = Seq.fromArrays([a], [], AST.monad(U(), b));
 
     const result = modeSwitch(seq, { forwardRules: [compiled] }, { terms: true });
     const kernel = createKernel(calc);
@@ -1024,14 +1025,14 @@ describe('End-to-end bridge term construction', () => {
   it('leftover linear resources → modeSwitch returns null', () => {
     const a = AST.atom('a'), b = AST.atom('b');
     // Forward rule: a -o {a * b} — produces BOTH a and b
-    const ruleH = AST.loli(a, AST.monad(AST.tensor(a, b)));
+    const ruleH = AST.loli(a, AST.monad(U(), AST.tensor(a, b)));
     const compiled = compileRule({
       name: 'overproducer', hash: ruleH,
-      antecedent: a, consequent: AST.monad(AST.tensor(a, b))
+      antecedent: a, consequent: AST.monad(U(), AST.tensor(a, b))
     }, { connectives: illConnectives() });
 
     // Succedent only wants {a} — b will be leftover after rightFocus
-    const seq = Seq.fromArrays([a], [], AST.monad(a));
+    const seq = Seq.fromArrays([a], [], AST.monad(U(), a));
     const result = modeSwitch(seq, { forwardRules: [compiled] }, { terms: true });
     assert.strictEqual(result, null, 'should fail: leftover b after rightFocus');
   });
@@ -1040,7 +1041,7 @@ describe('End-to-end bridge term construction', () => {
     const a = AST.atom('a'), b = AST.atom('b');
     const compiled = makeRule(a, b);
     // Forward produces b, but succedent wants {a} — rightFocus can't find a
-    const seq = Seq.fromArrays([a], [], AST.monad(a));
+    const seq = Seq.fromArrays([a], [], AST.monad(U(), a));
     const result = modeSwitch(seq, { forwardRules: [compiled] });
     assert.strictEqual(result, null, 'should fail: residual b does not match succedent a');
   });
@@ -1055,17 +1056,17 @@ describe('Zero-overhead (terms: false)', () => {
   });
 
   function makeRule(a, b) {
-    const ruleH = AST.loli(a, AST.monad(b));
+    const ruleH = AST.loli(a, AST.monad(U(), b));
     return compileRule({
       name: 'test_fwd', hash: ruleH,
-      antecedent: a, consequent: AST.monad(b)
+      antecedent: a, consequent: AST.monad(U(), b)
     }, { connectives: illConnectives() });
   }
 
   it('modeSwitch without terms option produces no term data', () => {
     const a = AST.atom('a'), b = AST.atom('b');
     const compiled = makeRule(a, b);
-    const seq = Seq.fromArrays([a], [], AST.monad(b));
+    const seq = Seq.fromArrays([a], [], AST.monad(U(), b));
 
     const result = modeSwitch(seq, { forwardRules: [compiled] });
     assert.ok(result, 'proof still succeeds');
@@ -1078,7 +1079,7 @@ describe('Zero-overhead (terms: false)', () => {
   it('modeSwitch with terms:false produces no term data', () => {
     const a = AST.atom('a'), b = AST.atom('b');
     const compiled = makeRule(a, b);
-    const seq = Seq.fromArrays([a], [], AST.monad(b));
+    const seq = Seq.fromArrays([a], [], AST.monad(U(), b));
 
     const result = modeSwitch(seq, { forwardRules: [compiled] }, { terms: false });
     assert.ok(result, 'proof still succeeds');

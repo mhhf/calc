@@ -25,7 +25,7 @@ const GTOY_CONNECTIVES = {
   tensor: { category: 'multiplicative', arity: 2, polarity: 'positive' },
   loli:   { category: 'multiplicative', arity: 2, polarity: 'negative' },
   bang:   { category: 'exponential',    arity: 2 },
-  gmonad: { category: 'monad',          arity: 2, polarity: 'negative' },
+  monad: { category: 'monad',          arity: 2, polarity: 'negative' },
 };
 
 const gtoyGradeUnit = () => putRat(0n, 1n);

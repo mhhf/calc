@@ -27,7 +27,7 @@ describe('deriveRoles', () => {
     assert.strictEqual(r.internalChoice, 'oplus');
     assert.strictEqual(r.externalChoice, 'with');
     assert.strictEqual(r.exponential, 'bang');
-    assert.deepStrictEqual(r.computation, { tag: 'monad', bodyIdx: 0, gradeIdx: null });
+    assert.deepStrictEqual(r.computation, { tag: 'monad', bodyIdx: 1, gradeIdx: 0 });
     assert.strictEqual(r.existential, 'exists');
     assert.strictEqual(r.additiveZero, 'zero');
   });
@@ -36,7 +36,7 @@ describe('deriveRoles', () => {
     assert.deepStrictEqual(illConnectives().tensor, { category: 'multiplicative', arity: 2, polarity: 'positive' });
     assert.deepStrictEqual(illConnectives().loli, { category: 'multiplicative', arity: 2, polarity: 'negative' });
     assert.deepStrictEqual(illConnectives().bang, { category: 'exponential', arity: 2 });
-    assert.deepStrictEqual(illConnectives().monad, { category: 'monad', arity: 1, polarity: 'negative' });
+    assert.deepStrictEqual(illConnectives().monad, { category: 'monad', arity: 2, polarity: 'negative' });
     assert.deepStrictEqual(illConnectives().oplus, { category: 'additive', arity: 2, polarity: 'positive' });
     assert.deepStrictEqual(illConnectives().with, { category: 'additive', arity: 2, polarity: 'negative' });
     assert.deepStrictEqual(illConnectives().exists, { category: 'quantifier', arity: 1, polarity: 'positive' });
@@ -91,7 +91,7 @@ describe('two calculi coexist', () => {
   it('should have independent roles', () => {
     assert.strictEqual(ill.roles.product, 'tensor');
     assert.strictEqual(prop.roles.product, 'prop_and');
-    assert.deepStrictEqual(ill.roles.computation, { tag: 'monad', bodyIdx: 0, gradeIdx: null });
+    assert.deepStrictEqual(ill.roles.computation, { tag: 'monad', bodyIdx: 1, gradeIdx: 0 });
     assert.strictEqual(prop.roles.computation, undefined);
   });
 

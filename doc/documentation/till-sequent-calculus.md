@@ -27,7 +27,7 @@ is `bang_r3` (as `⊢ 1`, lazily — no empty-context requirement, so it threads
 mid-chain); k = n+1 is `bang_r2` (as `tensor_r` splitting one copy off) + IH.
 Both directions of the split/merge iso `!_{a+b} A ⊣⊢ !_a A ⊗ !_b A` follow;
 the provability grid witnesses the instances. ∎(sketch)
-| graded monad `{A}@d` | `gmonad_l` (bind, `H := F − E` monus), `gmonad_r` (unit·sub, `E ≥ 0`) | THY_0018 §4: the grade is an upper BOUND — graded-μ `{{A}@d}@e ⊢ {A}@(d+e)` and subeffecting `{A}@d ⊢ {A}@e` (d ≤ e) derivable; the critical path is a strict lower bound (`{A}@4` from `{{A}@2}@3` refuted) |
+| graded monad `{A}@d` | `monad_l` (bind, `H := F − E` monus), `monad_r` (unit·sub, `E ≥ 0`) | THY_0018 §4: the grade is an upper BOUND — graded-μ `{{A}@d}@e ⊢ {A}@(d+e)` and subeffecting `{A}@d ⊢ {A}@e` (d ≤ e) derivable; the critical path is a strict lower bound (`{A}@4` from `{{A}@2}@3` refuted) |
 
 Fences: ground grades only (non-numeric grades fail every side condition —
 `!_W` goals are unprovable, not errors); surface `!_0` is the g0 **label**
@@ -45,7 +45,7 @@ Context entries may be stamped atoms `at(A,t)` — content-addressed
   (THY_0018 §5). No ambient rule: an unstamped context atom does not
   retime (`a ⊬ a@3`); the bridge canonicalizes `A@0 ≡ A` at the state
   boundary instead.
-- **The settle bridge** `gmonad_r2` (`@modeShift true`): for a sequent
+- **The settle bridge** `monad_r2` (`@modeShift true`): for a sequent
   `Δ ⊢ {S}@T` with a settle-capable `opts.engineCalc`, the succedent
   monad grade is read as the **observation horizon** (THY_0018 §5, n=0
   boundary) — `settle(Δ, T)`, then exact `rightFocus` of `S` against the
@@ -54,14 +54,14 @@ Context entries may be stamped atoms `at(A,t)` — content-addressed
   each firing is one `@fire` instance, so bridge success implies both
   settle-reachability AND derivability — the bridge is a sound oracle.
   It is NOT complete for derivability, and derivability does not imply
-  settle-reachability: `gmonad_r` (subeffecting) proves `a ⊢ {a}@d` for
+  settle-reachability: `monad_r` (subeffecting) proves `a ⊢ {a}@d` for
   any `d ≥ 0` with no forward step. A `prove` failure refutes the sequent
   because BOTH paths (pure backward and bridge) are searched; a bridge
   failure alone refutes only the bridge route. Verify-only: the evidence
   is the settle event trace (guided terms for timed traces = recorded
   residue); the kernel accepts the bridge step structurally and reports
   it in `unverified` (see the contract below). Tried after the backward
-  unit `gmonad_r`; without an engine it is simply inapplicable.
+  unit `monad_r`; without an engine it is simply inapplicable.
 
 Adequacy tests (`tests/till-adequacy.test.js`) wrap the executable specs'
 `#expect` gate hashes as sequents and witness THY_0018 Thm 5 (in-flight

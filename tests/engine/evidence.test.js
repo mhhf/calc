@@ -20,6 +20,7 @@ import { resolveConn } from '../../lib/engine/compile.js';
 const ILL_RC = resolveConn(illConnectives());
 import { Arena } from '../../lib/engine/fact-set.js';
 import { makeMatchOpts } from './_match-opts.js';
+import { monadUnit as U } from '../../lib/engine/grades.js';
 const illMatchOpts = makeMatchOpts({
   ffi: {
     meta: illFfi.defaultMeta,
@@ -99,7 +100,7 @@ describe('Evidence collection (TODO_0068 §10.5)', () => {
       const X = Store.put('metavar', ['X']);
       const triggerPattern = Store.put('data', [X]);
       const bodyPattern = Store.put('result', [X]);
-      const body = Store.put('monad', [bodyPattern]);
+      const body = Store.put('monad', [U(), bodyPattern]);
       const loli = Store.put('loli', [triggerPattern, body]);
 
       const val = Store.put('binlit', [42n]);
@@ -120,7 +121,7 @@ describe('Evidence collection (TODO_0068 §10.5)', () => {
     it('returns empty theta/slots when evidence NOT requested (backward compat)', () => {
       const trigger = Store.put('atom', ['go']);
       const result = Store.put('atom', ['done']);
-      const body = Store.put('monad', [result]);
+      const body = Store.put('monad', [U(), result]);
       const loli = Store.put('loli', [trigger, body]);
 
       const state = forward.createState(
@@ -139,7 +140,7 @@ describe('Evidence collection (TODO_0068 §10.5)', () => {
       const guard = Store.put('atom', ['check']);
       const bangGuard = Store.put('bang', [gradeW(),guard]);
       const result = Store.put('atom', ['guarded']);
-      const body = Store.put('monad', [result]);
+      const body = Store.put('monad', [U(), result]);
       const loli = Store.put('loli', [bangGuard, body]);
 
       const state = forward.createState(
@@ -161,7 +162,7 @@ describe('Evidence collection (TODO_0068 §10.5)', () => {
       const bangGuard = Store.put('bang', [gradeW(),guard]);
       const trigger = Store.put('tensor', [linTrigger, bangGuard]);
       const result = Store.put('atom', ['mixed_result']);
-      const body = Store.put('monad', [result]);
+      const body = Store.put('monad', [U(), result]);
       const loli = Store.put('loli', [trigger, body]);
 
       const state = forward.createState(
@@ -178,7 +179,7 @@ describe('Evidence collection (TODO_0068 §10.5)', () => {
     it('returns empty persistentEvidence for pure-linear trigger', () => {
       const trigger = Store.put('atom', ['signal']);
       const result = Store.put('atom', ['done']);
-      const body = Store.put('monad', [result]);
+      const body = Store.put('monad', [U(), result]);
       const loli = Store.put('loli', [trigger, body]);
 
       const state = forward.createState(
@@ -199,7 +200,7 @@ describe('Evidence collection (TODO_0068 §10.5)', () => {
     it('forwards evidence option to matchLoli', () => {
       const trigger = Store.put('atom', ['go']);
       const result = Store.put('atom', ['done']);
-      const body = Store.put('monad', [result]);
+      const body = Store.put('monad', [U(), result]);
       const loli = Store.put('loli', [trigger, body]);
 
       const state = forward.createState(
@@ -221,7 +222,7 @@ describe('Evidence collection (TODO_0068 §10.5)', () => {
       const guard = Store.put('atom', ['check']);
       const bangGuard = Store.put('bang', [gradeW(),guard]);
       const result = Store.put('atom', ['drained']);
-      const body = Store.put('monad', [result]);
+      const body = Store.put('monad', [U(), result]);
       const loli = Store.put('loli', [bangGuard, body]);
 
       const state = forward.createState(
@@ -245,7 +246,7 @@ describe('Evidence collection (TODO_0068 §10.5)', () => {
       const guard = Store.put('atom', ['check']);
       const bangGuard = Store.put('bang', [gradeW(),guard]);
       const result = Store.put('atom', ['drained']);
-      const body = Store.put('monad', [result]);
+      const body = Store.put('monad', [U(), result]);
       const loli = Store.put('loli', [bangGuard, body]);
 
       const state = forward.createState(
@@ -269,8 +270,8 @@ describe('Evidence collection (TODO_0068 §10.5)', () => {
       const bang2 = Store.put('bang', [gradeW(),guard2]);
       const result1 = Store.put('atom', ['r1']);
       const result2 = Store.put('atom', ['r2']);
-      const body1 = Store.put('monad', [result1]);
-      const body2 = Store.put('monad', [result2]);
+      const body1 = Store.put('monad', [U(), result1]);
+      const body2 = Store.put('monad', [U(), result2]);
       const loli1 = Store.put('loli', [bang1, body1]);
       const loli2 = Store.put('loli', [bang2, body2]);
 
