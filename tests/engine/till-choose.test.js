@@ -231,3 +231,45 @@ describe('menuStatus — per-alternative availability at a horizon', () => {
     assert.deepEqual(alts.map(a => a.formula), [atom('actf'), atom('actg')]);
   });
 });
+
+// ─── now-marked alternatives: strict buttons (till-menu-status.ill) ───
+
+describe('now(…) — strict synchronous alternatives', () => {
+  let calc, menu;
+  before(() => {
+    calc = load(FIX('till-menu-status.ill'));
+    // [ now(actf) strict button, actg plan ]
+    menu = Store.put('with', [Store.put('now', [atom('actf')]), atom('actg')]);
+  });
+  const St = (linear = {}) => ({ linear, persistent: { [menu]: true } });
+
+  it('without resources the strict click is REFUSED — state unchanged', () => {
+    assert.throws(() => calc.choose(St(), menu, 0, { at: '0' }),
+      /now-marked and cannot fire/);
+  });
+
+  it('with resources the strict click projects and fires', () => {
+    const s = calc.choose(St({ [atom('spc')]: 2 }), menu, 0, { at: '0' });
+    assert.equal(stamped(s)['actf@0'], 1);
+    assert.equal(stampedStr(calc.settle(s, '10').state), 'farmx@3x1');
+  });
+
+  it('resources arriving later: refused before their stamp, allowed after', () => {
+    const r = calc.settle({ linear: { [atom('junk')]: 1 }, persistent: { [menu]: true } }, '2');
+    assert.throws(() => calc.choose(r.state, menu, 0, { at: '1' }), /cannot fire/);
+    const s = calc.choose(r.state, menu, 0, { at: '2' });
+    assert.equal(stampedStr(calc.settle(s, '10').state), 'farmx@5x1');
+  });
+
+  it('plan alternatives stay projectable regardless (the act waits)', () => {
+    const s = calc.choose(St(), menu, 1, { at: '0' });
+    assert.equal(stamped(s)['actg@0'], 1);
+  });
+
+  it('menuStatus reports strictness alongside enablement', () => {
+    const alts = calc.menuStatus(St(), menu, '0');
+    assert.deepEqual(alts.map(a => [a.strict, a.enabled]), [[true, false], [false, false]]);
+    const alts2 = calc.menuStatus(St({ [atom('spc')]: 2 }), menu, '0');
+    assert.deepEqual(alts2.map(a => [a.strict, a.enabled]), [[true, true], [false, false]]);
+  });
+});

@@ -112,7 +112,9 @@ function frame(state, T, sel) {
     lines.push('');
     lines.push(`${cur ? '▶' : ' '} menu ${mi}${m.standing ? '' : ' (one-shot)'}:`);
     for (const [i, alt] of calc.menuStatus(state, m.fact, horizonOf(T)).entries()) {
-      lines.push(`    [${i + 1}] ${show(alt.formula)}${alt.enabled ? '' : '   (inactive)'}`);
+      const body = Store.tag(alt.formula) === 'now' ? Store.child(alt.formula, 0) : alt.formula;
+      const note = alt.enabled ? '' : (alt.strict ? '   (unavailable)' : '   (would queue)');
+      lines.push(`    [${i + 1}] ${show(body)}${note}`);
     }
   });
   if (!ms.length) { lines.push(''); lines.push('  (no menus offered)'); }
@@ -159,12 +161,14 @@ if (demo) {
 let start = Date.now();
 let pausedAt = null;
 let sel = 0;
+let lastMsg = null;
 const gameNow = () => (((pausedAt ?? Date.now()) - start) / 1000) * speed;
 
 function tick() {
   const T = gameNow();
   state = calc.settle(state, horizonOf(T)).state;
-  process.stdout.write('\x1b[2J\x1b[H' + frame(state, T, sel) + '\n');
+  const extra = lastMsg ? `\n  ⚠ ${lastMsg}\n` : '\n';
+  process.stdout.write('\x1b[2J\x1b[H' + frame(state, T, sel) + extra);
 }
 
 if (!process.stdin.isTTY) {
@@ -185,7 +189,7 @@ process.stdin.on('data', (b) => {
   else if (k >= '1' && k <= '9') {
     const T = gameNow();
     state = calc.settle(state, horizonOf(T)).state;
-    click(T, Number(k) - 1, undefined, sel);
+    lastMsg = click(T, Number(k) - 1, undefined, sel);
   }
   tick();
 });
