@@ -273,4 +273,26 @@ describe('costed-loli alternatives — cut (strict) vs plan (residuate)', () => 
     const s = calc.choose(St(), menu, 1, { at: '0' });
     assert.equal(stamped(s)['actg@0'], 1);
   });
+
+  // Round-15 F2 regression: greying and enforcement may not drift. For a
+  // FUTURE-stamped menu, choose's cut-check fires at s = max(menuStamp, at)
+  // — menuStatus must ask the same question, not the display horizon.
+  it('future-stamped menu: menuStatus agrees with choose on strict leaves', () => {
+    const five = Store.put1('binlit', 5n);
+    const stampedMenu = Store.put('at', [menu, five]);
+    const withCost = { linear: { [stampedMenu]: 1, [atom('spc')]: 2 }, persistent: {} };
+    // choose at T=2 clamps the decision to the menu stamp 5; the cost is
+    // consumable there, so the click is ACCEPTED (farmz at 5+3)
+    const s = calc.choose(withCost, stampedMenu, 0, { at: '2' });
+    assert.equal(stampedStr(calc.settle(s, '10').state), 'farmz@8x1');
+    // …so menuStatus at the same T must report the strict leaf ENABLED
+    assert.deepEqual(
+      calc.menuStatus(withCost, stampedMenu, '2').map(a => [a.strict, a.enabled]),
+      [[true, true], [false, false]]);
+    // and without the cost BOTH refuse (negative agreement)
+    const noCost = { linear: { [stampedMenu]: 1 }, persistent: {} };
+    assert.throws(() => calc.choose(noCost, stampedMenu, 0, { at: '2' }),
+      /cannot fire at the decision time/);
+    assert.equal(calc.menuStatus(noCost, stampedMenu, '2')[0].enabled, false);
+  });
 });
