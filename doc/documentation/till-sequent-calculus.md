@@ -15,7 +15,7 @@ Stage 2, gated on THY-A/THY-B.
 | multiplicatives, `with` | ill.rules verbatim | shared core |
 | ω bang `!A` | `bang_r/l/l2` = promotion/dereliction/absorption, **template-matched** | the ω grade is part of the pattern — never fires on `!_k` |
 | counted bang `!_k A` | `bang_l3/l4` (peel/weaken), `bang_r2/r3` (peel/zero) | `!_k A ≡ A ⊗ … ⊗ A` (k parcels, SELL/BLL) |
-| graded monad `{A}@d` | `gmonad_l` (bind, `H := F − E` monus), `gmonad_r` (unit at 0) | graded-μ `{{A}@d}@e ⊢ {A}@(d+e)` is derivable; accounting is EXACT (no subeffecting in v1) |
+| graded monad `{A}@d` | `gmonad_l` (bind, `H := F − E` monus), `gmonad_r` (unit·sub, `E ≥ 0`) | THY_0018 §4: the grade is an upper BOUND — graded-μ `{{A}@d}@e ⊢ {A}@(d+e)` and subeffecting `{A}@d ⊢ {A}@e` (d ≤ e) derivable; the critical path is a strict lower bound (`{A}@4` from `{{A}@2}@3` refuted) |
 
 Fences: ground grades only (non-numeric grades fail every side condition —
 `!_W` goals are unprovable, not errors); surface `!_0` is the g0 **label**
