@@ -15,15 +15,9 @@
 
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import path from 'path';
 import Store from '../../lib/kernel/store.js';
-import mde from '../../lib/engine/index.js';
-import tillConfig from '../../calculus/till/calculus-config.js';
 import { putRat } from '../../lib/kernel/rat-term.js';
-import { ratParts } from '../../lib/engine/theories/ratlit-theory.js';
-
-const SPEC = (f) => path.join(import.meta.dirname, '../../calculus/till/tests/forward', f);
-const load = (p) => mde.load(p, { calculusConfig: tillConfig, cache: false });
+import { SPEC, loadTill as load, stampedStr } from './till-helpers.js';
 
 // program → its atom alphabet (facts the rules mention)
 const PROGRAMS = [
@@ -63,20 +57,6 @@ function randomState(atoms) {
   return { linear, persistent: {} };
 }
 
-/** Canonical 'inner@n/d'×count string of a timed state. */
-function stamped(state) {
-  const out = {};
-  for (const [hStr, c] of Object.entries(state.linear)) {
-    const h = Number(hStr);
-    const isAt = Store.tag(h) === 'at';
-    const inner = isAt ? Store.child(h, 0) : h;
-    const [n, d] = isAt ? ratParts(Store.child(h, 1)) : [0n, 1n];
-    const key = `${Store.tag(inner) === 'atom' ? Store.child(inner, 0) : Store.tag(inner)}@${n}/${d}`;
-    out[key] = (out[key] || 0) + c;
-  }
-  return Object.entries(out).sort().map(([k, v]) => `${k}x${v}`).join(',');
-}
-
 describe('till settle metamorphic laws (E5) over random states', () => {
   for (const [file, atoms] of PROGRAMS) {
     it(`${file}: composability + idempotence on ${STATES_PER_PROGRAM} random states`, () => {
@@ -90,11 +70,11 @@ describe('till settle metamorphic laws (E5) over random states', () => {
           if (cmpHz(t1, T) > 0) continue;             // only splits ≤ T are meaningful
           const mid = calc.settle(S, t1, { seed: SEED }).state;
           const resumed = calc.settle(mid, T, { seed: SEED }).state;
-          assert.equal(stamped(resumed), stamped(direct),
-            `${file} state#${i} split ${t1} of ${T}\nstate: ${stamped(S)}`);
+          assert.equal(stampedStr(resumed), stampedStr(direct),
+            `${file} state#${i} split ${t1} of ${T}\nstate: ${stampedStr(S)}`);
         }
         const once = calc.settle(S, T, { seed: SEED }).state;
-        assert.equal(stamped(calc.settle(once, T, { seed: SEED }).state), stamped(once),
+        assert.equal(stampedStr(calc.settle(once, T, { seed: SEED }).state), stampedStr(once),
           `${file} state#${i} idempotence at ${T}`);
       }
     });
