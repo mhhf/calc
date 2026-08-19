@@ -1,0 +1,5 @@
+% till-perm-a.ill with the rule declarations reversed — see that file.
+
+serve: cust * bread -o { fed }.
+bake: $oven * plank -o { bread }@(1/2).
+mkp: $mill * wood -o { plank }@1.

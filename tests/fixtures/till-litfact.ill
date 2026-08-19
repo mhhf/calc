@@ -1,0 +1,8 @@
+% Dirty-scheduler regression (round-14 fuzz find): `e` is the empty binary
+% literal, not an atom — predHead has no name for sub-boundary kernel tags,
+% so dirty tracking keyed on triggerPreds never woke pair2 after gen
+% produced a literal fact. The scheduler-equivalence gate (P3/D13) must
+% hold on literal-fact programs too.
+
+gen: src -o { e }.
+pair2: e * e -o { d }.
