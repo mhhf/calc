@@ -101,6 +101,15 @@ describe('q-operations: clauses vs FFI', () => {
     agree('qmul', [putRat(1n, 2n), bin(0n)], bin(0n));
   });
 
+  it('qmul: large coprime product (backchain trail-overflow regression)', () => {
+    // 62/9 · 37/9 = 2294/81: qnorm's div-by-gcd(=1) chain makes ~2300
+    // divmod iterations ≈ >32k live bindings. The fixed-size undo trail
+    // silently DROPPED entries past its capacity, leaving theta poisoned
+    // after backtracking — the clause path then failed while FFI proved
+    // it (round-14 fuzz find; trail now grows on demand).
+    agree('qmul', [putRat(62n, 9n), putRat(37n, 9n)], putRat(2294n, 81n));
+  });
+
   it('qdiv: exact field division', () => {
     agree('qdiv', [putRat(1n, 2n), bin(3n)], putRat(1n, 6n));
     agree('qdiv', [bin(3n), putRat(1n, 2n)], bin(6n));
