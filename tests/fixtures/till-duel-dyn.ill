@@ -1,0 +1,25 @@
+#import(../../calculus/till/prelude/rat.ill)
+
+% Fire-time woplus weights (Phase 6): the combat.till duel — the branch
+% weight Q is BOUND BY MATCHING (!winprob U V Q), not a compile-time
+% literal. One rule, lazy-predicate kernel: !winprob IS the matrix.
+
+utype: type.
+rock: utype.
+paper: utype.
+sci: utype.
+
+red: (u: utype) -> type.
+blue: (u: utype) -> type.
+fellr: (u: utype) -> type.
+fellb: (u: utype) -> type.
+
+winprob: (a: utype) -> (b: utype) -> (q: bin) -> type.
+winprob/rr: winprob rock rock (1/2).
+winprob/rs: winprob rock sci (3/4).
+winprob/sr: winprob sci rock (1/4).
+winprob/one: winprob rock paper 1.
+winprob/zero: winprob paper rock 0.
+
+duel: red(U) * blue(V) * !winprob U V Q
+  -o { woplus Q (red(U) * fellb(V)) (blue(V) * fellr(U)) }.

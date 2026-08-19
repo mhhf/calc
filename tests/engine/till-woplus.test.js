@@ -15,6 +15,7 @@
 
 import { describe, it, before } from 'node:test';
 import assert from 'node:assert/strict';
+import Store from '../../lib/kernel/store.js';
 import { FIX, loadTill as load, atom, bag } from './till-helpers.js';
 
 const wOf = (l) => Number(l.weight[0]) / Number(l.weight[1]);
@@ -44,9 +45,9 @@ describe('woplus compile (Phase 4b)', () => {
     assert.deepEqual(fight.consequentAlts[1].linear, [atom('sci')]);
   });
 
-  it('rejects weights outside [0,1] and weight variables', () => {
+  it('rejects weights outside [0,1] and unbound weight variables', () => {
     assert.throws(() => load(FIX('till-woplus-bad.ill')), /weight must be in \[0, 1\]/);
-    assert.throws(() => load(FIX('till-woplus-var.ill')), /weight must be a ground rational/);
+    assert.throws(() => load(FIX('till-woplus-var.ill')), /not bound by any antecedent pattern or goal/);
   });
 
   it('untimed engine rejects weighted rules loudly', () => {
@@ -87,8 +88,12 @@ describe('woplus exec — PRF branch sampling (D17)', () => {
     // Adding tests above this one may shift them; re-pin deliberately.
     // node-only: bun's module evaluation interns in a different order.
     if (typeof Bun !== 'undefined') return;
-    assert.deepEqual(calc.settle(duel(2, 2), '0', { seed: 4 }).events.map(e => e.alt), [0, 1, 1]);
-    assert.deepEqual(calc.settle(duel(2, 2), '0', { seed: 10 }).events.map(e => e.alt), [1, 1]);
+    // Re-pinned (Phase 6): till-woplus-var.ill fixture content changed
+    // (bound-variable weights became legal), shifting the interning order.
+    assert.deepEqual({
+      s4: calc.settle(duel(2, 2), '0', { seed: 4 }).events.map(e => e.alt),
+      s10: calc.settle(duel(2, 2), '0', { seed: 10 }).events.map(e => e.alt),
+    }, { s4: [1, 1], s10: [0, 1, 0] });
   });
 
   it('sampler frequency matches the declared weight (chi-square-lite, residue ii)', () => {
@@ -162,5 +167,84 @@ describe('woplus explore — the tree is the exact distribution', () => {
       const out = JSON.stringify(bag(calc.settle(S, '0', { seed }).state));
       assert.ok(leafBags.includes(out), `seed ${seed}: ${out}`);
     }
+  });
+});
+
+// ─── Phase 6: fire-time weights — woplus Q with Q bound by matching ──
+
+describe('woplus fire-time weights (Phase 6)', () => {
+  let calc;
+  before(() => { calc = load(FIX('till-duel-dyn.ill')); });
+  const u = (n) => atom(n);
+  const vs = (a, b) => ({
+    linear: { [Store.put('red', [u(a)])]: 1, [Store.put('blue', [u(b)])]: 1 },
+    persistent: {},
+  });
+
+  it('compile: rule marked weighted + weightDynamic, symbolic weights slotted', () => {
+    const duel = calc.forwardRules.find(r => r.name === 'duel');
+    assert.ok(duel.weighted);
+    assert.ok(duel.weightDynamic);
+    assert.equal(duel.consequentAlts.length, 2);
+    const [wl, wr] = duel.consequentAlts.map(a => a.weight);
+    assert.deepEqual(wl.g, [1n, 1n]);
+    assert.equal(wl.syms.length, 1);
+    assert.equal(wl.syms[0].comp, false);
+    assert.equal(wr.syms[0].comp, true);
+    assert.equal(typeof wl.syms[0].slot, 'number');
+    assert.equal(wl.syms[0].slot, wr.syms[0].slot);   // same Q
+  });
+
+  it('exec: weight 1 / weight 0 are deterministic across seeds', () => {
+    for (let seed = 0; seed < 8; seed++) {
+      // winprob rock paper 1 — red rock always wins (bag keys by tag)
+      const win = bag(calc.settle(vs('rock', 'paper'), '0', { seed }).state);
+      assert.deepEqual(win, { red: 1, fellb: 1 });
+      // winprob paper rock 0 — red paper always falls
+      const lose = bag(calc.settle(vs('paper', 'rock'), '0', { seed }).state);
+      assert.deepEqual(lose, { blue: 1, fellr: 1 });
+    }
+  });
+
+  it('exec: same seed ⇒ replay-identical (mirror duel, Q = 1/2)', () => {
+    for (const seed of [0, 7, 42]) {
+      const a = calc.settle(vs('rock', 'rock'), '0', { seed });
+      const b = calc.settle(vs('rock', 'rock'), '0', { seed });
+      assert.deepEqual(a.events.map(e => e.alt), b.events.map(e => e.alt));
+      assert.deepEqual(bag(a.state), bag(b.state));
+    }
+  });
+
+  it('sampler frequency matches the RESOLVED weight (Q = 3/4)', () => {
+    let red = 0;
+    const n = 800;
+    for (let seed = 0; seed < n; seed++) {
+      if (bag(calc.settle(vs('rock', 'sci'), '0', { seed }).state).red) red++;
+    }
+    assert.ok(Math.abs(red / n - 0.75) < 0.05, `red frequency ${red / n} not near 3/4`);
+  });
+
+  it('explore: fork edges carry the resolved weights; DP agreement 1v2 = 9/16', () => {
+    const one = calc.settleExplore(vs('rock', 'sci'), '0');
+    assert.equal(one.tree.type, 'choice');
+    assert.deepEqual(one.tree.children.map(c => c.weight), [[3n, 4n], [1n, 4n]]);
+    const S = { linear: { [Store.put('red', [u('rock')])]: 1, [Store.put('blue', [u('sci')])]: 2 }, persistent: {} };
+    const { leaves } = calc.settleExplore(S, '0');
+    let num = 0n, den = 1n;
+    for (const l of leaves) {
+      if (bag(l.state).red) { const [n, d] = l.weight; num = num * d + n * den; den = den * d; }
+    }
+    assert.equal(Number(num) / Number(den), winProbDP(1, 2, 0.75));   // 9/16
+  });
+
+  it('fire-time errors are loud: out-of-range and ill-sorted weights', () => {
+    const range = load(FIX('till-woplus-dyn-range.ill'));
+    assert.throws(
+      () => range.settle({ linear: { [atom('a')]: 1 }, persistent: {} }, '0'),
+      /outside \[0, 1\]/);
+    const sort = load(FIX('till-woplus-dyn-sort.ill'));
+    assert.throws(
+      () => sort.settle({ linear: { [Store.put('p', [atom('foo')])]: 1 }, persistent: {} }, '0'),
+      /did not resolve to a ground rational at fire time/);
   });
 });

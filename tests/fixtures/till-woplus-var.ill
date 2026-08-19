@@ -1,4 +1,5 @@
-% Negative fixture (Phase 4b): weights must be GROUND rational literals —
-% a weight variable has no v1 semantics (distribution unknown at compile).
+% Negative fixture (Phase 6 revision): weight VARIABLES are legal when
+% antecedent-bound (fire-time weights); an UNBOUND weight variable has no
+% value at firing — loud compile error (delay/window-style mode check).
 
-bad: p W * a -o { woplus W b c }.
+bad: a -o { woplus W b c }.
