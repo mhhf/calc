@@ -1,0 +1,3 @@
+% Stamped antecedent woplus — at(woplus …, 3) must not slip past the
+% antecedent rejection (round 13: the check now unwraps at()).
+bad: (woplus 1/2 a b)@3 -o { c }.

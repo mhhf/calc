@@ -148,7 +148,7 @@ for (const [file, names] of fileDirectives) {
     if (flags.only && kind !== flags.only && handlerFor(kind)[0] !== flags.only) continue;
     const [label, handler] = handlerFor(kind);
     const settings = calc.querySettings.get(kind);
-    if (!settings || settings.settle === undefined) {
+    if (!settings || settings.settle == null) {   // null = unparseable value, e.g. (settle: -1)
       header(kind, '(missing settle: T setting)');
       continue;
     }

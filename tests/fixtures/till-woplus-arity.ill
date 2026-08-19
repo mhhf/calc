@@ -1,0 +1,4 @@
+% woplus with the wrong arity — parses via application, so only the
+% expandChoice arity guard stands between this and an out-of-bounds
+% Store.child read (round 13).
+bad: a -o { woplus 1/2 b }.

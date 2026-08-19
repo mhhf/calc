@@ -20,6 +20,9 @@ Design/decisions: hq todo 0265; reference semantics: `tools/till-oracle.mjs`.
 - **Windows** (matcher guards, not predicates): `after E` bounds `a(m) ≥ E`;
   `before E` demands `a(m) < E`. `E` is a rational, a bound stamp variable, or
   arithmetic (`after (Q+2)`), lowered at load to persistent `!qplus/...` goals.
+  Windows are WEAK semantics (TAPN terminology): `before` invalidates a match
+  past the deadline but never FORCES a firing — hard real-time urgency is
+  deliberately out of scope.
 - **`$A`** occupy (timed single server: consumed, re-emitted at `a(m)+d`);
   **`read A`** test arc (never consumed, original stamp; its stamp joins the
   activation max; concurrent reads don't conflict).
@@ -32,9 +35,11 @@ Design/decisions: hq todo 0265; reference semantics: `tools/till-oracle.mjs`.
   with probability `Q` (ground rational in [0,1]), `B` with `1−Q`; prefix
   form, nests and tensors (weights multiply, always summing to 1). `settle`
   samples the branch through the same stateless PRF as the conflict chooser
-  (seed-reproducible, horizon-split invariant); `settleExplore` expands both
-  with the weight on the edge — the tree IS the exact outcome distribution
-  (leaves carry `weight`, exact `[num, den]` path products).
+  (seed-reproducible, horizon-split invariant; the draw is a 32-bit uniform,
+  so sampled branch frequencies match the weights to within 2⁻³² — the
+  explore tree is exact); `settleExplore` expands both with the weight on
+  the edge — the tree IS the exact outcome distribution (leaves carry
+  `weight`, exact `[num, den]` path products).
 
 ## Scheduler (lib/engine/timed.js)
 
@@ -67,7 +72,11 @@ const calc = mde.load(file, { calculusConfig: tillConfig });
 calc.settle(state, T, opts)      // → { state, quiescent, steps, events, next }
 calc.nextActivation(state)       // earliest pending activation (hash) | null
 calc.settleExplore(state, T)     // → { tree, leaves } — branch ONLY on genuine
-                                 //   conflicts (all chooser-reachable outcomes);
+                                 //   conflicts: shared consumed cohort, read
+                                 //   starvation, or instant-feeding (a tied
+                                 //   zero-delay rule producing into any rule's
+                                 //   antecedent — ample-set condition, round 13);
+                                 //   covers all chooser-reachable outcomes;
                                  //   woplus forks weighted; leaves = { state,
                                  //   weight: [num, den], next? }
 calc.observable(state, T)        // stamp ≤ T slice: { innerHash: count }

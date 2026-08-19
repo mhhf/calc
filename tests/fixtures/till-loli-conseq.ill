@@ -1,0 +1,2 @@
+% Dynamic rule (loli) in a timed consequent — till v1 rejects at fire time.
+bad: a -o { b -o c }.

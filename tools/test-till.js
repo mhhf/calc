@@ -83,7 +83,7 @@ for (const [file, names] of fileDirectives) {
       it(kind, () => {
         if (entry.separator === '|-') dispatchBackward(calc, entry, modality, settings);
         else if (entry.separator === '=>') {
-          assert.ok(settings.settle !== undefined,
+          assert.ok(settings.settle != null,   // null = unparseable value, e.g. (settle: -1)
             `#${kind}: till => directives need a (settle: T) setting`);
           dispatchSettle(calc, entry, modality, settings);
         } else assert.fail(`Unknown separator: ${entry.separator}`);

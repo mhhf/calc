@@ -77,18 +77,24 @@ const tillGrades = {
    *  hash wrapped as { stamp: h } — numbers are always VALUES, so a raw
    *  hash can never be misread as an integer horizon (or vice versa). */
   parseStamp(x) {
+    // Stamps and horizons are ℚ≥0 in v1 (time starts at 0) — negatives are
+    // rejected here even though ratlit STORAGE is signed (D14).
+    const nonNeg = (n, d) => {
+      if (n < 0n) throw new Error(`till.parseStamp: stamps are non-negative in v1 (got ${x})`);
+      return putRat(n, d);
+    };
     if (typeof x === 'number') {
       if (!Number.isInteger(x)) throw new Error(`till.parseStamp(${x}): non-integer Number — pass a string ("${x}") for exactness (D3)`);
-      return putRat(BigInt(x), 1n);
+      return nonNeg(BigInt(x), 1n);
     }
     if (typeof x === 'string') {
       const s = x.trim();
       let m;
-      if ((m = s.match(/^(-?\d+)\/(\d+)$/))) return putRat(BigInt(m[1]), BigInt(m[2]));
+      if ((m = s.match(/^(-?\d+)\/(\d+)$/))) return nonNeg(BigInt(m[1]), BigInt(m[2]));
       if ((m = s.match(/^(-?)(\d+)\.(\d+)$/))) {
-        return putRat(BigInt(m[1] + m[2] + m[3]), 10n ** BigInt(m[3].length));
+        return nonNeg(BigInt(m[1] + m[2] + m[3]), 10n ** BigInt(m[3].length));
       }
-      if (/^-?\d+$/.test(s)) return putRat(BigInt(s), 1n);
+      if (/^-?\d+$/.test(s)) return nonNeg(BigInt(s), 1n);
       throw new Error(`till.parseStamp: cannot parse '${x}'`);
     }
     if (x && typeof x === 'object' && typeof x.stamp === 'number' && tillGrades.isStamp(x.stamp)) {
