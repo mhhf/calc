@@ -32,7 +32,7 @@ describe('till debug renderings — chop/build goldens (Phase 4c)', () => {
     calc = load(DEBUG_ILL);
     initial = convert.decomposeQuery(calc.queries.get('run'));
     res = calc.settle(initial, '10');
-    init = toObject(normalizeTimedState(initial, calc._timedConfig));
+    init = toObject(normalizeTimedState(initial, calc.timedConfig));
   });
 
   it('#trace — log view: [activation] rule consumed → produced @+d', () => {
@@ -45,7 +45,7 @@ describe('till debug renderings — chop/build goldens (Phase 4c)', () => {
   });
 
   it('#timeline — jobs + per-predicate token lifetimes', () => {
-    assert.deepEqual(timelineLines(res.events, init, calc._timedConfig.parseStamp('10')), [
+    assert.deepEqual(timelineLines(res.events, init, calc.timedConfig.parseStamp('10')), [
       'timeline (T = 10)',
       'jobs:',
       '  chop [0→4]  chop [0→4]  build [4→7]  chop [5→9]',
@@ -77,10 +77,10 @@ describe('till debug renderings — chop/build goldens (Phase 4c)', () => {
 
   it('#why_not sell — best failed candidate + the killing before-window', () => {
     const sell = calc.forwardRules.find(r => r.name === 'sell');
-    const settled = normalizeTimedState(res.state, calc._timedConfig);
+    const settled = normalizeTimedState(res.state, calc.timedConfig);
     assert.deepEqual(whyNotLines(sell, settled, {
       calc: calc._calcContext, matchOpts: calc._buildMatchOpts({}),
-      timedConfig: calc._timedConfig, horizon: calc._timedConfig.parseStamp('10'),
+      timedConfig: calc.timedConfig, horizon: calc.timedConfig.parseStamp('10'),
     }), [
       'why not sell:',
       "  best candidate killed by 'before 9': activation 9 misses the deadline",
@@ -93,16 +93,16 @@ describe('till debug renderings — chop/build goldens (Phase 4c)', () => {
     const rule = scalc.forwardRules.find(r => r.name === 'sawmill_rule');
     const opts = (T) => ({
       calc: scalc._calcContext, matchOpts: scalc._buildMatchOpts({}),
-      timedConfig: scalc._timedConfig, horizon: scalc._timedConfig.parseStamp(T),
+      timedConfig: scalc.timedConfig, horizon: scalc.timedConfig.parseStamp(T),
     });
     // fully settled: no wood left — missing input
-    const done = normalizeTimedState(scalc.settle(S, '1').state, scalc._timedConfig);
+    const done = normalizeTimedState(scalc.settle(S, '1').state, scalc.timedConfig);
     assert.deepEqual(whyNotLines(rule, done, opts('1')), [
       'why not sawmill_rule:',
       "  missing input: no fact matches pattern 'wood'",
     ]);
     // mid-run: job2 enabled at 1/2, beyond horizon 0.4 — pending
-    const mid = normalizeTimedState(scalc.settle(S, '0.4').state, scalc._timedConfig);
+    const mid = normalizeTimedState(scalc.settle(S, '0.4').state, scalc.timedConfig);
     assert.deepEqual(whyNotLines(rule, mid, opts('0.4')), [
       'why not sawmill_rule:',
       '  pending: fires at activation 1/2 > horizon 2/5',

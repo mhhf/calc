@@ -1,6 +1,6 @@
 ---
 title: Prover Architecture (Lasagne)
-modified: 2026-04-16
+modified: 2026-08-19
 summary: Five-layer prover architecture separating verification, search, focusing, and strategy.
 tags: [architecture, prover, focusing, polarity, layers]
 ---
@@ -80,6 +80,12 @@ lib/engine/                      # Forward execution engine (L4c/L4d)
 ├── strategy.js                  # rule selection: strategy stack builder
 ├── forward.js                   # committed-choice main loop
 ├── explore.js                   # exhaustive DFS exploration + mutation/undo
+├── timed.js                     # timed scheduler: settle, tryTimedMatch (B&B),
+│                                #   settleExplore (POR), choose/menuStatus, lint
+├── timed-render.js              # trace/timeline/provenance renderers (settle events)
+├── formula-utils.js             # connective-aware decomposition (roles, flattenAnte)
+├── fact-set.js                  # FactSet (index-policy pluggable) + Arena undo log
+├── grades.js                    # grade atoms (g0/gw) helpers
 ├── backchain.js                 # backward chaining for persistent antecedents
 ├── state-ops.js                 # state mutation: consume/produce/mutateState
 ├── compile.js                   # rule compilation (de Bruijn slots, metavar analysis)
@@ -91,7 +97,11 @@ lib/engine/                      # Forward execution engine (L4c/L4d)
 │   ├── loli.js                  # dynamic rule matching
 │   ├── loli-drain.js            # persistent-trigger loli drain
 │   └── existential.js           # existential resolution
+├── theories/                    # shared equational theories (ratlit ↔ rat(N,D))
 ├── ill/                         # ILL-specific
+│   ├── calculus-config.js       # THE per-logic plug point (see CalculusConfig
+│   │                            #   @typedef in engine/index.js); till's twin is
+│   │                            #   calculus/till/calculus-config.js
 │   ├── backchain-ill.js         # ILL backward prover defaults
 │   ├── binlit-theory.js         # binary number equational theory
 │   ├── connectives.js           # ILL connective configuration
@@ -158,12 +168,12 @@ Given a proof tree, answers "is this valid?" No search, no strategy, no heuristi
 
 ```javascript
 createKernel(calculus) → {
-  verifyStep(conclusion, rule, premises) → { valid, error? }
-  verifyTree(tree) → { valid, errors[] }
+  verifyStep(conclusion, rule, premises) → { valid, error? }        // shape only
+  verifyTree(tree) → { valid, errors[], unverified?: string[] }     // shape + resources
 }
 ```
 
-Rule verification uses `rule-interpreter.js` to compute expected premises from the rule descriptor, then compares against the actual premises.
+Rule verification uses `rule-interpreter.js` to compute expected premises from the rule descriptor. `verifyTree` additionally re-threads the prover's lazy delta discipline (premise context = rule intro ⊎ sub-multiset of the unconsumed pool; leftovers flow through siblings; root leftover must be empty), so context-leaking forgeries are rejected. Steps it cannot re-derive are accepted but reported in `unverified` (`'modeSwitch'` bridge steps, `'binding'` fresh-eigenvariable steps); full verification = `valid && !unverified`.
 
 **Proof term checker** (`check-term.js`): Trusted kernel extension for Curry-Howard proof terms. Verifies `Gamma; Delta |- t : A` via per-rule checker map generated from descriptors at load time. Includes focused loli_l (2-subterm) for guided execution terms. See `doc/documentation/proof-terms.md`.
 
@@ -279,6 +289,8 @@ graph TB
 **Profile-driven optimization.** Engine optimizations live in `lib/engine/opt/` (generic) or alongside their consumers at the engine root (`backward-cache.js`, `constraint-feed.js`, `delta-bypass.js`, `preserved.js`). The `optimizer.js` resolves a profile (`bare`/`fast`/`evm`) into an engine context with the appropriate strategy stack at startup — no runtime branching in hot loops. The `bare` profile disables all optimizations and serves as the correctness baseline. See `doc/documentation/optimization-architecture.md`.
 
 **Program-aware indexing (auto-detected).** The strategy stack includes a fingerprint layer that detects dominant discriminating predicates from rule structure. For EVM, `code(PC, OPCODE)` is the discriminator — 40 of 44 rules have a ground opcode child. The fingerprint layer resolves these in O(1). This is auto-detected by `detectFingerprintConfig()` from rule patterns; no program-specific code exists. The disc-tree layer (general-purpose trie) handles all remaining rules. See `doc/documentation/strategy-layers.md`.
+
+**Timed strategy (till).** A calculus whose config supplies a grade algebra (`cc.grades`) gets a second execution mode on top of the same substrate: `timed.js`'s `settle(state, T)` fires matches in nondecreasing activation order (activation = max of consumed stamps and windows; outputs stamped activation + delay), with `settleExplore` (partial-order-reduced exhaustive form), `choose`/`menuStatus` (external-choice menus), and the D16 productivity lint. Everything stamp-related flows through the calculus-supplied grade record — the scheduler itself is calculus-agnostic (TODO_0265 D13; theory: THY_0018/THY_0019). The backward prover reaches the same engine through the settle bridge (`bridge.js`, a sound-not-complete oracle — see `till-sequent-calculus.md`).
 
 **Persistent proving.** Persistent antecedents (`!C` in `A * B * !C -o { D }`) are resolved in two levels: (1) state lookup — check if the fact already exists in `state.persistent`, (2) backward prove — FFI as O(1) fast path, then clause resolution via `backchain.js` as fallback. FFI handles arithmetic (inc, plus, neq, mul) and is conceptually an optimization within backward proving, not a separate mechanism.
 
