@@ -646,6 +646,7 @@ describe('bytecode specialization: EVM integration', { timeout: 30000 }, () => {
     fs.writeFileSync(path.join(tmpDir, 'bc_test.ill'),
       'bc_src : type.\n' +
       'bc_dst : bin -> type.\n' +
+      'bc_lk: (k: bin) -> (v: bin) -> type.\n' +
       'bc_lk/0: !_0 bc_lk 0x0 0xa.\n' +
       'bc_lk/1: !_0 bc_lk 0x1 0xb.\n' +
       'bc_step: !bc_lk KEY VAL * bc_src -o { bc_dst VAL }.\n' +

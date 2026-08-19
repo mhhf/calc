@@ -1,10 +1,10 @@
 % Choice expansion test calculus
 % A rule that produces A & B in the consequent
 
-start : resource.
-left : resource.
-right : resource.
-done : resource.
+start: type.
+left: type.
+right: type.
+done: type.
 
 choose : start -o { left & right }.
 finish_left : left -o { done }.

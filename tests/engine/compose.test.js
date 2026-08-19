@@ -754,6 +754,7 @@ describe('compose integration: persistent specialization', () => {
       'spec_in : bin -> type.\n' +
       'spec_mid : bin -> bin -> type.\n' +
       'spec_out : bin -> type.\n' +
+      'spec_lk: (k: bin) -> (v: bin) -> type.\n' +
       // Grade-0 lookup clauses
       'spec_lk/a: !_0 spec_lk 1 0xa.\n' +
       'spec_lk/b: !_0 spec_lk 2 0xb.\n' +
@@ -804,6 +805,7 @@ describe('compose integration: persistent specialization', () => {
 
     // Grade-0 clause + backward query
     fs.writeFileSync(path.join(tmpDir, 'bc_test.ill'),
+      'bc_lk: (k: bin) -> (v: bin) -> type.\n' +
       'bc_lk/a: !_0 bc_lk 1 0xa.\n' +
       'bc_lk/b: !_0 bc_lk 2 0xb.\n' +
       '#goal bc_lk 1 0xa.\n'

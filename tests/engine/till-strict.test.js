@@ -73,9 +73,10 @@ describe('closed-world sort checking (till strict mode)', () => {
     assert.equal(calc.forwardRules.length, 1);
   });
 
-  it('ILL default stays open-world; strictTypes: false opts a till load out', () => {
+  it('ILL is strict too (corpus audited clean); strictTypes: false opts out', () => {
     const p = write('permissive.ill', 'r: src -o { wat }.\n');
-    assert.ok(mde.load(p, { cache: false }));                          // ILL default
+    assert.throws(() => mde.load(p, { cache: false }), /unknown atom/);   // ILL default: strict
+    assert.ok(mde.load(p, { cache: false, strictTypes: false }));
     assert.ok(mde.load(p, { calculusConfig: tillConfig, cache: false, strictTypes: false }));
     assert.throws(() => loadStrict(p), /unknown atom/);
   });
@@ -93,5 +94,23 @@ describe('closed world covers directives too', () => {
       '#expect_x (settle: 2)\n  wod\n  =>\n  plank@1 .\n');
     assert.throws(() => mde.load(p, { calculusConfig: tillConfig, cache: false }),
       /directive 'expect_x'.*unknown atom 'wod'/s);
+  });
+});
+
+describe('grade positions have their own closed grammar', () => {
+  // The surface parser already rejects malformed count grades (`!_wood`),
+  // so this guards the STORE level (programmatic states, future grammar):
+  // checkAll must flag a non-grade in a bang grade position.
+  it('a non-grade hash in a bang grade position is a closed-world error', async () => {
+    const { checkAll } = await import('../../lib/engine/type-check.js');
+    const Store = (await import('../../lib/kernel/store.js')).default;
+    const wood = Store.put('atom', ['wood']);
+    const bad = Store.put('bang', [wood, wood]);       // grade = a token atom
+    const defs = new Map([['wood', Store.put('type', [])]]);
+    const { errors } = checkAll(defs, [], new Map(), {
+      closedWorld: true,
+      queries: new Map([['expect_x', { lhsHash: bad, rhsHash: wood }]]),
+    });
+    assert.ok(errors.some(e => /invalid grade 'wood'/.test(e)), errors.join('; '));
   });
 });

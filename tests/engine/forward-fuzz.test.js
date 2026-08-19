@@ -46,7 +46,7 @@ function genProgram(idx) {
   const nAtoms = 3 + randInt(2);                 // 3-4 atoms
   const atoms = ATOMS.slice(0, nAtoms);
   const nRules = 2 + randInt(2);                 // 2-3 rules
-  const rules = [];
+  const rules = atoms.map(a => `${a}: type.`);   // closed-world: declare tokens
   for (let i = 0; i < nRules; i++) {
     const kind = pick(['plain', 'plain', 'pair', 'preserved', 'multi']);
     // consume from the alphabet prefix, produce STRICTLY later — the
