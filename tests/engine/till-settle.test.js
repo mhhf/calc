@@ -18,31 +18,11 @@ import { describe, it, before } from 'node:test';
 import assert from 'node:assert/strict';
 import path from 'path';
 import Store from '../../lib/kernel/store.js';
-import mde from '../../lib/engine/index.js';
 import convert from '../../lib/engine/convert.js';
-import tillConfig, { tillGrades } from '../../calculus/till/calculus-config.js';
-import { timedSubset } from '../../lib/engine/timed.js';
+import { tillGrades } from '../../calculus/till/calculus-config.js';
+import { timedSubset, timedExact } from '../../lib/engine/timed.js';
 import { ratParts } from '../../lib/engine/theories/ratlit-theory.js';
-
-const SPEC = (f) => path.join(import.meta.dirname, '../../calculus/till/tests/forward', f);
-const FIX = (f) => path.join(import.meta.dirname, '../fixtures', f);
-
-const load = (p) => mde.load(p, { calculusConfig: tillConfig, cache: false });
-const init = (calc, kind) => convert.decomposeQuery(calc.splitQueries.get(kind).lhsHash);
-
-/** Canonical string view of a timed state: 'inner@n/d' → count. */
-function stamped(state) {
-  const out = {};
-  for (const [hStr, c] of Object.entries(state.linear)) {
-    const h = Number(hStr);
-    const isAt = Store.tag(h) === 'at';
-    const inner = isAt ? Store.child(h, 0) : h;
-    const [n, d] = isAt ? ratParts(Store.child(h, 1)) : [0n, 1n];
-    const key = `${Store.tag(inner) === 'atom' ? Store.child(inner, 0) : Store.tag(inner)}@${d === 1n ? n : `${n}/${d}`}`;
-    out[key] = (out[key] || 0) + c;
-  }
-  return out;
-}
+import { SPEC, FIX, loadTill as load, initQuery as init, stamped, bagStr } from './till-helpers.js';
 
 describe('till settle — composability and horizons (E5)', () => {
   let calc, S;
@@ -334,6 +314,25 @@ describe('till timedSubset (runner semantics)', () => {
     assert.ok(timedSubset({ linear: { [w5]: 2 }, persistent: {} }, state));
     assert.ok(!timedSubset({ linear: { [w2]: 2 }, persistent: {} }, state));
   });
+
+  it('timedExact demands a full cover: extra facts fail (Phase 5.5)', () => {
+    const wood = Store.put('atom', ['wood']);
+    const plank = Store.put('atom', ['plank']);
+    const w2 = Store.put('at', [wood, Store.put1('binlit', 2n)]);
+    const w5 = Store.put('at', [wood, Store.put1('binlit', 5n)]);
+    const p0 = Store.put('at', [plank, Store.put1('binlit', 0n)]);
+    const state = { linear: { [w2]: 1, [w5]: 2, [p0]: 1 }, persistent: {} };
+    // full cover: exact + wildcard mix, totals match per group
+    assert.ok(timedExact({ linear: { [w2]: 1, [wood]: 2, [p0]: 1 }, persistent: {} }, state));
+    // subset passes but exact fails: plank unaccounted
+    assert.ok(timedSubset({ linear: { [wood]: 3 }, persistent: {} }, state));
+    assert.ok(!timedExact({ linear: { [wood]: 3 }, persistent: {} }, state));
+    // over-demand and wrong stamps fail
+    assert.ok(!timedExact({ linear: { [wood]: 4, [p0]: 1 }, persistent: {} }, state));
+    assert.ok(!timedExact({ linear: { [w2]: 2, [wood]: 1, [p0]: 1 }, persistent: {} }, state));
+    // wildcard cannot double-count an exact demand (disjoint accounting)
+    assert.ok(!timedExact({ linear: { [w5]: 2, [wood]: 2, [p0]: 1 }, persistent: {} }, state));
+  });
 });
 
 describe('till grade algebra unit checks', () => {
@@ -351,22 +350,11 @@ describe('till grade algebra unit checks', () => {
 
 describe('till settleExplore — instant-feeding completeness (round 13)', () => {
   const atom = (n) => Store.put('atom', [n]);
-  /** Canonical bag of unstamped inner atoms, as a sorted-entry string. */
-  const bag = (state) => {
-    const out = {};
-    for (const [hStr, c] of Object.entries(state.linear)) {
-      let h = Number(hStr);
-      if (Store.tag(h) === 'at') h = Store.child(h, 0);
-      const k = Store.tag(h) === 'atom' ? Store.child(h, 0) : Store.tag(h);
-      out[k] = (out[k] || 0) + c;
-    }
-    return Object.entries(out).sort().map(([k, v]) => `${k}x${v}`).join(',');
-  };
   /** Every exec outcome across seeds must be an explore leaf (containment). */
   const containment = (calc, S, expectDistinct) => {
     const execBags = new Set();
-    for (let seed = 0; seed < 40; seed++) execBags.add(bag(calc.settle(S, '0', { seed }).state));
-    const leafBags = new Set(calc.settleExplore(S, '0').leaves.map(l => bag(l.state)));
+    for (let seed = 0; seed < 40; seed++) execBags.add(bagStr(calc.settle(S, '0', { seed }).state));
+    const leafBags = new Set(calc.settleExplore(S, '0').leaves.map(l => bagStr(l.state)));
     assert.equal(execBags.size, expectDistinct, 'exec reaches both worlds across seeds');
     for (const b of execBags) assert.ok(leafBags.has(b), `exec outcome ${b} missing from explore`);
   };

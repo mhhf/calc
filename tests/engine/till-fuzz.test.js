@@ -24,9 +24,7 @@ import fs from 'fs';
 import os from 'os';
 import path from 'path';
 import Store from '../../lib/kernel/store.js';
-import mde from '../../lib/engine/index.js';
-import tillConfig from '../../calculus/till/calculus-config.js';
-import { ratParts } from '../../lib/engine/theories/ratlit-theory.js';
+import { loadTill, stampedStr, traceKey } from './till-helpers.js';
 
 const MASTER_SEED = 0xC0FFEE;
 const PROGRAMS = 40;
@@ -94,24 +92,6 @@ function genProgram(idx) {
   return { text: lines.join('\n') + '\n', state: { linear, persistent: {} }, horizon: pick(['1', '2', '3']) };
 }
 
-// ─── canonical views ────────────────────────────────────────────────
-/** 'inner@n/d'×count multiset of a timed state, as a sorted string. */
-function stamped(state) {
-  const out = {};
-  for (const [hStr, c] of Object.entries(state.linear)) {
-    const h = Number(hStr);
-    const isAt = Store.tag(h) === 'at';
-    const inner = isAt ? Store.child(h, 0) : h;
-    const [n, d] = isAt ? ratParts(Store.child(h, 1)) : [0n, 1n];
-    const key = `${Store.tag(inner) === 'atom' ? Store.child(inner, 0) : Store.tag(inner)}@${n}/${d}`;
-    out[key] = (out[key] || 0) + c;
-  }
-  return Object.entries(out).sort().map(([k, v]) => `${k}x${v}`).join(',');
-}
-
-const traceKey = (events) =>
-  events.map(e => `${e.rule}@${ratParts(e.activation).join('/')}:${e.alt ?? ''}`).join(' ');
-
 describe('till fuzz — exec ⊆ explore containment + determinism laws', () => {
   let dir, programs;
   before(() => {
@@ -129,7 +109,7 @@ describe('till fuzz — exec ⊆ explore containment + determinism laws', () => 
   it('every exec outcome is an explore leaf; replay/split/scheduler agree', () => {
     let ran = 0, skipped = 0;
     for (const p of programs) {
-      const calc = mde.load(p.file, { calculusConfig: tillConfig, cache: false });
+      const calc = loadTill(p.file);
       let full;
       try {
         // maxSteps bounds TOTAL fired events across the tree; random
@@ -142,10 +122,10 @@ describe('till fuzz — exec ⊆ explore containment + determinism laws', () => 
         throw new Error(`explore failed on:\n${p.text}\n${e.message}`);
       }
       ran++;
-      const leafBags = new Set(full.leaves.map(l => stamped(l.state)));
+      const leafBags = new Set(full.leaves.map(l => stampedStr(l.state)));
       for (let seed = 0; seed < EXEC_SEEDS; seed++) {
         const res = calc.settle(p.state, p.horizon, { seed });
-        const outcome = stamped(res.state);
+        const outcome = stampedStr(res.state);
         assert.ok(leafBags.has(outcome),
           `containment violated (seed ${seed}, horizon ${p.horizon}):\n${p.text}\n` +
           `exec: ${outcome}\nleaves:\n  ${[...leafBags].join('\n  ')}`);
@@ -158,7 +138,7 @@ describe('till fuzz — exec ⊆ explore containment + determinism laws', () => 
       const mids = { 1: '1/2', 2: '1', 3: '3/2' };
       const mid = calc.settle(p.state, mids[p.horizon], { seed: 3 }).state;
       const resumed = calc.settle(mid, p.horizon, { seed: 3 }).state;
-      assert.equal(stamped(resumed), stamped(t1.state), `split diverged:\n${p.text}`);
+      assert.equal(stampedStr(resumed), stampedStr(t1.state), `split diverged:\n${p.text}`);
       // dirty scheduler ≡ rescan
       const dirty = calc.settle(p.state, p.horizon, { seed: 3, scheduler: 'dirty' });
       assert.equal(traceKey(dirty.events), traceKey(t1.events), `scheduler diverged:\n${p.text}`);

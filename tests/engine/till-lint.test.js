@@ -11,13 +11,7 @@
 
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import path from 'path';
-import mde from '../../lib/engine/index.js';
-import tillConfig from '../../calculus/till/calculus-config.js';
-
-const SPEC = (f) => path.join(import.meta.dirname, '../../calculus/till/tests/forward', f);
-const FIX = (f) => path.join(import.meta.dirname, '../fixtures', f);
-const load = (p) => mde.load(p, { calculusConfig: tillConfig, cache: false });
+import { SPEC, FIX, loadTill as load } from './till-helpers.js';
 
 describe('till D16 productivity lint', () => {
   it('flags a zero-delay self-cycle (till-zeno)', () => {

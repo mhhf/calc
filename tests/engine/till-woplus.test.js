@@ -15,28 +15,9 @@
 
 import { describe, it, before } from 'node:test';
 import assert from 'node:assert/strict';
-import path from 'path';
-import Store from '../../lib/kernel/store.js';
-import mde from '../../lib/engine/index.js';
-import tillConfig from '../../calculus/till/calculus-config.js';
+import { FIX, loadTill as load, atom, bag } from './till-helpers.js';
 
-const FIX = (f) => path.join(import.meta.dirname, '../fixtures', f);
-const load = (p) => mde.load(p, { calculusConfig: tillConfig, cache: false });
-
-const atom = (n) => Store.put('atom', [n]);
 const wOf = (l) => Number(l.weight[0]) / Number(l.weight[1]);
-
-/** Multiset of unstamped inner atoms in a plain state. */
-function bag(state) {
-  const out = {};
-  for (const [hStr, c] of Object.entries(state.linear)) {
-    let h = Number(hStr);
-    if (Store.tag(h) === 'at') h = Store.child(h, 0);
-    const k = Store.tag(h) === 'atom' ? Store.child(h, 0) : Store.tag(h);
-    out[k] = (out[k] || 0) + c;
-  }
-  return out;
-}
 
 // ─── combat.mjs absorbing-chain DP (ported reference) ────────────────
 // Single-type armies: r rocks vs s scissors, p = P(rock beats scissors).

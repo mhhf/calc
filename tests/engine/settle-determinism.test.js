@@ -17,35 +17,10 @@
 
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import path from 'path';
 import Store from '../../lib/kernel/store.js';
-import mde from '../../lib/engine/index.js';
-import convert from '../../lib/engine/convert.js';
 import tillConfig from '../../calculus/till/calculus-config.js';
 import { ratParts } from '../../lib/engine/theories/ratlit-theory.js';
-
-const SPEC = (f) => path.join(import.meta.dirname, '../../calculus/till/tests/forward', f);
-const FIX = (f) => path.join(import.meta.dirname, '../fixtures', f);
-const load = (p, cfg = tillConfig) => mde.load(p, { calculusConfig: cfg, cache: false });
-const init = (calc, kind) => convert.decomposeQuery(calc.splitQueries.get(kind).lhsHash);
-const atom = (n) => Store.put('atom', [n]);
-
-const traceKey = (events) =>
-  events.map(e => `${e.rule}@${ratParts(e.activation).join('/')}:${e.alt ?? ''}`).join(' ');
-
-/** Canonical 'inner@n/d'×count string of a timed state. */
-function stamped(state) {
-  const out = {};
-  for (const [hStr, c] of Object.entries(state.linear)) {
-    const h = Number(hStr);
-    const isAt = Store.tag(h) === 'at';
-    const inner = isAt ? Store.child(h, 0) : h;
-    const [n, d] = isAt ? ratParts(Store.child(h, 1)) : [0n, 1n];
-    const key = `${Store.tag(inner) === 'atom' ? Store.child(inner, 0) : Store.tag(inner)}@${n}/${d}`;
-    out[key] = (out[key] || 0) + c;
-  }
-  return Object.entries(out).sort().map(([k, v]) => `${k}x${v}`).join(',');
-}
+import { SPEC, FIX, loadTill as load, initQuery as init, atom, stampedStr, traceKey } from './till-helpers.js';
 
 describe('till determinism: same seed ⇒ trace-identical', () => {
   it('economy: replay across seeds', () => {
@@ -55,7 +30,7 @@ describe('till determinism: same seed ⇒ trace-identical', () => {
       const a = calc.settle(S, '1', { seed });
       const b = calc.settle(S, '1', { seed });
       assert.equal(traceKey(b.events), traceKey(a.events), `seed ${seed}`);
-      assert.equal(stamped(b.state), stamped(a.state), `seed ${seed}`);
+      assert.equal(stampedStr(b.state), stampedStr(a.state), `seed ${seed}`);
     }
   });
 
@@ -82,7 +57,7 @@ describe('till determinism: FFI on ≡ off at trace granularity', () => {
       const on = calc.settle(S, T);
       const off = calc.settle(S, T, { useFFI: false });
       assert.equal(traceKey(off.events), traceKey(on.events));
-      assert.equal(stamped(off.state), stamped(on.state));
+      assert.equal(stampedStr(off.state), stampedStr(on.state));
     });
   }
 });
@@ -107,7 +82,7 @@ describe('till determinism: index ORDER is optimization (D13)', () => {
       const a = (() => { const c = load(SPEC(file)); return c.settle(init(c, kind), T); })();
       const b = (() => { const c = load(SPEC(file), scrambled); return c.settle(init(c, kind), T); })();
       assert.equal(traceKey(b.events), traceKey(a.events));
-      assert.equal(stamped(b.state), stamped(a.state));
+      assert.equal(stampedStr(b.state), stampedStr(a.state));
     });
   }
 
@@ -138,9 +113,9 @@ describe('till confluence: rule declaration order is not semantics', () => {
     const a = load(FIX('till-perm-a.ill')).settle(S, '10');
     const b = load(FIX('till-perm-b.ill')).settle(S, '10');
     assert.equal(traceKey(b.events), traceKey(a.events));
-    assert.equal(stamped(b.state), stamped(a.state));
+    assert.equal(stampedStr(b.state), stampedStr(a.state));
     // sanity: the pipeline actually ran to depth 3
-    assert.match(stamped(a.state), /fed@/);
+    assert.match(stampedStr(a.state), /fed@/);
   });
 });
 
@@ -153,7 +128,7 @@ describe('till determinism: literal-fact dirty ≡ rescan (round-14 regression)'
     const b = calc.settle(S, '2', { scheduler: 'dirty' });
     assert.equal(traceKey(a.events), 'gen@0/1: pair2@0/1:');
     assert.equal(traceKey(b.events), traceKey(a.events));
-    assert.equal(stamped(b.state), stamped(a.state));
+    assert.equal(stampedStr(b.state), stampedStr(a.state));
   });
 });
 
@@ -181,14 +156,13 @@ describe('till economy views ≡ oracle acceptance (time.mjs)', () => {
     const calc = load(SPEC('economy.ill'));
     const S = init(calc, 'expect_economy');
     for (const T of ['0', '0.3', '0.55', '1', '2', '5']) {
-      const eng = stamped(calc.settle(S, T).state);
+      const eng = stampedStr(calc.settle(S, T).state);
       const ref = oracle.settle(oracle.makeState([
         ['wood', 0, 10], ['plank', 0, 10], ['stone', 0, 10], ['sawmill', 0], ['smith', 0],
       ]), T, { rules }).state;
       const refMap = {};
       for (const c of ref.values()) {
-        const r = oracle.rstr(c.stamp);
-        const key = `${c.atom}@${r.includes('/') ? r : `${r}/1`}`;
+        const key = `${c.atom}@${oracle.rstr(c.stamp)}`;   // short form = stampedStr's
         refMap[key] = (refMap[key] || 0) + c.count;
       }
       const refStr = Object.entries(refMap).sort().map(([k, v]) => `${k}x${v}`).join(',');
