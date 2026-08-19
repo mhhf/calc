@@ -13,11 +13,11 @@ import { buildRuleSpecs } from '../lib/prover/rule-interpreter.js';
 import Seq from '../lib/kernel/sequent.js';
 import { parseExpr } from '../lib/engine/convert.js';
 import { resolveConn, compileRule, expandChoice } from '../lib/engine/compile.js';
-import { ILL_CONNECTIVES } from '../lib/engine/ill/connectives.js';
+import { illConnectives } from '../lib/engine/ill/connectives.js';
 // Hoisted by tools/esm-hoist.js:
 import { createGenericProver } from '../lib/prover/generic.js';
 
-const ILL_RC = resolveConn(ILL_CONNECTIVES);
+const ILL_RC = resolveConn(illConnectives());
 import { createState } from '../lib/engine/forward.js';
 import { tryMatch } from '../lib/engine/match.js';
 import { resolveEx } from '../lib/engine/lnl/existential.js';
@@ -253,7 +253,7 @@ describe('Forward engine with exists', () => {
     const loli = Store.put('loli', [a, monad]);
 
     const rule = { name: 'test', hash: loli, antecedent: a, consequent: monad };
-    const compiled = compileRule(rule, { connectives: ILL_CONNECTIVES });
+    const compiled = compileRule(rule, { connectives: illConnectives() });
 
     assert.ok(compiled.existentialSlots.length > 0, 'should have existential slots');
   });
@@ -274,7 +274,7 @@ describe('Loli variables are NOT existential slots', () => {
     const monad = Store.put('monad', [body]);
 
     const rule = { name: 'test_loli', hash: Store.put('loli', [a, monad]), antecedent: a, consequent: monad };
-    const compiled = compileRule(rule, { connectives: ILL_CONNECTIVES });
+    const compiled = compileRule(rule, { connectives: illConnectives() });
 
     // Z should NOT be in existentialSlots — it's a loli pattern variable
     assert.strictEqual(compiled.existentialSlots.length, 0,
@@ -297,7 +297,7 @@ describe('Loli variables are NOT existential slots', () => {
     const monad = Store.put('monad', [ex]);
 
     const rule = { name: 'test_mixed', hash: Store.put('loli', [a, monad]), antecedent: a, consequent: monad };
-    const compiled = compileRule(rule, { connectives: ILL_CONNECTIVES });
+    const compiled = compileRule(rule, { connectives: illConnectives() });
 
     // Should have exactly 1 existential slot (for the exists-opened X), not 2
     assert.strictEqual(compiled.existentialSlots.length, 1,
@@ -317,7 +317,7 @@ describe('resolveEx three-level fallback', () => {
 
     resetMetavar();
     const rule = { name: 'test', hash: Store.put('loli', [a, monad]), antecedent: a, consequent: monad };
-    const compiled = compileRule(rule, { connectives: ILL_CONNECTIVES });
+    const compiled = compileRule(rule, { connectives: illConnectives() });
 
     const theta = new Array(compiled.metavarCount);
     const state = createState();
@@ -337,7 +337,7 @@ describe('resolveEx three-level fallback', () => {
     resetMetavar();
     const ruleH = await parseExpr('a X Y -o { exists Z. (b Z * !plus X Y Z) }');
     const [ante, conseq] = Store.children(ruleH);
-    const compiled = compileRule({ name: 'test_ffi', hash: ruleH, antecedent: ante, consequent: conseq }, { connectives: ILL_CONNECTIVES });
+    const compiled = compileRule({ name: 'test_ffi', hash: ruleH, antecedent: ante, consequent: conseq }, { connectives: illConnectives() });
 
     assert.ok(compiled.existentialSlots.length > 0, 'should have existential slots');
 

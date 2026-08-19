@@ -13,13 +13,13 @@ import { describe, it, beforeEach } from 'node:test';
 import assert from 'node:assert/strict';
 import Store from '../../lib/kernel/store.js';
 import { gradeW } from '../../lib/engine/grades.js';
-import { ILL_CONNECTIVES } from '../../lib/engine/ill/connectives.js';
+import { illConnectives } from '../../lib/engine/ill/connectives.js';
 import { resolveConn, flattenAnte, unwrapComp } from '../../lib/engine/compile.js';
 import { predHead } from '../../lib/kernel/ast.js';
 import { _sroa } from '../../lib/engine/compose.js';
 import { getModeMeta as _illGetModeMeta } from '../../lib/engine/ill/ffi/index.js';
 import { ILL_SROA_CONFIG } from '../../lib/engine/ill/compose-config.js';
-const rc = resolveConn(ILL_CONNECTIVES);
+const rc = resolveConn(illConnectives());
 
 function makeRule(name, anteHash, conseqBodyHash) {
   const conseqHash = Store.put('monad', [conseqBodyHash]);

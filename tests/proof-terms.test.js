@@ -16,7 +16,7 @@ import { createProver } from '../lib/prover/focused.js';
 import { buildRuleSpecs } from '../lib/prover/rule-interpreter.js';
 import { rightFocusTerm, modeSwitch } from '../lib/prover/bridge.js';
 import { compileRule } from '../lib/engine/compile.js';
-import { ILL_CONNECTIVES } from '../lib/engine/ill/connectives.js';
+import { illConnectives } from '../lib/engine/ill/connectives.js';
 import { createChecker, expand } from '../lib/prover/check-term.js';
 import { createKernel } from '../lib/prover/kernel.js';
 import Seq from '../lib/kernel/sequent.js';
@@ -960,7 +960,7 @@ describe('End-to-end bridge term construction', () => {
     return compileRule({
       name: 'test_fwd', hash: ruleH,
       antecedent: a, consequent: AST.monad(b)
-    }, { connectives: ILL_CONNECTIVES });
+    }, { connectives: illConnectives() });
   }
 
   it('modeSwitch with terms:true produces monadicTerm', () => {
@@ -1028,7 +1028,7 @@ describe('End-to-end bridge term construction', () => {
     const compiled = compileRule({
       name: 'overproducer', hash: ruleH,
       antecedent: a, consequent: AST.monad(AST.tensor(a, b))
-    }, { connectives: ILL_CONNECTIVES });
+    }, { connectives: illConnectives() });
 
     // Succedent only wants {a} — b will be leftover after rightFocus
     const seq = Seq.fromArrays([a], [], AST.monad(a));
@@ -1059,7 +1059,7 @@ describe('Zero-overhead (terms: false)', () => {
     return compileRule({
       name: 'test_fwd', hash: ruleH,
       antecedent: a, consequent: AST.monad(b)
-    }, { connectives: ILL_CONNECTIVES });
+    }, { connectives: illConnectives() });
   }
 
   it('modeSwitch without terms option produces no term data', () => {

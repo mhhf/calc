@@ -7,10 +7,10 @@ import assert from 'node:assert';
 import path from 'path';
 import mde from '../../lib/engine/index.js';
 import { explore, stateHashStr } from '../../lib/engine/explore.js';
-import { ILL_CONNECTIVES } from '../../lib/engine/ill/connectives.js';
+import { illConnectives } from '../../lib/engine/ill/connectives.js';
 import { resolveConn, expandChoice, expandConsqChoices } from '../../lib/engine/formula-utils.js';
 import { gradeW } from '../../lib/engine/grades.js';
-const ILL_RC = resolveConn(ILL_CONNECTIVES);
+const ILL_RC = resolveConn(illConnectives());
 import { countLeaves, getAllLeaves, maxDepth, countNodes, toDot } from '../../lib/engine/tree-utils.js';
 import forward from '../../lib/engine/forward.js';
 import { matchLoli } from '../../lib/engine/lnl/loli.js';
@@ -279,7 +279,7 @@ describe('explore', { timeout: 10000 }, () => {
       Store.clear();
       const a = Store.put('atom', ['loop_token']);
       const loli = Store.put('loli', [a, Store.put('monad', [a])]);
-      const rule = forward.compileRule({ name: 'loop', hash: loli, antecedent: a, consequent: Store.put('monad', [a]) }, { connectives: ILL_CONNECTIVES });
+      const rule = forward.compileRule({ name: 'loop', hash: loli, antecedent: a, consequent: Store.put('monad', [a]) }, { connectives: illConnectives() });
 
       const state = forward.createState({ [a]: 1 }, {});
       const tree = explore(state, [rule], { maxDepth: 10 });
@@ -555,7 +555,7 @@ describe('explore', { timeout: 10000 }, () => {
         hash: 0,
         antecedent: start,
         consequent: Store.put('monad', [conseq])
-      }, { connectives: ILL_CONNECTIVES });
+      }, { connectives: illConnectives() });
 
       // Guard is provable, noguard is NOT
       const state = forward.createState(
@@ -572,7 +572,7 @@ describe('explore', { timeout: 10000 }, () => {
       });
       const tree = explore(state, [rule], {
         maxDepth: 5,
-        calc: { connectives: ILL_CONNECTIVES },
+        calc: { connectives: illConnectives() },
         matchOpts,
       });
 

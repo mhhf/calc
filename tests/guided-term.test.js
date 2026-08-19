@@ -14,7 +14,7 @@ import Store from '../lib/kernel/store.js';
 import forward from '../lib/engine/forward.js';
 import { guidedTerm, loliOf } from '../lib/prover/guided-term.js';
 import { rightFocusTerm, modeSwitch } from '../lib/prover/bridge.js';
-import { ILL_CONNECTIVES } from '../lib/engine/ill/connectives.js';
+import { illConnectives } from '../lib/engine/ill/connectives.js';
 import { gradeW } from '../lib/engine/grades.js';
 // Hoisted by tools/esm-hoist.js:
 import Seq from '../lib/kernel/sequent.js';
@@ -337,7 +337,7 @@ describe('Guided Proof Terms (TODO_0068 §10.5)', () => {
       const monadB = Store.put('monad', [b]);
       const loli = Store.put('loli', [a, monadB]);
 
-      const rules = [forward.compileRule({ name: 'r1', hash: loli, antecedent: a, consequent: monadB }, { connectives: ILL_CONNECTIVES })];
+      const rules = [forward.compileRule({ name: 'r1', hash: loli, antecedent: a, consequent: monadB }, { connectives: illConnectives() })];
 
       const result = forward.run(
         { linear: { [a]: 1 }, persistent: {} },
@@ -362,7 +362,7 @@ describe('Guided Proof Terms (TODO_0068 §10.5)', () => {
       const monadB = Store.put('monad', [b]);
       const loli = Store.put('loli', [a, monadB]);
 
-      const rules = [forward.compileRule({ name: 'r1', hash: loli, antecedent: a, consequent: monadB }, { connectives: ILL_CONNECTIVES })];
+      const rules = [forward.compileRule({ name: 'r1', hash: loli, antecedent: a, consequent: monadB }, { connectives: illConnectives() })];
 
       const result = forward.run(
         { linear: { [a]: 1 }, persistent: {} },
@@ -392,7 +392,7 @@ describe('Guided Proof Terms (TODO_0068 §10.5)', () => {
       const monadB = Store.put('monad', [b]);
       const loli = Store.put('loli', [a, monadB]);
 
-      const rules = [forward.compileRule({ name: 'r1', hash: loli, antecedent: a, consequent: monadB }, { connectives: ILL_CONNECTIVES })];
+      const rules = [forward.compileRule({ name: 'r1', hash: loli, antecedent: a, consequent: monadB }, { connectives: illConnectives() })];
 
       const seq = Seq.fromArrays([a], [], monadB);
 

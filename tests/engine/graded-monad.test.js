@@ -30,7 +30,7 @@ import { makeClauseTermBuilder, buildClauseTerm } from '../../lib/engine/ill/bac
 import { rightFocus } from '../../lib/prover/bridge.js';
 import { createKernel } from '../../lib/prover/kernel.js';
 import { createChecker } from '../../lib/prover/check-term.js';
-import { ILL_CONNECTIVES } from '../../lib/engine/ill/connectives.js';
+import { illConnectives } from '../../lib/engine/ill/connectives.js';
 import { FactSet } from '../../lib/engine/fact-set.js';
 import { matchLoli } from '../../lib/engine/lnl/loli.js';
 import { makeMatchOpts } from './_match-opts.js';
@@ -60,7 +60,7 @@ describe('computationRole / resolveConn', () => {
   });
 
   it('resolveConn: ILL yields the unary record + default grade functions', () => {
-    const rc = resolveConn(ILL_CONNECTIVES);
+    const rc = resolveConn(illConnectives());
     assert.deepEqual(rc.computation, ICOMP);
     assert.equal(rc.grade0, defaultGradeConfig.grade0);
     assert.equal(rc.grade0(), grade0());
@@ -80,7 +80,7 @@ describe('computationRole / resolveConn', () => {
 
 describe('walkers: unwrapComp / flattenAnte', () => {
   it('unwrapComp reads bodyIdx from the record', () => {
-    const rcI = resolveConn(ILL_CONNECTIVES);
+    const rcI = resolveConn(illConnectives());
     const rcG = resolveConn(TILL_CT);
     const b = atom('b');
     assert.equal(unwrapComp(Store.put('monad', [b]), rcI), b);
@@ -104,7 +104,7 @@ describe('walkers: unwrapComp / flattenAnte', () => {
   });
 
   it('flattenAnte default grades are ILL atoms (regression)', () => {
-    const rc = resolveConn(ILL_CONNECTIVES);
+    const rc = resolveConn(illConnectives());
     const a = atom('a');
     const flat = flattenAnte(Store.put('bang', [grade0(), a]), rc);
     assert.deepEqual(flat.grade0, [a]);

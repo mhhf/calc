@@ -16,7 +16,7 @@ import { FactSet, Arena, fromObject } from '../../lib/engine/fact-set.js';
 import forward from '../../lib/engine/forward.js';
 import { explore } from '../../lib/engine/explore.js';
 import { compileRule } from '../../lib/engine/compile.js';
-import { ILL_CONNECTIVES } from '../../lib/engine/ill/connectives.js';
+import { illConnectives } from '../../lib/engine/ill/connectives.js';
 import { putRat } from '../../lib/kernel/rat-term.js';
 import { ratParts } from '../../lib/engine/theories/ratlit-theory.js';
 import { cmp as ratCmp } from '../../lib/rat.js';
@@ -121,7 +121,7 @@ const monad = (b) => Store.put('monad', [b]);
 function mkRule(name, ante, conseq) {
   return compileRule(
     { name, hash: loli(ante, conseq), antecedent: ante, consequent: conseq },
-    { connectives: ILL_CONNECTIVES });
+    { connectives: illConnectives() });
 }
 
 // Deterministic scrambled-but-total order: mixed key, hash tie-break.

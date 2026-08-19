@@ -14,7 +14,7 @@ import Store from '../../lib/kernel/store.js';
 import forward from '../../lib/engine/forward.js';
 import { explore } from '../../lib/engine/explore.js';
 import { compileRule } from '../../lib/engine/compile.js';
-import { ILL_CONNECTIVES } from '../../lib/engine/ill/connectives.js';
+import { illConnectives } from '../../lib/engine/ill/connectives.js';
 import { putRat } from '../../lib/kernel/rat-term.js';
 import { makeMatchOpts } from './_match-opts.js';
 import { gradeW } from '../../lib/engine/grades.js';
@@ -28,7 +28,7 @@ const monad = (b) => Store.put('monad', [b]);
 function compile(name, ante, conseq) {
   return compileRule(
     { name, hash: loli(ante, conseq), antecedent: ante, consequent: conseq },
-    { connectives: ILL_CONNECTIVES });
+    { connectives: illConnectives() });
 }
 
 describe('compileRule: window stripping', () => {

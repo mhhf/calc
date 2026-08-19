@@ -10,7 +10,7 @@ import { describe, it, beforeEach } from 'node:test';
 import assert from 'node:assert/strict';
 import Store from '../../lib/kernel/store.js';
 import { gradeW } from '../../lib/engine/grades.js';
-import { ILL_CONNECTIVES } from '../../lib/engine/ill/connectives.js';
+import { illConnectives } from '../../lib/engine/ill/connectives.js';
 import { resolveConn, flattenAnte } from '../../lib/engine/compile.js';
 import { predHead } from '../../lib/kernel/ast.js';
 import { _fuseChains } from '../../lib/engine/compose.js';
@@ -44,7 +44,7 @@ describe('_fuseChains', () => {
 
   beforeEach(() => {
     Store.clear();
-    rc = resolveConn(ILL_CONNECTIVES);
+    rc = resolveConn(illConnectives());
   });
 
   it('fuses a 2-link checked_sub chain', () => {
@@ -176,7 +176,7 @@ describe('arr_get residual resolution', () => {
 
   beforeEach(() => {
     Store.clear();
-    rc = resolveConn(ILL_CONNECTIVES);
+    rc = resolveConn(illConnectives());
   });
 
   it('resolves arr_get on ground arrlit with ground index', () => {
