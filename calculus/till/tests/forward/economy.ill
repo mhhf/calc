@@ -13,7 +13,9 @@
 saw: $sawmill * wood -o { plank }@(1/2).
 forge: $smith * plank * stone -o { tool }@(3/10).
 
-#expect_economy (settle: 1)
+% exact: true — the expectation IS the full settled multiset; any extra
+% or missing fact fails (subset checks cannot catch extras).
+#expect_economy (settle: 1, exact: true)
   sawmill * smith * !_10 wood * !_10 plank * !_10 stone
   =>
   !_7 wood@0 * !_6 plank@0 * plank@(1/2) * plank@1 * plank@(3/2)
