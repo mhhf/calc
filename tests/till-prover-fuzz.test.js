@@ -139,7 +139,7 @@ describe('till sequent fuzz — prover vs independent oracles', () => {
   const tower = (grades) => {
     let f = P('fza');
     for (const g of grades) {
-      f = Store.put('gmonad', [tillGrades.parseStamp(fracStr(g)), f]);
+      f = Store.put('monad', [tillGrades.parseStamp(fracStr(g)), f]);
     }
     return f;
   };
@@ -151,7 +151,7 @@ describe('till sequent fuzz — prover vs independent oracles', () => {
       const ds = Array.from({ length: n }, () => pick(rnd, GRADES));
       const e = pick(rnd, GRADES);
       const lhs = tower(ds);
-      const rhs = Store.put('gmonad', [tillGrades.parseStamp(fracStr(e)), P('fza')]);
+      const rhs = Store.put('monad', [tillGrades.parseStamp(fracStr(e)), P('fza')]);
       const expect = fracGe(e, fracSum(ds));
       check([lhs], rhs, expect,
         `B#${i} tower [${ds.map(fracStr)}] ⊢ {a}@${fracStr(e)}`);

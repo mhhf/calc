@@ -29,6 +29,7 @@ import { setTheories } from '../../lib/kernel/unify.js';
 import { defaultTheories } from '../../lib/kernel/eq-theory.js';
 import { binlitTheory } from '../../lib/engine/ill/binlit-theory.js';
 import { ratlitTheory } from '../../lib/engine/theories/ratlit-theory.js';
+import { monadUnit as U } from '../../lib/engine/grades.js';
 
 const atom = (n) => Store.put('atom', [n]);
 const at = (a, n, d) => Store.put('at', [a, putRat(n, d)]);
@@ -116,7 +117,7 @@ describe('FactSet policy: grouping + order', () => {
 
 const loli = (a, b) => Store.put('loli', [a, b]);
 const t2 = (a, b) => Store.put('tensor', [a, b]);
-const monad = (b) => Store.put('monad', [b]);
+const monad = (b) => Store.put('monad', [U(), b]);
 
 function mkRule(name, ante, conseq) {
   return compileRule(

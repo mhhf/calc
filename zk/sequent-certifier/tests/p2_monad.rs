@@ -31,7 +31,8 @@ fn dyn_trace(rows: &[&[u32]], width: usize, min_rows: usize) -> openvm_stark_bac
 }
 
 const H_A: u32 = 42;
-const H_MONAD_A: u32 = 600; // hash({A})
+const H_UNIT: u32 = 5;      // unit grade node (binlit 0 — D6 graded monad)
+const H_MONAD_A: u32 = 600; // hash({A}) = monad(H_UNIT, H_A)
 
 // ---------------------------------------------------------------------------
 // monad_r + monad_l + id: {A} ⊢ {A}
@@ -44,15 +45,16 @@ fn p2_monad_roundtrip() {
     let monad_r_chip = RuleChip::new(specs["monad_r"].clone());
     let id_chip = RuleChip::new(specs["id"].clone());
 
-    assert_eq!(monad_l_chip.layout.width, 3);
-    assert_eq!(monad_r_chip.layout.width, 6);
+    // arity 2 since the D6 merge-back: [active, hash, grade, body, ...]
+    assert_eq!(monad_l_chip.layout.width, 4);
+    assert_eq!(monad_r_chip.layout.width, 7);
 
     let (init_chip, init_trace, init_pis) = make_init(&[[H_MONAD_A, 1, H_MONAD_A, 1, 0, 0]], 4);
-    let ml_trace = dyn_trace(&[&[1, H_MONAD_A, H_A]], 3, 4);
-    let mr_trace = dyn_trace(&[&[1, H_MONAD_A, H_A, 0, 0, 1]], 6, 4);
+    let ml_trace = dyn_trace(&[&[1, H_MONAD_A, H_UNIT, H_A]], 4, 4);
+    let mr_trace = dyn_trace(&[&[1, H_MONAD_A, H_UNIT, H_A, 0, 0, 1]], 7, 4);
     let id_trace = dyn_trace(&[&[1, H_A, 1, 1]], 4, 4);
     let (rom_chip, rom_trace) = make_formula_rom(
-        &[[H_MONAD_A, tags["monad"], H_A, 0, 1, 2]],
+        &[[H_MONAD_A, tags["monad"], H_UNIT, H_A, 1, 2]],
         4,
     );
 
@@ -83,14 +85,14 @@ fn p2_monad_r_lax_mismatch_fails() {
     let id_chip = RuleChip::new(specs["id"].clone());
 
     let (init_chip, init_trace, init_pis) = make_init(&[[H_MONAD_A, 1, H_MONAD_A, 1, 0, 0]], 4);
-    let ml_trace = dyn_trace(&[&[1, H_MONAD_A, H_A]], 3, 4);
-    let mr_trace = dyn_trace(&[&[1, H_MONAD_A, H_A, 0, 0, 1]], 6, 4);
+    let ml_trace = dyn_trace(&[&[1, H_MONAD_A, H_UNIT, H_A]], 4, 4);
+    let mr_trace = dyn_trace(&[&[1, H_MONAD_A, H_UNIT, H_A, 0, 0, 1]], 7, 4);
 
     // WRONG: lax=0 instead of lax=1
     let id_trace = dyn_trace(&[&[1, H_A, 1, 0]], 4, 4);
 
     let (rom_chip, rom_trace) = make_formula_rom(
-        &[[H_MONAD_A, tags["monad"], H_A, 0, 1, 2]],
+        &[[H_MONAD_A, tags["monad"], H_UNIT, H_A, 1, 2]],
         4,
     );
 

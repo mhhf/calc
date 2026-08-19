@@ -20,6 +20,7 @@ import { gradeW } from '../lib/engine/grades.js';
 import Seq from '../lib/kernel/sequent.js';
 import calcMain from '../lib/index.js';
 import { createChecker } from '../lib/prover/check-term.js';
+import { monadUnit as U } from '../lib/engine/grades.js';
 
 describe('Guided Proof Terms (TODO_0068 §10.5)', () => {
 
@@ -30,14 +31,14 @@ describe('Guided Proof Terms (TODO_0068 §10.5)', () => {
   describe('loliOf', () => {
     it('returns loli directly', () => {
       const A = Store.put('atom', ['a']);
-      const B = Store.put('monad', [Store.put('atom', ['b'])]);
+      const B = Store.put('monad', [U(), Store.put('atom', ['b'])]);
       const loli = Store.put('loli', [A, B]);
       assert.strictEqual(loliOf(loli), loli);
     });
 
     it('peels bang wrapper', () => {
       const A = Store.put('atom', ['a']);
-      const B = Store.put('monad', [Store.put('atom', ['b'])]);
+      const B = Store.put('monad', [U(), Store.put('atom', ['b'])]);
       const loli = Store.put('loli', [A, B]);
       const banged = Store.put('bang', [gradeW(),loli]);
       assert.strictEqual(loliOf(banged), loli);
@@ -45,7 +46,7 @@ describe('Guided Proof Terms (TODO_0068 §10.5)', () => {
 
     it('peels forall wrapper', () => {
       const X = Store.put('metavar', ['X']);
-      const body = Store.put('monad', [X]);
+      const body = Store.put('monad', [U(), X]);
       const loli = Store.put('loli', [X, body]);
       const fa = Store.put('forall', [loli]);
       assert.strictEqual(loliOf(fa), loli);
@@ -62,7 +63,7 @@ describe('Guided Proof Terms (TODO_0068 §10.5)', () => {
       // Rule: a -o { b }
       const a = Store.put('atom', ['a']);
       const b = Store.put('atom', ['b']);
-      const monadB = Store.put('monad', [b]);
+      const monadB = Store.put('monad', [U(), b]);
       const loli = Store.put('loli', [a, monadB]);
 
       const rfTerm = { rule: 'id', principal: b, subterms: [] };
@@ -106,7 +107,7 @@ describe('Guided Proof Terms (TODO_0068 §10.5)', () => {
       const b = Store.put('atom', ['b']);
       const c = Store.put('atom', ['c']);
       const tensor = Store.put('tensor', [a, b]);
-      const monadC = Store.put('monad', [c]);
+      const monadC = Store.put('monad', [U(), c]);
       const loli = Store.put('loli', [tensor, monadC]);
 
       const rfTerm = { rule: 'id', principal: c, subterms: [] };
@@ -138,7 +139,7 @@ describe('Guided Proof Terms (TODO_0068 §10.5)', () => {
       const p = Store.put('atom', ['p']);
       const q = Store.put('atom', ['q']);
       const bangP = Store.put('bang', [gradeW(),p]);
-      const monadQ = Store.put('monad', [q]);
+      const monadQ = Store.put('monad', [U(), q]);
       const loli = Store.put('loli', [bangP, monadQ]);
 
       const rfTerm = { rule: 'id', principal: q, subterms: [] };
@@ -171,7 +172,7 @@ describe('Guided Proof Terms (TODO_0068 §10.5)', () => {
       const b = Store.put('atom', ['b']);
       const bangP = Store.put('bang', [gradeW(),p]);
       const tensor = Store.put('tensor', [a, bangP]);
-      const monadB = Store.put('monad', [b]);
+      const monadB = Store.put('monad', [U(), b]);
       const loli = Store.put('loli', [tensor, monadB]);
 
       const rfTerm = { rule: 'id', principal: b, subterms: [] };
@@ -202,7 +203,7 @@ describe('Guided Proof Terms (TODO_0068 §10.5)', () => {
       const b = Store.put('atom', ['b']);
       const c = Store.put('atom', ['c']);
       const tensorBC = Store.put('tensor', [b, c]);
-      const monadBC = Store.put('monad', [tensorBC]);
+      const monadBC = Store.put('monad', [U(), tensorBC]);
       const loli = Store.put('loli', [a, monadBC]);
 
       const rfTerm = { rule: 'one_r', principal: null, subterms: [] };
@@ -232,7 +233,7 @@ describe('Guided Proof Terms (TODO_0068 §10.5)', () => {
       // Loli fact: a -o { b } (linear, consumed from context — no copy)
       const a = Store.put('atom', ['a']);
       const b = Store.put('atom', ['b']);
-      const monadB = Store.put('monad', [b]);
+      const monadB = Store.put('monad', [U(), b]);
       const loli = Store.put('loli', [a, monadB]);
 
       const rfTerm = { rule: 'id', principal: b, subterms: [] };
@@ -262,8 +263,8 @@ describe('Guided Proof Terms (TODO_0068 §10.5)', () => {
       const a = Store.put('atom', ['a']);
       const b = Store.put('atom', ['b']);
       const c = Store.put('atom', ['c']);
-      const monadB = Store.put('monad', [b]);
-      const monadC = Store.put('monad', [c]);
+      const monadB = Store.put('monad', [U(), b]);
+      const monadC = Store.put('monad', [U(), c]);
       const loli1 = Store.put('loli', [a, monadB]);
       const loli2 = Store.put('loli', [b, monadC]);
 
@@ -301,7 +302,7 @@ describe('Guided Proof Terms (TODO_0068 §10.5)', () => {
       const X = Store.put('metavar', ['X']);
       const dataX = Store.put('data', [X]);
       const resultX = Store.put('result', [X]);
-      const monad = Store.put('monad', [resultX]);
+      const monad = Store.put('monad', [U(), resultX]);
       const loli = Store.put('loli', [dataX, monad]);
 
       const val = Store.put('binlit', [42n]);
@@ -334,7 +335,7 @@ describe('Guided Proof Terms (TODO_0068 §10.5)', () => {
     it('produces enriched trace entries', () => {
       const a = Store.put('atom', ['trigger']);
       const b = Store.put('atom', ['result']);
-      const monadB = Store.put('monad', [b]);
+      const monadB = Store.put('monad', [U(), b]);
       const loli = Store.put('loli', [a, monadB]);
 
       const rules = [forward.compileRule({ name: 'r1', hash: loli, antecedent: a, consequent: monadB }, { connectives: illConnectives() })];
@@ -359,7 +360,7 @@ describe('Guided Proof Terms (TODO_0068 §10.5)', () => {
     it('enriched trace feeds guidedTerm', () => {
       const a = Store.put('atom', ['go']);
       const b = Store.put('atom', ['done']);
-      const monadB = Store.put('monad', [b]);
+      const monadB = Store.put('monad', [U(), b]);
       const loli = Store.put('loli', [a, monadB]);
 
       const rules = [forward.compileRule({ name: 'r1', hash: loli, antecedent: a, consequent: monadB }, { connectives: illConnectives() })];
@@ -389,7 +390,7 @@ describe('Guided Proof Terms (TODO_0068 §10.5)', () => {
     it('produces guided monadic term via bridge', () => {
       const a = Store.put('atom', ['go']);
       const b = Store.put('atom', ['done']);
-      const monadB = Store.put('monad', [b]);
+      const monadB = Store.put('monad', [U(), b]);
       const loli = Store.put('loli', [a, monadB]);
 
       const rules = [forward.compileRule({ name: 'r1', hash: loli, antecedent: a, consequent: monadB }, { connectives: illConnectives() })];
@@ -398,7 +399,7 @@ describe('Guided Proof Terms (TODO_0068 §10.5)', () => {
 
       const result = modeSwitch(seq, {
         forwardRules: rules,
-        roles: { product: 'tensor', unit: 'one', exponential: 'bang', implication: 'loli', computation: { tag: 'monad', bodyIdx: 0, gradeIdx: null } }
+        roles: { product: 'tensor', unit: 'one', exponential: 'bang', implication: 'loli', computation: { tag: 'monad', bodyIdx: 1, gradeIdx: 0 } }
       }, { forward: 'guided' });
 
       assert(result, 'mode switch should succeed');

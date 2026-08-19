@@ -23,7 +23,7 @@ const atom = (n) => Store.put('atom', [n]);
 const mv = (n) => Store.put('metavar', [n]);
 const t2 = (a, b) => Store.put('tensor', [a, b]);
 const loli = (a, b) => Store.put('loli', [a, b]);
-const monad = (b) => Store.put('monad', [b]);
+const monad = (b) => Store.put('monad', [Store.put('binlit', [0n]), b]); // unit grade (D6)
 
 function compile(name, ante, conseq) {
   return compileRule(

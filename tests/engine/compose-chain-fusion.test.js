@@ -19,8 +19,9 @@ import { getModeMeta as _illGetModeMeta } from '../../lib/engine/ill/ffi/index.j
 import { ILL_CHAIN_CONFIGS } from '../../lib/engine/ill/compose-config.js';
 import { intToBin, binToInt } from '../../lib/engine/ill/ffi/convert.js';
 import { residualResolver } from '../../lib/engine/ill/residual-resolver.js';
+import { monadUnit as U } from '../../lib/engine/grades.js';
 function makeRule(name, anteHash, conseqBodyHash) {
-  const conseqHash = Store.put('monad', [conseqBodyHash]);
+  const conseqHash = Store.put('monad', [U(), conseqBodyHash]);
   const hash = Store.put('loli', [anteHash, conseqHash]);
   return { name, hash, antecedent: anteHash, consequent: conseqHash };
 }
@@ -199,7 +200,7 @@ describe('arr_get residual resolution', () => {
     assert.equal(arrGetGoals.length, 0, 'arr_get goal should be resolved');
 
     // Consequent pc should have the value at index 1 = 0x80
-    const conseqBody = Store.child(Store.child(result.hash, 1), 0);
+    const conseqBody = Store.child(Store.child(result.hash, 1), 1); // monad body (child 0 = unit)
     const newConseq = flattenAnte(conseqBody, rc);
     const pcOut = newConseq.linear.find(h => predHead(h) === 'pc');
     assert.ok(pcOut);
@@ -257,7 +258,7 @@ describe('arr_get residual resolution', () => {
     assert.equal(arrSetGoals.length, 0, 'arr_set goal should be resolved');
 
     // Result should be an arrlit with [0xFF, 0x80]
-    const conseqBody = Store.child(Store.child(result.hash, 1), 0);
+    const conseqBody = Store.child(Store.child(result.hash, 1), 1); // monad body (child 0 = unit)
     const newConseq = flattenAnte(conseqBody, rc);
     const stackOut = newConseq.linear.find(h => predHead(h) === 'stack');
     assert.ok(stackOut);

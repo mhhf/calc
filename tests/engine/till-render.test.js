@@ -146,9 +146,9 @@ describe('graded-monad render fidelity (Phase 4c)', () => {
   it('unit grade renders bare; non-unit grades render as {B}@g', async () => {
     const { putRat } = await import('../../lib/kernel/rat-term.js');
     const b = Store.put('atom', ['b']);
-    assert.equal(render(Store.put('gmonad', [putRat(0n, 1n), b])), '{ b }');
-    assert.equal(render(Store.put('gmonad', [putRat(2n, 1n), b])), '{ b }@2');
-    assert.equal(render(Store.put('gmonad', [putRat(1n, 2n), b])), '{ b }@1/2');
+    assert.equal(render(Store.put('monad', [putRat(0n, 1n), b])), '{ b }');
+    assert.equal(render(Store.put('monad', [putRat(2n, 1n), b])), '{ b }@2');
+    assert.equal(render(Store.put('monad', [putRat(1n, 2n), b])), '{ b }@1/2');
   });
 
   it('parse ∘ render = id on graded monads', () => {
@@ -164,7 +164,7 @@ describe('graded-monad render fidelity (Phase 4c)', () => {
     const { putRat } = await import('../../lib/kernel/rat-term.js');
     const gt = calculus.load(path.join(import.meta.dirname, '../fixtures/graded-comp.calc'));
     const plain = buildRenderer(gt.constructors);
-    assert.equal(plain(Store.put('gmonad', [putRat(2n, 1n), Store.put('atom', ['b'])])), '{ b }');
+    assert.equal(plain(Store.put('monad', [putRat(2n, 1n), Store.put('atom', ['b'])])), '{ b }');
   });
 });
 
@@ -188,10 +188,11 @@ describe('browser hydration — gradeUnit hook (Phase 4c)', () => {
       rendererOpts: { gradeUnit },
     });
     const h = withHook.parse('{ b }@1/2');
-    assert.equal(Store.tag(h), 'gmonad');
+    assert.equal(Store.tag(h), 'monad');
     assert.equal(withHook.render(h), '{ b }@1/2');
-    // without the hook: hydration succeeds, parsing a graded brace is LOUD
+    // without the hook: hydration succeeds and `{ b }` takes the shared
+    // default unit (binlit 0 — same hash as putRat(0,1); D6 merge-back)
     const without = browser.initFromBundle(bundle);
-    assert.throws(() => without.parse('{ b }'), /gradeUnit/);
+    assert.equal(Store.child(without.parse('{ b }'), 0), putRat(0n, 1n));
   });
 });

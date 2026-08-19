@@ -13,6 +13,7 @@ import { parseExpr, desugarPreserved } from '../../lib/engine/convert.js';
 import forward from '../../lib/engine/forward.js';
 import { illConnectives } from '../../lib/engine/ill/connectives.js';
 import { resolveConn, flattenAnte, compileRule } from '../../lib/engine/compile.js';
+import { monadUnit as U } from '../../lib/engine/grades.js';
 const ILL_RC = resolveConn(illConnectives());
 
 // Helper: compile a forward rule from a formula string
@@ -70,7 +71,7 @@ describe('Preserved resource sugar ($prefix)', { timeout: 10000 }, () => {
 
       // Consequent should have bytecode injected alongside gas
       const conseq = Store.child(desugared, 1);
-      const body = Store.child(conseq, 0);
+      const body = Store.child(conseq, 1); // monad body (child 0 = unit grade)
       const conseqFlat = flattenAnte(body, ILL_RC);
       const conseqTags = conseqFlat.linear.map(h => Store.tag(h));
       assert(conseqTags.includes('bytecode'), 'consequent should contain bytecode (injected)');
@@ -86,7 +87,7 @@ describe('Preserved resource sugar ($prefix)', { timeout: 10000 }, () => {
       assert.strictEqual(anteFlat.linear.length, 3);
 
       const conseq = Store.child(desugared, 1);
-      const body = Store.child(conseq, 0);
+      const body = Store.child(conseq, 1); // monad body (child 0 = unit grade)
       const conseqFlat = flattenAnte(body, ILL_RC);
       const conseqTags = conseqFlat.linear.map(h => Store.tag(h));
       assert(conseqTags.includes('bytecode'), 'consequent should have bytecode');
@@ -104,7 +105,7 @@ describe('Preserved resource sugar ($prefix)', { timeout: 10000 }, () => {
       const bytecodeInAnte = anteFlat.linear.find(h => Store.tag(h) === 'bytecode');
 
       const conseq = Store.child(desugared, 1);
-      const body = Store.child(conseq, 0);
+      const body = Store.child(conseq, 1); // monad body (child 0 = unit grade)
       const conseqFlat = flattenAnte(body, ILL_RC);
       const bytecodeInConseq = conseqFlat.linear.find(h => Store.tag(h) === 'bytecode');
 
@@ -146,7 +147,7 @@ describe('Preserved resource sugar ($prefix)', { timeout: 10000 }, () => {
       const bar = Store.put('atom', ['bar']);
       const baz = Store.put('atom', ['baz']);
       const ante = Store.put('tensor', [Store.put('preserved', [foo]), bar]);
-      const conseq = Store.put('monad', [Store.put('preserved', [baz])]);
+      const conseq = Store.put('monad', [U(), Store.put('preserved', [baz])]);
       const body = Store.put('loli', [ante, conseq]);
       assert.throws(() => desugarPreserved(body), /consequent/);
     });

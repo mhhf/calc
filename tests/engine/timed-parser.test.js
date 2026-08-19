@@ -55,10 +55,10 @@ describe('timed parser (gtoy fixture, declaration-derived)', () => {
   });
 
   it('bare {B} takes the unit grade; {B}@d replaces it', () => {
-    assert.equal(parse('{ b }'), Store.put('gmonad', [putRat(0n, 1n), atom('b')]));
-    assert.equal(parse('{ b }@2'), Store.put('gmonad', [putRat(2n, 1n), atom('b')]));
-    assert.equal(parse('{ b }@0.5'), Store.put('gmonad', [putRat(1n, 2n), atom('b')]));
-    assert.equal(parse('{ b }@D'), Store.put('gmonad', [fv('D'), atom('b')]));
+    assert.equal(parse('{ b }'), Store.put('monad', [putRat(0n, 1n), atom('b')]));
+    assert.equal(parse('{ b }@2'), Store.put('monad', [putRat(2n, 1n), atom('b')]));
+    assert.equal(parse('{ b }@0.5'), Store.put('monad', [putRat(1n, 2n), atom('b')]));
+    assert.equal(parse('{ b }@D'), Store.put('monad', [fv('D'), atom('b')]));
   });
 
   it('windows: after/before with grade-expression args', () => {

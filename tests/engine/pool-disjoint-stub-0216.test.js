@@ -21,6 +21,7 @@ import mde from '../../lib/engine/index.js';
 import ccfg from '../../lib/engine/ill/calculus-config.js';
 import { resolveConn } from '../../lib/engine/compile.js';
 import { fusePair as _fusePair } from '../../lib/engine/compose.js';
+import { monadUnit as U } from '../../lib/engine/grades.js';
 
 describe('TODO_0216 H3 — pool-disjoint assertion stub', () => {
   let fusePair, rc;
@@ -44,14 +45,14 @@ describe('TODO_0216 H3 — pool-disjoint assertion stub', () => {
       name: 'p', // no .meta
       hash: Store.put('loli', [
         Store.put('gas', [a]),
-        Store.put('monad', [Store.put('pc', [mvX])]),
+        Store.put('monad', [U(), Store.put('pc', [mvX])]),
       ]),
     };
     const consumer = {
       name: 'c',
       hash: Store.put('loli', [
         Store.put('pc', [mvY]),
-        Store.put('monad', [Store.put('stack', [mvY])]),
+        Store.put('monad', [U(), Store.put('stack', [mvY])]),
       ]),
     };
     // Should succeed with no assertion fire.
@@ -77,11 +78,11 @@ describe('TODO_0216 H3 — pool-disjoint assertion stub', () => {
       const mvY = Store.put('metavar', ['Y']);
       const producer = {
         name: 'p',
-        hash: Store.put('loli', [Store.put('gas', [a]), Store.put('monad', [Store.put('pc', [mvX])])]),
+        hash: Store.put('loli', [Store.put('gas', [a]), Store.put('monad', [Store.put('binlit', [0n]), Store.put('pc', [mvX])])]),
       };
       const consumer = {
         name: 'c',
-        hash: Store.put('loli', [Store.put('pc', [mvY]), Store.put('monad', [Store.put('stack', [mvY])])]),
+        hash: Store.put('loli', [Store.put('pc', [mvY]), Store.put('monad', [Store.put('binlit', [0n]), Store.put('stack', [mvY])])]),
       };
       try {
         fusePair(producer, consumer, 'pc', rc, null);
@@ -121,11 +122,11 @@ describe('TODO_0216 H3 — pool-disjoint assertion stub', () => {
       const producer = {
         name: 'p',
         meta: { disjointInPool: true },
-        hash: Store.put('loli', [Store.put('gas', [a]), Store.put('monad', [Store.put('pc', [mvX])])]),
+        hash: Store.put('loli', [Store.put('gas', [a]), Store.put('monad', [Store.put('binlit', [0n]), Store.put('pc', [mvX])])]),
       };
       const consumer = {
         name: 'c',
-        hash: Store.put('loli', [Store.put('pc', [mvY]), Store.put('monad', [Store.put('stack', [mvY])])]),
+        hash: Store.put('loli', [Store.put('pc', [mvY]), Store.put('monad', [Store.put('binlit', [0n]), Store.put('stack', [mvY])])]),
       };
       try {
         const r = fusePair(producer, consumer, 'pc', rc, null);

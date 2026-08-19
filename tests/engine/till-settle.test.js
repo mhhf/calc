@@ -459,7 +459,7 @@ describe('till error contracts (round 13 pins)', () => {
   });
 
   it('rejects nested graded monads in consequents (no runtime graded-μ)', () => {
-    assert.throws(() => load(FIX('till-nested-gmonad.ill')), /nested graded monad/);
+    assert.throws(() => load(FIX('till-nested-monad.ill')), /nested graded monad/);
   });
 
   it('timed consequent lolis are possessed rules (Phase 6c — v1 rejection lifted)', () => {

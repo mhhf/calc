@@ -6,8 +6,8 @@
  *     right peel/zero — grade side conditions via the D1 template DSL
  *   - ω bang: ILL's promotion/dereliction/absorption, template-matched so
  *     the ω grade in `!A` is a real constraint (never fires on !_k)
- *   - graded lax monad: gmonad_l = graded bind (H := F − E, monus),
- *     gmonad_r = unit at grade 0; the graded-μ {{A}@d}@e ⊢ {A}@(d+e)
+ *   - graded lax monad: monad_l = graded bind (H := F − E, monus),
+ *     monad_r = unit at grade 0; the graded-μ {{A}@d}@e ⊢ {A}@(d+e)
  *     is DERIVABLE, and only with exact accounting (no subeffecting in v1
  *     — availability monotonicity is Stage 2 / THY territory)
  *
@@ -149,7 +149,7 @@ describe('till sequent calculus (graded fragment, Stage 1)', () => {
       assert.ok(!kernel.verifyTree(bad).valid);
     });
 
-    it('rejects gmonad_l with wrong grade arithmetic', () => {
+    it('rejects monad_l with wrong grade arithmetic', () => {
       // claims {a}@2 |- {a}@4 from a |- {a}@1 — bind requires premise {a}@2
       const child = new ProofTree({
         conclusion: Seq.fromArrays([P('a')], [], P('{a}@1')),
@@ -157,12 +157,12 @@ describe('till sequent calculus (graded fragment, Stage 1)', () => {
       });
       const bad = new ProofTree({
         conclusion: Seq.fromArrays([P('{a}@2')], [], P('{a}@4')),
-        rule: 'gmonad_l', proven: true, premises: [child],
+        rule: 'monad_l', proven: true, premises: [child],
       });
       assert.ok(!kernel.verifyTree(bad).valid);
     });
 
-    it('accepts the honest gmonad_l instance it just rejected the fake of', () => {
+    it('accepts the honest monad_l instance it just rejected the fake of', () => {
       const r = prove(['{a}@2'], '{a}@2');
       assert.ok(r.success);
       assert.ok(kernel.verifyTree(r.proofTree).valid);
@@ -188,13 +188,13 @@ describe('till sequent calculus (graded fragment, Stage 1)', () => {
       assert.ok(!kernel.verifyTree(bad).valid);
     });
 
-    it('flags a forged gmonad_r2 bridge node as unverified, never as proven', () => {
+    it('flags a forged monad_r2 bridge node as unverified, never as proven', () => {
       // the kernel cannot re-run settle: a zero-premise modeShift node
       // passes shape checks but MUST carry the modeSwitch flag — callers
       // claiming full verification assert `valid && !unverified`
       const bad = new ProofTree({
         conclusion: Seq.fromArrays([P('b')], [], P('{a}@5')),
-        rule: 'gmonad_r2', proven: true, premises: [],
+        rule: 'monad_r2', proven: true, premises: [],
       });
       const v = kernel.verifyTree(bad);
       assert.ok(v.valid);

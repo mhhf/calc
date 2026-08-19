@@ -95,7 +95,7 @@ describe('timed possessed rules (loli facts)', () => {
   it('non-ground loli facts are loudly rejected (v1 fence)', () => {
     const w = Store.put('metavar', ['W']);
     const badLoli = Store.put('loli', [
-      Store.put('pv', [w]), Store.put('gmonad', [Store.put1('binlit', 0n), Store.put('qv', [w])]),
+      Store.put('pv', [w]), Store.put('monad', [Store.put1('binlit', 0n), Store.put('qv', [w])]),
     ]);
     const st = { linear: { [badLoli]: 1, [Store.put('pv', [atom('x')])]: 1 }, persistent: {} };
     assert.throws(() => calc.settle(st, '10'), /ground/);

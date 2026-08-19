@@ -138,7 +138,7 @@ out/                     # Generated: ill.json (bundled calculus), ui/ (built ap
 | oplus | `+` | positive | additive disjunction (internal choice) — renamed from `plus` |
 | zero | `zero` | positive | additive false — `zero_l` discards linear context |
 | bang | `!` | positive | exponential (reusable resource) — binary: `bang(grade, formula)`, `!A` is sugar for `bang(GRADE_W, A)` |
-| monad | `{ _ }` | negative | lax monad (invertible right, sticky left) |
+| monad | `{ _ }` | negative | graded lax monad — binary: `monad(grade, body)`, `{A}` is sugar for `monad(unit, A)` with unit = binlit 0; till's `{A}@d` fills the grade |
 | exists | `exists` | positive | existential |
 | forall | `forall` | negative | universal |
 

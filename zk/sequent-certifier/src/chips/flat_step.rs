@@ -81,6 +81,9 @@ pub struct FlatStepChip {
     pub monad_tag: u32,
     pub tensor_tag: u32,
     pub one_hash: u32,
+    /// Unit grade of the graded monad (binlit 0) — child 0 of every monad
+    /// node in an ILL trace (D6 merge-back: monad(grade, body)).
+    pub monad_unit_hash: u32,
 }
 
 impl<F: Field> BaseAir<F> for FlatStepChip {
@@ -117,6 +120,7 @@ where
         let monad_tag: AB::Expr = AB::Expr::from_u32(self.monad_tag);
         let tensor_tag: AB::Expr = AB::Expr::from_u32(self.tensor_tag);
         let one_hash: AB::Expr = AB::Expr::from_u32(self.one_hash);
+        let monad_unit_hash: AB::Expr = AB::Expr::from_u32(self.monad_unit_hash);
 
         // Boolean constraints
         builder.assert_zero(active.clone() * (active.clone() - AB::Expr::ONE));
@@ -190,10 +194,12 @@ where
             active.clone(),
         );
 
-        // 2. Monad unwrap: monad_hash = monad(cons_hash, 0)
+        // 2. Monad unwrap: monad_hash = monad(unit_grade, cons_hash)
+        //    (D6 merge-back: the monad is binary; child 0 is the unit grade
+        //    in every untimed/ILL trace, child 1 is the body.)
         FORMULA_BUS.lookup_key(
             builder,
-            [monad_hash, monad_tag, cons_hash.clone(), AB::Expr::ZERO],
+            [monad_hash, monad_tag, monad_unit_hash.clone(), cons_hash.clone()],
             active.clone(),
         );
 

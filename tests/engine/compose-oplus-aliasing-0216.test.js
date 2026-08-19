@@ -20,6 +20,7 @@ import { collectMetavars } from '../../lib/engine/pattern-utils.js';
 // Hoisted by tools/esm-hoist.js:
 import mde from '../../lib/engine/index.js';
 import ccfg from '../../lib/engine/ill/calculus-config.js';
+import { monadUnit as U } from '../../lib/engine/grades.js';
 
 describe('TODO_0216 H2 — fusePairEx oplus branch metavar disjointness', () => {
   let rc;
@@ -50,7 +51,7 @@ describe('TODO_0216 H2 — fusePairEx oplus branch metavar disjointness', () => 
     const choice = Store.put('oplus', [pcX_left, pcX_right]);
     const producer = {
       name: 'prod',
-      hash: Store.put('loli', [pAnte, Store.put('monad', [choice])]),
+      hash: Store.put('loli', [pAnte, Store.put('monad', [U(), choice])]),
     };
 
     const mvM = Store.put('metavar', ['M']);
@@ -58,7 +59,7 @@ describe('TODO_0216 H2 — fusePairEx oplus branch metavar disjointness', () => 
     const cConseq = Store.put('stack', [mvM]);
     const consumer = {
       name: 'cons',
-      hash: Store.put('loli', [cAnte, Store.put('monad', [cConseq])]),
+      hash: Store.put('loli', [cAnte, Store.put('monad', [U(), cConseq])]),
     };
 
     const consumerMvs = new Set();
@@ -106,7 +107,7 @@ describe('TODO_0216 H2 — fusePairEx oplus branch metavar disjointness', () => 
     const choice = Store.put('oplus', [pcX, inner]);
     const producer = {
       name: 'prod3',
-      hash: Store.put('loli', [pAnte, Store.put('monad', [choice])]),
+      hash: Store.put('loli', [pAnte, Store.put('monad', [U(), choice])]),
     };
 
     const mvM = Store.put('metavar', ['M']);
@@ -114,7 +115,7 @@ describe('TODO_0216 H2 — fusePairEx oplus branch metavar disjointness', () => 
     const cConseq = Store.put('stack', [mvM]);
     const consumer = {
       name: 'cons3',
-      hash: Store.put('loli', [cAnte, Store.put('monad', [cConseq])]),
+      hash: Store.put('loli', [cAnte, Store.put('monad', [U(), cConseq])]),
     };
 
     const consumerMvs = new Set();
@@ -152,12 +153,12 @@ describe('TODO_0216 H2 — fusePairEx oplus branch metavar disjointness', () => 
     const a = Store.put('atom', ['a']);
     const pAnte = Store.put('gas', [a]);
     const pcX = Store.put('pc', [Store.put('metavar', ['X'])]);
-    const producer = { name: 'flat', hash: Store.put('loli', [pAnte, Store.put('monad', [pcX])]) };
+    const producer = { name: 'flat', hash: Store.put('loli', [pAnte, Store.put('monad', [U(), pcX])]) };
 
     const mvM = Store.put('metavar', ['M']);
     const cAnte = Store.put('pc', [mvM]);
     const cConseq = Store.put('stack', [mvM]);
-    const consumer = { name: 'c', hash: Store.put('loli', [cAnte, Store.put('monad', [cConseq])]) };
+    const consumer = { name: 'c', hash: Store.put('loli', [cAnte, Store.put('monad', [U(), cConseq])]) };
 
     const results = fusePairEx(producer, consumer, 'pc', rc, null);
     assert.ok(Array.isArray(results) && results.length === 1,

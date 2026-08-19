@@ -133,8 +133,8 @@ describe('lib/rat.js — algebraic properties (sample grid)', () => {
 
 describe('store — till kernel tag commit', () => {
   it('PRED_BOUNDARY covers exactly the pre-registered tags (regression)', () => {
-    assert.equal(Store.PRED_BOUNDARY, 36);
-    for (const t of ['ratlit', 'at', 'after', 'before', 'gmonad']) {
+    assert.equal(Store.PRED_BOUNDARY, 35); // 'gmonad' merged into binary 'monad' (D6, TODO_0157)
+    for (const t of ['ratlit', 'at', 'after', 'before', 'monad']) {
       assert.ok(Store.TAG[t] !== undefined, `${t} registered`);
       assert.ok(Store.TAG[t] < Store.PRED_BOUNDARY, `${t} below boundary`);
     }
