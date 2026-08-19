@@ -202,6 +202,34 @@ describe('till cohort samplers (D12)', () => {
     assert.deepEqual(stamped(calc.settle(S, '5', { cohort: 'lifo' }).state),
       { 'eaten@2': 1, 'food@0': 1 });
   });
+
+  it('FIFO tie through the B&B PRUNE: first-pattern cohorts tie on activation (round-15 F6.iii)', () => {
+    // fa@0 and fa@1 both give activation max(·, fb@1) = 1 — the tie is on
+    // the FIRST pattern, so the second candidate (fa@1, partialA = 1) hits
+    // the prune (>= best.activation) rather than the leaf comparator (the
+    // till-eat test above covers the leaf shape). FIFO must take fa@0.
+    const calc = load(FIX('till-fifo-pair.ill'));
+    const fa = Store.put('atom', ['fa']);
+    const fa1 = Store.put('at', [fa, Store.put1('binlit', 1n)]);
+    const fb1 = Store.put('at', [Store.put('atom', ['fb']), Store.put1('binlit', 1n)]);
+    const S = { linear: { [fa]: 1, [fa1]: 1, [fb1]: 1 }, persistent: {} };
+    assert.deepEqual(stamped(calc.settle(S, '5').state), { 'fdone@1': 1, 'fa@1': 1 });
+  });
+
+  it('long horizon: 2000 sequential firings settle in bounded time (round-15 F6)', () => {
+    // one productive @1 self-cycle event per logical second — exercises the
+    // scheduler + Arena over a deep linear schedule (work is O(#events),
+    // never O(horizon gap) — E5)
+    const calc = load(FIX('till-ping.ill'));
+    const S = { linear: { [Store.put('atom', ['pa'])]: 1 }, persistent: {} };
+    const t0 = performance.now();
+    const r = calc.settle(S, '2000');
+    const ms = performance.now() - t0;
+    // firings at a = 0..2000 inclusive (activation ≤ T fires) = 2001 events
+    assert.equal(r.steps, 2001);
+    assert.deepEqual(stamped(r.state), { 'pa@2001': 1 });
+    assert.ok(ms < 10000, `2001 firings took ${ms}ms`);
+  });
 });
 
 describe('till delay terms (E7.1) + FFI principle', () => {

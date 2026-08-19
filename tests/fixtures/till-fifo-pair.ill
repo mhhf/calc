@@ -1,0 +1,8 @@
+% round-15 F6.iii: FIFO tie-break through the B&B prune — a two-input
+% rule whose equal-activation assignments differ only in which cohort of
+% the first pattern they take. FIFO-lex must take the OLDEST.
+fa: type.
+fb: type.
+fdone: type.
+
+pair: fa * fb -o { fdone }.
