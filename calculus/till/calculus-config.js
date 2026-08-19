@@ -29,6 +29,7 @@ import backchainIll from '../../lib/engine/ill/backchain-ill.js';
 import * as ffi from '../../lib/engine/ill/ffi/index.js';
 
 const TILL_CALC = path.join(import.meta.dirname, 'till.calc');
+const TILL_RULES = path.join(import.meta.dirname, 'till.rules');
 
 // Connective table DERIVED from till.calc — one source of truth: a
 // connective exists iff it is declared there with a @category annotation
@@ -224,5 +225,24 @@ const tillCalculusConfig = {
   },
 };
 
-export { tillCalculusConfig, tillGrades, tillFactSetPolicy, tillGradeUnit, tillConnectives };
+/**
+ * Sequent-level till calculus (Phase 6b Stage 1): till.calc + till.rules,
+ * the graded-syntax parser, and THE tillGrades record — the same algebra
+ * the timed scheduler reads (D13: one grade algebra, two faces). Backward
+ * provability over the graded fragment only; settle stays the execution
+ * semantics, and the timed judgment (stamps) is Stage 2.
+ */
+function loadTillSequent() {
+  return calculus.load(TILL_CALC, TILL_RULES, {
+    parser: {
+      multiCharFreevars: true,
+      numbers: true,
+      timedAnnotations: true,
+      gradeUnit: tillGradeUnit,
+    },
+    grades: tillGrades,
+  });
+}
+
+export { tillCalculusConfig, tillGrades, tillFactSetPolicy, tillGradeUnit, tillConnectives, loadTillSequent };
 export default tillCalculusConfig;
