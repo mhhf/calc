@@ -143,6 +143,17 @@ describe('q-operations: clauses vs FFI', () => {
     agree('qeq_bool', [putRat(1n, 2n), putRat(1n, 3n)], bin(0n));
     agree('qeq_bool', [putRat(1n, 2n), putRat(2n, 4n)], bin(1n));
   });
+
+  it('min/max (bin family, Phase 6 — the kiln capacity cap)', () => {
+    agree('min', [bin(3n), bin(12n)], bin(3n));
+    agree('min', [bin(15n), bin(12n)], bin(12n));
+    agree('min', [bin(7n), bin(7n)], bin(7n));    // equal: gt returns the assumption
+    agree('min', [bin(0n), bin(5n)], bin(0n));
+    agree('max', [bin(3n), bin(12n)], bin(12n));
+    agree('max', [bin(15n), bin(12n)], bin(15n));
+    agree('max', [bin(7n), bin(7n)], bin(7n));
+    agree('max', [bin(0n), bin(0n)], bin(0n));
+  });
 });
 
 describe('split-namespace contract', () => {

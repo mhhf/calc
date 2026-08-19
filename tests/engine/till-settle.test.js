@@ -113,9 +113,10 @@ describe('till conflict chooser (P5/D17)', () => {
     // for THIS file's load order only; re-pin if earlier tests change.
     // node-only: bun's module evaluation interns in a different order.)
     if (typeof Bun !== 'undefined') return;
-    assert.equal(calc.settle(one, '0', { seed: 0 }).events[0].rule, 'grab_b');
-    assert.equal(calc.settle(one, '0', { seed: 7 }).events[0].rule, 'grab_b');
-    assert.equal(calc.settle(one, '0', { seed: 42 }).events[0].rule, 'grab_a');
+    // Re-pinned (Phase 6): bin.ill gained min/max clauses → interning shift.
+    assert.deepEqual(
+      [0, 7, 42].map(seed => calc.settle(one, '0', { seed }).events[0].rule),
+      ['grab_b', 'grab_a', 'grab_a']);
   });
 });
 
