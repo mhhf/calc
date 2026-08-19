@@ -2,7 +2,7 @@
 
 Timed graded rewriting: ILL's multiplicative core + time as a tropical grade.
 Calculus package: `calculus/till/` (till.calc, calculus-config.js, prelude/rat.ill,
-tests/forward/*.ill). Engine: `lib/engine/timed.js` (generic, config-driven).
+tests/forward/*.ill). Engine: `lib/engine/timed{,-game,-views,-lint}.js` (generic, config-driven).
 Design/decisions: hq todo 0265; reference semantics: `tools/till-oracle.mjs`.
 
 ## Model
