@@ -199,6 +199,25 @@ describe('v2 FocusedProver', () => {
       const result = prover.prove(s, { rules: ruleSpecs, alternatives });
       assert.strictEqual(result.success, true);
     });
+
+    it('should NOT prove A, B ⊢ (A ⊗ B) & A — branches must consume equally', () => {
+      // with_r copies the context to both branches; a branch that consumes
+      // less may not silently discard the difference (leftover deltas must
+      // agree — soundness fix, TODO_0265 Phase 6b).
+      const A = AST.freevar('A');
+      const B = AST.freevar('B');
+      const s = seq([A, B], AST.with(AST.tensor(A, B), A));
+      const result = prover.prove(s, { rules: ruleSpecs, alternatives });
+      assert.strictEqual(result.success, false);
+    });
+
+    it('should prove A, B ⊢ (A ⊗ B) & (B ⊗ A) — equal consumption', () => {
+      const A = AST.freevar('A');
+      const B = AST.freevar('B');
+      const s = seq([A, B], AST.with(AST.tensor(A, B), AST.tensor(B, A)));
+      const result = prover.prove(s, { rules: ruleSpecs, alternatives });
+      assert.strictEqual(result.success, true);
+    });
   });
 
   describe('proof search - currying', () => {
