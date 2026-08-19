@@ -58,7 +58,7 @@ function runScenario(calc, hash, settings) {
   if (settings?.seed !== undefined) opts.seed = parseInt(settings.seed, 10);
   if (settings?.useFFI !== undefined) opts.useFFI = settings.useFFI === 'true';
   const res = calc.settle(initial, settings.settle, opts);
-  return { initial, res, T: calc._timedConfig.parseStamp(settings.settle) };
+  return { initial, res, T: calc.timedConfig.parseStamp(settings.settle) };
 }
 
 // ─── Handlers ───────────────────────────────────────────────────────
@@ -72,17 +72,17 @@ function runTraceD(calc, hash, settings) {
 function runTimeline(calc, hash, settings) {
   const { initial, res, T } = runScenario(calc, hash, settings);
   // Timeline lanes read the NORMALIZED initial (unstamped facts at 0, D11).
-  const init = _toObject(normalizeTimedState(initial, calc._timedConfig));
+  const init = _toObject(normalizeTimedState(initial, calc.timedConfig));
   for (const line of timelineLines(res.events, init, T)) console.log('  ' + line);
 }
 
 function runWhy(calc, hash, settings, factHash) {
   const { initial, res } = runScenario(calc, hash, settings);
-  const init = _toObject(normalizeTimedState(initial, calc._timedConfig));
+  const init = _toObject(normalizeTimedState(initial, calc.timedConfig));
   // The directive body is the fact — normalize an unstamped fact to @0.
   const target = Store.tag(factHash) === 'at'
     ? factHash
-    : Store.put('at', [factHash, calc._timedConfig.effect.unit()]);
+    : Store.put('at', [factHash, calc.timedConfig.effect.unit()]);
   console.log(`  why ${fmtFact(target)}`);
   for (const line of whyLines(res.events, init, target)) console.log('  ' + line);
 }
@@ -94,10 +94,10 @@ function runWhyNot(calc, hash, settings, ruleAtom) {
   const { initial, res, T } = runScenario(calc, hash, settings);
   void res;
   // Diagnose against the SETTLED state (why is it not firing NOW).
-  const settled = normalizeTimedState(calc.settle(initial, settings.settle).state, calc._timedConfig);
+  const settled = normalizeTimedState(calc.settle(initial, settings.settle).state, calc.timedConfig);
   const lines = whyNotLines(rule, settled, {
     calc: calc._calcContext, matchOpts: calc._buildMatchOpts({}),
-    timedConfig: calc._timedConfig, horizon: T,
+    timedConfig: calc.timedConfig, horizon: T,
   });
   for (const line of lines) console.log('  ' + line);
 }
