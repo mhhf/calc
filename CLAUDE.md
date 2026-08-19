@@ -189,6 +189,7 @@ FFI is optimization, theory is semantics. Every FFI predicate MUST have backward
 - `tools/collect-tags.js` — regenerate `doc/tags.yaml` tag index (`npm run tags`)
 - `tools/explore-inspect.js` — `node tools/explore-inspect.js [--leaf N] [--all] <files...>`
 - `tools/fuzz-ffi.js` — FFI correctness fuzzer (FFI vs clause comparison)
+- `tools/fuzz-till.js` — till fuzzer: q-ops FFI∥clause∥BigInt reference + activation spec (`node tools/fuzz-till.js [--count N] [--seed N]`)
 - `tools/precompile.js` — binary cache precompiler for .ill files
 - `tools/test-timing.js` — per-file test execution time profiler
 - `tools/debug-ill.js` — `npm run debug:ill -- <file.ill> [--only trace]` (observation directives + verbose judgments). Directives: `#trace`, `#dump_state`, `#debug`, `#benchmark`, `#compare`, `#inspect`, `#profile`

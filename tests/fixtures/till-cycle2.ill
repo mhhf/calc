@@ -1,0 +1,6 @@
+% D16 lint fixture: a TWO-rule zero-delay cycle (a → b → a, both 1:1
+% token-neutral) — Zeno without any single rule covering its own input.
+% The tier-2 pred-graph cycle check must flag it at load.
+
+r1: a -o { b }.
+r2: b -o { a }.
