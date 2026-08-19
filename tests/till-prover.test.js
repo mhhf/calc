@@ -117,6 +117,17 @@ describe('till sequent calculus (graded fragment, Stage 1)', () => {
     refuted('{a}@5 |-/ {a}@3  (no strengthening)', ['{a}@5'], '{a}@3');
   });
 
+  describe('stamped atoms: retiming (THY_0018 §5 — availability monotonicity)', () => {
+    provable('a@3 |- a@3  (stamped identity)', ['a@3'], 'a@3');
+    provable('a@3 |- a@5  (retiming: delaying availability is free)', ['a@3'], 'a@5');
+    provable('a@1, b@2 |- a@4 * b@4  (synchronise late)', ['a@1', 'b@2'], 'a@4 * b@4');
+    provable('a@1 |- {a@6}@9  (retime under the monad)', ['a@1'], '{a@6}@9');
+
+    refuted('a@5 |-/ a@3  (never early)', ['a@5'], 'a@3');
+    refuted('a@3 |-/ b@5  (wrong atom)', ['a@3'], 'b@5');
+    refuted('a |-/ a@3  (no ambient rule in v1: unstamped stays unstamped)', ['a'], 'a@3');
+  });
+
   describe('grade algebra is shared with the scheduler (D13)', () => {
     it('calc.grades IS tillGrades (one algebra, two faces)', () => {
       assert.strictEqual(calc.grades, tillGrades);
