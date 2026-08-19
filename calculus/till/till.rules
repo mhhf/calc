@@ -122,7 +122,14 @@ bang_r3: G ; D |- !_K A
   @invertible false
   @grade K = 0.
 
-% ── graded lax monad: bind + unit (exact delay accounting) ──
+% ── graded lax monad (THY_0018 §4): bind + unit·sub ──
+% The delay grade is an UPPER BOUND ("achievable within E" — the lax@d
+% judgment); gmonad_r fuses lax + sub + {}R: what is true now is achievable
+% within ANY bound (subeffecting — Theorem 1 needs it: operational stamps
+% are the LEAST derivable grades). gmonad_l is {}L: binds compose delays,
+% and the monus keeps the critical path a strict LOWER bound ({A}@4 from
+% {{A}@2}@3 stays refuted). The E >= 0 guard's content on non-numeric
+% grades is the ground fence (ω/metavar grades fail isStamp).
 
 gmonad_l: G ; D, {A}@E |- {C}@F
   <- G ; D, A |- {C}@H
@@ -135,7 +142,7 @@ gmonad_r: G ; D |- {A}@E
   <- G ; D |- A
   @pretty "{}R"
   @invertible false
-  @grade E = 0.
+  @grade E >= 0.
 
 copy: G, A ; D |- C
   <- G, A ; D, A |- C

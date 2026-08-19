@@ -95,7 +95,7 @@ describe('till sequent calculus (graded fragment, Stage 1)', () => {
     refuted('a |-/ !a', ['a'], '!a');
   });
 
-  describe('graded lax monad: bind + unit, exact accounting', () => {
+  describe('graded lax monad: bind + unit·sub (THY_0018 §4 — the grade is a BOUND)', () => {
     provable('{{a}@2}@3 |- {a}@5  (graded-μ)', ['{{a}@2}@3'], '{a}@5');
     provable('a |- {a}  (unit)', ['a'], '{a}');
     provable('{a}@2 |- {a}@2  (identity)', ['{a}@2'], '{a}@2');
@@ -104,12 +104,17 @@ describe('till sequent calculus (graded fragment, Stage 1)', () => {
     provable('{{a}@1/2}@1/2 |- {a}@1  (exact ℚ)', ['{{a}@1/2}@1/2'], '{a}@1');
     provable('!_2 a |- {a * a}  (bang under the monad)', ['!_2 a'], '{a * a}');
     provable('a -o {b}@2, a |- {b}@2', ['a -o {b}@2', 'a'], '{b}@2');
+    // subeffecting: a bound may be weakened (Theorem 1: operational stamps
+    // are the LEAST derivable grades — later bounds must stay derivable)
+    provable('a |- {a}@1  (sub: within 0 ⇒ within 1)', ['a'], '{a}@1');
+    provable('{{a}@2}@3 |- {a}@6  (sub above the critical path)',
+      ['{{a}@2}@3'], '{a}@6');
+    provable('{a}@2 |- {a}@7  (sub)', ['{a}@2'], '{a}@7');
 
-    refuted('{{a}@2}@3 |-/ {a}@4  (too early)', ['{{a}@2}@3'], '{a}@4');
-    refuted('{{a}@2}@3 |-/ {a}@6  (no subeffecting)', ['{{a}@2}@3'], '{a}@6');
-    refuted('a |-/ {a}@1  (unit is grade 0)', ['a'], '{a}@1');
+    refuted('{{a}@2}@3 |-/ {a}@4  (below the critical path)', ['{{a}@2}@3'], '{a}@4');
     refuted('{a}@2 |-/ a  (no escape)', ['{a}@2'], 'a');
     refuted('{a}@2, {b}@3 |-/ {a * b}@4', ['{a}@2', '{b}@3'], '{a * b}@4');
+    refuted('{a}@5 |-/ {a}@3  (no strengthening)', ['{a}@5'], '{a}@3');
   });
 
   describe('grade algebra is shared with the scheduler (D13)', () => {
