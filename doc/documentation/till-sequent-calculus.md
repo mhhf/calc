@@ -1,12 +1,13 @@
-# till sequent calculus (graded fragment)
+# till sequent calculus
 
-Backward provability for till (TODO_0265 Phase 6b Stage 1). Loaded via
+Backward provability for till (TODO_0265 Phase 6b). Loaded via
 `loadTillSequent()` (calculus/till/calculus-config.js): `till.calc` +
 `till.rules`, the graded-syntax parser, and **the same `tillGrades` record
 the timed scheduler reads** — one grade algebra, two faces (D13).
-Sequent-prover level only (`createProver`/`createKernel`); `settle` remains
-the execution semantics. The timed judgment (stamps in the context) is
-Stage 2, gated on THY-A/THY-B.
+Sequent-prover level (`createProver`/`createKernel`); `settle` remains the
+execution semantics and doubles as the proof-search oracle for the timed
+judgment (below). Theory: THY_0018 (the delay-graded lax monad) and
+THY_0019 (timed matching / settle).
 
 ## Rules (till.rules)
 
@@ -21,8 +22,34 @@ Fences: ground grades only (non-numeric grades fail every side condition —
 `!_W` goals are unprovable, not errors); surface `!_0` is the g0 **label**
 (no rules — compile-time grade), count zero is binlit 0 and only arises
 from peeling; `woplus` has no sequent rules (the weight needs a
-probabilistic judgment — THY-A); no modeShift (`gmonad_r` is pure η — the
-settle bridge is Stage 2).
+probabilistic judgment — THY-A).
+
+## The timed judgment (Stage 2)
+
+Context entries may be stamped atoms `at(A,t)` — content-addressed
+(formula, stamp) pairs (D5). Two additions:
+
+- **Retiming** `at_l: G ; D, A@T1 ⊢ A@T2` (guard `T1 <= T2`) — a
+  zero-premise template axiom: delaying availability is free, never early
+  (THY_0018 §5). No ambient rule: an unstamped context atom does not
+  retime (`a ⊬ a@3`); the bridge canonicalizes `A@0 ≡ A` at the state
+  boundary instead.
+- **The settle bridge** `gmonad_r2` (`@modeShift true`): for a sequent
+  `Δ ⊢ {S}@T` with a settle-capable `opts.engineCalc`, the succedent
+  monad grade is read as the **observation horizon** (THY_0018 §5, n=0
+  boundary) — `settle(Δ, T)`, then exact `rightFocus` of `S` against the
+  residual timed multiset, with `A@0 ≡ A` canonicalized on both sides.
+  Each firing is one `@fire` instance, so bridge success witnesses
+  settle-reachability (the adequacy direction); refutation is
+  underivability. Verify-only: the evidence is the settle event trace
+  (guided terms for timed traces = recorded residue). Tried after the
+  backward unit `gmonad_r`; without an engine it is simply inapplicable.
+
+Adequacy tests (`tests/till-adequacy.test.js`) wrap the executable specs'
+`#expect` gate hashes as sequents and witness THY_0018 Thm 5 (in-flight
+atomicity as underivability) and Thm 3 (fission ≡ fusion) at the judgment
+level. Counted bangs in bridge succedents are unsupported (rightFocus's
+exponential case is ω-shaped — recorded residue).
 
 ## Template rules (.rules DSL extension)
 

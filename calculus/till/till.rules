@@ -144,6 +144,24 @@ gmonad_r: G ; D |- {A}@E
   @invertible false
   @grade E >= 0.
 
+% The settle bridge (Stage 2, D6): {S}@T with T read as the observation
+% horizon — settle(Δ, T) then exact rightFocus of S against the residual
+% timed multiset (each firing = one @fire instance, THY_0018 §5). Tried
+% after the backward unit; inapplicable without an engineCalc.
+gmonad_r2: G ; D |- {A}@E
+  @pretty "{}settle"
+  @invertible false
+  @modeShift true.
+
+% ── stamped atoms (THY_0018 §5): retiming, as a stamp-aware axiom ──
+% A@t ⊢ A@t' for t ≤ t' — delaying availability is free; never early.
+% Zero premises: a template axiom (consumes only its principal).
+at_l: G ; D, A@T1 |- A@T2
+  @side l
+  @pretty "≤@"
+  @invertible false
+  @grade T1 <= T2.
+
 copy: G, A ; D |- C
   <- G, A ; D, A |- C
   @pretty "Copy"
