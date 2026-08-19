@@ -78,7 +78,11 @@ calc.settleExplore(state, T)     // → { tree, leaves } — branch ONLY on genu
                                  //   antecedent — ample-set condition, round 13);
                                  //   covers all chooser-reachable outcomes;
                                  //   woplus forks weighted; leaves = { state,
-                                 //   weight: [num, den], next? }
+                                 //   weight: [num, den], next? }. Leaves are
+                                 //   PATH-indexed, not outcome-unique: two
+                                 //   orderings converging on one state yield
+                                 //   two identical leaves (dedup/subtree memo
+                                 //   = Phase 7)
 calc.observable(state, T)        // stamp ≤ T slice: { innerHash: count }
 calc.pending(state, T)           // future facts [{fact, stamp, count, remaining}]
 calc.inFlight(events, T)         // running jobs [{rule, activation, done, remaining}]

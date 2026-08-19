@@ -16,6 +16,17 @@ THY_0019 (timed matching / settle).
 | multiplicatives, `with` | ill.rules verbatim | shared core |
 | ω bang `!A` | `bang_r/l/l2` = promotion/dereliction/absorption, **template-matched** | the ω grade is part of the pattern — never fires on `!_k` |
 | counted bang `!_k A` | `bang_l3/l4` (peel/weaken), `bang_r2/r3` (peel/zero) | `!_k A ≡ A ⊗ … ⊗ A` (k parcels, SELL/BLL) |
+
+**Lemma (counted-bang completeness).** The four rules are complete for
+`!_k A ≡ A^⊗k`: every sequent provable when `!_k A` is read as `A ⊗ … ⊗ A`
+is provable with the four rules, and conversely. *Proof sketch,* by induction
+on k. Left: k = 0 is `bang_l4` (weaken away = eliminating an empty tensor);
+k = n+1 peels one copy by `bang_l3` and applies the IH to `!_n A` — the peeled
+sequence reproduces exactly the n-fold `tensor_l` decomposition. Right: k = 0
+is `bang_r3` (as `⊢ 1`, lazily — no empty-context requirement, so it threads
+mid-chain); k = n+1 is `bang_r2` (as `tensor_r` splitting one copy off) + IH.
+Both directions of the split/merge iso `!_{a+b} A ⊣⊢ !_a A ⊗ !_b A` follow;
+the provability grid witnesses the instances. ∎(sketch)
 | graded monad `{A}@d` | `gmonad_l` (bind, `H := F − E` monus), `gmonad_r` (unit·sub, `E ≥ 0`) | THY_0018 §4: the grade is an upper BOUND — graded-μ `{{A}@d}@e ⊢ {A}@(d+e)` and subeffecting `{A}@d ⊢ {A}@e` (d ≤ e) derivable; the critical path is a strict lower bound (`{A}@4` from `{{A}@2}@3` refuted) |
 
 Fences: ground grades only (non-numeric grades fail every side condition —
@@ -39,11 +50,18 @@ Context entries may be stamped atoms `at(A,t)` — content-addressed
   monad grade is read as the **observation horizon** (THY_0018 §5, n=0
   boundary) — `settle(Δ, T)`, then exact `rightFocus` of `S` against the
   residual timed multiset, with `A@0 ≡ A` canonicalized on both sides.
-  Each firing is one `@fire` instance, so bridge success witnesses
-  settle-reachability (the adequacy direction); refutation is
-  underivability. Verify-only: the evidence is the settle event trace
-  (guided terms for timed traces = recorded residue). Tried after the
-  backward unit `gmonad_r`; without an engine it is simply inapplicable.
+  **Soundness, stated precisely (THY_0018 §5 bridge-soundness theorem):**
+  each firing is one `@fire` instance, so bridge success implies both
+  settle-reachability AND derivability — the bridge is a sound oracle.
+  It is NOT complete for derivability, and derivability does not imply
+  settle-reachability: `gmonad_r` (subeffecting) proves `a ⊢ {a}@d` for
+  any `d ≥ 0` with no forward step. A `prove` failure refutes the sequent
+  because BOTH paths (pure backward and bridge) are searched; a bridge
+  failure alone refutes only the bridge route. Verify-only: the evidence
+  is the settle event trace (guided terms for timed traces = recorded
+  residue); the kernel accepts the bridge step structurally and reports
+  it in `unverified` (see the contract below). Tried after the backward
+  unit `gmonad_r`; without an engine it is simply inapplicable.
 
 Adequacy tests (`tests/till-adequacy.test.js`) wrap the executable specs'
 `#expect` gate hashes as sequents and witness THY_0018 Thm 5 (in-flight
