@@ -17,6 +17,7 @@
 import { describe, it, before } from 'node:test';
 import assert from 'node:assert/strict';
 import Store from '../../lib/kernel/store.js';
+import { gradeW } from '../../lib/engine/grades.js';
 import { FIX, loadTill as load, atom, stamped, stampedStr } from './till-helpers.js';
 
 const menuKey = (state) => Number(Object.keys(state.linear).find(h => {
@@ -79,6 +80,43 @@ describe('till external choice — offer and collapse (Phase 6)', () => {
     const before = stampedStr(offered.state);
     calc.choose(offered.state, menuKey(offered.state), 1);
     assert.equal(stampedStr(offered.state), before);
+  });
+
+  // ── Standing menus: !(A & B) in the persistent zone ────────────────
+  // Seely: !(A & B) ≅ !A ⊗ !B — a persistent menu is an UNLIMITED supply
+  // of its alternatives. choose projects WITHOUT consuming: any
+  // alternative, any number of times, at any moment. Sub-menus are
+  // bang-wrapped alternatives — projecting one ADDS the sub-menu to the
+  // persistent zone (click-through navigation / menu unlocking).
+
+  const standingMenu = () =>
+    Store.put('with', [atom('act_a'), Store.put('with', [atom('act_b'), atom('act_c')])]);
+  const standingState = () => ({ linear: {}, persistent: { [standingMenu()]: true } });
+
+  it('standing menu: projection does not consume — repeat clicks work', () => {
+    let s = calc.choose(standingState(), standingMenu(), 0, { at: '2' });
+    s = calc.choose(s, standingMenu(), 0, { at: '2' });     // click build farm again
+    s = calc.choose(s, standingMenu(), 1, { at: '2' });     // then right away act_b
+    assert.equal(stampedStr(s), 'act_a@2x2,act_b@2x1');
+    assert.ok(s.persistent[standingMenu()], 'menu still standing');
+    assert.equal(stampedStr(calc.settle(s, '10').state), 'done_a@2x2,done_b@2x1');
+  });
+
+  it('standing menu: default stamp is the unit; at sets the decision time', () => {
+    const s = calc.choose(standingState(), standingMenu(), 2);
+    assert.equal(stampedStr(s), 'act_c@0x1');
+  });
+
+  it('sub-menu alternative (!(…)) lands in the persistent zone — click-through', () => {
+    const sub = Store.put('with', [atom('act_b'), atom('act_c')]);
+    const main = Store.put('with', [atom('act_a'), Store.put('bang', [gradeW(), sub])]);
+    const s0 = { linear: {}, persistent: { [main]: true } };
+    const s1 = calc.choose(s0, main, 1, { at: '3' });        // open the sub-menu
+    assert.ok(s1.persistent[sub], 'sub-menu now visible');
+    assert.ok(s1.persistent[main], 'main menu still standing');
+    assert.equal(stampedStr(s1), '');                        // nothing linear yet
+    const s2 = calc.choose(s1, sub, 0, { at: '4' });         // choose inside it
+    assert.equal(stampedStr(s2), 'act_b@4x1');
   });
 
   it('loud errors: bad index, absent fact, non-menu fact', () => {
