@@ -14,6 +14,8 @@
  * prelude arrives via each file's #import of prelude/rat.ill).
  *
  * Usage: node --test --test-concurrency=1 tools/test-till.js
+ *   CALC_NOFFI=1 forces useFFI:false on every dispatch (npm run
+ *   test:noffi:till) — the FFI-principle gate over ALL till specs.
  */
 
 import { describe, it } from 'node:test';
@@ -27,6 +29,7 @@ import dl from './directive-loader.js';
 const { ROOT, findIllFiles, scanDirectives, detectDuplicates, parseModality, extractGoals, buildProveOpts, show } = dl;
 const TEST_DIR = path.join(import.meta.dirname, '..', 'calculus', 'till', 'tests');
 const MAX_STEPS = 10000;
+const NOFFI = process.env.CALC_NOFFI === '1';
 
 function formatTimedState(state) {
   const facts = Object.entries(state.linear).map(([h, c]) => show(Number(h)) + (c > 1 ? ` x${c}` : ''));
@@ -41,6 +44,7 @@ function dispatchSettle(calc, entry, modality, settings) {
   if (settings.rules) opts.rules = settings.rules;
   if (settings.useFFI !== undefined) opts.useFFI = settings.useFFI === 'true';
   if (settings.seed !== undefined) opts.seed = parseInt(settings.seed, 10);
+  if (NOFFI) opts.useFFI = false;
   const res = calc.settle(initial, settings.settle, opts);
   const matches = timedSubset(pattern, res.state);
   if (modality === 'not') {
@@ -55,6 +59,7 @@ function dispatchBackward(calc, entry, modality, settings) {
   const goals = extractGoals(entry.rhsHash);
   assert.ok(goals.length > 0, 'No goals found in |- directive');
   const proveOpts = buildProveOpts(settings);
+  if (NOFFI) proveOpts.useFFI = false;
   const allSuccess = goals.map(g => calc.prove(g, proveOpts)).every(r => r.success);
   if (modality === 'not') {
     assert.ok(!allSuccess, `Expected NOT provable but succeeded: ${goals.map(g => show(g)).join(', ')}`);

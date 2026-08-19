@@ -98,6 +98,30 @@ describe('woplus exec — PRF branch sampling (D17)', () => {
     assert.deepEqual([...outcomes].sort(), ['rock', 'sci']);
   });
 
+  it('PRF golden pins: exact alt sequence per seed (round-13 residue i)', () => {
+    // Concrete-draw pins (see till-settle PRF pins): a PRF-internals or
+    // store-hashing change re-samples these — verify intent, then re-pin.
+    // NOTE: the PRF mixes state.stateHash, which is arena-layout dependent —
+    // these values are stable for THIS file's load order, not across files.
+    // Adding tests above this one may shift them; re-pin deliberately.
+    // node-only: bun's module evaluation interns in a different order.
+    if (typeof Bun !== 'undefined') return;
+    assert.deepEqual(calc.settle(duel(2, 2), '0', { seed: 4 }).events.map(e => e.alt), [0, 1, 1]);
+    assert.deepEqual(calc.settle(duel(2, 2), '0', { seed: 10 }).events.map(e => e.alt), [1, 1]);
+  });
+
+  it('sampler frequency matches the declared weight (chi-square-lite, residue ii)', () => {
+    // 2000 seeds on the 1v1 duel: P(rock survives) = 3/4. The draw is a
+    // 32-bit floor-discretized PRF (bias < 2⁻³², documented in till.md);
+    // tolerance is 3σ = 3·√(p(1−p)/n) ≈ 0.029.
+    let rock = 0;
+    const n = 2000;
+    for (let seed = 0; seed < n; seed++) {
+      if (bag(calc.settle(duel(1, 1), '0', { seed }).state).rock) rock++;
+    }
+    assert.ok(Math.abs(rock / n - 0.75) < 0.03, `rock frequency ${rock / n} not within 3σ of 3/4`);
+  });
+
   it('branch draws are horizon-split invariant (delayed duel)', () => {
     const S = { linear: { [atom('rockd')]: 2, [atom('scid')]: 2 }, persistent: {} };
     for (const seed of [1, 5, 9]) {

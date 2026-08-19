@@ -1,0 +1,8 @@
+% till read-starvation fixture (E7.2, round-13 testing residue iv): one
+% token t, a reader and a consumer tied at the same activation. The consumer
+% would starve the read of its last copy, so the order is observable and
+% explore must branch: take-first kills look ({gone, probe}), look-first
+% preserves t for take ({seen, gone}).
+
+look: read t * probe -o { seen }.
+take: t -o { gone }.

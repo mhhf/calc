@@ -1,0 +1,8 @@
+% till fused ≡ fissioned fixture (E7.3, round-13 testing residue v): a
+% single delayed step {b}@5 versus an explicit intermediate with 2+3 on
+% disjoint atoms. The E7.3 theorem: both settle to the SAME final stamp.
+
+fused: a -o { b }@5.
+
+fiss1: a2 -o { m }@2.
+fiss2: m -o { b2 }@3.

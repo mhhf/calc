@@ -22,8 +22,11 @@ export BUN
 results=$(mktemp)
 trap 'rm -f "$results"' EXIT
 
+# --timeout 30000: bun's default 5s per-test timeout flakes on perf-heavy
+# tests (vmPerformance/fibonacci16 ~9.5s under machine load, round-13 note);
+# node --test has no such default, so this only aligns the runners.
 echo "$FILES" | xargs -P "$PARALLEL" -I {} bash -c '
-  out=$("$BUN" test "$1" 2>&1)
+  out=$("$BUN" test --timeout 30000 "$1" 2>&1)
   if echo "$out" | tail -3 | grep -q " 0 fail"; then
     echo "OK $1"
   else
