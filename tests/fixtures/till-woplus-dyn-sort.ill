@@ -1,3 +1,7 @@
+% tokens (closed-world sort checking)
+b: type.
+c: type.
+
 % Negative fire-time fixture: the weight variable binds an ATOM (ill-sorted).
 % Compiles fine (boundness holds); settle must fail loudly at firing.
 

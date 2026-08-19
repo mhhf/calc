@@ -1,3 +1,14 @@
+#import(../../calculus/till/prelude/rat.ill)
+
+% tokens (closed-world sort checking)
+src: type.
+act_a: type.
+re: type.
+act_b: type.
+storm: type.
+done_a: type.
+done_b: type.
+
 % Revocable menus (Phase 6): the offer forms on one axis —
 %   persistent !(A & B)     standing, irrevocable (progression / unlocking)
 %   linear A & B            one-shot: projection consumes; RULES can consume

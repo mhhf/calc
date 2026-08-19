@@ -1,3 +1,10 @@
+% tokens (closed-world sort checking)
+a: type.
+b: type.
+a2: type.
+m: type.
+b2: type.
+
 % till fused ≡ fissioned fixture (E7.3, round-13 testing residue v): a
 % single delayed step {b}@5 versus an explicit intermediate with 2+3 on
 % disjoint atoms. The E7.3 theorem: both settle to the SAME final stamp.

@@ -53,6 +53,7 @@ function genProgram(idx) {
   const atoms = ATOMS.slice(0, nAtoms);
   const nRules = 2 + randInt(3);                 // 2-4 rules
   const lines = [`% till-fuzz generated program #${idx} (master seed ${MASTER_SEED})`];
+  for (const a of atoms) lines.push(`${a}: type.`);   // closed-world: declare every token
   for (let i = 0; i < nRules; i++) {
     const kind = pick(['plain', 'plain', 'pair', 'read', 'count', 'woplus', 'mkloli', 'mkloli']);
     const delay = pick(DELAYS);

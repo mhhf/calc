@@ -152,6 +152,10 @@ const tillCalculusConfig = {
 
   // ── L1: Structural ───────────────────────────────────────────
   connectives: TILL_CONNECTIVES,
+  // Closed-world sort checking: undeclared symbols in rules/clauses FAIL
+  // the load (Phase 6 post-mortem — the open-world checker let every typo
+  // self-introduce a resource).
+  typeCheck: 'strict',
   theories: [binlitTheory, ratlitTheory],
   gradeUnit: tillGradeUnit,
 

@@ -34,13 +34,13 @@
  */
 
 import path from 'path';
+import fs from 'fs';
 import mde from '../lib/engine/index.js';
 import convert from '../lib/engine/convert.js';
 import tillConfig from '../calculus/till/calculus-config.js';
 import Store from '../lib/kernel/store.js';
 import { show } from '../lib/engine/show.js';
 import { ratParts } from '../lib/engine/theories/ratlit-theory.js';
-import { apply } from '../lib/kernel/substitute.js';
 
 // ─── args ───────────────────────────────────────────────────────────
 
@@ -76,24 +76,19 @@ const horizonOf = (gameSecs) => `${Math.max(0, Math.floor(gameSecs * 1000))}/100
 const innerOf = (h) => (Store.tag(h) === 'at' ? Store.child(h, 0) : h);
 const stampOf = (h) => (Store.tag(h) === 'at' ? secs(Store.child(h, 1)) : 0);
 
-// ─── kinds: the program's own `kind X K` propositions ───────────────
-
-const _kindCache = new Map();
-function kindOf(name) {
-  if (_kindCache.has(name)) return _kindCache.get(name);
-  let k = null;
-  try {
-    const mv = Store.put('metavar', ['K$shell']);
-    const res = calc.prove(Store.put('kind', [Store.put('atom', [name]), mv]));
-    if (res.success) {
-      let v = mv;
-      for (let i = 0; i < 50; i++) { const n = apply(v, res.theta); if (n === v) break; v = n; }
-      if (Store.tag(v) === 'atom') k = Store.child(v, 0);
-    }
-  } catch { /* no kind predicate in this program */ }
-  _kindCache.set(name, k);
-  return k;
+// ─── display kinds: %#display directives (presentation metadata) ────
+// Classifying atomic propositions IN-LOGIC needs quantification over
+// propositions, which the theory rejects (closed-world checker). Until the
+// classifier-sort extension lands, grouping is explicit presentation:
+//   %#display resource: wood stone food …
+const _displayKinds = new Map();   // token name -> kind
+{
+  const src = (() => { try { return fs.readFileSync(path.resolve(file), 'utf8'); } catch { return ''; } })();
+  for (const m of src.matchAll(/^%#display\s+(\w+)\s*:\s*(.+)$/gm)) {
+    for (const n of m[2].trim().split(/\s+/)) _displayKinds.set(n, m[1]);
+  }
 }
+const kindOf = (name) => _displayKinds.get(name) || null;
 
 // display name of a fact's head (atom name or predicate tag)
 const nameOf = (h) => {
@@ -122,15 +117,19 @@ for (const r of calc.forwardRules) {
 (function walk(h) {
   const t = Store.tag(h);
   if (!t) return;
-  if (t === 'with' || t === 'loli' || t === 'tensor' || t === 'gmonad' ||
-      t === 'bang' || t === 'at' || t === 'woplus') {
-    for (let i = 0; i < Store.arity(h); i++) {
+  // structural wrappers: recurse into BODY positions only (grades, stamps
+  // and weights are not tokens)
+  const bodies = { bang: [1], at: [0], gmonad: [1], woplus: [1, 2] }[t]
+    || (t === 'with' || t === 'loli' || t === 'tensor'
+      ? [...Array(Store.arity(h)).keys()] : null);
+  if (bodies) {
+    for (const i of bodies) {
       const c = Store.child(h, i);
       if (typeof c === 'number' && Store.isTerm(c)) walk(c);
     }
     return;
   }
-  if (t === 'atom' || t >= '') learn(nameOf(h));
+  learn(nameOf(h));
 })(entry.lhsHash);
 
 // ─── frame rendering ────────────────────────────────────────────────

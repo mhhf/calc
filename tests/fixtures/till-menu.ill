@@ -1,3 +1,12 @@
+% tokens (closed-world sort checking)
+player: type.
+act_a: type.
+act_b: type.
+act_c: type.
+done_a: type.
+done_b: type.
+done_c: type.
+
 % External-choice menus (Phase 6): a rule OFFERS `A & B & …` as one inert
 % fact; the host collapses it via choose() (with-projection). The bundle
 % alternative (a tensor) checks consequent-style decomposition.

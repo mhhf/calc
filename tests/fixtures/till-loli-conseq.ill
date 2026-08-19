@@ -1,3 +1,8 @@
+% tokens (closed-world sort checking)
+a: type.
+b: type.
+c: type.
+
 % Dynamic rule (loli) in a timed consequent — a POSSESSED RULE from
 % Phase 6c on (the v1 fire-time rejection is lifted): `a` births the rule
 % (b -o c), which then fires like any rule, one-shot.

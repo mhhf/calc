@@ -1,5 +1,10 @@
 #import(../../prelude/rat.ill)
 
+% tokens (closed-world sort checking: every symbol is declared)
+sawmill: type.
+wood: type.
+plank: type.
+
 % schedule.ill — till executable spec: basic timed scheduling (todo 0265, Phase 5).
 %
 % STATUS: written ahead of the engine (TDD). Runs under tools/test-till.js once
