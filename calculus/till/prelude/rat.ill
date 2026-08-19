@@ -64,20 +64,24 @@ gcd/s: gcd X Y G
 qnorm: (num: bin) -> (den: bin) -> (r: bin) -> type.
 % den = 1 shortcut: N/1 is already canonical — skips Euclid entirely, which
 % matters in clause mode where div/mod resolve via repeated subtraction
-% (depth linear in the quotient). Overlaps qnorm/int on den = 1; both derive
+% (depth linear in the quotient). Overlaps qnorm/z on den = 1; both derive
 % the same R (confluent).
 qnorm/one: qnorm N (i e) N.
-qnorm/int: qnorm N D R
-  <- neq D e
-  <- gcd N D G
-  <- div D G (i e)
-  <- div N G R.
-qnorm/frac: qnorm N D (rat N' D')
+% One derivation: reduce once, then pack by the residual denominator —
+% the earlier int/frac clause pair re-derived gcd + div on backtracking
+% (round-14.5: the heavy prefix now runs exactly once).
+qnorm/z: qnorm N D R
   <- neq D e
   <- gcd N D G
   <- div D G D'
-  <- neq D' (i e)
-  <- div N G N'.
+  <- div N G N'
+  <- qpack N' D' R.
+
+% qpack N D R — attach the canonical denominator: 1 collapses to the bin.
+qpack: (num: bin) -> (den: bin) -> (r: bin) -> type.
+qpack/int: qpack N (i e) N.
+qpack/frac: qpack N D (rat N D)
+  <- neq D (i e).
 
 % to_q X Q — coerce bin or rat to rat form (n |-> n/1).
 to_q: (x: bin) -> (r: bin) -> type.

@@ -6,7 +6,8 @@
  * directives in calculus/till/tests/**.ill and dispatches:
  *   =>  with a `settle: T` setting — calc.settle(initial, T), then a TIMED
  *       subset check (unstamped pattern facts are stamp wildcards, stamped
- *       facts match their exact cohort — Matching spec / D11);
+ *       facts match their exact cohort — Matching spec / D11); add
+ *       `exact: true` to demand an exact cover (extra facts fail);
  *   |-  backward entailment via calc.prove (numeric prelude clauses).
  *
  * Each spec file loads as its OWN program (rules are file-local — scenario
@@ -24,7 +25,7 @@ import path from 'path';
 import mde from '../lib/engine/index.js';
 import convert from '../lib/engine/convert.js';
 import tillConfig from '../calculus/till/calculus-config.js';
-import { timedSubset } from '../lib/engine/timed.js';
+import { timedSubset, timedExact } from '../lib/engine/timed.js';
 import dl from './directive-loader.js';
 const { ROOT, findIllFiles, scanDirectives, detectDuplicates, parseModality, extractGoals, buildProveOpts, show } = dl;
 const TEST_DIR = path.join(import.meta.dirname, '..', 'calculus', 'till', 'tests');
@@ -46,11 +47,15 @@ function dispatchSettle(calc, entry, modality, settings) {
   if (settings.seed !== undefined) opts.seed = parseInt(settings.seed, 10);
   if (NOFFI) opts.useFFI = false;
   const res = calc.settle(initial, settings.settle, opts);
-  const matches = timedSubset(pattern, res.state);
+  // (exact: true) demands an exact cover of the linear zone — extra facts
+  // fail, unlike the default subset check (unstamped pattern facts stay
+  // stamp wildcards in both modes).
+  const check = settings.exact === 'true' ? timedExact : timedSubset;
+  const matches = check(pattern, res.state);
   if (modality === 'not') {
     assert.ok(!matches, `Pattern should NOT be reachable.\n${formatTimedState(res.state)}`);
   } else {
-    assert.ok(matches, `Pattern not found in settled state.\n${formatTimedState(res.state)}`);
+    assert.ok(matches, `Pattern not ${settings.exact === 'true' ? 'an exact cover of' : 'found in'} settled state.\n${formatTimedState(res.state)}`);
   }
 }
 
