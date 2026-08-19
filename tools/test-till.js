@@ -17,6 +17,10 @@
  * Usage: node --test --test-concurrency=1 tools/test-till.js
  *   CALC_NOFFI=1 forces useFFI:false on every dispatch (npm run
  *   test:noffi:till) — the FFI-principle gate over ALL till specs.
+ *   CALC_TILL_DIR=<dir> points the runner at an EXTERNAL spec tree
+ *   (.ill/.till files with #expect directives) instead of
+ *   calculus/till/tests — e.g. the PP2 sandbox (Phase 6):
+ *     CALC_TILL_DIR=~/src/game npm run test:till
  */
 
 import { describe, it } from 'node:test';
@@ -28,7 +32,9 @@ import tillConfig from '../calculus/till/calculus-config.js';
 import { timedSubset, timedExact } from '../lib/engine/timed.js';
 import dl from './directive-loader.js';
 const { ROOT, findIllFiles, scanDirectives, detectDuplicates, parseModality, extractGoals, buildProveOpts, show } = dl;
-const TEST_DIR = path.join(import.meta.dirname, '..', 'calculus', 'till', 'tests');
+const TEST_DIR = process.env.CALC_TILL_DIR
+  ? path.resolve(process.env.CALC_TILL_DIR)
+  : path.join(import.meta.dirname, '..', 'calculus', 'till', 'tests');
 const MAX_STEPS = 10000;
 const NOFFI = process.env.CALC_NOFFI === '1';
 

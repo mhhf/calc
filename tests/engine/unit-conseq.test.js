@@ -37,6 +37,16 @@ describe('unit consequent — timed engine', () => {
   });
 });
 
+describe('unit in queries — decomposeQuery', () => {
+  it('I decomposes to the empty multiset (empty exact-cover patterns)', async () => {
+    const { default: convert } = await import('../../lib/engine/convert.js');
+    const Store = (await import('../../lib/kernel/store.js')).default;
+    const q = convert.decomposeQuery(Store.put('one', []));
+    assert.deepEqual(q.linear, {});
+    assert.deepEqual(q.persistent, {});
+  });
+});
+
 describe('unit consequent — untimed engine', () => {
   it('A -o { I } discards without leaking a unit fact', () => {
     const calc = mde.load(FIX('till-unit-conseq.ill'), { cache: false });
