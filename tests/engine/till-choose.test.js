@@ -18,7 +18,7 @@ import { describe, it, before } from 'node:test';
 import assert from 'node:assert/strict';
 import Store from '../../lib/kernel/store.js';
 import { gradeW } from '../../lib/engine/grades.js';
-import { FIX, loadTill as load, atom, stamped, stampedStr } from './till-helpers.js';
+import { FIX, loadTill as load, initQuery as init, atom, stamped, stampedStr } from './till-helpers.js';
 
 const menuKey = (state) => Number(Object.keys(state.linear).find(h => {
   let x = Number(h);
@@ -232,44 +232,45 @@ describe('menuStatus — per-alternative availability at a horizon', () => {
   });
 });
 
-// ─── now-marked alternatives: strict buttons (till-menu-status.ill) ───
+// ─── Costed lolis in menus: cut vs plan clicks (Phase 6c) ─────────────
 
-describe('now(…) — strict synchronous alternatives', () => {
-  let calc, menu;
+describe('costed-loli alternatives — cut (strict) vs plan (residuate)', () => {
+  let calc, loli, menu;
   before(() => {
-    calc = load(FIX('till-menu-status.ill'));
-    // [ now(actf) strict button, actg plan ]
-    menu = Store.put('with', [Store.put('now', [atom('actf')]), atom('actg')]);
+    calc = load(FIX('till-loli-timed.ill'));
+    // the costed rule from expect_basic's LHS: (!_2 spc -o { farmz }@3)
+    loli = Number(Object.keys(init(calc, 'expect_basic').linear)
+      .find(h => Store.tag(Number(h)) === 'loli'));
+    menu = Store.put('with', [loli, atom('actg')]);
   });
   const St = (linear = {}) => ({ linear, persistent: { [menu]: true } });
 
-  it('without resources the strict click is REFUSED — state unchanged', () => {
+  it('cut (default): refused without the cost — state unchanged', () => {
     assert.throws(() => calc.choose(St(), menu, 0, { at: '0' }),
-      /now-marked and cannot fire/);
+      /cannot fire at the decision time/);
   });
 
-  it('with resources the strict click projects and fires', () => {
-    const s = calc.choose(St({ [atom('spc')]: 2 }), menu, 0, { at: '0' });
-    assert.equal(stamped(s)['actf@0'], 1);
-    assert.equal(stampedStr(calc.settle(s, '10').state), 'farmx@3x1');
+  it('cut with the cost in stock: the possessed rule enters and fires', () => {
+    const s = calc.choose(St({ [atom('spc')]: 2 }), menu, 0, { at: '1' });
+    assert.equal(stampedStr(calc.settle(s, '10').state), 'farmz@4x1');
   });
 
-  it('resources arriving later: refused before their stamp, allowed after', () => {
-    const r = calc.settle({ linear: { [atom('junk')]: 1 }, persistent: { [menu]: true } }, '2');
-    assert.throws(() => calc.choose(r.state, menu, 0, { at: '1' }), /cannot fire/);
-    const s = calc.choose(r.state, menu, 0, { at: '2' });
-    assert.equal(stampedStr(calc.settle(s, '10').state), 'farmx@5x1');
+  it('plan: true residuates — the order waits for its resources', () => {
+    const s = calc.choose(St({ [atom('junk')]: 1 }), menu, 0, { at: '0', plan: true });
+    // supply delivers spc at 2; the queued possessed rule fires then
+    assert.equal(stampedStr(calc.settle(s, '10').state), 'farmz@5x1');
   });
 
-  it('plan alternatives stay projectable regardless (the act waits)', () => {
+  it('menuStatus: loli leaves are strict; enablement tracks the cost', () => {
+    assert.deepEqual(calc.menuStatus(St(), menu, '0').map(a => [a.strict, a.enabled]),
+      [[true, false], [false, false]]);
+    assert.deepEqual(
+      calc.menuStatus(St({ [atom('spc')]: 2 }), menu, '0').map(a => [a.strict, a.enabled]),
+      [[true, true], [false, false]]);
+  });
+
+  it('non-loli alternatives stay unconditional', () => {
     const s = calc.choose(St(), menu, 1, { at: '0' });
     assert.equal(stamped(s)['actg@0'], 1);
-  });
-
-  it('menuStatus reports strictness alongside enablement', () => {
-    const alts = calc.menuStatus(St(), menu, '0');
-    assert.deepEqual(alts.map(a => [a.strict, a.enabled]), [[true, false], [false, false]]);
-    const alts2 = calc.menuStatus(St({ [atom('spc')]: 2 }), menu, '0');
-    assert.deepEqual(alts2.map(a => [a.strict, a.enabled]), [[true, true], [false, false]]);
   });
 });

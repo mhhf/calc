@@ -1,2 +1,4 @@
-% Dynamic rule (loli) in a timed consequent — till v1 rejects at fire time.
+% Dynamic rule (loli) in a timed consequent — a POSSESSED RULE from
+% Phase 6c on (the v1 fire-time rejection is lifted): `a` births the rule
+% (b -o c), which then fires like any rule, one-shot.
 bad: a -o { b -o c }.
