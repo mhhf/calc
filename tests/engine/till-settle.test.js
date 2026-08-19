@@ -324,3 +324,76 @@ describe('till grade algebra unit checks', () => {
     assert.throws(() => p(0.7), /non-integer Number/);
   });
 });
+
+describe('till settleExplore — instant-feeding completeness (round 13)', () => {
+  const atom = (n) => Store.put('atom', [n]);
+  /** Canonical bag of unstamped inner atoms, as a sorted-entry string. */
+  const bag = (state) => {
+    const out = {};
+    for (const [hStr, c] of Object.entries(state.linear)) {
+      let h = Number(hStr);
+      if (Store.tag(h) === 'at') h = Store.child(h, 0);
+      const k = Store.tag(h) === 'atom' ? Store.child(h, 0) : Store.tag(h);
+      out[k] = (out[k] || 0) + c;
+    }
+    return Object.entries(out).sort().map(([k, v]) => `${k}x${v}`).join(',');
+  };
+  /** Every exec outcome across seeds must be an explore leaf (containment). */
+  const containment = (calc, S, expectDistinct) => {
+    const execBags = new Set();
+    for (let seed = 0; seed < 40; seed++) execBags.add(bag(calc.settle(S, '0', { seed }).state));
+    const leafBags = new Set(calc.settleExplore(S, '0').leaves.map(l => bag(l.state)));
+    assert.equal(execBags.size, expectDistinct, 'exec reaches both worlds across seeds');
+    for (const b of execBags) assert.ok(leafBags.has(b), `exec outcome ${b} missing from explore`);
+  };
+
+  it('plain arcs: zero-delay production enabling a competitor forks (ample set)', () => {
+    // make: a -o {b}.  eat: c -o {d}.  use: b * c -o {prize}.
+    // {make, eat} share no cohort, but make's instant b enables use vs eat.
+    const calc = load(FIX('till-instant-enable.ill'));
+    containment(calc, { linear: { [atom('a')]: 1, [atom('c')]: 1 }, persistent: {} }, 2);
+  });
+
+  it('transfer arcs: zero-delay production into a !_W cohort forks (W is order-sensitive)', () => {
+    // grow: seed -o {wood}.  mill: !_W wood * !mul W W S -o {!_S plank}.
+    // mill-first: 2²+1² = 5 planks; grow-first: 3² = 9 planks.
+    const calc = load(FIX('till-instant-transfer.ill'));
+    containment(calc, { linear: { [atom('seed')]: 1, [atom('wood')]: 2 }, persistent: {} }, 2);
+  });
+
+  it('future-delay production does not fork (outputs cannot join the instant)', () => {
+    // chopbuild: chop produces wood@+4 — no same-instant enablement anywhere,
+    // and every activation instant has a single candidate: exactly one leaf.
+    const calc = load(path.join(import.meta.dirname, '../../calculus/till/tests/debug/chopbuild.ill'));
+    const S = convert.decomposeQuery(calc.queries.get('run'));
+    assert.equal(calc.settleExplore(S, '10').leaves.length, 1);
+  });
+});
+
+describe('till error contracts (round 13 pins)', () => {
+  it('rejects woplus in antecedents — bare and at-wrapped', () => {
+    assert.throws(() => load(FIX('till-woplus-ante.ill')), /not allowed in antecedents/);
+    assert.throws(() => load(FIX('till-woplus-ante-at.ill')), /not allowed in antecedents/);
+  });
+
+  it('rejects wrong-arity woplus (application parse admits any arity)', () => {
+    assert.throws(() => load(FIX('till-woplus-arity.ill')), /woplus requires exactly 3 arguments/);
+  });
+
+  it('rejects nested graded monads in consequents (no runtime graded-μ)', () => {
+    assert.throws(() => load(FIX('till-nested-gmonad.ill')), /nested graded monad/);
+  });
+
+  it('rejects dynamic rules (lolis) in timed consequents at fire time', () => {
+    const calc = load(FIX('till-loli-conseq.ill'));
+    const S = { linear: { [Store.put('atom', ['a'])]: 1 }, persistent: {} };
+    assert.throws(() => calc.settle(S, '0'), /lolis.*not supported/);
+  });
+
+  it('parseStamp rejects negative stamps (ℚ≥0 in v1)', () => {
+    const p = tillGrades.parseStamp;
+    assert.throws(() => p('-1'), /non-negative/);
+    assert.throws(() => p('-1/2'), /non-negative/);
+    assert.throws(() => p(-3), /non-negative/);
+  });
+});
