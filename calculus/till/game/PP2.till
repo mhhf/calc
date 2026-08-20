@@ -1,0 +1,44 @@
+#import(../prelude/rat.ill)
+
+% PP2 — the till settlement demo (TODO_0011 rung 1 acceptance).
+%
+% Everything the shell displays is knowledge in the logic:
+%   - tokens are classified by CLASSIFIER SORTS (`wood: resource.`) — the
+%     shell groups stock rows by membership, %#display is gone
+%   - the spoilage law is a CLASSIFIER SCHEMA (`spoil: (r: resource) …`),
+%     written once and expanded at load into one rule per member
+%   - every delay/window/count is sort-checked against the grade sorts
+%     (delay/count/weight <: q) declared in till.calc + rat.ill
+%
+% Play:  npm run shell:till -- calculus/till/game/PP2.till --init play
+%   digits buy from the standing build menu. Every resource rots 20s
+%   after it appears — race to turn stock into buildings; farms and
+%   quarries keep fresh stock coming.
+
+resource: sort.
+wood: resource.
+stone: resource.
+food: resource.
+
+camp: type.
+farm: type.
+quarry: type.
+
+% production loops ($ = preserved building)
+grow: $farm -o { food }@4.
+mine: $quarry -o { stone }@6.
+
+% forage: the camp gathers wood, slowly
+forage: $camp -o { wood }@9.
+
+% perishability — ONE schema, one rule per resource after expansion:
+% anything left alone 20s rots away
+spoil: (r: resource) r@Q * after (Q + 20) -o { I }.
+
+% standing build menu: wood buys a farm, stone buys a quarry
+#play (settle: 0)
+  camp
+  * !(( !_3 wood -o { farm }@5 ) & ( !_2 stone -o { quarry }@8 ))
+  * !_3 wood * !_2 stone * food
+  =>
+  camp .

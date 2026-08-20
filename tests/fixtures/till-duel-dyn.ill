@@ -14,7 +14,9 @@ blue: (u: utype) -> type.
 fellr: (u: utype) -> type.
 fellb: (u: utype) -> type.
 
-winprob: (a: utype) -> (b: utype) -> (q: bin) -> type.
+% q is a WEIGHT (TODO_0011 rung 1): probability literals pass the [0,1]
+% value fence, and the bound Q flows sort-checked into woplus's weight hole.
+winprob: (a: utype) -> (b: utype) -> (q: weight) -> type.
 winprob/rr: winprob rock rock (1/2).
 winprob/rs: winprob rock sci (3/4).
 winprob/sr: winprob sci rock (1/4).
