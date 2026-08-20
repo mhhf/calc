@@ -83,11 +83,18 @@ lib/
 │   ├── fact-set.js      # Generic: FactSet (sorted typed-array groups) + Arena (undo log)
 │   ├── sorts.js         # Generic: refinement-sort system (subsort DAG index + certified proofs, TODO_0011)
 │   ├── convert.js       # .ill → content-addressed hashes
+│   ├── compose.js       # Generic: grade-0 cut-elimination pipeline (cutPair/predMap/compose0) + chain fusion + SROA + SLD tabling (THY_0015/0016); runs on every non-cached load
 │   ├── lnl/             # LNL layer: linear/persistent distinction
 │   │   ├── persistent.js  # Persistent goal proving (state → cache → backchain)
 │   │   ├── loli.js        # Dynamic rule matching (linear implications)
 │   │   ├── loli-drain.js  # Persistent-trigger loli drain (generic, moved from ill/)
 │   │   └── existential.js # ∃-variable resolution
+│   ├── timed/           # Timed layer: wall-clock scheduler over the stamp algebra (generic over cc.grades/cc.stampTag; TODO_0265)
+│   │   ├── timed.js       # buildTimedConfig, settle loop, stamp-aware matching (tryTimedMatch/fire)
+│   │   ├── timed-game.js  # Interactive with-projection menus over timed state
+│   │   ├── timed-render.js # #trace/#timeline/#why debug renderings
+│   │   ├── timed-lint.js  # Productivity lint for timed rules
+│   │   └── timed-views.js # timedSubset/timedExact state projections
 │   ├── ill/             # ILL layer: ILL-specific logic (single assembly point: calculus-config.js)
 │   │   ├── calculus-config.js # Layered config (L0-L6) — ONLY ILL import in generic engine
 │   │   ├── backchain-ill.js # ILL defaults for backchainer (explicit initILL())
