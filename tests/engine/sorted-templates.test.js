@@ -47,9 +47,22 @@ describe('template classification (mixfix discipline)', () => {
     assert.deepEqual(JSON.parse(JSON.stringify(t.templates)), t.templates);
   });
 
-  it('rejects interior same-sort holes (unsupported mixfix shape)', () => {
-    assert.throws(() => extractParserTables({
+  it('fully delimited templates are closed — interior same-sort holes parse at START (§5c)', async () => {
+    const { earleyGrammarFromTables, parserFromGrammar } = await import('../../lib/parser/earley-grammar.js');
+    const tables = extractParserTables({
       w: ctor('w', ['formula', 'formula'], 'formula', '<< #1 >> #2 <<'),
+      tensor: ctor('tensor', ['formula', 'formula'], 'formula', '_ * _', 60),
+    });
+    assert.equal(tables.templates[0].kind, 'closed');
+    const parse = parserFromGrammar(earleyGrammarFromTables(tables));
+    // Interior holes are unrestricted (loosest level), like `( A )`.
+    assert.equal(parse('<< a * b >> c <<'),
+      Store.put('w', [Store.put('tensor', [atom('a'), atom('b')]), atom('c')]));
+  });
+
+  it('rejects a same-sort hole that is neither at an edge nor delimited', () => {
+    assert.throws(() => extractParserTables({
+      w: ctor('w', ['formula', 'formula'], 'formula', '#1 << #2 >>'),
     }), /unsupported mixfix shape/);
   });
 
