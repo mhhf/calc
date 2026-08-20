@@ -137,12 +137,30 @@ bare variables an instance at the bound. Consequences:
 
 The coherence OBLIGATION — same-name instances must agree on sort overlaps —
 is undecidable in general and is enforced instrumentally (the FFI ∥ clause ∥
-BigInt fuzz harness compares per instance), not at load. The recorded
-collapse verdict for the numeric namespace: plus/mul/lt/le/eq may share names
-cleanly; sub only after choosing one overlap semantics (bin sub is saturating
-monus, qsub is checked); div/qdiv never (Euclidean vs field). The RUNTIME
-name collapse is the separable dispatch rider of TODO_0011 §3 and has not
-landed — the prelude keeps split q-names with honest q sorts.
+BigInt fuzz harness compares per instance), not at load. The collapse verdict
+for the numeric namespace, now LANDED (the §3 dispatch rider):
+plus/mul/lt/le/eq/neq/eq_bool share one name each across the tower — bin.ill's
+clauses are the bin instance (its concrete signature becomes a DECLARED
+instance of the bounded-var principal via loader promotion), rat.ill's /q
+clauses the coercion instances, and the FFI face dispatches the same way
+(bin fast path, rational fallback, advisory-failure composition). sub and
+div never collapse: bin sub is saturating monus and bin div Euclidean, while
+qsub is checked and qdiv field division — they disagree on the shared
+subsort, so coherence forbids the shared name (the Integral/Fractional cut).
+
+**Instance clauses must be head-constrained (a committed-choice theorem).**
+Under first-solution commitment, a bound-level instance clause with a BARE
+head (`plus U V R <- to_q U … <- plus X Y N <- …`) is order-fragile: if
+candidate enumeration offers it before the bin clauses on a pure-bin goal,
+its recursive premise regresses to the same goal (denominators 1) and
+resolution diverges — observed as a live hang, not a hypothetical. The
+resolution is structural, not ordering: instance clauses pattern their heads
+on their sort's own constructors (`plus (rat A B) V R` / `plus U (rat C D) R`),
+so goals outside the instance can never enter them, and termination is
+order-independent. The instance AT THE BOUND — what makes mixed-sort goals
+legal for the checker — is then a declared instance SIGNATURE, not a bare
+clause: legality is signature-level knowledge, operational coverage is
+head-constrained clauses, and the two never conflict.
 
 ## 6. Value fences: the decidable shadow of conditional membership
 
