@@ -6,10 +6,12 @@
  * rational FFI computes, hash-for-hash after canonicalization. This is the
  * per-case counterpart of the fuzz walker's §3.12 rational trials.
  *
- * Split namespaces (D8.1 revised): the bin family (plus, mul, …) and the
- * q-family (qplus, qsub, …) never share a predicate. The contract tests at
- * the end pin that down: bin predicates on rational arguments fail on both
- * paths, and bin×bin behavior is untouched.
+ * One name per operation (TODO_0011 §3 collapse): plus/mul/lt/le/eq/neq/
+ * eq_bool are shared across the numeric tower — bin clauses + /q instance
+ * clauses, num.* FFI dispatch. The contract tests at the end pin the
+ * NON-collapsed remainder: sub/div stay bin-only (monus/Euclidean — the
+ * q-side names are qsub/qdiv), negatives refuse everywhere, and bin×bin
+ * behavior is untouched.
  */
 
 import { describe, it, before } from 'node:test';
@@ -80,16 +82,16 @@ before(() => {
 
 describe('q-operations: clauses vs FFI', () => {
   it('qplus: rat×rat, reduction, den collapse', () => {
-    agree('qplus', [putRat(1n, 2n), putRat(1n, 3n)], putRat(5n, 6n));
-    agree('qplus', [putRat(1n, 6n), putRat(1n, 3n)], putRat(1n, 2n)); // reduction
-    agree('qplus', [putRat(1n, 2n), putRat(1n, 2n)], bin(1n));        // den collapse
+    agree('plus', [putRat(1n, 2n), putRat(1n, 3n)], putRat(5n, 6n));
+    agree('plus', [putRat(1n, 6n), putRat(1n, 3n)], putRat(1n, 2n)); // reduction
+    agree('plus', [putRat(1n, 2n), putRat(1n, 2n)], bin(1n));        // den collapse
   });
 
   it('qplus: bins coerce (both argument orders, zero included)', () => {
-    agree('qplus', [bin(3n), putRat(1n, 2n)], putRat(7n, 2n));
-    agree('qplus', [putRat(1n, 2n), bin(3n)], putRat(7n, 2n));
-    agree('qplus', [bin(0n), putRat(1n, 2n)], putRat(1n, 2n));
-    agree('qplus', [bin(3n), bin(4n)], bin(7n)); // pure integers work too
+    agree('plus', [bin(3n), putRat(1n, 2n)], putRat(7n, 2n));
+    agree('plus', [putRat(1n, 2n), bin(3n)], putRat(7n, 2n));
+    agree('plus', [bin(0n), putRat(1n, 2n)], putRat(1n, 2n));
+    agree('plus', [bin(3n), bin(4n)], bin(7n)); // pure integers work too
   });
 
   it('qsub: exact, checked (fails on negative)', () => {
@@ -103,10 +105,10 @@ describe('q-operations: clauses vs FFI', () => {
   });
 
   it('qmul: rat×rat and coerced', () => {
-    agree('qmul', [putRat(2n, 3n), putRat(3n, 4n)], putRat(1n, 2n));
-    agree('qmul', [bin(4n), putRat(3n, 4n)], bin(3n));
-    agree('qmul', [putRat(3n, 4n), bin(4n)], bin(3n));
-    agree('qmul', [putRat(1n, 2n), bin(0n)], bin(0n));
+    agree('mul', [putRat(2n, 3n), putRat(3n, 4n)], putRat(1n, 2n));
+    agree('mul', [bin(4n), putRat(3n, 4n)], bin(3n));
+    agree('mul', [putRat(3n, 4n), bin(4n)], bin(3n));
+    agree('mul', [putRat(1n, 2n), bin(0n)], bin(0n));
   });
 
   it('qmul: large coprime product (backchain trail-overflow regression)', () => {
@@ -115,7 +117,7 @@ describe('q-operations: clauses vs FFI', () => {
     // silently DROPPED entries past its capacity, leaving theta poisoned
     // after backtracking — the clause path then failed while FFI proved
     // it (round-14 fuzz find; trail now grows on demand).
-    agree('qmul', [putRat(62n, 9n), putRat(37n, 9n)], putRat(2294n, 81n));
+    agree('mul', [putRat(62n, 9n), putRat(37n, 9n)], putRat(2294n, 81n));
   });
 
   it('qdiv: exact field division', () => {
@@ -133,23 +135,23 @@ describe('q-operations: clauses vs FFI', () => {
   });
 
   it('qlt/qle by value, across representations', () => {
-    agreeBool('qlt', [putRat(1n, 3n), putRat(1n, 2n)], true);
-    agreeBool('qlt', [putRat(1n, 2n), putRat(1n, 3n)], false);
-    agreeBool('qlt', [putRat(1n, 3n), bin(1n)], true);
-    agreeBool('qlt', [bin(1n), putRat(1n, 3n)], false);
-    agreeBool('qle', [putRat(1n, 2n), putRat(1n, 2n)], true);
-    agreeBool('qle', [bin(0n), putRat(1n, 2n)], true);
+    agreeBool('lt', [putRat(1n, 3n), putRat(1n, 2n)], true);
+    agreeBool('lt', [putRat(1n, 2n), putRat(1n, 3n)], false);
+    agreeBool('lt', [putRat(1n, 3n), bin(1n)], true);
+    agreeBool('lt', [bin(1n), putRat(1n, 3n)], false);
+    agreeBool('le', [putRat(1n, 2n), putRat(1n, 2n)], true);
+    agreeBool('le', [bin(0n), putRat(1n, 2n)], true);
   });
 
   it('qeq/qneq/qeq_bool', () => {
-    agreeBool('qeq', [putRat(2n, 4n), putRat(1n, 2n)], true);
-    agreeBool('qeq', [putRat(1n, 2n), putRat(1n, 3n)], false);
-    agreeBool('qeq', [bin(3n), bin(3n)], true);
-    agreeBool('qneq', [putRat(1n, 2n), putRat(1n, 3n)], true);
-    agreeBool('qneq', [putRat(1n, 2n), putRat(2n, 4n)], false);
-    agreeBool('qneq', [bin(1n), putRat(1n, 2n)], true);
-    agree('qeq_bool', [putRat(1n, 2n), putRat(1n, 3n)], bin(0n));
-    agree('qeq_bool', [putRat(1n, 2n), putRat(2n, 4n)], bin(1n));
+    agreeBool('eq', [putRat(2n, 4n), putRat(1n, 2n)], true);
+    agreeBool('eq', [putRat(1n, 2n), putRat(1n, 3n)], false);
+    agreeBool('eq', [bin(3n), bin(3n)], true);
+    agreeBool('neq', [putRat(1n, 2n), putRat(1n, 3n)], true);
+    agreeBool('neq', [putRat(1n, 2n), putRat(2n, 4n)], false);
+    agreeBool('neq', [bin(1n), putRat(1n, 2n)], true);
+    agree('eq_bool', [putRat(1n, 2n), putRat(1n, 3n)], bin(0n));
+    agree('eq_bool', [putRat(1n, 2n), putRat(2n, 4n)], bin(1n));
   });
 
   it('min/max (bin family, Phase 6 — the kiln capacity cap)', () => {
@@ -164,14 +166,13 @@ describe('q-operations: clauses vs FFI', () => {
   });
 });
 
-describe('split-namespace contract', () => {
-  it('bin predicates on rational arguments fail on both paths', () => {
+describe('collapse contract (TODO_0011 §3)', () => {
+  it('NON-collapsed bin predicates on rational arguments fail on both paths', () => {
+    // sub (saturating monus) and div (Euclidean) never collapse — they
+    // disagree with qsub/qdiv on the shared subsort (coherence law).
     for (const [pred, args] of [
-      ['plus', [putRat(1n, 2n), putRat(1n, 3n), mv('R')]],
       ['sub',  [putRat(1n, 2n), putRat(1n, 3n), mv('R')]],
-      ['lt',   [putRat(1n, 3n), putRat(1n, 2n)]],
-      ['le',   [putRat(1n, 3n), putRat(1n, 2n)]],
-      ['neq',  [putRat(1n, 2n), putRat(1n, 3n)]],
+      ['div',  [putRat(1n, 2n), putRat(1n, 3n), mv('R')]],
     ]) {
       const goal = Store.put(pred, args);
       for (const useFFI of [true, false]) {
@@ -179,6 +180,13 @@ describe('split-namespace contract', () => {
           `${pred} on rats is out of contract (useFFI=${useFFI})`);
       }
     }
+  });
+
+  it('collapsed names take MIXED goals (the coercion instance at the bound)', () => {
+    agree('plus', [bin(2n), putRat(1n, 2n)], putRat(5n, 2n));
+    agreeBool('lt', [bin(2n), putRat(5n, 2n)], true);
+    agreeBool('le', [putRat(5n, 2n), bin(2n)], false);
+    agreeBool('neq', [bin(2n), putRat(5n, 2n)], true);
   });
 
   it('bin×bin behavior is untouched', () => {
@@ -189,17 +197,17 @@ describe('split-namespace contract', () => {
 
   it('negative numerators fail on BOTH paths (ℚ≥0 contract, audit round 11)', () => {
     const neg = putRat(-1n, 2n);
-    const goal = Store.put('qplus', [neg, bin(1n), mv('R')]);
+    const goal = Store.put('plus', [neg, bin(1n), mv('R')]);
     for (const useFFI of [true, false]) {
       assert.ok(!prove(goal, useFFI).success,
         `qplus on a negative numerator refuses (useFFI=${useFFI})`);
     }
   });
 
-  it('eq on canonical rationals holds by pure canonicity (eq/z, not an overload)', () => {
-    // putRat gives equal rationals equal hashes, so eq X X covers them with
-    // zero rational clauses — FFI fails advisorily and clause resolution
-    // answers on both paths.
+  it('eq on canonical rationals holds by pure canonicity (eq/z first, eq/q as fallback)', () => {
+    // putRat gives equal rationals equal hashes, so the bin eq X X clause
+    // already covers them; the eq/q instance only fires on non-identical
+    // representations (which canonical goals never present).
     agreeBool('eq', [putRat(2n, 4n), putRat(1n, 2n)], true);
     agreeBool('eq', [putRat(1n, 2n), putRat(1n, 3n)], false);
   });

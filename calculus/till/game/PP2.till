@@ -1,19 +1,23 @@
 #import(../prelude/rat.ill)
 
-% PP2 — the till settlement demo (TODO_0011 rung 1 acceptance).
+% PP2 — the till settlement demo (TODO_0011 acceptance: rung-1 sorts +
+% the §3 numeric collapse, all in one small game).
 %
 % Everything the shell displays is knowledge in the logic:
 %   - tokens are classified by CLASSIFIER SORTS (`wood: resource.`) — the
 %     shell groups stock rows by membership, %#display is gone
-%   - the spoilage law is a CLASSIFIER SCHEMA (`spoil: (r: resource) …`),
-%     written once and expanded at load into one rule per member
-%   - every delay/window/count is sort-checked against the grade sorts
-%     (delay/count/weight <: q) declared in till.calc + rat.ill
+%   - the spoilage law is ONE classifier schema over per-member DATA:
+%     `shelf r D` facts give each resource its shelf life, and the window
+%     `after (Q + D)` lowers onto the SHARED `plus` (bin instance for the
+%     integers here, /q instance if a shelf life were ever fractional —
+%     same predicate, dispatched by matching)
+%   - every delay/count is sort-checked: shelf lives sit at (d: delay),
+%     grade sorts delay/count/weight <: q join the numeric tower in rat.ill
 %
 % Play:  npm run shell:till -- calculus/till/game/PP2.till --init play
-%   digits buy from the standing build menu. Every resource rots 20s
-%   after it appears — race to turn stock into buildings; farms and
-%   quarries keep fresh stock coming.
+%   digits buy from the standing build menu. Stock rots when its shelf
+%   life runs out — food fast, wood slowly; farms and quarries keep fresh
+%   stock coming.
 
 resource: sort.
 wood: resource.
@@ -31,9 +35,15 @@ mine: $quarry -o { stone }@6.
 % forage: the camp gathers wood, slowly
 forage: $camp -o { wood }@9.
 
-% perishability — ONE schema, one rule per resource after expansion:
-% anything left alone 20s rots away
-spoil: (r: resource) r@Q * after (Q + 20) -o { I }.
+% per-resource shelf life — data, not rules
+shelf: (r: resource) -> (d: delay) -> type.
+shelf/wood: shelf wood 60.
+shelf/stone: shelf stone 120.
+shelf/food: shelf food 10.
+
+% perishability — ONE schema, one rule per resource after expansion; the
+% deadline Q + D goes through the shared numeric plus
+spoil: (r: resource) r@Q * !shelf r D * after (Q + D) -o { I }.
 
 % standing build menu: wood buys a farm, stone buys a quarry
 #play (settle: 0)

@@ -64,7 +64,8 @@ const rstr = ([n, d]) => (d === 1n ? `${n}` : `${n}/${d}`);
 const RAT_ILL = path.join(import.meta.dirname, '../calculus/till/prelude/rat.ill');
 Store.clear();
 installRatlitTheory();
-const ec = mde.load(RAT_ILL);
+const tillCfg = (await import('../calculus/till/calculus-config.js')).default;
+const ec = mde.load(RAT_ILL, { calculusConfig: tillCfg, cache: false });
 const theories = [...defaultTheories, binlitTheory, ratlitTheory];
 const canonicalize = buildCanonicalizer(theories);
 const baseOpts = makeILLBackchainOpts({ theories, normalize: canonicalize });
@@ -77,16 +78,16 @@ function prove(goal, useFFI) {
 }
 
 const QOPS = {
-  qplus: ([an, ad], [bn, bd]) => norm([an * bd + bn * ad, ad * bd]),
+  plus: ([an, ad], [bn, bd]) => norm([an * bd + bn * ad, ad * bd]),
   qsub: ([an, ad], [bn, bd]) => norm([an * bd - bn * ad, ad * bd]),
-  qmul: ([an, ad], [bn, bd]) => norm([an * bn, ad * bd]),
+  mul: ([an, ad], [bn, bd]) => norm([an * bn, ad * bd]),
   qdiv: ([an, ad], [bn, bd]) => norm([an * bd * (bn < 0n ? -1n : 1n), ad * (bn < 0n ? -bn : bn)]),
 };
 const QCMP = {
-  qlt: (a, b) => a[0] * b[1] < b[0] * a[1],
-  qle: (a, b) => a[0] * b[1] <= b[0] * a[1],
-  qeq: (a, b) => a[0] * b[1] === b[0] * a[1],
-  qneq: (a, b) => a[0] * b[1] !== b[0] * a[1],
+  lt: (a, b) => a[0] * b[1] < b[0] * a[1],
+  le: (a, b) => a[0] * b[1] <= b[0] * a[1],
+  eq: (a, b) => a[0] * b[1] === b[0] * a[1],
+  neq: (a, b) => a[0] * b[1] !== b[0] * a[1],
 };
 
 let fails = 0, trials = 0;
@@ -119,10 +120,10 @@ for (let i = 0; i < COUNT; i++) {
   // negative-numerator refusal (signed storage, unsigned ops — D14/round 11)
   if (i % 8 === 0) {
     trials++;
-    const goal = Store.put('qplus', [putRat(-a[0] - 1n, a[1]), putRat(...b), mv('R')]);
+    const goal = Store.put('plus', [putRat(-a[0] - 1n, a[1]), putRat(...b), mv('R')]);
     for (const useFFI of [true, false]) {
       if (prove(goal, useFFI).success) {
-        report(`qplus(negative) ${useFFI ? 'FFI' : 'clause'}: proved despite ℚ≥0 contract`);
+        report(`plus(negative) ${useFFI ? 'FFI' : 'clause'}: proved despite ℚ≥0 contract`);
       }
     }
   }
@@ -148,7 +149,7 @@ const NPROGS = Math.max(4, Math.floor(COUNT / 16));
 for (let p = 0; p < NPROGS; p++) {
   const d = norm(randRat({ nonNeg: true }));
   const file = path.join(dir, `act-${p}.ill`);
-  fs.writeFileSync(file, `r: a -o { b }@(${d[0]}/${d[1]}).\n`);
+  fs.writeFileSync(file, `a: type.\nb: type.\nr: a -o { b }@(${d[0]}/${d[1]}).\n`);
   const calc = mde.load(file, { calculusConfig: tillConfig, cache: false });
   const aAtom = Store.put('atom', ['a']);
   const bAtom = Store.put('atom', ['b']);
