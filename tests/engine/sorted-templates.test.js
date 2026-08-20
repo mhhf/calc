@@ -59,13 +59,20 @@ describe('template classification (mixfix discipline)', () => {
     }), /every argument needs a hole/);
   });
 
-  it('rejects a second auxiliary sort (v1 fence, rides with TODO_0011)', async () => {
-    const { earleyGrammarFromTables } = await import('../../lib/parser/earley-grammar.js');
+  it('folds every auxiliary sort onto the one grade chain (TODO_0011: sorts are the checker\'s job)', async () => {
+    // The former one-aux-sort fence guarded sort semantics the parser no
+    // longer owns: since rung 1, per-hole sorts (delay/count/weight/…) are
+    // enforced by the sort checker; the grammar carries only the shared
+    // literal/expression surface.
+    const { earleyGrammarFromTables, parserFromGrammar } = await import('../../lib/parser/earley-grammar.js');
     const tables = extractParserTables({
       a: ctor('a', ['formula', 'grade'], 'formula', '#1@#2', 90),
-      b: ctor('b', ['formula', 'clock'], 'formula', '#1%#2', 91),
+      b: ctor('b', ['formula', 'clock'], 'formula', '#1~#2', 91),
     });
-    assert.throws(() => earleyGrammarFromTables(tables), /one auxiliary/);
+    const parse = parserFromGrammar(earleyGrammarFromTables(
+      { ...tables, multiCharFreevars: true, numbers: true }));
+    assert.equal(parse('x@3'), Store.put('a', [atom('x'), putRat(3n, 1n)]));
+    assert.equal(parse('x~5'), Store.put('b', [atom('x'), putRat(5n, 1n)]));
   });
 });
 

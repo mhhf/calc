@@ -1,0 +1,24 @@
+% Refinement-sort machinery (TODO_0011 rung 1) — membership as PROVABLE facts.
+%
+% Sorts are EXTRINSIC refinements (Lovas–Pfenning): one content-addressed
+% term may inhabit many sorts; membership is a judgment, erased at runtime.
+% A subsort declaration `A <: B.` is sugar for a persistent sedge fact
+% (synthesized by the loader); the order the checker enforces is the
+% reflexive-transitive closure below. The engine's sort DAG
+% (lib/engine/sorts.js) is a compiled INDEX over exactly these clauses —
+% the table is optimization, membership proof is semantics.
+%
+% Importing this file is the opt-in: a calculus without it has no sort
+% machinery (absent, not disabled). Programs contribute the facts:
+% `bin <: q.` beside the numeric prelude, `wood: resource.` classifiers
+% in game files. ILL stays sortless.
+
+sort: type.                             % the classifier of sort names
+
+sedge: (a: sort) -> (b: sort) -> type.  % declared subsort edge
+leq:   (a: sort) -> (b: sort) -> type.  % subsort order (closure)
+
+leq/refl: leq S S.
+leq/step: leq S U
+  <- sedge S T
+  <- leq T U.

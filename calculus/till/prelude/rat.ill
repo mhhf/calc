@@ -1,4 +1,5 @@
 #import(../../ill/programs/bin.ill)
+#import(sorts.till)
 
 % Exact non-negative rationals over bin — TODO_0265 Phase 1 (D3/D8.1/D14).
 %
@@ -21,27 +22,42 @@
 % till arithmetic uses q-ops exclusively (Phase 3's window-expression
 % lowering emits them; users write infix syntax and never see the names).
 %
-% Why not one shared name per operation: (1) untyped resolution has no
-% instance dispatch — shared predicates mean clause-set union, and base
-% clauses with unconstrained variables capture rationals (sort-directed
-% dispatch is the principled fix, deferred — see todo 0265); (2) sub/div
-% would need it anyway to be two different operations (bin sub is a
+% Runtime name sharing (qplus → plus etc.) is the separable dispatch rider
+% of TODO_0011 §3: the rung-1 checker can already express it (bounded sort
+% variables + coherence), but clause DISPATCH is still untyped — shared
+% predicates would union clause sets, and base clauses with unconstrained
+% variables capture rationals. sub/div stay split regardless: bin sub is a
 % saturating monus, bin div is Euclidean; qsub is checked, qdiv is field
-% division — the same cut as Haskell's Integral.div vs Fractional./).
+% division — the same cut as Haskell's Integral.div vs Fractional./.
 %
-% Bin goals carrying a rational argument are ill-sorted (out of contract):
-% they FAIL for the head-constrained predicates; mul's unconstrained-Y
-% clauses can still derive an o/i-wrapped form, which is value-correct
-% (the digit algorithms are semiring-generic: o(x) = 2x, i(x) = 2x+1 over
-% Q) and ratlitTheory.canonicalize folds it — harmless, but not part of
-% the contract.
+% Bin goals carrying a rational argument are ill-sorted: since rung 1 the
+% CHECKER rejects them statically (frac ≰ bin). At runtime they FAIL for
+% the head-constrained predicates; mul's unconstrained-Y clauses can still
+% derive an o/i-wrapped form, which is value-correct (the digit algorithms
+% are semiring-generic) and ratlitTheory.canonicalize folds it.
 
-% Sorting: the declaration language has no subsorting, so `bin` is read as
-% THE numeric sort — e/i/o construct the naturals, rat constructs the
-% non-integral rationals. One sort, disjoint constructor families; the
-% canonical-form policy (den = 1 collapses) keeps the integer fragment
-% entirely inside e/i/o.
-rat: (num: bin) -> (den: bin) -> bin.
+% ── The numeric tower (TODO_0011 rung 1) ──
+% q is THE numeric sort (non-negative rationals, v1); bin (the naturals,
+% constructed by e/i/o in bin.ill) embeds by subsumption — the static face
+% of the binlit↔rat n ↦ n/1 eq-theory coercion. frac is the explicit-
+% fraction representation (the rat constructor); canonical form keeps the
+% integer fragment entirely inside bin (den = 1 collapses), so bin and
+% frac are disjoint SIBLINGS below q. The grade sorts declared in
+% till.calc (delay/count/weight) join the tower here: durations and counts
+% are rationals (window arithmetic feeds them to q-ops), naturals are
+% valid durations and counts. Weights ([0,1]) admit literals only through
+% the value fence — no bin <: weight, or 5 would be a weight statically.
+q: type.
+frac: type.
+bin <: q.
+frac <: q.
+delay <: q.
+count <: q.
+weight <: q.
+bin <: delay.
+bin <: count.
+
+rat: (num: bin) -> (den: bin) -> frac.
 
 % === Internals ===
 
@@ -61,7 +77,7 @@ gcd/s: gcd X Y G
 % qnorm N D R — R is N/D in canonical form: gcd-reduced, den = 1 collapses
 % to the bare bin numerator. Guarded on D > 0 (a zero denominator FAILS —
 % this is how qdiv rejects division by zero).
-qnorm: (num: bin) -> (den: bin) -> (r: bin) -> type.
+qnorm: (num: bin) -> (den: bin) -> (r: q) -> type.
 % den = 1 shortcut: N/1 is already canonical — skips Euclid entirely, which
 % matters in clause mode where div/mod resolve via repeated subtraction
 % (depth linear in the quotient). Overlaps qnorm/z on den = 1; both derive
@@ -78,13 +94,13 @@ qnorm/z: qnorm N D R
   <- qpack N' D' R.
 
 % qpack N D R — attach the canonical denominator: 1 collapses to the bin.
-qpack: (num: bin) -> (den: bin) -> (r: bin) -> type.
+qpack: (num: bin) -> (den: bin) -> (r: q) -> type.
 qpack/int: qpack N (i e) N.
 qpack/frac: qpack N D (rat N D)
   <- neq D (i e).
 
 % to_q X Q — coerce bin or rat to rat form (n |-> n/1).
-to_q: (x: bin) -> (r: bin) -> type.
+to_q: (x: q) -> (r: frac) -> type.
 to_q/q: to_q (rat N D) (rat N D).
 to_q/e: to_q e (rat e (i e)).
 to_q/o: to_q (o X) (rat (o X) (i e)).
@@ -96,7 +112,7 @@ to_q/i: to_q (i X) (rat (i X) (i e)).
 % mixed bin/rat goals work directly) and the semantic definitions the q-FFI
 % handlers must agree with (FFI principle).
 
-qplus: (a: bin) -> (b: bin) -> (r: bin) -> type.
+qplus: (a: q) -> (b: q) -> (r: q) -> type.
 qplus/z: qplus U V R
   <- to_q U (rat A B)
   <- to_q V (rat C D)
@@ -109,7 +125,7 @@ qplus/z: qplus U V R
 % Checked subtraction: FAILS on negative results (Q>=0 — debt/dual grades
 % deferred). Deliberately not saturating: a saturating rational monus fed
 % into repeated-subtraction loops (divmod-style) derives wrong quotients.
-qsub: (a: bin) -> (b: bin) -> (r: bin) -> type.
+qsub: (a: q) -> (b: q) -> (r: q) -> type.
 qsub/z: qsub U V R
   <- to_q U (rat A B)
   <- to_q V (rat C D)
@@ -119,7 +135,7 @@ qsub/z: qsub U V R
   <- mul B D M
   <- qnorm N M R.
 
-qmul: (a: bin) -> (b: bin) -> (r: bin) -> type.
+qmul: (a: q) -> (b: q) -> (r: q) -> type.
 qmul/z: qmul U V R
   <- to_q U (rat A B)
   <- to_q V (rat C D)
@@ -128,7 +144,7 @@ qmul/z: qmul U V R
   <- qnorm N M R.
 
 % Exact (field) division; C = 0 makes the qnorm den-guard fail.
-qdiv: (a: bin) -> (b: bin) -> (r: bin) -> type.
+qdiv: (a: q) -> (b: q) -> (r: q) -> type.
 qdiv/z: qdiv U V R
   <- to_q U (rat A B)
   <- to_q V (rat C D)
@@ -136,7 +152,7 @@ qdiv/z: qdiv U V R
   <- mul B C M
   <- qnorm N M R.
 
-qlt: (a: bin) -> (b: bin) -> type.
+qlt: (a: q) -> (b: q) -> type.
 qlt/z: qlt U V
   <- to_q U (rat A B)
   <- to_q V (rat C D)
@@ -144,7 +160,7 @@ qlt/z: qlt U V
   <- mul C B Y
   <- lt X Y.
 
-qle: (a: bin) -> (b: bin) -> type.
+qle: (a: q) -> (b: q) -> type.
 qle/z: qle U V
   <- to_q U (rat A B)
   <- to_q V (rat C D)
@@ -152,7 +168,7 @@ qle/z: qle U V
   <- mul C B Y
   <- le X Y.
 
-qneq: (a: bin) -> (b: bin) -> type.
+qneq: (a: q) -> (b: q) -> type.
 qneq/z: qneq U V
   <- to_q U (rat A B)
   <- to_q V (rat C D)
@@ -160,7 +176,7 @@ qneq/z: qneq U V
   <- mul C B Y
   <- neq X Y.
 
-qeq: (a: bin) -> (b: bin) -> type.
+qeq: (a: q) -> (b: q) -> type.
 qeq/z: qeq U V
   <- to_q U (rat A B)
   <- to_q V (rat C D)
@@ -168,6 +184,6 @@ qeq/z: qeq U V
   <- mul C B Y
   <- eq X Y.
 
-qeq_bool: (a: bin) -> (b: bin) -> (r: bin) -> type.
+qeq_bool: (a: q) -> (b: q) -> (r: bin) -> type.
 qeq_bool/true: qeq_bool U V (i e) <- qeq U V.
 qeq_bool/false: qeq_bool U V e <- qneq U V.
