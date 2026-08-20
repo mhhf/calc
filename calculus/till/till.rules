@@ -129,16 +129,20 @@ bang_r3: G ; D |- !_K A
 % are the LEAST derivable grades). monad_l is {}L: binds compose delays,
 % and the monus keeps the critical path a strict LOWER bound ({A}@4 from
 % {{A}@2}@3 stays refuted). monad_l's side condition F >= E (equivalently
-% H >= 0) is IMPLICIT in the monus — `-` fails on a negative result,
-% making the rule inapplicable (THY_0018 §4 implementation-encoding note).
-% The E >= 0 guard's content on non-numeric
-% grades is the ground fence (ω/metavar grades fail isStamp).
+% H >= 0) is made EXPLICIT below: `effect.sub` is exact ℚ subtraction
+% (lib/rat.js), total and signed — it returns a NEGATIVE H rather than
+% failing, so the guard must be stated, not left implicit in the monus.
+% Without it, refuting F < E would rely on the downstream monad_r `E >= 0`
+% guard (rule-set completeness); the explicit guard makes monad_l's proof
+% obligation LOCAL (THY_0018 §4 implementation-encoding note). On non-numeric
+% grades the guard is the ground fence (ω/metavar grades fail isStamp).
 
 monad_l: G ; D, {A}@E |- {C}@F
   <- G ; D, A |- {C}@H
   @side l
   @pretty "{}L"
   @invertible false
+  @grade F >= E
   @grade H := F - E.
 
 monad_r: G ; D |- {A}@E
