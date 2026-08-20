@@ -41,6 +41,38 @@ Axioms like `plus/z1: plus e e e` (predicate applications, not arrow chains) are
 | **connective** (tensor, loli, bang, etc.) | Recurse into children with unconstrained sort (`'_'`) |
 | **not in sort table** | Skip silently (handles FFI-only predicates like `sub`, `div`, `mod`) |
 
+## Two layers: base checker + refinement sorts (TODO_0011 rung 1)
+
+`type-check.js` is the **base checker** (arity + LF-signature sort consistency,
+above). The **refinement-sort** machinery lives in a separate module,
+`lib/engine/sorts.js`, and the two are composed through the checker context
+`cx.sorts`:
+
+- **Sortless mode** (`cx.sorts == null` — ILL and any calculus without a
+  `cc.sorts` config): sort checking is exact — a term at a `bin` position must
+  be `bin`. `type-check.js` runs standalone; `sorts.js` is never engaged.
+- **Sorted mode** (`cx.sorts` = a sort system from `sorts.js` — till, gated
+  twice: the calculus supplies `cc.sorts` AND the program declares sorts):
+  sort equality relaxes to **subsumption ≤**. The single hook is
+  `cx.sorts.subsort(actual, expected)` (`type-check.js:101`): a `frac` satisfies
+  a `q` position because `frac <: q`, a classifier member satisfies its
+  classifier, and every declared sort is `<: 'type'`.
+
+What each module owns:
+
+| Module | Owns |
+|--------|------|
+| `type-check.js` | the WALK — arity, per-node sort obligations, metavar-consistency, and **bounded sort-variable solving** (`f: (s <: q) …`): solve `s := lub(arg sorts)`, then require a clause INSTANCE at `s` (`type-check.js:360,368`). Strictness = instance absence. |
+| `sorts.js` | the SORT SYSTEM — the subsort DAG index built from `A <: B.` sedge facts, its materialized reflexive-transitive closure, the `subsort(a,b)` query, classifier membership, and the `SORT_PREDS` name constants. |
+
+The DAG is a **dual representation**: `sorts.js` keeps an ancestors index for
+O(1) `subsort` queries by the checker AND injects each closure pair as a ground
+`subsort a b` fact so in-logic `!subsort X s` premises are total lookups. No
+sort name or edge appears in engine JS — edges live in logic files
+(`bin <: q.`); only literal classification and value fences live in a
+calculus config. See `doc/theory/0020_refinement-sorts.md` and the CLAUDE.md
+"Refinement Sorts" section.
+
 ## Error Types
 
 - **Arity mismatch**: `rule 'foo': 'plus' expects 3 args, got 2`

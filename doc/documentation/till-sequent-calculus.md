@@ -109,3 +109,14 @@ trees (Stage 2 adequacy) are verified modulo the settle step by design.
 
 Tests: `tests/till-prover.test.js` (provability grid, kernel gates),
 `tests/rules2-template.test.js` (DSL compilation + validation).
+
+## Open gap: woplus proof theory (THY-A)
+
+`woplus` (`A +[q] B`, weighted additive disjunction, weight `q ∈ [0,1]`) is the
+one till connective with **operational semantics but no sequent rules** — the
+weight is a probabilistic annotation the current additive left/right rules
+cannot express. This is a named open contribution, tracked as **THY-A**; the
+proof-theory draft (probabilistic/weighted judgment, cut cases, and how it
+relates to `oplus`) lives in `doc/theory/0021_weighted-additive-disjunction.md`.
+Until it lands, `woplus` is a consequent-only forward form: `compile.js` rejects
+it in antecedents, and the sequent prover has no `woplus_l`/`woplus_r`.
