@@ -6,6 +6,22 @@ The core insight: the ZK circuit verifies `checkTerm(proofTerm, sequent)` — pr
 
 The architecture is **calculus-agnostic**. The Rust verifier contains zero ILL-specific code. Tags, rule specs, and witness data are derived from `.calc`/`.rules` descriptors at witness generation time. The same compiled binary verifies proofs from any calculus defined in CALC.
 
+## Test status (as of 2026-08-20)
+
+Both halves of the subsystem are **green**:
+
+- **JS witness generation** — `npm run test:zk` is 94/94 (`tests/zk-*.test.js` +
+  `tests/chunked-witness.test.js`).
+- **Rust prover/verifier** — `cargo test --release` in `zk/` passes all suites
+  (0 failed; a handful of expensive proofs are `#[ignore]`d).
+
+This supersedes the drift recorded in `doc/documentation/audit-findings.md`
+(P5 / B13 — "28 ZK failures", the `compiled`-undefined bug at
+`flat-witness.js`): that regression class was resolved by
+`fix(zk): binary-bang witness rows + closed-world declarations` (commit
+`2eeee4b6`) and the binary-monad merge (`169c83d5`). The audit-findings entry is
+a historical snapshot, not the current state.
+
 ## Technology Stack
 
 | Component | Choice |

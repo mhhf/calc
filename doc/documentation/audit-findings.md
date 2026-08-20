@@ -2659,6 +2659,12 @@ Triage: Known — SHA3 tests need `(useFFI: false)` setting or concrete expected
 
 ### test:zk — 28 failures (up from planned 24)
 
+> **RESOLVED (2026-08-20).** All 28 (incl. B13 below) are fixed — `npm run
+> test:zk` is 94/94 and the Rust `cargo test` suite passes. See
+> `doc/documentation/zk-proof-certification.md` § Test status. Root fixes:
+> commits `2eeee4b6` (binary-bang witness rows) and `169c83d5` (binary-monad
+> merge). Entry kept as a historical snapshot.
+
 **Breakdown by root cause:**
 
 | Root cause | Failures | Details |
