@@ -124,6 +124,7 @@ const _ZERO = [0n, 1n];
 const _stampParts = (h) => (Store.tag(h) === 'at' ? _parts(Store.child(h, 1)) : _ZERO);
 
 const tillFactSetPolicy = {
+  stampTag: 'at',   // generic fact-set reads this to unwrap stamped atoms
   groupKey: (h) => (Store.tag(h) === 'at' ? Store.tagId(Store.child(h, 0)) : Store.tagId(h)),
   cmp: (a, b) => {
     const c = ratCmp(_stampParts(a), _stampParts(b));
@@ -247,6 +248,11 @@ const tillCalculusConfig = {
   // this record only; availability.cmp doubles as the index comparator.
   grades: tillGrades,
   factSetPolicy: tillFactSetPolicy,
+
+  // Stamp wrapper tag: the generic engine (compile.js, timed.js buildTimedConfig)
+  // reads this instead of hardcoding 'at', so a second timed calculus can name
+  // its stamp differently. till's is `at(A, t)`.
+  stampTag: 'at',
 
   // Scheduler policies (D12/D17): within-instant conflict chooser (P5 PRF,
   // seedable) and cohort sampler ('fifo' = index order, 'lifo' reversed).
