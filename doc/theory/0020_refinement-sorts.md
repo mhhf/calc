@@ -2,10 +2,10 @@
 title: "Refinement Sorts over a Content-Addressed Store"
 created: 2026-08-20
 modified: 2026-08-20
-summary: "Rung 1 of CALC's sort ladder (TODO_0011): subsorts, classifiers and bounded sort variables as EXTRINSIC (Curry-style) refinements over the closed-world checker. Membership is a provable judgment — subsort declarations are persistent facts, the compiled DAG is an index, and the backward prover certifies path certificates (table decides, proof certifies). Classifier-quantified rules are predicative schemas over declared finite classes, expanded at load and erased at runtime (proof irrelevance). Bounded sort variables give Haskell-class-style instance selection by least-upper-bound solving, with strictness as instance absence."
+summary: "Rung 1 of CALC's sort ladder (TODO_0011): subsorts, classifiers and bounded sort variables as EXTRINSIC (Curry-style) refinements over the closed-world checker. Membership is a provable judgment — subsort declarations are persistent facts, the loader MATERIALIZES their reflexive-transitive closure as ground `subsort` facts (the one-time deduction), and the compiled DAG is the same closure as an index. In-logic subsort queries are total fact lookups. Classifier-quantified rules are predicative schemas over declared finite classes, expanded at load and erased at runtime (proof irrelevance). Bounded sort variables give Haskell-class-style instance selection by least-upper-bound solving, with strictness as instance absence."
 tags: [sorts, refinement-types, subsorting, order-sorted-algebra, membership, type-checking, till, classifiers]
 category: "Type Theory"
-unique_contribution: "Three design results: (1) content addressing FORCES extrinsic sorts — intrinsic (Church-style) sorts would rehash the world on every new membership declaration and break subsumption (5:bin ≠ 5:q), so refinement (not annotation) is the only sort discipline compatible with a hash-consed term store; (2) the FFI principle lifted one level — 'the sort table is optimization, membership proof is semantics' — realized as certificate checking: a committed-choice (first-solution) backchainer cannot complete the naive transitive closure query, but it CAN verify the reflexive base and every edge hop of a path the compiled index produces, giving prover-backed positives without tabling; (3) strictness-as-instance-absence for bounded sort variables: whether mixed-sort goals are legal is not a checker mode but a fact about which clause instances exist, read off clause-head classification."
+unique_contribution: "Three design results: (1) content addressing FORCES extrinsic sorts — intrinsic (Church-style) sorts would rehash the world on every new membership declaration and break subsumption (5:bin ≠ 5:q), so refinement (not annotation) is the only sort discipline compatible with a hash-consed term store; (2) the FFI principle lifted one level — 'the sort table is optimization, membership proof is semantics' — realized as CLOSURE MATERIALIZATION: a committed-choice (first-solution) backchainer cannot complete a recursive transitive-closure query, so the loader performs the deduction once at load and injects the closure as ground facts, making in-logic subsort queries total without tabling or backtracking; (3) strictness-as-instance-absence for bounded sort variables: whether mixed-sort goals are legal is not a checker mode but a fact about which clause instances exist, read off clause-head classification."
 references:
   - "Lovas & Pfenning (2009). Refinement Types as Proof Irrelevance. TLCA — the extrinsic anchor."
   - "Goguen & Meseguer (1992). Order-Sorted Algebra I. TCS — subsort DAGs, preregularity."
@@ -70,30 +70,34 @@ predicates declared in an ordinary logic file (the sorts prelude):
 
 ```
 sort: type.
-sedge: (a: sort) -> (b: sort) -> type.
-leq:   (a: sort) -> (b: sort) -> type.
-leq/refl: leq S S.
-leq/step: leq S U <- sedge S T <- leq T U.
+sedge:   (a: sort) -> (b: sort) -> type.
+subsort: (a: sort) -> (b: sort) -> type.
+subsort/refl: subsort S S.
 ```
 
-The compiled ancestor-set index the checker consults is an INDEX over exactly
-these clauses — the FFI principle one level up: the table is optimization,
-membership proof is semantics.
+The compiled ancestor-set index the checker consults is the
+reflexive-transitive closure of the sedge facts — the FFI principle one level
+up: the table is optimization, membership proof is semantics.
 
-**The certificate turn.** CALC's backchainer is committed-choice per subgoal:
-it backtracks over clause alternatives of the current goal but commits to the
-first solution of each premise (the mode discipline the numeric clause corpus
-is written for). Under first-solution commitment the naive query `leq a b` is
-complete only for paths the first `sedge a T` candidate happens to start —
-transitive closure over a multi-out-edge node needs either full backtracking
-or tabling, and the engine deliberately has neither. The resolution is not to
-weaken the claim but to change WHO searches: the index (a decision procedure)
-finds the path `a <: s₁ <: … <: b`; the prover CERTIFIES it — the reflexive
-base and every hop are proved against the clauses. Positives are therefore
-backed end-to-end by proof search over logic files; the negative side is the
-index's completeness, cross-checked by independent reachability enumeration
-in the fuzz suite (tests/sorts-fuzz.test.js: table ≡ certified proof ≡
-reachability on random DAGs).
+**The materialized closure.** CALC's backchainer is committed-choice per
+subgoal: it backtracks over clause alternatives of the current goal but
+commits to the first solution of each premise (the mode discipline the
+numeric clause corpus is written for). Under first-solution commitment a
+recursive closure clause (`subsort S U <- sedge S T <- subsort T U`) answers
+only for paths the first `sedge S T` candidate happens to start — transitive
+closure over a multi-out-edge node needs either full backtracking or tabling,
+and the engine deliberately has neither. The resolution is not to weaken the
+claim, nor to bolt a certificate checker beside the prover, but to move the
+deduction to WHERE it terminates: the loader computes the closure ONCE at
+load (a finite fixpoint over a small DAG) and injects every strict pair as
+an ordinary ground fact `subsort a b`. The facts are the theorems of that
+one-time deduction; `subsort/refl` supplies the reflexive base. In-logic
+premises like `!subsort X resource` are then answered totally by fact lookup
+— enumeration of unbound queries comes for free, and the committed-choice
+caveat is GONE, not worked around. Correctness is cross-checked three ways
+in the fuzz suite (tests/sorts-fuzz.test.js: compiled table ≡ live
+backward-prover query ≡ independent reachability on random DAGs, including
+the multi-out-edge shape a recursive clause used to lose).
 
 ## 4. Classifiers: predicative quantification over declared classes
 

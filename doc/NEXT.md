@@ -14,7 +14,15 @@ Gates to run: `npm test` (fast), `npm run test:ill`, `npm run test:till`,
 
 ---
 
-## §4. `subsort` rename + materialized closure (~2–3 h)
+## §4. `subsort` rename + materialized closure — ✅ DONE (landed 2026-08-20)
+
+All steps below landed: `leq` → `subsort` everywhere (predicate, SORT_PREDS.SUB,
+system.subsort accessor), `certifyLeq` deleted, `closurePairs()` added, ground
+`subsort a b` facts injected in `_buildCalc` (before checkAll + buildIndex,
+idempotent on cache restore), fuzz suite now asserts table ≡ live backchain
+query ≡ reachability incl. the multi-out-edge regression, THY_0020 §3 rewritten
+("materialized closure"), CLAUDE.md updated. Gates green, no PRF re-pins needed.
+Kept below for reference until §5 lands (then delete this whole file).
 
 **Goal**: rules can carry `!subsort X resource` premises, answered totally and
 correctly — by making the closure ORDINARY GROUND FACTS at load. This DELETES

@@ -1,10 +1,10 @@
 /**
  * Sort-order machinery (TODO_0011 rung 1) — unit tests for
- * lib/engine/sorts.js: universe derivation, DAG closure, leq/lub,
+ * lib/engine/sorts.js: universe derivation, DAG closure, subsort/lub,
  * classifier membership, constraint satisfiability, cycle/hygiene errors.
  *
- * The subsort DAG is a compiled INDEX; the semantics is the leq/sedge
- * clause set in the sorts prelude — agreement is tested in
+ * The subsort DAG is a compiled INDEX; the semantics is the sedge facts
+ * plus the loader-materialized `subsort` closure — agreement is tested in
  * tests/sorts-fuzz.test.js (table vs prover).
  */
 
@@ -22,7 +22,7 @@ function machineryDefs() {
   const d = new Map();
   d.set(SORT_PREDS.SORT, type());
   d.set(SORT_PREDS.EDGE, arrow(atom(SORT_PREDS.SORT), arrow(atom(SORT_PREDS.SORT), type())));
-  d.set(SORT_PREDS.LEQ, arrow(atom(SORT_PREDS.SORT), arrow(atom(SORT_PREDS.SORT), type())));
+  d.set(SORT_PREDS.SUB, arrow(atom(SORT_PREDS.SORT), arrow(atom(SORT_PREDS.SORT), type())));
   return d;
 }
 
@@ -54,11 +54,11 @@ describe('sort system construction', () => {
     edgeClause(clauses, 'delay', 'q');
     const sys = buildSortSystem({ definitions: defs, clauses });
     assert.ok(sys);
-    assert.ok(sys.leq('bin', 'bin'));      // refl
-    assert.ok(sys.leq('bin', 'delay'));    // edge
-    assert.ok(sys.leq('bin', 'q'));        // trans
-    assert.ok(!sys.leq('q', 'bin'));       // no flip
-    assert.ok(!sys.leq('delay', 'bin'));
+    assert.ok(sys.subsort('bin', 'bin'));      // refl
+    assert.ok(sys.subsort('bin', 'delay'));    // edge
+    assert.ok(sys.subsort('bin', 'q'));        // trans
+    assert.ok(!sys.subsort('q', 'bin'));       // no flip
+    assert.ok(!sys.subsort('delay', 'bin'));
   });
 
   it('every declared sort inhabits the meta-sort (term membership, not subsort order)', () => {
@@ -67,7 +67,7 @@ describe('sort system construction', () => {
     assert.ok(sys.isSort('bin'));
     assert.ok(sys.isSort('q'));
     assert.ok(!sys.isSort('e'));            // constructor, not a sort
-    assert.ok(!sys.leq('bin', SORT_PREDS.SORT)); // sort-hood is NOT ≤
+    assert.ok(!sys.subsort('bin', SORT_PREDS.SORT)); // sort-hood is NOT ≤
   });
 
   it('classifiers refine the proposition sort; members are collected', () => {
@@ -75,8 +75,8 @@ describe('sort system construction', () => {
     defs.set('wood', atom('resource'));
     defs.set('stone', atom('resource'));
     const sys = buildSortSystem({ definitions: defs, clauses });
-    assert.ok(sys.leq('resource', 'type'));          // classifier ≤ type
-    assert.ok(!sys.leq('bin', 'type'));              // term sorts do NOT
+    assert.ok(sys.subsort('resource', 'type'));          // classifier ≤ type
+    assert.ok(!sys.subsort('bin', 'type'));              // term sorts do NOT
     assert.deepEqual([...sys.membersOf('resource')].sort(), ['stone', 'wood']);
   });
 
@@ -134,9 +134,9 @@ describe('sort system construction', () => {
         members: { g0: 'count', gw: 'count' },
       },
     });
-    assert.ok(sys.leq('delay', 'grade'));
-    assert.ok(sys.leq('count', 'grade'));
+    assert.ok(sys.subsort('delay', 'grade'));
+    assert.ok(sys.subsort('count', 'grade'));
     assert.equal(sys.leastSortOfName('g0'), 'count');
-    assert.ok(sys.leq('delay', 'q'));   // program edge still there
+    assert.ok(sys.subsort('delay', 'q'));   // program edge still there
   });
 });
