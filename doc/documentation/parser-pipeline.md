@@ -1,3 +1,10 @@
+---
+title: Parser Pipeline
+modified: 2026-08-20
+summary: One Earley parser, three configurations — sorted-template grammar generation, ambiguity instrument, parcel sugar.
+tags: [parser, implementation, architecture, ill]
+---
+
 # Parser Pipeline
 
 One Earley parser, three configurations.
@@ -79,9 +86,15 @@ ill.rules → custom parser (uses buildParser for formula fragments) → rule de
 
 **Core engine:** `lib/parser/earley.js` — generic Earley recognizer with Aycock-Horspool nullable handling, back-pointer tree extraction, configurable lexer. O(n³) general, O(n) for the unambiguous stratified grammars CALC generates.
 
+**Ambiguity instrument** (TODO_0268 §5a): static CFG ambiguity is undecidable, so detection is per-input — an always-on counter records dual-derivation chart items (a second distinct back-pointer for an existing item = a first-wins site) and multiple accepting items; `setStrictAmbiguity(true)` turns either into a parse error. `tests/parser-fold-fuzz.test.js` sweeps the whole corpus plus grammar-sampled strings in strict mode (baseline: zero findings). The decidable static layer is the generator-level collision throws below (duplicate circumfix, one graded prefix, mixfix-shape errors). Item-level detection is a documented over-approximation (a duplicate may sit off the accepted spine).
+
 **Grammar generation:** `lib/parser/earley-grammar.js` — generates a stratified CFG from `.calc` constructor annotations (Danielsson-Norell style). Each precedence level becomes a distinct nonterminal; associativity is encoded via same/next references. Binder scoping uses open/closed nonterminals.
 
-**Sorted mixfix templates** (TODO_0268 item A): any `#N`-hole `@ascii` template not claimed by the legacy families (binary/prefix/nullary/circumfix/gradedPrefix) classifies by the position of its SAME-SORT holes — none → closed (ATOM), right edge → prefix (UNARY), left edge → postfix (tight level above UNARY), both edges → infix (precedence chain). Cross-sort holes target the auxiliary grade chain (v1: one auxiliary sort; per-sort chains ride with TODO_0011). This is how till declares its timed surface (`at: formula -> grade -> formula @ascii "#1@#2"`, `after`, `before`, `readPreserved`) and woplus's `A +[Q] B` — the former `timedAnnotations` parser flag is gone; a calculus parses what it declares. `at`'s stamp/grade pun (`{B}@d` regrades the computation) stays kernel-owned in the grammar's atAction, like `$`/preserved.
+**Sorted mixfix templates — the ONE grammar mechanism** (TODO_0268 item A + §5c fold): any `#N`-hole `@ascii` template classifies by the position of its SAME-SORT holes — none → closed (ATOM), right edge → prefix (UNARY), left edge → postfix (tight level above UNARY), both edges → infix (precedence chain), literal-delimited at both ends → closed with interior holes parsing at START (a closed operator's inner expressions are unrestricted). Cross-sort holes target the auxiliary grade chain. This is how till declares its timed surface (`at: formula -> grade -> formula @ascii "#1@#2"`, `after`, `before`, `readPreserved`) and woplus's `A +[Q] B` — a calculus parses what it declares.
+
+Since the §5c fold, the historic families are *normalized into synthetic template records* and emitted by the same machinery: the binary operator table (`_ * _`) → infix templates, unary prefix → prefix templates, nullary constants → closed templates, circumfix (`{ _ }`, `{ #2 }`) → closed templates with an `elide` attribute (unit grade fill), graded prefix (`! #2`) → prefix templates with `elide`/`d15Guard`/`countGrade` attributes covering `!`/`!_0`/`!_ω`/`!_k`. The family tables remain the input surface (the serialized `ill.json` shape, still consulted for lexer-config derivation); only rule emission is folded. Fold parity was verified against the pre-fold builder: 12,000 grammar-sampled strings, hash-identical, before the legacy emission was deleted. `at`'s stamp/grade pun (`{B}@d` regrades the computation) stays kernel-owned in the grammar's atAction, like `$`/preserved.
+
+**Parcel sugar** (§5d, D4): under a grammar with a graded prefix AND a grade chain (till), `4wood` lexes as ONE `PARCEL` token — hash-identical to `!_4 wood`. Fused by construction: identifiers can't start with a digit, so the lexeme is unambiguous, whereas a spaced `4 wood` production is genuinely ambiguous with application juxtaposition (`f 4 wood` = f(4, wood)) — detector-verified in `sorted-templates.test.js`. `4wood@3` and `f 4wood` are loud errors (write `!_4 wood@3`; parcels are formula operands, not term args).
 
 **Factory:** `lib/calculus/builders.js:buildParserFromTables(tables)` — delegates to `computeEarleyGrammarFromTables` + `buildParserFromGrammar`. Same interface for all three parser paths. Opt-in extensions via tables fields:
 

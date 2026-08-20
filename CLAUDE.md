@@ -205,7 +205,8 @@ FFI is optimization, theory is semantics. Every FFI predicate MUST have backward
 - Per-rule compiled matchers were attempted and reverted — 59 closures → V8 megamorphic → ~25% regression (RES_0069). `compilePS` works: only ~4 closure types stays within V8 polymorphic IC threshold.
 - Manual prover: `getApplicableActions(state, { mode: 'focused' })` (default) vs `{ mode: 'unfocused' }`
 - Focus action names: `Focus_L` / `Focus_R` (not just `Focus`)
-- Counted parcels (D4 revised): binding discipline decides cohort discipline. `!_k A` = k copies of ANY ages (spreads across cohorts oldest-first; activation = newest taken stamp); `!_k A@T` = k copies at ONE stamp T; `!_W A` = ALL copies (W binds the total); `!_W A@T` = one whole cohort (W its size, T its stamp)
+- Counted parcels (D4 revised): binding discipline decides cohort discipline. `!_k A` = k copies of ANY ages (spreads across cohorts oldest-first; activation = newest taken stamp); `!_k A@T` = k copies at ONE stamp T; `!_W A` = ALL copies (W binds the total); `!_W A@T` = one whole cohort (W its size, T its stamp). Fused sugar `4wood` ≡ `!_4 wood` (till only, one lexer token); spaced `4 wood` stays application juxtaposition, `4wood@3` is a loud error (write `!_4 wood@3`)
+- Grammar emission is ONE mechanism (sorted templates, TODO_0268 §5c): operator/prefix/nullary/circumfix/gradedPrefix tables are normalized into synthetic template records in `earley-grammar.js` — new surface syntax should be a declared `@ascii` template, not a new family. Per-input ambiguity detection: `setStrictAmbiguity(true)` in `earley.js` (corpus sweep: `tests/parser-fold-fuzz.test.js`)
 
 ## Tooling
 
