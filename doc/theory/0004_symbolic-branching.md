@@ -1,7 +1,7 @@
 ---
 title: "Symbolic Branching in ILL Forward Chaining"
 created: 2026-02-17
-modified: 2026-02-21
+modified: 2026-08-20
 summary: "Analysis of how to handle conditional branches on symbolic values in ILL. ⊕ (internal choice) is the theoretically correct object-level solution."
 tags: [symbolic-execution, branching, oplus, with, case-analysis, path-conditions, forward-chaining]
 category: "Forward Chaining"
@@ -60,7 +60,7 @@ A determines what `plus(?S, 32)` IS. B determines how to branch on comparisons i
 |-----------|---------|---------|------------|----------------------|
 | `A ⊗ B` (tensor) | Both exist | Split Δ | Nobody — parallel | No: resources can't go to both |
 | `A & B` (with) | Both offered | Shared Δ | Consumer (external) | Semantically wrong: "both valid" |
-| `A ⊕ B` (plus) | One holds | Shared Δ | Producer (internal) | Correct: "exactly one, handle both" |
+| `A ⊕ B` (oplus) | One holds | Shared Δ | Producer (internal) | Correct: "exactly one, handle both" |
 
 **`⊕` is the correct connective.** EVM comparisons are deterministic — given inputs, the result is determined. `&` means "both arms available, you choose" — semantically wrong. `⊕` means "system has decided; handle both cases" — semantically correct.
 
@@ -76,7 +76,7 @@ Both branches get the full Δ. This is NOT duplication of linear resources — t
 
 ### ⊕ vs & — Coexistence
 
-| | `A & B` (with) | `A ⊕ B` (plus) |
+| | `A & B` (with) | `A ⊕ B` (oplus) |
 |---|---|---|
 | **Semantics** | Both available, consumer picks | One holds, handle both cases |
 | **Who decides** | Environment (external choice) | System (internal choice) |
@@ -185,9 +185,9 @@ Without pruning, ground execution explores 2^k branches for k boolean operations
 
 ### What's Needed
 
-1. **ill.calc:** `plus: formula -> formula -> formula` with annotations (@ascii `_ + _`, @prec, @category additive)
-2. **ill.rules:** `plus_r1`, `plus_r2`, `plus_l` (three rules)
-3. **compile.js / expandChoiceItem:** Add case for `plus` tag — same behavior as `with` (create two alternatives)
+1. **ill.calc:** `oplus: formula -> formula -> formula` with annotations (@ascii `_ + _`, @prec, @category additive)
+2. **ill.rules:** `oplus_r1`, `oplus_r2`, `oplus_l` (three rules)
+3. **compile.js / expandChoiceItem:** Add case for `oplus` tag — same behavior as `with` (create two alternatives)
 4. **Focusing metadata:** ⊕ positive, ⊕L invertible
 5. **EVM rules:** Rewrite comparison/boolean operations to use `⊕` + path conditions
 6. **(Optimization)** Eager path condition pruning for ground values

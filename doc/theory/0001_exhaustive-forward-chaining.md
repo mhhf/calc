@@ -1,11 +1,11 @@
 ---
 title: "Exhaustive Forward Chaining in MALL with the Lax Monad"
 created: 2026-02-15
-modified: 2026-02-20
+modified: 2026-08-20
 summary: "CALC extends CLF with exhaustive exploration, additives in forward consequents, and guarded loli continuations — three extensions not present in any existing system."
 tags: [clf, forward-chaining, symexec, lax-monad, oplus, loli, theory]
 category: "Forward Chaining"
-unique_contribution: "Identifies and formalizes three independent extensions to CLF's lax monad (loli-in-monad, plus-in-consequent, exhaustive exploration) and proposes an execution tree judgment connecting them to CHR∨ soundness and QCHR game semantics."
+unique_contribution: "Identifies and formalizes three independent extensions to CLF's lax monad (loli-in-monad, oplus-in-consequent, exhaustive exploration) and proposes an execution tree judgment connecting them to CHR∨ soundness and QCHR game semantics."
 references:
   - "Watkins, Cervesato, Pfenning, Walker, 'CLF', 2004"
   - "Betz & Frühwirth, 'CHR with Disjunction', 2013"
@@ -49,9 +49,9 @@ A loli `A -o B` in the state is a **latent rule** / **continuation** — it fire
 
 **Linearity safety:** a loli `!A -o B` produced by a rule consequent is LINEAR — it fires once and is consumed. The concern that `!A -o B` could behave like `!(A -o B)` (persistent, infinite firing) is prevented by bang_r's promotion rule, which requires the linear context to be empty. Since `!A -o B` = `loli(bang(A), B)` is itself a linear formula (not bang-wrapped), it occupies the linear context, blocking promotion. The derivation `!A -o B |- !(A -o B)` is not valid in ILL. Only the converse holds (dereliction). This structural guarantee is what makes loli-in-monad sound without risk of infinite resource production.
 
-### 2. Additives (plus) in Forward Consequents
+### 2. Additives (oplus) in Forward Consequents
 
-CLF's monad excludes additives. CALC uses `plus` (internal choice) in forward-chaining consequents:
+CLF's monad excludes additives. CALC uses `oplus` (internal choice) in forward-chaining consequents:
 
 ```ill
 evm/eq: ... -o { ... * ((stack SH 0 * !neq X Y) + (stack SH 1 * !eq X Y)) }.
@@ -59,13 +59,13 @@ evm/eq: ... -o { ... * ((stack SH 0 * !neq X Y) + (stack SH 1 * !eq X Y)) }.
 
 This means: the rule produces a disjunction. Both branches must be explored because the result depends on symbolic values (or is undecidable at this point).
 
-**plus-left is invertible** — case-split eagerly. In the forward engine, `expandChoiceItem` forks into alternatives. Each alternative gets the full shared context (no linear resource duplication — branches are alternatives, not parallel).
+**oplus-left is invertible** — case-split eagerly. In the forward engine, `expandChoiceItem` forks into alternatives. Each alternative gets the full shared context (no linear resource duplication — branches are alternatives, not parallel).
 
-**Semantic fit:** `plus` (internal choice / "producer decided") is correct for deterministic comparisons — the system has decided, the consumer handles both cases. `with` (external choice / "consumer decides") is correct for interactive/nondeterministic choice.
+**Semantic fit:** `oplus` (internal choice / "producer decided") is correct for deterministic comparisons — the system has decided, the consumer handles both cases. `with` (external choice / "consumer decides") is correct for interactive/nondeterministic choice.
 
 **Existing related work:**
 - Forum (Miller 1996): full linear logic specification logic including additives — proof-theoretic, not operational
-- CHR-disjunction (Betz & Fruhwirth 2013): disjunctive rule heads in CHR, mapped to linear logic via `plus`. Soundness and completeness proved. This is the closest existing result — their semantics could give a direct soundness proof for CALC's `plus`-in-forward
+- CHR-disjunction (Betz & Fruhwirth 2013): disjunctive rule heads in CHR, mapped to linear logic via `oplus`. Soundness and completeness proved. This is the closest existing result — their semantics could give a direct soundness proof for CALC's `oplus`-in-forward
 - No practical system (CLF, Celf, LolliMon, Ceptre) puts additives in forward chaining
 
 ### 3. Exhaustive Exploration (Don't-Know Nondeterminism)
@@ -74,7 +74,7 @@ CLF uses committed choice: pick one applicable rule, fire it, no backtracking. T
 
 CALC's symexec explores **all** execution paths, building an execution tree. At each state:
 - If multiple rules can fire → branch on all of them
-- If a rule produces `plus` → fork into alternatives
+- If a rule produces `oplus` → fork into alternatives
 - If a state was seen before → cycle (back-edge)
 - If no rules can fire → quiescent leaf
 
@@ -90,7 +90,7 @@ Layer 0: ILL (Girard 1987)
 Layer 1: CLF (Watkins+ 2004) — backward + forward, committed choice
   | add exhaustive exploration
 Layer 2: Symexec — don't-know nondeterminism over forward steps
-  | add plus in consequents
+  | add oplus in consequents
 Layer 3: Case-splitting execution trees — symbolic branching
   | add guarded continuations (loli in monad)
 Layer 4: Guarded conditional branching — the full picture
@@ -98,7 +98,7 @@ Layer 4: Guarded conditional branching — the full picture
 Layer 5: Symbolic arithmetic — the practical completion
 ```
 
-Layers 0-1: established theory. Layer 2: working implementation, no formalization. Layer 3: added with `plus` connective. Layer 4: TODO_0041. Layer 5: TODO_0002.
+Layers 0-1: established theory. Layer 2: working implementation, no formalization. Layer 3: added with `oplus` connective. Layer 4: TODO_0041. Layer 5: TODO_0002.
 
 ## Formal Judgment (Proposed)
 
@@ -112,7 +112,7 @@ The execution tree judgment: `Sigma; Delta |-_fwd T : A`
 Tree constructors:
 - `leaf(Delta_q)` — quiescent state (no rules fire)
 - `step(r, theta, T')` — deterministic step: rule `r` with substitution `theta`, continuing to `T'`
-- `fork(T_1, T_2)` — plus case split (from `plus` in consequent)
+- `fork(T_1, T_2)` — oplus case split (from `oplus` in consequent)
 - `branch(r_1, T_1, ..., r_n, T_n)` — nondeterministic branch (multiple rules can fire)
 - `cycle(Delta)` — back-edge to previously seen state
 - `bound(Delta)` — depth limit reached
@@ -127,7 +127,7 @@ Tree constructors:
 |---|---|---|
 | `!(A -o {B})` | Compiled rule (persistent) | Strategy stack + tryMatch |
 | `A -o B` in state | Loli continuation (linear) | Same pipeline (after TODO_0041) |
-| `A plus B` in consequent | Fork alternatives | Branch node in tree |
+| `A oplus B` in consequent | Fork alternatives | Branch node in tree |
 | `!P` in antecedent | Backward proving / FFI | Phase 2 of tryMatch |
 | Quiescence | No rules fire | Leaf node |
 | Multiset rewriting | mutateState / undoMutate | Mutation+undo pattern |
@@ -138,7 +138,7 @@ Tree constructors:
 | Simplification `H <=> B` | Linear antecedent, linear consequent | `H^L ⊢ ∃ȳ.B^L` |
 | Propagation `H ==> B` | Persistent antecedent, linear consequent | `!H^L ⊢ !H^L ⊗ ∃ȳ.B^L` |
 | Simpagation `H1 \ H2 <=> G \| B` | Persistent + linear ante, guard (FFI), consequent | `H₁^L ⊗ H₂^L ⊗ G^L ⊢ H₁^L ⊗ ∃ȳ.B^L ⊗ G^L` |
-| CHR∨ disjunction `H <=> B1 ; B2` | `plus` in consequent | `H^L ⊢ B₁^L ⊕ B₂^L` |
+| CHR∨ disjunction `H <=> B1 ; B2` | `oplus` in consequent | `H^L ⊢ B₁^L ⊕ B₂^L` |
 | Guard `G` | FFI / backward proving | `!G^L` (banged, appears both sides) |
 | Propagation history | N/A (linear consumption prevents re-fire) | — |
 | Active constraint | Strategy stack | — |
