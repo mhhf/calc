@@ -7,14 +7,19 @@ sawmill: type.
 wood: type.
 plank: type.
 
-% grades.ill — till executable spec: count grades as graded parcels (D4).
+% grades.ill — till executable spec: count grades as graded parcels (D4,
+% revised with TODO_0011: binding discipline decides cohort discipline).
 %
 % STATUS: written ahead of the engine (TDD) — see schedule.ill header.
 % Ground truth: tests/engine/till-oracle.test.js ("count grades").
 %
-% !_k A  = split k off ONE matched cohort (multiplicity decrement).
-% !_W A  = take the WHOLE matched cohort; W binds its count AT FIRING TIME.
-% Arithmetic on bound counts uses the ordinary overloaded predicates (D8.1).
+% !_k A    = take k copies of A, ANY ages — the pattern binds no stamp, so
+%            the stamp axis is unobservable through it; the take spreads
+%            across cohorts oldest-first, activation = newest taken stamp.
+% !_k A@T  = take k copies AT ONE STAMP T (a single cohort ≥ k).
+% !_W A    = take ALL copies of A; W binds the TOTAL at firing time.
+% !_W A@T  = take one WHOLE cohort; W binds its size, T its stamp.
+% Arithmetic on bound counts uses the shared numeric predicates (§3).
 
 % (pair works on `log`, sawmill on `wood` — the oracle suite runs each
 % scenario with its own rule set; disjoint resources keep the .ill file
@@ -27,10 +32,17 @@ pair: !_2 log -o { bundle }.
   =>
   !_1 log * !_2 bundle .
 
-% whole-cohort bind: sawmill converts W wood into floor(3W/2) planks (@10).
-% Cohorts at distinct stamps are distinct parcels: W=3 (at 0) then W=5 (at 10,
-% after the sawmill returns) — floor(4.5)+floor(7.5) = 4+7 planks.
-sawmill: $sawmill * !_W wood * !mul W 3 T * !div T 2 Y -o { !_Y plank }@10.
+% age-agnostic split: 2 logs at DIFFERENT stamps pair up (activation = the
+% newer stamp), and 1+1+1 across three stamps still leaves exactly one
+#expect_split_spread (settle: 5)
+  log * !_2 log@1 * log@3
+  =>
+  bundle@1 * bundle@3 .
+
+% per-BATCH whole-cohort bind: the stamp is BOUND (@T), so W is one
+% cohort's size — sawmill converts W wood into floor(3W/2) planks (@10).
+% W=3 (at 0) then W=5 (at 10, after the sawmill returns) — 4+7 planks.
+sawmill: $sawmill * !_W wood@T * !mul W 3 T2 * !div T2 2 Y -o { !_Y plank }@10.
 
 #expect_whole_cohort (settle: 20)
   sawmill * !_3 wood * !_5 wood@1

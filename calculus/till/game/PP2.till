@@ -46,14 +46,12 @@ shelf/food: shelf food 10.
 spoil: (r: resource) r@Q * !shelf r D * after (Q + D) -o { I }.
 
 % standing build menu: wood buys a farm, stone buys a quarry.
-% Costs are SEPARATE patterns (wood * wood * wood), NOT counted parcels:
-% `!_3 wood` is a cohort count (D4 — three wood OF THE SAME STAMP), and
-% production makes singleton cohorts (one wood per forage tick), so a
-% parcel cost would go permanently unavailable once the initial same-stamp
-% pile is spent. Separate patterns each match any cohort, FIFO oldest-first.
+% `!_3 wood` takes 3 wood of ANY ages (D4 revised: an unstamped count
+% binds no stamp, so it spreads across cohorts oldest-first — the form
+% `!_3 wood@T` would demand one same-stamp batch instead).
 #play (settle: 0)
   camp
-  * !(( wood * wood * wood -o { farm }@5 ) & ( stone * stone -o { quarry }@8 ))
+  * !(( !_3 wood -o { farm }@5 ) & ( !_2 stone -o { quarry }@8 ))
   * !_3 wood * !_2 stone * food
   =>
   camp .

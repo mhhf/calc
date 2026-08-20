@@ -103,6 +103,33 @@ function bestMatch(rule, st) {
       return;
     }
     const spec = ins[i];
+    // D4 revised (TODO_0011 follow-up): an UNSTAMPED counted input binds no
+    // stamp, so the take SPREADS across cohorts oldest-first (countVar
+    // binds the TOTAL); activation joins the newest taken stamp. Stamped
+    // inputs (stamp/stampVar) stay cohort-locked (the loop below).
+    const counted = (spec.count ?? 1) > 1 || spec.countVar;
+    if (counted && spec.stamp === undefined && !spec.stampVar) {
+      const target = spec.countVar ? Infinity : spec.count;
+      const parts = [];
+      let total = 0, maxS = R0;
+      for (const c of cohorts(st, spec.atom)) {                    // oldest first
+        if (total >= target) break;
+        const avail = c.count - (taken.get(key(c.atom, c.stamp)) ?? 0);
+        if (avail <= 0) continue;
+        const t = spec.countVar ? avail : Math.min(avail, target - total);
+        parts.push({ stamp: c.stamp, take: t });
+        total += t;
+        maxS = rmax(maxS, c.stamp);
+      }
+      if (total >= 1 && (spec.countVar || total >= spec.count)) {
+        for (const p of parts) { const k = key(spec.atom, p.stamp); taken.set(k, (taken.get(k) ?? 0) + p.take); }
+        sel.push({ atom: spec.atom, stamp: maxS, take: total, parts, mode: spec.mode ?? 'consume' });
+        search(i + 1, sel, rmax(partialA, maxS));
+        sel.pop();
+        for (const p of parts) { const k = key(spec.atom, p.stamp); taken.set(k, taken.get(k) - p.take); }
+      }
+      return;                                                      // spread is deterministic
+    }
     for (const c of cohorts(st, spec.atom)) {                      // oldest first
       if (spec.stamp !== undefined && rcmp(c.stamp, rat(spec.stamp)) !== 0) continue;
       const avail = c.count - (taken.get(key(c.atom, c.stamp)) ?? 0);
@@ -128,7 +155,10 @@ const mix32 = (x) => {
 };
 const strHash = (s) => { let h = 2166136261; for (let i = 0; i < s.length; i++) h = Math.imul(h ^ s.charCodeAt(i), 16777619); return h >>> 0; };
 const stateHash = (st) => [...st.keys()].reduce((h, k) => (h ^ mix32(strHash(k) ^ st.get(k).count)) >>> 0, 0);
-const matchKey = (m) => `${m.rule.name}|${m.sel.map(s => `${s.atom}@${rstr(s.stamp)}x${s.take}`).join(',')}`;
+const selKey = (s) => s.parts
+  ? `${s.atom}[${s.parts.map(p => `@${rstr(p.stamp)}x${p.take}`).join('+')}]`
+  : `${s.atom}@${rstr(s.stamp)}x${s.take}`;
+const matchKey = (m) => `${m.rule.name}|${m.sel.map(selKey).join(',')}`;
 
 function choose(tied, st, seed) {
   if (tied.length === 1) return tied[0];
@@ -153,7 +183,11 @@ function settle(state, T, opts = {}) {
     if (rcmp(aMin, horizon) > 0) return { state: st, log };        // horizon: future pending
     const m = choose(cands.filter(c => rcmp(c.a, aMin) === 0), st, seed);
     const d = rat(typeof m.rule.delay === 'function' ? m.rule.delay(m.th) : (m.rule.delay ?? 0));
-    for (const s of m.sel) if (s.mode !== 'read') removeFact(st, s.atom, s.stamp, s.take);
+    for (const s of m.sel) {
+      if (s.mode === 'read') continue;
+      if (s.parts) for (const p of s.parts) removeFact(st, s.atom, p.stamp, p.take);
+      else removeFact(st, s.atom, s.stamp, s.take);
+    }
     const outs = typeof m.rule.outputs === 'function' ? m.rule.outputs(m.th) : (m.rule.outputs ?? []);
     const done = radd(m.a, d);
     for (const [atom, count = 1] of outs) if (count > 0) addFact(st, atom, done, count);
