@@ -284,6 +284,16 @@ describe('Store Binary Format', () => {
       buf.writeUInt16LE(99, 4); // version 99
       assert.throws(() => deserialize(buf), /Unsupported version/);
     });
+
+    it('rejects a stale v6 snapshot (pre-till PRED_BOUNDARY — self-reject gate)', () => {
+      // A real serialized snapshot with only the version field patched to 6:
+      // exactly the shape of a pre-Phase-1 cache file after the tag commit.
+      Store.clear();
+      Store.put('tensor', [Store.put('atom', ['a']), Store.put('atom', ['b'])]);
+      const buf = serialize(Store.snapshot({ version: '1.0' }));
+      buf.writeUInt16LE(6, 4);
+      assert.throws(() => deserialize(buf), /Unsupported version: 6/);
+    });
   });
 
   describe('tag registry reset', () => {
@@ -416,7 +426,7 @@ describe('Store Binary Format', () => {
         // Source load + explore (no caching)
         Store.clear();
         const calcSrc = mde.load(msPath, { cache: false });
-        const stateSrc = mde.decomposeQuery(calcSrc.queries.get('symex'));
+        const stateSrc = mde.normalizeQuery(calcSrc.queries.get('symex'));
         const treeSrc = calcSrc.explore(stateSrc, {
           maxDepth: 200,
           dangerouslyUseFFI: true
@@ -427,7 +437,7 @@ describe('Store Binary Format', () => {
         mde.precompile(msPath, tmpFile);
         Store.clear();
         const calcBin = mde.loadPrecompiled(tmpFile);
-        const stateBin = mde.decomposeQuery(calcBin.queries.get('symex'));
+        const stateBin = mde.normalizeQuery(calcBin.queries.get('symex'));
         const treeBin = calcBin.explore(stateBin, {
           maxDepth: 200,
           dangerouslyUseFFI: true
@@ -607,7 +617,7 @@ describe('Store Binary Format', () => {
       // Fresh load
       Store.clear();
       const calcFresh = mde.load(msPath, { cache: false });
-      const stateFresh = mde.decomposeQuery(calcFresh.queries.get('symex'));
+      const stateFresh = mde.normalizeQuery(calcFresh.queries.get('symex'));
       const treeFresh = calcFresh.explore(stateFresh, {
         maxDepth: 200,
         dangerouslyUseFFI: true
@@ -616,7 +626,7 @@ describe('Store Binary Format', () => {
       // Auto-cached load (first call = miss + write)
       Store.clear();
       const calcCached = mde.load(msPath, { cacheDir: tmpDir });
-      const stateCached = mde.decomposeQuery(calcCached.queries.get('symex'));
+      const stateCached = mde.normalizeQuery(calcCached.queries.get('symex'));
       const treeCached = calcCached.explore(stateCached, {
         maxDepth: 200,
         dangerouslyUseFFI: true

@@ -85,9 +85,9 @@ export function renderFormula(
     const body = renderFormula(args[1], pool, prec);
     return parens(`!${body}`, prec, parentPrec);
   }
-  // {A} monad
-  if (tag === 'monad' && args.length === 1) {
-    return `{${renderFormula(args[0], pool, 0)}}`;
+  // {A} graded monad — monad(grade, body); the unit grade is elided
+  if (tag === 'monad' && args.length === 2) {
+    return `{${renderFormula(args[1], pool, 0)}}`;
   }
 
   // Quantifiers: `exists x. body` — the binder name is often in extras.

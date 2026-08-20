@@ -1,0 +1,4 @@
+% Nested graded monad in a consequent — must be loudly rejected: the engine
+% never applies graded-μ at runtime, so this would silently produce a raw
+% monad token into the state (round 13).
+bad: a -o { { b }@2 }@3.

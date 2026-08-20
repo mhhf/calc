@@ -7,10 +7,10 @@ import assert from 'node:assert';
 import path from 'path';
 import mde from '../../lib/engine/index.js';
 import { explore, stateHashStr } from '../../lib/engine/explore.js';
-import { ILL_CONNECTIVES } from '../../lib/engine/ill/connectives.js';
+import { illConnectives } from '../../lib/engine/ill/connectives.js';
 import { resolveConn, expandChoice, expandConsqChoices } from '../../lib/engine/formula-utils.js';
 import { gradeW } from '../../lib/engine/grades.js';
-const ILL_RC = resolveConn(ILL_CONNECTIVES);
+const ILL_RC = resolveConn(illConnectives());
 import { countLeaves, getAllLeaves, maxDepth, countNodes, toDot } from '../../lib/engine/tree-utils.js';
 import forward from '../../lib/engine/forward.js';
 import { matchLoli } from '../../lib/engine/lnl/loli.js';
@@ -19,6 +19,7 @@ import { proveNaive } from '../../lib/engine/lnl/persistent.js';
 import { buildMatchOpts, buildGenericProtocol, buildLnlProtocol, buildOptProtocol, buildFfiProtocol } from '../../lib/engine/match.js';
 import { makeMatchOpts } from './_match-opts.js';
 import Store from '../../lib/kernel/store.js';
+import { monadUnit as U } from '../../lib/engine/grades.js';
 describe('explore', { timeout: 10000 }, () => {
   describe('deterministic execution', () => {
     it('single path to quiescence', async () => {
@@ -98,36 +99,40 @@ describe('explore', { timeout: 10000 }, () => {
       assert.deepStrictEqual(alts[0], { linear: [h], persistent: [], grade0: [] });
     });
 
-    it('with(A,B) returns two alternatives', () => {
+    // External choice (`with`) is the ENVIRONMENT's move — a consequent
+    // OFFERS the menu as ONE inert fact (collapsed only by the host via
+    // with-projection); the engine must not expand it into alternatives
+    // (TODO_0265 Phase 6, Denis: exec silently took alt 0 of the
+    // environment's choice before — that was never the engine's call).
+    it('with(A,B) stays ONE inert menu fact', () => {
       const a = Store.put('atom', ['a']);
       const b = Store.put('atom', ['b']);
       const w = Store.put('with', [a, b]);
       const alts = expandChoice(w, ILL_RC);
-      assert.strictEqual(alts.length, 2);
-      assert.deepStrictEqual(alts[0], { linear: [a], persistent: [], grade0: [] });
-      assert.deepStrictEqual(alts[1], { linear: [b], persistent: [], grade0: [] });
+      assert.strictEqual(alts.length, 1);
+      assert.deepStrictEqual(alts[0], { linear: [w], persistent: [], grade0: [] });
     });
 
-    it('tensor(A, with(B,C)) returns cross-product', () => {
+    it('tensor(A, with(B,C)) keeps the menu opaque inside the product', () => {
       const a = Store.put('atom', ['a']);
       const b = Store.put('atom', ['b']);
       const c = Store.put('atom', ['c']);
       const w = Store.put('with', [b, c]);
       const t = Store.put('tensor', [a, w]);
       const alts = expandChoice(t, ILL_RC);
-      assert.strictEqual(alts.length, 2);
-      assert.deepStrictEqual(alts[0].linear, [a, b]);
-      assert.deepStrictEqual(alts[1].linear, [a, c]);
+      assert.strictEqual(alts.length, 1);
+      assert.deepStrictEqual(alts[0].linear, [a, w]);
     });
 
-    it('with(with(A,B), C) returns three alternatives', () => {
+    it('nested with stays one fact (the whole spine is one menu)', () => {
       const a = Store.put('atom', ['a']);
       const b = Store.put('atom', ['b']);
       const c = Store.put('atom', ['c']);
       const w1 = Store.put('with', [a, b]);
       const w2 = Store.put('with', [w1, c]);
       const alts = expandChoice(w2, ILL_RC);
-      assert.strictEqual(alts.length, 3);
+      assert.strictEqual(alts.length, 1);
+      assert.deepStrictEqual(alts[0].linear, [w2]);
     });
 
     it('bang(A) returns persistent alternative', () => {
@@ -142,7 +147,7 @@ describe('explore', { timeout: 10000 }, () => {
       const p = Store.put('atom', ['neq']);
       const q = Store.put('atom', ['result']);
       const bangP = Store.put('bang', [gradeW(),p]);
-      const monadQ = Store.put('monad', [q]);
+      const monadQ = Store.put('monad', [U(), q]);
       const loli = Store.put('loli', [bangP, monadQ]);
       const alts = expandChoice(loli, ILL_RC);
       assert.strictEqual(alts.length, 1);
@@ -166,8 +171,8 @@ describe('explore', { timeout: 10000 }, () => {
       const b = Store.put('atom', ['one']);
       const bangP = Store.put('bang', [gradeW(),p]);
       const bangQ = Store.put('bang', [gradeW(),q]);
-      const branch0 = Store.put('loli', [bangP, Store.put('monad', [a])]);
-      const branch1 = Store.put('loli', [bangQ, Store.put('monad', [b])]);
+      const branch0 = Store.put('loli', [bangP, Store.put('monad', [U(), a])]);
+      const branch1 = Store.put('loli', [bangQ, Store.put('monad', [U(), b])]);
       const pl = Store.put('oplus', [branch0, branch1]);
       const alts = expandChoice(pl, ILL_RC);
       assert.strictEqual(alts.length, 2);
@@ -176,21 +181,19 @@ describe('explore', { timeout: 10000 }, () => {
       assert.deepStrictEqual(alts[1], { linear: [branch1], persistent: [], grade0: [] });
     });
 
-    it('with(loli(!P,{A}), loli(!Q,{B})) gives two loli alternatives', () => {
+    it('with over lolis stays one inert menu (the host projects a loli)', () => {
       const p = Store.put('atom', ['neq']);
       const q = Store.put('atom', ['eq']);
       const a = Store.put('atom', ['zero']);
       const b = Store.put('atom', ['one']);
       const bangP = Store.put('bang', [gradeW(),p]);
       const bangQ = Store.put('bang', [gradeW(),q]);
-      const branch0 = Store.put('loli', [bangP, Store.put('monad', [a])]);
-      const branch1 = Store.put('loli', [bangQ, Store.put('monad', [b])]);
+      const branch0 = Store.put('loli', [bangP, Store.put('monad', [U(), a])]);
+      const branch1 = Store.put('loli', [bangQ, Store.put('monad', [U(), b])]);
       const w = Store.put('with', [branch0, branch1]);
       const alts = expandChoice(w, ILL_RC);
-      assert.strictEqual(alts.length, 2);
-      // Each branch is a loli fact (fired by matchLoli at runtime)
-      assert.deepStrictEqual(alts[0], { linear: [branch0], persistent: [], grade0: [] });
-      assert.deepStrictEqual(alts[1], { linear: [branch1], persistent: [], grade0: [] });
+      assert.strictEqual(alts.length, 1);
+      assert.deepStrictEqual(alts[0], { linear: [w], persistent: [], grade0: [] });
     });
   });
 
@@ -204,12 +207,13 @@ describe('explore', { timeout: 10000 }, () => {
       assert.deepStrictEqual(alts[0].linear, [a]);
     });
 
-    it('single with in linear produces two alternatives', () => {
+    it('single with in linear stays one alternative (inert menu)', () => {
       const a = Store.put('atom', ['a']);
       const b = Store.put('atom', ['b']);
       const w = Store.put('with', [a, b]);
       const alts = expandConsqChoices({ linear: [w], persistent: [] }, ILL_RC);
-      assert.strictEqual(alts.length, 2);
+      assert.strictEqual(alts.length, 1);
+      assert.deepStrictEqual(alts[0].linear, [w]);
     });
 
     it('preserves original persistent items', () => {
@@ -221,8 +225,8 @@ describe('explore', { timeout: 10000 }, () => {
     });
   });
 
-  describe('choice forking via fixture', () => {
-    it('forks on A & B consequent', async () => {
+  describe('external choice is offered, not explored (Phase 6)', () => {
+    it('A & B consequent lands as one inert menu fact — no fork', async () => {
       Store.clear();
       const calc = await mde.load([
         path.join(import.meta.dirname, 'fixtures/choice.ill')
@@ -236,15 +240,15 @@ describe('explore', { timeout: 10000 }, () => {
         calc: calc._calcContext
       });
 
-      // Root should branch — the 'choose' rule produces left & right
-      assert.strictEqual(tree.type, 'branch');
-      // Should have 2 children (one per choice)
-      assert.strictEqual(tree.children.length, 2);
-      // Both should be annotated with choice index
-      assert.strictEqual(tree.children[0].choice, 0);
-      assert.strictEqual(tree.children[1].choice, 1);
-      // Each choice path should eventually reach a leaf (done)
-      assert.strictEqual(countLeaves(tree), 2);
+      // The environment's choice is not the engine's to enumerate: the
+      // 'choose' rule OFFERS left & right as one fact, finish_left/right
+      // cannot consume it, and the run quiesces holding the menu.
+      assert.strictEqual(countLeaves(tree), 1);
+      const menu = Store.put('with',
+        [await mde.parseExpr('left'), await mde.parseExpr('right')]);
+      const { toObject } = await import('../../lib/engine/fact-set.js');
+      const [leaf] = getAllLeaves(tree);
+      assert.ok(toObject(leaf.state).linear[menu] > 0, 'leaf holds the offered menu');
     });
   });
 
@@ -275,8 +279,8 @@ describe('explore', { timeout: 10000 }, () => {
     it('detects back-edge in A -o { A } loop', () => {
       Store.clear();
       const a = Store.put('atom', ['loop_token']);
-      const loli = Store.put('loli', [a, Store.put('monad', [a])]);
-      const rule = forward.compileRule({ name: 'loop', hash: loli, antecedent: a, consequent: Store.put('monad', [a]) }, { connectives: ILL_CONNECTIVES });
+      const loli = Store.put('loli', [a, Store.put('monad', [U(), a])]);
+      const rule = forward.compileRule({ name: 'loop', hash: loli, antecedent: a, consequent: Store.put('monad', [U(), a]) }, { connectives: illConnectives() });
 
       const state = forward.createState({ [a]: 1 }, {});
       const tree = explore(state, [rule], { maxDepth: 10 });
@@ -408,7 +412,7 @@ describe('explore', { timeout: 10000 }, () => {
     it('fires loli with ground linear trigger', () => {
       const trigger = Store.put('atom', ['unblock']);
       const result = Store.put('atom', ['done']);
-      const body = Store.put('monad', [result]);
+      const body = Store.put('monad', [U(), result]);
       const loli = Store.put('loli', [trigger, body]);
 
       const state = forward.createState(
@@ -427,7 +431,7 @@ describe('explore', { timeout: 10000 }, () => {
       // Predicates use tag-as-name, not atom wrapper
       const triggerPattern = Store.put('data', [X]);
       const bodyPattern = Store.put('processed', [X]);
-      const body = Store.put('monad', [bodyPattern]);
+      const body = Store.put('monad', [U(), bodyPattern]);
       const loli = Store.put('loli', [triggerPattern, body]);
 
       const val = Store.put('binlit', [42n]);
@@ -450,7 +454,7 @@ describe('explore', { timeout: 10000 }, () => {
       const guard = Store.put('atom', ['check']);
       const bangGuard = Store.put('bang', [gradeW(),guard]);
       const result = Store.put('atom', ['guarded_result']);
-      const body = Store.put('monad', [result]);
+      const body = Store.put('monad', [U(), result]);
       const loli = Store.put('loli', [bangGuard, body]);
 
       const state = forward.createState(
@@ -467,7 +471,7 @@ describe('explore', { timeout: 10000 }, () => {
       const guard = Store.put('atom', ['check']);
       const bangGuard = Store.put('bang', [gradeW(),guard]);
       const result = Store.put('atom', ['guarded_result']);
-      const body = Store.put('monad', [result]);
+      const body = Store.put('monad', [U(), result]);
       const loli = Store.put('loli', [bangGuard, body]);
 
       const state = forward.createState(
@@ -481,7 +485,7 @@ describe('explore', { timeout: 10000 }, () => {
     it('returns null when linear trigger is absent', () => {
       const trigger = Store.put('atom', ['unblock']);
       const result = Store.put('atom', ['done']);
-      const body = Store.put('monad', [result]);
+      const body = Store.put('monad', [U(), result]);
       const loli = Store.put('loli', [trigger, body]);
 
       const state = forward.createState(
@@ -498,7 +502,7 @@ describe('explore', { timeout: 10000 }, () => {
       const bangGuard = Store.put('bang', [gradeW(),guard]);
       const trigger = Store.put('tensor', [linTrigger, bangGuard]);
       const result = Store.put('atom', ['combined_result']);
-      const body = Store.put('monad', [result]);
+      const body = Store.put('monad', [U(), result]);
       const loli = Store.put('loli', [trigger, body]);
 
       // Both linear trigger and persistent guard present
@@ -518,7 +522,7 @@ describe('explore', { timeout: 10000 }, () => {
       const a = Store.put('atom', ['left']);
       const b = Store.put('atom', ['right']);
       const plusBody = Store.put('oplus', [a, b]);
-      const body = Store.put('monad', [plusBody]);
+      const body = Store.put('monad', [U(), plusBody]);
       const loli = Store.put('loli', [trigger, body]);
 
       const state = forward.createState(
@@ -542,8 +546,8 @@ describe('explore', { timeout: 10000 }, () => {
       const resultA = Store.put('atom', ['result_a']);
       const resultB = Store.put('atom', ['result_b']);
 
-      const loliA = Store.put('loli', [Store.put('bang', [gradeW(),guard]), Store.put('monad', [resultA])]);
-      const loliB = Store.put('loli', [Store.put('bang', [gradeW(),noguard]), Store.put('monad', [resultB])]);
+      const loliA = Store.put('loli', [Store.put('bang', [gradeW(),guard]), Store.put('monad', [U(), resultA])]);
+      const loliB = Store.put('loli', [Store.put('bang', [gradeW(),noguard]), Store.put('monad', [U(), resultB])]);
       const choice = Store.put('oplus', [loliA, loliB]);
       const conseq = Store.put('tensor', [shared, choice]);
 
@@ -551,8 +555,8 @@ describe('explore', { timeout: 10000 }, () => {
         name: 'produce',
         hash: 0,
         antecedent: start,
-        consequent: Store.put('monad', [conseq])
-      }, { connectives: ILL_CONNECTIVES });
+        consequent: Store.put('monad', [U(), conseq])
+      }, { connectives: illConnectives() });
 
       // Guard is provable, noguard is NOT
       const state = forward.createState(
@@ -569,7 +573,7 @@ describe('explore', { timeout: 10000 }, () => {
       });
       const tree = explore(state, [rule], {
         maxDepth: 5,
-        calc: { connectives: ILL_CONNECTIVES },
+        calc: { connectives: illConnectives() },
         matchOpts,
       });
 

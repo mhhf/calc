@@ -6,7 +6,7 @@ import { describe, it, beforeEach } from 'node:test';
 import assert from 'node:assert/strict';
 import Store from '../../lib/kernel/store.js';
 import { grade0, gradeW } from '../../lib/engine/grades.js';
-import { ILL_CONNECTIVES } from '../../lib/engine/ill/connectives.js';
+import { illConnectives } from '../../lib/engine/ill/connectives.js';
 import { resolveConn, compileRule, flattenAnte, unwrapComp } from '../../lib/engine/compile.js';
 import { predHead } from '../../lib/kernel/ast.js';
 import { cutPair, specialize, predMap, elimOrder, compose0, _tablingCacheKey, _composeFullKey } from '../../lib/engine/compose.js';
@@ -16,8 +16,9 @@ import fs from 'fs';
 import os from 'os';
 import path from 'path';
 import mde from '../../lib/engine/index.js';
+import { monadUnit as U } from '../../lib/engine/grades.js';
 
-const COMPILE_OPTS = { connectives: ILL_CONNECTIVES, getModes };
+const COMPILE_OPTS = { connectives: illConnectives(), getModes };
 
 /**
  * Helper: build and compile a raw forward rule from Store hashes.
@@ -27,7 +28,7 @@ const COMPILE_OPTS = { connectives: ILL_CONNECTIVES, getModes };
  * @returns {Object} compiled rule
  */
 function makeRule(name, anteHash, conseqBodyHash) {
-  const conseqHash = Store.put('monad', [conseqBodyHash]);
+  const conseqHash = Store.put('monad', [U(), conseqBodyHash]);
   const hash = Store.put('loli', [anteHash, conseqHash]);
   return compileRule(
     { name, hash, antecedent: anteHash, consequent: conseqHash },
@@ -117,7 +118,7 @@ describe('compose L1: cutPair', () => {
   let rc;
   beforeEach(() => {
     Store.clear();
-    rc = resolveConn(ILL_CONNECTIVES);
+    rc = resolveConn(illConnectives());
   });
 
   it('basic two-rule composition', () => {
@@ -330,7 +331,7 @@ describe('compose L1: specialize', () => {
   let rc;
   beforeEach(() => {
     Store.clear();
-    rc = resolveConn(ILL_CONNECTIVES);
+    rc = resolveConn(illConnectives());
   });
 
   it('basic persistent goal specialization', () => {
@@ -473,7 +474,7 @@ describe('compose L3: compose0', () => {
     const bY = Store.put('b', [Y]);
     const consumer = makeRule('cons', Store.put('bang', [grade0(), midY]), bY);
 
-    const result = compose0([producer, consumer], ILL_CONNECTIVES);
+    const result = compose0([producer, consumer], illConnectives());
     assert.equal(result.diagnostics.errors.length, 0, 'no errors');
     assert.equal(result.composedRules.length, 1, 'one composed rule');
     assert.equal(result.diagnostics.pairsAttempted, 1);
@@ -497,7 +498,7 @@ describe('compose L3: compose0', () => {
     const bY = Store.put('b', [Y]);
     const consumer = makeRule('cons', Store.put('bang', [grade0(), midY]), bY);
 
-    const result = compose0([prod1, prod2, consumer], ILL_CONNECTIVES);
+    const result = compose0([prod1, prod2, consumer], illConnectives());
     assert.equal(result.diagnostics.errors.length, 0);
     assert.equal(result.composedRules.length, 2, '2 composed rules (2×1)');
     assert.equal(result.diagnostics.pairsAttempted, 2);
@@ -509,7 +510,7 @@ describe('compose L3: compose0', () => {
     const mid = Store.put('mid', [Store.put('metavar', ['X'])]);
     const producer = makeRule('prod', a, Store.put('bang', [grade0(), mid]));
 
-    const result = compose0([producer], ILL_CONNECTIVES);
+    const result = compose0([producer], illConnectives());
     assert.equal(result.diagnostics.errors.length, 1);
     assert.ok(result.diagnostics.errors[0].includes('never consumed'));
     assert.equal(result.composedRules.length, 0);
@@ -520,7 +521,7 @@ describe('compose L3: compose0', () => {
     const b = Store.put('atom', ['b']);
     const consumer = makeRule('cons', Store.put('bang', [grade0(), mid]), b);
 
-    const result = compose0([consumer], ILL_CONNECTIVES);
+    const result = compose0([consumer], illConnectives());
     assert.equal(result.diagnostics.errors.length, 1);
     assert.ok(result.diagnostics.errors[0].includes('never produced'));
     assert.equal(result.composedRules.length, 0);
@@ -550,7 +551,7 @@ describe('compose L3: compose0', () => {
     const resultZ = Store.put('result', [Z]);
     const sink = makeRule('sink', Store.put('bang', [grade0(), stepZ]), resultZ);
 
-    const result = compose0([source, bridge, sink], ILL_CONNECTIVES);
+    const result = compose0([source, bridge, sink], illConnectives());
     assert.ok(result.diagnostics.errors.length > 0, 'should have bridge errors');
     assert.ok(result.diagnostics.errors.some(e => e.includes('bridge')));
     assert.equal(result.composedRules.length, 0);
@@ -577,7 +578,7 @@ describe('compose L3: compose0', () => {
     const cZ = Store.put('c', [Z]);
     const otherConsumer = makeRule('other_cons', Store.put('bang', [grade0(), otherZ]), cZ);
 
-    const result = compose0([producer, midConsumer, otherConsumer], ILL_CONNECTIVES);
+    const result = compose0([producer, midConsumer, otherConsumer], illConnectives());
     assert.ok(result.diagnostics.errors.length > 0, 'should have residual errors');
     assert.ok(result.diagnostics.errors.some(e => e.includes('grade-0 residuals')));
     assert.equal(result.composedRules.length, 0, 'defective rules filtered out');
@@ -594,7 +595,7 @@ describe('compose L3: compose0', () => {
     const bY = Store.put('b', [Y]);
     const consumer = makeRule('cons', Store.put('bang', [grade0(), midY]), bY);
 
-    const result = compose0([producer, consumer], ILL_CONNECTIVES);
+    const result = compose0([producer, consumer], illConnectives());
     assert.equal(result.composedRules.length, 1);
 
     // Compile the composed raw rule and check hasGrade0
@@ -620,7 +621,7 @@ describe('compose L3: compose0', () => {
     const cons1 = makeRule('cons1', Store.put('bang', [grade0(), Store.put('mid', [one])]), b);
     const cons2 = makeRule('cons2', Store.put('bang', [grade0(), mid2]), c);
 
-    const result = compose0([producer, cons1, cons2], ILL_CONNECTIVES);
+    const result = compose0([producer, cons1, cons2], illConnectives());
     assert.equal(result.diagnostics.errors.length, 0);
     assert.equal(result.diagnostics.pairsAttempted, 2);
     assert.equal(result.diagnostics.pairsSucceeded, 1);
@@ -633,7 +634,7 @@ describe('compose L3: compose0', () => {
     const b = Store.put('atom', ['b']);
     const normal = makeRule('normal', a, b);
 
-    const result = compose0([normal], ILL_CONNECTIVES);
+    const result = compose0([normal], illConnectives());
     assert.equal(result.composedRules.length, 0);
     assert.equal(result.diagnostics.grade0Predicates.length, 0);
   });
@@ -664,7 +665,7 @@ describe('compose L3: persistent specialization (pass 2)', () => {
       ['is_push/push2', { hash: Store.put('is_push', [h61, v2]), premises: [], grade0: true }],
     ]);
 
-    const result = compose0([rule], ILL_CONNECTIVES, null, clauses);
+    const result = compose0([rule], illConnectives(), null, clauses);
     assert.equal(result.diagnostics.errors.length, 0);
     assert.equal(result.composedRules.length, 2, '2 specialized rules');
     assert.equal(result.diagnostics.specializations, 2);
@@ -672,7 +673,7 @@ describe('compose L3: persistent specialization (pass 2)', () => {
 
     // Each specialized rule should have ground OP
     for (const raw of result.composedRules) {
-      const anteFlat = flattenAnte(raw.antecedent, resolveConn(ILL_CONNECTIVES));
+      const anteFlat = flattenAnte(raw.antecedent, resolveConn(illConnectives()));
       for (const p of anteFlat.persistent) {
         assert.notEqual(predHead(p), 'is_push', 'no is_push goals remain');
       }
@@ -706,7 +707,7 @@ describe('compose L3: persistent specialization (pass 2)', () => {
       ['lookup/b', { hash: Store.put('lookup', [k2, vb]), premises: [], grade0: true }],
     ]);
 
-    const result = compose0([producer, consumer], ILL_CONNECTIVES, null, clauses);
+    const result = compose0([producer, consumer], illConnectives(), null, clauses);
     assert.equal(result.diagnostics.errors.length, 0);
     // Pass 1: 1 linear composition (prod × cons)
     // Pass 2: 2 persistent specializations (× 2 lookup facts)
@@ -715,7 +716,7 @@ describe('compose L3: persistent specialization (pass 2)', () => {
     assert.equal(result.diagnostics.specializations, 2, '2 persistent specializations');
 
     // Verify specialized rules have no is_push/mid/grade-0 residuals
-    const rc = resolveConn(ILL_CONNECTIVES);
+    const rc = resolveConn(illConnectives());
     for (const raw of result.composedRules) {
       const anteFlat = flattenAnte(raw.antecedent, rc);
       assert.equal(anteFlat.grade0.length, 0, 'no grade-0 residuals');
@@ -732,7 +733,7 @@ describe('compose L3: persistent specialization (pass 2)', () => {
     const clauses = new Map([
       ['foo/a', { hash: Store.put('foo', [Store.put('atom', ['x'])]), premises: [] }],
     ]);
-    const result = compose0([rule], ILL_CONNECTIVES, null, clauses);
+    const result = compose0([rule], illConnectives(), null, clauses);
     assert.equal(result.composedRules.length, 0);
     assert.equal(result.specializations || result.diagnostics.specializations, 0);
   });
@@ -754,6 +755,7 @@ describe('compose integration: persistent specialization', () => {
       'spec_in : bin -> type.\n' +
       'spec_mid : bin -> bin -> type.\n' +
       'spec_out : bin -> type.\n' +
+      'spec_lk: (k: bin) -> (v: bin) -> type.\n' +
       // Grade-0 lookup clauses
       'spec_lk/a: !_0 spec_lk 1 0xa.\n' +
       'spec_lk/b: !_0 spec_lk 2 0xb.\n' +
@@ -785,7 +787,7 @@ describe('compose integration: persistent specialization', () => {
 
     // Execution should work: spec_in(1) → step → !_0 spec_mid(1,1) → consume → !spec_lk(1,0xa) → spec_out(0xa)
     const queryHash = calc.queries.get('symex');
-    const state = mde.decomposeQuery(queryHash);
+    const state = mde.normalizeQuery(queryHash);
     const result = calc.exec(state, { maxSteps: 5, trace: true });
     assert.ok(result.steps > 0, 'should execute');
 
@@ -804,6 +806,7 @@ describe('compose integration: persistent specialization', () => {
 
     // Grade-0 clause + backward query
     fs.writeFileSync(path.join(tmpDir, 'bc_test.ill'),
+      'bc_lk: (k: bin) -> (v: bin) -> type.\n' +
       'bc_lk/a: !_0 bc_lk 1 0xa.\n' +
       'bc_lk/b: !_0 bc_lk 2 0xb.\n' +
       '#goal bc_lk 1 0xa.\n'
@@ -858,7 +861,7 @@ describe('compose integration', () => {
     // Use the calc's own queries — parsed during load with correct Store state.
     const queryHash = calc.queries.get('symex');
     assert.ok(queryHash, 'should have a symex query');
-    const state = mde.decomposeQuery(queryHash);
+    const state = mde.normalizeQuery(queryHash);
     const result = calc.exec(state, { maxSteps: 5, trace: true });
     assert.ok(result.steps > 0, 'should execute');
 
@@ -907,8 +910,8 @@ describe('compose integration', () => {
     const calcExpanded = mde.load(path.join(tmpDir, 'expanded.ill'), { cache: false });
 
     // Use queries from the loaded calcs (parsed with correct Store state)
-    const stateC = mde.decomposeQuery(calcComposed.queries.get('symex'));
-    const stateE = mde.decomposeQuery(calcExpanded.queries.get('symex'));
+    const stateC = mde.normalizeQuery(calcComposed.queries.get('symex'));
+    const stateE = mde.normalizeQuery(calcExpanded.queries.get('symex'));
 
     // Collect leaves from explore tree (branches have children with { rule, child } shape)
     function collectLeaves(node) {
@@ -951,7 +954,7 @@ describe('compose L2.5: elimOrder', () => {
   let rc;
   beforeEach(() => {
     Store.clear();
-    rc = resolveConn(ILL_CONNECTIVES);
+    rc = resolveConn(illConnectives());
   });
 
   it('single predicate returns immediately', () => {
@@ -1069,7 +1072,7 @@ describe('compose L3: multi-stage persistent specialization', () => {
       ['lookup/b', { hash: Store.put('lookup', [h61, vb]), premises: [], grade0: true }],
     ]);
 
-    const result = compose0([rule], ILL_CONNECTIVES, null, clauses);
+    const result = compose0([rule], illConnectives(), null, clauses);
     assert.equal(result.diagnostics.errors.length, 0, 'no errors');
     assert.ok(result.removedNames.has('r'), 'original rule removed');
 
@@ -1087,7 +1090,7 @@ describe('compose L3: multi-stage persistent specialization', () => {
     assert.equal(result.composedRules.length, 2, '2 fully specialized rules');
 
     // Verify no is_push or lookup goals remain
-    const rc = resolveConn(ILL_CONNECTIVES);
+    const rc = resolveConn(illConnectives());
     for (const raw of result.composedRules) {
       const anteFlat = flattenAnte(raw.antecedent, rc);
       for (const p of anteFlat.persistent) {
@@ -1117,7 +1120,7 @@ describe('compose L3: multi-stage persistent specialization', () => {
     }
 
     // Should succeed (50 rules is well under the limit)
-    const result = compose0([rule], ILL_CONNECTIVES, null, clauses);
+    const result = compose0([rule], illConnectives(), null, clauses);
     assert.equal(result.composedRules.length, 50);
     assert.equal(result.diagnostics.specializations, 50);
   });

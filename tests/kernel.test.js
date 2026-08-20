@@ -181,6 +181,85 @@ describe('L1 Kernel - Proof Verification', () => {
     });
   });
 
+  // Round-15 F1: verifyTree threads the linear resource discipline —
+  // rule-shape-valid trees that leak or duplicate resources are rejected,
+  // and steps the kernel cannot re-derive are reported in `unverified`.
+  describe('verifyTree - resource accounting (round-15 F1)', () => {
+    it('rejects a forged id with unconsumed context: A, B |- A', () => {
+      const A = AST.freevar('A');
+      const B = AST.freevar('B');
+      const v = kernel.verifyTree(leaf(seq([A, B], A), 'id'));
+      assert.strictEqual(v.valid, false);
+      assert.ok(v.errors.some(e => /unconsumed/.test(e)), v.errors.join('; '));
+    });
+
+    it('rejects the leak under a rule: A * B |- A via tensor_l + id', () => {
+      const A = AST.freevar('A');
+      const B = AST.freevar('B');
+      const tree = new ProofTree({
+        conclusion: seq([AST.tensor(A, B)], A),
+        rule: 'tensor_l',
+        proven: true,
+        premises: [leaf(seq([A, B], A), 'id')],
+      });
+      const v = kernel.verifyTree(tree);
+      assert.strictEqual(v.valid, false);
+    });
+
+    it('accepts exact hand-split trees: A, B |- A * B with split premises', () => {
+      const A = AST.freevar('A');
+      const B = AST.freevar('B');
+      const tree = new ProofTree({
+        conclusion: seq([A, B], AST.tensor(A, B)),
+        rule: 'tensor_r',
+        proven: true,
+        premises: [leaf(seq([A], A), 'id'), leaf(seq([B], B), 'id')],
+      });
+      const v = kernel.verifyTree(tree);
+      assert.strictEqual(v.valid, true, v.errors.join('; '));
+      assert.strictEqual(v.unverified, undefined);
+    });
+
+    it('rejects additive branches consuming different resources (with_r)', () => {
+      // the kernel-side twin of the prover's with_r soundness fix:
+      // a, b |- (a * b) & a must not verify — branch 2 silently drops b
+      const A = AST.freevar('A');
+      const B = AST.freevar('B');
+      const goal = AST.with(AST.tensor(A, B), A);
+      const branch1 = new ProofTree({
+        conclusion: seq([A, B], AST.tensor(A, B)),
+        rule: 'tensor_r',
+        proven: true,
+        premises: [leaf(seq([A, B], A), 'id'), leaf(seq([B], B), 'id')],
+      });
+      const branch2 = leaf(seq([A, B], A), 'id');
+      const tree = new ProofTree({
+        conclusion: seq([A, B], goal),
+        rule: 'with_r',
+        proven: true,
+        premises: [branch1, branch2],
+      });
+      const v = kernel.verifyTree(tree);
+      assert.strictEqual(v.valid, false);
+    });
+
+    it('flags modeSwitch steps as unverified (bridge steps are opaque)', () => {
+      const A = AST.freevar('A');
+      const B = AST.freevar('B');
+      // hand-built bridge node: any Δ |- {S} passes shape checks — the
+      // kernel cannot re-run the forward engine, so it must FLAG it
+      const bridgeTree = new ProofTree({
+        conclusion: seq([B], calc.parse('{ A }')),
+        rule: 'monad_r',
+        proven: true,
+        premises: [],
+      });
+      const v = kernel.verifyTree(bridgeTree);
+      assert.strictEqual(v.valid, true);
+      assert.deepStrictEqual(v.unverified, ['modeSwitch']);
+    });
+  });
+
   describe('verifyTree - tampered proofs', () => {
     it('should reject tree with unproven goal', () => {
       const A = AST.freevar('A');

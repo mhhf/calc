@@ -29,7 +29,7 @@ function findIllFiles(dir) {
   for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
     const full = path.join(dir, entry.name);
     if (entry.isDirectory()) results.push(...findIllFiles(full));
-    else if (entry.name.endsWith('.ill')) results.push(full);
+    else if (entry.name.endsWith('.ill') || entry.name.endsWith('.till')) results.push(full);
   }
   return results.sort();
 }
@@ -235,7 +235,9 @@ function buildProveOpts(settings) {
   return opts;
 }
 
-const decomposeQuery = mde.decomposeQuery;
+// EVM-normalizing query decomposition (mde.decomposeQuery is now the
+// generic decomposition; these tools inspect EVM explorations).
+const decomposeQuery = mde.normalizeQuery;
 
 export {
   ROOT,

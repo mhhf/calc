@@ -1,0 +1,12 @@
+#import(../../calculus/till/prelude/rat.ill)
+
+% Stage 2 adequacy fixture: a FUSED timed pipeline (THY_0018 Thm 5).
+% juice runs 5 wide-open — nothing can touch the job inside (0, 5);
+% drink consumes its output at 5.
+
+atok: type.
+ctok: type.
+dtok: type.
+
+juice: atok -o { ctok }@5.
+drink: ctok -o { dtok }.

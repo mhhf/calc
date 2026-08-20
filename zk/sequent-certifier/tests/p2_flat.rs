@@ -33,7 +33,8 @@ const TAG_TENSOR: u32 = 1;
 // Hash constants
 const H_CONSUMED: u32 = 10;
 const H_PRODUCED: u32 = 20;
-const H_MONAD_P: u32 = 30;     // monad(H_PRODUCED)
+const H_UNIT: u32 = 5;         // unit grade node (binlit 0 — D6 graded monad)
+const H_MONAD_P: u32 = 30;     // monad(H_UNIT, H_PRODUCED)
 const H_LOLI: u32 = 40;        // loli(H_CONSUMED, H_MONAD_P)
 const ONE_HASH: u32 = 5;
 
@@ -102,7 +103,7 @@ fn run_flat_test(
 
     let step_chip = FlatStepChip {
         loli_tag: TAG_LOLI, monad_tag: TAG_MONAD, tensor_tag: TAG_TENSOR,
-        one_hash: ONE_HASH,
+        one_hash: ONE_HASH, monad_unit_hash: H_UNIT,
     };
     let step_trace = padded_trace::<43>(step_rows, MIN);
 
@@ -164,7 +165,7 @@ fn p2_flat_compiled_basic() {
         &[[1, H_PRODUCED]], // final receives produced
         &[
             [H_LOLI, TAG_LOLI, H_CONSUMED, H_MONAD_P, 1, 1],
-            [H_MONAD_P, TAG_MONAD, H_PRODUCED, 0, 1, 1],
+            [H_MONAD_P, TAG_MONAD, H_UNIT, H_PRODUCED, 1, 1],
         ],
         &[[H_LOLI, 1, 1]], // gamma
     );
@@ -190,7 +191,7 @@ fn p2_flat_wrong_consumed_fails() {
         &[[1, H_PRODUCED]],
         &[
             [H_LOLI_W, TAG_LOLI, H_WRONG, H_MONAD_W, 1, 1],
-            [H_MONAD_W, TAG_MONAD, H_PRODUCED, 0, 1, 1],
+            [H_MONAD_W, TAG_MONAD, H_UNIT, H_PRODUCED, 1, 1],
         ],
         &[[H_LOLI_W, 1, 1]],
     );
@@ -217,7 +218,7 @@ fn p2_flat_wrong_produced_fails() {
         &[[1, H_PRODUCED]], // final expects H_PRODUCED (but step sends H_WRONG)
         &[
             [H_LOLI_W, TAG_LOLI, H_CONSUMED, H_MONAD_W, 1, 1],
-            [H_MONAD_W, TAG_MONAD, H_WRONG, 0, 1, 1],
+            [H_MONAD_W, TAG_MONAD, H_UNIT, H_WRONG, 1, 1],
         ],
         &[[H_LOLI_W, 1, 1]],
     );

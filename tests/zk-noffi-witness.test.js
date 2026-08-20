@@ -18,6 +18,7 @@ import { guidedTerm } from '../lib/prover/guided-term.js';
 import { rightFocusTerm } from '../lib/prover/bridge.js';
 import { createChecker } from '../lib/prover/check-term.js';
 import { generateWitness } from '../lib/zk/witness.js';
+import { monadUnit as U } from '../lib/engine/grades.js';
 const FIXTURE_DIR = path.join(import.meta.dirname, '..', 'zk', 'sequent-certifier', 'tests', 'fixtures');
 
 function ensureFixtureDir() {
@@ -79,7 +80,7 @@ describe('ZK noFFI witness: noffi_tiny (2-step clause resolution)', { timeout: 3
       path.join(import.meta.dirname, '../calculus/ill/programs/noffi_tiny.ill')
     );
     illCalc = await calculus.loadILL();
-    state = mde.decomposeQuery(calc.queries.get('symex'));
+    state = mde.normalizeQuery(calc.queries.get('symex'));
   });
 
   it('runs forward execution with noFFI evidence', () => {
@@ -156,7 +157,7 @@ describe('ZK noFFI witness: noffi_tiny (2-step clause resolution)', { timeout: 3
     collectGamma(gTerm);
 
     const succFormula = buildSuccedentFromState(forwardResult.state);
-    const monadSucc = Store.put('monad', [succFormula]);
+    const monadSucc = Store.put('monad', [U(), succFormula]);
     const sequent = Seq.fromArrays(linearCtx, [...cartesianCtx], monadSucc);
 
     const checker = createChecker(illCalc);
@@ -176,7 +177,7 @@ describe('ZK noFFI witness: noffi_tiny (2-step clause resolution)', { timeout: 3
       cartesianCtx.push(Number(h));
     }
     const succFormula = buildSuccedentFromState(forwardResult.state);
-    const monadSucc = Store.put('monad', [succFormula]);
+    const monadSucc = Store.put('monad', [U(), succFormula]);
     const sequent = Seq.fromArrays(linearCtx, cartesianCtx, monadSucc);
 
     witness = generateWitness(gTerm, sequent, { calculus: illCalc });
@@ -227,7 +228,7 @@ describe('ZK noFFI witness: pure_linear (no clause resolution)', { timeout: 3000
       path.join(import.meta.dirname, '../calculus/ill/programs/pure_linear.ill')
     );
     illCalc = await calculus.loadILL();
-    state = mde.decomposeQuery(calc.queries.get('symex'));
+    state = mde.normalizeQuery(calc.queries.get('symex'));
   });
 
   it('runs forward execution with zero persistent evidence', () => {
@@ -284,7 +285,7 @@ describe('ZK noFFI witness: pure_linear (no clause resolution)', { timeout: 3000
       cartesianCtx.push(Number(h));
     }
     const succFormula = buildSuccedentFromState(forwardResult.state);
-    const monadSucc = Store.put('monad', [succFormula]);
+    const monadSucc = Store.put('monad', [U(), succFormula]);
     const sequent = Seq.fromArrays(linearCtx, cartesianCtx, monadSucc);
 
     witness = generateWitness(gTerm, sequent, { calculus: illCalc });

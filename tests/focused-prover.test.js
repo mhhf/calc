@@ -199,6 +199,51 @@ describe('v2 FocusedProver', () => {
       const result = prover.prove(s, { rules: ruleSpecs, alternatives });
       assert.strictEqual(result.success, true);
     });
+
+    it('should NOT prove A, B ⊢ (A ⊗ B) & A — branches must consume equally', () => {
+      // with_r copies the context to both branches; a branch that consumes
+      // less may not silently discard the difference (leftover deltas must
+      // agree — soundness fix, TODO_0265 Phase 6b).
+      const A = AST.freevar('A');
+      const B = AST.freevar('B');
+      const s = seq([A, B], AST.with(AST.tensor(A, B), A));
+      const result = prover.prove(s, { rules: ruleSpecs, alternatives });
+      assert.strictEqual(result.success, false);
+    });
+
+    it('should prove A, B ⊢ (A ⊗ B) & (B ⊗ A) — equal consumption', () => {
+      const A = AST.freevar('A');
+      const B = AST.freevar('B');
+      const s = seq([A, B], AST.with(AST.tensor(A, B), AST.tensor(B, A)));
+      const result = prover.prove(s, { rules: ruleSpecs, alternatives });
+      assert.strictEqual(result.success, true);
+    });
+
+    it('KNOWN LIMITATION (round-15 F6.i): committed branch search misses a valid consumption', () => {
+      // a, b ⊢ ((a ⊕ b) & b) ⊗ a IS provable in ILL: the & component
+      // consumes b in BOTH branches (branch 1 via oplus_r2, branch 2 via
+      // id), then ⊗ takes a. The prover refuses: branch 1's committed
+      // search finds oplus_r1 first (consumes a, leftover {b}), branch 2
+      // leaves {a}, the with_r delta-agreement check fails, and the
+      // branch is NOT re-derived with a different consumption. This pins
+      // the completeness corner recorded in Phase 6b residue (i) — when
+      // the committed search is fixed, this test FAILS and must be
+      // flipped to `true`.
+      const A = AST.freevar('A');
+      const B = AST.freevar('B');
+      const goal = AST.tensor(AST.with(AST.oplus(A, B), B), A);
+      const r = prover.prove(seq([A, B], goal), { rules: ruleSpecs, alternatives });
+      assert.strictEqual(r.success, false, 'committed-search corner was fixed — flip this pin');
+      // …while both reorderings, where the first-found branch consumption
+      // happens to agree, DO prove — the gap is order-sensitivity, not
+      // a missing rule:
+      const swapped = AST.tensor(AST.with(AST.oplus(B, A), B), A);
+      assert.strictEqual(
+        prover.prove(seq([A, B], swapped), { rules: ruleSpecs, alternatives }).success, true);
+      const flipped = AST.tensor(A, AST.with(AST.oplus(A, B), B));
+      assert.strictEqual(
+        prover.prove(seq([A, B], flipped), { rules: ruleSpecs, alternatives }).success, true);
+    });
   });
 
   describe('proof search - currying', () => {

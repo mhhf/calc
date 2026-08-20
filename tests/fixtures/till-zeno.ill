@@ -1,0 +1,7 @@
+% tokens (closed-world sort checking)
+a: type.
+
+% till Zeno fixture (D16): a zero-delay self-loop pins logical time at the
+% instant — settle must hit the maxSteps guard, never diverge silently.
+
+ping0: a -o { a }@0.

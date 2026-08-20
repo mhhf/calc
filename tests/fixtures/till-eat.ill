@@ -1,0 +1,9 @@
+% tokens (closed-world sort checking)
+food: type.
+meal_order: type.
+eaten: type.
+
+% till cohort-sampler fixture (D12): one consumer, two food cohorts.
+% fifo takes food@0 (eaten@0), lifo takes food@1 (eaten@1).
+
+eat2: food * meal_order -o { eaten }.

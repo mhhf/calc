@@ -12,12 +12,12 @@ import { predHead } from '../../lib/kernel/ast.js';
 import { analyzeRule, deltaAnalysis } from '../../lib/engine/rule-analysis.js';
 import mde from '../../lib/engine/index.js';
 import Store from '../../lib/kernel/store.js';
-import { ILL_CONNECTIVES } from '../../lib/engine/ill/connectives.js';
+import { illConnectives } from '../../lib/engine/ill/connectives.js';
 // Helper: parse a lollipop rule string and compile it
 async function makeRule(name, expr) {
   const h = await mde.parseExpr(expr);
   const [ante, conseq] = Store.children(h);
-  return forward.compileRule({ name, hash: h, antecedent: ante, consequent: conseq }, { connectives: ILL_CONNECTIVES });
+  return forward.compileRule({ name, hash: h, antecedent: ante, consequent: conseq }, { connectives: illConnectives() });
 }
 
 // Helper: dump a compiled rule's structure for inspection
@@ -1279,7 +1279,7 @@ describe('Rule Analysis', { timeout: 10000 }, () => {
         path.join(import.meta.dirname, '../../calculus/ill/programs/multisig.ill')
       );
 
-      const initState = mde.decomposeQuery(calc.queries.get('symex'));
+      const initState = mde.normalizeQuery(calc.queries.get('symex'));
 
       const r1 = calc.exec(
         { linear: { ...initState.linear }, persistent: { ...initState.persistent } },

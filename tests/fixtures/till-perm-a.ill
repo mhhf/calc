@@ -1,0 +1,17 @@
+% tokens (closed-world sort checking)
+mill: type.
+wood: type.
+plank: type.
+oven: type.
+bread: type.
+cust: type.
+fed: type.
+
+% Rule-permutation confluence fixture (Phase 5): a conflict-free 3-stage
+% pipeline. till-perm-b.ill declares the SAME rules in reverse order —
+% settle must produce the identical final timed multiset and event trace
+% (declaration order is not semantics; D12 fixes firing order).
+
+mkp: $mill * wood -o { plank }@1.
+bake: $oven * plank -o { bread }@(1/2).
+serve: cust * bread -o { fed }.

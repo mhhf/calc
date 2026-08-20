@@ -1,8 +1,8 @@
 % Plus (⊕) expansion test
-start : resource.
-left : resource.
-right : resource.
-done : resource.
+start: type.
+left: type.
+right: type.
+done: type.
 
 choose_plus : start -o { left + right }.
 finish_left : left -o { done }.

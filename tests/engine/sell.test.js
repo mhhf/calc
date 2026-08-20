@@ -189,7 +189,7 @@ describe('SELL: Rule Filtering — Tier 1 (T14-T16, T17-T21)', () => {
   });
 
   it('(rules: [alpha]) excludes beta rules, includes alpha + root (T17)', () => {
-    const state = mde.decomposeQuery(mde.parseExpr('counter 1'));
+    const state = mde.normalizeQuery(mde.parseExpr('counter 1'));
     const result = calc.exec(state, { rules: ['alpha'], maxSteps: 1, trace: true });
     assert.ok(result);
     assert.ok(result.state);
@@ -203,19 +203,19 @@ describe('SELL: Rule Filtering — Tier 1 (T14-T16, T17-T21)', () => {
   });
 
   it('(rules: [alpha, beta]) includes both (T18)', () => {
-    const state = mde.decomposeQuery(mde.parseExpr('counter 1'));
+    const state = mde.normalizeQuery(mde.parseExpr('counter 1'));
     const result = calc.exec(state, { rules: ['alpha', 'beta'], maxSteps: 1 });
     assert.ok(result);
   });
 
   it('omitted rules: includes everything — backward-compat (T19)', () => {
-    const state = mde.decomposeQuery(mde.parseExpr('counter 1'));
+    const state = mde.normalizeQuery(mde.parseExpr('counter 1'));
     const result = calc.exec(state, { maxSteps: 1 });
     assert.ok(result);
   });
 
   it('unknown label → clear error (T20)', () => {
-    const state = mde.decomposeQuery(mde.parseExpr('counter 1'));
+    const state = mde.normalizeQuery(mde.parseExpr('counter 1'));
     assert.throws(
       () => calc.exec(state, { rules: ['nonexistent'] }),
       /Unknown rule label.*nonexistent/
@@ -223,7 +223,7 @@ describe('SELL: Rule Filtering — Tier 1 (T14-T16, T17-T21)', () => {
   });
 
   it('root file rules always participate regardless of filter (T21)', () => {
-    const state = mde.decomposeQuery(mde.parseExpr('counter 1'));
+    const state = mde.normalizeQuery(mde.parseExpr('counter 1'));
     // Filter to alpha only, but root_rule (from 'main') should still participate.
     // Both inc (+1) and root_rule (+100) fire, so counter grows beyond 1.
     const result = calc.exec(state, { rules: ['alpha'], maxSteps: 3 });
@@ -237,7 +237,7 @@ describe('SELL: Rule Filtering — Tier 1 (T14-T16, T17-T21)', () => {
   });
 
   it('explore wrapper also supports rule filtering (T16)', () => {
-    const state = mde.decomposeQuery(mde.parseExpr('counter 1'));
+    const state = mde.normalizeQuery(mde.parseExpr('counter 1'));
     const tree = calc.explore(state, { rules: ['alpha'], maxDepth: 3 });
     assert.ok(tree);
     assert.ok(tree.type); // Should be a valid tree node
@@ -272,7 +272,7 @@ describe('SELL: Module Algebra — Tier 2 (T13, T24-T28)', () => {
   });
 
   it('unknown module name → clear error (T27)', () => {
-    const state = mde.decomposeQuery(mde.parseExpr('counter 1'));
+    const state = mde.normalizeQuery(mde.parseExpr('counter 1'));
     assert.throws(
       () => calc.exec(state, { rules: 'nonexistent_module' }),
       /Unknown rule label or module.*nonexistent_module/
@@ -286,7 +286,7 @@ describe('SELL: Module Algebra — Tier 2 (T13, T24-T28)', () => {
     const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'sell-d7-'));
 
     // Write base
-    fs.writeFileSync(path.join(tmpDir, 'base.ill'), 'counter: type.\n');
+    fs.writeFileSync(path.join(tmpDir, 'base.ill'), 'counter: (x: bin) -> type.\n');
     // Write alpha
     fs.writeFileSync(path.join(tmpDir, 'alpha.ill'),
       '#import(base.ill)\ninc: counter X -o { counter (X + 1) }.\n');
@@ -312,7 +312,7 @@ describe('SELL: Module Algebra — Tier 2 (T13, T24-T28)', () => {
   });
 
   it('exec with module name filters correctly', () => {
-    const state = mde.decomposeQuery(mde.parseExpr('counter 1'));
+    const state = mde.normalizeQuery(mde.parseExpr('counter 1'));
     // only_inc has {inc} + root_mod. Both fire repeatedly — just check it works.
     const result = calc.exec(state, { rules: 'only_inc', maxSteps: 3 });
     assert.ok(result.state);
@@ -339,9 +339,10 @@ describe('SELL: QuerySettings Threading (T10)', () => {
 // =============================================================================
 
 import { grade0, gradeW } from '../../lib/engine/grades.js';
-import { ILL_CONNECTIVES } from '../../lib/engine/ill/connectives.js';
+import { illConnectives } from '../../lib/engine/ill/connectives.js';
 import { resolveConn, flattenAnte, compileRule } from '../../lib/engine/compile.js';
 import { getModes } from '../../lib/engine/ill/ffi/index.js';
+import { monadUnit as U } from '../../lib/engine/grades.js';
 describe('SELL: Graded modality parsing (TODO 155)', () => {
   beforeEach(() => Store.clear());
 
@@ -407,7 +408,7 @@ describe('SELL: flattenAnte grade classification (TODO 155)', () => {
 
   it('bang(gradeW(), A) → persistent', () => {
     Store.clear();
-    const rc = resolveConn(ILL_CONNECTIVES);
+    const rc = resolveConn(illConnectives());
     const A = Store.put('atom', ['a']);
     const h = Store.put('bang', [gradeW(), A]);
     const flat = flattenAnte(h, rc);
@@ -418,7 +419,7 @@ describe('SELL: flattenAnte grade classification (TODO 155)', () => {
 
   it('bang(grade0(), A) → grade0', () => {
     Store.clear();
-    const rc = resolveConn(ILL_CONNECTIVES);
+    const rc = resolveConn(illConnectives());
     const A = Store.put('atom', ['a']);
     const h = Store.put('bang', [grade0(), A]);
     const flat = flattenAnte(h, rc);
@@ -429,7 +430,7 @@ describe('SELL: flattenAnte grade classification (TODO 155)', () => {
 
   it('A * !B * !_0 C → linear:[A], persistent:[B], grade0:[C]', () => {
     Store.clear();
-    const rc = resolveConn(ILL_CONNECTIVES);
+    const rc = resolveConn(illConnectives());
     const A = Store.put('atom', ['a']);
     const B = Store.put('atom', ['b']);
     const C = Store.put('atom', ['c']);
@@ -444,7 +445,7 @@ describe('SELL: flattenAnte grade classification (TODO 155)', () => {
 
   it('bare atom → linear', () => {
     Store.clear();
-    const rc = resolveConn(ILL_CONNECTIVES);
+    const rc = resolveConn(illConnectives());
     const A = Store.put('atom', ['a']);
     const flat = flattenAnte(A, rc);
     assert.deepEqual(flat.linear, [A]);
@@ -462,9 +463,9 @@ describe('SELL: hasGrade0 flag on compiled rules (TODO 155)', () => {
     const B = Store.put('atom', ['b']);
     const bang0A = Store.put('bang', [grade0(), A]);
     const ante = Store.put('tensor', [bang0A, B]);
-    const conseq = Store.put('monad', [Store.put('atom', ['c'])]);
+    const conseq = Store.put('monad', [U(), Store.put('atom', ['c'])]);
     const rule = { name: 'test_g0', antecedent: ante, consequent: conseq };
-    const compiled = compileRule(rule, { connectives: ILL_CONNECTIVES, getModes });
+    const compiled = compileRule(rule, { connectives: illConnectives(), getModes });
     assert.equal(compiled.hasGrade0, true);
   });
 
@@ -474,9 +475,9 @@ describe('SELL: hasGrade0 flag on compiled rules (TODO 155)', () => {
     const B = Store.put('atom', ['b']);
     const bangWA = Store.put('bang', [gradeW(), A]);
     const ante = Store.put('tensor', [bangWA, B]);
-    const conseq = Store.put('monad', [Store.put('atom', ['c'])]);
+    const conseq = Store.put('monad', [U(), Store.put('atom', ['c'])]);
     const rule = { name: 'test_gw', antecedent: ante, consequent: conseq };
-    const compiled = compileRule(rule, { connectives: ILL_CONNECTIVES, getModes });
+    const compiled = compileRule(rule, { connectives: illConnectives(), getModes });
     assert.equal(compiled.hasGrade0, false);
   });
 
@@ -485,18 +486,18 @@ describe('SELL: hasGrade0 flag on compiled rules (TODO 155)', () => {
     const A = Store.put('atom', ['a']);
     const B = Store.put('atom', ['b']);
     const bang0B = Store.put('bang', [grade0(), B]);
-    const conseq = Store.put('monad', [bang0B]);
+    const conseq = Store.put('monad', [U(), bang0B]);
     const rule = { name: 'test_g0_conseq', antecedent: A, consequent: conseq };
-    const compiled = compileRule(rule, { connectives: ILL_CONNECTIVES, getModes });
+    const compiled = compileRule(rule, { connectives: illConnectives(), getModes });
     assert.equal(compiled.hasGrade0, true);
   });
 
   it('rule with no bang has hasGrade0: false', () => {
     Store.clear();
     const A = Store.put('atom', ['a']);
-    const conseq = Store.put('monad', [Store.put('atom', ['b'])]);
+    const conseq = Store.put('monad', [U(), Store.put('atom', ['b'])]);
     const rule = { name: 'test_nobang', antecedent: A, consequent: conseq };
-    const compiled = compileRule(rule, { connectives: ILL_CONNECTIVES, getModes });
+    const compiled = compileRule(rule, { connectives: illConnectives(), getModes });
     assert.equal(compiled.hasGrade0, false);
   });
 });
@@ -510,7 +511,7 @@ describe('SELL: Grade-0 filtering (TODO 155)', () => {
 
     // Write a program with a grade-0 rule and a normal rule
     fs.writeFileSync(path.join(tmpDir, 'g0test.ill'),
-      'counter: type.\n' +
+      'counter: (x: bin) -> type.\n' +
       'inc: counter X -o { counter (X + 1) }.\n' +
       'stage: !_0 eq X X * counter X -o { counter X }.\n' +
       '#symex counter 1.\n'
@@ -528,7 +529,7 @@ describe('SELL: Grade-0 filtering (TODO 155)', () => {
     assert.equal(incRule.hasGrade0, false, 'inc rule should NOT have hasGrade0');
 
     // When executing, only inc should fire (stage is filtered out)
-    const state = mde.decomposeQuery(mde.parseExpr('counter 1'));
+    const state = mde.normalizeQuery(mde.parseExpr('counter 1'));
     const result = calc.exec(state, { maxSteps: 3, trace: true });
     assert.ok(result.steps > 0, 'should execute at least one step');
     // Trace should only show 'inc', never 'stage'
@@ -586,7 +587,7 @@ describe('SELL: Grade-0 in queries rejected (TODO 155)', () => {
     const A = Store.put('atom', ['a']);
     const bang0A = Store.put('bang', [grade0(), A]);
     assert.throws(
-      () => mde.decomposeQuery(bang0A),
+      () => mde.normalizeQuery(bang0A),
       /Grade-0 resources.*cannot appear in queries/
     );
   });
@@ -598,7 +599,7 @@ describe('SELL: Grade-0 in queries rejected (TODO 155)', () => {
     const bang0A = Store.put('bang', [grade0(), A]);
     const h = Store.put('tensor', [B, bang0A]);
     assert.throws(
-      () => mde.decomposeQuery(h),
+      () => mde.normalizeQuery(h),
       /Grade-0 resources.*cannot appear in queries/
     );
   });
@@ -607,7 +608,7 @@ describe('SELL: Grade-0 in queries rejected (TODO 155)', () => {
     Store.clear();
     const A = Store.put('atom', ['a']);
     const bangWA = Store.put('bang', [gradeW(), A]);
-    const result = mde.decomposeQuery(bangWA);
+    const result = mde.normalizeQuery(bangWA);
     assert.ok(result.persistent[A], 'should classify as persistent');
   });
 });

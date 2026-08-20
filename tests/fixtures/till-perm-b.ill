@@ -1,0 +1,14 @@
+% tokens (closed-world sort checking)
+cust: type.
+bread: type.
+fed: type.
+oven: type.
+plank: type.
+mill: type.
+wood: type.
+
+% till-perm-a.ill with the rule declarations reversed — see that file.
+
+serve: cust * bread -o { fed }.
+bake: $oven * plank -o { bread }@(1/2).
+mkp: $mill * wood -o { plank }@1.

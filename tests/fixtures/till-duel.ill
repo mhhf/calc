@@ -1,0 +1,15 @@
+% tokens (closed-world sort checking)
+rock: type.
+sci: type.
+rockd: type.
+scid: type.
+
+% till weighted-choice fixture (Phase 4b): the duel as an absorbing chain.
+% P(rock beats scissors) = 3/4 (the RPS matrix entry, combat.mjs).
+% One fight consumes one unit from each side; the loser's opponent returns.
+
+fight: rock * sci -o { woplus 3/4 rock sci }.
+
+% delayed variant on disjoint atoms — fights advance logical time (for
+% horizon-split invariance of the branch draws).
+fightd: rockd * scid -o { woplus 3/4 rockd scid }@1.

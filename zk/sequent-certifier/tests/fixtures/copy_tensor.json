@@ -425,12 +425,12 @@
     "monad_r": {
       "name": "monad_r",
       "tag": 8,
-      "arity": 1,
+      "arity": 2,
       "oblig_receive": true,
       "premises": [
         {
           "succedent": {
-            "Child": 0
+            "Child": 1
           },
           "lax": 1
         }
@@ -444,13 +444,13 @@
     "monad_l": {
       "name": "monad_l",
       "tag": 8,
-      "arity": 1,
+      "arity": 2,
       "oblig_receive": false,
       "premises": [],
       "ctx_receive": true,
       "ctx_sends": [
         {
-          "Child": 0
+          "Child": 1
         }
       ],
       "formula_lookup": true,
@@ -482,7 +482,7 @@
       [
         0,
         0,
-        104,
+        103,
         1,
         0,
         0,
@@ -495,9 +495,9 @@
     "tensor_r": [
       [
         1,
-        104,
-        83,
-        83,
+        103,
+        81,
+        81,
         0,
         0,
         1,
@@ -507,23 +507,23 @@
     "copy": [
       [
         1,
-        83
+        81
       ],
       [
         1,
-        83
+        81
       ]
     ],
     "id": [
       [
         1,
-        83,
+        81,
         1,
         0
       ],
       [
         1,
-        83,
+        81,
         2,
         0
       ]
@@ -531,17 +531,17 @@
   },
   "formula_rom": [
     [
-      104,
+      103,
       1,
-      83,
-      83,
+      81,
+      81,
       1,
       1
     ]
   ],
   "gamma_rom": [
     [
-      83,
+      81,
       1,
       2
     ]

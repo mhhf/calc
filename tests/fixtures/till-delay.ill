@@ -1,0 +1,14 @@
+#import(../../calculus/till/prelude/rat.ill)
+
+% tokens (closed-world sort checking)
+chopper: type.
+tree: type.
+emp: (n: bin) -> type.
+wood: type.
+
+
+% till delay-term fixture (E7.1): context-dependent duration derived by an
+% ordinary backward proposition — @D with D output-moded from !qdiv.
+% One chopper (timed-$ single server), employees read via a test arc (E7.2).
+
+chop: $chopper * tree * read emp N * !qdiv 10 N D -o { wood }@D.

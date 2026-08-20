@@ -1,0 +1,111 @@
+# till sequent calculus
+
+Backward provability for till (TODO_0265 Phase 6b). Loaded via
+`loadTillSequent()` (calculus/till/calculus-config.js): `till.calc` +
+`till.rules`, the graded-syntax parser, and **the same `tillGrades` record
+the timed scheduler reads** — one grade algebra, two faces (D13).
+Sequent-prover level (`createProver`/`createKernel`); `settle` remains the
+execution semantics and doubles as the proof-search oracle for the timed
+judgment (below). Theory: THY_0018 (the delay-graded lax monad) and
+THY_0019 (timed matching / settle).
+
+## Rules (till.rules)
+
+| Fragment | Rules | Reading |
+|---|---|---|
+| multiplicatives, `with` | ill.rules verbatim | shared core |
+| ω bang `!A` | `bang_r/l/l2` = promotion/dereliction/absorption, **template-matched** | the ω grade is part of the pattern — never fires on `!_k` |
+| counted bang `!_k A` | `bang_l3/l4` (peel/weaken), `bang_r2/r3` (peel/zero) | `!_k A ≡ A ⊗ … ⊗ A` (k parcels, SELL/BLL) |
+
+**Lemma (counted-bang completeness).** The four rules are complete for
+`!_k A ≡ A^⊗k`: every sequent provable when `!_k A` is read as `A ⊗ … ⊗ A`
+is provable with the four rules, and conversely. *Proof sketch,* by induction
+on k. Left: k = 0 is `bang_l4` (weaken away = eliminating an empty tensor);
+k = n+1 peels one copy by `bang_l3` and applies the IH to `!_n A` — the peeled
+sequence reproduces exactly the n-fold `tensor_l` decomposition. Right: k = 0
+is `bang_r3` (as `⊢ 1`, lazily — no empty-context requirement, so it threads
+mid-chain); k = n+1 is `bang_r2` (as `tensor_r` splitting one copy off) + IH.
+Both directions of the split/merge iso `!_{a+b} A ⊣⊢ !_a A ⊗ !_b A` follow;
+the provability grid witnesses the instances. ∎(sketch)
+| graded monad `{A}@d` | `monad_l` (bind, `H := F − E` monus), `monad_r` (unit·sub, `E ≥ 0`) | THY_0018 §4: the grade is an upper BOUND — graded-μ `{{A}@d}@e ⊢ {A}@(d+e)` and subeffecting `{A}@d ⊢ {A}@e` (d ≤ e) derivable; the critical path is a strict lower bound (`{A}@4` from `{{A}@2}@3` refuted) |
+
+Fences: ground grades only (non-numeric grades fail every side condition —
+`!_W` goals are unprovable, not errors); surface `!_0` is the g0 **label**
+(no rules — compile-time grade), count zero is binlit 0 and only arises
+from peeling; `woplus` has no sequent rules (the weight needs a
+probabilistic judgment — THY-A).
+
+## The timed judgment (Stage 2)
+
+Context entries may be stamped atoms `at(A,t)` — content-addressed
+(formula, stamp) pairs (D5). Two additions:
+
+- **Retiming** `at_l: G ; D, A@T1 ⊢ A@T2` (guard `T1 <= T2`) — a
+  zero-premise template axiom: delaying availability is free, never early
+  (THY_0018 §5). No ambient rule: an unstamped context atom does not
+  retime (`a ⊬ a@3`); the bridge canonicalizes `A@0 ≡ A` at the state
+  boundary instead.
+- **The settle bridge** `monad_r2` (`@modeShift true`): for a sequent
+  `Δ ⊢ {S}@T` with a settle-capable `opts.engineCalc`, the succedent
+  monad grade is read as the **observation horizon** (THY_0018 §5, n=0
+  boundary) — `settle(Δ, T)`, then exact `rightFocus` of `S` against the
+  residual timed multiset, with `A@0 ≡ A` canonicalized on both sides.
+  **Soundness, stated precisely (THY_0018 §5 bridge-soundness theorem):**
+  each firing is one `@fire` instance, so bridge success implies both
+  settle-reachability AND derivability — the bridge is a sound oracle.
+  It is NOT complete for derivability, and derivability does not imply
+  settle-reachability: `monad_r` (subeffecting) proves `a ⊢ {a}@d` for
+  any `d ≥ 0` with no forward step. A `prove` failure refutes the sequent
+  because BOTH paths (pure backward and bridge) are searched; a bridge
+  failure alone refutes only the bridge route. Verify-only: the evidence
+  is the settle event trace (guided terms for timed traces = recorded
+  residue); the kernel accepts the bridge step structurally and reports
+  it in `unverified` (see the contract below). Tried after the backward
+  unit `monad_r`; without an engine it is simply inapplicable.
+
+Adequacy tests (`tests/till-adequacy.test.js`) wrap the executable specs'
+`#expect` gate hashes as sequents and witness THY_0018 Thm 5 (in-flight
+atomicity as underivability) and Thm 3 (fission ≡ fusion) at the judgment
+level. Counted bangs in bridge succedents are unsupported (rightFocus's
+exponential case is ω-shaped — recorded residue).
+
+## Template rules (.rules DSL extension)
+
+A rule is a **template rule** iff it has `@grade` lines, `@template true`,
+or a compound premise formula; otherwise it compiles to the index-based
+descriptor exactly as before (zero-delta for ill.rules). Template apply:
+
+1. unify the principal pattern against the focused formula (pattern
+   metavars bind; sequent content is rigid),
+2. for left rules, unify the conclusion-succedent pattern (`@side l`
+   forces left-principal detection when the succedent is compound),
+3. evaluate `@grade` steps in order through `calculus.grades` —
+   `X := A ± B` defs (`-` is a monus: negative ⇒ rule inapplicable) and
+   `A ⋈ B` guards (⋈ ∈ =, <, >, <=, >=),
+4. instantiate premise patterns by substitution.
+
+Zero-premise template rules still run the full check, so grade guards are
+enforced in search **and** kernel verification (`verifyStep` recomputes
+premises via the same `makePremises`; for left rules it tries every
+context formula with the principal's tag). Variable boundness is validated
+at load time. Template rules require the metavar-producing parser
+(`multiCharFreevars`) — test sequents therefore use lowercase atoms;
+uppercase identifiers are pattern variables.
+
+## Kernel verification contract
+
+`verifyTree` checks rule shapes **and** linear resource accounting: it
+re-threads the prover's lazy delta discipline (each premise context =
+rule-introduced formulas ⊎ a sub-multiset of the unconsumed pool;
+leftovers flow through siblings; the root leftover must be empty), so
+forged trees that leak context (`a ⊗ b ⊢ a` via id) are rejected. Steps
+the kernel cannot re-derive are accepted but reported in
+`result.unverified`: settle-bridge steps (`'modeSwitch'` — the forward
+run is the engine's responsibility) and quantifier steps with fresh
+eigenvariables (`'binding'`). **Full verification = `valid &&
+!unverified`**; pure sequent proofs (all of Stage 1) meet it, bridge
+trees (Stage 2 adequacy) are verified modulo the settle step by design.
+`verifyStep` alone is shape-only — never a resource check.
+
+Tests: `tests/till-prover.test.js` (provability grid, kernel gates),
+`tests/rules2-template.test.js` (DSL compilation + validation).

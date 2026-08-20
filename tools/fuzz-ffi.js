@@ -330,6 +330,20 @@ const PRED_CONFIGS = {
 
   // ── §3.11 Calldata ─────────────────────────────────────────────────────
   cd_read: { cluster: '§3.11', skip: 'sconcat-chain calldata state generator out of scope for Phase-1' },
+
+  // ── §3.12 Rationals (TODO_0265 Phase 1) ────────────────────────────────
+  // Fuzzed in the dedicated rational-trials section below: goals mix ratlit
+  // and bin arguments, clause resolution runs against bin.ill + rat.ill, and
+  // results are compared as canonical hashes (outputs may be rational).
+  qplus: { cluster: '§3.12', skip: 'covered by the §3.12 rational trials section' },
+  qsub:  { cluster: '§3.12', skip: 'covered by the §3.12 rational trials section' },
+  qmul:  { cluster: '§3.12', skip: 'covered by the §3.12 rational trials section' },
+  qdiv:  { cluster: '§3.12', skip: 'covered by the §3.12 rational trials section' },
+  qlt:   { cluster: '§3.12', skip: 'covered by the §3.12 rational trials section' },
+  qle:   { cluster: '§3.12', skip: 'covered by the §3.12 rational trials section' },
+  qeq:   { cluster: '§3.12', skip: 'covered by the §3.12 rational trials section' },
+  qneq:  { cluster: '§3.12', skip: 'covered by the §3.12 rational trials section' },
+  qeq_bool: { cluster: '§3.12', skip: 'covered by the §3.12 rational trials section' },
 };
 
 // ============================================================================
@@ -553,6 +567,188 @@ for (const pred of predList) {
               (skip > 0 ? ' (' + skip + ' skipped)' : ''));
   bumpCluster(config.cluster, { pred, status: fail > 0 ? 'FAIL' : 'ok', pass, fail, skip,
                                 summary: pass + '/' + (pass + fail) + (skip ? ' (+' + skip + ' skip)' : '') + ' [' + mode + ']' });
+}
+
+// ============================================================================
+// §3.12 RATIONAL TRIALS (TODO_0265 Phase 1)
+// ============================================================================
+//
+// Property: φ ∘ FFI = φ ∘ clause where φ is the composed binlit+ratlit
+// canonicalizer, over goals mixing ratlit and bin arguments (q-ops coerce
+// bins to n/1). Clause resolution runs against bin.ill + rat.ill (a
+// separate load — the base corpus above stays rat-free, proving bin
+// behavior is untouched). Split namespaces (D8.1 revised): only the
+// q-family accepts rationals; the bin family is fuzzed in §3.1/§3.2.
+
+{
+  const { binlitTheory } = await import('../lib/engine/ill/binlit-theory.js');
+  const { ratlitTheory, putRat, installRatlitTheory } =
+    await import('../lib/engine/theories/ratlit-theory.js');
+  const { defaultTheories, buildCanonicalizer } = await import('../lib/kernel/eq-theory.js');
+
+  installRatlitTheory();
+  const ecRat = mde.load(path.join(import.meta.dirname, '../calculus/till/prelude/rat.ill'));
+  const ratTheories = [...defaultTheories, binlitTheory, ratlitTheory];
+  const ratCanon = buildCanonicalizer(ratTheories);
+  const ratOpts = makeILLBackchainOpts({ theories: ratTheories, normalize: ratCanon });
+
+  // Small magnitudes: clause-mode qnorm runs Euclid over divmod clauses,
+  // whose recursion depth is linear in the quotient — cross-multiplied
+  // numerators must stay a few hundred at most.
+  // Shapes: canonical ratlit, structural rat(N,D) (possibly unreduced —
+  // ratParts decodes it, to_q/rat matches it directly), and plain bins.
+  const genRatArg = () => {
+    const r = rand();
+    if (r > 0.6) return putRat(randBigInt(4), 1n + randBigInt(3));
+    if (r > 0.45) return Store.put('rat', [
+      Store.put('binlit', [randBigInt(4)]),
+      Store.put('binlit', [1n + randBigInt(3)]),
+    ]);
+    return Store.put('binlit', [randBigInt(4)]);
+  };
+
+  // pred → [nInputs, hasOutput]
+  const RAT_PREDS = {
+    qplus: [2, true], qsub: [2, true], qmul: [2, true], qdiv: [2, true],
+    qlt: [2, false], qle: [2, false], qeq: [2, false], qneq: [2, false],
+    qeq_bool: [2, true],
+  };
+
+  for (const pred of Object.keys(RAT_PREDS)) {
+    if (PRED_FILTER && pred !== PRED_FILTER) continue;
+    if (CLUSTER_FILTER && CLUSTER_FILTER !== '§3.12') continue;
+    const [nIn, hasOut] = RAT_PREDS[pred];
+    const meta = ffi.defaultMeta[pred];
+    const handler = ffi.get(meta.ffi);
+    let pass = 0, fail = 0;
+
+    for (let trial = 0; trial < COUNT; trial++) {
+      const ins = Array.from({ length: nIn }, genRatArg);
+      const out = hasOut ? Store.put('metavar', ['qout']) : null;
+      const args = hasOut ? [...ins, out] : ins;
+      const goal = Store.put(pred, args);
+
+      const ffiResult = handler(args);
+      const clauseResult = backward.prove(goal, ecRat.clauses, ecRat.definitions, {
+        ...ratOpts, maxDepth: 20000, allBuckets: true, useFFI: false,
+      });
+
+      const ffiOk = !!(ffiResult && ffiResult.success);
+      const dumpIns = () => ins.map(h => Store.tag(h) === 'ratlit'
+        ? Store.child(h, 0) + '/' + Store.child(h, 1)
+        : String(Store.child(h, 0))).join(', ');
+
+      if (ffiOk !== clauseResult.success) {
+        fail++;
+        console.log('MISMATCH ' + pred + '(' + dumpIns() + '): FFI=' + ffiOk +
+                    ' clause=' + clauseResult.success);
+        continue;
+      }
+      if (!ffiOk) { pass++; continue; }
+      if (!hasOut) { pass++; continue; }
+
+      const ffiVal = ratCanon(ffiResult.theta[0][1]);
+      let clauseVal = out;
+      for (let i = 0; i < 500; i++) {
+        const n = apply(clauseVal, clauseResult.theta);
+        if (n === clauseVal) break;
+        clauseVal = n;
+      }
+      clauseVal = ratCanon(clauseVal);
+      if (ffiVal === clauseVal) {
+        pass++;
+      } else {
+        fail++;
+        console.log('MISMATCH ' + pred + '(' + dumpIns() + '): canonical hash ' +
+                    'FFI=' + ffiVal + ' clause=' + clauseVal);
+      }
+    }
+
+    totalTests += pass + fail;
+    totalPass += pass;
+    totalFail += fail;
+    const status = fail > 0 ? 'FAIL' : 'ok';
+    console.log(status + ' ' + pred + ' [rat]: ' + pass + '/' + (pass + fail) + ' passed');
+    bumpCluster('§3.12', { pred: pred + '@rat', status, pass, fail, skip: 0,
+                           summary: pass + '/' + (pass + fail) + ' [rat]' });
+  }
+
+  // ── §3.12b Out-of-contract: negative numerators ──────────────────────
+  // v1 contract is ℚ≥0 (rat(N,D) ranges over bin = ℕ). The FFI guard
+  // (_decode2) and the clause layer must BOTH refuse — parity of failure.
+  if (!PRED_FILTER || PRED_FILTER in RAT_PREDS) {
+    let negPass = 0, negFail = 0;
+    for (const pred of ['qplus', 'qsub', 'qmul', 'qdiv', 'qlt', 'qeq']) {
+      const [nIn, hasOut] = RAT_PREDS[pred];
+      const meta = ffi.defaultMeta[pred];
+      const handler = ffi.get(meta.ffi);
+      for (let trial = 0; trial < Math.max(10, COUNT / 5); trial++) {
+        const negAt = trial % nIn;
+        const ins = Array.from({ length: nIn }, (_, k) => k === negAt
+          ? Store.put('ratlit', [-(1n + randBigInt(4)), 1n + randBigInt(3)])
+          : genRatArg());
+        const args = hasOut ? [...ins, Store.put('metavar', ['qout'])] : ins;
+        const goal = Store.put(pred, args);
+        const ffiResult = handler(args);
+        const clauseResult = backward.prove(goal, ecRat.clauses, ecRat.definitions, {
+          ...ratOpts, maxDepth: 20000, allBuckets: true, useFFI: false,
+        });
+        if ((ffiResult && ffiResult.success) || clauseResult.success) {
+          negFail++;
+          console.log('NEG-LEAK ' + pred + ': FFI=' + !!(ffiResult && ffiResult.success) +
+                      ' clause=' + clauseResult.success);
+        } else negPass++;
+      }
+    }
+    totalTests += negPass + negFail;
+    totalPass += negPass;
+    totalFail += negFail;
+    const negStatus = negFail > 0 ? 'FAIL' : 'ok';
+    console.log(negStatus + ' q-negative [both refuse]: ' + negPass + '/' + (negPass + negFail) + ' passed');
+    bumpCluster('§3.12', { pred: 'q@negative', status: negStatus, pass: negPass, fail: negFail, skip: 0 });
+  }
+
+  // ── §3.12c Representation variants: o/i-wrapped rational leaves ──────
+  // Ill-sorted goals (mul/s1-style capture). FFI is conservative (ratParts
+  // returns null → advisory fail); clauses MAY derive via the semiring-
+  // generic digit algorithms. One-sided FFI-principle check: whenever FFI
+  // succeeds, the clause value must agree canonically; FFI failure alone is
+  // never a mismatch.
+  if (!PRED_FILTER || PRED_FILTER in RAT_PREDS) {
+    let wrapPass = 0, wrapFail = 0;
+    for (const pred of ['qplus', 'qmul']) {
+      const meta = ffi.defaultMeta[pred];
+      const handler = ffi.get(meta.ffi);
+      for (let trial = 0; trial < Math.max(10, COUNT / 5); trial++) {
+        const wrapped = Store.put(rand() > 0.5 ? 'o' : 'i',
+          [putRat(randBigInt(3), 1n + randBigInt(2))]);
+        const ins = trial % 2 === 0 ? [wrapped, genRatArg()] : [genRatArg(), wrapped];
+        const out = Store.put('metavar', ['qout']);
+        const args = [...ins, out];
+        const goal = Store.put(pred, args);
+        const ffiResult = handler(args);
+        if (!(ffiResult && ffiResult.success)) { wrapPass++; continue; }
+        const clauseResult = backward.prove(goal, ecRat.clauses, ecRat.definitions, {
+          ...ratOpts, maxDepth: 20000, allBuckets: true, useFFI: false,
+        });
+        if (!clauseResult.success) { wrapFail++; console.log('WRAP-DIVERGE ' + pred); continue; }
+        let clauseVal = out;
+        for (let i = 0; i < 500; i++) {
+          const n = apply(clauseVal, clauseResult.theta);
+          if (n === clauseVal) break;
+          clauseVal = n;
+        }
+        if (ratCanon(ffiResult.theta[0][1]) === ratCanon(clauseVal)) wrapPass++;
+        else { wrapFail++; console.log('WRAP-MISMATCH ' + pred); }
+      }
+    }
+    totalTests += wrapPass + wrapFail;
+    totalPass += wrapPass;
+    totalFail += wrapFail;
+    const wrapStatus = wrapFail > 0 ? 'FAIL' : 'ok';
+    console.log(wrapStatus + ' q-wrapped [one-sided]: ' + wrapPass + '/' + (wrapPass + wrapFail) + ' passed');
+    bumpCluster('§3.12', { pred: 'q@wrapped', status: wrapStatus, pass: wrapPass, fail: wrapFail, skip: 0 });
+  }
 }
 
 // ============================================================================

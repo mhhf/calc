@@ -101,6 +101,25 @@ sub/sat: sub A B e <- gt B A e (i e).
 checked_sub: (a: bin) -> (b: bin) -> (result: bin) -> type.
 checked_sub/ok: checked_sub A B C <- le B A <- sub A B C.
 
+% min A B M / max A B M — value-ordered selection (Phase 6: the PP2 kiln
+% capacity cap). gt with assumption e is a STRICT test: (i e) iff A > B —
+% the "less" (o e) and "equal" e results both canonicalize to zero under
+% binlitTheory, so the pick is two-way. gt runs ONCE; a ground pick clause
+% then selects the argument — single derivation, no shared-prefix
+% re-derivation on backtracking (the qnorm/z lesson). Value-based via gt,
+% so padded-zero operands compare correctly.
+min: (a: bin) -> (b: bin) -> (m: bin) -> type.
+min/z: min A B M <- gt A B e C <- min_pick C A B M.
+min_pick: (c: bin) -> (a: bin) -> (b: bin) -> (m: bin) -> type.
+min_pick/gt: min_pick (i e) A B B.
+min_pick/ng: min_pick e A B A.
+
+max: (a: bin) -> (b: bin) -> (m: bin) -> type.
+max/z: max A B M <- gt A B e C <- max_pick C A B M.
+max_pick: (c: bin) -> (a: bin) -> (b: bin) -> (m: bin) -> type.
+max_pick/gt: max_pick (i e) A B A.
+max_pick/ng: max_pick e A B B.
+
 % byte_size256 X N: N = number of bytes needed to represent X
 % byte_size(0) = 0. Used by EVM EXP gas: cost = 10 + 50 * byte_size(exponent)
 byte_size256: (value: bin) -> (bytes: bin) -> type.

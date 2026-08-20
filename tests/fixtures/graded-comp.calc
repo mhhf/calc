@@ -1,0 +1,51 @@
+% Graded-monad toy calculus — TODO_0265 Phase 2 machinery test.
+% A second logic whose computation connective is 2-ary (grade, body) and
+% named differently from ILL's unary monad (distinct store tag), exercising
+% the roles.computation = { tag, bodyIdx, gradeIdx } record end-to-end.
+% tensor/loli reuse ILL's tags deliberately (shared Store, as till will).
+
+@family gtoy.
+
+formula: type.
+grade: type.
+
+tensor: formula -> formula -> formula
+  @ascii "_ * _"
+  @prec 60 left
+  @category multiplicative
+  @polarity positive.
+
+loli: formula -> formula -> formula
+  @ascii "_ -o _"
+  @prec 50 right
+  @category multiplicative
+  @polarity negative.
+
+monad: grade -> formula -> formula
+  @ascii "{ #2 }"
+  @category monad
+  @polarity negative.
+
+bang: grade -> formula -> formula
+  @ascii "! #2"
+  @prec 80
+  @category exponential.
+
+% Timed surface (sorted templates over kernel wrapper tags, TODO_0268 A) —
+% mirrors till.calc so the timed-grammar tests run on the fixture.
+at: formula -> grade -> formula
+  @ascii "#1@#2"
+  @prec 90 left.
+
+after: grade -> formula
+  @ascii "after #1".
+
+before: grade -> formula
+  @ascii "before #1".
+
+readPreserved: formula -> formula
+  @ascii "read #1".
+
+atom: string -> formula
+  @ascii "_"
+  @prec 100.

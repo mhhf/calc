@@ -425,12 +425,12 @@
     "monad_r": {
       "name": "monad_r",
       "tag": 8,
-      "arity": 1,
+      "arity": 2,
       "oblig_receive": true,
       "premises": [
         {
           "succedent": {
-            "Child": 0
+            "Child": 1
           },
           "lax": 1
         }
@@ -444,13 +444,13 @@
     "monad_l": {
       "name": "monad_l",
       "tag": 8,
-      "arity": 1,
+      "arity": 2,
       "oblig_receive": false,
       "premises": [],
       "ctx_receive": true,
       "ctx_sends": [
         {
-          "Child": 0
+          "Child": 1
         }
       ],
       "formula_lookup": true,
@@ -480,9 +480,9 @@
   "chips": {
     "init": [
       [
-        95,
+        93,
         1,
-        88,
+        86,
         1,
         0,
         0,
@@ -492,11 +492,11 @@
     "dup": [],
     "zero_l": [
       [
-        95,
+        93,
         1,
         0,
         0,
-        88,
+        86,
         0
       ]
     ],
@@ -504,7 +504,7 @@
   },
   "formula_rom": [
     [
-      95,
+      93,
       4,
       0,
       0,

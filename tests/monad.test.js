@@ -16,8 +16,9 @@ import { createProver } from '../lib/prover/focused.js';
 import { initRuleSpecs } from '../lib/prover/rule-interpreter.js';
 import { sequentToState, stateToContext, rightFocus, modeSwitch } from '../lib/prover/bridge.js';
 import { compileRule } from '../lib/engine/compile.js';
-import { ILL_CONNECTIVES } from '../lib/engine/ill/connectives.js';
+import { illConnectives } from '../lib/engine/ill/connectives.js';
 import { gradeW } from '../lib/engine/grades.js';
+import { monadUnit as U } from '../lib/engine/grades.js';
 let ill, AST, parse, render;
 
 before(async () => {
@@ -37,7 +38,7 @@ describe('Monad parser', () => {
     const h = parse('{A}');
     const n = Store.get(h);
     assert.strictEqual(n.tag, 'monad');
-    const inner = Store.get(n.children[0]);
+    const inner = Store.get(n.children[1]);
     assert.strictEqual(inner.tag, 'freevar');
     assert.strictEqual(inner.children[0], 'A');
   });
@@ -54,7 +55,7 @@ describe('Monad parser', () => {
     const h = parse('{A * B}');
     const n = Store.get(h);
     assert.strictEqual(n.tag, 'monad');
-    const inner = Store.get(n.children[0]);
+    const inner = Store.get(n.children[1]);
     assert.strictEqual(inner.tag, 'tensor');
   });
 
@@ -62,7 +63,7 @@ describe('Monad parser', () => {
     const h = parse('{{A}}');
     const n = Store.get(h);
     assert.strictEqual(n.tag, 'monad');
-    const inner = Store.get(n.children[0]);
+    const inner = Store.get(n.children[1]);
     assert.strictEqual(inner.tag, 'monad');
   });
 
@@ -115,7 +116,7 @@ describe('Monad stickiness', () => {
     const { specs } = initRuleSpecs(ill);
 
     // Create sequent: {A} |- B (succedent is just freevar, not monadic)
-    const monadA = AST.monad(AST.freevar('A'));
+    const monadA = AST.monad(U(), AST.freevar('A'));
     const seq = Seq.fromArrays([monadA], [], AST.freevar('B'));
 
     const result = generic.applyRule(seq, 'L', 0, specs.monad_l);
@@ -127,8 +128,8 @@ describe('Monad stickiness', () => {
     const { specs } = initRuleSpecs(ill);
 
     // Create sequent: {A} |- {B} (succedent is monadic)
-    const monadA = AST.monad(AST.freevar('A'));
-    const monadB = AST.monad(AST.freevar('B'));
+    const monadA = AST.monad(U(), AST.freevar('A'));
+    const monadB = AST.monad(U(), AST.freevar('B'));
     const seq = Seq.fromArrays([monadA], [], monadB);
 
     const result = generic.applyRule(seq, 'L', 0, specs.monad_l);
@@ -142,8 +143,8 @@ describe('Monad stickiness', () => {
     // {A} |- {B} → A |- {B}
     const a = AST.freevar('A');
     const b = AST.freevar('B');
-    const monadA = AST.monad(a);
-    const monadB = AST.monad(b);
+    const monadA = AST.monad(U(), a);
+    const monadB = AST.monad(U(), b);
     const seq = Seq.fromArrays([monadA], [], monadB);
 
     const result = generic.applyRule(seq, 'L', 0, specs.monad_l);
@@ -159,7 +160,7 @@ describe('Monad stickiness', () => {
     const focused = createProver(ill);
 
     // Create sequent: a |- {B} (monadic succedent)
-    const monadB = AST.monad(AST.freevar('B'));
+    const monadB = AST.monad(U(), AST.freevar('B'));
     const a = AST.atom('a');
     const seq = Seq.fromArrays([a], [], monadB);
 
@@ -183,7 +184,7 @@ describe('Monad mode switch', () => {
 
   it('findInvertible finds monad_r on monadic succedent', () => {
     const focused = createProver(ill);
-    const monadA = AST.monad(AST.freevar('A'));
+    const monadA = AST.monad(U(), AST.freevar('A'));
     const a = AST.atom('a');
     const seq = Seq.fromArrays([a], [], monadA);
 
@@ -195,7 +196,7 @@ describe('Monad mode switch', () => {
 
   it('modeSwitch returns null without forwardRules', () => {
     const a = AST.atom('a');
-    const monadA = AST.monad(a);
+    const monadA = AST.monad(U(), a);
     const seq = Seq.fromArrays([a], [], monadA);
 
     const result = modeSwitch(seq, null);
@@ -204,7 +205,7 @@ describe('Monad mode switch', () => {
 
   it('modeSwitch returns null with empty forwardRules', () => {
     const a = AST.atom('a');
-    const monadA = AST.monad(a);
+    const monadA = AST.monad(U(), a);
     const seq = Seq.fromArrays([a], [], monadA);
 
     const result = modeSwitch(seq, { forwardRules: [] });
@@ -215,15 +216,15 @@ describe('Monad mode switch', () => {
     // Build a simple forward rule: a -o {b}
     const a = AST.atom('a');
     const b = AST.atom('b');
-    const ruleH = AST.loli(a, AST.monad(b));
+    const ruleH = AST.loli(a, AST.monad(U(), b));
     const compiled = compileRule({
       name: 'test_rule',
       hash: ruleH,
       antecedent: a,
-      consequent: AST.monad(b)
-    }, { connectives: ILL_CONNECTIVES });
+      consequent: AST.monad(U(), b)
+    }, { connectives: illConnectives() });
 
-    const monadB = AST.monad(b);
+    const monadB = AST.monad(U(), b);
     const seq = Seq.fromArrays([a], [], monadB);
 
     const result = modeSwitch(seq, { forwardRules: [compiled] });
@@ -245,13 +246,13 @@ describe('Monad committed choice', () => {
     const { specs, alternatives } = initRuleSpecs(ill);
 
     const a = AST.atom('a');
-    const monadA = AST.monad(a);
+    const monadA = AST.monad(U(), a);
     const compiled = compileRule({
       name: 'test_id',
-      hash: AST.loli(a, AST.monad(a)),
+      hash: AST.loli(a, AST.monad(U(), a)),
       antecedent: a,
-      consequent: AST.monad(a)
-    }, { connectives: ILL_CONNECTIVES });
+      consequent: AST.monad(U(), a)
+    }, { connectives: illConnectives() });
 
     const seq = Seq.fromArrays([a], [], monadA);
     const result = focused.prove(seq, {
@@ -267,13 +268,13 @@ describe('Monad committed choice', () => {
   it('monad_r proofNode has zero premises', () => {
     const { specs, alternatives } = initRuleSpecs(ill);
     const a = AST.atom('a');
-    const monadA = AST.monad(a);
+    const monadA = AST.monad(U(), a);
     const compiled = compileRule({
       name: 'test_id2',
-      hash: AST.loli(a, AST.monad(a)),
+      hash: AST.loli(a, AST.monad(U(), a)),
       antecedent: a,
-      consequent: AST.monad(a)
-    }, { connectives: ILL_CONNECTIVES });
+      consequent: AST.monad(U(), a)
+    }, { connectives: illConnectives() });
 
     const focused = createProver(ill);
     const seq = Seq.fromArrays([a], [], monadA);
@@ -296,7 +297,7 @@ describe('Monad committed choice', () => {
 describe('Monad kernel verification', () => {
   it('verifyStep accepts monad_r with monadic succedent', () => {
     const kernel = createKernel(ill);
-    const monadA = AST.monad(AST.freevar('A'));
+    const monadA = AST.monad(U(), AST.freevar('A'));
     const a = AST.atom('a');
     const seq = Seq.fromArrays([a], [], monadA);
 
@@ -317,7 +318,7 @@ describe('Monad kernel verification', () => {
 
   it('verifyStep returns evidence: null for monad_r', () => {
     const kernel = createKernel(ill);
-    const monadA = AST.monad(AST.freevar('A'));
+    const monadA = AST.monad(U(), AST.freevar('A'));
     const seq = Seq.fromArrays([], [], monadA);
 
     const result = kernel.verifyStep(seq, 'monad_r', []);
@@ -376,15 +377,15 @@ describe('Monad integration', () => {
 
     const a = AST.atom('a');
     const b = AST.atom('b');
-    const monadB = AST.monad(b);
+    const monadB = AST.monad(U(), b);
 
     // Forward rule: a -o {b}
     const compiled = compileRule({
       name: 'a_to_b',
-      hash: AST.loli(a, AST.monad(b)),
+      hash: AST.loli(a, AST.monad(U(), b)),
       antecedent: a,
-      consequent: AST.monad(b)
-    }, { connectives: ILL_CONNECTIVES });
+      consequent: AST.monad(U(), b)
+    }, { connectives: illConnectives() });
 
     const seq = Seq.fromArrays([a], [], monadB);
     const result = focused.prove(seq, {
@@ -401,7 +402,7 @@ describe('Monad integration', () => {
     const { specs, alternatives } = initRuleSpecs(ill);
 
     const a = AST.atom('a');
-    const monadB = AST.monad(AST.atom('b'));
+    const monadB = AST.monad(U(), AST.atom('b'));
 
     const seq = Seq.fromArrays([a], [], monadB);
     const result = focused.prove(seq, {
@@ -419,13 +420,13 @@ describe('Monad integration', () => {
     const { specs, alternatives } = initRuleSpecs(ill);
 
     const a = AST.atom('a');
-    const monadA = AST.monad(a);
+    const monadA = AST.monad(U(), a);
     const compiled = compileRule({
       name: 'test_pass',
-      hash: AST.loli(a, AST.monad(a)),
+      hash: AST.loli(a, AST.monad(U(), a)),
       antecedent: a,
-      consequent: AST.monad(a)
-    }, { connectives: ILL_CONNECTIVES });
+      consequent: AST.monad(U(), a)
+    }, { connectives: illConnectives() });
 
     const seq = Seq.fromArrays([a], [], monadA);
     const result = focused.prove(seq, {
@@ -443,7 +444,7 @@ describe('Monad integration', () => {
     const focused = createProver(ill);
 
     // monad is negative → monad_r is invertible → fires in inversion
-    const monadA = AST.monad(AST.freevar('A'));
+    const monadA = AST.monad(U(), AST.freevar('A'));
     const a = AST.atom('a');
     const seq = Seq.fromArrays([a], [], monadA);
 
@@ -464,12 +465,12 @@ describe('Monad integration', () => {
     // Rule: a -o {b}
     const compiled = compileRule({
       name: 'a_to_b_q',
-      hash: AST.loli(a, AST.monad(b)),
+      hash: AST.loli(a, AST.monad(U(), b)),
       antecedent: a,
-      consequent: AST.monad(b)
-    }, { connectives: ILL_CONNECTIVES });
+      consequent: AST.monad(U(), b)
+    }, { connectives: illConnectives() });
 
-    const seq = Seq.fromArrays([a], [], AST.monad(b));
+    const seq = Seq.fromArrays([a], [], AST.monad(U(), b));
     const result = focused.prove(seq, {
       rules: specs,
       alternatives,
@@ -623,13 +624,13 @@ describe('rightFocus integration', () => {
     // Forward rule: a -o {b}
     const compiled = compileRule({
       name: 'rf_a_to_b',
-      hash: AST.loli(a, AST.monad(b)),
+      hash: AST.loli(a, AST.monad(U(), b)),
       antecedent: a,
-      consequent: AST.monad(b)
-    }, { connectives: ILL_CONNECTIVES });
+      consequent: AST.monad(U(), b)
+    }, { connectives: illConnectives() });
 
     // Prove: a |- {b}
-    const seq = Seq.fromArrays([a], [], AST.monad(b));
+    const seq = Seq.fromArrays([a], [], AST.monad(U(), b));
     const result = focused.prove(seq, {
       rules: specs,
       alternatives,
@@ -649,13 +650,13 @@ describe('rightFocus integration', () => {
     // Forward rule: a -o {b}
     const compiled = compileRule({
       name: 'rf_mismatch',
-      hash: AST.loli(a, AST.monad(b)),
+      hash: AST.loli(a, AST.monad(U(), b)),
       antecedent: a,
-      consequent: AST.monad(b)
-    }, { connectives: ILL_CONNECTIVES });
+      consequent: AST.monad(U(), b)
+    }, { connectives: illConnectives() });
 
     // Prove: a |- {c} — forward produces b, but succedent wants c
-    const seq = Seq.fromArrays([a], [], AST.monad(c));
+    const seq = Seq.fromArrays([a], [], AST.monad(U(), c));
     const result = focused.prove(seq, {
       rules: specs,
       alternatives,
@@ -675,13 +676,13 @@ describe('rightFocus integration', () => {
     // Forward rule: a -o {a * b} (produces MORE than consumed)
     const compiled = compileRule({
       name: 'rf_extra',
-      hash: AST.loli(a, AST.monad(AST.tensor(a, b))),
+      hash: AST.loli(a, AST.monad(U(), AST.tensor(a, b))),
       antecedent: a,
-      consequent: AST.monad(AST.tensor(a, b))
-    }, { connectives: ILL_CONNECTIVES });
+      consequent: AST.monad(U(), AST.tensor(a, b))
+    }, { connectives: illConnectives() });
 
     // Prove: a |- {a} — forward produces a and b, but succedent only wants a
-    const seq = Seq.fromArrays([a], [], AST.monad(a));
+    const seq = Seq.fromArrays([a], [], AST.monad(U(), a));
     const result = focused.prove(seq, {
       rules: specs,
       alternatives,
@@ -702,20 +703,20 @@ describe('rightFocus integration', () => {
     // Rule 1: a -o {b}
     const r1 = compileRule({
       name: 'rf_chain1',
-      hash: AST.loli(a, AST.monad(b)),
+      hash: AST.loli(a, AST.monad(U(), b)),
       antecedent: a,
-      consequent: AST.monad(b)
-    }, { connectives: ILL_CONNECTIVES });
+      consequent: AST.monad(U(), b)
+    }, { connectives: illConnectives() });
     // Rule 2: b -o {c}
     const r2 = compileRule({
       name: 'rf_chain2',
-      hash: AST.loli(b, AST.monad(c)),
+      hash: AST.loli(b, AST.monad(U(), c)),
       antecedent: b,
-      consequent: AST.monad(c)
-    }, { connectives: ILL_CONNECTIVES });
+      consequent: AST.monad(U(), c)
+    }, { connectives: illConnectives() });
 
     // Prove: a |- {c} — forward chains a→b→c
-    const seq = Seq.fromArrays([a], [], AST.monad(c));
+    const seq = Seq.fromArrays([a], [], AST.monad(U(), c));
     const result = focused.prove(seq, {
       rules: specs,
       alternatives,
@@ -735,13 +736,13 @@ describe('rightFocus integration', () => {
     // Rule: a -o {b * c} (one step producing two facts)
     const compiled = compileRule({
       name: 'rf_tensor_out',
-      hash: AST.loli(a, AST.monad(AST.tensor(b, c))),
+      hash: AST.loli(a, AST.monad(U(), AST.tensor(b, c))),
       antecedent: a,
-      consequent: AST.monad(AST.tensor(b, c))
-    }, { connectives: ILL_CONNECTIVES });
+      consequent: AST.monad(U(), AST.tensor(b, c))
+    }, { connectives: illConnectives() });
 
     // Prove: a |- {b * c}
-    const seq = Seq.fromArrays([a], [], AST.monad(AST.tensor(b, c)));
+    const seq = Seq.fromArrays([a], [], AST.monad(U(), AST.tensor(b, c)));
     const result = focused.prove(seq, {
       rules: specs,
       alternatives,

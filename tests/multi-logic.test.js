@@ -7,7 +7,7 @@ import assert from 'node:assert';
 import path from 'path';
 import calculus from '../lib/calculus/index.js';
 import Store from '../lib/kernel/store.js';
-import { ILL_CONNECTIVES } from '../lib/engine/ill/connectives.js';
+import { illConnectives } from '../lib/engine/ill/connectives.js';
 // Hoisted by tools/esm-hoist.js:
 import { rightFocus } from '../lib/prover/bridge.js';
 
@@ -24,24 +24,25 @@ describe('deriveRoles', () => {
     assert.strictEqual(r.product, 'tensor');
     assert.strictEqual(r.implication, 'loli');
     assert.strictEqual(r.unit, 'one');
-    assert.strictEqual(r['internal-choice'], 'oplus');
-    assert.strictEqual(r['external-choice'], 'with');
+    assert.strictEqual(r.internalChoice, 'oplus');
+    assert.strictEqual(r.externalChoice, 'with');
     assert.strictEqual(r.exponential, 'bang');
-    assert.strictEqual(r.computation, 'monad');
+    assert.deepStrictEqual(r.computation, { tag: 'monad', bodyIdx: 1, gradeIdx: 0 });
     assert.strictEqual(r.existential, 'exists');
-    assert.strictEqual(r['additive-zero'], 'zero');
+    assert.strictEqual(r.additiveZero, 'zero');
   });
 
-  it('should have ILL_CONNECTIVES as tag → structural info table', () => {
-    assert.deepStrictEqual(ILL_CONNECTIVES.tensor, { category: 'multiplicative', arity: 2, polarity: 'positive' });
-    assert.deepStrictEqual(ILL_CONNECTIVES.loli, { category: 'multiplicative', arity: 2, polarity: 'negative' });
-    assert.deepStrictEqual(ILL_CONNECTIVES.bang, { category: 'exponential', arity: 2 });
-    assert.deepStrictEqual(ILL_CONNECTIVES.monad, { category: 'monad', arity: 1 });
-    assert.deepStrictEqual(ILL_CONNECTIVES.oplus, { category: 'additive', arity: 2, polarity: 'positive' });
-    assert.deepStrictEqual(ILL_CONNECTIVES.with, { category: 'additive', arity: 2, polarity: 'negative' });
-    assert.deepStrictEqual(ILL_CONNECTIVES.exists, { category: 'quantifier', arity: 1, polarity: 'positive' });
-    assert.deepStrictEqual(ILL_CONNECTIVES.one, { category: 'multiplicative', arity: 0 });
-    assert.deepStrictEqual(ILL_CONNECTIVES.zero, { category: 'additive', arity: 0 });
+  it('should have illConnectives() as tag → structural info table (derived from ill.calc)', () => {
+    assert.deepStrictEqual(illConnectives().tensor, { category: 'multiplicative', arity: 2, polarity: 'positive' });
+    assert.deepStrictEqual(illConnectives().loli, { category: 'multiplicative', arity: 2, polarity: 'negative' });
+    assert.deepStrictEqual(illConnectives().bang, { category: 'exponential', arity: 2 });
+    assert.deepStrictEqual(illConnectives().monad, { category: 'monad', arity: 2, polarity: 'negative' });
+    assert.deepStrictEqual(illConnectives().oplus, { category: 'additive', arity: 2, polarity: 'positive' });
+    assert.deepStrictEqual(illConnectives().with, { category: 'additive', arity: 2, polarity: 'negative' });
+    assert.deepStrictEqual(illConnectives().exists, { category: 'quantifier', arity: 1, polarity: 'positive' });
+    assert.deepStrictEqual(illConnectives().forall, { category: 'quantifier', arity: 1 });
+    assert.deepStrictEqual(illConnectives().one, { category: 'multiplicative', arity: 0 });
+    assert.deepStrictEqual(illConnectives().zero, { category: 'additive', arity: 0, polarity: 'positive' });
   });
 });
 
@@ -64,8 +65,8 @@ describe('minimal-prop calculus (graceful degradation)', () => {
     assert.strictEqual(prop.roles.computation, undefined);
     assert.strictEqual(prop.roles.exponential, undefined);
     assert.strictEqual(prop.roles.implication, undefined);
-    assert.strictEqual(prop.roles['internal-choice'], undefined);
-    assert.strictEqual(prop.roles['external-choice'], undefined);
+    assert.strictEqual(prop.roles.internalChoice, undefined);
+    assert.strictEqual(prop.roles.externalChoice, undefined);
   });
 
   it('should not inject monad rules', () => {
@@ -90,7 +91,7 @@ describe('two calculi coexist', () => {
   it('should have independent roles', () => {
     assert.strictEqual(ill.roles.product, 'tensor');
     assert.strictEqual(prop.roles.product, 'prop_and');
-    assert.strictEqual(ill.roles.computation, 'monad');
+    assert.deepStrictEqual(ill.roles.computation, { tag: 'monad', bodyIdx: 1, gradeIdx: 0 });
     assert.strictEqual(prop.roles.computation, undefined);
   });
 

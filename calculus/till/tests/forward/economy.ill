@@ -1,0 +1,43 @@
+#import(../../prelude/rat.ill)
+
+% tokens (closed-world sort checking: every symbol is declared)
+sawmill: type.
+wood: type.
+plank: type.
+smith: type.
+stone: type.
+tool: type.
+
+% economy.ill — till executable spec: the time.mjs 10/10/10 scenario ported
+% (todo 0265 Phase 5; restated as Phase 6's acceptance gate on PP2). Ground
+% truth: tests/engine/till-oracle.test.js ("10/10/10 scenario"); every stamp
+% below is hand-computed from sawmill delay 1/2, smith delay 3/10.
+%
+% Schedule: sawmill jobs at 0, 1/2, 1 (3 wood in); smith jobs at 0, 3/10,
+% 3/5, 9/10 (4 plank + 4 stone in, FIFO always takes plank@0). Observable
+% slice at T=1: {wood:7, plank:8, stone:6, tool:3}; both buildings in
+% flight (sawmill@3/2, smith@6/5).
+
+saw: $sawmill * wood -o { plank }@(1/2).
+forge: $smith * plank * stone -o { tool }@(3/10).
+
+% exact: true — the expectation IS the full settled multiset; any extra
+% or missing fact fails (subset checks cannot catch extras).
+#expect_economy (settle: 1, exact: true)
+  sawmill * smith * !_10 wood * !_10 plank * !_10 stone
+  =>
+  !_7 wood@0 * !_6 plank@0 * plank@(1/2) * plank@1 * plank@(3/2)
+  * !_6 stone@0 * tool@(3/10) * tool@(3/5) * tool@(9/10) * tool@(6/5)
+  * sawmill@(3/2) * smith@(6/5) .
+
+% exactly four tools exist after settle(1) — three observable, one in flight
+#expect_not_five_tools (settle: 1)
+  sawmill * smith * !_10 wood * !_10 plank * !_10 stone
+  =>
+  !_5 tool .
+
+% full drain: 20 planks total (10 + 10 from wood), tools bounded by stone
+#expect_settled (settle: 100)
+  sawmill * smith * !_10 wood * !_10 plank * !_10 stone
+  =>
+  !_10 tool * !_10 plank * sawmill * smith .

@@ -1,0 +1,69 @@
+#import(../../calculus/till/prelude/rat.ill)
+
+% tokens (closed-world sort checking)
+junk: type.
+spc: type.
+seed: type.
+token: type.
+relic: type.
+farmz: type.
+gate: type.
+opened: type.
+
+
+% Timed possessed rules (Phase 6c): a loli FACT in the state is a rule you
+% possess — one-shot by linearity, fireable from its stamp onward, delay
+% read from its stored {..}@d monad. Ground lolis only (v1).
+
+supply: junk -o { !_2 spc }@2.
+
+% a rule that PRODUCES a possessed rule
+mk: seed -o { (token -o { relic }) }@1.
+
+% loli + resources: fires like a rule, delay from the stored monad
+#expect_basic (settle: 10, exact: true)
+  (!_2 spc -o { farmz }@3) * !_2 spc
+  =>
+  farmz@3 .
+
+% plan semantics: the possessed rule WAITS for its inputs (spc lands at 2)
+#expect_plan (settle: 10, exact: true)
+  (!_2 spc -o { farmz }@3) * junk
+  =>
+  farmz@5 .
+
+% before the inputs exist, the loli just sits (inert, pending)
+#expect_waiting (settle: 1, exact: true)
+  (!_2 spc -o { farmz }@3) * junk
+  =>
+  (!_2 spc -o { farmz }@3) * !_2 spc@2 .
+
+% the rule's own stamp joins the activation max — no firing before it exists
+#expect_stamp_join (settle: 10, exact: true)
+  (token -o { relic })@4 * token
+  =>
+  relic@4 .
+
+% one-shot by linearity: one firing, resources beyond the cost survive
+#expect_one_shot (settle: 10, exact: true)
+  (!_2 spc -o { farmz }@3) * !_4 spc
+  =>
+  farmz@3 * !_2 spc@0 .
+
+% two copies of the same possessed rule fire twice
+#expect_two_copies (settle: 10, exact: true)
+  (!_2 spc -o { farmz }@3) * (!_2 spc -o { farmz }@3) * !_4 spc
+  =>
+  !_2 farmz@3 .
+
+% chained: mk produces the rule at 1; it then fires on the waiting token
+#expect_produced_rule (settle: 10, exact: true)
+  seed * token
+  =>
+  relic@1 .
+
+% ground windows inside possessed rules work (compileRule extracts them)
+#expect_ground_window (settle: 10, exact: true)
+  (gate * after 5 -o { opened }) * gate
+  =>
+  opened@5 .

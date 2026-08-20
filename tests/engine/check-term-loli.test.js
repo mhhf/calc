@@ -11,6 +11,7 @@ import Seq from '../../lib/kernel/sequent.js';
 import { createChecker } from '../../lib/prover/check-term.js';
 // Hoisted by tools/esm-hoist.js:
 import calculus from '../../lib/calculus/index.js';
+import { monadUnit as U } from '../../lib/engine/grades.js';
 
 describe('check-term loli_match (C2)', () => {
   let checker;
@@ -26,7 +27,7 @@ describe('check-term loli_match (C2)', () => {
     // Build: loli(A, monad(B)) in delta
     const atomA = Store.put('atom', ['test_a']);
     const atomB = Store.put('atom', ['test_b']);
-    const monadB = Store.put('monad', [atomB]);
+    const monadB = Store.put('monad', [U(), atomB]);
     const loliType = Store.put('loli', [atomA, monadB]);
 
     // Build a minimal loli_match proof term

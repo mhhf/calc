@@ -138,7 +138,7 @@ out/                     # Generated: ill.json (bundled calculus), ui/ (built ap
 | oplus | `+` | positive | additive disjunction (internal choice) — renamed from `plus` |
 | zero | `zero` | positive | additive false — `zero_l` discards linear context |
 | bang | `!` | positive | exponential (reusable resource) — binary: `bang(grade, formula)`, `!A` is sugar for `bang(GRADE_W, A)` |
-| monad | `{ _ }` | negative | lax monad (invertible right, sticky left) |
+| monad | `{ _ }` | negative | graded lax monad — binary: `monad(grade, body)`, `{A}` is sugar for `monad(unit, A)` with unit = binlit 0; till's `{A}@d` fills the grade |
 | exists | `exists` | positive | existential |
 | forall | `forall` | negative | universal |
 
@@ -172,7 +172,7 @@ FFI is optimization, theory is semantics. Every FFI predicate MUST have backward
 ## Common Gotchas
 
 - `Store.tagId()` returns 0 for both invalid IDs and `atom` tag — use `isTerm()` first
-- Atoms share tag 0, predicates have tag >= `PRED_BOUNDARY` (31) — use `hasPredicate`/`groupForPred`
+- Atoms share tag 0, predicates have tag >= `PRED_BOUNDARY` (36) — use `hasPredicate`/`groupForPred`. Appending kernel tags shifts the boundary and invalidates every serialized Store — batch into one commit and bump the store-binary VERSION
 - Nullary constructors (e.g. `empty_mem`) are `atom('empty_mem')` not tag — use helpers
 - `code` facts are **linear** in EVM rules (consumed and re-produced)
 - `linearMeta.persistentDeps` (Set) needs Array↔Set conversion for JSON serialization
@@ -189,6 +189,8 @@ FFI is optimization, theory is semantics. Every FFI predicate MUST have backward
 - `tools/collect-tags.js` — regenerate `doc/tags.yaml` tag index (`npm run tags`)
 - `tools/explore-inspect.js` — `node tools/explore-inspect.js [--leaf N] [--all] <files...>`
 - `tools/fuzz-ffi.js` — FFI correctness fuzzer (FFI vs clause comparison)
+- `tools/fuzz-till.js` — till fuzzer: q-ops FFI∥clause∥BigInt reference + activation spec (`node tools/fuzz-till.js [--count N] [--seed N]`)
+- `tools/till-shell.js` — live TTY for till programs (`npm run shell:till -- <file> [--init <directive>] [--speed x] [--demo "t:i,..."]`): wall-clock settle loop, menus from the state, digits = with-projection clicks, menuStatus greying
 - `tools/precompile.js` — binary cache precompiler for .ill files
 - `tools/test-timing.js` — per-file test execution time profiler
 - `tools/debug-ill.js` — `npm run debug:ill -- <file.ill> [--only trace]` (observation directives + verbose judgments). Directives: `#trace`, `#dump_state`, `#debug`, `#benchmark`, `#compare`, `#inspect`, `#profile`

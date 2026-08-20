@@ -17,6 +17,7 @@ import mde from '../../lib/engine/index.js';
 import ccfg from '../../lib/engine/ill/calculus-config.js';
 import { gradeW } from '../../lib/engine/grades.js';
 import { proveNaive } from '../../lib/engine/lnl/persistent.js';
+import { monadUnit as U } from '../../lib/engine/grades.js';
 
 describe('lnl/loli — matchLoli', () => {
   let calc, rc;
@@ -32,7 +33,7 @@ describe('lnl/loli — matchLoli', () => {
   it('returns null when trigger linear fact not in state', () => {
     const trigger = Store.put('gas', [Store.put('atom', ['x'])]);
     const body = Store.put('pc', [Store.put('atom', ['y'])]);
-    const loliHash = Store.put('loli', [trigger, Store.put('monad', [body])]);
+    const loliHash = Store.put('loli', [trigger, Store.put('monad', [U(), body])]);
 
     const linear = new FactSet(Store.TAG_NAMES.length);
     linear.insert(Store.tagId(loliHash), loliHash, null);
@@ -54,7 +55,7 @@ describe('lnl/loli — matchLoli', () => {
     const val = Store.put('atom', ['v1']);
     const trigger = Store.put('gas', [val]);
     const body = Store.put('pc', [val]);
-    const wrappedBody = Store.put('monad', [body]);
+    const wrappedBody = Store.put('monad', [U(), body]);
     const loliHash = Store.put('loli', [trigger, wrappedBody]);
 
     const linear = new FactSet(Store.TAG_NAMES.length);
@@ -80,7 +81,7 @@ describe('lnl/loli — matchLoli', () => {
     const val = Store.put('atom', ['v1']);
     const trigger = Store.put('gas', [val]);
     const body = Store.put('pc', [val]);
-    const wrappedBody = Store.put('monad', [body]);
+    const wrappedBody = Store.put('monad', [U(), body]);
     const loliHash = Store.put('loli', [trigger, wrappedBody]);
 
     const linear = new FactSet(Store.TAG_NAMES.length);
@@ -105,7 +106,7 @@ describe('lnl/loli — matchLoli', () => {
     const mv = Store.put('metavar', ['X']);
     const trigger = Store.put('gas', [mv]);
     const body = Store.put('pc', [mv]);
-    const wrappedBody = Store.put('monad', [body]);
+    const wrappedBody = Store.put('monad', [U(), body]);
     const loliHash = Store.put('loli', [trigger, wrappedBody]);
 
     const val = Store.put('atom', ['concrete']);
@@ -136,7 +137,7 @@ describe('lnl/loli — matchLoli', () => {
     const gasF = Store.put('gas', [val]);
     const trigger = Store.put('tensor', [bangGuard, gasF]);
     const body = Store.put('pc', [val]);
-    const loliHash = Store.put('loli', [trigger, Store.put('monad', [body])]);
+    const loliHash = Store.put('loli', [trigger, Store.put('monad', [U(), body])]);
 
     const linear = new FactSet(Store.TAG_NAMES.length);
     linear.insert(Store.tagId(loliHash), loliHash, null);
@@ -163,7 +164,7 @@ describe('lnl/loli — matchLoli', () => {
     const gasF = Store.put('gas', [val]);
     const trigger = Store.put('tensor', [bangGuard, gasF]);
     const body = Store.put('pc', [val]);
-    const loliHash = Store.put('loli', [trigger, Store.put('monad', [body])]);
+    const loliHash = Store.put('loli', [trigger, Store.put('monad', [U(), body])]);
 
     const linear = new FactSet(Store.TAG_NAMES.length);
     linear.insert(Store.tagId(loliHash), loliHash, null);
@@ -196,7 +197,7 @@ describe('lnl/loli — matchLoli', () => {
     const val = Store.put('atom', ['w3']);
     const gasF = Store.put('gas', [val]);
     const trigger = Store.put('tensor', [bangGuard, gasF]);
-    const loliHash = Store.put('loli', [trigger, Store.put('monad', [Store.put('pc', [val])])]);
+    const loliHash = Store.put('loli', [trigger, Store.put('monad', [U(), Store.put('pc', [val])])]);
 
     const linear = new FactSet(Store.TAG_NAMES.length);
     linear.insert(Store.tagId(loliHash), loliHash, null);

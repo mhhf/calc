@@ -1,0 +1,2 @@
+% woplus in an antecedent — must be loudly rejected (consequent-only form).
+bad: woplus 1/2 a b -o { c }.

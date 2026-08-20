@@ -13,6 +13,7 @@ import { ProofTree, fromGoal, leaf } from '../lib/prover/pt.js';
 import { FORMAT_VERSION, serializeTree, serializeFormula, serializeSequent, computeNodeId, _newContext } from '../lib/prover/serialize-tree.js';
 import calculus from '../lib/calculus/index.js';
 import { gradeW } from '../lib/engine/grades.js';
+import { monadUnit as U } from '../lib/engine/grades.js';
 describe('serialize-tree / proof-tree/v1', () => {
   let AST;
 
@@ -108,11 +109,11 @@ describe('serialize-tree / proof-tree/v1', () => {
       assert.deepStrictEqual(ctx.formulas[top.args[1]], { tag: 'freevar', name: 'A' });
     });
 
-    it('monad({A}) → { tag, args: [refA] }', () => {
+    it('monad({A}) → { tag, args: [refUnit, refA] } (D6: graded)', () => {
       const ctx = _newContext({});
-      const key = serializeFormula(AST.monad(AST.freevar('A')), ctx);
+      const key = serializeFormula(AST.monad(U(), AST.freevar('A')), ctx);
       assert.strictEqual(ctx.formulas[key].tag, 'monad');
-      assert.strictEqual(ctx.formulas[key].args.length, 1);
+      assert.strictEqual(ctx.formulas[key].args.length, 2);
     });
 
     it('exists(body) with de Bruijn bound(0) inside', () => {

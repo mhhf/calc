@@ -15,11 +15,12 @@ import { proveWithFFI } from '../../lib/engine/opt/ffi.js';
 import illFfi from '../../lib/engine/ill/ffi/index.js';
 import { drainLolis } from '../../lib/engine/lnl/loli-drain.js';
 import { gradeW } from '../../lib/engine/grades.js';
-import { ILL_CONNECTIVES } from '../../lib/engine/ill/connectives.js';
+import { illConnectives } from '../../lib/engine/ill/connectives.js';
 import { resolveConn } from '../../lib/engine/compile.js';
-const ILL_RC = resolveConn(ILL_CONNECTIVES);
+const ILL_RC = resolveConn(illConnectives());
 import { Arena } from '../../lib/engine/fact-set.js';
 import { makeMatchOpts } from './_match-opts.js';
+import { monadUnit as U } from '../../lib/engine/grades.js';
 const illMatchOpts = makeMatchOpts({
   ffi: {
     meta: illFfi.defaultMeta,
@@ -99,7 +100,7 @@ describe('Evidence collection (TODO_0068 §10.5)', () => {
       const X = Store.put('metavar', ['X']);
       const triggerPattern = Store.put('data', [X]);
       const bodyPattern = Store.put('result', [X]);
-      const body = Store.put('monad', [bodyPattern]);
+      const body = Store.put('monad', [U(), bodyPattern]);
       const loli = Store.put('loli', [triggerPattern, body]);
 
       const val = Store.put('binlit', [42n]);
@@ -120,7 +121,7 @@ describe('Evidence collection (TODO_0068 §10.5)', () => {
     it('returns empty theta/slots when evidence NOT requested (backward compat)', () => {
       const trigger = Store.put('atom', ['go']);
       const result = Store.put('atom', ['done']);
-      const body = Store.put('monad', [result]);
+      const body = Store.put('monad', [U(), result]);
       const loli = Store.put('loli', [trigger, body]);
 
       const state = forward.createState(
@@ -139,7 +140,7 @@ describe('Evidence collection (TODO_0068 §10.5)', () => {
       const guard = Store.put('atom', ['check']);
       const bangGuard = Store.put('bang', [gradeW(),guard]);
       const result = Store.put('atom', ['guarded']);
-      const body = Store.put('monad', [result]);
+      const body = Store.put('monad', [U(), result]);
       const loli = Store.put('loli', [bangGuard, body]);
 
       const state = forward.createState(
@@ -161,7 +162,7 @@ describe('Evidence collection (TODO_0068 §10.5)', () => {
       const bangGuard = Store.put('bang', [gradeW(),guard]);
       const trigger = Store.put('tensor', [linTrigger, bangGuard]);
       const result = Store.put('atom', ['mixed_result']);
-      const body = Store.put('monad', [result]);
+      const body = Store.put('monad', [U(), result]);
       const loli = Store.put('loli', [trigger, body]);
 
       const state = forward.createState(
@@ -178,7 +179,7 @@ describe('Evidence collection (TODO_0068 §10.5)', () => {
     it('returns empty persistentEvidence for pure-linear trigger', () => {
       const trigger = Store.put('atom', ['signal']);
       const result = Store.put('atom', ['done']);
-      const body = Store.put('monad', [result]);
+      const body = Store.put('monad', [U(), result]);
       const loli = Store.put('loli', [trigger, body]);
 
       const state = forward.createState(
@@ -199,7 +200,7 @@ describe('Evidence collection (TODO_0068 §10.5)', () => {
     it('forwards evidence option to matchLoli', () => {
       const trigger = Store.put('atom', ['go']);
       const result = Store.put('atom', ['done']);
-      const body = Store.put('monad', [result]);
+      const body = Store.put('monad', [U(), result]);
       const loli = Store.put('loli', [trigger, body]);
 
       const state = forward.createState(
@@ -207,7 +208,7 @@ describe('Evidence collection (TODO_0068 §10.5)', () => {
         {}
       );
 
-      const m = matchLoli(loli, state, { connectives: ILL_CONNECTIVES }, makeMatchOpts({ rc: ILL_RC, evidence: true }));
+      const m = matchLoli(loli, state, { connectives: illConnectives() }, makeMatchOpts({ rc: ILL_RC, evidence: true }));
       assert(m, 'should find a match');
       assert(Array.isArray(m.persistentEvidence), 'should have persistentEvidence');
     });
@@ -221,7 +222,7 @@ describe('Evidence collection (TODO_0068 §10.5)', () => {
       const guard = Store.put('atom', ['check']);
       const bangGuard = Store.put('bang', [gradeW(),guard]);
       const result = Store.put('atom', ['drained']);
-      const body = Store.put('monad', [result]);
+      const body = Store.put('monad', [U(), result]);
       const loli = Store.put('loli', [bangGuard, body]);
 
       const state = forward.createState(
@@ -233,7 +234,7 @@ describe('Evidence collection (TODO_0068 §10.5)', () => {
       const perArena = new Arena(256);
       const evidenceOut = [];
 
-      drainLolis(state, linArena, perArena, { connectives: ILL_CONNECTIVES }, evidenceOut, makeMatchOpts({ rc: ILL_RC }));
+      drainLolis(state, linArena, perArena, { connectives: illConnectives() }, evidenceOut, makeMatchOpts({ rc: ILL_RC }));
 
       assert.strictEqual(evidenceOut.length, 1, 'should have 1 drain firing');
       assert.strictEqual(evidenceOut[0].loliHash, loli);
@@ -245,7 +246,7 @@ describe('Evidence collection (TODO_0068 §10.5)', () => {
       const guard = Store.put('atom', ['check']);
       const bangGuard = Store.put('bang', [gradeW(),guard]);
       const result = Store.put('atom', ['drained']);
-      const body = Store.put('monad', [result]);
+      const body = Store.put('monad', [U(), result]);
       const loli = Store.put('loli', [bangGuard, body]);
 
       const state = forward.createState(
@@ -257,8 +258,8 @@ describe('Evidence collection (TODO_0068 §10.5)', () => {
       const perArena = new Arena(256);
 
       // Should not throw when evidenceOut is null/undefined
-      drainLolis(state, linArena, perArena, { connectives: ILL_CONNECTIVES }, null, makeMatchOpts({ rc: ILL_RC }));
-      drainLolis(state, linArena, perArena, { connectives: ILL_CONNECTIVES }, undefined, makeMatchOpts({ rc: ILL_RC }));
+      drainLolis(state, linArena, perArena, { connectives: illConnectives() }, null, makeMatchOpts({ rc: ILL_RC }));
+      drainLolis(state, linArena, perArena, { connectives: illConnectives() }, undefined, makeMatchOpts({ rc: ILL_RC }));
     });
 
     it('collects multiple drain firings', () => {
@@ -269,8 +270,8 @@ describe('Evidence collection (TODO_0068 §10.5)', () => {
       const bang2 = Store.put('bang', [gradeW(),guard2]);
       const result1 = Store.put('atom', ['r1']);
       const result2 = Store.put('atom', ['r2']);
-      const body1 = Store.put('monad', [result1]);
-      const body2 = Store.put('monad', [result2]);
+      const body1 = Store.put('monad', [U(), result1]);
+      const body2 = Store.put('monad', [U(), result2]);
       const loli1 = Store.put('loli', [bang1, body1]);
       const loli2 = Store.put('loli', [bang2, body2]);
 
@@ -283,7 +284,7 @@ describe('Evidence collection (TODO_0068 §10.5)', () => {
       const perArena = new Arena(256);
       const evidenceOut = [];
 
-      drainLolis(state, linArena, perArena, { connectives: ILL_CONNECTIVES }, evidenceOut, makeMatchOpts({ rc: ILL_RC }));
+      drainLolis(state, linArena, perArena, { connectives: illConnectives() }, evidenceOut, makeMatchOpts({ rc: ILL_RC }));
 
       assert.strictEqual(evidenceOut.length, 2, 'should drain both lolis');
     });

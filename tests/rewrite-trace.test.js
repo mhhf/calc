@@ -16,6 +16,7 @@ import Seq from '../lib/kernel/sequent.js';
 import calculus from '../lib/calculus/index.js';
 import { rwTrace, checkRW } from '../lib/prover/rewrite-trace.js';
 import { generateFlatWitness, MAX_CONSUMED, MAX_PRODUCED } from '../lib/zk/flat-witness.js';
+import { monadUnit as U } from '../lib/engine/grades.js';
 const FIXTURE_DIR = path.join(import.meta.dirname, '..', 'zk', 'sequent-certifier', 'tests', 'fixtures');
 
 function saveFixture(name, data) {
@@ -135,7 +136,7 @@ describe('rewrite-trace: solc forward integration', { timeout: 60000 }, () => {
       path.join(import.meta.dirname, '../calculus/ill/programs/multisig_nocall_solc.ill')
     );
     illCalc = await calculus.loadILL();
-    state = mde.decomposeQuery(engineCalc.queries.get('symex'));
+    state = mde.normalizeQuery(engineCalc.queries.get('symex'));
 
     forwardResult = engineCalc.exec(state, {
       maxSteps: 2000,
@@ -206,7 +207,7 @@ describe('rewrite-trace: solc forward integration', { timeout: 60000 }, () => {
         succHash = Store.put('tensor', [hashes[i], succHash]);
       }
     }
-    const monadSucc = Store.put('monad', [succHash]);
+    const monadSucc = Store.put('monad', [U(), succHash]);
     const sequent = Seq.fromArrays(linearCtx, cartesianCtx, monadSucc);
 
     const t0 = performance.now();

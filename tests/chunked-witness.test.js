@@ -16,6 +16,7 @@ import { generateFlatWitness, generateChunkedFlatWitness } from '../lib/zk/flat-
 import mde from '../lib/engine/index.js';
 import calculus from '../lib/calculus/index.js';
 import { rwTrace } from '../lib/prover/rewrite-trace.js';
+import { monadUnit as U } from '../lib/engine/grades.js';
 
 // ---------------------------------------------------------------------------
 // Unit tests with mock traces
@@ -45,7 +46,7 @@ describe('chunked flat witness: unit', () => {
   }
 
   function makeSequent(linear) {
-    const monadSucc = Store.put('monad', [Store.put('one', [])]);
+    const monadSucc = Store.put('monad', [U(), Store.put('one', [])]);
     return Seq.fromArrays(linear, [], monadSucc);
   }
 
@@ -322,7 +323,7 @@ describe('chunked flat witness: solc integration', { timeout: 60000 }, () => {
       path.join(import.meta.dirname, '../calculus/ill/programs/multisig_nocall_solc.ill')
     );
     illCalc = await calculus.loadILL();
-    const state = mde.decomposeQuery(engineCalc.queries.get('symex'));
+    const state = mde.normalizeQuery(engineCalc.queries.get('symex'));
 
     const forwardResult = engineCalc.exec(state, {
       maxSteps: 2000, trace: true, evidence: true,
@@ -351,7 +352,7 @@ describe('chunked flat witness: solc integration', { timeout: 60000 }, () => {
         succHash = Store.put('tensor', [hashes[i], succHash]);
       }
     }
-    const monadSucc = Store.put('monad', [succHash]);
+    const monadSucc = Store.put('monad', [U(), succHash]);
     sequent = Seq.fromArrays(linearCtx, cartesianCtx, monadSucc);
   });
 

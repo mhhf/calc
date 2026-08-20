@@ -1,0 +1,15 @@
+#import(../../calculus/till/prelude/rat.ill)
+
+% tokens (closed-world sort checking)
+a: type.
+b: type.
+c: type.
+
+
+% Negative fire-time fixture: the weight resolves to 5/4 — outside [0,1].
+% Compiles fine (boundness holds); settle must fail loudly at firing.
+
+wp: (q: bin) -> type.
+wp/z: wp (5/4).
+
+bad: a * !wp Q -o { woplus Q b c }.

@@ -1,0 +1,16 @@
+% tokens (closed-world sort checking)
+a: type.
+b: type.
+c: type.
+d: type.
+prize: type.
+
+% Round-13 explore-completeness fixture — instant-feeding with PLAIN arcs.
+% `make` (zero delay) produces b at the SAME instant, enabling `use`, which
+% then races `eat` for c. The tied set {make, eat} shares no cohort, so the
+% pre-round-13 partial-order reduction committed sorted-first ('eat') and
+% never discovered the make→use world. exec (chooser) reaches both:
+%   eat first:  { b, d }        make first, use wins c: { prize }
+make: a -o { b }.
+eat: c -o { d }.
+use: b * c -o { prize }.

@@ -17,6 +17,7 @@ import { gradeW } from '../../lib/engine/grades.js';
 import forward from '../../lib/engine/forward.js';
 import { guidedTerm } from '../../lib/prover/guided-term.js';
 import { makeILLBackchainOpts } from '../../lib/engine/ill/backchain-ill.js';
+import { monadUnit as U } from '../../lib/engine/grades.js';
 describe('3b.5: Clause Proof Terms', () => {
 
   beforeEach(() => { Store.clear(); });
@@ -61,7 +62,7 @@ describe('3b.5: Clause Proof Terms', () => {
       assert.strictEqual(Store.tag(groundLoli), 'loli');
       assert.strictEqual(Store.tag(Store.child(groundLoli, 0)), 'one');
       assert.strictEqual(Store.tag(Store.child(groundLoli, 1)), 'monad');
-      assert.strictEqual(Store.child(Store.child(groundLoli, 1), 0), bar);
+      assert.strictEqual(Store.child(Store.child(groundLoli, 1), 1), bar); // body (child 0 = unit grade)
 
       // loli_l
       const loliL = term.subterms[0];
@@ -323,7 +324,7 @@ describe('3b.5: Clause Proof Terms', () => {
       const p = Store.put('atom', ['sp']);
       const q = Store.put('atom', ['sq']);
       const bangP = Store.put('bang', [gradeW(),p]);
-      const monadQ = Store.put('monad', [q]);
+      const monadQ = Store.put('monad', [U(), q]);
       const loli = Store.put('loli', [bangP, monadQ]);
 
       const rfTerm = { rule: 'id', principal: q, subterms: [] };
@@ -357,7 +358,7 @@ describe('3b.5: Clause Proof Terms', () => {
       const q = Store.put('atom', ['cq']);
       const r = Store.put('atom', ['cr']);
       const bangQ = Store.put('bang', [gradeW(),q]);
-      const monadR = Store.put('monad', [r]);
+      const monadR = Store.put('monad', [U(), r]);
       const loli = Store.put('loli', [bangQ, monadR]);
 
       const rfTerm = { rule: 'id', principal: r, subterms: [] };
@@ -399,7 +400,7 @@ describe('3b.5: Clause Proof Terms', () => {
       const q = Store.put('atom', ['fq']);
       const r = Store.put('atom', ['fr']);
       const bangQ = Store.put('bang', [gradeW(),q]);
-      const monadR = Store.put('monad', [r]);
+      const monadR = Store.put('monad', [U(), r]);
       const loli = Store.put('loli', [bangQ, monadR]);
 
       const rfTerm = { rule: 'id', principal: r, subterms: [] };
@@ -440,7 +441,7 @@ describe('3b.5: Clause Proof Terms', () => {
       assert.strictEqual(Store.tag(groundLoli), 'loli');
       assert.strictEqual(Store.tag(Store.child(groundLoli, 0)), 'one');
       assert.strictEqual(Store.tag(Store.child(groundLoli, 1)), 'monad');
-      assert.strictEqual(Store.child(Store.child(groundLoli, 1), 0), q);
+      assert.strictEqual(Store.child(Store.child(groundLoli, 1), 1), q); // body (child 0 = unit grade)
     });
 
     it('one premise: loli(bang(gradeW(), P), monad(Q))', () => {

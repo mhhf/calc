@@ -22,21 +22,23 @@ formula: type.
 
 % Tensor (multiplicative conjunction): A ⊗ B
 % "I have both A and B simultaneously"
-% Polarity: positive (inferred from context-splitting right rule)
+% Polarity: positive (context-splitting right rule)
 tensor: formula -> formula -> formula
   @ascii "_ * _"
   @latex "#1 \\otimes #2"
   @prec 60 left
-  @category multiplicative.
+  @category multiplicative
+  @polarity positive.
 
 % Linear implication (lollipop): A ⊸ B
 % "Consume A to produce B"
-% Polarity: negative (inferred from context-preserving right rule)
+% Polarity: negative (context-preserving right rule)
 loli: formula -> formula -> formula
   @ascii "_ -o _"
   @latex "#1 \\multimap #2"
   @prec 50 right
-  @category multiplicative.
+  @category multiplicative
+  @polarity negative.
 
 % Multiplicative unit: 1
 % "I have nothing (but that's a resource too)"
@@ -61,13 +63,14 @@ zero: formula
 
 % With (additive conjunction): A & B
 % "I can choose to use this as A or as B (but not both)"
-% Polarity: negative (inferred from context-copying right rule)
+% Polarity: negative (context-copying right rule)
 % Note: &R invertibility is special - kept explicit in rules
 with: formula -> formula -> formula
   @ascii "_ & _"
   @latex "#1 \\& #2"
   @prec 70 left
-  @category additive.
+  @category additive
+  @polarity negative.
 
 % Plus (additive disjunction): A ⊕ B
 % "Exactly one holds — handle both cases"
@@ -109,12 +112,16 @@ bang: grade -> formula -> formula
 % Monad
 % =============================================================================
 
-% Lax monad (computation): {A}
-% "A computation that produces A"
+% Graded lax monad (computation): {A} = monad(unit, A)
+% "A computation that produces A" — ILL is the trivial-grade instance of
+% the graded monad (TODO_0157 D6 merge-back): one binary node shared with
+% till, whose `{A}@d` fills the grade child. The unit grade is binlit 0
+% (= till's putRat(0,1) canonical form, so shared-prelude hashes agree);
+% the parser/renderer elide it ("{ #2 }").
 % Polarity: negative (right-rule invertible, fires eagerly in inversion)
-monad: formula -> formula
-  @ascii "{ _ }"
-  @latex "\\{#1\\}"
+monad: grade -> formula -> formula
+  @ascii "{ #2 }"
+  @latex "\\{#2\\}"
   @prec 90
   @category monad
   @polarity negative.

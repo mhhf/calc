@@ -1,3 +1,12 @@
+#import(../../prelude/rat.ill)
+
+% tokens (closed-world sort checking: every symbol is declared)
+log: type.
+bundle: type.
+sawmill: type.
+wood: type.
+plank: type.
+
 % grades.ill — till executable spec: count grades as graded parcels (D4).
 %
 % STATUS: written ahead of the engine (TDD) — see schedule.ill header.
@@ -7,13 +16,16 @@
 % !_W A  = take the WHOLE matched cohort; W binds its count AT FIRING TIME.
 % Arithmetic on bound counts uses the ordinary overloaded predicates (D8.1).
 
-pair: !_2 wood -o { bundle }.
+% (pair works on `log`, sawmill on `wood` — the oracle suite runs each
+% scenario with its own rule set; disjoint resources keep the .ill file
+% equivalent without rule scoping.)
+pair: !_2 log -o { bundle }.
 
-% 5 wood -> two bundles + residual cohort of 1 (5 -> 3 -> 1, then quiescent)
+% 5 logs -> two bundles + residual cohort of 1 (5 -> 3 -> 1, then quiescent)
 #expect_split_residual (settle: 0)
-  !_5 wood
+  !_5 log
   =>
-  !_1 wood * !_2 bundle .
+  !_1 log * !_2 bundle .
 
 % whole-cohort bind: sawmill converts W wood into floor(3W/2) planks (@10).
 % Cohorts at distinct stamps are distinct parcels: W=3 (at 0) then W=5 (at 10,

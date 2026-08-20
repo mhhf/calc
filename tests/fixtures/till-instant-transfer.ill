@@ -1,0 +1,16 @@
+#import(../../calculus/till/prelude/rat.ill)
+
+% tokens (closed-world sort checking)
+seed: type.
+wood: type.
+plank: type.
+
+
+% Round-13 explore-completeness fixture — instant-feeding into a whole-cohort
+% bind (!_W = a transfer arc; transfer arcs break commutation). `grow` adds
+% wood@0 to the SAME stamp-0 cohort `mill`'s !_W matches, and S = W·W is
+% nonlinear, so firing order at the instant changes the outcome:
+%   mill first: W=2 ⇒ 4 planks, then grow, mill again: W=1 ⇒ +1 = 5
+%   grow first: W=3 ⇒ 9 planks
+grow: seed -o { wood }.
+mill: !_W wood * !mul W W S -o { !_S plank }.

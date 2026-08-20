@@ -1,0 +1,5 @@
+% Negative fixture (Phase 6 revision): weight VARIABLES are legal when
+% antecedent-bound (fire-time weights); an UNBOUND weight variable has no
+% value at firing — loud compile error (delay/window-style mode check).
+
+bad: a -o { woplus W b c }.

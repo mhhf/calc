@@ -1,0 +1,6 @@
+% round-15 F6 long-horizon stress: a productive @1 self-cycle — one event
+% per logical second, forever. (Positive delay ⇒ NOT a Zeno cycle; the
+% D16 tier-1 lint only flags zero-delay self-feeding.)
+pa: type.
+
+pinger: pa -o { pa }@1.

@@ -3,6 +3,7 @@
  */
 
 import { describe, it, before, beforeEach } from 'node:test';
+import { bytesToSemantic } from '../../lib/engine/ill/bytecode-normalize.js';
 import assert from 'node:assert';
 import path from 'path';
 import mde from '../../lib/engine/index.js';
@@ -259,7 +260,7 @@ describe('EVM Memory Integration', { timeout: 30000, concurrency: 1 }, () => {
     const bcExpr = `bytecode [${elems.join(', ')}]`;
     const bcHash = await mde.parseExpr(bcExpr);
     // Apply bytesToSemantic to convert byte-level → semantic
-    const tmpState = mde.bytesToSemantic({ linear: { [bcHash]: 1 }, persistent: {} });
+    const tmpState = bytesToSemantic({ linear: { [bcHash]: 1 }, persistent: {} });
     Object.assign(linear, tmpState.linear);
 
     // Standard persistent facts for inc
@@ -528,7 +529,7 @@ describe('EVM Memory Integration', { timeout: 30000, concurrency: 1 }, () => {
         path.join(import.meta.dirname, '../../calculus/ill/programs/multisig_nocall.ill')
       );
 
-      const state = mde.decomposeQuery(msCalc.queries.get('symex'));
+      const state = mde.normalizeQuery(msCalc.queries.get('symex'));
 
       tree = msCalc.explore(state, {
         maxDepth: 200,
@@ -566,7 +567,7 @@ describe('EVM Memory Integration', { timeout: 30000, concurrency: 1 }, () => {
         path.join(import.meta.dirname, '../../calculus/ill/programs/multisig.ill')
       );
 
-      const state = mde.decomposeQuery(msCalc.queries.get('symex'));
+      const state = mde.normalizeQuery(msCalc.queries.get('symex'));
 
       tree = msCalc.explore(state, {
         maxDepth: 300,

@@ -1,0 +1,35 @@
+#import(../../calculus/till/prelude/rat.ill)
+
+% tokens (closed-world sort checking)
+src: type.
+act_a: type.
+re: type.
+act_b: type.
+storm: type.
+done_a: type.
+done_b: type.
+
+% Revocable menus (Phase 6): the offer forms on one axis —
+%   persistent !(A & B)     standing, irrevocable (progression / unlocking)
+%   linear A & B            one-shot: projection consumes; RULES can consume
+%                           it too (revocation) and windows expire it
+%   linear + self-reoffer   multi-use AND revocable: every alternative
+%                           bundles a reoffer token; a zero-delay rule
+%                           re-emits the menu after each click
+%
+% The menu formula is matched LITERALLY by revoke/expire rules — a menu is
+% an ordinary linear fact.
+
+offer: src -o { (act_a * re) & (act_b * re) }.
+
+reoffer: re -o { (act_a * re) & (act_b * re) }.
+
+% revocation by game logic
+revoke: ((act_a * re) & (act_b * re)) * storm -o { I }.
+
+% expiry window: the offer rots 5 after its stamp (each reoffer refreshes
+% the stamp at the click time — a session timeout)
+expire: ((act_a * re) & (act_b * re))@Q * after (Q + 5) -o { I }.
+
+do_a: act_a -o { done_a }.
+do_b: act_b -o { done_b }.
