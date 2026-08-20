@@ -88,12 +88,12 @@ describe('woplus exec — PRF branch sampling (D17)', () => {
     // Adding tests above this one may shift them; re-pin deliberately.
     // node-only: bun's module evaluation interns in a different order.
     if (typeof Bun !== 'undefined') return;
-    // Re-pinned (TODO_0268 A): till.calc declares the timed templates →
-    // interning shift.
+    // Re-pinned (TODO_0011 rung 1): till.calc declares grade sorts →
+    // interning shift. (Previously re-pinned for TODO_0268 A.)
     assert.deepEqual({
       s4: calc.settle(duel(2, 2), '0', { seed: 4 }).events.map(e => e.alt),
       s10: calc.settle(duel(2, 2), '0', { seed: 10 }).events.map(e => e.alt),
-    }, { s4: [0, 0], s10: [1, 0, 1] });
+    }, { s4: [0, 1, 1], s10: [0, 0] });
   });
 
   it('sampler frequency matches the declared weight (chi-square-lite, residue ii)', () => {

@@ -23,6 +23,7 @@ import { binlitTheory } from '../../lib/engine/ill/binlit-theory.js';
 import { ratlitTheory, putRat, installRatlitTheory } from '../../lib/engine/theories/ratlit-theory.js';
 import { defaultTheories, buildCanonicalizer } from '../../lib/kernel/eq-theory.js';
 import { apply } from '../../lib/kernel/substitute.js';
+import tillConfig from '../../calculus/till/calculus-config.js';
 
 const RAT_ILL = path.join(import.meta.dirname, '../../calculus/till/prelude/rat.ill');
 
@@ -69,7 +70,9 @@ before(() => {
   // pattern into new tests (parse fresh instead of clearing).
   Store.clear();
   installRatlitTheory();
-  ec = mde.load(RAT_ILL);
+  // rat.ill is till's prelude and declares subsort edges (TODO_0011 rung 1)
+  // — it now loads under the till config (the sorts machinery), not ILL.
+  ec = mde.load(RAT_ILL, { calculusConfig: tillConfig, cache: false });
   const theories = [...defaultTheories, binlitTheory, ratlitTheory];
   canonicalize = buildCanonicalizer(theories);
   baseOpts = makeILLBackchainOpts({ theories, normalize: canonicalize });

@@ -131,6 +131,48 @@ const tillFactSetPolicy = {
   },
 };
 
+// ── Sorts (TODO_0011 rung 1): the till instance of the refinement-sort
+// machinery. The MACHINERY is generic (lib/engine/sorts.js + the prelude
+// logic file calculus/till/prelude/sorts.till); this record carries the
+// only till-specific pieces JS may hold: calc-level sort data DERIVED from
+// till.calc (grade sorts + connective signatures — one declaration, two
+// consumers: grammar and checker), and literal classification with value
+// fences (a numeral's membership in a refinement sort is a VALUE check —
+// nonneg at 'delay', integer at 'count', [0,1] at 'weight'). Sort EDGES
+// on the numeric tower live in logic files (prelude/rat.ill), never here.
+let _tillSorts = null;
+function tillSorts() {
+  if (_tillSorts) return _tillSorts;
+  const spec = calculus.load(TILL_CALC);
+  const edges = spec.sortEdges || [];
+  const calcSortNames = new Set(edges.flat());
+  const members = {};
+  const connArgSorts = {};
+  for (const [name, c] of Object.entries(spec.constructors)) {
+    if (c.argTypes.length === 0 && calcSortNames.has(c.returnType)) {
+      members[name] = c.returnType;                    // g0/gw : count
+    }
+    if (c.returnType === 'formula' && c.argTypes.length > 0) {
+      connArgSorts[name] = c.argTypes;                 // monad: [delay, formula], …
+    }
+  }
+  const _p = (h) => ratParts(h);                       // [num, den] bigints | null
+  _tillSorts = {
+    calc: { edges, members },
+    connArgSorts,
+    formulaSort: 'formula',
+    lit: {
+      literals: { binlit: 'bin', ratlit: 'q', strlit: 'string' },
+      fences: {
+        delay: (h) => { const p = _p(h); return !!p && p[0] >= 0n; },
+        count: (h) => { const p = _p(h); return !!p && p[0] >= 0n && p[1] === 1n; },
+        weight: (h) => { const p = _p(h); return !!p && p[0] >= 0n && p[0] <= p[1]; },
+      },
+    },
+  };
+  return _tillSorts;
+}
+
 function tillBuildParser() {
   return buildParser(calculus.load(TILL_CALC).constructors, {
     binders: { exists: 'exists', forall: 'forall' },
@@ -163,6 +205,11 @@ const tillCalculusConfig = {
   typeCheck: 'strict',
   theories: [binlitTheory, ratlitTheory],
   gradeUnit: tillGradeUnit,
+
+  // Refinement sorts (TODO_0011 rung 1) — presence-gated: the slot enables
+  // the machinery; a program without sort declarations still loads through
+  // the sortless string checker.
+  get sorts() { return tillSorts(); },
 
   // The grade ALGEBRA slot (D2) — timed.js reads stamps/durations through
   // this record only; availability.cmp doubles as the index comparator.
