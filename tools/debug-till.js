@@ -11,7 +11,7 @@
  *
  * Every directive takes a `settle: T` setting; `query: <kind>` points at a
  * shared scenario (`#run (settle: T) <state>.`). Rendering lives in
- * lib/engine/timed-render.js — the golden tests exercise the same functions.
+ * lib/engine/timed/timed-render.js — the golden tests exercise the same functions.
  *
  * Usage: node tools/debug-till.js <file.ill> [--only <kind>]
  */
@@ -21,8 +21,8 @@ import Store from '../lib/kernel/store.js';
 import mde from '../lib/engine/index.js';
 import convert from '../lib/engine/convert.js';
 import tillConfig from '../calculus/till/calculus-config.js';
-import { traceLines, timelineLines, whyLines, whyNotLines, fmtFact } from '../lib/engine/timed-render.js';
-import { normalizeTimedState } from '../lib/engine/timed.js';
+import { traceLines, timelineLines, whyLines, whyNotLines, fmtFact } from '../lib/engine/timed/timed-render.js';
+import { normalizeTimedState } from '../lib/engine/timed/timed.js';
 import { toObject as _toObject } from '../lib/engine/fact-set.js';
 import dl from './directive-loader.js';
 const { ROOT, scanDirectives, detectDuplicates, resolveQueryHash } = dl;
