@@ -37,6 +37,8 @@ tags:
   staging: 3
   subexponentials: 3
   testing: 3
+  till: 3
+  type-checking: 3
   accounting: 2
   backward: 2
   bridge: 2
@@ -58,10 +60,8 @@ tags:
   session-types: 2
   supercompilation: 2
   tensor: 2
-  till: 2
   time: 2
   tropical: 2
-  type-checking: 2
   adjoint-logic: 1
   anki: 1
   atomic-swaps: 1
@@ -73,6 +73,7 @@ tags:
   case-analysis: 1
   category-theory: 1
   CHR: 1
+  classifiers: 1
   CLP: 1
   code-quality: 1
   compilation: 1
@@ -121,6 +122,7 @@ tags:
   logical-framework: 1
   markets: 1
   matching: 1
+  membership: 1
   memoization: 1
   metalogic: 1
   modalities: 1
@@ -131,6 +133,7 @@ tags:
   novel-contributions: 1
   operational-semantics: 1
   options: 1
+  order-sorted-algebra: 1
   pacioli-group: 1
   path-conditions: 1
   plonky3: 1
@@ -144,17 +147,20 @@ tags:
   proof-terms: 1
   proof-tree: 1
   quantifiers: 1
+  refinement-types: 1
   representation: 1
   roadmap: 1
   scheduling: 1
   Skolem: 1
   smt: 1
+  sorts: 1
   specialization: 1
   stark: 1
   storage: 1
   store: 1
   structural: 1
   subformula-property: 1
+  subsorting: 1
   termination: 1
   theorem: 1
   theory: 1

@@ -81,6 +81,7 @@ lib/
 │   ├── compile.js       # Generic: rule compilation (de Bruijn slots, metavar analysis)
 │   ├── backchain.js     # Generic: backward chaining (SLD-style, renamed from prove.js)
 │   ├── fact-set.js      # Generic: FactSet (sorted typed-array groups) + Arena (undo log)
+│   ├── sorts.js         # Generic: refinement-sort system (subsort DAG index + certified proofs, TODO_0011)
 │   ├── convert.js       # .ill → content-addressed hashes
 │   ├── lnl/             # LNL layer: linear/persistent distinction
 │   │   ├── persistent.js  # Persistent goal proving (state → cache → backchain)
@@ -119,6 +120,15 @@ calculus/ill/            # ILL calculus definition
 ├── prelude/             # Type bounds, booleans, arrays
 ├── programs/            # EVM model, binary arithmetic, multisig contracts
 └── tests/               # ILL-native tests (provability judgments, run via test:ill)
+
+calculus/till/           # till — timed ILL (TODO_0265)
+├── till.calc            # Connectives + grade sorts (delay/count/weight <: grade)
+├── till.rules           # Sequent rules (graded monad/bang)
+├── calculus-config.js   # Single assembly point (incl. cc.sorts: literal classification + fences)
+├── prelude/sorts.till   # Refinement-sort machinery (sort/sedge/leq clauses)
+├── prelude/rat.ill      # Numeric tower: q, bin <: q, frac <: q + exact rational q-ops
+├── game/PP2.till        # Playable demo (classifiers + schema expansion; npm run shell:till)
+└── tests/               # till executable specs (forward/, debug/)
 
 tests/                   # Test suite (core: *.test.js, engine: engine/)
 benchmarks/              # Performance benchmarks (engine/, proof/, micro/)
@@ -160,6 +170,22 @@ evm/add:
 - `$!P` is an error (persistent resources are never consumed)
 - `$` in the consequent is an error
 - Engine already optimizes preserved patterns via `rule-analysis.js:analyzeDeltas()`
+
+## Refinement Sorts (till-only, TODO_0011 rung 1)
+
+Extrinsic Curry-style refinements over the closed-world checker; presence-gated twice (calculus needs `cc.sorts`, program needs sort declarations) — ILL stays sortless. See `doc/theory/0020_refinement-sorts.md`.
+
+```ill
+bin <: q.                                    % subsort edge = a persistent sedge fact
+resource: sort.  wood: resource.             % classifier + member (wood stays a proposition)
+sub: (s <: q) (a: s) -> (b: s) -> (r: s) -> type.   % bounded sort variable
+spoil: (r: resource) r@Q * after (Q+20) -o { I }.   % schema: expands per member at load
+```
+
+- Machinery: `prelude/sorts.till` (clauses are semantics) + `lib/engine/sorts.js` (compiled DAG index + `certifyLeq` path certificates). No sort name/edge may appear in engine JS — edges live in logic files, literal classification + value fences (delay nonneg, count integral, weight [0,1]) in till's calculus-config.
+- Bounded vars solve s := lub(arg sorts) and need a clause INSTANCE at s (inferred from head patterns); mixed-sort goals are legal iff a bound-level instance exists (strictness = instance absence).
+- Grade sorts: `delay`/`count`/`weight <: grade` in till.calc; the grammar folds them onto the one GRADE chain, the checker keeps them distinct.
+- The q-namespace collapse (qplus→plus) is the deferred dispatch rider — prelude names stay split, now with honest q sorts.
 
 ## FFI Principle
 
