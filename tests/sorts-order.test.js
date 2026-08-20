@@ -27,7 +27,7 @@ function machineryDefs() {
 }
 
 function edgeClause(clauses, sub, sup) {
-  clauses.set(`${SORT_PREDS.EDGE}/${sub}_${sup}`, {
+  clauses.set(`${SORT_PREDS.EDGE}/${sub}/${sup}`, {
     hash: Store.put(SORT_PREDS.EDGE, [atom(sub), atom(sup)]),
     premises: [],
   });
