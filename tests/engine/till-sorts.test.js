@@ -17,6 +17,7 @@ import fs from 'fs';
 import os from 'os';
 import path from 'path';
 import mde from '../../lib/engine/index.js';
+import Store from '../../lib/kernel/store.js';
 import tillConfig from '../../calculus/till/calculus-config.js';
 import { stamped } from './till-helpers.js';
 
@@ -290,5 +291,28 @@ r: wood -o { plank }@1.
 `));
     assert.equal(calc.forwardRules.length, 1);
     assert.equal(calc.sorts, null);
+  });
+});
+
+describe('materialized subsort keys are collision-free (TODO_0272 MINOR 1)', () => {
+  // Two DISTINCT edges whose sort names collide under a `_` key separator:
+  //   (a, b_c) and (a_b, c) both join to `a_b_c`. The `/` separator keeps
+  //   them distinct (`a/b_c` vs `a_b/c`); sort names can't contain `/`.
+  it('both `a <: b_c` and `a_b <: c` materialize as distinct facts', () => {
+    const calc = load(write('underscore-sorts.till', `#import(${SORTS})
+a: type.
+b_c: type.
+a_b: type.
+c: type.
+a <: b_c.
+a_b <: c.
+`));
+    const facts = new Set([...calc.clauses.values()].map(v => v.hash));
+    const edge = (sub, sup) =>
+      Store.put('subsort', [Store.put('atom', [sub]), Store.put('atom', [sup])]);
+    // Under the old `_` separator one of these two clauses overwrote the
+    // other in the clauses Map, so only one fact survived.
+    assert.ok(facts.has(edge('a', 'b_c')), 'subsort a b_c must materialize');
+    assert.ok(facts.has(edge('a_b', 'c')), 'subsort a_b c must materialize');
   });
 });
