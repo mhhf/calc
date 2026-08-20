@@ -679,8 +679,26 @@ for (const pred of predList) {
 
   // ── §3.12b Out-of-contract: negative numerators ──────────────────────
   // v1 contract is ℚ≥0 (rat(N,D) ranges over bin = ℕ). The FFI guard
-  // (_decode2) and the clause layer must BOTH refuse — parity of failure.
+  // (_decode2) must refuse — FFI success on a negative input is a leak.
+  // The CLAUSE layer is extrinsically sorted (Curry-style): clauses never
+  // inspect membership, so on out-of-contract inputs they may either
+  // refuse (digit decomposition of a negative binlit fails) or compute —
+  // e.g. mul by a power of two is a pure doubling chain that never
+  // touches the negative operand's digits and correctly extends to
+  // signed values. The invariant is therefore VALUE-CORRECTNESS, not
+  // refusal parity: a clause-derived result must equal the signed
+  // BigInt rational reference; a proved comparison must agree with the
+  // signed reference relation.
   if (!PRED_FILTER || PRED_FILTER in RAT_PREDS) {
+    // Signed exact-rational reference; parts are [num, den] with den ≠ 0.
+    const REF = {
+      plus: (a, b) => [a[0] * b[1] + b[0] * a[1], a[1] * b[1]],
+      qsub: (a, b) => [a[0] * b[1] - b[0] * a[1], a[1] * b[1]],
+      mul: (a, b) => [a[0] * b[0], a[1] * b[1]],
+      qdiv: (a, b) => b[0] === 0n ? null : [a[0] * b[1], a[1] * b[0]],
+      lt: (a, b) => a[0] * b[1] < b[0] * a[1],
+      eq: (a, b) => a[0] * b[1] === b[0] * a[1],
+    };
     let negPass = 0, negFail = 0;
     for (const pred of ['plus', 'qsub', 'mul', 'qdiv', 'lt', 'eq']) {
       const [nIn, hasOut] = RAT_PREDS[pred];
@@ -698,29 +716,36 @@ for (const pred of predList) {
           ...ratOpts, maxDepth: 20000, allBuckets: true, useFFI: false,
         });
         const ffiLeak = !!(ffiResult && ffiResult.success);
-        // Post-collapse contract: the FFI guard must refuse negatives.
-        // The CLAUSE set now includes the bin instance, whose absorbing-
-        // zero clauses (mul e Y e) legitimately prove with a non-negative
-        // value-correct result — allowed for output preds; any NEGATIVE
-        // derived value, boolean proof, or FFI leak still fails.
-        let clauseLeak = false;
+        let clauseLeak = false, derived = null, expected = null;
         if (clauseResult.success) {
-          if (!hasOut) clauseLeak = true;
-          else {
+          const pa = ratParts(ratCanon(ins[0])), pb = ratParts(ratCanon(ins[1]));
+          if (!pa || !pb) clauseLeak = true;
+          else if (!hasOut) {
+            clauseLeak = REF[pred](pa, pb) !== true; // proved relation must hold over ℚ
+          } else {
+            expected = REF[pred](pa, pb);
             let v = args[args.length - 1];
             for (let i = 0; i < 500; i++) {
               const n = apply(v, clauseResult.theta);
               if (n === v) break;
               v = n;
             }
-            const p = ratParts(ratCanon(v));
-            clauseLeak = !p || p[0] < 0n;
+            derived = ratParts(ratCanon(v));
+            clauseLeak = !derived || !expected ||
+              derived[0] * expected[1] !== expected[0] * derived[1];
           }
         }
         if (ffiLeak || clauseLeak) {
           negFail++;
-          console.log('NEG-LEAK ' + pred + ': FFI=' + ffiLeak +
-                      ' clause=' + clauseResult.success);
+          const dump = (h) => Store.tag(h) === 'ratlit'
+            ? Store.child(h, 0) + '/' + Store.child(h, 1)
+            : Store.tag(h) === 'rat'
+              ? 'rat(' + Store.child(Store.child(h, 0), 0) + ',' + Store.child(Store.child(h, 1), 0) + ')'
+              : 'bin ' + Store.child(h, 0);
+          console.log('NEG-LEAK ' + pred + '(' + ins.map(dump).join(', ') + '): FFI=' + ffiLeak +
+                      ' clause=' + clauseResult.success +
+                      (derived ? ' derived=' + derived[0] + '/' + derived[1] : ' derived=unparseable') +
+                      (expected ? ' expected=' + expected[0] + '/' + expected[1] : ''));
         } else negPass++;
       }
     }
@@ -728,7 +753,7 @@ for (const pred of predList) {
     totalPass += negPass;
     totalFail += negFail;
     const negStatus = negFail > 0 ? 'FAIL' : 'ok';
-    console.log(negStatus + ' q-negative [both refuse]: ' + negPass + '/' + (negPass + negFail) + ' passed');
+    console.log(negStatus + ' q-negative [guard + value-correct]: ' + negPass + '/' + (negPass + negFail) + ' passed');
     bumpCluster('§3.12', { pred: 'q@negative', status: negStatus, pass: negPass, fail: negFail, skip: 0 });
   }
 
