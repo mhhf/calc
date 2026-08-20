@@ -1,14 +1,14 @@
 tags:
-  ill: 26
+  ill: 27
   inference-rule: 24
   linear-logic: 24
   forward-chaining: 21
-  architecture: 14
+  architecture: 15
   chr: 13
   proof-theory: 11
+  implementation: 10
   left-rule: 10
   positive-connective: 10
-  implementation: 9
   negative-connective: 9
   optimization: 9
   right-rule: 9
@@ -135,6 +135,7 @@ tags:
   options: 1
   order-sorted-algebra: 1
   pacioli-group: 1
+  parser: 1
   path-conditions: 1
   plonky3: 1
   polarity: 1
