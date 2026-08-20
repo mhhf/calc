@@ -19,8 +19,10 @@
  *
  * Usage:
  *   node tools/fuzz-ffi.js [--count N] [--pred NAME] [--cluster §3.x]
- *                          [--seed N] [--verbose] [--list]
+ *                          [--seed N] [--random] [--verbose] [--list]
  *
+ * Default seed is fixed (1) for reproducibility — `npm run fuzz:ffi`. Pass
+ * `--seed N` for a specific stream or `--random` for a wall-clock seed.
  * Reports mismatches. Exits non-zero on any failure.
  */
 'use strict';
@@ -42,13 +44,16 @@ const args = process.argv.slice(2);
 let COUNT = 50;
 let PRED_FILTER = null;
 let CLUSTER_FILTER = null;
-let SEED = Date.now();
+// Fixed default seed → reproducible runs (CI, `npm run fuzz:ffi`). Pass
+// `--seed N` for a specific stream, or `--random` for a wall-clock seed.
+let SEED = 1;
 let LIST_ONLY = false;
 for (let i = 0; i < args.length; i++) {
   if (args[i] === '--count' && args[i + 1]) COUNT = parseInt(args[++i]);
   if (args[i] === '--pred' && args[i + 1]) PRED_FILTER = args[++i];
   if (args[i] === '--cluster' && args[i + 1]) CLUSTER_FILTER = args[++i];
   if (args[i] === '--seed' && args[i + 1]) SEED = parseInt(args[++i]);
+  if (args[i] === '--random') SEED = (Date.now() & 0x7fffffff) || 1;
   if (args[i] === '--list') LIST_ONLY = true;
 }
 

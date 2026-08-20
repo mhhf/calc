@@ -16,6 +16,8 @@
     "shell:till": "node tools/till-shell.js",
     "test:all": "npm test && npm run test:ill && npm run test:till && npm run test:noffi && npm run test:noffi:till && npm run test:zk && npm run test:heavy",
     "test:bun": "bash tools/test-bun.sh",
+    "fuzz:ffi": "node tools/fuzz-ffi.js",
+    "fuzz:till": "node tools/fuzz-till.js",
     "test:e2e": "bun tests/e2e-solidjs.js",
     "test:bare": "CALC_PROFILE=bare npm test -- --timeout 120000",
     "test:fast": "CALC_PROFILE=fast npm test",
