@@ -2,6 +2,14 @@
 % 2-step forward execution using only linear resources.
 % Validates baseline: ZK witness has zero clause-resolution evidence.
 
+bin: type.
+e: bin.
+
+a: (x: bin) -> type.
+b: (x: bin) -> type.
+mid: (x: bin) -> (y: bin) -> type.
+done: (x: bin) -> (y: bin) -> type.
+
 step1: a X * b Y -o { mid X Y }.
 step2: mid X Y -o { done X Y }.
 
