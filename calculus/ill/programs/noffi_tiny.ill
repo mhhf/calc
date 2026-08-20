@@ -7,6 +7,10 @@
 
 #import(bin.ill)
 
+go: type.
+mid: (n: bin) -> type.
+done: (n: bin) -> type.
+
 step1: go * !inc e X -o { mid X }.
 step2: mid X * !inc X Y -o { done Y }.
 

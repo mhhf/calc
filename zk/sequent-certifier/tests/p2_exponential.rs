@@ -30,7 +30,8 @@ fn dyn_trace(rows: &[&[u32]], width: usize, min_rows: usize) -> openvm_stark_bac
 }
 
 const H_A: u32 = 42;
-const H_BANG_A: u32 = 500; // hash(!A)
+const H_G: u32 = 7;            // grade node (GRADE_W — bang is binary: bang(grade, A))
+const H_BANG_A: u32 = 500;     // hash(!A) = bang(H_G, H_A)
 const H_A_TENSOR_A: u32 = 501; // hash(A ⊗ A)
 
 // ---------------------------------------------------------------------------
@@ -42,12 +43,13 @@ fn p2_bang_l_basic() {
     let (tags, specs) = common::load_test_specs();
     let bang_l_chip = RuleChip::new(specs["bang_l"].clone());
     let id_chip = RuleChip::new(specs["id"].clone());
-    assert_eq!(bang_l_chip.layout.width, 3);
+    // arity 2 since the graded bang: [active, hash, grade, inner]
+    assert_eq!(bang_l_chip.layout.width, 4);
 
     let (init_chip, init_trace, init_pis) = make_init(&[[H_BANG_A, 1, H_A, 1, 0, 0]], 4);
-    let bang_l_trace = dyn_trace(&[&[1, H_BANG_A, H_A]], 3, 4);
+    let bang_l_trace = dyn_trace(&[&[1, H_BANG_A, H_G, H_A]], 4, 4);
     let id_trace = dyn_trace(&[&[1, H_A, 0, 0]], 4, 4);
-    let (rom_chip, rom_trace) = make_formula_rom(&[[H_BANG_A, tags["bang"], H_A, 0, 1, 1]], 4);
+    let (rom_chip, rom_trace) = make_formula_rom(&[[H_BANG_A, tags["bang"], H_G, H_A, 1, 1]], 4);
 
     BabyBearPoseidon2Engine::run_simple_test_fast(
         vec![
@@ -74,11 +76,12 @@ fn p2_absorption_copy() {
     let tensor_r_chip = RuleChip::new(specs["tensor_r"].clone());
     let id_chip = RuleChip::new(specs["id"].clone());
 
-    assert_eq!(absorption_chip.layout.width, 3);
+    // arity 2 since the graded bang: [active, hash, grade, inner]
+    assert_eq!(absorption_chip.layout.width, 4);
     assert_eq!(copy_chip.layout.width, 2);
 
     let (init_chip, init_trace, init_pis) = make_init(&[[H_BANG_A, 1, H_A_TENSOR_A, 1, 0, 0]], 4);
-    let abs_trace = dyn_trace(&[&[1, H_BANG_A, H_A]], 3, 4);
+    let abs_trace = dyn_trace(&[&[1, H_BANG_A, H_G, H_A]], 4, 4);
     let copy_trace = dyn_trace(&[&[1, H_A], &[1, H_A]], 2, 4);
 
     let tr_trace = dyn_trace(
@@ -94,7 +97,7 @@ fn p2_absorption_copy() {
     // Formula ROM: !A, A⊗A
     let (fom_chip, fom_trace) = make_formula_rom(
         &[
-            [H_BANG_A, tags["bang"], H_A, 0, 1, 1],
+            [H_BANG_A, tags["bang"], H_G, H_A, 1, 1],
             [H_A_TENSOR_A, tags["tensor"], H_A, H_A, 1, 1],
         ],
         4,
