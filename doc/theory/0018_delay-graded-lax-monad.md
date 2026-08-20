@@ -1,7 +1,7 @@
 ---
 title: "The Delay-Graded Lax Monad: Timed Forward Chaining over the Tropical Dioid"
 created: 2026-08-18
-modified: 2026-08-19
+modified: 2026-08-20
 summary: "CLF's lax monad {A} graded by a delay from the tropical (max,+) dioid: availability stamps A@t on hypotheses combine by max (coeffect), delays {B}@d compose by + (effect), and firing stamps outputs at max(inputs)+d. Sequent rules, cut-elimination sketch, five metatheorems plus a trace≅term observation: ASAP scheduling computes principal grades; conflict-free programs are timed-confluent; fused rules are uninterruptible by construction (fission = the honest model of interruption); the timed trace is a graded CLF proof term, prunable to a Merkle accumulator; the settle bridge is a sound (not complete) oracle for the calculus."
 tags: [linear-logic, lax-monad, clf, graded-types, forward-chaining, proof-theory, cut-elimination, time, tropical, till]
 category: "Timed Rewriting"
@@ -11,6 +11,7 @@ references:
   - "THY_0013 — The Indexed Lax Monad {A}_a"
   - "THY_0015 — Grade-0 Staging and Stratified Cut Elimination ({A}_{q·a})"
   - "THY_0019 — Timed Matching and the Settle Scheduler (THY-B companion)"
+  - "THY_0021 — Weighted Additive Disjunction (the orthogonal probability grade on this monad)"
   - "RES_0052 — CLF and the lax monad (monadic proof terms, concurrent equality)"
   - "RES_0135 — Dimensioned / group-graded linear logic (effect–coeffect duality, finance grades)"
   - "Fairtlough & Mendler (1997). Propositional Lax Logic. Information and Computation."
@@ -216,6 +217,24 @@ implemented prover both are searched, so `prove` failure does refute). Kernel
 checking of a bridge step is structural only — the settle run is trusted and
 reported as `unverified: 'modeSwitch'` (round-15 F1).
 
+**The adequacy rests on the monus guard, not on rule-set completeness (M1).**
+The positive direction — each settle step *is* a derivable `@fire`/`monad_l`
+instance — needs the delay bookkeeping to never fabricate a sequent. The
+critical point is `{}L`'s monus `H := F − E`: a step that composed delays into a
+NEGATIVE residual grade would not correspond to any `@fire` instance. That
+non-negativity must be a LOCAL side condition of the rule, not a fact recovered
+downstream from `monad_r`'s `E ≥ 0`. As shipped, `monad_l` states it explicitly
+(`calculus/till/till.rules`: `@grade F >= E` alongside `@grade H := F − E`;
+`effect.sub` is total ℚ subtraction and returns a signed result, so the guard is
+load-bearing — TODO_0272 M1). With the guard local, the settle→derivability map
+is compositional: `settle`'s activation recurrence `u = max(inputs) + d` is
+exactly the `@fire` conclusion (a = max, ⊳ = +), and every step's residual grade
+is `≥ 0` by construction, so the chain of `@fire` instances the bridge replays is
+a genuine derivation regardless of which OTHER rules exist. This is what makes
+"bridge success ⇒ derivable" a theorem about `monad_l`/`@fire` alone rather than
+about the completeness of the whole rule set — the prerequisite the paper
+write-up of this adequacy direction needs before mechanisation (§8).
+
 ## 6. Operational semantics, in one paragraph
 
 A till program is a set of rules `In ⊸ {Out}@d`; a state is a timed multiset (a
@@ -359,6 +378,24 @@ Stamps: `@fire` behaves as a promotion rule; its cut cases follow the SELL patte
 (THY_0013 §2) with the side condition `a = max(tᵢ)` re-established from the premise
 stamps — the distributivity law of §2 is what makes the recomputed max agree after
 substitution.
+
+**Mechanisation status (honest boundary).** None of (i)–(vii) is machine-checked;
+this is a proof *sketch*, and a POPL/LICS submission must discharge it in a proof
+assistant. The tractable/hard split, to scope that work: cases (i)–(iii) and
+(vii) are pure ordered-monoid bookkeeping over `(ℚ≥0, max, +, 0)` (associativity,
+commutativity, monotonicity of `+` in `≤`, unit `0`) — routine to mechanise once
+the sequent syntax is formalised. Case (iv), the grade-erasure lift, is the load-
+bearing step: it asserts that every reduction of PLL/CLF's *erased* cut
+elimination (Fairtlough–Mendler 1997; Watkins et al. 2002) lifts to the graded
+system with the stated `+`/`sub` annotations and never worsens the bound. A
+faithful mechanisation must either (a) re-run the erased proof and thread grades,
+or (b) prove a simulation lemma between the graded and erased reduction relations;
+(b) is the cleaner target. Case (vi) is a *scoping* obligation, not a proof: the
+`@fire`/`monad_r2` oracle is excluded from the calculus whose cut is eliminated
+(it is extra-logical; its soundness is §5, and §5 now rests on the local monus
+guard — M1 above — rather than on rule-set completeness). Estimated effort matches
+the audit's 2–4 weeks in Coq/Agda; nothing above is expected to fail, but "not
+expected to fail" is not a proof.
 
 ## 9. Instances
 
