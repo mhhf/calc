@@ -60,6 +60,19 @@ describe('template classification (mixfix discipline)', () => {
       Store.put('w', [Store.put('tensor', [atom('a'), atom('b')]), atom('c')]));
   });
 
+  it('an arity-1 `!`-prefixed #-template routes to templates, not unaryPrefix (TODO_0272 MINOR 2)', () => {
+    // `@ascii "! #1"` starts with `!`, so the arity-1 unaryPrefix branch used
+    // to swallow it into an untokenizable unaryPrefix['! #1'] before the
+    // #-template branch ran. The `#`-guard routes it to templates instead.
+    const tables = extractParserTables({
+      e: ctor('e', ['formula'], 'formula', '! #1', 80),
+    });
+    assert.ok(tables.templates.some(t => t.name === 'e'),
+      '`! #1` must classify as a template');
+    assert.ok(!('! #1' in tables.unaryPrefix) && !('!' in tables.unaryPrefix),
+      'must not leak into unaryPrefix');
+  });
+
   it('rejects a same-sort hole that is neither at an edge nor delimited', () => {
     assert.throws(() => extractParserTables({
       w: ctor('w', ['formula', 'formula'], 'formula', '#1 << #2 >>'),
@@ -199,6 +212,18 @@ describe('parcel sugar `4wood` (§5d, D4 counted parcels)', () => {
 
   it('parcels are formula operands, not term args: `f 4wood` is a loud error', () => {
     assert.throws(() => parse('f 4wood'), /Parse error/);
+  });
+
+  it('a keyword name is not parcelable: `4I` / `4type` are loud errors (TODO_0272 M3)', () => {
+    // The fused path resolves the name like an IDENT, bypassing the keyword
+    // table. Without the guard `4I` → bang(4, freevar('I')) diverges from
+    // `!_4 I` → bang(4, one()). Throw instead — parceling a formula constant
+    // is meaningless anyway.
+    assert.throws(() => parse('4I'), /'I' is a keyword/);
+    assert.throws(() => parse('4type'), /'type' is a keyword/);
+    // a non-keyword resource name still parcels, incl. count 0
+    assert.equal(parse('0wood'),
+      Store.put('bang', [putRat(0n, 1n), atom('wood')]));
   });
 
   it('no parcels without a graded prefix + grade chain: ILL lexes `4wood` apart', () => {

@@ -151,6 +151,11 @@ tensor_r: G ; D |- A * B
       assert.throws(() => parseRules2('no_directive: |- A.', parse), /@formulas directive required/);
     });
 
+    it('a sequent without a |- turnstile is a clear error, not a bare TypeError (TODO_0272 MINOR 3)', () => {
+      const text = `@formulas A\nbad: G ; D A.\n`;
+      assert.throws(() => parseRules2(text, parse), /Malformed sequent.*turnstile/);
+    });
+
     it('parses copy context (all vars in all premises)', () => {
       const text = `@formulas A, B
 with_r: G ; D |- A & B
