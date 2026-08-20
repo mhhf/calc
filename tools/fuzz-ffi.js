@@ -574,20 +574,24 @@ for (const pred of predList) {
 // ============================================================================
 //
 // Property: φ ∘ FFI = φ ∘ clause where φ is the composed binlit+ratlit
-// canonicalizer, over goals mixing ratlit and bin arguments (q-ops coerce
-// bins to n/1). Clause resolution runs against bin.ill + rat.ill (a
-// separate load — the base corpus above stays rat-free, proving bin
-// behavior is untouched). Split namespaces (D8.1 revised): only the
-// q-family accepts rationals; the bin family is fuzzed in §3.1/§3.2.
+// canonicalizer, over goals mixing ratlit and bin arguments. Since the
+// TODO_0011 §3 collapse, plus/mul/lt/le/eq/neq/eq_bool are shared numeric
+// names (bin instance + /q instance; num.* dispatch handlers) — fuzzed
+// here on rational/mixed arguments against the till-loaded rat.ill, and
+// in §3.1/§3.2 on pure bins against the ILL corpus (which stays rat-free,
+// proving bin behavior is untouched). qsub/qdiv remain q-specific.
 
 {
   const { binlitTheory } = await import('../lib/engine/ill/binlit-theory.js');
-  const { ratlitTheory, putRat, installRatlitTheory } =
+  const { ratlitTheory, putRat, installRatlitTheory, ratParts } =
     await import('../lib/engine/theories/ratlit-theory.js');
   const { defaultTheories, buildCanonicalizer } = await import('../lib/kernel/eq-theory.js');
 
   installRatlitTheory();
-  const ecRat = mde.load(path.join(import.meta.dirname, '../calculus/till/prelude/rat.ill'));
+  // rat.ill declares subsort edges (TODO_0011) — it loads under till.
+  const tillConfig = (await import('../calculus/till/calculus-config.js')).default;
+  const ecRat = mde.load(path.join(import.meta.dirname, '../calculus/till/prelude/rat.ill'),
+    { calculusConfig: tillConfig, cache: false });
   const ratTheories = [...defaultTheories, binlitTheory, ratlitTheory];
   const ratCanon = buildCanonicalizer(ratTheories);
   const ratOpts = makeILLBackchainOpts({ theories: ratTheories, normalize: ratCanon });
@@ -609,16 +613,16 @@ for (const pred of predList) {
 
   // pred → [nInputs, hasOutput]
   const RAT_PREDS = {
-    qplus: [2, true], qsub: [2, true], qmul: [2, true], qdiv: [2, true],
-    qlt: [2, false], qle: [2, false], qeq: [2, false], qneq: [2, false],
-    qeq_bool: [2, true],
+    plus: [2, true], qsub: [2, true], mul: [2, true], qdiv: [2, true],
+    lt: [2, false], le: [2, false], eq: [2, false], neq: [2, false],
+    eq_bool: [2, true],
   };
 
   for (const pred of Object.keys(RAT_PREDS)) {
     if (PRED_FILTER && pred !== PRED_FILTER) continue;
     if (CLUSTER_FILTER && CLUSTER_FILTER !== '§3.12') continue;
     const [nIn, hasOut] = RAT_PREDS[pred];
-    const meta = ffi.defaultMeta[pred];
+    const meta = tillConfig.ffi.meta[pred];   // collapsed names → num.* dispatch
     const handler = ffi.get(meta.ffi);
     let pass = 0, fail = 0;
 
@@ -678,9 +682,9 @@ for (const pred of predList) {
   // (_decode2) and the clause layer must BOTH refuse — parity of failure.
   if (!PRED_FILTER || PRED_FILTER in RAT_PREDS) {
     let negPass = 0, negFail = 0;
-    for (const pred of ['qplus', 'qsub', 'qmul', 'qdiv', 'qlt', 'qeq']) {
+    for (const pred of ['plus', 'qsub', 'mul', 'qdiv', 'lt', 'eq']) {
       const [nIn, hasOut] = RAT_PREDS[pred];
-      const meta = ffi.defaultMeta[pred];
+      const meta = tillConfig.ffi.meta[pred];
       const handler = ffi.get(meta.ffi);
       for (let trial = 0; trial < Math.max(10, COUNT / 5); trial++) {
         const negAt = trial % nIn;
@@ -693,9 +697,29 @@ for (const pred of predList) {
         const clauseResult = backward.prove(goal, ecRat.clauses, ecRat.definitions, {
           ...ratOpts, maxDepth: 20000, allBuckets: true, useFFI: false,
         });
-        if ((ffiResult && ffiResult.success) || clauseResult.success) {
+        const ffiLeak = !!(ffiResult && ffiResult.success);
+        // Post-collapse contract: the FFI guard must refuse negatives.
+        // The CLAUSE set now includes the bin instance, whose absorbing-
+        // zero clauses (mul e Y e) legitimately prove with a non-negative
+        // value-correct result — allowed for output preds; any NEGATIVE
+        // derived value, boolean proof, or FFI leak still fails.
+        let clauseLeak = false;
+        if (clauseResult.success) {
+          if (!hasOut) clauseLeak = true;
+          else {
+            let v = args[args.length - 1];
+            for (let i = 0; i < 500; i++) {
+              const n = apply(v, clauseResult.theta);
+              if (n === v) break;
+              v = n;
+            }
+            const p = ratParts(ratCanon(v));
+            clauseLeak = !p || p[0] < 0n;
+          }
+        }
+        if (ffiLeak || clauseLeak) {
           negFail++;
-          console.log('NEG-LEAK ' + pred + ': FFI=' + !!(ffiResult && ffiResult.success) +
+          console.log('NEG-LEAK ' + pred + ': FFI=' + ffiLeak +
                       ' clause=' + clauseResult.success);
         } else negPass++;
       }
@@ -716,8 +740,8 @@ for (const pred of predList) {
   // never a mismatch.
   if (!PRED_FILTER || PRED_FILTER in RAT_PREDS) {
     let wrapPass = 0, wrapFail = 0;
-    for (const pred of ['qplus', 'qmul']) {
-      const meta = ffi.defaultMeta[pred];
+    for (const pred of ['plus', 'mul']) {
+      const meta = tillConfig.ffi.meta[pred];
       const handler = ffi.get(meta.ffi);
       for (let trial = 0; trial < Math.max(10, COUNT / 5); trial++) {
         const wrapped = Store.put(rand() > 0.5 ? 'o' : 'i',

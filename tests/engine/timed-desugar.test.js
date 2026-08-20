@@ -1,7 +1,7 @@
 /**
  * desugarTimed — TODO_0265 Phase 3 (window arithmetic → q-op goals, E7.1).
  *
- * `after (Q+2)` lowers to `after Q$0` plus a persistent `!qplus Q 2 Q$0`
+ * `after (Q+2)` lowers to `after Q$0` plus a persistent `!plus Q 2 Q$0`
  * goal tensored into the antecedent — arithmetic in grade position is
  * sugar for backward propositions, so no expression evaluator exists.
  * Also pins the timed validation errors.
@@ -27,6 +27,9 @@ const CT = {
 };
 
 const atom = (n) => Store.put('atom', [n]);
+// till's lowering targets (TODO_0011 §3 collapse): add/mul are the shared
+// numeric names; sub/div stay q-specific.
+const QP = { qexpr_add: 'plus', qexpr_sub: 'qsub', qexpr_mul: 'mul', qexpr_div: 'qdiv' };
 const fv = (n) => Store.put('freevar', [n]);
 const mvq = (i) => Store.put('metavar', ['Q$' + i]);
 
@@ -39,26 +42,26 @@ describe('desugarTimed', () => {
     });
   });
 
-  it('lowers after (Q+2) to after Q$0 + !qplus Q 2 Q$0', () => {
+  it('lowers after (Q+2) to after Q$0 + !plus Q 2 Q$0', () => {
     const h = parse('food@Q * after (Q+2) -o { b }');
-    const out = desugarTimed(h, CT);
+    const out = desugarTimed(h, CT, QP);
     const anteIn = Store.put('tensor', [
       Store.put('at', [atom('food'), fv('Q')]),
       Store.put('after', [mvq(0)]),
     ]);
     const goal = Store.put('bang', [gradeW(),
-      Store.put('qplus', [fv('Q'), putRat(2n, 1n), mvq(0)])]);
+      Store.put('plus', [fv('Q'), putRat(2n, 1n), mvq(0)])]);
     assert.equal(Store.child(out, 0), Store.put('tensor', [anteIn, goal]));
     assert.equal(Store.child(out, 1), Store.child(h, 1), 'consequent untouched');
   });
 
   it('lowers nested arithmetic in dependency order', () => {
     const h = parse('a * after (Q+2*R) -o { b }');
-    const out = desugarTimed(h, CT);
+    const out = desugarTimed(h, CT, QP);
     const goalMul = Store.put('bang', [gradeW(),
-      Store.put('qmul', [putRat(2n, 1n), fv('R'), mvq(0)])]);
+      Store.put('mul', [putRat(2n, 1n), fv('R'), mvq(0)])]);
     const goalAdd = Store.put('bang', [gradeW(),
-      Store.put('qplus', [fv('Q'), mvq(0), mvq(1)])]);
+      Store.put('plus', [fv('Q'), mvq(0), mvq(1)])]);
     const anteIn = Store.put('tensor', [atom('a'), Store.put('after', [mvq(1)])]);
     assert.equal(Store.child(out, 0),
       Store.put('tensor', [Store.put('tensor', [anteIn, goalMul]), goalAdd]));

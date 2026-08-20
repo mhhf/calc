@@ -39,7 +39,7 @@ describe('subsumption over the numeric tower', () => {
     const p = write('tower-ok.ill', `#import(${RAT})
 go: type.
 priced: (p: q) -> type.
-r: go * !qplus 3 (1/2) P -o { priced P }.
+r: go * !plus 3 (1/2) P -o { priced P }.
 `);
     const calc = load(p);
     assert.equal(calc.forwardRules.length, 1);

@@ -173,6 +173,38 @@ function tillSorts() {
   return _tillSorts;
 }
 
+// ── Numeric-namespace collapse (TODO_0011 §3 — the dispatch rider) ──
+// plus/mul/lt/le/eq/neq/eq_bool are ONE predicate each across the numeric
+// tower: bin.ill's clauses are the bin instance, rat.ill's /q clauses the
+// instance at the bound. The FFI face dispatches the same way (num.*
+// handlers: bin fast path, rational fallback). This overlay is till's
+// interface declaration for those names — ILL keeps the shared bin-only
+// defaults untouched. `plus` narrows from the bin family's multi-modal
+// '+ + +' to '+ + -' (the shape window lowering emits; multiModal stays
+// on, so the bin fast path still solves other modes). qsub/qdiv stay
+// SPLIT names: checked-vs-monus and field-vs-Euclidean disagree on the
+// shared subsort — the coherence law forbids sharing (Integral/Fractional).
+const TILL_FFI_META = {
+  ...ffi.defaultMeta,
+  plus: { ffi: 'num.plus', mode: '+ + -', multiModal: true },
+  mul: { ffi: 'num.mul', mode: '+ + -' },
+  lt: { ffi: 'num.lt', mode: '+ +' },
+  le: { ffi: 'num.le', mode: '+ +' },
+  eq: { ffi: 'num.eq', mode: '+ +' },
+  neq: { ffi: 'num.neq', mode: '+ +' },
+  eq_bool: { ffi: 'num.eq_bool', mode: '+ + -' },
+};
+const TILL_PARSED_MODES = { ...ffi.parsedModes };
+for (const k of ['plus', 'mul', 'lt', 'le', 'eq', 'neq', 'eq_bool']) {
+  TILL_PARSED_MODES[k] = ffi.mode.parseMode(TILL_FFI_META[k].mode);
+}
+const tillGetModes = (p) => TILL_PARSED_MODES[p] || null;
+const tillGetModeMeta = (p) => {
+  const meta = TILL_FFI_META[p];
+  if (!meta) return null;
+  return { modes: TILL_PARSED_MODES[p], multiModal: !!meta.multiModal };
+};
+
 function tillBuildParser() {
   return buildParser(calculus.load(TILL_CALC).constructors, {
     binders: { exists: 'exists', forall: 'forall' },
@@ -225,8 +257,8 @@ const tillCalculusConfig = {
     // q-family + bin modes from the shared FFI registry — MANDATORY for
     // till: without q-op modes, existential-output detection falls back to
     // the last-arg convention (round-12 residue, checked by tests).
-    getModes: ffi.getModes,
-    getModeMeta: ffi.getModeMeta,
+    getModes: tillGetModes,
+    getModeMeta: tillGetModeMeta,
     discriminatorPreds: [],        // fingerprint layer is not theory-aware (r12)
     cacheEpoch: 'till',
   },
@@ -237,7 +269,7 @@ const tillCalculusConfig = {
   backward: {
     normalize: (h) => ratlitTheory.canonicalize(binlitTheory.canonicalize(h)),
     tryFFI: backchainIll.tryFFI,
-    getFFIMeta: backchainIll.getFFIMeta,
+    getFFIMeta: () => TILL_FFI_META,
     buildClauseTerm: backchainIll.buildClauseTerm,
     buildFFITerm: backchainIll.buildFFITerm,
     buildTypeTerm: backchainIll.buildTypeTerm,
@@ -247,8 +279,8 @@ const tillCalculusConfig = {
   // The shared registry carries bin + rat handlers (FFI is optimization;
   // prelude clauses are the semantics — FFI-off must agree hash-for-hash).
   ffi: {
-    meta: ffi.defaultMeta,
-    parsedModes: ffi.parsedModes,
+    meta: TILL_FFI_META,
+    parsedModes: TILL_PARSED_MODES,
     get: ffi.get,
     isFFIGround: ffi.convert.isGround,
   },
@@ -268,6 +300,9 @@ const tillCalculusConfig = {
     get connTags() { return connTagsFrom(tillConnectives()); },
     grade0,
     timed: true,
+    // Window arithmetic lowers onto the COLLAPSED numeric names (add/mul);
+    // sub/div stay q-specific (checked / field — never collapsed).
+    qexprPreds: { qexpr_add: 'plus', qexpr_sub: 'qsub', qexpr_mul: 'mul', qexpr_div: 'qdiv' },
   },
 };
 
