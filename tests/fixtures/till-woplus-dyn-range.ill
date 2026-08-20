@@ -9,7 +9,7 @@ c: type.
 % Negative fire-time fixture: the weight resolves to 5/4 — outside [0,1].
 % Compiles fine (boundness holds); settle must fail loudly at firing.
 
-wp: (q: bin) -> type.
+wp: (q: q) -> type.   % q on purpose: 5/4 must pass the LOAD (no weight fence) and fail at FIRE
 wp/z: wp (5/4).
 
 bad: a * !wp Q -o { woplus Q b c }.

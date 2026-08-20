@@ -1,10 +1,13 @@
 % round-15 F6.iv — till-shell --demo smoke fixture: a standing costed
 % menu (loli = shop line, cut-on-click) + a free token alternative.
-spc_s: type.
-farm_s: type.
-wood_s: type.
+% Tokens are classified IN-LOGIC (TODO_0011 rung 1): the shell groups
+% stock rows by classifier membership, not %#display comments.
+#import(../../calculus/till/prelude/sorts.till)
 
-%#display resource: spc_s wood_s farm_s
+resource: sort.
+spc_s: resource.
+farm_s: resource.
+wood_s: resource.
 
 % with the cost in stock: click 1 cuts (farm at t+3), click 2 grants wood
 #expect_start (settle: 0)

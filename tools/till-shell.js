@@ -12,9 +12,10 @@
  * never simulates, it only observes.
  *
  * Display:
- *   stock rows   — grouped by the program's own `kind X K` propositions
- *                  (knowledge about terms — sorts without subsorting);
- *                  every known token stays on its row, zeros included
+ *   stock rows   — grouped by CLASSIFIER SORTS (`wood: resource.` after
+ *                  `resource: sort.` — TODO_0011 rung 1, membership facts
+ *                  checked at load); every known token stays on its row,
+ *                  zeros included
  *   arriving     — outputs of fired jobs whose stamp is still in the
  *                  future (in-flight work), fixed lines, sorted by ETA
  *   menus        — every & fact, alternatives numbered GLOBALLY: any
@@ -34,7 +35,6 @@
  */
 
 import path from 'path';
-import fs from 'fs';
 import mde from '../lib/engine/index.js';
 import convert from '../lib/engine/convert.js';
 import tillConfig from '../calculus/till/calculus-config.js';
@@ -76,19 +76,16 @@ const horizonOf = (gameSecs) => `${Math.max(0, Math.floor(gameSecs * 1000))}/100
 const innerOf = (h) => (Store.tag(h) === 'at' ? Store.child(h, 0) : h);
 const stampOf = (h) => (Store.tag(h) === 'at' ? secs(Store.child(h, 1)) : 0);
 
-// ─── display kinds: %#display directives (presentation metadata) ────
-// Classifying atomic propositions IN-LOGIC needs quantification over
-// propositions, which the theory rejects (closed-world checker). Until the
-// classifier-sort extension lands, grouping is explicit presentation:
-//   %#display resource: wood stone food …
-const _displayKinds = new Map();   // token name -> kind
-{
-  const src = (() => { try { return fs.readFileSync(path.resolve(file), 'utf8'); } catch { return ''; } })();
-  for (const m of src.matchAll(/^%#display\s+(\w+)\s*:\s*(.+)$/gm)) {
-    for (const n of m[2].trim().split(/\s+/)) _displayKinds.set(n, m[1]);
-  }
-}
-const kindOf = (name) => _displayKinds.get(name) || null;
+// ─── display kinds: classifier sorts (TODO_0011 rung 1) ─────────────
+// `wood: resource.` after `resource: sort.` classifies the token IN-LOGIC
+// (a membership fact, checked at load); the shell just reads the loaded
+// sort system. This replaced the %#display comment directive — grouping
+// is knowledge now, not presentation metadata.
+const kindOf = (name) => {
+  if (!calc.sorts) return null;
+  const s = calc.sorts.leastSortOfName(name);
+  return s && calc.sorts.isClassifier(s) ? s : null;
+};
 
 // display name of a fact's head (atom name or predicate tag)
 const nameOf = (h) => {
