@@ -653,3 +653,125 @@ describe('Store Binary Format', () => {
     });
   });
 });
+
+// ── Generative round-trip fuzzer (TODO_0272 M7) ─────────────────────────────
+// Hand-crafted cases above cover specific shapes; this fuzzes random term
+// FORESTS (mixed tags, deep nesting, arrlit, and high-arity ≥6 overflow terms)
+// and asserts snapshot→serialize→deserialize→restore preserves every hash's
+// full structure. Store.restore keeps content-addressed IDs, so the SAME hash
+// must resolve to the SAME tag+children afterwards.
+describe('Store binary — generative round-trip fuzz', () => {
+  beforeEach(() => { Store.clear(); });
+
+  function rng(seed) {
+    let a = seed >>> 0;
+    return () => {
+      a = (a + 0x6D2B79F5) >>> 0;
+      let t = a;
+      t = Math.imul(t ^ (t >>> 15), t | 1);
+      t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+      return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+    };
+  }
+
+  // Full structural fingerprint of a hash — recurses through arrlit out-of-band
+  // elements and leaf children (strings / bigints / charcodes).
+  function fingerprint(h) {
+    const tag = Store.tag(h);
+    if (tag === 'arrlit') {
+      const el = Store.getArrayElements(h);
+      return 'arrlit[' + Array.from(el).map(fingerprint).join(',') + ']';
+    }
+    const a = Store.arity(h);
+    const parts = [];
+    for (let i = 0; i < a; i++) {
+      const c = Store.child(h, i);
+      parts.push(Store.isTermChild(c) ? fingerprint(c) : String(c) + typeof c);
+    }
+    return tag + '(' + parts.join(',') + ')';
+  }
+
+  function genTerm(r, depth) {
+    if (depth <= 0) {
+      const k = r();
+      if (k < 0.3) return Store.put('atom', ['a' + Math.floor(r() * 20)]);
+      if (k < 0.5) return Store.put('binlit', [BigInt(Math.floor(r() * 1e9))]);
+      if (k < 0.65) return Store.put('metavar', ['m' + Math.floor(r() * 8)]);
+      if (k < 0.8) return Store.put('freevar', ['V' + Math.floor(r() * 5)]);
+      return Store.put('atom', ['leaf']);
+    }
+    const k = r();
+    if (k < 0.15) {
+      const n = 2 + Math.floor(r() * 4);
+      const el = new Uint32Array(n);
+      for (let i = 0; i < n; i++) el[i] = genTerm(r, depth - 1);
+      return Store.putArray(el);
+    }
+    if (k < 0.35) {
+      // HIGH-ARITY: 6..13 children exercise the overflow (childOff) storage.
+      const n = 6 + Math.floor(r() * 8);
+      const kids = [];
+      for (let i = 0; i < n; i++) kids.push(genTerm(r, depth - 1));
+      return Store.put('wide' + n, kids);
+    }
+    const bin = ['tensor', 'loli', 'with', 'oplus'][Math.floor(r() * 4)];
+    return Store.put(bin, [genTerm(r, depth - 1), genTerm(r, depth - 1)]);
+  }
+
+  it('preserves every hash across binary round-trip (2000 random terms)', () => {
+    const r = rng(0xF0F0F0);
+    const hashes = [];
+    for (let i = 0; i < 2000; i++) hashes.push(genTerm(r, 1 + Math.floor(r() * 5)));
+
+    const before = hashes.map(fingerprint);
+    // Deterministic serialization: same snapshot → byte-identical buffer.
+    const snap = Store.snapshot({ version: '1.0' });
+    const buf1 = serialize(snap);
+    const buf2 = serialize(Store.snapshot({ version: '1.0' }));
+    assert.ok(Buffer.from(buf1).equals(Buffer.from(buf2)), 'serialize is deterministic');
+
+    Store.clear();
+    Store.restore(deserialize(buf1));
+
+    for (let i = 0; i < hashes.length; i++) {
+      assert.strictEqual(fingerprint(hashes[i]), before[i],
+        `structure drift after round-trip for term #${i} (${before[i].slice(0, 60)})`);
+    }
+  });
+
+  it('re-putting a restored term is a no-op (content-addressing stable)', () => {
+    const r = rng(0xABCDEF);
+    const specs = [];
+    // Record rebuild recipes so we can re-put bottom-up after restore.
+    function rec(h) {
+      const tag = Store.tag(h);
+      if (tag === 'arrlit') return { arr: Array.from(Store.getArrayElements(h)).map(rec) };
+      const a = Store.arity(h);
+      const kids = [];
+      for (let i = 0; i < a; i++) {
+        const c = Store.child(h, i);
+        kids.push(Store.isTermChild(c) ? rec(c) : c);
+      }
+      return { tag, kids };
+    }
+    function reput(spec) {
+      if (spec.arr) {
+        const el = Uint32Array.from(spec.arr.map(reput));
+        return Store.putArray(el);
+      }
+      if (typeof spec !== 'object') return spec;
+      return Store.put(spec.tag, spec.kids.map(k => (typeof k === 'object' ? reput(k) : k)));
+    }
+    const hashes = [];
+    for (let i = 0; i < 500; i++) { const h = genTerm(r, 2 + Math.floor(r() * 3)); hashes.push(h); specs.push(rec(h)); }
+
+    const buf = serialize(Store.snapshot({ version: '1.0' }));
+    Store.clear();
+    Store.restore(deserialize(buf));
+
+    for (let i = 0; i < hashes.length; i++) {
+      assert.strictEqual(reput(specs[i]), hashes[i],
+        `re-put produced a different hash for term #${i} — content-addressing broke`);
+    }
+  });
+});
