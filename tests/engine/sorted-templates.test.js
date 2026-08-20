@@ -137,3 +137,76 @@ describe('woplus infix surface `A +[Q] B` (Phase 4b sugar, 0268 A)', () => {
     assert.match(till.render(h), /a \+\[.*\] b/);
   });
 });
+
+describe('parcel sugar `4wood` (§5d, D4 counted parcels)', () => {
+  const flags = {
+    binders: { exists: 'exists', forall: 'forall' },
+    multiCharFreevars: true, numbers: true, application: true,
+    arrows: true, forwardRules: true, binaryNormalization: true,
+    gradeUnit: () => putRat(0n, 1n),
+  };
+  let parse;
+  before(() => {
+    parse = buildParser(calculus.load(TILL_CALC).constructors, flags);
+  });
+
+  it('fused `4wood` is hash-identical to `!_4 wood`', () => {
+    assert.equal(parse('4wood'), parse('!_4 wood'));
+    assert.equal(parse('4wood'),
+      Store.put('bang', [putRat(4n, 1n), atom('wood')]));
+  });
+
+  it('works at formula-operand positions; names resolve like IDENTs', () => {
+    assert.equal(parse('4wood * spoon'),
+      Store.put('tensor', [Store.put('bang', [putRat(4n, 1n), atom('wood')]), atom('spoon')]));
+    assert.equal(parse('2Wood'),
+      Store.put('bang', [putRat(2n, 1n), Store.put('metavar', ['Wood'])]));
+  });
+
+  it('SPACED `4 wood` stays application juxtaposition — the surface is taken', () => {
+    // `f 4 wood` = f(4, wood) is live syntax in rule bodies; standalone
+    // `4 wood` is an app chain headed by the literal, NOT a parcel.
+    assert.equal(parse('f 4 wood'),
+      Store.put('f', [Store.put('binlit', [4n]), atom('wood')]));
+    assert.equal(Store.tag(parse('4 wood')), 'app');
+  });
+
+  it('a spaced parcel production would be ambiguous (detector-verified — why fused won)', async () => {
+    const { earleyGrammarFromTables, parserFromGrammar, extractParserTables: ept } =
+      await import('../../lib/parser/earley-grammar.js');
+    const { T, NT, setStrictAmbiguity } = await import('../../lib/parser/earley.js');
+    const spec = earleyGrammarFromTables(
+      { ...ept(calculus.load(TILL_CALC).constructors), ...flags });
+    // Experiment: graft `UNARY → NUMBER operand` (the spaced parcel rule)
+    // onto the real grammar, located via the $-preserved rule's shape.
+    const dollar = spec.rules.find(r => r.tag === 'unary' && r.rhs[0].sym === 0 && r.rhs[0].v === '$');
+    spec.rules.push({ lhs: dollar.lhs, rhs: [T('NUMBER'), NT(dollar.rhs[1].v)], action: c => c[1], tag: 'unary' });
+    const p = parserFromGrammar(spec);
+    setStrictAmbiguity(true);
+    try {
+      assert.throws(() => p('4 wood'), /Ambiguous parse/);
+    } finally {
+      setStrictAmbiguity(false);
+    }
+  });
+
+  it('stamped parcels need the explicit form: `4wood@3` is a loud error', () => {
+    assert.throws(() => parse('4wood@3'), /Parse error/);
+    assert.equal(parse('!_4 wood@3'),
+      Store.put('bang', [putRat(4n, 1n),
+        Store.put('at', [atom('wood'), putRat(3n, 1n)])]));
+  });
+
+  it('parcels are formula operands, not term args: `f 4wood` is a loud error', () => {
+    assert.throws(() => parse('f 4wood'), /Parse error/);
+  });
+
+  it('no parcels without a graded prefix + grade chain: ILL lexes `4wood` apart', () => {
+    const ill = calculus.loadILL();
+    const p = buildParser(ill.constructors, {
+      multiCharFreevars: true, numbers: true, application: true,
+    });
+    // NUMBER and IDENT stay separate tokens — an app chain, never a bang.
+    assert.equal(Store.tag(p('4wood')), 'app');
+  });
+});
