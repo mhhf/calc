@@ -1,11 +1,11 @@
 tags:
   ill: 27
+  linear-logic: 25
   inference-rule: 24
-  linear-logic: 24
-  forward-chaining: 21
+  forward-chaining: 22
   architecture: 15
   chr: 13
-  proof-theory: 11
+  proof-theory: 12
   implementation: 10
   left-rule: 10
   positive-connective: 10
@@ -13,31 +13,32 @@ tags:
   optimization: 9
   right-rule: 9
   engine: 8
+  graded-types: 7
   oplus: 7
   soundness: 7
   symbolic-execution: 7
   cut-elimination: 6
-  graded-types: 6
+  lax-monad: 6
   ownership: 6
-  lax-monad: 5
+  clf: 5
   structural-rule: 5
   verification: 5
   with: 5
-  clf: 4
   ffi: 4
   partial-evaluation: 4
   performance: 4
   symexec: 4
+  till: 4
   authorization: 3
   Curry-Howard: 3
   evm: 3
   loli: 3
+  monad: 3
   prover: 3
   QTT: 3
   staging: 3
   subexponentials: 3
   testing: 3
-  till: 3
   type-checking: 3
   accounting: 2
   backward: 2
@@ -51,7 +52,6 @@ tags:
   Futamura: 2
   layers: 2
   modal-logic: 2
-  monad: 2
   one: 2
   principals: 2
   resource-semantics: 2
@@ -62,6 +62,7 @@ tags:
   tensor: 2
   time: 2
   tropical: 2
+  additive: 1
   adjoint-logic: 1
   anki: 1
   atomic-swaps: 1
@@ -141,6 +142,7 @@ tags:
   polarity: 1
   polynomial-time: 1
   primitives: 1
+  probabilistic: 1
   proof-market: 1
   proof-nets: 1
   proof-of-stake: 1
@@ -171,5 +173,6 @@ tags:
   unification: 1
   vision: 1
   walkthrough: 1
+  weighted-choice: 1
   zero: 1
   zk: 1
