@@ -125,7 +125,7 @@ calculus/till/           # till — timed ILL (TODO_0265)
 ├── till.calc            # Connectives + grade sorts (delay/count/weight <: grade)
 ├── till.rules           # Sequent rules (graded monad/bang)
 ├── calculus-config.js   # Single assembly point (incl. cc.sorts: literal classification + fences)
-├── prelude/sorts.till   # Refinement-sort machinery (sort/sedge/leq clauses)
+├── prelude/sorts.till   # Refinement-sort machinery (sort/sedge/subsort; closure materialized at load)
 ├── prelude/rat.ill      # Numeric tower: q, bin <: q, frac <: q + exact rational q-ops
 ├── game/PP2.till        # Playable demo (classifiers + schema expansion; npm run shell:till)
 └── tests/               # till executable specs (forward/, debug/)
@@ -182,7 +182,7 @@ sub: (s <: q) (a: s) -> (b: s) -> (r: s) -> type.   % bounded sort variable
 spoil: (r: resource) r@Q * after (Q+20) -o { I }.   % schema: expands per member at load
 ```
 
-- Machinery: `prelude/sorts.till` (clauses are semantics) + `lib/engine/sorts.js` (compiled DAG index + `certifyLeq` path certificates). No sort name/edge may appear in engine JS — edges live in logic files, literal classification + value fences (delay nonneg, count integral, weight [0,1]) in till's calculus-config.
+- Machinery: `prelude/sorts.till` (facts are semantics) + `lib/engine/sorts.js` (compiled DAG index, `closurePairs()`). The loader MATERIALIZES the reflexive-transitive closure as ground `subsort a b` facts at load — in-logic `!subsort X s` premises are total fact lookups (no recursive closure clause, no committed-choice caveat). No sort name/edge may appear in engine JS — edges live in logic files, literal classification + value fences (delay nonneg, count integral, weight [0,1]) in till's calculus-config.
 - Bounded vars solve s := lub(arg sorts) and need a clause INSTANCE at s (inferred from head patterns); mixed-sort goals are legal iff a bound-level instance exists (strictness = instance absence).
 - Grade sorts: `delay`/`count`/`weight <: grade` in till.calc; the grammar folds them onto the one GRADE chain, the checker keeps them distinct.
 - The q-namespace collapse (qplus→plus) is the deferred dispatch rider — prelude names stay split, now with honest q sorts.

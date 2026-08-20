@@ -1,15 +1,24 @@
 /**
- * Sort-order fuzz (TODO_0011 rung 1) — the FFI principle one level up:
- * "the sort table is optimization, membership proof is semantics."
+ * Sort-order fuzz (TODO_0011 rung 1 + §4 materialized closure) — the FFI
+ * principle one level up: "the sort table is optimization, membership
+ * proof is semantics."
  *
  * Random subsort DAGs are loaded end-to-end (declaration surface → sedge
- * fact harvest → compiled ancestor index), then EVERY pair (a, b) is
- * checked three ways: the compiled table, certified proof (certifyLeq —
- * the index finds the path, the backward prover proves the reflexive base
- * and every sedge hop against the sorts-prelude clauses), and an
- * independent reachability closure computed here from the raw edge list.
- * All three must agree exactly. lub results are verified minimal upper
- * bounds by enumeration.
+ * fact harvest → compiled ancestor index → CLOSURE MATERIALIZATION: the
+ * loader injects every strict pair as a ground `subsort a b` fact), then
+ * EVERY pair (a, b) is checked three ways: the compiled table, a REAL
+ * backward-prover query `subsort a b` over the loaded clause set (facts +
+ * subsort/refl — no recursive closure clause, so committed choice cannot
+ * lose paths), and an independent reachability closure computed here from
+ * the raw edge list. All three must agree exactly. lub results are
+ * verified minimal upper bounds by enumeration.
+ *
+ * The query face being COMPLETE is the point of §4: before
+ * materialization, a recursive `step` clause under the committed-choice
+ * backchainer silently lost paths through multi-out-edge nodes (first
+ * `sedge a T` candidate commitment) — the certifyLeq certificate
+ * workaround existed for exactly that. A deterministic regression for the
+ * old failing shape (a→b, a→c, c→d ⇒ a ≤ d) is asserted explicitly.
  *
  * (Classifier ≤ 'type' and sort-hood are definitional, not clausal — they
  * are outside the deductive fragment and not fuzzed here.)
@@ -20,9 +29,11 @@ import assert from 'node:assert/strict';
 import fs from 'fs';
 import os from 'os';
 import path from 'path';
+import Store from '../lib/kernel/store.js';
 import mde from '../lib/engine/index.js';
 import tillConfig from '../calculus/till/calculus-config.js';
-import { certifyLeq } from '../lib/engine/sorts.js';
+import { SORT_PREDS } from '../lib/engine/sorts.js';
+import { backchain } from '../lib/engine/backchain.js';
 
 const SORTS = path.join(import.meta.dirname, '../calculus/till/prelude/sorts.till');
 
@@ -56,8 +67,16 @@ function randomProgram(rand, k) {
   return { sorts, edges, src };
 }
 
+/** Backward-prover query `subsort a b` over the loaded clause set. */
+function querySubsort(calc, a, b) {
+  const atom = (n) => Store.put('atom', [n]);
+  const goal = Store.put(SORT_PREDS.SUB, [atom(a), atom(b)]);
+  const res = backchain(goal, calc.clauses, calc.definitions, { maxDepth: 16 });
+  return !!(res && res.success);
+}
+
 describe('compiled sort index ≡ backward-prover membership (fuzz)', () => {
-  it('leq ≡ certified proof ≡ independent reachability, every pair, 40 random DAGs', () => {
+  it('table ≡ prover query ≡ independent reachability, every pair, 40 random DAGs', () => {
     let pairs = 0;
     for (let trial = 0; trial < 40; trial++) {
       const rand = rng(0xC0FFEE + trial);
@@ -81,17 +100,35 @@ describe('compiled sort index ≡ backward-prover membership (fuzz)', () => {
       for (const a of sorts) {
         for (const b of sorts) {
           const expected = reach.get(a).has(b);
-          const table = calc.sorts.leq(a, b);
-          const certified = certifyLeq(calc.sorts, a, b, calc.clauses, calc.definitions);
+          const table = calc.sorts.subsort(a, b);
+          const proved = querySubsort(calc, a, b);
           assert.equal(table, expected,
-            `trial ${trial}: table leq(${a}, ${b})=${table}, reachability says ${expected}; edges=${JSON.stringify(edges)}`);
-          assert.equal(certified, expected,
-            `trial ${trial}: certified leq(${a}, ${b})=${certified}, reachability says ${expected}; edges=${JSON.stringify(edges)}`);
+            `trial ${trial}: table subsort(${a}, ${b})=${table}, reachability says ${expected}; edges=${JSON.stringify(edges)}`);
+          assert.equal(proved, expected,
+            `trial ${trial}: prover subsort(${a}, ${b})=${proved}, reachability says ${expected}; edges=${JSON.stringify(edges)}`);
           pairs++;
         }
       }
     }
     assert.ok(pairs > 100, `exercised ${pairs} pairs`);
+  });
+
+  it('multi-out-edge transitivity proves via query (the pre-§4 failing shape)', () => {
+    // a→b, a→c, c→d: under a recursive closure clause, committed choice
+    // could commit `sedge a T` to T=b and lose the a→c→d path. With
+    // materialized facts the query is a direct lookup — must prove.
+    const src = [
+      `#import(${SORTS})`,
+      'ma: type.', 'mb: type.', 'mc: type.', 'md: type.',
+      'ma <: mb.', 'ma <: mc.', 'mc <: md.',
+    ].join('\n') + '\n';
+    const p = path.join(dir, 'multi-edge.ill');
+    fs.writeFileSync(p, src);
+    const calc = mde.load(p, { calculusConfig: tillConfig, cache: false });
+    assert.ok(querySubsort(calc, 'ma', 'md'), 'a ≤ d through the second out-edge');
+    assert.ok(querySubsort(calc, 'ma', 'ma'), 'reflexive base (subsort/refl)');
+    assert.ok(!querySubsort(calc, 'md', 'ma'), 'no flip');
+    assert.ok(!querySubsort(calc, 'mb', 'mc'), 'no cross-branch order');
   });
 
   it('lub is a minimal upper bound (verified by enumeration) across 25 DAGs', () => {
@@ -108,16 +145,16 @@ describe('compiled sort index ≡ backward-prover membership (fuzz)', () => {
       const inUniverse = sorts.filter(s => sys.isSort(s));
       for (const a of inUniverse) {
         for (const b of inUniverse) {
-          const uppers = inUniverse.filter(u => sys.leq(a, u) && sys.leq(b, u));
+          const uppers = inUniverse.filter(u => sys.subsort(a, u) && sys.subsort(b, u));
           const r = sys.lub([a, b]);
           if (r.error) {
             // Correct iff no unique minimal common upper bound exists
-            const minimals = uppers.filter(u => !uppers.some(v => v !== u && sys.leq(v, u)));
+            const minimals = uppers.filter(u => !uppers.some(v => v !== u && sys.subsort(v, u)));
             assert.notEqual(minimals.length, 1,
               `trial ${trial}: lub(${a}, ${b}) errored but ${minimals[0]} is the unique minimal upper bound`);
           } else {
             assert.ok(uppers.includes(r.sort), `trial ${trial}: lub(${a}, ${b})=${r.sort} not an upper bound`);
-            assert.ok(!uppers.some(u => u !== r.sort && sys.leq(u, r.sort)),
+            assert.ok(!uppers.some(u => u !== r.sort && sys.subsort(u, r.sort)),
               `trial ${trial}: lub(${a}, ${b})=${r.sort} not minimal`);
           }
         }
