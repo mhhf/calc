@@ -205,6 +205,7 @@ FFI is optimization, theory is semantics. Every FFI predicate MUST have backward
 - Per-rule compiled matchers were attempted and reverted — 59 closures → V8 megamorphic → ~25% regression (RES_0069). `compilePS` works: only ~4 closure types stays within V8 polymorphic IC threshold.
 - Manual prover: `getApplicableActions(state, { mode: 'focused' })` (default) vs `{ mode: 'unfocused' }`
 - Focus action names: `Focus_L` / `Focus_R` (not just `Focus`)
+- `!_k A` is a COHORT count (D4): k copies of A **at the same stamp**. A cost of "k tokens of any age" is k separate patterns (`wood * wood * wood`) — a counted-parcel cost goes permanently unavailable once same-stamp production stops (each production tick makes a singleton cohort)
 
 ## Tooling
 
