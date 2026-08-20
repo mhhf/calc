@@ -100,17 +100,27 @@ describe('till oracle: windows and spoilage on one timeline (worked example, D8/
   });
 });
 
-describe('till oracle: count grades (D4)', () => {
-  it('!_k splits k off one cohort, leaving the residual', () => {
+describe('till oracle: count grades (D4, revised — binding decides cohort discipline)', () => {
+  it('!_k splits k off, leaving the residual (single cohort)', () => {
     const r = { name: 'pair', inputs: [{ atom: 'wood', count: 2 }], delay: 0, outputs: [['bundle']] };
     const { state } = settle(makeState([['wood', 0, 5]]), 0, { rules: [r], maxSteps: 10 });
     assert.strictEqual(observable(state, 0).wood, 1);       // 5 -> 3 -> 1, then quiescent
     assert.strictEqual(observable(state, 0).bundle, 2);
   });
 
-  it('!_W binds the whole cohort at firing time; sawmill floor(1.5W)', () => {
+  it('unstamped !_k spreads across cohorts oldest-first; activation = newest taken', () => {
+    const r = { name: 'pair', inputs: [{ atom: 'log', count: 2 }], delay: 0, outputs: [['bundle']] };
+    // log@0 x1, log@1 x2, log@3 x1: fires at a=1 (0+1), then a=3 (1+3)
+    const { state, log } = settle(makeState([['log', 0, 1], ['log', 1, 2], ['log', 3, 1]]), 5,
+      { rules: [r] });
+    assert.deepStrictEqual(log.map(e => rstr(e.a)), ['1', '3']);
+    assert.strictEqual(observable(state, 5).log, undefined); // all consumed
+    assert.strictEqual(observable(state, 5).bundle, 2);
+  });
+
+  it('stamped !_W A@T binds ONE cohort at firing time; sawmill floor(1.5W)', () => {
     const sawmill = { name: 'sawmill',
-      inputs: [{ atom: 'sawmill' }, { atom: 'wood', countVar: 'W' }],
+      inputs: [{ atom: 'sawmill' }, { atom: 'wood', countVar: 'W', stampVar: 'T' }],
       delay: 10,
       outputs: th => [['sawmill'], ['plank', Math.floor(th.counts.W * 3 / 2)]] };
     // two cohorts: 3 wood at 0 and 5 wood at 1 -> two firings, W=3 then W=5
@@ -118,6 +128,19 @@ describe('till oracle: count grades (D4)', () => {
       { rules: [sawmill] });
     assert.deepStrictEqual(log.map(e => [rstr(e.a), e.sel[1].take]), [['0', 3], ['10', 5]]);
     assert.strictEqual(observable(state, 30).plank, 4 + 7); // floor(4.5) + floor(7.5)
+  });
+
+  it('unstamped !_W binds the TOTAL across cohorts and drains them all', () => {
+    const mill = { name: 'mill',
+      inputs: [{ atom: 'wood', countVar: 'W' }],
+      delay: 0,
+      outputs: th => [['plank', th.counts.W]] };
+    const { state, log } = settle(makeState([['wood', 0, 3], ['wood', 1, 5]]), 5, { rules: [mill] });
+    assert.strictEqual(log.length, 1);                       // ONE firing takes everything
+    assert.strictEqual(log[0].sel[0].take, 8);
+    assert.strictEqual(rstr(log[0].a), '1');                 // newest taken stamp
+    assert.strictEqual(observable(state, 5).plank, 8);
+    assert.strictEqual(observable(state, 5).wood, undefined);
   });
 });
 

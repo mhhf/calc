@@ -40,9 +40,21 @@ cohorts, never merged (the stamp axis is non-collapsing).
 | `A` | any cohort of `A` | anonymous stamp (joins activation) |
 | `A@Q` | any cohort | its stamp to `Q` |
 | `A@c` (ground) | exactly the stamp-`c` cohort | — |
-| `!_k A[@…]` | a cohort with count ≥ k | splits `k` off it |
-| `!_W A[@…]` | a cohort | `W` := its WHOLE count, at firing time |
+| `!_k A` | k copies across ANY cohorts, sampler order | — (newest taken stamp joins activation) |
+| `!_k A@Q`/`@c` | ONE cohort with count ≥ k | splits `k` off it; `Q` := its stamp |
+| `!_W A` | ALL copies of `A` | `W` := the TOTAL, at firing time |
+| `!_W A@Q`/`@c` | ONE whole cohort | `W` := its count, `Q` := its stamp |
 | `read A[@…]` | as above | nothing consumed; stamp joins activation |
+
+**Binding discipline decides cohort discipline** (D4 revised, with TODO_0011):
+an unstamped counted pattern binds no stamp, so the stamp axis must be
+unobservable through it — the erasure argument: `!_k A` untimed means "k copies
+of A", and the timed semantics refines that reading rather than restricting it
+to same-stamp copies. The spread takes cohorts in sampler order (oldest-first
+under `fifo`), which is the activation-minimal choice by construction since
+activation joins the newest taken stamp. Writing `@T` (even with `T` otherwise
+unused) opts back into cohort-locking: one stamp variable, one cohort — same-age
+batches become an explicit, purchasable discipline instead of a default leak.
 
 Plus rule-level annotations: guards (ordinary provable propositions over bindings),
 `after E` and `before E` windows (`E` a rational expression over bound stamps), and the
@@ -93,7 +105,8 @@ independent of the others, so the coordinate-wise minimal choice minimises each 
 and `max` of coordinate-wise minima is the minimum of `max`. ∎ (This is why the common
 case costs what untimed matching costs; the search runs only for coupled rules.)
 
-**Count grades.** `!_W` binds the matched cohort's count AT FIRING TIME. In this design
+**Count grades.** `!_W A@T` binds the matched cohort's count AT FIRING TIME
+(unstamped `!_W A` likewise binds the live TOTAL). In this design
 that property is free, not enforced: matches are recomputed from the live state whenever
 a rule's inputs may have changed and bindings are never stored across state changes
 (TODO_0265 round 9 — the only cache is rule-granular dirty marking; a per-match plan

@@ -113,12 +113,12 @@ describe('till conflict chooser (P5/D17)', () => {
     // for THIS file's load order only; re-pin if earlier tests change.
     // node-only: bun's module evaluation interns in a different order.)
     if (typeof Bun !== 'undefined') return;
-    // Re-pinned (TODO_0011 §3 collapse): rat.ill's shared numeric names →
-    // interning shift. (Previously re-pinned for rung-1 grade sorts and
-    // TODO_0268 A's timed templates.)
+    // Re-pinned (D4 revision): grades.ill's spread-semantics gates →
+    // interning shift. (Previously re-pinned for the §3 collapse, rung-1
+    // grade sorts, and TODO_0268 A's timed templates.)
     assert.deepEqual(
       [0, 7, 42].map(seed => calc.settle(one, '0', { seed }).events[0].rule),
-      ['grab_b', 'grab_a', 'grab_a']);
+      ['grab_b', 'grab_b', 'grab_a']);
   });
 });
 
