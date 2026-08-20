@@ -1,7 +1,7 @@
 /**
  * Integration tests for prove-source in `symex` mode.
  *
- * Covers: #import wiring, mode dispatch, forward-trace/v1 payload shape,
+ * Covers: #import wiring, mode dispatch, forward-trace/v2 payload shape,
  * queryName selection, lazy leaf-trace extraction, and error paths.
  */
 
@@ -21,12 +21,12 @@ describe('proveSource — symex mode (tiny)', () => {
   });
   after(() => { fs.rmSync(cacheDir, { recursive: true, force: true }); });
 
-  it('explores programs/pure_linear.ill → forward-trace/v1 payload', async () => {
+  it('explores programs/pure_linear.ill → forward-trace/v2 payload', async () => {
     const source = '#import(programs/pure_linear.ill)';
     const r = await proveSource({ source, mode: 'symex', cacheDir });
     assert.strictEqual(r.ok, true, `expected ok=true, got error: ${r.error}`);
     assert.ok(r.tree);
-    assert.strictEqual(r.tree.format, 'forward-trace/v1');
+    assert.strictEqual(r.tree.format, 'forward-trace/v2');
     assert.strictEqual(r.tree.mode, 'symex');
     assert.ok(r.tree.stats.leafCount >= 1,
       `expected ≥1 leaf, got ${r.tree.stats.leafCount}`);
@@ -45,7 +45,7 @@ describe('proveSource — symex mode (tiny)', () => {
       assert.strictEqual(cold.cacheHit, false);
       const warm = await proveSource({ source, mode: 'symex', cacheDir: freshCache });
       assert.strictEqual(warm.cacheHit, true);
-      assert.strictEqual(warm.tree.format, 'forward-trace/v1');
+      assert.strictEqual(warm.tree.format, 'forward-trace/v2');
     } finally {
       fs.rmSync(freshCache, { recursive: true, force: true });
     }
