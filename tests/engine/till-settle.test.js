@@ -23,6 +23,7 @@ import { tillGrades } from '../../calculus/till/calculus-config.js';
 import { timedSubset, timedExact } from '../../lib/engine/timed/timed-views.js';
 import { ratParts } from '../../lib/engine/theories/ratlit-theory.js';
 import { SPEC, FIX, loadTill as load, initQuery as init, stamped, bagStr } from './till-helpers.js';
+import { prfPin } from './_prf-pin.js';
 
 describe('till settle — composability and horizons (E5)', () => {
   let calc, S;
@@ -105,20 +106,21 @@ describe('till conflict chooser (P5/D17)', () => {
     assert.equal(calc.settle(one, '0', { chooser: pickB }).events[0].rule, 'grab_b');
   });
 
-  it('PRF golden pins: exact winner per seed (round-13 residue i)', () => {
-    // Pins the concrete PRF draw, not just reproducibility — a _mix32/
-    // _thetaHash/store-hashing change re-samples every trace and ONLY this
-    // test notices. On such a change: verify intent, then re-pin. (The PRF
-    // mixes state.stateHash = arena-layout dependent — values are stable
-    // for THIS file's load order only; re-pin if earlier tests change.
-    // node-only: bun's module evaluation interns in a different order.)
-    if (typeof Bun !== 'undefined') return;
-    // Re-pinned (D4 revision): grades.ill's spread-semantics gates →
-    // interning shift. (Previously re-pinned for the §3 collapse, rung-1
-    // grade sorts, and TODO_0268 A's timed templates.)
-    assert.deepEqual(
-      [0, 7, 42].map(seed => calc.settle(one, '0', { seed }).events[0].rule),
-      ['grab_b', 'grab_b', 'grab_a']);
+  it('PRF golden pins: exact winner per seed (two-tier, TODO_0272 M8)', () => {
+    // Two-tier pin (see tests/engine/_prf-pin.js): tier 1 is the semantic
+    // guard (both winners reachable — interning-independent, runs under bun);
+    // tier 2 is the exact per-seed winner, node-only and re-captured
+    // mechanically via `npm run repin:prf`, never hand-edited. The concrete
+    // draw catches a _mix32/_thetaHash/store-hashing change that tier 1's
+    // distribution check would miss.
+    prfPin('till-settle/conflict-winners', {
+      tier1: () => {
+        const winners = new Set();
+        for (let s = 0; s < 32; s++) winners.add(calc.settle(one, '0', { seed: s }).events[0].rule);
+        assert.deepEqual([...winners].sort(), ['grab_a', 'grab_b']);
+      },
+      compute: () => [0, 7, 42].map(seed => calc.settle(one, '0', { seed }).events[0].rule),
+    });
   });
 });
 

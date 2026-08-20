@@ -17,6 +17,7 @@ import { describe, it, before } from 'node:test';
 import assert from 'node:assert/strict';
 import Store from '../../lib/kernel/store.js';
 import { FIX, loadTill as load, atom, bag } from './till-helpers.js';
+import { prfPin } from './_prf-pin.js';
 
 const wOf = (l) => Number(l.weight[0]) / Number(l.weight[1]);
 
@@ -80,20 +81,26 @@ describe('woplus exec — PRF branch sampling (D17)', () => {
     assert.deepEqual([...outcomes].sort(), ['rock', 'sci']);
   });
 
-  it('PRF golden pins: exact alt sequence per seed (round-13 residue i)', () => {
-    // Concrete-draw pins (see till-settle PRF pins): a PRF-internals or
-    // store-hashing change re-samples these — verify intent, then re-pin.
-    // NOTE: the PRF mixes state.stateHash, which is arena-layout dependent —
-    // these values are stable for THIS file's load order, not across files.
-    // Adding tests above this one may shift them; re-pin deliberately.
-    // node-only: bun's module evaluation interns in a different order.
-    if (typeof Bun !== 'undefined') return;
-    // Re-pinned (TODO_0011 rung 1): till.calc declares grade sorts →
-    // interning shift. (Previously re-pinned for TODO_0268 A.)
-    assert.deepEqual({
-      s4: calc.settle(duel(2, 2), '0', { seed: 4 }).events.map(e => e.alt),
-      s10: calc.settle(duel(2, 2), '0', { seed: 10 }).events.map(e => e.alt),
-    }, { s4: [0, 1, 1], s10: [0, 0] });
+  it('PRF golden pins: exact alt sequence per seed (two-tier, TODO_0272 M8)', () => {
+    // Two-tier pin (tests/engine/_prf-pin.js): tier 1 is the semantic guard
+    // (both branches reachable across seeds — interning-independent, bun too);
+    // tier 2 is the exact alt sequence for seeds 4/10, node-only and
+    // re-captured via `npm run repin:prf`. The PRF mixes the arena-layout
+    // -dependent state hash, so tier 2 legitimately re-rolls on interning
+    // shifts — that is why the mechanical re-capture exists.
+    prfPin('till-woplus/duel-alts', {
+      tier1: () => {
+        const outcomes = new Set();
+        for (let s = 0; s < 32; s++) {
+          outcomes.add(Object.keys(bag(calc.settle(duel(1, 1), '0', { seed: s }).state)).join(','));
+        }
+        assert.deepEqual([...outcomes].sort(), ['rock', 'sci']);
+      },
+      compute: () => ({
+        s4: calc.settle(duel(2, 2), '0', { seed: 4 }).events.map(e => e.alt),
+        s10: calc.settle(duel(2, 2), '0', { seed: 10 }).events.map(e => e.alt),
+      }),
+    });
   });
 
   it('sampler frequency matches the declared weight (chi-square-lite, residue ii)', () => {
