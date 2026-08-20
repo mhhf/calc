@@ -11,9 +11,10 @@ Inspired by the [calculus toolbox](https://goodlyrottenapple.github.io/calculus-
 ```bash
 npm install
 npm run dev           # Development server (http://localhost:3000)
-npm test              # Core tests (431)
-npm run test:engine   # Engine tests (338)
-npm run test:all      # All tests (769)
+npm test              # Fast suite (~2490 tests, ~7s)
+npm run test:ill      # ILL-native provability tests (98)
+npm run test:noffi    # noFFI adversarial soundness (13)
+npm run test:all      # Everything (fast + ill + till + noffi + zk + heavy)
 ```
 
 ## What It Does
@@ -24,7 +25,7 @@ npm run test:all      # All tests (769)
 
 **Symbolic exploration** — Exhaustive DFS over all possible forward executions, building execution trees. Handles nondeterminism (which rule fires) and additive choice (internal branching). Used for model checking and program verification.
 
-**Application: EVM symbolic execution** — 44 forward rules model the Ethereum Virtual Machine. Symbolic memory via write-logs, comparison branching via ⊕, constraint solving for branch pruning. Verifies smart contract properties by exploring all execution paths.
+**Application: EVM symbolic execution** — a forward-rule model of the Ethereum Virtual Machine. Symbolic memory via write-logs, comparison branching via ⊕, constraint solving for branch pruning. Verifies smart contract properties by exploring all execution paths.
 
 ## Architecture
 
@@ -36,14 +37,19 @@ lib/
 │   ├── generic.js   # L2: search primitives (Hodas-Miller lazy splitting)
 │   ├── focused.js   # L3: Andreoli focusing
 │   └── strategy/    # L4: manual, auto
-├── engine/          # Forward execution engine
+├── engine/          # Forward/backward execution engine (3-layer lego)
 │   ├── compile.js   # Rule compilation (de Bruijn slots, discriminators)
 │   ├── match.js     # Pattern matching + persistent proving
 │   ├── strategy.js  # Rule selection (fingerprint → disc-tree → predicate)
 │   ├── forward.js   # Main loop (committed-choice execution)
 │   ├── explore.js   # Exhaustive DFS exploration + backtracking
 │   ├── backchain.js # Backward chaining for persistent antecedents
-│   ├── ffi/         # Foreign function interface (arithmetic, memory)
+│   ├── compose.js   # Grade-0 cut-elimination pipeline + chain fusion + SROA
+│   ├── convert.js   # .ill → content-addressed hashes
+│   ├── sorts.js     # Refinement-sort system (subsort DAG, till-only)
+│   ├── lnl/         # LNL layer: linear/persistent distinction
+│   ├── timed/       # Timed layer: wall-clock scheduler over the stamp algebra
+│   ├── ill/         # ILL layer: FFI, binlit theory, connective config
 │   └── opt/         # Toggleable optimization modules
 ├── calculus/        # Calculus loader from .calc/.rules definitions
 ├── parser/          # Earley parser + grammar generation
@@ -56,8 +62,10 @@ calculus/ill/        # ILL calculus definition
 ├── prelude/         # Type bounds, booleans, arrays
 └── programs/        # EVM model, binary arithmetic, multisig contracts
 
+calculus/till/       # till — timed ILL (delay-graded lax monad, refinement sorts)
+
 src/ui/              # SolidJS web frontend
-doc/                 # Documentation (research/, theory/, documentation/, def/)
+doc/                 # Documentation (theory/, documentation/, def/)
 ```
 
 ## Build Commands
