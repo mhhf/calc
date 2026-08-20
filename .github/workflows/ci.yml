@@ -1,0 +1,34 @@
+name: CI
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      # out/ is gitignored; the fast suite imports out/ill.json.
+      # The bundler runs under plain node (no bun needed in CI).
+      - name: Build calculus bundle
+        run: node libexec/calc-bundle
+
+      - name: Fast suite (includes the meta-suite registration guard)
+        run: npm test
+
+      - name: ILL-native provability tests
+        run: npm run test:ill
+
+      - name: noFFI adversarial soundness
+        run: npm run test:noffi
