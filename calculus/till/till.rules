@@ -14,7 +14,7 @@
 %                 side conditions (@grade) evaluate through the SAME
 %                 tillGrades record the timed scheduler reads (D13).
 %   graded monad — monad_l is the graded bind (delay composition d+e as a
-%                 monus on the conclusion grade), monad_r the unit at
+%                 partial residual ⊖ on the conclusion grade), monad_r the unit at
 %                 grade 0. The graded-μ {{A}@d}@e ⊢ {A}@(d+e) is derivable;
 %                 accounting is EXACT — availability monotonicity
 %                 (subeffecting) is Stage 2 / THY-B territory, not v1.
@@ -103,7 +103,6 @@ bang_l3: G ; D, !_K A |- C
   <- G ; D, A, !_J A |- C
   @pretty "!Lpeel"
   @invertible false
-  @grade K >= 1
   @grade J := K - 1.
 
 bang_l4: G ; D, !_K A |- C
@@ -117,7 +116,6 @@ bang_r2: G ; D, D' |- !_K A
   <- G ; D' |- !_J A
   @pretty "!Rpeel"
   @invertible false
-  @grade K >= 1
   @grade J := K - 1.
 
 bang_r3: G ; D |- !_K A
@@ -129,23 +127,22 @@ bang_r3: G ; D |- !_K A
 % The delay grade is an UPPER BOUND ("achievable within E" — the lax@d
 % judgment); monad_r fuses lax + sub + {}R: what is true now is achievable
 % within ANY bound (subeffecting — Theorem 1 needs it: operational stamps
-% are the LEAST derivable grades). monad_l is {}L: binds compose delays,
-% and the monus keeps the critical path a strict LOWER bound ({A}@4 from
-% {{A}@2}@3 stays refuted). monad_l's side condition F >= E (equivalently
-% H >= 0) is made EXPLICIT below: `effect.sub` is exact ℚ subtraction
-% (lib/rat.js), total and signed — it returns a NEGATIVE H rather than
-% failing, so the guard must be stated, not left implicit in the monus.
-% Without it, refuting F < E would rely on the downstream monad_r `E >= 0`
-% guard (rule-set completeness); the explicit guard makes monad_l's proof
-% obligation LOCAL (THY_0018 §4 implementation-encoding note). On non-numeric
-% grades the guard is the ground fence (ω/metavar grades fail isStamp).
+% are the LEAST derivable grades). monad_l is {}L: binds compose delays.
+% `-` in a @grade def is the grade algebra's PARTIAL RESIDUAL ⊖ (TODO_0273):
+% H := F - E means the H with E + H = F, DEFINED ONLY inside the fence
+% (F >= E) — otherwise the def fails and the rule is simply inapplicable,
+% so {A}@4 from {{A}@2}@3 stays refuted with no side condition. Guards like
+% `F >= E` / `K >= 1` are DERIVED from ⊖'s partiality, not stated: the
+% algebra exposes no signed subtraction, so no rule — including future ones
+% — can construct a negative grade (validity is closed under the exposed
+% operations; Grade Preservation, THY_0022). On non-numeric grades (ω,
+% metavars) the def fails isStamp — the honest ground fence.
 
 monad_l: G ; D, {A}@E |- {C}@F
   <- G ; D, A |- {C}@H
   @side l
   @pretty "{}L"
   @invertible false
-  @grade F >= E
   @grade H := F - E.
 
 monad_r: G ; D |- {A}@E

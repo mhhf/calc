@@ -11,8 +11,8 @@
  * @grade / @template / compound premise ⇒ descriptor is byte-identical to
  * before (the D13 zero-delta gate).
  *
- * @grade forms:  X := A + B / X := A - B  (definition; monus — a negative
- * result makes the rule inapplicable, grades are ℚ≥0 in v1) and
+ * @grade forms:  X := A + B / X := A - B  (definition; `-` is the algebra's
+ * PARTIAL residual ⊖ — out of fence ⇒ rule inapplicable, grades ℚ≥0) and
  * A OP B with OP ∈ {=, <, >, <=, >=} (guard; non-numeric grades — the ω/0
  * ATOMS — fail guards, they are matched structurally by writing !A).
  */
