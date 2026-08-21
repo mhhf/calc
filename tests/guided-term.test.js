@@ -12,7 +12,7 @@ import { describe, it, beforeEach } from 'node:test';
 import assert from 'node:assert/strict';
 import Store from '../lib/kernel/store.js';
 import forward from '../lib/engine/forward.js';
-import { guidedTerm, loliOf } from '../lib/prover/guided-term.js';
+import { guidedTerm, loliOf } from '../lib/prover/ill/guided-term.js';
 import { rightFocusTerm, modeSwitch } from '../lib/prover/bridge.js';
 import { illConnectives } from '../lib/engine/ill/connectives.js';
 import { gradeW } from '../lib/engine/grades.js';

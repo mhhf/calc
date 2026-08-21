@@ -26,6 +26,7 @@ import { grade0 } from '../../lib/engine/grades.js';
 import { connTagsFrom } from '../../lib/engine/formula-utils.js';
 import { cmp as ratCmp, add as ratAdd, sub as ratSub } from '../../lib/rat.js';
 import { apply } from '../../lib/kernel/substitute.js';
+import { predHead } from '../../lib/kernel/ast.js';
 import { collectMetavars } from '../../lib/engine/pattern-utils.js';
 import mde from '../../lib/engine/index.js';
 import backward from '../../lib/engine/backchain.js';
@@ -73,6 +74,11 @@ const _parts = (h) => {
   return p;
 };
 
+/** The one numeric canonicalizer (folds structural i/o/e chains and
+ *  rat(N,D) forms onto canonical literals) — shared by the stamp algebra,
+ *  the theory engine, and the backchain normalizer. */
+const _ratCanon = (h) => ratlitTheory.canonicalize(binlitTheory.canonicalize(h));
+
 const tillGrades = {
   availability: {
     cmp: (a, b) => (a === b ? 0 : ratCmp(_parts(a), _parts(b))),
@@ -93,7 +99,7 @@ const tillGrades = {
     const t = Store.tagId(h);
     return t === Store.TAG.ratlit || t === Store.TAG.binlit;
   },
-  canonStamp: (h) => ratlitTheory.canonicalize(binlitTheory.canonicalize(h)),
+  canonStamp: _ratCanon,
   /** Horizon/stamp input: integer Number, "a/b" / "d.f" / "n" string
    *  (digit-wise exact — never through a float, D3), or an existing stamp
    *  hash wrapped as { stamp: h } — numbers are always VALUES, so a raw
@@ -224,9 +230,28 @@ const tillGetModeMeta = (p) => {
 // [[metavar, value], …] for every goal variable — values canonical and
 // ground — or null: underivable ⇒ the rule is simply inapplicable, which
 // is how grade fences hold (qsub is checked; Grade Preservation, THY_0022).
-const _theoryCanon = (h) => ratlitTheory.canonicalize(binlitTheory.canonicalize(h));
-let _theoryEc = null, _theoryOpts = null;
-Store.onClear(() => { _theoryEc = null; });   // cached clause hashes die with the Store
+// The clause face must stand alone (FFI principle) — CALC_NOFFI=1 skips
+// the fast path AND disables FFI inside clause resolution, exactly like
+// the forward engine's noffi mode.
+const _noFFI = () => process.env.CALC_NOFFI === '1';
+let _theoryEc = null, _theoryOpts = null, _theoryPreds = null;
+Store.onClear(() => { _theoryEc = null; _theoryPreds = null; });   // cached hashes die with the Store
+function _theoryEngine() {
+  if (!_theoryEc) {
+    tillCalculusConfig.init();
+    _theoryEc = mde.load(path.join(import.meta.dirname, 'prelude/rat.ill'),
+      { calculusConfig: tillCalculusConfig, cache: false });
+    _theoryOpts = {
+      ...backchainIll.makeILLBackchainOpts({
+        theories: [...defaultTheories, binlitTheory, ratlitTheory],
+        normalize: _ratCanon,
+        getFFIMeta: () => TILL_FFI_META,
+      }),
+      maxDepth: 20000, allBuckets: true, useFFI: true,
+    };
+  }
+  return _theoryEc;
+}
 const tillTheory = {
   prove(goal) {
     // O(1) FFI fast path (the compiled ground-goal recognizer from the
@@ -236,39 +261,46 @@ const tillTheory = {
     // non-conversion failure IS the decision (out-of-fence residual, false
     // comparison — fuzzed to agree with the clause face); only decode
     // failures stay advisory and fall through to clause resolution.
-    const fast = backchainIll.tryFFI(goal, TILL_FFI_META);
-    if (fast) {
-      if (fast.success) return fast.theta || [];
-      if (fast.reason !== 'conversion_failed') return null;
+    if (!_noFFI()) {
+      const fast = backchainIll.tryFFI(goal, TILL_FFI_META);
+      if (fast) {
+        if (fast.success) return fast.theta || [];
+        if (fast.reason !== 'conversion_failed') return null;
+      }
     }
-    if (!_theoryEc) {
-      tillCalculusConfig.init();
-      _theoryEc = mde.load(path.join(import.meta.dirname, 'prelude/rat.ill'),
-        { calculusConfig: tillCalculusConfig, cache: false });
-      _theoryOpts = {
-        ...backchainIll.makeILLBackchainOpts({
-          theories: [...defaultTheories, binlitTheory, ratlitTheory],
-          normalize: _theoryCanon,
-          getFFIMeta: () => TILL_FFI_META,
-        }),
-        maxDepth: 20000, allBuckets: true, useFFI: true,
-      };
-    }
-    const res = backward.prove(goal, _theoryEc.clauses, _theoryEc.definitions, _theoryOpts);
+    const ec = _theoryEngine();
+    const opts = _noFFI() ? { ..._theoryOpts, useFFI: false } : _theoryOpts;
+    const res = backward.prove(goal, ec.clauses, ec.definitions, opts);
     if (!res.success) return null;
     const vars = new Set();
     collectMetavars(goal, vars);
     const out = [];
     for (const v of vars) {
-      let val = v;
-      for (let k = 0; k < 500; k++) { const n = apply(val, res.theta); if (n === val) break; val = n; }
-      val = _theoryCanon(val);
+      // backward.prove resolves slot chains before returning theta — one
+      // apply reaches the value
+      const val = _ratCanon(apply(v, res.theta));
       const rem = new Set();
       collectMetavars(val, rem);
       if (rem.size) return null;    // outputs must be fully determined
       out.push([v, val]);
     }
     return out;
+  },
+  /** Can the theory speak about `pred`? (an FFI predicate or a clause/
+   *  definition head of rat.ill). The calculus loader uses this to reject
+   *  typo'd theory premises LOUDLY at load time (TODO_0274 item 1) —
+   *  without it, `<- !qsib F E H` loads fine and the rule is silently
+   *  never applicable. Optional on the theory interface. */
+  has(pred) {
+    if (pred in TILL_FFI_META) return true;
+    if (!_theoryPreds) {
+      const ec = _theoryEngine();
+      _theoryPreds = new Set();
+      for (const [, cl] of ec.clauses) _theoryPreds.add(predHead(cl.hash));
+      for (const [, h] of ec.definitions) _theoryPreds.add(predHead(h));
+      _theoryPreds.delete(null);
+    }
+    return _theoryPreds.has(pred);
   },
 };
 
@@ -339,7 +371,7 @@ const tillCalculusConfig = {
   // Clause resolution over the numeric prelude (bin.ill + prelude/rat.ill).
   // Reuses ILL's backchain defaults with a ratlit-aware normalizer.
   backward: {
-    normalize: (h) => ratlitTheory.canonicalize(binlitTheory.canonicalize(h)),
+    normalize: _ratCanon,
     tryFFI: backchainIll.tryFFI,
     getFFIMeta: () => TILL_FFI_META,
     buildClauseTerm: backchainIll.buildClauseTerm,

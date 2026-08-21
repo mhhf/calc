@@ -46,6 +46,7 @@ import { putRat } from '../lib/kernel/rat-term.js';
 import Seq from '../lib/kernel/sequent.js';
 import { buildRuleSpecs } from '../lib/prover/rule-interpreter.js';
 import { createProver } from '../lib/prover/focused.js';
+import { createKernel } from '../lib/prover/kernel.js';
 import tillConfig, { tillGrades, loadTillSequent } from '../calculus/till/calculus-config.js';
 
 const args = process.argv.slice(2);
@@ -316,6 +317,54 @@ for (let p = 0; p < MPROGS; p++) {
 fs.rmSync(mdir, { recursive: true, force: true });
 console.log(`Thm1 minimality: ${mtrials} trials, ${mfails} mismatches`);
 
-const total = fails + afails + mfails;
+// ─── section 4: backward-prover fuzz — monad towers + at_l retiming ──
+// Pure backward, no bridge (TODO_0274): the sequent prover itself against
+// exact BigInt oracles, driving the theory premises (monad_l's `!qsub`,
+// at_l's `!le`) with random rational grades.
+//   towers:  {…{a}@d_i…} ⊢ {a}@f  derivable ⟺ f ≥ Σd_i (graded-μ + sub)
+//   retime:  a@t1 ⊢ a@t2           derivable ⟺ t1 ≤ t2
+// Every success must FULLY verify (kernel valid, no unverified steps) —
+// pure sequent proofs have no bridge escape hatch.
+const kernel4 = createKernel(calcSeq);
+const fzAtom = Store.put('atom', ['fz']);
+let btrials = 0, bfails = 0;
+const BT = Math.max(60, Math.floor(COUNT / 2));
+for (let i = 0; i < BT; i++) {
+  const n = randInt(4);
+  const ds = Array.from({ length: n }, () => norm(randRat()));
+  const f = norm(randRat());
+  let lhs = fzAtom;
+  for (const d of ds) lhs = Store.put('monad', [putRat(...d), lhs]);
+  const rhs = Store.put('monad', [putRat(...f), fzAtom]);
+  const [sn, sd] = ds.reduce(([an, ad], [bn, bd]) => [an * bd + bn * ad, ad * bd], [0n, 1n]);
+  const oracle = f[0] * sd >= sn * f[1];
+  btrials++;
+  const r = prover.prove(Seq.fromArrays([lhs], [], rhs), { rules: specs, alternatives });
+  if (!!r.success !== oracle) {
+    bfails++; console.error(`MISMATCH: tower [${ds.map(rstr).join(',')}] ⊢ @${rstr(f)}: prover=${!!r.success}, want ${oracle}`);
+  } else if (r.success) {
+    const v = kernel4.verifyTree(r.proofTree);
+    if (!v.valid) { bfails++; console.error(`MISMATCH: tower kernel rejected: ${v.errors.join('; ')}`); }
+    else if (v.unverified) { bfails++; console.error(`MISMATCH: tower proof has unverified steps: ${v.unverified}`); }
+  }
+  btrials++;
+  const t1 = norm(randRat()), t2 = norm(randRat());
+  const rOracle = t1[0] * t2[1] <= t2[0] * t1[1];
+  const rr = prover.prove(
+    Seq.fromArrays([Store.put('at', [fzAtom, putRat(...t1)])], [],
+      Store.put('at', [fzAtom, putRat(...t2)])),
+    { rules: specs, alternatives });
+  if (!!rr.success !== rOracle) {
+    bfails++; console.error(`MISMATCH: retime ${rstr(t1)} → ${rstr(t2)}: prover=${!!rr.success}, want ${rOracle}`);
+  } else if (rr.success) {
+    const v = kernel4.verifyTree(rr.proofTree);
+    if (!v.valid || v.unverified) {
+      bfails++; console.error(`MISMATCH: retime kernel: ${(v.errors || []).join('; ')} ${v.unverified || ''}`);
+    }
+  }
+}
+console.log(`backward prover: ${btrials} trials, ${bfails} mismatches`);
+
+const total = fails + afails + mfails + bfails;
 if (total > 0) { console.error(`FAIL: ${total} total mismatches (seed ${SEED})`); process.exit(1); }
 console.log(`PASS (seed ${SEED})`);

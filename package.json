@@ -11,7 +11,7 @@
     "test:heavy": "node --max-old-space-size=8192 --test --test-concurrency=1 --test-timeout=1800000 tests/engine/rule-analysis.test.js tests/monad.test.js tests/engine/type-check.test.js tests/zk-symbolic-solc.test.js tests/zk-chunked-tree.test.js tests/zk-custom-chip-solc.test.js",
     "test:ill": "node --test --test-concurrency=1 tools/test-ill.js",
     "test:till": "node --test --test-concurrency=1 tools/test-till.js",
-    "test:noffi:till": "CALC_NOFFI=1 node --test --test-concurrency=1 tools/test-till.js",
+    "test:noffi:till": "CALC_NOFFI=1 node --test --test-concurrency=1 tools/test-till.js tests/till-prover.test.js",
     "debug:ill": "bun tools/debug-ill.js",
     "shell:till": "node tools/till-shell.js",
     "test:all": "npm test && npm run test:ill && npm run test:till && npm run test:noffi && npm run test:noffi:till && npm run test:zk && npm run test:heavy",
