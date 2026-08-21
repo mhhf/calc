@@ -25,7 +25,7 @@ import { buildRuleSpecs } from '../lib/prover/rule-interpreter.js';
 import { createProver } from '../lib/prover/focused.js';
 import { createKernel } from '../lib/prover/kernel.js';
 import { ProofTree } from '../lib/prover/pt.js';
-import { loadTillSequent, tillGrades } from '../calculus/till/calculus-config.js';
+import { loadTillSequent, tillTheory } from '../calculus/till/calculus-config.js';
 
 describe('till sequent calculus (graded fragment, Stage 1)', () => {
   let calc, specs, alternatives, prover, kernel, P;
@@ -131,9 +131,9 @@ describe('till sequent calculus (graded fragment, Stage 1)', () => {
     refuted('a |-/ a@3  (no ambient rule in v1: unstamped stays unstamped)', ['a'], 'a@3');
   });
 
-  describe('grade algebra is shared with the scheduler (D13)', () => {
-    it('calc.grades IS tillGrades (one algebra, two faces)', () => {
-      assert.strictEqual(calc.grades, tillGrades);
+  describe('grade semantics is shared with the forward engine (D13/TODO_0273)', () => {
+    it('calc.theory IS tillTheory (one numeric theory, both directions)', () => {
+      assert.strictEqual(calc.theory, tillTheory);
     });
     it('{a} ≡ {a}@0 (unit elision is definitional)', () => {
       assert.strictEqual(P('{a}'), P('{a}@0'));

@@ -62,8 +62,11 @@ including must-fail negatives).
 
 Forward .till rules do arithmetic in-logic: `after (Q + D)` lowers to a
 persistent `!plus Q D Q$0` goal (`convert.js:desugarTimed`) — forward mode,
-complete on both faces. Backward sequent rules compute residuals through the
-grade algebra's `⊖` (partial — out-of-fence ⇒ rule inapplicable; see
-`doc/theory/0022_fenced-grade-algebras.md`). Rule authors who want an
-explicit in-logic residual write `qsub` (forward mode, complete everywhere),
-not solve-mode `plus`.
+complete on both faces. Backward sequent rules state THEORY PREMISES
+(TODO_0273): `monad_l` carries `<- !qsub F E H` — the partial residual `⊖`
+as a derivability statement, discharged by the engine backchainer with the
+FFI face as O(1) fast path (out-of-fence ⇒ underivable ⇒ rule
+inapplicable; see `doc/theory/0022_fenced-grade-algebras.md`). The grade
+algebra's `residual` remains only as the timed scheduler's runtime
+bookkeeping face. Rule authors write `qsub` (forward mode, complete
+everywhere), not solve-mode `plus`.

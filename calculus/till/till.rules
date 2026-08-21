@@ -10,9 +10,10 @@
 %                 never fire on a counted !_k A (ill.rules' index path is
 %                 grade-blind; recorded residue, rides the 0157 merge-back).
 %   counted bang — !_k A ≡ A ⊗ … ⊗ A (k copies), SELL/BLL reading of D4
-%                 parcels: left peel/weaken, right peel/zero. Grade
-%                 side conditions (@grade) evaluate through the SAME
-%                 tillGrades record the timed scheduler reads (D13).
+%                 parcels: left peel/weaken, right peel/zero. Grade side
+%                 conditions are THEORY PREMISES (TODO_0273): `<- !pred …`
+%                 goals derived over the numeric theory (prelude/rat.ill) —
+%                 the SAME theory the forward engine runs.
 %   graded monad — monad_l is the graded bind (delay composition d+e as a
 %                 partial residual ⊖ on the conclusion grade), monad_r the unit at
 %                 grade 0. The graded-μ {{A}@d}@e ⊢ {A}@(d+e) is derivable;
@@ -20,7 +21,7 @@
 %                 (subeffecting) is Stage 2 / THY-B territory, not v1.
 %
 % Ground grades only (matches the possessed-rule fence): a non-numeric
-% grade fails every @grade side condition, so !_W/metavar-graded formulas
+% grade fails every theory premise, so !_W/metavar-graded formulas
 % are simply not provable — an honest v1 fence, not an error.
 % g0-graded formulas have NO rules here: grade 0 is the compile-time label
 % (composed away before runtime, THY_0015) — count zero is binlit 0.
@@ -101,55 +102,56 @@ bang_l2: G ; D, !A |- C
 
 bang_l3: G ; D, !_K A |- C
   <- G ; D, A, !_J A |- C
+  <- !qsub K 1 J
   @pretty "!Lpeel"
-  @invertible false
-  @grade J := K - 1.
+  @invertible false.
 
 bang_l4: G ; D, !_K A |- C
   <- G ; D |- C
+  <- !eq K 0
   @pretty "!L0"
-  @invertible false
-  @grade K = 0.
+  @invertible false.
 
 bang_r2: G ; D, D' |- !_K A
   <- G ; D |- A
   <- G ; D' |- !_J A
+  <- !qsub K 1 J
   @pretty "!Rpeel"
-  @invertible false
-  @grade J := K - 1.
+  @invertible false.
 
 bang_r3: G ; D |- !_K A
+  <- !eq K 0
   @pretty "!R0"
-  @invertible false
-  @grade K = 0.
+  @invertible false.
 
 % ── graded lax monad (THY_0018 §4): bind + unit·sub ──
 % The delay grade is an UPPER BOUND ("achievable within E" — the lax@d
 % judgment); monad_r fuses lax + sub + {}R: what is true now is achievable
 % within ANY bound (subeffecting — Theorem 1 needs it: operational stamps
 % are the LEAST derivable grades). monad_l is {}L: binds compose delays.
-% `-` in a @grade def is the grade algebra's PARTIAL RESIDUAL ⊖ (TODO_0273):
-% H := F - E means the H with E + H = F, DEFINED ONLY inside the fence
-% (F >= E) — otherwise the def fails and the rule is simply inapplicable,
-% so {A}@4 from {{A}@2}@3 stays refuted with no side condition. Guards like
-% `F >= E` / `K >= 1` are DERIVED from ⊖'s partiality, not stated: the
-% algebra exposes no signed subtraction, so no rule — including future ones
-% — can construct a negative grade (validity is closed under the exposed
-% operations; Grade Preservation, THY_0022). On non-numeric grades (ω,
-% metavars) the def fails isStamp — the honest ground fence.
+% `!qsub F E H` is the PARTIAL RESIDUAL ⊖ as a theory premise (TODO_0273):
+% it derives the H with E + H = F, DERIVABLE ONLY inside the fence (F >= E,
+% qsub is checked) — otherwise the goal has no proof and the rule is simply
+% inapplicable, so {A}@4 from {{A}@2}@3 stays refuted with no side
+% condition. Guards like `F >= E` / `K >= 1` are DERIVED from qsub's
+% partiality, not stated: the theory offers no signed subtraction, so no
+% rule — including future ones — can construct a negative grade (validity
+% is closed under the exposed operations; Grade Preservation, THY_0022).
+% On non-numeric grades (ω, metavars) the goal fails structurally — the
+% honest ground fence.
 
 monad_l: G ; D, {A}@E |- {C}@F
   <- G ; D, A |- {C}@H
+  <- !qsub F E H
   @side l
   @pretty "{}L"
-  @invertible false
-  @grade H := F - E.
+  @invertible false.
 
 monad_r: G ; D |- {A}@E
   <- G ; D |- A
+  <- !le 0 E
   @pretty "{}R"
-  @invertible false
-  @grade E >= 0.
+  @invertible false.
 
 % The settle bridge (Stage 2, D6): {S}@T with T read as the observation
 % horizon — settle(Δ, T) then exact rightFocus of S against the residual
@@ -164,10 +166,10 @@ monad_r2: G ; D |- {A}@E
 % A@t ⊢ A@t' for t ≤ t' — delaying availability is free; never early.
 % Zero premises: a template axiom (consumes only its principal).
 at_l: G ; D, A@T1 |- A@T2
+  <- !le T1 T2
   @side l
   @pretty "≤@"
-  @invertible false
-  @grade T1 <= T2.
+  @invertible false.
 
 copy: G, A ; D |- C
   <- G, A ; D, A |- C

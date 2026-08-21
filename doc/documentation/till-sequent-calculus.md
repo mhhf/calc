@@ -2,8 +2,10 @@
 
 Backward provability for till (TODO_0265 Phase 6b). Loaded via
 `loadTillSequent()` (calculus/till/calculus-config.js): `till.calc` +
-`till.rules`, the graded-syntax parser, and **the same `tillGrades` record
-the timed scheduler reads** — one grade algebra, two faces (D13).
+`till.rules`, the graded-syntax parser, and **the theory engine
+(`tillTheory`) over the same numeric theory the forward engine runs**
+(prelude/rat.ill) — backward grade side conditions and forward
+`after (Q+D)` goals share one semantics (D13/TODO_0273).
 Sequent-prover level (`createProver`/`createKernel`); `settle` remains the
 execution semantics and doubles as the proof-search oracle for the timed
 judgment (below). Theory: THY_0018 (the delay-graded lax monad) and
@@ -27,7 +29,7 @@ is `bang_r3` (as `⊢ 1`, lazily — no empty-context requirement, so it threads
 mid-chain); k = n+1 is `bang_r2` (as `tensor_r` splitting one copy off) + IH.
 Both directions of the split/merge iso `!_{a+b} A ⊣⊢ !_a A ⊗ !_b A` follow;
 the provability grid witnesses the instances. ∎(sketch)
-| graded monad `{A}@d` | `monad_l` (bind, `H := F − E` monus), `monad_r` (unit·sub, `E ≥ 0`) | THY_0018 §4: the grade is an upper BOUND — graded-μ `{{A}@d}@e ⊢ {A}@(d+e)` and subeffecting `{A}@d ⊢ {A}@e` (d ≤ e) derivable; the critical path is a strict lower bound (`{A}@4` from `{{A}@2}@3` refuted) |
+| graded monad `{A}@d` | `monad_l` (bind, `!qsub F E H` — the partial residual ⊖), `monad_r` (unit·sub, `!le 0 E`) | THY_0018 §4: the grade is an upper BOUND — graded-μ `{{A}@d}@e ⊢ {A}@(d+e)` and subeffecting `{A}@d ⊢ {A}@e` (d ≤ e) derivable; the critical path is a strict lower bound (`{A}@4` from `{{A}@2}@3` refuted) |
 
 Fences: ground grades only (non-numeric grades fail every side condition —
 `!_W` goals are unprovable, not errors); surface `!_0` is the g0 **label**
@@ -40,7 +42,7 @@ probabilistic judgment — THY-A).
 Context entries may be stamped atoms `at(A,t)` — content-addressed
 (formula, stamp) pairs (D5). Two additions:
 
-- **Retiming** `at_l: G ; D, A@T1 ⊢ A@T2` (guard `T1 <= T2`) — a
+- **Retiming** `at_l: G ; D, A@T1 ⊢ A@T2` (theory premise `!le T1 T2`) — a
   zero-premise template axiom: delaying availability is free, never early
   (THY_0018 §5). No ambient rule: an unstamped context atom does not
   retime (`a ⊬ a@3`); the bridge canonicalizes `A@0 ≡ A` at the state
@@ -71,20 +73,26 @@ exponential case is ω-shaped — recorded residue).
 
 ## Template rules (.rules DSL extension)
 
-A rule is a **template rule** iff it has `@grade` lines, `@template true`,
+A rule is a **template rule** iff it has theory premises, `@template true`,
 or a compound premise formula; otherwise it compiles to the index-based
-descriptor exactly as before (zero-delta for ill.rules). Template apply:
+descriptor exactly as before (zero-delta for ill.rules). A **theory
+premise** (TODO_0273) is a premise line without a turnstile starting with
+`!` — `<- !qsub F E H` — read as a goal over the calculus's theory engine
+(`calculus.theory`, for till the numeric theory prelude/rat.ill with the
+FFI face as O(1) fast path). Variables not bound by the conclusion are
+OUTPUT vars, bound by the derivation and visible to later goals and the
+sequent premises. Template apply:
 
 1. unify the principal pattern against the focused formula (pattern
    metavars bind; sequent content is rigid),
 2. for left rules, unify the conclusion-succedent pattern (`@side l`
    forces left-principal detection when the succedent is compound),
-3. evaluate `@grade` steps in order through `calculus.grades` —
-   `X := A ± B` defs (`-` is a monus: negative ⇒ rule inapplicable) and
-   `A ⋈ B` guards (⋈ ∈ =, <, >, <=, >=),
+3. discharge theory premises in order — underivable ⇒ rule inapplicable
+   (`!qsub F E H` binds H to F ⊖ E and has no proof when F < E: the fence
+   is derivational, THY_0022; non-numeric grades fail structurally),
 4. instantiate premise patterns by substitution.
 
-Zero-premise template rules still run the full check, so grade guards are
+Zero-premise template rules still run the full check, so theory goals are
 enforced in search **and** kernel verification (`verifyStep` recomputes
 premises via the same `makePremises`; for left rules it tries every
 context formula with the principal's tag). Variable boundness is validated

@@ -224,12 +224,14 @@ instance — needs the delay bookkeeping to never fabricate a sequent. The
 critical point is `{}L`'s residual `H := F ⊖ E`: a step that composed delays
 into a NEGATIVE residual grade would not correspond to any `@fire` instance.
 That non-negativity is not a side condition at all but a property of the
-operation: the grade algebra exposes no signed subtraction — `⊖` is the partial
-monoid residual (undefined for `F < E` ⇒ rule inapplicable), so the illegal
-step is unconstructible by ANY rule, present or future (Grade Preservation,
-THY_0022; historically this was an explicit `@grade F >= E` guard over a
-signed `effect.sub` — TODO_0272 M1 — which TODO_0273's algebra cut deleted in
-favour of the stronger intrinsic form). With non-negativity intrinsic, the
+operation: the theory exposes no signed subtraction — `{}L`'s premise
+`!qsub F E H` is the partial monoid residual as a derivability statement
+(no proof for `F < E` ⇒ rule inapplicable), so the illegal step is
+unconstructible by ANY rule, present or future (Grade Preservation,
+THY_0022; historically this was an explicit `F >= E` guard over a signed
+`effect.sub` — TODO_0272 M1 — which TODO_0273 deleted in favour of the
+stronger intrinsic form, first as the algebra's partial `⊖`, then as the
+in-logic theory premise). With non-negativity intrinsic, the
 settle→derivability map is compositional: `settle`'s activation recurrence
 `u = max(inputs) + d` is exactly the `@fire` conclusion (a = max, ⊳ = +), and
 every step's residual grade is defined-hence-valid by construction, so the
