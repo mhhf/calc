@@ -139,8 +139,11 @@ trace at horizon T corresponds to a backward derivation whose residual
 accounting reproduces the stamp arithmetic, and conversely (THY_0018 Theorem 1
 form). Proving this generalizes CLF's adequacy to the quantitative temporal
 setting; no prior work bridges the two poles (timed MSR has no backward
-calculus, IMTL no operational semantics, CLF no grades). Deferred — tracked
-with THY_0018 §8's mechanisation boundary.
+calculus, IMTL no operational semantics, CLF no grades). Status: the
+stamped/bridge direction is THY_0018 Theorem 1 (proved); the PURE-calculus
+side is THY_0023 Theorems 10–11 (work adequacy — the residuated backward
+fragment computes total work Σ, and max-plus makespan is exactly the stamp
+coeffect's contribution). Mechanisation deferred (TODO_0270).
 
 ## 7. Deliberately not adopted
 

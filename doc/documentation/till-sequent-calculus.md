@@ -18,18 +18,22 @@ THY_0019 (timed matching / settle).
 | multiplicatives, `with` | ill.rules verbatim | shared core |
 | ω bang `!A` | `bang_r/l/l2` = promotion/dereliction/absorption, **template-matched** | the ω grade is part of the pattern — never fires on `!_k` |
 | counted bang `!_k A` | `bang_l3/l4` (peel/weaken), `bang_r2/r3` (peel/zero) | `!_k A ≡ A ⊗ … ⊗ A` (k parcels, SELL/BLL) |
-
-**Lemma (counted-bang completeness).** The four rules are complete for
-`!_k A ≡ A^⊗k`: every sequent provable when `!_k A` is read as `A ⊗ … ⊗ A`
-is provable with the four rules, and conversely. *Proof sketch,* by induction
-on k. Left: k = 0 is `bang_l4` (weaken away = eliminating an empty tensor);
-k = n+1 peels one copy by `bang_l3` and applies the IH to `!_n A` — the peeled
-sequence reproduces exactly the n-fold `tensor_l` decomposition. Right: k = 0
-is `bang_r3` (as `⊢ 1`, lazily — no empty-context requirement, so it threads
-mid-chain); k = n+1 is `bang_r2` (as `tensor_r` splitting one copy off) + IH.
-Both directions of the split/merge iso `!_{a+b} A ⊣⊢ !_a A ⊗ !_b A` follow;
-the provability grid witnesses the instances. ∎(sketch)
 | graded monad `{A}@d` | `monad_l` (bind, `!qsub F E H` — the partial residual ⊖), `monad_r` (unit·sub, `!le 0 E`) | THY_0018 §4: the grade is an upper BOUND — graded-μ `{{A}@d}@e ⊢ {A}@(d+e)` and subeffecting `{A}@d ⊢ {A}@e` (d ≤ e) derivable; the critical path is a strict lower bound (`{A}@4` from `{{A}@2}@3` refuted) |
+
+**Counted-bang completeness** (THY_0023 Theorem 6, full induction on k):
+`!_k A ⊣⊢ A^⊗k` derivable with the four rules for every ground k ∈ ℕ; with
+cut admissibility (THY_0023 Theorem 8) a sequent is provable in the counted
+reading iff its expansion is provable in the bang-free fragment. `bang_r3`
+closes with no empty-context requirement, which is what lets rebuilds thread
+mid-chain. The split/merge iso `!_{a+b} A ⊣⊢ !_a A ⊗ !_b A` follows; the
+provability grid witnesses the instances.
+
+**Metatheory** (THY_0023): cut admissibility (linear/lax/persistent cuts),
+identity expansion (id admissible at ground-grade compound formulas from
+atomic axioms), and WORK ADEQUACY — the pure calculus with rules encoded as
+linear/counted hypotheses derives `{⊗R}@W` iff W bounds the execution's
+TOTAL WORK (Σ of fired delays); makespan (max-plus) is contributed only by
+the settle bridge (`tests/till-pure-adequacy.test.js` pins both columns).
 
 Fences: ground grades only (non-numeric grades fail every side condition —
 `!_W` goals are unprovable, not errors); surface `!_0` is the g0 **label**
