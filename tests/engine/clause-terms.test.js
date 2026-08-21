@@ -15,7 +15,7 @@ import backward from '../../lib/engine/backchain.js';
 import { proveWithFFI } from '../../lib/engine/opt/ffi.js';
 import { gradeW } from '../../lib/engine/grades.js';
 import forward from '../../lib/engine/forward.js';
-import { guidedTerm } from '../../lib/prover/guided-term.js';
+import { guidedTerm } from '../../lib/prover/ill/guided-term.js';
 import { makeILLBackchainOpts } from '../../lib/engine/ill/backchain-ill.js';
 import { monadUnit as U } from '../../lib/engine/grades.js';
 describe('3b.5: Clause Proof Terms', () => {

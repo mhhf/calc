@@ -145,7 +145,7 @@ Layer 2 adequacy is separate — the mapping could be many-to-one.
 | File | Purpose |
 |---|---|
 | `lib/prover/generic-term.js` | `extractTerm` — backward proof tree → generic term |
-| `lib/prover/guided-term.js` | `guidedTerm` — forward trace → complete ILL term |
+| `lib/prover/ill/guided-term.js` | `guidedTerm` — forward trace → complete ILL term |
 | `lib/prover/check-term.js` | Type checker (trusted kernel extension) |
 | `lib/prover/bridge.js` | `monadicTerm`, `rightFocusTerm` — monadic term assembly |
 

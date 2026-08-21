@@ -16,7 +16,7 @@ import mde from '../lib/engine/index.js';
 import Store from '../lib/kernel/store.js';
 import Seq from '../lib/kernel/sequent.js';
 import calculus from '../lib/calculus/index.js';
-import { guidedTerm } from '../lib/prover/guided-term.js';
+import { guidedTerm } from '../lib/prover/ill/guided-term.js';
 import { rightFocusTerm } from '../lib/prover/bridge.js';
 import { generateWitness } from '../lib/zk/witness.js';
 import { monadUnit as U } from '../lib/engine/grades.js';

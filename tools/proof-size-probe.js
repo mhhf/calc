@@ -10,7 +10,7 @@
 import fs from 'fs';
 import path from 'path';
 import zlib from 'zlib';
-import { proveSource } from '../lib/prover/prove-source.js';
+import { proveSource } from '../lib/prover/ill/prove-source.js';
 const FIXTURE_DIR = path.resolve(import.meta.dirname, '../tests/fixtures/proof-trees');
 const FIXTURE_LABELS = new Set(['tensor32', 'tensor64', 'tensor128', 'chain32']);
 

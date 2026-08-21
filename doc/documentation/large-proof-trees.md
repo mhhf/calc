@@ -189,7 +189,7 @@ without blowing past a 2 s first-paint budget.** Met on all current
 fixtures — tensor128 renders 7 visible nodes at fold-depth 3 in under
 100 ms first paint, 2.4 KB over the wire with `lazy` on.
 
-1. **`#import` wiring + backchain mode** — `lib/prover/prove-source.js`
+1. **`#import` wiring + backchain mode** — `lib/prover/ill/prove-source.js`
    parses `#import <path>` headers, loads clause tables through
    `convert.buildImportTree`, and routes `provePersistent` via
    `lib/engine/backchain.js`. The cache key incorporates a SHA-256

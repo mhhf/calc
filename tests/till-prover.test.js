@@ -18,7 +18,11 @@
 
 import { describe, it, before } from 'node:test';
 import assert from 'node:assert';
+import fs from 'fs';
+import os from 'os';
+import path from 'path';
 import Store from '../lib/kernel/store.js';
+import calculus from '../lib/calculus/index.js';
 import { putRat } from '../lib/kernel/rat-term.js';
 import Seq from '../lib/kernel/sequent.js';
 import { buildRuleSpecs } from '../lib/prover/rule-interpreter.js';
@@ -140,6 +144,68 @@ describe('till sequent calculus (graded fragment, Stage 1)', () => {
     });
   });
 
+  describe('tillTheory.prove contract (TODO_0274: reason taxonomy + output binding)', () => {
+    // The gate at calculus-config: only reason === 'conversion_failed' is
+    // ADVISORY (falls through to clause resolution); every other FFI
+    // failure is DECISIVE. These pins catch a future handler that adds a
+    // new advisory reason — which would otherwise silently cause
+    // incompleteness. Under CALC_NOFFI=1 the same answers must come from
+    // the clause face alone (FFI principle).
+    it('le success returns the empty theta', () => {
+      assert.deepStrictEqual(
+        tillTheory.prove(Store.put('le', [putRat(2n, 1n), putRat(5n, 1n)])), []);
+    });
+    it('le false comparison is decisive: null', () => {
+      assert.strictEqual(
+        tillTheory.prove(Store.put('le', [putRat(5n, 1n), putRat(2n, 1n)])), null);
+    });
+    it('qsub binds its output var to the canonical residual', () => {
+      const H = Store.put('metavar', ['TH_qsub']);
+      const theta = tillTheory.prove(Store.put('qsub', [putRat(5n, 1n), putRat(2n, 1n), H]));
+      assert.ok(theta, 'qsub 5 2 H derivable');
+      const b = theta.find(([v]) => v === H);
+      assert.ok(b, 'binding for H present');
+      assert.strictEqual(b[1], putRat(3n, 1n));
+    });
+    it('qsub out of fence is underivable (negative residual refused)', () => {
+      const H = Store.put('metavar', ['TH_qsub2']);
+      assert.strictEqual(
+        tillTheory.prove(Store.put('qsub', [putRat(2n, 1n), putRat(5n, 1n), H])), null);
+    });
+    it('non-numeric grade: conversion_failed → clause fallback → null', () => {
+      assert.strictEqual(
+        tillTheory.prove(Store.put('le', [Store.put('atom', ['gw']), putRat(5n, 1n)])), null);
+    });
+    it('has(): typo fence — unknown predicates rejected, real ones known', () => {
+      assert.ok(!tillTheory.has('qsib'));
+      for (const p of ['qsub', 'le', 'eq', 'plus']) assert.ok(tillTheory.has(p), p);
+    });
+    it('a typo’d theory premise fails the calculus load loudly', () => {
+      // the real loader path: a rules file with `<- !qsib F E H` (typo for
+      // qsub) must be rejected at load — silent never-applicable rules are
+      // the failure mode the closed-world checker exists to kill
+      const src = '@formulas A, B, C\n\n' +
+        'bad: G ; D, {A}@E |- {C}@F\n' +
+        '  <- G ; D, A |- {C}@H\n' +
+        '  <- !qsib F E H\n' +
+        '  @side l.\n';
+      const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'till-typo-'));
+      const file = path.join(dir, 'typo.rules');
+      fs.writeFileSync(file, src);
+      try {
+        assert.throws(
+          () => calculus.load(
+            path.join(import.meta.dirname, '../calculus/till/till.calc'), file, {
+              parser: { multiCharFreevars: true, numbers: true },
+              theory: tillTheory,
+            }),
+          /unknown theory predicate 'qsib'/);
+      } finally {
+        fs.rmSync(dir, { recursive: true, force: true });
+      }
+    });
+  });
+
   describe('kernel guards template rules (soundness of verification)', () => {
     it('rejects bang_r3 claiming |- !_5 a with zero premises', () => {
       const bad = new ProofTree({
@@ -184,6 +250,20 @@ describe('till sequent calculus (graded fragment, Stage 1)', () => {
       const bad = new ProofTree({
         conclusion: Seq.fromArrays([P('a'), P('b')], [], P('a')),
         rule: 'id', proven: true, premises: [],
+      });
+      assert.ok(!kernel.verifyTree(bad).valid);
+    });
+
+    it('rejects a forged monad_l whose premise skips the compound groundness fence', () => {
+      // sanity companion to the wrong-arithmetic forgery above: same shape,
+      // grade far off — the theory premise `!qsub F E H` must recompute
+      const child = new ProofTree({
+        conclusion: Seq.fromArrays([P('a')], [], P('{a}@9')),
+        rule: 'id', proven: true, premises: [],
+      });
+      const bad = new ProofTree({
+        conclusion: Seq.fromArrays([P('{a}@2')], [], P('{a}@4')),
+        rule: 'monad_l', proven: true, premises: [child],
       });
       assert.ok(!kernel.verifyTree(bad).valid);
     });

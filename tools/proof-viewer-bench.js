@@ -16,7 +16,7 @@
 import fs from 'fs';
 import path from 'path';
 import zlib from 'zlib';
-import { proveSource } from '../lib/prover/prove-source.js';
+import { proveSource } from '../lib/prover/ill/prove-source.js';
 const CACHE = path.resolve(import.meta.dirname, '..', 'out', 'doc-cache-bench');
 
 const FIXTURES = [
