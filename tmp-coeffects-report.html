@@ -1,0 +1,964 @@
+<title>Structural Coeffects: Per-Variable Resource Tracking</title>
+<style>
+  /* ── Token system ── */
+  :root {
+    --bg:        #F4F5F8;
+    --bg-alt:    #ECEDF2;
+    --bg-code:   #E6E8EF;
+    --ink:       #131620;
+    --ink-mid:   #454B60;
+    --ink-faint: #7C82A0;
+    --rule:      #CDD0DC;
+    --accent:    #2653C7;
+    --accent-bg: #EEF2FC;
+    --str:       #0F7150;   /* structural = per-variable = green */
+    --str-bg:    #E8F5F0;
+    --flat:      #7033B5;   /* flat = whole-context = violet */
+    --flat-bg:   #F2ECF9;
+    --warn:      #B45309;
+    --warn-bg:   #FEF3C7;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg:        #141519;
+      --bg-alt:    #1C1E25;
+      --bg-code:   #21232D;
+      --ink:       #E8EAF0;
+      --ink-mid:   #A4A8BF;
+      --ink-faint: #6A6F8A;
+      --rule:      #2E3145;
+      --accent:    #7FA4F5;
+      --accent-bg: #1A2240;
+      --str:       #3CCB8E;
+      --str-bg:    #0C2820;
+      --flat:      #B585F0;
+      --flat-bg:   #1F1535;
+      --warn:      #FBBF24;
+      --warn-bg:   #292010;
+    }
+  }
+  :root[data-theme="light"] {
+    --bg:        #F4F5F8;
+    --bg-alt:    #ECEDF2;
+    --bg-code:   #E6E8EF;
+    --ink:       #131620;
+    --ink-mid:   #454B60;
+    --ink-faint: #7C82A0;
+    --rule:      #CDD0DC;
+    --accent:    #2653C7;
+    --accent-bg: #EEF2FC;
+    --str:       #0F7150;
+    --str-bg:    #E8F5F0;
+    --flat:      #7033B5;
+    --flat-bg:   #F2ECF9;
+    --warn:      #B45309;
+    --warn-bg:   #FEF3C7;
+  }
+  :root[data-theme="dark"] {
+    --bg:        #141519;
+    --bg-alt:    #1C1E25;
+    --bg-code:   #21232D;
+    --ink:       #E8EAF0;
+    --ink-mid:   #A4A8BF;
+    --ink-faint: #6A6F8A;
+    --rule:      #2E3145;
+    --accent:    #7FA4F5;
+    --accent-bg: #1A2240;
+    --str:       #3CCB8E;
+    --str-bg:    #0C2820;
+    --flat:      #B585F0;
+    --flat-bg:   #1F1535;
+    --warn:      #FBBF24;
+    --warn-bg:   #292010;
+  }
+
+  /* ── Reset + base ── */
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  html { font-size: 16px; -webkit-text-size-adjust: 100%; }
+
+  body {
+    background: var(--bg);
+    color: var(--ink);
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+    font-size: 1rem;
+    line-height: 1.7;
+    max-width: 780px;
+    margin: 0 auto;
+    padding: 3rem 1.5rem 5rem;
+  }
+
+  /* ── Typography scale ── */
+  h1, h2, h3, h4 {
+    font-family: Georgia, 'Times New Roman', Times, serif;
+    text-wrap: balance;
+    line-height: 1.25;
+    color: var(--ink);
+  }
+  h1 { font-size: 2rem; font-weight: 700; letter-spacing: -0.02em; margin-bottom: 0.25rem; }
+  h2 { font-size: 1.25rem; font-weight: 700; margin-top: 3rem; margin-bottom: 0.75rem; }
+  h3 { font-size: 1rem; font-weight: 600; font-family: inherit; text-transform: uppercase;
+       letter-spacing: 0.08em; color: var(--ink-mid); margin-top: 2rem; margin-bottom: 0.5rem; }
+  h4 { font-size: 1rem; font-weight: 700; font-style: italic; margin-top: 1.25rem; margin-bottom: 0.35rem; }
+
+  p { margin-bottom: 0.9rem; max-width: 65ch; }
+  p:last-child { margin-bottom: 0; }
+
+  a { color: var(--accent); text-decoration: underline; text-underline-offset: 3px; }
+  a:hover { opacity: 0.75; }
+
+  /* ── Header ── */
+  .doc-header {
+    border-bottom: 1px solid var(--rule);
+    padding-bottom: 1.5rem;
+    margin-bottom: 2rem;
+  }
+  .doc-eyebrow {
+    font-size: 0.72rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    color: var(--ink-faint);
+    margin-bottom: 0.6rem;
+  }
+  .doc-meta {
+    font-size: 0.85rem;
+    color: var(--ink-mid);
+    margin-top: 0.5rem;
+    line-height: 1.5;
+  }
+
+  /* ── Section headers with rule ── */
+  .section-head {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    margin-top: 3rem;
+    margin-bottom: 1rem;
+    border-top: 1.5px solid var(--rule);
+    padding-top: 1rem;
+  }
+  .section-label {
+    font-size: 0.68rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.14em;
+    padding: 0.2em 0.65em;
+    border-radius: 3px;
+    flex-shrink: 0;
+  }
+  .label-a { background: var(--accent-bg); color: var(--accent); }
+  .label-b { background: var(--str-bg); color: var(--str); }
+  .label-c { background: var(--flat-bg); color: var(--flat); }
+  .label-src { background: var(--bg-alt); color: var(--ink-mid); border: 1px solid var(--rule); }
+
+  .section-title {
+    font-family: Georgia, 'Times New Roman', Times, serif;
+    font-size: 1.2rem;
+    font-weight: 700;
+  }
+
+  /* ── Tags ── */
+  .tag {
+    display: inline-block;
+    font-size: 0.65rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    padding: 0.15em 0.55em;
+    border-radius: 3px;
+    vertical-align: middle;
+    margin-left: 0.4em;
+  }
+  .tag-str { background: var(--str-bg); color: var(--str); }
+  .tag-flat { background: var(--flat-bg); color: var(--flat); }
+
+  /* ── Formal notation blocks ── */
+  .notation {
+    background: var(--bg-code);
+    border-left: 3px solid var(--accent);
+    border-radius: 0 4px 4px 0;
+    padding: 0.9rem 1.1rem;
+    margin: 1rem 0;
+    overflow-x: auto;
+    font-family: 'Courier New', Courier, monospace;
+    font-size: 0.88rem;
+    line-height: 1.65;
+    color: var(--ink);
+  }
+  .notation.str { border-left-color: var(--str); background: var(--str-bg); }
+  .notation.flat { border-left-color: var(--flat); background: var(--flat-bg); }
+  .notation .comment {
+    color: var(--ink-faint);
+    font-style: italic;
+  }
+
+  /* ── Inference rules (sequent style) ── */
+  .rule-block {
+    background: var(--bg-alt);
+    border: 1px solid var(--rule);
+    border-radius: 6px;
+    padding: 1.25rem 1.5rem;
+    margin: 1rem 0;
+    overflow-x: auto;
+  }
+  .rule-block .rule-name {
+    font-size: 0.72rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--ink-faint);
+    margin-bottom: 0.75rem;
+  }
+  .infrule {
+    display: inline-table;
+    font-family: 'Courier New', Courier, monospace;
+    font-size: 0.87rem;
+    border-collapse: collapse;
+    margin: 0.25rem 0.5rem 0.25rem 0;
+    vertical-align: middle;
+  }
+  .infrule .premisses {
+    display: block;
+    border-bottom: 1.5px solid var(--ink-mid);
+    padding: 0 1.25rem 0.35rem;
+    text-align: center;
+    white-space: nowrap;
+  }
+  .infrule .conclusion {
+    display: block;
+    padding: 0.35rem 1.25rem 0;
+    text-align: center;
+    white-space: nowrap;
+  }
+  .infrule .rule-label {
+    font-size: 0.72rem;
+    color: var(--ink-faint);
+    font-family: Georgia, serif;
+    font-style: italic;
+    vertical-align: super;
+    margin-left: 0.5rem;
+  }
+  .rules-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1.25rem;
+    align-items: flex-start;
+  }
+
+  /* ── Comparison table: flat vs structural ── */
+  .compare-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+    margin: 1rem 0;
+  }
+  @media (max-width: 600px) {
+    .compare-grid { grid-template-columns: 1fr; }
+  }
+  .compare-card {
+    border-radius: 6px;
+    padding: 1rem 1.1rem;
+    border: 1px solid var(--rule);
+  }
+  .compare-card.str { background: var(--str-bg); border-color: var(--str); }
+  .compare-card.flat { background: var(--flat-bg); border-color: var(--flat); }
+  .compare-card .card-head {
+    font-size: 0.7rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    margin-bottom: 0.5rem;
+  }
+  .compare-card.str .card-head { color: var(--str); }
+  .compare-card.flat .card-head { color: var(--flat); }
+  .compare-card code {
+    display: block;
+    font-family: 'Courier New', Courier, monospace;
+    font-size: 0.85rem;
+    line-height: 1.6;
+    word-break: break-all;
+  }
+
+  /* ── Notation summary table ── */
+  .ntable-wrap { overflow-x: auto; margin: 1rem 0; }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.85rem;
+  }
+  th {
+    text-align: left;
+    font-size: 0.68rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--ink-mid);
+    border-bottom: 2px solid var(--rule);
+    padding: 0.4rem 0.6rem;
+  }
+  td {
+    border-bottom: 1px solid var(--rule);
+    padding: 0.55rem 0.6rem;
+    vertical-align: top;
+    line-height: 1.5;
+  }
+  td code {
+    font-family: 'Courier New', Courier, monospace;
+    font-size: 0.83rem;
+    background: var(--bg-code);
+    padding: 0.1em 0.3em;
+    border-radius: 3px;
+  }
+  tbody tr:last-child td { border-bottom: none; }
+
+  /* ── Source cards ── */
+  .sources-list { display: flex; flex-direction: column; gap: 1rem; margin-top: 1rem; }
+  .source-card {
+    background: var(--bg-alt);
+    border: 1px solid var(--rule);
+    border-radius: 6px;
+    padding: 1rem 1.1rem;
+  }
+  .source-card .src-title {
+    font-family: Georgia, serif;
+    font-size: 0.95rem;
+    font-weight: 700;
+    margin-bottom: 0.15rem;
+  }
+  .source-card .src-authors {
+    font-size: 0.8rem;
+    color: var(--ink-mid);
+    margin-bottom: 0.35rem;
+  }
+  .source-card .src-venue {
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--ink-faint);
+    margin-bottom: 0.5rem;
+  }
+  .source-card .src-claim {
+    font-size: 0.87rem;
+    line-height: 1.6;
+    margin-bottom: 0.4rem;
+  }
+  .source-card .src-notation {
+    font-family: 'Courier New', Courier, monospace;
+    font-size: 0.82rem;
+    background: var(--bg-code);
+    padding: 0.5rem 0.75rem;
+    border-radius: 4px;
+    margin: 0.35rem 0;
+    line-height: 1.6;
+    overflow-x: auto;
+  }
+  .src-tags { display: flex; gap: 0.4rem; margin-top: 0.45rem; flex-wrap: wrap; align-items: center; }
+  .src-link {
+    font-size: 0.78rem;
+    color: var(--accent);
+    text-decoration: none;
+    border: 1px solid currentColor;
+    padding: 0.15em 0.55em;
+    border-radius: 3px;
+    opacity: 0.8;
+    transition: opacity 0.15s;
+  }
+  .src-link:hover { opacity: 1; }
+
+  /* ── Inline code ── */
+  code {
+    font-family: 'Courier New', Courier, monospace;
+    font-size: 0.88em;
+    background: var(--bg-code);
+    padding: 0.1em 0.3em;
+    border-radius: 3px;
+  }
+
+  /* ── Callout ── */
+  .callout {
+    background: var(--accent-bg);
+    border-left: 3px solid var(--accent);
+    border-radius: 0 6px 6px 0;
+    padding: 0.8rem 1rem;
+    margin: 1.25rem 0;
+    font-size: 0.9rem;
+    line-height: 1.6;
+  }
+  .callout.warn { background: var(--warn-bg); border-left-color: var(--warn); }
+
+  /* ── Motion ── */
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { transition: none !important; }
+  }
+</style>
+
+<article>
+
+  <!-- ── Document header ── -->
+  <header class="doc-header">
+    <div class="doc-eyebrow">Research Sweep · Type Theory</div>
+    <h1>Structural Coeffects:<br>Per-Variable Resource Tracking</h1>
+    <p class="doc-meta">
+      Queries: "coeffects per-variable resource tracking structural" · "linear types coeffects structural per-variable"<br>
+      Covers: Petricek–Orchard–Mycroft 2013/2014, Brunel–Gaboardi–Mazza–Zdancewic 2014, Gaboardi et al. 2016, McBride 2016, QTT, Granule
+    </p>
+  </header>
+
+
+  <!-- ═══════════════════════════════════════════════════════
+       SECTION A: Concrete examples of structural coeffect systems
+  ═══════════════════════════════════════════════════════ -->
+
+  <div class="section-head">
+    <span class="section-label label-a">A</span>
+    <span class="section-title">Concrete Examples of Structural Coeffect Systems</span>
+  </div>
+
+  <p>
+    A <em>structural</em> coeffect system annotates each variable in the typing context with its own usage descriptor, drawn from a semiring (or similar algebraic structure). The following are the canonical instantiations, all confirmed in the literature.
+  </p>
+
+  <h4>Linear Types <span class="tag tag-str">Structural</span></h4>
+  <p>
+    Each variable is annotated with a multiplicity from the semiring <code>{0, 1, ω}</code> where 0 = erased/irrelevant, 1 = used exactly once, ω = unrestricted. The context grammar changes: instead of bare <code>x : A</code> one writes <code>x :₁ A</code> (linear) or <code>x :ω A</code> (unrestricted). This is the simplest non-trivial structural instance.
+  </p>
+  <div class="notation str">
+    Semiring: ({0, 1, ω}, +, ·, 0, 1)
+    where  1 + 1 = ω,  ω + r = ω,  0 · r = 0,  1 · 1 = 1,  ω · r = ω (r ≠ 0)
+
+    Context:  x :₁ A, y :ω B  ⊢  e : C
+              ^^^^^^^  ^^^^^^^
+              linear   unrestricted
+    <span class="comment">-- x must be used exactly once; y may be used any number of times</span>
+  </div>
+  <p>
+    This is explicitly described as a structural coeffect instance in Petricek–Orchard–Mycroft (ICFP 2014), and in the graded-base calculi of Brunel et al. (ESOP 2014) and Atkey's QTT (LICS 2018).
+  </p>
+
+  <h4>Graded/Bounded Linear Types <span class="tag tag-str">Structural</span></h4>
+  <p>
+    Generalization: the multiplicity is an element of an arbitrary semiring <em>R</em>. For natural numbers, <code>x :ₙ A</code> means "x is used exactly <em>n</em> times." Used in Bounded Linear Logic (Girard–Scedrov–Scott 1992) and central to the Granule language.
+  </p>
+  <div class="notation str">
+    Granule example — coeffect polymorphism:
+
+    twice : (a [c] -> b) [2] -> a [2*c] -> (b, b)
+            ^^^^^^^^^^^^^^^^^^     ^^^^
+            function used twice    argument grade: 2 × c (semiring mult)
+
+    dup : forall {a : Type} . a [2] -> (a, a)
+          <span class="comment">-- parameter type a has grade 2 (used twice)</span>
+  </div>
+  <p>
+    The Granule language (Orchard et al., ICFP 2019) is the primary working implementation. Functions are linear by default; grades appear explicitly in square brackets. Semiring operations appear directly in grade expressions.
+  </p>
+
+  <h4>Sensitivity / Privacy Analysis (Fuzz / DFuzz) <span class="tag tag-str">Structural</span></h4>
+  <p>
+    Each input variable carries a sensitivity coefficient (a non-negative real or ∞). <code>f : (x :_{2.0} ℝ) → ℝ</code> means the output is at most 2.0 × (change in x). The semiring is (ℝ≥₀ ∪ {∞}, max, +, 0, 1). Used in Reed–Pierce Fuzz (POPL 2010) and Gaboardi et al. DFuzz. This is a structural coeffect system tracking differential privacy sensitivity per-variable.
+  </p>
+
+  <h4>Dataflow / Caching Analysis <span class="tag tag-str">Structural</span></h4>
+  <p>
+    Track how many past time steps each variable needs. Context: <code>x :_{3} A, y :_{1} B ⊢ e : C</code> means the computation needs the last 3 values of x but only the current value of y. Petricek–Orchard–Mycroft (ICALP 2013) use this as a running example to contrast structural vs flat systems: the flat version would record only the maximum requirement across all variables, losing per-variable precision.
+  </p>
+  <div class="notation str">
+    Structural dataflow:   x:₃A, y:₁B ⊢ (prev(x) + x + prev(prev(x))) * y : A
+    Flat dataflow:         x:A, y:B @³ ⊢ ... : A
+                                    ^^
+                              one scalar for whole context (loses that y needs only 1)
+  </div>
+
+  <h4>Liveness Analysis <span class="tag tag-str">Structural</span></h4>
+  <p>
+    Each variable is annotated 0 (dead, not needed) or 1 (live, needed). Structural liveness tracks exactly which variables are live; flat liveness would only track whether <em>any</em> variable is live. Coeffect algebra: ({0,1}, max, min, 0, 1) — a Boolean semiring.
+  </p>
+
+
+  <!-- ═══════════════════════════════════════════════════════
+       SECTION B: Structural vs Flat — the formal distinction
+  ═══════════════════════════════════════════════════════ -->
+
+  <div class="section-head">
+    <span class="section-label label-b">B</span>
+    <span class="section-title">Structural vs. Flat: The Formal Distinction</span>
+  </div>
+
+  <p>
+    The distinction originates in Petricek–Orchard–Mycroft 2013 (ICALP) and is fully formalized in their 2014 ICFP paper. The key variable is the <em>shape</em> of the coeffect annotation vector.
+  </p>
+
+  <div class="compare-grid">
+    <div class="compare-card flat">
+      <div class="card-head">Flat (Whole-Context) <span class="tag tag-flat">Flat</span></div>
+      <code>
+        x₁:τ₁, …, xₙ:τₙ  @ʳ  ⊢  e : τ
+        <br><br>
+        One scalar r annotates<br>
+        the entire context.<br><br>
+        r ∈ R (a semilattice).<br><br>
+        At Abs: the bound variable's<br>
+        requirement is merged (∧) into<br>
+        the whole-context annotation.
+      </code>
+    </div>
+    <div class="compare-card str">
+      <div class="card-head">Structural (Per-Variable) <span class="tag tag-str">Structural</span></div>
+      <code>
+        x₁:τ₁, …, xₙ:τₙ  @⟨r₁,…,rₙ⟩  ⊢  e : τ
+        <br><br>
+        A vector of annotations,<br>
+        one per variable.<br><br>
+        rᵢ ∈ R (a semiring).<br><br>
+        At Abs: bound variable's rᵢ<br>
+        peeled off and placed in<br>
+        the function type annotation.
+      </code>
+    </div>
+  </div>
+
+  <div class="callout">
+    <strong>Core quote (Petricek, tomasp.net/coeffects, 2014):</strong> "The previously introduced notion of coeffects captured whole-context properties, but it failed to capture fine-grained per-variable properties. Context can capture additional properties of variables — <em>usage patterns in linear logics; caching requirements in dataflow languages</em> — as well as additional resources or properties of the execution environment."
+  </div>
+
+  <h3>Formal Shape Parameterization</h3>
+  <p>
+    The unified framework introduces a <em>coeffect shape</em> parameter <code>S</code> that determines the structure of the annotation vector:
+  </p>
+  <div class="notation">
+    Shape S = scalar   → flat system:   Γ @ₛ ⊢ e : τ      (one element of S)
+    Shape S = vector   → structural:    Γ @⟨s⟩ ⊢ e : τ    (|Γ| elements of S)
+
+    Flat instance:       S = semilattice (R, ⊔, ⊥)
+    Structural instance: S = semiring    (R, +, ·, 0, 1)
+  </div>
+  <p>
+    The semiring structure is essential to structural systems: multiplication (<code>·</code>) scales the entire context when checking the body of an abstraction, while addition (<code>+</code>) merges contexts at application (cf. the linear logic ⊗/⅋ split). Flat systems need only a semilattice (join for combining, no multiplication).
+  </p>
+
+  <h3>Typing Rules Showing the Difference</h3>
+
+  <div class="rule-block">
+    <div class="rule-name">Variable rule — structural system</div>
+    <div class="rules-row">
+      <div class="infrule">
+        <span class="premisses">(no premisses)</span>
+        <span class="conclusion">0·Γ, x :₁ A  ⊢  x : A<span class="rule-label">Var</span></span>
+      </div>
+      <div style="font-size:0.85rem; color: var(--ink-mid); align-self:center; font-style:italic;">
+        All other variables get grade 0 (erased).<br>
+        x gets grade 1 (used once).
+      </div>
+    </div>
+  </div>
+
+  <div class="rule-block">
+    <div class="rule-name">Application — structural system (context addition)</div>
+    <div class="rules-row">
+      <div class="infrule">
+        <span class="premisses">Γ ⊢ e₁ : A →ˢ B &nbsp;&nbsp;&nbsp; Δ ⊢ e₂ : A</span>
+        <span class="conclusion">Γ + Δ  ⊢  e₁ e₂ : B<span class="rule-label">App</span></span>
+      </div>
+    </div>
+    <p style="font-size:0.85rem; color:var(--ink-mid); margin-top:0.5rem; margin-bottom:0; font-style:italic;">
+      + is pointwise semiring addition on context vectors: (x :ᵣ A, Γ) + (x :ₛ A, Δ) = x :ᵣ₊ₛ A, (Γ+Δ)
+    </p>
+  </div>
+
+  <div class="rule-block">
+    <div class="rule-name">Abstraction — structural system (grade peeled into function type)</div>
+    <div class="rules-row">
+      <div class="infrule">
+        <span class="premisses">Γ, x :ˢ A  ⊢  e : B</span>
+        <span class="conclusion">Γ  ⊢  λx. e : A →ˢ B<span class="rule-label">Abs</span></span>
+      </div>
+    </div>
+    <p style="font-size:0.85rem; color:var(--ink-mid); margin-top:0.5rem; margin-bottom:0; font-style:italic;">
+      The grade s on x becomes the annotation on the function arrow →ˢ. In the flat system, s is instead merged into a single context annotation via ∧.
+    </p>
+  </div>
+
+  <div class="rule-block">
+    <div class="rule-name">Scalar multiplication — structural system (graded modal promotion)</div>
+    <div class="rules-row">
+      <div class="infrule">
+        <span class="premisses">Γ  ⊢  e : A</span>
+        <span class="conclusion">r · Γ  ⊢  !ᵣ e : !ᵣ A<span class="rule-label">!-I</span></span>
+      </div>
+    </div>
+    <p style="font-size:0.85rem; color:var(--ink-mid); margin-top:0.5rem; margin-bottom:0; font-style:italic;">
+      r · Γ multiplies every grade in Γ by r: r·(x :ₛ A, Δ) = x :ᵣ·ₛ A, (r·Δ). This is the !ᵣ promotion rule from Brunel et al. 2014.
+    </p>
+  </div>
+
+  <h3>Non-Structural Extension: Sharing Coeffects</h3>
+  <p>
+    Bianchini (building on Bianchini–Gaboardi) define a <em>non-structural</em> coeffect system for Java-like mutation and sharing: the coeffect of one variable can depend on another (transitive closure of sharing). Standard structural systems assume per-variable independence; sharing breaks this. Formally: the context is an ℛ-module rather than a simple vector space over the semiring.
+  </p>
+  <div class="notation">
+    ℛ-module context (non-structural sharing):
+      Preorder: (x :ᶜ T, Γ) ⊆ (x :ᶜ' T, Δ)   iff  c' ⊆ c  and  Γ ⊆ Δ
+      Sum:      (x :ᶜ T, Γ) + (x :ᶜ' T, Δ)    =    x :ᶜ⁺ᶜ' T, (Γ+Δ)
+      Scale:    c × (x :ᶜ' T, Γ)               =    x :ᶜ×ᶜ' T, (c×Γ)
+    <span class="comment">-- Module law: (r+s)×u = (r×u)+(s×u); 0×u = 0; 1×u = u</span>
+  </div>
+
+
+  <!-- ═══════════════════════════════════════════════════════
+       SECTION C: Context annotation — notation and grammar
+  ═══════════════════════════════════════════════════════ -->
+
+  <div class="section-head">
+    <span class="section-label label-c">C</span>
+    <span class="section-title">How Typing Contexts Are Annotated</span>
+  </div>
+
+  <p>
+    Different lineages use different surface notation, but the underlying structure is always: each variable binding carries a grade (usage descriptor) from a semiring. The grammar of contexts is extended from the vanilla lambda-calculus context.
+  </p>
+
+  <h3>Two Main Lineages (from "Same Coeffect, Different Base", 2026)</h3>
+
+  <div class="compare-grid">
+    <div class="compare-card flat">
+      <div class="card-head">Graded-Base Lineage <span class="tag tag-flat" style="font-size:0.6rem">QTT · Idris 2 · Linear Haskell</span></div>
+      <code>
+        Δ ::= ∅ | Δ, x :ᵣ A<br><br>
+        Every assumption graded.<br>
+        No separate "linear" vars.<br>
+        Judgment: Δ ⊢ᵍ t : A
+      </code>
+    </div>
+    <div class="compare-card str">
+      <div class="card-head">Linear-Base Lineage <span class="tag tag-str" style="font-size:0.6rem">Granule · Graded LL</span></div>
+      <code>
+        Γ ::= ∅ | Γ, x:A | Γ, x:[A]ᵣ<br><br>
+        Linear vars (bare) +<br>
+        graded vars (in box).<br>
+        Judgment: Γ ⊢ₗ t : A
+      </code>
+    </div>
+  </div>
+
+  <p>
+    Context operations are defined the same way in both lineages: addition is pointwise grade addition (disjoint on linear vars), scalar multiplication scales all grades.
+  </p>
+
+  <h3>Notation Variants Across Papers</h3>
+
+  <div class="ntable-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>Paper / System</th>
+          <th>Context Notation</th>
+          <th>Judgment Form</th>
+          <th>Grade Domain</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>Petricek–Orchard–Mycroft 2014 (structural)</td>
+          <td><code>x₁:τ₁,…,xₙ:τₙ @⟨r₁,…,rₙ⟩</code></td>
+          <td><code>Γ @⟨r⟩ ⊢ e : τ</code></td>
+          <td>Semiring R</td>
+        </tr>
+        <tr>
+          <td>Petricek–Orchard–Mycroft 2014 (flat)</td>
+          <td><code>x₁:τ₁,…,xₙ:τₙ @ʳ</code></td>
+          <td><code>Γ @ʳ ⊢ e : τ</code></td>
+          <td>Semilattice R</td>
+        </tr>
+        <tr>
+          <td>Brunel–Gaboardi–Mazza–Zdancewic 2014</td>
+          <td>Context + annotated exponential <code>!ᵣA</code></td>
+          <td><code>Γ ⊢ e : A</code> (grades via !ᵣ)</td>
+          <td>Semiring ℝ (labeled !)</td>
+        </tr>
+        <tr>
+          <td>Gaboardi et al. 2016 (Combining)</td>
+          <td><code>x :ᵣ A</code> per binding</td>
+          <td><code>Δ ⊢ e : A</code> with grade env</td>
+          <td>Semiring R (coeffect) + Monoid M (effect)</td>
+        </tr>
+        <tr>
+          <td>McBride 2016 (Rig/QTT precursor)</td>
+          <td><code>x :ᵨ A</code> per binding, ρ ∈ rig</td>
+          <td><code>Γ ⊢ e : A</code></td>
+          <td>Rig (semiring, no negation)</td>
+        </tr>
+        <tr>
+          <td>Atkey QTT 2018</td>
+          <td><code>x₁^ρ₁: S₁, …, xₙ^ρₙ: Sₙ</code></td>
+          <td><code>Γ ⊢ M^σ : T</code> (σ ∈ {0,1})</td>
+          <td>Quantitative semiring (0≠1)</td>
+        </tr>
+        <tr>
+          <td>Granule / GrTT 2019</td>
+          <td><code>x : A [r]</code> (graded necessity type)</td>
+          <td><code>Γ ⊢ e : A</code></td>
+          <td>Pre-ordered semiring R</td>
+        </tr>
+        <tr>
+          <td>Coeffects for Sharing 2022</td>
+          <td><code>x :_{c} T</code> per variable</td>
+          <td><code>Γ ⊢ e : T</code></td>
+          <td>ℛ-module (generalizes semiring)</td>
+        </tr>
+        <tr>
+          <td>Same Coeffect, Different Base 2026</td>
+          <td>Graded-base: <code>Δ, x:ᵣA</code> / Linear-base: <code>Γ, x:[A]ᵣ</code></td>
+          <td><code>Δ ⊢ᵍ t:A</code> / <code>Γ ⊢ₗ t:A</code></td>
+          <td>Pre-ordered semiring R</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3>Grammar Change: from λ-calculus to Structural Coeffect Calculus</h3>
+  <div class="notation">
+    Standard typing context:
+      Γ ::= ∅  |  Γ, x : A
+
+    Structural coeffect context (graded-base):
+      Γ ::= ∅  |  Γ, x :ᵣ A         (r ∈ R, a semiring)
+
+    Structural coeffect context (linear-base):
+      Γ ::= ∅  |  Γ, x : A           (linear assumption)
+           |      Γ, x : [A]ᵣ        (graded assumption, r uses)
+
+    Context addition (pointwise):
+      (Γ, x :ᵣ A) + (Δ, x :ₛ A)  =  (Γ+Δ), x :ᵣ₊ₛ A
+      (Γ, x :ᵣ A) + Δ             =  (Γ+Δ), x :ᵣ A     (if x ∉ Δ)
+
+    Scalar multiplication:
+      r · (Γ, x :ₛ A)             =  (r·Γ), x :ᵣ·ₛ A
+
+    Zero context (all-erased):
+      0·Γ = x₁ :₀ A₁, …, xₙ :₀ Aₙ    <span class="comment">-- all grades 0</span>
+  </div>
+
+  <div class="callout">
+    <strong>Key structural invariant:</strong> In any well-typed structural system, contraction (<code>Γ, x:A, x:A ⊢ e</code>) is replaced by <em>grade addition</em> (<code>Γ, x :₂ A ⊢ e</code>), and weakening (<code>Γ, x:A ⊢ e</code> when x unused) becomes <em>grade 0</em> (<code>Γ, x :₀ A ⊢ e</code>). The structural rules of the sequent calculus dissolve into semiring arithmetic.
+  </div>
+
+
+  <!-- ═══════════════════════════════════════════════════════
+       SOURCES
+  ═══════════════════════════════════════════════════════ -->
+
+  <div class="section-head">
+    <span class="section-label label-src">Sources</span>
+    <span class="section-title">Annotated Bibliography</span>
+  </div>
+
+  <div class="sources-list">
+
+    <div class="source-card">
+      <div class="src-title">Coeffects: Unified Static Analysis of Context-Dependence</div>
+      <div class="src-authors">Tomáš Petříček, Dominic Orchard, Alan Mycroft</div>
+      <div class="src-venue">ICALP 2013</div>
+      <p class="src-claim">
+        <strong>First paper to formally name and distinguish flat vs structural coeffects.</strong>
+        Introduces the term "coeffect" and shows liveness analysis, linear types, and dataflow as instances. Demonstrates that flat systems (one annotation per context) fail to capture per-variable precision; structural systems (a vector) do. Shows that structural systems require a semiring (not just semilattice) because scaling the context requires multiplication.
+      </p>
+      <div class="src-notation">
+        Flat:       Γ @ʳ ⊢ e : τ       (r annotates the whole Γ)
+        Structural: Γ @⟨r₁,…,rₙ⟩ ⊢ e : τ  (rᵢ annotates each xᵢ)
+      </div>
+      <div class="src-tags">
+        <span class="tag tag-str">Structural</span><span class="tag tag-flat">Flat</span>
+        <a class="src-link" href="https://www.cs.kent.ac.uk/people/staff/dao7/publ/coeffects-icalp13.pdf" target="_blank">PDF</a>
+      </div>
+    </div>
+
+    <div class="source-card">
+      <div class="src-title">Coeffects: A Calculus of Context-Dependent Computation</div>
+      <div class="src-authors">Tomáš Petříček, Dominic Orchard, Alan Mycroft</div>
+      <div class="src-venue">ICFP 2014 · ACM SIGPLAN Notices 49(9)</div>
+      <p class="src-claim">
+        <strong>Full development of the unified structural/flat framework with indexed comonad semantics.</strong>
+        Defines the shape-indexed annotation system; proves subject reduction and type soundness. Gives a complete categorical semantics via indexed comonads. The structural coeffect calculus has typing rules where Abs peels the bound variable's grade into the function-type annotation, App merges via pointwise addition.
+      </p>
+      <div class="src-notation">
+        Abs (structural): Γ, x :ˢ A ⊢ e : B  →  Γ ⊢ λx.e : A →ˢ B
+        App (structural): Γ ⊢ f : A →ˢ B   Δ ⊢ a : A  →  Γ + Δ ⊢ f a : B
+                                                           ↑ pointwise grade addition
+      </div>
+      <div class="src-tags">
+        <span class="tag tag-str">Structural</span><span class="tag tag-flat">Flat</span>
+        <a class="src-link" href="https://www.doc.ic.ac.uk/~dorchard/publ/coeffects-icfp14.pdf" target="_blank">PDF</a>
+        <a class="src-link" href="https://dl.acm.org/doi/10.1145/2628136.2628160" target="_blank">ACM DL</a>
+        <a class="src-link" href="https://tomasp.net/academic/papers/structural/" target="_blank">Author page</a>
+      </div>
+    </div>
+
+    <div class="source-card">
+      <div class="src-title">A Core Quantitative Coeffect Calculus</div>
+      <div class="src-authors">Aloïs Brunel, Marco Gaboardi, Damiano Mazza, Steve Zdancewic</div>
+      <div class="src-venue">ESOP 2014 · LNCS 8410, pp. 351–370</div>
+      <p class="src-claim">
+        <strong>Introduces ℝPCF: PCF extended with a semiring-annotated exponential modality <code>!ᵣA</code>.</strong>
+        The context itself is standard (no per-variable grades directly); instead, per-variable quantitative information is mediated through the annotated bang: <code>!ᵣA</code> means "A used r times." Contraction on <code>!ᵣA</code> requires matching r; promotion scales the context by r. Connects directly to linear logic: <code>!A</code> = <code>!ωA</code>. This is a <em>linear-base</em> structural approach.
+      </p>
+      <div class="src-notation">
+        !-I:  r·Γ ⊢ e : A   →   Γ ⊢ !ᵣe : !ᵣA
+        !-E:  Γ ⊢ e : !ᵣA   Δ, x:ᵣA ⊢ e' : B   →   Γ+Δ ⊢ let !x = e in e' : B
+        Contr: Γ, x:!ᵣA, y:!ᵣA ⊢ e : B  →  Γ, z:!ᵣA ⊢ e[z/x,z/y] : B  (same r)
+      </div>
+      <div class="src-tags">
+        <span class="tag tag-str">Structural</span>
+        <a class="src-link" href="https://link.springer.com/chapter/10.1007/978-3-642-54833-8_19" target="_blank">Springer</a>
+        <a class="src-link" href="https://discovery.dundee.ac.uk/en/publications/a-core-quantitative-coeffect-calculus/" target="_blank">Open access</a>
+      </div>
+    </div>
+
+    <div class="source-card">
+      <div class="src-title">Combining Effects and Coeffects via Grading</div>
+      <div class="src-authors">Marco Gaboardi, Shin-ya Katsumata, Dominic Orchard, Flavien Breuvart, Tarmo Uustalu</div>
+      <div class="src-venue">ICFP 2016 · ACM SIGPLAN Notices 51(9), pp. 476–489</div>
+      <p class="src-claim">
+        <strong>Unifies effects (what a computation does to context) with coeffects (what it demands from context) via grading.</strong>
+        Effects form a graded monad; coeffects form a graded comonad. The combined type <code>A →_{r,e} B</code> carries both a coeffect grade r (resource demand) and an effect grade e (output change). Per-variable coeffect annotation: each variable in Γ carries a grade from a semiring. Subject reduction proven for the combined system.
+      </p>
+      <div class="src-notation">
+        Judgment: Γ ⊢_{e} e : A   where Γ = x₁:ᵣ¹A₁, …, xₙ:ʳⁿAₙ (coeffects)
+                                         e ∈ M (a monoid, effects)
+        Linear function type: A →_{1,ε} B  (use A once, no effect)
+      </div>
+      <div class="src-tags">
+        <span class="tag tag-str">Structural</span>
+        <a class="src-link" href="https://www.cs.kent.ac.uk/people/staff/dao7/publ/combining-effects-and-coeffects-icfp16.pdf" target="_blank">PDF</a>
+        <a class="src-link" href="https://dl.acm.org/doi/10.1145/2951913.2951939" target="_blank">ACM DL</a>
+        <a class="src-link" href="https://icfp16.sigplan.org/details/icfp-2016-papers/31/Combining-Effects-and-Coeffects-via-Grading" target="_blank">ICFP 2016</a>
+      </div>
+    </div>
+
+    <div class="source-card">
+      <div class="src-title">I Got Plenty o' Nuttin'</div>
+      <div class="src-authors">Conor McBride</div>
+      <div class="src-venue">A List of Successes That Can Change the World (Wadler Festschrift) · LNCS 9600, pp. 207–233 · Springer 2016</div>
+      <p class="src-claim">
+        <strong>Introduces per-variable usage annotations via a "rig" (semiring without subtraction) for dependent type theory.</strong>
+        Each variable x in context carries a rig element ρ, written <code>x :ᵨ A</code>, encoding how many times x appears in a term. The key novelty: combines this with dependent types without collapsing linearity into the type index — the type of the output can refer to the input <em>as a value</em> even when x is linear (used once). This is the direct precursor to Atkey's QTT.
+      </p>
+      <div class="src-notation">
+        Context: x₁ :ᵨ¹ A₁, …, xₙ :ᵨⁿ Aₙ
+        ρ = 0  → x is irrelevant (erased); may appear in types but not terms
+        ρ = 1  → x is linear (used exactly once in the term)
+        ρ = ω  → x is unrestricted (may be used any number of times)
+      </div>
+      <div class="src-tags">
+        <span class="tag tag-str">Structural</span>
+        <a class="src-link" href="https://personal.cis.strath.ac.uk/conor.mcbride/pub/Rig.pdf" target="_blank">PDF</a>
+        <a class="src-link" href="https://link.springer.com/chapter/10.1007/978-3-319-30936-1_12" target="_blank">Springer</a>
+        <a class="src-link" href="https://pureportal.strath.ac.uk/en/publications/i-got-plenty-o-nuttin/" target="_blank">Strathclyde</a>
+      </div>
+    </div>
+
+    <div class="source-card">
+      <div class="src-title">Syntax and Semantics of Quantitative Type Theory (QTT)</div>
+      <div class="src-authors">Robert Atkey</div>
+      <div class="src-venue">LICS 2018 · ACM/IEEE LICS proceedings</div>
+      <p class="src-claim">
+        <strong>Full dependent type theory with per-variable semiring usage quantities.</strong>
+        Judgment: <code>x₁^ρ₁: S₁, …, xₙ^ρₙ: Sₙ ⊢ M^σ: T</code>. The output annotation σ ∈ {0,1}: 0 = type-checking/erased, 1 = runtime use. Each ρᵢ ∈ R (quantitative semiring satisfying 0≠1, positivity, zero-product). 0-grade means the variable appears only in types (not erasure of computation but of operational relevance). Weakening is free at 0; contraction requires grade addition.
+      </p>
+      <div class="src-notation">
+        Var:   (Γ + 0·Δ), x:₁A, 0·Θ  ⊢  x^1 : A
+               ^^^^^^^^^^              ^^
+               all-zero               ↑ output σ=1
+        Scale: r·(x₁^ρ₁:A₁,…,xₙ^ρₙ:Aₙ) = x₁^(r·ρ₁):A₁,…,xₙ^(r·ρₙ):Aₙ
+      </div>
+      <div class="src-tags">
+        <span class="tag tag-str">Structural</span>
+        <a class="src-link" href="https://dl.acm.org/doi/10.1145/3209108.3209189" target="_blank">ACM DL</a>
+        <a class="src-link" href="https://www.semanticscholar.org/paper/Syntax-and-Semantics-of-Quantitative-Type-Theory-Atkey/84720a9402649cd4139a51852dadb43343452ab0" target="_blank">Semantic Scholar</a>
+      </div>
+    </div>
+
+    <div class="source-card">
+      <div class="src-title">Quantitative Program Reasoning with Graded Modal Types (Granule)</div>
+      <div class="src-authors">Dominic Orchard, Vilem-Benjamin Liepelt, Harley Eades III</div>
+      <div class="src-venue">ICFP 2019 · PACMPL 3(ICFP)</div>
+      <p class="src-claim">
+        <strong>Working implementation of structural per-variable graded coeffects in a functional language.</strong>
+        Functions are linear by default (no contraction or weakening without explicit grade). Graded modal type <code>!ᵣA</code> (written <code>A [r]</code>) allows r uses of A. Semiring operations appear in grade expressions: <code>twice : (a [c] → b) [2] → a [2*c] → (b,b)</code>. Supports abstract semiring parameters (coeffect polymorphism). Implements sensitivity analysis, information-flow control, and resource bounding as grade instantiations.
+      </p>
+      <div class="src-notation">
+        Type:    a [n]        -- type a, used exactly n times (grade n ∈ R)
+        Unbox:   [x]          -- pattern match discharging the modal type
+        Example: dup : forall {a : Type} . a [2] -> (a, a)
+                 -- attempts  a -> (a,a)  give linearity error
+      </div>
+      <div class="src-tags">
+        <span class="tag tag-str">Structural</span>
+        <a class="src-link" href="https://www.cs.kent.ac.uk/people/staff/dao7/publ/granule-icfp19.pdf" target="_blank">PDF</a>
+        <a class="src-link" href="https://granule-project.github.io/granule.html" target="_blank">Project site</a>
+      </div>
+    </div>
+
+    <div class="source-card">
+      <div class="src-title">Coeffects for Sharing and Mutation</div>
+      <div class="src-authors">Riccardo Bianchini, Francesco Dagnino, Paola Giannini, Elena Zucca (and Marco Gaboardi)</div>
+      <div class="src-venue">arXiv 2022 (ESOP lineage)</div>
+      <p class="src-claim">
+        <strong>Extends structural coeffects to non-structural sharing in Java-like languages.</strong>
+        Standard structural systems compute each variable's coeffect independently. Shared object references violate this: variable x and y may alias, so x's coeffect depends on y's. Introduces ℛ-module contexts to model this dependency. Defines structural coeffects (pointwise independence) precisely as the special case where no two variables share coeffects.
+      </p>
+      <div class="src-notation">
+        Standard structural (independent):
+          Γ = x₁ :_{c₁} T₁, …, xₙ :_{cₙ} Tₙ
+        Non-structural (sharing, ℛ-module):
+          x :_c T, Γ  where c may depend on aliases in Γ
+        Explicit definition of "structural": each variable's coeffect computed independently.
+      </div>
+      <div class="src-tags">
+        <span class="tag tag-str">Non-structural extension</span>
+        <a class="src-link" href="https://arxiv.org/abs/2209.07439" target="_blank">arXiv</a>
+        <a class="src-link" href="https://arxiv.org/html/2209.07439" target="_blank">HTML</a>
+      </div>
+    </div>
+
+    <div class="source-card">
+      <div class="src-title">Same Coeffect, Different Base: Connecting Two Dominant Approaches to Graded Types</div>
+      <div class="src-authors">Orchard et al.</div>
+      <div class="src-venue">arXiv 2606.28042 · 2026</div>
+      <p class="src-claim">
+        <strong>Establishes translations between graded-base and linear-base lineages, proving them type-, grade-, and semantics-preserving.</strong>
+        Graded-base (QTT, Idris 2, Linear Haskell): grades pervasive on all assumptions. Linear-base (Granule, graded linear logic): linear assumptions plus graded modal types. The two differ in how linearity is encoded but are provably inter-translatable. Gives the cleanest formalization of the two context grammars.
+      </p>
+      <div class="src-notation">
+        Graded-base: Δ ::= ∅ | Δ, x:ᵣA
+        Linear-base: Γ ::= ∅ | Γ, x:A | Γ, x:[A]ᵣ
+        Addition (linear-base):
+          (Γ, x:[A]ᵣ) + (Δ, x:[A]ₛ) = (Γ+Δ), x:[A]ᵣ₊ₛ
+        Scale:
+          r · (Γ, x:[A]ₛ) = (r·Γ), x:[A]ᵣ·ₛ
+        Linear types: semiring {0,1,ω} with 1+1=ω, 0⊑ω, 1⊑ω
+      </div>
+      <div class="src-tags">
+        <span class="tag tag-str">Structural</span>
+        <a class="src-link" href="https://arxiv.org/abs/2606.28042" target="_blank">arXiv</a>
+        <a class="src-link" href="https://arxiv.org/html/2606.28042" target="_blank">HTML</a>
+      </div>
+    </div>
+
+    <div class="source-card">
+      <div class="src-title">Modelling Coeffects in the Relational Semantics of Linear Logic</div>
+      <div class="src-authors">Breuvart, Pagani</div>
+      <div class="src-venue">CSL 2015 · LIPIcs</div>
+      <p class="src-claim">
+        <strong>Shows coeffect systems are models of the !-exponential fragment of Linear Logic.</strong>
+        Linear Logic's !A exponential already embodies structural per-variable resource tracking: contraction and weakening are explicit proof rules that are unsound without !. The relational semantics interprets ! as a multiset functor, whose weights correspond precisely to semiring grades.
+      </p>
+      <div class="src-tags">
+        <span class="tag tag-str">Structural</span>
+        <a class="src-link" href="https://drops.dagstuhl.de/entities/document/10.4230/LIPIcs.CSL.2015.567" target="_blank">Dagstuhl</a>
+      </div>
+    </div>
+
+  </div><!-- /sources-list -->
+
+</article>

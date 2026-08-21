@@ -27,6 +27,13 @@ grade: type.
 % lex exactly — D3); the sort CHECKER keeps them distinct — durations on
 % the monad, counts on the bang, weights on woplus. The prelude relates
 % them to the numeric tower (count <: q etc. in rat.ill) for arithmetic.
+%
+% IMPORTANT: `grade` is a CLASSIFIER grouping THREE INDEPENDENT algebras —
+%   delay  (ℚ≥0, additive: monad delays compose by addition)
+%   count  (ℕ, structural peeling: bang parcels consumed one-by-one)
+%   weight ([0,1], static annotation: woplus branch probability)
+% These are NOT one unified semiring. Mixing subsorts across connectives
+% (e.g. a count grade on the monad) is a type error.
 delay <: grade.
 count <: grade.
 weight <: grade.

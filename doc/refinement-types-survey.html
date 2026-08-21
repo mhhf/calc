@@ -1,0 +1,943 @@
+
+<title>Refinement Types & Static Discharge of Arithmetic Obligations</title>
+<style>
+/* ── Token Layer ─────────────────────────────────────────── */
+:root {
+  --bg:          #F6F7FB;
+  --bg-alt:      #ECEEF6;
+  --rule-bg:     #EBEFF7;
+  --rule-border: #B8C4E0;
+  --text:        #1B1F31;
+  --secondary:   #596080;
+  --accent:      #3D5C99;
+  --accent-lt:   #5478BB;
+  --border:      #CDD3EA;
+  --code-bg:     #E4E8F4;
+  --cite-color:  #3D5C99;
+  --num-color:   #8899CC;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg:          #0D1120;
+    --bg-alt:      #131828;
+    --rule-bg:     #161C34;
+    --rule-border: #2C3A60;
+    --text:        #DDE2F2;
+    --secondary:   #8A94B8;
+    --accent:      #7BA5D8;
+    --accent-lt:   #9BBEEA;
+    --border:      #222B4A;
+    --code-bg:     #1A2140;
+    --cite-color:  #7BA5D8;
+    --num-color:   #4A5A88;
+  }
+}
+:root[data-theme="light"] {
+  --bg:          #F6F7FB;
+  --bg-alt:      #ECEEF6;
+  --rule-bg:     #EBEFF7;
+  --rule-border: #B8C4E0;
+  --text:        #1B1F31;
+  --secondary:   #596080;
+  --accent:      #3D5C99;
+  --accent-lt:   #5478BB;
+  --border:      #CDD3EA;
+  --code-bg:     #E4E8F4;
+  --cite-color:  #3D5C99;
+  --num-color:   #8899CC;
+}
+:root[data-theme="dark"] {
+  --bg:          #0D1120;
+  --bg-alt:      #131828;
+  --rule-bg:     #161C34;
+  --rule-border: #2C3A60;
+  --text:        #DDE2F2;
+  --secondary:   #8A94B8;
+  --accent:      #7BA5D8;
+  --accent-lt:   #9BBEEA;
+  --border:      #222B4A;
+  --code-bg:     #1A2140;
+  --cite-color:  #7BA5D8;
+  --num-color:   #4A5A88;
+}
+
+/* ── Base ────────────────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+html {
+  font-size: 17px;
+  background: var(--bg);
+  color: var(--text);
+  -webkit-font-smoothing: antialiased;
+  scroll-behavior: smooth;
+}
+
+body {
+  font-family: Georgia, 'Times New Roman', Times, serif;
+  line-height: 1.72;
+  padding: 3rem 1.5rem 6rem;
+}
+
+/* ── Layout ──────────────────────────────────────────────── */
+.page {
+  max-width: 720px;
+  margin: 0 auto;
+}
+
+/* ── Header ──────────────────────────────────────────────── */
+.doc-header {
+  border-bottom: 2px solid var(--border);
+  padding-bottom: 2rem;
+  margin-bottom: 3rem;
+}
+
+.doc-eyebrow {
+  font-family: system-ui, -apple-system, 'Segoe UI', sans-serif;
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--accent);
+  margin-bottom: 1rem;
+}
+
+h1 {
+  font-family: 'Palatino Linotype', 'Book Antiqua', Palatino, Georgia, serif;
+  font-size: 2.05rem;
+  font-weight: normal;
+  line-height: 1.25;
+  color: var(--text);
+  text-wrap: balance;
+  margin-bottom: 1rem;
+}
+
+.doc-subtitle {
+  font-size: 1.0rem;
+  color: var(--secondary);
+  font-style: italic;
+  line-height: 1.55;
+  text-wrap: balance;
+  margin-bottom: 1.5rem;
+}
+
+.doc-meta {
+  display: flex;
+  gap: 2rem;
+  flex-wrap: wrap;
+  font-family: system-ui, -apple-system, sans-serif;
+  font-size: 0.8rem;
+  color: var(--secondary);
+  border-top: 1px solid var(--border);
+  padding-top: 1rem;
+  margin-top: 1rem;
+}
+
+.doc-meta span { display: flex; align-items: center; gap: 0.35rem; }
+
+/* ── Section structure ───────────────────────────────────── */
+.section {
+  margin-bottom: 3.5rem;
+}
+
+.section-label {
+  font-family: system-ui, -apple-system, sans-serif;
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.13em;
+  text-transform: uppercase;
+  color: var(--accent);
+  margin-bottom: 0.5rem;
+}
+
+h2 {
+  font-family: 'Palatino Linotype', 'Book Antiqua', Palatino, Georgia, serif;
+  font-size: 1.45rem;
+  font-weight: normal;
+  line-height: 1.3;
+  color: var(--text);
+  text-wrap: balance;
+  margin-bottom: 1.1rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid var(--border);
+}
+
+h3 {
+  font-family: 'Palatino Linotype', 'Book Antiqua', Palatino, Georgia, serif;
+  font-size: 1.1rem;
+  font-weight: normal;
+  font-style: italic;
+  color: var(--text);
+  margin-top: 1.8rem;
+  margin-bottom: 0.7rem;
+  text-wrap: balance;
+}
+
+p {
+  margin-bottom: 1rem;
+  max-width: 68ch;
+}
+
+p + p { margin-top: 0; }
+
+/* ── Formal rule boxes ───────────────────────────────────── */
+.rule-box {
+  background: var(--rule-bg);
+  border-left: 3px solid var(--accent);
+  border-radius: 0 4px 4px 0;
+  padding: 1rem 1.25rem 1rem 1.25rem;
+  margin: 1.5rem 0;
+  overflow-x: auto;
+}
+
+.rule-box .rule-name {
+  font-family: system-ui, -apple-system, sans-serif;
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--accent);
+  margin-bottom: 0.5rem;
+}
+
+.rule-box pre {
+  font-family: 'Cascadia Code', 'JetBrains Mono', 'Fira Code', 'Consolas', 'Monaco', monospace;
+  font-size: 0.85rem;
+  line-height: 1.6;
+  color: var(--text);
+  white-space: pre;
+  background: none;
+  border: none;
+  padding: 0;
+  margin: 0;
+  overflow-x: auto;
+}
+
+.rule-divider {
+  border: none;
+  border-top: 1.5px solid var(--secondary);
+  margin: 0.3rem 0;
+  opacity: 0.5;
+}
+
+/* ── Inline code ─────────────────────────────────────────── */
+code {
+  font-family: 'Cascadia Code', 'JetBrains Mono', 'Fira Code', 'Consolas', 'Monaco', monospace;
+  font-size: 0.82em;
+  background: var(--code-bg);
+  color: var(--text);
+  padding: 0.1em 0.35em;
+  border-radius: 3px;
+}
+
+/* ── Key insight callout ──────────────────────────────────── */
+.callout {
+  background: var(--bg-alt);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 1rem 1.25rem;
+  margin: 1.5rem 0;
+  font-style: italic;
+  color: var(--secondary);
+  font-size: 0.95rem;
+  line-height: 1.6;
+}
+
+.callout strong { color: var(--text); font-style: normal; }
+
+/* ── Tables ──────────────────────────────────────────────── */
+.table-wrap { overflow-x: auto; margin: 1.5rem 0; }
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.88rem;
+  font-family: Georgia, serif;
+}
+
+thead th {
+  font-family: system-ui, -apple-system, sans-serif;
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--secondary);
+  text-align: left;
+  padding: 0.5rem 0.9rem;
+  border-bottom: 2px solid var(--border);
+}
+
+tbody td {
+  padding: 0.55rem 0.9rem;
+  border-bottom: 1px solid var(--border);
+  vertical-align: top;
+  line-height: 1.5;
+}
+
+tbody tr:last-child td { border-bottom: none; }
+
+tbody td:first-child {
+  font-family: 'Cascadia Code', 'Consolas', monospace;
+  font-size: 0.8rem;
+  color: var(--accent);
+  white-space: nowrap;
+}
+
+/* ── Bibliography ────────────────────────────────────────── */
+.bib-section {
+  border-top: 2px solid var(--border);
+  padding-top: 2rem;
+  margin-top: 4rem;
+}
+
+.bib-heading {
+  font-family: 'Palatino Linotype', 'Book Antiqua', Palatino, Georgia, serif;
+  font-size: 1.2rem;
+  font-weight: normal;
+  margin-bottom: 1.5rem;
+  color: var(--text);
+}
+
+.bib-list {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 1.1rem;
+}
+
+.bib-item {
+  display: grid;
+  grid-template-columns: 2.2rem 1fr;
+  gap: 0.5rem;
+  font-size: 0.88rem;
+  line-height: 1.55;
+}
+
+.bib-num {
+  font-family: system-ui, -apple-system, sans-serif;
+  font-variant-numeric: tabular-nums;
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--num-color);
+  padding-top: 0.1rem;
+  text-align: right;
+}
+
+.bib-text { color: var(--text); }
+.bib-text em { font-style: italic; }
+.bib-text .venue {
+  font-family: system-ui, -apple-system, sans-serif;
+  font-size: 0.78rem;
+  color: var(--secondary);
+  margin-top: 0.2rem;
+  display: block;
+}
+
+/* citation superscript inline */
+sup.cite {
+  font-family: system-ui, -apple-system, sans-serif;
+  font-size: 0.68rem;
+  color: var(--cite-color);
+  cursor: default;
+}
+
+/* ── Step list ───────────────────────────────────────────── */
+.step-list {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 1.2rem;
+  margin: 1rem 0 1.5rem;
+}
+
+.step-list li {
+  display: grid;
+  grid-template-columns: 2rem 1fr;
+  gap: 0.5rem;
+  align-items: start;
+}
+
+.step-num {
+  font-family: system-ui, -apple-system, sans-serif;
+  font-variant-numeric: tabular-nums;
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--accent);
+  width: 2rem;
+  height: 2rem;
+  border: 1.5px solid var(--accent);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  margin-top: 0.15rem;
+}
+
+.step-body { line-height: 1.6; }
+.step-body strong { color: var(--text); }
+
+/* ── Focus link ──────────────────────────────────────────── */
+a:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  border-radius: 2px;
+}
+
+/* ── Divider ─────────────────────────────────────────────── */
+.section-divider {
+  border: none;
+  border-top: 1px solid var(--border);
+  margin: 3rem 0;
+}
+
+/* ── Theme toggle ────────────────────────────────────────── */
+.theme-toggle {
+  position: fixed;
+  top: 1.2rem;
+  right: 1.2rem;
+  background: var(--bg-alt);
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  padding: 0.3rem 0.7rem;
+  font-family: system-ui, -apple-system, sans-serif;
+  font-size: 0.72rem;
+  color: var(--secondary);
+  cursor: pointer;
+  transition: color 0.15s;
+  z-index: 100;
+}
+.theme-toggle:hover { color: var(--accent); }
+
+@media (max-width: 480px) {
+  h1 { font-size: 1.6rem; }
+  h2 { font-size: 1.2rem; }
+  .theme-toggle { top: 0.6rem; right: 0.6rem; }
+}
+</style>
+
+<button class="theme-toggle" onclick="
+  const r = document.documentElement;
+  const cur = r.getAttribute('data-theme');
+  if (!cur) {
+    const isDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+    r.setAttribute('data-theme', isDark ? 'light' : 'dark');
+  } else {
+    r.setAttribute('data-theme', cur === 'dark' ? 'light' : 'dark');
+  }
+" aria-label="Toggle theme">◐ theme</button>
+
+<div class="page">
+
+  <!-- HEADER -->
+  <header class="doc-header">
+    <p class="doc-eyebrow">Research Survey · Programming Language Theory</p>
+    <h1>Refinement Types and the Static Discharge of Arithmetic Proof Obligations</h1>
+    <p class="doc-subtitle">
+      A precise survey for a POPL-quality paper on static verification of numeric invariants —
+      covering Liquid Types, LiquidHaskell, Dependent ML, F*, and Dafny, with formal
+      VC-generation rules, the guard-to-hypothesis mechanism, and metatheory.
+    </p>
+    <div class="doc-meta">
+      <span>Survey commissioned August 2026</span>
+      <span>Six canonical citations</span>
+      <span>Primary sources verified</span>
+    </div>
+  </header>
+
+  <!-- §1: CANONICAL PAPERS -->
+  <section class="section">
+    <p class="section-label">§ 1</p>
+    <h2>Six Canonical Citable Papers</h2>
+
+    <p>The following six works constitute the core citation cluster for refinement types and arithmetic VC discharge. They are ordered by conceptual dependency; a paper on this topic should cite at minimum [1], [2], [3], and [6].</p>
+
+    <ol class="bib-list" style="margin-top:1.5rem;">
+      <li class="bib-item">
+        <span class="bib-num">[1]</span>
+        <span class="bib-text">
+          Patrick Rondon, Ming Kawaguchi, Ranjit Jhala. <strong>Liquid Types.</strong>
+          <span class="venue">PLDI 2008 · Proceedings of the 29th ACM SIGPLAN Conference on Programming Language Design and Implementation, pp. 159–169. DOI: 10.1145/1375581.1375602</span>
+        </span>
+      </li>
+      <li class="bib-item">
+        <span class="bib-num">[2]</span>
+        <span class="bib-text">
+          Niki Vazou, Eric L. Seidel, Ranjit Jhala, Dimitrios Vytiniotis, Simon Peyton-Jones, and Daan Leijen. <strong>Refinement Types for Haskell.</strong>
+          <span class="venue">ICFP 2014 · Proceedings of the 19th ACM SIGPLAN International Conference on Functional Programming, pp. 269–282. DOI: 10.1145/2628136.2628161</span>
+        </span>
+      </li>
+      <li class="bib-item">
+        <span class="bib-num">[3]</span>
+        <span class="bib-text">
+          Hongwei Xi and Frank Pfenning. <strong>Dependent Types in Practical Programming.</strong>
+          <span class="venue">POPL 1999 · Proceedings of the 26th ACM SIGPLAN-SIGACT Symposium on Principles of Programming Languages, pp. 214–227. DOI: 10.1145/292540.292560</span>
+        </span>
+      </li>
+      <li class="bib-item">
+        <span class="bib-num">[4]</span>
+        <span class="bib-text">
+          Nikhil Swamy, Catalin Hriţcu, Chantal Keller, Aseem Rastogi, Antoine Delignat-Lavaud, Simon Forest, Karthikeyan Bhargavan, et al. <strong>Dependent Types and Multi-Monadic Effects in F*.</strong>
+          <span class="venue">POPL 2016 · Proceedings of the 43rd Annual ACM SIGPLAN-SIGACT Symposium on Principles of Programming Languages.</span>
+        </span>
+      </li>
+      <li class="bib-item">
+        <span class="bib-num">[5]</span>
+        <span class="bib-text">
+          K. Rustan M. Leino. <strong>Dafny: An Automatic Program Verifier for Functional Correctness.</strong>
+          <span class="venue">LPAR 2010 · Proceedings of the 16th International Conference on Logic for Programming, Artificial Intelligence, and Reasoning, pp. 348–370. DOI: 10.5555/1939141.1939161</span>
+        </span>
+      </li>
+      <li class="bib-item">
+        <span class="bib-num">[6]</span>
+        <span class="bib-text">
+          Michael Borkowski, Niki Vazou, Ranjit Jhala. <strong>Mechanizing Refinement Types.</strong>
+          <span class="venue">POPL 2024 · Proceedings of the ACM on Programming Languages, Vol. 8, No. POPL. DOI: 10.1145/3632912 — Introduces λ<sub>RF</sub>, the first metatheory mechanized for refinement types with semantic subtyping + parametric polymorphism.</span>
+        </span>
+      </li>
+    </ol>
+
+    <p style="margin-top:1.5rem; font-size:0.9rem; color:var(--secondary);">
+      <em>Also indispensable as a tutorial reference:</em>
+      Ranjit Jhala and Niki Vazou, <strong>Refinement Types: A Tutorial</strong>,
+      <em>Foundations and Trends in Programming Languages</em>, Vol. 6, No. 3–4, 2020.
+      DOI: 10.1561/2500000032. This is the primary source for the formal typing rules quoted in §§ 2–3 below.
+    </p>
+  </section>
+
+  <hr class="section-divider">
+
+  <!-- §2: VC GENERATION -->
+  <section class="section">
+    <p class="section-label">§ 2</p>
+    <h2>The VC-Generation-and-Discharge Story</h2>
+
+    <p>
+      Refinement type systems reduce type-checking to a sequence of implication queries over a fixed decidable logic. Each query is generated once, statically, at the point where a value must inhabit a refined type. No runtime checks are emitted. The architecture has four layers.
+    </p>
+
+    <h3>Layer 1 — Refinement types as predicate-indexed sets</h3>
+    <p>
+      A refinement type <code>{ν:B | p(ν)}</code> denotes the set
+      <code>{v | v : B ∧ p[v/ν]}</code>.
+      The base type <code>B</code> is a simple type (Int, Bool, …); the predicate <code>p</code> is drawn from a fixed decidable logic <em>L</em>.
+      The key invariant: <strong>p is never a term of the object language</strong> — it lives in a separate index or qualifier language, which is what makes the whole system decidable.
+    </p>
+    <p>
+      In Liquid Types / LiquidHaskell <sup class="cite">[1,2]</sup>, <em>L</em> is
+      <strong>QF-UFLIA</strong> — the quantifier-free fragment of linear integer arithmetic extended with uninterpreted functions (for polymorphism). In DML <sup class="cite">[3]</sup>, <em>L</em> is
+      <strong>Presburger arithmetic</strong> (linear integer arithmetic with quantifiers, decided by Cooper's algorithm / the Omega test). In F* <sup class="cite">[4]</sup>, <em>L</em> is Z3's full logic (technically undecidable, but pure-fragment arithmetic goals are handled automatically).
+    </p>
+
+    <h3>Layer 2 — Subtyping = implication (the Sub-Base rule)</h3>
+    <p>
+      The <em>only</em> rule that generates a proof obligation is the subtype check. All other typing rules are structural. From Jhala &amp; Vazou <sup class="cite">[2,tutorial]</sup>, the core rule is:
+    </p>
+
+    <div class="rule-box">
+      <div class="rule-name">Sub-Base</div>
+      <pre>Γ ⊢ ∀ν₁:b.  p₁  ⇒  p₂[ν₂:=ν₁]
+<hr class="rule-divider">Γ ⊢ b{ν₁:p₁}  ≺:  b{ν₂:p₂}</pre>
+    </div>
+
+    <p>
+      The environment Γ = x₁:T₁,…,xₙ:Tₙ where each Tᵢ = bᵢ{ν:qᵢ}.
+      Each binding <code>xᵢ:{bᵢ|qᵢ}</code> contributes the ground fact <code>qᵢ[xᵢ/ν]</code> — that is, "I know qᵢ(xᵢ) holds" — as a hypothesis.
+    </p>
+    <p>
+      The SMT query sent for Sub-Base is therefore the <em>closed</em> formula:
+    </p>
+
+    <div class="rule-box">
+      <pre>Valid(  (⋀ᵢ qᵢ(xᵢ))  ∧  p₁(ν)  ⟹  p₂(ν)  )</pre>
+    </div>
+
+    <p>
+      This is a quantifier-free formula in the decidable fragment <em>L</em>. The SMT solver returns Valid/Invalid in a single call. If valid, no runtime check is emitted. If invalid, the program is rejected at type-check time.
+    </p>
+
+    <h3>Layer 3 — VC shape per expression form</h3>
+    <p>
+      Every expression either <em>synthesizes</em> a type or is <em>checked</em> against an expected type. A check triggers Sub-Base when the synthesized type and expected type differ. The table below shows the obligations for the most important expression forms:
+    </p>
+
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Expression form</th>
+            <th>VC generated</th>
+            <th>Hypothesis from Γ needed</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>x - y : {v|v ≥ 0}</td>
+            <td>Γ ⊢ (v = x − y) ⟹ (v ≥ 0)</td>
+            <td>y ≤ x (from branch guard)</td>
+          </tr>
+          <tr>
+            <td>a[i] : {v|v = a[i]}</td>
+            <td>Γ ⊢ 0 ≤ i ∧ i &lt; len(a)</td>
+            <td>Bounds previously established</td>
+          </tr>
+          <tr>
+            <td>f (e : T₁) : T₂</td>
+            <td>Γ ⊢ synth(e) ≺: T₁ (precondition sub-check)</td>
+            <td>Context facts about e's components</td>
+          </tr>
+          <tr>
+            <td>let x = e₁ in e₂ : T</td>
+            <td>x:synth(e₁) added to Γ; check e₂ : T in Γ′</td>
+            <td>Γ′ now includes facts about x</td>
+          </tr>
+          <tr>
+            <td>fun (x:T₁) → e : T₁→T₂</td>
+            <td>x:T₁ added to Γ; check e : T₂ in Γ′</td>
+            <td>Refinement of argument type</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3>Layer 4 — Decidable logic by system</h3>
+
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>System</th>
+            <th>Refinement logic</th>
+            <th>Solver</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Liquid Types [1]</td>
+            <td>Qualifier templates over QF_LIA</td>
+            <td>BLAST / predicate abstraction</td>
+          </tr>
+          <tr>
+            <td>LiquidHaskell [2]</td>
+            <td>QF-UFLIA (linear arith + uninterpreted functions)</td>
+            <td>Z3, Yices, MathSAT (via Liquid Fixpoint)</td>
+          </tr>
+          <tr>
+            <td>DML [3]</td>
+            <td>Presburger arithmetic (linear integer arithmetic)</td>
+            <td>Cooper's algorithm / Omega test</td>
+          </tr>
+          <tr>
+            <td>F* [4]</td>
+            <td>Z3's multi-sorted FOL (pure fragment tractable)</td>
+            <td>Z3</td>
+          </tr>
+          <tr>
+            <td>Dafny [5]</td>
+            <td>QF_LIA + set theory via Boogie intermediate language</td>
+            <td>Z3</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <hr class="section-divider">
+
+  <!-- §3: GUARDS AS HYPOTHESES -->
+  <section class="section">
+    <p class="section-label">§ 3</p>
+    <h2>How a Runtime Guard Becomes a Static Hypothesis</h2>
+
+    <p>
+      This is the mechanism the user's question most directly asks about. The answer is precise and uniform across all systems surveyed: the branch condition is syntactically added to the typing environment for the relevant branch, where it contributes as a ground fact to every Sub-Base query generated inside that branch.
+    </p>
+
+    <h3>The Chk-If rule (Liquid Types / LiquidHaskell)</h3>
+    <p>
+      From Jhala &amp; Vazou <sup class="cite">[tutorial, §chk-if]</sup>:
+    </p>
+
+    <div class="rule-box">
+      <div class="rule-name">Chk-If</div>
+      <pre>y fresh    Γ ⊢ x ⇐ bool
+Γ; y:{Int | x}  ⊢ e₁ ⇐ t
+Γ; y:{Int | ¬x} ⊢ e₂ ⇐ t
+<hr class="rule-divider">Γ ⊢  if x then e₁ else e₂  ⇐ t</pre>
+    </div>
+
+    <p>
+      The guard <code>x : bool</code> is added to the then-branch environment as a fresh binding
+      <code>y:{Int | x}</code> — that is, a new fact encoding "the condition x holds."
+      In the else-branch, the negation <code>y:{Int | ¬x}</code> is added instead.
+      From that point, every Sub-Base query inside <code>e₁</code> has <code>x</code> as a ground hypothesis.
+    </p>
+
+    <div class="callout">
+      <strong>The key point:</strong> the branch condition is not a runtime assertion or a dynamic check — it is a <em>static enrichment of the typing context</em>. The SMT solver sees it as an additional antecedent in the implication, not as something to be evaluated at runtime.
+    </div>
+
+    <h3>Worked example — safe subtraction</h3>
+
+    <p>
+      Consider a function that subtracts <code>y</code> from <code>x</code> and promises the result is non-negative:
+    </p>
+
+    <div class="rule-box">
+      <pre>safe_sub : x:Int → y:Int → {v:Int | v ≥ 0}
+safe_sub x y =
+  if y <= x then x - y else 0</pre>
+    </div>
+
+    <p>
+      The type-checker processes the then-branch <code>x - y</code> in the environment:
+    </p>
+    <div class="rule-box">
+      <pre>Γ′ = { x : Int,
+        y : Int,
+        guard : {Int | y ≤ x} }   -- added by Chk-If</pre>
+    </div>
+    <p>
+      The synthesized type of <code>x - y</code> is <code>{v:Int | v = x - y}</code>.
+      The expected return type is <code>{v:Int | v ≥ 0}</code>.
+      Sub-Base generates the VC:
+    </p>
+    <div class="rule-box">
+      <pre>Valid( y ≤ x  ∧  v = x − y  ⟹  v ≥ 0 )</pre>
+    </div>
+    <p>
+      This is a valid QF_LIA formula. Z3 discharges it in microseconds.
+      The result: <strong>no runtime check for v ≥ 0 is emitted</strong>. The program is verified once, completely, at type-check time.
+    </p>
+
+    <h3>The DML variant — index constraints</h3>
+    <p>
+      DML <sup class="cite">[3]</sup> uses a distinct but equivalent mechanism. Types are parameterized by index expressions: <code>'a list(n)</code> asserts the list has length n. The type-checker generates index constraints; a branch guard <code>if y &lt;= x</code> adds the Presburger constraint <code>y ≤ x</code> to the constraint accumulator for the true branch. Type-checking reduces to deciding satisfiability in Presburger arithmetic — decidable by the Omega test, no SMT solver required.
+    </p>
+    <p>
+      The critical design point (Xi &amp; Pfenning): <strong>the index domain is completely disjoint from the term domain</strong>. Index variables are compile-time quantities; they have no runtime representation. The phase distinction is total: constraint-checking is pure static analysis.
+    </p>
+
+    <h3>The F* / WP calculus variant</h3>
+    <p>
+      F* <sup class="cite">[4]</sup> uses a weakest-precondition calculus rather than typing-rule subtyping.
+      For conditionals, the WP transformer is (from the F* tutorial):
+    </p>
+    <div class="rule-box">
+      <pre>WP(if e then e₁ else e₂, Q) =
+  (e ⟹ WP(e₁, Q))  ∧  (¬e ⟹ WP(e₂, Q))</pre>
+    </div>
+    <p>
+      The guard <code>e</code> appears as a logical assumption inside each branch's WP computation.
+      For <code>if (y &lt;= x) then x - y</code> with postcondition <code>Q ≜ v ≥ 0</code>:
+    </p>
+    <div class="rule-box">
+      <pre>WP = (y ≤ x ⟹ (x − y ≥ 0))  ∧  (¬(y ≤ x) ⟹ ...)
+   = (y ≤ x ⟹ x − y ≥ 0)  ∧  (x < y ⟹ ...)</pre>
+    </div>
+    <p>
+      The obligation <code>(y ≤ x ⟹ x − y ≥ 0)</code> is valid in linear arithmetic; Z3 discharges it. The Dafny system works identically through Boogie as an intermediate verification language — the guard becomes an <code>assume(y ≤ x)</code> in the then-branch's Boogie encoding.
+    </p>
+  </section>
+
+  <hr class="section-divider">
+
+  <!-- §4: PRESERVATION / METATHEORY -->
+  <section class="section">
+    <p class="section-label">§ 4</p>
+    <h2>Metatheory — How Preservation Is Stated and Proved</h2>
+
+    <h3>The standard syntactic approach</h3>
+    <p>
+      In Liquid Types <sup class="cite">[1]</sup> and DML <sup class="cite">[3]</sup>, soundness is proved via the twin properties of
+      <strong>progress</strong> and <strong>preservation (subject reduction)</strong>:
+    </p>
+    <ul style="margin: 0.8rem 0 1rem 1.5rem; line-height: 1.8;">
+      <li><strong>Progress:</strong> If <code>Γ ⊢ e : T</code> and e is a closed expression, then e is a value or e → e′.</li>
+      <li><strong>Preservation:</strong> If <code>Γ ⊢ e : T</code> and e → e′, then <code>Γ ⊢ e′ : T</code>.</li>
+    </ul>
+    <p>
+      The preservation proof proceeds by induction on the reduction derivation. The essential lemma is <strong>type substitution</strong>: if <code>Γ, x:{B|p} ⊢ e : T</code> and v is a value with <code>Γ ⊢ v : {B|p}</code>, then <code>Γ ⊢ e[v/x] : T[v/x]</code>. This holds because substituting a concrete refined value for a refined variable preserves the SMT validity of all Sub-Base constraints — the hypotheses in Γ grow stronger, not weaker.
+    </p>
+    <p>
+      The Jhala-Vazou tutorial <sup class="cite">[tutorial]</sup> states the soundness result as three propositions linking the constraint generation algorithm to the typing judgment:
+    </p>
+    <div class="rule-box">
+      <div class="rule-name">Soundness (propositions 3.4.1–3.4.3)</div>
+      <pre>If sub(s, t) = c   and  Γ ⊢ c,   then  Γ ⊢ s ≺: t
+If synth(Γ, e) = (c, t)  and  Γ ⊢ c,   then  Γ ⊢ e ⇒ t
+If check(Γ, e, t) = c   and  Γ ⊢ c,   then  Γ ⊢ e ⇐ t</pre>
+    </div>
+    <p>
+      In words: if the constraint generated by the algorithm is provable (i.e., the SMT solver succeeds), then the corresponding typing judgment holds. Soundness of the <em>system</em> then follows from the soundness of the SMT solver for the decidable logic fragment <em>L</em>.
+    </p>
+
+    <h3>The semantic approach and its difficulty</h3>
+    <p>
+      Practical refinement type systems use <strong>semantic subtyping</strong>: subtyping is not defined syntactically but through set inclusion of denotations. The denotation of a refinement type is:
+    </p>
+    <div class="rule-box">
+      <pre>⟦ {ν:B | p} ⟧  =  { v  |  v : B  ∧  p[v/ν] = true }</pre>
+    </div>
+    <p>
+      Semantic subtyping: <code>T₁ ≺: T₂</code> holds iff <code>⟦T₁⟧ ⊆ ⟦T₂⟧</code>.
+      For base types this collapses to the implication <code>∀ν. p₁(ν) ⟹ p₂(ν)</code>, which is why Sub-Base works. The difficulty arises when combining semantic subtyping with <strong>parametric polymorphism</strong>: a type variable <code>α</code> may be instantiated with any refined type, so the denotation of a polymorphic type mentions denotations of type arguments, which may themselves be refinements — creating a potential circularity.
+    </p>
+    <p>
+      Borkowski, Vazou &amp; Jhala, POPL 2024 <sup class="cite">[6]</sup> solve this by presenting <strong>λ<sub>RF</sub></strong>, the first core calculus to combine semantic subtyping and parametric polymorphism with a mechanized metatheory. Their solution:
+    </p>
+    <ul style="margin: 0.8rem 0 1rem 1.5rem; line-height: 1.8;">
+      <li>The refinement predicates live in a decidable first-order theory <em>L</em>, completely separated from the term language. Their truth-values are determined by an oracle (the SMT solver) without reference to the semantics of the host language. This eliminates the circularity.</li>
+      <li>They introduce <strong>data propositions</strong> — a novel feature encoding derivation trees for inductively defined judgments as refined data types — enabling the metatheory to be expressed and checked within LiquidHaskell itself.</li>
+    </ul>
+    <p>
+      The main soundness theorem of λ<sub>RF</sub>:
+    </p>
+    <div class="rule-box">
+      <div class="rule-name">Semantic Soundness (Borkowski, Vazou, Jhala 2024)</div>
+      <pre>If  Γ ⊢ e : T  is derivable, then
+for all substitutions θ satisfying Γ —
+  i.e., θ(xᵢ) ∈ ⟦Tᵢ⟧ for all xᵢ:Tᵢ ∈ Γ —
+we have  θ(e) ∈ ⟦T⟧.</pre>
+    </div>
+    <p>
+      This is stronger than syntactic preservation: it says every well-typed closed term, when it reduces to a value, reduces to a value <em>in the denotation of its type</em>. Progress and preservation follow as corollaries.
+    </p>
+
+    <h3>DML preservation specifics</h3>
+    <p>
+      In DML <sup class="cite">[3]</sup>, preservation is simpler because the index domain is provably separate from the term domain. Subject reduction holds by induction on reduction derivations; the key lemma is the <strong>index substitution lemma</strong>: if <code>Γ; Φ ⊢ e : T(i)</code> and the constraint Φ entails <code>i = j</code>, then <code>Γ; Φ ⊢ e : T(j)</code>. Index variables are compile-time quantities — they are erased before execution — so reduction preserves the structural (erased) ML type, and the index satisfies its constraint by the solver's soundness.
+    </p>
+
+    <h3>Base case vs. inductive step</h3>
+    <p>
+      To be explicit about the proof structure for preservation in the syntactic approach:
+    </p>
+    <ol class="step-list">
+      <li>
+        <span class="step-num">1</span>
+        <div class="step-body">
+          <strong>Base case — values.</strong>
+          A value <code>v</code> has type <code>{ν:B | p}</code> iff <code>p[v/ν] = true</code>. This is established at the point of type-checking and does not change — values do not reduce further, so preservation holds trivially.
+        </div>
+      </li>
+      <li>
+        <span class="step-num">2</span>
+        <div class="step-body">
+          <strong>Inductive step — beta reduction.</strong>
+          For <code>(λx:T₁.e) v → e[v/x]</code>: by the typing rule for application, we have <code>Γ ⊢ v : T₁</code> and <code>Γ, x:T₁ ⊢ e : T₂</code>. By the substitution lemma, <code>Γ ⊢ e[v/x] : T₂[v/x]</code>. Since <code>v</code> is a value satisfying the refinement in T₁, all Sub-Base constraints involving x remain valid under the substitution — the SMT solver saw them at type-check time, not runtime.
+        </div>
+      </li>
+      <li>
+        <span class="step-num">3</span>
+        <div class="step-body">
+          <strong>Inductive step — contextual reduction.</strong>
+          For a term <code>e</code> in an evaluation context <code>E[e] → E[e′]</code>: the typing derivation for <code>E[e]</code> has a sub-derivation for <code>e</code>. By the inductive hypothesis, <code>e′</code> has the same type as <code>e</code>. Plugging back into the context typing rule recovers the full typing of <code>E[e′]</code>.
+        </div>
+      </li>
+    </ol>
+
+    <div class="callout">
+      <strong>The crucial observation:</strong> Refinement predicates are not loop invariants that must hold at every intermediate step. They are <em>entry contracts</em> — the type system verifies that whenever a value is placed into a refined type context, it satisfies the predicate. The static discharge (via SMT) is the proof, done once. The operational semantics never needs to re-evaluate the predicate.
+    </div>
+  </section>
+
+  <hr class="section-divider">
+
+  <!-- §5: SUMMARY -->
+  <section class="section">
+    <p class="section-label">§ 5</p>
+    <h2>Connecting to Your Problem — Rationals ≥ 0</h2>
+
+    <p>
+      Your formulation: "a computed rational value must stay ≥ 0, enforced as a statically-checked refinement." The survey above gives you the exact machinery:
+    </p>
+
+    <ol class="step-list">
+      <li>
+        <span class="step-num">1</span>
+        <div class="step-body">
+          <strong>Type:</strong> <code>{v:Q | v ≥ 0}</code> — a refinement of the rational base type with a linear arithmetic predicate. This lives in QF_LIA (over Q or Z, both are Presburger-decidable).
+        </div>
+      </li>
+      <li>
+        <span class="step-num">2</span>
+        <div class="step-body">
+          <strong>Operation (subtraction):</strong> typing <code>x - y : {v:Q | v ≥ 0}</code> generates the VC <code>Valid(hyps ∧ v = x − y ⟹ v ≥ 0)</code>. The hypothesis <code>y ≤ x</code> must be in Γ for this to be discharged.
+        </div>
+      </li>
+      <li>
+        <span class="step-num">3</span>
+        <div class="step-body">
+          <strong>Guard:</strong> <code>if (y ≤ x) then x - y</code> — the Chk-If rule adds <code>y ≤ x</code> to Γ for the then-branch. The VC is now dischargeable.
+        </div>
+      </li>
+      <li>
+        <span class="step-num">4</span>
+        <div class="step-body">
+          <strong>Preservation:</strong> Once the SMT solver discharges the VC at type-check time, the result carries type <code>{v:Q | v ≥ 0}</code> everywhere it is used downstream. Subsequent operations on it inherit the hypothesis <code>v ≥ 0</code> in Γ via their own binding.
+        </div>
+      </li>
+    </ol>
+
+    <p>
+      For a POPL paper, the theoretical contribution would be: specifying the refinement logic <em>L</em> (Presburger arithmetic over Q, or your custom grade algebra), defining the Sub-Base rule, proving the substitution lemma, and invoking the soundness of the SMT solver for <em>L</em>. The Borkowski-Vazou-Jhala framework <sup class="cite">[6]</sup> provides the metatheoretic template.
+    </p>
+  </section>
+
+  <!-- BIBLIOGRAPHY -->
+  <section class="bib-section">
+    <h2 class="bib-heading">Bibliography</h2>
+    <ol class="bib-list">
+      <li class="bib-item">
+        <span class="bib-num">[1]</span>
+        <span class="bib-text">
+          Rondon, Kawaguchi, Jhala. <em>Liquid Types.</em>
+          <span class="venue">PLDI 2008. ACM SIGPLAN Notices 43(6):159–169. DOI 10.1145/1375581.1375602. — Defines qualifier templates, predicate abstraction inference, constraint generation for OCaml programs.</span>
+        </span>
+      </li>
+      <li class="bib-item">
+        <span class="bib-num">[2]</span>
+        <span class="bib-text">
+          Vazou, Seidel, Jhala, Vytiniotis, Peyton-Jones, Leijen. <em>Refinement Types for Haskell.</em>
+          <span class="venue">ICFP 2014. DOI 10.1145/2628136.2628161. — Extends liquid types to lazy evaluation via a stratified type system separating diverging from terminating binders.</span>
+        </span>
+      </li>
+      <li class="bib-item">
+        <span class="bib-num">[3]</span>
+        <span class="bib-text">
+          Xi, Pfenning. <em>Dependent Types in Practical Programming.</em>
+          <span class="venue">POPL 1999. DOI 10.1145/292540.292560. — Index refinements over Presburger arithmetic; total phase separation between index and term languages; type-checking = constraint satisfaction.</span>
+        </span>
+      </li>
+      <li class="bib-item">
+        <span class="bib-num">[4]</span>
+        <span class="bib-text">
+          Swamy et al. <em>Dependent Types and Multi-Monadic Effects in F*.</em>
+          <span class="venue">POPL 2016. — WP-calculus VC generation; multi-monadic effect tracking; F* as a proof-oriented language backed by Z3.</span>
+        </span>
+      </li>
+      <li class="bib-item">
+        <span class="bib-num">[5]</span>
+        <span class="bib-text">
+          Leino. <em>Dafny: An Automatic Program Verifier for Functional Correctness.</em>
+          <span class="venue">LPAR 2010. DOI 10.5555/1939141.1939161. — WP via Boogie IL; subset types; loop invariants; Z3 backend.</span>
+        </span>
+      </li>
+      <li class="bib-item">
+        <span class="bib-num">[6]</span>
+        <span class="bib-text">
+          Borkowski, Vazou, Jhala. <em>Mechanizing Refinement Types.</em>
+          <span class="venue">POPL 2024. Proc. ACM Program. Lang. 8(POPL). DOI 10.1145/3632912. — Introduces λ<sub>RF</sub>, data propositions; first mechanized metatheory for semantic subtyping + parametric polymorphism. Mechanized in LiquidHaskell and Coq.</span>
+        </span>
+      </li>
+      <li class="bib-item">
+        <span class="bib-num">[T]</span>
+        <span class="bib-text">
+          Jhala, Vazou. <em>Refinement Types: A Tutorial.</em>
+          <span class="venue">Foundations and Trends in Programming Languages, 6(3–4), 2020. DOI 10.1561/2500000032. — Primary source for Sub-Base and Chk-If rules quoted in §§ 2–3.</span>
+        </span>
+      </li>
+    </ol>
+  </section>
+
+</div>

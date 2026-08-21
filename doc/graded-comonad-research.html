@@ -1,0 +1,863 @@
+<title>Graded Comonad — Formal Definitions &amp; Sources</title>
+<style>
+/* ── Token system ─────────────────────────────────────────── */
+:root {
+  --bg:           #f6f5f1;
+  --surface:      #ffffff;
+  --border:       #dbd9ee;
+  --text:         #1c1829;
+  --text2:        #6058a0;
+  --accent:       #3b57a0;
+  --accent-lt:    #edecf5;
+  --rail:         #7b8ac8;
+  --tag-bg:       #e3e1f4;
+  --tag-text:     #3b57a0;
+  --mono-bg:      #f0eef8;
+  --rule-color:   #c5c2de;
+  --quote-bg:     #f0eef8;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg:         #13121e;
+    --surface:    #1d1b30;
+    --border:     #2e2b4a;
+    --text:       #e5e2f7;
+    --text2:      #9490cb;
+    --accent:     #7fa0e8;
+    --accent-lt:  #1d1b30;
+    --rail:       #4f61aa;
+    --tag-bg:     #252340;
+    --tag-text:   #9fb8f5;
+    --mono-bg:    #1a1930;
+    --rule-color: #2e2b4a;
+    --quote-bg:   #1a1930;
+  }
+}
+:root[data-theme="light"] {
+  --bg:           #f6f5f1;
+  --surface:      #ffffff;
+  --border:       #dbd9ee;
+  --text:         #1c1829;
+  --text2:        #6058a0;
+  --accent:       #3b57a0;
+  --accent-lt:    #edecf5;
+  --rail:         #7b8ac8;
+  --tag-bg:       #e3e1f4;
+  --tag-text:     #3b57a0;
+  --mono-bg:      #f0eef8;
+  --rule-color:   #c5c2de;
+  --quote-bg:     #f0eef8;
+}
+:root[data-theme="dark"] {
+  --bg:         #13121e;
+  --surface:    #1d1b30;
+  --border:     #2e2b4a;
+  --text:       #e5e2f7;
+  --text2:      #9490cb;
+  --accent:     #7fa0e8;
+  --accent-lt:  #1d1b30;
+  --rail:       #4f61aa;
+  --tag-bg:     #252340;
+  --tag-text:   #9fb8f5;
+  --mono-bg:    #1a1930;
+  --rule-color: #2e2b4a;
+  --quote-bg:   #1a1930;
+}
+
+/* ── Base ─────────────────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+html { font-size: 17px; }
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: "Palatino Linotype", "Book Antiqua", Palatino, "TeX Gyre Pagella",
+               Georgia, "Times New Roman", serif;
+  line-height: 1.72;
+  min-height: 100vh;
+  padding: 3rem 1.25rem 5rem;
+}
+
+/* ── Layout ───────────────────────────────────────────────── */
+.page {
+  max-width: 680px;
+  margin: 0 auto;
+}
+
+/* ── Header ───────────────────────────────────────────────── */
+header {
+  margin-bottom: 3.5rem;
+  padding-bottom: 2rem;
+  border-bottom: 2px solid var(--border);
+}
+.eyebrow {
+  font-family: ui-sans-serif, system-ui, -apple-system, sans-serif;
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--text2);
+  margin-bottom: 0.9rem;
+}
+h1 {
+  font-size: 2.1rem;
+  font-weight: 700;
+  line-height: 1.2;
+  text-wrap: balance;
+  color: var(--text);
+  margin-bottom: 0.5rem;
+}
+.subtitle {
+  font-size: 1.05rem;
+  color: var(--text2);
+  margin-bottom: 1.2rem;
+  font-style: italic;
+}
+.meta {
+  font-family: ui-sans-serif, system-ui, -apple-system, sans-serif;
+  font-size: 0.78rem;
+  color: var(--text2);
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem 1.2rem;
+}
+.meta-item { display: flex; align-items: center; gap: 0.35rem; }
+
+/* ── TOC ──────────────────────────────────────────────────── */
+.toc {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 1.1rem 1.4rem 1.2rem;
+  margin-bottom: 3rem;
+}
+.toc-title {
+  font-family: ui-sans-serif, system-ui, sans-serif;
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--text2);
+  margin-bottom: 0.65rem;
+}
+.toc ol {
+  list-style: decimal;
+  padding-left: 1.4em;
+  display: flex;
+  flex-direction: column;
+  gap: 0.18rem;
+}
+.toc a {
+  color: var(--accent);
+  text-decoration: none;
+  font-size: 0.92rem;
+}
+.toc a:hover { text-decoration: underline; }
+
+/* ── Sections ─────────────────────────────────────────────── */
+section {
+  margin-bottom: 3.2rem;
+}
+h2 {
+  font-size: 1.35rem;
+  font-weight: 700;
+  margin-bottom: 1rem;
+  padding-bottom: 0.3rem;
+  border-bottom: 1px solid var(--border);
+  text-wrap: balance;
+}
+h3 {
+  font-size: 1.05rem;
+  font-weight: 700;
+  margin: 1.8rem 0 0.7rem;
+  text-wrap: balance;
+}
+p { margin-bottom: 1rem; }
+p:last-child { margin-bottom: 0; }
+
+/* ── Definition box ───────────────────────────────────────── */
+.def {
+  border-left: 3px solid var(--accent);
+  background: var(--accent-lt);
+  border-radius: 0 4px 4px 0;
+  padding: 1rem 1.2rem;
+  margin: 1.4rem 0;
+}
+.def-label {
+  font-family: ui-sans-serif, system-ui, sans-serif;
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.13em;
+  text-transform: uppercase;
+  color: var(--accent);
+  margin-bottom: 0.4rem;
+}
+.def p { font-size: 0.97rem; }
+.def p:last-child { margin-bottom: 0; }
+
+/* ── Formula block ────────────────────────────────────────── */
+.formula-block {
+  margin: 1.5rem 0;
+  text-align: center;
+}
+.formula-block hr {
+  border: none;
+  border-top: 1px solid var(--rule-color);
+  margin: 0;
+}
+.formula-inner {
+  display: inline-block;
+  text-align: left;
+  padding: 0.85rem 1.6rem;
+  font-family: "Fira Mono", "JetBrains Mono", "Cascadia Mono",
+               "Consolas", "Lucida Console", monospace;
+  font-size: 0.88rem;
+  line-height: 1.9;
+  color: var(--text);
+  background: var(--mono-bg);
+  max-width: 100%;
+  overflow-x: auto;
+}
+
+/* ── Inline math ──────────────────────────────────────────── */
+.m {
+  font-family: "Fira Mono", "JetBrains Mono", "Cascadia Mono",
+               "Consolas", monospace;
+  font-size: 0.87em;
+  background: var(--mono-bg);
+  border-radius: 3px;
+  padding: 0.05em 0.3em;
+  white-space: nowrap;
+}
+
+/* ── Quote block ──────────────────────────────────────────── */
+blockquote {
+  border-left: 3px solid var(--rail);
+  background: var(--quote-bg);
+  margin: 1.4rem 0;
+  padding: 0.85rem 1.2rem;
+  border-radius: 0 4px 4px 0;
+  font-style: italic;
+  font-size: 0.96rem;
+  color: var(--text);
+}
+blockquote .src {
+  display: block;
+  font-style: normal;
+  font-family: ui-sans-serif, system-ui, sans-serif;
+  font-size: 0.74rem;
+  color: var(--text2);
+  margin-top: 0.5rem;
+}
+blockquote .src a {
+  color: var(--accent);
+  text-decoration: none;
+}
+blockquote .src a:hover { text-decoration: underline; }
+
+/* ── Tag / pill ───────────────────────────────────────────── */
+.tag {
+  display: inline-block;
+  font-family: ui-sans-serif, system-ui, sans-serif;
+  font-size: 0.68rem;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  background: var(--tag-bg);
+  color: var(--tag-text);
+  border-radius: 3px;
+  padding: 0.1em 0.5em;
+  vertical-align: middle;
+  white-space: nowrap;
+}
+
+/* ── Axiom list ───────────────────────────────────────────── */
+.axiom-list {
+  list-style: none;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+  margin: 1rem 0;
+}
+.axiom-list li {
+  display: grid;
+  grid-template-columns: 3.2rem 1fr;
+  gap: 0 0.6rem;
+  align-items: baseline;
+  font-size: 0.96rem;
+}
+.axiom-id {
+  font-family: ui-sans-serif, system-ui, sans-serif;
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: var(--accent);
+  letter-spacing: 0.04em;
+  text-align: right;
+  padding-top: 0.08em;
+}
+
+/* ── Comparison table ─────────────────────────────────────── */
+.compare-wrap { overflow-x: auto; margin: 1.4rem 0; }
+table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+  min-width: 460px;
+}
+thead tr {
+  background: var(--accent);
+  color: #fff;
+}
+thead th {
+  padding: 0.6rem 0.85rem;
+  text-align: left;
+  font-family: ui-sans-serif, system-ui, sans-serif;
+  font-size: 0.73rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+tbody tr:nth-child(even) { background: var(--accent-lt); }
+tbody td {
+  padding: 0.55rem 0.85rem;
+  border-bottom: 1px solid var(--border);
+  vertical-align: top;
+}
+tbody td:first-child {
+  font-family: ui-sans-serif, system-ui, sans-serif;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--text2);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+}
+
+/* ── Sources list ─────────────────────────────────────────── */
+.sources { display: flex; flex-direction: column; gap: 1rem; }
+.source-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 0.9rem 1.1rem;
+}
+.source-title {
+  font-weight: 700;
+  font-size: 0.97rem;
+  margin-bottom: 0.2rem;
+}
+.source-title a {
+  color: var(--accent);
+  text-decoration: none;
+}
+.source-title a:hover { text-decoration: underline; }
+.source-meta {
+  font-family: ui-sans-serif, system-ui, sans-serif;
+  font-size: 0.75rem;
+  color: var(--text2);
+}
+.source-note {
+  font-size: 0.88rem;
+  color: var(--text2);
+  margin-top: 0.35rem;
+  font-style: italic;
+}
+
+/* ── Divider ──────────────────────────────────────────────── */
+.divider {
+  border: none;
+  border-top: 1px solid var(--border);
+  margin: 2.8rem 0;
+}
+</style>
+
+<div class="page">
+
+  <header>
+    <div class="eyebrow">Deep Research Report · Category Theory</div>
+    <h1>Graded Comonad — Categorical Definitions &amp; Sources</h1>
+    <div class="subtitle">Indexed counit, comultiplication, semiring structure, and comparison to plain comonads</div>
+    <div class="meta">
+      <span class="meta-item">Key authors: Fujii · Katsumata · Orchard · Mellies</span>
+      <span class="meta-item">Primary source: arXiv:1904.08083 (Fujii, HTML verified)</span>
+    </div>
+  </header>
+
+  <nav class="toc" aria-label="Contents">
+    <div class="toc-title">Contents</div>
+    <ol>
+      <li><a href="#plain">Plain comonad — baseline</a></li>
+      <li><a href="#graded">M-graded comonad — full definition</a></li>
+      <li><a href="#ops">Counit and comultiplication — indexed forms</a></li>
+      <li><a href="#axioms">Axioms GC1–GC6</a></li>
+      <li><a href="#indexed">Indexed comonad vs. graded comonad</a></li>
+      <li><a href="#semiring">Semiring grading in coeffect systems</a></li>
+      <li><a href="#sources">Sources</a></li>
+    </ol>
+  </nav>
+
+  <!-- §1 Plain comonad -->
+  <section id="plain">
+    <h2>1. Plain comonad — baseline for comparison</h2>
+    <p>
+      A plain comonad on a category <span class="m">C</span> is a triple
+      <span class="m">(D, ε, δ)</span> where <span class="m">D: C → C</span> is an endofunctor,
+      and:
+    </p>
+    <ul style="padding-left:1.5em; display:flex; flex-direction:column; gap:0.35rem; margin-bottom:1rem;">
+      <li><strong>Counit</strong> <span class="m">ε : D ⇒ id<sub>C</sub></span> — extracts a value</li>
+      <li><strong>Comultiplication</strong> <span class="m">δ : D ⇒ D ∘ D</span> — duplicates context</li>
+    </ul>
+    <p>These satisfy three laws (counit left, counit right, associativity):</p>
+    <div class="formula-block">
+      <hr>
+      <div class="formula-inner">
+(ε ∗ D) ∘ δ  =  id<sub>D</sub>      [left counit]
+(D ∗ ε) ∘ δ  =  id<sub>D</sub>      [right counit]
+(δ ∗ D) ∘ δ  =  (D ∗ δ) ∘ δ       [coassociativity]
+      </div>
+      <hr>
+    </div>
+    <p>
+      A graded comonad generalises this by replacing the single functor <span class="m">D</span>
+      with a <em>family</em> of functors indexed by a monoid, and making the grades appear
+      explicitly in the types of <span class="m">ε</span> and <span class="m">δ</span>.
+    </p>
+  </section>
+
+  <!-- §2 Graded comonad -->
+  <section id="graded">
+    <h2>2. M-graded comonad — full definition</h2>
+
+    <p>
+      Let <span class="m">M = (M, ⊗, I)</span> be a strict monoidal category (in the most common
+      case: a monoid viewed as a one-object category; or a preordered monoid; or a semiring's
+      multiplicative monoid).
+    </p>
+
+    <div class="def">
+      <div class="def-label">Definition 2.5 <span style="font-weight:400;text-transform:none;">(Fujii 2019, arXiv:1904.08083)</span></div>
+      <p>
+        "An M-graded comonad on <span class="m">C</span> is an <strong>oplax monoidal functor</strong>
+        <span class="m">S : (M, ⊗, I) → ([C, C], ∘, id<sub>C</sub>)</span>."
+      </p>
+    </div>
+
+    <p>Concretely, this functor consists of four pieces of data:</p>
+
+    <h3>Data</h3>
+    <ul class="axiom-list">
+      <li>
+        <span class="axiom-id">S<sub>m</sub></span>
+        An endofunctor <span class="m">S<sub>m</sub> : C → C</span> for each object <span class="m">m ∈ M</span>
+      </li>
+      <li>
+        <span class="axiom-id">S<sub>u</sub></span>
+        A natural transformation <span class="m">S<sub>u</sub> : S<sub>m</sub> ⇒ S<sub>m'</sub></span>
+        for each morphism <span class="m">u : m → m'</span> in <span class="m">M</span>
+      </li>
+      <li>
+        <span class="axiom-id">ε</span>
+        A natural transformation <span class="m">ε<sup>(S)</sup> : S<sub>I</sub> ⇒ id<sub>C</sub></span>
+        (the <em>graded counit</em>, indexed at the monoidal identity <span class="m">I</span>)
+      </li>
+      <li>
+        <span class="axiom-id">δ<sub>m,n</sub></span>
+        A natural transformation
+        <span class="m">δ<sup>(S)</sup><sub>m,n</sub> : S<sub>m⊗n</sub> ⇒ S<sub>m</sub> ∘ S<sub>n</sub></span>
+        for each pair <span class="m">m, n ∈ M</span>
+        (the <em>graded comultiplication</em>)
+      </li>
+    </ul>
+
+    <p>
+      The key quote establishing the relationship to plain comonads:
+    </p>
+
+    <blockquote>
+      "It should be clear that (M, ⊗, I)-graded comonads on <span class="m">C</span>
+      are nothing but (M<sup>op</sup>, ⊗, I)-graded monads on <span class="m">C<sup>op</sup></span>."
+      <span class="src">— Fujii, <a href="https://arxiv.org/html/1904.08083v1" target="_blank">arXiv:1904.08083</a></span>
+    </blockquote>
+
+    <p>And from a shorter statement in the graded Hoare logic paper:</p>
+
+    <blockquote>
+      "Graded comonads are dually defined (i.e., as a graded monad on <span class="m">C<sup>op</sup></span>)."
+      <span class="src">— <a href="https://arxiv.org/abs/2007.11235" target="_blank">arXiv:2007.11235</a> (Graded Hoare Logic and its Categorical Semantics)</span>
+    </blockquote>
+  </section>
+
+  <!-- §3 Counit and comultiplication -->
+  <section id="ops">
+    <h2>3. Counit and comultiplication — indexed forms</h2>
+
+    <h3>Counit</h3>
+    <p>
+      Typed at the <em>monoidal unit</em> <span class="m">I</span>. For each object
+      <span class="m">A ∈ C</span>:
+    </p>
+    <div class="formula-block">
+      <hr>
+      <div class="formula-inner">
+ε<sub>A</sub> : S<sub>I</sub>(A) → A
+      </div>
+      <hr>
+    </div>
+    <p>
+      Contrast with the plain comonad: <span class="m">ε<sub>A</sub> : D(A) → A</span>.
+      The only difference is that the functor is now specifically <span class="m">S<sub>I</sub></span>
+      — the functor at the monoidal identity — rather than <span class="m">D</span> unqualified.
+      When <span class="m">M</span> is the trivial monoid (one object <span class="m">*</span>,
+      <span class="m">* ⊗ * = *</span>, <span class="m">I = *</span>), this collapses back to
+      the ordinary counit.
+    </p>
+
+    <h3>Comultiplication</h3>
+    <p>
+      Typed at the <em>monoidal product</em> of two grades <span class="m">m, n ∈ M</span>.
+      For each object <span class="m">A ∈ C</span>:
+    </p>
+    <div class="formula-block">
+      <hr>
+      <div class="formula-inner">
+δ<sub>m,n,A</sub> : S<sub>m⊗n</sub>(A) → S<sub>m</sub>(S<sub>n</sub>(A))
+      </div>
+      <hr>
+    </div>
+    <p>
+      The grade <span class="m">m⊗n</span> on the left <em>splits</em> into components
+      <span class="m">m</span> and <span class="m">n</span> on the right — the outer functor
+      carries grade <span class="m">m</span>, the inner carries grade <span class="m">n</span>.
+      This is the <strong>oplax</strong> direction: a lax monoidal functor would go the other way
+      (<span class="m">T<sub>m</sub>(T<sub>n</sub> A) → T<sub>m⊗n</sub> A</span>),
+      which is the multiplication of a graded <em>monad</em>.
+    </p>
+
+    <div class="compare-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Structure</th>
+            <th>Functor direction</th>
+            <th>Counit / Unit</th>
+            <th>Co/Multiplication</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Graded monad</td>
+            <td>lax monoidal M → [C,C]</td>
+            <td><span class="m">η : A → T<sub>I</sub>(A)</span></td>
+            <td><span class="m">μ<sub>m,n</sub> : T<sub>m</sub>(T<sub>n</sub> A) → T<sub>m⊗n</sub>(A)</span></td>
+          </tr>
+          <tr>
+            <td>Graded comonad</td>
+            <td>oplax monoidal M → [C,C]</td>
+            <td><span class="m">ε : S<sub>I</sub>(A) → A</span></td>
+            <td><span class="m">δ<sub>m,n</sub> : S<sub>m⊗n</sub>(A) → S<sub>m</sub>(S<sub>n</sub> A)</span></td>
+          </tr>
+          <tr>
+            <td>Plain comonad</td>
+            <td>M = <strong>1</strong> (trivial)</td>
+            <td><span class="m">ε : D(A) → A</span></td>
+            <td><span class="m">δ : D(A) → D(D(A))</span></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3>Unit laws</h3>
+    <p>
+      With whiskering notation (<span class="m">∗</span> = horizontal composition with identity):
+    </p>
+    <div class="formula-block">
+      <hr>
+      <div class="formula-inner">
+(ε ∗ S<sub>m</sub>) ∘ δ<sub>I,m</sub>  =  id<sub>S<sub>m</sub></sub>     [GC4, left counit]
+(S<sub>m</sub> ∗ ε) ∘ δ<sub>m,I</sub>  =  id<sub>S<sub>m</sub></sub>     [GC5, right counit]
+      </div>
+      <hr>
+    </div>
+
+    <h3>Associativity law</h3>
+    <div class="formula-block">
+      <hr>
+      <div class="formula-inner">
+(δ<sub>l,m</sub> ∗ S<sub>n</sub>) ∘ δ<sub>l⊗m, n</sub>
+  =  (S<sub>l</sub> ∗ δ<sub>m,n</sub>) ∘ δ<sub>l, m⊗n</sub>    [GC6]
+      </div>
+      <hr>
+    </div>
+    <p>
+      This mirrors the coassociativity of a plain comonad, but now each instance of
+      <span class="m">δ</span> carries explicit grade labels.
+    </p>
+  </section>
+
+  <!-- §4 Axioms -->
+  <section id="axioms">
+    <h2>4. All six axioms GC1–GC6</h2>
+    <p>
+      The full list, from Fujii Definition 2.5 (arXiv:1904.08083):
+    </p>
+    <ul class="axiom-list">
+      <li>
+        <span class="axiom-id">GC1</span>
+        <span><span class="m">id<sub>S<sub>m</sub></sub> = S<sub>id<sub>m</sub></sub></span>
+        for each object <span class="m">m</span> in <span class="m">M</span>
+        (functoriality: identity morphism in M maps to identity nat. transf.)</span>
+      </li>
+      <li>
+        <span class="axiom-id">GC2</span>
+        <span><span class="m">S<sub>u'</sub> ∘ S<sub>u</sub> = S<sub>u'∘u</sub></span>
+        for composable <span class="m">u, u'</span> in <span class="m">M</span>
+        (functoriality: composition in M maps to vertical composition)</span>
+      </li>
+      <li>
+        <span class="axiom-id">GC3</span>
+        <span>Naturality of <span class="m">δ</span> with respect to morphisms in <span class="m">M</span>:
+        the square
+        <span class="m">δ<sub>m',n'</sub> ∘ S<sub>u⊗v</sub> = (S<sub>u</sub> ∘ S<sub>v</sub>) ∘ δ<sub>m,n</sub></span>
+        commutes for <span class="m">u: m→m'</span>, <span class="m">v: n→n'</span></span>
+      </li>
+      <li>
+        <span class="axiom-id">GC4</span>
+        <span>Left counit: <span class="m">(ε ∗ S<sub>m</sub>) ∘ δ<sub>I,m</sub> = id<sub>S<sub>m</sub></sub></span></span>
+      </li>
+      <li>
+        <span class="axiom-id">GC5</span>
+        <span>Right counit: <span class="m">(S<sub>m</sub> ∗ ε) ∘ δ<sub>m,I</sub> = id<sub>S<sub>m</sub></sub></span></span>
+      </li>
+      <li>
+        <span class="axiom-id">GC6</span>
+        <span>Associativity: <span class="m">(δ<sub>l,m</sub> ∗ S<sub>n</sub>) ∘ δ<sub>l⊗m,n</sub> = (S<sub>l</sub> ∗ δ<sub>m,n</sub>) ∘ δ<sub>l,m⊗n</sub></span></span>
+      </li>
+    </ul>
+    <p style="font-size:0.9rem; color:var(--text2);">
+      GC1–GC2 assert that <span class="m">S</span> is a functor from <span class="m">M</span>
+      to <span class="m">[C,C]</span>. GC3 is the oplax naturality square.
+      GC4–GC5 are the counit laws. GC6 is coassociativity.
+    </p>
+  </section>
+
+  <!-- §5 Indexed vs graded -->
+  <section id="indexed">
+    <h2>5. Indexed comonad vs. graded comonad</h2>
+
+    <p>
+      Fujii defines a second, distinct structure (Definition 2.12):
+    </p>
+
+    <div class="def">
+      <div class="def-label">Definition 2.12 <span style="font-weight:400;text-transform:none;">(Fujii 2019)</span></div>
+      <p>
+        "A B-indexed comonad on <span class="m">C</span> is a functor
+        <span class="m">S : B → Comnd(C)</span>"
+        where <span class="m">Comnd(C)</span> is the category of comonads on <span class="m">C</span>.
+      </p>
+    </div>
+
+    <p>
+      This means each object <span class="m">b ∈ B</span> maps to a full comonad
+      <span class="m">(S<sub>b</sub>, ε<sub>b</sub>, δ<sub>b</sub>)</span> on <span class="m">C</span>, and each morphism
+      <span class="m">u : b → b'</span> maps to a comonad morphism. Crucially:
+    </p>
+
+    <div class="formula-block">
+      <hr>
+      <div class="formula-inner">
+Indexed:  ε<sub>b</sub> : S<sub>b</sub> ⇒ id<sub>C</sub>   and   δ<sub>b</sub> : S<sub>b</sub> ⇒ S<sub>b</sub> ∘ S<sub>b</sub>
+          (each grade b has its OWN counit and comultiplication)
+
+Graded:   ε   : S<sub>I</sub> ⇒ id<sub>C</sub>   and   δ<sub>m,n</sub> : S<sub>m⊗n</sub> ⇒ S<sub>m</sub> ∘ S<sub>n</sub>
+          (grades MIX across comultiplication; counit lives at identity)
+      </div>
+      <hr>
+    </div>
+
+    <p>
+      The structural contrast:
+    </p>
+    <ul style="padding-left:1.5em; display:flex; flex-direction:column; gap:0.4rem;">
+      <li>
+        In a <strong>graded</strong> comonad, comultiplication <em>splits a combined grade</em>
+        <span class="m">m⊗n</span> into two separate components. The monoidal structure of
+        <span class="m">M</span> is essential — it specifies what "combining" means.
+      </li>
+      <li>
+        In an <strong>indexed</strong> comonad, each <span class="m">S<sub>b</sub></span> is
+        already a full self-contained comonad; the category <span class="m">B</span> only
+        specifies how to transport between comonads along morphisms. There is no grade-mixing
+        in comultiplication: <span class="m">δ<sub>b</sub> : S<sub>b</sub> → S<sub>b</sub> ∘ S<sub>b</sub></span>
+        stays at the same index <span class="m">b</span>.
+      </li>
+    </ul>
+
+    <blockquote>
+      "B-indexed comonads on <span class="m">C</span> are equivalent to
+      <span class="m">B<sup>op</sup></span>-indexed monads on <span class="m">C<sup>op</sup></span>."
+      <span class="src">— Fujii, <a href="https://arxiv.org/html/1904.08083v1" target="_blank">arXiv:1904.08083</a></span>
+    </blockquote>
+
+    <p>
+      The seven axioms IC1–IC7 for indexed comonads parallel GC1–GC6 except they lack the
+      monoidal-mixing condition: the counit and comultiplication are indexed pointwise, with
+      no analogue of GC4–GC6 that mixes grades.
+    </p>
+  </section>
+
+  <!-- §6 Semiring -->
+  <section id="semiring">
+    <h2>6. Semiring grading in coeffect systems</h2>
+
+    <p>
+      In Orchard–Petricek and Gaboardi et al., the index set <span class="m">M</span> is taken to be
+      a <em>semiring</em> <span class="m">(R, +, ·, 0, 1)</span>, not merely a monoid.
+      The multiplicative monoid <span class="m">(R, ·, 1)</span> drives the comonad structure;
+      the additive monoid <span class="m">(R, +, 0)</span> provides additional structure
+      for context splitting in product types.
+    </p>
+
+    <h3>Counit and comultiplication with a semiring</h3>
+    <div class="formula-block">
+      <hr>
+      <div class="formula-inner">
+ε<sub>A</sub>     : D<sub>1</sub>(A) → A
+             (counit at semiring multiplicative identity 1)
+
+δ<sub>r,s,A</sub> : D<sub>r·s</sub>(A) → D<sub>r</sub>(D<sub>s</sub>(A))
+             (comultiplication indexed by r·s, the semiring product)
+
+weak<sub>A</sub>  : D<sub>0</sub>(A) → I
+             (weakening at semiring zero — zero grade = no resource)
+      </div>
+      <hr>
+    </div>
+
+    <p>
+      The additive monoid gives a further natural transformation for <em>context merging</em>
+      (conjunction of resource demands), used when two computations share the same variable:
+    </p>
+    <div class="formula-block">
+      <hr>
+      <div class="formula-inner">
+merge<sub>r,s,A</sub> : D<sub>r</sub>(A) ⊗ D<sub>s</sub>(A) → D<sub>r+s</sub>(A)
+      </div>
+      <hr>
+    </div>
+
+    <p>
+      When this extra structure exists, the graded comonad is sometimes called an
+      <span class="tag">exponential graded comonad</span> (by analogy with the
+      <span class="m">!</span>-modality in linear logic, which also has weakening and contraction).
+      The search results describe it: "Graded comonads usually have a semiring structure on
+      their indices, adding extra graded monoidal structure called exponential graded comonads."
+    </p>
+
+    <h3>Orchard's structural coeffects (indexed comonad variant)</h3>
+    <p>
+      In Petricek–Orchard (ICFP 2014), the model is an <em>indexed</em> comonad on a category
+      of contexts, where the grade <span class="m">r</span> is a vector of semiring elements
+      (one per variable in scope). Their informal account of the type-level content:
+    </p>
+    <blockquote>
+      "Counit here requires a single copy of the value from the context.
+      Comultiplication splits R times S copies of a value into R copies of a context
+      where each context contains just S copies of the value."
+      <span class="src">— Search summary of Orchard/Petricek coeffect papers
+        (<a href="https://www.doc.ic.ac.uk/~dorchard/publ/coeffects-icfp14.pdf" target="_blank">coeffects-icfp14.pdf</a>)</span>
+    </blockquote>
+
+    <h3>Connection to linear logic bang</h3>
+    <p>
+      A graded linear exponential comonad (GLEC) is a graded comonad on a symmetric monoidal
+      category that additionally gives a monoid homomorphism from the semiring's multiplicative
+      monoid into the composition monoid of symmetric monoidal endofunctors. This is the
+      categorical model of the graded <span class="m">!</span>-modality in graded linear logic.
+    </p>
+  </section>
+
+  <hr class="divider">
+
+  <!-- Sources -->
+  <section id="sources">
+    <h2>7. Primary sources</h2>
+    <div class="sources">
+
+      <div class="source-card">
+        <div class="source-title">
+          <a href="https://arxiv.org/html/1904.08083v1" target="_blank">
+            A 2-Categorical Study of Graded and Indexed Monads
+          </a>
+        </div>
+        <div class="source-meta">Soichiro Fujii · arXiv:1904.08083 · Master's thesis, University of Tokyo, 2016 (posted 2019)</div>
+        <div class="source-note">Primary source for Definition 2.5 (M-graded comonad), Definition 2.12 (B-indexed comonad), and all six GC axioms. HTML version readable; PDF is compressed. All direct quotes above are from this source.</div>
+      </div>
+
+      <div class="source-card">
+        <div class="source-title">
+          <a href="https://link.springer.com/chapter/10.1007/978-3-662-49630-5_30" target="_blank">
+            Towards a Formal Theory of Graded Monads
+          </a>
+        </div>
+        <div class="source-meta">Soichiro Fujii, Shin-ya Katsumata, Paul-André Mellies · FoSSaCS 2016 · LNCS 9634</div>
+        <div class="source-note">Seminal paper establishing graded monads as lax monoidal functors. Graded comonad is the dual (oplax). Also available at <a href="https://www.irif.fr/~mellies/papers/fossacs2016-final-paper.pdf" target="_blank">Mellies' page</a> (PDF; WebFetch cannot decompress).</div>
+      </div>
+
+      <div class="source-card">
+        <div class="source-title">
+          <a href="https://arxiv.org/abs/2007.11235" target="_blank">
+            Graded Hoare Logic and its Categorical Semantics
+          </a>
+        </div>
+        <div class="source-meta">arXiv:2007.11235</div>
+        <div class="source-note">Source of the concise quote: "Graded comonads are dually defined (i.e., as a graded monad on C^op)." Also discusses costrong M^op-graded comonads with notation (D, ε, δ, cs).</div>
+      </div>
+
+      <div class="source-card">
+        <div class="source-title">
+          <a href="https://ncatlab.org/nlab/show/graded+monad" target="_blank">
+            graded monad — nLab
+          </a>
+        </div>
+        <div class="source-meta">nLab · community-maintained</div>
+        <div class="source-note">Defines graded monad as lax monoidal functor (M, ⊗, I) → ([C,C], ∘, id). States: "The grading idea may also be applied to comonads" — dual definition. Confirms the indexed-vs-graded distinction and lists key references.</div>
+      </div>
+
+      <div class="source-card">
+        <div class="source-title">
+          <a href="https://www.researchgate.net/publication/262368930_Parametric_Effect_Monads_and_Semantics_of_Effect_Systems" target="_blank">
+            Parametric Effect Monads and Semantics of Effect Systems
+          </a>
+        </div>
+        <div class="source-meta">Shin-ya Katsumata · POPL 2014</div>
+        <div class="source-note">Originator of parametric/graded monads. "The dual notion of parametric comonad appeared in work on higher-order model-checking." Source of grades-from-preordered-monoids framing.</div>
+      </div>
+
+      <div class="source-card">
+        <div class="source-title">
+          <a href="https://www.lipn.univ-paris13.fr/~breuvart/articles/effcoeff.pdf" target="_blank">
+            Combining Effects and Coeffects via Grading
+          </a>
+        </div>
+        <div class="source-meta">Marco Gaboardi, Shin-ya Katsumata, Dominic Orchard, Flavien Breuvart, Tarmo Uustalu · ICFP 2016</div>
+        <div class="source-note">Formalises effect-graded monads and coeffect-graded comonads with graded distributive laws. Introduces "exponential graded comonad" with semiring addition for context merging. PDF is compressed — not directly quotable from WebFetch.</div>
+      </div>
+
+      <div class="source-card">
+        <div class="source-title">
+          <a href="https://www.doc.ic.ac.uk/~dorchard/publ/coeffects-icfp14.pdf" target="_blank">
+            Coeffects: A Calculus of Context-Dependent Computation
+          </a>
+        </div>
+        <div class="source-meta">Tomas Petricek, Dominic Orchard, Alan Mycroft · ICFP 2014</div>
+        <div class="source-note">Concrete coeffect type system over indexed comonads, with semiring grades for variable usage. Models: flat (ε<sub>r</sub>: D<sub>r</sub> A → A at r=1) and structural (context-vector) variants. PDF compressed.</div>
+      </div>
+
+    </div>
+  </section>
+
+</div>

@@ -1,0 +1,625 @@
+<title>Structural Coeffects &amp; Indexed Comonads — Research Notes</title>
+<style>
+/* ─── Tokens ────────────────────────────────────────────────────────── */
+:root {
+  --bg:        #F5F4EF;
+  --bg-raised: #EDECEA;
+  --bg-sunken: #E6E4DF;
+  --text:      #1B1916;
+  --text-2:    #4A4640;
+  --text-3:    #7A756E;
+  --accent:    #3D6B9E;
+  --accent-2:  #8FA8C4;
+  --border:    #D0CCBF;
+  --rule:      #3D6B9E;
+  --warn:      #7A5C2E;
+  --warn-bg:   #F5EFDF;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg:        #111009;
+    --bg-raised: #1A1915;
+    --bg-sunken: #0E0D0A;
+    --text:      #E2DED5;
+    --text-2:    #ABA69D;
+    --text-3:    #706C65;
+    --accent:    #6D9FCC;
+    --accent-2:  #4A6F90;
+    --border:    #2E2C28;
+    --rule:      #6D9FCC;
+    --warn:      #C4A05A;
+    --warn-bg:   #1E1A10;
+  }
+}
+:root[data-theme="light"] {
+  --bg:        #F5F4EF;
+  --bg-raised: #EDECEA;
+  --bg-sunken: #E6E4DF;
+  --text:      #1B1916;
+  --text-2:    #4A4640;
+  --text-3:    #7A756E;
+  --accent:    #3D6B9E;
+  --accent-2:  #8FA8C4;
+  --border:    #D0CCBF;
+  --rule:      #3D6B9E;
+  --warn:      #7A5C2E;
+  --warn-bg:   #F5EFDF;
+}
+:root[data-theme="dark"] {
+  --bg:        #111009;
+  --bg-raised: #1A1915;
+  --bg-sunken: #0E0D0A;
+  --text:      #E2DED5;
+  --text-2:    #ABA69D;
+  --text-3:    #706C65;
+  --accent:    #6D9FCC;
+  --accent-2:  #4A6F90;
+  --border:    #2E2C28;
+  --rule:      #6D9FCC;
+  --warn:      #C4A05A;
+  --warn-bg:   #1E1A10;
+}
+
+/* ─── Reset / Base ─────────────────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; }
+html { font-size: 16px; background: var(--bg); color: var(--text); }
+body {
+  font-family: system-ui, -apple-system, 'Segoe UI', sans-serif;
+  font-size: 1rem;
+  line-height: 1.7;
+  max-width: 72ch;
+  margin: 0 auto;
+  padding: 3rem 2rem 6rem;
+}
+
+/* ─── Typography scale ──────────────────────────────────────────────── */
+h1, h2, h3 {
+  font-family: Georgia, 'Times New Roman', serif;
+  text-wrap: balance;
+  line-height: 1.25;
+  color: var(--text);
+}
+h1 {
+  font-size: 1.9rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  margin: 0 0 0.35em;
+}
+h2 {
+  font-size: 1.15rem;
+  font-weight: 700;
+  margin: 2.8em 0 0.6em;
+  letter-spacing: -0.01em;
+  color: var(--text);
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 0.3em;
+}
+h3 {
+  font-size: 1rem;
+  font-weight: 700;
+  margin: 2em 0 0.4em;
+  color: var(--text-2);
+  font-style: italic;
+}
+p { margin: 0 0 1em; }
+a { color: var(--accent); text-decoration: underline; text-underline-offset: 2px; }
+a:hover { opacity: 0.8; }
+a:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 2px; }
+sup { font-size: 0.7em; vertical-align: super; line-height: 0; }
+var { font-family: Georgia, serif; font-style: italic; }
+code { font-family: 'Courier New', Courier, monospace; font-size: 0.88em; }
+
+/* ─── Masthead ──────────────────────────────────────────────────────── */
+.masthead {
+  border-bottom: 2px solid var(--accent);
+  padding-bottom: 1.4em;
+  margin-bottom: 2em;
+}
+.eyebrow {
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--accent);
+  margin: 0 0 0.6em;
+}
+.byline {
+  font-size: 0.82rem;
+  color: var(--text-3);
+  margin: 0.5em 0 0;
+}
+
+/* ─── Formula / theorem environments ───────────────────────────────── */
+.env {
+  border-left: 3px solid var(--rule);
+  background: var(--bg-raised);
+  padding: 0.85em 1.1em 0.85em 1.2em;
+  margin: 1.4em 0;
+  border-radius: 0 2px 2px 0;
+}
+.env-label {
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--accent);
+  margin-bottom: 0.45em;
+}
+.env p { margin: 0.35em 0; }
+.env p:last-child { margin-bottom: 0; }
+
+/* Code within environments */
+.env code, .fblock code {
+  background: var(--bg-sunken);
+  padding: 0.05em 0.3em;
+  border-radius: 2px;
+}
+
+/* Formal block — for typing rules / notation */
+.fblock {
+  font-family: 'Courier New', Courier, monospace;
+  font-size: 0.83rem;
+  background: var(--bg-raised);
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--border);
+  padding: 0.9em 1.2em;
+  margin: 1.2em 0;
+  overflow-x: auto;
+  white-space: pre;
+  line-height: 1.6;
+  color: var(--text);
+}
+
+/* Typing rule display — fraction-like layout */
+.rule-wrap {
+  overflow-x: auto;
+  margin: 1.2em 0;
+}
+.rule-table {
+  border-collapse: collapse;
+  font-family: 'Courier New', Courier, monospace;
+  font-size: 0.83rem;
+  margin: 0 auto 0 0;
+}
+.rule-table td {
+  padding: 0 1.2em;
+  text-align: center;
+}
+.rule-table .prem td {
+  padding-bottom: 0.2em;
+}
+.rule-table .line td {
+  border-top: 1px solid var(--text-2);
+  padding-top: 0.25em;
+  font-size: 0.7rem;
+  color: var(--text-3);
+  white-space: nowrap;
+}
+.rule-table .conc td {
+  padding-top: 0.2em;
+}
+
+/* Comparison table */
+.cmp {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.88rem;
+  margin: 1.2em 0;
+  overflow-x: auto;
+}
+.cmp th {
+  font-family: Georgia, serif;
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-3);
+  text-align: left;
+  padding: 0.5em 0.8em;
+  border-bottom: 2px solid var(--border);
+}
+.cmp td {
+  padding: 0.55em 0.8em;
+  vertical-align: top;
+  border-bottom: 1px solid var(--border);
+}
+.cmp tr:last-child td { border-bottom: none; }
+.cmp td:first-child { font-weight: 600; width: 28%; }
+.cmp code { background: var(--bg-raised); padding: 0.05em 0.3em; border-radius: 2px; }
+
+/* Claim — verifiable assertion */
+.claim {
+  border-left: 3px solid var(--accent-2);
+  background: var(--bg-raised);
+  padding: 0.7em 1.1em;
+  margin: 1em 0;
+  border-radius: 0 2px 2px 0;
+  font-size: 0.93rem;
+}
+.claim-status {
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--accent);
+  margin-bottom: 0.25em;
+}
+.claim-status.plaus { color: var(--warn); }
+
+/* Note / caveat */
+.note {
+  background: var(--warn-bg);
+  border-left: 3px solid var(--warn);
+  padding: 0.65em 1em;
+  margin: 1.2em 0;
+  font-size: 0.87rem;
+  border-radius: 0 2px 2px 0;
+  color: var(--text-2);
+}
+
+/* ─── References ────────────────────────────────────────────────────── */
+.refs {
+  margin-top: 3em;
+  padding-top: 1.2em;
+  border-top: 1px solid var(--border);
+}
+.refs h2 { font-size: 0.85rem; margin-top: 0; }
+.ref-list { list-style: none; padding: 0; margin: 0; }
+.ref-list li {
+  display: grid;
+  grid-template-columns: 2.4em 1fr;
+  gap: 0 0.5em;
+  margin: 0.55em 0;
+  font-size: 0.82rem;
+  line-height: 1.5;
+  color: var(--text-2);
+}
+.ref-list .ref-id {
+  font-family: Georgia, serif;
+  font-style: italic;
+  color: var(--accent);
+  font-size: 0.78rem;
+  padding-top: 0.1em;
+}
+</style>
+
+<article>
+
+<!-- Masthead -->
+<div class="masthead">
+  <p class="eyebrow">Research Notes — Type Theory &amp; Category Theory</p>
+  <h1>Structural Coeffects and Indexed Comonads</h1>
+  <p style="color:var(--text-2);font-family:Georgia,serif;font-style:italic;font-size:1.05rem;margin:0.4em 0 0.7em">
+    Algebraic structures, context representations, and the flat/structural distinction
+  </p>
+  <p class="byline">Sources: Petricek, Orchard &amp; Mycroft 2013/2014 · Brunel, Gaboardi, Mazza &amp; Zdancewic 2014 · Wood et al. 2022</p>
+</div>
+
+
+<!-- ─── §1 Core Distinction ──────────────────────────────────────────── -->
+<h2>1. The Flat / Structural Distinction</h2>
+
+<p>Coeffect systems track <em>how</em> a term uses its context — not what it produces
+(that is effects), but what it demands from its environment. Two fundamentally
+different ways of attaching coeffect information to a typing context have been
+identified, with distinct algebraic requirements.</p>
+
+<table class="cmp">
+  <thead>
+    <tr>
+      <th>Dimension</th>
+      <th>Flat coeffects</th>
+      <th>Structural coeffects</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>Context form</td>
+      <td><code>Γ @r ⊢ e : τ</code></td>
+      <td><code>x₁:τ₁,…,xₙ:τₙ @⟨r₁,…,rₙ⟩ ⊢ e : τ</code></td>
+    </tr>
+    <tr>
+      <td>Annotation granularity</td>
+      <td>Single <var>r</var> for the whole context</td>
+      <td>Vector <var>⟨r₁,…,rₙ⟩</var> — one per variable</td>
+    </tr>
+    <tr>
+      <td>Categorical semantics</td>
+      <td>Ordinary (monoidal) comonad on a CCC</td>
+      <td>Indexed comonad — a comonad <var>C<sup>r</sup></var> for each <var>r</var></td>
+    </tr>
+    <tr>
+      <td>Extra comonad ops needed</td>
+      <td>None beyond counit/cobind</td>
+      <td><code>merge</code>, <code>split</code>, <code>duplicate</code> on <var>C<sup>r</sup></var></td>
+    </tr>
+    <tr>
+      <td>Algebraic identity</td>
+      <td>One: <var>use</var> (identity for ⊛)</td>
+      <td>Same, but applied pointwise across the vector</td>
+    </tr>
+    <tr>
+      <td>Precision (dataflow example)</td>
+      <td><code>x + prev y</code> → <var>r = 1</var> (over-approximates <var>x</var>)</td>
+      <td><code>x + prev y</code> → <var>⟨0, 1⟩</var> (exact per variable)</td>
+    </tr>
+  </tbody>
+</table>
+
+<p>The motivating example — checking the body <code>x + prev&nbsp;y</code> in a dataflow language
+where <code>prev</code> accesses one past value — makes the imprecision of flat coeffects
+visible: a flat system infers the context needs <em>r = 1</em> past values, applying that
+requirement to all variables including <var>x</var>, which in fact only needs its current
+value. The structural system infers <em>⟨0, 1⟩</em> and captures this exactly.<sup>[1]</sup></p>
+
+
+<!-- ─── §2 Algebraic Structures ─────────────────────────────────────── -->
+<h2>2. Algebraic Structures Required</h2>
+
+<h3>2.1 Coeffect algebra (shared base)</h3>
+
+<p>Both flat and structural systems are parameterized by a <em>coeffect algebra</em>
+<var>(R, ∧, ⊛, use, ⊕)</var> providing:</p>
+
+<div class="env">
+  <div class="env-label">Coeffect algebra — operations</div>
+  <p><code>⊛ : R × R → R</code> &nbsp; sequential composition; <var>use</var> is its identity</p>
+  <p><code>∧ : R × R → R</code> &nbsp; parallel merge (both sub-expressions need the same context)</p>
+  <p><code>⊕ : R × R → R</code> &nbsp; split (context is partitioned between two sub-expressions)</p>
+</div>
+
+<p>Concrete instances:</p>
+<ul>
+  <li><strong>Implicit parameters</strong> — <var>∧ = ⊕ = ⊛ = ∪</var> (set union); <var>use = ∅</var></li>
+  <li><strong>Dataflow (past values)</strong> — <var>∧ = min</var>, <var>⊕ = max</var>, <var>⊛ = +</var>; <var>use = 0</var></li>
+  <li><strong>Quantitative / linear</strong> — semiring <var>(R, +, ·, 0, 1)</var>; <var>+</var> for merge, <var>·</var> for sequence<sup>[3]</sup></li>
+</ul>
+
+<h3>2.2 Flat system — ordinary comonad</h3>
+
+<p>Flat coeffects have a denotational semantics in an <em>ordinary comonad</em>
+<var>C</var> on a cartesian closed category, extended with a scalar annotation on
+the comonad type constructor. The annotation propagates through the algebra
+but attaches to the whole context type as a single value.</p>
+
+<h3>2.3 Structural system — indexed comonad</h3>
+
+<p>Structural coeffects require an <strong>indexed comonad</strong> <var>C<sup>r</sup></var>,
+first identified by Petricek, Orchard &amp; Mycroft as a novel structure more powerful
+than ordinary monoidal comonads.<sup>[1]</sup> The index <var>r ∈ R</var> lives in the coeffect
+algebra; each <var>C<sup>r</sup></var> is a separate functor, related by the cobind operation
+across different index values.</p>
+
+<div class="env">
+  <div class="env-label">Definition — Indexed comonad (Petricek, Orchard &amp; Mycroft 2014)</div>
+  <p><code>counit   : C<sup>use</sup> τ → τ</code></p>
+  <p><code>cobind   : (C<sup>r</sup> τ₁ → τ₂) → C<sup>r⊛s</sup> τ₁ → C<sup>s</sup> τ₂</code></p>
+  <p style="margin-top:0.7em;color:var(--text-3);font-size:0.87em">
+    Note how cobind crosses index levels: consuming a <var>C<sup>r⊛s</sup></var> and returning
+    a <var>C<sup>s</sup></var> reflects how sequential composition factors into the index.
+    An ordinary comonad has a single unindexed functor; the indexed form is strictly more expressive.
+  </p>
+</div>
+
+<p>The structural system also requires three <em>additional</em> operations on the comonad
+that the flat system does not need, because it must decompose and recompose
+per-variable vectors at the context level:</p>
+
+<div class="env">
+  <div class="env-label">Additional structure required for structural coeffects</div>
+  <p><code>merge     : C<sup>r</sup> τ₁ × C<sup>s</sup> τ₂ → C<sup>r∧s</sup> (τ₁ × τ₂)</code></p>
+  <p><code>split     : C<sup>r⊕s</sup> (τ₁ × τ₂) → C<sup>r</sup> τ₁ × C<sup>s</sup> τ₂</code></p>
+  <p><code>duplicate : C<sup>r</sup> τ → C<sup>r</sup> (τ × τ)</code></p>
+  <p style="margin-top:0.7em;color:var(--text-3);font-size:0.87em">
+    <code>merge</code>/<code>split</code> handle the introduction/elimination of per-variable
+    context pairs. <code>duplicate</code> handles variable sharing (using a variable in
+    two sub-expressions). These map to the ∧ and ⊕ combinators of the algebra.
+  </p>
+</div>
+
+
+<!-- ─── §3 Typing Rules Contrast ────────────────────────────────────── -->
+<h2>3. Typing Rules — The Contrast</h2>
+
+<p>The divergence between flat and structural is sharpest in the lambda abstraction rule,
+which must handle what happens to a bound variable's coefficient when it is abstracted away.</p>
+
+<h3>Flat lambda abstraction</h3>
+<p>The bound variable's coeffect <var>s</var> is merged into the whole-context annotation
+via <var>∧</var>. Only one algebraic operation is needed:</p>
+
+<div class="rule-wrap">
+<table class="rule-table">
+  <tr class="prem"><td>Γ, x:τ₁ @(r∧s) ⊢ e : τ₂</td></tr>
+  <tr class="line"><td>[λ-flat]</td></tr>
+  <tr class="conc"><td>Γ @r ⊢ λx.e : τ₁ →<sup>s</sup> τ₂</td></tr>
+</table>
+</div>
+
+<h3>Structural lambda abstraction</h3>
+<p>The bound variable gets its own slot <var>⟨s⟩</var> appended to the context vector via
+product extension <var>×⟨s⟩</var>. This is how the vector grows and shrinks:</p>
+
+<div class="rule-wrap">
+<table class="rule-table">
+  <tr class="prem"><td>Γ, x:τ₁ @(r×⟨s⟩) ⊢ e : τ₂</td></tr>
+  <tr class="line"><td>[λ-struct]</td></tr>
+  <tr class="conc"><td>Γ @r ⊢ λx.e : τ₁ →<sup>s</sup> τ₂</td></tr>
+</table>
+</div>
+
+<p>The structural rule no longer needs the <var>∧</var> in the premise because the
+bound variable is a separate slot — there is no mixing with the rest of the
+context annotation. As a result the structural system loses the <var>∧</var> in the
+lambda rule but gains the per-variable vector precision.</p>
+
+<h3>Application (flat, dataflow instance)</h3>
+<p>In the flat dataflow instance, application must take the maximum of past-value
+requirements across both sub-expressions, accounting for sequential composition
+inside the function body:</p>
+
+<div class="rule-wrap">
+<table class="rule-table">
+  <tr class="prem">
+    <td>Γ @r ⊢ e₁ : τ₁ →<sup>t</sup> τ₂</td>
+    <td style="padding:0 0.4em;color:var(--text-3)">  </td>
+    <td>Γ @s ⊢ e₂ : τ₁</td>
+  </tr>
+  <tr class="line"><td colspan="3">[App-flat-df]</td></tr>
+  <tr class="conc"><td colspan="3">Γ @max(r, s+t) ⊢ e₁ e₂ : τ₂</td></tr>
+</table>
+</div>
+
+
+<!-- ─── §4 Comonad Morphisms ─────────────────────────────────────────── -->
+<h2>4. Comonad Morphisms — Implicit Structure</h2>
+
+<div class="claim">
+  <div class="claim-status plaus">Plausible — not directly evidenced in primary source</div>
+  <p>A <em>comonad morphism</em> <var>C<sup>r</sup> → C<sup>s</sup></var> arises when there is a
+  morphism <var>r → s</var> in the coeffect algebra ordering (subsumption: weaker requirements
+  entail stronger). This corresponds to structural subsumption rules in the type system:
+  if a term requires context annotation <var>r</var> and <var>r ≤ s</var> in the preorder
+  on the algebra, then a context satisfying <var>s</var> also satisfies <var>r</var>.</p>
+</div>
+
+<p>The primary source (Petricek et al.) does not introduce comonad morphisms as a named
+algebraic structure in the presentation of the type system. The indexed comonad itself
+already carries the morphism-like behaviour through cobind's index crossing. However,
+weakening rules implicitly use the preorder on <var>R</var>, and any monotone map
+<var>f : r → s</var> in that preorder would induce a natural transformation
+<var>C<sup>f</sup> : C<sup>r</sup> → C<sup>s</sup></var> preserving the counit and cobind structure
+— making it a comonad morphism in the indexed sense.</p>
+
+
+<!-- ─── §5 Beyond Structural ─────────────────────────────────────────── -->
+<h2>5. Beyond Structural: Non-Structural Coeffects</h2>
+
+<div class="note">
+  Structural (per-variable) coeffects are still insufficient when variables <em>alias</em>
+  each other. Wood et al. (2022) identify a third level: <strong>non-structural coeffects</strong>
+  arise when the way one variable is used affects the coeffect annotation of another variable.
+  This happens in imperative settings with sharing and mutation, where aliasing between
+  heap locations makes per-variable independence unsound.<sup>[4]</sup>
+</div>
+
+<p>The hierarchy of expressive power is:</p>
+
+<div class="env">
+  <div class="env-label">Expressiveness hierarchy</div>
+  <p><strong>Flat</strong> ≤ <strong>Structural</strong> &lt; <strong>Non-structural</strong></p>
+  <p style="font-size:0.87em;color:var(--text-3);margin-top:0.4em">
+    Flat systems are a special case of structural (set the vector to a constant).
+    Structural systems decompose into per-variable independent annotations.
+    Non-structural systems require tracking inter-variable dependencies — algebraic structure
+    beyond a simple coeffect vector; the research here is ongoing.
+  </p>
+</div>
+
+
+<!-- ─── §6 Graded Comonads (Gaboardi) ───────────────────────────────── -->
+<h2>6. Graded Comonads and Semiring Coeffects</h2>
+
+<p>Brunel, Gaboardi, Mazza &amp; Zdancewic (ESOP 2014) take the structural/quantitative
+approach with a semiring <var>(R, +, ·, 0, 1)</var> as the annotation algebra, where:</p>
+
+<ul>
+  <li><var>+</var> combines requirements additively (parallel context use)</li>
+  <li><var>·</var> composes requirements multiplicatively (sequential)</li>
+  <li><var>0</var> = unused; <var>1</var> = linear use</li>
+</ul>
+
+<p>Gaboardi et al. (ICFP 2016) lift the distributive law between effects (monads)
+and coeffects (comonads) to the <em>graded</em> setting, yielding a syntactic theory
+of how graded monads and graded comonads interact. A graded comonad
+<var>D<sub>r</sub></var> is indexed by a monoid element <var>r</var> (rather than
+an arbitrary algebra element), with multiplication in the monoid controlling
+how indices compose under cobind.<sup>[2]</sup> This unifies graded comonads with
+the indexed comonad framework: a graded comonad is an indexed comonad where
+the index set carries monoid structure and cobind uses monoid multiplication.</p>
+
+
+<!-- ─── §7 Verified Claims ───────────────────────────────────────────── -->
+<h2>7. Verification of Key Claims</h2>
+
+<div class="claim">
+  <div class="claim-status">Confirmed — 3/3 sources agree</div>
+  <p><strong>Flat context form:</strong> <code>Γ @r ⊢ e : τ</code> — one annotation for the whole context. Structural context form: <code>x₁:τ₁,…,xₙ:τₙ @⟨r₁,…,rₙ⟩ ⊢ e : τ</code> — per-variable vector. The distinction appears across tomasp.net/coeffects, the Cambridge repository record, and ICALP 2013 summary.</p>
+</div>
+
+<div class="claim">
+  <div class="claim-status">Confirmed — primary source (Petricek's own site)</div>
+  <p><strong>Indexed comonad operations:</strong> <code>counit : C<sup>use</sup> τ → τ</code> and <code>cobind : (C<sup>r</sup> τ₁ → τ₂) → C<sup>r⊛s</sup> τ₁ → C<sup>s</sup> τ₂</code>. The additional merge/split/duplicate operations are required only in the structural system for tensorial context decomposition.</p>
+</div>
+
+<div class="claim">
+  <div class="claim-status">Confirmed — 2/2 sources</div>
+  <p><strong>Structural lambda rule</strong> uses vector extension <code>r×⟨s⟩</code>; flat lambda rule uses algebra merge <code>r∧s</code>. The structural rule eliminates the need for ∧ in the premise, gaining per-variable precision.</p>
+</div>
+
+<div class="claim">
+  <div class="claim-status">Confirmed — explicit in Wood et al. 2022 abstract</div>
+  <p><strong>Non-structural coeffects</strong> exist and are not captured by per-variable vectors: "the way a given variable is used can affect the coeffects of other variables" — arising with sharing/aliasing in imperative settings.</p>
+</div>
+
+<div class="claim">
+  <div class="claim-status plaus">Plausible — inferred, not directly stated</div>
+  <p><strong>Comonad morphisms</strong> induced by the preorder on the coeffect algebra correspond to weakening/subsumption rules. The primary sources do not name these as "comonad morphisms" explicitly; they emerge from the monotone structure of the algebra acting on the indexed comonad family.</p>
+</div>
+
+
+<!-- ─── References ───────────────────────────────────────────────────── -->
+<div class="refs">
+  <h2>References</h2>
+  <ul class="ref-list">
+    <li>
+      <span class="ref-id">[1]</span>
+      <span>
+        T. Petricek, D. Orchard, A. Mycroft.
+        <em>Coeffects: A Calculus of Context-Dependent Computation.</em>
+        ICFP 2014.
+        <a href="https://www.doc.ic.ac.uk/~dorchard/publ/coeffects-icfp14.pdf" target="_blank" rel="noopener">PDF</a>
+        · <a href="https://dl.acm.org/doi/10.1145/2628136.2628160" target="_blank" rel="noopener">ACM DL</a>
+        · Interactive tutorial: <a href="https://tomasp.net/coeffects/" target="_blank" rel="noopener">tomasp.net/coeffects</a>
+      </span>
+    </li>
+    <li>
+      <span class="ref-id">[2]</span>
+      <span>
+        M. Gaboardi, S. Katsumata, D. Orchard, F. Breuvart, T. Uustalu.
+        <em>Combining Effects and Coeffects via Grading.</em>
+        ICFP 2016.
+        <a href="https://www.lipn.univ-paris13.fr/~breuvart/articles/effcoeff.pdf" target="_blank" rel="noopener">PDF</a>
+      </span>
+    </li>
+    <li>
+      <span class="ref-id">[3]</span>
+      <span>
+        A. Brunel, M. Gaboardi, D. Mazza, S. Zdancewic.
+        <em>A Core Quantitative Coeffect Calculus.</em>
+        ESOP 2014.
+        <a href="https://www.cis.upenn.edu/~stevez/papers/BGMZ14.pdf" target="_blank" rel="noopener">PDF</a>
+      </span>
+    </li>
+    <li>
+      <span class="ref-id">[4]</span>
+      <span>
+        J. Wood, R. Atkey.
+        <em>Coeffects for Sharing and Mutation.</em>
+        2022.
+        <a href="https://arxiv.org/abs/2209.07439" target="_blank" rel="noopener">arXiv:2209.07439</a>
+      </span>
+    </li>
+    <li>
+      <span class="ref-id">[5]</span>
+      <span>
+        T. Petricek, D. Orchard, A. Mycroft.
+        <em>Coeffects: Unified Static Analysis of Context-Dependence.</em>
+        ICALP 2013.
+        <a href="https://www.cs.kent.ac.uk/people/staff/dao7/publ/coeffects-icalp13.pdf" target="_blank" rel="noopener">PDF</a>
+      </span>
+    </li>
+  </ul>
+</div>
+
+</article>

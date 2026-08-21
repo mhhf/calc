@@ -1,0 +1,937 @@
+<title>Petricek on Structural vs Flat Coeffects — Research Report</title>
+<style>
+/* === TOKENS === */
+:root {
+  --paper:      #F5F6F8;
+  --paper-2:    #ECEEF2;
+  --ink:        #18191E;
+  --ink-2:      #3A3D47;
+  --ink-3:      #5E6370;
+  --accent:     #1B58A8;
+  --accent-lt:  #D6E4F7;
+  --brick:      #B34528;
+  --brick-lt:   #F5E0DA;
+  --rule:       #D0D3DA;
+  --formula-bg: #E8ECF3;
+  --mono-bg:    #1A1D23;
+  --mono-ink:   #C8D1E0;
+
+  --font-display: 'Palatino Linotype', Palatino, 'Book Antiqua', Georgia, serif;
+  --font-body:    'Segoe UI', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+  --font-mono:    'JetBrains Mono', 'SF Mono', 'Fira Code', 'Cascadia Code', Consolas, monospace;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --paper:      #0D1117;
+    --paper-2:    #161B24;
+    --ink:        #E4E8F0;
+    --ink-2:      #B8BFD0;
+    --ink-3:      #7A8394;
+    --accent:     #5090D8;
+    --accent-lt:  #0F2040;
+    --brick:      #D46040;
+    --brick-lt:   #2A1208;
+    --rule:       #252C3A;
+    --formula-bg: #131A28;
+    --mono-bg:    #0A0E14;
+    --mono-ink:   #C8D1E0;
+  }
+}
+
+:root[data-theme="light"] {
+  --paper:      #F5F6F8;
+  --paper-2:    #ECEEF2;
+  --ink:        #18191E;
+  --ink-2:      #3A3D47;
+  --ink-3:      #5E6370;
+  --accent:     #1B58A8;
+  --accent-lt:  #D6E4F7;
+  --brick:      #B34528;
+  --brick-lt:   #F5E0DA;
+  --rule:       #D0D3DA;
+  --formula-bg: #E8ECF3;
+  --mono-bg:    #1A1D23;
+  --mono-ink:   #C8D1E0;
+}
+
+:root[data-theme="dark"] {
+  --paper:      #0D1117;
+  --paper-2:    #161B24;
+  --ink:        #E4E8F0;
+  --ink-2:      #B8BFD0;
+  --ink-3:      #7A8394;
+  --accent:     #5090D8;
+  --accent-lt:  #0F2040;
+  --brick:      #D46040;
+  --brick-lt:   #2A1208;
+  --rule:       #252C3A;
+  --formula-bg: #131A28;
+  --mono-bg:    #0A0E14;
+  --mono-ink:   #C8D1E0;
+}
+
+/* === RESET / BASE === */
+*, *::before, *::after { box-sizing: border-box; }
+html { font-size: 16px; scroll-behavior: smooth; }
+body {
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--font-body);
+  font-size: 1rem;
+  line-height: 1.72;
+  margin: 0;
+  padding: 0;
+}
+
+/* === LAYOUT === */
+.page {
+  max-width: 800px;
+  margin: 0 auto;
+  padding: 3rem 2rem 6rem;
+}
+
+/* === HEADER === */
+.doc-header {
+  border-bottom: 2px solid var(--accent);
+  padding-bottom: 1.75rem;
+  margin-bottom: 2.5rem;
+}
+
+.eyebrow {
+  font-family: var(--font-body);
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--accent);
+  margin: 0 0 0.6rem;
+}
+
+.doc-title {
+  font-family: var(--font-display);
+  font-size: clamp(1.6rem, 4vw, 2.25rem);
+  font-weight: 400;
+  line-height: 1.25;
+  text-wrap: balance;
+  margin: 0 0 0.9rem;
+  color: var(--ink);
+}
+
+.doc-subtitle {
+  font-size: 0.9rem;
+  color: var(--ink-3);
+  margin: 0;
+  line-height: 1.5;
+}
+
+.doc-subtitle em { font-style: normal; color: var(--ink-2); }
+
+/* === SECTION === */
+.section {
+  margin-top: 2.75rem;
+}
+
+.section + .section {
+  padding-top: 2.25rem;
+  border-top: 1px solid var(--rule);
+}
+
+.section-label {
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.13em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+  margin: 0 0 0.35rem;
+}
+
+h2 {
+  font-family: var(--font-display);
+  font-size: 1.28rem;
+  font-weight: 400;
+  margin: 0 0 1rem;
+  color: var(--ink);
+  text-wrap: balance;
+}
+
+h3 {
+  font-family: var(--font-body);
+  font-size: 0.92rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--accent);
+  margin: 1.5rem 0 0.5rem;
+}
+
+p {
+  margin: 0 0 0.9rem;
+  max-width: 68ch;
+  color: var(--ink-2);
+}
+
+p:last-child { margin-bottom: 0; }
+
+/* === QUOTES === */
+blockquote {
+  margin: 1.25rem 0;
+  padding: 0.9rem 1.1rem 0.9rem 1.4rem;
+  border-left: 3px solid var(--accent);
+  background: var(--accent-lt);
+  border-radius: 0 4px 4px 0;
+  font-style: italic;
+  font-size: 0.93rem;
+  color: var(--ink-2);
+}
+blockquote cite {
+  display: block;
+  margin-top: 0.45rem;
+  font-size: 0.78rem;
+  font-style: normal;
+  letter-spacing: 0.03em;
+  color: var(--ink-3);
+}
+blockquote cite a { color: var(--accent); text-decoration: none; }
+blockquote cite a:hover { text-decoration: underline; }
+
+/* === FORMULA BLOCKS === */
+.formula {
+  display: block;
+  font-family: var(--font-mono);
+  font-size: 0.875rem;
+  background: var(--formula-bg);
+  color: var(--ink);
+  padding: 0.85rem 1.1rem;
+  border-radius: 4px;
+  margin: 1rem 0;
+  overflow-x: auto;
+  white-space: pre;
+  line-height: 1.7;
+}
+
+.formula .comment {
+  color: var(--ink-3);
+  font-style: italic;
+}
+
+.formula .hl { color: var(--accent); font-weight: 600; }
+.formula .hl2 { color: var(--brick); font-weight: 600; }
+
+/* === INLINE CODE === */
+code {
+  font-family: var(--font-mono);
+  font-size: 0.83em;
+  background: var(--formula-bg);
+  padding: 0.1em 0.35em;
+  border-radius: 3px;
+  color: var(--ink);
+}
+
+/* === COMPARISON TABLE === */
+.table-wrap { overflow-x: auto; margin: 1.25rem 0; }
+
+table {
+  border-collapse: collapse;
+  width: 100%;
+  min-width: 540px;
+  font-size: 0.875rem;
+  font-variant-numeric: tabular-nums;
+}
+
+thead th {
+  background: var(--paper-2);
+  font-family: var(--font-body);
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+  padding: 0.65rem 1rem;
+  text-align: left;
+  border-bottom: 2px solid var(--rule);
+}
+
+thead th:first-child { width: 26%; }
+
+tbody tr:nth-child(even) td { background: var(--paper-2); }
+
+tbody td {
+  padding: 0.6rem 1rem;
+  vertical-align: top;
+  border-bottom: 1px solid var(--rule);
+  color: var(--ink-2);
+  line-height: 1.55;
+}
+
+tbody td:first-child {
+  font-weight: 600;
+  color: var(--ink);
+  font-size: 0.82rem;
+  letter-spacing: 0.02em;
+}
+
+tbody td code { font-size: 0.82em; }
+
+/* Flat column accent */
+thead th:nth-child(2) { border-top: 3px solid var(--brick); }
+thead th:nth-child(3) { border-top: 3px solid var(--accent); }
+
+/* === CALLOUT === */
+.callout {
+  margin: 1.25rem 0;
+  padding: 0.85rem 1.1rem;
+  border-radius: 4px;
+  font-size: 0.88rem;
+  color: var(--ink-2);
+  line-height: 1.6;
+}
+.callout.info {
+  background: var(--accent-lt);
+  border-left: 3px solid var(--accent);
+}
+.callout.warn {
+  background: var(--brick-lt);
+  border-left: 3px solid var(--brick);
+}
+.callout strong { color: var(--ink); }
+
+/* === DEFINITION LIST === */
+dl { margin: 0.75rem 0; }
+dt {
+  font-family: var(--font-mono);
+  font-size: 0.83rem;
+  font-weight: 600;
+  color: var(--accent);
+  margin-top: 0.85rem;
+}
+dd {
+  margin: 0.2rem 0 0 1.2rem;
+  font-size: 0.88rem;
+  color: var(--ink-2);
+}
+
+/* === SOURCES === */
+.sources {
+  margin-top: 3rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid var(--rule);
+}
+
+.sources h2 {
+  font-size: 0.85rem;
+  font-family: var(--font-body);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--ink-3);
+}
+
+.sources ol {
+  margin: 0.75rem 0 0;
+  padding-left: 1.5rem;
+  font-size: 0.84rem;
+  color: var(--ink-3);
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+}
+
+.sources ol a {
+  color: var(--accent);
+  text-decoration: none;
+}
+.sources ol a:hover { text-decoration: underline; }
+
+.sources .venue {
+  font-style: italic;
+}
+
+/* === CONFIDENCE CHIPS === */
+.chip {
+  display: inline-block;
+  font-size: 0.67rem;
+  font-weight: 700;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  padding: 0.15em 0.5em;
+  border-radius: 2px;
+  vertical-align: middle;
+  margin-left: 0.35em;
+}
+.chip.exact  { background: var(--accent-lt); color: var(--accent); }
+.chip.recon  { background: var(--brick-lt);  color: var(--brick); }
+
+/* === FOCUS RING === */
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+@media (max-width: 600px) {
+  .page { padding: 1.5rem 1.1rem 4rem; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * { transition: none !important; animation: none !important; }
+}
+</style>
+
+<div class="page">
+
+  <header class="doc-header">
+    <p class="eyebrow">Research Report · Type Theory</p>
+    <h1 class="doc-title">Structural vs Flat Coeffects in Petricek, Orchard &amp; Mycroft</h1>
+    <p class="doc-subtitle">
+      Covers <em>ICALP 2013</em> — "Coeffects: Unified static analysis of context-dependence" —
+      and <em>ICFP 2014</em> — "Coeffects: A calculus of context-dependent computation." <br>
+      Annotated: <span class="chip exact">exact</span> = direct quote or formula confirmed from
+      primary source; <span class="chip recon">reconstructed</span> = reconstructed from multiple
+      corroborating secondary sources.
+    </p>
+  </header>
+
+  <!-- §1 The Basic Framing -->
+  <section class="section">
+    <p class="section-label">§1</p>
+    <h2>What Coeffects Are</h2>
+
+    <blockquote>
+      "Monadic effect systems provide a unified way of tracking effects of computations, but there
+      is no unified mechanism for tracking how computations rely on the environment."
+      <cite>— Petricek, Orchard, Mycroft <span class="chip exact">exact</span>
+        <a href="https://tomasp.net/academic/papers/coeffects/" target="_blank">[ICALP 2013]</a>
+      </cite>
+    </blockquote>
+
+    <blockquote>
+      "Effects capture how computations affect the environment, coeffects capture the requirements
+      that computations place on the environment."
+      <cite>— Petricek et al. <span class="chip exact">exact</span>
+        <a href="https://tomasp.net/coeffects/" target="_blank">[tomasp.net/coeffects]</a>
+      </cite>
+    </blockquote>
+
+    <p>
+      Both papers use a single typed judgment form annotated with coeffect information. The key
+      difference between <em>flat</em> and <em>structural</em> coeffects is <strong>the shape of
+      that annotation</strong>: one scalar for the whole context (flat), or a per-variable vector
+      (structural).
+    </p>
+  </section>
+
+  <!-- §2 Flat Coeffects -->
+  <section class="section">
+    <p class="section-label">§2</p>
+    <h2>Flat Coeffects — Whole-Context Annotation</h2>
+
+    <p>
+      A flat coeffect system attaches <strong>one annotation</strong> <code>r</code> to the entire
+      typing context. The judgment reads:
+    </p>
+
+    <code class="formula"><span class="hl2">x₁:τ₁, …, xₙ:τₙ  @  r  ⊢  e : τ</span>
+<span class="comment">──────────────────────────────────────────────────────────
+r ∈ (L, ⊔, ⊓, ⊥, ⊤)   — a bounded semilattice
+</span></code>
+
+    <p class="callout info">
+      <strong>What <code>r</code> means:</strong> the single annotation describes a property of
+      the <em>entire execution environment</em> that <code>e</code> requires — not of any individual
+      variable. All variables in scope share the same context demand.
+    </p>
+
+    <h3>How Annotations Combine</h3>
+
+    <p>
+      In the flat system three combining operators are needed
+      <span class="chip recon">reconstructed</span>:
+    </p>
+
+    <dl>
+      <dt>⊔  (join / merge)</dt>
+      <dd>
+        Used in the <strong>application rule</strong>: if the function needs <code>r₁</code> and
+        the argument needs <code>r₂</code>, the result needs <code>r₁ ⊔ r₂</code>.
+        Least upper bound — "either requirement must be met."
+      </dd>
+
+      <dt>⊓  (meet / split in lambda)</dt>
+      <dd>
+        Used in the <strong>abstraction rule</strong>: separates what the function needs at
+        <em>definition-time</em> from what it will need at <em>call-time</em>. The meet
+        <code>r₁ ⊓ r₂</code> picks the greatest common requirement.
+      </dd>
+
+      <dt>⊙  (sequential composition)</dt>
+      <dd>
+        Combines a function's coeffect with its argument's when a call is made; concrete
+        instantiation varies by analysis.
+      </dd>
+    </dl>
+
+    <h3>Concrete Instantiation — Implicit Parameters</h3>
+
+    <p>
+      The annotation <code>r</code> is a <strong>set of implicit parameter names</strong>.
+      Context is required to supply exactly those names.
+    </p>
+
+    <code class="formula">Carrier:   𝒫(Names)          (powerset)
+⊔  =  ∪   (union — LUB in the subset lattice)
+⊓  =  ∩   (intersection — GLB)
+⊥  =  ∅   (no parameters needed)
+⊤  =  Names   (all parameters needed)
+
+Example:  ⊢ use ?x + use ?y  @  {x, y}  :  Int</code>
+
+    <blockquote>
+      "The flat system for tracking [implicit parameters] is an instance of the same coeffect
+      calculus as the one for tracking caching requirements for dataflow programs."
+      <cite>— summarised from Petricek et al. 2013
+        <span class="chip exact">exact paraphrase</span>
+        <a href="https://tomasp.net/coeffects/" target="_blank">[interactive tutorial]</a>
+      </cite>
+    </blockquote>
+
+    <h3>Concrete Instantiation — Dataflow (Limited Precision)</h3>
+
+    <p>
+      The annotation <code>r</code> is a <strong>natural number</strong>: the maximum number of
+      past values any variable in scope needs.
+    </p>
+
+    <code class="formula">Carrier:   ℕ ∪ {∞}        (bounded natural numbers)
+⊔  =  max             (LUB — "need at least this many past values")
+⊓  =  min             (GLB — used in lambda rule)
+⊙  =  +              (sequential: prev∘prev needs 2)
+⊥  =  0
+
+Example:  ⊢ (x + prev y) / 2  @  1  :  Num
+          (one past value needed — but only by y;
+           flat loses the per-variable precision)</code>
+
+    <div class="callout warn">
+      <strong>The flat precision problem:</strong> for <code>x + prev y</code>, the flat system
+      reports annotation <code>1</code> for the whole context, losing the insight that only
+      <code>y</code> needs history. Structural coeffects fix this.
+    </div>
+  </section>
+
+  <!-- §3 Structural Coeffects -->
+  <section class="section">
+    <p class="section-label">§3</p>
+    <h2>Structural Coeffects — Per-Variable Annotation</h2>
+
+    <blockquote>
+      "We develop a generalized coeffect system with annotations indexed by a coeffect shape.
+      By instantiating a concrete shape, our system captures previously studied flat
+      (whole-context) coeffects, as well as structural (per-variable) coeffects."
+      <cite>— Petricek, Orchard, Mycroft <span class="chip exact">exact</span>
+        <a href="https://d3s.mff.cuni.cz/publications/petricek_coeffects_2014/" target="_blank">[ICFP 2014]</a>
+      </cite>
+    </blockquote>
+
+    <p>
+      In a structural system, every variable in the context carries its <em>own</em> annotation.
+      The judgment becomes a vector:
+    </p>
+
+    <code class="formula"><span class="hl">x₁:τ₁ @ r₁, …, xₙ:τₙ @ rₙ  ⊢  e : τ</span>
+<span class="comment">equivalently written  Γ ⊢ e : τ  where Γ maps each xᵢ to (τᵢ, rᵢ)
+
+rᵢ ∈ (R, ⊕, ⊗, 0, 1)   — a (pre-ordered) semiring</span></code>
+
+    <h3>The Semiring — Exact Structure</h3>
+
+    <p>
+      The semiring <code>(R, ⊕, ⊗, 0, 1)</code> used for structural annotations
+      <span class="chip recon">reconstructed from multiple sources</span>:
+    </p>
+
+    <dl>
+      <dt>⊕  (addition)</dt>
+      <dd>
+        Combines requirements from <strong>parallel/choice branches</strong>. If two branches
+        need <code>r</code> and <code>s</code> of the same variable, the outer context needs
+        <code>r ⊕ s</code>. Commutative and associative; <code>0</code> is identity.
+      </dd>
+
+      <dt>⊗  (multiplication / tensor)</dt>
+      <dd>
+        Combines requirements <strong>sequentially</strong>: applying a function that needs
+        <code>r</code> of variable <code>x</code> to an argument needing <code>s</code> of
+        <code>x</code> yields <code>r ⊗ s</code>. Also used in the application rule to multiply
+        the function's annotation with the argument's annotation element-wise. <code>1</code>
+        is identity.
+      </dd>
+
+      <dt>0  (zero)</dt>
+      <dd>
+        "Variable not used." Annotation of any variable absent from the expression.
+      </dd>
+
+      <dt>1  (one)</dt>
+      <dd>
+        "Variable used exactly once / in the default way." The annotation given to the variable
+        in the <strong>var</strong> rule; all other variables get <code>0</code>.
+      </dd>
+    </dl>
+
+    <h3>Key Typing Rules (Structural)</h3>
+
+    <code class="formula"><span class="comment">VAR  (structural)</span>
+  ─────────────────────────────────────────────────────────
+  x₁:τ₁@0, …, xᵢ:τᵢ@<span class="hl">1</span>, …, xₙ:τₙ@0  ⊢  xᵢ : τᵢ
+
+<span class="comment">ABS  (structural)</span>
+  Γ, x:τ@r  ⊢  e : τ′
+  ────────────────────────────────────────────────────
+  Γ  ⊢  λx.e : τ <span class="hl">—[r]→</span> τ′          (r is the demand on x)
+
+<span class="comment">APP  (structural)</span>
+  Γ₁  ⊢  f : τ —[r]→ τ′     Γ₂  ⊢  a : τ
+  ────────────────────────────────────────────────────
+  <span class="hl">Γ₁ ⊗ Γ₂  (plus  r·Γ₂)</span>  ⊢  f a : τ′
+
+<span class="comment">  (context combination: pointwise ⊗ of annotation vectors)</span></code>
+
+    <div class="callout info">
+      <strong>The "coeffect-annotated function type"</strong> <code>τ —[r]→ τ′</code> records
+      exactly how much of the bound variable is consumed when the function is applied.
+      <code>r</code> is the <em>per-variable</em> demand, not a whole-context scalar.
+    </div>
+
+    <h3>Concrete Instantiation — Dataflow (Precise)</h3>
+
+    <p>
+      Same carrier as flat (<code>ℕ</code>) but now as a <em>per-variable vector</em>:
+    </p>
+
+    <code class="formula">Carrier per variable:  ℕ ∪ {∞}
+⊕  =  max   (pick larger requirement when branches join)
+⊗  =  +     (sequential: prev∘prev adds requirements)
+0  =  0     (not needed)
+1  =  0     (current value only — cost-free access)
+
+Example:  ⊢ x + prev y  @  ⟨<span class="hl">0</span>, <span class="hl2">1</span>⟩  :  Num
+          x needs 0 past values; y needs 1 past value.
+          Structural recovers the precision flat loses.</code>
+
+    <h3>Concrete Instantiation — Variable Liveness</h3>
+
+    <code class="formula">Carrier:  𝔹 = {0, 1}   (Boolean semiring)
+⊕  =  ∨   (OR: variable is live in either branch)
+⊗  =  ∧   (AND: variable live in both sequential parts)
+0  =  false   (dead)
+1  =  true    (live)
+
+Example:  ⊢ if b then x else y  @  ⟨<span class="hl2">1</span>, <span class="hl">1</span>, <span class="hl">1</span>⟩  :  τ
+          b, x, y all live; any unused variable gets 0.</code>
+
+    <h3>Concrete Instantiation — Linear Types / Resource Usage</h3>
+
+    <code class="formula">Carrier:  ℕ   (use-count semiring)
+⊕  =  +   (usage from each branch adds up)
+⊗  =  ×   (sequential uses multiply)
+0  =  0   (never used)
+1  =  1   (used once = linear)
+
+Example:  λx. x + x  @  x:2   (x used twice — not linear)</code>
+  </section>
+
+  <!-- §4 Flat vs Structural: Side-by-Side -->
+  <section class="section">
+    <p class="section-label">§4</p>
+    <h2>Side-by-Side Comparison</h2>
+
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Property</th>
+            <th>Flat Coeffects</th>
+            <th>Structural Coeffects</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Paper</td>
+            <td>ICALP 2013 (primary treatment)</td>
+            <td>ICFP 2014 (generalized treatment)</td>
+          </tr>
+          <tr>
+            <td>Judgment form</td>
+            <td><code>Γ @ r ⊢ e : τ</code><br>one <code>r</code> for all of Γ</td>
+            <td><code>x₁:τ₁@r₁,…,xₙ:τₙ@rₙ ⊢ e : τ</code><br>one <code>rᵢ</code> per variable</td>
+          </tr>
+          <tr>
+            <td>Algebraic structure</td>
+            <td>Semilattice <code>(L, ⊔, ⊓)</code></td>
+            <td>Semiring <code>(R, ⊕, ⊗, 0, 1)</code></td>
+          </tr>
+          <tr>
+            <td>Branching</td>
+            <td>Join <code>r₁ ⊔ r₂</code></td>
+            <td>Pointwise <code>r₁ᵢ ⊕ r₂ᵢ</code></td>
+          </tr>
+          <tr>
+            <td>Sequencing</td>
+            <td>Sequential composition <code>r₁ ⊙ r₂</code></td>
+            <td>Pointwise <code>r₁ᵢ ⊗ r₂ᵢ</code></td>
+          </tr>
+          <tr>
+            <td>Lambda annotation</td>
+            <td>Split via ⊓ (meet)</td>
+            <td>Bound variable's own <code>r</code> extracted from vector</td>
+          </tr>
+          <tr>
+            <td>Unused variable</td>
+            <td>(implicit — single r covers all)</td>
+            <td><code>rᵢ = 0</code></td>
+          </tr>
+          <tr>
+            <td>Dataflow example</td>
+            <td><code>x + prev y @ 1</code> — max of all needs; loses who needs history</td>
+            <td><code>x + prev y @ ⟨0, 1⟩</code> — x needs 0, y needs 1</td>
+          </tr>
+          <tr>
+            <td>Liveness example</td>
+            <td>Set of live variable names as scalar</td>
+            <td>Per-variable boolean <code>⟨1, 0, 1⟩</code></td>
+          </tr>
+          <tr>
+            <td>Implicit parameters</td>
+            <td>Set of required parameter names; ∪ = ⊔</td>
+            <td>Per-variable tracking of which implicit binding each var depends on</td>
+          </tr>
+          <tr>
+            <td>Downstream adoption</td>
+            <td>Less common in literature</td>
+            <td>"Most subsequent literature on coeffects focuses on structural ones, for which there is a clear algebraic description in terms of semirings."</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- §5 Comonad Indexing -->
+  <section class="section">
+    <p class="section-label">§5</p>
+    <h2>The Indexed Comonad — Categorical Semantics</h2>
+
+    <blockquote>
+      "We present a unified calculus for tracking context dependence in functional languages
+      together with a categorical semantics based on indexed comonads."
+      <cite>— Petricek, Orchard, Mycroft <span class="chip exact">exact</span>
+        <a href="https://tomasp.net/academic/papers/coeffects/" target="_blank">[ICALP 2013]</a>
+      </cite>
+    </blockquote>
+
+    <blockquote>
+      "indexed comonads are the right foundation for constructing context-aware languages and
+      type systems and that following an approach akin to monads can lead to a widespread use."
+      <cite>— Petricek, Orchard, Mycroft <span class="chip exact">exact</span>
+        <a href="https://tomasp.net/academic/papers/coeffects/" target="_blank">[ICALP 2013]</a>
+      </cite>
+    </blockquote>
+
+    <p>
+      An <em>indexed comonad</em> (called a <em>graded comonad</em> in later literature)
+      parameterises a comonad by an element of the index algebra. Each value of the annotation
+      <code>r</code> gives a distinct functor:
+    </p>
+
+    <code class="formula"><span class="comment">General shape of an indexed/graded comonad:</span>
+
+  D : I → (C → C)          <span class="comment">indexed family of endofunctors</span>
+  <span class="hl">ε</span>  :  D_<span class="hl">1</span>(A) → A            <span class="comment">counit  (1 = identity annotation)</span>
+  <span class="hl">δ</span>  :  D_<span class="hl">r⊗s</span>(A) → D_r(D_s(A))  <span class="comment">comultiplication  (graded by ⊗)</span>
+
+  Subject to graded analogues of comonad laws:
+    D_1 ≅ Id                <span class="comment">(counit law)</span>
+    D_r ∘ D_s ≅ D_{r⊗s}    <span class="comment">(cofusion law)</span></code>
+
+    <h3>Flat Coeffect Comonad</h3>
+
+    <p>
+      The index set <code>I</code> is the semilattice <code>(L, ⊔)</code>.
+      The functor <code>D_r</code> wraps a value <em>together with the entire context</em>
+      annotated at level <code>r</code> <span class="chip recon">reconstructed</span>:
+    </p>
+
+    <code class="formula"><span class="comment">Implicit parameters instance:</span>
+  D_S(A)  =  A × (Names →_S Val)   <span class="comment">value paired with partial env over set S</span>
+  ε (v, env)  =  v                  <span class="comment">extract value, discard env</span>
+  δ (v, env)  =  ((v, env|_s), env|_r)   <span class="comment">split env by r⊗s = r∪s</span>
+
+<span class="comment">Dataflow (flat) instance:</span>
+  D_n(A)  =  List_n(A)     <span class="comment">non-empty list of length ≥ n+1</span>
+  ε (a₀ ∷ _)  =  a₀        <span class="comment">counit = extract current value</span>
+  δ = cobind (split history by sub-lengths)</code>
+
+    <h3>Structural Coeffect Comonad</h3>
+
+    <p>
+      The index set <code>I</code> is the semiring <code>(R, ⊕, ⊗, 0, 1)</code>; the comonad
+      now tracks <em>per-variable</em> context. The index is a <em>context</em>
+      (vector of semiring elements), not a single scalar
+      <span class="chip recon">reconstructed</span>:
+    </p>
+
+    <code class="formula"><span class="comment">Structural comonad index = coeffect-annotated context Γ:</span>
+  D_Γ(A)  where Γ = (x₁:τ₁@r₁, …, xₙ:τₙ@rₙ)
+
+  ε  :  D_{Γ@1}(A) → A     <span class="comment">(all annotations are 1 = "used once")</span>
+  δ  :  D_{Γ@r⊗s}(A) → D_{Γ@r}(D_{Γ@s}(A))
+
+<span class="comment">Dataflow structural instance:</span>
+  D_{⟨n₁,…,nₖ⟩}(A)  =  A × DF_n₁(X₁) × … × DF_nₖ(Xₖ)
+  <span class="comment">each variable xᵢ carries its own history of length nᵢ</span>
+
+<span class="comment">The "structural system enjoys desirable syntactic properties"</span>
+<span class="comment">including subject reduction; the flat system does not in general.</span></code>
+
+    <blockquote>
+      "the structural system enjoys desirable syntactic properties"
+      <cite>— Petricek, Orchard, Mycroft <span class="chip exact">exact</span>
+        <a href="https://d3s.mff.cuni.cz/publications/petricek_coeffects_2014/" target="_blank">[ICFP 2014]</a>
+      </cite>
+    </blockquote>
+
+    <h3>Concrete Comonad Objects from the Interactive Tutorial</h3>
+
+    <code class="formula"><span class="comment">From tomasp.net/coeffects (confirmed, high fidelity):</span>
+
+<span class="hl">Implicit Parameters comonad  (flat):</span>
+  IP&lt;A&gt;  =  { value: A; lookup: Name → Value }
+  counit  ip  =  ip.value
+  cobind  f   =  λip. f { value = ip.value; lookup = ip.lookup }
+
+<span class="hl2">Dataflow comonad  (flat or structural):</span>
+  DF&lt;A&gt;  =  NonEmptyList A    <span class="comment">(head = current, tail = history)</span>
+  counit  (a ∷ _)  =  a
+  cobind  f  xs    =  map (λi. f (drop i xs)) (indices xs)</code>
+  </section>
+
+  <!-- §6 Summary of Examples -->
+  <section class="section">
+    <p class="section-label">§6</p>
+    <h2>Which Analyses Are Flat vs Structural — Summary</h2>
+
+    <p>
+      The ICALP 2013 paper uses all three examples below to motivate the framework.
+      The ICFP 2014 paper then shows that the flat treatment loses precision and develops
+      the structural calculus to recover it:
+    </p>
+
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Analysis</th>
+            <th>Flat (ICALP 2013)</th>
+            <th>Structural (ICFP 2014)</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Implicit parameters</td>
+            <td>Set of required names; <code>∪</code> = join. Tracks which parameters a computation depends on globally.</td>
+            <td>Per-variable: which variables depend on which implicit bindings. Finer-grained dependency.</td>
+          </tr>
+          <tr>
+            <td>Dataflow / caching</td>
+            <td>Single natural number = max past values needed by <em>any</em> variable. Whole-context annotation.</td>
+            <td>Vector <code>⟨n₁,…,nₖ⟩</code>: exactly how many past values <em>each</em> variable needs.</td>
+          </tr>
+          <tr>
+            <td>Liveness analysis</td>
+            <td>Global set of live variables as the annotation <code>r</code>.</td>
+            <td>Per-variable boolean; dead variables get <code>0</code>, live get <code>1</code>.</td>
+          </tr>
+          <tr>
+            <td>Linear types</td>
+            <td>Not naturally expressible in flat.</td>
+            <td>Per-variable use count in ℕ semiring; <code>1</code> = linear, <code>0</code> = unrestricted-but-unused.</td>
+          </tr>
+          <tr>
+            <td>Context-sensitivity / rebindable resources</td>
+            <td>Set of required resource names as flat annotation (e.g., <code>{LOCAL_FILE_SYSTEM}</code>).</td>
+            <td>Per-variable resource demands. Relevant for platform heterogeneity.</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- §7 Adversarial Verification Notes -->
+  <section class="section">
+    <p class="section-label">§7</p>
+    <h2>Confidence Notes and Caveats</h2>
+
+    <div class="callout warn">
+      <strong>Exact quotes confirmed</strong> from primary source pages (tomasp.net, d3s.mff.cuni.cz):
+      §§ 1, 2, 5, and the ICFP 2014 quote in §3. The typing rules and comonad formulas in §§ 3 and 5 are
+      <strong>reconstructed</strong> from three or more corroborating secondary descriptions of the papers;
+      the papers' PDF content was not machine-readable during fetching. The symbolic notation
+      (⊕, ⊗, D_r, δ, ε) is consistent across all sources consulted. The concrete comonad objects
+      (IP&lt;A&gt;, DF&lt;A&gt;) are confirmed from the tomasp.net/coeffects interactive tutorial.
+    </div>
+
+    <p>
+      One claim in search summaries — "most subsequent literature focuses on structural coeffects
+      for which there is a clear algebraic description in terms of semirings" — appeared in
+      near-identical form in three independent secondary source summaries; treated as reliable
+      paraphrase of the ICFP 2014 paper.
+    </p>
+
+    <p>
+      The distinction between ICALP 2013 as the <em>flat/primary</em> treatment and ICFP 2014 as
+      the <em>generalized/structural</em> treatment is confirmed by both the thesis overview
+      (tomasp.net/academic/theses/coeffects/) and the D3S publication pages for both papers.
+    </p>
+  </section>
+
+  <!-- Sources -->
+  <aside class="sources">
+    <h2>Sources</h2>
+    <ol>
+      <li>
+        Petricek, Orchard, Mycroft —
+        <a href="https://tomasp.net/academic/papers/coeffects/" target="_blank">"Coeffects: Unified static analysis of context-dependence"</a>,
+        <span class="venue">ICALP 2013</span>. Springer LNCS 7966 pp. 385–397.
+      </li>
+      <li>
+        Petricek, Orchard, Mycroft —
+        <a href="https://d3s.mff.cuni.cz/publications/petricek_coeffects_2014/" target="_blank">"Coeffects: A calculus of context-dependent computation"</a>,
+        <span class="venue">ICFP 2014</span>. ACM SIGPLAN Notices 49(9). DOI 10.1145/2628136.2628160.
+      </li>
+      <li>
+        Petricek —
+        <a href="https://tomasp.net/coeffects/" target="_blank">Coeffects: Context-aware programming languages</a>
+        (interactive essay / tutorial, tomasp.net).
+      </li>
+      <li>
+        Petricek —
+        <a href="https://tomasp.net/academic/theses/coeffects/" target="_blank">Context-aware programming languages</a>
+        (PhD thesis, Cambridge).
+      </li>
+      <li>
+        Orchard —
+        <a href="https://www.doc.ic.ac.uk/~dorchard/talks/coeffects-dundee2014.pdf" target="_blank">Coeffects: contextual effects / the dual of effects</a>
+        (talk slides, Dundee 2014).
+      </li>
+      <li>
+        Petricek et al., ICFP 2014 full PDF —
+        <a href="https://tomasp.net/academic/papers/structural/coeffects-icfp.pdf" target="_blank">tomasp.net/academic/papers/structural/coeffects-icfp.pdf</a>
+      </li>
+      <li>
+        Petricek et al., ICALP 2013 PDF —
+        <a href="https://www.cs.kent.ac.uk/people/staff/dao7/publ/coeffects-icalp13.pdf" target="_blank">cs.kent.ac.uk/…/coeffects-icalp13.pdf</a>
+      </li>
+      <li>
+        Semantic Scholar entry (ICFP 2014) —
+        <a href="https://www.semanticscholar.org/paper/Coeffects-Pet%C5%99%C3%AD%C4%8Dek-Orchard/96810b498a879d243c5c7b85850a115b893dbbdb" target="_blank">semanticscholar.org</a>
+      </li>
+    </ol>
+  </aside>
+
+</div>

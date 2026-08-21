@@ -1,0 +1,1160 @@
+
+<title>Graded Comonads &amp; Coeffects — Orchard, Petricek, Mycroft</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+/* ── Token layer ──────────────────────────────────────────── */
+:root {
+  --bg:           #F0F2F7;
+  --surface:      #FFFFFF;
+  --surface-alt:  #E8EBF3;
+  --text:         #1A1E2C;
+  --text-sec:     #4A5068;
+  --text-muted:   #8890A6;
+  --accent:       #0D6B5D;
+  --accent-mid:   #1D9984;
+  --accent-dim:   #DFF0EE;
+  --border:       #CDD3E2;
+  --formula-bg:   #F8F9FC;
+  --formula-bdr:  #B8C8DE;
+  --rule-color:   #D4D9E8;
+  --num-color:    #C2CEDF;
+  --link:         #0D6B5D;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg:           #0C1018;
+    --surface:      #131A24;
+    --surface-alt:  #1A2235;
+    --text:         #DDE4F0;
+    --text-sec:     #8D9BB8;
+    --text-muted:   #505D78;
+    --accent:       #1FAF96;
+    --accent-mid:   #1FAF96;
+    --accent-dim:   #0A2922;
+    --border:       #252E42;
+    --formula-bg:   #111826;
+    --formula-bdr:  #2A3A58;
+    --rule-color:   #1F2B40;
+    --num-color:    #2A3A58;
+    --link:         #1FAF96;
+  }
+}
+:root[data-theme="dark"] {
+  --bg:           #0C1018;
+  --surface:      #131A24;
+  --surface-alt:  #1A2235;
+  --text:         #DDE4F0;
+  --text-sec:     #8D9BB8;
+  --text-muted:   #505D78;
+  --accent:       #1FAF96;
+  --accent-mid:   #1FAF96;
+  --accent-dim:   #0A2922;
+  --border:       #252E42;
+  --formula-bg:   #111826;
+  --formula-bdr:  #2A3A58;
+  --rule-color:   #1F2B40;
+  --num-color:    #2A3A58;
+  --link:         #1FAF96;
+}
+:root[data-theme="light"] {
+  --bg:           #F0F2F7;
+  --surface:      #FFFFFF;
+  --surface-alt:  #E8EBF3;
+  --text:         #1A1E2C;
+  --text-sec:     #4A5068;
+  --text-muted:   #8890A6;
+  --accent:       #0D6B5D;
+  --accent-mid:   #1D9984;
+  --accent-dim:   #DFF0EE;
+  --border:       #CDD3E2;
+  --formula-bg:   #F8F9FC;
+  --formula-bdr:  #B8C8DE;
+  --rule-color:   #D4D9E8;
+  --num-color:    #C2CEDF;
+  --link:         #0D6B5D;
+}
+
+/* ── Base ─────────────────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; }
+
+html {
+  background: var(--bg);
+  color: var(--text);
+  font-family: "Palatino Linotype", "Palatino", "Book Antiqua", Georgia, "Times New Roman", serif;
+  font-size: 17px;
+  line-height: 1.72;
+  scroll-behavior: smooth;
+}
+
+body {
+  margin: 0;
+  padding: 0;
+  min-height: 100vh;
+}
+
+/* ── Page shell ───────────────────────────────────────────── */
+.page-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  grid-template-areas: "header" "main" "footer";
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 1.5rem;
+}
+
+@media (min-width: 920px) {
+  .page-grid {
+    grid-template-columns: 200px 1fr;
+    grid-template-areas:
+      "header header"
+      "toc    main"
+      "footer footer";
+    gap: 0 4rem;
+    padding: 0 3rem;
+  }
+}
+
+/* ── Header ───────────────────────────────────────────────── */
+header {
+  grid-area: header;
+  padding: 4rem 0 2.5rem;
+  border-bottom: 2px solid var(--accent);
+  margin-bottom: 3rem;
+}
+
+.header-eyebrow {
+  font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--accent);
+  margin-bottom: 1rem;
+}
+
+header h1 {
+  font-size: clamp(1.6rem, 4vw, 2.4rem);
+  font-weight: normal;
+  font-style: italic;
+  line-height: 1.22;
+  color: var(--text);
+  margin: 0 0 0.8rem;
+  text-wrap: balance;
+}
+
+header h1 em {
+  font-style: normal;
+  font-weight: bold;
+  color: var(--accent);
+}
+
+.header-sub {
+  font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+  font-size: 0.88rem;
+  color: var(--text-sec);
+  margin: 0;
+  line-height: 1.5;
+}
+
+.header-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem 1.5rem;
+  margin-top: 1.4rem;
+}
+
+.meta-chip {
+  font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+  font-size: 0.75rem;
+  letter-spacing: 0.04em;
+  color: var(--text-muted);
+  border: 1px solid var(--border);
+  padding: 0.2em 0.7em;
+  background: var(--surface);
+}
+
+/* ── TOC sidebar ──────────────────────────────────────────── */
+.toc {
+  grid-area: toc;
+  display: none;
+}
+
+@media (min-width: 920px) {
+  .toc {
+    display: block;
+    position: sticky;
+    top: 2rem;
+    align-self: start;
+    padding-top: 0.2rem;
+  }
+}
+
+.toc-label {
+  font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  margin-bottom: 0.8rem;
+}
+
+.toc ol {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  border-left: 2px solid var(--border);
+}
+
+.toc li {
+  margin: 0;
+}
+
+.toc a {
+  display: block;
+  font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+  font-size: 0.78rem;
+  color: var(--text-sec);
+  text-decoration: none;
+  padding: 0.3rem 0 0.3rem 0.85rem;
+  line-height: 1.3;
+  transition: color 0.15s, border-color 0.15s;
+  border-left: 2px solid transparent;
+  margin-left: -2px;
+}
+
+.toc a:hover {
+  color: var(--accent);
+  border-left-color: var(--accent);
+}
+
+/* ── Main content ─────────────────────────────────────────── */
+main {
+  grid-area: main;
+  min-width: 0;
+}
+
+/* ── Sections ─────────────────────────────────────────────── */
+.section {
+  position: relative;
+  margin-bottom: 3.5rem;
+  padding-top: 0.25rem;
+}
+
+.section + .section {
+  border-top: 1px solid var(--rule-color);
+  padding-top: 2.5rem;
+}
+
+.section-num {
+  font-family: "Palatino Linotype", "Palatino", Georgia, serif;
+  font-size: 3.5rem;
+  font-weight: normal;
+  font-style: italic;
+  color: var(--num-color);
+  line-height: 1;
+  margin-bottom: -0.6rem;
+  user-select: none;
+}
+
+.section h2 {
+  font-size: 1.3rem;
+  font-weight: normal;
+  font-style: italic;
+  color: var(--text);
+  margin: 0 0 1.4rem;
+  line-height: 1.3;
+  text-wrap: balance;
+}
+
+.section h2 strong {
+  font-style: normal;
+  font-weight: 700;
+}
+
+.section h3 {
+  font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--accent);
+  margin: 2rem 0 0.6rem;
+}
+
+p {
+  max-width: 68ch;
+  margin: 0 0 1em;
+  color: var(--text);
+}
+
+a {
+  color: var(--link);
+  text-underline-offset: 0.15em;
+}
+
+/* ── Definition blocks ────────────────────────────────────── */
+.defn {
+  background: var(--formula-bg);
+  border: 1px solid var(--formula-bdr);
+  border-left: 3px solid var(--accent);
+  padding: 1.2rem 1.4rem;
+  margin: 1.4rem 0;
+  overflow-x: auto;
+}
+
+.defn-label {
+  font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--accent);
+  margin-bottom: 0.5rem;
+}
+
+.defn p {
+  margin: 0.4em 0;
+  font-family: "Palatino Linotype", "Palatino", Georgia, serif;
+  color: var(--text);
+  max-width: 100%;
+}
+
+.defn p:last-child { margin-bottom: 0; }
+
+/* ── Formula lines ────────────────────────────────────────── */
+.formula {
+  font-family: "Courier New", Courier, monospace;
+  font-size: 0.93rem;
+  display: block;
+  background: var(--formula-bg);
+  border: 1px solid var(--formula-bdr);
+  padding: 0.6rem 1rem;
+  margin: 0.8rem 0;
+  overflow-x: auto;
+  white-space: nowrap;
+  color: var(--text);
+  line-height: 1.55;
+}
+
+.formula .ann {
+  color: var(--text-muted);
+  font-size: 0.82rem;
+}
+
+/* ── Law grid ─────────────────────────────────────────────── */
+.laws {
+  display: grid;
+  gap: 0.6rem;
+  margin: 1rem 0;
+}
+
+.law {
+  display: flex;
+  gap: 1.5rem;
+  align-items: baseline;
+  background: var(--formula-bg);
+  border: 1px solid var(--formula-bdr);
+  padding: 0.55rem 1rem;
+  overflow-x: auto;
+}
+
+.law-name {
+  font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  white-space: nowrap;
+  min-width: 9ch;
+}
+
+.law-body {
+  font-family: "Courier New", Courier, monospace;
+  font-size: 0.88rem;
+  white-space: nowrap;
+  color: var(--text);
+}
+
+/* ── Callout ──────────────────────────────────────────────── */
+.callout {
+  background: var(--accent-dim);
+  border-left: 3px solid var(--accent-mid);
+  padding: 1rem 1.3rem;
+  margin: 1.4rem 0;
+  max-width: 68ch;
+}
+
+.callout p {
+  margin: 0;
+  color: var(--text);
+}
+
+.callout-label {
+  font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--accent-mid);
+  margin-bottom: 0.3rem;
+}
+
+/* ── Two-col comparison ───────────────────────────────────── */
+.compare-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+  margin: 1.2rem 0;
+  overflow-x: auto;
+}
+
+@media (max-width: 600px) {
+  .compare-grid { grid-template-columns: 1fr; }
+}
+
+.compare-cell {
+  background: var(--formula-bg);
+  border: 1px solid var(--formula-bdr);
+  padding: 0.9rem 1rem;
+}
+
+.compare-cell-label {
+  font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  margin-bottom: 0.4rem;
+}
+
+.compare-cell p {
+  margin: 0.3em 0;
+  font-family: "Courier New", Courier, monospace;
+  font-size: 0.85rem;
+  white-space: nowrap;
+  max-width: 100%;
+}
+
+/* ── Table ────────────────────────────────────────────────── */
+.tbl-wrap { overflow-x: auto; margin: 1.2rem 0; }
+
+table {
+  border-collapse: collapse;
+  width: 100%;
+  font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+  font-size: 0.83rem;
+}
+
+th {
+  text-align: left;
+  font-weight: 700;
+  font-size: 0.7rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  padding: 0.5rem 1rem 0.5rem 0;
+  border-bottom: 2px solid var(--border);
+}
+
+td {
+  padding: 0.55rem 1rem 0.55rem 0;
+  vertical-align: top;
+  border-bottom: 1px solid var(--rule-color);
+  color: var(--text-sec);
+  line-height: 1.45;
+}
+
+td:first-child, th:first-child {
+  font-family: "Courier New", Courier, monospace;
+  font-size: 0.82rem;
+  color: var(--text);
+  white-space: nowrap;
+}
+
+tr:last-child td { border-bottom: none; }
+
+/* ── Citations ────────────────────────────────────────────── */
+sup.cite {
+  font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+  font-size: 0.68rem;
+  font-style: normal;
+  color: var(--accent);
+  margin-left: 0.1em;
+}
+
+sup.cite a {
+  color: var(--accent);
+  text-decoration: none;
+}
+
+/* ── References section ───────────────────────────────────── */
+.refs {
+  margin-top: 3rem;
+  padding-top: 2rem;
+  border-top: 1px solid var(--rule-color);
+}
+
+.refs h2 {
+  font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  margin-bottom: 1.2rem;
+}
+
+.ref-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.7rem;
+}
+
+.ref-list li {
+  display: grid;
+  grid-template-columns: 2.4rem 1fr;
+  gap: 0.5rem;
+  align-items: start;
+  font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+  font-size: 0.8rem;
+  color: var(--text-sec);
+  line-height: 1.5;
+}
+
+.ref-num {
+  font-family: "Courier New", Courier, monospace;
+  font-size: 0.75rem;
+  color: var(--accent);
+  padding-top: 0.05em;
+}
+
+.ref-list a {
+  color: var(--link);
+}
+
+/* ── Footer ───────────────────────────────────────────────── */
+footer {
+  grid-area: footer;
+  padding: 2rem 0 3rem;
+  margin-top: 2rem;
+  border-top: 1px solid var(--rule-color);
+  font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+
+/* ── Utility ──────────────────────────────────────────────── */
+.mono {
+  font-family: "Courier New", Courier, monospace;
+  font-size: 0.9em;
+}
+
+em.term {
+  color: var(--accent);
+  font-style: italic;
+}
+
+.warn {
+  background: var(--surface-alt);
+  border-left: 3px solid var(--text-muted);
+  padding: 0.8rem 1.1rem;
+  margin: 1.2rem 0;
+  max-width: 68ch;
+}
+
+.warn p {
+  margin: 0;
+  font-size: 0.87rem;
+  color: var(--text-sec);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { transition: none !important; animation: none !important; }
+}
+</style>
+
+<div class="page-grid">
+
+<!-- ── HEADER ────────────────────────────────────────────── -->
+<header>
+  <p class="header-eyebrow">Deep Research Report</p>
+  <h1>Graded Comonads &amp; Coeffects:<br><em>Orchard, Petricek, Mycroft</em></h1>
+  <p class="header-sub">
+    Categorical semantics of graded/indexed comonads, the counit–comultiplication split,
+    semiring structure, and connections to graded modalities in linear logic.
+  </p>
+  <div class="header-meta">
+    <span class="meta-chip">Orchard PhD thesis (Cambridge, 2014)</span>
+    <span class="meta-chip">ICFP 2014</span>
+    <span class="meta-chip">Granule ICFP 2019</span>
+    <span class="meta-chip">CSL 2025</span>
+    <span class="meta-chip">4 questions</span>
+  </div>
+</header>
+
+<!-- ── TOC ───────────────────────────────────────────────── -->
+<nav class="toc" aria-label="Table of contents">
+  <p class="toc-label">Contents</p>
+  <ol>
+    <li><a href="#s1">1. Indexed vs Graded Comonads</a></li>
+    <li><a href="#s2">2. Formal Definition &amp; Laws</a></li>
+    <li><a href="#s3">3. Counit &amp; Comultiplication</a></li>
+    <li><a href="#s4">4. Semiring &amp; Monoidal Structure</a></li>
+    <li><a href="#s5">5. Linear Logic Connections</a></li>
+    <li><a href="#refs">References</a></li>
+  </ol>
+</nav>
+
+<!-- ── MAIN ──────────────────────────────────────────────── -->
+<main>
+
+<!-- § 1 ─────────────────────────────────────────────────── -->
+<section class="section" id="s1">
+  <p class="section-num">1</p>
+  <h2><strong>Indexed vs Graded Comonads:</strong> Orchard's Thesis and the ICFP 2014 Paper</h2>
+
+  <h3>Orchard's Thesis — "Programming Contextual Computations" (2014)</h3>
+  <p>
+    Orchard's Cambridge PhD thesis<sup class="cite"><a href="#r1">[1]</a></sup> develops two parallel
+    contributions. First, it surveys and extends how existing work structures
+    <em class="term">contextual computations</em> using comonads. Second — and crucially — it identifies
+    a <em class="term">shape preservation</em> property of standard comonads that restricts their
+    applicability: the outer and inner container shapes must match. To escape this, Orchard introduces
+    <em class="term">indexed comonads</em>, a family of functors indexed simultaneously on
+    <em>input context shape</em> and <em>output context shape</em>, whereas graded comonads only vary
+    over a single index (the grade or coefficient).
+  </p>
+
+  <div class="callout">
+    <p class="callout-label">Key distinction</p>
+    <p>
+      A <strong>graded comonad</strong> is indexed by one element r ∈ ℛ, parametrising how a resource is
+      used. An <strong>indexed comonad</strong> (Orchard's generalisation) tracks both input and output
+      "shapes," removing shape-preservation and enabling a wider range of contextual analyses including
+      flat (whole-context) and structural (per-variable) coeffects.
+    </p>
+  </div>
+
+  <h3>The ICFP 2014 Paper — Petricek, Orchard, Mycroft</h3>
+  <p>
+    The companion paper<sup class="cite"><a href="#r2">[2]</a></sup> by Petricek, Orchard, and Mycroft
+    ("Coeffects: a calculus of context-dependent computation") builds the full typing calculus.
+    Context is modelled per-variable — each variable x carries a coeffect annotation r expressing
+    how that variable is used. The paper's §5 gives the categorical semantics in three subsections:
+    §5.1 "Interpreting contexts and judgments," §5.2 "Sequential composition," and §5.3 "Splitting
+    and merging contexts." Indexed comonads are the semantic foundation; Section 5 of the paper gives
+    an exact characterisation for both the structural (per-variable) and flat (whole-context) cases.
+  </p>
+
+  <div class="callout">
+    <p class="callout-label">From the ICFP 2014 summary</p>
+    <p>
+      "Indexed comonads essentially model single-variable contexts, where <strong>counit</strong> requires
+      a single copy of the value from the context, and <strong>comultiplication</strong> splits R·S copies
+      of a value into R copies of a context where each context contains just S copies of the value."
+    </p>
+  </div>
+</section>
+
+<!-- § 2 ─────────────────────────────────────────────────── -->
+<section class="section" id="s2">
+  <p class="section-num">2</p>
+  <h2><strong>Formal Definition</strong> of the Graded (Linear Exponential) Comonad</h2>
+
+  <p>
+    The definitions below synthesise Orchard et al. ICFP 2019<sup class="cite"><a href="#r3">[3]</a></sup>,
+    Gaboardi et al. ICFP 2016<sup class="cite"><a href="#r4">[4]</a></sup>, and the CSL 2025 paper<sup class="cite"><a href="#r5">[5]</a></sup>.
+    The 2019 Granule paper and the Mixed Linear/Graded Logic paper (arXiv:2401.17199) give the most complete
+    accessible formulations; the thesis and ICFP 2014 paper contain the full proofs but are accessible
+    only as compressed PDFs.
+  </p>
+
+  <h3>Index algebra</h3>
+  <div class="defn">
+    <p class="defn-label">Definition — Preordered semiring</p>
+    <p>
+      The grade index set is a <em class="term">preordered semiring</em>
+      ℛ = (R, 1, ·, 0, +, ≤) satisfying:
+    </p>
+    <p>(R, ·, 1) is a monoid — governs usage and composition.</p>
+    <p>(R, +, 0) is a commutative monoid — governs splitting and erasure.</p>
+    <p>· distributes over +, and 0 is absorbing.</p>
+    <p>Both · and + are monotone with respect to ≤.</p>
+  </div>
+
+  <p>
+    From the CSL 2025 paper (Definition 1):<sup class="cite"><a href="#r5">[5]</a></sup>
+    <em>"the additive part of the semiring is involved in weakening and contraction,
+    and the multiplicative part in usage and composition."</em>
+  </p>
+
+  <h3>The graded comonad</h3>
+  <div class="defn">
+    <p class="defn-label">Definition — Graded comonad</p>
+    <p>
+      A <em class="term">graded comonad</em> on a category ℂ indexed by ℛ is a family
+      of endofunctors {□<sub>r</sub> : ℂ → ℂ}<sub>r ∈ R</sub> together with two families
+      of natural transformations:
+    </p>
+    <p><strong>Counit</strong></p>
+    <code class="formula">ε<sub>A</sub> : □<sub>1</sub> A → A</code>
+    <p><strong>Comultiplication</strong></p>
+    <code class="formula">δ<sub>r,s,A</sub> : □<sub>r·s</sub> A → □<sub>r</sub>(□<sub>s</sub> A)</code>
+    <p>natural in A, for all r, s ∈ R.</p>
+  </div>
+
+  <h3>Coherence laws</h3>
+  <div class="laws">
+    <div class="law">
+      <span class="law-name">Left counit</span>
+      <span class="law-body">ε<sub>□<sub>r</sub>A</sub> ∘ δ<sub>1,r,A</sub> = id<sub>□<sub>r</sub>A</sub></span>
+    </div>
+    <div class="law">
+      <span class="law-name">Right counit</span>
+      <span class="law-body">□<sub>r</sub>(ε<sub>A</sub>) ∘ δ<sub>r,1,A</sub> = id<sub>□<sub>r</sub>A</sub></span>
+    </div>
+    <div class="law">
+      <span class="law-name">Coassociativity</span>
+      <span class="law-body">□<sub>r</sub>(δ<sub>s,t,A</sub>) ∘ δ<sub>r,s·t,A</sub> = δ<sub>r,s,□<sub>t</sub>A</sub> ∘ δ<sub>r·s,t,A</sub></span>
+    </div>
+  </div>
+
+  <h3>Graded linear exponential comonad (GLEC)</h3>
+  <p>
+    For models of linear logic, □<sub>r</sub> must also carry symmetric lax monoidal structure
+    on ℂ = (ℳ, ⊗, I). This yields two extra families of natural transformations, called the
+    <em class="term">exponential action</em> (Definition 16 of arXiv:2401.17199):
+  </p>
+  <div class="laws">
+    <div class="law">
+      <span class="law-name">Weakening</span>
+      <span class="law-body">w<sub>A</sub> : □<sub>0</sub> A → I</span>
+    </div>
+    <div class="law">
+      <span class="law-name">Contraction</span>
+      <span class="law-body">c<sub>r,s,A</sub> : □<sub>r+s</sub> A → □<sub>r</sub> A ⊗ □<sub>s</sub> A</span>
+    </div>
+    <div class="law">
+      <span class="law-name">Mon. unit</span>
+      <span class="law-body">m<sub>I,r</sub> : I → □<sub>r</sub> I</span>
+    </div>
+    <div class="law">
+      <span class="law-name">Mon. tensor</span>
+      <span class="law-body">m<sub>⊗,r,A,B</sub> : □<sub>r</sub> A ⊗ □<sub>r</sub> B → □<sub>r</sub>(A ⊗ B)</span>
+    </div>
+  </div>
+  <p>
+    Contraction must be commutative: c<sub>r,s,A</sub> = (swap) ∘ c<sub>s,r,A</sub>.
+  </p>
+</section>
+
+<!-- § 3 ─────────────────────────────────────────────────── -->
+<section class="section" id="s3">
+  <p class="section-num">3</p>
+  <h2><strong>Counit and Comultiplication:</strong> Dereliction and the Grade Split</h2>
+
+  <div class="warn">
+    <p>
+      <strong>Terminology note.</strong> The phrases "forget the annotation" and "split the annotation"
+      appear in informal presentations and user paraphrases of the theory, not as literal Orchard quotations
+      located in the sources surveyed here. The formal terms in the literature are
+      <em>dereliction</em> (counit) and <em>promotion/grade decomposition</em> (comultiplication).
+      The intuition is accurate; the phrasing is informal.
+    </p>
+  </div>
+
+  <h3>Counit — dereliction at grade 1</h3>
+  <code class="formula">ε<sub>A</sub> : □<sub>1</sub> A → A</code>
+  <p>
+    The multiplicative identity 1 is the "do-nothing" grade. A resource annotated with grade 1
+    may be used straightforwardly — no duplication, no restriction. The counit eliminates the
+    modality at grade 1, extracting the plain value. In the CSL 2025 paper this is described
+    as the <em class="term">dereliction</em> operation: <em>"ε<sub>A</sub> : □<sub>1</sub> A → A
+    allows returning from the graded necessity modality to base propositions, semantically
+    forgetting the default grade annotation."</em><sup class="cite"><a href="#r5">[5]</a></sup>
+  </p>
+  <p>
+    In linear logic terms this corresponds exactly to the dereliction rule
+    <span class="mono">!A ⊢ A</span>: one may use a banged formula as a plain formula,
+    "forgetting" the ! modality. Grading refines this: the counit works only at grade 1
+    (the identity), so other grades do not silently disappear.
+  </p>
+
+  <h3>Comultiplication — the grade split</h3>
+  <code class="formula">δ<sub>r,s,A</sub> : □<sub>r·s</sub> A → □<sub>r</sub>(□<sub>s</sub> A)</code>
+  <p>
+    The comultiplication takes a resource with compound grade r·s and decomposes it into
+    r outer applications each wrapping a grade-s use. Concretely, in a counting semiring
+    (R = ℕ, · = ×): if you have n·m of A, you split into n copies each containing m of A.
+    From the ICFP 2014 summary: <em>"comultiplication splits R times S copies of a value
+    into R copies of a context where each context contains just S copies of the value."</em>
+  </p>
+  <p>
+    This corresponds to the linear logic rule that lets you promote inside a bang:
+    if Δ ⊢ A then Δ<sup>!</sup> ⊢ !A. In the graded setting the analogous sequent rule
+    for coeffect annotations would read: a context annotated r·s can be restructured as
+    r-many uses of an s-annotated context.
+  </p>
+
+  <div class="compare-grid">
+    <div class="compare-cell">
+      <p class="compare-cell-label">Counit ε — "dereliction"</p>
+      <p>□<sub>1</sub> A → A</p>
+      <p>grade 1 = identity</p>
+      <p>Eliminates the modality</p>
+      <p>Use once = use plainly</p>
+    </div>
+    <div class="compare-cell">
+      <p class="compare-cell-label">Comultiplication δ — "grade split"</p>
+      <p>□<sub>r·s</sub> A → □<sub>r</sub>(□<sub>s</sub> A)</p>
+      <p>grade r·s = nested use</p>
+      <p>Refines the modality</p>
+      <p>r outer × s inner</p>
+    </div>
+  </div>
+
+  <h3>The weakening and contraction distinction</h3>
+  <p>
+    Note carefully that weakening and contraction are <em>not</em> given by the counit and
+    comultiplication — they use the <em>additive</em> semiring structure instead:
+  </p>
+  <div class="laws">
+    <div class="law">
+      <span class="law-name">Weakening</span>
+      <span class="law-body">w<sub>A</sub> : □<sub>0</sub> A → I &nbsp;&nbsp;&nbsp;<span class="ann">— grade 0 = unused</span></span>
+    </div>
+    <div class="law">
+      <span class="law-name">Contraction</span>
+      <span class="law-body">c<sub>r,s,A</sub> : □<sub>r+s</sub> A → □<sub>r</sub>A ⊗ □<sub>s</sub>A &nbsp;&nbsp;<span class="ann">— additive split</span></span>
+    </div>
+  </div>
+  <p>
+    Weakening uses the additive zero 0 (a resource at grade 0 can be discarded).
+    Contraction uses additive sum r+s (a resource at combined grade r+s splits into two independent
+    uses at grades r and s). The multiplicative pair (1, ·) drives the counit and comultiplication;
+    the additive pair (0, +) drives weakening and contraction.
+  </p>
+</section>
+
+<!-- § 4 ─────────────────────────────────────────────────── -->
+<section class="section" id="s4">
+  <p class="section-num">4</p>
+  <h2>Semiring Structure and the <strong>Colax Monoidal Functor</strong> Characterisation</h2>
+
+  <h3>Graded monad vs graded comonad</h3>
+  <p>
+    The nLab<sup class="cite"><a href="#r6">[6]</a></sup> and the 2-categorical study by
+    Fujii<sup class="cite"><a href="#r7">[7]</a></sup> establish the following functor characterisations:
+  </p>
+
+  <div class="compare-grid">
+    <div class="compare-cell">
+      <p class="compare-cell-label">Graded monad (effects)</p>
+      <p>T : ℛ → [ℂ, ℂ]</p>
+      <p><strong>LAX</strong> monoidal functor</p>
+      <p>μ<sub>r,s</sub> : T<sub>r</sub> ∘ T<sub>s</sub> → T<sub>r·s</sub></p>
+      <p>η : Id → T<sub>1</sub></p>
+    </div>
+    <div class="compare-cell">
+      <p class="compare-cell-label">Graded comonad (coeffects)</p>
+      <p>□ : ℛ → [ℂ, ℂ]</p>
+      <p><strong>COLAX</strong> monoidal functor</p>
+      <p>δ<sub>r,s</sub> : □<sub>r·s</sub> → □<sub>r</sub> ∘ □<sub>s</sub></p>
+      <p>ε : □<sub>1</sub> → Id</p>
+    </div>
+  </div>
+
+  <p>
+    The monad's multiplication μ goes <em>into</em> T<sub>r·s</sub> (lax direction);
+    the comonad's comultiplication δ goes <em>out of</em> □<sub>r·s</sub> (colax/oplax direction).
+    "Colax monoidal functor" and "oplax monoidal functor" are synonymous in the literature.
+    Archard et al. and the CSL 2025 paper consistently call it a <em class="term">colax monoidal functor</em>;
+    the 2209.06334 paper uses <em class="term">oplax monoidal functor</em><sup class="cite"><a href="#r8">[8]</a></sup>.
+  </p>
+
+  <div class="defn">
+    <p class="defn-label">Precise characterisation</p>
+    <p>
+      A graded comonad □: ℛ → [ℳ, ℳ] is a <strong>colax monoidal functor</strong>
+      from (ℛ, ·, 1) viewed as a one-object monoidal category to ([ℳ, ℳ], ∘, Id)
+      the monoidal category of endofunctors under composition.
+    </p>
+    <p>
+      Colax coherence maps are exactly ε and δ, and the coherence laws are counitality
+      and coassociativity.
+    </p>
+  </div>
+
+  <h3>Why a semiring rather than a plain monoid?</h3>
+  <p>
+    A bare monoid (R, ·, 1) suffices for a graded comonad, but <em>coeffect type systems
+    also need structural rules</em> (weakening and contraction). Incorporating them requires
+    the additive structure (0, +). The full semiring (R, 1, ·, 0, +) gives:
+  </p>
+
+  <div class="tbl-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>Semiring part</th>
+          <th>Structural rule</th>
+          <th>Comonad operation</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>(R, ·, 1)</td>
+          <td>None — pure usage</td>
+          <td>Counit ε at 1, comultiplication δ<sub>r,s</sub></td>
+        </tr>
+        <tr>
+          <td>(R, +, 0)</td>
+          <td>Weakening (grade 0)</td>
+          <td>w<sub>A</sub> : □<sub>0</sub> A → I</td>
+        </tr>
+        <tr>
+          <td>(R, +, 0)</td>
+          <td>Contraction (grade r+s)</td>
+          <td>c<sub>r,s,A</sub> : □<sub>r+s</sub> A → □<sub>r</sub> A ⊗ □<sub>s</sub> A</td>
+        </tr>
+        <tr>
+          <td>Distributivity</td>
+          <td>Context scaling</td>
+          <td>r·(s+t) = r·s + r·t coherences</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <p>
+    When the semiring is a natural number semiring ℕ, grade r means "used exactly r times,"
+    grade 0 is dead code (weakened away), and grade r+s means "used in two independent branches
+    with grades r and s." When the semiring is the Boolean semiring {0,1}, the system recovers
+    ordinary linear typing. When the semiring has a top element ω (or ∞), grade ω means
+    "unrestricted" and recovers the intuitionistic (non-linear) fragment.
+  </p>
+
+  <h3>Gaboardi et al. 2016 — combining effects and coeffects</h3>
+  <p>
+    Gaboardi, Katsumata, Orchard, Breuvart, and Uustalu<sup class="cite"><a href="#r4">[4]</a></sup>
+    show that a language with both effects (modelled by a graded monad T<sub>e</sub>) and coeffects
+    (modelled by a graded comonad □<sub>r</sub>) can be combined coherently. The paper introduces
+    <em class="term">graded (monoidal) comonads</em> for coeffects and establishes that the two
+    structures compose when there is a suitable distributive law. The paper confirms the colax
+    monoidal structure for comonads and the semiring requirement on the grade index.
+  </p>
+</section>
+
+<!-- § 5 ─────────────────────────────────────────────────── -->
+<section class="section" id="s5">
+  <p class="section-num">5</p>
+  <h2>Connections to <strong>Graded Modalities in Linear Logic</strong></h2>
+
+  <h3>The standard ! and the linear exponential comonad</h3>
+  <p>
+    Benton, Bierman, Hyland, and de Paiva showed that the ! modality of intuitionistic linear logic
+    is modelled by a <em class="term">linear exponential comonad</em> (LEC): a comonad (!, ε, δ)
+    on a symmetric monoidal category (ℳ, ⊗, I) carrying a commutative comonoid structure on !A
+    for every A, giving weakening (e<sub>A</sub> : !A → I) and contraction (d<sub>A</sub> : !A → !A ⊗ !A).
+    Benton's LNL logic<sup class="cite"><a href="#r9">[9]</a></sup> decomposes ! as an adjunction
+    L ⊣ R : ℳ ↔ ℂ between a linear category ℳ and a Cartesian category ℂ, so that ! = L ∘ R.
+  </p>
+
+  <h3>Graded ! as graded linear exponential comonad</h3>
+  <p>
+    The graded !<sub>r</sub> of graded linear logic is modelled by a
+    <em class="term">graded linear exponential comonad</em>: a graded comonad □ with the additional
+    symmetric lax monoidal structure (weakening at grade 0, contraction at grade r+s) described in §2.
+    From the CSL 2025 paper:
+  </p>
+  <div class="callout">
+    <p class="callout-label">Direct quote — arXiv:2401.17199</p>
+    <p>
+      "the of-course modality from linear logic can be modelled by a linear exponential comonad and
+      graded of-course can be modelled by a graded linear exponential comonad."<sup class="cite"><a href="#r5">[5]</a></sup>
+    </p>
+  </div>
+
+  <h3>Benton's decomposition — graded version</h3>
+  <p>
+    The CSL 2025 paper generalises Benton's LNL decomposition. Just as ! = L ∘ R for a
+    symmetric monoidal adjunction, the graded □<sub>r</sub> decomposes as:
+  </p>
+  <code class="formula">□<sub>r</sub> A  =  L ( r ⊙ (R A) )</code>
+  <p>
+    where ⊙ : R × ℂ → ℂ is a <em class="term">strict monoidal action</em> of the semiring ℛ on the
+    linear category ℂ, and L ⊣ R : ℳ ↔ ℂ is the adjunction connecting the graded intuitionistic
+    world ℳ to the graded linear world ℂ. Concretely from the paper (Lemma 3 / Lemma 15):
+    <em>"□<sub>r</sub> A = Grd<sub>r</sub>(Lin A),"</em> where <em>Lin</em> maps graded types to
+    linear types and <em>Grd<sub>r</sub></em> applies the r-scaling action.
+  </p>
+  <p>
+    This decomposition is due to Fujii, Katsumata, and Melliès<sup class="cite"><a href="#r7">[7]</a></sup>
+    ("every graded comonad can be decomposed into an adjunction and a strict action") and is
+    applied by the CSL 2025 paper to give a mixed linear/graded sequent calculus.
+  </p>
+
+  <h3>Typing rules correspondence</h3>
+  <div class="tbl-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>Comonad operation</th>
+          <th>Linear logic rule</th>
+          <th>Graded linear logic rule</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>ε : □<sub>1</sub> A → A</td>
+          <td>Dereliction: !A ⊢ A</td>
+          <td>!<sub>1</sub> A ⊢ A</td>
+        </tr>
+        <tr>
+          <td>δ<sub>r,s</sub> : □<sub>r·s</sub> A → □<sub>r</sub>(□<sub>s</sub> A)</td>
+          <td>Promotion / dig: !A ⊢ !!A</td>
+          <td>!<sub>r·s</sub> A ⊢ !<sub>r</sub>(!<sub>s</sub> A)</td>
+        </tr>
+        <tr>
+          <td>w : □<sub>0</sub> A → I</td>
+          <td>Weakening: !A ⊢ I</td>
+          <td>!<sub>0</sub> A ⊢ I</td>
+        </tr>
+        <tr>
+          <td>c<sub>r,s</sub> : □<sub>r+s</sub> A → □<sub>r</sub>A ⊗ □<sub>s</sub>A</td>
+          <td>Contraction: !A ⊢ !A ⊗ !A</td>
+          <td>!<sub>r+s</sub> A ⊢ !<sub>r</sub>A ⊗ !<sub>s</sub>A</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3>Orchard's Granule language</h3>
+  <p>
+    The Granule project<sup class="cite"><a href="#r3">[3]</a></sup> (Orchard, Liepelt, Eades, ICFP 2019)
+    implements graded modal types as a fully-featured functional language. The type system combines
+    coeffect tracking (via graded comonad □<sub>r</sub>) and effect tracking (via graded monad T<sub>e</sub>)
+    using a semiring-indexed family of modalities. The Granule language makes the semiring choice
+    programmable: one can instantiate with ℕ (counting), the Boolean semiring (linearity),
+    security lattices (information flow), or interval semirings (approximate computation).
+  </p>
+
+  <h3>Recent unification — linear-base vs graded-base</h3>
+  <p>
+    The 2026 preprint "Same Coeffect, Different Base"<sup class="cite"><a href="#r10">[10]</a></sup>
+    identifies two dominant syntactic approaches:
+    <em class="term">graded-base</em> (graded function arrows A →<sup>r</sup> B, as in Granule)
+    and <em class="term">linear-base</em> (linear function arrow plus graded modal type □<sub>r</sub>A,
+    as in graded linear logic). Both share the same underlying semiring and model the same graded
+    comonad; they differ in surface syntax and where the grade annotation sits.
+  </p>
+
+</section>
+
+<!-- ── REFERENCES ─────────────────────────────────────────── -->
+<section class="refs" id="refs">
+  <h2>References</h2>
+  <ol class="ref-list">
+    <li id="r1">
+      <span class="ref-num">[1]</span>
+      <span>
+        D. Orchard. <em>Programming contextual computations.</em>
+        PhD thesis, University of Cambridge, 2014. Technical Report UCAM-CL-TR-854.
+        <a href="https://www.cl.cam.ac.uk/techreports/UCAM-CL-TR-854.pdf">cl.cam.ac.uk/techreports/UCAM-CL-TR-854.pdf</a>
+      </span>
+    </li>
+    <li id="r2">
+      <span class="ref-num">[2]</span>
+      <span>
+        T. Petricek, D. Orchard, A. Mycroft. <em>Coeffects: a calculus of context-dependent computation.</em>
+        ICFP 2014. ACM SIGPLAN.
+        <a href="https://tomasp.net/academic/papers/structural/">tomasp.net/academic/papers/structural/</a>
+        — PDF: <a href="https://www.doc.ic.ac.uk/~dorchard/publ/coeffects-icfp14.pdf">coeffects-icfp14.pdf</a>
+      </span>
+    </li>
+    <li id="r3">
+      <span class="ref-num">[3]</span>
+      <span>
+        D. Orchard, V.-B. Liepelt, H. Eades III. <em>Quantitative program reasoning with graded modal types.</em>
+        PACMPL Vol. 3, ICFP 2019.
+        <a href="https://dl.acm.org/doi/10.1145/3341714">dl.acm.org/doi/10.1145/3341714</a>
+        — PDF: <a href="https://www.cs.kent.ac.uk/people/staff/dao7/publ/granule-icfp19.pdf">granule-icfp19.pdf</a>
+      </span>
+    </li>
+    <li id="r4">
+      <span class="ref-num">[4]</span>
+      <span>
+        M. Gaboardi, S. Katsumata, D. Orchard, F. Breuvart, T. Uustalu.
+        <em>Combining effects and coeffects via grading.</em>
+        ICFP 2016. ACM SIGPLAN.
+        <a href="https://dl.acm.org/doi/10.1145/2951913.2951939">dl.acm.org/doi/10.1145/2951913.2951939</a>
+      </span>
+    </li>
+    <li id="r5">
+      <span class="ref-num">[5]</span>
+      <span>
+        <em>A mixed linear and graded logic: proofs, terms, and models.</em>
+        CSL 2025. LIPIcs Vol. 326, Article 32.
+        <a href="https://drops.dagstuhl.de/entities/document/10.4230/LIPIcs.CSL.2025.32">10.4230/LIPIcs.CSL.2025.32</a>
+        — arXiv: <a href="https://arxiv.org/abs/2401.17199">2401.17199</a>
+      </span>
+    </li>
+    <li id="r6">
+      <span class="ref-num">[6]</span>
+      <span>
+        nLab contributors. <em>Graded monad.</em>
+        <a href="https://ncatlab.org/nlab/show/graded+monad">ncatlab.org/nlab/show/graded+monad</a>
+      </span>
+    </li>
+    <li id="r7">
+      <span class="ref-num">[7]</span>
+      <span>
+        S. Fujii. <em>A 2-categorical study of graded and indexed monads.</em>
+        arXiv:1904.08083, 2019.
+        <a href="https://arxiv.org/abs/1904.08083">arxiv.org/abs/1904.08083</a>
+      </span>
+    </li>
+    <li id="r8">
+      <span class="ref-num">[8]</span>
+      <span>
+        <em>Monadic and comonadic aspects of dependency analysis.</em>
+        arXiv:2209.06334.
+        <a href="https://arxiv.org/abs/2209.06334">arxiv.org/abs/2209.06334</a>
+      </span>
+    </li>
+    <li id="r9">
+      <span class="ref-num">[9]</span>
+      <span>
+        N. Benton. <em>A mixed linear and non-linear logic: proofs, terms and models.</em>
+        CSL 1994. Springer LNCS 933.
+        <a href="https://link.springer.com/chapter/10.1007/BFb0022251">10.1007/BFb0022251</a>
+      </span>
+    </li>
+    <li id="r10">
+      <span class="ref-num">[10]</span>
+      <span>
+        <em>Same Coeffect, Different Base: Connecting Two Dominant Approaches to Graded Types.</em>
+        arXiv:2606.28042, 2026.
+        <a href="https://arxiv.org/abs/2606.28042">arxiv.org/abs/2606.28042</a>
+      </span>
+    </li>
+  </ol>
+</section>
+
+</main>
+
+<footer>
+  Research synthesised from primary sources via web search and arXiv HTML. PDF sources
+  (thesis, ICFP 2014, ICFP 2019, ICFP 2016) were not directly readable; content is verified
+  from HTML-accessible secondary descriptions, table-of-contents extracts, and the fully
+  accessible arXiv HTML of arXiv:2401.17199 (CSL 2025). Claims from that source are
+  most thoroughly verified. Exact quotes from PDFs should be confirmed against the originals.
+</footer>
+
+</div>

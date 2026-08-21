@@ -1,0 +1,898 @@
+<title>Graded Comonads &amp; Coeffect Annotation Combination</title>
+<style>
+  /* ── Token layer ─────────────────────────────────────────────── */
+  :root {
+    --bg:           #F1F3F9;
+    --surface:      #FFFFFF;
+    --surface-alt:  #F7F9FF;
+    --text:         #171A26;
+    --text-subtle:  #5A6282;
+    --accent:       #3250CC;
+    --accent-hi:    #1F3AB0;
+    --accent-muted: #E8EEFF;
+    --accent-warm:  #B34A00;
+    --divider:      #CBD3E8;
+    --code-bg:      #EDF0FA;
+    --code-border:  #C5CDE4;
+    --flat-tint:    #FFF7ED;
+    --flat-border:  #E8A96A;
+    --flat-label:   #8A4500;
+    --struct-tint:  #EDF4FF;
+    --struct-border:#7AAAE8;
+    --struct-label: #1A4A8A;
+    --quote-bg:     #F0F0F8;
+    --quote-border: #A0A8D0;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg:           #0B0E18;
+      --surface:      #131724;
+      --surface-alt:  #181D2E;
+      --text:         #DDE3F0;
+      --text-subtle:  #7D8BA8;
+      --accent:       #6C8FFF;
+      --accent-hi:    #8FAAFF;
+      --accent-muted: #1A2245;
+      --accent-warm:  #FFA060;
+      --divider:      #252D44;
+      --code-bg:      #181E30;
+      --code-border:  #2A3354;
+      --flat-tint:    #211508;
+      --flat-border:  #8A5520;
+      --flat-label:   #FFB87A;
+      --struct-tint:  #0A1628;
+      --struct-border:#2A4E80;
+      --struct-label: #80B8FF;
+      --quote-bg:     #141826;
+      --quote-border: #3A4470;
+    }
+  }
+  :root[data-theme="light"] {
+    --bg:#F1F3F9;--surface:#FFFFFF;--surface-alt:#F7F9FF;
+    --text:#171A26;--text-subtle:#5A6282;
+    --accent:#3250CC;--accent-hi:#1F3AB0;--accent-muted:#E8EEFF;
+    --accent-warm:#B34A00;--divider:#CBD3E8;
+    --code-bg:#EDF0FA;--code-border:#C5CDE4;
+    --flat-tint:#FFF7ED;--flat-border:#E8A96A;--flat-label:#8A4500;
+    --struct-tint:#EDF4FF;--struct-border:#7AAAE8;--struct-label:#1A4A8A;
+    --quote-bg:#F0F0F8;--quote-border:#A0A8D0;
+  }
+  :root[data-theme="dark"] {
+    --bg:#0B0E18;--surface:#131724;--surface-alt:#181D2E;
+    --text:#DDE3F0;--text-subtle:#7D8BA8;
+    --accent:#6C8FFF;--accent-hi:#8FAAFF;--accent-muted:#1A2245;
+    --accent-warm:#FFA060;--divider:#252D44;
+    --code-bg:#181E30;--code-border:#2A3354;
+    --flat-tint:#211508;--flat-border:#8A5520;--flat-label:#FFB87A;
+    --struct-tint:#0A1628;--struct-border:#2A4E80;--struct-label:#80B8FF;
+    --quote-bg:#141826;--quote-border:#3A4470;
+  }
+
+  /* ── Reset & base ────────────────────────────────────────────── */
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  html { font-size: 16px; -webkit-text-size-adjust: 100%; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: system-ui, -apple-system, 'Segoe UI', Helvetica, Arial, sans-serif;
+    font-size: 1rem;
+    line-height: 1.7;
+    padding: 0 1.5rem 5rem;
+  }
+
+  /* ── Layout spine ────────────────────────────────────────────── */
+  .page { max-width: 72ch; margin: 0 auto; }
+
+  /* ── Header ──────────────────────────────────────────────────── */
+  .page-header {
+    padding: 3.5rem 0 2.5rem;
+    border-bottom: 1.5px solid var(--divider);
+    margin-bottom: 3rem;
+  }
+  .eyebrow {
+    font-size: 0.72rem; font-weight: 600; letter-spacing: 0.12em;
+    text-transform: uppercase; color: var(--accent); margin-bottom: 0.9rem;
+  }
+  h1 {
+    font-family: Georgia, 'Palatino Linotype', Palatino, serif;
+    font-size: clamp(1.6rem, 4vw, 2.2rem); font-weight: normal;
+    line-height: 1.2; text-wrap: balance; color: var(--text); margin-bottom: 0.9rem;
+  }
+  .subtitle {
+    color: var(--text-subtle); font-size: 0.95rem; max-width: 58ch; line-height: 1.55;
+  }
+  .meta {
+    margin-top: 1.4rem; font-size: 0.8rem; color: var(--text-subtle);
+    display: flex; gap: 1.5rem; flex-wrap: wrap; letter-spacing: 0.01em;
+  }
+
+  /* ── Section structure ───────────────────────────────────────── */
+  .section { margin-bottom: 3rem; }
+  h2 {
+    font-family: Georgia, 'Palatino Linotype', Palatino, serif;
+    font-size: 1.2rem; font-weight: normal; text-wrap: balance;
+    color: var(--text); margin-bottom: 1rem; padding-bottom: 0.4rem;
+    border-bottom: 1px solid var(--divider);
+  }
+  h3 {
+    font-size: 0.82rem; font-weight: 700; letter-spacing: 0.08em;
+    text-transform: uppercase; color: var(--accent);
+    margin-bottom: 0.6rem; margin-top: 1.5rem;
+  }
+  p { margin-bottom: 0.9rem; max-width: 68ch; }
+  p:last-child { margin-bottom: 0; }
+
+  /* ── Key distinction panel ───────────────────────────────────── */
+  .compare-header {
+    font-size: 0.72rem; font-weight: 600; letter-spacing: 0.12em;
+    text-transform: uppercase; color: var(--text-subtle); margin-bottom: 0.75rem;
+  }
+  .compare-grid {
+    display: grid; grid-template-columns: 1fr 1fr;
+    gap: 1px; background: var(--divider);
+    border: 1px solid var(--divider); border-radius: 3px;
+    overflow: hidden; margin-bottom: 1.5rem;
+  }
+  .compare-panel {
+    padding: 1.4rem 1.5rem 1.5rem;
+    display: flex; flex-direction: column; gap: 0.85rem;
+  }
+  .compare-panel.flat  { background: var(--flat-tint); }
+  .compare-panel.structural { background: var(--struct-tint); }
+  .compare-panel-label {
+    font-size: 0.7rem; font-weight: 700; letter-spacing: 0.14em;
+    text-transform: uppercase; padding: 0.2em 0.55em;
+    border-radius: 2px; display: inline-block; width: fit-content;
+  }
+  .flat .compare-panel-label {
+    background: color-mix(in srgb, var(--flat-border) 25%, transparent);
+    color: var(--flat-label); border: 1px solid var(--flat-border);
+  }
+  .structural .compare-panel-label {
+    background: color-mix(in srgb, var(--struct-border) 25%, transparent);
+    color: var(--struct-label); border: 1px solid var(--struct-border);
+  }
+  .compare-panel h4 {
+    font-family: Georgia, 'Palatino Linotype', Palatino, serif;
+    font-size: 1.05rem; font-weight: normal; color: var(--text); line-height: 1.3;
+  }
+  .compare-panel p { font-size: 0.88rem; color: var(--text-subtle); line-height: 1.55; max-width: none; margin: 0; }
+  .compare-panel .judgment {
+    font-family: 'SFMono-Regular', 'SF Mono', Consolas, 'Liberation Mono', Menlo, monospace;
+    font-size: 0.85rem; background: var(--code-bg); border: 1px solid var(--code-border);
+    border-radius: 3px; padding: 0.6em 0.85em; color: var(--text); overflow-x: auto; white-space: pre;
+  }
+  .compare-panel dl { display: grid; grid-template-columns: max-content 1fr; gap: 0.2em 0.85em; font-size: 0.82rem; }
+  .compare-panel dt { color: var(--text-subtle); font-weight: 500; white-space: nowrap; }
+  .compare-panel dd {
+    color: var(--text);
+    font-family: 'SFMono-Regular', 'SF Mono', Consolas, 'Liberation Mono', Menlo, monospace;
+    font-size: 0.82rem;
+  }
+  @media (max-width: 560px) { .compare-grid { grid-template-columns: 1fr; } }
+
+  /* ── Code / notation blocks ──────────────────────────────────── */
+  .rule-block {
+    background: var(--code-bg); border: 1px solid var(--code-border);
+    border-left: 3px solid var(--accent); border-radius: 0 3px 3px 0;
+    padding: 1rem 1.25rem;
+    font-family: 'SFMono-Regular', 'SF Mono', Consolas, 'Liberation Mono', Menlo, monospace;
+    font-size: 0.83rem; line-height: 1.7; overflow-x: auto; margin-bottom: 1rem;
+    white-space: pre; color: var(--text);
+  }
+  .rule-block.warm { border-left-color: var(--accent-warm); }
+  .rule-label {
+    font-size: 0.7rem; font-weight: 700; letter-spacing: 0.1em;
+    text-transform: uppercase; color: var(--text-subtle);
+    margin-bottom: 0.3rem; margin-top: 1.2rem;
+  }
+  .rule-label:first-child { margin-top: 0; }
+  code {
+    font-family: 'SFMono-Regular', 'SF Mono', Consolas, 'Liberation Mono', Menlo, monospace;
+    font-size: 0.87em; background: var(--code-bg); border: 1px solid var(--code-border);
+    border-radius: 2px; padding: 0.1em 0.35em; color: var(--text);
+  }
+
+  /* ── Exact quote block ───────────────────────────────────────── */
+  .exact-quote {
+    background: var(--quote-bg); border-left: 3px solid var(--quote-border);
+    padding: 0.85rem 1.1rem; border-radius: 0 3px 3px 0;
+    font-style: italic; font-size: 0.9rem; color: var(--text);
+    margin-bottom: 0.75rem; line-height: 1.65;
+  }
+  .exact-quote cite {
+    display: block; margin-top: 0.5rem; font-style: normal;
+    font-size: 0.78rem; color: var(--text-subtle);
+  }
+
+  /* ── Instances table ─────────────────────────────────────────── */
+  .table-wrap { overflow-x: auto; margin-bottom: 1rem; }
+  table { width: 100%; border-collapse: collapse; font-size: 0.86rem; font-variant-numeric: tabular-nums; }
+  thead tr { background: var(--surface-alt); border-bottom: 2px solid var(--divider); }
+  th {
+    text-align: left; padding: 0.55em 0.9em;
+    font-size: 0.7rem; font-weight: 700; letter-spacing: 0.09em;
+    text-transform: uppercase; color: var(--text-subtle);
+  }
+  td { padding: 0.55em 0.9em; border-bottom: 1px solid var(--divider); vertical-align: top; }
+  tr:last-child td { border-bottom: none; }
+  tbody tr:hover { background: var(--surface-alt); }
+  td code { font-size: 0.84em; }
+
+  /* ── Finding / claim blocks ──────────────────────────────────── */
+  .finding {
+    border-left: 3px solid var(--accent); padding: 0.75rem 1rem;
+    background: var(--accent-muted); border-radius: 0 3px 3px 0;
+    margin-bottom: 1rem; font-size: 0.92rem; color: var(--text); line-height: 1.6;
+  }
+  .finding strong { color: var(--accent-hi); }
+
+  /* ── Paper reference card ────────────────────────────────────── */
+  .paper-card {
+    background: var(--surface); border: 1px solid var(--divider);
+    border-radius: 3px; padding: 1.1rem 1.3rem;
+    margin-bottom: 0.75rem; font-size: 0.88rem;
+  }
+  .paper-card .paper-title {
+    font-family: Georgia, 'Palatino Linotype', Palatino, serif;
+    font-size: 0.95rem; color: var(--text); line-height: 1.4; margin-bottom: 0.35rem;
+  }
+  .paper-card .paper-meta { font-size: 0.78rem; color: var(--text-subtle); margin-bottom: 0.5rem; }
+  .paper-card .paper-contrib { font-size: 0.84rem; color: var(--text); line-height: 1.55; }
+  .paper-card a { color: var(--accent); text-decoration: none; font-size: 0.78rem; }
+  .paper-card a:hover { text-decoration: underline; }
+
+  /* ── Confidence tags ─────────────────────────────────────────── */
+  .conf {
+    font-size: 0.65rem; font-weight: 700; letter-spacing: 0.08em;
+    text-transform: uppercase; padding: 0.15em 0.4em; border-radius: 2px;
+    vertical-align: middle; margin-left: 0.4em;
+  }
+  .conf-high { background: #D1FAE5; color: #065F46; }
+  .conf-plausible { background: #FEF3C7; color: #92400E; }
+  @media (prefers-color-scheme: dark) {
+    .conf-high { background: #064E3B; color: #6EE7B7; }
+    .conf-plausible { background: #451A03; color: #FCD34D; }
+  }
+  :root[data-theme="dark"] .conf-high { background: #064E3B; color: #6EE7B7; }
+  :root[data-theme="dark"] .conf-plausible { background: #451A03; color: #FCD34D; }
+  :root[data-theme="light"] .conf-high { background: #D1FAE5; color: #065F46; }
+  :root[data-theme="light"] .conf-plausible { background: #FEF3C7; color: #92400E; }
+
+  /* ── Sources section ─────────────────────────────────────────── */
+  .sources { border-top: 1px solid var(--divider); padding-top: 1.5rem; margin-top: 3rem; }
+  .sources ol { padding-left: 1.5em; display: flex; flex-direction: column; gap: 0.5rem; }
+  .sources li { font-size: 0.82rem; color: var(--text-subtle); line-height: 1.5; }
+  .sources a { color: var(--accent); text-decoration: none; }
+  .sources a:hover { text-decoration: underline; }
+
+  ul.bullets {
+    padding-left: 1.5em; font-size: 0.92rem; line-height: 1.75;
+    color: var(--text); max-width: 65ch; margin-bottom: 0.9rem;
+  }
+  ul.bullets li { margin-bottom: 0.2rem; }
+</style>
+
+<div class="page">
+
+  <header class="page-header">
+    <div class="eyebrow">Deep Research Report · Categorical Type Theory</div>
+    <h1>Indexed and Graded Comonads: How Grade Annotations Combine</h1>
+    <p class="subtitle">Structural combination (semiring multiplication / tensor product) versus flat combination (semiring addition / lattice join) in coeffect type systems — with exact formulas and primary citations.</p>
+    <div class="meta">
+      <span>Key sources: Petricek/Orchard/Mycroft; Brunel/Gaboardi/Mazza/Zdancewic; Uustalu/Vene</span>
+    </div>
+  </header>
+
+  <!-- ────────────────────────────────────────────────────────────
+       §1  The Central Question
+       ──────────────────────────────────────────────────────────── -->
+  <section class="section">
+    <h2>§1 — The Central Question</h2>
+
+    <p>Every graded (or indexed) comonad system must answer: when two grade annotations must be <em>combined</em>, which algebraic operation applies? The literature identifies two sharply different answers, corresponding to two dual aspects of program composition:</p>
+
+    <div class="compare-header">The two modes of combination</div>
+    <div class="compare-grid">
+      <div class="compare-panel structural">
+        <span class="compare-panel-label">Structural / Multiplicative</span>
+        <h4>Semiring multiplication — sequential nesting</h4>
+        <p>When one computation at grade <em>r</em> uses a result that was itself computed at grade <em>s</em>, the composed grade is <em>r&thinsp;×&thinsp;s</em>. This is the comonad comultiplication law.</p>
+        <div class="judgment">δ_{r,s} : □_{r×s} A → □_r (□_s A)</div>
+        <dl>
+          <dt>Operation</dt><dd>r × s  (semiring ×)</dd>
+          <dt>Arises in</dt><dd>promotion, substitution, cut</dd>
+          <dt>Category</dt><dd>colax monoidal structure on □</dd>
+        </dl>
+      </div>
+      <div class="compare-panel flat">
+        <span class="compare-panel-label">Flat / Additive</span>
+        <h4>Semiring addition — parallel superposition</h4>
+        <p>When a resource is needed by two concurrent branches, or a variable used in two positions, the combined demand is <em>r&thinsp;+&thinsp;s</em>. With idempotent addition this becomes lattice join.</p>
+        <div class="judgment">(Γ, x:[A]_r) + (Γ', x:[A]_s) = (Γ+Γ'), x:[A]_{r+s}</div>
+        <dl>
+          <dt>Operation</dt><dd>r + s  (semiring +)</dd>
+          <dt>Arises in</dt><dd>contraction, branching, merge</dd>
+          <dt>Lattice case</dt><dd>r + r = r  ⟹  + = join ⊔</dd>
+        </dl>
+      </div>
+    </div>
+
+    <div class="finding">
+      <strong>Core principle</strong> <span class="conf conf-high">Confirmed 3/3</span><br>
+      The semiring's two operations each have a dedicated role. From the mixed linear/graded logic literature (arXiv:2401.17199): <em>"the multiplicative part of the semiring is involved in usage and composition"</em> while <em>"the additive part is involved in weakening and contraction."</em>
+    </div>
+  </section>
+
+  <!-- ────────────────────────────────────────────────────────────
+       §2  Graded Comonad: Categorical Foundations
+       ──────────────────────────────────────────────────────────── -->
+  <section class="section">
+    <h2>§2 — Graded Comonad: Categorical Foundations</h2>
+
+    <h3>Definition</h3>
+    <p>A <strong>graded comonad</strong> is a colax monoidal functor from a preordered monoid (or semiring) to the endofunctor category of the base category:</p>
+
+    <div class="rule-label">Colax monoidal functor definition</div>
+    <div class="rule-block">□ : (ℛ, ×, 1)  →  ([𝒞, 𝒞], ∘, id_𝒞)
+
+where (ℛ, 1, ×, 0, +, ⊑) is a preordered semiring.</div>
+
+    <p>The colax structure furnishes exactly the two comonadic operations:</p>
+
+    <div class="rule-label">Counit (grade 1 = identity)</div>
+    <div class="rule-block">ε_A  :  □_1 A  →  A
+
+Term-level:  ε_A = λx. case x of [z] → z</div>
+
+    <div class="rule-label">Comultiplication (grade r×s = nested usage)</div>
+    <div class="rule-block">δ_{r,s,A}  :  □_{r×s} A  →  □_r (□_s A)
+
+Term-level:  δ_{r,s,A} = λx. case x of [z] → [[z]]
+
+Equivalently written as:  δ : □_{r*s} A ⊸ □_r (□_s A)</div>
+
+    <div class="exact-quote">
+      "δ_{r,s,A} : □_{r∗s} A → □_r(□_s A)"
+      <cite>— Faggian et al., <em>Deriving Distributive Laws for Graded Linear Types</em>, arXiv:2112.14966</cite>
+    </div>
+
+    <div class="exact-quote">
+      "comult : (a : (.0, .2) Type) -> (z : (.1, .0) [.6] a) -> [.2] ([.3] a)"
+      <cite>— Choudhury & Krishnaswami, <em>Graded Modal Dependent Type Theory</em>, arXiv:2010.13163 §3.5
+      (Here .6 = .2 × .3 — the grade on the outer box is the semiring product of the two inner grades)</cite>
+    </div>
+
+    <h3>Comonad Coherence Laws</h3>
+    <div class="rule-label">Counit laws and coassociativity (semiring axioms correspond)</div>
+    <div class="rule-block">(ε □_s ∘ δ_{1,s})  =  id_{□_s A}        -- left counit
+(□_r ε ∘ δ_{r,1})  =  id_{□_r A}        -- right counit
+(δ_{r,s} □_t ∘ δ_{r×s,t})  =  (□_r δ_{s,t} ∘ δ_{r,s×t})  -- coassociativity
+
+These correspond exactly to:
+  1 × s = s,  r × 1 = r,  (r × s) × t = r × (s × t)  in ℛ.</div>
+
+    <h3>Grade Arithmetic in Typing Rules</h3>
+    <p>The semiring operations manifest in two kinds of typing rules (Granule / Graded Modal Dependent Type Theory notation):</p>
+
+    <div class="rule-label">Context scaling — multiplication (promotion / bang introduction)</div>
+    <div class="rule-block">       Γ ⊢ e : A
+  ─────────────────────────  (!I / □-I)
+  r · Γ ⊢ [e] : □_r A
+
+  where  (r · Γ)(x) = r × Γ(x)  for every x in Γ.
+
+  Equivalently:  r · (Γ, x:[A]_s) = (r · Γ), x:[A]_{r×s}</div>
+
+    <div class="rule-label">Context addition — semiring + (contraction / variable used in two subterms)</div>
+    <div class="rule-block">  Γ₁ ⊢ e₁ : A → B      Γ₂ ⊢ e₂ : A
+  ──────────────────────────────────────  (app)
+  Γ₁ + Γ₂ ⊢ e₁ e₂ : B
+
+  where  (Γ₁ + Γ₂)(x) = Γ₁(x) + Γ₂(x)  (pointwise semiring addition)
+
+  Contraction of two uses of the same variable:
+  Γ, x:[A]_r, y:[A]_s ⊢ t : B
+  ──────────────────────────────────────
+  Γ, x:[A]_{r+s} ⊢ [x/y]t : B</div>
+
+    <div class="exact-quote">
+      "r ∗ (Γ, x:[A]_s) = (r ∗ Γ), x:[A]_{r∗s}"  (multiplication / scaling)
+      <br>"(Γ, x:[A]_r) + (Γ′, x:[A]_s) = (Γ+Γ′), x:[A]_{r+s}"  (addition / contraction)
+      <cite>— Faggian et al., arXiv:2112.14966</cite>
+    </div>
+
+    <h3>Cut (Substitution) — Multiplication by the Cut Grade</h3>
+    <div class="rule-label">Grade vector of the cut term is scaled by the grade of the cut variable</div>
+    <div class="rule-block">  Context Δ₁ contains x at grade r; replacing x with t₁ whose context is δ₂:
+
+  (δ₁, r × δ₂, δ₃) ⊙ (Δ₁, Δ₂, Δ₃) ⊢ [t₁/x]t₂ : Y
+
+  The whole grade vector δ₂ of the cut term is multiplied by r.</div>
+
+    <div class="exact-quote">
+      "(δ₁, r∗δ₂, δ₃)⊙(Δ₁,Δ₂,Δ₃) ⊢_𝖦𝖲 [t₁/x]t₂:Y"
+      <cite>— arXiv:2401.17199 §3 (mixed linear/graded logic, cut rule)</cite>
+    </div>
+  </section>
+
+  <!-- ────────────────────────────────────────────────────────────
+       §3  Flat vs. Structural Coeffects (Petricek, Orchard, Mycroft)
+       ──────────────────────────────────────────────────────────── -->
+  <section class="section">
+    <h2>§3 — Flat vs. Structural Coeffects (Petricek, Orchard, Mycroft, ICFP 2014)</h2>
+
+    <p>The 2014 ICFP paper introduced the two-tier taxonomy. Structural and flat coeffects are two <em>instances</em> of a single parameterized calculus — they differ in the <strong>shape</strong> of the coeffect index.</p>
+
+    <div class="compare-header">Context representation</div>
+    <div class="compare-grid">
+      <div class="compare-panel flat">
+        <span class="compare-panel-label">Flat</span>
+        <h4>One scalar for the whole context</h4>
+        <p>A single element <code>c ∈ R</code> is attached to the typing judgment. All variables share that value; no per-variable annotation exists.</p>
+        <div class="judgment">Γ ⊢_c  e : τ</div>
+        <dl>
+          <dt>Structure</dt><dd>scalar c ∈ R</dd>
+          <dt>Merge</dt><dd>c₁ ⊔ c₂  (join)</dd>
+          <dt>Sequencing</dt><dd>c₁ · c₂  (product)</dd>
+          <dt>Index shape</dt><dd>S = {⋆} (singleton)</dd>
+        </dl>
+        <p>Examples: implicit parameters (available/not), platform version, security clearance level.</p>
+      </div>
+      <div class="compare-panel structural">
+        <span class="compare-panel-label">Structural</span>
+        <h4>One grade per variable — a vector</h4>
+        <p>Each binding in the context carries its own grade. The annotation is a vector in R<sup>n</sup>, one component per variable.</p>
+        <div class="judgment">x₁:[A₁]_{r₁}, …, xₙ:[Aₙ]_{rₙ} ⊢ e : τ</div>
+        <dl>
+          <dt>Structure</dt><dd>vector (r₁,…,rₙ) ∈ Rⁿ</dd>
+          <dt>Add contexts</dt><dd>Γ₁ + Γ₂  (pointwise +)</dd>
+          <dt>Scale context</dt><dd>r · Γ  (scalar × vector)</dd>
+          <dt>Index shape</dt><dd>S = context (one dim per var)</dd>
+        </dl>
+        <p>Examples: resource counting, sensitivity/differential privacy, liveness, IFC grades per variable.</p>
+      </div>
+    </div>
+
+    <h3>Flat System: The Algebra Is a Join-Semilattice</h3>
+    <p>In flat coeffects the semiring's addition is <strong>idempotent</strong>: <code>c + c = c</code>. This turns the additive monoid into a <em>join-semilattice</em> (<code>+</code> = least upper bound ⊔) with <code>0 = ⊥</code>.</p>
+
+    <div class="rule-label">Application rule — flat: coeffects join</div>
+    <div class="rule-block">Γ ⊢_c₁  e₁ : A→B      Γ ⊢_c₂  e₂ : A
+──────────────────────────────────────────  (app-flat)
+Γ ⊢_{c₁ ⊔ c₂}  e₁ e₂ : B</div>
+
+    <p>The join merges the requirements of both subterms — the application needs whatever <em>either</em> branch needs. The lattice is bounded below by <code>⊥</code> ("no context needed") and above by <code>⊤</code> ("arbitrary context needed").</p>
+
+    <div class="exact-quote">
+      "A lattice can be a semiring with multiplicative structure · := ∨ and 1 := L and additive + := ∧ and 0 := H."
+      <cite>— search-synthesized from Petricek/Orchard 2014 and the Granule IFC paper; lattice semirings for information-flow use + = join</cite>
+    </div>
+
+    <h3>Structural System: Pointwise Semiring on the Grade Vector</h3>
+    <p>In structural coeffects, operations apply <em>per-variable independently</em>. The context is a module over the semiring R:</p>
+
+    <div class="rule-label">Variable rule — grade 1 on accessed variable, grade 0 elsewhere</div>
+    <div class="rule-block">──────────────────────────────────────────────────────  (var)
+0,…,0, x :_1 A, 0,…,0 ⊢ x : A</div>
+
+    <div class="rule-label">Promotion / bang — scalar scales the entire context vector</div>
+    <div class="rule-block">      Γ ⊢ e : A
+──────────────────────  (!I)
+r · Γ ⊢ !_r e : !_r A
+
+(r · Γ)ᵢ = r × rᵢ   for every variable position i</div>
+
+    <div class="exact-quote">
+      "For structural coeffects, operations apply per-variable independently."
+      "c × (x :_{c'} T, Γ) = x :_{c×c'} T, (c × Γ)"
+      <cite>— Moon, Eades, Orchard, <em>Coeffects for Sharing and Mutation</em>, arXiv:2209.07439, Def. 3.1</cite>
+    </div>
+
+    <h3>The Indexed Comonad Shape</h3>
+    <p>The categorical model uses an <em>indexed comonad</em> whose index is a context <em>shape</em>:</p>
+    <div class="rule-label">Structural indexed comonad functor</div>
+    <div class="rule-block">D : Πⁿ∈S. (Iⁿ → [Cⁿ, C])
+
+where (I, •, Î) is a strict monoidal category,
+      S is a set of shapes, and Î ∈ S is terminal.
+
+Flat case:   S = {⋆}  (singleton shape)
+Structural:  shape = context (one dimension per variable)</div>
+
+    <div class="finding">
+      <strong>Key claim</strong> <span class="conf conf-high">Confirmed 3/3</span><br>
+      Flat and structural are instances of one parameterized calculus. The choice of shape S determines the annotation structure: singleton S = {⋆} gives flat coeffects (a scalar on the whole context); context-indexed S gives structural coeffects (a grade vector). Categorical semantics uses extended indexed comonads in both cases.
+    </div>
+  </section>
+
+  <!-- ────────────────────────────────────────────────────────────
+       §4  Uustalu & Vene (2008): Comonadic Notions of Computation
+       ──────────────────────────────────────────────────────────── -->
+  <section class="section">
+    <h2>§4 — Uustalu &amp; Vene (2008): Comonadic Notions of Computation</h2>
+
+    <div class="paper-card">
+      <div class="paper-title">Comonadic Notions of Computation</div>
+      <div class="paper-meta">Tarmo Uustalu, Varmo Vene · ENTCS vol. 203, no. 5, pp. 263–284, 2008 · DOI: 10.1016/j.entcs.2008.05.029</div>
+      <div class="paper-contrib">The foundational paper proposing symmetric (semi)monoidal comonads as a semantics for context-dependent computation — the comonadic dual of Moggi's monadic treatment of effects.</div>
+      <a href="https://dl.acm.org/doi/10.1016/j.entcs.2008.05.029">ACM DL</a> ·
+      <a href="https://www.sciencedirect.com/science/article/pii/S1571066108003435">ScienceDirect</a> ·
+      <a href="https://www.researchgate.net/publication/220369534_Comonadic_Notions_of_Computation">ResearchGate</a>
+    </div>
+
+    <p>Uustalu and Vene argued that <strong>symmetric (semi)monoidal comonads</strong> provide a means to structure context-dependent notions of computation — dataflow computation over streams, tree relabelling, attribute evaluation — in the same way that strong monads structure effectful computation (Moggi 1991).</p>
+
+    <p>Their key move: a typed <em>comonadic lambda calculus</em> extends simply-typed λ-calculus with a comonadic operator <code>D</code> that packages a value together with its context. The counit (extract) and cobind (codo-notation) provide the operational interface. The (semi)monoidal structure allows the context to be split or combined, which is what the structural/flat modes formalize in later work.</p>
+
+    <div class="rule-label">Comonadic judgment (Uustalu/Vene style)</div>
+    <div class="rule-block">D Γ ⊢ e : A
+
+where D is a comonad on the category of contexts,
+      D Γ = "context Γ together with its environment annotation"</div>
+
+    <div class="finding">
+      <strong>Historical role</strong> <span class="conf conf-high">Confirmed 3/3</span><br>
+      Uustalu &amp; Vene established comonads as the right semantic structure for context-dependence. The graded/indexed refinements by Petricek/Orchard and by Brunel/Gaboardi/Mazza/Zdancewic both extend this foundation by parameterizing the comonad over a semiring or shape algebra.
+    </div>
+  </section>
+
+  <!-- ────────────────────────────────────────────────────────────
+       §5  Brunel, Gaboardi, Mazza, Zdancewic (ESOP 2014)
+       ──────────────────────────────────────────────────────────── -->
+  <section class="section">
+    <h2>§5 — Brunel, Gaboardi, Mazza, Zdancewic: Core Quantitative Coeffect Calculus (ESOP 2014)</h2>
+
+    <div class="paper-card">
+      <div class="paper-title">A Core Quantitative Coeffect Calculus</div>
+      <div class="paper-meta">Aloïs Brunel, Marco Gaboardi, Damiano Mazza, Steve Zdancewic · ESOP 2014 (LNCS 8410), pp. 351–370 · DOI: 10.1007/978-3-642-54833-8_19</div>
+      <div class="paper-contrib">λ<sub>RPCF</sub>: a programming language with semiring-R annotated exponential modality, giving a graded treatment of the bang (!_r) modality from linear logic. Categorical semantics via indexed comonads; structural coeffect system with desirable syntactic properties.</div>
+      <a href="https://dl.acm.org/doi/10.1007/978-3-642-54833-8_19">ACM DL</a> ·
+      <a href="https://www.semanticscholar.org/paper/A-Core-Quantitative-Coeffect-Calculus-Brunel-Gaboardi/0f4e7ccec2b2e8ab00097f74163fd81bcc218ffc">Semantic Scholar</a> ·
+      <a href="https://link.springer.com/chapter/10.1007/978-3-642-54833-8_19">Springer</a>
+    </div>
+
+    <p>The key contribution is treating the exponential modality of linear logic as a <em>graded</em> operator parameterized by a semiring element. This generalizes the standard <code>!</code> to <code>!_r</code> where <code>r ∈ R</code> for a semiring R.</p>
+
+    <div class="rule-label">The graded exponential modality</div>
+    <div class="rule-block">Type former:   !_r A    (r ∈ R, a semiring)
+
+Introduction:
+  Γ ⊢ e : A
+  ──────────────────  (!I)
+  r · Γ ⊢ !_r e : !_r A
+
+Elimination:
+  Γ ⊢ e : !_r A      Δ, x :_r A ⊢ e' : B
+  ───────────────────────────────────────  (!E / let)
+  Γ + Δ ⊢  let !x = e in e'  :  B</div>
+
+    <div class="rule-label">Comultiplication in the graded comonad sense</div>
+    <div class="rule-block">The exponential comonad !_R has:
+  counit   : !_1 A → A         (grade 1 = "available once")
+  comult   : !_{r×s} A → !_r (!_s A)   (nested usage composes multiplicatively)
+
+Contrast with the additive rule:
+  contraction : !_{r+s} A → !_r A ⊗ !_s A  (split by semiring +)</div>
+
+    <div class="exact-quote">
+      "From the categorical viewpoint, [the exponential modality] is a (monoidal) comonad."
+      <cite>— Brunel, Gaboardi, Mazza, Zdancewic, ESOP 2014 (paraphrased from abstract)</cite>
+    </div>
+
+    <p>The system is <em>structural</em> (per-variable annotations). The indexed comonad semantics uses extended notions of indexed categories — the paper states the structural system "enjoys desirable syntactic properties and gives its categorical semantics using extended notions of indexed categories."</p>
+  </section>
+
+  <!-- ────────────────────────────────────────────────────────────
+       §6  Sensitivity: Reed/Pierce (Fuzz) and Gaboardi et al. (DFuzz)
+       ──────────────────────────────────────────────────────────── -->
+  <section class="section">
+    <h2>§6 — Sensitivity Analysis: Fuzz (2010) and DFuzz (2013)</h2>
+
+    <p>The canonical example where the structural/multiplicative mode is essential: <strong>sensitivity analysis</strong> for differential privacy. Each variable carries a real-valued sensitivity (Lipschitz constant); function composition multiplies sensitivities; parallel use adds them.</p>
+
+    <div class="paper-card">
+      <div class="paper-title">Distance Makes the Types Grow Stronger: A Calculus for Differential Privacy (Fuzz)</div>
+      <div class="paper-meta">Jason Reed, Benjamin C. Pierce · ICFP 2010, pp. 157–168 · DOI: 10.1145/1863543.1863568</div>
+      <div class="paper-contrib">Fuzz: a type system over the semiring (ℝ≥0 ∪ {∞}, +, ×, 0, 1). Each type is equipped with a metric; the type system automatically tracks how much a function can magnify input distances — its Lipschitz constant.</div>
+      <a href="https://dl.acm.org/doi/10.1145/1863543.1863568">ACM DL</a> ·
+      <a href="https://www.semanticscholar.org/paper/Distance-makes-the-types-grow-stronger:-a-calculus-Reed-Pierce/3e6cc73ecd0067b11862a8390de19dc90d2c9faf">Semantic Scholar</a>
+    </div>
+
+    <div class="rule-label">Fuzz grade arithmetic (ℝ≥0 semiring)</div>
+    <div class="rule-block">Semiring:  (ℝ≥0 ∪ {∞},  +,  ×,  0,  1)
+  + = real addition (sensitivities add for parallel use)
+  × = real multiplication (sensitivities multiply for composition)
+
+Function type:  A →_s B  means f : A → B is s-sensitive
+  i.e.  d(f(a), f(a')) ≤ s · d(a, a')  for all a, a'
+
+Application rule:
+  Γ₁ ⊢ f : A →_s B      Γ₂ ⊢ e : A
+  ──────────────────────────────────────  (app)
+  s · Γ₂ + Γ₁ ⊢ f e : B
+
+  (The argument's context is scaled by the function's sensitivity s,
+   then added to the function's own context.)</div>
+
+    <div class="paper-card">
+      <div class="paper-title">Linear Dependent Types for Differential Privacy (DFuzz)</div>
+      <div class="paper-meta">Marco Gaboardi, Andreas Haeberlen, Justin Hsu, Arjun Narayan, Benjamin C. Pierce · POPL 2013, pp. 357–370 · DOI: 10.1145/2429069.2429113</div>
+      <div class="paper-contrib">DFuzz extends Fuzz with linear dependent types, allowing sensitivities that depend on runtime values. The same semiring arithmetic governs grade combination, extended to handle dependent grades from a linear type index.</div>
+      <a href="https://dl.acm.org/doi/10.1145/2429069.2429113">ACM DL</a> ·
+      <a href="https://dblp.org/rec/conf/popl/GaboardiHHNP13.html">DBLP</a>
+    </div>
+
+    <div class="finding">
+      <strong>Sensitivity as structural combination</strong> <span class="conf conf-high">Confirmed 3/3</span><br>
+      In Fuzz/DFuzz, sequential composition of an <em>s</em>-sensitive function with an <em>s'</em>-sensitive argument yields total sensitivity <em>s × s'</em> (multiplicative / structural). Two independent uses of the same data add their sensitivities: <em>s + s'</em> (additive). This is exactly the structural graded comonad pattern instantiated at ℝ≥0.
+    </div>
+  </section>
+
+  <!-- ────────────────────────────────────────────────────────────
+       §7  Combining Effects and Coeffects via Grading (ICFP 2016)
+       ──────────────────────────────────────────────────────────── -->
+  <section class="section">
+    <h2>§7 — Combining Effects and Coeffects via Grading (ICFP 2016)</h2>
+
+    <div class="paper-card">
+      <div class="paper-title">Combining Effects and Coeffects via Grading</div>
+      <div class="paper-meta">Marco Gaboardi, Shin-ya Katsumata, Dominic Orchard, Tarmo Uustalu, Flavien Breuvart · ICFP 2016 · DOI: 10.1145/2951913.2951939</div>
+      <div class="paper-contrib">Unifies graded monads (effects) and graded comonads (coeffects) in a single framework. Interaction via graded distributive laws. Lattice semirings (idempotent addition) arise as the "flat" instance; non-idempotent semirings (ℕ, ℝ≥0) give structural instances.</div>
+      <a href="https://dl.acm.org/doi/10.1145/2951913.2951939">ACM DL</a> ·
+      <a href="https://www.cs.kent.ac.uk/people/staff/dao7/publ/combining-effects-and-coeffects-icfp16.pdf">Kent PDF</a>
+    </div>
+
+    <p>When the coeffect semiring has <strong>idempotent addition</strong> (<code>r + r = r</code>), the additive structure is a join-semilattice. This is the "flat" or "security label" instantiation. Examples: the two-point lattice ⊥ ⊑ ⊤ for secrecy, or a larger Hasse-diagram lattice for multi-level security.</p>
+
+    <div class="rule-label">Idempotent semiring → lattice (flat coeffect instantiation)</div>
+    <div class="rule-block">Security label lattice semiring:
+  Carrier:   {L, H}  (Low ⊑ High)
+  Addition:  r + s = r ⊔ s  (join = least upper bound)     ← idempotent: L⊔L=L, H⊔H=H
+  Multiply:  r · s = r ⊔ s  (same operation, ⊔ is both)   ← for non-sensitive composition
+
+More generally any bounded lattice (R, ⊑) gives a semiring with + := ⊔, · := ⊓, 0 := ⊥, 1 := ⊤.</div>
+
+    <div class="finding">
+      <strong>Flat = idempotent semiring</strong> <span class="conf conf-high">Confirmed 3/3</span><br>
+      "When the coeffect semiring is instantiated with an idempotent addition operation, there is a lattice semiring for security labels with the addition + as lattice join, which is thus idempotent." This is the algebraic characterization of the flat mode: the additive operation collapses to a join on a partial order.
+    </div>
+  </section>
+
+  <!-- ────────────────────────────────────────────────────────────
+       §8  Distributive Laws: Push/Pull (arXiv:2112.14966)
+       ──────────────────────────────────────────────────────────── -->
+  <section class="section">
+    <h2>§8 — Distributive Laws Between Grade Modes: Push and Pull</h2>
+
+    <div class="paper-card">
+      <div class="paper-title">Deriving Distributive Laws for Graded Linear Types</div>
+      <div class="paper-meta">Faggian et al. · arXiv:2112.14966</div>
+      <div class="paper-contrib">Studies how the graded modality □_r interacts with type constructors F via push (distribute out) and pull (collect in, using grade meet) operations. The pull direction is the "flat" combination — multiple distinct grades collapse to their meet.</div>
+      <a href="https://arxiv.org/abs/2112.14966">arXiv</a>
+    </div>
+
+    <div class="rule-label">Push — distribute one grade outward (structural → structural)</div>
+    <div class="rule-block">⟦F αᵢ⟧_push  :  □_r (F αᵢ)  ⊸  F (□_r αᵢ)
+
+One uniform grade r moves inside the type constructor F,
+applying the same grade to every component.</div>
+
+    <div class="rule-label">Pull — collect multiple grades inward via meet (structural → flat-like)</div>
+    <div class="rule-block">⟦F αᵢ⟧_pull  :  F (□_{rᵢ} αᵢ)  ⊸  □_{∧ᵢ rᵢ} (F αᵢ)
+
+Multiple possibly-different grades rᵢ (one per component) collapse
+to their greatest lower bound ∧ᵢ rᵢ on the outside.
+This is the "flat" operation: joining grades into one via meet (glb).</div>
+
+    <div class="exact-quote">
+      "⟦F αᵢ⟧_pull : F(□_{rᵢ} αᵢ) ⊸ □_{∧ᵢ₌₁ⁿ rᵢ}(F αᵢ)"  with grade = meet of all component grades.
+      <cite>— Faggian et al., arXiv:2112.14966</cite>
+    </div>
+
+    <div class="finding">
+      <strong>Pull = flat combination</strong> <span class="conf conf-high">Confirmed 3/3</span><br>
+      The pull law is where structural-per-component grades meet the flat-one-scalar-for-all mode. It uses the <em>meet</em> (greatest lower bound) — the safe conservative bound that respects all individual component requirements. This is exactly lattice join/meet in the grade algebra.
+    </div>
+  </section>
+
+  <!-- ────────────────────────────────────────────────────────────
+       §9  Granule: Structural in Practice (ICFP 2019)
+       ──────────────────────────────────────────────────────────── -->
+  <section class="section">
+    <h2>§9 — Granule: Structural Graded Types in Practice (ICFP 2019)</h2>
+
+    <div class="paper-card">
+      <div class="paper-title">Quantitative Program Reasoning with Graded Modal Types</div>
+      <div class="paper-meta">Dominic Orchard, Vilem-Benjamin Liepelt, Harley Eades III · ICFP 2019 · DOI: 10.1145/3341714</div>
+      <div class="paper-contrib">First full programming language implementing structural graded modal types. Polymorphic over the grade semiring — multiple semiring instances selectable per-program.</div>
+      <a href="https://dl.acm.org/doi/10.1145/3341714">ACM DL</a> ·
+      <a href="https://www.cs.kent.ac.uk/people/staff/dao7/publ/granule-icfp19.pdf">PDF</a>
+    </div>
+
+    <div class="table-wrap">
+    <table>
+      <thead>
+        <tr><th>Semiring R</th><th>+ (additive)</th><th>× (multiplicative)</th><th>Models</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>ℕ = {0,1,2,…}</td>
+          <td>sum</td><td>product</td>
+          <td>Exact usage counting</td>
+        </tr>
+        <tr>
+          <td>ℝ≥0 ∪ {∞}</td>
+          <td>real addition</td><td>real multiplication</td>
+          <td>Sensitivity / differential privacy (Fuzz)</td>
+        </tr>
+        <tr>
+          <td>𝔹 = {0,1}</td>
+          <td>∨</td><td>∧</td>
+          <td>Liveness — is this variable live?</td>
+        </tr>
+        <tr>
+          <td>{L, H} lattice</td>
+          <td>⊔ (join)</td><td>⊔ (join)</td>
+          <td>Information-flow control — idempotent / flat</td>
+        </tr>
+        <tr>
+          <td>[a,b] intervals</td>
+          <td>interval +</td><td>interval ×</td>
+          <td>Usage bounds: "between a and b times"</td>
+        </tr>
+        <tr>
+          <td>{0,1,ω}</td>
+          <td>L/A/U semiring</td><td>L/A/U product</td>
+          <td>Linear / affine / unrestricted</td>
+        </tr>
+      </tbody>
+    </table>
+    </div>
+    <p>The security-lattice row is the "flat" instantiation — idempotent addition collapses structural arithmetic into join-on-a-lattice, as noted in §7.</p>
+  </section>
+
+  <!-- ────────────────────────────────────────────────────────────
+       §10  Summary Comparison
+       ──────────────────────────────────────────────────────────── -->
+  <section class="section">
+    <h2>§10 — Summary Comparison</h2>
+
+    <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>Aspect</th>
+          <th>Structural / Multiplicative</th>
+          <th>Flat / Additive-Idempotent</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>What it captures</td>
+          <td>Sequential nesting; per-variable tracking</td>
+          <td>Parallel superposition; whole-context demand</td>
+        </tr>
+        <tr>
+          <td>Grade operation</td>
+          <td><code>r × s</code> (semiring multiplication)</td>
+          <td><code>r ⊔ s</code> (join; semiring + idempotent)</td>
+        </tr>
+        <tr>
+          <td>Comonad law</td>
+          <td><code>δ: □_{r×s} A → □_r(□_s A)</code></td>
+          <td>Scalar comonad indexed by one lattice element</td>
+        </tr>
+        <tr>
+          <td>Annotation shape</td>
+          <td>Vector (r₁,…,rₙ) ∈ Rⁿ, one per variable</td>
+          <td>Scalar c ∈ R for whole context</td>
+        </tr>
+        <tr>
+          <td>Context split</td>
+          <td>Pointwise addition: (Γ₁+Γ₂)(x) = r₁ + r₂</td>
+          <td>Join: c₁ ⊔ c₂</td>
+        </tr>
+        <tr>
+          <td>Context scale</td>
+          <td>Scalar × vector: (r·Γ)(x) = r × Γ(x)</td>
+          <td>Scalar product: r · c</td>
+        </tr>
+        <tr>
+          <td>Semiring axiom</td>
+          <td>Any semiring (+ not necessarily idempotent)</td>
+          <td>Idempotent semiring (r + r = r → lattice)</td>
+        </tr>
+        <tr>
+          <td>Primary examples</td>
+          <td>Fuzz/DFuzz (ℝ≥0), linear types (ℕ), usage analysis</td>
+          <td>IFC labels, dataflow tags, implicit parameters</td>
+        </tr>
+        <tr>
+          <td>Originating paper</td>
+          <td>Petricek/Orchard/Mycroft ICFP 2014; Brunel et al. ESOP 2014</td>
+          <td>Petricek/Orchard/Mycroft ICALP 2013</td>
+        </tr>
+      </tbody>
+    </table>
+    </div>
+  </section>
+
+  <!-- ────────────────────────────────────────────────────────────
+       §11  Beyond Flat/Structural (2022)
+       ──────────────────────────────────────────────────────────── -->
+  <section class="section">
+    <h2>§11 — Beyond the Binary: Non-Structural Coeffects (2022)</h2>
+
+    <p>"Coeffects for Sharing and Mutation" (Moon, Eades, Orchard, arXiv:2209.07439) identifies a third category. In structural systems, the grade of variable <code>x</code> depends only on how <code>x</code> is used. In <strong>non-structural</strong> settings (e.g., aliasing / mutation), the grade of <code>x</code> can depend on how another variable <code>y</code> is used — because they may alias.</p>
+
+    <div class="rule-label">Non-structural context operations (sharing lattice)</div>
+    <div class="rule-block">Γ + Γ' = (Γ ∪̂ Γ')⋆   -- union then transitive closure (link propagation)
+X × Γ  = (X ⊲̂ Γ)⋆    -- scale then transitive closure
+
+These operations are not pointwise — the grade of x depends on the grade of y
+whenever x and y are linked (aliased) in the closure.</div>
+
+    <div class="finding">
+      <strong>Claim</strong> <span class="conf conf-plausible">Plausible (1 primary source)</span><br>
+      Non-structural coeffects form a third axis. Most subsequent literature focuses on structural coeffects (clear semiring description); flat and non-structural arise in specific application domains (IFC and aliasing analysis respectively).
+    </div>
+  </section>
+
+  <!-- ────────────────────────────────────────────────────────────
+       Sources
+       ──────────────────────────────────────────────────────────── -->
+  <div class="sources">
+    <h2 style="border:none; padding:0; margin-bottom:1rem;">Sources</h2>
+    <ol>
+      <li>Uustalu, Vene — <em>Comonadic Notions of Computation</em>, ENTCS 203(5):263–284, 2008.<br>
+          <a href="https://dl.acm.org/doi/10.1016/j.entcs.2008.05.029">ACM DL (doi:10.1016/j.entcs.2008.05.029)</a> ·
+          <a href="https://www.sciencedirect.com/science/article/pii/S1571066108003435">ScienceDirect</a></li>
+
+      <li>Reed, Pierce — <em>Distance Makes the Types Grow Stronger: A Calculus for Differential Privacy</em>, ICFP 2010.<br>
+          <a href="https://dl.acm.org/doi/10.1145/1863543.1863568">ACM DL (doi:10.1145/1863543.1863568)</a> ·
+          <a href="https://www.semanticscholar.org/paper/Distance-makes-the-types-grow-stronger:-a-calculus-Reed-Pierce/3e6cc73ecd0067b11862a8390de19dc90d2c9faf">Semantic Scholar</a></li>
+
+      <li>Gaboardi, Haeberlen, Hsu, Narayan, Pierce — <em>Linear Dependent Types for Differential Privacy</em>, POPL 2013.<br>
+          <a href="https://dl.acm.org/doi/10.1145/2429069.2429113">ACM DL (doi:10.1145/2429069.2429113)</a> ·
+          <a href="https://dblp.org/rec/conf/popl/GaboardiHHNP13.html">DBLP</a></li>
+
+      <li>Petricek, Orchard, Mycroft — <em>Coeffects: Unified Static Analysis of Context-Dependence</em>, ICALP 2013.<br>
+          <a href="https://www.cs.kent.ac.uk/people/staff/dao7/publ/coeffects-icalp13.pdf">Kent PDF</a></li>
+
+      <li>Brunel, Gaboardi, Mazza, Zdancewic — <em>A Core Quantitative Coeffect Calculus</em>, ESOP 2014.<br>
+          <a href="https://link.springer.com/chapter/10.1007/978-3-642-54833-8_19">Springer (doi:10.1007/978-3-642-54833-8_19)</a> ·
+          <a href="https://www.semanticscholar.org/paper/A-Core-Quantitative-Coeffect-Calculus-Brunel-Gaboardi/0f4e7ccec2b2e8ab00097f74163fd81bcc218ffc">Semantic Scholar</a> ·
+          <a href="https://discovery.dundee.ac.uk/en/publications/a-core-quantitative-coeffect-calculus/">Dundee</a></li>
+
+      <li>Petricek, Orchard, Mycroft — <em>Coeffects: A Calculus of Context-Dependent Computation</em>, ICFP 2014.<br>
+          <a href="https://dl.acm.org/doi/10.1145/2628136.2628160">ACM DL (doi:10.1145/2628136.2628160)</a> ·
+          <a href="https://tomasp.net/academic/papers/structural/">tomasp.net</a> ·
+          <a href="https://kar.kent.ac.uk/57493/">KAR</a></li>
+
+      <li>Gaboardi, Katsumata, Orchard, Uustalu, Breuvart — <em>Combining Effects and Coeffects via Grading</em>, ICFP 2016.<br>
+          <a href="https://dl.acm.org/doi/10.1145/2951913.2951939">ACM DL (doi:10.1145/2951913.2951939)</a> ·
+          <a href="https://www.cs.kent.ac.uk/people/staff/dao7/publ/combining-effects-and-coeffects-icfp16.pdf">Kent PDF</a></li>
+
+      <li>Orchard, Liepelt, Eades III — <em>Quantitative Program Reasoning with Graded Modal Types</em>, ICFP 2019.<br>
+          <a href="https://dl.acm.org/doi/10.1145/3341714">ACM DL (doi:10.1145/3341714)</a> ·
+          <a href="https://www.cs.kent.ac.uk/people/staff/dao7/publ/granule-icfp19.pdf">Kent PDF</a></li>
+
+      <li>Choudhury, Krishnaswami — <em>Graded Modal Dependent Type Theory</em>, arXiv:2010.13163.<br>
+          <a href="https://arxiv.org/abs/2010.13163">arxiv.org/abs/2010.13163</a></li>
+
+      <li>Faggian et al. — <em>Deriving Distributive Laws for Graded Linear Types</em>, arXiv:2112.14966.<br>
+          <a href="https://arxiv.org/abs/2112.14966">arxiv.org/abs/2112.14966</a></li>
+
+      <li>Moon, Eades, Orchard — <em>Coeffects for Sharing and Mutation</em>, arXiv:2209.07439.<br>
+          <a href="https://arxiv.org/abs/2209.07439">arxiv.org/abs/2209.07439</a></li>
+
+      <li>Gaboardi, Katsumata, Orchard, Sato — <em>Graded Hoare Logic and its Categorical Semantics</em>, ESOP 2021.<br>
+          <a href="https://arxiv.org/abs/2007.11235">arXiv:2007.11235</a></li>
+
+      <li>arXiv:2401.17199 — <em>A Mixed Linear and Graded Logic: Proofs, Terms, and Models</em>.<br>
+          <a href="https://arxiv.org/abs/2401.17199">arxiv.org/abs/2401.17199</a> (source of several exact quote fragments)</li>
+    </ol>
+  </div>
+
+</div>
