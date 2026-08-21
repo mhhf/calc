@@ -13,8 +13,9 @@
  *      negative-numerator input must REFUSE on both paths. The grade
  *      algebra's partial residual ⊖ (TODO_0273) is a third leg: it must
  *      agree with qsub on definedness (null ⟺ a < b) and value, and
- *      backward `plus H b a` over ℕ (unknown first — the FFI solve mode)
- *      is fuzzed as: FFI complete (success ⟺ a ≥ b, H = a − b), clause
+ *      backward plus-solve (one addend free, result ground; both positions,
+ *      ℕ and ℚ pairs) is fuzzed as: FFI complete (success ⟺ a ≥ b,
+ *      H = a − b — num.plus tower dispatch incl. qplus solve modes), clause
  *      path sound-only (success ⇒ correct H; carry cases may hit the
  *      depth bound — plus/s4 subgoal order). No path derives a negative
  *      residual — the fence is derivational.
@@ -75,7 +76,11 @@ const tillCfg = (await import('../calculus/till/calculus-config.js')).default;
 const ec = mde.load(RAT_ILL, { calculusConfig: tillCfg, cache: false });
 const theories = [...defaultTheories, binlitTheory, ratlitTheory];
 const canonicalize = buildCanonicalizer(theories);
-const baseOpts = makeILLBackchainOpts({ theories, normalize: canonicalize });
+// till's FFI meta (num.* tower dispatch), not ILL's bin-only defaults —
+// the fuzzer must exercise the same FFI face the till engine runs
+const baseOpts = makeILLBackchainOpts({
+  theories, normalize: canonicalize, getFFIMeta: tillCfg.backward.getFFIMeta,
+});
 const mv = (name) => Store.put('metavar', [name]);
 
 function prove(goal, useFFI) {
@@ -135,30 +140,44 @@ for (let i = 0; i < COUNT; i++) {
       report(`residual(${rstr(a)}, ${rstr(b)}): got ${r === null ? 'null' : rstr(ratParts(r) || [0n, 0n])}, want ${want === null ? 'null' : rstr(QOPS.qsub(a, b))}`);
     }
   }
-  // residual-as-backward-plus over ℕ (TODO_0273 Fact A, corrected): the
-  // query is plus H b a (unknown FIRST — the FFI-supported solve mode).
-  //   FFI path:    COMPLETE decision procedure — success ⟺ a ≥ b, H = a − b.
+  // residual-as-backward-plus (TODO_0273): solve one addend of plus with
+  // the result ground, over ℕ (bin fast path + tower fallback) AND ℚ
+  // (qplus solve modes), in BOTH free positions.
+  //   FFI path:    COMPLETE decision procedure — success ⟺ a ≥ b, H = a − b
+  //     (num.plus: bin first-free mode, qplus solve modes for the rest).
   //   clause path: SOUND but search-incomplete (plus/s4 orders `plus M N Q`
   //     before `inc Q R`, so carry cases leave two subgoal vars free and SLD
-  //     can diverge to the depth bound). We assert soundness only: success ⇒
-  //     a ≥ b with the right H; no-proof is tolerated. No path may ever
-  //     derive a negative residual — the fence is derivational.
+  //     can diverge to the depth bound). Soundness only: success ⇒ correct
+  //     H; no-proof tolerated. No path may ever derive a negative residual —
+  //     the fence is derivational.
   if (i % 4 === 0) {
-    const x = BigInt(randInt(50)), y = BigInt(randInt(50));
-    for (const useFFI of [true, false]) {
-      trials++;
-      const H = mv('H');
-      const res = prove(Store.put('plus', [H, putRat(y, 1n), putRat(x, 1n)]), useFFI);
-      const label = `plus(H, ${y}, ${x}) ${useFFI ? 'FFI' : 'clause'}`;
-      if (res.success) {
-        if (x < y) { report(`${label}: derived a negative residual (fence breach)`); continue; }
-        let val = H;
-        for (let k = 0; k < 500; k++) { const n = apply(val, res.theta); if (n === val) break; val = n; }
-        if (canonicalize(val) !== putRat(x - y, 1n)) {
-          report(`${label}: got H=${rstr(ratParts(canonicalize(val)) || [0n, 0n])}, want ${x - y}`);
+    const pairs = [
+      [[BigInt(randInt(50)), 1n], [BigInt(randInt(50)), 1n]],   // ℕ pair
+      [a, b],                                                    // ℚ pair
+    ];
+    for (const [pa, pb] of pairs) {
+      const ge = pa[0] * pb[1] >= pb[0] * pa[1];
+      const want = QOPS.qsub(pa, pb);
+      for (const pos of [0, 1]) {
+        for (const useFFI of [true, false]) {
+          trials++;
+          const H = mv('H');
+          const args = pos === 0
+            ? [H, putRat(...pb), putRat(...pa)]
+            : [putRat(...pb), H, putRat(...pa)];
+          const res = prove(Store.put('plus', args), useFFI);
+          const label = `plus solve pos${pos} (${rstr(pa)} ⊖ ${rstr(pb)}) ${useFFI ? 'FFI' : 'clause'}`;
+          if (res.success) {
+            if (!ge) { report(`${label}: derived a negative residual (fence breach)`); continue; }
+            let val = H;
+            for (let k = 0; k < 500; k++) { const n = apply(val, res.theta); if (n === val) break; val = n; }
+            if (canonicalize(val) !== putRat(...want)) {
+              report(`${label}: got H=${rstr(ratParts(canonicalize(val)) || [0n, 0n])}, want ${rstr(want)}`);
+            }
+          } else if (useFFI && ge) {
+            report(`${label}: FFI solve mode must be complete, want H=${rstr(want)}`);
+          }
         }
-      } else if (useFFI && x >= y) {
-        report(`${label}: FFI solve mode must be complete, want H=${x - y}`);
       }
     }
   }

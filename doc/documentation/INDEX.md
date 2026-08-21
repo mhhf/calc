@@ -12,6 +12,7 @@ Technical documentation for how CALC works.
 | [[family-design]] | Calculus family abstraction and @extends mechanism |
 | [[matchOpts-reference]] | matchOpts configuration object — all fields, assembly, profile impact |
 | [[proof-term-pipeline]] | End-to-end proof term flow: backward → bridge → guided → check |
+| [[numeric-tower]] | Dual numeral representation (literal ↔ structural) and the arithmetic mode contract |
 
 ## Forward Engine
 
