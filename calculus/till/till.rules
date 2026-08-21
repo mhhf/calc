@@ -95,6 +95,9 @@ bang_l2: G ; D, !A |- C
   @bridge linear_to_cartesian.
 
 % ── counted exponential: !_k A as k linear parcels ──
+% Counted-parcel weakening (!_k A |- !_j A for j ≤ k) is DERIVABLE via
+% repeated peel (bang_l3/bang_l4) + rebuild (bang_r2/bang_r3) — no
+% explicit weakening rule is needed.
 
 bang_l3: G ; D, !_K A |- C
   <- G ; D, A, !_J A |- C

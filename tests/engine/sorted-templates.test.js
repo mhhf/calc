@@ -192,7 +192,9 @@ describe('parcel sugar `4wood` (§5d, D4 counted parcels)', () => {
       { ...ept(calculus.load(TILL_CALC).constructors), ...flags });
     // Experiment: graft `UNARY → NUMBER operand` (the spaced parcel rule)
     // onto the real grammar, located via the $-preserved rule's shape.
-    const dollar = spec.rules.find(r => r.tag === 'unary' && r.rhs[0].sym === 0 && r.rhs[0].v === '$');
+    // Locate the $-preserved rule by its RHS shape (terminal '$' followed by a non-terminal),
+    // not by the internal production tag, to avoid test-coupling to grammar internals.
+    const dollar = spec.rules.find(r => r.rhs.length === 2 && r.rhs[0].sym === 0 && r.rhs[0].v === '$' && r.rhs[1].sym === 1);
     spec.rules.push({ lhs: dollar.lhs, rhs: [T('NUMBER'), NT(dollar.rhs[1].v)], action: c => c[1], tag: 'unary' });
     const p = parserFromGrammar(spec);
     setStrictAmbiguity(true);
