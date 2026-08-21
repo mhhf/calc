@@ -11,6 +11,7 @@ references:
   - "THY_0013 — The Indexed Lax Monad {A}_a"
   - "THY_0015 — Grade-0 Staging and Stratified Cut Elimination ({A}_{q·a})"
   - "THY_0019 — Timed Matching and the Settle Scheduler (THY-B companion)"
+  - "THY_0023 — till Metatheory (the full proofs of §8's sketch: cut admissibility, η, counted-bang completeness, work adequacy)"
   - "THY_0021 — Weighted Additive Disjunction (the orthogonal probability grade on this monad)"
   - "RES_0052 — CLF and the lax monad (monadic proof terms, concurrent equality)"
   - "RES_0135 — Dimensioned / group-graded linear logic (effect–coeffect duality, finance grades)"
@@ -395,7 +396,16 @@ against `H_settled` because content addressing makes a subtree its hash — and
 nothing else: pruned events are gone unless archived. An implementation
 corollary (TODO_0265 Phase 7), not a logical result.
 
-## 8. Cut elimination (sketch)
+## 8. Cut elimination (sketch — discharged in THY_0023)
+
+**Status (2026-08-21).** The sketch below is now a THEOREM: THY_0023 proves
+cut admissibility in full (three cuts — linear, lax, persistent — Theorem 8
+there), via the judgmental presentation and a cut-free-preserving
+equivalence with the implemented single-level encoding (THY_0023 Theorem 4).
+The sketch is kept as the readable overview; the case-by-case proof, the
+measure (where the count fence ℕ is load-bearing and dense delays never
+enter), and the vacuity of mismatched counted-bang cases by theory-premise
+partiality are in THY_0023 §§2–6.
 
 The graded cut for the lax judgment:
 
@@ -436,24 +446,16 @@ Stamps: `@fire` behaves as a promotion rule; its cut cases follow the SELL patte
 stamps — the distributivity law of §2 is what makes the recomputed max agree after
 substitution.
 
-**Mechanisation status (honest boundary).** None of (i)–(vii) is machine-checked;
-this is a proof *sketch*, and a POPL/LICS submission must discharge it in a proof
-assistant. The tractable/hard split, to scope that work: cases (i)–(iii) and
-(vii) are pure ordered-monoid bookkeeping over `(ℚ≥0, max, +, 0)` (associativity,
-commutativity, monotonicity of `+` in `≤`, unit `0`) — routine to mechanise once
-the sequent syntax is formalised. Case (iv), the grade-erasure lift, is the load-
-bearing step: it asserts that every reduction of PLL/CLF's *erased* cut
-elimination (Fairtlough–Mendler 1997; Watkins et al. 2002) lifts to the graded
-system with the stated `+`/`sub` annotations and never worsens the bound. A
-faithful mechanisation must either (a) re-run the erased proof and thread grades,
-or (b) prove a simulation lemma between the graded and erased reduction relations;
-(b) is the cleaner target. Case (vi) is a *scoping* obligation, not a proof: the
-`@fire`/`monad_r2` oracle is excluded from the calculus whose cut is eliminated
-(it is extra-logical; its soundness is §5, and §5 rests on the residual's
-intrinsic partiality — THY_0022 — rather than on rule-set completeness).
-Estimated effort matches
-the audit's 2–4 weeks in Coq/Agda; nothing above is expected to fail, but "not
-expected to fail" is not a proof.
+**Mechanisation status (honest boundary).** The full ON-PAPER proof is
+THY_0023 (all of (i)–(vii) checked by hand; notably case (iv)'s erasure lift
+is no longer needed — the graded system is proved directly, and the erased
+proof re-emerges as its shadow). None of it is MACHINE-checked: mechanisation
+is deliberately deferred (TODO_0270; if ever needed it becomes its own todo,
+and the mechanised rules must carry the theory-premise form `<- !qsub F E H`).
+Case (vi) remains a *scoping* statement, not a proof: the `@fire`/`monad_r2`
+oracle is excluded from the calculus whose cut is eliminated (it is
+extra-logical; its soundness is §5, and §5 rests on the residual's intrinsic
+partiality — THY_0022 — rather than on rule-set completeness).
 
 ## 9. Instances
 

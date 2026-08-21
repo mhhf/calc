@@ -1,28 +1,28 @@
 tags:
   ill: 27
-  linear-logic: 26
+  linear-logic: 27
   inference-rule: 24
-  forward-chaining: 22
+  forward-chaining: 23
   architecture: 15
+  proof-theory: 14
   chr: 13
-  proof-theory: 13
   implementation: 10
   left-rule: 10
   positive-connective: 10
+  graded-types: 9
   negative-connective: 9
   optimization: 9
   right-rule: 9
   engine: 8
-  graded-types: 8
+  lax-monad: 8
   soundness: 8
-  lax-monad: 7
+  cut-elimination: 7
   oplus: 7
   symbolic-execution: 7
-  cut-elimination: 6
   ownership: 6
+  till: 6
   clf: 5
   structural-rule: 5
-  till: 5
   verification: 5
   with: 5
   ffi: 4
@@ -39,6 +39,7 @@ tags:
   staging: 3
   subexponentials: 3
   testing: 3
+  time: 3
   type-checking: 3
   accounting: 2
   backward: 2
@@ -60,9 +61,9 @@ tags:
   session-types: 2
   supercompilation: 2
   tensor: 2
-  time: 2
   tropical: 2
   additive: 1
+  adequacy: 1
   adjoint-logic: 1
   anki: 1
   atomic-swaps: 1
