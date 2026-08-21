@@ -43,7 +43,10 @@ import { ratlitTheory, ratParts, installRatlitTheory } from '../lib/engine/theor
 import { defaultTheories, buildCanonicalizer } from '../lib/kernel/eq-theory.js';
 import { apply } from '../lib/kernel/substitute.js';
 import { putRat } from '../lib/kernel/rat-term.js';
-import tillConfig, { tillGrades } from '../calculus/till/calculus-config.js';
+import Seq from '../lib/kernel/sequent.js';
+import { buildRuleSpecs } from '../lib/prover/rule-interpreter.js';
+import { createProver } from '../lib/prover/focused.js';
+import tillConfig, { tillGrades, loadTillSequent } from '../calculus/till/calculus-config.js';
 
 const args = process.argv.slice(2);
 let COUNT = 200, SEED = 0x7111, VERBOSE = false;
@@ -247,5 +250,72 @@ for (let p = 0; p < NPROGS; p++) {
 fs.rmSync(dir, { recursive: true, force: true });
 console.log(`activation spec: ${atrials} trials, ${afails} mismatches`);
 
-if (fails + afails > 0) { console.error(`FAIL: ${fails + afails} total mismatches (seed ${SEED})`); process.exit(1); }
+// ─── section 3: Theorem-1 exactness (THY_0018 — ASAP = principal grade) ─
+// For the one-rule program a ⊸ {b}@d from a@t, the operational stamp is
+// u = t + d. v1 is EXACT accounting (stamped-atom subeffecting is Stage 2 —
+// till.rules header): through the sequent prover with the settle bridge,
+// the production claim {b@u'}@(u+1) from a@t is derivable ⟺ u' = u —
+//   b@u       derivable    (soundness: the @fire instance is a derivation)
+//   b@(u/2)   UNDERIVABLE  (minimality: no derivation beats the critical
+//             path — {}L's partial residual ⊖ preserves the lower bound)
+//   b@(u+1)   UNDERIVABLE  (exactness: the bridge's rightFocus matches
+//             stamps exactly; retiming lifts CONTEXT stamps, not claims)
+// Retiming (at_l) is witnessed where it lives, on hypothesis stamps:
+//   b@u ⊢ b@(u+1) derivable, b@(u+1) ⊢ b@u underivable.
+const calcSeq = loadTillSequent();
+const { specs, alternatives } = buildRuleSpecs(calcSeq);
+const prover = createProver(calcSeq);
+let mtrials = 0, mfails = 0;
+const mdir = fs.mkdtempSync(path.join(os.tmpdir(), 'fuzz-till-min-'));
+const MPROGS = Math.max(3, Math.floor(COUNT / 32));
+for (let p = 0; p < MPROGS; p++) {
+  const d = norm(randRat({ nonNeg: true }));
+  const file = path.join(mdir, `min-${p}.ill`);
+  fs.writeFileSync(file, `a: type.\nb: type.\nr: a -o { b }@(${d[0]}/${d[1]}).\n`);
+  const ec = mde.load(file, { calculusConfig: tillConfig, cache: false });
+  const aAtom = Store.put('atom', ['a']);
+  const bAtom = Store.put('atom', ['b']);
+  for (let j = 0; j < 4; j++) {
+    const t = norm(randRat({ nonNeg: true }));
+    const u = norm([t[0] * d[1] + d[0] * t[1], t[1] * d[1]]);   // t + d
+    const T = [u[0] + u[1], u[1]];                              // horizon u + 1
+    const judge = (up) => {
+      const succ = Store.put('monad', [putRat(...T), Store.put('at', [bAtom, putRat(...up)])]);
+      const seq = Seq.fromArrays([Store.put('at', [aAtom, putRat(...t)])], [], succ);
+      return prover.prove(seq, { rules: specs, alternatives, engineCalc: ec }).success;
+    };
+    mtrials += 2;
+    if (!judge(u)) {
+      mfails++; console.error(`MISMATCH: b@${rstr(u)} underivable at its operational stamp (t=${rstr(t)}, d=${rstr(d)})`);
+    }
+    if (judge([u[0] + u[1], u[1]])) {
+      mfails++; console.error(`MISMATCH: b@(${rstr(u)}+1) derivable — exact accounting violated (t=${rstr(t)}, d=${rstr(d)})`);
+    }
+    if (u[0] > 0n) {
+      mtrials++;
+      if (judge(norm([u[0], u[1] * 2n]))) {
+        mfails++; console.error(`MISMATCH: b@(${rstr(u)}/2) derivable — beats the critical path (t=${rstr(t)}, d=${rstr(d)})`);
+      }
+    }
+    // at_l retiming on hypothesis stamps (delaying availability is free;
+    // never early) — pure backward, no engine
+    mtrials += 2;
+    const u1 = [u[0] + u[1], u[1]];
+    const retime = (from, to) => prover.prove(
+      Seq.fromArrays([Store.put('at', [bAtom, putRat(...from)])], [],
+        Store.put('at', [bAtom, putRat(...to)])),
+      { rules: specs, alternatives }).success;
+    if (!retime(u, u1)) {
+      mfails++; console.error(`MISMATCH: retiming b@${rstr(u)} ⊢ b@(${rstr(u)}+1) underivable`);
+    }
+    if (retime(u1, u)) {
+      mfails++; console.error(`MISMATCH: reverse retiming b@(${rstr(u)}+1) ⊢ b@${rstr(u)} derivable`);
+    }
+  }
+}
+fs.rmSync(mdir, { recursive: true, force: true });
+console.log(`Thm1 minimality: ${mtrials} trials, ${mfails} mismatches`);
+
+const total = fails + afails + mfails;
+if (total > 0) { console.error(`FAIL: ${total} total mismatches (seed ${SEED})`); process.exit(1); }
 console.log(`PASS (seed ${SEED})`);

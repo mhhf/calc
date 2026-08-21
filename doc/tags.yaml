@@ -1,11 +1,11 @@
 tags:
   ill: 27
-  linear-logic: 25
+  linear-logic: 26
   inference-rule: 24
   forward-chaining: 22
   architecture: 15
   chr: 13
-  proof-theory: 12
+  proof-theory: 13
   implementation: 10
   left-rule: 10
   positive-connective: 10
@@ -13,22 +13,22 @@ tags:
   optimization: 9
   right-rule: 9
   engine: 8
-  graded-types: 7
+  graded-types: 8
+  soundness: 8
+  lax-monad: 7
   oplus: 7
-  soundness: 7
   symbolic-execution: 7
   cut-elimination: 6
-  lax-monad: 6
   ownership: 6
   clf: 5
   structural-rule: 5
+  till: 5
   verification: 5
   with: 5
   ffi: 4
   partial-evaluation: 4
   performance: 4
   symexec: 4
-  till: 4
   authorization: 3
   Curry-Howard: 3
   evm: 3
@@ -150,8 +150,10 @@ tags:
   proof-terms: 1
   proof-tree: 1
   quantifiers: 1
+  refinement-sorts: 1
   refinement-types: 1
   representation: 1
+  residuated-monoids: 1
   roadmap: 1
   scheduling: 1
   Skolem: 1
@@ -167,6 +169,7 @@ tags:
   termination: 1
   theorem: 1
   theory: 1
+  timed-rewriting: 1
   transfers: 1
   translation: 1
   ui: 1

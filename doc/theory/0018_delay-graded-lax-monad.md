@@ -1,7 +1,7 @@
 ---
 title: "The Delay-Graded Lax Monad: Timed Forward Chaining over the Tropical Dioid"
 created: 2026-08-18
-modified: 2026-08-20
+modified: 2026-08-21
 summary: "CLF's lax monad {A} graded by a delay from the tropical (max,+) dioid: availability stamps A@t on hypotheses combine by max (coeffect), delays {B}@d compose by + (effect), and firing stamps outputs at max(inputs)+d. Sequent rules, cut-elimination sketch, five metatheorems plus a trace≅term observation: ASAP scheduling computes principal grades; conflict-free programs are timed-confluent; fused rules are uninterruptible by construction (fission = the honest model of interruption); the timed trace is a graded CLF proof term, prunable to a Merkle accumulator; the settle bridge is a sound (not complete) oracle for the calculus."
 tags: [linear-logic, lax-monad, clf, graded-types, forward-chaining, proof-theory, cut-elimination, time, tropical, till]
 category: "Timed Rewriting"
@@ -141,9 +141,10 @@ is represented as the formula `{S}@d` in the `true` judgment, and the four
 primitive rules collapse to two. `monad_r` fuses `lax + sub + {}R` — any
 `{S}@E` with `E ≥ 0` is provable from `S` in one step (the guard `E ≥ 0` IS the
 fused subeffecting). `monad_l` is `{}L` read bottom-up: from conclusion grade
-`F` and principal grade `E` it derives the premise grade `H := F − E` by the
-MONUS — the implicit side condition `F ≥ E` (equivalently `H ≥ 0`) is encoded as
-the monus failing on negative results, which is what guards the critical-path
+`F` and principal grade `E` it derives the premise grade `H := F ⊖ E` by the
+grade algebra's PARTIAL residual (THY_0022): `⊖` is undefined when `F < E`, so
+the side condition is not stated anywhere — the rule is inapplicable because
+the illegal grade cannot be constructed, which is what guards the critical-path
 lower bound. The encoding is conservative both ways: a two-level derivation maps
 to a single-level one by fusing each `{}R` with the `lax`/`sub` steps above it,
 and a single-level derivation unfolds by reading each `monad_r` as
@@ -217,23 +218,26 @@ implemented prover both are searched, so `prove` failure does refute). Kernel
 checking of a bridge step is structural only — the settle run is trusted and
 reported as `unverified: 'modeSwitch'` (round-15 F1).
 
-**The adequacy rests on the monus guard, not on rule-set completeness (M1).**
+**The adequacy rests on residual partiality, not on rule-set completeness.**
 The positive direction — each settle step *is* a derivable `@fire`/`monad_l`
 instance — needs the delay bookkeeping to never fabricate a sequent. The
-critical point is `{}L`'s monus `H := F − E`: a step that composed delays into a
-NEGATIVE residual grade would not correspond to any `@fire` instance. That
-non-negativity must be a LOCAL side condition of the rule, not a fact recovered
-downstream from `monad_r`'s `E ≥ 0`. As shipped, `monad_l` states it explicitly
-(`calculus/till/till.rules`: `@grade F >= E` alongside `@grade H := F − E`;
-`effect.sub` is total ℚ subtraction and returns a signed result, so the guard is
-load-bearing — TODO_0272 M1). With the guard local, the settle→derivability map
-is compositional: `settle`'s activation recurrence `u = max(inputs) + d` is
-exactly the `@fire` conclusion (a = max, ⊳ = +), and every step's residual grade
-is `≥ 0` by construction, so the chain of `@fire` instances the bridge replays is
-a genuine derivation regardless of which OTHER rules exist. This is what makes
-"bridge success ⇒ derivable" a theorem about `monad_l`/`@fire` alone rather than
-about the completeness of the whole rule set — the prerequisite the paper
-write-up of this adequacy direction needs before mechanisation (§8).
+critical point is `{}L`'s residual `H := F ⊖ E`: a step that composed delays
+into a NEGATIVE residual grade would not correspond to any `@fire` instance.
+That non-negativity is not a side condition at all but a property of the
+operation: the grade algebra exposes no signed subtraction — `⊖` is the partial
+monoid residual (undefined for `F < E` ⇒ rule inapplicable), so the illegal
+step is unconstructible by ANY rule, present or future (Grade Preservation,
+THY_0022; historically this was an explicit `@grade F >= E` guard over a
+signed `effect.sub` — TODO_0272 M1 — which TODO_0273's algebra cut deleted in
+favour of the stronger intrinsic form). With non-negativity intrinsic, the
+settle→derivability map is compositional: `settle`'s activation recurrence
+`u = max(inputs) + d` is exactly the `@fire` conclusion (a = max, ⊳ = +), and
+every step's residual grade is defined-hence-valid by construction, so the
+chain of `@fire` instances the bridge replays is a genuine derivation
+regardless of which OTHER rules exist. This is what makes "bridge success ⇒
+derivable" a theorem about `monad_l`/`@fire` alone rather than about the
+completeness of the whole rule set — the prerequisite the paper write-up of
+this adequacy direction needs before mechanisation (§8).
 
 ## 6. Operational semantics, in one paragraph
 
@@ -250,20 +254,71 @@ implementation of exactly this section is `tools/till-oracle.mjs`.
 
 ## 7. Metatheorems
 
-**Theorem 1 (ASAP = principal grade).** For every token produced in an activation-
-ordered execution, the operational stamp is the LEAST `u` such that (token)`@u` is
-derivable from the initial state; equivalently, the scheduler computes principal grades,
-and every derivation's stamp is reachable from the principal one by `retiming`/`sub`.
-*Sketch.* Soundness: each firing is an `@fire` instance, so operational stamps are
-derivable. Minimality: by induction on derivations — every rule that touches a grade
-(`{}L`, `sub`, `retiming`, `@fire`) only ever INCREASES the bound relative to the
-operational recurrence `u = max(inputs) + d`, which the scheduler computes exactly.
-The two directions split over the two monad rules: `{}L`'s monus PRESERVES the
-lower bound (a grade below the critical path makes the rule inapplicable), while
-`sub` (fused into the implementation's `monad_r`) supplies the completeness
-direction — every bound ≥ the principal one is also derivable.
-Stamps are max-plus polynomial evaluations; the scheduler evaluates them, the logic
-bounds them. ∎(sketch)
+**Theorem 1 (ASAP = principal stamp; v1 exact form).** Let `Δ` be a timed
+multiset, `T` a horizon, and `R = settle(Δ, T)` the residual of an
+activation-ordered conflict-free execution. In the implemented v1 judgment
+(ground grades, exact stamped-atom accounting):
+
+1. *(Soundness)* `Γ; Δ ⊢ {⊗R}@T` is derivable — the execution IS a
+   derivation.
+2. *(Exactness of production claims)* for a token `b@u ∈ R` produced by the
+   execution (`b` not in `Δ`), the claim `Γ; Δ ⊢ {b@u'}@T'` (with `T'` past
+   the producing activation) is derivable **iff** `u' = u`. In particular the
+   operational stamp is the least — and only — derivable production stamp.
+3. *(Where weakening lives)* stamp weakening is hypothesis-side only:
+   `b@t ⊢ b@t'` is derivable iff `t ≤ t'` (retiming, `at_l`); grade
+   weakening is monad-side only: `S ⊢ {S}@E` for every `E ≥ 0` (`monad_r`'s
+   fused subeffecting). Neither lifts a production claim's stamp: the v1
+   calculus deliberately omits stamped-atom subeffecting (availability
+   monotonicity is Stage 2 / THY-B).
+
+*Proof.* (1) Induction on the length of the firing chain. Empty chain:
+`R = Δ`, and `{⊗R}@T` follows by `monad_r` from `⊗R`, which follows from `Δ`
+by `tensor_r` splits, retiming instances (`at_l`, each with `t ≤ t'`
+trivially reflexive), and `id`. Inductive step: let `m` be the first firing,
+with activation `a(m) = max(input stamps, after-bounds) ≤ T` and delay `d`.
+By the timed promotion rule (§5), `m` is one `@fire` instance: a derivable
+step consuming its inputs at `a(m)` and producing outputs stamped
+`a(m) ⊳ d`. Composing it (graded `μ`) with the derivation of the remaining
+chain — which exists by the induction hypothesis applied to the post-firing
+state — requires exactly one `{}L` residual per composition, and each is
+DEFINED: the activation recurrence gives `a(m) ≤ T` at every step
+(activation order), so the budget always covers the spent delay. Since `⊖`
+is the only way any rule constructs a decreasing grade and it is
+defined-hence-valid here (THY_0022 Grade Preservation), the replayed chain
+is a genuine derivation. No appeal to which other rules exist is needed —
+this is the §5 compositionality argument.
+
+(2, ⇐) is an instance of (1). (2, ⇒) Induction on cut-free derivations of
+`Γ; Δ ⊢ {b@u'}@T'`. Since `b` does not occur in `Δ`, no derivation can end
+in a pure-backward decomposition reaching `id` on `b@u'`: the backward
+fragment has no rule that introduces a program atom (`at_l` requires a
+stamped `b` hypothesis; the ILL rules only rearrange). So every derivation
+routes through the bridge (`monad_r2`), whose settle chain is the
+operational execution itself and whose residual match (`rightFocus`) is
+EXACT on stamps: it matches `b@u' ` against `b@u ∈ R` only when `u' = u`.
+The rule-by-rule check that no grade-touching step can lower a stamp along
+the way: `monad_l` only spends budget (its residual is defined only when the
+budget covers the principal's delay — a claimed stamp below the max-plus
+critical path makes some `⊖` along the derivation undefined, hence the
+derivation does not exist); `at_l` only raises hypothesis stamps
+(`T1 ≤ T2`); `monad_r` touches the monad grade, never an atom stamp; the
+bang peels and ILL rules are grade-neutral. (3) `at_l` and `monad_r` direct;
+the omission of stamped-claim weakening is by inspection of the rule set —
+no rule's conclusion has an atom stamp not already present in a premise or
+hypothesis. ∎
+
+Stamps are max-plus polynomial evaluations; the scheduler evaluates them, the
+logic pins them exactly. **Mechanized witnesses**: curated —
+`tests/till-adequacy.test.js` (soundness on executable-spec gates,
+refutations, Thm 3/5 as (under)derivability); generative —
+`tools/fuzz-till.js` §3 fuzzes all three clauses on random one-rule programs
+with rational stamps/delays through the real prover: `b@u` derivable,
+`b@(u/2)` and `b@(u+1)` underivable as production claims, `b@u ⊢ b@(u+1)`
+derivable and its converse refuted. (The `b@(u+1)` refutation is not a
+weakness but the v1 exactness discipline — an earlier sketch of this theorem
+wrongly claimed production stamps admit weakening; the fuzzer found the
+counterexample.)
 
 **Definition (conflict-freedom).** An execution is conflict-free iff no two
 enabled matches share a consumed cohort — equivalently, the consumed-resource
@@ -392,8 +447,9 @@ faithful mechanisation must either (a) re-run the erased proof and thread grades
 or (b) prove a simulation lemma between the graded and erased reduction relations;
 (b) is the cleaner target. Case (vi) is a *scoping* obligation, not a proof: the
 `@fire`/`monad_r2` oracle is excluded from the calculus whose cut is eliminated
-(it is extra-logical; its soundness is §5, and §5 now rests on the local monus
-guard — M1 above — rather than on rule-set completeness). Estimated effort matches
+(it is extra-logical; its soundness is §5, and §5 rests on the residual's
+intrinsic partiality — THY_0022 — rather than on rule-set completeness).
+Estimated effort matches
 the audit's 2–4 weeks in Coq/Agda; nothing above is expected to fail, but "not
 expected to fail" is not a proof.
 
