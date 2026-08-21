@@ -25,6 +25,10 @@ import { ratlitTheory, ratParts, installRatlitTheory } from '../../lib/engine/th
 import { grade0 } from '../../lib/engine/grades.js';
 import { connTagsFrom } from '../../lib/engine/formula-utils.js';
 import { cmp as ratCmp, add as ratAdd, sub as ratSub } from '../../lib/rat.js';
+import { apply } from '../../lib/kernel/substitute.js';
+import { collectMetavars } from '../../lib/engine/pattern-utils.js';
+import mde from '../../lib/engine/index.js';
+import backward from '../../lib/engine/backchain.js';
 import backchainIll from '../../lib/engine/ill/backchain-ill.js';
 import * as ffi from '../../lib/engine/ill/ffi/index.js';
 
@@ -213,6 +217,61 @@ const tillGetModeMeta = (p) => {
   return { modes: TILL_PARSED_MODES[p], multiModal: !!meta.multiModal };
 };
 
+// ── Theory engine (TODO_0273): discharges template theory premises ──
+// A `<- !qsub F E H` line in till.rules is a GOAL over the numeric theory
+// (prelude/rat.ill clauses are the semantics; the FFI face is the
+// terminating decision procedure — FFI principle). prove() returns
+// [[metavar, value], …] for every goal variable — values canonical and
+// ground — or null: underivable ⇒ the rule is simply inapplicable, which
+// is how grade fences hold (qsub is checked; Grade Preservation, THY_0022).
+const _theoryCanon = (h) => ratlitTheory.canonicalize(binlitTheory.canonicalize(h));
+let _theoryEc = null, _theoryOpts = null;
+Store.onClear(() => { _theoryEc = null; });   // cached clause hashes die with the Store
+const tillTheory = {
+  prove(goal) {
+    // O(1) FFI fast path (the compiled ground-goal recognizer from the
+    // TODO_0273 §12 plan): rule side conditions are tiny goals — qsub/le/eq
+    // over ground stamps with at most one output — decided by the FFI face
+    // directly. The rational face is TOTAL on decodable numerics, so a
+    // non-conversion failure IS the decision (out-of-fence residual, false
+    // comparison — fuzzed to agree with the clause face); only decode
+    // failures stay advisory and fall through to clause resolution.
+    const fast = backchainIll.tryFFI(goal, TILL_FFI_META);
+    if (fast) {
+      if (fast.success) return fast.theta || [];
+      if (fast.reason !== 'conversion_failed') return null;
+    }
+    if (!_theoryEc) {
+      tillCalculusConfig.init();
+      _theoryEc = mde.load(path.join(import.meta.dirname, 'prelude/rat.ill'),
+        { calculusConfig: tillCalculusConfig, cache: false });
+      _theoryOpts = {
+        ...backchainIll.makeILLBackchainOpts({
+          theories: [...defaultTheories, binlitTheory, ratlitTheory],
+          normalize: _theoryCanon,
+          getFFIMeta: () => TILL_FFI_META,
+        }),
+        maxDepth: 20000, allBuckets: true, useFFI: true,
+      };
+    }
+    const res = backward.prove(goal, _theoryEc.clauses, _theoryEc.definitions, _theoryOpts);
+    if (!res.success) return null;
+    const vars = new Set();
+    collectMetavars(goal, vars);
+    const out = [];
+    for (const v of vars) {
+      let val = v;
+      for (let k = 0; k < 500; k++) { const n = apply(val, res.theta); if (n === val) break; val = n; }
+      val = _theoryCanon(val);
+      const rem = new Set();
+      collectMetavars(val, rem);
+      if (rem.size) return null;    // outputs must be fully determined
+      out.push([v, val]);
+    }
+    return out;
+  },
+};
+
 function tillBuildParser() {
   return buildParser(calculus.load(TILL_CALC).constructors, {
     binders: { exists: 'exists', forall: 'forall' },
@@ -321,10 +380,12 @@ const tillCalculusConfig = {
 
 /**
  * Sequent-level till calculus (Phase 6b Stage 1): till.calc + till.rules,
- * the graded-syntax parser, and THE tillGrades record — the same algebra
- * the timed scheduler reads (D13: one grade algebra, two faces). Backward
- * provability over the graded fragment only; settle stays the execution
- * semantics, and the timed judgment (stamps) is Stage 2.
+ * the graded-syntax parser, and the theory engine discharging the rules'
+ * theory premises (TODO_0273) — the same numeric theory the forward engine
+ * runs, so backward grade side conditions and forward `after (Q+D)` goals
+ * share one semantics. Backward provability over the graded fragment only;
+ * settle stays the execution semantics, and the timed judgment (stamps) is
+ * Stage 2.
  */
 function loadTillSequent() {
   return calculus.load(TILL_CALC, TILL_RULES, {
@@ -333,9 +394,9 @@ function loadTillSequent() {
       numbers: true,
       gradeUnit: tillGradeUnit,
     },
-    grades: tillGrades,
+    theory: tillTheory,
   });
 }
 
-export { tillCalculusConfig, tillGrades, tillFactSetPolicy, tillGradeUnit, tillConnectives, loadTillSequent };
+export { tillCalculusConfig, tillGrades, tillFactSetPolicy, tillGradeUnit, tillConnectives, tillTheory, loadTillSequent };
 export default tillCalculusConfig;

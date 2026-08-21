@@ -71,16 +71,18 @@ Each firing is thus a frame-preserving update for V. ∎
 
 The force of the theorem is quantification over **future** rules: it holds for
 any rule an author writes, because the algebra exposes no operation that can
-leave V. Per-rule guards (`@grade F >= E` on `monad_l`, `@grade K >= 1` on the
+leave V. Per-rule guards (`F >= E` on `monad_l`, `K >= 1` on the
 `!` peels) are derived lemmas — they were deleted from `till.rules` when
 `effect.sub` (total, signed) was replaced by `effect.residual` (partial).
 Partiality IS the guard.
 
 ## 3. Where each case discharges (implementation map)
 
-- **Backward** (`rule-interpreter.js` template defs): `X := A - B` evaluates
-  `effect.residual`; null ⇒ premise computation returns null ⇒ rule
-  inapplicable. `{A}@4` from `{{A}@2}@3` stays refuted with no side condition.
+- **Backward** (TODO_0273 theory premises): a rule states `<- !qsub F E H` —
+  a goal over the numeric theory, discharged by the engine backchainer at
+  premise-computation time (FFI face as O(1) fast path). Underivable (F < E,
+  qsub is checked) ⇒ premise computation returns null ⇒ rule inapplicable.
+  `{A}@4` from `{{A}@2}@3` stays refuted with no side condition.
 - **Forward** (`convert.js:desugarTimed`): grade expressions lower onto the
   in-logic sorted predicates (`after (Q+D)` ⇒ persistent goal `!plus Q D Q$0`);
   `plus` over bin/ℕ cannot produce a negative or fractional value, `qsub` is
