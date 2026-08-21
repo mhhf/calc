@@ -76,7 +76,14 @@ const tillGrades = {
   effect: {
     unit: tillGradeUnit,
     compose: (s, d) => putRat(...ratAdd(_parts(s), _parts(d))),
-    sub: (a, b) => putRat(...ratSub(_parts(a), _parts(b))),
+    // Partial residual ⊖ (TODO_0273): a ⊖ b = the h with b + h = a, defined
+    // only inside the fence (a >= b) — null otherwise. Grades are ℚ≥0; the
+    // algebra offers no signed subtraction, so no rule can construct a
+    // negative grade (validity is closed under the exposed operations).
+    residual: (a, b) => {
+      const r = ratSub(_parts(a), _parts(b));
+      return r[0] < 0n ? null : putRat(...r);
+    },
   },
   isStamp: (h) => {
     const t = Store.tagId(h);

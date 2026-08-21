@@ -10,7 +10,14 @@
  *      a BigInt cross-multiplication reference — the FFI-principle gate
  *      (FFI is optimization, theory is semantics) at fuzz scale. The ℚ≥0
  *      contract (audit round 11) is fuzzed too: qsub with a < b and any
- *      negative-numerator input must REFUSE on both paths.
+ *      negative-numerator input must REFUSE on both paths. The grade
+ *      algebra's partial residual ⊖ (TODO_0273) is a third leg: it must
+ *      agree with qsub on definedness (null ⟺ a < b) and value, and
+ *      backward `plus H b a` over ℕ (unknown first — the FFI solve mode)
+ *      is fuzzed as: FFI complete (success ⟺ a ≥ b, H = a − b), clause
+ *      path sound-only (success ⇒ correct H; carry cases may hit the
+ *      depth bound — plus/s4 subgoal order). No path derives a negative
+ *      residual — the fence is derivational.
  *
  *   2. activation-spec trials: for random ground delay d, token stamp t,
  *      horizon h on the one-rule program `r: a -o { b }@(d)`:
@@ -35,7 +42,7 @@ import { ratlitTheory, ratParts, installRatlitTheory } from '../lib/engine/theor
 import { defaultTheories, buildCanonicalizer } from '../lib/kernel/eq-theory.js';
 import { apply } from '../lib/kernel/substitute.js';
 import { putRat } from '../lib/kernel/rat-term.js';
-import tillConfig from '../calculus/till/calculus-config.js';
+import tillConfig, { tillGrades } from '../calculus/till/calculus-config.js';
 
 const args = process.argv.slice(2);
 let COUNT = 200, SEED = 0x7111, VERBOSE = false;
@@ -114,6 +121,44 @@ for (let i = 0; i < COUNT; i++) {
       const expected = putRat(...ref(a, b));
       if (canonicalize(val) !== expected) {
         report(`${op}(${rstr(a)}, ${rstr(b)}) ${useFFI ? 'FFI' : 'clause'}: got ${rstr(ratParts(canonicalize(val)) || [0n, 0n])}, want ${rstr(ref(a, b))}`);
+      }
+    }
+  }
+  // algebra residual ⊖ (TODO_0273): must agree with qsub on definedness
+  // and value — the algebra is to the theory what FFI is to clauses
+  {
+    trials++;
+    const r = tillGrades.effect.residual(putRat(...a), putRat(...b));
+    const neg = a[0] * b[1] < b[0] * a[1];
+    const want = neg ? null : putRat(...QOPS.qsub(a, b));
+    if (r !== want) {
+      report(`residual(${rstr(a)}, ${rstr(b)}): got ${r === null ? 'null' : rstr(ratParts(r) || [0n, 0n])}, want ${want === null ? 'null' : rstr(QOPS.qsub(a, b))}`);
+    }
+  }
+  // residual-as-backward-plus over ℕ (TODO_0273 Fact A, corrected): the
+  // query is plus H b a (unknown FIRST — the FFI-supported solve mode).
+  //   FFI path:    COMPLETE decision procedure — success ⟺ a ≥ b, H = a − b.
+  //   clause path: SOUND but search-incomplete (plus/s4 orders `plus M N Q`
+  //     before `inc Q R`, so carry cases leave two subgoal vars free and SLD
+  //     can diverge to the depth bound). We assert soundness only: success ⇒
+  //     a ≥ b with the right H; no-proof is tolerated. No path may ever
+  //     derive a negative residual — the fence is derivational.
+  if (i % 4 === 0) {
+    const x = BigInt(randInt(50)), y = BigInt(randInt(50));
+    for (const useFFI of [true, false]) {
+      trials++;
+      const H = mv('H');
+      const res = prove(Store.put('plus', [H, putRat(y, 1n), putRat(x, 1n)]), useFFI);
+      const label = `plus(H, ${y}, ${x}) ${useFFI ? 'FFI' : 'clause'}`;
+      if (res.success) {
+        if (x < y) { report(`${label}: derived a negative residual (fence breach)`); continue; }
+        let val = H;
+        for (let k = 0; k < 500; k++) { const n = apply(val, res.theta); if (n === val) break; val = n; }
+        if (canonicalize(val) !== putRat(x - y, 1n)) {
+          report(`${label}: got H=${rstr(ratParts(canonicalize(val)) || [0n, 0n])}, want ${x - y}`);
+        }
+      } else if (useFFI && x >= y) {
+        report(`${label}: FFI solve mode must be complete, want H=${x - y}`);
       }
     }
   }
