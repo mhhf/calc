@@ -125,13 +125,18 @@ if (run('OR')) {
     const loadMs = performance.now() - t0l;
     const st = { linear: { [atom('m0')]: 1 }, persistent: {} };
     const t0 = performance.now();
-    const r = calc.settle(st, '10', settleOpts);          // p0 fires at 0..10
-    const ms = performance.now() - t0;
+    const r = calc.settle(st, '10', { ...settleOpts, raw: true });   // p0 fires at 0..10
+    const cold = performance.now() - t0;
     if (r.events.length !== 11) throw new Error(`OR ${N}: ${r.events.length} events`);
-    rows.push([N, ms, loadMs]);
-    if (ms > 20000 || loadMs > 60000) break;
+    // warm: chained tick over the live State — scheduler cache hits
+    const t1 = performance.now();
+    const r2 = calc.settle(r.state, '20', { ...settleOpts, raw: true });
+    const warm = performance.now() - t1;
+    if (r2.events.length !== 10) throw new Error(`OR ${N} warm: ${r2.events.length} events`);
+    rows.push([N, cold, warm, loadMs]);
+    if (cold > 20000 || loadMs > 60000) break;
   }
-  report('OR-rules', rows, ['#rules', 'settle ms', 'load ms']);
+  report('OR-rules', rows, ['#rules', 'cold ms', 'warm ms', 'load ms']);
 }
 
 // ── OF: live-cohort scaling ─────────────────────────────────────────
