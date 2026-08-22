@@ -145,20 +145,25 @@ p: $m -o { a }@1.\n`;
   const calc = mde.load(file, { calculusConfig: tillConfig, cache: false });
   const tcfg = calc.timedConfig;
   const rows = [];
-  for (const N of [10, 100, 1000, 10000, 100000]) {
+  for (const N of [10, 100, 1000, 10000, 100000, 1000000]) {
     const linear = { [atom('m')]: 1 };
     for (let i = 0; i < N; i++) {
       linear[Store.put('at', [atom('junk'), tcfg.parseStamp(String(i))])] = 1;
     }
     const st = { linear, persistent: {} };
     const t0 = performance.now();
-    const r = calc.settle(st, '10', settleOpts);
-    const ms = performance.now() - t0;
+    const r = calc.settle(st, '10', { ...settleOpts, raw: true });
+    const cold = performance.now() - t0;
     if (r.events.length !== 11) throw new Error(`OF ${N}: ${r.events.length} events`);
-    rows.push([N, ms]);
-    if (ms > 20000) break;
+    // warm: incremental re-settle over the live State (10 more firings)
+    const t1 = performance.now();
+    const r2 = calc.settle(r.state, '20', { ...settleOpts, raw: true });
+    const warm = performance.now() - t1;
+    if (r2.events.length !== 10) throw new Error(`OF ${N} warm: ${r2.events.length} events`);
+    rows.push([N, cold, warm]);
+    if (cold > 20000) break;
   }
-  report('OF-cohorts', rows, ['#cohorts', 'settle ms']);
+  report('OF-cohorts', rows, ['#cohorts', 'cold ms', 'warm ms']);
 }
 
 // ── OT: deep-time jump ──────────────────────────────────────────────

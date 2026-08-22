@@ -79,9 +79,32 @@ const _parts = (h) => {
  *  the theory engine, and the backchain normalizer. */
 const _ratCanon = (h) => ratlitTheory.canonicalize(binlitTheory.canonicalize(h));
 
+// Float fast path for GRADE hashes (mirrors the policy comparator below):
+// canonical stamp hashes are injective on ℚ, so a !== b never compares
+// equal exactly; float order is sound when both convert exactly (monotone
+// rounding) and differs. Ties/big operands go exact.
+const _gradeF = new Map();          // stamp hash -> float (NaN = exact only)
+Store.onClear(() => _gradeF.clear());
+function _gradeFloat(h) {
+  let f = _gradeF.get(h);
+  if (f === undefined) {
+    const [n, d] = _parts(h);
+    const nn = n < 0n ? -n : n;
+    f = (nn < 9007199254740992n && d < 9007199254740992n) ? Number(n) / Number(d) : NaN;
+    _gradeF.set(h, f);
+  }
+  return f;
+}
+
 const tillGrades = {
   availability: {
-    cmp: (a, b) => (a === b ? 0 : ratCmp(_parts(a), _parts(b))),
+    cmp: (a, b) => {
+      if (a === b) return 0;
+      const fa = _gradeFloat(a), fb = _gradeFloat(b);
+      if (fa < fb) return -1;
+      if (fa > fb) return 1;
+      return ratCmp(_parts(a), _parts(b));
+    },
   },
   effect: {
     unit: tillGradeUnit,
@@ -140,11 +163,67 @@ const tillGrades = {
 const _ZERO = [0n, 1n];
 const _stampParts = (h) => (Store.tag(h) === 'at' ? _parts(Store.child(h, 1)) : _ZERO);
 
+// Per-atom-name groups (TODO_0277): tag 0 lumps every atom-headed token
+// into ONE group, so matching scanned the whole population per pattern.
+// The registry hands each distinct atom head its own group id (stable
+// across all FactSets sharing this policy object); FactSet group tables
+// grow on demand. Ids restart with the Store (hashes die on clear).
+// Atom ids live at a fixed base ABOVE the tag-id space; tag ids growing
+// past the base would collide, so the fence is loud (raise the base if a
+// calculus ever registers 4096 predicate tags).
+const ATOM_GROUP_BASE = 4096;
+const _atomGroups = new Map();
+let _nextAtomGroup = ATOM_GROUP_BASE;
+Store.onClear(() => { _atomGroups.clear(); _nextAtomGroup = ATOM_GROUP_BASE; });
+function _atomGroupOf(inner) {
+  let g = _atomGroups.get(inner);
+  if (g === undefined) {
+    if (Store.TAG_NAMES.length >= ATOM_GROUP_BASE) {
+      throw new Error(`till factSetPolicy: ${Store.TAG_NAMES.length} tags exceed ATOM_GROUP_BASE — raise the base`);
+    }
+    g = _nextAtomGroup++;
+    _atomGroups.set(inner, g);
+  }
+  return g;
+}
+
+// Stamp-order fast path (TODO_0277): exact rational compare costs BigInt
+// mults per probe and dominated the profile. A correctly-rounded double is
+// MONOTONE in the rational it rounds, so float order is sound whenever the
+// floats differ and both conversions were exact-operand (n, d < 2^53);
+// ties and big operands fall back to the exact compare. Cached per fact
+// hash (content-addressed: hash identity ⇔ stamp identity).
+const _UNSAFE = 2 ** 53;
+const _stampF = new Map();          // fact hash -> float (NaN = must go exact)
+Store.onClear(() => _stampF.clear());
+function _stampFloat(h) {
+  let f = _stampF.get(h);
+  if (f === undefined) {
+    if (Store.tag(h) !== 'at') f = 0;
+    else {
+      const [n, d] = _parts(Store.child(h, 1));
+      const nn = n < 0n ? -n : n;
+      f = (nn < _UNSAFE && d < _UNSAFE) ? Number(n) / Number(d) : NaN;
+    }
+    _stampF.set(h, f);
+  }
+  return f;
+}
+
 const tillFactSetPolicy = {
   stampTag: 'at',   // generic fact-set reads this to unwrap stamped atoms
   runLength: true,  // multiplicity as counts, not repeated entries (TODO_0277)
-  groupKey: (h) => (Store.tag(h) === 'at' ? Store.tagId(Store.child(h, 0)) : Store.tagId(h)),
+  groupKey: (h) => {
+    const inner = Store.tag(h) === 'at' ? Store.child(h, 0) : h;
+    const t = Store.tagId(inner);
+    return t === Store.TAG.atom ? _atomGroupOf(inner) : t;
+  },
   cmp: (a, b) => {
+    if (a === b) return 0;
+    const fa = _stampFloat(a), fb = _stampFloat(b);
+    if (fa < fb) return -1;
+    if (fa > fb) return 1;
+    // float tie (or NaN sentinel): decide exactly, hash order last
     const c = ratCmp(_stampParts(a), _stampParts(b));
     return c !== 0 ? c : (a - b);
   },
