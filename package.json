@@ -42,7 +42,8 @@
     "profile:explore": "CALC_PERF_PROFILE=1 bun benchmarks/engine/explore-bench.js --profile",
     "bench:diff": "bun tools/bench-compare.js",
     "bench:diff:engine": "bun tools/bench-compare.js --suite=engine",
-    "bench:diff:explore": "bun tools/bench-compare.js --suite=explore"
+    "bench:diff:explore": "bun tools/bench-compare.js --suite=explore",
+    "tags": "node tools/collect-tags.js"
   },
   "author": "",
   "license": "ISC",
