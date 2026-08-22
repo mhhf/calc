@@ -27,7 +27,7 @@ import fs from 'fs';
 import os from 'os';
 import path from 'path';
 import Store from '../../lib/kernel/store.js';
-import { loadTill, stampedStr, traceKey } from './till-helpers.js';
+import { loadTill, stampedStr, bagStr, traceKey } from './till-helpers.js';
 
 const MASTER_SEED = 0xC0FFEE;
 const PROGRAMS = 40;
@@ -47,15 +47,21 @@ const randInt = (n) => Math.floor(rand() * n);
 // two-letter names so every generated fact is a plain atom.
 const ATOMS = ['wa', 'wb', 'wc', 'wd', 'we', 'wf'];
 const DELAYS = ['', '', '@1', '@(1/2)', '@2'];   // '' = zero delay (D11 unit)
+const RAT_IMPORT = `#import(${path.resolve('calculus/till/prelude/rat.ill')})`;
 
 function genProgram(idx) {
   const nAtoms = 3 + randInt(4);                 // 3-6 atoms
   const atoms = ATOMS.slice(0, nAtoms);
   const nRules = 2 + randInt(3);                 // 2-4 rules
-  const lines = [`% till-fuzz generated program #${idx} (master seed ${MASTER_SEED})`];
+  const lines = [`% till-fuzz generated program #${idx} (master seed ${MASTER_SEED})`, RAT_IMPORT];
   for (const a of atoms) lines.push(`${a}: type.`);   // closed-world: declare every token
   for (let i = 0; i < nRules; i++) {
-    const kind = pick(['plain', 'plain', 'pair', 'read', 'count', 'woplus', 'mkloli', 'mkloli']);
+    // TODO_0277 audit: the original corpus was blind to every pattern the
+    // coalesce/accel machinery keys on — stamp-binding antecedents (A@Q),
+    // relative windows (before/after (Q+d)), ground before-deadlines,
+    // cohort-locked counted parcels (!_k A@Q). The four new kinds close it.
+    const kind = pick(['plain', 'plain', 'pair', 'read', 'count', 'woplus', 'mkloli', 'mkloli',
+                       'spoil', 'expire', 'ground_before', 'stamped_count']);
     const delay = pick(DELAYS);
     // Zero-delay rules produce only atoms STRICTLY LATER in the alphabet
     // than everything they consume: the zero-delay subgraph is a DAG by
@@ -92,7 +98,23 @@ function genProgram(idx) {
     else if (kind === 'pair') lines.push(`r${i}: ${A} * ${C} -o { ${B} }${delay}.`);
     else if (kind === 'read') lines.push(`r${i}: read ${C} * ${A} -o { ${B} }${delay}.`);
     else if (kind === 'count') lines.push(`r${i}: !_2 ${A} -o { ${B} }${delay}.`);
-    else lines.push(`r${i}: ${A} -o { woplus 1/4 ${B} ${D} }${delay}.`);
+    else if (kind === 'spoil') {
+      // stamp-binding + relative before-window: fires while a < Q+d (the
+      // window is covariant — accel stays certifiable). Zero-delay rules
+      // keep the alphabet-increasing DAG constraint via B's pool.
+      lines.push(`r${i}: ${A}@Q * before (Q + ${pick(['1', '2'])}) -o { ${B} }${delay}.`);
+    } else if (kind === 'expire') {
+      // spoilage shape: activation pinned at Q+d — an effective positive
+      // delay, so the zero-delay DAG argument is untouched.
+      lines.push(`r${i}: ${A}@Q * after (Q + ${pick(['1', '1/2', '2'])}) -o { ${B} }.`);
+    } else if (kind === 'ground_before') {
+      // absolute deadline: exercises the accel jump cap and expired-rule
+      // deadness (and would trip an unguarded rebase — not fuzzed here).
+      lines.push(`r${i}: ${A} * before ${pick(['1', '2', '3'])} -o { ${B} }${delay}.`);
+    } else if (kind === 'stamped_count') {
+      // cohort-locked counted parcel: binds ONE stamp, stamp-observing.
+      lines.push(`r${i}: !_2 ${A}@Q -o { ${B} }${delay}.`);
+    } else lines.push(`r${i}: ${A} -o { woplus 1/4 ${B} ${D} }${delay}.`);
   }
   // random stamped initial state: 0-2 tokens at stamp 0, 0-1 at stamp 1
   const linear = {};
@@ -125,7 +147,7 @@ describe('till fuzz — exec ⊆ explore containment + determinism laws', () => 
   after(() => { fs.rmSync(dir, { recursive: true, force: true }); });
 
   it('every exec outcome is an explore leaf; replay/split/scheduler agree', () => {
-    let ran = 0, skipped = 0;
+    let ran = 0, skipped = 0, detRan = 0;
     for (const p of programs) {
       const calc = loadTill(p.file);
       let full;
@@ -160,7 +182,27 @@ describe('till fuzz — exec ⊆ explore containment + determinism laws', () => 
       // dirty (the default) ≡ rescan
       const rescan = calc.settle(p.state, p.horizon, { seed: 3, scheduler: 'rescan' });
       assert.equal(traceKey(rescan.events), traceKey(t1.events), `scheduler diverged:\n${p.text}`);
+      // ── coalesce / accelerate laws (TODO_0277 audit arms) ──────────
+      // Coalescing (and thus acceleration) may select a DIFFERENT valid
+      // chooser world — state hashes change, PRF draws differ — so the
+      // strong equalities hold only on DETERMINISTIC programs: a single
+      // explore leaf and no weighted rule means every schedule converges.
+      // Replay determinism of the accelerated path holds unconditionally.
+      const fast = calc.settle(p.state, p.horizon, { seed: 3, accelerate: true });
+      const fast2 = calc.settle(p.state, p.horizon, { seed: 3, accelerate: true });
+      assert.equal(traceKey(fast2.events), traceKey(fast.events), `accel replay diverged:\n${p.text}`);
+      if (full.leaves.length === 1 && !/woplus/.test(p.text)) {
+        detRan++;
+        const coal = calc.settle(p.state, p.horizon, { seed: 3, coalesce: true });
+        assert.equal(bagStr(coal.state), bagStr(t1.state), `coalesce lost resources:\n${p.text}`);
+        assert.equal(stampedStr(fast.state), stampedStr(coal.state),
+          `accel diverged from the coalesced run:\n${p.text}`);
+        const skippedEv = (fast.accelerated || []).reduce((s, a) => s + a.skippedEvents, 0);
+        assert.equal(fast.events.length + skippedEv, coal.events.length,
+          `accel event accounting broke:\n${p.text}`);
+      }
     }
     assert.ok(ran >= PROGRAMS / 2, `too many Zeno skips: ${skipped}/${PROGRAMS}`);
+    assert.ok(detRan >= 5, `too few deterministic programs for the coalesce/accel arms: ${detRan}`);
   });
 });
