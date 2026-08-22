@@ -157,9 +157,9 @@ describe('till fuzz — exec ⊆ explore containment + determinism laws', () => 
       const mid = calc.settle(p.state, mids[p.horizon], { seed: 3 }).state;
       const resumed = calc.settle(mid, p.horizon, { seed: 3 }).state;
       assert.equal(stampedStr(resumed), stampedStr(t1.state), `split diverged:\n${p.text}`);
-      // dirty scheduler ≡ rescan
-      const dirty = calc.settle(p.state, p.horizon, { seed: 3, scheduler: 'dirty' });
-      assert.equal(traceKey(dirty.events), traceKey(t1.events), `scheduler diverged:\n${p.text}`);
+      // dirty (the default) ≡ rescan
+      const rescan = calc.settle(p.state, p.horizon, { seed: 3, scheduler: 'rescan' });
+      assert.equal(traceKey(rescan.events), traceKey(t1.events), `scheduler diverged:\n${p.text}`);
     }
     assert.ok(ran >= PROGRAMS / 2, `too many Zeno skips: ${skipped}/${PROGRAMS}`);
   });
