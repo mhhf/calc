@@ -208,7 +208,7 @@ describe('Monad mode switch', () => {
     const monadA = AST.monad(U(), a);
     const seq = Seq.fromArrays([a], [], monadA);
 
-    const result = modeSwitch(seq, { forwardRules: [] });
+    const result = modeSwitch(seq, { forwardRules: [], roles: ill.roles });
     assert.strictEqual(result, null);
   });
 
@@ -227,7 +227,7 @@ describe('Monad mode switch', () => {
     const monadB = AST.monad(U(), b);
     const seq = Seq.fromArrays([a], [], monadB);
 
-    const result = modeSwitch(seq, { forwardRules: [compiled] });
+    const result = modeSwitch(seq, { forwardRules: [compiled], roles: ill.roles });
     assert.ok(result, 'should produce a result');
     assert.ok(result.proofNode, 'should have proofNode');
     assert.strictEqual(result.proofNode.rule, 'monad_r');
@@ -258,7 +258,7 @@ describe('Monad committed choice', () => {
     const result = focused.prove(seq, {
       rules: specs,
       alternatives,
-      engineCalc: { forwardRules: [compiled] }
+      engineCalc: { forwardRules: [compiled], roles: ill.roles }
     });
 
     assert.ok(result.success, 'proof should succeed');
@@ -281,7 +281,7 @@ describe('Monad committed choice', () => {
     const result = focused.prove(seq, {
       rules: specs,
       alternatives,
-      engineCalc: { forwardRules: [compiled] }
+      engineCalc: { forwardRules: [compiled], roles: ill.roles }
     });
 
     assert.ok(result.success);
@@ -391,7 +391,7 @@ describe('Monad integration', () => {
     const result = focused.prove(seq, {
       rules: specs,
       alternatives,
-      engineCalc: { forwardRules: [compiled] }
+      engineCalc: { forwardRules: [compiled], roles: ill.roles }
     });
 
     assert.ok(result.success, 'should prove a |- {b} with forward rule a→b');
@@ -432,7 +432,7 @@ describe('Monad integration', () => {
     const result = focused.prove(seq, {
       rules: specs,
       alternatives,
-      engineCalc: { forwardRules: [compiled] }
+      engineCalc: { forwardRules: [compiled], roles: ill.roles }
     });
 
     assert.ok(result.success);
@@ -474,7 +474,7 @@ describe('Monad integration', () => {
     const result = focused.prove(seq, {
       rules: specs,
       alternatives,
-      engineCalc: { forwardRules: [compiled] }
+      engineCalc: { forwardRules: [compiled], roles: ill.roles }
     });
 
     assert.ok(result.success);
@@ -634,7 +634,7 @@ describe('rightFocus integration', () => {
     const result = focused.prove(seq, {
       rules: specs,
       alternatives,
-      engineCalc: { forwardRules: [compiled] }
+      engineCalc: { forwardRules: [compiled], roles: ill.roles }
     });
 
     assert.ok(result.success, 'forward produces b, succedent is {b} → match');
@@ -660,7 +660,7 @@ describe('rightFocus integration', () => {
     const result = focused.prove(seq, {
       rules: specs,
       alternatives,
-      engineCalc: { forwardRules: [compiled] }
+      engineCalc: { forwardRules: [compiled], roles: ill.roles }
     });
 
     assert.strictEqual(result.success, false,
@@ -686,7 +686,7 @@ describe('rightFocus integration', () => {
     const result = focused.prove(seq, {
       rules: specs,
       alternatives,
-      engineCalc: { forwardRules: [compiled] }
+      engineCalc: { forwardRules: [compiled], roles: ill.roles }
     });
 
     assert.strictEqual(result.success, false,
@@ -720,7 +720,7 @@ describe('rightFocus integration', () => {
     const result = focused.prove(seq, {
       rules: specs,
       alternatives,
-      engineCalc: { forwardRules: [r1, r2] }
+      engineCalc: { forwardRules: [r1, r2], roles: ill.roles }
     });
 
     assert.ok(result.success, 'forward chains a→b→c, succedent {c} matches');
@@ -746,7 +746,7 @@ describe('rightFocus integration', () => {
     const result = focused.prove(seq, {
       rules: specs,
       alternatives,
-      engineCalc: { forwardRules: [compiled], roles: { product: 'tensor', unit: 'one', exponential: 'bang' } }
+      engineCalc: { forwardRules: [compiled], roles: ill.roles }
     });
 
     assert.ok(result.success, 'forward produces {b, c}, rightFocus decomposes b * c');
