@@ -63,6 +63,29 @@ The test: *"Can I write down WHAT this object IS?"*
 | Arithmetic | Proposition: `!plus A B C` | Derived knowledge about terms |
 | Constraints | Proposition: `!lt ?X 100 0 1` | Learned about metavar |
 
+## Metadata about terms
+
+Content addressing forces the placement: a term IS its hash, so anything
+stored inside a term changes its identity (two programs differing only in a
+comment would be different hashes — breaking O(1) equality, canonical forms,
+and the eq-theory bridge; same argument as THY_0020's extrinsic-sorts result).
+Three lawful places for metadata, chosen by one test — *does it change what
+you can DO with the term, is it something you KNOW, or is it for humans only?*
+
+| Metadata kind | Place | Mechanism |
+|---|---|---|
+| Affects typing/execution (grade, stamp, sort, principal) | In the type | `bang(g,A)`, `monad(g,A)`, `A@t`, refinement sorts (TODO_0157) |
+| Knowledge about the term (version, author, implements-spec) | Persistent proposition over the hash | `!version T V`, `!impl Spec V T` |
+| Inert, human-facing (comment, doc, name) | Sidecar keyed by hash, outside the logic | Unison/Lean-docstring model (needs stable identity, TODO_0271) |
+
+Corollaries: the hash is the intrinsic version of an implementation; human
+version names are propositions or sidecar entries, never term fields. Metadata
+beside a *linear* resource must be persistent (`A ⊗ !M`), baked into the
+constructor, or a stamp — never a loose linear sibling fact (desyncs on
+consumption). Linear resource instances have no identity in the multiset; to
+attach metadata per-instance, widen the constructor, use a fresh-name handle
+(`∃x` + facts about `x`), or a stamp.
+
 ## Backward predicates derive knowledge FROM terms
 
 `mem_read` takes the write-chain TERM and derives what value is at an address:
