@@ -127,8 +127,8 @@ describe('till determinism: literal-fact dirty ≡ rescan (round-14 regression)'
     const calc = loadTillPermissive(FIX('till-litfact.ill'));
     const e = Store.put1('binlit', 0n);   // `e` = empty binary literal
     const S = { linear: { [atom('src')]: 1, [e]: 1 }, persistent: {} };
-    const a = calc.settle(S, '2');
-    const b = calc.settle(S, '2', { scheduler: 'dirty' });
+    const a = calc.settle(S, '2', { scheduler: 'rescan' });
+    const b = calc.settle(S, '2');   // default = dirty (TODO_0277)
     assert.equal(traceKey(a.events), 'gen@0/1: pair2@0/1:');
     assert.equal(traceKey(b.events), traceKey(a.events));
     assert.equal(stampedStr(b.state), stampedStr(a.state));

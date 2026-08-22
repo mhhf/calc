@@ -68,8 +68,10 @@ describe('till schedulers — dirty tracking ≡ rescan (P3, the D13 gate)', () 
     it(`${file} ${kind}: trace-identical`, () => {
       const calc = load(SPEC(file));
       const S = init(calc, kind);
-      const a = calc.settle(S, T);
-      const b = calc.settle(S, T, { scheduler: 'dirty' });
+      // dirty tracking is settle's DEFAULT (TODO_0277) — the acceptance
+      // pin compares it against the explicit rescan scheduler
+      const a = calc.settle(S, T, { scheduler: 'rescan' });
+      const b = calc.settle(S, T);
       const key = (e) => `${e.rule}@${ratParts(e.activation).join('/')}`;
       assert.deepEqual(b.events.map(key), a.events.map(key));
       assert.deepEqual(stamped(b.state), stamped(a.state));
