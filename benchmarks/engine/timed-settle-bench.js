@@ -36,11 +36,15 @@ const opt = (n, d) => { const i = args.indexOf(n); return i >= 0 ? args[i + 1] :
 const ONLY = opt('--only', null)?.split(',') || null;
 const run = (id) => !ONLY || ONLY.includes(id);
 const COALESCE = flag('--coalesce');
+const ACCEL = flag('--accel');
 const results = {};
 
 const horizonOf = (secs) => `${Math.max(0, Math.round(secs * 1000))}/1000`;
 const atom = (n) => Store.put('atom', [n]);
-const settleOpts = COALESCE ? { coalesce: true } : {};
+const settleOpts = {
+  ...(COALESCE ? { coalesce: true } : {}),
+  ...(ACCEL ? { accelerate: true } : {}),
+};
 
 function liveLinear(state) {
   return Object.keys(state.linear || {}).length;
@@ -177,15 +181,16 @@ p: $m -o { a }@1.\n`;
 if (run('OT')) {
   const calc = mde.load(PP2, { calculusConfig: tillConfig, cache: false });
   const rows = [];
-  for (const T of [10, 100, 1000, 10000, 100000]) {
+  for (const T of [10, 100, 1000, 10000, 100000, 1000000, 100000000]) {
     const st = { linear: { [atom('lumberjack')]: 1, [atom('quarry')]: 1 }, persistent: {} };
     const t0 = performance.now();
     const r = calc.settle(st, String(T), { ...settleOpts, maxSteps: 10000000 });
     const ms = performance.now() - t0;
-    rows.push([T, ms, r.events.length, liveLinear(r.state)]);
+    const skipped = (r.accelerated || []).reduce((s, a) => s + a.skippedEvents, 0);
+    rows.push([T, ms, r.events.length, skipped, liveLinear(r.state)]);
     if (ms > 20000) break;
   }
-  report('OT-deeptime', rows, ['T', 'settle ms', 'events', 'linear']);
+  report('OT-deeptime', rows, ['T', 'settle ms', 'events', 'skipped', 'linear']);
 }
 
 const jsonOut = opt('--json', null);
