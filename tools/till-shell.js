@@ -286,7 +286,7 @@ function click(T, globalIdx) {
   if (!o) return `no option [${globalIdx + 1}]`;
   try {
     state = calc.choose(state, o.menu.fact, o.alt, { at: horizonOf(T) });
-    state = calc.settle(state, horizonOf(T)).state;
+    state = calc.settle(state, horizonOf(T), { coalesce: true }).state;
     return null;
   } catch (e) {
     return e.message;
@@ -304,13 +304,13 @@ if (demo) {
     return { t: Number(t), idx: Number(i) - 1 };
   }).sort((a, b) => a.t - b.t);
   for (const e of events) {
-    state = calc.settle(state, horizonOf(e.t)).state;
+    state = calc.settle(state, horizonOf(e.t), { coalesce: true }).state;
     const err = click(e.t, e.idx);
     console.log(`\n══ click [${e.idx + 1}] at t=${e.t} ${err ? `→ ${err}` : ''}`);
     console.log(frame(state, e.t));
   }
   const tail = (events.at(-1)?.t ?? 0) + 5;
-  state = calc.settle(state, horizonOf(tail)).state;
+  state = calc.settle(state, horizonOf(tail), { coalesce: true }).state;
   console.log(`\n══ +5s later`);
   console.log(frame(state, tail));
   process.exit(0);
@@ -325,7 +325,7 @@ const gameNow = () => (((pausedAt ?? Date.now()) - start) / 1000) * speed;
 
 function tick() {
   const T = gameNow();
-  state = calc.settle(state, horizonOf(T)).state;
+  state = calc.settle(state, horizonOf(T), { coalesce: true }).state;
   const extra = lastMsg ? `\n  ⚠ ${lastMsg}\n` : '\n';
   process.stdout.write('\x1b[2J\x1b[H' + frame(state, T) + extra);
 }
@@ -347,7 +347,7 @@ process.stdin.on('data', (b) => {
   else if (k === '-') speed /= 2;
   else if (k >= '1' && k <= '9') {
     const T = gameNow();
-    state = calc.settle(state, horizonOf(T)).state;
+    state = calc.settle(state, horizonOf(T), { coalesce: true }).state;
     lastMsg = click(T, Number(k) - 1);
   }
   tick();
