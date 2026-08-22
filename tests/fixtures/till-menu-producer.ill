@@ -1,0 +1,22 @@
+% Persistent-consequent menu exclusion fixture (TODO_0277 audit).
+% The trigger rule PRODUCES a persistent menu at t=5 whose alternative
+% carries a before-window (D15 bars stamped costs under !, windows are
+% embedded-antecedent-legal) — the coalescer must treat wood as
+% stamp-load-bearing from the start (durable exclusion via the consequent
+% walk over alt.persistent), even though no menu exists in the state yet.
+% iron is observed by nothing.
+wood: type.
+plank: type.
+iron: type.
+dummy: type.
+trigger: type.
+
+mk: trigger -o { !( (wood * before 100 -o { plank })
+                  & (dummy -o { plank }) ) }@5.
+
+% trigger@4: the producer is PENDING at the settle-3 coalesce point — the
+% menu does not exist yet, so only the durable consequent walk excludes wood.
+#expect_menu_producer (settle: 3)
+  trigger@4 * wood@2 * wood@3 * iron@1
+  =>
+  !_2 wood .
