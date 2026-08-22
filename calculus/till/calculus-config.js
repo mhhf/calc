@@ -432,6 +432,11 @@ const tillCalculusConfig = {
   // its stamp differently. till's is `at(A, t)`.
   stampTag: 'at',
 
+  // Shift-degree table for the translation-covariance analysis
+  // (timed/covariance.js): how each window-lowering q-op combines the
+  // shift degrees of its arguments. Mirrors loader.qexprPreds' targets.
+  shiftOps: { plus: 'add', qplus: 'add', qsub: 'sub', mul: 'scale', qdiv: 'scale' },
+
   // Scheduler policies (D12/D17): within-instant conflict chooser (P5 PRF,
   // seedable) and cohort sampler ('fifo' = index order, 'lifo' reversed).
   scheduler: { chooser: 'random', seed: 0, cohort: 'fifo' },
