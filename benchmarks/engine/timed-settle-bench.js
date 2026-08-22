@@ -26,6 +26,7 @@ import Store from '../../lib/kernel/store.js';
 import mde from '../../lib/engine/index.js';
 import convert from '../../lib/engine/convert.js';
 import tillConfig from '../../calculus/till/calculus-config.js';
+import { ratParts } from '../../lib/engine/theories/ratlit-theory.js';
 
 const ROOT = path.join(import.meta.dirname, '../../');
 const PP2 = path.join(ROOT, 'calculus/till/game/PP2.till');
@@ -62,7 +63,7 @@ function report(id, rows, cols) {
 // Drives the real game model exactly like the bridge: settle each 200 ms
 // tick to T = ticks*0.2, plus a view proxy (menuStatus sweep over standing
 // menus — the bridge's per-tick UI query).
-if (run('B1') || run('B3')) {
+if (run('B1')) {
   const calc = mde.load(PP2, { calculusConfig: tillConfig, cache: false });
   const start = convert.decomposeQuery(calc.splitQueries.get('expect_shell_start').lhsHash);
   let state = start;
@@ -95,6 +96,37 @@ if (run('B1') || run('B3')) {
   report('B1-ticks', rows, ['T(s)', 'tick ms', 'linear', 'store', 'rssMB']);
   const first = rows[0], last = rows[rows.length - 1];
   console.log(`  growth: tick ms ×${(last[1] / Math.max(first[1], 0.01)).toFixed(1)}, linear ×${(last[2] / Math.max(first[2], 1)).toFixed(1)} over ${(last[0] / first[0]).toFixed(0)}× time`);
+}
+
+// ── B3: steady-state memory — long tick run, Store/RSS plateau ──────
+// Chained raw ticks with coalesce; rebase every 256 ticks resets the time
+// origin so the stamp vocabulary stays finite. PASS: Store.size() and RSS
+// plateau (no monotonic growth).
+if (run('B3')) {
+  const calc = mde.load(PP2, { calculusConfig: tillConfig, cache: false });
+  let state = convert.decomposeQuery(calc.splitQueries.get('expect_shell_start').lhsHash);
+  const dt = 0.2;
+  const total = Number(opt('--b3ticks', 100000));
+  let base = 0;
+  const rows = [];
+  const t0all = performance.now();
+  for (let i = 1; i <= total; i++) {
+    const T = i * dt - base;
+    const r = calc.settle(state, horizonOf(T), {
+      coalesce: true, raw: true, rebase: i % 256 === 0,
+    });
+    state = r.state;
+    if (r.rebase !== undefined) {
+      const [n, d] = ratParts(r.rebase);
+      base += Number(n) / Number(d);
+    }
+    if (i % Math.floor(total / 10) === 0) {
+      rows.push([i, (i * dt).toFixed(0), Store.size(),
+        Math.round(process.memoryUsage().rss / 1e6),
+        ((performance.now() - t0all) / i).toFixed(3)]);
+    }
+  }
+  report('B3-memory', rows, ['tick', 'T(s)', 'store', 'rssMB', 'ms/tick']);
 }
 
 // ── B2: magnitude scaling — !_10^k wood, one kiln batch ─────────────

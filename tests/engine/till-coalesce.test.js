@@ -17,6 +17,7 @@ import assert from 'node:assert/strict';
 import Store from '../../lib/kernel/store.js';
 import { stampObservers } from '../../lib/engine/timed/coalesce.js';
 import { buildTimedConfig } from '../../lib/engine/timed/timed.js';
+import { ratParts } from '../../lib/engine/theories/ratlit-theory.js';
 import { tillCalculusConfig } from '../../calculus/till/calculus-config.js';
 import { SPEC, loadTill as load, initQuery as init, bagStr, stamped, traceKey } from './till-helpers.js';
 
@@ -87,6 +88,27 @@ describe('coalesce — spoilage exactness (0277 B4)', () => {
       assert.deepEqual(fc.sort(), fp.sort());
     });
   }
+});
+
+describe('rebase — translation of the time origin (0277 B3)', () => {
+  it('chained rebased settles reach the same stamp-blind state as direct', () => {
+    const calc = load(SPEC('economy.ill'));
+    const S = init(calc, 'expect_settled');
+    const direct = calc.settle(S, '100', { coalesce: true }).state;
+    // settle to 40, rebase, then continue in the shifted frame
+    const r1 = calc.settle(S, '40', { coalesce: true, rebase: true });
+    const [n, d] = ratParts(r1.rebase);
+    assert.equal(d, 1n, 'economy rebase lands on an integer stamp');
+    const rest = 100 - Number(n);
+    const r2 = calc.settle(r1.state, String(rest), { coalesce: true });
+    assert.equal(bagStr(r2.state), bagStr(direct));
+  });
+
+  it('rebase without coalesce is a loud error', () => {
+    const calc = load(SPEC('economy.ill'));
+    const S = init(calc, 'expect_settled');
+    assert.throws(() => calc.settle(S, '10', { rebase: true }), /rebase requires coalesce/);
+  });
 });
 
 describe('coalesce — composability (E5, bag level)', () => {
