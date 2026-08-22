@@ -1,0 +1,16 @@
+% Menu-observer exclusion fixture (TODO_0277 soundness audit).
+% The standing menu offers a GROUND stamp-matching rule (wood@2) — the
+% coalescer must treat wood as stamp-load-bearing even though no static
+% rule observes it: the player can project the alternative at any time.
+% iron is observed by nothing and may coalesce.
+wood: type.
+plank: type.
+iron: type.
+dummy: type.
+
+#expect_menu_observer (settle: 10)
+  !( (wood@2 -o { plank })
+   & (dummy -o { plank }) )
+  * wood@2 * wood@3 * iron@1 * iron@4
+  =>
+  !_2 wood .

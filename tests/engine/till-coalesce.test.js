@@ -19,7 +19,7 @@ import { stampObservers } from '../../lib/engine/timed/coalesce.js';
 import { buildTimedConfig } from '../../lib/engine/timed/timed.js';
 import { ratParts } from '../../lib/engine/theories/ratlit-theory.js';
 import { tillCalculusConfig } from '../../calculus/till/calculus-config.js';
-import { SPEC, loadTill as load, initQuery as init, bagStr, stamped, traceKey } from './till-helpers.js';
+import { SPEC, FIX, loadTill as load, initQuery as init, bagStr, stamped, traceKey } from './till-helpers.js';
 
 const tcfg = () => buildTimedConfig(tillCalculusConfig);
 
@@ -88,6 +88,36 @@ describe('coalesce — spoilage exactness (0277 B4)', () => {
       assert.deepEqual(fc.sort(), fp.sort());
     });
   }
+});
+
+describe('coalesce — menu alternatives are durable observers (soundness audit)', () => {
+  it('a stamp-matching menu alternative excludes its predicate before projection', () => {
+    const calc = load(FIX('till-menu-observer.ill'));
+    const S = init(calc, 'expect_menu_observer');
+    const r = calc.settle(S, '10', { coalesce: true });
+    const keys = Object.keys(stamped(r.state));
+    // wood is observed by the (unprojected) menu alternative — stamps kept
+    assert.ok(keys.includes('wood@2') && keys.includes('wood@3'),
+      `wood cohorts must survive coalescing: ${keys.join(', ')}`);
+    // iron is observed by nothing — coalesces onto the unit stamp
+    assert.ok(keys.includes('iron@0') && !keys.includes('iron@1') && !keys.includes('iron@4'),
+      `iron must coalesce: ${keys.join(', ')}`);
+  });
+
+  it('projecting the alternative after coalesced settling still fires on wood@2', () => {
+    const calc = load(FIX('till-menu-observer.ill'));
+    const S = init(calc, 'expect_menu_observer');
+    const r = calc.settle(S, '10', { coalesce: true });
+    let menu = null;
+    for (const hStr in r.state.persistent) {
+      if (Store.tag(Number(hStr)) === 'with') menu = Number(hStr);
+    }
+    assert.ok(menu !== null, 'standing menu present');
+    const chosen = calc.choose(r.state, menu, 0, { at: '10' });
+    const done = calc.settle(chosen, '10', { coalesce: true });
+    assert.ok(Object.keys(stamped(done.state)).some(k => k.startsWith('plank@')),
+      'projected rule must fire against the preserved wood@2 cohort');
+  });
 });
 
 describe('rebase — translation of the time origin (0277 B3)', () => {
