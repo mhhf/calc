@@ -1,57 +1,325 @@
+% ============================================================================
+%  PP2.till — minimal Paragon Pioneers 2 core, on calc's till (Timed ILL).
+%
+%  THE MODEL (calc TODO_0265, the locked design):
+%    * every linear fact carries an ABSOLUTE availability stamp  A@t ;  two
+%      tokens of the same kind at different stamps are distinct cohorts.
+%    * a rule  In -o { Out }@d  fires ASAP at its activation
+%      a = max(stamps of consumed inputs);  it consumes at a and produces at
+%      a+d — between a and a+d the job is IN FLIGHT.  That gap is {_}@d, the
+%      graded lax monad (duration as an effect grade).
+%    * a  building * ... -o { building * ... }@d  pair (or the $ sugar) is a
+%      SINGLE-SERVER machine: the token is absent (busy) from a to a+d.
+%    * there is NO clock in the state.  settle(state, T) runs the schedule to
+%      horizon T;  the horizon is an observation cursor, not a resource
+%      (settle(settle(S,T1),T2) = settle(S,T2) — composability, E5).
+%    * count grades:  !_k A  = k-token parcel (split off a cohort);  !_W A
+%      binds the WHOLE oldest cohort, W = its size at firing time.  Counts
+%      are naturals (bin);  stamps/delays are exact rationals.  Arithmetic is
+%      the bin family (!mul, !div, !min, …) — backward clauses with FFI fast
+%      paths (FFI is optimization, theory is semantics).
+%    * windows:  after E / before E  bound a rule's activation (E may use
+%      matched stamps: spoilage below).  read P = instantaneous measurement.
+%    * POSSESSED RULES (Phase 6c): a loli FACT in the state is a rule you
+%      own — one-shot by linearity, fireable from its own stamp onward, its
+%      delay read from the stored {..}@d.  The menus below are made of them.
+%    * conflicts (same cohort wanted by two equal-activation matches) resolve
+%      by a seeded stateless PRF — settle replays bit-identically per seed;
+%      settleExplore branches on genuine conflicts only.
+%
+%  THE PLAYER: the game OFFERS, the player COLLAPSES.  A menu is a standing
+%  persistent external choice whose alternatives ARE the costed rules —
+%  price and product visible in the menu's very type.  A click is a proof
+%  step:  CUT (default) fires the possessed rule at the decision time or is
+%  refused outright (the PP2 button you can't click);  PLAN residuates it
+%  into the context as a queued order.  See section 5.
+%
+%  COMBAT is combat.till's single `duel` rule run to quiescence: sampled
+%  under settle (seeded), exact distribution under settleExplore.
+%
+%  Run the gates:   npm run test:till   (from calc)
+% ============================================================================
+
 #import(../prelude/rat.ill)
+#import(combat.till)
 
-% PP2 — the till settlement demo (TODO_0011 acceptance: rung-1 sorts +
-% the §3 numeric collapse, all in one small game).
-%
-% Everything the shell displays is knowledge in the logic:
-%   - tokens are classified by CLASSIFIER SORTS (`wood: resource.`) — the
-%     shell groups stock rows by membership, %#display is gone
-%   - the spoilage law is ONE classifier schema over per-member DATA:
-%     `shelf r D` facts give each resource its shelf life, and the window
-%     `after (Q + D)` lowers onto the SHARED `plus` (bin instance for the
-%     integers here, /q instance if a shelf life were ever fractional —
-%     same predicate, dispatched by matching)
-%   - every delay/count is sort-checked: shelf lives sit at (d: delay),
-%     grade sorts delay/count/weight <: q join the numeric tower in rat.ill
-%
-% Play:  npm run shell:till -- calculus/till/game/PP2.till --init play
-%   digits buy from the standing build menu. Stock rots when its shelf
-%   life runs out — food fast, wood slowly; farms and quarries keep fresh
-%   stock coming.
+% ======================= 0. TOKENS (atomic propositions) ====================
+% Every resource and building is DECLARED, CLF/Celf-style: `wood: type.`
+% introduces the atomic proposition wood — possessing it is the linear fact.
+% (An arity-n token is a type family: red: (u: utype) -> type, combat.till.)
+wood: type.
+stone: type.
+food: type.
+plank: type.
+tool: type.
+charcoal: type.
+bread: type.
+iron_ore: type.
+iron: type.
+space: type.
 
-resource: sort.
-wood: resource.
-stone: resource.
-food: resource.
-
-camp: type.
-farm: type.
+lumberjack: type.
 quarry: type.
+sawmill: type.
+smith: type.
+farm: type.
+bakery: type.
+kiln: type.
+mine: type.
+smelter: type.
+barracks: type.
 
-% production loops ($ = preserved building)
-grow: $farm -o { food }@4.
-mine: $quarry -o { stone }@6.
+bot: type.
 
-% forage: the camp gathers wood, slowly
-forage: $camp -o { wood }@9.
+% ======================= 1. PRODUCTION (timed single servers) ===============
+% Raw producers tap the environment and yield one good per cycle; recipes
+% consume inputs.  The cycle time is the only coupling to time — there is no
+% per-turn `ready` token, no `arm`, no `new_turn`.
 
-% per-resource shelf life — data, not rules
-shelf: (r: resource) -> (d: delay) -> type.
-shelf/wood: shelf wood 60.
-shelf/stone: shelf stone 120.
-shelf/food: shelf food 10.
+lumberjack: $lumberjack -o { wood  }@(2/5).
+quarry:     $quarry     -o { stone }@(3/10).
+farm:       $farm       -o { food  }@6.
 
-% perishability — ONE schema, one rule per resource after expansion; the
-% deadline Q + D goes through the shared numeric plus
-spoil: (r: resource) r@Q * !shelf r D * after (Q + D) -o { I }.
+sawmill: $sawmill * wood          -o { plank }@(1/2).
+smith:   $smith   * plank * stone -o { tool  }@(3/10).
 
-% standing build menu: wood buys a farm, stone buys a quarry.
-% `!_3 wood` takes 3 wood of ANY ages (D4 revised: an unstamped count
-% binds no stamp, so it spreads across cohorts oldest-first — the form
-% `!_3 wood@T` would demand one same-stamp batch instead).
-#play (settle: 0)
-  camp
-  * !(( !_3 wood -o { farm }@5 ) & ( !_2 stone -o { quarry }@8 ))
-  * !_3 wood * !_2 stone * food
+% Fixed-grade recipe: !_2 splits two food off the oldest cohort.
+bakery: $bakery * !_2 food -o { bread }@8.
+
+% Mine: raw iron ore from the mountain seam.
+mine:    $mine -o { iron_ore }@(3/10).
+
+% Smelter: converts iron ore + charcoal into refined iron.
+smelter: $smelter * iron_ore * charcoal -o { iron }@5.
+
+% ======================= 2. THE KILN (batch multiplication) =================
+% A batch furnace, not a single-unit server: one firing chars the WHOLE wood
+% cohort — duration per batch, yield multiplicative (each log splits into
+% pieces): W logs -> floor(3W/2) charcoal, capped by the chamber (12); an
+% overloaded kiln burns the surplus to ash.  W binds the oldest cohort's
+% size at firing time (D4 whole-parcel bind).
+kiln:
+  $kiln
+  * !_W wood
+  * !mul W 3 T          % T = 3W
+  * !div T 2 A          % A = floor(3W/2)
+  * !min A 12 Y         % Y = min(A, 12) — chamber cap
+  -o { !_Y charcoal }@10.
+
+% ======================= 3. SPOILAGE (windows) ==============================
+% Food keeps 20 time units; the whole cohort rots in one event.  Consumers
+% win races by activation order (eat at a < Q+20 beats spoil), not by luck.
+spoil: !_W food@Q * after (Q + 20) -o { I }.
+
+% ======================= 4. SPACE (scarce, graded) ==========================
+% Free space is one count-graded atom !_n space; scarcity is a theorem (no
+% build fires without the grade).  Space is FUNGIBLE: reclaimed parcels
+% arrive as separate cohorts and a counted take !_k splits from ONE cohort
+% only (D4) — so cohorts merge eagerly, stamped at the max (k space exists
+% as a unit once its last parcel arrived).  Cross-cohort totals WITHOUT
+% merging = aggregation, deferred to the fluid ladder (todo 0265 res. iii).
+merge_space: !_W space * !_V space * !plus W V T -o { !_T space }.
+
+% ======================= 4b. DISPLAY GROUPING (presentation hints) ===========
+%#display resource: wood stone food plank tool charcoal bread iron_ore iron space
+%#display building: lumberjack quarry sawmill smith farm bakery kiln mine smelter barracks
+%#display army: red blue
+
+% ======================= 5. THE PLAYER: MENUS OF COSTED RULES ===============
+% There are no act tokens and no build_* rules: a menu ALTERNATIVE IS the
+% rule it triggers — a possessed loli, price on the left, product on the
+% right, construction time on the monad.  The standing build menu (put it
+% in the initial state; the gates and the shell do):
+%
+%   !( (!_5 space -o { farm }@20)
+%    & (!_3 space -o { barracks * ARMY_MENU }@15)
+%    & (!_4 space -o { kiln }@25)
+%    & (I -o { !_2 blue(rock) * !_2 blue(paper) * !_2 blue(sci) }) )
+%
+% Reading it:
+%   * !(A & B) ≅ !A ⊗ !B (Seely): a persistent menu is an unlimited supply
+%     of its alternatives; projection never consumes it.  A LINEAR menu is
+%     a one-shot/revocable offer (rules and windows can take it back).
+%   * building the barracks UNLOCKS the army menu — the persistent training
+%     menu (three costed recruit rules) appears with the barracks
+%     (visibility as game logic);  training is a single-server recipe
+%     (barracks consumed, returned at +12).
+%   * the attack alternative is a costless rule (I -o …): projecting it
+%     seeds the garrison and the duel runs to quiescence.
+%   * CUT click (default): choose() refuses unless the rule fires at the
+%     decision time — greying (menuStatus) and enforcement are the same
+%     relation by construction.  PLAN click ({plan: true}): the possessed
+%     rule waits in the context and fires when its cost exists — a queued
+%     order (see expect_plan_waits).
+%
+% `bot` is the optional self-playing policy — the CONTRAST to the menu:
+% woplus is internal choice (the game's own chance), so the bot's draw is
+% the engine's to make.  It draws ORDERS (possessed rules), which then fire
+% when affordable.  Include a `bot` token to demo an autonomous run.
+bot:
+  $bot
+  -o { woplus (1/3) (!_5 space -o { farm }@20)
+       (woplus (1/2) (barracks * food * !_2 plank -o { barracks * red(rock) }@12)
+                     (I -o { !_2 blue(rock) * !_2 blue(paper) * !_2 blue(sci) })) }@5.
+
+% ======================= 6. DISPLAY GROUPING (presentation, NOT logic) ======
+% The shell groups its state view by these rows.  This is deliberately a
+% COMMENT directive: classifying atomic propositions in-logic would need
+% quantification over propositions (kind: (x: type) -> ...), which the
+% theory does not support — the sort checker now REJECTS it.  When the
+% classifier-sort extension lands (ltype <: type, todo 0265 / 6b), this
+% moves back into the logic as declarations.
+%#display resource: wood stone food plank tool charcoal bread space
+%#display building: lumberjack quarry sawmill smith farm bakery kiln barracks
+%#display army: red blue
+
+% ======================= 7. COMBAT ==========================================
+% Your red(U) soldiers duel the sector garrison to quiescence (combat.till).
+% Each casualty emits fell*(Type); territory is the residue of attrition.
+reclaim: fellb(V) -o { space }.   % garrison unit down -> +1 space reclaimed
+losses:  fellr(U) -o { I }.       % your casualty: gone (affine discard)
+
+% ======================= 8. GATES ===========================================
+% Phase 6 acceptance (calc TODO_0265): the 10/10/10 scenario on the REAL PP2
+% calculus.  Hand-computed schedule (= time.mjs oracle): sawmill jobs at 0,
+% 1/2, 1;  smith jobs at 0, 3/10, 3/5, 9/10 (FIFO takes plank@0).
+#expect_gate_10_10_10 (settle: 1, exact: true)
+  sawmill * smith * !_10 wood * !_10 plank * !_10 stone
   =>
-  camp .
+  !_7 wood@0 * !_6 plank@0 * plank@(1/2) * plank@1 * plank@(3/2)
+  * !_6 stone@0 * tool@(3/10) * tool@(3/5) * tool@(9/10) * tool@(6/5)
+  * sawmill@(3/2) * smith@(6/5) .
+
+#expect_not_five_tools (settle: 1)
+  sawmill * smith * !_10 wood * !_10 plank * !_10 stone
+  =>
+  !_5 tool .
+
+#expect_drained (settle: 100)
+  sawmill * smith * !_10 wood * !_10 plank * !_10 stone
+  =>
+  !_10 tool * !_10 plank * sawmill * smith .
+
+% --- kiln: batch multiplication, chamber cap, cohort separation -------------
+#expect_kiln_batch (settle: 20, exact: true)
+  kiln * !_3 wood
+  =>
+  !_4 charcoal@10 * kiln@10 .           % floor(4.5) = 4
+
+#expect_kiln_cap (settle: 20, exact: true)
+  kiln * !_10 wood
+  =>
+  !_12 charcoal@10 * kiln@10 .          % min(15, 12) — surplus burned
+
+#expect_kiln_cohorts (settle: 30, exact: true)
+  kiln * !_3 wood * !_5 wood@1
+  =>
+  !_4 charcoal@10 * !_7 charcoal@20 * kiln@20 .   % batches fire per cohort
+
+% --- spoilage: consumers beat the window; leftovers rot as one cohort -------
+#expect_bakery_beats_spoil (settle: 30, exact: true)
+  bakery * !_3 food
+  =>
+  bread@8 * bakery@8 .                  % 2 food baked at 0; 1 rots at 20
+
+#expect_not_food_survives (settle: 30)
+  bakery * !_3 food
+  =>
+  food .
+
+% --- possessed build orders -------------------------------------------------
+% a projected build order fires at once when affordable; the farm then cycles
+#expect_build (settle: 21, exact: true)
+  (!_5 space -o { farm }@20) * !_8 space
+  =>
+  !_3 space@0 * farm@26 * food@26 .
+
+% training: single-server recipe as a possessed rule
+#expect_recruit (settle: 12, exact: true)
+  (barracks * food * !_2 plank -o { barracks * red(rock) }@12)
+  * barracks * food * !_2 plank
+  =>
+  red(rock)@12 * barracks@12 .
+
+% a PLAN order waits: space reclaimed at 4 (three peasants fall) merges with
+% the stock, completes the 5 needed, and the farm goes up
+#expect_plan_waits (settle: 23, exact: true)
+  (!_5 space -o { farm }@20) * !_2 space * red(hero) * !_3 blue(peasant)@4
+  =>
+  red(hero)@4 * farm@24 .
+
+% --- menus: standing offers are inert; barracks unlocks the army menu -------
+#expect_standing_inert (settle: 10, exact: true)
+  !( (!_5 space -o { farm }@20)
+   & (!_4 space -o { kiln }@25)
+   & (I -o { !_2 blue(rock) * !_2 blue(paper) * !_2 blue(sci) }) )
+  * wood
+  =>
+  !( (!_5 space -o { farm }@20)
+   & (!_4 space -o { kiln }@25)
+   & (I -o { !_2 blue(rock) * !_2 blue(paper) * !_2 blue(sci) }) )
+  * wood@0 .
+
+#expect_army_menu_unlocked (settle: 15, exact: true)
+  (!_3 space -o { barracks
+     * !( (barracks * food * !_2 plank -o { barracks * red(rock) }@12)
+        & (barracks * food * !_2 plank -o { barracks * red(paper) }@12)
+        & (barracks * food * !_2 plank -o { barracks * red(sci) }@12) ) }@15)
+  * !_3 space
+  =>
+  !( (barracks * food * !_2 plank -o { barracks * red(rock) }@12)
+   & (barracks * food * !_2 plank -o { barracks * red(paper) }@12)
+   & (barracks * food * !_2 plank -o { barracks * red(sci) }@12) )
+  * barracks@15 .
+
+% --- combat (deterministic edges; the weighted distribution is pinned
+%     against the absorbing-chain DP in calc's engine suite) ----------------
+#expect_hero_conquers (settle: 0, exact: true)
+  red(hero) * !_2 blue(peasant)
+  =>
+  red(hero)@0 * !_2 space@0 .           % 2 duels, 2 reclaims, zero time
+
+#expect_not_peasant_survives (settle: 0)
+  red(hero) * !_2 blue(peasant)
+  =>
+  blue(peasant) .
+
+#expect_peasant_falls (settle: 0, exact: true)
+  red(peasant) * blue(hero)
+  =>
+  blue(hero)@0 .                        % the 1-Q branch, deterministically
+
+% the attack order is a costless possessed rule: garrison seeded, swept
+#expect_assault (settle: 0, exact: true)
+  (I -o { !_2 blue(rock) * !_2 blue(paper) * !_2 blue(sci) }) * !_6 red(hero)
+  =>
+  !_6 red(hero)@0 * !_6 space@0 .
+
+% --- a played session: the residue of two projections, one settle ----------
+% t=0 CUT build farm; t=25 CUT train rock (the order carries its stamp).
+% farm up at 20, cycles at 20, 26, 32, 38; soldier ready at 37.  All food
+% cohorts still fresh at 40 (spoil at stamp+20).
+#expect_session (settle: 40, exact: true)
+  (!_5 space -o { farm }@20) * !_8 space * barracks
+  * (barracks * food * !_2 plank -o { barracks * red(rock) }@12)@25
+  * food@25 * !_2 plank@25
+  =>
+  !_3 space@0 * red(rock)@37 * barracks@37
+  * farm@44 * food@26 * food@32 * food@38 * food@44 .
+
+% --- the live shell's start state (from calc:  npm run shell:till --
+%     calculus/till/game/PP2.till --init expect_shell_start) -----------------
+#expect_shell_start (settle: 0)
+  !( (!_5 space -o { farm }@20)
+   & (!_3 space -o { barracks
+        * !( (barracks * food * !_2 plank -o { barracks * red(rock) }@12)
+           & (barracks * food * !_2 plank -o { barracks * red(paper) }@12)
+           & (barracks * food * !_2 plank -o { barracks * red(sci) }@12) ) }@15)
+   & (!_4 space -o { kiln }@25)
+   & (!_4 space -o { mine }@18)
+   & (!_5 space -o { smelter }@22)
+   & (I -o { !_2 blue(rock) * !_2 blue(paper) * !_2 blue(sci) }) )
+  * lumberjack * quarry * sawmill * smith * mine
+  * !_6 space * !_6 wood * !_4 stone * !_4 plank * !_3 food * !_2 iron_ore * red(hero)
+  =>
+  !_4 space .

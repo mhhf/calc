@@ -1,0 +1,62 @@
+% ============================================================================
+%  combat.till — combat as NETWORK-FREE STOCHASTIC SIMULATION (Kappa / NFsim).
+%
+%  The whole model is ONE rule.  A duel picks one present unit from each side
+%  (the store's nondeterminism = matchmaking), reads their pairwise win
+%  probability from the kernel, and one unit dies.  settle to quiescence =
+%  one battle, O(#deaths), touching only the units actually present — the
+%  type space is unbounded.  No matrix is materialised: `!winprob` IS the
+%  matrix, as a lazy predicate (replace the table with a computed clause for
+%  feature-defined types).
+%
+%  `woplus Q A B` — weighted internal choice; Q is BOUND BY MATCHING
+%  (fire-time weights, calc TODO_0265 Phase 6).  settle samples the branch
+%  through the stateless D17 PRF (seeded, replay-identical);  settleExplore
+%  expands both branches with exact rational edge weights — the tree IS the
+%  outcome distribution.  The absorbing-chain DP this samples lives in
+%  combat.mjs (and, as a differential test, in calc's till-woplus suite).
+% ============================================================================
+
+% ---- unit types ------------------------------------------------------------
+utype: type.
+rock: utype.
+paper: utype.
+sci: utype.
+hero: utype.       % deterministic units: hero beats everything (Q = 1) —
+peasant: utype.    % gates and tutorials stay seed-independent
+
+% ---- sides and casualties --------------------------------------------------
+red: (u: utype) -> type.      % your army: sparse count-graded atoms
+blue: (u: utype) -> type.     % the sector garrison
+fellr: (u: utype) -> type.    % your casualty (game reacts: losses)
+fellb: (u: utype) -> type.    % garrison casualty (game reacts: territory)
+
+% ---- the kernel: m(U,V) = P(U beats V) -------------------------------------
+% The win probability is a weight (a rational in [0,1]); woplus consumes it as
+% its branch weight, so it lives at sort `q` (bin literals 0/1 coerce up).
+winprob: (a: utype) -> (b: utype) -> (p: q) -> type.
+% RPS circulant (rock > sci > paper > rock), mirrors at 1/2:
+winprob/rr: winprob rock  rock  (1/2).
+winprob/pp: winprob paper paper (1/2).
+winprob/ss: winprob sci   sci   (1/2).
+winprob/rs: winprob rock  sci   (3/4).
+winprob/sr: winprob sci   rock  (1/4).
+winprob/sp: winprob sci   paper (3/4).
+winprob/ps: winprob paper sci   (1/4).
+winprob/pr: winprob paper rock  (3/4).
+winprob/rp: winprob rock  paper (1/4).
+% deterministic edges:
+winprob/hr: winprob hero rock    1.
+winprob/hp: winprob hero paper   1.
+winprob/hs: winprob hero sci     1.
+winprob/hq: winprob hero peasant 1.
+winprob/qh: winprob peasant hero 0.
+
+% ---- the ONE rule ----------------------------------------------------------
+% Consume one unit per side; the winner returns to the pool, the fallen unit
+% is emitted as fell*(Type).  Self-terminating: when a side is empty no duel
+% matches => quiescence.
+duel:
+  red(U) * blue(V) * !winprob U V Q
+  -o { woplus Q (red(U)  * fellb(V))     % Q   : U wins, V falls
+                (blue(V) * fellr(U)) }.  % 1-Q : V wins, U falls
