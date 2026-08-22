@@ -13,8 +13,10 @@
 %    * there is NO clock in the state.  settle(state, T) runs the schedule to
 %      horizon T;  the horizon is an observation cursor, not a resource
 %      (settle(settle(S,T1),T2) = settle(S,T2) — composability, E5).
-%    * count grades:  !_k A  = k-token parcel (split off a cohort);  !_W A
-%      binds the WHOLE oldest cohort, W = its size at firing time.  Counts
+%    * count grades:  !_k A  = k-token parcel (spread across cohorts,
+%      oldest-first);  !_W A  binds ALL copies, W = the total at firing time
+%      (D4 revised: binding discipline decides cohort discipline — the
+%      stamped forms !_k A@T / !_W A@T stay cohort-locked).  Counts
 %      are naturals (bin);  stamps/delays are exact rationals.  Arithmetic is
 %      the bin family (!mul, !div, !min, …) — backward clauses with FFI fast
 %      paths (FFI is optimization, theory is semantics).
@@ -93,11 +95,11 @@ mine:    $mine -o { iron_ore }@(3/10).
 smelter: $smelter * iron_ore * charcoal -o { iron }@5.
 
 % ======================= 2. THE KILN (batch multiplication) =================
-% A batch furnace, not a single-unit server: one firing chars the WHOLE wood
-% cohort — duration per batch, yield multiplicative (each log splits into
+% A batch furnace, not a single-unit server: one firing chars ALL wood on
+% hand — duration per batch, yield multiplicative (each log splits into
 % pieces): W logs -> floor(3W/2) charcoal, capped by the chamber (12); an
-% overloaded kiln burns the surplus to ash.  W binds the oldest cohort's
-% size at firing time (D4 whole-parcel bind).
+% overloaded kiln burns the surplus to ash.  W binds the total wood count
+% at firing time (D4 revised whole-bind, spread across cohorts).
 kiln:
   $kiln
   * !_W wood
@@ -214,7 +216,9 @@ losses:  fellr(U) -o { I }.       % your casualty: gone (affine discard)
 #expect_kiln_cohorts (settle: 30, exact: true)
   kiln * !_3 wood * !_5 wood@1
   =>
-  !_4 charcoal@10 * !_7 charcoal@20 * kiln@20 .   % batches fire per cohort
+  !_12 charcoal@11 * kiln@11 .   % D4 revised: unstamped !_W spreads across
+                                 % cohorts (W = 8 total, activation = newest
+                                 % taken stamp 1); 3W/2 = 12 = chamber cap
 
 % --- spoilage: consumers beat the window; leftovers rot as one cohort -------
 #expect_bakery_beats_spoil (settle: 30, exact: true)

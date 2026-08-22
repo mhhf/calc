@@ -142,6 +142,7 @@ const _stampParts = (h) => (Store.tag(h) === 'at' ? _parts(Store.child(h, 1)) : 
 
 const tillFactSetPolicy = {
   stampTag: 'at',   // generic fact-set reads this to unwrap stamped atoms
+  runLength: true,  // multiplicity as counts, not repeated entries (TODO_0277)
   groupKey: (h) => (Store.tag(h) === 'at' ? Store.tagId(Store.child(h, 0)) : Store.tagId(h)),
   cmp: (a, b) => {
     const c = ratCmp(_stampParts(a), _stampParts(b));
