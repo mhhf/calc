@@ -120,6 +120,33 @@ describe('coalesce — menu alternatives are durable observers (soundness audit)
   });
 });
 
+describe('coalesce — persistent-consequent menus are durable observers (audit)', () => {
+  it('the exclusion derivation sees a menu inside alt.persistent', () => {
+    // The audit found contribOf walked alt.linear only — a persistent
+    // produced menu (`!( ... & ... )`) evaded the durable exclusion.
+    const calc = load(FIX('till-menu-producer.ill'));
+    const obs = stampObservers(calc.forwardRules, tcfg());
+    assert.equal(obs.all, false);
+    assert.ok(obs.preds.has('wood'), 'wood (before-window menu cost) must be excluded');
+    assert.ok(!obs.preds.has('iron'), 'iron observed by nothing');
+    assert.ok(obs.hasBefore && obs.hasWindow, 'formula-level window flags must surface');
+  });
+
+  it('wood stamps survive a coalesce while the menu producer is still pending', () => {
+    // trigger@4: at settle(3) the menu does NOT exist yet — only the
+    // durable consequent walk can keep wood's stamps.
+    const calc = load(FIX('till-menu-producer.ill'));
+    const S = init(calc, 'expect_menu_producer');
+    const r = calc.settle(S, '3', { coalesce: true });
+    const keys = Object.keys(stamped(r.state));
+    assert.equal(r.events.length, 0, 'producer must still be pending');
+    assert.ok(keys.includes('wood@2') && keys.includes('wood@3'),
+      `wood cohorts must survive pre-production coalescing: ${keys.join(', ')}`);
+    assert.ok(keys.includes('iron@0') && !keys.includes('iron@1'),
+      `iron must still coalesce: ${keys.join(', ')}`);
+  });
+});
+
 describe('rebase — translation of the time origin (0277 B3)', () => {
   it('chained rebased settles reach the same stamp-blind state as direct', () => {
     const calc = load(SPEC('economy.ill'));
