@@ -52,6 +52,45 @@ has degree 2 and is refused, `after 3` has degree 0 and is refused,
   call-dead — durable, time is monotone — and the post-deadline regime
   re-certifies); opaque deadlines refuse certification.
 
+## Orbit certificates (TODO_0278 A1)
+
+A settle that certifies an orbit and exits inside it MINTS the proof:
+`result.certificate = { v, fingerprint, sigKey, period, sinkDelta,
+cycleEvents }` (JSON-safe, ~0.5 kB). A later `settle(state, T,
+{ certificate })` revalidates it at the current frontier — same probe as
+an in-run checkpoint (sink/cap/aliveness classification, deadline caps,
+exact signature equality) — and applies the elapsed cycles as ONE jump.
+`certificate:` implies `accelerate:`; a resumed settle re-mints at its own
+exit, so chained saves keep working.
+
+- **Fingerprint pin**: `sigKey`/`sinkDelta` use raw Store hashes, only
+  meaningful against the bit-identical loaded arena. The certificate
+  carries engine version + arena-prefix mark + content digest
+  (`Store.prefixDigest`); a resume whose arena does not extend that exact
+  prefix refuses. Program update ⇒ proof invalid — required semantics,
+  not just hygiene.
+- **Phase independence (the lemma behind exit-phase minting)**: the
+  in-run proof certifies recurrence at checkpoint phase t₀:
+  `state(t₀+p) = shift_p(state(t₀))` with no draw-sensitive tie in the
+  window. Firing is deterministic outside such ties, and tie
+  draw-SENSITIVITY is translation- and sink-invariant, so determinism
+  propagates: `state(t+p) = shift_p(state(t))` for every t ≥ t₀. The exit
+  phase therefore inherits the proven period, per-period sink growth, and
+  per-period event count. Mint refuses if a draw fired after the proving
+  sighting or a ground deadline was crossable within the horizon (regime
+  change — the period would be stale).
+- **Failure = fallback**: any mismatch (fingerprint, signature,
+  classification, deadline) silently falls back to in-run re-detection;
+  a stale certificate can never mis-fire.
+- **`certificateMode: 'verify'`**: belt-and-braces — instead of trusting
+  the saved periodicity, the certificate is planted as a prior sighting
+  and the natural checkpoints re-prove one period live (interval minima
+  included) before jumping. O(one cycle) honest re-proof.
+
+Pins: `tests/engine/till-accel-resume.test.js` (mint conditions, E5
+save/resume exactness with full event accounting, tamper/fingerprint
+fallback, deadline caps, rebased frames, verify mode).
+
 ## Contracts
 
 - Coalescing/rebase change cohort identity and state hashes → future PRF
