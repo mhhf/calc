@@ -1,0 +1,18 @@
+#import(../../calculus/till/prelude/rat.ill)
+
+% Warehouse-cap shape pin (PP2 §3b lesson): a counted-take trim
+% (!_201 g -o !_200 g) pins its activation oldest-first and caps the pool
+% under ANY chooser; the whole-bind shape (!_W g * !lt 200 W) chases
+% in-flight arrivals and starves under the deterministic chooser.
+
+miner: type.
+storable: sort.
+ore: storable.
+
+mine: $miner -o { ore }@(3/10).
+overflow: (g: storable) !_201 g -o { !_200 g }.
+
+#expect_x (settle: 0)
+  miner * !_210 ore
+  =>
+  miner .

@@ -49,15 +49,20 @@
 % Every resource and building is DECLARED, CLF/Celf-style: `wood: type.`
 % introduces the atomic proposition wood — possessing it is the linear fact.
 % (An arity-n token is a type family: red: (u: utype) -> type, combat.till.)
-wood: type.
-stone: type.
+% Storable goods form a CLASSIFIER (refinement sort, TODO_0011 rung 1):
+% members stay ordinary atomic propositions; the warehouse schema (3b)
+% expands once per member.  food is deliberately NOT storable — the spoil
+% window already bounds it;  space is build capacity, not a warehouse good.
+storable: sort.
+wood: storable.
+stone: storable.
+plank: storable.
+tool: storable.
+charcoal: storable.
+bread: storable.
+iron_ore: storable.
+iron: storable.
 food: type.
-plank: type.
-tool: type.
-charcoal: type.
-bread: type.
-iron_ore: type.
-iron: type.
 space: type.
 
 lumberjack: type.
@@ -112,6 +117,24 @@ kiln:
 % Food keeps 20 time units; the whole cohort rots in one event.  Consumers
 % win races by activation order (eat at a < Q+20 beats spoil), not by luck.
 spoil: !_W food@Q * after (Q + 20) -o { I }.
+
+% ======================= 3b. WAREHOUSE (stock caps) =========================
+% Every storable good is capped at 200.  The overflow rule burns one net
+% unit per fire down to the cap — the kiln's ash precedent, warehouse-wide.
+% One schema, one rule per member at load.  The 201-take IS the guard (a
+% counted take needs 201 on hand — no arithmetic premise), so gate-sized
+% stocks never see it;  the kept 200 re-emit as ONE cohort — storable
+% stamps are unobserved (only food spoils), coalesce merges them anyway.
+%
+% Deliberately NOT `!_W g * !lt 200 W`: a whole-bind includes the in-flight
+% cohort a producer just scheduled, so its activation chases every arrival
+% and a deterministic chooser can starve the trim FOREVER (the PRF chooser
+% merely hides it).  The counted take spreads oldest-first — its activation
+% pins to the 201st-oldest cohort and later arrivals leave it alone:
+% starvation-free under ANY chooser.  Bounded stocks are what let
+% acceleration certify a full warehouse as a zero-net-growth orbit
+% (TODO_0278 item 4, content side).
+overflow: (g: storable) !_201 g -o { !_200 g }.
 
 % ======================= 4. SPACE (scarce, graded) ==========================
 % Free space is one count-graded atom !_n space; scarcity is a theorem (no
@@ -230,6 +253,17 @@ losses:  fellr(U) -o { I }.       % your casualty: gone (affine discard)
   bakery * !_3 food
   =>
   food .
+
+% --- warehouse: overflow burns the surplus down to the cap ------------------
+#expect_overflow (settle: 1, exact: true)
+  !_250 wood
+  =>
+  !_200 wood@0 .
+
+#expect_at_cap_inert (settle: 1, exact: true)
+  !_200 wood
+  =>
+  !_200 wood@0 .
 
 % --- possessed build orders -------------------------------------------------
 % a projected build order fires at once when affordable; the farm then cycles
