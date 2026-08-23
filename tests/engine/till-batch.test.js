@@ -171,6 +171,28 @@ eat: !_2 b -o { I }@1.
     assert.equal(stampedStr(on.state), stampedStr(off.state));
   });
 
+  it('acceleration composes with batching (jump, state, certificate parity)', () => {
+    // A preserved machine drives an eternal produce/spoil orbit: both
+    // modes must certify the SAME orbit, jump, and land state-identical.
+    const calc = prog(`
+% tokens (closed-world sort checking)
+mill: type.
+wood: type.
+
+tick: $mill -o { wood }@2.
+spoil: wood@Q * after (Q+5) -o { I }.
+`);
+    const mk = () => lin({ [atom('mill')]: 1 });
+    const on = calc.settle(mk(), '5000', { accelerate: true, seed: 7, events: false });
+    const off = calc.settle(mk(), '5000', { accelerate: true, seed: 7, events: false, batch: false });
+    assert.equal(stampedStr(on.state), stampedStr(off.state));
+    assert.ok(on.accelerated.length >= 1, 'batched run must jump');
+    assert.ok(off.accelerated.length >= 1, 'per-item run must jump');
+    assert.ok(on.certificate && off.certificate, 'both modes mint');
+    assert.equal(on.certificate.sigKey, off.certificate.sigKey);
+    assert.deepEqual(on.certificate.period, off.certificate.period);
+  });
+
   it('settleChunked composes with batching (E5 — an instant never splits)', () => {
     const calc = prog(`
 % tokens (closed-world sort checking)
@@ -272,11 +294,12 @@ grow: seed -o { wood }@0.
     const mk = () => lin({ [atom('trigger')]: 1, [atom('seed')]: 3 });
     for (const seed of [0, 7, 23]) {
       const { on } = differential(calc, mk, '10', { seed });
-      for (const e of on.events) {
-        if (e.rule === 'grow') {
-          assert.equal(e.multiplicity, undefined, "grow feeds the loli's instant");
-        }
-      }
+      // The FIRST grow always fires with the loli still possessed (the
+      // loli needs wood, which only grow makes) — it must stay per-item.
+      // Once the loli is CONSUMED the remaining grows may batch soundly:
+      // the guard is per-firing and recomputes as the state mutates.
+      const grow0 = on.events.find(e => e.rule === 'grow');
+      assert.equal(grow0.multiplicity, undefined, "grow feeds the loli's instant");
     }
   });
 
