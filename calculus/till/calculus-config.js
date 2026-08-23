@@ -178,6 +178,9 @@ const tillGrades = {
       return (x ^ (x >>> 16)) >>> 0;
     },
     key: (v) => v[0] + '/' + v[1],
+    scale: (v, n) => ratNorm(v[0] * BigInt(n), v[1]),
+    // b > 0, a >= 0 in usage (accel spans/periods) — BigInt truncation = floor
+    floorDiv: (a, b) => Number((a[0] * b[1]) / (a[1] * b[0])),
   },
 };
 
