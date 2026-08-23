@@ -36,7 +36,7 @@ npm run test:bun      # Same suite under bun (per-file isolation via tools/test-
 npm run test:ill      # ILL-native tests (98 tests, ~0.2s) — .ill files as provability judgments
 npm run test:noffi    # noFFI adversarial soundness (13 tests, ~1s) — only after engine/FFI changes
 npm run test:zk       # ZK witness tests (94 tests) — only after ZK changes
-npm run test:heavy    # Slow + drift tests (5-30 min) — only before release or major changes
+npm run test:heavy    # Slow + drift tests (~a DAY) — never run inline; Denis schedules it overnight
 npm run test:all      # Everything combined (includes test:ill)
 npm run debug:ill     # Debug runner — observation directives + verbose judgment output
 npm run bench:diff    # Cross-commit benchmark comparison (use this when asked to benchmark)
