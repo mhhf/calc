@@ -26,6 +26,13 @@
  *        fired  ⇒ output stamped exactly t + d, next = null or > h
  *        pending ⇒ state unchanged, next = t
  *
+ * Later sections (3-6): Theorem-1 exactness through the sequent bridge,
+ * pure backward monad towers / retiming against BigInt oracles, the
+ * cohort-firing differential (batch ≡ batch:false — state, next, and the
+ * RLE event expansion, per seed), and ample-set containment (every
+ * settle world, over many seeds, appears in settleExplore's leaves — the
+ * 119a755e bug class, fuzz-scale).
+ *
  * Usage: node tools/fuzz-till.js [--count N] [--seed N] [--verbose]
  * Reports mismatches; exits non-zero on any failure.
  */
@@ -365,6 +372,101 @@ for (let i = 0; i < BT; i++) {
 }
 console.log(`backward prover: ${btrials} trials, ${bfails} mismatches`);
 
-const total = fails + afails + mfails + bfails;
+// ─── section 5: cohort-firing differential (TODO_0278 B1, audit) ────
+// Random terminating programs with batching-prone shapes (counted
+// produces, counted takes, windowed sweeps): settle with batch (default)
+// must equal settle with { batch: false } — state-identical, same next,
+// and the RLE expansion of the batched events must reproduce the
+// sequential event list exactly (order included, per seed).
+const canonState = (s) => {
+  const lin = Object.entries(s.linear || {}).map(([h, c]) => `${h}x${c}`).sort();
+  const per = Object.keys(s.persistent || {}).sort();
+  return lin.join(',') + '|' + per.join(',');
+};
+const evKey = (e) => {
+  const m = (o) => Object.entries(o || {}).map(([h, c]) => `${h}x${c}`).sort().join(' ');
+  return `${e.rule}@${e.activation}[${m(e.consumed)}->${m(e.produced)}]`;
+};
+const expandEv = (events) =>
+  events.flatMap(e => Array(e.multiplicity || 1).fill(e)).map(evKey).join(';');
+const bdir = fs.mkdtempSync(path.join(os.tmpdir(), 'fuzz-till-batch-'));
+let ktrials = 0, kfails = 0;
+const KPROGS = Math.max(4, Math.floor(COUNT / 16));
+for (let p = 0; p < KPROGS; p++) {
+  const d1 = 1 + randInt(3), d2 = 1 + randInt(3), D = 1 + randInt(20);
+  const K = 2 + randInt(5), J = 1 + randInt(3);
+  const spoil = rand() < 0.5;
+  const text = [
+    `#import(${RAT_ILL})`,
+    'a: type.', 'w: type.', 'p: type.',
+    `gen: a -o { !_${K} w }@${d1}.`,
+    `mill: !_${J} w -o { p }@${d2}.`,
+    ...(spoil ? [`spoil: p@Q * after (Q+${D}) -o { I }.`] : []),
+  ].join('\n');
+  const file = path.join(bdir, `b-${p}.ill`);
+  fs.writeFileSync(file, text);
+  const calc = mde.load(file, { calculusConfig: tillConfig, cache: false });
+  const aAtom = Store.put('atom', ['a']);
+  const wAtom = Store.put('atom', ['w']);
+  for (let j = 0; j < 4; j++) {
+    ktrials++;
+    const S = { linear: { [aAtom]: 1 + randInt(4), [wAtom]: randInt(20) } };
+    const seed = randInt(1000);
+    const on = calc.settle({ linear: { ...S.linear }, persistent: {} }, '1000', { seed });
+    const off = calc.settle({ linear: { ...S.linear }, persistent: {} }, '1000', { seed, batch: false });
+    if (canonState(on.state) !== canonState(off.state)) {
+      kfails++; console.error(`MISMATCH batch state (K=${K} J=${J} spoil=${spoil} seed=${seed}):\n${text}`);
+      continue;
+    }
+    if ((on.next || null) !== (off.next || null)) {
+      kfails++; console.error(`MISMATCH batch next (seed=${seed}):\n${text}`);
+      continue;
+    }
+    if (expandEv(on.events) !== expandEv(off.events)) {
+      kfails++; console.error(`MISMATCH batch RLE expansion (seed=${seed}):\n${text}`);
+    }
+  }
+}
+fs.rmSync(bdir, { recursive: true, force: true });
+console.log(`batch differential: ${ktrials} trials, ${kfails} mismatches`);
+
+// ─── section 6: ample-set containment (settleExplore ⊇ settle worlds) ─
+// Random programs with a persistent-consequent producer beside a
+// !-guarded consumer (the 119a755e bug class): every settle outcome, over
+// many seeds, must appear in settleExplore's leaf set — explore commits
+// an order only when provably exhaustive (the ample-set condition).
+const edir = fs.mkdtempSync(path.join(os.tmpdir(), 'fuzz-till-ample-'));
+let etrials = 0, efails = 0;
+const EPROGS = Math.max(4, Math.floor(COUNT / 16));
+for (let p = 0; p < EPROGS; p++) {
+  const d1 = randInt(3), d2 = 1 + randInt(2), d3 = 1 + randInt(2);
+  const text = [
+    'a: type.', 'b: type.', 'c: type.', 'res: type.', 'k: bin -> type.',
+    `mk: a -o { !k 1 }@${d1}.`,
+    `grab: b -o { c }@${d2}.`,
+    `need: b * !k 1 -o { res }@${d3}.`,
+  ].join('\n');
+  const file = path.join(edir, `e-${p}.ill`);
+  fs.writeFileSync(file, text);
+  const calc = mde.load(file, { calculusConfig: tillConfig, cache: false });
+  const aAtom = Store.put('atom', ['a']);
+  const bAtom = Store.put('atom', ['b']);
+  const S = () => ({ linear: { [aAtom]: 1, [bAtom]: 1 + randInt(2) }, persistent: {} });
+  const s0 = S();
+  const leaves = new Set(
+    calc.settleExplore({ linear: { ...s0.linear }, persistent: {} }, '50')
+      .leaves.map(l => canonState(l.state)));
+  for (let seed = 0; seed < 20; seed++) {
+    etrials++;
+    const r = calc.settle({ linear: { ...s0.linear }, persistent: {} }, '50', { seed });
+    if (!leaves.has(canonState(r.state))) {
+      efails++; console.error(`MISMATCH ample set: seed ${seed} world missing from explore:\n${text}`);
+    }
+  }
+}
+fs.rmSync(edir, { recursive: true, force: true });
+console.log(`ample-set containment: ${etrials} trials, ${efails} mismatches`);
+
+const total = fails + afails + mfails + bfails + kfails + efails;
 if (total > 0) { console.error(`FAIL: ${total} total mismatches (seed ${SEED})`); process.exit(1); }
 console.log(`PASS (seed ${SEED})`);
