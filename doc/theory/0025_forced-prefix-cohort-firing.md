@@ -73,6 +73,17 @@ rule also wants — the d-world vanished). Fixed by checking persistent
 consequents first; pinned by till-settle's persistent-arcs containment
 arm. A theorem's premises are a checklist for the implementation.
 
+Condition (i)'s loli clause had the same fate (audit 2026-08-23): the
+implementation keyed "feeds a rule antecedent" off the STATIC rule list,
+but possessed lolis are candidate sources too — a zero-delay output only
+a state loli consumes slipped the guard, so a batch ran past the loli
+competitor and the grow/loli tie draw vanished from the PRF stream
+(trace order diverged from the sequential prefix; a `!_W`-binding loli
+would diverge in state, though v1 fences those). Fixed by extending the
+antecedent tables with state-loli antecedents at each check site
+(settle's tie/batch guards and settleExplore's ample set); pinned by
+till-batch's loli fence arm. Twice now: the premises are the checklist.
+
 ## The multiplicity witness
 
 k = min over consumed rows of floor((count − reserved)/C) is not merely

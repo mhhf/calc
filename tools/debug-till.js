@@ -66,7 +66,7 @@ function runScenario(calc, hash, settings) {
 function runTraceD(calc, hash, settings) {
   const { res } = runScenario(calc, hash, settings);
   for (const line of traceLines(res.events)) console.log('  ' + line);
-  console.log(`  total: ${res.steps} firings`);
+  console.log(`  total: ${res.steps} firing steps`);   // batched steps are RLE (B1)
 }
 
 function runTimeline(calc, hash, settings) {
