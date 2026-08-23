@@ -1,0 +1,19 @@
+% tokens (closed-world sort checking)
+a: type.
+b: type.
+c: type.
+d: type.
+k: bin -> type.
+
+% Ample-set completeness for TIMELESS outputs (THY_0025 condition (ii)):
+% mk_k has delay 5, but its PERSISTENT output !k 1 is produced at fire
+% time (the persistent zone carries no stamps) — it enables `need` at the
+% SAME instant. {mk_k, grab} share no cohort, yet the firing order decides
+% whether `need` ever exists: mk_k-first forks {grab, need} on cohort b
+% (c-world vs d-world); grab-first reaches only the c-world. An explore
+% that returns false from the delay check before looking at persistent
+% consequents commits one order and misses the d-world.
+
+mk_k: a -o { !k 1 }@5.
+grab: b -o { c }@1.
+need: b * !k 1 -o { d }@1.
