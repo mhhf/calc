@@ -26,7 +26,7 @@ The three opt-ins are state morphisms with stated laws:
 | Float stamp order | till `factSetPolicy.cmp` / `grades.availability.cmp` | Cached correctly-rounded doubles; monotone rounding makes float order sound, ties and ≥2^53 operands fall back to exact rational compare. |
 | Coalescing | `lib/engine/timed/coalesce.js`, `{ coalesce: true }` | Arrived facts whose stamp no rule can observe re-stamp to the unit and merge. Exclusion set DERIVED per rule: stamp-binding patterns (`A@Q`, `!_k A@T`), every pattern of a `before`-window rule, possessed lolis; wildcards bail. Mid-run bound: last fired activation (strict); at return: the horizon. |
 | Incremental state | `{ raw: true }` | Returns the live FactSet State; `normalizeTimedState` passes an already-policy-indexed State through. Chained ticks skip the rebuild. Ownership transfers. |
-| Dirty scheduler (default) | `timed.js _makeDirtySched` | Per-rule activations in a lazy-invalidation min-heap; per-step cost O(#dirty·match + log #rules). Trace-identical to `scheduler: 'rescan'` (P3/D13 suite). Survives across raw-mode calls via FactSet mutation counters. |
+| Dirty scheduler (default) | `timed/dirty-sched.js` (matcher injected) | Per-rule activations in a lazy-invalidation min-heap; per-step cost O(#dirty·match + log #rules). Trace-identical to `scheduler: 'rescan'` (P3/D13 suite). Survives across raw-mode calls via FactSet mutation counters. |
 | Acceleration | `lib/engine/timed/accel.js`, `{ accelerate: true }` | Exact-signature periodic-orbit detection at adaptive checkpoints → jump n periods in O(state). Abstractions: sinks (reachability-dead consumers), capped stocks (bounded takes, interval-minima validated), frozen fixtures (excluded only by call-dead rules). Nondet guard: genuine conflicts / woplus draws invalidate the window. Events inside jumps are elided — `result.accelerated` reports them. |
 | Rebase | `{ rebase: true }` (requires coalesce) | Integral shift of the time origin at exit (`result.rebase`); caller accumulates the base and passes rebased horizons. Keeps the reachable stamp vocabulary finite → the content-addressed Store stops growing. |
 
@@ -205,6 +205,40 @@ tick unchanged (probe cost is one binary search per firing). Pins:
 differentials incl. PP2 kiln with draws, serialized machines, read
 arcs, spread takes, all fences, E5 chunking, I32 produce fence).
 
+## City scale (TODO_0278 audit, 2026-08-23)
+
+The CS benchmark runs the REAL PP2 content as a city: N of every
+production building (same-stamp parcels — B1 batches a park k-parallel)
+plus 10N food/wood and the kiln, under
+`{ coalesce, accelerate, events: false }`:
+
+| N/bldg | cold→300s | warm tick | save (state+cert) | +3-week resume |
+|---|---|---|---|---|
+| 1 | 185 ms | 0.28 ms | < 1 KB | 696 ms, 1 jump |
+| 10 | 364 ms | 0.48 ms | < 1 KB | 1.9 s, 1 jump |
+| 100 | 2.6 s | 2.2 ms | < 1 KB | 14.3 s, 1 jump |
+| 1000 | 22.9 s | 20 ms | < 1 KB | I32 fence (loud) |
+| 10000 | 232 s | 0.4 ms | < 1 KB | I32 fence (loud) |
+
+Readings:
+
+- **The population axis is closed.** A 10^4-machine city with 10^5 goods
+  is ~dozens of run-length rows — saves are sub-KB, warm ticks ≤ 20 ms.
+- **Certification warm-up scales with events-per-period (∝ N).** The
+  orbit proof needs two sightings ≈ two periods of LIVE firing; a
+  100×-city pays 100× that transient on every cold resume. And a
+  0.2 s tick never spans two sightings, so short-tick sessions never
+  MINT — only long catch-up settles do (the bridge's design). The
+  static dual (C2a closed-form flows — no observation phase) is what
+  removes this class, and these numbers put it on the demand list.
+- **Week-scale × city accumulation crosses the Int32 count fence**
+  (~10^9 of a sink good at N = 1000): applyJump refuses LOUDLY —
+  invariant zero holding under pressure, not a crash. The honest fixes,
+  in order: in-game stock caps (the real PP2 has warehouse caps — and a
+  capped stock is also what lets accel abstract the surplus), then a
+  wider count column (float64-exact to 2^53, memory ×2) if uncapped
+  accumulators are ever a real modeling need.
+
 ## Contracts
 
 - Coalescing/rebase change cohort identity and state hashes → future PRF
@@ -228,6 +262,7 @@ arcs, spread takes, all fences, E5 chunking, I32 produce fence).
 - OR rules: warm chained tick flat in #rules
 - OF cohorts: warm settle vs inert population
 - OT deep time: settle 0→T flat in T (acceleration)
+- CS city scale: N-of-every-building PP2 — tick/save/resume vs N (see §City scale)
 
 Consumers: the PP2 game bridge runs `{ coalesce: true, accelerate: true,
 events: false }` (+ periodic `rebase`) and threads orbit certificates
