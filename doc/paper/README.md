@@ -1,22 +1,26 @@
-# Papers
+# Paper
 
-Two papers from the till line of work. Markdown files are the content
-masters; each LaTeX directory is the typeset submission artifact
-(`article` class — acmart swap is mechanical once a venue is chosen).
+ONE unified paper (merge of the former proof-theory and systems drafts,
+2026-08-23 — the split drafts live in git history):
 
-| Paper | Master | LaTeX | Todo |
-|---|---|---|---|
-| The Delay-Graded Lax Monad (proof theory: sequent rules, cut elimination, adequacy) | `till-paper.md` | `till-monad/` | TODO_0270 |
-| till at Scale (systems: labelled states, orbit certificates, cohort firing, measured results) | `till-scale.md` | `till-scale/` | TODO_0278 §Paper |
+**"A Delay-Graded Lax Monad: Timed Multiset Rewriting with Proven-Exact
+Acceleration"** — `till/main.tex` (LaTeX is the master). Two movements:
+proof theory (THY_0018/0019/0022/0023: graded lax sequent calculus, cut
+elimination, work adequacy) and the engine it provably enables
+(THY_0024/0025: labelled states, cohort firing, orbit certificates,
+measured results). Refinement sorts (THY_0020) and the full probabilistic
+judgment (THY_0021) are deliberately out of scope. Tracked in TODO_0270.
 
-Build (pdflatex + bibtex; `mathpartir.sty` is vendored per directory):
+`till/NOTES.md` holds internal submission notes: reviewer-facing weak
+points, the merge disposition table, and the `% TODO-verify` bib entries
+that need field checks before submission.
+
+Build (`article` class — acmart swap is mechanical at venue choice;
+`mathpartir.sty` vendored; needs only pdflatex + bibtex):
 
 ```sh
-cd till-monad   # or till-scale
+cd till
 pdflatex -interaction=nonstopmode main.tex && bibtex main \
   && pdflatex -interaction=nonstopmode main.tex \
   && pdflatex -interaction=nonstopmode main.tex
 ```
-
-Bib entries carrying a `% TODO-verify` comment need their fields checked
-against the actual publications before submission.

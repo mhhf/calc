@@ -1,0 +1,546 @@
+% refs.bib — bibliography for
+%   "A Delay-Graded Lax Monad: Timed Multiset Rewriting with Proven-Exact Acceleration"
+%
+% Canonical keys follow the monad-paper convention (AuthorYear or AcronymYear).
+% Scale-paper keys were renamed as follows (old → new):
+%   WatkinsCervesatoPfenningWalker02  → Watkins2002CLF
+%   FairtloughMendler97               → FairtloughMendler1997
+%   PfenningDavies01                  → PfenningDavies2001
+%   GirardScedrovScott92              → GirardScedrovScott1992
+%   Atkey18                           → Atkey2018
+%   OrchardLiepeltEades19             → OrchardLiepeltEades2019
+%   VollmerMarshallEadesOrchard25     → VollmerMarshallEadesOrchard2025
+%   HanukaevEades25                   → HanukaevEades2025
+%   Katsumata14                       → Katsumata2014
+%   FujiiKatsumataMellies16           → FujiiKatsumataMillies2016
+%   Iemhoff24                         → Iemhoff2024
+%   KanovichKiriginNigamScedrovTalcott16 → KanovichFORMATS2016
+%   deSaToninhoPfenning23             → deSaToninhoPfenning2023
+%   GaboardiKatsumataOrchardBreuvartUustalu16 → GaboardiICFP2016
+%   Nakano00                          → Nakano2000
+%   BaccelliCohenOlsderQuadrat92      → Baccelli1992
+%   NegriVonPlato98                   → NegriVonPlato1998
+%   AlurDill94                        → AlurDill1994
+%   BanatreLeMet90                    → BanatreLeMetayer1990
+%   BengtssonYi04                     → BengtssonYi2004
+%   BestDevillers87                   → BestDevillers1987
+%   DanosEhrhard11                    → DanosEhrhard2011
+%   Gabbay96                          → Gabbay1996
+%   GreenKarvounarakisTannen07        → GreenKarvounarakisTannen2007
+%   Huet80                            → Huet1980
+%   JensenKristensenWells07           → JensenKristensenWells2007
+%   Martens15                         → Martens2015
+%   MurrayMcsherry13                  → MurrayMcSherry2013
+%   Negri05                           → Negri2005
+%   Newman42                          → Newman1942
+%   NigamOlartePimentel17             → NigamOlartePimentel2017
+%   OlartePimentelDePaiva19           → OlartePimentelDePaiva2019
+%   Paun00                            → Paun2000
+%   Peled93                           → Peled1993
+%
+% Entries marked "TODO-verify" need author/title/page confirmation before submission.
+
+%% ─── Lax logic / CLF ───────────────────────────────────────────────────────
+
+@techreport{Watkins2002CLF,
+  author      = {Kevin Watkins and Iliano Cervesato and Frank Pfenning
+                 and David Walker},
+  title       = {A Concurrent Logical Framework {I}: Judgments and Properties},
+  institution = {Carnegie Mellon University},
+  number      = {CMU-CS-02-101},
+  year        = {2002},
+  note        = {Revised May 2003},
+}
+
+@article{FairtloughMendler1997,
+  author  = {Matt Fairtlough and Michael Mendler},
+  title   = {Propositional Lax Logic},
+  journal = {Information and Computation},
+  volume  = {137},
+  number  = {1},
+  pages   = {1--33},
+  year    = {1997},
+}
+
+@article{PfenningDavies2001,
+  author  = {Frank Pfenning and Rowan Davies},
+  title   = {A Judgmental Reconstruction of Modal Logic},
+  journal = {Mathematical Structures in Computer Science},
+  volume  = {11},
+  number  = {4},
+  pages   = {511--540},
+  year    = {2001},
+}
+
+@misc{Iemhoff2024,
+  author       = {Rosalie Iemhoff},
+  title        = {Lax Logic},
+  howpublished = {arXiv:2209.08976},
+  year         = {2024},
+  note         = {Cut elimination and uniform interpolation for ungraded
+                  propositional lax logic. TODO-verify: whether this is
+                  the arXiv version or a book/journal version},
+}
+
+%% ─── Graded modalities and type theory ─────────────────────────────────────
+
+@article{GirardScedrovScott1992,
+  author  = {Jean-Yves Girard and Andre Scedrov and Philip J. Scott},
+  title   = {Bounded Linear Logic: A Modular Approach to Polynomial Time
+             Computability},
+  journal = {Theoretical Computer Science},
+  volume  = {97},
+  number  = {1},
+  pages   = {1--66},
+  year    = {1992},
+}
+
+@inproceedings{Atkey2018,
+  author    = {Robert Atkey},
+  title     = {Syntax and Semantics of Quantitative Type Theory},
+  booktitle = {Proceedings of the 33rd Annual {ACM/IEEE} Symposium on
+               Logic in Computer Science ({LICS} 2018)},
+  pages     = {56--65},
+  year      = {2018},
+}
+
+@article{OrchardLiepeltEades2019,
+  author  = {Dominic Orchard and Vilem-Benjamin Liepelt and Harley Eades~III},
+  title   = {Quantitative Program Reasoning with Graded Modal Types},
+  journal = {Proceedings of the {ACM} on Programming Languages ({ICFP})},
+  volume  = {3},
+  number  = {{ICFP}},
+  pages   = {110:1--110:30},
+  year    = {2019},
+  note    = {TODO-verify: exact article number and pages},
+}
+
+% TODO-verify: page numbers for MoonEadesOrchard2021
+@inproceedings{MoonEadesOrchard2021,
+  author    = {Beniamino Moon and Harley Eades~III and Dominic Orchard},
+  title     = {Graded Modal Dependent Type Theory},
+  booktitle = {Programming Languages and Systems -- {ESOP} 2021},
+  series    = {Lecture Notes in Computer Science},
+  volume    = {12648},
+  pages     = {462--490},
+  year      = {2021},
+}
+
+% TODO-verify: exact title and authors; scale paper has different title and author order
+@inproceedings{VollmerMarshallEadesOrchard2025,
+  author    = {Dominic Vollmer and Jack Marshall and Harley Eades~III
+               and Dominic Orchard},
+  title     = {A Mixed Linear and Graded Logic},
+  booktitle = {Proceedings of Computer Science Logic ({CSL} 2025)},
+  year      = {2025},
+}
+
+% TODO-verify: exact title and author name (Arnon vs Avi Hanukaev) for HanukaevEades2025;
+%   scale paper gives different title ("Combining Dependency, Grades and Adjoint Logic")
+@inproceedings{HanukaevEades2025,
+  author    = {Arnon Hanukaev and Harley Eades~III},
+  title     = {Graded Sequent Calculus},
+  booktitle = {Proceedings of Computer Science Logic ({CSL} 2025)},
+  year      = {2025},
+}
+
+% TODO-verify: full title, authors, and venue for GRASS2026
+@misc{GRASS2026,
+  author       = {{GRASS authors}},
+  title        = {{GRASS}: Graded Sequent Systems},
+  howpublished = {Preprint / {CSL/LICS} 2026},
+  year         = {2026},
+}
+
+%% ─── Graded monads (semantics) ──────────────────────────────────────────────
+
+@inproceedings{Katsumata2014,
+  author    = {Shin-ya Katsumata},
+  title     = {Parametric Effect Monads and Semantics of Effect Systems},
+  booktitle = {Proceedings of the 41st {ACM SIGPLAN-SIGACT} Symposium on
+               Principles of Programming Languages ({POPL} 2014)},
+  pages     = {633--645},
+  year      = {2014},
+}
+
+@inproceedings{FujiiKatsumataMillies2016,
+  author    = {Soichiro Fujii and Shin-ya Katsumata and Paul-Andr{\'e} Melli{\`e}s},
+  title     = {Towards a Formal Theory of Graded Monads},
+  booktitle = {Foundations of Software Science and Computation Structures
+               ({FoSSaCS} 2016)},
+  series    = {Lecture Notes in Computer Science},
+  volume    = {9634},
+  pages     = {513--530},
+  year      = {2016},
+  note      = {TODO-verify: FoSSaCS 2016 volume and page range},
+}
+
+%% ─── Effects and coeffects ──────────────────────────────────────────────────
+
+@inproceedings{GaboardiICFP2016,
+  author    = {Marco Gaboardi and Shin-ya Katsumata and Dominic Orchard
+               and Flavien Breuvart and Tarmo Uustalu},
+  title     = {Combining Effects and Coeffects via Grading},
+  booktitle = {Proceedings of the 21st {ACM SIGPLAN} International Conference
+               on Functional Programming ({ICFP} 2016)},
+  pages     = {476--489},
+  year      = {2016},
+}
+
+%% ─── Timed MSR / time in linear logic ──────────────────────────────────────
+
+% TODO-verify: exact author list and page numbers for KanovichFORMATS2016
+@inproceedings{KanovichFORMATS2016,
+  author    = {Max Kanovich and Tajana Ban Kirigin and Vivek Nigam
+               and Andre Scedrov and Carolyn Talcott},
+  title     = {Timed Multiset Rewriting and the Verification of
+               Time-Sensitive Distributed Systems},
+  booktitle = {Formal Modeling and Analysis of Timed Systems
+               ({FORMATS} 2016)},
+  series    = {Lecture Notes in Computer Science},
+  volume    = {9884},
+  pages     = {228--244},
+  year      = {2016},
+}
+
+% TODO-verify: exact title, venue, and page numbers for KanovichResilient2024
+@inproceedings{KanovichResilient2024,
+  author    = {Max Kanovich and Tajana Ban Kirigin and Vivek Nigam
+               and Andre Scedrov and Carolyn Talcott},
+  title     = {Resilience of Timed Distributed Systems},
+  booktitle = {Formal Modeling and Analysis of Timed Systems
+               ({FORMATS} 2024)},
+  year      = {2024},
+}
+
+% TODO-verify: exact title and page numbers for deSaToninhoPfenning2023
+@inproceedings{deSaToninhoPfenning2023,
+  author    = {Jo{\~a}o de S{\'a} and Bernardo Toninho and Frank Pfenning},
+  title     = {Intuitionistic Metric Temporal Logic},
+  booktitle = {Proceedings of the 25th International Symposium on
+               Principles and Practice of Declarative Programming ({PPDP} 2023)},
+  year      = {2023},
+  note      = {TODO-verify: page numbers and exact ACM DOI},
+}
+
+@article{DasHoffmannPfenning2018,
+  author  = {Ankush Das and Jan Hoffmann and Frank Pfenning},
+  title   = {Parallel Complexity Analysis with Temporal Session Types},
+  journal = {Proceedings of the {ACM} on Programming Languages ({ICFP})},
+  volume  = {2},
+  year    = {2018},
+}
+
+%% ─── Timed automata ─────────────────────────────────────────────────────────
+
+@article{AlurDill1994,
+  author    = {Rajeev Alur and David L. Dill},
+  title     = {A Theory of Timed Automata},
+  journal   = {Theoretical Computer Science},
+  volume    = {126},
+  number    = {2},
+  pages     = {183--235},
+  year      = {1994},
+}
+
+@incollection{BengtssonYi2004,
+  author    = {Johan Bengtsson and Wang Yi},
+  title     = {Timed Automata: Semantics, Algorithms and Tools},
+  booktitle = {Lectures on Concurrency and {Petri} Nets},
+  series    = {Lecture Notes in Computer Science},
+  volume    = {3098},
+  pages     = {87--124},
+  publisher = {Springer},
+  year      = {2004},
+}
+
+@article{BoigelotFAST,
+  author    = {S{\'e}bastien Bardin and Alain Finkel and J{\'e}r{\^{o}}me Leroux
+               and Laure Petrucci},
+  title     = {{FAST}: Acceleration from Theory to Practice},
+  journal   = {International Journal on Software Tools for Technology Transfer
+               ({STTT})},
+  volume    = {10},
+  number    = {5},
+  pages     = {401--424},
+  year      = {2008},
+  note      = {TODO-verify: scale paper cites ``flat acceleration (FAST/LASH --- Boigelot
+               et al.)''; Boigelot is associated with LASH, while FAST is by
+               Bardin/Finkel/Leroux/Petrucci.  Verify intended citation(s) and whether
+               a LASH citation should be added.},
+}
+
+%% ─── Coloured Petri nets / Petri nets ──────────────────────────────────────
+
+% TODO-verify: year (2007 or 2009) and exact title for Jensen2007CPN
+@book{Jensen2007CPN,
+  author    = {Kurt Jensen and Lars M. Kristensen},
+  title     = {Coloured Petri Nets: Modelling and Validation of
+               Concurrent Systems},
+  publisher = {Springer},
+  year      = {2009},
+}
+
+% Journal article companion (STTT 2007) with Wells as co-author
+@article{JensenKristensenWells2007,
+  author    = {Kurt Jensen and Lars Michael Kristensen and Lisa Wells},
+  title     = {Coloured {Petri} Nets and {CPN} Tools for Modelling and
+               Validation of Concurrent Systems},
+  journal   = {International Journal on Software Tools for Technology
+               Transfer ({STTT})},
+  volume    = {9},
+  number    = {3--4},
+  pages     = {213--254},
+  year      = {2007},
+}
+
+@article{BestDevillers1987,
+  author    = {Eike Best and Raymond Devillers},
+  title     = {Sequential and concurrent behaviour in {Petri} net theory},
+  journal   = {Theoretical Computer Science},
+  volume    = {55},
+  number    = {1},
+  pages     = {87--136},
+  year      = {1987},
+}
+
+@article{BanatreLeMetayer1990,
+  author    = {Jean-Pierre Ban{\^{a}}tre and Daniel {Le M{\'e}tayer}},
+  title     = {The {GAMMA} model and its discipline of programming},
+  journal   = {Science of Computer Programming},
+  volume    = {15},
+  number    = {1},
+  pages     = {55--77},
+  year      = {1990},
+}
+
+@article{Paun2000,
+  author    = {Gheorghe P{\u{a}}un},
+  title     = {Computing with Membranes},
+  journal   = {Journal of Computer and System Sciences},
+  volume    = {61},
+  number    = {1},
+  pages     = {108--143},
+  year      = {2000},
+}
+
+%% ─── Partial-order reduction ────────────────────────────────────────────────
+
+% TODO-verify: Peled CAV 1993 exact title (source says ``Ample Sets in
+%   Partial-Order Reduction'')
+@inproceedings{Peled1993,
+  author    = {Doron Peled},
+  title     = {All from One, One for All: On Model Checking Using
+               Representatives},
+  booktitle = {Computer Aided Verification ({CAV})},
+  series    = {Lecture Notes in Computer Science},
+  volume    = {697},
+  pages     = {409--423},
+  year      = {1993},
+}
+
+%% ─── Constraint sequent calculi / rewriting ─────────────────────────────────
+
+% TODO-verify: exact title and page numbers for LassezMcAloon1990
+@inproceedings{LassezMcAloon1990,
+  author    = {Jean-Louis Lassez and Ken McAloon},
+  title     = {A Canonical Form for Generalized Linear Constraints},
+  booktitle = {Proceedings of the 5th Annual {IEEE} Symposium on
+               Logic in Computer Science ({LICS} 1990)},
+  pages     = {245--254},
+  year      = {1990},
+}
+
+@article{NegriVonPlato1998,
+  author  = {Sara Negri and Jan von Plato},
+  title   = {Cut Elimination in the Presence of Axioms},
+  journal = {Bulletin of Symbolic Logic},
+  volume  = {4},
+  number  = {4},
+  pages   = {418--435},
+  year    = {1998},
+}
+
+% TODO-verify: exact chapter reference for deterministic 3-CTRSs in Ohlebusch2002
+@book{Ohlebusch2002,
+  author    = {Enno Ohlebusch},
+  title     = {Advanced Topics in Term Rewriting},
+  publisher = {Springer},
+  year      = {2002},
+}
+
+%% ─── Labelled deduction / SELL ──────────────────────────────────────────────
+
+@book{Gabbay1996,
+  author    = {Dov M. Gabbay},
+  title     = {Labelled Deductive Systems},
+  publisher = {Oxford University Press},
+  year      = {1996},
+}
+
+@article{Negri2005,
+  author    = {Sara Negri},
+  title     = {Proof Analysis in Modal Logic},
+  journal   = {Journal of Philosophical Logic},
+  volume    = {34},
+  number    = {5--6},
+  pages     = {507--544},
+  year      = {2005},
+}
+
+% TODO-verify: CONCUR 2017 LIPIcs volume number and page numbers
+@inproceedings{NigamOlartePimentel2017,
+  author    = {Vivek Nigam and Carlos Olarte and Elaine Pimentel},
+  title     = {A General Proof System for Modalities in Concurrent Constraint
+               Programming},
+  booktitle = {28th International Conference on Concurrency Theory ({CONCUR})},
+  series    = {Leibniz International Proceedings in Informatics},
+  year      = {2017},
+}
+
+@article{OlartePimentelDePaiva2019,
+  author    = {Carlos Olarte and Elaine Pimentel and Valeria {de Paiva}},
+  title     = {Hybrid Linear Logic, Revisited},
+  journal   = {Mathematical Structures in Computer Science},
+  volume    = {29},
+  number    = {8},
+  pages     = {1151--1176},
+  year      = {2019},
+}
+
+%% ─── Differential dataflow / provenance semirings ──────────────────────────
+
+% TODO-verify: scale paper cites ``McSherry et al. --- Differential dataflow
+%   (Naiad; SOSP 2013)''. The Naiad SOSP 2013 paper is Murray et al.;
+%   the Differential Dataflow paper may be separate (McSherry et al., CIDR 2013).
+%   Verify which is intended.
+@inproceedings{MurrayMcSherry2013,
+  author    = {Derek G. Murray and Frank McSherry and Rebecca Isaacs
+               and Michael Isard and Paul Barham and Martin Abadi},
+  title     = {Naiad: A Timely Dataflow System},
+  booktitle = {Proceedings of the 24th {ACM} Symposium on Operating Systems
+               Principles ({SOSP})},
+  year      = {2013},
+  pages     = {439--455},
+}
+
+@inproceedings{GreenKarvounarakisTannen2007,
+  author    = {Todd J. Green and Grigoris Karvounarakis and Val Tannen},
+  title     = {Provenance Semirings},
+  booktitle = {Proceedings of the 26th {ACM} Symposium on Principles of
+               Database Systems ({PODS})},
+  year      = {2007},
+  pages     = {31--40},
+}
+
+%% ─── Ceptre ─────────────────────────────────────────────────────────────────
+
+@inproceedings{Martens2015,
+  author    = {Chris Martens},
+  title     = {{Ceptre}: A Language for Modeling Generative Interactive
+               Systems},
+  booktitle = {Proceedings of the 11th {AAAI} Conference on Artificial
+               Intelligence and Interactive Digital Entertainment ({AIIDE})},
+  year      = {2015},
+}
+
+%% ─── Tropical algebra ───────────────────────────────────────────────────────
+
+@book{Baccelli1992,
+  author    = {Fran{\c{c}}ois Louis Baccelli and Guy Cohen and
+               Geert Jan Olsder and Jean-Pierre Quadrat},
+  title     = {Synchronization and Linearity: An Algebra for Discrete Event
+               Systems},
+  publisher = {Wiley},
+  year      = {1992},
+}
+
+%% ─── Event structures / domain theory ──────────────────────────────────────
+
+@article{NielsenPlotkinWinskel1981,
+  author  = {Mogens Nielsen and Gordon Plotkin and Glynn Winskel},
+  title   = {Petri Nets, Event Structures and Domains, Part~{I}},
+  journal = {Theoretical Computer Science},
+  volume  = {13},
+  number  = {1},
+  pages   = {85--108},
+  year    = {1981},
+}
+
+%% ─── Guardedness / recursion ────────────────────────────────────────────────
+
+@inproceedings{Nakano2000,
+  author    = {Hiroshi Nakano},
+  title     = {A Modality for Recursion},
+  booktitle = {Proceedings of the 15th Annual {IEEE} Symposium on
+               Logic in Computer Science ({LICS} 2000)},
+  pages     = {255--266},
+  year      = {2000},
+}
+
+%% ─── Resource algebras / residuation ────────────────────────────────────────
+
+@article{JungIris2018,
+  author  = {Ralf Jung and Robbert Krebbers and Jacques-Henri Jourdan
+             and Ales Bizjak and Lars Birkedal and Derek Dreyer},
+  title   = {{Iris from the Ground Up}: A Modular Foundation for Higher-Order
+             Concurrent Separation Logic},
+  journal = {Journal of Functional Programming},
+  volume  = {28},
+  pages   = {e20},
+  year    = {2018},
+}
+
+@book{Galatos2007,
+  author    = {Nikolaos Galatos and Peter Jipsen and Tomasz Kowalski
+               and Hiroakira Ono},
+  title     = {Residuated Lattices: An Algebraic Glimpse at Substructural Logics},
+  publisher = {Elsevier},
+  year      = {2007},
+}
+
+% TODO-verify: exact title and journal for Amer1984
+@article{Amer1984,
+  author  = {K. Amer},
+  title   = {Equationally Complete Classes of Commutative Monoids with Monus},
+  journal = {Algebra Universalis},
+  volume  = {18},
+  pages   = {129--131},
+  year    = {1984},
+}
+
+%% ─── Probabilistic coherence spaces ─────────────────────────────────────────
+
+@article{DanosEhrhard2011,
+  author    = {Vincent Danos and Thomas Ehrhard},
+  title     = {Probabilistic Coherence Spaces as a Model of Higher-Order
+               Probabilistic Computation},
+  journal   = {Information and Computation},
+  volume    = {209},
+  number    = {6},
+  pages     = {966--991},
+  year      = {2011},
+}
+
+%% ─── Confluence ─────────────────────────────────────────────────────────────
+
+@article{Huet1980,
+  author    = {G{\'e}rard Huet},
+  title     = {Confluent Reductions: Abstract Properties and Applications to
+               Term Rewriting Systems},
+  journal   = {Journal of the {ACM}},
+  volume    = {27},
+  number    = {4},
+  pages     = {797--821},
+  year      = {1980},
+}
+
+@article{Newman1942,
+  author    = {M. H. A. Newman},
+  title     = {On Theories with a Combinatorial Definition of ``Equivalence''},
+  journal   = {Annals of Mathematics},
+  volume    = {43},
+  number    = {2},
+  pages     = {223--243},
+  year      = {1942},
+}
