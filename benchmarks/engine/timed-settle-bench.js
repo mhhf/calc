@@ -182,20 +182,24 @@ if (run('CS')) {
     const stateObj = toObject(r2.state);
     const save = JSON.stringify({ state: stateObj, certificate: r2.certificate || null });
     const saveMs = performance.now() - t2;
-    // 3-week resume — a city × weeks accumulation can exceed the Int32
-    // run-length fence (a sink good at ~10^9); the fence throws LOUDLY by
-    // design (invariant zero) and the row records it as the result.
+    // 3-week resume, step-budgeted: warehouse caps (PP2 §3b) removed the
+    // I32 sink fence, but a fixed 200-cap against N× production makes the
+    // net-1 trim O(surplus) per instant at city scale — the resume then
+    // grinds instead of certifying, so the arm bounds it with the opt-in
+    // maxSteps hard cap and records 'step-budget' as the honest result.
     const t3 = performance.now();
     let resume = -1, jumps = 0, note = '';
     try {
       const r3 = calc.settle(stateObj, horizonOf(300.2 + WEEK3), {
         coalesce: true, accelerate: true, events: false, seed: 7,
+        maxSteps: 10_000_000,
         ...(r2.certificate ? { certificate: r2.certificate } : {}),
       });
       resume = performance.now() - t3;
       jumps = (r3.accelerated || []).length;
     } catch (e) {
-      note = /Int32/.test(e.message) ? 'I32-fence' : 'error';
+      note = /Int32/.test(e.message) ? 'I32-fence'
+        : /maxSteps/.test(e.message) ? 'step-budget' : 'error';
       resume = performance.now() - t3;
     }
     rows.push([N, cold, tick, saveMs, Math.round(save.length / 1024),

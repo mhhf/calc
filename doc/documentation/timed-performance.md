@@ -210,33 +210,42 @@ arcs, spread takes, all fences, E5 chunking, I32 produce fence).
 The CS benchmark runs the REAL PP2 content as a city: N of every
 production building (same-stamp parcels — B1 batches a park k-parallel)
 plus 10N food/wood and the kiln, under
-`{ coalesce, accelerate, events: false }`:
+`{ coalesce, accelerate, events: false }`. PP2 now carries warehouse
+caps (§3b: `overflow: (g: storable) !_201 g -o { !_200 g }` — one
+counted-take schema per storable good), so the pre-cap I32 sink fence
+no longer triggers; the resume is step-budgeted (maxSteps 10M) instead:
 
 | N/bldg | cold→300s | warm tick | save (state+cert) | +3-week resume |
 |---|---|---|---|---|
-| 1 | 185 ms | 0.28 ms | < 1 KB | 696 ms, 1 jump |
-| 10 | 364 ms | 0.48 ms | < 1 KB | 1.9 s, 1 jump |
-| 100 | 2.6 s | 2.2 ms | < 1 KB | 14.3 s, 1 jump |
-| 1000 | 22.9 s | 20 ms | < 1 KB | I32 fence (loud) |
-| 10000 | 232 s | 0.4 ms | < 1 KB | I32 fence (loud) |
+| 1 | 290 ms | 0.34 ms | < 1 KB | 69 s, 1 jump |
+| 10 | 1.0 s | 0.43 ms | < 1 KB | 7.8 s, 1 jump |
+| 100 | 7.5 s | 14 ms | < 1 KB | 41 s, 1 jump |
+| 1000 | 79 s | 7.9 ms | < 1 KB | step-budget (trim-bound) |
 
 Readings:
 
-- **The population axis is closed.** A 10^4-machine city with 10^5 goods
-  is ~dozens of run-length rows — saves are sub-KB, warm ticks ≤ 20 ms.
-- **Certification warm-up scales with events-per-period (∝ N).** The
-  orbit proof needs two sightings ≈ two periods of LIVE firing; a
-  100×-city pays 100× that transient on every cold resume. And a
-  0.2 s tick never spans two sightings, so short-tick sessions never
-  MINT — only long catch-up settles do (the bridge's design). The
-  static dual (C2a closed-form flows — no observation phase) is what
-  removes this class, and these numbers put it on the demand list.
-- **Week-scale × city accumulation crosses the Int32 count fence**
-  (~10^9 of a sink good at N = 1000): applyJump refuses LOUDLY —
-  invariant zero holding under pressure, not a crash. The honest fixes,
-  in order: in-game stock caps (the real PP2 has warehouse caps — and a
-  capped stock is also what lets accel abstract the surplus), then a
-  wider count column (float64-exact to 2^53, memory ×2) if uncapped
+- **The population axis stays closed.** Saves are sub-KB and warm ticks
+  ≤ 14 ms through N = 100; the capped state is dozens of run-length rows.
+- **Caps trade the I32 fence for a fill transient.** A resume that spans
+  the fill-to-cap window live-fires it before the at-cap orbit certifies
+  (then ONE jump covers the remaining weeks). The transient is worst at
+  N = 1 — the slowest good fills at 1× rate (69 s vs 7.8 s at N = 10) —
+  and is exactly the piecewise-linear regime C2a's closed-form flows
+  would jump statically (fill is breakpoint-to-breakpoint linear).
+- **Fixed cap × N× production is trim-bound at city scale.** The net-1
+  counted-take trim is O(surplus) per instant (its zero-delay output
+  feeds its own antecedent, so B1 correctly refuses to batch it): at
+  N = 1000, cold triples and the 3-week resume exhausts the 10M-step
+  budget without certifying. This is content-realism friction — a real
+  city scales warehouse CAPACITY with the city — and its engine-side
+  remedy is again C2a (derive the at-cap regime statically). The
+  chooser-fairness constraint that forced the counted-take shape (a
+  `!_W g * !lt CAP W` whole-bind chases in-flight arrivals and starves
+  under a deterministic chooser) is pinned in `till-cap.ill`.
+- The pre-cap boundary for the record: uncapped sinks crossed the Int32
+  count fence at week × N=1000 scale (~10^9 of a sink good) and
+  applyJump refused loudly — invariant zero, not a crash. A wider count
+  column (float64-exact to 2^53) stays the fallback if uncapped
   accumulators are ever a real modeling need.
 
 ## Contracts
