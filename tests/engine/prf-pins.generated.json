@@ -1,14 +1,13 @@
 {
   "till-settle/conflict-winners": [
-    "grab_b",
-    "grab_b",
+    "grab_a",
+    "grab_a",
     "grab_a"
   ],
   "till-woplus/duel-alts": {
     "s4": [
       0,
-      1,
-      1
+      0
     ],
     "s10": [
       0,

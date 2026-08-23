@@ -194,13 +194,11 @@ function _foldBig(x) {
   return neg ? (~h) >>> 0 : h;
 }
 
-// ── FactSet index policy (D5): group at(A, t) under A's predicate tag,
-// order within the group by stamp then hash — the FIFO cohort index.
-// "The index is optimization, the multiset is semantics" (D13): this may
-// never change WHICH matches exist, only how candidates are enumerated.
-
-const _ZERO = [0n, 1n];
-const _stampParts = (h) => (Store.tag(h) === 'at' ? _parts(Store.child(h, 1)) : _ZERO);
+// ── FactSet index policy (D5): group by A's predicate tag; within-group
+// order is stamp-major with inner-hash tiebreak, provided GENERICALLY by
+// the label-column FactSet over `labels` (THY_0024) — the FIFO cohort
+// index. "The index is optimization, the multiset is semantics" (D13):
+// this may never change WHICH matches exist, only enumeration order.
 
 // Per-atom-name groups (TODO_0277): tag 0 lumps every atom-headed token
 // into ONE group, so matching scanned the whole population per pattern.
@@ -226,45 +224,14 @@ function _atomGroupOf(inner) {
   return g;
 }
 
-// Stamp-order fast path (TODO_0277): exact rational compare costs BigInt
-// mults per probe and dominated the profile. A correctly-rounded double is
-// MONOTONE in the rational it rounds, so float order is sound whenever the
-// floats differ and both conversions were exact-operand (n, d < 2^53);
-// ties and big operands fall back to the exact compare. Cached per fact
-// hash (content-addressed: hash identity ⇔ stamp identity).
-const _UNSAFE = 2 ** 53;
-const _stampF = new Map();          // fact hash -> float (NaN = must go exact)
-Store.onClear(() => _stampF.clear());
-function _stampFloat(h) {
-  let f = _stampF.get(h);
-  if (f === undefined) {
-    if (Store.tag(h) !== 'at') f = 0;
-    else {
-      const [n, d] = _parts(Store.child(h, 1));
-      const nn = n < 0n ? -n : n;
-      f = (nn < _UNSAFE && d < _UNSAFE) ? Number(n) / Number(d) : NaN;
-    }
-    _stampF.set(h, f);
-  }
-  return f;
-}
-
 const tillFactSetPolicy = {
-  stampTag: 'at',   // generic fact-set reads this to unwrap stamped atoms
+  stampTag: 'at',   // BOUNDARY encoding tag (from/toObject; THY_0024)
   runLength: true,  // multiplicity as counts, not repeated entries (TODO_0277)
+  labels: tillGrades.values,   // label-column mode (THY_0024): stamps beside addresses
   groupKey: (h) => {
     const inner = Store.tag(h) === 'at' ? Store.child(h, 0) : h;
     const t = Store.tagId(inner);
     return t === Store.TAG.atom ? _atomGroupOf(inner) : t;
-  },
-  cmp: (a, b) => {
-    if (a === b) return 0;
-    const fa = _stampFloat(a), fb = _stampFloat(b);
-    if (fa < fb) return -1;
-    if (fa > fb) return 1;
-    // float tie (or NaN sentinel): decide exactly, hash order last
-    const c = ratCmp(_stampParts(a), _stampParts(b));
-    return c !== 0 ? c : (a - b);
   },
 };
 

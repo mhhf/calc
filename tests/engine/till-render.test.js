@@ -36,11 +36,14 @@ describe('till debug renderings — chop/build goldens (Phase 4c)', () => {
   });
 
   it('#trace — log view: [activation] rule consumed → produced @+d', () => {
+    // Within-line fact ORDER is at-hash-ascending (integer object keys) —
+    // representation-internal; re-pinned at the labelled-state flip
+    // (THY_0024 rider 3: same facts, renamed presentation order).
     assert.deepEqual(traceLines(res.events), [
-      '[0] chop: tree@0, chopper@0, read manual@0 → chopper@4, wood@4 @+4',
-      '[0] chop: tree@0, chopper@0, read manual@0 → chopper@4, wood@4 @+4',
-      '[4] build: builder@0, wood@4 x2 → hut@7, builder@7 @+3',
-      '[5] chop: tree@5, chopper@4, read manual@0 → chopper@9, wood@9 @+4',
+      '[0] chop: tree@0, chopper@0, read manual@0 → wood@4, chopper@4 @+4',
+      '[0] chop: tree@0, chopper@0, read manual@0 → wood@4, chopper@4 @+4',
+      '[4] build: wood@4 x2, builder@0 → hut@7, builder@7 @+3',
+      '[5] chop: tree@5, chopper@4, read manual@0 → wood@9, chopper@9 @+4',
     ]);
   });
 
@@ -61,17 +64,19 @@ describe('till debug renderings — chop/build goldens (Phase 4c)', () => {
 
   it('#why hut@7 — per-instance producer chain (causal tree)', () => {
     const hut7 = calc.queries.get('why_hut');
+    // Child order follows the consumed-map key order (at-hash ascending) —
+    // re-pinned at the labelled-state flip (same tree, permuted siblings).
     assert.deepEqual(whyLines(res.events, init, hut7), [
       'hut@7 ← build @4 +3',
-      '├─ builder@0 (initial)',
       '├─ wood@4 ← chop @0 +4',
       '│  ├─ tree@0 (initial)',
       '│  ├─ chopper@0 (initial)',
       '│  └─ read manual@0 (initial)',
-      '└─ wood@4 ← chop @0 +4',
-      '   ├─ tree@0 (initial)',
-      '   ├─ chopper@0 (initial)',
-      '   └─ read manual@0 (initial)',
+      '├─ wood@4 ← chop @0 +4',
+      '│  ├─ tree@0 (initial)',
+      '│  ├─ chopper@0 (initial)',
+      '│  └─ read manual@0 (initial)',
+      '└─ builder@0 (initial)',
     ]);
   });
 
