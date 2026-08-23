@@ -91,6 +91,13 @@ the state representation: the labelled multiset is the Kleisli context
 of the graded monad, and the retiming axiom `at_l` is precisely the
 semantic license for `⊔` (delaying availability is free; never early).
 
+The COUNT column gets its own firing law by the same construction at ℕ:
+cohort firing (TODO_0278 B1) fires a match once at multiplicity k —
+consume k·take, produce k·count at one label — exactly when the k
+sequential fires are forced (unique candidate, no same-instant
+enablement), so the batched step is the k-fold action of the rule on
+the ℕ-label, state-identical to the unrolled prefix by induction.
+
 ## Adequacy
 
 **Lemma (representation adequacy).** Let `⌈·⌉` encode a labelled state as
