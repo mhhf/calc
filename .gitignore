@@ -71,3 +71,12 @@ tests/fixtures/proof-trees/
 # IDE (also sandbox stubs)
 .idea
 .vscode
+
+# LaTeX build artifacts (doc/paper/*/)
+doc/paper/**/*.aux
+doc/paper/**/*.log
+doc/paper/**/*.bbl
+doc/paper/**/*.blg
+doc/paper/**/*.out
+doc/paper/**/*.toc
+doc/paper/**/main.pdf
