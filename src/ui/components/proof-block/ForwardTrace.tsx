@@ -1,5 +1,5 @@
 /**
- * ForwardTrace — viewer for `forward-trace/v1` payloads (mode: symex | exec).
+ * ForwardTrace — viewer for `forward-trace/v1|v2` payloads (mode: symex | exec).
  *
  * Sibling of the backward-proof viewer (ProofBlock.tsx). The backward one
  * ships a full proof tree and renders it through one of five layouts;
@@ -358,7 +358,13 @@ export function ForwardTrace(props: Props) {
                       <span style="font-family:monospace;color:#667">leaf #{d.leafIndex}</span>
                       {' '}
                       {statusPill(d.status)}
-                      <span style="color:#999;margin-left:0.4em">· {d.stepCount} steps</span>
+                      {(() => {
+                        const fires = d.trace.reduce((s, t) => s + (t.multiplicity || 1), 0);
+                        const rle = d.stepCount;
+                        return fires !== rle
+                          ? <span style="color:#999;margin-left:0.4em">· {rle} steps ({fires} fires)</span>
+                          : <span style="color:#999;margin-left:0.4em">· {rle} steps</span>;
+                      })()}
                     </div>
                     <Show when={sum}>
                       <div style="padding:0.4em 0.6em;border-bottom:1px solid #f5f5f5;font-size:0.75em;color:#555">
@@ -374,7 +380,12 @@ export function ForwardTrace(props: Props) {
                           <div style="padding:0.25em 0.6em;border-bottom:1px solid #f9f9f9;font-size:0.78em;display:grid;grid-template-columns:3em 1fr;gap:0.5em">
                             <span style="color:#aaa;font-family:monospace;text-align:right">{step.step}</span>
                             <div>
-                              <div style="font-family:monospace;color:#224;font-weight:600">{step.ruleName}</div>
+                              <div style="font-family:monospace;color:#224;font-weight:600">
+                                {step.ruleName}
+                                <Show when={(step.multiplicity ?? 1) > 1}>
+                                  <span style="font-weight:normal;color:#888;margin-left:0.25em">×{step.multiplicity}</span>
+                                </Show>
+                              </div>
                               <Show when={step.consumed.length > 0}>
                                 <div style="color:#777;font-family:monospace;font-size:0.92em;margin-top:0.1em">
                                   consumed:{' '}
