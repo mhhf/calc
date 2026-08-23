@@ -27,6 +27,7 @@ import mde from '../../lib/engine/index.js';
 import convert from '../../lib/engine/convert.js';
 import tillConfig from '../../calculus/till/calculus-config.js';
 import { ratParts } from '../../lib/engine/theories/ratlit-theory.js';
+import { toObject } from '../../lib/engine/fact-set.js';
 
 const ROOT = path.join(import.meta.dirname, '../../');
 const PP2 = path.join(ROOT, 'calculus/till/game/PP2.till');
@@ -143,6 +144,69 @@ if (run('B2')) {
     if (ms > 500) { console.log('  (case exceeded 500 ms — skipping larger k)'); break; }
   }
   report('B2-magnitude', rows, ['count', 'settle ms', 'events']);
+}
+
+// ── CS: city scale — machine parks + population (TODO_0278 audit) ───
+// The REAL PP2 content at city scale: N of every production building
+// (same-stamp parcels — B1 batches a park k-parallel; reproduced copies
+// stagger, emergent serialization) + 10N food/wood population, plus the
+// kiln (whole-pool !_W batch — the A3a-certifying shape). Measured per N:
+//   cold    settle shell+park to T=300 s (events suppressed)
+//   tick    one warm 0.2 s tick over the live State
+//   save    JSON size of the plain state + certificate (the bridge's save)
+//   resume  +3 weeks catch-up with accelerate (+certificate when minted)
+if (run('CS')) {
+  const calc = mde.load(PP2, { calculusConfig: tillConfig, cache: false });
+  const start = convert.decomposeQuery(calc.splitQueries.get('expect_shell_start').lhsHash);
+  const PARK = ['lumberjack', 'quarry', 'sawmill', 'smith', 'farm', 'bakery'];
+  const rows = [];
+  const WEEK3 = 3 * 7 * 86400;
+  for (const N of [1, 10, 100, 1000, 10000, 100000]) {
+    const linear = { ...start.linear, [atom('kiln')]: 1 };
+    for (const b of PARK) linear[atom(b)] = (linear[atom(b)] || 0) + N;
+    linear[atom('food')] = (linear[atom('food')] || 0) + 10 * N;
+    linear[atom('wood')] = (linear[atom('wood')] || 0) + 10 * N;
+    const st = { linear, persistent: { ...start.persistent } };
+    const t0 = performance.now();
+    const r = calc.settle(st, '300', {
+      coalesce: true, accelerate: true, events: false, seed: 7, raw: true,
+    });
+    const cold = performance.now() - t0;
+    const t1 = performance.now();
+    const r2 = calc.settle(r.state, horizonOf(300.2), {
+      coalesce: true, accelerate: true, events: false, seed: 7, raw: true,
+    });
+    const tick = performance.now() - t1;
+    // save = what the bridge persists: plain state + certificate
+    const t2 = performance.now();
+    const stateObj = toObject(r2.state);
+    const save = JSON.stringify({ state: stateObj, certificate: r2.certificate || null });
+    const saveMs = performance.now() - t2;
+    // 3-week resume — a city × weeks accumulation can exceed the Int32
+    // run-length fence (a sink good at ~10^9); the fence throws LOUDLY by
+    // design (invariant zero) and the row records it as the result.
+    const t3 = performance.now();
+    let resume = -1, jumps = 0, note = '';
+    try {
+      const r3 = calc.settle(stateObj, horizonOf(300.2 + WEEK3), {
+        coalesce: true, accelerate: true, events: false, seed: 7,
+        ...(r2.certificate ? { certificate: r2.certificate } : {}),
+      });
+      resume = performance.now() - t3;
+      jumps = (r3.accelerated || []).length;
+    } catch (e) {
+      note = /Int32/.test(e.message) ? 'I32-fence' : 'error';
+      resume = performance.now() - t3;
+    }
+    rows.push([N, cold, tick, saveMs, Math.round(save.length / 1024),
+      resume, jumps, r2.certificate ? 'y' : 'n', note || '-']);
+    console.log(`  CS N=${N}: cold ${cold.toFixed(1)} ms, tick ${tick.toFixed(2)} ms, ` +
+      `save ${Math.round(save.length / 1024)} KB, resume ${resume.toFixed(1)} ms ` +
+      `(${jumps} jumps${note ? ', ' + note : ''})`);
+    if (cold + resume > 300000) { console.log('  (budget hit — stopping)'); break; }
+  }
+  report('CS-city', rows,
+    ['N/bldg', 'cold ms', 'tick ms', 'save ms', 'saveKB', 'resume ms', 'jumps', 'cert', 'note']);
 }
 
 // ── OR: rule-count scaling ──────────────────────────────────────────
