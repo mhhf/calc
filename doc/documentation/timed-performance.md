@@ -245,6 +245,17 @@ Readings:
   tie draws may differ (any draw is a valid world — settleExplore's
   contract). Acceleration is state-identical TO THE COALESCED RUN
   (differential-pinned; fuzz arm on deterministic programs).
+- Why the morphisms are per-call opt-ins, not load-time defaults
+  (considered and rejected): the default-on line is bit-identity, not
+  speed — run-length/labels/dirty-sched/B1 are always on BECAUSE they
+  preserve the Zobrist hash and every PRF draw; coalesce/rebase/accel
+  rename worlds. A `settleDefaults` knob would make the default world
+  config-dependent, and its failure direction is worse: today a
+  forgetful caller gets slow-but-correct (announces itself in a
+  profiler); with defaults, a forgetful reference context (gate suite,
+  repro, debug run) silently reads a renamed world. Consumers set the
+  contract once at their chokepoint (see §Consumers below) — semantics
+  by default, morphisms at the boundary.
 - Raw pipelines: the same State object flows through consecutive settles;
   mutating it elsewhere invalidates the cached scheduler automatically
   (mutation counters), never silently. With `rebase`, a raw result's
