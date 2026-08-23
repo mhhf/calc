@@ -1,0 +1,52 @@
+#import(../../calculus/till/prelude/rat.ill)
+
+% C1 chain-collapse advisory fixture (TODO_0278 audit rider): one positive
+% pair and the veto zoo. Only bb and kk are unconditional intermediates —
+% everything else trips exactly one disqualifier.
+
+aa: type.
+bb: type.
+cc: type.
+kk: type.
+mm: type.
+guard: type.
+ss: type.
+vv: type.
+ww: type.
+xx: type.
+yy: type.
+
+% bb: THE positive — sole producer, sole unconditional consumer
+mk:  aa -o { bb }@1.
+use: bb -o { cc }@2.
+
+% kk: ground-count sole take (!_2) is still unconditional
+mkk:  aa -o { kk }@1.
+usek: !_2 kk -o { cc }@2.
+
+% mm: guarded consumer (second linear premise) — quiet
+mkq:  aa -o { mm }@1.
+useq: mm * guard -o { cc }@2.
+
+% ss: two consumers — quiet
+mks:   aa -o { ss }@1.
+uses1: ss -o { cc }@1.
+uses2: ss -o { cc }@2.
+
+% vv: stamp-observed (window binds its cohort stamp) — quiet
+mkv:  aa -o { vv }@1.
+usev: vv@Q * after (Q + 5) -o { cc }.
+
+% ww: read elsewhere — quiet
+mkw:  aa -o { ww }@1.
+usew: ww -o { cc }@1.
+peek: read ww * guard -o { cc }@1.
+
+% xx: whole-pool bind (!_W observes the total) — quiet
+mkx:  aa -o { xx }@1.
+usex: !_W xx -o { cc }@1.
+
+% yy: aa consequent MINTS aa loli consuming yy — quiet
+mky:   aa -o { yy }@1.
+usey:  yy -o { cc }@1.
+minty: guard -o { (yy -o { cc }@1) }@1.

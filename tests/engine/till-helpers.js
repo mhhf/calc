@@ -15,6 +15,7 @@ import { ratParts } from '../../lib/engine/theories/ratlit-theory.js';
 
 export const SPEC = (f) => path.join(import.meta.dirname, '../../calculus/till/tests/forward', f);
 export const FIX = (f) => path.join(import.meta.dirname, '../fixtures', f);
+export const GAME = (f) => path.join(import.meta.dirname, '../../calculus/till/game', f);
 
 export const loadTill = (p, cfg = tillConfig) => mde.load(p, { calculusConfig: cfg, cache: false });
 // Strict sort checking OFF — for fixtures whose POINT is an ill-sorted shape

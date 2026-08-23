@@ -11,7 +11,7 @@
 
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import { SPEC, FIX, loadTill as load } from './till-helpers.js';
+import { SPEC, FIX, GAME, loadTill as load } from './till-helpers.js';
 
 describe('till D16 productivity lint', () => {
   it('flags a zero-delay self-cycle (till-zeno)', () => {
@@ -54,5 +54,38 @@ describe('till D16 productivity lint', () => {
     for (const f of ['economy.ill', 'schedule.ill', 'spoilage.ill', 'read.ill', 'grades.ill']) {
       assert.deepEqual(load(SPEC(f)).timedLint, [], f);
     }
+  });
+});
+
+describe('C1 chain-collapse advisory (timedAdvice)', () => {
+  it('advises exactly the unconditional intermediates, vetoes the rest', () => {
+    // till-chain.ill: bb and kk are collapsible; mm (guarded consumer),
+    // ss (two consumers), vv (stamp-observed), ww (read arc), xx (!_W
+    // bind), yy (loli-minted consumer) each trip one disqualifier.
+    const calc = load(FIX('till-chain.ill'));
+    assert.deepEqual(calc.timedAdvice.map(f => f.pred).sort(), ['bb', 'kk']);
+    assert.deepEqual(calc.timedAdvice.find(f => f.pred === 'bb'),
+      { kind: 'chain-collapse', pred: 'bb', producers: ['mk'], consumer: 'use' });
+    assert.deepEqual(calc.timedAdvice.find(f => f.pred === 'kk'),
+      { kind: 'chain-collapse', pred: 'kk', producers: ['mkk'], consumer: 'usek' });
+  });
+
+  it('is gated on a productivity-clean rule set (fix Zeno first)', () => {
+    assert.deepEqual(load(FIX('till-cycle2.ill')).timedAdvice, []);
+  });
+
+  it('stays quiet on PP2 (every intermediate is building-guarded) and the specs', () => {
+    assert.deepEqual(load(GAME('PP2.till')).timedAdvice, []);
+    for (const f of ['economy.ill', 'schedule.ill', 'spoilage.ill', 'grades.ill']) {
+      assert.deepEqual(load(SPEC(f)).timedAdvice, [], f);
+    }
+  });
+
+  it('finds the real collapse in read.ill (eat_wood is an unconditional sink)', () => {
+    // chop -o {wood}@4 feeds eat_wood: wood -o {eaten} — sole premise, no
+    // window, no read of wood, stamp unobserved by any rule. The spec file
+    // keeps the pair for its in-flight-atomicity gate; the advice is sound.
+    assert.deepEqual(load(SPEC('read.ill')).timedAdvice,
+      [{ kind: 'chain-collapse', pred: 'wood', producers: ['chop'], consumer: 'eat_wood' }]);
   });
 });
