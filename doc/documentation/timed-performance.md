@@ -163,7 +163,9 @@ The population axis: a rule acting per item over a k-cohort fires ONCE at
 multiplicity k instead of k times. The law is sharper than confluence —
 the batch equals the k consecutive fires the sequential scheduler WOULD
 perform, exactly (state-identical including the Zobrist hash, and every
-later draw). Guards, all per-firing, any failure ⇒ per-item silently
+later draw) — see THY_0025 (forced-prefix theorem; confluence alone is
+insufficient under a draw-based chooser). Guards, all per-firing, any
+failure ⇒ per-item silently
 (batching is optimization, per-item is semantics — the FFI doctrine):
 
 - **unique candidate** at the instant (a tie routes through the chooser
