@@ -61,10 +61,17 @@ Hence the scheduler is forced to fire m again, k times. State-identity
 is then exact because FactSet mutations hash final counts and the draw
 stream consumed no randomness inside the batch. ∎
 
-Condition (ii) is stricter than the same-instant-enablement test alone:
-a persistent fact produced under a DELAYED monad is still visible at the
-instant (the persistent zone carries no labels — THY_0024), so it can
-enable a competitor no delay check sees.
+Condition (ii) is not implied by a delay check: a persistent fact
+produced under a DELAYED monad is still visible at the instant (the
+persistent zone carries no labels — THY_0024), so it can enable a
+competitor no delay test sees. Working this condition out exposed a
+live defect: the engine's instant-feeding test returned "not feeding"
+for any positive delay BEFORE examining persistent consequents, so
+settleExplore's ample-set commit could miss reachable worlds (repro: a
+delayed `!k` producer tied with a consumer of the cohort a `!k`-guarded
+rule also wants — the d-world vanished). Fixed by checking persistent
+consequents first; pinned by till-settle's persistent-arcs containment
+arm. A theorem's premises are a checklist for the implementation.
 
 ## The multiplicity witness
 

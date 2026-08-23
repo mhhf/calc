@@ -388,10 +388,10 @@ describe('till grade algebra unit checks', () => {
 describe('till settleExplore — instant-feeding completeness (round 13)', () => {
   const atom = (n) => Store.put('atom', [n]);
   /** Every exec outcome across seeds must be an explore leaf (containment). */
-  const containment = (calc, S, expectDistinct) => {
+  const containment = (calc, S, expectDistinct, T = '0') => {
     const execBags = new Set();
-    for (let seed = 0; seed < 40; seed++) execBags.add(bagStr(calc.settle(S, '0', { seed }).state));
-    const leafBags = new Set(calc.settleExplore(S, '0').leaves.map(l => bagStr(l.state)));
+    for (let seed = 0; seed < 40; seed++) execBags.add(bagStr(calc.settle(S, T, { seed }).state));
+    const leafBags = new Set(calc.settleExplore(S, T).leaves.map(l => bagStr(l.state)));
     assert.equal(execBags.size, expectDistinct, 'exec reaches both worlds across seeds');
     for (const b of execBags) assert.ok(leafBags.has(b), `exec outcome ${b} missing from explore`);
   };
@@ -408,6 +408,16 @@ describe('till settleExplore — instant-feeding completeness (round 13)', () =>
     // mill-first: 2²+1² = 5 planks; grow-first: 3² = 9 planks.
     const calc = load(FIX('till-instant-transfer.ill'));
     containment(calc, { linear: { [atom('seed')]: 1, [atom('wood')]: 2 }, persistent: {} }, 2);
+  });
+
+  it('persistent arcs: TIMELESS production under a DELAYED monad forks (THY_0025 (ii))', () => {
+    // mk_k: a -o {!k 1}@5.  grab: b -o {c}@1.  need: b * !k 1 -o {d}@1.
+    // producePers is delay-blind — !k 1 exists at fire time, enabling
+    // `need` at the same instant. The pre-fix delay-first _feedsInstant
+    // committed one order and missed the d-world (found working the B1
+    // forced-prefix proof; the fix checks persistent consequents first).
+    const calc = load(FIX('till-instant-persistent.ill'));
+    containment(calc, { linear: { [atom('a')]: 1, [atom('b')]: 1 }, persistent: {} }, 2, '10');
   });
 
   it('future-delay production does not fork (outputs cannot join the instant)', () => {
