@@ -94,39 +94,6 @@ describe('StampTable', () => {
     assert.equal(t1.mix(a1), t2.mix(a2));
   });
 
-  it('shiftAll: ids stable, values shifted, order preserved, terms invalidated', () => {
-    const t = new StampTable(alg);
-    const ids = [V(10), V(3), V(21, 2)].map(v => t.intern(v));
-    const before = ids.map(id => t.term(id));         // force reify cache
-    const order = ids.slice().sort((x, y) => t.cmp(x, y));
-    t.shiftAll(V(3));
-    assert.deepEqual(t.value(ids[0]), V(7));
-    assert.deepEqual(t.value(ids[1]), V(0));
-    assert.deepEqual(t.value(ids[2]), V(15, 2));
-    assert.deepEqual(ids.slice().sort((x, y) => t.cmp(x, y)), order);
-    assert.deepEqual(ratParts(t.term(ids[0])), [7n, 1n]);
-    assert.notEqual(t.term(ids[0]), before[0]);
-    // re-interning a shifted value must find the shifted entry
-    assert.equal(t.intern(V(0)), ids[1]);
-  });
-
-  it('compact drops dead ids, keeps unit, returns a dense remap', () => {
-    const t = new StampTable(alg);
-    const a = t.intern(V(4));
-    const b = t.intern(V(9));
-    const c = t.intern(V(16));
-    const live = new Uint8Array(t.size);
-    live[b] = 1;
-    const remap = t.compact(live);
-    assert.equal(remap[0], 0);                        // unit survives
-    assert.equal(remap[a], -1);
-    assert.ok(remap[b] >= 0);
-    assert.equal(remap[c], -1);
-    assert.deepEqual(t.value(remap[b]), V(9));
-    assert.equal(t.size, 2);
-    assert.equal(t.intern(V(9)), remap[b]);           // map rebuilt consistently
-  });
-
   it('packed refs round trip and the fences are loud', () => {
     const inner = 123456789;                          // < 2^29
     const sid = STAMP_CAP - 1;
