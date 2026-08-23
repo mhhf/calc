@@ -47,9 +47,11 @@ export interface ProofTreeV1 {
   meta?: Record<string, unknown>;
 }
 
-// ── forward-trace/v1 (symex / exec) ─────────────────────────────────────
+// ── forward-trace/v1|v2 (symex / exec) ──────────────────────────────────
 // Produced by lib/prover/serialize-trace.js. Tree skeleton + leaves; per-leaf
 // traces fetch lazily via POST /api/proof/leaf-trace.
+// v2 (TODO_0265 Phase 4c) adds optional timed fields (activation, delay) on
+// TraceStep and optional multiplicity for batched RLE firing (TODO_0278 B1).
 
 export type LeafStatus =
   | 'STOP' | 'REVERT' | 'INVALID' | 'RUNNING' | 'STUCK' | 'NO_STATE';
@@ -71,7 +73,7 @@ export type ForwardNode =
   | { id: string; idx: number; type: 'bound' | 'cycle' | 'memo' | 'dead' };
 
 export interface ForwardTraceV1 {
-  format: 'forward-trace/v1';
+  format: 'forward-trace/v1' | 'forward-trace/v2';
   mode: 'symex' | 'exec';
   calculus: string;
   profile: string;
@@ -94,6 +96,8 @@ export interface TraceStep {
   step: number;
   ruleName: string;
   consumed: Array<[string, number]>;
+  /** Batched RLE firing (TODO_0278 B1): absent (or 1) = single fire; k>1 = k identical sequential fires. */
+  multiplicity?: number;
 }
 
 export interface ForwardLeafDetail {
