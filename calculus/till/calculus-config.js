@@ -24,7 +24,7 @@ import { binlitTheory } from '../../lib/engine/ill/binlit-theory.js';
 import { ratlitTheory, ratParts, installRatlitTheory } from '../../lib/engine/theories/ratlit-theory.js';
 import { grade0 } from '../../lib/engine/grades.js';
 import { connTagsFrom } from '../../lib/engine/formula-utils.js';
-import { cmp as ratCmp, add as ratAdd, sub as ratSub } from '../../lib/rat.js';
+import { cmp as ratCmp, add as ratAdd, sub as ratSub, norm as ratNorm } from '../../lib/rat.js';
 import { apply } from '../../lib/kernel/substitute.js';
 import { predHead } from '../../lib/kernel/ast.js';
 import { collectMetavars } from '../../lib/engine/pattern-utils.js';
@@ -153,7 +153,46 @@ const tillGrades = {
     }
     throw new Error('till.parseStamp: expected an integer Number, an exact string, or { stamp: hash }');
   },
+  // Label VALUE algebra (THY_0024, TODO_0278 B2): the term-free face of
+  // the same tropical ℚ algebra, consumed by the generic StampTable.
+  // Values are normalized BigInt pairs [n, d] (rat.js norm invariant);
+  // mix is VALUE-derived (rider 2 — table ids are history-dependent,
+  // hashes must not be).
+  values: {
+    unit: [0n, 1n],
+    canon: (v) => ratNorm(v[0], v[1]),
+    parse: (h) => _parts(_ratCanon(h)),
+    reify: (v) => putRat(v[0], v[1]),
+    cmp: ratCmp,
+    add: ratAdd,
+    sub: ratSub,
+    float: (v) => {
+      const nn = v[0] < 0n ? -v[0] : v[0];
+      return (nn < 9007199254740992n && v[1] < 9007199254740992n)
+        ? Number(v[0]) / Number(v[1]) : NaN;
+    },
+    mix: (v) => {
+      const m = (_foldBig(v[0]) ^ Math.imul(_foldBig(v[1]), 0x9e3779b1)) >>> 0;
+      let x = Math.imul(m ^ (m >>> 16), 0x45d9f3b);
+      x = Math.imul(x ^ (x >>> 13), 0x45d9f3b);
+      return (x ^ (x >>> 16)) >>> 0;
+    },
+    key: (v) => v[0] + '/' + v[1],
+  },
 };
+
+/** FNV-fold a BigInt (sign included) to 32 bits — deterministic across
+ *  runs, so label mixes reproduce (E5 splits, PRF stability). */
+function _foldBig(x) {
+  let neg = false;
+  if (x < 0n) { neg = true; x = -x; }
+  let h = 0x811c9dc5;
+  while (x > 0n) {
+    h = (Math.imul(h, 0x01000193) ^ Number(x & 0xffffffffn)) >>> 0;
+    x >>= 32n;
+  }
+  return neg ? (~h) >>> 0 : h;
+}
 
 // ── FactSet index policy (D5): group at(A, t) under A's predicate tag,
 // order within the group by stamp then hash — the FIFO cohort index.
