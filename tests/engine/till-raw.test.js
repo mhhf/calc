@@ -15,6 +15,7 @@ import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import Store from '../../lib/kernel/store.js';
 import { toObject } from '../../lib/engine/fact-set.js';
+import { packRef, refInner } from '../../lib/engine/labels.js';
 import { ratParts } from '../../lib/engine/theories/ratlit-theory.js';
 import { SPEC, loadTill as load, initQuery as init, bagStr, stampedStr, traceKey } from './till-helpers.js';
 
@@ -42,12 +43,15 @@ describe('raw settle pipelines — scheduler cache reuse', () => {
     const r1 = calc.settle(S, '10', { seed: 3, raw: true });
     // Inject one extra copy of an existing token at a fresh stamp, OUTSIDE
     // settle — the cached scheduler's activations are now stale and the
-    // mutation counter must force a rebuild.
-    let anyAt = null;
-    r1.state.linear.forEach((h) => { if (anyAt === null && Store.tag(h) === 'at') anyAt = h; });
-    assert.ok(anyAt !== null);
-    const extra = Store.put('at', [Store.child(anyAt, 0), Store.put1('binlit', 12n)]);
-    r1.state.linear.insert(Store.tagId(extra), extra, null, 1);
+    // mutation counter must force a rebuild. Labelled state (THY_0024):
+    // external mutation goes through packed refs + the stamp table.
+    let anyRef = null;
+    r1.state.linear.forEach((ref) => { if (anyRef === null) anyRef = ref; });
+    assert.ok(anyRef !== null);
+    const inner = refInner(anyRef);
+    const sid12 = r1.state.linear.stamps.internTerm(Store.put1('binlit', 12n));
+    r1.state.linear.insert(Store.tagId(inner), packRef(inner, sid12), null, 1);
+    const extra = Store.put('at', [inner, Store.put1('binlit', 12n)]);
     const cont = calc.settle(r1.state, '100', { seed: 3, raw: true });
     // Oracle: the identical mutated state as a fresh plain object.
     const o1 = calc.settle(S, '10', { seed: 3 });
