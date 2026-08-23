@@ -44,9 +44,17 @@ describe('till Zeno guard — zero time progress, not step count (A2 rider 4)', 
   });
 
   it('a dense-but-finite instant runs to completion (it is not Zeno)', () => {
-    const r = unitCalc.settle(lin({ [atom('junk')]: 500 }), '10', {});
+    // Per-item (batch: false): 500 same-instant firings never trip the
+    // instant guard — dense-but-finite is not Zeno (the A2 rider-4 intent).
+    const r = unitCalc.settle(lin({ [atom('junk')]: 500 }), '10', { batch: false });
     assert.equal(r.steps, 500);
     assert.equal(r.quiescent, true);
+    // Default (B1 cohort firing): the whole cohort is ONE firing step —
+    // the instant guard bound now measures rule progress, not tokens.
+    const b = unitCalc.settle(lin({ [atom('junk')]: 500 }), '10', { maxInstantSteps: 5 });
+    assert.equal(b.steps, 1);
+    assert.equal(b.events[0].multiplicity, 500);
+    assert.equal(b.quiescent, true);
   });
 
   it('many events across many instants never trip the instant guard', () => {
@@ -131,7 +139,8 @@ describe('till settleChunked — bounded slices, E5-exact (A2)', () => {
     const r = unitCalc.settleChunked(lin({ [atom('junk')]: 3 }), '1000', { chunk: '10' });
     assert.equal(r.quiescent, true);
     assert.equal(r.next, null);
-    assert.equal(r.steps, 3);
+    assert.equal(r.steps, 1);           // B1: the 3-cohort batches into one step
+    assert.equal(r.events[0].multiplicity, 3);
     assert.ok(r.chunks <= 4, `expected early quiescence, got ${r.chunks} chunks`);
   });
 

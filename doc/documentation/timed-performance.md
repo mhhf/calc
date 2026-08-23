@@ -21,6 +21,7 @@ The three opt-ins are state morphisms with stated laws:
 |---|---|---|
 | Labelled state (THY_0024) | `lib/engine/labels.js` + `fact-set.js` `policy.labels` | Rows are (innerHash, stampId, count): formulas stay time-stable content addresses, stamps live in a per-State intern table (exact parts + monotone float + value-derived mix + memoized reified term). `at(A,t)` exists only at boundaries (plain objects, store-binary, events, patterns) — the Store stops growing with elapsed time (kiln: 1.9M → 161 nodes per 4 days), rebase rebuild-swaps the table (O(live), zero allocation). |
 | Run-length FactSet | `lib/engine/fact-set.js`, `policy.runLength` | Multiplicity as parallel count arrays — a `!_10^6` parcel is one entry. Recognized post-hoc as the ℕ-instance of the label construction. |
+| Cohort firing (B1) | `timed.js` `_batchGuard`/`_batchMult`, default ON (`batch: false` opts out) | A unique candidate whose intermediate fires provably cannot change the instant's candidate landscape fires ONCE at multiplicity k — a 10^6-item sweep is one step. State-identical to per-item firing (incl. Zobrist); the event list becomes an RLE (per-fire facts + `multiplicity`). See §Cohort firing. |
 | Per-atom-name groups | till `factSetPolicy.groupKey` | Each atom head files in its own group (fixed-base id registry; FactSet tables grow on demand) — candidate enumeration never scans the population. |
 | Float stamp order | till `factSetPolicy.cmp` / `grades.availability.cmp` | Cached correctly-rounded doubles; monotone rounding makes float order sound, ties and ≥2^53 operands fall back to exact rational compare. |
 | Coalescing | `lib/engine/timed/coalesce.js`, `{ coalesce: true }` | Arrived facts whose stamp no rule can observe re-stamp to the unit and merge. Exclusion set DERIVED per rule: stamp-binding patterns (`A@Q`, `!_k A@T`), every pattern of a `before`-window rule, possessed lolis; wildcards bail. Mid-run bound: last fired activation (strict); at return: the horizon. |
@@ -155,6 +156,52 @@ Measured (PP2 shell + kiln, the tie-poisoned motivator): 3-week catch-up =
 24 M events unrolled in bounded memory with day-sized chunks — formerly a
 `maxSteps` throw at ~1 day, an OOM at week scale. Pins:
 `tests/engine/till-chunked.test.js`.
+
+## Cohort firing (TODO_0278 B1)
+
+The population axis: a rule acting per item over a k-cohort fires ONCE at
+multiplicity k instead of k times. The law is sharper than confluence —
+the batch equals the k consecutive fires the sequential scheduler WOULD
+perform, exactly (state-identical including the Zobrist hash, and every
+later draw). Guards, all per-firing, any failure ⇒ per-item silently
+(batching is optimization, per-item is semantics — the FFI doctrine):
+
+- **unique candidate** at the instant (a tie routes through the chooser
+  one fire at a time — the PRF draw stream is byte-identical to
+  unbatched);
+- **no same-instant enablement** (`_feedsInstant`: delay > 0, or
+  zero-delay outputs that feed no rule/loli antecedent) and **no
+  persistent production at any delay** (persistent facts are timeless —
+  instantly visible even under a delayed monad);
+- **no weighted consequent** (each fire draws its own alt; a multinomial
+  batch is A3b's world-valid mode), **no existential outputs**, **not a
+  possessed loli** (v1).
+
+Multiplicity = min over consumed refs of floor((count − reserved) /
+take). The single formula subsumes the coarse guards: `!_W` takes the
+whole pool (floor 1); an age-agnostic spread take exhausts every cohort
+but its last (floor 1 there); a preserved machine (`$saw`) has count =
+#machines, so k same-stamp machines batch k-parallel while the
+reproduced copies land at a⊗d and serialize the next round. Reads
+subtract (each fire re-reads the pool). Zero-progress loops necessarily
+feed their own instant, so batching can never evade the Zeno guard —
+`maxInstantSteps` now measures RULE progress, not tokens.
+
+Observables: one event record per batch with PER-FIRE
+consumed/produced/theta plus `multiplicity: k` (absent at k = 1) — the
+event list is an RLE whose expansion reproduces the sequential event
+multiset exactly. eventTotals count fires; `steps`/Zeno/maxSteps count
+firing steps. The debug renderers split the reading: `#trace` shows
+`rule xk` (what the engine did), `#timeline`/`#why` expand the
+multiplicity (per-token semantics — goldens unchanged from per-item).
+
+Measured (sweep + mill + spoilage over one cohort): batched settle is
+FLAT in population — ~6 ms from 10^2 to 10^6 items — while per-item
+scales linearly (715 ms at 10^5); ×114 at 10^5, ~×k beyond. Warm PP2
+tick unchanged (probe cost is one binary search per firing). Pins:
+`tests/engine/till-batch.test.js` (14 arms: motivating case,
+differentials incl. PP2 kiln with draws, serialized machines, read
+arcs, spread takes, all fences, E5 chunking, I32 produce fence).
 
 ## Contracts
 

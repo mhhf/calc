@@ -39,9 +39,11 @@ describe('till debug renderings — chop/build goldens (Phase 4c)', () => {
     // Within-line fact ORDER is at-hash-ascending (integer object keys) —
     // representation-internal; re-pinned at the labelled-state flip
     // (THY_0024 rider 3: same facts, renamed presentation order).
+    // Cohort firing (TODO_0278 B1): the two identical chops at t=0 batch
+    // into ONE firing step `chop x2` — the log shows what the engine did;
+    // the per-token views below expand the multiplicity instead.
     assert.deepEqual(traceLines(res.events), [
-      '[0] chop: tree@0, chopper@0, read manual@0 → wood@4, chopper@4 @+4',
-      '[0] chop: tree@0, chopper@0, read manual@0 → wood@4, chopper@4 @+4',
+      '[0] chop x2: tree@0, chopper@0, read manual@0 → wood@4, chopper@4 @+4',
       '[4] build: wood@4 x2, builder@0 → hut@7, builder@7 @+3',
       '[5] chop: tree@5, chopper@4, read manual@0 → wood@9, chopper@9 @+4',
     ]);
@@ -125,9 +127,13 @@ describe('forward-trace/v2 — timed step fields (Phase 4c)', () => {
     const payload = st.serializeExecTrace(res.state, res.events, { initialState: initial });
     assert.equal(payload.format, 'forward-trace/v2');
     const steps = payload.leaves[0].trace;
-    assert.equal(steps.length, 4);
-    // rule NAMES from settle records; every step carries timed refs
-    assert.deepEqual(steps.map(s => s.ruleName), ['chop', 'chop', 'build', 'chop']);
+    // Cohort firing (B1): the two t=0 chops serialize as ONE step with
+    // multiplicity 2 and per-fire consumed pairs (RLE expansion ≡ v2's
+    // former per-fire steps).
+    assert.equal(steps.length, 3);
+    assert.deepEqual(steps.map(s => s.ruleName), ['chop', 'build', 'chop']);
+    assert.equal(steps[0].multiplicity, 2);
+    assert.equal(steps[1].multiplicity, undefined);
     for (const s of steps) {
       assert.ok(s.activation !== undefined, 'activation ref present');
       assert.ok(s.delay !== undefined, 'delay ref present');
