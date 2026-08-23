@@ -96,7 +96,9 @@ cohort firing (TODO_0278 B1) fires a match once at multiplicity k —
 consume k·take, produce k·count at one label — exactly when the k
 sequential fires are forced (unique candidate, no same-instant
 enablement), so the batched step is the k-fold action of the rule on
-the ℕ-label, state-identical to the unrolled prefix by induction.
+the ℕ-label, state-identical to the unrolled prefix by induction. The
+theorem, its confluence-insufficiency counterexample, and the emergent-
+serialization corollary are THY_0025.
 
 ## Adequacy
 

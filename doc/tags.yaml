@@ -16,10 +16,10 @@ tags:
   engine: 8
   lax-monad: 8
   soundness: 8
+  till: 8
   cut-elimination: 7
   oplus: 7
   symbolic-execution: 7
-  till: 7
   ownership: 6
   clf: 5
   structural-rule: 5
@@ -44,6 +44,7 @@ tags:
   accounting: 2
   backward: 2
   bridge: 2
+  confluence: 2
   content-addressing: 2
   determinism: 2
   eigenvariable: 2
@@ -58,17 +59,20 @@ tags:
   principals: 2
   representation: 2
   resource-semantics: 2
+  scheduling: 2
   SELL: 2
   sequent-calculus: 2
   session-types: 2
   supercompilation: 2
   tensor: 2
+  timed: 2
   tropical: 2
   additive: 1
   adequacy: 1
   adjoint-logic: 1
   anki: 1
   atomic-swaps: 1
+  batching: 1
   benchmarking: 1
   binlit: 1
   blockchain: 1
@@ -81,10 +85,11 @@ tags:
   CLP: 1
   code-quality: 1
   coeffects: 1
+  cohort-firing: 1
+  committed-choice: 1
   compilation: 1
   completeness: 1
   complexity: 1
-  confluence: 1
   connectives: 1
   consensus: 1
   correspondence: 1
@@ -145,7 +150,9 @@ tags:
   order-sorted-algebra: 1
   pacioli-group: 1
   parser: 1
+  partial-order-reduction: 1
   path-conditions: 1
+  petri-nets: 1
   plonky3: 1
   polarity: 1
   polynomial-time: 1
@@ -162,7 +169,7 @@ tags:
   refinement-types: 1
   residuated-monoids: 1
   roadmap: 1
-  scheduling: 1
+  run-length: 1
   Skolem: 1
   smt: 1
   sorts: 1
@@ -176,7 +183,6 @@ tags:
   termination: 1
   theorem: 1
   theory: 1
-  timed: 1
   timed-rewriting: 1
   transfers: 1
   translation: 1
