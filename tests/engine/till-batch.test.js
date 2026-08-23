@@ -254,6 +254,32 @@ fight: a -o { woplus 1/2 win lose }@1.
     assert.equal(on.steps, off.steps);
   });
 
+  it('a zero-delay output only a possessed loli consumes never batches', () => {
+    // The instant-feeding tables must include STATE-loli antecedents, not
+    // just the static rule list (audit 2026-08-23): wood has no static
+    // consumer, so pre-fix grow batched past the loli and the grow/loli
+    // tie draw vanished from the PRF stream (trace order diverged).
+    const calc = prog(`
+% tokens (closed-world sort checking)
+trigger: type.
+seed: type.
+wood: type.
+plank: type.
+
+mint: trigger -o { (wood -o { plank }@0) }@0.
+grow: seed -o { wood }@0.
+`);
+    const mk = () => lin({ [atom('trigger')]: 1, [atom('seed')]: 3 });
+    for (const seed of [0, 7, 23]) {
+      const { on } = differential(calc, mk, '10', { seed });
+      for (const e of on.events) {
+        if (e.rule === 'grow') {
+          assert.equal(e.multiplicity, undefined, "grow feeds the loli's instant");
+        }
+      }
+    }
+  });
+
   it('a self-feeding loop cannot batch past the Zeno guard', () => {
     const calc = prog(`
 % tokens (closed-world sort checking)

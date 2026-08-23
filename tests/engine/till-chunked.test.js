@@ -81,10 +81,16 @@ describe('till event suppression — { events: false } and onEvent (A2 rider 5)'
     assert.equal(slim.events, null);
     assert.equal(slim.steps, full.steps);
     assert.equal(stampedStr(slim.state), stampedStr(full.state));
+    // eventTotals count FIRES (B1 rider 4): expand the full run's RLE.
     const fromFull = {};
-    for (const e of full.events) fromFull[e.rule] = (fromFull[e.rule] || 0) + 1;
+    let fires = 0;
+    for (const e of full.events) {
+      const k = e.multiplicity || 1;
+      fromFull[e.rule] = (fromFull[e.rule] || 0) + k;
+      fires += k;
+    }
     assert.deepEqual({ ...slim.eventTotals }, fromFull);   // null-prototype by design
-    assert.equal(Object.values(slim.eventTotals).reduce((a, b) => a + b, 0), slim.steps);
+    assert.equal(Object.values(slim.eventTotals).reduce((a, b) => a + b, 0), fires);
   });
 
   it('onEvent streams the full records even when the array is suppressed', () => {
