@@ -19,7 +19,8 @@ The three opt-ins are state morphisms with stated laws:
 
 | Layer | Where | What it does |
 |---|---|---|
-| Run-length FactSet | `lib/engine/fact-set.js`, `policy.runLength` | Multiplicity as parallel count arrays — a `!_10^6` parcel is one entry. Zobrist hashes bit-identical to the classic representation. |
+| Labelled state (THY_0024) | `lib/engine/labels.js` + `fact-set.js` `policy.labels` | Rows are (innerHash, stampId, count): formulas stay time-stable content addresses, stamps live in a per-State intern table (exact parts + monotone float + value-derived mix + memoized reified term). `at(A,t)` exists only at boundaries (plain objects, store-binary, events, patterns) — the Store stops growing with elapsed time (kiln: 1.9M → 161 nodes per 4 days), rebase rebuild-swaps the table (O(live), zero allocation). |
+| Run-length FactSet | `lib/engine/fact-set.js`, `policy.runLength` | Multiplicity as parallel count arrays — a `!_10^6` parcel is one entry. Recognized post-hoc as the ℕ-instance of the label construction. |
 | Per-atom-name groups | till `factSetPolicy.groupKey` | Each atom head files in its own group (fixed-base id registry; FactSet tables grow on demand) — candidate enumeration never scans the population. |
 | Float stamp order | till `factSetPolicy.cmp` / `grades.availability.cmp` | Cached correctly-rounded doubles; monotone rounding makes float order sound, ties and ≥2^53 operands fall back to exact rational compare. |
 | Coalescing | `lib/engine/timed/coalesce.js`, `{ coalesce: true }` | Arrived facts whose stamp no rule can observe re-stamp to the unit and merge. Exclusion set DERIVED per rule: stamp-binding patterns (`A@Q`, `!_k A@T`), every pattern of a `before`-window rule, possessed lolis; wildcards bail. Mid-run bound: last fired activation (strict); at return: the horizon. |
@@ -51,6 +52,34 @@ has degree 2 and is refused, `after 3` has degree 0 and is refused,
   (normal firing carries the crossing; the expired rule then counts as
   call-dead — durable, time is monotone — and the post-deadline regime
   re-certifies); opaque deadlines refuse certification.
+
+## Covariant tie draws (TODO_0278 A3a)
+
+The tie chooser's PRF input is TRANSLATION-COVARIANT for ties whose rules
+bind no stamp position (`A@Q` / `!_k A@T`): seed + the tied candidates'
+canonical relative identities (rule, consumed cohorts at frontier-relative
+stamps, stamp-free θ) — nothing absolute. Consequences:
+
+- an exact orbit recurrence FORCES the draw to replay, so tie-poisoned
+  cycles (any built kiln: `!_W wood` racing the sawmill) certify exactly —
+  such draws no longer void the acceleration window. A certified idle
+  loop is periodic in its choices; that is what state-identical means.
+- the key encodes a coalesce-ELIGIBLE cohort as the arrived marker (its
+  canonical-form encoding) and AGGREGATES takes per (inner, stamp), so
+  coalesce cadence and cohort split/merge cannot leak into draws —
+  `accelerate ≡ coalesce` holds even on drawing programs. Weighted
+  (woplus) firings instead normalize the state (one idempotent coalesce
+  pass) before sampling, and still void the window (A3b territory).
+- stamp-binding ties and custom chooser functions keep the absolute
+  input and the voiding guard (sound as before). The safety criterion is
+  per-RULE and syntactic: only stamp-binding patterns can carry absolute
+  time into a draw identity — every other binding (counts, `!_W` totals,
+  clause-derived arithmetic, persistent lookups) is a function of
+  signature-visible content, which recurrence forces equal.
+
+Measured: shell+kiln 3-week resume = one certificate jump, 23.8M events
+elided, ~11 ms, bit-exact vs from-scratch (was: 491 s of unrolling).
+Pins: `tests/engine/till-accel-draws.test.js`.
 
 ## Orbit certificates (TODO_0278 A1)
 

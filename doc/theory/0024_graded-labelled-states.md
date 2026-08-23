@@ -2,7 +2,7 @@
 title: "Graded Labelled States: Annotation as Context Label, `at` as its Internalization"
 created: 2026-08-23
 modified: 2026-08-23
-summary: "The engine state of a graded timed calculus is a LABELLED multiset — rows (formula, label, count) with the formula content-addressed and the label drawn from a calculus-declared graded algebra — while the calculus keeps `at` as a formula connective internalizing the label (hybrid-logic style). An adequacy lemma makes the two views interchangeable; every label observation passes through a reification boundary (the coalescer's exclusion set enumerates exactly the observers). Consequences: term addresses are time-stable (the Store stops growing with elapsed time), rebase is an O(#distinct labels) table shift, and the multiplicity column of run-length states is recognized as the ℕ-instance of the same construction."
+summary: "The engine state of a graded timed calculus is a LABELLED multiset — rows (formula, label, count) with the formula content-addressed and the label drawn from a calculus-declared graded algebra — while the calculus keeps `at` as a formula connective internalizing the label (hybrid-logic style). An adequacy lemma makes the two views interchangeable; every label observation passes through a reification boundary (the coalescer's exclusion set enumerates exactly the observers). Consequences: term addresses are time-stable (the Store stops growing with elapsed time), rebase is an O(live) table rebuild-swap with zero term allocation, and the multiplicity column of run-length states is recognized as the ℕ-instance of the same construction."
 tags: [till, timed, labels, labelled-deduction, hybrid-logic, subexponentials, coeffects, graded-monad, content-addressing, fact-set, representation]
 category: "Engine Theory"
 unique_contribution: "Three results: (1) the two-level split — `at` as internalizing connective in the sequent calculus, labels on multiset rows in the operational state — with an adequacy lemma showing match/fire commute with the encoding, so the labelled representation is a semantics-preserving change of state representation, not a new logic; (2) the OBSERVER-BOUNDARY principle: a label needs term-level existence only where a rule binds or computes with it, and the coalescer's derived exclusion set already computes exactly that observer set — reification is lazy and rare by the same argument that makes coalescing effective; (3) address stability as the operational payoff of labelled deduction: content-addressed term identity must be time-independent or the arena degenerates into the temporal-Datalog holds(P,T) pattern — the count column of run-length states and the stamp column are the SAME construction over different grade algebras (ℕ vs ℚ≥0), giving one generic mechanism for future annotation logics (provenance semirings, spatial regions, epistemic indices)."
@@ -124,6 +124,21 @@ draw-sensitive ones, and for those ANY draw is a valid world
 (settleExplore's contract — the same class in which coalesce and rebase
 already live). The change renames which world a seed picks, once.
 
+## The covariant-draw corollary (TODO_0278 A3a)
+
+Labels-beside-terms makes draw covariance definable: a tie whose rules
+bind no stamp position has a draw identity that is a function of
+signature-visible content only (counts, `!_W` totals, clause outputs are
+forced equal by recurrence; only stamp-binding patterns can smuggle an
+absolute time into θ). Give such draws a PRF input built from the tied
+set's canonical FRONTIER-RELATIVE identities — with coalesce-eligible
+cohorts encoded at their normal form and takes aggregated per (inner,
+stamp), so neither coalesce cadence nor cohort split/merge is visible —
+and the recurrence induction extends through draws: `state(t+p) =
+shift_p(state(t))` INCLUDING the choices. Tie-poisoned periodic systems
+(multi-consumer economies) then certify exactly, and acceleration stays
+state-identical to the coalesced run on drawing programs.
+
 ## The observer boundary
 
 A label needs term-level existence only where the logic can SEE it. The
@@ -143,11 +158,15 @@ immortal arena node, every firing pays a hash-cons insert, and shifting
 the time origin re-interns the live state. Measured on PP2 shell+kiln:
 ~0.4M dead nodes per simulated day, ~15% of settle CPU in interning.
 With labels beside the term: addresses are time-stable (the Store stops
-growing with elapsed time), firing writes a row, and rebase is a shift
-of the stamp-table VALUES — O(#distinct live labels), zero state writes,
-order-preserving (a uniform shift is monotone). Coalescing becomes a
-label-column rewrite (dead labels → unit), the analog of DBM
-LU-extrapolation.
+growing with elapsed time), firing writes a row, and rebase REBUILD-SWAPS
+the live rows into a fresh table — O(live), zero term allocation, with
+compaction built in. (A uniform in-place table shift was rejected: a
+shifted value can collide with the unit label, breaking the value
+injectivity that value-derived hashing and row dedup require.)
+Coalescing becomes a label-column rewrite (dead labels → unit), the
+analog of DBM LU-extrapolation. Measured on PP2 shell+kiln: 4 simulated
+days grow the Store by 161 nodes (was ~1.9M) and the live label table
+holds 4–5 entries after each rebase.
 
 ## What stays internal
 
