@@ -19,7 +19,7 @@ import assert from 'node:assert/strict';
 import fs from 'fs';
 import os from 'os';
 import path from 'path';
-import { loadTill as load, atom, initQuery, stampedStr } from './till-helpers.js';
+import { loadTill as load, atom, initQuery, stampedStr, bag, FIX } from './till-helpers.js';
 
 const PP2 = path.join(import.meta.dirname, '../../calculus/till/game/PP2.till');
 
@@ -79,6 +79,25 @@ describe('till covariant tie-PRF — kiln orbits certify (A3a)', () => {
     const r = calc.settle(mkKiln(), '50000',
       { accelerate: true, chooser: 'deterministic', events: false });
     assert.ok(jumpsOf(r) >= 1, 'covariant deterministic ties must certify');
+  });
+});
+
+describe('till warehouse-cap shape — counted-take trims are chooser-fair', () => {
+  // The `!_W g * !lt CAP W` cap shape starves under the deterministic
+  // chooser: the whole-bind includes the in-flight cohort the producer
+  // just scheduled, so the trim's activation chases every arrival and a
+  // fixed-order chooser never reaches it (the PRF chooser merely hides
+  // the race — PP2 §3b, found via the capped-kiln certification test
+  // above). The counted take pins its activation oldest-first: this pin
+  // holds the lesson independent of PP2's content.
+  it('a !_201-take trim caps the pool under BOTH choosers', () => {
+    const calc = load(FIX('till-cap.ill'));
+    for (const opts of [{ seed: 7 }, { chooser: 'deterministic' }]) {
+      const r = calc.settle(initQuery(calc, 'expect_x'), '5', opts);
+      // 200 kept + at most the freshest untrimmed arrival
+      const ore = bag(r.state).ore || 0;
+      assert.ok(ore <= 201, `pool must stay capped (got ${ore}, ${opts.chooser || 'seed'})`);
+    }
   });
 });
 
