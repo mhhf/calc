@@ -1,0 +1,1327 @@
+% acmart conversion deferred until venue choice (TODO_0270) — swap documentclass + \cite style then.
+\documentclass[11pt]{article}
+
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{lmodern}
+\usepackage{amsmath,amssymb,amsthm}
+\usepackage{mathtools}
+\usepackage{mathpartir}
+\usepackage{booktabs}
+\usepackage{graphicx}
+\usepackage{geometry}
+\usepackage{xcolor}
+\usepackage[activate=false]{microtype}
+\usepackage[hidelinks]{hyperref}
+\usepackage{listings}
+
+\geometry{margin=1.25in}
+
+\lstset{
+  basicstyle=\small\ttfamily,
+  breaklines=true,
+  columns=flexible,
+  mathescape=true,
+  keepspaces=true,
+}
+
+%% ============================================================
+%%  Notation (monad-paper names; scale-paper names that differ noted below)
+%%  scale \laxm{A}{d}      → \lax{A}{d}
+%%  scale \jtrue{A}        → A\tr
+%%  scale \jlax{S}{d}      → S\laxjdg{d}
+%%  scale \Ttrop           → \TT
+%%  scale \Qnn             → \QQ_{\geq 0}
+%%  scale \N               → \NN
+%%  scale \Q               → \QQ
+%%  scale \action          → \act
+%%  scale \with (&)        → \addconj
+%% ============================================================
+\newcommand{\lax}[2]{\{#1\}\mathbin{@}#2}       % graded lax monad {S}@d
+\newcommand{\laxb}[1]{\{#1\}}                   % bare lax monad {S} (= {S}@0)
+\newcommand{\gbang}[1]{{!}_{#1}}                 % counted bang  !_k
+\newcommand{\act}{\mathbin{\rhd}}                % timed action  t ⊳ d = t+d
+\newcommand{\res}{\mathbin{\ominus}}             % partial residual ⊖
+\newcommand{\loli}{\multimap}                    % linear implication ⊸
+\newcommand{\tensor}{\otimes}                    % tensor ⊗
+\newcommand{\addconj}{\mathbin{\&}}              % additive conjunction &
+\newcommand{\adddisj}{\oplus}                    % additive disjunction ⊕
+\newcommand{\bang}{{!}}                          % bang !
+\newcommand{\tr}{\;\mathit{true}}                % truth-judgment marker
+\newcommand{\laxjdg}[1]{\;\mathit{lax}@{#1}}    % lax-judgment marker
+\newcommand{\TT}{\mathbb{T}}                     % tropical dioid
+\newcommand{\QQ}{\mathbb{Q}}                     % rationals
+\newcommand{\NN}{\mathbb{N}}                     % naturals
+\newcommand{\stmp}[2]{#1\mathbin{@}#2}           % stamp  a@t
+\newcommand{\thprem}[1]{\langle\!\!\!-\;#1\rangle}  % theory premise ⟨– ...⟩
+\newcommand{\settle}{\mathit{settle}}
+\newcommand{\till}{\textsc{till}}                % system name
+\newcommand{\calc}{\textsc{calc}}               % sandbox name
+\newcommand{\enc}[1]{\lceil #1 \rceil}          % labelled-state encoding bracket
+\newcommand{\wop}[1]{+[{#1}]}                   % weighted additive disjunction A +[q] B
+
+%% Theorem environments — numbered per section
+\newtheorem{theorem}{Theorem}[section]
+\newtheorem{lemma}[theorem]{Lemma}
+\newtheorem{corollary}[theorem]{Corollary}
+\newtheorem{proposition}[theorem]{Proposition}
+\theoremstyle{definition}
+\newtheorem{definition}[theorem]{Definition}
+\theoremstyle{remark}
+\newtheorem{remark}[theorem]{Remark}
+
+\title{A Delay-Graded Lax Monad:\\
+  Timed Multiset Rewriting with Proven-Exact Acceleration}
+\author{Denis Erfurt}
+\date{Draft (TODO\_0270)}
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+We present \till{}, a sequent calculus for intuitionistic linear logic
+whose lax modality $\{A\}$ is \textbf{graded by a delay} from the tropical
+$(\max,{+})$ dioid: availability stamps $\stmp{A}{t}$ on hypotheses combine by
+$\max$ (a coeffect: synchronisation waits for the last input), delay grades
+$\lax{S}{d}$ compose by $+$ (an effect: durations accumulate along a causal
+chain), and a timed promotion rule stamps outputs at $\max(\text{inputs})+d$.
+Grade side conditions enter the calculus as \emph{theory premises}---object-level
+derivability goals over a decidable arithmetic theory---whose partial residual
+$\res$ makes illegal rule instances \emph{unconstructible} rather than guarded.
+
+We prove cut admissibility for the graded calculus---to our knowledge the first
+cut-elimination result for a graded \textbf{lax/possibility} modality---and
+prove identity expansion, a work/makespan separation theorem, and exact-accounting
+adequacy: operational stamps are the \emph{least and only} derivable production
+stamps.
+
+The same algebra that gives the proof theory gives a scalable execution engine:
+graded labelled states (THY\_0024) externalise the stamp column and stop Store
+growth; forced-prefix cohort firing (THY\_0025) batches uniform populations in
+constant time; orbit certificates with a covariant tie-PRF enable exact
+$O(1)$ deep-time resumption.  The combined stack scales from 180\,ms/tick to
+0.2\,ms/tick, eliminates Store growth over simulated weeks ($1.9\text{M} \to 161$
+nodes over 4 simulated days), batches million-item populations in constant time,
+and resumes 3-week idle gaps in 38\,ms with bit-exact replay.  Every optimisation
+ships with a stated law and a machine-pinned differential test.
+\end{abstract}
+
+\tableofcontents
+\bigskip\hrule\bigskip
+
+%%====================================================================
+\section{Introduction}
+\label{sec:intro}
+%%====================================================================
+
+\subsection{The gap}
+
+The Concurrent Logical Framework (CLF)~\cite{Watkins2002CLF} marks the boundary
+between backward proof search and committed-choice forward chaining with a lax
+modality $\{A\}$, following the judgmental reconstruction of lax
+logic~\cite{FairtloughMendler1997,PfenningDavies2001}.  The modality is
+ungraded: a CLF derivation of $\{A\}$ certifies reachability and nothing more.
+
+Quantitative refinements of linear logic are standard---but on the
+\textbf{necessity} side.  Bounded linear logic~\cite{GirardScedrovScott1992},
+the coeffect calculi, quantitative type theory~\cite{Atkey2018},
+Granule~\cite{OrchardLiepeltEades2019}, and a current line of graded sequent
+calculi~\cite{MoonEadesOrchard2021,VollmerMarshallEadesOrchard2025,HanukaevEades2025}
+all grade the exponential $\gbang{r} A$, and there cut elimination is settled.
+Graded \emph{monads} are equally standard in
+semantics~\cite{Katsumata2014,FujiiKatsumataMillies2016}---as categorical
+structure, with no sequent calculus.  Granule types a graded possibility
+$\Diamond_r$---as a bidirectional type system, with no proof theory.  For the lax
+modality itself, the sharpest recent result is cut elimination and uniform
+interpolation for \emph{ungraded} propositional lax logic~\cite{Iemhoff2024}.
+\textbf{No published system gives a sequent calculus with cut elimination for a
+graded lax, monadic, or possibility modality} (novelty sweeps 2026-08-18 and
+2026-08-21; \S\ref{sec:related}).
+
+Meanwhile, \emph{time} in multiset rewriting is operational folklore: timed
+MSR~\cite{KanovichFORMATS2016} threads a global \texttt{Time@T} fact with a
+\texttt{Tick} rule; Coloured Petri Nets~\cite{Jensen2007CPN} stamp tokens and
+delay outputs with exactly the operational surface we want---and no proof theory.
+Temporal session types~\cite{DasHoffmannPfenning2018} put discrete-time $\bigcirc$
+on channel types for complexity analysis; intuitionistic metric temporal logic
+(IMTL)~\cite{deSaToninhoPfenning2023} labels propositions with absolute intervals
+and proves cut elimination---with additive label arithmetic and a constraint store,
+and no resource multisets.
+
+On the engines side, logic-based frameworks (CLF, Ceptre~\cite{Martens2015},
+timed MSR) stop scaling at toy populations and short horizons: they accumulate one
+proof-tree node per event, never compress time, and have no theory of
+optimisation soundness.  Ad-hoc simulation engines scale, but carry no semantics:
+an optimised engine can silently change reachable worlds, and replay breaks without
+warning.
+
+This paper closes both gaps: \textbf{time enters CLF-style forward chaining as a
+grade}, with the proof theory done properly and the engine optimisations proven
+state-identical.
+
+\subsection{Contributions}
+
+The contributions split into two movements.
+
+\paragraph{(a) Proof theory.}
+
+\begin{enumerate}
+\item \textbf{The calculus} (\S\ref{sec:calculus}).  ILL plus stamped atoms
+  $\stmp{a}{t}$ and a delay-graded lax modality $\lax{S}{d}$, in judgmental
+  presentation.  One tropical algebra plays two roles: durations compose by $+$
+  in the graded bind; availability stamps combine by $\max$ in a timed promotion
+  rule $\mathit{@fire}$ whose side condition is the dioid action $t \act d = t+d$.
+  The calculus is parametric in an ordered-monoid/semilattice/action triple.
+
+\item \textbf{Grade side conditions as theory premises with a partial residual}
+  (\S\ref{sec:calculus}).  The residual is \emph{partial}---no proof exists when
+  $F < E$---so fences like ``grades never go negative'' are not side conditions
+  but \emph{Grade Preservation by construction}: no rule, present or future, can
+  build an invalid grade.
+
+\item \textbf{Metatheory} (\S\ref{sec:meta}).  Cut admissibility (three cuts:
+  linear, persistent, and a graded lax cut composing $d+e$), identity expansion,
+  and completeness of the counted-exponential rules.  The partial residual makes
+  mismatched principal cut cases \emph{vacuous}.
+
+\item \textbf{Max-plus activation and work/makespan separation}
+  (\S\ref{sec:adequacy}).  The pure graded fragment is a \emph{cost} logic---pure
+  backward derivability computes total sequential work ($\Sigma$ delays)---while
+  the max-plus makespan is contributed exclusively by the stamp coeffect through
+  the promotion rule.  Operational stamps are the least and only derivable
+  production stamps.
+
+\item \textbf{Processes as proof terms; atomicity by theorem} (\S\ref{sec:processes}).
+  A firing with delay $d$ occupies the open interval $(a, a{+}d)$ in which no
+  rule can observe its effects.  Fused rules are uninterruptible by construction;
+  fission into \texttt{start}/\texttt{end} rules is their honest interruptible model.
+\end{enumerate}
+
+\paragraph{(b) The engine these proofs enable.}
+
+\begin{enumerate}
+\setcounter{enumi}{5}
+\item \textbf{Graded labelled states} (\S\ref{sec:engine}).  Stamps live
+  \emph{beside} content-addressed terms as interned label columns, not inside
+  them.  Address stability follows: the Store stops growing with elapsed time
+  ($1.9\text{M} \to 161$ nodes over 4 simulated days).
+
+\item \textbf{Exact orbit acceleration} (\S\ref{sec:engine}).  Periodic orbits
+  are certified as portable proofs; the phase-independence lemma makes exit-phase
+  minting exact; covariant tie-PRF draws extend certification to
+  multi-consumer economies with stochastic branching.  3-week idle gaps resume in
+  38\,ms with bit-exact replay.
+
+\item \textbf{Forced-prefix cohort firing} (\S\ref{sec:engine}).  A positive
+  theorem (three invariants that make the batch equal the sequential $k$-prefix
+  bit-exactly) whose premises are a checklist that found two live bugs.  Batched
+  settle is flat in population ($\approx 6$\,ms from $10^2$ to $10^6$ items).
+
+\item \textbf{An evaluation methodology} (\S\ref{sec:eval}).  Every optimisation
+  ships with a stated law and a differential pin that asserts observational
+  equivalence on the full state hash---making the pin suite a machine proof of
+  the optimisation's stated law.
+\end{enumerate}
+
+\subsection{Non-claims}
+
+The oracle is sound, not complete (\S\ref{sec:adequacy}); its steps are checked
+structurally by the kernel and reported as unverified---trust in a bridge
+derivation reduces to trust in the scheduler, by design and disclosed.  All proofs
+are on paper, none machine-checked; mechanisation is future work.  The
+probabilistic weight grade on the weighted additive disjunction
+(\S\ref{subsec:woplus}) has operational semantics and a sequent-level law (mass
+conservation), but a full probabilistic judgment ($\{A\}_w$) is a separate paper
+by prior decision; it is marked as future work throughout.  The acceleration
+window is voided by stamp-binding ties and \texttt{woplus} firings; the honest
+limits are stated in \S\ref{sec:engine}.
+
+%%====================================================================
+\section{Grade algebras: one tropical dioid, two roles}
+\label{sec:algebra}
+%%====================================================================
+
+Fix the tropical dioid $\TT = (\QQ_{\geq 0}, \max, +)$.  Its fragments:
+
+\begin{itemize}
+\item \textbf{Durations (effect)} $D = (\QQ_{\geq 0}, +, 0, \leq)$, an ordered
+  commutative monoid: delays compose along causal chains.
+\item \textbf{Time points (coeffect)} $T = (\QQ_{\geq 0}, \max, 0, \leq)$, a
+  join-semilattice: stamps synchronise at a tensor of inputs---wait for the last.
+\item \textbf{The action} ${\act} : T \times D \to T$, $t \act d = t+d$, monotone
+  in both arguments, with $t \act 0 = t$, $(t \act d) \act e = t \act (d+e)$, and
+  $\max(t,t') \act d = \max(t \act d,\; t' \act d)$---the semiring distributivity
+  of $\TT$.
+\end{itemize}
+
+Every proof in this paper uses only these laws; the calculus is parametric in any
+$(D, T, \act)$ triple (\S\ref{sec:related} discusses instances).  Stamps are
+absolute points, delays relative translations---the effect/coeffect pairing is the
+\emph{trivial} matched pair in the sense of~\cite{GaboardiICFP2016}; the
+substantive interaction is not their distributive law $\sigma$ but the action
+$\act$ inside the promotion rule.
+
+\medskip
+\noindent\textbf{Fenced grade algebras.}  Grades live inside a \emph{fence}
+(validity predicate) $V$ with a \emph{partial residual}: $a \res b$ is the
+$h \in V$ with $b + h = a$, undefined when none exists.  \till{}'s instances:
+
+\begin{table}[ht]
+\centering
+\begin{tabular}{@{}llll@{}}
+\toprule
+Grade  & Operation & Fence $V$         & Residual $\res$ \\
+\midrule
+delay  & $+$ & $\QQ_{\geq 0}$        & $a - b$ when $a \geq b$, else $\bot$ \\
+count  & $+$ & $\NN$                  & $a - b$ when $a \geq b$ ($\NN$-closed) \\
+weight & $\cdot$ & $[0,1]$           & none---$[0,1]$ closed under $\cdot$ \\
+\bottomrule
+\end{tabular}
+\caption{Fenced grade algebras in \till{}.}
+\label{tab:grades}
+\end{table}
+
+$V$ is closed under the exposed operations.  The residual is the graded analogue
+of an Iris resource algebra's validity~\cite{JungIris2018} and a residuated
+commutative monoid~\cite{Galatos2007} restricted to its valid cone.  We
+deliberately do \emph{not} adopt the clamping monus ($a \mathbin{\dot{-}} b = 0$
+when $b \geq a$~\cite{Amer1984}): a too-late resource must make a rule
+inapplicable, not free.
+
+\begin{theorem}[Grade Preservation]
+\label{thm:grade-pres}
+If every grade literal in a program satisfies its fence and rules construct grades
+only through $+$ and $\res$, every grade in every reachable state---forward
+execution and backward search alike---satisfies its fence.  Per-rule guards
+($F \geq E$, $K \geq 1$) are derived lemmas, not stated conditions; the force of
+the theorem is quantification over \emph{future} rules.
+\end{theorem}
+\begin{proof}
+Base: literals are fence-checked at load.  Step: $a + b$ ($V$ closed); $a \res b$
+(in $V$ by definition when defined; when undefined the rule did not fire).  Each
+firing is a frame-preserving update for $V$.  Induction over firings; THY\_0022.
+\end{proof}
+
+\noindent\textit{In-logic reading.}  $a \res b$ is definitionally ``the $H$ with
+$b + H = a$''---a derivability statement \texttt{plus H b a} over the sorted
+domain.  Three faces (clause = SLD semantics; FFI = decision procedure; algebra =
+$O(1)$ fast path) are fuzz-pinned to agree on definedness and value.
+
+\medskip
+\noindent\textbf{Design axis.}  Metric time has two proof-theoretic poles.  The
+\emph{labelled/absolute} pole (IMTL~\cite{deSaToninhoPfenning2023}; timed
+MSR~\cite{KanovichFORMATS2016}) uses absolute interval annotations, accumulation-only
+rules, and a constraint store.  The \emph{graded/relative} pole (\till{}) has
+label-free judgments and one partial operation $\res$.  Choosing grades buys
+compositional, label-free judgments and pays with exactly one partial
+operation---\texttt{monad\_l}'s $H := F \res E$ is the labelled system's
+world-shift arithmetic $E + H = F$ folded into the grade (THY\_0022).
+
+%%====================================================================
+\section{The calculus}
+\label{sec:calculus}
+%%====================================================================
+
+\subsection{Syntax and judgments}
+
+Formulas: ILL ($\tensor, \loli, \mathbf{1}, \addconj, \bang$) extended with
+\textbf{stamped atoms} $\stmp{a}{t}$ ($t \in T$; $@$ attaches to atoms only),
+\textbf{counted exponentials} $\gbang{k} A$ ($k \in \NN$), and the \textbf{graded
+lax monad} $\lax{S}{d}$ ($d \in D$; bare $\{S\}$ abbreviates $\lax{S}{0}$), $S$
+ranging over the synchronous fragment as in CLF.
+
+Judgments, with the lax judgment graded:
+\begin{itemize}
+\item $\Gamma; \Delta \vdash A\tr$ --- $A$ holds of persistent context $\Gamma$
+  and linear context $\Delta$.
+\item $\Gamma; \Delta \vdash S\laxjdg{d}$ --- $S$ is \emph{achievable} from
+  $\Gamma; \Delta$ within delay bound $d$.
+\end{itemize}
+
+\subsection{The graded lax fragment}
+
+\begin{mathpar}
+  \inferrule[\textit{lax}]
+    {\Gamma; \Delta \vdash S\tr}
+    {\Gamma; \Delta \vdash S\laxjdg{0}}
+  \and
+  \inferrule[\textit{sub}]
+    {\Gamma; \Delta \vdash S\laxjdg{d} \\ d \leq d'}
+    {\Gamma; \Delta \vdash S\laxjdg{d'}}
+  \and
+  \inferrule[\textit{\{R\}}]
+    {\Gamma; \Delta \vdash S\laxjdg{d}}
+    {\Gamma; \Delta \vdash \lax{S}{d}\tr}
+  \and
+  \inferrule[\textit{\{L\}}]
+    {\Gamma; \Delta, S \vdash C\laxjdg{e}}
+    {\Gamma; \Delta, \lax{S}{d} \vdash C\laxjdg{d+e}}
+\end{mathpar}
+
+\noindent\textit{lax} is the unit: what is true now is achievable with zero
+delay.  \textit{\{L\}} is CLF's \emph{sticky} left rule with grade
+composition---eliminating $\lax{S}{d}$ inside a lax goal adds $d$ to the bill.
+\textit{sub} is subeffecting.  Erasing grades yields exactly the judgmental lax
+fragment of~\cite{PfenningDavies2001}.
+
+\medskip
+\noindent Derived: graded $\mu$, $\lax{\lax{S}{d}}{e} \vdash \lax{S}{d+e}$;
+functoriality; unit $S \vdash \lax{S}{0}$.
+
+\medskip
+\noindent\textbf{Counted exponentials.}  $\gbang{k} A$ is $k$ linear parcels
+($A^{\tensor k}$), with four rules (left peel/weaken, right peel/zero) whose side
+conditions are arithmetic over $\NN$.
+
+\subsection{Stamps and timed promotion}
+\label{subsec:stamps}
+
+Three laws with deliberately different standings:
+
+\begin{itemize}
+\item \textbf{Retiming} (the one sequent rule): $\Gamma; \stmp{a}{t}
+  \vdash \stmp{a}{t'}\tr$ for $t \leq t'$.
+\item \textbf{Ambient} $a \equiv \stmp{a}{0}$ is a canonicalisation convention at
+  the state boundary, \emph{not} a rule: $a \not\vdash \stmp{a}{t}$ for every
+  $t$ inside the calculus (admitting $a \vdash \stmp{a}{0}$ would compose with
+  retiming into stamp forgery).
+\item \textbf{Monoidal} $(A \tensor B)@t \equiv \stmp{A}{t} \tensor \stmp{B}{t}$,
+  $\mathbf{1}@t \equiv \mathbf{1}$ is a meta-level law of the state representation.
+\end{itemize}
+
+The rule tying stamps to grades is the \textbf{promotion rule} in the SELL style:
+
+\begin{mathpar}
+  \inferrule[\textit{@fire}]
+    {\Gamma; A_1, \ldots, A_n \vdash S\laxjdg{d}
+     \\ a = \max(t_1, \ldots, t_n, 0)}
+    {\Gamma;\; \stmp{A_1}{t_1}, \ldots, \stmp{A_n}{t_n}
+     \;\vdash\; \stmp{S}{(a \act d)}\laxjdg{0}}
+\end{mathpar}
+
+\noindent The body promises $S$ within $d$ of its inputs; the inputs synchronise at
+$a$ (coeffect $\max$); the outputs exist from $a+d$ (action); the lax grade
+\emph{resets}.  Activation windows (\texttt{after} $E$ strengthens $a$;
+\texttt{before} $E$ bounds it) are scheduling annotations, not connectives.
+
+\subsection{Grade side conditions as theory premises}
+\label{subsec:theory-prem}
+
+The implemented calculus is single-level ($S\laxjdg{d}$ represented as
+$\lax{S}{d}$) and its rules carry \textbf{theory premises}: object-level goals
+over a decidable arithmetic theory, discharged during rule application and
+re-checked by the proof kernel.  The two monad rules:
+
+\medskip
+\begin{center}
+\small
+\begin{tabular}{@{}r@{\;\;}l@{\quad}l@{\quad}l@{}}
+$\mathit{monad\_l}$: &
+  $\Gamma; \Delta, \lax{A}{E} \vdash \lax{C}{F}\tr$ &
+  $\Leftarrow$ &
+  $\Gamma; \Delta, A \vdash \lax{C}{H}\tr\quad
+   \thprem{!\mathit{qsub}\;F\;E\;H}$ \\[4pt]
+$\mathit{monad\_r}$: &
+  $\Gamma; \Delta \vdash \lax{A}{E}\tr$ &
+  $\Leftarrow$ &
+  $\Gamma; \Delta \vdash A\tr\quad
+   \thprem{!\mathit{le}\;0\;E}$
+\end{tabular}
+\end{center}
+\medskip
+
+\noindent$!\mathit{qsub}\;F\;E\;H$ derives ``$H$ is the residual $F \res E$'': it
+\emph{binds} $H$ when $F \geq E$ and has \textbf{no derivation} when $F < E$.
+Variables not bound by the conclusion are output variables bound by the
+derivation---the exact discipline of properly oriented extra variables in
+deterministic 3-CTRSs~\cite{Ohlebusch2002}, transported from rewriting to proof
+theory.
+
+Two published lineages meet here.  The premises are CLP-style constraint goals in
+the sense of~\cite{LassezMcAloon1990}, living object-level in the rules.  And they
+are \emph{geometric}: the residual axiom $\forall F, E.\;(F \geq E \supset \exists
+H.\;F = E + H)$ is a geometric implication, so by~\cite{NegriVonPlato1998}
+building it into the rules preserves cut eliminability---in our direct proof
+(\S\ref{sec:meta}) this materialises as the observation that theory premises carry
+no sequent-level principal formula and therefore never obstruct a permutation.
+
+\subsection{Weighted additive disjunction}
+\label{subsec:woplus}
+
+$A \wop{q} B$ (weight $q \in [0,1] \cap \QQ$) is a \textbf{probability-graded
+internal choice}: the producer decides a branch probabilistically.  Plain $\adddisj$
+is unsound for the distribution semantics (it drops $q$).  The judgment is extended
+with a weight annotation $\langle w\rangle$:
+
+\begin{mathpar}
+\inferrule[\textit{$\wop{q}$R$_1$}]
+  { \Gamma;\Delta \vdash S\laxjdg{d} \;\langle w\rangle}
+  { \Gamma;\Delta \vdash (A \wop{q} B)\laxjdg{d} \;\langle q \cdot w\rangle}
+\and
+\inferrule[\textit{$\wop{q}$R$_2$}]
+  { \Gamma;\Delta \vdash S\laxjdg{d} \;\langle w\rangle}
+  { \Gamma;\Delta \vdash (A \wop{q} B)\laxjdg{d} \;\langle (1-q) \cdot w\rangle}
+\end{mathpar}
+
+There is no left rule: \texttt{woplus} is consequent-only.  \textbf{Mass
+Conservation}: if $\Gamma;\Delta \vdash C\laxjdg{d}$ is derivable, the derivation
+forest (all proofs differing only in $\wop{q}$R choices) has weights summing to
+1.  The delay and weight gradings are orthogonal.  A full probabilistic judgment
+($\{A\}_w$) with its own sequent rules is deferred as a separate paper.
+
+\begin{remark}
+For the duel program \texttt{fight: rock}$\tensor$\texttt{sci -{}-o}
+$\lax{\text{woplus}(3/4,\text{rock},\text{sci})}{0}$, the aggregate derivation
+mass equals the combat DP $\mathrm{winProbDP}(r,s,3/4)$ exactly (rational
+arithmetic, no floating-point drift).
+\end{remark}
+
+\begin{theorem}[Presentation equivalence]
+\label{thm:pres-equiv}
+The judgmental two-level system and the implemented single-level system derive the
+same sequents, with cut-free derivations mapping to cut-free derivations both ways,
+size-linearly.
+\end{theorem}
+
+%%====================================================================
+\section{Metatheory}
+\label{sec:meta}
+%%====================================================================
+
+Full proofs: THY\_0023.  ``The calculus'' is the pure syntactic system (id, the
+ILL rules, $\omega$-bang, counted bangs,
+\textit{lax}/\textit{sub}/\textit{\{R\}}/\textit{\{L\}}, retiming, copy); the
+oracle rule is excluded (\S\ref{subsec:oracle}).
+
+\begin{theorem}[Cut admissibility]
+\label{thm:cut}
+The three cuts
+\begin{mathpar}
+  \inferrule[\textit{cut}]
+    {\Gamma; \Delta \vdash A\tr \\ \Gamma; \Delta', A \vdash J}
+    {\Gamma; \Delta, \Delta' \vdash J}
+  \and
+  \inferrule[$\mathit{cut}_{\mathit{lax}}$]
+    {\Gamma; \Delta \vdash S\laxjdg{d}
+     \\ \Gamma; \Delta', S \vdash C\laxjdg{e}}
+    {\Gamma; \Delta, \Delta' \vdash C\laxjdg{d+e}}
+  \and
+  \inferrule[$\mathit{cut}^{!}$]
+    {\Gamma; \cdot \vdash A\tr \\ \Gamma, A; \Delta \vdash J}
+    {\Gamma; \Delta \vdash J}
+\end{mathpar}
+are admissible in the cut-free calculus.
+\end{theorem}
+\begin{proof}
+Lexicographic induction on (cut-formula weight, cut kind with
+$\mathit{cut}^{!} \succ \mathit{cut}_{\mathit{lax}} \succ \mathit{cut}$, the
+premise derivations).  The principal $\mathit{\{R\}}/\mathit{\{L\}}$ case reduces
+a true-cut on $\lax{S}{d}$ to exactly $\mathit{cut}_{\mathit{lax}}$ with grades
+composing as $d+e$---no new arithmetic.  $\mathit{cut}_{\mathit{lax}}$ analyses
+the left derivation: the \textit{lax} case drops to \textit{cut} with the unit
+law $0+e=e$; \textit{sub} commutes by monotonicity; $\mathit{\{L\}}$ re-associates
+($d' + (d_0{+}e) = (d'{+}d_0) + e$).  Retiming cuts compose by transitivity of
+$\leq$.  Counted-bang principal cases use functionality of the residual ($J = J'
+= K{-}1$); the mismatched pairings (peel against zero) are \textbf{vacuous}: their
+theory premises demand $K \geq 1$ and $K = 0$ simultaneously, so no such pair of
+derivations exists---partiality deletes case obligations.
+\end{proof}
+
+Two structural remarks:
+
+\begin{itemize}
+\item \textbf{The fence is the measure.}  Counted bangs enter the termination
+  measure as $w(\gbang{K} A) = (K{+}1)(w(A){+}1)$, well-founded \emph{because}
+  the count fence is $\NN$.  The delay grades---dense in $\QQ_{\geq 0}$---never
+  enter the measure: every monad-cut descends to the body.
+\item \textbf{No erasure lift.}  THY\_0018's original sketch routed through grade
+  erasure onto the ungraded lax fragment.  The direct proof does not: the graded
+  system is proved outright.
+\end{itemize}
+
+\begin{theorem}[Identity expansion]
+\label{thm:id-expand}
+For every formula with ground grades, $\Gamma; A \vdash A$ is derivable with
+axioms only at atoms (id at unstamped atoms; retiming with reflexive $t \leq t$
+at stamped atoms).
+\end{theorem}
+
+\begin{theorem}[Counted-bang completeness]
+\label{thm:counted-bang}
+For ground $k \in \NN$, $\gbang{k} A \dashv\vdash A^{\tensor k}$ with the four
+counted rules; with Theorem~\ref{thm:cut}, a sequent is provable in the counted
+reading iff its expansion is provable in the bang-free fragment.  The split/merge
+iso $\gbang{a+b} A \dashv\vdash \gbang{a} A \tensor \gbang{b} A$ follows.
+\end{theorem}
+
+\begin{corollary}
+\label{cor:misc}
+Consistency; the analytic subformula property up to grade recomputation; and
+admissibility of the compositions used by the adequacy and fusion theorems
+below---they never leave the cut-free calculus.
+\end{corollary}
+
+%%====================================================================
+\section{Operational semantics: timed matching and settle}
+\label{sec:opsem}
+%%====================================================================
+
+A \till{} program is a set of rules $\mathit{In} \loli \lax{\mathit{Out}}{d}$; a
+state is a \textbf{timed multiset}---a finite map $(\mathit{atom},
+\mathit{stamp}) \to \mathit{count}$; equal-stamp copies merge into cohorts.
+
+\subsection{Match patterns}
+
+\begin{table}[ht]
+\centering
+\begin{tabular}{@{}lll@{}}
+\toprule
+Pattern          & Matches                               & Binding \\
+\midrule
+$A$              & any cohort of $A$                     & stamp joins activation \\
+$\stmp{A}{Q}$    & any cohort                            & stamp bound to $Q$ \\
+$\gbang{k} A$   & $k$ copies across any cohorts (FIFO)  & newest taken stamp activates \\
+$\gbang{W} A$   & all copies                            & $W :=$ live total at firing \\
+$\mathtt{read}\;A$ & as $A$, nothing consumed            & stamp joins activation \\
+\bottomrule
+\end{tabular}
+\caption{Timed match patterns and their semantics.}
+\label{tab:patterns}
+\end{table}
+
+A match $m$ assigns cohorts to pattern atoms satisfying guards.  Its
+\textbf{activation} $a(m) = \max(\text{selected stamps} \cup \{\text{after-bounds}\})$,
+valid iff below every \texttt{before}-bound.  Firing consumes at $a(m)$ and
+produces each output stamped $a(m)+d$---one $\mathit{@fire}$ instance.
+
+\subsection{The match order and the settle scheduler}
+
+\begin{proposition}[Lexicographic-first is unsound]
+\label{prop:lex-unsound}
+Per-pattern oldest-first matching does not compute the activation-minimal match
+when guards couple patterns.
+\end{proposition}
+\begin{proof}[Counterexample]
+State $\stmp{A}{0}, \stmp{A}{3}, \stmp{B}{3}, \stmp{B}{9}$, a guard rejecting
+exactly $(A@0, B@3)$: lexicographic-first finds activation 9; the minimum is 3.
+Firing the 9-match ahead of another rule's 5-match violates nondecreasing
+activation.  THY\_0019, Props.~1--3.
+\end{proof}
+
+\begin{proposition}[Branch-and-bound is sound and complete]
+\label{prop:bab}
+DFS with cohorts in ascending stamp order, carrying partial activation, pruning
+branches on the partial $\max$, returns exactly the activation-minimal
+FIFO-lexicographic match.  Fast path: rules without \texttt{before} windows or
+cross-pattern guards admit a single-pass greedy solution---the common case costs
+what untimed matching costs.
+\end{proposition}
+
+\begin{lstlisting}[caption={The settle scheduler (pseudocode).}]
+settle(S, T):
+  while some rule has a valid match $m$ with $a(m)$ $\leq$ T:
+    among globally minimal $a(m)$ (ties: stateless PRF chooser);
+    fire it (consume at $a(m)$, produce at $a(m)+d$)
+  return S    -- quiescent at horizon T
+\end{lstlisting}
+
+There is no clock, no tick, no watermark: stamps are monotone, so $\settle$
+resumes correctly after any horizon with no memory of it.
+
+\begin{theorem}[Determinism and composability]
+\label{thm:composability}
+$\settle$ is a function of (state, horizon, seed, policies), and for
+$T_1 \leq T_2$:
+\[
+  \settle(\settle(S,T_1),T_2) = \settle(S,T_2)
+\]
+---states, traces, stamps all equal.  The proof obligation is precisely that no
+selection reads the horizon: minimal activation is a function of the state;
+equal-activation ties are resolved by a \emph{stateless} content-derived PRF
+($\mathrm{mix}(\mathit{seed} \oplus \mathrm{hash}(\mathit{state}) \oplus
+\mathrm{hash}(\mathit{candidates}))$).  The law is frame-rate independence: a game
+host that jumps the horizon replays exactly the history a small-stepping host
+would have produced.  THY\_0019, Thms.~4--5.
+\end{theorem}
+
+\begin{theorem}[Termination / Zeno guard]
+\label{thm:termination}
+$\settle(S,T)$ terminates iff finitely many events have activation $\leq T$;
+sufficient statically: every cycle in the rule-dependency graph has positive total
+delay.  $a \loli \lax{a}{0}$ from $\stmp{a}{0}$ is the Zeno counterexample; with
+$\lax{a}{1}$ the same rule is productive---the delay grade as a guardedness
+witness in the sense of Nakano's $\triangleright$~\cite{Nakano2000}.  Off-cycle
+zero-delay rules are fine.
+\end{theorem}
+
+\subsection{settleExplore and ample sets}
+
+\texttt{settleExplore} exhaustively expands all equal-activation conflicts,
+producing a tree of worlds with edge weights from \texttt{woplus} branches.  Its
+branching criterion is the \textbf{ample-set / partial-order reduction condition}
+(\cite{Peled1993}): only branch on genuine conflicts (enabled matches sharing
+consumed resources at the same activation).  Independent concurrent actions commute
+by Theorem~\ref{thm:confluence}, so branching on them produces duplicate worlds.
+
+%%====================================================================
+\section{Adequacy}
+\label{sec:adequacy}
+%%====================================================================
+
+Three results, in increasing order of what they refuse to assume.
+
+\subsection{Exactness}
+\label{subsec:exact}
+
+\begin{theorem}[Exactness]
+\label{thm:exact}
+Let $R = \settle(\Delta, T)$ be the residual of an activation-ordered
+conflict-free execution.  Then:
+\begin{enumerate}
+\item \emph{(Soundness)} $\Gamma; \Delta \vdash \lax{\bigotimes R}{T}$ is
+  derivable---each firing is one $\mathit{@fire}$ instance, and composing the chain
+  uses one $\mathit{\{L\}}$ residual per step, each \emph{defined} because
+  activation order keeps the budget above the spent delay.
+\item \emph{(Exactness)} For a token $\stmp{b}{u} \in R$ produced by the
+  execution, the claim $\Gamma; \Delta \vdash \lax{\stmp{b}{u'}}{T'}$ is derivable
+  \textbf{iff} $u' = u$: the operational stamp is the least---and \emph{only}---derivable
+  production stamp.  A claimed stamp below the max-plus critical path makes some
+  residual undefined; above it is blocked because the calculus omits stamped-claim
+  weakening.
+\item \emph{(Where weakening lives)} Hypothesis-side only for stamps ($\stmp{b}{t}
+  \vdash \stmp{b}{t'}$ iff $t \leq t'$, retiming) and monad-side only for grades
+  ($S \vdash \lax{S}{E}$ for $E \geq 0$, subeffecting).
+\end{enumerate}
+THY\_0018, Thm.~1.
+\end{theorem}
+
+\begin{theorem}[Timed confluence]
+\label{thm:confluence}
+Conflict-free executions have order-independent residuals: the event DAG is unique,
+a token's stamp is its max-plus path weight, and firing orders are linearisations.
+\end{theorem}
+
+\subsection{Work adequacy and the separation theorem}
+
+Encode a program's rules as \textbf{linear hypotheses} with multiplicities as
+counted bangs: for an execution $\varepsilon$ from unstamped $\Delta_0$ with
+firing multiset $n$ and residual $R$, let $\Delta_\varepsilon = \Delta_0 \uplus
+\{\gbang{n(R_i)}(In_i \loli \lax{Out_i}{d_i})\}$.
+
+\begin{theorem}[Work adequacy]
+\label{thm:work}
+$\cdot;\, \Delta_\varepsilon \vdash \lax{\bigotimes R}{W}$ is derivable in the
+pure calculus \textbf{iff} some execution from $\Delta_0$ with firing multiset $n$
+reaches residual $R$ and $W \geq \sum_i n(R_i)\cdot d_i$ (the total sequential
+work).  THY\_0023, Thm.~10.
+\end{theorem}
+
+\begin{theorem}[Work/makespan separation]
+\label{thm:separation}
+The pure grade measures work, not makespan.  Join program $\{a \loli \lax{x}{2},\;
+b \loli \lax{y}{3},\; x \tensor y \loli \lax{c}{1}\}$ from $\{a, b\}$: least
+pure-derivable $W$ is $6 = 2{+}3{+}1$ while $\settle$ produces $\stmp{c}{4}$
+($\max(2,3){+}1$).  \textbf{Consequently: the delay-graded lax monad alone is a
+cost logic---sequential composition of delays; max-plus synchronisation is
+contributed exclusively by the stamp coeffect through $\mathit{@fire}$.}
+THY\_0023, Thm.~11.
+\end{theorem}
+
+\subsection{The oracle rule (bridge soundness)}
+\label{subsec:oracle}
+
+The implementation realises $\mathit{@fire}$ as an admissible \textbf{oracle rule}:
+for a goal $\Gamma; \Delta \vdash \lax{S}{T}$ the prover may run $\settle(\Delta,
+T)$ and then prove $S$ against the residual timed multiset by the pure calculus.
+
+\begin{theorem}[Oracle soundness]
+\label{thm:oracle}
+If the oracle succeeds, $\Gamma; \Delta \vdash \lax{S}{T}$ is derivable.  The
+\textbf{converse is false and not claimed}: \textit{sub} derives $a \vdash
+\lax{a}{d}$ for every $d \geq 0$ with no forward step.  Kernel checking of an
+oracle step is structural: the settle run is trusted and \emph{disclosed}---the
+checker reports it as an unverified step.
+\end{theorem}
+
+%%====================================================================
+\section{Processes as proof terms: Fusion = Atomicity}
+\label{sec:processes}
+%%====================================================================
+
+\begin{theorem}[Fusion = Atomicity]
+\label{thm:fusion}
+\begin{enumerate}
+\item[(a)] \emph{Atomicity of fused rules.}  For a firing at activation $a$ with
+  delay $d$, inputs are consumed at $a$ and every output carries stamp $a+d$; any
+  match involving an output has activation $\geq a+d$.  The open interval
+  $(a, a{+}d)$ admits no interaction: fused rules are uninterruptible by
+  construction.
+\item[(b)] \emph{Fission.}  Replacing $\mathit{In} \loli \lax{\mathit{Out}}{d}$
+  by $\mathit{start} = \mathit{In} \loli \lax{J}{0}$, $\mathit{end} = J \loli
+  \lax{\mathit{Out}}{d}$ ($J$ fresh) is observationally equivalent on $J$-free
+  observables with identical stamps: $\mathit{start};\mathit{end}$ composes by
+  graded $\mu$ ($0+d = d$), and fusion is cut elimination on $J$.
+\item[(c)] \emph{Corollary.}  An interruptible process \textbf{must} be fissioned:
+  the mid-flight resource is the honest model.  Only \emph{interaction}
+  requires fission, not observability.
+\end{enumerate}
+THY\_0018, Thms.~3+5.
+\end{theorem}
+
+\medskip
+\noindent\textbf{Read arcs.}  $\mathtt{read}\;A$ joins the activation max,
+consumes nothing, and re-emits the token bit-identically with its original stamp.
+
+\medskip
+\noindent\textbf{Trace $\cong$ term.}  The flat step log (rule, $\theta$, $a$, $d$
+in firing order) and the CLF monadic proof term (the let-chain) are two
+presentations of one object; the stamps make the concurrency partial order
+explicit.
+
+\begin{remark}[Engineering corollary]
+\label{rem:hash-accum}
+Reassociating the term as an event snoc-list lets a running system prune the
+settled past into a hash accumulator $H_k = \mathrm{hash}(H_{k-1}, \mathit{ev}_k)$
+--- $O(1)$ history storage that cryptographically commits to the full trace.
+\end{remark}
+
+%%====================================================================
+\section{From proofs to an engine}
+\label{sec:engine}
+%%====================================================================
+
+The proof theory of \S\S\ref{sec:calculus}--\ref{sec:processes} determines the
+engine's representation choices by theorem.  This section presents three
+engineering theorems that carry proof-theoretic content:
+(i)~graded labelled states (THY\_0024), (ii)~exact orbit acceleration, and
+(iii)~forced-prefix cohort firing (THY\_0025).
+
+\subsection{Graded labelled states (THY\_0024)}
+\label{subsec:labelled}
+
+\subsubsection*{The two-level split}
+
+A graded timed calculus needs its annotations in two places:
+
+\begin{itemize}
+\item \textbf{In the logic}: $\mathsf{at}(A, t)$ is a genuine connective (the
+  $\stmp{A}{t}$ atoms, the retiming axiom, the backward prover and adequacy
+  theorems reason with it).
+\item \textbf{In the engine state}: the label lives \emph{outside} the term.  The
+  state is rows $(A, \ell, n)$---content-addressed formula hash $A$, label $\ell$
+  from the grade algebra, multiplicity $n$.  No $\mathsf{at}$-node exists at
+  runtime.
+\end{itemize}
+
+This split converges from five directions: labelled
+deduction~\cite{Gabbay1996,Negri2005} makes semantic parameters labels with a
+separate label theory; SELL~\cite{NigamOlartePimentel2017} shows modalities are
+context-zone indices; timed MSR~\cite{KanovichFORMATS2016} writes configurations
+as external $(\mathit{fact}, t)$ pairs; QTT/Granule~\cite{Atkey2018,OrchardLiepeltEades2019}
+put grades on context entries; differential
+dataflow~\cite{MurrayMcSherry2013} uses $(\mathit{data}, \mathit{time},
+\mathit{diff})$ triples.
+
+\subsubsection*{The label algebra}
+
+A calculus declares per label kind: \texttt{parse}/\texttt{reify}
+(bijection on ground stamp terms), \texttt{cmp} (availability order),
+\texttt{add} (effect monoid), \texttt{unit} (default label), and \texttt{mix}
+(Zobrist contribution, value-derived).  Values are interned per-State in a
+\textbf{stamp table}---session-local and compactable.
+
+\textbf{The multiplicity column} is this same construction at the semiring $\NN$:
+count is a label the engine already stores beside the address, not inside it.
+Future annotation logics (provenance semirings~\cite{GreenKarvounarakisTannen2007},
+spatial regions) plug in as new algebras.
+
+\subsubsection*{Coalescing}
+
+Arrived facts whose stamps no rule can observe are re-stamped to the unit and
+merged.  The observer set---stamp-binding patterns ($\stmp{A}{Q}$,
+$\gbang{k} \stmp{A}{T}$), \texttt{before}-window rules, possessed
+lolis---is exactly what the \textbf{coalescer} derives as its exclusion set.  This
+is the analogue of DBM LU-extrapolation in timed
+automata~\cite{BengtssonYi2004}.
+
+\begin{lemma}[Representation Adequacy]
+\label{lem:rep-adequacy}
+Let $\enc{\cdot}$ encode a labelled state as a formula multiset by
+$\enc{(A, \ell, n)} = \mathsf{at}(A, \mathrm{reify}\;\ell)^n$ (unit labels drop
+the wrapper).  Then $\enc{\cdot}$ is a bijection onto stamped multisets, and for
+every rule $r$:
+\begin{enumerate}
+\item $\mathit{match}(r, S) \cong \mathit{match}(r, \enc{S})$---same assignments,
+  same activations;
+\item $\enc{\mathit{fire}(m, S)} = \mathit{fire}(m, \enc{S})$.
+\end{enumerate}
+Hence $\settle$, \texttt{settleExplore}, and every derived observable are
+representation-invariant.
+\end{lemma}
+\begin{proof}[Proof sketch]
+A pattern observes a row through exactly two channels: the inner formula
+(content address---identical) and the label, which enters only through binding
+sites and guard computation, all passing through \texttt{parse}/\texttt{reify}
+(mutually inverse on ground stamp terms).
+\end{proof}
+
+\subsubsection*{Address stability (operational payoff)}
+
+With labels inside the term: every $(\mathit{inner} \times \mathit{stamp})$
+combination interns an immortal arena entry, every firing pays a hash-cons insert,
+and shifting the time origin re-interns the live state.  Measured on the PP2 shell
++ kiln: $\approx 0.4$M dead nodes per simulated day, $\approx 15\%$ of settle CPU
+in interning.
+
+With labels beside the term: addresses are time-stable.  \textbf{Rebase} is a
+table rebuild-swap of the live rows into a fresh stamp table---$O(\mathit{live})$,
+zero term allocation, compaction built in.
+
+\textit{Measured}: 4 simulated days grow the Store by 161 nodes (was $\approx
+1.9$M), $\approx 12{,}000\times$ reduction; live stamp table 4--5 entries after
+each rebase; CPU neutral.
+
+\subsection{Exact orbit acceleration}
+\label{subsec:acceleration}
+
+\subsubsection*{Periodic orbit certificates}
+
+A $\settle$ that certifies a periodic orbit mints a portable proof:
+
+\begin{lstlisting}[language={}]
+{ "v": 1, "fingerprint": ..., "sigKey": ..., "period": [n, d],
+  "sinkDelta": [...], "cycleEvents": n }
+\end{lstlisting}
+
+($\approx 458$ bytes in practice.)  A later $\settle(\mathit{state}, T,
+\{\mathit{certificate}\})$ revalidates at the current frontier and applies the
+elapsed cycles as ONE jump.
+
+\subsubsection*{Phase-Independence Lemma}
+
+The in-run proof certifies recurrence at checkpoint phase $t_0$:
+$\mathit{state}(t_0 + p) = \mathit{shift}_p(\mathit{state}(t_0))$ with no
+draw-sensitive tie in the window.  Determinism outside such ties propagates:
+$\mathit{state}(t + p) = \mathit{shift}_p(\mathit{state}(t))$ for every $t \geq
+t_0$.  A stale certificate silently falls back to in-run re-detection.
+
+\textit{Measured (A1)}: 3-week idle resume = 1 jump, 23.9M events elided, 38\,ms,
+bit-exact vs.\ from-scratch replay; certificate 458 bytes.
+
+\subsubsection*{Covariant tie-PRF draws (A3a)}
+
+The tie chooser's PRF input is \textbf{translation-covariant} for ties whose rules
+bind no stamp position: seed $+$ the tied candidates' canonical frontier-relative
+identities (rule, consumed cohorts at frontier-relative stamps, stamp-free
+$\theta$)---nothing absolute.
+
+\begin{remark}[Seeded-PRF chooser determinism]
+\label{rem:prf-det}
+This covariance is load-bearing for ``state-identical including every draw'': an
+exact orbit recurrence \emph{forces the draw to replay}, so tie-poisoned cycles
+certify exactly.  The covariant key encodes coalesce-eligible cohorts at their
+normal form and aggregates takes per (inner, stamp), so coalesce cadence and cohort
+split/merge cannot leak into draws---$\texttt{accelerate} \equiv \texttt{coalesce}$
+holds even on drawing programs.
+\end{remark}
+
+\textit{Measured (A3a)}: kiln (multi-consumer economy with PRF tie draws) 3-week
+resume = 1 certificate jump, 23.8M events elided, 10.6\,ms, bit-exact (was
+491\,s of chunked unrolling; OOM before that).
+
+\subsubsection*{What voids the acceleration window}
+
+The window is voided by: \textbf{stamp-binding ties} (a \texttt{before}-window
+rule or $\stmp{A}{Q}$ pattern makes the draw identity depend on absolute time,
+breaking covariance); \textbf{\texttt{woplus} firings} (each fire draws its own
+branch; the draw stream is not translation-covariant---acceleration must re-prove
+one period live, A3b).  Ground deadlines (\texttt{before 47}) are handled
+honestly: the jump is capped strictly below the deadline.
+
+\subsection{Forced-prefix cohort firing (THY\_0025)}
+\label{subsec:cohort-firing}
+
+\subsubsection*{The wrong theorem}
+
+The natural justification for firing a match once at multiplicity
+$k$---``pairwise confluence, any interleaving reaches the batched state''---proves
+the wrong thing.  \textbf{Confluence is a statement about fires the scheduler
+performs; it says nothing about whether it performs them.}
+
+\textit{Counterexample}: \texttt{spoil}: $\texttt{wood} \loli \lax{\mathbf{1}}{0}$ and
+\texttt{saw}: $\texttt{wood} \loli \lax{\texttt{plank}}{2}$ tied at one instant
+over a $10^6$-wood cohort.  Batching \texttt{spoil} consumes the whole cohort; the
+sequential run interleaves \texttt{spoil} and \texttt{saw} by PRF draws.  The
+batched state is a world no sequential execution reaches---a soundness bug, not an
+optimisation.
+
+\begin{theorem}[Forced-Prefix Batching]
+\label{thm:forced-prefix}
+Let $m$ be the unique candidate at instant $a$ (no tie), with per-fire consumption
+$C$ and reservation $R$.  Suppose firing $m$:
+\begin{enumerate}
+\item[(i)] produces no linear output landing at $a$ (every delay strictly
+  positive, or zero-delay outputs feed no rule/loli antecedent, no wildcard in
+  scope);
+\item[(ii)] produces no persistent fact;
+\item[(iii)] draws nothing per fire (no \texttt{woplus}, no existential
+  resolution);
+\item[(iv)] is not a possessed loli.
+\end{enumerate}
+Then for every $k \leq \min_{\text{consumed rows}} \lfloor(\mathit{count} -
+R)/C\rfloor$, the batched step equals the sequential $k$-prefix---state-identical
+including the Zobrist hash, the pending schedule, and every subsequent PRF draw.
+\end{theorem}
+\begin{proof}[Proof (induction on $k-1$ intermediate states)]
+After each fire: (i) removals only raise other rules' minimal activations; no
+produced fact creates a new candidate at $a$; (ii) the persistent zone is
+untouched; (iii) the deterministic matcher (FIFO over stable rows) recomputes the
+SAME match, still unique.  State-identity is then exact because FactSet mutations
+hash final counts and no randomness is consumed inside the batch.
+\end{proof}
+
+\subsubsection*{A theorem's premises are a checklist for the implementation}
+
+Working the proof conditions found \textbf{two live bugs}:
+
+\paragraph{Bug 1 (condition (ii)---persistent production).} The implementation's
+instant-feeding test returned ``not feeding'' for any positive delay before
+examining persistent consequents.  A persistent fact produced under a delayed monad
+is still visible at the instant (the persistent zone carries no labels), so it can
+enable a competitor no delay test sees.  Fix: check persistent consequents first.
+
+\paragraph{Bug 2 (condition (i)---possessed lolis).} ``Feeds a rule antecedent''
+was keyed off the static rule list, but possessed lolis are candidate sources too.
+A zero-delay output only a state loli consumes slipped the guard.  Fix: extend the
+antecedent tables with state-loli antecedents at each check site.
+
+\subsubsection*{Multiplicity and serialisation}
+
+$k = \min_{\text{consumed rows}} \lfloor(\mathit{count} - \mathit{reserved})/C\rfloor$
+subsumes structural guards: $\gbang{W} A$ binds the whole pool $\to$ floor $= 1$
+(one cohort); preserved machines $(\$\mathtt{saw})$ serialise the next round by
+reproduced copies landing at $a \act d$.  \textbf{Serialisation is emergent} from
+resource counting.
+
+\textit{Measured (B1)}: batched settle is flat in population---$\approx 6$\,ms
+from $10^2$ to $10^6$ items---while per-item scales linearly (715\,ms at $10^5$);
+$\times 114$ at $10^5$, $\approx \times k$ beyond.
+
+%%====================================================================
+\section{Implementation and evaluation}
+\label{sec:eval}
+%%====================================================================
+
+\subsection{The artifact}
+
+\till{} is implemented in \calc{}, a proof-calculus sandbox with a
+content-addressed formula store (formulas are hashes; $O(1)$ equality).
+Components: the backward focused prover over the declarative rule file (template
+rules with theory premises; the arithmetic theory is itself a logic program over
+exact rationals, with an FFI decision-procedure face as an optimisation---\emph{theory
+is semantics, FFI is optimisation}: every FFI predicate has clause definitions, and
+a no-FFI mode runs the entire test surface on the clause face alone); the
+independent proof-checking kernel (re-derives every step including theory premises,
+re-threads linear resource accounting, rejects context-leaking forgeries; oracle
+and eigenvariable steps disclosed in an \texttt{unverified} report); the timed
+scheduler (branch-and-bound minimal-activation matching, stateless PRF chooser);
+and a TTY shell for live timed programs.
+
+\subsection{Executable metatheory}
+
+\begin{itemize}
+\item \textbf{Provability grid}: $\sim$90 pinned provable/refuted sequents from
+  \S\ref{sec:meta}, every proof kernel-verified with zero unverified steps.
+\item \textbf{Adequacy suites}: executable specifications whose \texttt{\#expect}
+  gates are wrapped as sequents (Theorem~\ref{thm:exact} soundness + refutations;
+  Theorem~\ref{thm:fusion} as (under)derivability); the pure work-adequacy suite
+  (Theorems~\ref{thm:work}/\ref{thm:separation}, no oracle in any proof path,
+  oracle column cross-checked against a from-the-spec reference).
+\item \textbf{Differential fuzzing}: (1) grade arithmetic three ways---FFI $\|$
+  clause resolution $\|$ BigInt reference---including residual definedness; (2)
+  scheduler vs the executable reference semantics; (3) random monad towers
+  $\lax{\cdots\lax{a}{d_1}\cdots}{d_n} \vdash \lax{a}{f}$ against the $\sum d$
+  oracle, plus retiming and production-claim exactness on random one-rule programs.
+  The exactness clause of Theorem~\ref{thm:exact} was \emph{corrected by this
+  harness} (an earlier sketch wrongly admitted production-stamp weakening; the
+  fuzzer found the counterexample).
+\end{itemize}
+
+\subsection{Methodology: differential pinning}
+
+Every optimisation is a state morphism with a stated law.  The pin suite asserts
+the law mechanically:
+
+\begin{itemize}
+\item \textbf{State-identical}: batched settle (B1), labelled states
+  (THY\_0024 rebase), and acceleration (A1) are each pinned against per-item /
+  unoptimised / unrolled paths on the same seed.  Observational equivalence is
+  asserted on the full state hash (Zobrist), not just selected outputs.
+\item \textbf{World-preserving} (weaker): coalescing and rebase are asserted to
+  preserve the reachable-worlds semantics.  Their pins assert that
+  \texttt{settleExplore} tree structure is identical before and after.
+\item \textbf{Bound-preserving} (weakest): the certificate-resume path pins event
+  totals and schedule shape.
+\end{itemize}
+
+The pin suite has $\approx 3{,}250$ tests including 14 cohort-firing arms,
+differential correctness arms (FFI $\|$ clause $\|$ BigInt reference for grade
+arithmetic), and ILL-native provability tests.  No measurement below is reported
+as an asymptotic claim unsupported by a differential pin.
+
+\subsection{Results}
+
+\paragraph{Time axis (idle catch-up).}
+
+\begin{table}[ht]
+\centering
+\begin{tabular}{@{}llll@{}}
+\toprule
+Scenario              & Before               & After          & Method \\
+\midrule
+PP2 tick              & 180\,ms              & 0.2\,ms        & Full stack \\
+Orbit resume (A1)     & 38\,ms (1 jump)      & ---            & Certificate \\
+Events elided (A1)    & 23.9M                & 0 (1 jump)     & Certificate \\
+Covariant kiln (A3a)  & 491\,s chunked / OOM & 10.6\,ms       & Covariant PRF \\
+Events elided (A3a)   & 23.8M                & 0 (1 jump)     & Certificate \\
+\bottomrule
+\end{tabular}
+\caption{Time-axis results: idle catch-up and resume performance.}
+\label{tab:time-axis}
+\end{table}
+
+\paragraph{Population axis (cohort scale).}
+
+\begin{table}[ht]
+\centering
+\begin{tabular}{@{}llll@{}}
+\toprule
+Population & Per-item (ms) & Batched (ms) & Ratio \\
+\midrule
+$10^2$ & $\approx 0.7$ & $\approx 6$ & --- \\
+$10^3$ & $\approx 7$   & $\approx 6$ & $\times 1.2$ \\
+$10^5$ & 715           & $\approx 6$ & $\times 114$ \\
+$10^6$ & $\approx 7{,}150^*$ & $\approx 6$ & $\approx \times k$ \\
+\bottomrule
+\end{tabular}
+\caption{Population-axis results: per-item vs.\ batched settle.
+  ${}^*$Extrapolated; batched is flat.}
+\label{tab:population-axis}
+\end{table}
+
+\paragraph{Constants axis (Store and stamp table).}
+
+\begin{table}[ht]
+\centering
+\begin{tabular}{@{}lll@{}}
+\toprule
+Metric                    & Before THY\_0024      & After \\
+\midrule
+Store growth / 4 days     & $\approx 1.9$M nodes  & 161 nodes \\
+Live stamp table          & grows unboundedly     & 4--5 entries \\
+CPU (settle)              & $+15\%$ (interning)   & neutral \\
+Certificate size          & ---                   & 458 bytes \\
+\bottomrule
+\end{tabular}
+\caption{Constants-axis results: Store size and stamp table after graded labelled
+  states (THY\_0024).}
+\label{tab:constants-axis}
+\end{table}
+
+\paragraph{City-scale boundary (CS bench).} Running the full content as a
+city---$N$ of every production building plus $10N$ goods: warm ticks stay $\leq
+20$\,ms and saves stay sub-kilobyte to $N = 10^4$, and 3-week resumes jump
+(696\,ms at $N = 1$, 14.3\,s at $N = 100$).  The honest limits: certification
+warm-up scales with events-per-period ($\propto N$); week-scale $\times$ city
+accumulation crosses the engine's Int32 count fence at $N \geq 1000$ ($\approx
+10^9$ of a sink good)---refused loudly per the doctrine, with in-game stock caps
+as the model-level remedy.
+
+%%====================================================================
+\section{Related work}
+\label{sec:related}
+%%====================================================================
+
+\paragraph{Lax modality, sequent rules, cut elimination.}
+\cite{FairtloughMendler1997}; \cite{PfenningDavies2001}; CLF~\cite{Watkins2002CLF};
+\cite{Iemhoff2024} (cut elim + uniform interpolation, ungraded).
+Ungraded throughout: we add the grade and keep the shape;
+Theorem~\ref{thm:cut} is the graded extension of Iemhoff's 2024 result.
+
+\paragraph{Graded monads (semantics).}
+\cite{Katsumata2014}; \cite{FujiiKatsumataMillies2016}.
+Categorical; no sequent calculus.
+
+\paragraph{Graded necessity, sequent proof theory.}
+BLL~\cite{GirardScedrovScott1992};
+\cite{MoonEadesOrchard2021};
+\cite{VollmerMarshallEadesOrchard2025} (mixed linear/graded sequent calculus,
+graded comonad);
+\cite{HanukaevEades2025};
+GRASS~\cite{GRASS2026}.
+All grade $\gbang{r}$; no graded lax/possibility sequent calculus anywhere.
+
+\paragraph{Graded possibility.}
+Granule's $\Diamond_r$~\cite{OrchardLiepeltEades2019}: type system only; the
+proof theory of $\lax{S}{d}$ is precisely the missing piece.
+
+\paragraph{Effect--coeffect interaction.}
+\cite{GaboardiICFP2016}: our pair is their trivial case; the timed content is the
+$\act$ action inside promotion.
+
+\paragraph{Timestamps in MSR.}
+\cite{KanovichFORMATS2016} (+ resilience line~\cite{KanovichResilient2024}):
+global clock fact + Tick; no max-plus activation, no in-flight representation;
+their progressing condition $\approx$ our Zeno guard (globally where ours is
+cycle-local).
+
+\paragraph{Metric time, labelled sequents.}
+IMTL~\cite{deSaToninhoPfenning2023}: the labelled/absolute pole (interval labels
+$A^{[a,b]}$, constraint store, additive label arithmetic, a split rule for
+temporal uncertainty, no operational semantics).  \till{} is the graded/relative
+pole: label-free judgments, one partial $\res$.  The axis is \emph{residuation
+vs.\ accumulation}---residuation is the price of internalising time as grades
+(THY\_0022).  CLF has no grades; timed MSR has no backward calculus; IMTL has no
+resources.  The adequacy bridge (THY\_0018 Theorem~1) fills the gap.
+
+\paragraph{Timed tokens, arc delays.}
+CPN Tools~\cite{Jensen2007CPN,JensenKristensenWells2007}; timed-arc Petri nets;
+timed automata~\cite{AlurDill1994}.
+Identical operational surface, no proof theory.
+
+\paragraph{Time in linear type systems.}
+\cite{DasHoffmannPfenning2018}: discrete $\bigcirc$ on channel types for
+complexity; no graded lax modality over multisets, no $\QQ$ delays, no tropical
+activation.
+
+\paragraph{$({\max},{+})$ systems theory.}
+\cite{Baccelli1992}: the algebra and eigenvalue theory, imported; not connected to
+logic.
+
+\paragraph{In-flight $=$ proof-term node.}
+Event structures~\cite{NielsenPlotkinWinskel1981}: the let-node identification
+and atomicity-as-theorem are ours.
+
+\paragraph{Constraint side conditions.}
+\cite{LassezMcAloon1990}; \cite{NegriVonPlato1998};
+\cite{Ohlebusch2002} (3-CTRS); Twelf constraint domains; deduction modulo.
+See \S\ref{subsec:theory-prem}---object-level decidable theory premises with
+functional output binding in dynamic assumptions; unconditional cut elimination.
+
+\paragraph{Timed automata acceleration.}
+Zone abstraction~\cite{BengtssonYi2004} and flat
+acceleration~\cite{BoigelotFAST}: \till{}'s orbit certificates are analogous but
+semantically derived from the calculus.  DBM LU-extrapolation $\approx$ our
+coalescing.
+
+\paragraph{Petri nets, GAMMA, P systems.}
+Step semantics~\cite{BestDevillers1987} and GAMMA~\cite{BanatreLeMetayer1990}
+fire multisets preserving reachability but not the identity of a scheduled run.
+P systems~\cite{Paun2000} fire under maximal parallelism.  Forced-prefix batching
+(\S\ref{subsec:cohort-firing}) is the interleaving-semantics counterpart---a
+$k$-uniform step inside committed choice, exact per seed.
+
+\paragraph{Partial-order reduction.}
+\cite{Peled1993}: \texttt{settleExplore} uses the same criterion; forced-prefix
+batching inverts it: POR asks when reorderings \emph{may} be collapsed; the
+forced prefix asks when the scheduler \emph{must} repeat.
+
+\paragraph{Differential dataflow / provenance semirings.}
+\cite{MurrayMcSherry2013} $(\mathit{data}, \mathit{time}, \mathit{diff})$ triples
+and consolidation are the systems sibling of our labelled state construction;
+the coalescer corresponds to consolidation.
+\cite{GreenKarvounarakisTannen2007}: the label algebra is exactly a provenance
+semiring; the stamp algebra $(\QQ_{\geq 0}, \max, +)$ is one instance.
+
+\paragraph{Linear logic programming and CLF.}
+Ceptre~\cite{Martens2015} is the nearest applied neighbour: a linear logic language
+for interactive simulation with no graded modalities, no time, and no proof that
+optimisations preserve semantics.
+
+\medskip
+\noindent Novelty was stress-tested adversarially (three sweeps, 30+ papers, last
+on 2026-08-21 covering CSL/LICS/POPL/FSCD/ESOP 2024--26): no published system
+gives a sequent calculus with cut elimination for a graded lax, monadic, or
+possibility modality; no system embeds max-plus activation in a promotion rule; no
+graded modal system has operationally partial grade subtraction.
+
+%%====================================================================
+\section{Conclusion}
+\label{sec:conclusion}
+%%====================================================================
+
+Grading CLF's lax monad by a tropical delay yields a sequent calculus where
+scheduling \emph{is} proof search structure: durations compose in the graded bind,
+synchronisation is a promotion side condition, in-flight work is a proof-term node,
+and the scheduler is a sound, deterministic, frame-rate-independent oracle.  The
+metatheory is done in full---cut admissibility, identity expansion, exact
+adequacy, and a separation theorem showing the grade alone measures cost while
+stamps alone contribute scheduling.
+
+The same algebra drives the engine: graded labelled states give address stability
+($1.9\text{M} \to 161$ nodes / 4 days), forced-prefix cohort firing gives
+population-flat batching ($\times 114$ at $10^5$), and covariant orbit
+certificates give exact deep-time resumption (38\,ms / 3 weeks, bit-exact).  Every
+optimisation ships with a proof and a machine pin.
+
+\medskip
+\noindent\textbf{Future work.}  Mechanisation of \S\ref{sec:meta} (the rules must
+carry the theory-premise form).  The probabilistic weight grade---a full
+$\{A\}_w$ judgment with a second cut ($+$ for delays, $\cdot$ for
+weights)---is a separate paper.  Stochastic aggregate jumps via the Kalman-closure
+criterion (A3b) would reduce a week of stochastic combat to one matrix power.
+Partitioned clocks (multiple independent time dimensions) and whole-program
+specialisation with translation validation are further directions.
+
+%%====================================================================
+\section*{Acknowledgments}
+%%====================================================================
+
+Drafted from THY\_0018/0019/0022/0023/0024/0025 and the
+TODO\_0265/0272/0273/0277/0278 audit trail; adversarial referee passes recorded in
+the project's research log (rounds 13--15 and the 2026-08 audits).
+
+\bibliographystyle{alpha}
+\bibliography{refs}
+
+%% ============================================================================
+\appendix
+\section{Proof details}
+\label{app:proofs}
+
+Full proofs of the metatheorems in \S\ref{sec:meta} are in THY\_0023.  The key
+measure for Theorem~\ref{thm:cut} is the lexicographic triple
+$(w(A), k, \mathit{ht})$ where $w(\gbang{K} A) = (K{+}1)(w(A){+}1)$,
+$w(\lax{S}{d}) = w(S) + 1$, and all other constructors have weight $\sum_i
+w(A_i) + 1$.  The count fence $\NN$ makes the first component well-founded; dense
+delay grades never enter the measure.
+
+For Theorem~\ref{thm:forced-prefix}, the four conditions (i)--(iv) are
+individually necessary: (i) without strictly positive output delay or feed-free
+zero-delay, a produced token could activate a new candidate at the same instant,
+changing the next match; (ii) a persistent consequent bypasses stamp-visibility by
+living in the timeless zone; (iii) a \texttt{woplus} fire consumes PRF state, so
+two equivalent fires would consume it twice; (iv) a possessed loli can be consumed
+by outputs the static rule table does not see.
+
+\section{Extended tables}
+\label{app:tables}
+
+The differential pin suite identifiers referenced in \S\ref{sec:eval}:
+
+\begin{center}
+\begin{tabular}{@{}lll@{}}
+\toprule
+Suite arm & Tests & What it pins \\
+\midrule
+B1 (cohort batching) & 14 & Per-step state identity on full Zobrist hash \\
+B3 (rebase) & 6 & World-preservation: settleExplore tree identity \\
+A1 (orbit resume) & 4 & Bit-exact replay over 3-week idle gap \\
+A3a (covariant PRF) & 3 & Certificate jump = sequential trace \\
+Grade arithmetic (FFI$\|$clause$\|$BigInt) & $\approx$500 & Value and definedness \\
+ILL provability grid & 90 & Kernel-verified, zero unverified steps \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\end{document}
