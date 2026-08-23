@@ -91,6 +91,42 @@ Pins: `tests/engine/till-accel-resume.test.js` (mint conditions, E5
 save/resume exactness with full event accounting, tamper/fingerprint
 fallback, deadline caps, rebased frames, verify mode).
 
+## Catch-up at scale (TODO_0278 A2)
+
+Three mechanisms let a settle cross weeks of elapsed time even when the
+orbit does NOT certify (tie-poisoned states — any built kiln, until A3a):
+
+- **Zeno guard redefined (D16).** True Zeno is no time progress. The guard
+  counts firings at ONE instant (`maxInstantSteps`, default 100000) and
+  resets whenever the frontier advances — a dense-but-finite catch-up runs
+  to completion regardless of total event count. Flat `maxSteps` is now an
+  OPT-IN total hard cap (off by default): the recourse for untrusted
+  programs whose divergence advances the frontier every step (a
+  delay-shrinking convergent schedule), which no finite-observation
+  per-instant test can detect. The load-time productivity lint stays the
+  static complement.
+- **Event suppression.** `{ events: false }` skips the events array — the
+  week-scale OOM was 24 M event records as much as the unroll. The result
+  carries `events: null` (loud on accidental `.length`) plus
+  `eventTotals { rule: count }`; `onEvent(record)` streams the full record
+  per firing independently, so nothing is lost, only unrequested retention.
+- **`settleChunked(S, T, { chunk, onChunk, ...settle opts })`.** Bounded
+  slices, each covering (prev horizon, next-activation + chunk] — anchored
+  at the pending schedule, so idle spans cost one slice. Soundness is E5:
+  `settle(settle(S,T₁),T₂) = settle(S,T₂)`, and the PRF chooser is
+  horizon-split invariant, so even weighted draws replay identically in
+  exact mode (under coalesce the usual cohort-identity contract applies).
+  Drop-in result contract: `next`/`rebase` in the caller's frame,
+  `certificate` from the final slice, `maxSteps` a TOTAL budget, `chunks`
+  added. Certificates thread — the input certificate seeds slice 1, each
+  slice's mint feeds the next, so a proven idle orbit costs one validated
+  jump per slice and the app still gets its `onChunk` progress ticks.
+
+Measured (PP2 shell + kiln, the tie-poisoned motivator): 3-week catch-up =
+24 M events unrolled in bounded memory with day-sized chunks — formerly a
+`maxSteps` throw at ~1 day, an OOM at week scale. Pins:
+`tests/engine/till-chunked.test.js`.
+
 ## Contracts
 
 - Coalescing/rebase change cohort identity and state hashes → future PRF
@@ -115,6 +151,7 @@ fallback, deadline caps, rebased frames, verify mode).
 - OF cohorts: warm settle vs inert population
 - OT deep time: settle 0→T flat in T (acceleration)
 
-Consumers: the PP2 game bridge and `tools/till-shell.js` run
-`{ coalesce: true }` (+ periodic `rebase`). Measured history: TODO_0277
-progress log.
+Consumers: the PP2 game bridge runs `{ coalesce: true, accelerate: true,
+events: false }` (+ periodic `rebase`) and threads orbit certificates
+through its `certificate()`/`resume()` API; `tools/till-shell.js` runs
+`{ coalesce: true }`. Measured history: TODO_0277 progress log.

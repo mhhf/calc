@@ -292,10 +292,12 @@ describe('till untimed-engine guards + Zeno (D16)', () => {
     assert.throws(() => grades.exec(init(grades, 'expect_split_residual')), /timed matcher/);
   });
 
-  it('zero-delay cycle trips the Zeno guard', () => {
+  it('zero-delay cycle trips the Zeno guard (zero time progress, A2)', () => {
     const calc = load(FIX('till-zeno.ill'));
     const a = Store.put('atom', ['a']);
-    assert.throws(() => calc.settle({ linear: { [a]: 1 }, persistent: {} }, '0', { maxSteps: 50 }),
+    // The instant guard is the Zeno guard (TODO_0278 A2 rider 4); flat
+    // maxSteps is a separate opt-in hard cap — see till-chunked.test.js.
+    assert.throws(() => calc.settle({ linear: { [a]: 1 }, persistent: {} }, '0', { maxInstantSteps: 50 }),
       /Zeno/);
   });
 });
