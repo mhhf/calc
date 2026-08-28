@@ -86,7 +86,10 @@ describe('StampTable', () => {
 
   it('slot fence is loud: unknown symbolic realization throws (P1)', () => {
     assert.throws(() => new StampTable({ ...alg, merge: 'max' }), /must be 'join'/);
-    assert.throws(() => new StampTable({ ...alg, prunes: true }), /must be 'geq'/);
+    // prunes is no longer a slot at all (0284 audit) — declaring one is a
+    // loud migration error, not a customization point
+    assert.throws(() => new StampTable({ ...alg, prunes: 'geq' }), /not a slot/);
+    assert.throws(() => new StampTable({ ...alg, prunes: () => true }), /not a slot/);
   });
 
   it("merge lifts the ⊔ slot: 'join' on ids, intern-free (P1)", () => {
@@ -100,12 +103,12 @@ describe('StampTable', () => {
   });
 
   it('merge default (algebra without a merge slot) is max by cmp', () => {
-    const noMerge = { ...alg, merge: undefined, prunes: undefined };
+    const noMerge = { ...alg, merge: undefined };
     const t = new StampTable(noMerge);
     const a = t.intern(V(1, 3)), b = t.intern(V(1, 2));
     assert.equal(t.merge(a, b), b);
     assert.equal(t.merge(b, a), b);
-    assert.equal(t.prunes(b, a), true);       // default: cmp >= 0
+    assert.equal(t.prunes(b, a), true);       // fixed cut: cmp >= 0
     assert.equal(t.prunes(a, b), false);
   });
 
@@ -121,7 +124,7 @@ describe('StampTable', () => {
     assert.deepEqual(t.value(t.merge(a, a)), V(2));
   });
 
-  it('prunes lifts the ⊕ slot: >= keeps the FIFO tie (P1 invariant pair)', () => {
+  it('prunes is the contract-fixed ⊕ cut: >= keeps the FIFO tie (invariant pair)', () => {
     const t = new StampTable(alg);
     const a = t.intern(V(3)), b = t.intern(V(5));
     assert.equal(t.prunes(b, a), true);       // worse partial: dead

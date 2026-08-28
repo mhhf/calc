@@ -462,10 +462,10 @@ stamp bound); this proposition is the per-program half.
 ### 8.1 Time and distance — one dioid, two readings
 
 `tillGrades` (time) and `distGrades` (distance) are the *same* scheduling
-dioid `(ℚ≥0, max, +, 0, ≤)`; C1–C5 are machine-checked for both by
-`tests/engine/grade-conformance.test.js` (exact BigInt rationals; the
-`merge`/`prunes` slots declared symbolically as `'join'`/`'geq'` and id-lifted
-by the StampTable). Under the time reading, T2 says: stamps are
+dioid `(ℚ≥0, max, +, 0, ≤)`; C1–C4 are machine-checked for both by
+`tests/engine/grade-conformance.test.js` (exact BigInt rationals; the `merge`
+slot declared symbolically as `'join'` and id-lifted by the StampTable, whose
+B&B cut is the contract-fixed `cmp ≥ 0`). Under the time reading, T2 says: stamps are
 earliest-availability — the critical-path least fixed point. Under the
 distance reading: stamps are shortest-path distance — Dijkstra. The
 modelling discipline that puts a graph program inside T2's hypotheses (the

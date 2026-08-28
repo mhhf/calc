@@ -20,17 +20,19 @@ const GradeAlgebra = {
     class: 'order' | 'measure',
     realizations: [...],      // order ⇒ ['prune'] · measure ⇒ ['sum', 'sample']
   },
-  prunes: (partial, best) => bool,  // order class ONLY; default cmp(partial, best) >= 0
 };
 ```
 
-`prunes` is undefined for `class: 'measure'` — a measure algebra never discards an
-alternative (mass conservation, below).
+The ⊕ order-prune is **not a slot** (0284 audit): under C2+C3, `cmp(partial, best)
+>= 0` is the *unique* sound B&B cut — a weaker cut is behavior-identical (the leaf
+keeps strict `<` anyway), a stronger one unsound — so the StampTable fixes it and a
+declared `prunes` throws at table construction. A measure algebra never prunes at
+all (mass conservation, below).
 
-An engine-facing value algebra may declare a canonical realization SYMBOLICALLY —
-`merge: 'join'` (max by cmp) and `prunes: 'geq'` (cmp ≥ 0) — instead of supplying the
-function; the StampTable id-lift recognizes the names and runs them on its cached-float
-cmp fast path (see "Realization in till" below).
+An engine-facing value algebra may declare the canonical ⊔ realization SYMBOLICALLY —
+`merge: 'join'` (max by cmp) — instead of supplying the function; the StampTable
+id-lift recognizes the name and runs it on its cached-float cmp fast path (see
+"Realization in till" below).
 
 ## Two operators, two roles
 
@@ -113,9 +115,9 @@ in-logic, aggregation is `+`. No `cmp`-based pruning exists.
 
 `weightGrades` (P3b) is the shipped measure instance and the 0292/will handoff:
 `values.add` is its ⊗ (·), `values.sub` its ⊖ (exact ÷, null at mass 0), merge a
-value-level FUNCTION slot (non-idempotent ·), NO prunes and NO scheduler faces —
-`buildTimedConfig` rejects it at the class fence, before ever asking for faces it
-must never carry. will's decimation loop consumes exactly this record plus
+value-level FUNCTION slot (non-idempotent ·), and NO scheduler boundary slots
+(`parseStamp` etc.) — `buildTimedConfig` rejects it at the class fence, for WHAT
+it is. will's decimation loop consumes exactly this record plus
 `prf.js sampleIndex`.
 
 Time and distance are the SAME tropical algebra under different physical readings
@@ -130,13 +132,14 @@ one active scheduling axis per run.
 
 ## Realization in till
 
-`tillGrades` predates this contract and exposes three faces, not the canonical flat
-shape: `availability`/`effect` (stamp-hash face, the boundary/theory side) and `values`
-(the label value algebra over `[n,d]` BigInt pairs — THY_0024). The *runtime* algebra
-is `values`, and since P1 it carries the named slots: `values.merge = 'join'` and
-`values.prunes = 'geq'` — SYMBOLIC declarations of the canonical order realizations
-(max by cmp / cmp ≥ 0), plus algebra-wide `tillGrades.aggregate = { class: 'order',
-realizations: ['prune'] }`. Canonical mapping of the remaining slots:
+Since the 0284 audit, `tillGrades` IS the canonical flat shape: a `values` face (the
+label value algebra over `[n,d]` BigInt pairs — THY_0024) plus boundary slots
+(`isStamp`/`parseStamp`/`canonStamp`) and the algebra-wide `aggregate = { class:
+'order', realizations: ['prune'] }`. The stamp-HASH faces (`availability.cmp`,
+`effect.{unit,compose,residual}`) are no longer hand-written: `buildTimedConfig`
+DERIVES them from `values` (`cmp ∘ parse`, `reify ∘ add ∘ parse`, fenced `sub`) —
+coherence by construction, used only by boundary consumers (views, game, lint,
+chunked slices, the prover bridge). Canonical mapping:
 
 ```js
 unit     = values.unit            compose = values.add
@@ -144,20 +147,21 @@ residual = fenced values.sub      cmp     = values.cmp
 ```
 
 Slots operate on VALUES; the match loop operates on stamp IDS. The StampTable
-(`lib/engine/labels.js`) is the id-level face: `stamps.merge`/`stamps.prunes` lift the
-slots to ids, and timed.js routes the audited sites through the lifts. A symbolic slot
-names a realization the table runs on its cached-float id cmp — the exact pre-P1 code
-path, so declaring `'join'`/`'geq'` costs nothing (this is why the slots are symbolic:
-a cmp-derived realization at the value level would trade the float cache for exact
-BigInt cmp per call, a measured ~20-30% settle regression). A FUNCTION slot is a custom
-value-level realization (usage `+`, weight `·`): an argument returned by reference
-keeps its id, a created value interns — and it runs even at EQUAL ids (the `a === b`
-identity shortcut belongs to the join realization only; a non-idempotent merge has
-w ⊔ w = w², the P3b weight instance caught this). Absent slots default to `'join'`/`'geq'` —
-parity for algebras predating the contract; any other slot value throws at table
-construction. The conformance harness canonicalizes symbolic slots back into functions
-for property-checking. Coherence between the hash face and the value face
-(`effect.compose` ≡ `reify ∘ add ∘ parse`) is checked by the harness.
+(`lib/engine/labels.js`) is the id-level face: `stamps.merge` lifts the ⊔ slot to
+ids and `stamps.prunes` is the contract-fixed ⊕ cut (cmp ≥ 0 — `>=` keeps the
+FIRST match at equal grade, the FIFO half of timed.js's invariant pair); timed.js
+routes the audited sites through both. The symbolic `merge: 'join'` names the
+realization the table runs on its cached-float id cmp — the exact pre-P1 code path,
+so declaring it costs nothing (a cmp-derived realization at the value level would
+trade the float cache for exact BigInt cmp per call, a measured ~20-30% settle
+regression). A FUNCTION slot is a custom value-level realization (usage `+`, weight
+`·`): an argument returned by reference keeps its id, a created value interns — and
+it runs even at EQUAL ids (the `a === b` identity shortcut belongs to the join
+realization only; a non-idempotent merge has w ⊔ w = w², the P3b weight instance
+caught this). An absent merge defaults to `'join'`; any other slot value — and any
+declared `prunes` — throws at table construction. The conformance harness
+canonicalizes the symbolic slot back into a function for property-checking and
+smoke-tests the derived hash faces.
 
 ## Aggregation-policy routing (P1b)
 

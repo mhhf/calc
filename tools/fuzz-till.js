@@ -54,7 +54,8 @@ import Seq from '../lib/kernel/sequent.js';
 import { buildRuleSpecs } from '../lib/prover/rule-interpreter.js';
 import { createProver } from '../lib/prover/focused.js';
 import { createKernel } from '../lib/prover/kernel.js';
-import tillConfig, { tillGrades, loadTillSequent } from '../calculus/till/calculus-config.js';
+import tillConfig, { loadTillSequent } from '../calculus/till/calculus-config.js';
+import { buildTimedConfig } from '../lib/engine/timed/timed.js';
 
 const args = process.argv.slice(2);
 let COUNT = 200, SEED = 0x7111, VERBOSE = false;
@@ -84,6 +85,7 @@ const RAT_ILL = path.join(import.meta.dirname, '../calculus/till/prelude/rat.ill
 Store.clear();
 installRatlitTheory();
 const tillCfg = (await import('../calculus/till/calculus-config.js')).default;
+const _tillFace = buildTimedConfig(tillCfg);   // derived hash faces (0284 audit)
 const ec = mde.load(RAT_ILL, { calculusConfig: tillCfg, cache: false });
 const theories = [...defaultTheories, binlitTheory, ratlitTheory];
 const canonicalize = buildCanonicalizer(theories);
@@ -141,10 +143,12 @@ for (let i = 0; i < COUNT; i++) {
     }
   }
   // algebra residual ⊖ (TODO_0273): must agree with qsub on definedness
-  // and value — the algebra is to the theory what FFI is to clauses
+  // and value — the algebra is to the theory what FFI is to clauses.
+  // The fenced residual is the DERIVED hash face (buildTimedConfig, 0284
+  // audit) — fuzzing it here pins the derivation, not a hand-written face.
   {
     trials++;
-    const r = tillGrades.effect.residual(putRat(...a), putRat(...b));
+    const r = _tillFace.effect.residual(putRat(...a), putRat(...b));
     const neg = a[0] * b[1] < b[0] * a[1];
     const want = neg ? null : putRat(...QOPS.qsub(a, b));
     if (r !== want) {
