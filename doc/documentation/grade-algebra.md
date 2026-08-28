@@ -182,6 +182,8 @@ conformance case exercises the realization the engine actually ships.
 ## Links
 
 TODO_0284 (phases; this doc = P0) · TODO_0292/`will` (the measure-class consumer) ·
-RES_0137 (graded modal theory) · RES_0138 (prior art + settle-optimality theorem) ·
+`doc/paper/settle-optimality.md` (the theorem this contract's conditions license — T1/T2,
+the choice-freedom/contention-freedom split, termination) ·
+RES_0137 (graded modal theory) · RES_0138 (prior art + settle-optimality scoping note) ·
 THY_0026 (∃_ρ, measure semiring, T1–T4) · THY_0022 (fenced grade algebras) ·
 `doc/documentation/till.md` · harness: `tests/engine/grade-conformance.test.js`.
