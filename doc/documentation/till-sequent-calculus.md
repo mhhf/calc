@@ -76,10 +76,13 @@ Context entries may be stamped atoms `at(A,t)` — content-addressed
   (`!_W` — count witness = theta[W] plus the kernel-checked NONE-LEFT
   cohort condition), possessed lolis (the rule record is derived from
   the consumed ground token's own structure — no program lookup), and
-  ω-bang succedents (bang_r + copy from the persistent zone). The
-  structural `monad_r2` oracle node survives only as a fallback for
-  residual exotica (counted-bang succedents, incomplete theta) and is
-  reported in `unverified`; `opts.elaborate: false` forces it. `certifyRun` (B3) applies the same machinery to an arbitrary
+  ω-bang succedents (bang_r + copy from the persistent zone), and
+  counted-bang succedents (the bang_r2/r3 peel chain). With a bound
+  checker there is NO fallback: an elaboration failure after rightFocus
+  success is an engine/elaborator disagreement and THROWS. The
+  structural `monad_r2` oracle node survives only for calculi that have
+  not bound a fire checker (`calculus.fire` absent) and is reported in
+  `unverified`. `certifyRun` (B3) applies the same machinery to an arbitrary
   settle run, with the residual state itself as the certified goal;
   section 7 of `tools/fuzz-till.js` (B4) fuzzes it on random programs.
   Tried after the backward unit `monad_r`; without an engine it is simply
@@ -88,8 +91,8 @@ Context entries may be stamped atoms `at(A,t)` — content-addressed
 Adequacy tests (`tests/till-adequacy.test.js`) wrap the executable specs'
 `#expect` gate hashes as sequents and witness THY_0018 Thm 5 (in-flight
 atomicity as underivability) and Thm 3 (fission ≡ fusion) at the judgment
-level. Counted bangs in bridge succedents are unsupported (rightFocus's
-exponential case is ω-shaped — recorded residue).
+level. (Counted bangs in bridge succedents, once a recorded residue of
+rightFocus's ω-shaped exponential case, elaborate via the peel chain.)
 
 ## Template rules (.rules DSL extension)
 
