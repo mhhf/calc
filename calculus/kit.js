@@ -187,11 +187,18 @@ function makeForwardParserBuilder(calcFile, gradeUnit) {
 }
 
 /** Sequent-level loader: .calc + .rules with the theory engine. */
-function makeSequentLoader({ calcFile, rulesFile, gradeUnit, theory }) {
-  return () => calculus.load(calcFile, rulesFile, {
-    parser: { multiCharFreevars: true, numbers: true, gradeUnit },
-    theory,
-  });
+function makeSequentLoader({ calcFile, rulesFile, gradeUnit, theory, fire = null }) {
+  return () => {
+    const calc = calculus.load(calcFile, rulesFile, {
+      parser: { multiCharFreevars: true, numbers: true, gradeUnit },
+      theory,
+    });
+    // fire-step config (TODO_0294): predicate/tag names for the kernel's
+    // @fire checker — declared here at the assembly point, never
+    // defaulted engine-side; `unit` is the grade-unit thunk
+    if (fire) calc.fire = Object.freeze({ unit: gradeUnit, ...fire });
+    return calc;
+  };
 }
 
 export { ratCanon, makeCalcTables, makeFFIFace, makeTheory, makeForwardParserBuilder, makeSequentLoader };
