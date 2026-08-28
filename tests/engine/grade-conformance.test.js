@@ -350,4 +350,9 @@ describe('timed scheduler consults the ⊕ policy (buildTimedConfig)', () => {
     const cc = { grades: { ...tillGrades, aggregate: { class: 'measure', realizations: ['sum'] } } };
     assert.throws(() => buildTimedConfig(cc), /measure-class aggregation is an execution mode/);
   });
+  it('an absent aggregate defaults to order/prune (pre-contract algebras)', () => {
+    const { aggregate, ...bare } = tillGrades;
+    const tcfg = buildTimedConfig({ ...tillCalculusConfig, grades: bare });
+    assert.deepEqual(tcfg.aggregate, { class: 'order', realizations: ['prune'] });
+  });
 });

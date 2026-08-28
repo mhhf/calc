@@ -192,6 +192,10 @@ const tillGrades = {
     scale: (v, n) => ratNorm(v[0] * BigInt(n), v[1]),
     // b > 0, a >= 0 in usage (accel spans/periods) — BigInt truncation = floor
     floorDiv: (a, b) => Number((a[0] * b[1]) / (a[1] * b[0])),
+    // Largest integral value ⊑ v (rebase origin shifts, v ≥ 0) — the
+    // integer lattice is CARRIER structure, so the floor is an algebra
+    // slot, never an engine-side [n,d] unpack (TODO_0284 audit).
+    floor: (v) => [v[0] / v[1], 1n],
   },
   // ⊕ aggregation class (grade-algebra.md): how ALTERNATIVE derivations
   // combine. Time is an order algebra — alternatives resolve by min-prune
