@@ -203,6 +203,23 @@ mk: a -o { b * !g }@2.
     fullVerify(elab.tree, program);
   });
 
+  it('counted-bang succedent: !_4 (h@1) closes via the bang_r2 peel chain', () => {
+    const calc = loadProgram('cbgoal.till', `
+g: type.  h: type.
+trim: !_3 g -o { !_2 h }@1.
+`);
+    const res = calc.settle({ linear: { [atom('g')]: 6 }, persistent: {} }, '5');
+    const program = programFromCalc(calc);
+    // 6 g → 2 firings → 4 h@1; goal: the counted parcel !_4 (h@1)
+    const h1 = Object.keys(res.events[0].produced).map(Number)[0];
+    const goal = Store.put('bang', [Store.put('binlit', [4n]), h1]);
+    const succ = Store.put('monad', [Store.child(P('x@5'), 1), goal]);
+    const sequent = Seq.fromArrays(Array(6).fill(atom('g')), [], succ);
+    const elab = elaborateTrace({ sequent, events: res.events, program, calculus: seqCalc });
+    assert.ok(elab.tree, `elaboration failed: ${elab.unsupported}`);
+    fullVerify(elab.tree, program);
+  });
+
   it('a forged trace is REJECTED by the kernel (tampered done stamp)', () => {
     const calc = loadProgram('forge.till', `
 a: type.  b: type.
