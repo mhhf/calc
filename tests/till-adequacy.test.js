@@ -34,7 +34,7 @@ import { createProver } from '../lib/prover/focused.js';
 import { createKernel } from '../lib/prover/kernel.js';
 import mde from '../lib/engine/index.js';
 import tillConfig, { loadTillSequent, tillGrades } from '../calculus/till/calculus-config.js';
-import { programFromCalc } from '../lib/prover/elaborate-trace.js';
+import { programFromCalc } from '../lib/prover/timed/elaborate-trace.js';
 
 const SPEC = (f) => path.join(import.meta.dirname, '../calculus/till/tests/forward', f);
 const FIX = (f) => path.join(import.meta.dirname, 'fixtures', f);

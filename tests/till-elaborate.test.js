@@ -22,7 +22,7 @@ import Seq from '../lib/kernel/sequent.js';
 import mde from '../lib/engine/index.js';
 import tillConfig, { loadTillSequent } from '../calculus/till/calculus-config.js';
 import { createKernel } from '../lib/prover/kernel.js';
-import { programFromCalc, elaborateTrace, certifyRun } from '../lib/prover/elaborate-trace.js';
+import { programFromCalc, elaborateTrace, certifyRun } from '../lib/prover/timed/elaborate-trace.js';
 
 const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'till-elab-'));
 after(() => fs.rmSync(tmp, { recursive: true, force: true }));
