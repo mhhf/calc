@@ -257,6 +257,33 @@ use: a * !q -o { b }@1.
       /does not match its subderivation|not an instance/);
   });
 
+  it('numeric-tower clause goal: cross-tag certificate (binlit vs i/o/e) verifies', () => {
+    const calc = loadProgram('natgoal.till', `
+a: type.  b: type.
+e: bin.  i: bin -> bin.  o: bin -> bin.
+nat: bin -> type.
+nat/e: nat e.
+nat/i: nat (i X)
+  <- nat X.
+nat/o: nat (o X)
+  <- nat X.
+use: a * !nat 5 -o { b }@1.
+`);
+    const res = calc.settle({ linear: { [atom('a')]: 1 }, persistent: {} }, '5');
+    assert.equal(res.events.length, 1);
+    const program = programFromCalc(calc);
+    const sequent = Seq.fromArrays([atom('a')], [], P('{b@1}@5'));
+    const elab = elaborateTrace({ sequent, events: res.events, program, calculus: seqCalc });
+    assert.ok(elab.tree, `elaboration failed: ${elab.unsupported}`);
+    // the certificate is the nat/i→nat/o→nat/i→nat/e chain: canonical
+    // binlit 5 matched against i/o/e clause patterns at EVERY node —
+    // the checker's theory-aware matcher, not string luck
+    const cert = Object.values(elab.tree.state.fire.goalCerts)[0];
+    assert.equal(cert.rule, 'nat/i');
+    assert.equal(cert.premises[0].premises[0].premises[0].rule, 'nat/e');
+    fullVerify(elab.tree, program);
+  });
+
   it('a forged trace is REJECTED by the kernel (tampered done stamp)', () => {
     const calc = loadProgram('forge.till', `
 a: type.  b: type.
