@@ -29,6 +29,7 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import { tillGrades, tillCalculusConfig } from '../../calculus/till/calculus-config.js';
+import { distGrades } from '../../calculus/gill/calculus-config.js';
 import { add, sub, mul, div, cmp as ratCmp, norm } from '../../lib/rat.js';
 import { ratParts } from '../../lib/engine/theories/ratlit-theory.js';
 import { sampleIndex } from '../../lib/engine/prf.js';
@@ -265,6 +266,26 @@ function conformMeasure(alg, { seed = 7, samples = 300 } = {}) {
 
 conformOrder(tillView);
 conformMeasure(weightGrades);
+
+// distGrades (TODO_0284 P3): the (min,+) transport instance — time's
+// tropical twin, a DISTINCT registry entry with identical operations
+// (that identity is the audit's point: distance is a reading, not a new
+// engine). Conformance runs on its own view so the second order-class
+// instance is pinned independently of till's.
+const dvals = distGrades.values;
+const distView = {
+  name: 'distGrades(dist)',
+  unit: dvals.unit,
+  compose: (a, b) => dvals.add(a, b),
+  residual: (a, b) => { const r = dvals.sub(a, b); return r[0] < 0n ? null : r; },
+  cmp: dvals.cmp,
+  merge: dvals.merge === 'join' ? (a, b) => (dvals.cmp(a, b) > 0 ? a : b) : dvals.merge,
+  prunes: dvals.prunes === 'geq' ? (p, b) => dvals.cmp(p, b) >= 0 : dvals.prunes,
+  aggregate: distGrades.aggregate,
+};
+assert.equal(dvals.merge, 'join');            // R2 pin: ⊔ stays the join
+assert.deepEqual(distGrades.aggregate, { class: 'order', realizations: ['prune'] });
+conformOrder(distView, { seed: 137 });
 
 // ── tillGrades face coherence: hash face ≡ value face (read-only) ──
 

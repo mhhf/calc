@@ -107,9 +107,19 @@ in-logic, aggregation is `+`. No `cmp`-based pruning exists.
 | instance | carrier | ⊗ compose | ⊔ merge | class / ⊕ | status |
 |---|---|---|---|---|---|
 | `tillGrades` (time) | ℚ≥0 | `+` | `max` | order / min-prune | live — `calculus/till/calculus-config.js` |
-| `distGrades` (distance) | ℚ≥0 | `+` | `max` (unused single-input, R2) | order / min-prune | P3 — gill prelude |
+| `distGrades` (distance) | ℚ≥0 | `+` | `max` (unused single-input, R2) | order / min-prune | live — `calculus/gill/calculus-config.js` (P3) |
 | usage | ℕ | `+` | `+` (consumption, R2) | order | future |
 | `weightGrades` (weight) | ℚ≥0 | `·` | `·` | measure / sum \| sample | P3b — gill prelude; harness fixture today |
+
+Time and distance are the SAME tropical algebra under different physical readings
+(stamp = availability instant vs accumulated haul cost) — that identity is the
+central audit result: shortest path needs no join swap, the scheduler's ⊕ order
+realization (min-activation firing + B&B) IS Dijkstra on one-shot-edge programs
+(`tests/engine/gill-dist.test.js` property-tests settle ≡ exact Dijkstra). gill
+keys its algebras BY GRADE SORT (`gradeRegistry.bySort`: delay → time, dist →
+distGrades; `gradeAlgebraFor(conn)` routes by the connective's grade argument —
+haul `!!_d` → dist, monad `{}@d` → delay); D1 single-axis: `cc.grades` stays the
+one active scheduling axis per run.
 
 ## Realization in till
 
