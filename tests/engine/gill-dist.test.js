@@ -92,9 +92,9 @@ const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'gill-dijkstra-'));
 after(() => fs.rmSync(tmp, { recursive: true, force: true }));
 
 /** Settle the graph program and read min arrival stamp per node. */
-function settleDistances(g, file) {
+function settleDistances(g, file, config = gillConfig) {
   fs.writeFileSync(file, graphProgram(g));
-  const calc = mde.load(file, { calculusConfig: gillConfig, cache: false });
+  const calc = mde.load(file, { calculusConfig: config, cache: false });
   const linear = { [Store.put('atom', ['n0'])]: 1 };
   g.edges.forEach((_, i) => { linear[Store.put('atom', [`e${i}`])] = 1; });
   let horizon = [1n, 1n];
@@ -168,5 +168,18 @@ describe('gill grade registry (P3)', () => {
     const tcfg = buildTimedConfig({ ...gillConfig, grades: distGrades });
     assert.ok(tcfg);
     assert.deepEqual(tcfg.aggregate, { class: 'order', realizations: ['prune'] });
+  });
+
+  it('distGrades as the ACTIVE axis: a live settle schedules identically (one dioid, two readings)', () => {
+    // Not just registry data: the frozen dist instance actually DRIVES a
+    // settle as cc.grades. Same arrivals as the time reading — the
+    // identity of the two tropical instances, exercised, not asserted.
+    const g = { n: 4, edges: [
+      { u: 0, v: 1, w: [3n, 1n] }, { u: 1, v: 3, w: [4n, 1n] },
+      { u: 0, v: 2, w: [5n, 1n] }, { u: 2, v: 3, w: [1n, 1n] },
+    ] };
+    const got = settleDistances(g, path.join(tmp, 'diamond-dist.gill'),
+      { ...gillConfig, grades: distGrades });
+    assert.deepEqual(got, [[0n, 1n], [3n, 1n], [5n, 1n], [6n, 1n]]);
   });
 });

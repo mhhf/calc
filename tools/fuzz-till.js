@@ -216,6 +216,45 @@ for (let i = 0; i < COUNT; i++) {
 }
 console.log(`q-operations: ${trials} trials, ${fails} mismatches`);
 
+// ─── section 1b: gill min/max — FFI ∥ clause ∥ order reference ──────
+// The collapsed tower names (TODO_0011 §3 / 0284 P2): gill's FFI meta
+// routes min/max → num.min/num.max; the clause face lives in gill's
+// prelude (num.gill /q instances at the bound). Reference = order-
+// theoretic selection; coherence: the result IS one of the arguments.
+{
+  const NUM_GILL = path.join(import.meta.dirname, '../calculus/gill/prelude/num.gill');
+  const gillCfg = (await import('../calculus/gill/calculus-config.js')).default;
+  const gec = mde.load(NUM_GILL, { calculusConfig: gillCfg, cache: false });
+  const gOpts = makeILLBackchainOpts({
+    theories, normalize: canonicalize, getFFIMeta: gillCfg.backward.getFFIMeta,
+  });
+  const gprove = (goal, useFFI) => backward.prove(goal, gec.clauses, gec.definitions, {
+    ...gOpts, maxDepth: 20000, allBuckets: true, useFFI,
+  });
+  let mtrials = 0, mfails = 0;
+  const mreport = (msg) => { mfails++; fails++; console.error(`MISMATCH: ${msg}`); };
+  for (let i = 0; i < COUNT; i++) {
+    const a = randRat(), b = randRat();
+    for (const op of ['min', 'max']) {
+      mtrials++;
+      const le = a[0] * b[1] <= b[0] * a[1];
+      const want = op === 'min' ? (le ? a : b) : (le ? b : a);
+      const out = mv('R');
+      const goal = Store.put(op, [putRat(...a), putRat(...b), out]);
+      for (const useFFI of [true, false]) {
+        const res = gprove(goal, useFFI);
+        if (!res.success) { mreport(`${op}(${rstr(a)}, ${rstr(b)}) ${useFFI ? 'FFI' : 'clause'}: no proof`); continue; }
+        let val = out;
+        for (let k = 0; k < 500; k++) { const n = apply(val, res.theta); if (n === val) break; val = n; }
+        if (canonicalize(val) !== putRat(...want)) {
+          mreport(`${op}(${rstr(a)}, ${rstr(b)}) ${useFFI ? 'FFI' : 'clause'}: got ${rstr(ratParts(canonicalize(val)) || [0n, 0n])}, want ${rstr(want)}`);
+        }
+      }
+    }
+  }
+  console.log(`gill min/max: ${mtrials} trials, ${mfails} mismatches`);
+}
+
 // ─── section 2: activation-spec fuzzer (A@t fires under h iff t ≤ h) ─
 const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'fuzz-till-'));
 const cmpQ = (x, y) => { const l = x[0] * y[1], r = y[0] * x[1]; return l < r ? -1 : l > r ? 1 : 0; };
