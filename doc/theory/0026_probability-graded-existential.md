@@ -14,6 +14,8 @@ references:
   - "THY_0020 — Refinement Sorts (datasorts; here: the events one conditions on)"
   - "THY_0024 — Graded Labelled States (wave table pattern; values-not-ids PRF invariant)"
   - "TODO_0283 — the {A}_w paper (this document extends its planned scope)"
+  - "RES_0137 — general graded monad/comonad/mode calculus (hq; the measure semiring is a new instance row: within-derivation merge = ·, across-derivation aggregation = sum/sample — NOT an order prune)"
+  - "TODO_0284 — pluggable graded-modal engine (hq; implementation host: the weight grade is its third co-driving instance, aggregation-policy slot P1b)"
   - "Droste & Gastin (2007). Weighted Automata and Weighted Logics. TCS (∃ = semiring sum, denotational)."
   - "Grädel & Tannen (2017/2024). Semiring Provenance for First-Order Logic. arXiv:1712.01980, 2412.07986."
   - "Green, Karvounarakis & Tannen (2007). Provenance Semirings. PODS."
