@@ -1,0 +1,36 @@
+#import(../../prelude/num.gill)
+
+% minmax.gill — gill executable spec (TODO_0284 P2 acceptance): the
+% collapsed min/max as rule THEORY PREMISES. Two quotes resolve to the
+% cheaper (min) and the dearer (max) — mixed bin/frac inputs exercise the
+% /q instance at the bound; the result is an ARGUMENT (already canonical).
+% Under CALC_NOFFI=1 (test:noffi:gill) the same derivations run through
+% prelude clause resolution only — the FFI-principle gate.
+
+quote: (x: q) -> type.
+bid: (x: q) -> type.
+best: (x: q) -> type.
+worst: (x: q) -> type.
+
+% min across a mixed pair: min(7, 13/2) = 13/2.
+pick_min: quote A * quote B * !min A B M -o { best M }.
+
+#expect_pick_min (settle: 0)
+  quote 7 * quote (13/2)
+  =>
+  best (13/2) .
+
+% max across a mixed pair: max(3/4, 2) = 2 — the bin argument wins, so the
+% collapse's bin↔q agreement is observable in the result hash.
+pick_max: bid A * bid B * !max A B M -o { worst M }.
+
+#expect_pick_max (settle: 0)
+  bid (3/4) * bid 2
+  =>
+  worst 2 .
+
+% Equal values are ONE hash (canonical store): min = max = the value.
+#expect_pick_equal (settle: 0)
+  quote (5/2) * quote (5/2)
+  =>
+  best (5/2) .
