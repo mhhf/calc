@@ -22,90 +22,36 @@
 'use strict';
 
 import path from 'path';
-import Store from '../../lib/kernel/store.js';
-import calculus from '../../lib/calculus/index.js';
-import { buildParser } from '../../lib/calculus/builders.js';
 import { setTheories } from '../../lib/kernel/unify.js';
 import { defaultTheories } from '../../lib/kernel/eq-theory.js';
 import { binlitTheory } from '../../lib/engine/ill/binlit-theory.js';
 import { ratlitTheory, ratParts, installRatlitTheory } from '../../lib/engine/theories/ratlit-theory.js';
 import { grade0 } from '../../lib/engine/grades.js';
 import { connTagsFrom } from '../../lib/engine/formula-utils.js';
-import { apply } from '../../lib/kernel/substitute.js';
-import { predHead } from '../../lib/kernel/ast.js';
-import { collectMetavars } from '../../lib/engine/pattern-utils.js';
-import mde from '../../lib/engine/index.js';
-import backward from '../../lib/engine/backchain.js';
 import backchainIll from '../../lib/engine/ill/backchain-ill.js';
 import * as ffi from '../../lib/engine/ill/ffi/index.js';
 import { mul as ratMul, div as ratDiv, cmp as ratCmp } from '../../lib/rat.js';
 import { tillGrades, tillFactSetPolicy, tillGradeUnit } from '../till/calculus-config.js';
+import { makeCalcTables, makeFFIFace, makeTheory, makeForwardParserBuilder, makeSequentLoader, ratCanon } from '../kit.js';
 
 const GILL_CALC = path.join(import.meta.dirname, 'gill.calc');
 const GILL_RULES = path.join(import.meta.dirname, 'gill.rules');
 const GILL_PRELUDE = path.join(import.meta.dirname, 'prelude/num.gill');
 
-/** The one numeric canonicalizer (same tower as till: structural i/o/e
- *  chains and rat(N,D) forms fold onto canonical literals). */
-const _ratCanon = (h) => ratlitTheory.canonicalize(binlitTheory.canonicalize(h));
-
-// Connective table DERIVED from gill.calc (the till discipline: one source
-// of truth — a connective exists iff declared there with @category).
-let _gillConnectives = null;
-function gillConnectives() {
-  if (_gillConnectives) return _gillConnectives;
-  const cs = calculus.load(GILL_CALC).constructors;
-  const table = {};
-  for (const [name, c] of Object.entries(cs)) {
-    const ann = c.annotations || {};
-    if (c.returnType !== 'formula' || !ann.category) continue;
-    table[name] = {
-      category: ann.category, arity: c.argTypes.length,
-      ...(ann.polarity ? { polarity: ann.polarity } : {}),
-    };
-  }
-  _gillConnectives = table;
-  return table;
-}
-
-// ── Sorts (TODO_0011 rung 1): calc-derived sort data + literal
-// classification. Value fences are per-sort VALUE checks; dist shares
-// delay's fence shape (a transport cost is any nonnegative rational).
-// Sort EDGES on the numeric tower live in logic files (prelude/num.gill),
-// never here.
-let _gillSorts = null;
-function gillSorts() {
-  if (_gillSorts) return _gillSorts;
-  const spec = calculus.load(GILL_CALC);
-  const edges = spec.sortEdges || [];
-  const calcSortNames = new Set(edges.flat());
-  const members = {};
-  const connArgSorts = {};
-  for (const [name, c] of Object.entries(spec.constructors)) {
-    if (c.argTypes.length === 0 && calcSortNames.has(c.returnType)) {
-      members[name] = c.returnType;
-    }
-    if (c.returnType === 'formula' && c.argTypes.length > 0) {
-      connArgSorts[name] = c.argTypes;
-    }
-  }
-  const _p = (h) => ratParts(h);
-  _gillSorts = {
-    calc: { edges, members },
-    connArgSorts,
-    formulaSort: 'formula',
-    lit: {
-      literals: { binlit: 'bin', ratlit: 'q', strlit: 'string' },
-      fences: {
-        delay: (h) => { const p = _p(h); return !!p && p[0] >= 0n; },
-        count: (h) => { const p = _p(h); return !!p && p[0] >= 0n && p[1] === 1n; },
-        weight: (h) => { const p = _p(h); return !!p && p[0] >= 0n && p[0] <= p[1]; },
-        dist: (h) => { const p = _p(h); return !!p && p[0] >= 0n; },
-      },
-    },
-  };
-  return _gillSorts;
-}
+// Connective + sort tables DERIVED from gill.calc (kit.js — the till
+// discipline: one source of truth, a connective exists iff declared with
+// @category). Value fences are per-sort VALUE checks; dist shares delay's
+// fence shape (a transport cost is any nonnegative rational). Sort EDGES
+// on the numeric tower live in logic files (prelude/num.gill), never here.
+const _fp = (h) => ratParts(h);
+const { connectives: gillConnectives, sorts: gillSorts } = makeCalcTables(GILL_CALC, {
+  fences: {
+    delay: (h) => { const p = _fp(h); return !!p && p[0] >= 0n; },
+    count: (h) => { const p = _fp(h); return !!p && p[0] >= 0n && p[1] === 1n; },
+    weight: (h) => { const p = _fp(h); return !!p && p[0] >= 0n && p[0] <= p[1]; },
+    dist: (h) => { const p = _fp(h); return !!p && p[0] >= 0n; },
+  },
+});
 
 // ── distGrades — the (min,+) transport-cost instance (TODO_0284 P3) ──
 // Time's tropical twin: the SAME operations (ℚ≥0 carrier, ⊗ = + cost
@@ -195,8 +141,7 @@ function gradeAlgebraFor(conn) {
 // selection; n ↦ n/1 is order-preserving), so the coherence law admits
 // them to the shared set — the clause face is bin.ill's min/max + the /q
 // instances in prelude/num.gill. qsub/qdiv stay split (checked/field).
-const GILL_FFI_META = {
-  ...ffi.defaultMeta,
+const _face = makeFFIFace({
   plus: { ffi: 'num.plus', mode: '+ + -', multiModal: true },
   mul: { ffi: 'num.mul', mode: '+ + -' },
   lt: { ffi: 'num.lt', mode: '+ +' },
@@ -206,90 +151,18 @@ const GILL_FFI_META = {
   eq_bool: { ffi: 'num.eq_bool', mode: '+ + -' },
   min: { ffi: 'num.min', mode: '+ + -' },
   max: { ffi: 'num.max', mode: '+ + -' },
-};
-const GILL_PARSED_MODES = { ...ffi.parsedModes };
-for (const k of ['plus', 'mul', 'lt', 'le', 'eq', 'neq', 'eq_bool', 'min', 'max']) {
-  GILL_PARSED_MODES[k] = ffi.mode.parseMode(GILL_FFI_META[k].mode);
-}
-const gillGetModes = (p) => GILL_PARSED_MODES[p] || null;
-const gillGetModeMeta = (p) => {
-  const meta = GILL_FFI_META[p];
-  if (!meta) return null;
-  return { modes: GILL_PARSED_MODES[p], multiModal: !!meta.multiModal };
-};
+});
+const GILL_FFI_META = _face.META;
 
-// ── Theory engine (TODO_0273 discipline, till's shape): discharges
-// template theory premises over gill's numeric prelude. FFI fast path
-// first (advisory on decode failure), clause resolution as the semantics;
-// CALC_NOFFI=1 disables the fast path AND FFI inside clause resolution.
-const _noFFI = () => process.env.CALC_NOFFI === '1';
-let _theoryEc = null, _theoryOpts = null, _theoryPreds = null;
-Store.onClear(() => { _theoryEc = null; _theoryPreds = null; });
-function _theoryEngine() {
-  if (!_theoryEc) {
-    gillCalculusConfig.init();
-    _theoryEc = mde.load(GILL_PRELUDE, { calculusConfig: gillCalculusConfig, cache: false });
-    _theoryOpts = {
-      ...backchainIll.makeILLBackchainOpts({
-        theories: [...defaultTheories, binlitTheory, ratlitTheory],
-        normalize: _ratCanon,
-        getFFIMeta: () => GILL_FFI_META,
-      }),
-      maxDepth: 20000, allBuckets: true, useFFI: true,
-    };
-  }
-  return _theoryEc;
-}
-const gillTheory = {
-  prove(goal) {
-    if (!_noFFI()) {
-      const fast = backchainIll.tryFFI(goal, GILL_FFI_META);
-      if (fast) {
-        if (fast.success) return fast.theta || [];
-        if (fast.reason !== 'conversion_failed') return null;
-      }
-    }
-    const ec = _theoryEngine();
-    const opts = _noFFI() ? { ..._theoryOpts, useFFI: false } : _theoryOpts;
-    const res = backward.prove(goal, ec.clauses, ec.definitions, opts);
-    if (!res.success) return null;
-    const vars = new Set();
-    collectMetavars(goal, vars);
-    const out = [];
-    for (const v of vars) {
-      const val = _ratCanon(apply(v, res.theta));
-      const rem = new Set();
-      collectMetavars(val, rem);
-      if (rem.size) return null;
-      out.push([v, val]);
-    }
-    return out;
-  },
-  has(pred) {
-    if (pred in GILL_FFI_META) return true;
-    if (!_theoryPreds) {
-      const ec = _theoryEngine();
-      _theoryPreds = new Set();
-      for (const [, cl] of ec.clauses) _theoryPreds.add(predHead(cl.hash));
-      for (const [, h] of ec.definitions) _theoryPreds.add(predHead(h));
-      _theoryPreds.delete(null);
-    }
-    return _theoryPreds.has(pred);
-  },
-};
+// ── Theory engine (TODO_0273 discipline, kit.js): discharges template
+// theory premises over gill's numeric prelude (min/max resolve there).
+const gillTheory = makeTheory({
+  preludeFile: GILL_PRELUDE,
+  META: GILL_FFI_META,
+  getConfig: () => gillCalculusConfig,
+});
 
-function gillBuildParser() {
-  return buildParser(calculus.load(GILL_CALC).constructors, {
-    binders: { exists: 'exists', forall: 'forall' },
-    multiCharFreevars: true,
-    numbers: true,
-    application: true,
-    arrows: true,
-    forwardRules: true,
-    binaryNormalization: true,
-    gradeUnit: tillGradeUnit,
-  });
-}
+const gillBuildParser = makeForwardParserBuilder(GILL_CALC, tillGradeUnit);
 
 const gillCalculusConfig = {
   // ── L0: Kernel init (same Store tags + theories as till) ─────
@@ -319,15 +192,15 @@ const gillCalculusConfig = {
 
   // ── L2: Compile ──────────────────────────────────────────────
   compile: {
-    getModes: gillGetModes,
-    getModeMeta: gillGetModeMeta,
+    getModes: _face.getModes,
+    getModeMeta: _face.getModeMeta,
     discriminatorPreds: [],
     cacheEpoch: 'gill',
   },
 
   // ── L3: Backward ─────────────────────────────────────────────
   backward: {
-    normalize: _ratCanon,
+    normalize: ratCanon,
     tryFFI: backchainIll.tryFFI,
     getFFIMeta: () => GILL_FFI_META,
     buildClauseTerm: backchainIll.buildClauseTerm,
@@ -338,7 +211,7 @@ const gillCalculusConfig = {
   // ── L4: FFI ──────────────────────────────────────────────────
   ffi: {
     meta: GILL_FFI_META,
-    parsedModes: GILL_PARSED_MODES,
+    parsedModes: _face.PARSED,
     get: ffi.get,
     isFFIGround: ffi.convert.isGround,
   },
@@ -362,16 +235,10 @@ const gillCalculusConfig = {
 
 /** Sequent-level gill calculus: gill.calc + gill.rules with the gill
  *  theory engine (min/max resolve over prelude/num.gill). */
-function loadGillSequent() {
-  return calculus.load(GILL_CALC, GILL_RULES, {
-    parser: {
-      multiCharFreevars: true,
-      numbers: true,
-      gradeUnit: tillGradeUnit,
-    },
-    theory: gillTheory,
-  });
-}
+const loadGillSequent = makeSequentLoader({
+  calcFile: GILL_CALC, rulesFile: GILL_RULES,
+  gradeUnit: tillGradeUnit, theory: gillTheory,
+});
 
 export { gillCalculusConfig, gillConnectives, gillTheory, loadGillSequent, distGrades, weightGrades, gillGradeRegistry, gradeAlgebraFor };
 export default gillCalculusConfig;
