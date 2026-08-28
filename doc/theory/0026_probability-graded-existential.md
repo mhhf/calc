@@ -11,6 +11,20 @@ references:
   - "Faggian, Galal & Paquet (2022). Curry and Howard Meet Borel. LICS (closest near-miss: proof normalization ≈ probabilistic computation — non-linear ND, normalized counting modality C^q, not a witness-graded ∃; cite and contrast)."
   - "Crubillé (2026). De Finetti's Theorem in Integrable Cones. LICS (exchangeability ↔ free exponential !; semantic only)."
   - "Bacci & Møgelberg (2026). Higher-Order Quantitative Logic for Probability. LICS (quantitative judgments/distances; no graded quantifier, no sampling-as-cut)."
+  - "Barthe, Hsu & Liao (2020). A Probabilistic Separation Logic. POPL (∗ = independence; the reading T4-d builds on)."
+  - "Li, Ahmed & Holtzen (2023). Lilac: A Modal Separation Logic for Conditional Probability. PLDI (conditioning modality, C-Indep frame rule)."
+  - "Bao, Docherty, Hsu & Pym (2021). A Bunched Logic for Conditional Independence (DIBI). LICS (CI as [Z]⨟([X]∗[Y]), Thm V.1 — T4-d's qualitative ancestor)."
+  - "Di Guardia, Ehrhard & Faggian (2025). Bayesian Networks and Proof-Nets. arXiv:2412.20540 (BN ↔ MLL boxes, cut = variable elimination, CI = good labelling — closest structural prior art; ungraded, static)."
+  - "Fritz (2020). A Synthetic Approach to Markov Kernels. Adv. Math. 370 (Markov categories; Bayesian inversion as dagger functor, Rem. 13.10 — T4's categorical backbone)."
+  - "Cho & Jacobs (2019). Disintegration and Bayesian Inversion via String Diagrams. MSCS."
+  - "Stein & Staton (2021/2024). Exact Conditioning. LICS/JACM (commutativity laws for independent conditioning)."
+  - "Pearl (1988). Probabilistic Reasoning in Intelligent Systems (BP exact on polytrees — T4-b)."
+  - "Lauritzen & Spiegelhalter (1988). Local Computations with Probabilities. JRSS-B (junction tree — T4-b)."
+  - "Cooper (1990). Complexity of Probabilistic Inference. AIJ (#P-hardness — T4-b)."
+  - "Yedidia, Freeman & Weiss (2005). Constructing Free-Energy Approximations. IEEE-IT (Bethe exact iff tree — T4-c)."
+  - "Ricci-Tersenghi & Semerjian (2009). Cavity Method for Decimated CSPs. JSTAT (decimation = chain rule; thresholds — T4-a/c)."
+  - "Chatterjee, Hazra & Warnke (2025). BP-Guided Decimation on k-XORSAT. ICALP (rigorous condensation threshold — T4-c)."
+  - "Doucet, de Freitas & Gordon (2001). Sequential Monte Carlo Methods in Practice. Springer (optimal proposal = zero variance — T4-a/T3)."
   - "THY_0021 — Weighted Additive Disjunction (woplus; now the derived Boolean instance of ∃_ρ)"
   - "THY_0018 — The Delay-Graded Lax Monad (tropical grading; ∃_ρ adds the measure grading, product of semirings)"
   - "THY_0019 — Timed Matching and the Settle Scheduler (the PRF sampler; order-invariance ancestor)"
@@ -198,13 +212,38 @@ reading of ∃ as Σ, here obtained proof-theoretically).
   WFC) is the 0th-order approximation, so WFC's greedy bias becomes a variance
   statement, not a soundness caveat. Direction: standard importance-sampling
   identity over the forest measure; extends THY_0021 §6 unbiasedness.
-- **T4 (Compositional conditioning — the hard one).** Weighted cut composes
-  grades (delays add, weights multiply); conditioning commutes with cut exactly
-  when the dependency structure between superposed variables is decomposable
-  (tree-structured) — precisely the regime where belief propagation is exact.
-  Direction: factor-graph reading of the shared-variable structure of the
-  derivation forest; the failure mode (loopy double-counting) is the honest
-  boundary of the theory and must be stated, not hidden.
+- **T4 (Compositional conditioning — REFINED 2026-08-28 after a two-track
+  literature sweep; the first conjecture "tree ⟺ exact" was wrong as stated and
+  decomposes into four orthogonal claims).**
+  - **T4-a (correctness — unconditional).** Decimation with EXACT per-step
+    conditionals samples the denoted conditional measure exactly for ANY
+    dependency structure — the chain rule of probability; the zero-variance
+    optimal-proposal case of T3 (Doucet et al. SIS; Ricci-Tersenghi–Semerjian).
+    Tree structure is irrelevant to correctness.
+  - **T4-b (locality — where tree structure actually matters).** Treewidth 1 of
+    the dependency graph between superposed variables buys LOCAL computability
+    of those conditionals by propagation in O(n) (Pearl); treewidth w costs
+    O(n·exp(w)) (junction tree, Lauritzen–Spiegelhalter); general is #P-hard
+    (Cooper). "Conditioning commutes with cut cheaply" is a treewidth
+    statement, not a correctness statement.
+  - **T4-c (approximation — greedy WFC's regime).** Replacing exact
+    conditionals by local-fixpoint (loopy-BP / Bethe) marginals is exact iff
+    treewidth 1 (Yedidia–Freeman–Weiss) and degrades controllably below the
+    condensation threshold — now rigorous for k-XORSAT (Chatterjee–Hazra–
+    Warnke, ICALP 2025).
+  - **T4-d (the proof-theoretic content — ours to prove).** The syntactic
+    counterpart: evidence composed by ⊗ commutes with conditioning (the
+    PSL/Lilac reading: tensor/∗ = probabilistic independence); sharing via
+    !/contraction on wave-carrying facts is the syntactic marker of potential
+    double-counting; and the GRADE is its computable certificate — a
+    double-counted evidence stream manifests as a squared weight factor, so
+    grade discipline detects dependence violations syntactically. The graded
+    contraction □_{r+s}A ⊢ □_r A ⊗ □_s A reads as factor-graph message
+    splitting (mass splits additively over independent channels). Categorical
+    backbone: Bayesian inversion is a symmetric monoidal dagger functor in
+    Markov categories with conditionals + causality (Fritz Rem. 13.10;
+    Cho–Jacobs) — the sequent calculus presents this functor proof-
+    theoretically, over a FORWARD rewriting engine.
 
 ## 7. Novelty audit (2026-08-28)
 
@@ -239,10 +278,34 @@ Granule) grade `!`, never ∃; model-theoretic semiring quantifiers count
 witnesses in a structure with no proof theory. Novelty claims (a) graded
 witness choice as a sequent rule and (b) sampling as principal cut both stand.
 
+T4 positioning sweep (2026-08-28, second two-track audit): PSL (Barthe–Hsu–
+Liao, POPL 2020) and Lilac (Li–Ahmed–Holtzen, PLDI 2023) establish ∗/⊗ =
+probabilistic independence — cite, don't claim; Lilac's conditioning modality
+gives the program-logic frame rule (C-Indep) but no propositional/graded
+commutation law. DIBI (Bao–Docherty–Hsu–Pym, LICS 2021) encodes conditional
+independence QUALITATIVELY as [Z]⨟([X]∗[Y]) (Thm V.1). Closest structural
+prior art overall: Di Guardia–Ehrhard–Faggian 2025 (arXiv:2412.20540) —
+Bayesian networks ↔ MLL proof-net box structure, CUT = VARIABLE ELIMINATION,
+conditional independence = a good-labelling condition, message passing = PCoh
+evaluation at clique-tree cost — but UNGRADED and static (no forward
+rewriting, no sequent grades). Surviving novel axes for T4-d: (1) grades as
+computable independence CERTIFICATES (double-count ⟹ squared weight — a
+syntactic refutation of independence); (2) the mass-splitting graded
+contraction as message splitting; (3) the quantitative sequent-calculus
+generalization of DIBI Thm V.1 / Lilac C-Indep over a forward rewriting
+engine, i.e. a graded extension of Di Guardia's good labelling to dynamic
+derivation forests.
+
 ## 8. What a paper must discharge
 
-1. Full proofs of T1–T4 (T4 is the research-grade contribution; T1–T3 are
-   careful but standard-technique extensions of THY_0021 §§4–6).
+1. Full proofs of T1–T4. T4-d is THE research-grade contribution, with three
+   sub-obligations: (i) the grade-certificate theorem (double-counted evidence
+   ⟹ detectable weight violation — a syntactic refutation of independence);
+   (ii) soundness of the mass-splitting graded contraction; (iii) the graded,
+   dynamic extension of Di Guardia's good-labelling condition to forward
+   derivation forests (= quantitative DIBI Thm V.1). T1–T3 and T4-a/b/c are
+   careful assemblies of standard techniques (chain rule, treewidth, Bethe)
+   over THY_0021 §§4–6 — cite, assemble, don't overclaim.
 2. Cut admissibility for the two-semiring graded judgment including ∃_ρ
    (extend THY_0023's till metatheory; the principal ∃_ρ case IS §5's collapse).
 3. The lazy/recursive form: guarded-fixpoint waves, inside-mass existence and
