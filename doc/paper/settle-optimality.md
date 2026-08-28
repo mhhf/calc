@@ -428,11 +428,13 @@ paper Thms 6.3–6.4; kernel-verified pure-backward in
 `tests/till-pure-adequacy.test.js` — the join program's least pure grade is
 `6 = 2+3+1` while settle's stamp is `4 = max(2,3)+1`). Makespan is
 contributed exclusively by the stamp *coeffect*, and the focused calculus
-above is the coeffect-side statement. What remains is engineering, not
-theory: the kernel currently accepts a settle-bridge step structurally
-(`unverified: 'modeSwitch'`); elaborating the event trace into a fully
-checked `@fire` derivation — the trace≅term observation made executable —
-would make settle a *certifying* scheduler (TODO_0294).
+above is the coeffect-side statement. The engineering half is landed:
+settle is a *certifying* scheduler (TODO_0294) — the event trace
+elaborates into a fully kernel-checked `@fire` derivation (the trace≅term
+observation made executable; `@fire` is a first-class rule of the
+calculus, check-only in search), fuzz-tested on random programs. The
+trusted-oracle path remains only as a fallback for shapes the elaborator
+does not yet cover (whole-bind antecedents, counted consequents).
 
 ---
 
@@ -760,8 +762,9 @@ realized condition families.
   decidability refinements.
 - ✔ **Focused presentation** — discharged as §5.3 (temporally focused
   derivations; completeness = T2 recast; principality via THY_0018 §7 and
-  the work/makespan separation as the guard). Remaining engineering:
-  trace elaboration → certifying scheduler (TODO_0294).
+  the work/makespan separation as the guard). The certifying-scheduler
+  engineering landed with it (TODO_0294 B1–B4: first-class `@fire` rule,
+  trace elaborator, full kernel verification, certification fuzzing).
 
 ---
 

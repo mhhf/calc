@@ -34,6 +34,7 @@ import { createProver } from '../lib/prover/focused.js';
 import { createKernel } from '../lib/prover/kernel.js';
 import mde from '../lib/engine/index.js';
 import tillConfig, { loadTillSequent, tillGrades } from '../calculus/till/calculus-config.js';
+import { programFromCalc } from '../lib/prover/elaborate-trace.js';
 
 const SPEC = (f) => path.join(import.meta.dirname, '../calculus/till/tests/forward', f);
 const FIX = (f) => path.join(import.meta.dirname, 'fixtures', f);
@@ -58,29 +59,29 @@ describe('till timed judgment: settle bridge (Stage 2)', () => {
   };
   const gate = (engineCalc, kind) => engineCalc.splitQueries.get(kind);
 
-  // Kernel-verification contract (round-15 F1): trees through the settle
-  // bridge contain a monad_r2 modeShift step the kernel accepts at face
-  // value — the settle run is the ENGINE's responsibility, not the
-  // kernel's. verifyTree reports this honestly via `unverified:
-  // ['modeSwitch']`; everything around the bridge step (retiming, tensor
-  // decomposition, resource accounting) IS fully re-checked.
-  const derivable = (r, desc) => {
+  // Kernel-verification contract (TODO_0294 B2 gate flip): the bridge
+  // ELABORATES the settle trace into an @fire chain by default, so trees
+  // reach FULL verification — the kernel re-derives every firing from the
+  // program's declared rule data (fire-check.js). No trusted modeSwitch
+  // step remains for elaborable traces; unsupported shapes (whole-bind,
+  // counted consequents) would fall back to the round-15 F1 oracle node.
+  const derivable = (ec, r, desc) => {
     assert.ok(r.success, `expected derivable: ${desc}`);
-    const v = kernel.verifyTree(r.proofTree);
+    const v = kernel.verifyTree(r.proofTree, { program: programFromCalc(ec) });
     assert.ok(v.valid, `kernel rejected ${desc}: ${v.errors.join('; ')}`);
-    assert.deepEqual(v.unverified, ['modeSwitch'],
-      `bridge trees are verified modulo the settle step: ${desc}`);
+    assert.equal(v.unverified, undefined,
+      `elaborated bridge trees reach FULL verification: ${desc}`);
   };
 
   describe('adequacy: executable-spec gates as sequents', () => {
     it('schedule: two jobs derivable at their gate horizons', () => {
       const ec = loadEngine(SPEC('schedule.ill'));
       const g = gate(ec, 'expect_two_jobs');
-      derivable(judge(ec, g.lhsHash, g.rhsHash, '1'), 'two_jobs @1');
+      derivable(ec, judge(ec, g.lhsHash, g.rhsHash, '1'), 'two_jobs @1');
       // composability (THY-B Thm 4): the same state derivable at T=0.7
-      derivable(judge(ec, g.lhsHash, g.rhsHash, '0.7'), 'two_jobs @0.7');
+      derivable(ec, judge(ec, g.lhsHash, g.rhsHash, '0.7'), 'two_jobs @0.7');
       const one = gate(ec, 'expect_one_job');
-      derivable(judge(ec, one.lhsHash, one.rhsHash, '0.4'), 'one_job @0.4');
+      derivable(ec, judge(ec, one.lhsHash, one.rhsHash, '0.4'), 'one_job @0.4');
     });
 
     it('schedule refutation: no early plank', () => {
@@ -92,7 +93,7 @@ describe('till timed judgment: settle bridge (Stage 2)', () => {
     it('spoilage: eaten derivable; rotten underivable at ANY horizon', () => {
       const ec = loadEngine(SPEC('spoilage.ill'));
       const eaten = gate(ec, 'expect_eaten_not_rotten');
-      derivable(judge(ec, eaten.lhsHash, eaten.rhsHash, '5'), 'eaten @5');
+      derivable(ec, judge(ec, eaten.lhsHash, eaten.rhsHash, '5'), 'eaten @5');
       const rotten = gate(ec, 'expect_not_rotten');
       for (const T of ['2', '5', '10', '100']) {
         assert.ok(!judge(ec, rotten.lhsHash, rotten.rhsHash, T).success,
@@ -109,7 +110,7 @@ describe('till timed judgment: settle bridge (Stage 2)', () => {
     });
 
     it('the fused pipeline runs to dtok@5', () => {
-      derivable(judge(ec, P('atok'), P('dtok@5'), '10'), 'dtok@5 @10');
+      derivable(ec, judge(ec, P('atok'), P('dtok@5'), '10'), 'dtok@5 @10');
     });
 
     it('nothing exists inside the open interval (0, 5)', () => {
@@ -119,7 +120,7 @@ describe('till timed judgment: settle bridge (Stage 2)', () => {
 
     it('the in-flight output is visible as a future stamp; the horizon gates consumption', () => {
       // at T=4 the job has fired (a=0) but drink (a=5) is pending
-      derivable(judge(ec, P('atok'), P('ctok@5'), '4'), 'ctok@5 @4');
+      derivable(ec, judge(ec, P('atok'), P('ctok@5'), '4'), 'ctok@5 @4');
       assert.ok(!judge(ec, P('atok'), P('dtok@5'), '4').success,
         'drink has not fired by horizon 4');
     });
@@ -129,8 +130,8 @@ describe('till timed judgment: settle bridge (Stage 2)', () => {
     it('both forms land the observable at the same stamp', () => {
       const P = (s) => calc.parse(s);
       const ec = loadEngine(FIX('till-fission.ill'));
-      derivable(judge(ec, P('a'), P('b@5'), '10'), 'fused b@5');
-      derivable(judge(ec, P('a2'), P('b2@5'), '10'), 'fissioned b2@5');
+      derivable(ec, judge(ec, P('a'), P('b@5'), '10'), 'fused b@5');
+      derivable(ec, judge(ec, P('a2'), P('b2@5'), '10'), 'fissioned b2@5');
     });
 
     it('fission is observable mid-flight, fusion is not (the E7.3 trade)', () => {
@@ -138,7 +139,7 @@ describe('till timed judgment: settle bridge (Stage 2)', () => {
       const ec = loadEngine(FIX('till-fission.ill'));
       // at horizon 1 the fissioned intermediate m@2 is a derivable
       // observation; the fused job admits nothing before 5
-      derivable(judge(ec, P('a2'), P('m@2'), '1'), 'm@2 @1');
+      derivable(ec, judge(ec, P('a2'), P('m@2'), '1'), 'm@2 @1');
       assert.ok(!judge(ec, P('a'), P('b@2'), '10').success,
         'fused: nothing inside (0, 5)');
     });
