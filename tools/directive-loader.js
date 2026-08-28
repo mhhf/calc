@@ -29,7 +29,7 @@ function findIllFiles(dir) {
   for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
     const full = path.join(dir, entry.name);
     if (entry.isDirectory()) results.push(...findIllFiles(full));
-    else if (entry.name.endsWith('.ill') || entry.name.endsWith('.till')) results.push(full);
+    else if (entry.name.endsWith('.ill') || entry.name.endsWith('.till') || entry.name.endsWith('.gill')) results.push(full);
   }
   return results.sort();
 }

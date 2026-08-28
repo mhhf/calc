@@ -1,0 +1,71 @@
+#import(../../till/prelude/rat.ill)
+
+% gill numeric prelude (TODO_0284 P2) — till's tower plus gill's additions.
+%
+% The import chain is the calculus layering as files: bin.ill (ill, the
+% naturals) <- rat.ill (till, the tower + q-ops) <- num.gill (gill). till's
+% prelude is FROZEN — gill extends by import, exactly as till extends
+% ill's bin.ill. Everything below is gill-only surface.
+
+% ── dist joins the numeric tower ──
+% Transport costs are rationals (segment arithmetic feeds them to q-ops);
+% naturals are valid distances. Mirrors delay's edges in rat.ill —
+% dist <: grade (the grade-sort face) lives in gill.calc, these edges are
+% the numeric face.
+dist <: q.
+bin <: dist.
+
+% ── min/max: the collapsed order-theoretic selection (TODO_0011 §3) ──
+% ONE NAME PER OPERATION across the tower: bin.ill's min/max clauses are
+% the bin instance (gt + ground pick — see its header); these /q clauses
+% are the instance AT THE BOUND. The coherence law licenses the collapse:
+% n ↦ n/1 embeds order-preservingly, so bin min agrees with q min on the
+% shared subsort (unlike qsub/qdiv, which keep split names). The bounded
+% signature PROMOTES bin.ill's concrete signature to a declared instance;
+% mixed bin/frac goals are legal precisely because the /q clauses exist.
+%
+% Dispatch is first-order matching (the rat.ill discipline): each /q head
+% patterns on a rat(_,_) argument (first/second position), so pure-bin
+% goals can NEVER enter them and order-independence holds under committed
+% choice. Bodies cross-multiply (bin arithmetic), decide by ONE strict gt,
+% and a ground pick clause selects an ARGUMENT — the result is one of the
+% inputs, hence already canonical (no qnorm needed; min/max never create
+% values). The FFI face mirrors this (num.min/num.max: bin fast path,
+% rat.qmin/rat.qmax fallback — FFI principle: these clauses are the
+% semantics, the FFI is optimization).
+
+min: (s <: q) (a: s) -> (b: s) -> (r: s) -> type.
+min: (a: q) -> (b: q) -> (r: q) -> type.
+qmin_pick: (c: bin) -> (a: q) -> (b: q) -> (m: q) -> type.
+qmin_pick/gt: qmin_pick (i e) A B B.
+qmin_pick/ng: qmin_pick e A B A.
+min/qf: min (rat A B) V R
+  <- to_q V (rat C D)
+  <- mul A D X
+  <- mul C B Y
+  <- gt X Y e F
+  <- qmin_pick F (rat A B) V R.
+min/qb: min U (rat C D) R
+  <- to_q U (rat A B)
+  <- mul A D X
+  <- mul C B Y
+  <- gt X Y e F
+  <- qmin_pick F U (rat C D) R.
+
+max: (s <: q) (a: s) -> (b: s) -> (r: s) -> type.
+max: (a: q) -> (b: q) -> (r: q) -> type.
+qmax_pick: (c: bin) -> (a: q) -> (b: q) -> (m: q) -> type.
+qmax_pick/gt: qmax_pick (i e) A B A.
+qmax_pick/ng: qmax_pick e A B B.
+max/qf: max (rat A B) V R
+  <- to_q V (rat C D)
+  <- mul A D X
+  <- mul C B Y
+  <- gt X Y e F
+  <- qmax_pick F (rat A B) V R.
+max/qb: max U (rat C D) R
+  <- to_q U (rat A B)
+  <- mul A D X
+  <- mul C B Y
+  <- gt X Y e F
+  <- qmax_pick F U (rat C D) R.

@@ -278,6 +278,25 @@ describe('FFI — split namespaces (bin family vs q-family)', () => {
     assert.equal(ratFFI.qeq_bool([half(), half(), mv('Z')]).theta[0][1], bin(1n));
   });
 
+  it('qmin/qmax: order-theoretic selection, bins coerce, result is an argument (P2)', () => {
+    // mixed bin/frac: the q order decides, the chosen ARGUMENT is the result
+    assert.equal(ratFFI.qmin([bin(7n), putRat(13n, 2n), mv('R')]).theta[0][1], putRat(13n, 2n));
+    assert.equal(ratFFI.qmax([bin(7n), putRat(13n, 2n), mv('R')]).theta[0][1], bin(7n));
+    assert.equal(ratFFI.qmin([third(), half(), mv('R')]).theta[0][1], putRat(1n, 3n));
+    assert.equal(ratFFI.qmax([third(), half(), mv('R')]).theta[0][1], putRat(1n, 2n));
+    // bin×bin agrees with the bin instance (the coherence law behind the
+    // collapsed names — num.min/num.max dispatch)
+    assert.equal(ratFFI.qmin([bin(3n), bin(5n), mv('R')]).theta[0][1], bin(3n));
+    assert.equal(arithmetic.min([bin(3n), bin(5n), mv('R')]).theta[0][1], bin(3n));
+    // equal values are one hash either way
+    assert.equal(ratFFI.qmin([putRat(2n, 4n), half(), mv('R')]).theta[0][1], half());
+    assert.equal(ratFFI.qmax([putRat(2n, 4n), half(), mv('R')]).theta[0][1], half());
+    // ℚ≥0 contract: negatives refused like every q-op
+    assert.ok(!ratFFI.qmin([putRat(-1n, 2n), half(), mv('R')]).success);
+    // non-ground input: advisory conversion failure
+    assert.ok(!ratFFI.qmax([mv('X'), half(), mv('R')]).success);
+  });
+
   it('canonicalize folds o/i numerals over rational leaves (o(x)=2x, i(x)=2x+1)', () => {
     const wrapped = Store.put('o', [Store.put('o', [putRat(3n, 4n)])]);
     assert.equal(ratlitTheory.canonicalize(wrapped), bin(3n)); // 4 · 3/4
