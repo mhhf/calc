@@ -67,7 +67,7 @@ Context entries may be stamped atoms `at(A,t)` — content-addressed
   failure alone refutes only the bridge route. **Elaboration (TODO_0294
   B2, default ON):** the bridge elaborates the settle event trace into a
   chain of `fire` steps closed by `monad_r` + decomposition
-  (`lib/prover/elaborate-trace.js`) — the returned tree contains NO
+  (`lib/prover/timed/elaborate-trace.js`) — the returned tree contains NO
   `monad_r2` node and reaches FULL kernel verification against the
   program's rule data (`verifyTree(tree, { program:
   programFromCalc(engineCalc) })`). Elaboration is total on legal traces
