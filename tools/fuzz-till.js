@@ -540,6 +540,12 @@ for (let p = 0; p <= GPROGS; p++) {
     // fixed possessed-loli shape (Phase 6c: produced rule token fires)
     text = ['ca: type.', 'cb: type.', 'cc: type.',
       'mk: cc -o { (ca -o {cb}@2) }@1.'].join('\n');
+  } else if (p === GPROGS - 3 && GPROGS >= 4) {
+    // fixed clause-goal shape (TODO_0295: SLD certificate checked)
+    text = ['ca: type.', 'cb: type.', 'cp: type.', 'cq: type.',
+      'cax: cp.',
+      'cimp: cq', '  <- cp.',
+      'cuse: ca * !cq -o { cb }@1.'].join('\n');
   } else {
     const lines = atoms.map(x => `${x}: type.`);
     const R = 2 + randInt(3);

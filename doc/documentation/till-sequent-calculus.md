@@ -134,7 +134,18 @@ steps are FULLY re-derived against the program's declared rule data
 (`fire-check.js`, needs `opts.program`): antecedent/consequent bags under
 the recorded theta, forced-join activation, done stamp via the `qsub`
 partial residual, read survival, persistent goals/conclusions, plus
-resource threading — they never enter `unverified`. Steps the kernel
+resource threading — they never enter `unverified`. Persistent goals
+resolve as: cartesian-zone membership → a CHECKED SLD certificate over
+the program's declared clauses (`lib/prover/sld-check.js`, TODO_0295 —
+the witness carries the backchain term tree, emitted clause-only with
+`useFFI: false`; verification is slot-matching, never search; `ffi`
+leaves are rejected) → the definitional numeric theory. There is no
+trusted clause-prover fallback. **The TCB is**: the kernel (+ Store,
+unify/matchIndexed, Context), the equational canon (eq-theory — the
+calculus's conversion layer), and the numeric theory prelude
+(FFI∥clause-fuzzed) — deliberately definitional, like conversion in a
+type-theory kernel. Everything else is search, and everything search
+finds is checked. Steps the kernel
 cannot re-derive are accepted but reported in `result.unverified`:
 fallback settle-bridge steps (`'modeSwitch'` — only for traces the
 elaborator marks unsupported) and quantifier steps with fresh
