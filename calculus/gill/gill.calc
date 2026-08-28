@@ -83,6 +83,21 @@ woplus: weight -> formula -> formula -> formula
   @category additive
   @polarity positive.
 
+% Graded transport comonad (TODO_0284 P3): `!!_d A` — "A reachable within
+% haul-cost d". The spatial dual of the delay monad (0270): {A}@d =
+% achievable WITHIN duration d, !!_d A = reachable WITHIN cost budget d —
+% both upper-bound readings, both exactly accounted by the ⊖ residual
+% (gill.rules). Own category, NOT exponential: the graded-prefix surface
+% and the exponential role (counted parcels) belong to bang; haul's grade
+% argument is dist, which routes it to distGrades in the by-sort registry
+% (calculus-config.js gradeAlgebraFor). Surface is a declared sorted
+% template (TODO_0268 §5c — the one grammar mechanism).
+haul: dist -> formula -> formula
+  @ascii "!!_#1 #2"
+  @prec 80
+  @category comonad
+  @polarity positive.
+
 % ── Timed surface (sorted templates over kernel wrapper tags, 0268 A) ──
 
 % Availability stamp `A@t` (E1).

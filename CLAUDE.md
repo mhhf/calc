@@ -139,11 +139,11 @@ calculus/till/           # till — timed ILL (TODO_0265)
 └── tests/               # till executable specs (forward/, debug/)
 
 calculus/gill/           # gill — graded ILL (TODO_0284): grade algebras as data; till frozen as the time instance
-├── gill.calc            # till's graded surface + dist grade sort ((min,+) transport cost)
-├── gill.rules           # Sequent rules (till.rules mirror; diverges at P3 with haul)
-├── calculus-config.js   # Assembly point: time algebra read-only from till, min/max tower collapse (num.min/num.max)
+├── gill.calc            # till's graded surface + dist grade sort + haul `!!_d A` (graded transport comonad, @category comonad)
+├── gill.rules           # till.rules fragment + haul rules (fetch/dereliction/unit — the monad's spatial dual, same ⊖ premise)
+├── calculus-config.js   # Assembly point: by-sort grade registry (delay→tillGrades, dist→distGrades; gradeAlgebraFor), min/max tower collapse
 ├── prelude/num.gill     # Imports till's rat.ill; dist tower edges + collapsed min/max /q instances
-└── tests/               # gill executable specs (npm run test:gill / test:noffi:gill)
+└── tests/               # gill executable specs incl. depot shortest-path (npm run test:gill / test:noffi:gill)
 
 tests/                   # Test suite (core: *.test.js, engine: engine/)
 benchmarks/              # Performance benchmarks (engine/, proof/, micro/)

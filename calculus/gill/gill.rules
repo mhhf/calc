@@ -1,14 +1,15 @@
 % =============================================================================
-% gill sequent rules — the graded fragment (TODO_0284 P2 scaffold)
+% gill sequent rules — the graded fragment (TODO_0284)
 % =============================================================================
 %
-% till.rules verbatim (see its header for the full design notes): gill's
-% surface IS till's graded surface, so the backward judgment carries over
-% unchanged — the multiplicative core, `with`, the ω and counted bang, the
-% graded monad (bind via the ⊖ residual theory premise), stamped-atom
-% retiming. Theory premises resolve over gill's numeric prelude
-% (prelude/num.gill — till's tower + the collapsed min/max instances).
-% Divergence begins at P3 (haul/`!!_d` rules), not here.
+% The till.rules fragment carries over verbatim (see its header for the
+% full design notes): gill's surface contains till's graded surface, so
+% the backward judgment is shared — the multiplicative core, `with`, the
+% ω and counted bang, the graded monad (bind via the ⊖ residual theory
+% premise), stamped-atom retiming. Theory premises resolve over gill's
+% numeric prelude (prelude/num.gill — till's tower + the collapsed
+% min/max instances). gill's OWN fragment is the graded transport
+% comonad (haul — P3, below the shared rules).
 
 @formulas A, B, C
 
@@ -121,6 +122,44 @@ monad_r2: G ; D |- {A}@E
   @pretty "{}settle"
   @invertible false
   @modeShift true.
+
+% ── graded transport comonad (TODO_0284 P3): the spatial dual ──
+% !!_d A = "A reachable within haul-cost d" — the upper-bound reading,
+% mirroring the monad ({A}@d = achievable within duration d). Exact
+% accounting through the SAME ⊖ residual theory premise as monad_l:
+% grades are ℚ≥0 and qsub is checked, so no rule can construct a negative
+% cost (Grade Preservation, THY_0022) and !!_5 a |- !!_3 a stays refuted
+% with no side condition. Derivable (deliberately not primitive):
+%   subsumption  !!_E A |- !!_F A, F ≥ E      (haul_l + haul_r)
+%   graded-μ     !!_E (!!_F A) |- !!_G A, G ≥ E+F   (haul_l twice + haul_r)
+% Cross-modality rules (haul against a monad conclusion — "transport
+% takes time") are DELIBERATELY absent: the additive coupling violates
+% the matched-pair axioms (R2b); that interaction is a rule in 0285.
+
+% Fetch (the bind dual): with A in hand, C is reachable within H ⟹ with
+% A at cost E, C is reachable within F = E + H (go get A, then proceed).
+haul_l: G ; D, !!_E A |- !!_F C
+  <- G ; D, A |- !!_H C
+  <- !qsub F E H
+  @side l
+  @pretty "!!L"
+  @invertible false.
+
+% Cost-0 dereliction: reachable at cost 0 = possessed. (Named by the
+% alternatives convention — conn_l, conn_l2, … group as one left menu.)
+haul_l2: G ; D, !!_E A |- C
+  <- G ; D, A |- C
+  <- !eq E 0
+  @pretty "!!0"
+  @invertible false.
+
+% Unit·sub (the monad_r dual): what is here is reachable within ANY
+% budget — operational costs are the LEAST derivable grades.
+haul_r: G ; D |- !!_E A
+  <- G ; D |- A
+  <- !le 0 E
+  @pretty "!!R"
+  @invertible false.
 
 % ── stamped atoms (THY_0018 §5): retiming, as a stamp-aware axiom ──
 

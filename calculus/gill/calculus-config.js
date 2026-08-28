@@ -2,21 +2,21 @@
  * gill Calculus Configuration — single assembly point (TODO_0284 P2).
  *
  * Graded ILL: the laboratory where a grade algebra is DATA. gill's surface
- * is till's graded surface (gill.calc — shared Store tags, one numeric
- * prelude), scheduled by whichever grade algebra this config plugs in.
- * P2 plugs in the TIME instance — `tillGrades` imported READ-ONLY from
- * till's config (the todo's own P3 plan references it as the delay entry
- * of the by-sort registry `{ bySort: { delay: tillGrades, dist: distGrades,
- * … } }`, which replaces the single `grades` slot here). What is gill-own
- * today: the connective/sort tables derived from gill.calc (incl. the
- * `dist` grade sort + its value fence), the numeric theory over
- * prelude/num.gill (till's tower + the collapsed min/max instances), and
- * the FFI meta routing min/max onto the tower dispatchers (num.min/
- * num.max) — ILL's meta keeps the bin-only handlers, till's meta is
- * frozen pre-P2, gill's meta is where the collapse is complete.
+ * is till's graded surface plus the transport comonad (gill.calc — shared
+ * Store tags, one numeric prelude), scheduled by whichever grade algebra
+ * this config plugs in. The grade algebras are a BY-SORT REGISTRY (P3):
+ * delay → tillGrades (imported READ-ONLY from till's config — the time
+ * instance is shared, not copied), dist → distGrades (the (min,+)
+ * transport reading); cc.grades stays the active axis (D1: one algebra
+ * schedules a run). Also gill-own: the connective/sort tables derived
+ * from gill.calc (dist grade sort + value fence, haul), the numeric
+ * theory over prelude/num.gill (till's tower + the collapsed min/max
+ * instances), and the FFI meta routing min/max onto the tower
+ * dispatchers (num.min/num.max) — ILL's meta keeps the bin-only
+ * handlers, till's meta is frozen pre-P2, gill's meta is where the
+ * collapse is complete.
  *
- * Mirrors calculus/till/calculus-config.js layer-for-layer; divergence
- * begins at P3 (grade registry by sort, haul), not here.
+ * Mirrors calculus/till/calculus-config.js layer-for-layer.
  */
 
 'use strict';
@@ -104,6 +104,42 @@ function gillSorts() {
     },
   };
   return _gillSorts;
+}
+
+// ── distGrades — the (min,+) transport-cost instance (TODO_0284 P3) ──
+// Time's tropical twin: the SAME operations (ℚ≥0 carrier, ⊗ = + cost
+// accumulation, ⊔ = 'join', ⊕ = order/min-prune), a different PHYSICAL
+// READING (stamp = accumulated haul cost, horizon = cost budget, rule
+// delay = segment cost). The operational identity is the audit's central
+// point: shortest path needs NO join swap — the scheduler's B&B already
+// minimizes completion, so distance is a reading of the one tropical
+// algebra, selected by grade sort. A distinct frozen object (not an
+// alias) so registry resolution, conformance, and buildTimedConfig
+// acceptance pin a second instance. merge stays 'join' — R2: the
+// principled availability reading (Petricek–Orchard–Mycroft dataflow
+// coeffect); single-input hauls never exercise it, and R2 pins it
+// BEFORE any multi-input haul may land.
+const distGrades = Object.freeze({ ...tillGrades });
+
+// ── Grade registry keyed by grade SORT (P3): a modality = a mode + a
+// grade algebra + its rules, all data. The algebra a connective runs
+// under is selected by the sort of its grade argument (gill.calc):
+// monad: delay → time, haul: dist → distGrades. count is STRUCTURAL
+// (parcel peeling is engine-owned, not a scheduler algebra); weight
+// arrives with P3b. D1 single-axis: ONE algebra schedules a run —
+// cc.grades below stays the active axis (time); the registry is the
+// routing table.
+const gillGradeRegistry = Object.freeze({
+  bySort: Object.freeze({ delay: tillGrades, dist: distGrades }),
+  default: tillGrades,
+});
+
+/** Resolve the grade algebra selected by a connective's grade argument
+ *  (the resolveConn/sort-routing face of the registry). */
+function gradeAlgebraFor(conn) {
+  const argSorts = gillSorts().connArgSorts[conn];
+  const gs = argSorts && argSorts.find((s) => s !== 'formula');
+  return (gs && gillGradeRegistry.bySort[gs]) || gillGradeRegistry.default;
 }
 
 // ── FFI meta: till's collapsed tower names PLUS min/max (TODO_0284 P2).
@@ -222,9 +258,12 @@ const gillCalculusConfig = {
   gradeUnit: tillGradeUnit,
   get sorts() { return gillSorts(); },
 
-  // The grade ALGEBRA slot: P2 = the time instance, read-only from till.
-  // P3 replaces this with the by-sort registry (delay/count/dist/weight).
+  // The grade ALGEBRA slot = the ACTIVE AXIS (D1: a run is scheduled by
+  // ONE algebra). Time is gill's default axis; the by-sort registry
+  // (gradeRegistry/gradeAlgebraFor) routes per-connective grade reading.
   grades: tillGrades,
+  gradeRegistry: gillGradeRegistry,
+  gradeAlgebraFor,
   factSetPolicy: tillFactSetPolicy,
   stampTag: 'at',
   shiftOps: { plus: 'add', qplus: 'add', qsub: 'sub', mul: 'scale', qdiv: 'scale' },
@@ -286,5 +325,5 @@ function loadGillSequent() {
   });
 }
 
-export { gillCalculusConfig, gillConnectives, gillTheory, loadGillSequent };
+export { gillCalculusConfig, gillConnectives, gillTheory, loadGillSequent, distGrades, gillGradeRegistry, gradeAlgebraFor };
 export default gillCalculusConfig;

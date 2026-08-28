@@ -1,0 +1,58 @@
+#import(../../prelude/num.gill)
+
+% depot.gill — TODO_0284 P3 acceptance: "reach the depot". Two routes,
+% a→b→depot (3+4) and a→c→depot (5+1); the good resolves at cost
+% min(7, 6) = 6 — via the scheduler's ⊕ order realization (min-activation
+% firing + B&B prune), NOT a join swap. Stamps are READ as accumulated
+% haul cost (the distGrades reading; operationally the one tropical
+% algebra — the audit's point), the settle horizon is the cost budget.
+%
+% Modelling discipline (the Dijkstra shape, gill-dist.test.js property-
+% tests it on random graphs): reachability tokens are READ (E7.2 —
+% measured, never consumed, ORIGINAL stamp: both routes race with no
+% committed-choice competition and no $-restamping), roads are one-shot
+% linear tokens (each edge relaxes ONCE, termination), the segment cost
+% is the rule delay (⊗ = + on the conclusion stamp), and the read stamp
+% joins the activation — so an edge fires at exactly dist(u), producing
+% dist(u) + w. First arrival = least cost over paths (per-firing
+% optimality + nondecreasing frontier = the Dijkstra invariant).
+
+city_a: type.
+city_b: type.
+city_c: type.
+depot_reached: type.
+road_ab: type.
+road_bd: type.
+road_ac: type.
+road_cd: type.
+good: type.
+delivered: type.
+
+hop_ab: read city_a * road_ab -o { city_b }@3.
+hop_bd: read city_b * road_bd -o { depot_reached }@4.
+hop_ac: read city_a * road_ac -o { city_c }@5.
+hop_cd: read city_c * road_cd -o { depot_reached }@1.
+
+% The good is delivered at FIRST depot arrival: both arrivals exist as
+% cohorts (@6 via c, @7 via b); B&B keeps the ≤-least candidate, so
+% deliver consumes the cost-6 one.
+deliver: good * depot_reached -o { delivered }.
+
+#expect_depot (settle: 10)
+  city_a * road_ab * road_bd * road_ac * road_cd * good
+  =>
+  delivered@6 .
+
+% The dearer route's arrival is consumed by nothing — it remains at 7,
+% and delivery at 7 is NOT reachable (the ⊕ prune is why).
+#expect_not_depot_late (settle: 10)
+  city_a * road_ab * road_bd * road_ac * road_cd * good
+  =>
+  delivered@7 .
+
+% Cost budget as horizon: settle to 5 and no arrival fits — the good
+% stays undelivered (both routes cost more than the budget).
+#expect_not_depot_budget (settle: 5)
+  city_a * road_ab * road_bd * road_ac * road_cd * good
+  =>
+  delivered .
