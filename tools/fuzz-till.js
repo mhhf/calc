@@ -56,6 +56,7 @@ import { createProver } from '../lib/prover/focused.js';
 import { createKernel } from '../lib/prover/kernel.js';
 import tillConfig, { loadTillSequent } from '../calculus/till/calculus-config.js';
 import { buildTimedConfig } from '../lib/engine/timed/timed.js';
+import { certifyRun } from '../lib/prover/elaborate-trace.js';
 
 const args = process.argv.slice(2);
 let COUNT = 200, SEED = 0x7111, VERBOSE = false;
@@ -510,6 +511,71 @@ for (let p = 0; p < EPROGS; p++) {
 fs.rmSync(edir, { recursive: true, force: true });
 console.log(`ample-set containment: ${etrials} trials, ${efails} mismatches`);
 
-const total = fails + afails + mfails + bfails + kfails + efails;
+// ─── section 7: run certification (TODO_0294 B4) — settle→elaborate→verify ─
+// Random multi-rule programs with positive rational delays, plus the
+// section-6 persistent shape: EVERY settle run must elaborate into an
+// @fire chain the kernel FULLY re-derives from the program's rule data
+// (fire-check.js, no modeSwitch trust). Elaboration is total on legal
+// traces of supported rules (THY_0018 §5) — any non-'certified' verdict
+// here is an engine/elaborator disagreement, i.e. a found bug.
+const kernelSeq = createKernel(calcSeq);
+const gdir = fs.mkdtempSync(path.join(os.tmpdir(), 'fuzz-till-cert-'));
+let gtrials = 0, gfails = 0;
+const GPROGS = Math.max(4, Math.floor(COUNT / 16));
+const certHorizon = putRat(8n, 1n);
+for (let p = 0; p <= GPROGS; p++) {
+  const atoms = ['ca', 'cb', 'cc', 'cd', 'ce'];
+  let text;
+  if (p === GPROGS) {
+    // fixed persistent-conclusion + persistent-goal shape (section 6 class)
+    text = ['ca: type.', 'cb: type.', 'cres: type.', 'ck: bin -> type.',
+      'mk: ca -o { !ck 1 }@1.',
+      'need: cb * !ck 1 -o { cres }@1.'].join('\n');
+  } else {
+    const lines = atoms.map(x => `${x}: type.`);
+    const R = 2 + randInt(3);
+    for (let i = 0; i < R; i++) {
+      // mass-nonincreasing (|outs| ≤ |ins|): random duplication rules
+      // otherwise grow token counts exponentially under cohort batching
+      // (the Int32 run-length fence throws — a guard, not a bug)
+      const nIn = 1 + randInt(2);
+      const ins = Array.from({ length: nIn }, () => atoms[randInt(atoms.length)]);
+      const outs = Array.from({ length: 1 + randInt(nIn) }, () => atoms[randInt(atoms.length)]);
+      const num = 1 + randInt(4), den = [1, 2, 4][randInt(3)];
+      lines.push(`r${i}: ${ins.join(' * ')} -o { ${outs.join(' * ')} }@(${num}/${den}).`);
+    }
+    text = lines.join('\n');
+  }
+  const file = path.join(gdir, `c-${p}.ill`);
+  fs.writeFileSync(file, text);
+  const gc = mde.load(file, { calculusConfig: tillConfig, cache: false });
+  const state = { linear: {}, persistent: {} };
+  if (p === GPROGS) {
+    state.linear[Store.put('atom', ['ca'])] = 1;
+    state.linear[Store.put('atom', ['cb'])] = 1;
+  } else {
+    for (const x of atoms) { const c = randInt(3); if (c) state.linear[Store.put('atom', [x])] = c; }
+    if (!Object.keys(state.linear).length) state.linear[Store.put('atom', ['ca'])] = 1;
+  }
+  gtrials++;
+  let r;
+  try {
+    r = certifyRun({
+      engineCalc: gc, calculus: calcSeq, kernel: kernelSeq,
+      state, horizon: '8', horizonTerm: certHorizon,
+      settleOpts: { maxSteps: 500 },
+    });
+  } catch (e) {
+    r = { verdict: 'threw', reason: e.message };
+  }
+  if (r.verdict !== 'certified') {
+    gfails++;
+    console.error(`MISMATCH certification: ${r.verdict} (${r.reason || (r.errors || []).join('; ')}) on:\n${text}`);
+  }
+}
+fs.rmSync(gdir, { recursive: true, force: true });
+console.log(`run certification: ${gtrials} trials, ${gfails} mismatches`);
+
+const total = fails + afails + mfails + bfails + kfails + efails + gfails;
 if (total > 0) { console.error(`FAIL: ${total} total mismatches (seed ${SEED})`); process.exit(1); }
 console.log(`PASS (seed ${SEED})`);
