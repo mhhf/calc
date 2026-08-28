@@ -14,10 +14,12 @@
  *                   fixpoint + subcriticality, M3 unbiased sampling.
  *
  * Fixtures:
- *   - tillGrades, READ-ONLY: the canonical view is derived exactly as
- *     timed.js computes it inline today (merge = max by cmp at :211/:323/
- *     :368, prunes = cmp >= 0 at :247). Documents that the live time
- *     algebra already satisfies C. Plus hash-face ≡ value-face coherence.
+ *   - tillGrades, READ-ONLY: since P1 the merge/prunes/aggregate slots
+ *     are REAL (values face + tillGrades.aggregate) — the view only maps
+ *     face names onto the canonical signature; the slots the timed engine
+ *     routes through (StampTable id-lifts) are exercised directly.
+ *     Documents that the live time algebra satisfies the order family.
+ *     Plus hash-face ≡ value-face coherence.
  *   - weightGrades (ℚ≥0, ·): standalone literal — the P3b/0292 measure
  *     instance, engine-independent today, checked against a reference
  *     weighted-choice-forest evaluator (M1/M3) and the THY_0026 T2
@@ -52,10 +54,17 @@ const tillView = {
   compose: (a, b) => vals.add(a, b),
   residual: (a, b) => { const r = vals.sub(a, b); return r[0] < 0n ? null : r; },
   cmp: vals.cmp,
-  merge: (a, b) => (vals.cmp(a, b) > 0 ? a : b),
-  prunes: (p, b) => vals.cmp(p, b) >= 0,
-  aggregate: { class: 'order', realizations: ['prune'] },
+  // P1 slots: till declares the CANONICAL realizations symbolically
+  // ('join'/'geq' — run float-fast on ids by the StampTable); the view
+  // canonicalizes them into the contract-defined functions for
+  // property-checking. A custom algebra would carry functions here.
+  merge: vals.merge === 'join' ? (a, b) => (vals.cmp(a, b) > 0 ? a : b) : vals.merge,
+  prunes: vals.prunes === 'geq' ? (p, b) => vals.cmp(p, b) >= 0 : vals.prunes,
+  aggregate: tillGrades.aggregate,
 };
+assert.equal(vals.merge, 'join');
+assert.equal(vals.prunes, 'geq');
+assert.deepEqual(tillGrades.aggregate, { class: 'order', realizations: ['prune'] });
 
 const weightGrades = {
   name: 'weightGrades(ℚ≥0,·)',
