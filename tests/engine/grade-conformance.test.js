@@ -60,16 +60,16 @@ const tillView = {
   compose: (a, b) => vals.add(a, b),
   residual: (a, b) => { const r = vals.sub(a, b); return r[0] < 0n ? null : r; },
   cmp: vals.cmp,
-  // P1 slots: till declares the CANONICAL realizations symbolically
-  // ('join'/'geq' — run float-fast on ids by the StampTable); the view
-  // canonicalizes them into the contract-defined functions for
-  // property-checking. A custom algebra would carry functions here.
+  // P1 slot: till declares the CANONICAL ⊔ realization symbolically
+  // ('join' — run float-fast on ids by the StampTable); the view
+  // canonicalizes it into the contract-defined function for
+  // property-checking. A custom algebra would carry a function here.
+  // The ⊕ order-prune is NOT a slot (cmp >= 0 is fixed in the StampTable).
   merge: vals.merge === 'join' ? (a, b) => (vals.cmp(a, b) > 0 ? a : b) : vals.merge,
-  prunes: vals.prunes === 'geq' ? (p, b) => vals.cmp(p, b) >= 0 : vals.prunes,
   aggregate: tillGrades.aggregate,
 };
 assert.equal(vals.merge, 'join');
-assert.equal(vals.prunes, 'geq');
+assert.ok(!('prunes' in vals));
 assert.deepEqual(tillGrades.aggregate, { class: 'order', realizations: ['prune'] });
 
 // The measure instance is the SHIPPED one (P3b): gill's weightGrades,
@@ -84,7 +84,6 @@ const weightView = {
   residual: wvals.sub,
   cmp: wvals.cmp,                    // index order only — NEVER a prune direction
   merge: wvals.merge,                // co-consumed independence (THY_0026 T4-d)
-  prunes: wvals.prunes,
   aggregate: gillWeightGrades.aggregate,
 };
 assert.equal(typeof wvals.merge, 'function');   // the custom-slot path, not 'join'
@@ -108,7 +107,9 @@ function conformOrder(alg, { seed = 42, samples = 300 } = {}) {
     it('C2: compose is monotone in both arguments', () => {
       for (let i = 0; i < samples; i++) {
         const a = draws[i], b = draws[(i + 1) % samples], d = draws[(i + 2) % samples];
-        const aUp = alg.compose(a, d);            // a ≤ aUp by C3
+        const aUp = alg.compose(a, d);
+        // premise asserted explicitly — C2 must not lean silently on C3
+        assert.ok(alg.cmp(a, aUp) <= 0);
         assert.ok(alg.cmp(alg.compose(a, b), alg.compose(aUp, b)) <= 0);
         assert.ok(alg.cmp(alg.compose(b, a), alg.compose(b, aUp)) <= 0);
       }
@@ -140,12 +141,8 @@ function conformOrder(alg, { seed = 42, samples = 300 } = {}) {
         else assert.deepEqual(alg.compose(b, r), a);
       }
     });
-    it('prunes default = cmp(partial, best) >= 0; realization is [prune]', () => {
+    it('⊕ realization is [prune]; the B&B cut itself is contract-fixed (cmp >= 0 — StampTable, labels.test.js)', () => {
       assert.deepEqual(alg.aggregate, { class: 'order', realizations: ['prune'] });
-      for (let i = 0; i < samples; i++) {
-        const p = draws[i], b = draws[(i + 1) % samples];
-        assert.equal(alg.prunes(p, b), alg.cmp(p, b) >= 0);
-      }
     });
   });
 }
@@ -291,25 +288,28 @@ const distView = {
   residual: (a, b) => { const r = dvals.sub(a, b); return r[0] < 0n ? null : r; },
   cmp: dvals.cmp,
   merge: dvals.merge === 'join' ? (a, b) => (dvals.cmp(a, b) > 0 ? a : b) : dvals.merge,
-  prunes: dvals.prunes === 'geq' ? (p, b) => dvals.cmp(p, b) >= 0 : dvals.prunes,
   aggregate: distGrades.aggregate,
 };
 assert.equal(dvals.merge, 'join');            // R2 pin: ⊔ stays the join
 assert.deepEqual(distGrades.aggregate, { class: 'order', realizations: ['prune'] });
 conformOrder(distView, { seed: 137 });
 
-// ── tillGrades face coherence: hash face ≡ value face (read-only) ──
+// ── derived hash faces (0284 audit): buildTimedConfig synthesizes
+// availability/effect from the value algebra — coherence is BY
+// CONSTRUCTION, so this is a smoke test of the synthesis wiring, not a
+// coherence property.
 
-describe('tillGrades hash-face ≡ value-face coherence', () => {
+describe('buildTimedConfig derives the hash faces from values', () => {
   const rnd = prng(99);
-  it('effect.{unit,compose,residual} and availability.cmp agree with values', () => {
-    assert.deepEqual(ratParts(tillGrades.effect.unit()), vals.unit);
-    for (let i = 0; i < 100; i++) {
+  it('derived effect.{unit,compose,residual} and availability.cmp agree with values', () => {
+    const tcfg = buildTimedConfig(tillCalculusConfig);
+    assert.deepEqual(ratParts(tcfg.effect.unit()), vals.unit);
+    for (let i = 0; i < 25; i++) {
       const a = randRat(rnd), b = randRat(rnd);
       const ha = vals.reify(a), hb = vals.reify(b);
-      assert.deepEqual(ratParts(tillGrades.effect.compose(ha, hb)), add(a, b));
-      assert.equal(tillGrades.availability.cmp(ha, hb), vals.cmp(a, b));
-      const hr = tillGrades.effect.residual(ha, hb);
+      assert.deepEqual(ratParts(tcfg.effect.compose(ha, hb)), add(a, b));
+      assert.equal(tcfg.availability.cmp(ha, hb), vals.cmp(a, b));
+      const hr = tcfg.effect.residual(ha, hb);
       const vr = tillView.residual(a, b);
       if (vr === null) assert.equal(hr, null);
       else assert.deepEqual(ratParts(hr), vr);

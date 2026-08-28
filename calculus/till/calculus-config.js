@@ -79,45 +79,13 @@ const _parts = (h) => {
  *  the theory engine, and the backchain normalizer. */
 const _ratCanon = (h) => ratlitTheory.canonicalize(binlitTheory.canonicalize(h));
 
-// Float fast path for GRADE hashes (mirrors the policy comparator below):
-// canonical stamp hashes are injective on ℚ, so a !== b never compares
-// equal exactly; float order is sound when both convert exactly (monotone
-// rounding) and differs. Ties/big operands go exact.
-const _gradeF = new Map();          // stamp hash -> float (NaN = exact only)
-Store.onClear(() => _gradeF.clear());
-function _gradeFloat(h) {
-  let f = _gradeF.get(h);
-  if (f === undefined) {
-    const [n, d] = _parts(h);
-    const nn = n < 0n ? -n : n;
-    f = (nn < 9007199254740992n && d < 9007199254740992n) ? Number(n) / Number(d) : NaN;
-    _gradeF.set(h, f);
-  }
-  return f;
-}
-
+// Hash faces (availability.cmp on stamp hashes; effect.{unit, compose,
+// residual}) are NOT declared here — buildTimedConfig DERIVES them from
+// the value algebra below (0284 audit: coherence by construction; the
+// hand-written faces + their float cache were the pre-contract debt).
+// The fenced residual ⊖ (TODO_0273 — null outside a ≥ b, so no rule can
+// construct a negative grade) is part of that derivation.
 const tillGrades = {
-  availability: {
-    cmp: (a, b) => {
-      if (a === b) return 0;
-      const fa = _gradeFloat(a), fb = _gradeFloat(b);
-      if (fa < fb) return -1;
-      if (fa > fb) return 1;
-      return ratCmp(_parts(a), _parts(b));
-    },
-  },
-  effect: {
-    unit: tillGradeUnit,
-    compose: (s, d) => putRat(...ratAdd(_parts(s), _parts(d))),
-    // Partial residual ⊖ (TODO_0273): a ⊖ b = the h with b + h = a, defined
-    // only inside the fence (a >= b) — null otherwise. Grades are ℚ≥0; the
-    // algebra offers no signed subtraction, so no rule can construct a
-    // negative grade (validity is closed under the exposed operations).
-    residual: (a, b) => {
-      const r = ratSub(_parts(a), _parts(b));
-      return r[0] < 0n ? null : putRat(...r);
-    },
-  },
   isStamp: (h) => {
     const t = Store.tagId(h);
     return t === Store.TAG.ratlit || t === Store.TAG.binlit;
@@ -158,7 +126,7 @@ const tillGrades = {
   // Values are normalized BigInt pairs [n, d] (rat.js norm invariant);
   // mix is VALUE-derived (rider 2 — table ids are history-dependent,
   // hashes must not be).
-  values: {
+  values: Object.freeze({
     unit: [0n, 1n],
     canon: (v) => ratNorm(v[0], v[1]),
     parse: (h) => _parts(_ratCanon(h)),
@@ -166,17 +134,14 @@ const tillGrades = {
     cmp: ratCmp,
     add: ratAdd,
     sub: ratSub,
-    // Named engine slots (TODO_0284 P1, grade-algebra.md). Symbolic names
-    // declare the CANONICAL realizations, which the StampTable id-lift
-    // (labels.js) runs on its cached-float cmp fast path; a custom algebra
-    // (usage `+`, weight `·`) supplies value-level functions instead.
-    // ⊔ tensor-merge of co-consumed labels: the C4 join (max by cmp —
-    // the conclusion waits for the LAST input).
+    // ⊔ tensor-merge of co-consumed labels (TODO_0284 P1,
+    // grade-algebra.md): the symbolic name declares the CANONICAL join
+    // realization (max by cmp — the conclusion waits for the LAST input),
+    // which the StampTable id-lift (labels.js) runs on its cached-float
+    // cmp fast path; a custom algebra (usage `+`, weight `·`) supplies a
+    // value-level function instead. The ⊕ order-prune is NOT a slot —
+    // cmp >= 0 is the unique sound B&B cut, fixed in the StampTable.
     merge: 'join',
-    // ⊕ order-class prune: a partial at grade p is dead once cmp(p, best)
-    // >= 0. `>=` keeps the FIRST match found at equal grade — the FIFO
-    // half of timed.js's `>=`/`<` invariant pair.
-    prunes: 'geq',
     float: (v) => {
       const nn = v[0] < 0n ? -v[0] : v[0];
       return (nn < 9007199254740992n && v[1] < 9007199254740992n)
@@ -196,7 +161,7 @@ const tillGrades = {
     // integer lattice is CARRIER structure, so the floor is an algebra
     // slot, never an engine-side [n,d] unpack (TODO_0284 audit).
     floor: (v) => [v[0] / v[1], 1n],
-  },
+  }),
   // ⊕ aggregation class (grade-algebra.md): how ALTERNATIVE derivations
   // combine. Time is an order algebra — alternatives resolve by min-prune
   // (values.prunes above), mass is never summed. The measure class

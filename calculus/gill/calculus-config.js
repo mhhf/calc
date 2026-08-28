@@ -119,19 +119,28 @@ function gillSorts() {
 // acceptance pin a second instance. merge stays 'join' — R2: the
 // principled availability reading (Petricek–Orchard–Mycroft dataflow
 // coeffect); single-input hauls never exercise it, and R2 pins it
-// BEFORE any multi-input haul may land.
-const distGrades = Object.freeze({ ...tillGrades });
+// BEFORE any multi-input haul may land. The slot list is EXPLICIT (no
+// blind spread — 0284 audit): the shared tropical value algebra is
+// aliased knowingly, and nothing else rides along.
+const distGrades = Object.freeze({
+  values: tillGrades.values,           // the one tropical ℚ algebra (frozen, shared)
+  isStamp: tillGrades.isStamp,
+  parseStamp: tillGrades.parseStamp,
+  canonStamp: tillGrades.canonStamp,
+  aggregate: tillGrades.aggregate,
+});
 
 // ── weightGrades — the MEASURE-class instance (TODO_0284 P3b; the
 // 0292/will handoff). The unnormalized measure semiring (THY_0026):
 // carrier ℚ≥0 masses, ⊗ compose = · (weights multiply along one
 // derivation), ⊔ merge = · (co-consumed independent premises multiply —
 // T4-d), ⊕ aggregate = + realized EXACTLY ('sum') or by PRF draw
-// ('sample', prf.js sampleIndex). NO prunes slot: a measure algebra
-// never discards an alternative (M1 mass conservation) — and NO
-// scheduler faces (availability/effect/parseStamp): buildTimedConfig
-// rejects this algebra loudly (the P1b fence; measure aggregation over
-// whole derivations is an execution mode, arriving with will/0292).
+// ('sample', prf.js sampleIndex). A measure algebra never discards an
+// alternative (M1 mass conservation — the ⊕ prune is order-class only,
+// and contract-fixed there) and carries NO scheduler boundary slots
+// (parseStamp etc.): buildTimedConfig rejects this algebra loudly (the
+// P1b fence; measure aggregation over whole derivations is an execution
+// mode, arriving with will/0292).
 //
 // The values face keeps the label-algebra slot NAMES with measure
 // semantics: `add` IS the ⊗ slot (· here, + for time), `sub` IS the ⊖

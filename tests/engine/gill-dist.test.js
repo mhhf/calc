@@ -160,7 +160,6 @@ describe('gill grade registry (P3)', () => {
     assert.notStrictEqual(distGrades, tillGrades);
     assert.ok(Object.isFrozen(distGrades));
     assert.equal(distGrades.values.merge, 'join');    // R2 pin: ⊔ stays join
-    assert.equal(distGrades.values.prunes, 'geq');
     assert.deepEqual(distGrades.aggregate, { class: 'order', realizations: ['prune'] });
   });
 
