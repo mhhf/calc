@@ -110,6 +110,99 @@ r1: a -o { b }@2.
     fullVerify(elab.tree, program);
   });
 
+  it('counted take + counted produce: !_3 g -o { !_2 h } fully verifies', () => {
+    const calc = loadProgram('counted.till', `
+g: type.  h: type.
+trim: !_3 g -o { !_2 h }@1.
+`);
+    const res = calc.settle({ linear: { [atom('g')]: 7 }, persistent: {} }, '5');
+    const program = programFromCalc(calc);
+    // 7 g → two firings (RLE-batched or not), 1 g + 4 h remain
+    const full = Seq.fromArrays(
+      Array(7).fill(atom('g')), [], P('{g * h@1 * h@1 * h@1 * h@1}@5'));
+    const elab = elaborateTrace({ sequent: full, events: res.events, program, calculus: seqCalc });
+    assert.ok(elab.tree, `elaboration failed: ${elab.unsupported}`);
+    fullVerify(elab.tree, program);
+  });
+
+  it('whole-bind: !_W g takes the whole cohort and fully verifies', () => {
+    const calc = loadProgram('wbind.till', `
+g: type.  w: bin -> type.
+allg: !_W g -o { w W }@1.
+`);
+    const res = calc.settle({ linear: { [atom('g')]: 4 }, persistent: {} }, '5');
+    assert.equal(res.events.length, 1);
+    const program = programFromCalc(calc);
+    const w4at1 = Object.keys(res.events[0].produced).map(Number)[0];
+    const succ = Store.put('monad', [Store.child(P('x@5'), 1), w4at1]);
+    const sequent = Seq.fromArrays(Array(4).fill(atom('g')), [], succ);
+    const elab = elaborateTrace({ sequent, events: res.events, program, calculus: seqCalc });
+    assert.ok(elab.tree, `elaboration failed: ${elab.unsupported}`);
+    fullVerify(elab.tree, program);
+  });
+
+  it('whole-bind forgeries are rejected (count mismatch; partial take)', () => {
+    const calc = loadProgram('wbind2.till', `
+g: type.  w: bin -> type.
+allg: !_W g -o { w W }@1.
+`);
+    const res = calc.settle({ linear: { [atom('g')]: 4 }, persistent: {} }, '5');
+    const program = programFromCalc(calc);
+    const ev = res.events[0];
+    const consumedKey = Number(Object.keys(ev.consumed)[0]);
+    // forge 1: claim W=3 while consuming 4 → count mismatch (data-level)
+    const three = Store.put('binlit', [3n]);
+    const forged1 = { ...ev, theta: [three] };
+    const succ = Store.put('monad', [Store.child(P('x@5'), 1),
+      Store.put('w', [three])]);
+    const seq1 = Seq.fromArrays(Array(4).fill(atom('g')), [], succ);
+    const e1 = elaborateTrace({ sequent: seq1, events: [forged1], program, calculus: seqCalc });
+    if (e1.tree) {
+      const v = kernel.verifyTree(e1.tree, { program });
+      assert.ok(!v.valid, 'W≠take must not verify');
+    }
+    // forge 2: take only 3 of 4 (W=3, consistent) → none-left violation
+    const forged2 = { ...ev, theta: [three],
+      consumed: { [consumedKey]: 3 },
+      produced: { [Store.put('at', [Store.put('w', [three]), Store.child(P('x@1'), 1)])]: 1 },
+      done: Store.child(P('x@1'), 1) };
+    const seq2 = Seq.fromArrays(Array(4).fill(atom('g')), [],
+      Store.put('monad', [Store.child(P('x@5'), 1),
+        Store.put('tensor', [Store.put('at', [Store.put('w', [three]), Store.child(P('x@1'), 1)]), atom('g')])]));
+    const e2 = elaborateTrace({ sequent: seq2, events: [forged2], program, calculus: seqCalc });
+    assert.ok(e2.tree, `elaboration failed: ${e2.unsupported}`);
+    const v2 = kernel.verifyTree(e2.tree, { program });
+    assert.ok(!v2.valid, 'partial whole-bind take must not verify');
+    assert.match(v2.errors.join(';'), /whole cohort/);
+  });
+
+  it('possessed loli: a produced rule token fires and fully verifies', () => {
+    const calc = loadProgram('loli.till', `
+a: type.  b: type.  c: type.
+mk: c -o { (a -o {b}@2) }@1.
+`);
+    const res = calc.settle({ linear: { [atom('a')]: 1, [atom('c')]: 1 }, persistent: {} }, '10');
+    assert.equal(res.events.length, 2, 'mk then the possessed loli');
+    const program = programFromCalc(calc);
+    const sequent = Seq.fromArrays([atom('a'), atom('c')], [], P('{b@3}@10'));
+    const elab = elaborateTrace({ sequent, events: res.events, program, calculus: seqCalc });
+    assert.ok(elab.tree, `elaboration failed: ${elab.unsupported}`);
+    fullVerify(elab.tree, program);
+  });
+
+  it('bang succedent: persistent conclusion closes via bang_r + copy', () => {
+    const calc = loadProgram('bangsucc.till', `
+a: type.  b: type.  g: type.
+mk: a -o { b * !g }@2.
+`);
+    const res = calc.settle({ linear: { [atom('a')]: 1 }, persistent: {} }, '10');
+    const program = programFromCalc(calc);
+    const sequent = Seq.fromArrays([atom('a')], [], P('{b@2 * !g}@10'));
+    const elab = elaborateTrace({ sequent, events: res.events, program, calculus: seqCalc });
+    assert.ok(elab.tree, `elaboration failed: ${elab.unsupported}`);
+    fullVerify(elab.tree, program);
+  });
+
   it('a forged trace is REJECTED by the kernel (tampered done stamp)', () => {
     const calc = loadProgram('forge.till', `
 a: type.  b: type.

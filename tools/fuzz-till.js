@@ -531,6 +531,15 @@ for (let p = 0; p <= GPROGS; p++) {
     text = ['ca: type.', 'cb: type.', 'cres: type.', 'ck: bin -> type.',
       'mk: ca -o { !ck 1 }@1.',
       'need: cb * !ck 1 -o { cres }@1.'].join('\n');
+  } else if (p === GPROGS - 1) {
+    // fixed counted-take + counted-produce + whole-bind shape (gap closures)
+    text = ['ca: type.', 'cb: type.', 'cw: bin -> type.',
+      'trim: !_3 ca -o { !_2 cb }@1.',
+      'allb: !_W cb -o { cw W }@2.'].join('\n');
+  } else if (p === GPROGS - 2) {
+    // fixed possessed-loli shape (Phase 6c: produced rule token fires)
+    text = ['ca: type.', 'cb: type.', 'cc: type.',
+      'mk: cc -o { (ca -o {cb}@2) }@1.'].join('\n');
   } else {
     const lines = atoms.map(x => `${x}: type.`);
     const R = 2 + randInt(3);
@@ -550,9 +559,10 @@ for (let p = 0; p <= GPROGS; p++) {
   fs.writeFileSync(file, text);
   const gc = mde.load(file, { calculusConfig: tillConfig, cache: false });
   const state = { linear: {}, persistent: {} };
-  if (p === GPROGS) {
-    state.linear[Store.put('atom', ['ca'])] = 1;
+  if (p >= GPROGS - 2) {
+    state.linear[Store.put('atom', ['ca'])] = p === GPROGS - 1 ? 4 + randInt(5) : 1;
     state.linear[Store.put('atom', ['cb'])] = 1;
+    if (p === GPROGS - 2) state.linear[Store.put('atom', ['cc'])] = 1;
   } else {
     for (const x of atoms) { const c = randInt(3); if (c) state.linear[Store.put('atom', [x])] = c; }
     if (!Object.keys(state.linear).length) state.linear[Store.put('atom', ['ca'])] = 1;
