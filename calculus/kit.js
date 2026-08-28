@@ -14,6 +14,7 @@
 'use strict';
 
 import Store from '../lib/kernel/store.js';
+import { fireChecker } from '../lib/prover/timed/fire-check.js';
 import calculus from '../lib/calculus/index.js';
 import { buildParser } from '../lib/calculus/builders.js';
 import { defaultTheories } from '../lib/kernel/eq-theory.js';
@@ -193,10 +194,15 @@ function makeSequentLoader({ calcFile, rulesFile, gradeUnit, theory, fire = null
       parser: { multiCharFreevars: true, numbers: true, gradeUnit },
       theory,
     });
-    // fire-step config (TODO_0294): predicate/tag names for the kernel's
-    // @fire checker — declared here at the assembly point, never
-    // defaulted engine-side; `unit` is the grade-unit thunk
-    if (fire) calc.fire = Object.freeze({ unit: gradeUnit, ...fire });
+    // fire-step wiring (TODO_0294): predicate/tag names for the @fire
+    // checker plus the rule-name → checker binding — both declared here
+    // at the assembly point, never defaulted engine-side (the kernel
+    // only routes calculus.stepCheckers; `unit` is the grade-unit thunk)
+    if (fire) {
+      const { ruleName = 'fire', ...names } = fire;
+      calc.fire = Object.freeze({ unit: gradeUnit, ...names });
+      calc.stepCheckers = Object.freeze({ [ruleName]: fireChecker });
+    }
     return calc;
   };
 }

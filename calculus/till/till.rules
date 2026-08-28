@@ -166,15 +166,16 @@ monad_r2: G ; D |- {A}@E
 % The operational firing rule (TODO_0294): consume the recorded cohort,
 % add conclusions stamped a ⊕ d, a = the join of input stamps and
 % after-bounds. Variable arity and the join side condition live in the
-% kernel's fire checker — checked against the PROGRAM'S declared rule
-% data + the theory (le/lt/qsub), never by running settle. This
-% declaration names the rule and routes the dispatch (@fireStep); it is
-% not enumerated in search (no principal — keyed by name): settle is the
-% search strategy for @fire chains, the kernel is the judge.
+% fire checker (lib/prover/timed/fire-check.js) — checked against the
+% PROGRAM'S declared rule data + the theory (le/lt/qsub), never by
+% running settle. The rule carries NO annotation: the calculus config
+% binds the name to the checker (calculus.stepCheckers, kit.js), so the
+% kernel stays timed-blind (P1 slot routing). Not enumerated in search
+% (no principal — keyed by name): settle is the search strategy for
+% @fire chains, the kernel is the judge.
 fire: G ; D |- C
   @pretty "@fire"
-  @invertible false
-  @fireStep true.
+  @invertible false.
 
 % ── stamped atoms (THY_0018 §5): retiming, as a stamp-aware axiom ──
 % A@t ⊢ A@t' for t ≤ t' — delaying availability is free; never early.

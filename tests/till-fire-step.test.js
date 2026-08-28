@@ -234,11 +234,13 @@ describe('@fire step (TODO_0294 B1)', () => {
     assert.ok(!bad.valid);
   });
 
-  it('fire is not enumerated by tag-driven search (keyed by name, no principal)', () => {
-    // the spec exists for the kernel …
+  it('fire is bound via calculus.stepCheckers, not enumerated in search', () => {
+    // the rule exists, with NO annotation — the calculus config binds the
+    // name to the checker (P1 slot routing); the kernel stays timed-blind
     assert.ok(calc.rules.fire);
-    assert.equal(calc.rules.fire.descriptor.fireStep, true);
-    // … but has no connective, so no formula tag ever resolves to it
+    assert.equal(calc.rules.fire.descriptor.fireStep, undefined);
+    assert.ok(calc.stepCheckers && typeof calc.stepCheckers.fire.tree === 'function');
+    // no connective, so no formula tag ever resolves to it in search
     assert.equal(calc.rules.fire.descriptor.connective, null);
   });
 });

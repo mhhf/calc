@@ -19,7 +19,7 @@ THY_0019 (timed matching / settle).
 | ω bang `!A` | `bang_r/l/l2` = promotion/dereliction/absorption, **template-matched** | the ω grade is part of the pattern — never fires on `!_k` |
 | counted bang `!_k A` | `bang_l3/l4` (peel/weaken), `bang_r2/r3` (peel/zero) | `!_k A ≡ A ⊗ … ⊗ A` (k parcels, SELL/BLL) |
 | graded monad `{A}@d` | `monad_l` (bind, `!qsub F E H` — the partial residual ⊖), `monad_r` (unit·sub, `!le 0 E`) | THY_0018 §4: the grade is an upper BOUND — graded-μ `{{A}@d}@e ⊢ {A}@(d+e)` and subeffecting `{A}@d ⊢ {A}@e` (d ≤ e) derivable; the critical path is a strict lower bound (`{A}@4` from `{{A}@2}@3` refuted) |
-| `@fire` | `fire` (`@fireStep` — checked by the kernel's fire checker, TODO_0294) | THY_0018 §5's timed promotion as a first-class step: consume the recorded cohort, produce at `a ⊕ d`, `a` the forced join. No principal — keyed by name, never enumerated in tag-driven search (settle is the search strategy, the kernel the judge); verified against the PROGRAM'S declared rule data + theory (`lib/prover/fire-check.js`), never by running settle |
+| `@fire` | `fire` (bound via `calculus.stepCheckers` — no annotation; TODO_0294) | THY_0018 §5's timed promotion as a first-class step: consume the recorded cohort, produce at `a ⊕ d`, `a` the forced join. No principal — keyed by name, never enumerated in tag-driven search (settle is the search strategy, the kernel the judge); verified against the PROGRAM'S declared rule data + theory (`lib/prover/timed/fire-check.js`), never by running settle |
 
 **Counted-bang completeness** (THY_0023 Theorem 6, full induction on k):
 `!_k A ⊣⊢ A^⊗k` derivable with the four rules for every ground k ∈ ℕ; with

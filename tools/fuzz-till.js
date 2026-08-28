@@ -56,7 +56,7 @@ import { createProver } from '../lib/prover/focused.js';
 import { createKernel } from '../lib/prover/kernel.js';
 import tillConfig, { loadTillSequent } from '../calculus/till/calculus-config.js';
 import { buildTimedConfig } from '../lib/engine/timed/timed.js';
-import { certifyRun } from '../lib/prover/elaborate-trace.js';
+import { certifyRun } from '../lib/prover/timed/elaborate-trace.js';
 
 const args = process.argv.slice(2);
 let COUNT = 200, SEED = 0x7111, VERBOSE = false;
