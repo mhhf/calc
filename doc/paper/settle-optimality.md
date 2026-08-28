@@ -7,9 +7,9 @@ tags: [linear-logic, forward-chaining, till, graded-types, scheduling, confluenc
 
 **Status:** paper stub (markdown master; LaTeX at venue choice). Deliverable of
 TODO_0284 Phase T. Supersedes the scoping note in hq research **0138 Part B**
-(2026-08-24), which conflated the two side-conditions split in §3. Prior-art
-positioning and the referee-collision rebuttals live in **0138 Part A**; the
-companion till paper is `till/main.tex` (TODO_0270).
+(2026-08-24), which conflated the two side-conditions split in §3. §10 is the
+contribution statement of record (TODO_0284 R3); the prior-art evidence base
+is **0138 Part A**. The companion till paper is `till/main.tex` (TODO_0270).
 
 **One-line thesis.** Monotone semiring forward-chaining (Dyna, provenance
 semirings) treats a derived fact as a reusable *value*, so shortest-distance is
@@ -468,32 +468,112 @@ as the aggregation `⊕` on cyclic graphs, a different seat at the table.
 
 ---
 
-## 10. Positioning
+## 10. Contributions (the statement of record — TODO_0284 R3)
 
-**Not claimed:** the dioid conditions (Mohri 2002; Sobrinho 2002;
-Höfner–Möller 2012); `(max,+)`/`(min,+)` scheduling algebra (Baccelli et al.
-1992); persistence ⟹ Church–Rosser (Keller 1975; Landweber–Robertson 1978);
-semiring-weighted *monotone* forward-chaining (Dyna; provenance semirings);
-graded modal types as static artifacts (Granule, QTT).
+This section is the canonical contribution statement; hq research 0138
+Part A is the evidence base (six blind literature agents + an engine-source
+audit, 2026-08-24).
 
-**Claimed:** (i) the **choice-freedom / contention-freedom split** — two
-behavioral side-conditions with distinct theorems (T1 confluence, T2
-optimality), separated by an executable three-line witness, locating exactly
-where semiring shortest-distance survives linear consumption; (ii) the
-**fixpoint-coupled-with-matching reframing** of linear semiring
-forward-chaining, with contention-freedom as the vacuity of the matching
-constraint and the Dyna corollary as its persistent limit; (iii) `settle` as
-an **executable, pluggable-dioid realization** — per-firing optimality and
-frontier monotonicity unconditionally (L1, L2 under S), `σ*` on the
-contention-free fragment, one committed world beyond it, with every
-condition either machine-checked (C1–C5) or loudly fenced (measure class,
-Zeno, delay fence).
+### 10.1 The novelty axis
 
-**Collisions to pre-empt** (rebuttals in 0138 Part A §2): Dyna/provenance
-(monotone-only — we characterize when linearity degenerates back to them);
-graded LL / SELL (exponential/preorder-indexed vs lax monad with
-`⊔`-synchronization and semiring arithmetic); Simmons–Pfenning cost
-semantics (a-posteriori analysis vs a search-guiding runtime grade).
+Distinguish three uses of a grade; only the third is claimed:
+
+- **(a) grade = static typecheck artifact, then erased.** Granule
+  (Orchard–Liepelt–Eades 2019), QTT (Atkey 2018; McBride 2016), Idris 2,
+  Linear Haskell. The grade never runs. Prior art.
+- **(b) grade drives compile-time synthesis or scheduling.** Ghica–Smith
+  2014 (semiring grade → fixed hardware schedule at synthesis time);
+  Hughes–Orchard 2024 (grades as static SMT-discharged pruning in term
+  synthesis). Prior art.
+- **(c) grade = live runtime quantity driving dynamic resource resolution
+  and an optimal schedule of an actual execution.** No prior system found
+  occupies this — in particular none combines *graded*, *linear/consuming*,
+  *optimal*, and *executable* (0138 Part A §1–2).
+
+### 10.2 Claimed
+
+1. **The boundary theorem pair.** The **choice-freedom / contention-freedom
+   split** (§3): two behavioral side-conditions with distinct theorems —
+   T1 (confluence: the committed world is chooser-independent) under the
+   weaker, T2 (optimality: realized stamps = the semiring least fixed point
+   `σ*`) under the stronger — separated by an executable three-line witness
+   (E1) that is deterministic, confluent, and suboptimal. This locates
+   *exactly* where semiring shortest-distance survives linear consumption.
+2. **The reframing.** Monotone semiring forward-chaining solves a fixed
+   point; linear forward-chaining solves a fixed point **coupled with a
+   matching problem** (which derivations get the tokens). Contention-freedom
+   is precisely the vacuity of the matching constraint; the persistent/read
+   limit degenerates back to Dyna/provenance evaluation (T2's corollary);
+   the layered decomposition (§6) makes the reframing an engineering
+   discipline, not just a theorem scope.
+3. **The executable, pluggable realization.** `settle` as an operational
+   semiring shortest-distance engine over a *declared* grade algebra:
+   per-firing optimality and frontier monotonicity held unconditionally
+   (L1; L2 under S), `σ*` on the contention-free fragment, one committed
+   world beyond it with `settleExplore` as the enumerator — with every
+   algebraic condition machine-checked per instance (C1–C5 harness) and
+   every out-of-scope algebra loudly fenced rather than silently mis-run.
+   The aggregation `⊕` is **routed as a policy** `(⊕, realization)`: order
+   class realized by min-frontier + B&B prune (this paper), measure class
+   (`⊕ = +`) realized by exact mass-sum or unbiased PRF sampling — the
+   semiring-DP lineage of Goodman 1999 (semiring parsing), Eisner 2002
+   (expectation semirings), and Huang 2008 (semiring/hypergraph dynamic
+   programming), executed by the companion calculus `will` (THY_0026
+   T1/T3; TODO_0292). One scheduler-correctness story, two condition
+   families.
+
+Companion (claimed in the till paper, not here): the delay-graded lax monad
+`{A}@d` as an *operational* `(max,+)` scheduler, with the `(min,+)`
+transport comonad `!!_d` as its spatial dual (TODO_0270; `till/main.tex`).
+
+### 10.3 Not claimed
+
+The dioid optimality conditions (Mohri 2002; Sobrinho 2002; Höfner–Möller
+2012); `(max,+)`/`(min,+)` scheduling algebra and critical-path fixed
+points (Baccelli et al. 1992); persistence ⟹ Church–Rosser (Keller 1975;
+Landweber–Robertson 1978; Newman 1942); semiring-weighted *monotone*
+forward-chaining and its Dijkstra agendas (Dyna; provenance semirings);
+semiring parsing / expectation semirings / hypergraph DP (Goodman; Eisner;
+Huang); graded modal type systems as static artifacts (Granule, QTT);
+linear forward-chaining engines as such (Ceptre, LolliMon, Celf/CLF).
+
+### 10.4 The three collisions, pre-empted
+
+**"Isn't this Dyna / provenance semirings?"** Those systems are monotone:
+facts are values, never consumed, which is exactly what makes their
+semiring compositionality and Dijkstra-agenda optimality unconditional. We
+are the linear generalization: consumption couples the per-fact choices
+(claim 2), the unconditional theorem provably fails (E1 — a fact that is
+*derivable but never derived* because its token was spent, a phenomenon
+inexpressible in monotone Datalog), and we characterize the exact boundary
+(contention-freedom) at which the monotone theory is recovered verbatim.
+
+**"Isn't this graded LL / SELL / Bounded LL?"** Their `!^r` is an
+*exponential* graded by a usage semiring, or a subexponential indexed by a
+*preorder* — no run-time arithmetic on grades, no synchronization rule, and
+the grade lives only in the static derivation. Ours is a graded *lax monad*
+(different proof theory: the `⊖`-residual left rule, the `⊔`-join of
+co-consumed grades as logical content) whose grade is a live scheduling
+quantity — the engine computes `max`/`+`/`−` on it at every firing and lets
+it *select* the firing order.
+
+**"Isn't the cost story Simmons–Pfenning?"** Linear Logical Algorithms
+assigns a cost semantics to LL forward-chaining *a posteriori* — it
+measures derivations to state complexity bounds. Here the grade *guides*
+the search: the B&B prune and min-activation frontier are the `⊕`
+realization, and under committed choice they change *which world is
+reached*, not merely its measured cost. E1 again is the observable: a cost
+semantics would report the starved world's cost; a grade-driven scheduler
+*produced* that world.
+
+### 10.5 Venues
+
+Theory: FSCD / CSL / substructural workshops (LINEARITY, TYPES) — the
+T1/T2 split with the mechanization (§11) as the spine. Systems: a
+tool/experience track with Ceptre as precedent, differentiator = the
+graded/optimal-scheduling runtime. The measure-class companion (will)
+strengthens a combined submission: one parametrized scheduler, two
+realized condition families.
 
 ---
 
@@ -534,4 +614,12 @@ Multiset Orderings," CACM 22(8), 1979. Green–Karvounarakis–Tannen,
 Pistone, "Tropical Mathematics and the Lambda-Calculus I," CSL 2024. Martens,
 "Ceptre," AIIDE 2015. Simmons–Pfenning, "Linear Logical Algorithms," ICALP
 2008. Nigam–Olarte–Pimentel, subexponential LL, TCS 2017. Kamide, TCS 353,
-2006. Orchard–Liepelt–Eades, "Granule," ICFP 2019.
+2006. Kanovich–Ito, "Temporal Linear Logic Specifications for Concurrent
+Processes," LICS 1997. Orchard–Liepelt–Eades, "Granule," ICFP 2019. Atkey,
+"Syntax and Semantics of Quantitative Type Theory," LICS 2018. Ghica–Smith,
+"Bounded Linear Types in a Resource Semiring," ESOP 2014. Hughes–Orchard,
+"Program Synthesis from Graded Types," ESOP 2024. Goodman, "Semiring
+Parsing," Computational Linguistics 25(4), 1999. Eisner, "Parameter
+Estimation for Probabilistic Finite-State Transducers," ACL 2002
+(expectation semirings; also Li–Eisner, EMNLP 2009). Huang, "Advanced
+Dynamic Programming in Semiring and Hypergraph Frameworks," COLING 2008.
