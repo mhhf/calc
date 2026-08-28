@@ -20,16 +20,19 @@
  *     routes through (StampTable id-lifts) are exercised directly.
  *     Documents that the live time algebra satisfies the order family.
  *     Plus hash-face ≡ value-face coherence.
- *   - weightGrades (ℚ≥0, ·): standalone literal — the P3b/0292 measure
- *     instance, engine-independent today, checked against a reference
+ *   - weightGrades, READ-ONLY (since P3b the SHIPPED gill instance —
+ *     calculus/gill/calculus-config.js, the 0292/will handoff): the
+ *     measure instance (ℚ≥0, ·), checked against a reference
  *     weighted-choice-forest evaluator (M1/M3) and the THY_0026 T2
- *     recursive-mass chain (M2).
+ *     recursive-mass chain (M2). Its merge is a value-level FUNCTION
+ *     slot (non-idempotent ·) and it has NO prunes — the class split
+ *     made concrete.
  */
 
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import { tillGrades, tillCalculusConfig } from '../../calculus/till/calculus-config.js';
-import { distGrades } from '../../calculus/gill/calculus-config.js';
+import { distGrades, weightGrades as gillWeightGrades } from '../../calculus/gill/calculus-config.js';
 import { add, sub, mul, div, cmp as ratCmp, norm } from '../../lib/rat.js';
 import { ratParts } from '../../lib/engine/theories/ratlit-theory.js';
 import { sampleIndex } from '../../lib/engine/prf.js';
@@ -69,15 +72,23 @@ assert.equal(vals.merge, 'join');
 assert.equal(vals.prunes, 'geq');
 assert.deepEqual(tillGrades.aggregate, { class: 'order', realizations: ['prune'] });
 
-const weightGrades = {
-  name: 'weightGrades(ℚ≥0,·)',
-  unit: [1n, 1n],
-  compose: mul,
-  residual: (a, b) => (b[0] === 0n ? null : div(a, b)),
-  cmp: ratCmp,                       // index order only — NEVER a prune direction
-  merge: mul,                        // co-consumed independence (THY_0026 T4-d)
-  aggregate: { class: 'measure', realizations: ['sum', 'sample'] },
+// The measure instance is the SHIPPED one (P3b): gill's weightGrades,
+// viewed through the canonical signature. `add` is its ⊗ slot (·), `sub`
+// its ⊖ residual (exact ÷, null at mass 0), merge a value-level function
+// (non-idempotent — no symbolic name exists for it), prunes ABSENT.
+const wvals = gillWeightGrades.values;
+const weightView = {
+  name: 'weightGrades(ℚ≥0,·) — gill instance',
+  unit: wvals.unit,
+  compose: wvals.add,
+  residual: wvals.sub,
+  cmp: wvals.cmp,                    // index order only — NEVER a prune direction
+  merge: wvals.merge,                // co-consumed independence (THY_0026 T4-d)
+  prunes: wvals.prunes,
+  aggregate: gillWeightGrades.aggregate,
 };
+assert.equal(typeof wvals.merge, 'function');   // the custom-slot path, not 'join'
+assert.ok(!('prunes' in wvals));                // measure class: no order prune
 
 // ── order-class harness ──
 
@@ -265,7 +276,7 @@ function conformMeasure(alg, { seed = 7, samples = 300 } = {}) {
 // ── run the fixtures ──
 
 conformOrder(tillView);
-conformMeasure(weightGrades);
+conformMeasure(weightView);
 
 // distGrades (TODO_0284 P3): the (min,+) transport instance — time's
 // tropical twin, a DISTINCT registry entry with identical operations

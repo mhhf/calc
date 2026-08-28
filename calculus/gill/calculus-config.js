@@ -38,6 +38,7 @@ import mde from '../../lib/engine/index.js';
 import backward from '../../lib/engine/backchain.js';
 import backchainIll from '../../lib/engine/ill/backchain-ill.js';
 import * as ffi from '../../lib/engine/ill/ffi/index.js';
+import { mul as ratMul, div as ratDiv, cmp as ratCmp } from '../../lib/rat.js';
 import { tillGrades, tillFactSetPolicy, tillGradeUnit } from '../till/calculus-config.js';
 
 const GILL_CALC = path.join(import.meta.dirname, 'gill.calc');
@@ -121,16 +122,54 @@ function gillSorts() {
 // BEFORE any multi-input haul may land.
 const distGrades = Object.freeze({ ...tillGrades });
 
-// ── Grade registry keyed by grade SORT (P3): a modality = a mode + a
-// grade algebra + its rules, all data. The algebra a connective runs
+// ── weightGrades — the MEASURE-class instance (TODO_0284 P3b; the
+// 0292/will handoff). The unnormalized measure semiring (THY_0026):
+// carrier ℚ≥0 masses, ⊗ compose = · (weights multiply along one
+// derivation), ⊔ merge = · (co-consumed independent premises multiply —
+// T4-d), ⊕ aggregate = + realized EXACTLY ('sum') or by PRF draw
+// ('sample', prf.js sampleIndex). NO prunes slot: a measure algebra
+// never discards an alternative (M1 mass conservation) — and NO
+// scheduler faces (availability/effect/parseStamp): buildTimedConfig
+// rejects this algebra loudly (the P1b fence; measure aggregation over
+// whole derivations is an execution mode, arriving with will/0292).
+//
+// The values face keeps the label-algebra slot NAMES with measure
+// semantics: `add` IS the ⊗ slot (· here, + for time), `sub` IS the ⊖
+// residual (exact division; rat.div = null at mass 0 — the fence).
+// merge is a value-level FUNCTION slot — the non-idempotent path the
+// StampTable interns through (w ⊔ w = w², never the join shortcut).
+// Representation slots (canon/parse/reify/float/mix/key) are the shared
+// ℚ codec, reused from till's value algebra — and ONLY those: no prunes
+// (a measure algebra has none), no scale/floorDiv (time-semantics
+// acceleration slots — loud absence beats silently wrong mass math).
+const weightGrades = Object.freeze({
+  values: Object.freeze({
+    unit: [1n, 1n],
+    canon: tillGrades.values.canon,
+    parse: tillGrades.values.parse,
+    reify: tillGrades.values.reify,
+    float: tillGrades.values.float,
+    mix: tillGrades.values.mix,
+    key: tillGrades.values.key,
+    cmp: ratCmp,                       // index order ONLY — never a prune direction
+    add: (a, b) => ratMul(a, b),       // ⊗ = ·
+    sub: (a, b) => ratDiv(a, b),       // ⊖ = exact ÷; null at mass 0
+    merge: (a, b) => ratMul(a, b),     // ⊔ = · (function slot, non-idempotent)
+  }),
+  aggregate: Object.freeze({ class: 'measure', realizations: ['sum', 'sample'] }),
+});
+
+// ── Grade registry keyed by grade SORT (P3/P3b): a modality = a mode +
+// a grade algebra + its rules, all data. The algebra a connective runs
 // under is selected by the sort of its grade argument (gill.calc):
-// monad: delay → time, haul: dist → distGrades. count is STRUCTURAL
-// (parcel peeling is engine-owned, not a scheduler algebra); weight
-// arrives with P3b. D1 single-axis: ONE algebra schedules a run —
-// cc.grades below stays the active axis (time); the registry is the
-// routing table.
+// monad: delay → time, haul: dist → distGrades, woplus: weight →
+// weightGrades. count is STRUCTURAL (parcel peeling is engine-owned,
+// not a scheduler algebra). D1 single-axis: ONE algebra schedules a run
+// — cc.grades below stays the active axis (time); the registry is the
+// routing table, and only order-class entries are schedulable (the
+// measure entry is data for will's execution mode).
 const gillGradeRegistry = Object.freeze({
-  bySort: Object.freeze({ delay: tillGrades, dist: distGrades }),
+  bySort: Object.freeze({ delay: tillGrades, dist: distGrades, weight: weightGrades }),
   default: tillGrades,
 });
 
@@ -325,5 +364,5 @@ function loadGillSequent() {
   });
 }
 
-export { gillCalculusConfig, gillConnectives, gillTheory, loadGillSequent, distGrades, gillGradeRegistry, gradeAlgebraFor };
+export { gillCalculusConfig, gillConnectives, gillTheory, loadGillSequent, distGrades, weightGrades, gillGradeRegistry, gradeAlgebraFor };
 export default gillCalculusConfig;
