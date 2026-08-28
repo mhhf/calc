@@ -5,8 +5,8 @@ tags: [linear-logic, forward-chaining, till, graded-types, scheduling, confluenc
 
 # Settle Optimality — semiring shortest-distance under linear consumption
 
-**Status:** paper stub (markdown master; LaTeX at venue choice). Deliverable of
-TODO_0284 Phase T. Supersedes the scoping note in hq research **0138 Part B**
+**Status:** complete draft (markdown master; LaTeX at venue choice). Deliverable
+of TODO_0284 Phase T; focused presentation §5.3 per TODO_0293. Supersedes the scoping note in hq research **0138 Part B**
 (2026-08-24), which conflated the two side-conditions split in §3. §10 is the
 contribution statement of record (TODO_0284 R3); the prior-art evidence base
 is **0138 Part A**. The companion till paper is `till/main.tex` (TODO_0270).
@@ -21,7 +21,13 @@ constraint vacuous (the fixed point is realized — Theorem T2), the strictly
 weaker **choice-freedom** still forces a unique outcome (confluence — Theorem
 T1), and the gap between them is witnessed by a three-line program (E1) that is
 deterministic, confluent, and *suboptimal* — with a deferred-producer twin (E2)
-showing why the condition must live on the relaxation, not on run states.
+showing why the condition must live on the relaxation, not on run states. The
+theorem pair carries an Andreoli-shaped packaging (§5.3): committed
+min-activation firing is a *temporally focused* restriction of forward
+derivation — sound by inclusion, complete exactly on the contention-free
+fragment — and there settle's stamps are the *principal grades* of the timed
+sequent judgment, so the scheduler is a canonical-form normalizer, not an
+extra-logical policy.
 Everything is executable: the engine is `settle`
 (`lib/engine/timed/timed.js`), the algebraic conditions C1–C4 and M1–M3 are
 machine-checked per algebra (`tests/engine/grade-conformance.test.js`; C5 is
@@ -366,6 +372,68 @@ shortest-distance evaluation of Dyna / provenance-semiring Datalog (Green et
 al. 2007; Eisner–Filardo 2020). The novelty budget is spent entirely on what
 happens when consumption is switched on.
 
+### 5.3 The focused presentation, and principality
+
+Focusing (Andreoli 1992) is not a search heuristic but a second *calculus*: a
+restriction of derivations proved complete, after which the strategy's choices
+are canonical rather than semantic. T1/T2 admit exactly this packaging for the
+scheduling order.
+
+**Definition (temporally focused derivation).** A forward derivation
+`s —m₁→ s₁ —m₂→ ⋯` is **focused below `H`** iff each `mᵢ ∈ Tied(sᵢ₋₁)` and
+`a(mᵢ) ⊑ H`. The runs of `settle(s, H)` are precisely the maximal focused
+derivations (by construction; under S, L2 makes the activation sequence
+nondecreasing).
+
+**Soundness** is inclusion: every focused derivation is a forward derivation —
+the restriction adds no rules, so it can prove nothing new.
+
+**Completeness (T2 recast).** Under contention-freedom (below `H`),
+`H`-termination, and S: every token that *any* forward derivation produces
+with stamp `⊑ H` is produced by *every* maximal focused derivation, at the
+same stamp — and the `⊑`-least token of each predicate sits at `σ*`.
+*Proof.* An arbitrary derivation's firings are relaxation firings verbatim
+(L5 (⊆), which needs no side-condition), so each of its tokens is a
+relaxation token; every relaxation firing with activation `⊑ H` is performed
+by the focused run with identical stamps (L5 (⊇)), and the least per
+predicate is `σ*` (T2). ∎
+
+The min-activation discipline and the B&B prune (L1) thereby acquire the same
+status the focusing discipline has in backward search: they discard only
+derivations that completeness proves redundant. The committed scheduler is
+the canonical-form normalizer of the forward calculus — *precisely* on the
+contention-free fragment. P1 (§6) is where the packaging honestly stops:
+beyond contention-freedom, the restriction changes what is derivable-in-the-
+run, and only `settleExplore` is complete.
+
+**Principality (the derivability face).** In the till sequent calculus the
+timed judgment `Δ ⊢ {S}@T` (stamped contexts `at(A,t)`, horizon as monad
+grade) is upward closed in `T` — subeffecting derives every bound above an
+achievable one — so the semantic content of a goal is its *least* derivable
+horizon: the principal grade. T2 is the statement that `settle` realizes it:
+on the contention-free fragment the least derivable `T` for `S` is `σ*(S)`,
+and the settle run is its witness — each firing is one derivable `@fire`
+instance (bridge soundness, THY_0018 §5). This sharpens the "ASAP scheduling
+computes principal grades" metatheorem (THY_0018 §7) with its side-condition
+now exact: contention-freedom, not conflict-freedom. The deliberate
+asymmetry stands: derivability does *not* imply settle-reachability
+(subeffecting has no forward step) — principality is a claim about least
+witnesses, and the up-set above them is pure logic.
+
+One guard against a natural conflation: the principal grade of the *pure*
+graded monad — no stamped contexts — is a different quantity. With rules as
+linear hypotheses, `⊢ {⊗R}@W` holds iff `W` bounds **total sequential work**
+`Σδ`, not makespan: the work/makespan separation (THY_0023 Thms 10–11; till
+paper Thms 6.3–6.4; kernel-verified pure-backward in
+`tests/till-pure-adequacy.test.js` — the join program's least pure grade is
+`6 = 2+3+1` while settle's stamp is `4 = max(2,3)+1`). Makespan is
+contributed exclusively by the stamp *coeffect*, and the focused calculus
+above is the coeffect-side statement. What remains is engineering, not
+theory: the kernel currently accepts a settle-bridge step structurally
+(`unverified: 'modeSwitch'`); elaborating the event trace into a fully
+checked `@fire` derivation — the trace≅term observation made executable —
+would make settle a *certifying* scheduler (TODO_0294).
+
 ---
 
 ## 6. The dichotomy, and how real programs decompose
@@ -568,7 +636,12 @@ Distinguish three uses of a grade; only the third is claimed:
    (deterministic, confluent, suboptimal) and E2 (the same starvation with
    every run state contention-blind, forcing the relaxation-level
    quantification). This locates *exactly* where semiring shortest-distance
-   survives linear consumption.
+   survives linear consumption. Equivalently packaged (§5.3): T1 + T2 are
+   the soundness and completeness of a *temporally focused* restriction of
+   forward derivation — the Andreoli move applied to the scheduling order —
+   under which the B&B prune discards only derivations completeness proves
+   redundant, and settle's stamps are the principal grades of the timed
+   sequent judgment.
 2. **The reframing.** Monotone semiring forward-chaining solves a fixed
    point; linear forward-chaining solves a fixed point **coupled with a
    matching problem** (which derivations get the tokens). Contention-freedom
@@ -685,11 +758,17 @@ realized condition families.
 - ✔ **Termination** — discharged as §7's proposition (lattice delays +
   instant acyclicity + instant consumption); remaining only necessity /
   decidability refinements.
+- ✔ **Focused presentation** — discharged as §5.3 (temporally focused
+  derivations; completeness = T2 recast; principality via THY_0018 §7 and
+  the work/makespan separation as the guard). Remaining engineering:
+  trace elaboration → certifying scheduler (TODO_0294).
 
 ---
 
 ## 12. Citations
 
+Andreoli, "Logic Programming with Focusing Proofs in Linear Logic," J. Logic
+Computat. 2(3), 1992.
 Mohri, "Semiring Frameworks and Algorithms for Shortest-Distance Problems,"
 JALC 7(3), 2002. Sobrinho, "Algebra and algorithms for QoS path computation
 and hop-by-hop routing," IEEE/ACM ToN 10(4), 2002. Höfner–Möller, "Dijkstra,
