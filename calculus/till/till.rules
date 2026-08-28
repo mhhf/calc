@@ -162,6 +162,20 @@ monad_r2: G ; D |- {A}@E
   @invertible false
   @modeShift true.
 
+% ── @fire (THY_0018 §5): one timed firing as a first-class step ──
+% The operational firing rule (TODO_0294): consume the recorded cohort,
+% add conclusions stamped a ⊕ d, a = the join of input stamps and
+% after-bounds. Variable arity and the join side condition live in the
+% kernel's fire checker — checked against the PROGRAM'S declared rule
+% data + the theory (le/lt/qsub), never by running settle. This
+% declaration names the rule and routes the dispatch (@fireStep); it is
+% not enumerated in search (no principal — keyed by name): settle is the
+% search strategy for @fire chains, the kernel is the judge.
+fire: G ; D |- C
+  @pretty "@fire"
+  @invertible false
+  @fireStep true.
+
 % ── stamped atoms (THY_0018 §5): retiming, as a stamp-aware axiom ──
 % A@t ⊢ A@t' for t ≤ t' — delaying availability is free; never early.
 % Zero premises: a template axiom (consumes only its principal).

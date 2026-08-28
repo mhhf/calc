@@ -354,6 +354,7 @@ const tillCalculusConfig = {
 const loadTillSequent = makeSequentLoader({
   calcFile: TILL_CALC, rulesFile: TILL_RULES,
   gradeUnit: tillGradeUnit, theory: tillTheory,
+  fire: { stampTag: 'at', le: 'le', lt: 'lt', sub: 'qsub' },
 });
 
 export { tillCalculusConfig, tillGrades, tillFactSetPolicy, tillGradeUnit, tillConnectives, tillTheory, loadTillSequent };
