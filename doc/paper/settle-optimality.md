@@ -15,14 +15,18 @@ is **0138 Part A**. The companion till paper is `till/main.tex` (TODO_0270).
 semirings) treats a derived fact as a reusable *value*, so shortest-distance is
 an always-defined least fixed point. Linear logic treats it as a consumable
 *token*, coupling the per-fact best-derivation choices by a matching/flow
-constraint. We locate the exact boundary: **contention-freedom** makes the
+constraint. We locate the exact boundary: **contention-freedom** — a condition
+on the program's *monotone relaxation*, hence statically analyzable — makes the
 constraint vacuous (the fixed point is realized — Theorem T2), the strictly
 weaker **choice-freedom** still forces a unique outcome (confluence — Theorem
 T1), and the gap between them is witnessed by a three-line program (E1) that is
-deterministic, confluent, and *suboptimal*. Everything is executable: the
-engine is `settle` (`lib/engine/timed/timed.js`), the conditions are
-machine-checked per algebra (`tests/engine/grade-conformance.test.js`), and
-each theorem, boundary, and failure mode below names its test.
+deterministic, confluent, and *suboptimal* — with a deferred-producer twin (E2)
+showing why the condition must live on the relaxation, not on run states.
+Everything is executable: the engine is `settle`
+(`lib/engine/timed/timed.js`), the algebraic conditions C1–C4 and M1–M3 are
+machine-checked per algebra (`tests/engine/grade-conformance.test.js`; C5 is
+operational — §7), and each theorem, boundary, and failure mode below names
+its test.
 
 Obligations not yet discharged are marked ⟨open⟩ (§11).
 
@@ -46,9 +50,12 @@ Sobrinho 2002: isotonicity ⟺ Dijkstra-optimality) — *cited, not claimed*. In
 the engine's GradeAlgebra contract (`doc/documentation/grade-algebra.md`):
 `⊗ = compose`, `⊔ = merge` ('join'), `⊑` from `cmp`, and the aggregate `⊕`
 (how *alternative* derivations combine) is `class: 'order'` realized as
-min-first firing + branch-and-bound pruning. Conditions C1–C5 of the contract
-(C1 total order, C2 monotone ⊗, C3 inflationary ⊗, C4 merge = join, C5
-termination) are property-checked per instance by the conformance harness.
+min-first firing + branch-and-bound pruning. Conditions C1–C4 of the contract
+(C1 total order, C2 monotone ⊗, C3 inflationary ⊗, C4 merge = join) are
+property-checked per instance by the conformance harness; C5 (termination) is
+deliberately *not* property-testable — the harness records it as an
+operational condition (Zeno guard + horizon, pinned by the till suite), and
+§7 characterizes it analytically.
 
 **Instances.** Time `(ℚ≥0, max, +, 0, ≤)` — `tillGrades`; distance
 `(ℚ≥0, max, +, 0, ≤)` — `distGrades`: the *same* dioid under two physical
@@ -89,14 +96,23 @@ alter, this model.
 > **(S)** No rule fired below `H` has a persistent conclusion that makes a
 > goal in `Π` of some other instance provable.
 
-Sufficient syntactic check: timed rules have no `!`-conclusions (persistent
-knowledge is loaded, or derived timelessly by the backward theory, not
-produced mid-settle). The engine *does* permit persistent conclusions
-(`producePers`, `timed.js` fire()), and without S frontier monotonicity (L2)
-genuinely fails: a stampless fact learned at frontier `t` can enable an
-instance whose cohort is older than `t` — its activation `⊏ t`, and the event
-sequence regresses ("learned knowledge backdates enablement"). The audit-era
-note missed this hypothesis. A static lint is ⟨open⟩ (§11).
+Sufficient syntactic check: no rule that `settle` can fire — static or
+possessed loli — has a `!`-conclusion, *except* external-choice menus
+`!(… & …)`, which are exempt: `settle` never auto-fires a `&`-projection
+(the choice is external — only an interactive cut turns a branch into a
+rule, and the cut order then carries its own stamp), so a menu conclusion
+never puts an instance into `E(s)` and cannot backdate one. The engine
+*does* permit persistent conclusions (`producePers`, `timed.js` fire()),
+and without S frontier monotonicity (L2) genuinely fails: a stampless fact
+learned at frontier `t` can enable an instance whose cohort is older than
+`t` — its activation `⊏ t`, and the event sequence regresses ("learned
+knowledge backdates enablement"). The audit-era note missed this
+hypothesis. A static lint is ⟨open⟩ (§11).
+
+**Corpus status (by inspection, pending the lint).** `depot.gill` and
+`contention.gill` have no `!`-conclusions at all. `PP2.till`'s only
+`!`-conclusions are unlock menus (the barracks army menu) — covered by the
+menu exemption. The shipped timed corpus therefore satisfies S.
 
 ---
 
@@ -119,19 +135,33 @@ prune's `⊒` (not `⊐`) never explores an assignment the leaf would reject —
 the invariant pair (`timed.js` `search`/`leaf`, pinned by the till
 equal-activation tie tests). ∎
 
-**Lemma L2 (frontier monotonicity).** Under S, the activations of the
-instances `settle` fires form a `⊑`-nondecreasing sequence.
+**Lemma L2 (frontier monotonicity).** Under S, for a program without
+whole-bind (`!_W`) premises — or, with them, for a choice-free program — the
+activations of the instances `settle` fires form a `⊑`-nondecreasing
+sequence.
 
 *Proof.* Suppose `settle` fires `m` at `t = aMin(s)`. Consider any
 `m' ∈ E(s')`. If `m' ∈ E(s)`, then `a(m') ⊒ t` by minimality of `t`, and
 `a(m')` is unchanged: an instance is a fixed token assignment, so it survives
 only if `m` consumed none of its tokens, leaving its activation intact. If
-`m' ∉ E(s)`, its enablement changed, which under S can only be because it
-matches at least one token produced by `m` (consumption never enables;
-`after`-windows are state-independent; `before`-windows only disable;
-persistent enablement is excluded by S). Every produced token has stamp
-`t ⊗ δ_r ⊒ t` by C-infl, and stamps enter `a(m')` via `⊔`, so `a(m') ⊒ t`.
-Hence `aMin(s') ⊒ t`. ∎
+`m' ∉ E(s)`, its enablement changed. Consumption never *lowers* a rule's
+least enabling activation for ordinary premises: the enabled instance per
+rule is the `⊑`-minimum over token assignments (L1), and removing tokens
+shrinks the assignment space, so per-rule minima only rise. A **whole-bind**
+premise `!_W A` is the exception — its activation is a *forced join* over
+the current total, not a minimum over choices, so consuming a cohort can
+lower it. But a regression through whole-bind re-formation is self-excluding
+under choice-freedom: if the re-formed instance has activation `a' ⊏ t`,
+then before the firing its activation was `⊔(a', shared stamps ⊑ t) = t`
+exactly (it is `⊒ t` by minimality of `t` and `⊑ t` since every joined
+stamp is), so it was *tied* with `m` — a dependent tie (`m` consumes from
+the whole-bound predicate, independence clause 2), contradicting
+choice-freedom; without whole-bind premises the case is void. The remaining
+way to enter `E(s')` is matching a token produced by `m` (`after`-windows
+are state-independent; `before`-windows only disable; persistent enablement
+is excluded by S — the menu exemption adds nothing to `E`). Every produced
+token has stamp `t ⊗ δ_r ⊒ t` by C-infl (C3), and stamps enter `a(m')` via
+`⊔` (C4), so `a(m') ⊒ t`. Hence `aMin(s') ⊒ t`. ∎
 
 L1 + L2 are the operational content of Dijkstra's algorithm over the dioid —
 this much is Mohri/Sobrinho, cited not claimed. The theorem content is what
@@ -161,30 +191,48 @@ Landweber–Robertson 1978), lifted to stamped multiset rewriting.
 below `H` (including mid-instant states), all pairs in `Tied(s)` are
 independent.
 
-**Definition (contention-freedom below H).** At every state reachable by
-`settle` below `H`, **all pairs of enabled instances** are independent.
+**Definition (contention-freedom below H).** **All pairs of distinct firings
+of the program's monotone relaxation** (§5.1) with activations `⊑ H` are
+independent — clauses (1)–(3) evaluated against the relaxation's states,
+which dominate every run state.
+
+**Why the relaxation, and not run states (E2).** Quantifying over
+run-reachable enabled pairs is too weak: defer the competitor's enabling
+token and no two instances are ever co-enabled in the run — the run-state
+condition holds *vacuously* — yet the shared token is still spent before the
+competitor ever becomes enabled. Executably
+(`calculus/gill/tests/forward/contention.gill`, E2): add `mk: c -o { b }` to
+E1 below and start from `a@0, tok@0, c@5` — every reachable `E(s)` is a
+singleton, yet `won_b@5` is starved exactly as in E1. The demand overlap is
+visible only in the relaxation, where both firings exist. As a bonus, the
+relaxation-level condition is *statically analyzable*: the relaxation's
+firing set is a monotone least fixed point, independent of scheduling.
 
 **Correction (vs 0138 Part B).** The scoping note defined one condition
 ("H-persistent", tied pairs only) and used it for both theorems. That is too
-weak for optimality: consumption across *different* activation levels never
-produces a tie, so choice-freedom does not see it — yet it destroys
-derivations (E1 below). The split is: choice-freedom ⟹ T1 (confluence);
-contention-freedom ⟹ T2 (optimality); and contention-freedom ⟹
-choice-freedom trivially (tied pairs are enabled pairs).
+weak for optimality twice over: consumption across *different* activation
+levels never produces a tie, so choice-freedom does not see it (E1) — and
+even all-enabled-pairs quantification over run states misses demand from
+instances that never co-exist in the run (E2). The split is: choice-freedom
+⟹ T1 (confluence); contention-freedom (on the relaxation) ⟹ T2
+(optimality); and contention-freedom ⟹ choice-freedom (below): every
+run-enabled instance is a relaxation firing, so tied run pairs are
+independent relaxation pairs.
 
 **Hierarchy.**
 
 ```
-structural conflict-freedom  ⟹  contention-freedom  ⟹  choice-freedom
-     (syntactic, static)           (behavioral)           (behavioral)
+structural conflict-freedom  ⟹  contention-freedom   ⟹  choice-freedom
+     (syntactic, static)        (on the relaxation,       (behavioral,
+                                 statically analyzable)    on the run)
 ```
 
 *Structural conflict-freedom*: no two rule instances can ever demand the same
 token — each linear predicate is consumed by at most one rule, matched at most
 once per firing, with reads unrestricted (the *one-shot-edge discipline*,
-§8.1). Both inclusions are strict: a program whose sharing rules are never
-co-enabled is contention-free but not structural; and **E1** separates the
-behavioral pair:
+§8.1). Both inclusions are strict: two rules may share a consumed predicate
+(not structural) while the relaxation only ever fires one of them — demand
+never overlaps (contention-free); and **E1** separates the second pair:
 
 **Example E1 (choice-free, contended, suboptimal) —**
 `calculus/gill/tests/forward/contention.gill`, executable:
@@ -197,10 +245,13 @@ r2: b * tok -o { won_b }.        % initial: a@0, tok@0, b@5
 `r1`'s instance activates at `0`, `r2`'s at `5` — never tied, so the run is
 deterministic (the PRF chooser is never consulted) and trivially confluent.
 `settle` fires `r1` at the frontier `0`, consumes `tok`, and `r2` starves
-forever. The monotone relaxation derives `won_b@5`; the run does not. T1
-holds; T2's hypothesis and conclusion both fail. The spec's twin program
-(`read rtok` instead of consuming) is contention-free and realizes both
-relaxation stamps — the recovery of §5.
+forever. The monotone relaxation derives `won_b@5`; the run does not — the
+spec's `#expect_not_starved` asserts the *absence* of `won_b@5` in the
+settled state, which here equals non-reachability across all runs because
+the program never ties (the one run is all runs). T1 holds; T2's hypothesis
+and conclusion both fail. The spec's twin program (`read rtok` instead of
+consuming) is contention-free and realizes both relaxation stamps — the
+recovery of §5.
 
 **Lemma L3 (diamond).** If `m₁ ⌣ m₂` at `s`, then `s —m₁→ · —m₂→ t` and
 `s —m₂→ · —m₁→ t'` with `t = t'`.
@@ -210,12 +261,18 @@ demands and bound quantities are undisturbed, so both remain enabled *as the
 same instances*; by (3) neither's activation gains a term from the other's
 outputs, so each fires at its original `a(m)` and produces identically
 stamped conclusions. Multiset removals with available combined take commute,
-additions commute, persistent-set unions commute. ∎
+additions commute, persistent-set unions commute — and a persistent
+conclusion of one cannot *disable* the other's `Π` goals: backward
+provability is monotone in `P` (no negation), and the other was already
+enabled without it, so it fires identically in both orders. ∎
 
 **Lemma L4 (enabledness preservation).** In a contention-free program, if
-`m ∈ E(s)` and `settle` fires `m' ≠ m`, then `m ∈ E(s')` with `a(m)`
-unchanged. *Proof.* Immediate from independence clauses (1)–(3) applied to
-the pair `{m, m'}`. ∎
+`m ∈ E(s)` at a run-reachable state and `settle` fires `m' ≠ m`, then
+`m ∈ E(s')` with `a(m)` unchanged. *Proof.* Both `m` and `m'` are firings of
+the relaxation (every run-enabled instance is relaxation-enabled with the
+same activation — the relaxation's states dominate the run's, L5 (⊆)), so
+they are independent by contention-freedom; clauses (1)–(3) applied to
+`{m, m'}` give preservation. ∎
 
 ---
 
@@ -272,17 +329,20 @@ identical activations and done-stamps.
 relaxation's states dominate the run's (nothing is ever removed), so every
 run-enabled instance is relaxation-enabled with the same activation (its
 input tokens exist with the same stamps, by induction on the firing
-sequence). (⊇) Induction on the relaxation's frontier order. Let `m` be a
-relaxation firing with `a(m) ⊑ H`; by induction every token in
-`κ(m) ∪ reads(m)` is produced by the run with its relaxation stamp (or is
-initial). At the point the last of them is produced, `m` is enabled in the
-run — *enabled as an instance of the linear system*, because
-contention-freedom guarantees no earlier run firing consumed any of them
-(a consumer of `m`'s inputs co-enabled with `m`'s producers or with `m`
-would violate independence clause (1)/(2) at a reachable state). By L4, `m`
-stays enabled with unchanged activation until fired; `settle` exits only at
-quiescence or when `aMin ⊐ H`, and `a(m) ⊑ H`, so `H`-termination forces
-`m` to fire, at exactly `a(m)`. ∎ ⟨open: mechanize the double induction⟩
+sequence). This direction needs no side-condition. (⊇) Induction on the
+relaxation's frontier order. Let `m` be a relaxation firing with
+`a(m) ⊑ H`; by induction every token in `κ(m) ∪ reads(m)` is produced by
+the run with its relaxation stamp (or is initial). No run firing ever
+consumes one of them: a run firing is itself a relaxation firing by (⊆),
+distinct from `m`, and a distinct relaxation firing whose cohort overlaps
+`m`'s demand would violate contention-freedom — clause (1)/(2) over the
+relaxation, *regardless of whether it and `m` are ever co-enabled in the
+run* (this is exactly where the run-state quantification failed, E2). So
+`m`'s inputs persist; when the last arrives, `m` is enabled in the linear
+system; by L4 it stays enabled with unchanged activation; `settle` exits
+only at quiescence or when `aMin ⊐ H`, and `a(m) ⊑ H`, so `H`-termination
+forces `m` to fire, at exactly `a(m)`. ∎ ⟨open: mechanize the double
+induction⟩
 
 **Theorem T2 (settle computes σ*).** Under the hypotheses of L5, `settle`
 produces exactly the relaxation's tokens with stamps `⊑ H`, each at its
@@ -311,9 +371,9 @@ happens when consumption is switched on.
 ## 6. The dichotomy, and how real programs decompose
 
 **Proposition P1 (beyond contention-freedom).** If a program is not
-contention-free below `H`, some reachable state has enabled instances
-`m₁ ⌣̸ m₂` sharing demand. Then the relaxation's `σ*` need not be realized
-(E1), and distinct firing orders can reach `⊑`-incomparable final states
+contention-free below `H`, some pair of relaxation firings `m₁ ⌣̸ m₂`
+shares demand. Then the relaxation's `σ*` need not be realized
+(E1, E2), and distinct firing orders can reach `⊑`-incomparable final states
 (Pareto-incomparable under a product grade). `settle` realizes exactly one —
 the PRF-committed, locally-greedy world (still chooser-independent if the
 program is choice-free, E1) — and `settleExplore` enumerates the reachable
@@ -387,7 +447,11 @@ permits *accumulation Zeno*: infinitely many distinct instants below a finite
 horizon, which no default guard detects (only the opt-in `maxSteps` cap).
 The proposition is the clean condition those guards approximate
 operationally; conditions (2)–(3) are statically checkable, and (1) is
-implied by the syntactic absence of division in delay positions. C5 of the
+implied by the syntactic absence of division in delay positions. Note the
+guard modes differ: `maxInstantSteps` *throws*, while the proposition's
+conclusion is a clean exit — no conflict, because under (2)/(3) the
+Dershowitz–Manna measure guarantees each instant fires finitely often, so
+the guard never triggers on a program satisfying the hypotheses. C5 of the
 conformance contract records the per-algebra half (a well-ordered reachable-
 stamp bound); this proposition is the per-program half.
 
@@ -417,11 +481,12 @@ and serializes conflicting hops through committed choice.
 
 | claim | witness |
 |---|---|
-| C1–C5 for time/distance (and their coherence with the hash face) | `tests/engine/grade-conformance.test.js` |
+| C1–C4 for time/distance (and their coherence with the hash face; C5 is §7's proposition + the operational guards) | `tests/engine/grade-conformance.test.js` |
 | L1's FIFO invariant pair (prune `⊒` / leaf `<`) | till equal-activation tie tests (till-eat, till-fifo-pair) |
 | T2 on the conflict-free fragment ≡ exact Dijkstra | `tests/engine/gill-dist.test.js` (random graphs, exact rationals) |
 | the layered decomposition (core + harvest) | `calculus/gill/tests/forward/depot.gill` |
 | T1 ⇏ T2 (choice-free, contended, suboptimal) | `calculus/gill/tests/forward/contention.gill` (E1) |
+| run-state quantification too weak (deferred producer, `E(s)` always a singleton, still starved) | `contention.gill` (E2) |
 | read-relaxation recovers `σ*` (Dyna corollary) | `contention.gill` twin program |
 | the measure-class fence (§8.3) | `tests/engine/gill-weight.test.js` |
 
@@ -441,7 +506,8 @@ and serializes conflicting hops through committed choice.
   along completions" argument needs re-proving; the StampTable executes such
   slots correctly (value-level function slots, running even at equal ids),
   but *scheduling* over a usage axis is unproven — ⟨open⟩.
-- **Contention (independence clause 1).** E1. The general dichotomy (§6).
+- **Contention (independence clause 1).** E1 — and E2 for why the condition
+  must be read off the relaxation, not the run. The general dichotomy (§6).
 - **Read-starvation (clause 2).** A whole-bind `!_W A` binds the total, so
   its instance is disturbed by any co-instant arrival or take on `A`; a trim
   rule written with `!_W` can starve forever under a deterministic chooser
@@ -493,12 +559,16 @@ Distinguish three uses of a grade; only the third is claimed:
 ### 10.2 Claimed
 
 1. **The boundary theorem pair.** The **choice-freedom / contention-freedom
-   split** (§3): two behavioral side-conditions with distinct theorems —
-   T1 (confluence: the committed world is chooser-independent) under the
-   weaker, T2 (optimality: realized stamps = the semiring least fixed point
-   `σ*`) under the stronger — separated by an executable three-line witness
-   (E1) that is deterministic, confluent, and suboptimal. This locates
-   *exactly* where semiring shortest-distance survives linear consumption.
+   split** (§3): two side-conditions with distinct theorems — T1
+   (confluence: the committed world is chooser-independent) under the
+   weaker, run-level condition, T2 (optimality: realized stamps = the
+   semiring least fixed point `σ*`) under the stronger condition, which
+   lives on the program's *monotone relaxation* and is therefore statically
+   analyzable — separated by executable three-line witnesses: E1
+   (deterministic, confluent, suboptimal) and E2 (the same starvation with
+   every run state contention-blind, forcing the relaxation-level
+   quantification). This locates *exactly* where semiring shortest-distance
+   survives linear consumption.
 2. **The reframing.** Monotone semiring forward-chaining solves a fixed
    point; linear forward-chaining solves a fixed point **coupled with a
    matching problem** (which derivations get the tokens). Contention-freedom
@@ -508,11 +578,13 @@ Distinguish three uses of a grade; only the third is claimed:
    discipline, not just a theorem scope.
 3. **The executable, pluggable realization.** `settle` as an operational
    semiring shortest-distance engine over a *declared* grade algebra:
-   per-firing optimality and frontier monotonicity held unconditionally
-   (L1; L2 under S), `σ*` on the contention-free fragment, one committed
-   world beyond it with `settleExplore` as the enumerator — with every
-   algebraic condition machine-checked per instance (C1–C5 harness) and
-   every out-of-scope algebra loudly fenced rather than silently mis-run.
+   per-firing optimality unconditionally (L1), frontier monotonicity under
+   S with the whole-bind caveat (L2), `σ*` on the contention-free fragment,
+   one committed world beyond it with `settleExplore` as the enumerator —
+   with the algebraic conditions C1–C4 machine-checked per instance
+   (conformance harness; C5 characterized analytically in §7 and enforced
+   operationally) and every out-of-scope algebra loudly fenced rather than
+   silently mis-run.
    The aggregation `⊕` is **routed as a policy** `(⊕, realization)`: order
    class realized by min-frontier + B&B prune (this paper), measure class
    (`⊕ = +`) realized by exact mass-sum or unbiased PRF sampling — the
@@ -537,7 +609,7 @@ semiring parsing / expectation semirings / hypergraph DP (Goodman; Eisner;
 Huang); graded modal type systems as static artifacts (Granule, QTT);
 linear forward-chaining engines as such (Ceptre, LolliMon, Celf/CLF).
 
-### 10.4 The three collisions, pre-empted
+### 10.4 The four collisions, pre-empted
 
 **"Isn't this Dyna / provenance semirings?"** Those systems are monotone:
 facts are values, never consumed, which is exactly what makes their
@@ -566,6 +638,21 @@ reached*, not merely its measured cost. E1 again is the observable: a cost
 semantics would report the starved world's cost; a grade-driven scheduler
 *produced* that world.
 
+**"Isn't priority-driven committed choice CHRrp — or timed MSR?"** CHR
+with rule priorities (De Koninck–Schrijvers–Demoen 2007) is the closest
+*operational* neighbor: a consuming committed-choice rewriting engine whose
+firing order is user-controlled. But its priorities are static integers
+declared per rule — no algebra over them (no `⊗` accumulation along a
+derivation, no `⊔` synchronization of co-consumed inputs, no residual), no
+per-firing minimization over cohorts, and no optimality theorem; it answers
+"which *rule* first," not "which *cohort* realizes the `⊑`-least stamp."
+Timed multiset rewriting (Kanovich–Ban Kirigin–Nigam–Scedrov–Talcott 2016)
+consumes timestamped facts, but its time annotations are *constraints* for
+verification — reachability, realizability, survivability, with
+PSPACE-completeness results checked by model search — not grades an
+operational scheduler optimizes; nothing there computes `σ*` or claims a
+schedule optimal.
+
 ### 10.5 Venues
 
 Theory: FSCD / CSL / substructural workshops (LINEARITY, TYPES) — the
@@ -584,11 +671,15 @@ realized condition families.
   paper's spine.
 - ⟨open⟩ **Pareto characterization** of the contended case (P1) — needs the
   product-scheduler / stamp-vector model (0285 P6).
-- ⟨open⟩ **Static analyzers.** Three syntactic conservative checks fall out
-  of §3/§1.3: (a) unifiable-linear-premise overlap across rules (structural
-  conflict-freedom ⟹ contention-freedom); (b) whole-bind co-instant
-  activity (clause 2); (c) `!`-conclusions in timed rules (Hypothesis S).
-  Each would let the engine *certify* T1/T2 applicability per program.
+- ⟨open⟩ **Static analyzers.** Three checks fall out of §3/§1.3:
+  (a) unifiable-linear-premise overlap across rules (structural
+  conflict-freedom ⟹ contention-freedom) — conservative; note that the
+  relaxation-level definition also admits an *exact* check: compute the
+  relaxation's firing set (a monotone lfp) and test pairwise demand overlap
+  directly; (b) whole-bind co-instant activity (clause 2); (c)
+  `!`-conclusions in fireable rules, with the external-choice-menu
+  exemption (Hypothesis S, §1.3). Each would let the engine *certify* T1/T2
+  applicability per program.
 - ⟨open⟩ **Usage-axis scheduling** (non-idempotent ⊔) — C4 fails; what
   replaces L1's monotone-completion argument?
 - ✔ **Termination** — discharged as §7's proposition (lattice delays +
@@ -615,11 +706,16 @@ Pistone, "Tropical Mathematics and the Lambda-Calculus I," CSL 2024. Martens,
 "Ceptre," AIIDE 2015. Simmons–Pfenning, "Linear Logical Algorithms," ICALP
 2008. Nigam–Olarte–Pimentel, subexponential LL, TCS 2017. Kamide, TCS 353,
 2006. Kanovich–Ito, "Temporal Linear Logic Specifications for Concurrent
-Processes," LICS 1997. Orchard–Liepelt–Eades, "Granule," ICFP 2019. Atkey,
+Processes," LICS 1997. Kanovich–Ban Kirigin–Nigam–Scedrov–Talcott, "Timed
+Multiset Rewriting and the Verification of Time-Sensitive Distributed
+Systems," FORMATS 2016 (arXiv:1606.07886). De Koninck–Schrijvers–Demoen,
+"User-definable Rule Priorities for CHR," PPDP 2007.
+Orchard–Liepelt–Eades, "Granule," ICFP 2019. Atkey,
 "Syntax and Semantics of Quantitative Type Theory," LICS 2018. Ghica–Smith,
 "Bounded Linear Types in a Resource Semiring," ESOP 2014. Hughes–Orchard,
 "Program Synthesis from Graded Types," ESOP 2024. Goodman, "Semiring
 Parsing," Computational Linguistics 25(4), 1999. Eisner, "Parameter
 Estimation for Probabilistic Finite-State Transducers," ACL 2002
 (expectation semirings; also Li–Eisner, EMNLP 2009). Huang, "Advanced
-Dynamic Programming in Semiring and Hypergraph Frameworks," COLING 2008.
+Dynamic Programming in Semiring and Hypergraph Frameworks," COLING 2008
+(tutorial notes).

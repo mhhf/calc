@@ -20,6 +20,13 @@
 % consumed — contention-free by construction (reads disable nothing) —
 % and the relaxation stamp won_b2@5 IS realized: exactly the Dyna/monotone
 % recovery of §4.
+%
+% E2 (the deferred-producer twin, §3 "why the relaxation"): b3 is not
+% initial — mk3 produces it at 5. Every run-reachable E(s) is a SINGLETON
+% (e1/e2 are never co-enabled), so a contention condition quantified over
+% run states holds vacuously — yet tok3 is spent at 0 and won_b3@5 is
+% starved exactly as in E1. The demand overlap between e1 and e2 exists
+% only in the monotone relaxation; contention-freedom must be read there.
 
 tok: type.
 a: type.
@@ -33,6 +40,13 @@ b2: type.
 won_a2: type.
 won_b2: type.
 
+tok3: type.
+a3: type.
+b3: type.
+c3: type.
+won_a3: type.
+won_b3: type.
+
 % E1: one token, two consumers at different activations.
 r1: a * tok -o { won_a }.
 r2: b * tok -o { won_b }.
@@ -40,6 +54,11 @@ r2: b * tok -o { won_b }.
 % E1 relaxed: the token is read, not consumed.
 m1: a2 * read rtok -o { won_a2 }.
 m2: b2 * read rtok -o { won_b2 }.
+
+% E2: as E1, but the competitor's enabling token is produced mid-run.
+e1: a3 * tok3 -o { won_a3 }.
+e2: b3 * tok3 -o { won_b3 }.
+mk3: c3 -o { b3 }.
 
 % The committed world: r1 fires at 0 (the frontier), won_a@0; b survives
 % untouched at 5.
@@ -63,3 +82,17 @@ m2: b2 * read rtok -o { won_b2 }.
   a2 * rtok * b2@5
   =>
   won_a2 * won_b2@5 .
+
+% E2 committed world: e1 fires at 0 (the only enabled instance — E(s) is
+% a singleton at every reachable state); mk3 fires at 5; b3 survives.
+#expect_committed_deferred (settle: 10)
+  a3 * tok3 * c3@5
+  =>
+  won_a3 * b3@5 .
+
+% E2 starvation: σ*(won_b3) = 5 in the relaxation, never realized — and no
+% run state ever exhibits the contention (e1 and e2 are never co-enabled).
+#expect_not_starved_deferred (settle: 10)
+  a3 * tok3 * c3@5
+  =>
+  won_b3@5 .
