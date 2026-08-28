@@ -71,11 +71,15 @@ Context entries may be stamped atoms `at(A,t)` — content-addressed
   `monad_r2` node and reaches FULL kernel verification against the
   program's rule data (`verifyTree(tree, { program:
   programFromCalc(engineCalc) })`). Elaboration is total on legal traces
-  of supported rules (THY_0018 §5 residual partiality); unsupported
-  shapes — whole-bind (`!_W`) antecedents, counted/bang consequents or
-  succedents — fall back to the structural `monad_r2` oracle node
-  reported in `unverified` (`opts.elaborate: false` forces the old
-  behavior). `certifyRun` (B3) applies the same machinery to an arbitrary
+  (THY_0018 §5 residual partiality) and covers the full D4/Phase-6c
+  surface: counted takes and counted consequents (`!_k`), whole-bind
+  (`!_W` — count witness = theta[W] plus the kernel-checked NONE-LEFT
+  cohort condition), possessed lolis (the rule record is derived from
+  the consumed ground token's own structure — no program lookup), and
+  ω-bang succedents (bang_r + copy from the persistent zone). The
+  structural `monad_r2` oracle node survives only as a fallback for
+  residual exotica (counted-bang succedents, incomplete theta) and is
+  reported in `unverified`; `opts.elaborate: false` forces it. `certifyRun` (B3) applies the same machinery to an arbitrary
   settle run, with the residual state itself as the certified goal;
   section 7 of `tools/fuzz-till.js` (B4) fuzzes it on random programs.
   Tried after the backward unit `monad_r`; without an engine it is simply
