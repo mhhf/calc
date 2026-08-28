@@ -220,6 +220,43 @@ trim: !_3 g -o { !_2 h }@1.
     fullVerify(elab.tree, program);
   });
 
+  it('clause-derived goal: SLD certificate checked, not trusted (0295)', () => {
+    const calc = loadProgram('clausegoal.till', `
+a: type.  b: type.  p: type.  q: type.
+ax: p.
+imp: q
+  <- p.
+use: a * !q -o { b }@1.
+`);
+    const res = calc.settle({ linear: { [atom('a')]: 1 }, persistent: {} }, '5');
+    assert.equal(res.events.length, 1);
+    const program = programFromCalc(calc);
+    const sequent = Seq.fromArrays([atom('a')], [], P('{b@1}@5'));
+    const elab = elaborateTrace({ sequent, events: res.events, program, calculus: seqCalc });
+    assert.ok(elab.tree, `elaboration failed: ${elab.unsupported}`);
+    // the fire node carries a checked certificate for q (imp ← ax)
+    const fire = elab.tree.state.fire;
+    assert.ok(fire.goalCerts && Object.keys(fire.goalCerts).length === 1,
+      'goal certificate attached');
+    fullVerify(elab.tree, program);
+    // forgeries: tamper the certificate → kernel rejects
+    const q = atom('q'), pA = atom('p');
+    const goodCert = Object.values(fire.goalCerts)[0];
+    const forge = (cert, pattern) => {
+      const t = { ...elab.tree.state.fire, goalCerts: { [q]: cert } };
+      const node = { ...elab.tree, state: { fire: t } };
+      const v = kernel.verifyTree(node, { program });
+      assert.ok(!v.valid, 'forged certificate must not verify');
+      assert.match(v.errors.join(';'), pattern);
+    };
+    forge({ ...goodCert, rule: 'ghost' }, /unknown clause/);
+    forge({ ...goodCert, premises: [] }, /premise/);
+    forge({ rule: 'ffi', goal: q, premises: [] }, /ffi leaf/);
+    forge({ ...goodCert, goal: pA }, /different goal/);
+    forge({ ...goodCert, premises: [{ rule: 'ax', goal: q, premises: [] }] },
+      /does not match its subderivation|not an instance/);
+  });
+
   it('a forged trace is REJECTED by the kernel (tampered done stamp)', () => {
     const calc = loadProgram('forge.till', `
 a: type.  b: type.
