@@ -1,0 +1,65 @@
+#import(../../prelude/num.gill)
+
+% contention.gill — TODO_0284 PT: the executable separation witness (E1)
+% between the two side-conditions of the settle-optimality theorem
+% (doc/paper/settle-optimality.md §3):
+%
+%   choice-freedom      (tied instances independent)     ⟹  T1 confluence
+%   contention-freedom  (ALL enabled instances independent) ⟹ T2 σ*-optimality
+%
+% and choice-freedom does NOT imply contention-freedom. Program E1:
+% r1 and r2 compete for the one `tok`, but at DIFFERENT activations
+% (0 vs 5) — they are never tied, so the run is deterministic and
+% trivially confluent (T1 holds, the PRF chooser is never consulted).
+% Yet the monotone relaxation (facts as reusable values, Dyna-style)
+% derives won_b@5; the linear run fires r1 at the frontier 0, consumes tok,
+% and r2 is starved FOREVER. σ* is not realized: T2's hypothesis is
+% violated and its conclusion genuinely fails.
+%
+% The m-program is the same shape with the token READ instead of
+% consumed — contention-free by construction (reads disable nothing) —
+% and the relaxation stamp won_b2@5 IS realized: exactly the Dyna/monotone
+% recovery of §4.
+
+tok: type.
+a: type.
+b: type.
+won_a: type.
+won_b: type.
+
+rtok: type.
+a2: type.
+b2: type.
+won_a2: type.
+won_b2: type.
+
+% E1: one token, two consumers at different activations.
+r1: a * tok -o { won_a }.
+r2: b * tok -o { won_b }.
+
+% E1 relaxed: the token is read, not consumed.
+m1: a2 * read rtok -o { won_a2 }.
+m2: b2 * read rtok -o { won_b2 }.
+
+% The committed world: r1 fires at 0 (the frontier), won_a@0; b survives
+% untouched at 5.
+#expect_committed (settle: 10)
+  a * tok * b@5
+  =>
+  won_a * b@5 .
+
+% The starved derivation: won_b@5 is derivable in the monotone relaxation
+% (σ*(won_b) = 5 ⊑ horizon) but NOT reachable — r1's firing consumed tok
+% before r2's activation arrived. Deterministic, confluent, suboptimal.
+#expect_not_starved (settle: 10)
+  a * tok * b@5
+  =>
+  won_b@5 .
+
+% The contention-free twin realizes BOTH relaxation stamps: won_a2 at 0,
+% won_b2 at max(5, 0) = 5 — the read stamp joins the activation, nothing
+% is disabled, settle ≡ the monotone least fixed point (T2).
+#expect_recovery (settle: 10)
+  a2 * rtok * b2@5
+  =>
+  won_a2 * won_b2@5 .

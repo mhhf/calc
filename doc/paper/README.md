@@ -1,6 +1,15 @@
 # Paper
 
-ONE unified paper (merge of the former proof-theory and systems drafts,
+Two papers:
+
+**"Settle Optimality: Semiring Shortest-Distance under Linear Consumption"**
+— `settle-optimality.md` (markdown stub, TODO_0284 Phase T). The
+choice-freedom/contention-freedom split, T1 confluence + T2 σ*-optimality,
+the E1 separation witness (`calculus/gill/tests/forward/contention.gill`),
+and the termination proposition. Prior-art positioning: hq research 0138
+Part A.
+
+ONE unified till paper (merge of the former proof-theory and systems drafts,
 2026-08-23 — the split drafts live in git history):
 
 **"A Delay-Graded Lax Monad: Timed Multiset Rewriting with Proven-Exact
