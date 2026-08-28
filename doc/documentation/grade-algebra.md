@@ -42,7 +42,7 @@ realizes them at different sites.
 |---|---|---|
 | ⊗ sequential | `compose` | rule delay: `done = stamps.compose(activation, delay)` (fire) |
 | ⊔ tensor-merge | `merge` | after-window join `:211`; counted-spread `:308`/`:323`; single-row `:368` — activation = merge of all consumed stamps |
-| ⊕ aggregate | `aggregate` | order: B&B prune `:247` + strict-`<` best keep `:224` · measure: settleExplore mass sum / PRF sample |
+| ⊕ aggregate | `aggregate` | order: B&B prune `:247` + strict-`<` best keep `:224` · measure: mass sum / PRF sample (`prf.js sampleIndex` — will/0292) |
 
 For time, `merge = max` (the conclusion waits for the LAST input) and ⊕ is realized as
 min-prune (fire at the least enabling stamp). For weight, `merge = ·` (co-consumed
@@ -139,6 +139,26 @@ parity for algebras predating the contract; any other slot value throws at table
 construction. The conformance harness canonicalizes symbolic slots back into functions
 for property-checking. Coherence between the hash face and the value face
 (`effect.compose` ≡ `reify ∘ add ∘ parse`) is checked by the harness.
+
+## Aggregation-policy routing (P1b)
+
+The ⊕ policy is routed, not assumed. `buildTimedConfig` reads `grades.aggregate`
+(absent = order/prune, the pre-contract default) and accepts only `class: 'order'` —
+the timed scheduler IS the order-class realization (min-activation firing + B&B prune),
+and running a measure algebra on it would silently discard mass (M1), so the fence is
+loud. Measure-class aggregation over whole derivations is an execution mode, not a
+scheduler policy; it arrives with will/0292.
+
+The `'sample'` realization is `lib/engine/prf.js`: the stateless PRF family (D17 —
+`mix32`/`thetaHash`/`strHash`, moved verbatim from timed.js; the settle-determinism
+pins depend on the exact mixes) plus `sampleIndex(u32, n, weightAt, total)` — the
+exact-rational cumulative-interval draw. Interval lengths are renormalized masses
+(unbiased, THY_0026 T3); a zero-mass alternative has an empty interval; `total =
+[1n, 1n]` keeps evaluation lazy for validated distributions (timed woplus fire-time
+weights). The timed conflict chooser and `_sampleAlt` compose their draw inputs from
+this family, and will's decimation loop consumes the same module — one draw semantics,
+two hosts. The harness's M3 check runs sampling through `sampleIndex` itself, so the
+conformance case exercises the realization the engine actually ships.
 
 ## Links
 

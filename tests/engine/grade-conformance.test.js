@@ -28,9 +28,11 @@
 
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import { tillGrades } from '../../calculus/till/calculus-config.js';
+import { tillGrades, tillCalculusConfig } from '../../calculus/till/calculus-config.js';
 import { add, sub, mul, div, cmp as ratCmp, norm } from '../../lib/rat.js';
 import { ratParts } from '../../lib/engine/theories/ratlit-theory.js';
+import { sampleIndex } from '../../lib/engine/prf.js';
+import { buildTimedConfig } from '../../lib/engine/timed/timed.js';
 
 // ── deterministic PRNG (mulberry32) — seeded, so no flakes ──
 function prng(seed) {
@@ -167,17 +169,14 @@ function randTree(rnd, depth, nextLeaf) {
   }
   return { alts };
 }
-function sampleLeaf(alg, tree, rnd) {
+// Sampling goes through the ENGINE's 'sample' realization (P1b: prf.js
+// sampleIndex — the exact rational interval draw will/0292 consumes),
+// driven by a u32 stream; the reference evaluator supplies the weights.
+function sampleLeaf(alg, tree, u32) {
   while (!tree.leaf) {
-    const fl = ([n, d]) => Number(n) / Number(d);
-    const total = tree.alts.reduce((s, [w]) => s + fl(w), 0);
-    let u = rnd() * total;
-    let pick = tree.alts[tree.alts.length - 1][1];
-    for (const [w, child] of tree.alts) {
-      u -= fl(w);
-      if (u < 0) { pick = child; break; }
-    }
-    tree = pick;
+    const total = tree.alts.reduce((s, [w]) => (s === null ? w : add(s, w)), null);
+    const i = sampleIndex(u32(), tree.alts.length, (j) => tree.alts[j][0], total);
+    tree = tree.alts[i][1];
   }
   return tree.leaf;
 }
@@ -227,8 +226,9 @@ function conformMeasure(alg, { seed = 7, samples = 300 } = {}) {
       const N = 20000;
       const counts = new Map();
       const srnd = prng(seed + 2);
+      const u32 = () => Math.floor(srnd() * 4294967296);   // mulberry32 is /2³² — exact
       for (let i = 0; i < N; i++) {
-        const l = sampleLeaf(alg, tree, srnd);
+        const l = sampleLeaf(alg, tree, u32);
         counts.set(l, (counts.get(l) || 0) + 1);
       }
       for (const [leaf, w] of exact) {
@@ -282,5 +282,40 @@ describe('tillGrades hash-face ≡ value-face coherence', () => {
       if (vr === null) assert.equal(hr, null);
       else assert.deepEqual(ratParts(hr), vr);
     }
+  });
+});
+
+// ── P1b: the ⊕ policy is routed, not assumed ──
+
+describe("sampleIndex — the engine's 'sample' realization (prf.js)", () => {
+  const w = (i) => [[1n, 2n], [1n, 2n]][i];
+  it('interval boundaries are exact: u < 1/2 → 0, u = 1/2 → 1 (half-open)', () => {
+    assert.equal(sampleIndex(2 ** 31 - 1, 2, w), 0);   // (2³¹−1)/2³² < 1/2
+    assert.equal(sampleIndex(2 ** 31, 2, w), 1);       // exactly 1/2 → right interval
+    assert.equal(sampleIndex(0, 2, w), 0);
+    assert.equal(sampleIndex(2 ** 32 - 1, 2, w), 1);   // u = 1 − ε edge
+  });
+  it('a zero-mass alternative is never drawn (empty interval)', () => {
+    const wz = (i) => [[0n, 1n], [1n, 1n], [0n, 1n]][i];
+    for (const u of [0, 1, 2 ** 31, 2 ** 32 - 1]) {
+      assert.equal(sampleIndex(u, 3, wz), 1);
+    }
+  });
+  it('unnormalized weights renormalize via total (measure semiring — no floats)', () => {
+    const wu = (i) => [[3n, 1n], [1n, 1n]][i];         // masses 3 and 1, total 4
+    const total = [4n, 1n];
+    assert.equal(sampleIndex(3221225471, 2, wu, total), 0);  // u < 3/4
+    assert.equal(sampleIndex(3221225472, 2, wu, total), 1);  // u = 3/4 exactly
+  });
+});
+
+describe('timed scheduler consults the ⊕ policy (buildTimedConfig)', () => {
+  it('till declares order/prune and the config threads it through', () => {
+    const tcfg = buildTimedConfig(tillCalculusConfig);
+    assert.deepEqual(tcfg.aggregate, { class: 'order', realizations: ['prune'] });
+  });
+  it('a measure-class algebra is rejected loudly (settle would discard mass)', () => {
+    const cc = { grades: { ...tillGrades, aggregate: { class: 'measure', realizations: ['sum'] } } };
+    assert.throws(() => buildTimedConfig(cc), /measure-class aggregation is an execution mode/);
   });
 });
