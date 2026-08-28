@@ -116,6 +116,9 @@ describe('StampTable', () => {
     const m = t.merge(a, b);
     assert.deepEqual(t.value(m), V(3));
     assert.equal(t.merge(a, b), m);           // interned: stable id
+    // NON-idempotent slot runs even at equal ids (P3b fix): the a === b
+    // shortcut belongs to the join realization only — usage a ⊔ a = 2a
+    assert.deepEqual(t.value(t.merge(a, a)), V(2));
   });
 
   it('prunes lifts the ⊕ slot: >= keeps the FIFO tie (P1 invariant pair)', () => {

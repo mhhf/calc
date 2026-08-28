@@ -109,7 +109,14 @@ in-logic, aggregation is `+`. No `cmp`-based pruning exists.
 | `tillGrades` (time) | ℚ≥0 | `+` | `max` | order / min-prune | live — `calculus/till/calculus-config.js` |
 | `distGrades` (distance) | ℚ≥0 | `+` | `max` (unused single-input, R2) | order / min-prune | live — `calculus/gill/calculus-config.js` (P3) |
 | usage | ℕ | `+` | `+` (consumption, R2) | order | future |
-| `weightGrades` (weight) | ℚ≥0 | `·` | `·` | measure / sum \| sample | P3b — gill prelude; harness fixture today |
+| `weightGrades` (weight) | ℚ≥0 | `·` | `·` | measure / sum \| sample | live — `calculus/gill/calculus-config.js` (P3b); the 0292/will handoff |
+
+`weightGrades` (P3b) is the shipped measure instance and the 0292/will handoff:
+`values.add` is its ⊗ (·), `values.sub` its ⊖ (exact ÷, null at mass 0), merge a
+value-level FUNCTION slot (non-idempotent ·), NO prunes and NO scheduler faces —
+`buildTimedConfig` rejects it at the class fence, before ever asking for faces it
+must never carry. will's decimation loop consumes exactly this record plus
+`prf.js sampleIndex`.
 
 Time and distance are the SAME tropical algebra under different physical readings
 (stamp = availability instant vs accumulated haul cost) — that identity is the
@@ -144,7 +151,9 @@ path, so declaring `'join'`/`'geq'` costs nothing (this is why the slots are sym
 a cmp-derived realization at the value level would trade the float cache for exact
 BigInt cmp per call, a measured ~20-30% settle regression). A FUNCTION slot is a custom
 value-level realization (usage `+`, weight `·`): an argument returned by reference
-keeps its id, a created value interns. Absent slots default to `'join'`/`'geq'` —
+keeps its id, a created value interns — and it runs even at EQUAL ids (the `a === b`
+identity shortcut belongs to the join realization only; a non-idempotent merge has
+w ⊔ w = w², the P3b weight instance caught this). Absent slots default to `'join'`/`'geq'` —
 parity for algebras predating the contract; any other slot value throws at table
 construction. The conformance harness canonicalizes symbolic slots back into functions
 for property-checking. Coherence between the hash face and the value face
