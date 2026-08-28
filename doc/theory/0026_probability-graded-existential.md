@@ -7,7 +7,10 @@ tags: [linear-logic, proof-theory, graded-types, till, lax-monad, existential, e
 category: "Probabilistic Generation"
 unique_contribution: "Four claims not found in the literature (novelty audit 2026-08-28): (1) an existential whose RIGHT RULE carries a semiring weight on the witness CHOICE — ∃ = semiring sum over witnesses is established denotationally (Droste–Gastin weighted MSO; Grädel–Tannen FO semiring provenance) but in no prior system is it a sequent rule that grades the derivation; graded type theories (QTT, Granule) grade binder USAGE, not witness choice; Das–Wang–Hoffmann's probabilistic session types weight a flat finite label set, not a quantifier over a (possibly recursive) constructor sort. (2) Sampling as cut elimination in ILL: collapse of a superposed existential IS the principal cut ∃_ρ-R/∃-L, so the operational PRF draw is a cut-reduction step — Yoshimizu et al. reduce quantum measurement to additive cuts in proof nets, but without grades and without an existential. (3) The observation boundary mapped onto the Term/Resource/Proposition discipline: persistent (knowledge) derivations condition a superposition monotonically WITHOUT collapse; linear (possession) consumption forces collapse — a resource-sensitive Copenhagen reading with a proof-theoretic justification. (4) The WFC/decimation loop derived as a theorem package: any sound pruning + importance weighting yields an UNBIASED sampler of the conditioned measure (greedy WFC bias becomes a variance statement), with compositional conditioning characterized exactly by decomposable dependency (= where belief propagation is exact)."
 references:
-  - "TODO_0292 — probabilistic collapse calculus (design + phases; this document is its theory core)"
+  - "TODO_0292 — probabilistic collapse calculus (design + phases; this document is its theory core; implementation: calculus `will` extending `gill`)"
+  - "Faggian, Galal & Paquet (2022). Curry and Howard Meet Borel. LICS (closest near-miss: proof normalization ≈ probabilistic computation — non-linear ND, normalized counting modality C^q, not a witness-graded ∃; cite and contrast)."
+  - "Crubillé (2026). De Finetti's Theorem in Integrable Cones. LICS (exchangeability ↔ free exponential !; semantic only)."
+  - "Bacci & Møgelberg (2026). Higher-Order Quantitative Logic for Probability. LICS (quantitative judgments/distances; no graded quantifier, no sampling-as-cut)."
   - "THY_0021 — Weighted Additive Disjunction (woplus; now the derived Boolean instance of ∃_ρ)"
   - "THY_0018 — The Delay-Graded Lax Monad (tropical grading; ∃_ρ adds the measure grading, product of semirings)"
   - "THY_0019 — Timed Matching and the Settle Scheduler (the PRF sampler; order-invariance ancestor)"
@@ -15,7 +18,7 @@ references:
   - "THY_0024 — Graded Labelled States (wave table pattern; values-not-ids PRF invariant)"
   - "TODO_0283 — the {A}_w paper (this document extends its planned scope)"
   - "RES_0137 — general graded monad/comonad/mode calculus (hq; the measure semiring is a new instance row: within-derivation merge = ·, across-derivation aggregation = sum/sample — NOT an order prune)"
-  - "TODO_0284 — pluggable graded-modal engine (hq; implementation host: the weight grade is its third co-driving instance, aggregation-policy slot P1b)"
+  - "TODO_0284 — pluggable graded-modal engine (hq; implementation host via its new laboratory calculus `gill` — graded ILL, algebras as data; the weight grade is the third co-driving instance, aggregation policy = (⊕, realization), task P1b/P3b)"
   - "Droste & Gastin (2007). Weighted Automata and Weighted Logics. TCS (∃ = semiring sum, denotational)."
   - "Grädel & Tannen (2017/2024). Semiring Provenance for First-Order Logic. arXiv:1712.01980, 2412.07986."
   - "Green, Karvounarakis & Tannen (2007). Provenance Semirings. PODS."
@@ -221,8 +224,20 @@ Apparently novel: the graded-witness-choice ∃-R in an ILL sequent calculus;
 sampling as cut reduction in ILL; the knowledge/possession observation boundary
 (§5); the T3/T4 package deriving WFC as theorems.
 
-Outstanding check before any paper claim: sequent/string-diagram treatments of
-Markov categories (Fritz; Cho–Jacobs) for an overlooked ∃-rule formulation.
+Markov-categories check RESOLVED (2026-08-28, dedicated sweep): the categorical
+probability literature (Fritz; Cho–Jacobs; Stein–Staton exact conditioning;
+Perrone; Crubillé's De Finetti ↔ free-! at LICS 2026) is purely semantic — no
+internal sequent calculus, no quantifier rules, no sampling-as-normalization.
+The closest near-miss overall, to cite and contrast explicitly: Faggian–Galal–
+Paquet, "Curry and Howard Meet Borel" (LICS 2022) — proof normalization does
+correspond to probabilistic computation there, but in a NON-linear natural
+deduction whose counting quantifier `C^q` is a normalized-[0,1] modality over
+random events, not a witness-choice existential; the probability is a meta-level
+truth bound, not a grade multiplied at ∃-R, and there is no principal-cut
+sampling. Graded-LL lines (Graded DiLL 2023; mixed linear+graded CSL 2025;
+Granule) grade `!`, never ∃; model-theoretic semiring quantifiers count
+witnesses in a structure with no proof theory. Novelty claims (a) graded
+witness choice as a sequent rule and (b) sampling as principal cut both stand.
 
 ## 8. What a paper must discharge
 
