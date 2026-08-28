@@ -84,6 +84,48 @@ describe('StampTable', () => {
     assert.deepEqual(t.value(t.compose(a, V(1, 2))), V(2));
   });
 
+  it('slot fence is loud: unknown symbolic realization throws (P1)', () => {
+    assert.throws(() => new StampTable({ ...alg, merge: 'max' }), /must be 'join'/);
+    assert.throws(() => new StampTable({ ...alg, prunes: true }), /must be 'geq'/);
+  });
+
+  it("merge lifts the ⊔ slot: 'join' on ids, intern-free (P1)", () => {
+    const t = new StampTable(alg);
+    const a = t.intern(V(3, 2)), b = t.intern(V(2));
+    const before = t.size;
+    assert.equal(t.merge(a, b), b);           // max wins
+    assert.equal(t.merge(b, a), b);           // commutative on values
+    assert.equal(t.merge(a, a), a);           // identity fast path
+    assert.equal(t.size, before);             // an order-class join never interns
+  });
+
+  it('merge default (algebra without a merge slot) is max by cmp', () => {
+    const noMerge = { ...alg, merge: undefined, prunes: undefined };
+    const t = new StampTable(noMerge);
+    const a = t.intern(V(1, 3)), b = t.intern(V(1, 2));
+    assert.equal(t.merge(a, b), b);
+    assert.equal(t.merge(b, a), b);
+    assert.equal(t.prunes(b, a), true);       // default: cmp >= 0
+    assert.equal(t.prunes(a, b), false);
+  });
+
+  it('merge interns a value-creating result (non-join algebras, e.g. usage +)', () => {
+    const usage = { ...alg, merge: (x, y) => alg.add(x, y) };
+    const t = new StampTable(usage);
+    const a = t.intern(V(1)), b = t.intern(V(2));
+    const m = t.merge(a, b);
+    assert.deepEqual(t.value(m), V(3));
+    assert.equal(t.merge(a, b), m);           // interned: stable id
+  });
+
+  it('prunes lifts the ⊕ slot: >= keeps the FIFO tie (P1 invariant pair)', () => {
+    const t = new StampTable(alg);
+    const a = t.intern(V(3)), b = t.intern(V(5));
+    assert.equal(t.prunes(b, a), true);       // worse partial: dead
+    assert.equal(t.prunes(a, a), true);       // equal: dead (first match won)
+    assert.equal(t.prunes(a, b), false);      // better partial: alive
+  });
+
   it('mix equality across independent tables (value-derived, not id-derived)', () => {
     const t1 = new StampTable(alg);
     const t2 = new StampTable(alg);

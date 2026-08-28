@@ -166,6 +166,17 @@ const tillGrades = {
     cmp: ratCmp,
     add: ratAdd,
     sub: ratSub,
+    // Named engine slots (TODO_0284 P1, grade-algebra.md). Symbolic names
+    // declare the CANONICAL realizations, which the StampTable id-lift
+    // (labels.js) runs on its cached-float cmp fast path; a custom algebra
+    // (usage `+`, weight `·`) supplies value-level functions instead.
+    // ⊔ tensor-merge of co-consumed labels: the C4 join (max by cmp —
+    // the conclusion waits for the LAST input).
+    merge: 'join',
+    // ⊕ order-class prune: a partial at grade p is dead once cmp(p, best)
+    // >= 0. `>=` keeps the FIRST match found at equal grade — the FIFO
+    // half of timed.js's `>=`/`<` invariant pair.
+    prunes: 'geq',
     float: (v) => {
       const nn = v[0] < 0n ? -v[0] : v[0];
       return (nn < 9007199254740992n && v[1] < 9007199254740992n)
@@ -182,6 +193,11 @@ const tillGrades = {
     // b > 0, a >= 0 in usage (accel spans/periods) — BigInt truncation = floor
     floorDiv: (a, b) => Number((a[0] * b[1]) / (a[1] * b[0])),
   },
+  // ⊕ aggregation class (grade-algebra.md): how ALTERNATIVE derivations
+  // combine. Time is an order algebra — alternatives resolve by min-prune
+  // (values.prunes above), mass is never summed. The measure class
+  // ('sum'/'sample') arrives with gill/will, never here.
+  aggregate: Object.freeze({ class: 'order', realizations: ['prune'] }),
 };
 
 /** FNV-fold a BigInt (sign included) to 32 bits — deterministic across

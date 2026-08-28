@@ -27,6 +27,11 @@ const GradeAlgebra = {
 `prunes` is undefined for `class: 'measure'` — a measure algebra never discards an
 alternative (mass conservation, below).
 
+An engine-facing value algebra may declare a canonical realization SYMBOLICALLY —
+`merge: 'join'` (max by cmp) and `prunes: 'geq'` (cmp ≥ 0) — instead of supplying the
+function; the StampTable id-lift recognizes the names and runs them on its cached-float
+cmp fast path (see "Realization in till" below).
+
 ## Two operators, two roles
 
 The critical distinction (TODO_0284 v3 audit): grade combination WITHIN one derivation
@@ -36,7 +41,7 @@ realizes them at different sites.
 | role | operator | engine site (timed.js, drift-prone — roles are the contract) |
 |---|---|---|
 | ⊗ sequential | `compose` | rule delay: `done = stamps.compose(activation, delay)` (fire) |
-| ⊔ tensor-merge | `merge` | after-window join `:211`; counted-spread `:323`; single-row `:368` — activation = merge of all consumed stamps |
+| ⊔ tensor-merge | `merge` | after-window join `:211`; counted-spread `:308`/`:323`; single-row `:368` — activation = merge of all consumed stamps |
 | ⊕ aggregate | `aggregate` | order: B&B prune `:247` + strict-`<` best keep `:224` · measure: settleExplore mass sum / PRF sample |
 
 For time, `merge = max` (the conclusion waits for the LAST input) and ⊕ is realized as
@@ -106,27 +111,34 @@ in-logic, aggregation is `+`. No `cmp`-based pruning exists.
 | usage | ℕ | `+` | `+` (consumption, R2) | order | future |
 | `weightGrades` (weight) | ℚ≥0 | `·` | `·` | measure / sum \| sample | P3b — gill prelude; harness fixture today |
 
-## Current realization in till (read-only)
+## Realization in till
 
-`tillGrades` predates this contract and exposes three faces, not the canonical shape:
-`availability`/`effect` (stamp-hash face, the boundary/theory side) and `values` (the
-label value algebra over `[n,d]` BigInt pairs — THY_0024). The *runtime* algebra is
-`values`: the StampTable (`lib/engine/labels.js`) interns it, and timed.js compares,
-composes, and merges through it. `merge` and `prunes` are not yet named slots — timed.js
-computes them inline (`cmp > 0 ? a : b` at the three merge sites, `cmp >= 0` at the
-prune). The conformance harness therefore derives the canonical view read-only:
+`tillGrades` predates this contract and exposes three faces, not the canonical flat
+shape: `availability`/`effect` (stamp-hash face, the boundary/theory side) and `values`
+(the label value algebra over `[n,d]` BigInt pairs — THY_0024). The *runtime* algebra
+is `values`, and since P1 it carries the named slots: `values.merge = 'join'` and
+`values.prunes = 'geq'` — SYMBOLIC declarations of the canonical order realizations
+(max by cmp / cmp ≥ 0), plus algebra-wide `tillGrades.aggregate = { class: 'order',
+realizations: ['prune'] }`. Canonical mapping of the remaining slots:
 
 ```js
 unit     = values.unit            compose = values.add
 residual = fenced values.sub      cmp     = values.cmp
-merge    = max by values.cmp      prunes  = (p, b) => cmp(p, b) >= 0
-aggregate = { class: 'order', realizations: ['prune'] }
 ```
 
-— exactly what the engine computes today. P1 promotes these to named slots and routes
-the audited sites through them, under the byte-identical parity gate. Coherence between
-the hash face and the value face (`effect.compose` ≡ `reify ∘ add ∘ parse`) is also
-checked by the harness.
+Slots operate on VALUES; the match loop operates on stamp IDS. The StampTable
+(`lib/engine/labels.js`) is the id-level face: `stamps.merge`/`stamps.prunes` lift the
+slots to ids, and timed.js routes the audited sites through the lifts. A symbolic slot
+names a realization the table runs on its cached-float id cmp — the exact pre-P1 code
+path, so declaring `'join'`/`'geq'` costs nothing (this is why the slots are symbolic:
+a cmp-derived realization at the value level would trade the float cache for exact
+BigInt cmp per call, a measured ~20-30% settle regression). A FUNCTION slot is a custom
+value-level realization (usage `+`, weight `·`): an argument returned by reference
+keeps its id, a created value interns. Absent slots default to `'join'`/`'geq'` —
+parity for algebras predating the contract; any other slot value throws at table
+construction. The conformance harness canonicalizes symbolic slots back into functions
+for property-checking. Coherence between the hash face and the value face
+(`effect.compose` ≡ `reify ∘ add ∘ parse`) is checked by the harness.
 
 ## Links
 
