@@ -157,9 +157,13 @@ allg: !_W g -o { w W }@1.
       Store.put('w', [three])]);
     const seq1 = Seq.fromArrays(Array(4).fill(atom('g')), [], succ);
     const e1 = elaborateTrace({ sequent: seq1, events: [forged1], program, calculus: seqCalc });
+    // the forge must be rejected SOMEWHERE — pre-fix this silently passed
+    // when elaboration refused (TODO_0296 P3: no vacuous forgery tests)
     if (e1.tree) {
       const v = kernel.verifyTree(e1.tree, { program });
       assert.ok(!v.valid, 'W≠take must not verify');
+    } else {
+      assert.ok(e1.unsupported, 'forge must fail elaboration if not kernel-rejected');
     }
     // forge 2: take only 3 of 4 (W=3, consistent) → none-left violation
     const forged2 = { ...ev, theta: [three],
@@ -365,5 +369,27 @@ describe('sld-check undo discipline (TODO_0296 P0)', () => {
       const r = checkSLD({ rule: 'ax', goal, premises: [] }, clauses, new Map());
       assert.equal(r.error, undefined);
     }
+  });
+
+  it('definition-branch forgeries are rejected (TODO_0296 P3)', async () => {
+    const { checkSLD, checkGoalCert } = await import('../lib/prover/sld-check.js');
+    const X = Store.put('metavar', ['X']);
+    const defs = new Map([['fact', Store.put('qq', [X])]]);
+    const good = Store.put('qq', [Store.put('atom', ['aa'])]);
+    const other = Store.put('rr', [Store.put('atom', ['aa'])]);
+    // sanity: the fact matches
+    assert.equal(checkSLD({ rule: 'fact', goal: good, premises: [] },
+      new Map(), defs).error, undefined);
+    // a definition is a fact — premises are a forgery
+    assert.match(checkSLD({ rule: 'fact', goal: good,
+      premises: [{ rule: 'fact', goal: good, premises: [] }] },
+      new Map(), defs).error, /is a fact — no premises/);
+    // goal not an instance of the definition
+    assert.match(checkSLD({ rule: 'fact', goal: other, premises: [] },
+      new Map(), defs).error, /not an instance of definition/);
+    // malformed node (no numeric goal)
+    assert.match(checkSLD({ rule: 'fact' }, new Map(), defs).error, /malformed/);
+    // missing certificate for a required goal
+    assert.match(checkGoalCert(null, good, new Map(), defs).error, /missing certificate/);
   });
 });
