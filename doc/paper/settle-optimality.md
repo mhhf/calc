@@ -113,9 +113,9 @@ and without S frontier monotonicity (L2) genuinely fails: a stampless fact
 learned at frontier `t` can enable an instance whose cohort is older than
 `t` — its activation `⊏ t`, and the event sequence regresses ("learned
 knowledge backdates enablement"). The audit-era note missed this
-hypothesis. A static lint is ⟨open⟩ (§11).
+hypothesis. The static lint ships as the C2 advisory (§11).
 
-**Corpus status (by inspection, pending the lint).** `depot.gill` and
+**Corpus status (machine-checked — the C2 advisory).** `depot.gill` and
 `contention.gill` have no `!`-conclusions at all. `PP2.till`'s only
 `!`-conclusions are unlock menus (the barracks army menu) — covered by the
 menu exemption. The shipped timed corpus therefore satisfies S.
@@ -587,7 +587,8 @@ and serializes conflicting hops through committed choice.
   instance's premises orders the tie causally; the settle loop detects this
   (`_feedsInstant`) as tie-sensitivity for acceleration.
 - **Hypothesis S.** A timed rule with a `!`-conclusion can backdate
-  enablement (§1.3): frontier regression, outside L2. Static lint ⟨open⟩.
+  enablement (§1.3): frontier regression, outside L2. Shipped as the C2
+  advisory (§11).
 
 ---
 
@@ -746,15 +747,23 @@ realized condition families.
   paper's spine.
 - ⟨open⟩ **Pareto characterization** of the contended case (P1) — needs the
   product-scheduler / stamp-vector model (0285 P6).
-- ⟨open⟩ **Static analyzers.** Three checks fall out of §3/§1.3:
-  (a) unifiable-linear-premise overlap across rules (structural
-  conflict-freedom ⟹ contention-freedom) — conservative; note that the
-  relaxation-level definition also admits an *exact* check: compute the
-  relaxation's firing set (a monotone lfp) and test pairwise demand overlap
-  directly; (b) whole-bind co-instant activity (clause 2); (c)
-  `!`-conclusions in fireable rules, with the external-choice-menu
-  exemption (Hypothesis S, §1.3). Each would let the engine *certify* T1/T2
-  applicability per program.
+- ✔ **Static analyzers** — discharged (TODO_0293 a/b/c):
+  (a) `certifyContention` (`lib/engine/timed/certify.js`) — structural
+  conflict-freedom (the one-shot-edge discipline, state-independent),
+  else the relaxation-level check: the monotone relaxation's firing set
+  as a fixpoint over the declared rule data (never settle), with
+  pairwise independence over clauses (1)–(3); conservative (whole-bind /
+  counted / weighted shapes refuse with a reason). E1 and E2 are refused
+  — E2 exactly because the relaxation exposes the deferred producer's
+  demand — the read twin and one-shot-edge graphs certify, and a
+  horizon-bounded contention outside `H` correctly certifies below it
+  (`tests/engine/timed-certify.test.js`);
+  (b) the whole-bind arrival advisory (`timedAdvice` C3) — flagged on
+  PP2's own documented §3b family (kiln/wood, spoil/food, merge_space);
+  (c) the Hypothesis-S advisory (`timedAdvice` C2) with the
+  external-choice-menu exemption, including `!`-conclusions inside
+  MINTED possessed rules; PP2's menu-only corpus status is now
+  machine-checked, not by-inspection.
 - ⟨open⟩ **Usage-axis scheduling** (non-idempotent ⊔) — C4 fails; what
   replaces L1's monotone-completion argument?
 - ✔ **Termination** — discharged as §7's proposition (lattice delays +

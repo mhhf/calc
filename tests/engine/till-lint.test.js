@@ -11,6 +11,9 @@
 
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
 import { SPEC, FIX, GAME, loadTill as load } from './till-helpers.js';
 
 describe('till D16 productivity lint', () => {
@@ -63,7 +66,8 @@ describe('C1 chain-collapse advisory (timedAdvice)', () => {
     // ss (two consumers), vv (stamp-observed), ww (read arc), xx (!_W
     // bind), yy (loli-minted consumer) each trip one disqualifier.
     const calc = load(FIX('till-chain.ill'));
-    assert.deepEqual(calc.timedAdvice.map(f => f.pred).sort(), ['bb', 'kk']);
+    const cc = calc.timedAdvice.filter(f => f.kind === 'chain-collapse');
+    assert.deepEqual(cc.map(f => f.pred).sort(), ['bb', 'kk']);
     assert.deepEqual(calc.timedAdvice.find(f => f.pred === 'bb'),
       { kind: 'chain-collapse', pred: 'bb', producers: ['mk'], consumer: 'use' });
     assert.deepEqual(calc.timedAdvice.find(f => f.pred === 'kk'),
@@ -74,10 +78,21 @@ describe('C1 chain-collapse advisory (timedAdvice)', () => {
     assert.deepEqual(load(FIX('till-cycle2.ill')).timedAdvice, []);
   });
 
-  it('stays quiet on PP2 (every intermediate is building-guarded) and the specs', () => {
-    assert.deepEqual(load(GAME('PP2.till')).timedAdvice, []);
+  it('chain-collapse stays quiet on PP2 and the specs; C2/C3 speak honestly', () => {
+    const pp2 = load(GAME('PP2.till')).timedAdvice;
+    assert.deepEqual(pp2.filter(f => f.kind === 'chain-collapse'), []);
+    // C2 (Hypothesis S): PP2's only !-conclusions are unlock MENUS — the
+    // external-choice exemption keeps it silent (the corpus statement of
+    // settle-optimality §1.3, machine-checked)
+    assert.deepEqual(pp2.filter(f => f.kind === 'persistent-conclusion'), []);
+    // C3 (whole-bind arrivals): the DOCUMENTED PP2 §3b starvation family —
+    // !_W premises whose predicates keep arriving
+    assert.deepEqual(
+      pp2.filter(f => f.kind === 'whole-bind-arrivals')
+        .map(f => `${f.rule}|${f.pred}`).sort(),
+      ['kiln|wood', 'merge_space|space', 'spoil|food']);
     for (const f of ['economy.ill', 'schedule.ill', 'spoilage.ill', 'grades.ill']) {
-      assert.deepEqual(load(SPEC(f)).timedAdvice, [], f);
+      assert.deepEqual(load(SPEC(f)).timedAdvice.filter(x => x.kind === 'chain-collapse'), [], f);
     }
   });
 
@@ -87,5 +102,44 @@ describe('C1 chain-collapse advisory (timedAdvice)', () => {
     // keeps the pair for its in-flight-atomicity gate; the advice is sound.
     assert.deepEqual(load(SPEC('read.ill')).timedAdvice,
       [{ kind: 'chain-collapse', pred: 'wood', producers: ['chop'], consumer: 'eat_wood' }]);
+  });
+});
+
+describe('C2 Hypothesis-S + C3 whole-bind advisories (TODO_0293 b/c)', () => {
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'till-lint-'));
+  const mk = (name, src) => { const f = path.join(tmp, name); fs.writeFileSync(f, src); return f; };
+
+  it('C2 flags a plain !-conclusion; external-choice menus are exempt', () => {
+    const calc = load(mk('s.till', `
+a: type.  b: type.  g: type.  m1: type.  m2: type.
+learn: a -o { b * !g }@1.
+menu: b -o { !(m1 & m2) }@1.
+`));
+    const c2 = calc.timedAdvice.filter(f => f.kind === 'persistent-conclusion');
+    assert.deepEqual(c2, [{ kind: 'persistent-conclusion', rule: 'learn', via: 'conclusion', pred: 'g' }]);
+  });
+
+  it('C2 sees through minted possessed rules (loli with a !-conclusion)', () => {
+    const calc = load(mk('s2.till', `
+a: type.  b: type.  g: type.
+mint: a -o { (b -o { !g }@1) }@1.
+`));
+    const c2 = calc.timedAdvice.filter(f => f.kind === 'persistent-conclusion');
+    assert.deepEqual(c2, [{ kind: 'persistent-conclusion', rule: 'mint', via: 'minted loli', pred: 'g' }]);
+  });
+
+  it('C3 flags whole-bind with producers, quiet without', () => {
+    const withProd = load(mk('w1.till', `
+g: type.  w: bin -> type.  a: type.
+farm: a -o { g }@1.
+all: !_W g -o { w W }@1.
+`));
+    assert.deepEqual(withProd.timedAdvice.filter(f => f.kind === 'whole-bind-arrivals'),
+      [{ kind: 'whole-bind-arrivals', rule: 'all', pred: 'g', producers: ['farm'] }]);
+    const noProd = load(mk('w2.till', `
+g: type.  w: bin -> type.
+all: !_W g -o { w W }@1.
+`));
+    assert.deepEqual(noProd.timedAdvice.filter(f => f.kind === 'whole-bind-arrivals'), []);
   });
 });

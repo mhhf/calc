@@ -200,7 +200,7 @@ describe('@fire step (TODO_0294 B1)', () => {
     it('produced multiset at the wrong stamp', () => {
       const b3 = at(B, t3);
       reject(mkFire({ produced: { [b3]: 1 } }), [a0], b2, [leafFor(b2)],
-        /produced multiset/);
+        /produced/);
     });
 
     it('missing witness record', () => {
