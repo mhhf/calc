@@ -433,8 +433,13 @@ settle is a *certifying* scheduler (TODO_0294) — the event trace
 elaborates into a fully kernel-checked `@fire` derivation (the trace≅term
 observation made executable; `@fire` is a first-class rule of the
 calculus, check-only in search), fuzz-tested on random programs. The
-trusted-oracle path remains only as a fallback for shapes the elaborator
-does not yet cover (whole-bind antecedents, counted consequents).
+elaborator covers the full antecedent/consequent surface (counted takes
+and consequents, whole-bind, possessed rules, bang succedents); with a
+bound fire checker an elaboration failure *throws* as an
+engine/elaborator disagreement. The trusted-oracle node survives only
+for calculi that have not bound a fire checker, and the checker proves
+its stamp judgments clause-only — the numeric FFI is never on the
+verification path.
 
 ---
 
@@ -757,7 +762,14 @@ realized condition families.
   — E2 exactly because the relaxation exposes the deferred producer's
   demand — the read twin and one-shot-edge graphs certify, and a
   horizon-bounded contention outside `H` correctly certifies below it
-  (`tests/engine/timed-certify.test.js`);
+  (`tests/engine/timed-certify.test.js`). Hardened by a 2026-08-29
+  adversarial audit (TODO_0296): the first release wrongly certified
+  four families — same-rule multi-instance contention through non-ground
+  premises, consume/read starvation at the structural tier, implicit
+  zero-delay rules, and a relaxation under-enumeration bug — each now a
+  refusing regression test. The structural tier additionally demands
+  ground consumed premises and ground positive delays; anything else
+  falls to the relaxation;
   (b) the whole-bind arrival advisory (`timedAdvice` C3) — flagged on
   PP2's own documented §3b family (kiln/wood, spoil/food, merge_space);
   (c) the Hypothesis-S advisory (`timedAdvice` C2) with the
