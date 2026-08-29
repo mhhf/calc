@@ -234,6 +234,147 @@ describe('@fire step (TODO_0294 B1)', () => {
     assert.ok(!bad.valid);
   });
 
+  describe('audit rejection-path coverage (TODO_0296 P3)', () => {
+    // every checker branch the 2026-08-29 audit found unexercised — an
+    // untested check in a verifier is a latent hole
+    let t0, t1, t2, t3, d2, a0, b2, c0, program, mkFire;
+    before(() => {
+      t0 = stampOf('x@0'); t1 = stampOf('x@1'); t2 = stampOf('x@2'); t3 = stampOf('x@3');
+      d2 = stampOf('x@2');
+      a0 = at(A, t0); b2 = at(B, t2); c0 = at(C, t0);
+      program = { rules: { step: {
+        slots: [], consume: [A], read: [], produce: [B], producePers: [],
+        goals: [], delay: d2, after: [], before: [],
+      } } };
+      mkFire = (over) => ({ rule: 'step', activation: t0, done: t2, theta: [],
+        consumed: { [a0]: 1 }, reserved: {}, produced: { [b2]: 1 },
+        producedPers: [], ...over });
+    });
+
+    const rejectWith = (prog, fire, linear, succ, pattern, premises) => {
+      const v = kernel.verifyTree(
+        node('fire', linear, [], succ, premises || [leafFor(succ)], { fire }),
+        { program: prog });
+      assert.ok(!v.valid, `expected rejection matching ${pattern}`);
+      assert.match(v.errors.join(';'), pattern);
+    };
+
+    it('theta arity mismatch', () => {
+      const mvX = Store.put('metavar', ['X']);
+      const prog = { rules: { step: { ...program.rules.step, slots: [mvX] } } };
+      rejectWith(prog, mkFire({}), [a0], b2, /theta arity mismatch/);
+    });
+
+    it('unbound slot in a consume pattern', () => {
+      const mvX = Store.put('metavar', ['X']);
+      const prog = { rules: { step: { ...program.rules.step, slots: [mvX], consume: [mvX] } } };
+      rejectWith(prog, mkFire({ theta: [undefined] }), [a0], b2, /unbound slot in consume/);
+    });
+
+    it('before-window violation (activation not strictly below the bound)', () => {
+      const prog = { rules: { step: { ...program.rules.step, before: [t0] } } };
+      rejectWith(prog, mkFire({}), [a0], b2, /before-window/);
+    });
+
+    it('delayless firing must stamp outputs at its activation', () => {
+      const prog = { rules: { step: { ...program.rules.step, delay: null } } };
+      rejectWith(prog, mkFire({}), [a0], b2, /delayless firing/);
+    });
+
+    it('inputless firing must activate at the unit stamp', () => {
+      const prog = { rules: { spawn: {
+        slots: [], consume: [], read: [], produce: [B], producePers: [],
+        goals: [], delay: null, after: [], before: [],
+      } } };
+      const fire = { rule: 'spawn', activation: t2, done: t2, theta: [],
+        consumed: {}, reserved: {}, produced: { [b2]: 1 }, producedPers: [] };
+      rejectWith(prog, fire, [], b2, /inputless firing/);
+    });
+
+    it('alt named on an alternative-less rule', () => {
+      rejectWith(program, mkFire({ alt: 0 }), [a0], b2, /alternative 0.*has none/);
+    });
+
+    it('alt out of range; the declared alternative verifies', () => {
+      const prog = { rules: { step: { ...program.rules.step,
+        alts: [{ produce: [B], producePers: [] }] } } };
+      rejectWith(prog, mkFire({ alt: 1 }), [a0], b2, /alternative 1/);
+      const ok = kernel.verifyTree(
+        node('fire', [a0], [], b2, [leafFor(b2)], { fire: mkFire({ alt: 0 }) }),
+        { program: prog });
+      assert.ok(ok.valid, ok.errors.join('; '));
+    });
+
+    it('whole-bind count witness must be a numeral', () => {
+      const mvW = Store.put('metavar', ['W']);
+      const prog = { rules: { step: { ...program.rules.step,
+        slots: [mvW], consume: [], wholeBind: [{ body: A, slot: 0 }] } } };
+      rejectWith(prog, mkFire({ theta: [C] }), [a0], b2, /whole-bind count witness/);
+    });
+
+    it('counted consequent with a non-numeral count', () => {
+      const prog = { rules: { step: { ...program.rules.step,
+        produce: [Store.put('bang', [C, B])] } } };
+      rejectWith(prog, mkFire({}), [a0], b2, /counted consequent/);
+    });
+
+    it('stamped consume pattern with no matching recorded fact', () => {
+      const prog = { rules: { step: { ...program.rules.step,
+        consume: [at(A, t2)] } } };
+      rejectWith(prog, mkFire({}), [a0], b2, /no recorded fact matches stamped/);
+    });
+
+    it('forged producedPers list (data-level bag mismatch)', () => {
+      const prog = { rules: { step: { ...program.rules.step, producePers: [G] } } };
+      // witness omits the persistent conclusion the rule declares
+      rejectWith(prog, mkFire({}), [a0], b2, /persistent conclusions/);
+    });
+
+    it('fire expects exactly one premise', () => {
+      rejectWith(program, mkFire({}), [a0], b2, /exactly 1 premise/,
+        [leafFor(b2), leafFor(b2)]);
+    });
+
+    it('fire must not change the succedent', () => {
+      const wrongSucc = node('at_l', [at(C, t2)], [], at(C, t2));
+      rejectWith(program, mkFire({}), [a0], b2, /must not change the succedent/,
+        [wrongSucc]);
+    });
+
+    it('read token must be in the available context', () => {
+      const prog = { rules: { step: { ...program.rules.step, read: [C] } } };
+      const fire = mkFire({ reserved: { [c0]: 1 } });
+      // context lacks c0 — the tree-level threading check must reject
+      const succ = Store.put('tensor', [b2, c0]);
+      const closing = node('tensor_r', [b2, c0], [], succ, [leafFor(b2), leafFor(c0)]);
+      const v = kernel.verifyTree(node('fire', [a0], [], succ, [closing], { fire }),
+        { program: prog });
+      assert.ok(!v.valid);
+      assert.match(v.errors.join(';'), /read token not in the available context/);
+    });
+
+    it('kernel stepCheckers dispatch is generic (a non-timed custom checker routes)', async () => {
+      // the slot is timed-blind: ANY rule name a calculus binds routes to
+      // its checker, unknown to specs — genericity, not a fire special case
+      const { default: Context } = await import('../lib/prover/context.js');
+      const calc2 = { ...calc, stepCheckers: {
+        ...calc.stepCheckers,
+        greenlight: { step: () => ({}), tree: (n) => {
+          // consume the node's whole linear context (empty root leftover)
+          void n; return { leftover: Context.fromArray([]) };
+        } },
+        redlight: { step: () => ({ error: 'no' }), tree: () => ({ error: 'no' }) },
+      } };
+      const k2 = createKernel(calc2);
+      const green = k2.verifyTree(node('greenlight', [a0], [], b2, []));
+      assert.ok(green.valid, green.errors.join('; '));
+      assert.equal(green.unverified, undefined);
+      const red = k2.verifyTree(node('redlight', [a0], [], b2, []));
+      assert.ok(!red.valid);
+      assert.match(red.errors.join(';'), /redlight: no/);
+    });
+  });
+
   it('fire is bound via calculus.stepCheckers, not enumerated in search', () => {
     // the rule exists, with NO annotation — the calculus config binds the
     // name to the checker (P1 slot routing); the kernel stays timed-blind

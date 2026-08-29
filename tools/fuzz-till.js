@@ -56,7 +56,7 @@ import { createProver } from '../lib/prover/focused.js';
 import { createKernel } from '../lib/prover/kernel.js';
 import tillConfig, { loadTillSequent } from '../calculus/till/calculus-config.js';
 import { buildTimedConfig } from '../lib/engine/timed/timed.js';
-import { certifyRun } from '../lib/prover/timed/elaborate-trace.js';
+import { certifyRun, programFromCalc } from '../lib/prover/timed/elaborate-trace.js';
 
 const args = process.argv.slice(2);
 let COUNT = 200, SEED = 0x7111, VERBOSE = false;
@@ -523,29 +523,54 @@ const gdir = fs.mkdtempSync(path.join(os.tmpdir(), 'fuzz-till-cert-'));
 let gtrials = 0, gfails = 0;
 const GPROGS = Math.max(4, Math.floor(COUNT / 16));
 const certHorizon = putRat(8n, 1n);
-for (let p = 0; p <= GPROGS; p++) {
-  const atoms = ['ca', 'cb', 'cc', 'cd', 'ce'];
-  let text;
-  if (p === GPROGS) {
-    // fixed persistent-conclusion + persistent-goal shape (section 6 class)
-    text = ['ca: type.', 'cb: type.', 'cres: type.', 'ck: bin -> type.',
+// fixed shapes — one per elaboration-surface family (TODO_0296 P3 widened
+// the family list with read / oplus / zero-delay / window arms)
+const FIXED = [
+  { // persistent-conclusion + persistent-goal (section 6 class)
+    text: ['ca: type.', 'cb: type.', 'cres: type.', 'ck: bin -> type.',
       'mk: ca -o { !ck 1 }@1.',
-      'need: cb * !ck 1 -o { cres }@1.'].join('\n');
-  } else if (p === GPROGS - 1) {
-    // fixed counted-take + counted-produce + whole-bind shape (gap closures)
-    text = ['ca: type.', 'cb: type.', 'cw: bin -> type.',
+      'need: cb * !ck 1 -o { cres }@1.'].join('\n'),
+    linear: { ca: 1, cb: 1 } },
+  { // counted-take + counted-produce + whole-bind (gap closures)
+    text: ['ca: type.', 'cb: type.', 'cw: bin -> type.',
       'trim: !_3 ca -o { !_2 cb }@1.',
-      'allb: !_W cb -o { cw W }@2.'].join('\n');
-  } else if (p === GPROGS - 2) {
-    // fixed possessed-loli shape (Phase 6c: produced rule token fires)
-    text = ['ca: type.', 'cb: type.', 'cc: type.',
-      'mk: cc -o { (ca -o {cb}@2) }@1.'].join('\n');
-  } else if (p === GPROGS - 3 && GPROGS >= 4) {
-    // fixed clause-goal shape (TODO_0295: SLD certificate checked)
-    text = ['ca: type.', 'cb: type.', 'cp: type.', 'cq: type.',
+      'allb: !_W cb -o { cw W }@2.'].join('\n'),
+    linear: () => ({ ca: 4 + randInt(5), cb: 1 }) },
+  { // possessed loli (Phase 6c: produced rule token fires)
+    text: ['ca: type.', 'cb: type.', 'cc: type.',
+      'mk: cc -o { (ca -o {cb}@2) }@1.'].join('\n'),
+    linear: { ca: 1, cb: 1, cc: 1 } },
+  { // clause goal (TODO_0295: SLD certificate checked)
+    text: ['ca: type.', 'cb: type.', 'cp: type.', 'cq: type.',
       'cax: cp.',
       'cimp: cq', '  <- cp.',
-      'cuse: ca * !cq -o { cb }@1.'].join('\n');
+      'cuse: ca * !cq -o { cb }@1.'].join('\n'),
+    linear: { ca: 1, cb: 1 } },
+  { // read premise ($-preservation — the family the P2 adaptRule fix pinned)
+    text: ['ca: type.', 'cb: type.', 'cg: type.',
+      'rd: read cg * ca -o { cb }@1.'].join('\n'),
+    linear: { ca: 2, cg: 1 } },
+  { // woplus consequent (PRF-sampled alt recorded and checked per-branch)
+    text: ['ca: type.', 'cb: type.', 'cc: type.',
+      'op: ca -o { cb +[1/2] cc }@1.'].join('\n'),
+    linear: { ca: 2 } },
+  { // zero-delay (delayless) rule feeding a delayed consumer
+    text: ['ca: type.', 'cb: type.', 'cc: type.',
+      'mk: ca -o { cb }.',
+      'use: cb -o { cc }@1.'].join('\n'),
+    linear: { ca: 1 } },
+  { // after-window: activation forced up to the window bound
+    text: ['ca: type.', 'cb: type.',
+      'wn: ca * after 2 -o { cb }@1.'].join('\n'),
+    linear: { ca: 1 } },
+];
+for (let p = 0; p < GPROGS + FIXED.length; p++) {
+  const atoms = ['ca', 'cb', 'cc', 'cd', 'ce'];
+  let text, fixedLinear = null;
+  if (p >= GPROGS) {
+    const fx = FIXED[p - GPROGS];
+    text = fx.text;
+    fixedLinear = typeof fx.linear === 'function' ? fx.linear() : fx.linear;
   } else {
     const lines = atoms.map(x => `${x}: type.`);
     const R = 2 + randInt(3);
@@ -565,10 +590,8 @@ for (let p = 0; p <= GPROGS; p++) {
   fs.writeFileSync(file, text);
   const gc = mde.load(file, { calculusConfig: tillConfig, cache: false });
   const state = { linear: {}, persistent: {} };
-  if (p >= GPROGS - 2) {
-    state.linear[Store.put('atom', ['ca'])] = p === GPROGS - 1 ? 4 + randInt(5) : 1;
-    state.linear[Store.put('atom', ['cb'])] = 1;
-    if (p === GPROGS - 2) state.linear[Store.put('atom', ['cc'])] = 1;
+  if (fixedLinear) {
+    for (const x in fixedLinear) state.linear[Store.put('atom', [x])] = fixedLinear[x];
   } else {
     for (const x of atoms) { const c = randInt(3); if (c) state.linear[Store.put('atom', [x])] = c; }
     if (!Object.keys(state.linear).length) state.linear[Store.put('atom', ['ca'])] = 1;
@@ -587,10 +610,48 @@ for (let p = 0; p <= GPROGS; p++) {
   if (r.verdict !== 'certified') {
     gfails++;
     console.error(`MISMATCH certification: ${r.verdict} (${r.reason || (r.errors || []).join('; ')}) on:\n${text}`);
+    continue;
+  }
+
+  // ── forgery sub-arm (TODO_0296 P3): mutate one fire record in the
+  // certified tree — the kernel must reject. A forgery that survives
+  // verification is a soundness hole, the exact dual of the positive arm.
+  const fireNodes = [];
+  (function walk(n) {
+    if (!n) return;
+    if (n.state && n.state.fire) fireNodes.push(n);
+    for (const k of n.premises || []) walk(k);
+  })(r.tree);
+  if (fireNodes.length) {
+    const victim = fireNodes[randInt(fireNodes.length)];
+    const orig = victim.state.fire;
+    const mutations = [
+      () => ({ ...orig, done: putRat(97n, 1n) }),
+      () => ({ ...orig, rule: 'ghost_rule' }),
+      () => ({ ...orig, activation: putRat(93n, 1n) }),
+      () => {
+        const ks = Object.keys(orig.consumed || {});
+        if (!ks.length) return null;
+        return { ...orig, consumed: { ...orig.consumed, [ks[0]]: orig.consumed[ks[0]] + 1 } };
+      },
+      () => (orig.theta && orig.theta.length
+        ? { ...orig, theta: [Store.put('atom', ['zz_forged']), ...orig.theta.slice(1)] }
+        : null),
+    ];
+    const forged = mutations[randInt(mutations.length)]();
+    if (forged) {
+      victim.state = { ...victim.state, fire: forged };
+      const fv = kernelSeq.verifyTree(r.tree, { program: programFromCalc(gc) });
+      if (fv.valid && !fv.unverified) {
+        gfails++;
+        console.error(`FORGERY ACCEPTED (${JSON.stringify(Object.keys(forged))}) on:\n${text}`);
+      }
+      victim.state = { ...victim.state, fire: orig };
+    }
   }
 }
 fs.rmSync(gdir, { recursive: true, force: true });
-console.log(`run certification: ${gtrials} trials, ${gfails} mismatches`);
+console.log(`run certification: ${gtrials} trials (+forgery arm), ${gfails} mismatches`);
 
 const total = fails + afails + mfails + bfails + kfails + efails + gfails;
 if (total > 0) { console.error(`FAIL: ${total} total mismatches (seed ${SEED})`); process.exit(1); }
