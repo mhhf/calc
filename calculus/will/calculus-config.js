@@ -81,7 +81,12 @@ const willCalculusConfig = {
   factSetPolicy: tillFactSetPolicy,
   stampTag: 'at',
   shiftOps: gillCalculusConfig.shiftOps,
-  scheduler: gillCalculusConfig.scheduler,
+  // will-own default (M5/D6): the least-entropy tie policy — H=0 rules
+  // (propagation, forced moves) before weighted draws, tighter draws
+  // before wider (WFC decimation order). Semantics-free tuning: any
+  // chooser reaches the same outcome set; per-run override via settle
+  // opts.chooser.
+  scheduler: { chooser: 'entropy', seed: 0, cohort: 'fifo' },
 
   // ── L2: Compile ──────────────────────────────────────────────
   compile: {

@@ -158,11 +158,12 @@ calculus/gill/           # gill — graded ILL (TODO_0284): grade algebras as da
 ├── prelude/num.gill     # Imports till's rat.ill; dist tower edges + collapsed min/max /q instances
 └── tests/               # gill executable specs incl. depot shortest-path (npm run test:gill / test:noffi:gill)
 
-calculus/will/           # will — weighted ILL (TODO_0292/0297): the measure-class calculus (THY_0026); ∃_ρ + decimation land in later phases
+calculus/will/           # will — weighted ILL (TODO_0292/0297): the measure-class calculus (THY_0026); decimation driver P2, ∃_ρ P3
 ├── will.calc            # @family will + @extends gill — the FIRST cross-calculus @extends chain (surface inherited, not copied; meta-parser resolves sibling calculus dirs)
-├── calculus-config.js   # Composes gill's exported layer pieces (M2: config composes config); backward fragment = gill.rules BY REFERENCE until ∃_ρ rules exist
+├── calculus-config.js   # Composes gill's exported layer pieces (M2: config composes config); scheduler chooser 'entropy' (M5); backward fragment = gill.rules BY REFERENCE until ∃_ρ rules exist
 ├── prelude/measure.will # Imports gill's num.gill (tower + sorts machinery transitively; import labels are basenames — hence not num.will)
-└── tests/               # will executable specs (npm run test:will / test:noffi:will); fast-suite guard: tests/engine/will-scaffold.test.js
+├── game/WFC.will        # Wave function collapse demo: bitmask dom facts + propagation rules + woplus collapse under the entropy chooser (npm run shell:will -- calculus/will/game/WFC.will)
+└── tests/               # will executable specs (npm run test:will / test:noffi:will); fast-suite guards: tests/engine/will-{scaffold,wfc,priors}.test.js
 
 tests/                   # Test suite (core: *.test.js, engine: engine/)
 benchmarks/              # Performance benchmarks (engine/, proof/, micro/)
@@ -244,6 +245,8 @@ FFI is optimization, theory is semantics. Every FFI predicate MUST have backward
 - Grammar emission is ONE mechanism (sorted templates, TODO_0268 §5c): operator/prefix/nullary/circumfix/gradedPrefix tables are normalized into synthetic template records in `earley-grammar.js` — new surface syntax should be a declared `@ascii` template, not a new family. Per-input ambiguity detection: `setStrictAmbiguity(true)` in `earley.js` (corpus sweep: `tests/parser-fold-fuzz.test.js`)
 - Labelled timed state (THY_0024): `at(A, t)` exists only at BOUNDARIES (plain objects, store-binary, event records, rule patterns). Live timed states are rows (innerHash, stampId, count) — the runtime fact handle is a packed 52-bit ref (`labels.js` packRef/refInner/refStamp); stamp ids index the per-State StampTable (`state.linear.stamps`), whose ids are history-dependent — hash/PRF inputs must derive from VALUES, never ids
 - Certified execution (TODO_0294/0295): the timed bridge returns ELABORATED @fire proof trees — FULL kernel verification (`verifyTree(tree, { program: programFromCalc(engineCalc) })`), no `unverified: 'modeSwitch'`; elaboration failure with a bound checker THROWS (engine/elaborator disagreement). The kernel routes calculus-declared step checkers via `calculus.stepCheckers` (bound in kit.js makeSequentLoader's `fire:` option — no rule annotations); clause-derived persistent goals carry SLD certificates (sld-check.js, emitted clause-only `useFFI: false`); the checker also PROVES clause-only (fire-check stamp judgments + scope-guarded theory goals — the numeric FFI is never on the verification path). TCB = kernel + eq-theory canon + numeric prelude CLAUSES under the clause-only backchainer. `certifyRun` certifies arbitrary settle runs; fuzz-till §7 fuzzes it
+- Constructor priors: `sea: tile_t @w 2.` is the ONE annotation program files admit (regex-narrow parse — exactly `ident @w numeral[/numeral]` as the whole body, so stamp positions `food@Q`/`{...}@3` can never match). Lands on `calc.priors` as exact [n,d] ℚ≥0 ratios (DATA, never facts — D5; in-logic evidence is bias facts, P2); unannotated member = weight 1 at the consumer. Chi–Geman subcriticality (T2) warns at load (`calc.priorLint`)
+- Chooser `'entropy'` (M5, will's default): among tied candidates, least Shannon entropy of the consequent distribution fires first (H=0 deterministic rules → propagation before collapse); residual ties → PRF. Semantics-free tuning (D6) — override per run via settle `opts.chooser`
 - Cohort firing (TODO_0278 B1, default ON): settle fires a unique candidate ONCE at multiplicity k (state-identical to per-item). Event records carry PER-FIRE facts + `multiplicity` (the list is an RLE — expand to get the sequential multiset); `steps`/Zeno/maxSteps count firing STEPS, eventTotals count fires. `batch: false` restores per-item firing
 
 ## Tooling
