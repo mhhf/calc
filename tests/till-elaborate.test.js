@@ -330,3 +330,21 @@ r2: b -o { c }@3.
     assert.equal(r.events.length, 2);
   });
 });
+
+describe('sld-check undo discipline (TODO_0296 P0)', () => {
+  it('checks hundreds of binding-heavy certificates without undo overflow', async () => {
+    // matchIndexed logs slot bindings on unify's module-global undo stack
+    // (capacity 128). Pre-fix, sld-check never discarded its span — the
+    // 129th accumulated binding threw 'undo stack overflow' and leaked
+    // entries could corrupt the ENGINE's backtracking theta. 300 checks
+    // of a metavar-headed clause pin the discipline.
+    const { checkSLD } = await import('../lib/prover/sld-check.js');
+    const X = Store.put('metavar', ['X']);
+    const clauses = new Map([['ax', { hash: Store.put('pp', [X]), premises: [] }]]);
+    const goal = Store.put('pp', [Store.put('atom', ['aa'])]);
+    for (let i = 0; i < 300; i++) {
+      const r = checkSLD({ rule: 'ax', goal, premises: [] }, clauses, new Map());
+      assert.equal(r.error, undefined);
+    }
+  });
+});
