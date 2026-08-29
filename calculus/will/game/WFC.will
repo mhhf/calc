@@ -1,0 +1,97 @@
+#import(../prelude/measure.will)
+
+% =============================================================================
+% WFC.will — wave function collapse as a will program (TODO_0297 P1).
+% =============================================================================
+%
+% The zero-engine-change encoding (0292 L2): a 1D "beach" of 4 cells over
+% tiles {sea, coast, land} with the classic constraint sea–land never
+% adjacent. The wave is REIFIED as linear state: `dom C M` holds cell C's
+% remaining domain as a binlit bitmask (sea=1, coast=2, land=4).
+%
+%   propagation = ordinary forward rules shrinking M (bit test = div/mod
+%                 parity, bit clear = qsub) — AC-style arc consistency
+%   collapse    = woplus consequents over the remaining members, weights
+%                 = priors renormalized over the mask (hand-expanded per
+%                 mask here; the ∃_ρ existential generates these in P3)
+%   decimation  = the 'entropy' chooser (M5): deterministic rules (H=0 —
+%                 propagation, singleton domains) fire before weighted
+%                 draws, tighter distributions before wider ones, so
+%                 propagate-then-collapse-min-entropy IS the tie policy
+%   contradiction = `dom C 0` quiescent (no rule consumes mask 0) — a
+%                 visible leaf; restart/backtrack drivers arrive in P2
+%                 (this 1D constraint set is arc-consistent, no dead end)
+%
+% Priors 2:1:2 (sea:coast:land). Committed-choice caveat: `!forbid T T'`
+% must be single-valued per T (it is — sea↔land only). The D16 Zeno
+% advisory on `prop` is a shape-level false positive: it keys on the
+% dom→dom predicate identity, but the mask strictly shrinks (qsub of a
+% set bit), so the zero-delay cycle is finite.
+
+% ── sorts and members ──
+pos: sort.
+c0: pos.
+c1: pos.
+c2: pos.
+c3: pos.
+
+% Constructor priors (@w, D5/M6): unnormalized ratios — 2:1:2. At P1
+% these are DATA (calc.priors + the T2 lint); the hand-expanded clp
+% weights below must agree with them (renormalized per mask) until P3's
+% ∃_ρ derives the woplus trees from these annotations.
+tile_t: sort.
+sea: tile_t @w 2.
+coast: tile_t @w 1.
+land: tile_t @w 2.
+
+% ── predicates ──
+tile: (c: pos) -> (t: tile_t) -> type.
+dom: (c: pos) -> (m: bin) -> type.
+adj: (a: pos) -> (b: pos) -> type.
+forbid: (a: tile_t) -> (b: tile_t) -> type.
+tbit: (t: tile_t) -> (b: bin) -> type.
+
+% ── the world: adjacency (both directions), constraint, tile bits ──
+adj/01: adj c0 c1.
+adj/10: adj c1 c0.
+adj/12: adj c1 c2.
+adj/21: adj c2 c1.
+adj/23: adj c2 c3.
+adj/32: adj c3 c2.
+
+forbid/sl: forbid sea land.
+forbid/ls: forbid land sea.
+
+tbit/s: tbit sea 1.
+tbit/c: tbit coast 2.
+tbit/l: tbit land 4.
+
+% ── propagation: a collapsed neighbor clears forbidden bits ──
+% bit test: (M div B) mod 2 = 1 ⟺ bit B set; clear: M' = M − B.
+prop: $tile C T * dom C' M
+  * !adj C C' * !forbid T T' * !tbit T' B
+  * !div M B Q * !mod Q 2 R * !eq R 1
+  * !qsub M B M'
+  -o { dom C' M' }.
+
+% ── collapse: one rule per reachable mask, weights = renormalized priors ──
+% mask 7 {sea,coast,land} 2:1:2 → sea 2/5, coast 1/5, land 2/5
+clp7: dom C 7 -o { tile C sea +[2/5] (tile C coast +[1/3] tile C land) }.
+% mask 6 {coast,land} 1:2
+clp6: dom C 6 -o { tile C coast +[1/3] tile C land }.
+% mask 5 {sea,land} 2:2
+clp5: dom C 5 -o { tile C sea +[1/2] tile C land }.
+% mask 3 {sea,coast} 2:1
+clp3: dom C 3 -o { tile C sea +[2/3] tile C coast }.
+% singleton masks: forced (H = 0, fires with propagation priority)
+clp4: dom C 4 -o { tile C land }.
+clp2: dom C 2 -o { tile C coast }.
+clp1: dom C 1 -o { tile C sea }.
+
+% ── initial wave: all four cells fully open (the shell's entry state;
+%    the assertion — no cell ever hits the mask-0 contradiction — holds
+%    for every seed on this arc-consistent constraint set) ──
+#expect_not_contradiction (settle: 0)
+  dom c0 7 * dom c1 7 * dom c2 7 * dom c3 7
+  =>
+  dom c0 0 .
