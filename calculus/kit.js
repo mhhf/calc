@@ -131,8 +131,14 @@ function makeTheory({ preludeFile, META, getConfig }) {
     return ec;
   };
   return {
-    prove(goal) {
-      if (!noFFI()) {
+    /** popts.useFFI: false forces the SEMANTICS path — no tryFFI fast
+     *  path, no FFI inside clause resolution. The certified checkers
+     *  (fire-check) prove their stamp judgments this way, keeping
+     *  rat-ffi/lib-rat OUT of the verification trust base (TODO_0296 P1);
+     *  the engine's hot path keeps the FFI-first default. */
+    prove(goal, popts) {
+      const clauseOnly = noFFI() || (popts && popts.useFFI === false);
+      if (!clauseOnly) {
         const fast = backchainIll.tryFFI(goal, META);
         if (fast) {
           if (fast.success) return fast.theta || [];
@@ -140,7 +146,7 @@ function makeTheory({ preludeFile, META, getConfig }) {
         }
       }
       const e = engine();
-      const o = noFFI() ? { ...opts, useFFI: false } : opts;
+      const o = clauseOnly ? { ...opts, useFFI: false } : opts;
       const res = backward.prove(goal, e.clauses, e.definitions, o);
       if (!res.success) return null;
       const vars = new Set();

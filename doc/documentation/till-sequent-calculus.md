@@ -139,17 +139,21 @@ resolve as: cartesian-zone membership → a CHECKED SLD certificate over
 the program's declared clauses (`lib/prover/sld-check.js`, TODO_0295 —
 the witness carries the backchain term tree, emitted clause-only with
 `useFFI: false`; verification is slot-matching, never search; `ffi`
-leaves are rejected) → the definitional numeric theory. There is no
-trusted clause-prover fallback. **The TCB is**: the kernel (+ Store,
+leaves are rejected) → the definitional numeric theory, SCOPE-GUARDED to
+predicates the theory can speak about (`theory.has`). There is no
+trusted clause-prover fallback. The checker proves its stamp judgments
+(`le`/`lt`/`qsub`) and theory goals CLAUSE-ONLY (`useFFI: false`) — the
+numeric FFI (`rat-ffi.js`, `lib/rat.js`) is never on the verification
+path (TODO_0296 P1). **The TCB is**: the kernel (+ Store,
 unify/matchIndexed, Context), the equational canon (eq-theory — the
-calculus's conversion layer), and the numeric theory prelude
-(FFI∥clause-fuzzed) — deliberately definitional, like conversion in a
-type-theory kernel. Everything else is search, and everything search
-finds is checked. Steps the kernel
+calculus's conversion layer), and the numeric prelude CLAUSES under the
+clause-only backchainer — deliberately definitional, like conversion in
+a type-theory kernel (and independently FFI∥clause-fuzzed). Everything
+else is search, and everything search finds is checked. Steps the kernel
 cannot re-derive are accepted but reported in `result.unverified`:
-fallback settle-bridge steps (`'modeSwitch'` — only for traces the
-elaborator marks unsupported) and quantifier steps with fresh
-eigenvariables (`'binding'`). **Full verification = `valid &&
+settle-bridge oracle steps (`'modeSwitch'` — only for calculi that have
+not bound a fire checker; with one bound, elaboration failure throws)
+and quantifier steps with fresh eigenvariables (`'binding'`). **Full verification = `valid &&
 !unverified`**; pure sequent proofs (all of Stage 1) meet it, and since
 TODO_0294 B2 elaborated bridge trees (Stage 2 adequacy) meet it too.
 `verifyStep` alone is shape-only — never a resource check.
