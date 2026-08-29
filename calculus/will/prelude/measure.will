@@ -1,0 +1,12 @@
+#import(../../gill/prelude/num.gill)
+
+% will measure prelude (TODO_0297 P0) — gill's tower, verbatim.
+%
+% The import chain is the calculus layering as files: bin.ill (ill, the
+% naturals) <- rat.ill (till: the tower, q-ops, and the refinement-sort
+% machinery via sorts.till) <- num.gill (gill: dist edges, min/max /q)
+% <- measure.will. gill's prelude is FROZEN for will — will extends by
+% import, exactly as gill extends till's. (Import labels are basenames,
+% so the file is NOT num.will.) No will-own surface yet: weight <: q
+% already lives in rat.ill; measure-side clauses (bias posterior
+% helpers) land with the decimation engine (0297 P2).

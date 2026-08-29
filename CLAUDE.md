@@ -36,6 +36,7 @@ npm run test:bun      # Same suite under bun (per-file isolation via tools/test-
 npm run test:ill      # ILL-native tests (98 tests, ~0.2s) — .ill files as provability judgments
 npm run test:till     # till executable specs (forward/debug directives)
 npm run test:gill     # gill executable specs (incl. depot shortest-path)
+npm run test:will     # will executable specs (scaffold smoke; noFFI arm: test:noffi:will)
 npm run test:noffi    # noFFI adversarial soundness (13 tests, ~1s) — only after engine/FFI changes
 npm run test:noffi:till  # till noFFI arm (also test:noffi:gill) — after engine/FFI changes
 npm run test:zk       # ZK witness tests (94 tests) — only after ZK changes
@@ -156,6 +157,12 @@ calculus/gill/           # gill — graded ILL (TODO_0284): grade algebras as da
 ├── calculus-config.js   # Assembly point: by-sort grade registry (delay→tillGrades, dist→distGrades, weight→weightGrades; gradeAlgebraFor), min/max tower collapse
 ├── prelude/num.gill     # Imports till's rat.ill; dist tower edges + collapsed min/max /q instances
 └── tests/               # gill executable specs incl. depot shortest-path (npm run test:gill / test:noffi:gill)
+
+calculus/will/           # will — weighted ILL (TODO_0292/0297): the measure-class calculus (THY_0026); ∃_ρ + decimation land in later phases
+├── will.calc            # @family will + @extends gill — the FIRST cross-calculus @extends chain (surface inherited, not copied; meta-parser resolves sibling calculus dirs)
+├── calculus-config.js   # Composes gill's exported layer pieces (M2: config composes config); backward fragment = gill.rules BY REFERENCE until ∃_ρ rules exist
+├── prelude/measure.will # Imports gill's num.gill (tower + sorts machinery transitively; import labels are basenames — hence not num.will)
+└── tests/               # will executable specs (npm run test:will / test:noffi:will); fast-suite guard: tests/engine/will-scaffold.test.js
 
 tests/                   # Test suite (core: *.test.js, engine: engine/)
 benchmarks/              # Performance benchmarks (engine/, proof/, micro/)

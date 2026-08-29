@@ -1,0 +1,24 @@
+#import(../../prelude/measure.will)
+
+% schema.will — will executable spec: refinement sorts under will
+% (TODO_0297 P0). The sort machinery (sort/sedge/subsort, schema
+% expansion, closure materialization) arrives through the prelude chain
+% (measure.will → num.gill → rat.ill → sorts.till) — M10: will inherits
+% sorts via gill's prelude, till stays frozen. Ground truth:
+% tests/engine/till-sorts.test.js (classifier rule schemas) — expansion
+% is per DIRECT member of the classifier; subsort-member inclusion in
+% schema expansion is an open till/0011 question, deliberately not
+% pinned here.
+
+resource: sort.
+wood: resource.
+stone: resource.
+
+seen: type.
+
+mark: (r: resource) r -o { seen }.
+
+#expect_marks_all_members (settle: 0)
+  wood * stone
+  =>
+  seen * seen .
