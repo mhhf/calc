@@ -1,7 +1,7 @@
 ---
 title: "The Probability-Graded Existential: Superposition, Collapse, and Observation in Graded ILL"
 created: 2026-08-28
-modified: 2026-08-28
+modified: 2026-08-29
 summary: "One new primitive — a weight-graded existential ∃_ρ x:s. A whose right rule multiplies the derivation grade by ρ(c) for the chosen witness constructor c — turns graded ILL into a probabilistic generation calculus. Grades live in the UNNORMALIZED measure semiring (ℚ≥0,·,1); normalization is a meta-operation, so priors, biases, and evidence are all just weights and conditioning is multiplication (knowledge-monotone by construction). woplus (THY_0021) becomes the derived Boolean instance. Datasort refinements (THY_0020) are the events one conditions on; conditioning is a derived rule via inside-mass renormalization. Observation is intralogical: collapse IS the principal cut ∃_ρ-R vs ∃-L — sampling is a cut-reduction step, performed by the settle PRF; persistent knowledge conditions a superposition without collapsing it, linear consumption forces actuality. Four theorem statements (adequacy, a.s. groundness ⟺ subcriticality, importance-weighted sampler unbiasedness, compositional-conditioning boundary) give the sound-and-complete story; the WFC decimation loop for map generation is the operational reading."
 tags: [linear-logic, proof-theory, graded-types, till, lax-monad, existential, exists, probabilistic, forward-chaining, cut-elimination, refinement-sorts, wfc, procedural-generation, superposition]
 category: "Probabilistic Generation"
@@ -45,6 +45,8 @@ references:
   - "Staton (2017). Commutative Semantics for Probabilistic Programming. ESOP (normalization as meta-operation)."
   - "Murray, Lundén, Kudlicka, Broman & Schön (2018). Delayed Sampling and Automatic Rao-Blackwellization. AISTATS."
   - "Chi & Geman (1998). Estimation of Probabilistic Context-Free Grammars (subcriticality/consistency)."
+  - "Harris (1963). The Theory of Branching Processes. Springer (multitype extinction — T2)."
+  - "Etessami & Yannakakis (2009). Recursive Markov Chains and Monotone Systems of Nonlinear Equations. JACM (least-fixpoint inside masses — T1)."
   - "Freeman & Pfenning (1991). Refinement Types for ML (datasorts = regular tree sorts)."
   - "Gumin (2016/2022). WaveFunctionCollapse; MarkovJunior. github.com/mxgmn."
   - "Karth & Smith (2017). WaveFunctionCollapse is Constraint Solving in the Wild. FDG."
@@ -53,10 +55,14 @@ references:
 
 # The Probability-Graded Existential
 
-**Status.** Design + theorem statements with proof directions. Nothing here is
-machine-checked or implemented; TODO_0292 carries the operational plan (P0–P3)
-and §8 lists what a paper must discharge. One remaining novelty-audit lookup is
-flagged in §7.
+**Status.** Design + theorem statements (§6), proof assembly for T1–T3/T4-a
+(§8, 2026-08-29), and the remaining paper obligations (§9). IMPLEMENTED as the
+calculus `will` (TODO_0297 P0–P3): ∃_ρ surface (`exists X: s @w. A` →
+`superpose(s, exists A)` — a suspended superpose-fact IS the wave of §5),
+decimation driver (lib/engine/decimate.js — sample/exact/solve realizations,
+bias posteriors, lazy head-constructor collapse over rung-2 constructor
+members), @w priors + Chi–Geman load lint. The exact-rational test pins in
+tests/engine/will-decimate.test.js are the operational shadow of §8's claims.
 
 ## 1. The gap
 
@@ -296,21 +302,107 @@ generalization of DIBI Thm V.1 / Lilac C-Indep over a forward rewriting
 engine, i.e. a graded extension of Di Guardia's good labelling to dynamic
 derivation forests.
 
-## 8. What a paper must discharge
+## 8. Proof assembly (T1–T3, T4-a) — 2026-08-29
 
-1. Full proofs of T1–T4. T4-d is THE research-grade contribution, with three
-   sub-obligations: (i) the grade-certificate theorem (double-counted evidence
-   ⟹ detectable weight violation — a syntactic refutation of independence);
-   (ii) soundness of the mass-splitting graded contraction; (iii) the graded,
-   dynamic extension of Di Guardia's good-labelling condition to forward
-   derivation forests (= quantitative DIBI Thm V.1). T1–T3 and T4-a/b/c are
-   careful assemblies of standard techniques (chain rule, treewidth, Bethe)
-   over THY_0021 §§4–6 — cite, assemble, don't overclaim.
+**Setting.** Fix a program, priors ρ (member weights in ℚ≥0, unannotated = 1),
+an initial state σ₀, and a DETERMINISTIC base execution Σ (settle under a fixed
+seed — committed choice; the PRF resolves its draws, so Σ maps each state to
+one quiescent successor). The **collapse tree** T(σ₀): a node is a Σ-quiescent
+state with all suspended ∃_ρ-facts opened and a set of live waves; its children
+arise by collapsing the policy-chosen wave e to each domain member c with
+**posterior weight** w(e,c) = ρ(c) · Π{distinct bias facts on (e,c)} > 0
+(constructor members re-suspend at each argument — §3's lazy unfolding);
+leaves are wave-free states. The **mass** of a leaf is the product of the
+weights drawn along its path; the **denoted measure** μ assigns each leaf that
+mass (summed over leaves with equal state — the semiring sum of §6). All
+statements below are relative to Σ and to a fixed wave-selection policy;
+policy-independence is exactly T4's subject, not assumed here.
+
+**T1 (mass adequacy).** Define M(σ) = 1 for a leaf and
+M(σ) = Σ_{c : w(e,c) > 0} w(e,c) · M(σ_c) at an internal node. *Claim:* the
+'exact' realization returns outcomes whose masses sum to M(σ₀), reaching every
+positive-mass leaf. *Proof.* Finite tree (atomic members): structural
+induction — the driver recurses on precisely the positive-weight children
+(zero-weight members are the only ones skipped, and they head zero-mass
+subtrees), multiplies weights along paths and adds across siblings; dedup by
+final state only reassociates the outer sum. Recursive sorts: the leaf masses
+of depth-k truncation form a monotone sequence M_k(σ₀) whose limit is the
+least solution of the polynomial system m_s = Σ_c ρ(c)·Π_i m_{s_i} over the
+member signatures (Kleene iteration of a monotone ω-continuous map; the system
+is the weighted-grammar inside computation, cf. Etessami–Yannakakis monotone
+polynomial systems). The driver's `truncated` totals ARE M_k — a monotone
+lower approximant (test-pinned: 1, 3/2, 15/8 → 2 for the geometric list
+grammar). M(σ₀) < ∞ iff the least fixpoint is finite; for normalized-
+subcritical priors scaled by total ≤ 1 this is the Chi–Geman condition. ∎
+
+**T2 (almost-sure groundness).** *Claim:* for a bias-free program, the
+'sample' loop terminates with a ground state w.p. 1 iff every reachable wave
+sort's normalized prior is (sub)critical: m_s = Σ_c ρ̂(c)·arity(c) ≤ 1.
+*Proof.* The live-wave multiset is a multitype Galton–Watson process: a draw
+at sort s removes one s-object and adds, with probability ρ̂(c), the argument
+multiset of c; extinction w.p. 1 iff the mean matrix has spectral radius ≤ 1
+(Harris; single-sort case: m_s ≤ 1, Chi–Geman). Waves consumed un-observed
+only decrease the population (domination preserves extinction). With biases
+the claim transfers by stochastic domination whenever every reachable
+posterior is dominated by a subcritical offspring law; an adversarial bias can
+break subcriticality, which is why the LINT checks the prior and the DRIVER
+(M7) hard-errors only on the prior — bias-induced divergence is the program's
+liability, caught by the maxCollapses backstop. The critical case (m = 1) is
+a.s. finite with infinite expected size — legal but flagged by the same lint
+boundary. ∎
+
+**T3 (importance-weighted unbiasedness).** One 'sample' ATTEMPT draws a
+maximal path: at each step it selects member c with probability
+w(e,c)/W_step (W_step the posterior total) and records importance = Π W_step.
+*Claim:* for any leaf functional f, the PER-ATTEMPT estimator
+Z = 1[attempt reaches a leaf] · importance · f(leaf) satisfies E[Z] = μ(f);
+with f ≡ 1, E[Z] = total mass (test-pinned: ≈21 on the biased beach, ≈2 on
+the geometric grammar). *Proof.* A leaf ℓ with steps i has proposal
+probability q(ℓ) = Π_i w(c_i)/W_i and importance Π_i W_i, so
+q(ℓ)·importance(ℓ) = Π_i w(c_i) = mass(ℓ); summing over leaves gives μ(f),
+and attempts that die in a zero-total wave contribute 0 to Z exactly as their
+subtrees carry zero mass. *Caveat (restart conditioning):* the driver's
+restart loop RETURNS the first successful attempt, i.e. samples the
+success-conditioned law — the conditional estimator overestimates μ(f) by the
+factor 1/P(success). Unbiasedness is recovered by accounting failed attempts
+as zeros, which the returned `attempts` counter makes exact (Horvitz–Thompson
+over the attempt sequence). Contradiction-free programs (P(success) = 1) need
+no correction — the pinned E[importance] tests are in this regime. Any sound
+pruning (removing only zero-mass members) preserves the identity verbatim. ∎
+
+**T4-a (chain-rule correctness).** If at every step the posterior equals the
+exact conditional of μ given the path so far, the sampled leaf law IS μ
+normalized (chain rule; the zero-variance case of T3 — importance is then
+constant = total mass). The driver's prior·bias posteriors realize this
+exactly when the program's bias rules encode the true conditionals (finite,
+decomposable case — the beach programs); otherwise T3's importance weights
+carry the correction. T4-b/c (treewidth locality, Bethe approximation) are
+citations, not theorems of ours (§6). ∎
+
+**What §8 does NOT prove.** T4-d (grade certificates, mass-splitting graded
+contraction, graded good-labelling) and cut admissibility for the two-semiring
+judgment with ∃_ρ — these are the paper's research core (§9). One structural
+remark is already load-bearing: state-side double-counting of ONE bias fact is
+impossible by construction (content-addressed persistent facts are a SET; the
+driver multiplies DISTINCT facts only) — the T4-d certificate question is
+about two syntactically distinct facts derived from one evidence source, which
+is precisely what the grade discipline must detect.
+
+## 9. What the paper still must discharge
+
+1. T4-d in full: (i) the grade-certificate theorem (double-counted evidence ⟹
+   detectable weight violation); (ii) soundness of the mass-splitting graded
+   contraction; (iii) the graded, dynamic extension of Di Guardia's
+   good-labelling to forward derivation forests (= quantitative DIBI Thm V.1).
 2. Cut admissibility for the two-semiring graded judgment including ∃_ρ
-   (extend THY_0023's till metatheory; the principal ∃_ρ case IS §5's collapse).
-3. The lazy/recursive form: guarded-fixpoint waves, inside-mass existence and
-   uniqueness (subcritical case), conditioning on regular tree sorts.
-4. Positioning per §7, plus the Markov-categories check.
-5. Operational adequacy against the implementation (TODO_0292 P0–P3: bitmask
-   encoding, `@w` priors + min-entropy chooser + subcriticality lint, wave
-   table + `substituteEvar` decimation driver, recursive sorts).
+   (extend THY_0023; the principal ∃_ρ case IS §5's collapse).
+3. Inside-mass CONDITIONING on regular tree sorts (datasort domains) — the
+   machinery is TODO_0011 rung 2; §8's T1 fixpoint argument supplies existence
+   and uniqueness (least solution, subcritical case), the derived rule and its
+   metatheory remain.
+4. Policy-independence (T4 as an order-invariance theorem relative to §8's Σ),
+   positioning per §7, and the Markov-categories check.
+5. Operational adequacy narrative against the shipped implementation
+   (TODO_0297 P0–P3: bitmask WFC encoding, @w priors + entropy chooser +
+   subcriticality lint, suspended-∃ waves + substituteEvar decimation driver,
+   rung-2 lazy recursion) — the test pins are the adequacy witnesses.
