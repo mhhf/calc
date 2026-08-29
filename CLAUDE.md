@@ -68,7 +68,11 @@ lib/
 │   ├── generic.js       # L2: search primitives
 │   ├── focused.js       # L3: Andreoli focusing
 │   ├── strategy/        # L4: manual, auto
-│   ├── bridge.js        # Lax monad mode switch (backward ↔ forward)
+│   ├── bridge.js        # Lax monad mode switch (backward ↔ forward); timed bridge ELABORATES traces (0294)
+│   ├── sld-check.js     # SLD certificate checker — clause derivations checked, not trusted (TODO_0295)
+│   ├── timed/           # Timed verification face (generic over till/gill/will; TODO_0294)
+│   │   ├── fire-check.js      # @fire step checker — one firing re-derived from PROGRAM RULE DATA + theory
+│   │   └── elaborate-trace.js # settle events → kernel-checked @fire proof trees; certifyRun (any-run certificates)
 │   └── rule-interpreter.js  # descriptor → premise computation
 ├── calculus/            # Calculus loader (from .calc/.rules files)
 │   └── builders.js      # Parser factory (Earley delegation), deriveRoles()
@@ -94,7 +98,8 @@ lib/
 │   │   ├── timed.js       # buildTimedConfig, settle loop, stamp-aware matching (tryTimedMatch/fire)
 │   │   ├── timed-game.js  # Interactive with-projection menus over timed state
 │   │   ├── timed-render.js # #trace/#timeline/#why debug renderings
-│   │   ├── timed-lint.js  # Productivity lint for timed rules
+│   │   ├── timed-lint.js  # D16 Zeno warning + timedAdvice: C1 chain-collapse, C2 Hypothesis-S (menu-exempt), C3 whole-bind arrivals
+│   │   ├── certify.js     # T2-applicability certifier: structural / monotone-relaxation pairwise check (calc.certifyContention)
 │   │   └── timed-views.js # timedSubset/timedExact state projections
 │   ├── ill/             # ILL layer: ILL-specific logic (single assembly point: calculus-config.js)
 │   │   ├── calculus-config.js # Layered config (L0-L6) — ONLY ILL import in generic engine
@@ -224,6 +229,7 @@ FFI is optimization, theory is semantics. Every FFI predicate MUST have backward
 - Whole-bind chases arrivals: `!_W A` includes in-flight cohorts a producer just scheduled, so a rule like `!_W g * !lt CAP W` re-activates at every arrival and a deterministic chooser can starve it FOREVER (the PRF chooser merely hides it). Trim/cap rules must use a counted take — `!_201 g -o { !_200 g }` pins activation oldest-first and is starvation-free under any chooser (PP2 §3b)
 - Grammar emission is ONE mechanism (sorted templates, TODO_0268 §5c): operator/prefix/nullary/circumfix/gradedPrefix tables are normalized into synthetic template records in `earley-grammar.js` — new surface syntax should be a declared `@ascii` template, not a new family. Per-input ambiguity detection: `setStrictAmbiguity(true)` in `earley.js` (corpus sweep: `tests/parser-fold-fuzz.test.js`)
 - Labelled timed state (THY_0024): `at(A, t)` exists only at BOUNDARIES (plain objects, store-binary, event records, rule patterns). Live timed states are rows (innerHash, stampId, count) — the runtime fact handle is a packed 52-bit ref (`labels.js` packRef/refInner/refStamp); stamp ids index the per-State StampTable (`state.linear.stamps`), whose ids are history-dependent — hash/PRF inputs must derive from VALUES, never ids
+- Certified execution (TODO_0294/0295): the timed bridge returns ELABORATED @fire proof trees — FULL kernel verification (`verifyTree(tree, { program: programFromCalc(engineCalc) })`), no `unverified: 'modeSwitch'`; elaboration failure with a bound checker THROWS (engine/elaborator disagreement). The kernel routes calculus-declared step checkers via `calculus.stepCheckers` (bound in kit.js makeSequentLoader's `fire:` option — no rule annotations); clause-derived persistent goals carry SLD certificates (sld-check.js, emitted clause-only `useFFI: false`). TCB = kernel + eq-theory canon + numeric prelude. `certifyRun` certifies arbitrary settle runs; fuzz-till §7 fuzzes it
 - Cohort firing (TODO_0278 B1, default ON): settle fires a unique candidate ONCE at multiplicity k (state-identical to per-item). Event records carry PER-FIRE facts + `multiplicity` (the list is an RLE — expand to get the sequential multiset); `steps`/Zeno/maxSteps count firing STEPS, eventTotals count fires. `batch: false` restores per-item firing
 
 ## Tooling
