@@ -1,0 +1,125 @@
+/**
+ * will Calculus Configuration — single assembly point (TODO_0292/0297 P0).
+ *
+ * Weighted ILL: the measure-class calculus. will's surface IS gill's
+ * (will.calc @extends gill — the first cross-calculus @extends chain;
+ * loadChain merges the constructor/sort-edge tables), so this config
+ * COMPOSES gill's exported layer pieces (M2: data extends data in .calc,
+ * config composes config here — the altitude at which gill composes
+ * till's) and derives its own tables from will.calc, one source of truth
+ * per calculus. Shared layers are REFERENCED (init, backward, ffi,
+ * domain, the FFI face, the fences, the by-sort grade registry), never
+ * copied; will-own layers are written out — no blind spread (the config
+ * literal is the visible layer table, 0284 M10).
+ *
+ * Will-OWN semantics arrive with the later phases: @w constructor priors
+ * and the entropy chooser (P1), the wave table + decimation driver (P2),
+ * the ∃_ρ graded existential (P3). At P0 the active scheduling axis stays
+ * TIME (D1 — one algebra schedules a run): the measure axis is an
+ * execution MODE over whole derivations, never a stamp scheduler —
+ * buildTimedConfig rejects weightGrades loudly (0284 P1b), and the
+ * decimation driver, not the settle loop, will realize sum/sample.
+ */
+
+'use strict';
+
+import path from 'path';
+import { grade0 } from '../../lib/engine/grades.js';
+import { connTagsFrom } from '../../lib/engine/formula-utils.js';
+import { tillGrades, tillFactSetPolicy, tillGradeUnit } from '../till/calculus-config.js';
+import { gillCalculusConfig, gillGradeRegistry, gillFences, gillFFIFace } from '../gill/calculus-config.js';
+import { makeCalcTables, makeTheory, makeForwardParserBuilder, makeSequentLoader } from '../kit.js';
+
+const WILL_CALC = path.join(import.meta.dirname, 'will.calc');
+const WILL_PRELUDE = path.join(import.meta.dirname, 'prelude/measure.will');
+// The backward fragment is inherited BY REFERENCE: .rules files have no
+// @extends mechanism, and a zero-delta copy is worse than a pointer (the
+// gill←till rules copy predates cross-calculus @extends). will.rules is
+// created the day will declares a will-own rule (∃_ρ, P3).
+const GILL_RULES = path.join(import.meta.dirname, '../gill/gill.rules');
+
+// Tables derived from will.calc's OWN chain (= gill's surface via
+// @extends); the literal fences are gill's, referenced (weight stays
+// [0,1] — D5: unnormalized masses are @w priors, not weight literals).
+const { connectives: willConnectives, sorts: willSorts } = makeCalcTables(WILL_CALC, {
+  fences: gillFences,
+});
+
+/** Grade-algebra routing over will's sort tables and gill's registry
+ *  (woplus: weight → weightGrades, monad: delay → time, haul: dist). */
+function gradeAlgebraFor(conn) {
+  const argSorts = willSorts().connArgSorts[conn];
+  const gs = argSorts && argSorts.find((s) => s !== 'formula');
+  return (gs && gillGradeRegistry.bySort[gs]) || gillGradeRegistry.default;
+}
+
+// Theory engine over will's prelude chain (measure.will → num.gill → rat.ill
+// → bin.ill — min/max, q-ops, and the sorts machinery all resolve there).
+const willTheory = makeTheory({
+  preludeFile: WILL_PRELUDE,
+  META: gillFFIFace.META,
+  getConfig: () => willCalculusConfig,
+});
+
+const willBuildParser = makeForwardParserBuilder(WILL_CALC, tillGradeUnit);
+
+const willCalculusConfig = {
+  // ── L0: Kernel init — shared with gill (same Store tags + theories) ──
+  init: gillCalculusConfig.init,
+
+  // ── L1: Structural ───────────────────────────────────────────
+  get connectives() { return willConnectives(); },
+  typeCheck: 'strict',
+  theories: gillCalculusConfig.theories,
+  gradeUnit: tillGradeUnit,
+  get sorts() { return willSorts(); },
+
+  // Active axis = time (D1); the registry routes per-connective reading.
+  grades: tillGrades,
+  gradeRegistry: gillGradeRegistry,
+  gradeAlgebraFor,
+  factSetPolicy: tillFactSetPolicy,
+  stampTag: 'at',
+  shiftOps: gillCalculusConfig.shiftOps,
+  scheduler: gillCalculusConfig.scheduler,
+
+  // ── L2: Compile ──────────────────────────────────────────────
+  compile: {
+    getModes: gillFFIFace.getModes,
+    getModeMeta: gillFFIFace.getModeMeta,
+    discriminatorPreds: [],
+    cacheEpoch: 'will',
+  },
+
+  // ── L3: Backward — shared with gill (same META, same normalizer) ──
+  backward: gillCalculusConfig.backward,
+
+  // ── L4: FFI — shared with gill ───────────────────────────────
+  ffi: gillCalculusConfig.ffi,
+
+  // ── L5: Compose ── deliberately absent (till discipline) ─────
+
+  // ── L6: Domain — shared with gill ────────────────────────────
+  domain: gillCalculusConfig.domain,
+
+  // ── Loader (convert.js) ──────────────────────────────────────
+  loader: {
+    buildParser: willBuildParser,
+    get connTags() { return connTagsFrom(willConnectives()); },
+    grade0,
+    timed: true,
+    qexprPreds: gillCalculusConfig.loader.qexprPreds,
+  },
+};
+
+/** Sequent-level will calculus: will.calc + the inherited backward
+ *  fragment, with will's theory engine and the shared @fire wiring
+ *  (delay/dist stamp axes — the additive ⊕/⊖ residual shape). */
+const loadWillSequent = makeSequentLoader({
+  calcFile: WILL_CALC, rulesFile: GILL_RULES,
+  gradeUnit: tillGradeUnit, theory: willTheory,
+  fire: { stampTag: 'at', le: 'le', lt: 'lt', sub: 'qsub' },
+});
+
+export { willCalculusConfig, willConnectives, willTheory, loadWillSequent, gradeAlgebraFor };
+export default willCalculusConfig;

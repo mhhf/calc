@@ -1,0 +1,21 @@
+% =============================================================================
+% will — Weighted Intuitionistic Linear Logic (TODO_0292 / TODO_0297)
+% =============================================================================
+%
+% The measure-class calculus (THY_0026): gill's graded surface, read under
+% the unnormalized measure semiring (ℚ≥0, ·, +) — weights multiply along a
+% derivation, alternatives aggregate by sum (exact mass) or PRF sample,
+% never by an order prune. The surface is INHERITED, not copied: @extends
+% gill is the first cross-calculus chain (meta-parser loadChain merges the
+% constructor and sort-edge tables), so will declares only what is
+% will-OWN — and at P0 that is nothing. woplus, the graded monad/bang,
+% haul, stamps and windows all arrive from gill; the ∃_ρ graded
+% existential (M1) and @w constructor priors land in later phases.
+%
+% Weight discipline (D5): woplus grades stay fenced to [0,1] — THY_0021's
+% normalized binary reading is unchanged. Unnormalized ℚ≥0 masses enter as
+% @w PRIOR annotations on constructors, renormalized when a superposition
+% expands (ratios in, probabilities out); the weight SORT never widens.
+
+@family will.
+@extends gill.

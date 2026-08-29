@@ -1,0 +1,29 @@
+#import(../../prelude/measure.will)
+
+% tokens (closed-world sort checking: every symbol is declared)
+log: type.
+bundle: type.
+food: type.
+rotten: type.
+
+% inherit.will — will executable spec: the inherited graded surface
+% (TODO_0297 P0). Every connective here arrives from gill via will.calc's
+% @extends chain — counted parcels, the graded monad, windows, stamps.
+% The scenarios are till/gill ground truth (grades.ill, spoilage.ill)
+% re-run under will's config: inheritance means the SAME behavior.
+
+% counted parcels (D4): 5 logs -> two bundles + residual cohort of 1
+pair: !_2 log -o { bundle }.
+
+#expect_pair_residual (settle: 0)
+  !_5 log
+  =>
+  !_1 log * !_2 bundle .
+
+% graded monad delay + after-window: spoil fires at exactly Q+2
+spoil: food@Q * after (Q + 2) -o { rotten }.
+
+#expect_rots_at_two (settle: 5)
+  food
+  =>
+  rotten@2 .

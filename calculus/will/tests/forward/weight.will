@@ -1,0 +1,41 @@
+#import(../../prelude/measure.will)
+
+% tokens (closed-world sort checking: every symbol is declared)
+a: type.
+b: type.
+c: type.
+d: type.
+win: type.
+lose: type.
+
+% weight.will — will executable spec: woplus under will (TODO_0297 P0).
+% `A +[Q] B` = A with probability Q, B with 1−Q (THY_0021 — the weight
+% grade routes to weightGrades in the by-sort registry). The DEGENERATE
+% ends are chooser-independent: Q=1 always takes the left branch, Q=0
+% always the right — mass conservation leaves the other branch weight 0,
+% so the PRF draw cannot select it. Distributional behavior (unbiased
+% sampling, mass adequacy) is engine ground truth in the till suites;
+% these specs pin only what is deterministic.
+
+sure:  a -o { b +[1] c }.
+never: d -o { win +[0] lose }.
+
+#expect_left_at_one (settle: 0)
+  a
+  =>
+  b .
+
+#expect_not_right_at_one (settle: 0)
+  a
+  =>
+  c .
+
+#expect_right_at_zero (settle: 0)
+  d
+  =>
+  lose .
+
+#expect_not_left_at_zero (settle: 0)
+  d
+  =>
+  win .

@@ -44,13 +44,14 @@ const GILL_PRELUDE = path.join(import.meta.dirname, 'prelude/num.gill');
 // fence shape (a transport cost is any nonnegative rational). Sort EDGES
 // on the numeric tower live in logic files (prelude/num.gill), never here.
 const _fp = (h) => ratParts(h);
+const gillFences = {
+  delay: (h) => { const p = _fp(h); return !!p && p[0] >= 0n; },
+  count: (h) => { const p = _fp(h); return !!p && p[0] >= 0n && p[1] === 1n; },
+  weight: (h) => { const p = _fp(h); return !!p && p[0] >= 0n && p[0] <= p[1]; },
+  dist: (h) => { const p = _fp(h); return !!p && p[0] >= 0n; },
+};
 const { connectives: gillConnectives, sorts: gillSorts } = makeCalcTables(GILL_CALC, {
-  fences: {
-    delay: (h) => { const p = _fp(h); return !!p && p[0] >= 0n; },
-    count: (h) => { const p = _fp(h); return !!p && p[0] >= 0n && p[1] === 1n; },
-    weight: (h) => { const p = _fp(h); return !!p && p[0] >= 0n && p[0] <= p[1]; },
-    dist: (h) => { const p = _fp(h); return !!p && p[0] >= 0n; },
-  },
+  fences: gillFences,
 });
 
 // ── distGrades — the (min,+) transport-cost instance (TODO_0284 P3) ──
@@ -244,5 +245,8 @@ const loadGillSequent = makeSequentLoader({
   fire: { stampTag: 'at', le: 'le', lt: 'lt', sub: 'qsub' },
 });
 
-export { gillCalculusConfig, gillConnectives, gillTheory, loadGillSequent, distGrades, weightGrades, gillGradeRegistry, gradeAlgebraFor };
+// gillFences/gillFFIFace: the layer pieces will composes (TODO_0292 M2 —
+// gill exports its layer table; will's config references, never copies).
+const gillFFIFace = _face;
+export { gillCalculusConfig, gillConnectives, gillTheory, loadGillSequent, distGrades, weightGrades, gillGradeRegistry, gradeAlgebraFor, gillFences, gillFFIFace };
 export default gillCalculusConfig;
