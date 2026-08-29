@@ -179,8 +179,10 @@ function makeTheory({ preludeFile, META, getConfig }) {
   };
 }
 
-/** Forward-rule parser over a .calc constructor table (graded syntax). */
-function makeForwardParserBuilder(calcFile, gradeUnit) {
+/** Forward-rule parser over a .calc constructor table (graded syntax).
+ *  `extraOpts` = per-calculus grammar opt-ins (will: binderSorts — the
+ *  ∃_ρ sorted binder). */
+function makeForwardParserBuilder(calcFile, gradeUnit, extraOpts = {}) {
   return () => buildParser(calculus.load(calcFile).constructors, {
     binders: { exists: 'exists', forall: 'forall' },
     multiCharFreevars: true,
@@ -190,6 +192,7 @@ function makeForwardParserBuilder(calcFile, gradeUnit) {
     forwardRules: true,
     binaryNormalization: true,
     gradeUnit,
+    ...extraOpts,
   });
 }
 

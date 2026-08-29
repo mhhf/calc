@@ -61,7 +61,9 @@ const willTheory = makeTheory({
   getConfig: () => willCalculusConfig,
 });
 
-const willBuildParser = makeForwardParserBuilder(WILL_CALC, tillGradeUnit);
+// binderSorts: the ∃_ρ sorted binder (`exists X: s @w. A`) — will-only
+// grammar opt-in (M1); till/gill parsers are untouched.
+const willBuildParser = makeForwardParserBuilder(WILL_CALC, tillGradeUnit, { binderSorts: true });
 
 const willCalculusConfig = {
   // ── L0: Kernel init — shared with gill (same Store tags + theories) ──

@@ -19,3 +19,12 @@
 
 @family will.
 @extends gill.
+
+% ∃_ρ — the weight-graded existential (M1, P3). Surface `exists X: s @w. A`
+% parses (will-only binder rule) to superpose(s, exists(A)): the sort
+% names the domain whose constructor-declared @w weights grade the
+% choice; the inner exists carries the de Bruijn binder (kernel binder
+% machinery untouched). A suspended superpose-fact IS the wave — plain
+% settle leaves it inert; the decimation driver collapses it (D4: plain
+% `exists X. A` stays a skolem even under the driver).
+superpose: sort -> formula -> formula.
