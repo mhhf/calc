@@ -28,7 +28,9 @@ import { buildTimedConfig } from '../../lib/engine/timed/timed.js';
 import { ratParts } from '../../lib/engine/theories/ratlit-theory.js';
 import { add as ratAdd, cmp as ratCmp } from '../../lib/rat.js';
 import { tillGrades } from '../../calculus/till/calculus-config.js';
-import gillConfig, { distGrades, gillGradeRegistry, gradeAlgebraFor } from '../../calculus/gill/calculus-config.js';
+import gillConfig, { distGrades, gillGradeRegistry, gradeAlgebraFor, loadGillSequent } from '../../calculus/gill/calculus-config.js';
+import { createKernel } from '../../lib/prover/kernel.js';
+import { certifyRun } from '../../lib/prover/timed/elaborate-trace.js';
 
 // ── seeded PRNG (mulberry32 — deterministic graphs) ──
 function prng(seed) {
@@ -180,5 +182,36 @@ describe('gill grade registry (P3)', () => {
     const got = settleDistances(g, path.join(tmp, 'diamond-dist.gill'),
       { ...gillConfig, grades: distGrades });
     assert.deepEqual(got, [[0n, 1n], [3n, 1n], [5n, 1n], [6n, 1n]]);
+  });
+});
+
+describe('gill certified run (TODO_0296 P2 — the verification face is generic)', () => {
+  it('the diamond depot run elaborates and fully kernel-verifies under gill', () => {
+    // The genericity claim made executable: gill binds fire: in its
+    // loader (same additive ⊕/⊖ stamp shape as till), the depot trace —
+    // READ node tokens, one-shot roads, cost-as-delay — elaborates into
+    // an @fire chain, and gill's OWN kernel re-derives it. Until this
+    // test, "generic over till/gill" was aspirational.
+    const g = { n: 4, edges: [
+      { u: 0, v: 1, w: [3n, 1n] }, { u: 1, v: 3, w: [4n, 1n] },
+      { u: 0, v: 2, w: [5n, 1n] }, { u: 2, v: 3, w: [1n, 1n] },
+    ] };
+    const file = path.join(tmp, 'diamond-cert.gill');
+    fs.writeFileSync(file, graphProgram(g));
+    const engineCalc = mde.load(file, { calculusConfig: gillConfig, cache: false });
+    const seqCalc = loadGillSequent();
+    assert.ok(seqCalc.fire && seqCalc.stepCheckers, 'gill must bind the fire checker');
+    const kernel = createKernel(seqCalc);
+    const linear = { [Store.put('atom', ['n0'])]: 1 };
+    g.edges.forEach((_, i) => { linear[Store.put('atom', [`e${i}`])] = 1; });
+    const horizonTerm = Store.child(seqCalc.parse('x@13'), 1);
+    const r = certifyRun({
+      engineCalc, calculus: seqCalc, kernel,
+      state: { linear, persistent: {} },
+      horizon: '13', horizonTerm,
+      settleOpts: { maxSteps: 1000 },
+    });
+    assert.equal(r.verdict, 'certified', r.reason || (r.errors || []).join('; '));
+    assert.ok(r.events.length >= 4, 'all four edges relax');
   });
 });

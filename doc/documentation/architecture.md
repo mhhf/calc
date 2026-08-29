@@ -69,8 +69,17 @@ lib/prover/                      # Backward proof search
 ├── state.js                     # shared: FocusedProofState class
 ├── pt.js                        # shared: ProofTree class
 ├── rule-interpreter.js          # shared: builds rule specs from .rules descriptors
+├── bridge.js                    # lax-monad mode switch (backward ↔ forward);
+│                                #   timed bridge ELABORATES traces (TODO_0294)
+├── sld-check.js                 # SLD certificate checker — clause derivations
+│                                #   checked by slot-matching, never trusted (0295)
+├── timed/                       # timed verification face (generic over till/gill)
+│   ├── fire-check.js            # @fire step checker (config-bound via stepCheckers)
+│   └── elaborate-trace.js       # settle events → kernel-checked @fire trees;
+│                                #   programFromCalc, certifyRun
 ├── generic-term.js              # proof term extraction from backward proof trees
-├── guided-term.js               # forward trace → complete ILL proof terms
+├── ill/guided-term.js           # forward trace → complete ILL proof terms
+│                                #   (self-registers as the bridge's guided builder)
 ├── check-term.js                # proof term type checker (trusted kernel extension)
 └── index.js                     # convenience re-exports
 
@@ -80,13 +89,18 @@ lib/engine/                      # Forward execution engine (L4c/L4d)
 ├── strategy.js                  # rule selection: strategy stack builder
 ├── forward.js                   # committed-choice main loop
 ├── explore.js                   # exhaustive DFS exploration + mutation/undo
-├── timed.js                     # timed scheduler: settle, tryTimedMatch (B&B),
-│                                #   settleExplore (POR), fire, choosers
-├── timed-game.js                # external choice: withProject (choose), menuStatus
-├── timed-views.js               # read-only views: observable/pending/inFlight,
-│                                #   timedSubset/timedExact (#expect harness checks)
-├── timed-lint.js                # D16 productivity lint (static Zeno warning)
-├── timed-render.js              # trace/timeline/provenance renderers (settle events)
+├── timed/                       # timed layer (wall-clock scheduler over stamps)
+│   ├── timed.js                 # settle, tryTimedMatch (B&B), settleExplore (POR)
+│   ├── timed-game.js            # external choice: withProject (choose), menuStatus
+│   ├── timed-views.js           # read-only views: observable/pending/inFlight,
+│   │                            #   timedSubset/timedExact (#expect harness checks)
+│   ├── timed-lint.js            # D16 productivity lint + C1/C2/C3 advisories
+│   ├── timed-render.js          # trace/timeline/provenance renderers (settle events)
+│   ├── certify.js               # T2-applicability certifier (certifyContention)
+│   ├── accel.js                 # orbit detection + state jumping (accelerate opt)
+│   ├── coalesce.js              # cohort merging
+│   ├── covariance.js            # shift-degree analysis (rebase safety)
+│   └── dirty-sched.js           # dirty-tracking scheduler
 ├── formula-utils.js             # connective-aware decomposition (roles, flattenAnte)
 ├── fact-set.js                  # FactSet (index-policy pluggable) + Arena undo log
 ├── grades.js                    # grade atoms (g0/gw) helpers
@@ -172,12 +186,14 @@ Given a proof tree, answers "is this valid?" No search, no strategy, no heuristi
 
 ```javascript
 createKernel(calculus) → {
-  verifyStep(conclusion, rule, premises) → { valid, error? }        // shape only
-  verifyTree(tree) → { valid, errors[], unverified?: string[] }     // shape + resources
+  verifyStep(conclusion, rule, premises, state?, opts?) → { valid, error? }  // shape only
+  verifyTree(tree, opts?) → { valid, errors[], unverified?: string[] }       // shape + resources
 }
+// opts.program: the program's declared rule data — required for @fire steps
+// (calculus.stepCheckers routes custom step checkers; the kernel stays timed-blind)
 ```
 
-Rule verification uses `rule-interpreter.js` to compute expected premises from the rule descriptor. `verifyTree` additionally re-threads the prover's lazy delta discipline (premise context = rule intro ⊎ sub-multiset of the unconsumed pool; leftovers flow through siblings; root leftover must be empty), so context-leaking forgeries are rejected. Steps it cannot re-derive are accepted but reported in `unverified` (`'modeSwitch'` bridge steps, `'binding'` fresh-eigenvariable steps); full verification = `valid && !unverified`.
+Rule verification uses `rule-interpreter.js` to compute expected premises from the rule descriptor. `verifyTree` additionally re-threads the prover's lazy delta discipline (premise context = rule intro ⊎ sub-multiset of the unconsumed pool; leftovers flow through siblings; root leftover must be empty), so context-leaking forgeries are rejected. Steps it cannot re-derive are accepted but reported in `unverified` (`'modeSwitch'` bridge steps — only for calculi without a bound fire checker — and `'binding'` fresh-eigenvariable steps); full verification = `valid && !unverified`.
 
 **Proof term checker** (`check-term.js`): Trusted kernel extension for Curry-Howard proof terms. Verifies `Gamma; Delta |- t : A` via per-rule checker map generated from descriptors at load time. Includes focused loli_l (2-subterm) for guided execution terms. See `doc/documentation/proof-terms.md`.
 
