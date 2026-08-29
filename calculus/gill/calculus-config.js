@@ -238,6 +238,10 @@ const gillCalculusConfig = {
 const loadGillSequent = makeSequentLoader({
   calcFile: GILL_CALC, rulesFile: GILL_RULES,
   gradeUnit: tillGradeUnit, theory: gillTheory,
+  // @fire wiring (TODO_0296 P2 — the verification face's genericity
+  // proof): gill's settleable stamp axes (delay, dist) share till's
+  // additive ⊕/⊖ residual shape, so the same checker names apply.
+  fire: { stampTag: 'at', le: 'le', lt: 'lt', sub: 'qsub' },
 });
 
 export { gillCalculusConfig, gillConnectives, gillTheory, loadGillSequent, distGrades, weightGrades, gillGradeRegistry, gradeAlgebraFor };

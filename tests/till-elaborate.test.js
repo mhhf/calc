@@ -329,6 +329,25 @@ r2: b -o { c }@3.
     assert.equal(r.verdict, 'certified', r.reason || (r.errors || []).join('; '));
     assert.equal(r.events.length, 2);
   });
+
+  it('certifies a run with READ premises (adaptRule must not double-demand)', () => {
+    // Regression (TODO_0296 P2, found by gill's depot certification):
+    // read premises live inside antecedent.linear — adaptRule expanded
+    // them into consume AND read, so the checker demanded the read token
+    // twice and every read-rule certification failed.
+    const calc = loadProgram('cert-read.till', `
+a: type.  b: type.  g: type.
+r1: read g * a -o { b }@2.
+`);
+    const horizonTerm = Store.child(seqCalc.parse('x@10'), 1);
+    const r = certifyRun({
+      engineCalc: calc, calculus: seqCalc, kernel,
+      state: { linear: { [atom('a')]: 1, [atom('g')]: 1 }, persistent: {} },
+      horizon: '10', horizonTerm,
+    });
+    assert.equal(r.verdict, 'certified', r.reason || (r.errors || []).join('; '));
+    assert.equal(r.events.length, 1);
+  });
 });
 
 describe('sld-check undo discipline (TODO_0296 P0)', () => {

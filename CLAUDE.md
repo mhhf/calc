@@ -34,7 +34,10 @@ npm run build:bundle  # Regenerate out/ill.json from calculus specs
 npm test              # All fast tests (2035 tests, ~4s) — RUN THIS DURING DEVELOPMENT
 npm run test:bun      # Same suite under bun (per-file isolation via tools/test-bun.sh)
 npm run test:ill      # ILL-native tests (98 tests, ~0.2s) — .ill files as provability judgments
+npm run test:till     # till executable specs (forward/debug directives)
+npm run test:gill     # gill executable specs (incl. depot shortest-path)
 npm run test:noffi    # noFFI adversarial soundness (13 tests, ~1s) — only after engine/FFI changes
+npm run test:noffi:till  # till noFFI arm (also test:noffi:gill) — after engine/FFI changes
 npm run test:zk       # ZK witness tests (94 tests) — only after ZK changes
 npm run test:heavy    # Slow + drift tests (~a DAY) — never run inline; Denis schedules it overnight
 npm run test:all      # Everything combined (includes test:ill)
@@ -100,7 +103,11 @@ lib/
 │   │   ├── timed-render.js # #trace/#timeline/#why debug renderings
 │   │   ├── timed-lint.js  # D16 Zeno warning + timedAdvice: C1 chain-collapse, C2 Hypothesis-S (menu-exempt), C3 whole-bind arrivals
 │   │   ├── certify.js     # T2-applicability certifier: structural / monotone-relaxation pairwise check (calc.certifyContention)
-│   │   └── timed-views.js # timedSubset/timedExact state projections
+│   │   ├── timed-views.js # timedSubset/timedExact state projections
+│   │   ├── accel.js       # orbit detection + state jumping (accelerate opt)
+│   │   ├── coalesce.js    # cohort merging
+│   │   ├── covariance.js  # shift-degree analysis (rebase safety)
+│   │   └── dirty-sched.js # dirty-tracking scheduler
 │   ├── ill/             # ILL layer: ILL-specific logic (single assembly point: calculus-config.js)
 │   │   ├── calculus-config.js # Layered config (L0-L6) — ONLY ILL import in generic engine
 │   │   ├── backchain-ill.js # ILL defaults for backchainer (explicit initILL())
@@ -145,7 +152,7 @@ calculus/till/           # till — timed ILL (TODO_0265)
 
 calculus/gill/           # gill — graded ILL (TODO_0284): grade algebras as data; till frozen as the time instance
 ├── gill.calc            # till's graded surface + dist grade sort + haul `!!_d A` (graded transport comonad, @category comonad)
-├── gill.rules           # till.rules fragment + haul rules (fetch/dereliction/unit — the monad's spatial dual, same ⊖ premise)
+├── gill.rules           # till.rules fragment + haul rules (fetch/dereliction/unit — the monad's spatial dual, same ⊖ premise) + @fire (config-bound checker, TODO_0296: gill runs certify — see gill-dist.test.js depot certification)
 ├── calculus-config.js   # Assembly point: by-sort grade registry (delay→tillGrades, dist→distGrades, weight→weightGrades; gradeAlgebraFor), min/max tower collapse
 ├── prelude/num.gill     # Imports till's rat.ill; dist tower edges + collapsed min/max /q instances
 └── tests/               # gill executable specs incl. depot shortest-path (npm run test:gill / test:noffi:gill)

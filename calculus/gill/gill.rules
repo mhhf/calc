@@ -161,6 +161,18 @@ haul_r: G ; D |- !!_E A
   @pretty "!!R"
   @invertible false.
 
+% ── @fire (THY_0018 §5): one timed firing as a first-class step ──
+% Same discipline as till (TODO_0294/0296 P2): variable arity and the
+% forced-join side condition live in the config-bound fire checker
+% (lib/prover/timed/fire-check.js — calculus.stepCheckers via kit.js),
+% checked against the program's declared rule data + the theory
+% (le/lt/qsub over the additive stamp axes: delay AND dist share the ⊕/⊖
+% residual shape). Not enumerated in search (no principal); settle is the
+% strategy, the kernel is the judge.
+fire: G ; D |- C
+  @pretty "@fire"
+  @invertible false.
+
 % ── stamped atoms (THY_0018 §5): retiming, as a stamp-aware axiom ──
 
 at_l: G ; D, A@T1 |- A@T2
