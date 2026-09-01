@@ -461,3 +461,107 @@ mark: (r: lst) r -o { seen }.
 `), /cannot schema-expand.*cons|constructor member 'cons'/);
   });
 });
+
+describe('evidence discipline (T4-d(i), THY_0028) — single counting + certificate visibility', () => {
+  // Confluent programs; bias rules have persistent conclusions, which trip
+  // the conservative instant-feed branch check — 'seed' is exact here.
+  const OPTS = { mode: 'exact', settleBranching: 'seed' };
+  const HEAD = `#import(${MEASURE})
+cell: sort.
+k0: cell.
+src_t: sort.
+s1: src_t.
+s2: src_t.
+mk: (c: cell) -> type.
+tile: (c: cell) -> (t: tile_t) -> type.
+spawn: mk C -o { exists T: tile_t @w. tile C T }.
+`.replace('#import', `tile_t: sort.
+sea: tile_t @w 2.
+coast: tile_t @w 1.
+land: tile_t @w 2.
+#import`);
+  const init = (extra) => {
+    const linear = { [Store.put('mk', [atom('k0')])]: 1 };
+    for (const [n, c] of Object.entries(extra)) linear[atom(n)] = c;
+    return { linear, persistent: {} };
+  };
+
+  it('value-only bias facts UNDER-count independent evidence (fact-hash identity)', () => {
+    const calc = loadProg('t4d-a.will', HEAD + `
+obs1: type.
+obs2: type.
+bias: (x: tile_t) -> (c: tile_t) -> (w: q) -> type.
+r1: obs1 * $tile C X -o { !bias X sea 1/2 }.
+r2: obs2 * $tile C X -o { !bias X sea 1/2 }.
+`);
+    const r = calc.collapse(init({ obs1: 1, obs2: 1 }), OPTS);
+    assert.deepEqual(r.total, [4n, 1n]);           // 2·(1/2) + 1 + 2 — ONE factor
+  });
+
+  it('source-tagged bias facts count independent evidence once each (Thm 1)', () => {
+    const calc = loadProg('t4d-b.will', HEAD + `
+obs1: type.
+obs2: type.
+bias: (x: tile_t) -> (c: tile_t) -> (w: q) -> (s: src_t) -> type.
+r1: obs1 * $tile C X -o { !bias X sea 1/2 s1 }.
+r2: obs2 * $tile C X -o { !bias X sea 1/2 s2 }.
+`);
+    const r = calc.collapse(init({ obs1: 1, obs2: 1 }), OPTS);
+    assert.deepEqual(r.total, [7n, 2n]);           // 2·(1/2)·(1/2) + 1 + 2
+  });
+
+  it('idempotent re-derivation dedups: same rule, same source, fired twice', () => {
+    const calc = loadProg('t4d-d.will', HEAD + `
+obs: type.
+bias: (x: tile_t) -> (c: tile_t) -> (w: q) -> (s: src_t) -> type.
+r1: obs * $tile C X -o { !bias X sea 1/2 s1 }.
+`);
+    const r = calc.collapse(init({ obs: 2 }), OPTS);
+    assert.deepEqual(r.total, [4n, 1n]);
+  });
+
+  it('smuggling is numerically INVISIBLE but certificate-visible (Thm 2)', () => {
+    // C: ONE $-read observation feeds both rules — same total as B, but
+    // the bias fires' provenances overlap where B's are disjoint.
+    const calc = loadProg('t4d-c.will', HEAD + `
+obs: type.
+mk1: type.
+mk2: type.
+bias: (x: tile_t) -> (c: tile_t) -> (w: q) -> (s: src_t) -> type.
+r1: $obs * $tile C X * mk1 -o { !bias X sea 1/2 s1 }.
+r2: $obs * $tile C X * mk2 -o { !bias X sea 1/2 s2 }.
+`);
+    const r = calc.collapse(init({ obs: 1, mk1: 1, mk2: 1 }), OPTS);
+    assert.deepEqual(r.total, [7n, 2n], 'identical to the honest total — no numeric detection');
+
+    const provOf = (run) => {
+      const out = [];
+      for (const seg of run.trace.filter((t) => t.settle)) {
+        for (const ev of seg.settle) {
+          if (!/^r[0-9]/.test(ev.rule)) continue;
+          const toks = [...Object.keys(ev.consumed || {}), ...Object.keys(ev.reserved || {})]
+            .map((k) => {
+              let h = Number(k);
+              if (Store.tag(h) === 'at') h = Store.child(h, 0);
+              return Store.tag(h) === 'atom' ? Store.child(h, 0) : Store.tag(h);
+            })
+            .filter((n) => /^obs/.test(n));
+          out.push(toks.sort().join(','));
+        }
+      }
+      return out.sort();
+    };
+    const smuggled = provOf(calc.collapse(init({ obs: 1, mk1: 1, mk2: 1 }), { seed: 0, trace: true }));
+    assert.deepEqual(smuggled, ['obs', 'obs'], 'overlapping provenance exhibited');
+
+    const honest = loadProg('t4d-b2.will', HEAD + `
+obs1: type.
+obs2: type.
+bias: (x: tile_t) -> (c: tile_t) -> (w: q) -> (s: src_t) -> type.
+r1: obs1 * $tile C X -o { !bias X sea 1/2 s1 }.
+r2: obs2 * $tile C X -o { !bias X sea 1/2 s2 }.
+`);
+    const disjoint = provOf(honest.collapse(init({ obs1: 1, obs2: 1 }), { seed: 0, trace: true }));
+    assert.deepEqual(disjoint, ['obs1', 'obs2'], 'disjoint provenance in the honest program');
+  });
+});
