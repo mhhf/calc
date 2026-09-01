@@ -1,32 +1,35 @@
 #import(../prelude/measure.will)
 
 % =============================================================================
-% WFC.will — wave function collapse as a will program (TODO_0297 P1).
+% WFC.will — wave function collapse on the ∃_ρ + bias surface (TODO_0298).
 % =============================================================================
 %
-% The zero-engine-change encoding (0292 L2): a 1D "beach" of 4 cells over
-% tiles {sea, coast, land} with the classic constraint sea–land never
-% adjacent. The wave is REIFIED as linear state: `dom C M` holds cell C's
-% remaining domain as a binlit bitmask (sea=1, coast=2, land=4).
+% A 1D "beach" of 4 cells over tiles {sea, coast, land}, priors 2:1:2,
+% with the classic constraint sea–land never adjacent. This is the P3
+% surface the P1 version hand-compiled: each cell's wave IS the graded
+% existential —
 %
-%   propagation = ordinary forward rules shrinking M (bit test = div/mod
-%                 parity, bit clear = qsub) — AC-style arc consistency
-%   collapse    = woplus consequents over the remaining members, weights
-%                 = priors renormalized over the mask (hand-expanded per
-%                 mask here; the ∃_ρ existential generates these in P3)
-%   decimation  = the 'entropy' chooser (M5): deterministic rules (H=0 —
-%                 propagation, singleton domains) fire before weighted
-%                 draws, tighter distributions before wider ones, so
-%                 propagate-then-collapse-min-entropy IS the tie policy
-%   contradiction = `dom C 0` quiescent (no rule consumes mask 0) — a
-%                 visible leaf; restart/backtrack drivers arrive in P2
-%                 (this 1D constraint set is arc-consistent, no dead end)
+%   spawn: mk C -o { exists T: tile_t @w. tile C T }.
 %
-% Priors 2:1:2 (sea:coast:land). Committed-choice caveat: `!forbid T T'`
-% must be single-valued per T (it is — sea↔land only). `prop` re-produces
-% dom at zero delay, but the D16 lint recognizes the strict-measure shape
-% (qsub of a tested bit — the mask strictly shrinks, bounded below by 0)
-% and stays quiet: the zero-delay cycle is finite, not Zeno (TODO_0298).
+% suspended under plain settle (D4 opt-in), opened and drawn by the
+% decimation driver (calc.collapse; interactively: the shell's collapse
+% mode, npm run shell:will -- calculus/will/game/WFC.will). Constraint
+% propagation is the BIAS DISCIPLINE (M8): a collapsed cell derives
+% `!bias E T' 0` against its neighbor's still-open wave evar, and the
+% posterior renormalizes automatically — no dom bitmask, no per-mask
+% woplus weight table. (The old mask-shrinking propagation shape lives
+% on as the D16 strict-measure pin in tests/engine/will-wfc.test.js.)
+%
+% Decimation order (M5, min entropy): a biased wave has fewer live
+% members than an open one, so propagate-then-collapse-tightest-first
+% IS the draw policy. Contradiction (zero posterior mass) restarts
+% sample runs (M9); this 1D constraint set is arc-consistent, so no
+% dead end is reachable.
+%
+% Bias rules need a LINEAR trigger (a persistent-conclusion $-rule
+% Zeno-loops): `guard C C'` tokens, one per ORDERED adjacent pair, are
+% spent when the C-side collapses. The symmetric pair covers both
+% collapse orders; a guard whose forbid never fires is honest residue.
 
 % ── sorts and members ──
 pos: sort.
@@ -35,63 +38,38 @@ c1: pos.
 c2: pos.
 c3: pos.
 
-% Constructor priors (@w, D5/M6): unnormalized ratios — 2:1:2. At P1
-% these are DATA (calc.priors + the T2 lint); the hand-expanded clp
-% weights below must agree with them (renormalized per mask) until P3's
-% ∃_ρ derives the woplus trees from these annotations.
 tile_t: sort.
 sea: tile_t @w 2.
 coast: tile_t @w 1.
 land: tile_t @w 2.
 
 % ── predicates ──
+mk: (c: pos) -> type.
 tile: (c: pos) -> (t: tile_t) -> type.
-dom: (c: pos) -> (m: bin) -> type.
-adj: (a: pos) -> (b: pos) -> type.
+guard: (a: pos) -> (b: pos) -> type.
 forbid: (a: tile_t) -> (b: tile_t) -> type.
-tbit: (t: tile_t) -> (b: bin) -> type.
+bias: (x: tile_t) -> (c: tile_t) -> (w: q) -> type.
 
-% ── the world: adjacency (both directions), constraint, tile bits ──
-adj/01: adj c0 c1.
-adj/10: adj c1 c0.
-adj/12: adj c1 c2.
-adj/21: adj c2 c1.
-adj/23: adj c2 c3.
-adj/32: adj c3 c2.
-
+% ── the constraint: sea and land never adjacent (symmetric) ──
 forbid/sl: forbid sea land.
 forbid/ls: forbid land sea.
 
-tbit/s: tbit sea 1.
-tbit/c: tbit coast 2.
-tbit/l: tbit land 4.
+% ── the wave: one ∃_ρ per cell ──
+spawn: mk C -o { exists T: tile_t @w. tile C T }.
 
-% ── propagation: a collapsed neighbor clears forbidden bits ──
-% bit test: (M div B) mod 2 = 1 ⟺ bit B set; clear: M' = M − B.
-prop: $tile C T * dom C' M
-  * !adj C C' * !forbid T T' * !tbit T' B
-  * !div M B Q * !mod Q 2 R * !eq R 1
-  * !qsub M B M'
-  -o { dom C' M' }.
+% ── propagation = bias derivation ──
+% When C's tile is ground and forbids T' next door, bias the neighbor's
+% wave evar X to zero. Until C collapses, `!forbid T T'` fails on the
+% evar (no fact matches an opaque unknown) and the guard waits.
+constrain: guard C C' * $tile C T * !forbid T T' * $tile C' X
+  -o { !bias X T' 0 }.
 
-% ── collapse: one rule per reachable mask, weights = renormalized priors ──
-% mask 7 {sea,coast,land} 2:1:2 → sea 2/5, coast 1/5, land 2/5
-clp7: dom C 7 -o { tile C sea +[2/5] (tile C coast +[1/3] tile C land) }.
-% mask 6 {coast,land} 1:2
-clp6: dom C 6 -o { tile C coast +[1/3] tile C land }.
-% mask 5 {sea,land} 2:2
-clp5: dom C 5 -o { tile C sea +[1/2] tile C land }.
-% mask 3 {sea,coast} 2:1
-clp3: dom C 3 -o { tile C sea +[2/3] tile C coast }.
-% singleton masks: forced (H = 0, fires with propagation priority)
-clp4: dom C 4 -o { tile C land }.
-clp2: dom C 2 -o { tile C coast }.
-clp1: dom C 1 -o { tile C sea }.
-
-% ── initial wave: all four cells fully open (the shell's entry state;
-%    the assertion — no cell ever hits the mask-0 contradiction — holds
-%    for every seed on this arc-consistent constraint set) ──
+% ── entry (the shell's initial state; plain settle only SUSPENDS —
+%    the D4 inertness pin: no tile is ever ground without the driver) ──
 #expect_not_contradiction (settle: 0)
-  dom c0 7 * dom c1 7 * dom c2 7 * dom c3 7
+  mk c0 * mk c1 * mk c2 * mk c3
+  * guard c0 c1 * guard c1 c0
+  * guard c1 c2 * guard c2 c1
+  * guard c2 c3 * guard c3 c2
   =>
-  dom c0 0 .
+  tile c0 sea .

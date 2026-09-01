@@ -43,3 +43,33 @@ describe('till-shell --demo (scripted, headless)', () => {
     assert.match(out, /0 spc_s\s+0 farm_s\s+0 wood_s/, 'state untouched');
   });
 });
+
+describe('till-shell collapse mode (TODO_0298, scripted headless)', () => {
+  const WFC = path.join(ROOT, 'calculus/will/game/WFC.will');
+  const runWfc = (args) => new Promise((resolve, reject) => {
+    execFile('node', [path.join(ROOT, 'tools/till-shell.js'), WFC, ...args],
+      { cwd: ROOT, timeout: 30000 }, (err, stdout, stderr) => {
+        if (err) reject(new Error(`shell failed: ${err.message}\n${stderr}\n${stdout}`));
+        else resolve(stdout);
+      });
+  });
+
+  it('auto-detects suspended waves, draws to ground, frames show the wave menu', async () => {
+    const out = await runWfc(['--demo', 'a,a,a,a', '--seed', '3']);
+    // wave menu with the evar rendered as ? and posterior weights
+    assert.match(out, /waves \(entropy-sorted — \[1\] is the driver's pick\):/);
+    assert.match(out, /tile\(c\d, \?\)/, 'open wave facts render with a hole');
+    // four auto draws reach ground
+    assert.match(out, /waves: none — GROUND/);
+    // the log carries member + exact weight per draw
+    assert.match(out, /log: \w+ \d+\/\d+( → \w+ \d+\/\d+){3}/);
+  });
+
+  it('a bias-pruned wave shows fewer members and sorts first', async () => {
+    // seed 3 draws coast then land (smoke-pinned): after the land draw the
+    // biased neighbor lists only coast · land and leads the menu
+    const out = await runWfc(['--demo', 'a,a', '--seed', '3']);
+    assert.match(out, /\[1\] tile\(c\d, \?\)@?\d*\s+—\s+coast 1 · land 2\s+H=/,
+      'pruned wave (sea excluded) leads the menu');
+  });
+});

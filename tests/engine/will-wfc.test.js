@@ -86,33 +86,39 @@ tight: s3 -o { u +[1/10] v }.
   });
 });
 
-describe('WFC.will — the collapse loop assembles a valid beach', () => {
+describe('WFC.will — the ∃_ρ + bias surface assembles a valid beach (TODO_0298)', () => {
   let calc;
   before(() => {
     calc = mde.load(WFC, { calculusConfig: willConfig, cache: false });
   });
-  const initial = () => ({
-    linear: {
-      [Store.put('dom', [atom('c0'), bin(7n)])]: 1,
-      [Store.put('dom', [atom('c1'), bin(7n)])]: 1,
-      [Store.put('dom', [atom('c2'), bin(7n)])]: 1,
-      [Store.put('dom', [atom('c3'), bin(7n)])]: 1,
-    },
-    persistent: {},
+  const CELLS = ['c0', 'c1', 'c2', 'c3'];
+  const initial = () => {
+    const linear = {};
+    for (const c of CELLS) linear[Store.put('mk', [atom(c)])] = 1;
+    for (let i = 0; i < 3; i++) {
+      linear[Store.put('guard', [atom(CELLS[i]), atom(CELLS[i + 1])])] = 1;
+      linear[Store.put('guard', [atom(CELLS[i + 1]), atom(CELLS[i])])] = 1;
+    }
+    return { linear, persistent: {} };
+  };
+
+  it('plain settle only suspends (D4): four waves, no ground tile', () => {
+    const res = calc.settle(initial(), 0, { maxSteps: 100 });
+    assert.ok(res.quiescent);
+    const fs_ = facts(res.state);
+    assert.equal(fs_.filter((f) => f.pred === 'superpose').length, 4);
+    assert.equal(fs_.filter((f) => f.pred === 'tile').length, 0);
   });
 
-  it('every seed: quiescent, fully collapsed, constraint holds', () => {
-    const CELLS = ['c0', 'c1', 'c2', 'c3'];
+  it('every seed: ground, no restarts (arc-consistent), constraint holds, all tiles occur', () => {
     const seen = new Set();
     for (let seed = 0; seed < 40; seed++) {
-      const res = calc.settle(initial(), 0, { seed, maxSteps: 500 });
-      assert.ok(res.quiescent, `seed ${seed}: not quiescent`);
-      const fs_ = facts(res.state);
-      assert.ok(!fs_.some((f) => f.pred === 'dom'), `seed ${seed}: dom residue`);
-      const tiles = fs_.filter((f) => f.pred === 'tile');
-      assert.equal(tiles.length, 4, `seed ${seed}: expected 4 tiles`);
+      const r = calc.collapse(initial(), { seed });
+      assert.ok(r.ground, `seed ${seed}: not ground`);
+      assert.equal(r.attempts, 0, `seed ${seed}: restarted on an arc-consistent set`);
+      assert.equal(r.collapses.length, 4, `seed ${seed}: expected 4 draws`);
       const byCell = {};
-      for (const t of tiles) byCell[t.args[0]] = t.args[1];
+      for (const f of facts(r.state)) if (f.pred === 'tile') byCell[f.args[0]] = f.args[1];
       assert.deepEqual(Object.keys(byCell).sort(), CELLS, `seed ${seed}: one tile per cell`);
       for (let i = 0; i < 3; i++) {
         const pair = [byCell[CELLS[i]], byCell[CELLS[i + 1]]].sort().join('-');
@@ -126,21 +132,56 @@ describe('WFC.will — the collapse loop assembles a valid beach', () => {
       'across seeds all three tiles should occur');
   });
 
-  it('decimation order: after a propagating collapse, the shrunk neighbor collapses before any full-domain cell', () => {
-    for (const seed of [0, 3, 11, 29]) {
-      const res = calc.settle(initial(), 0, { seed, maxSteps: 500, keepEvents: true });
-      const ev = res.events.map((e) => e.rule);
-      // Whenever a prop fired, some non-clp7 collapse must precede any
-      // LATER clp7 (the shrunk domain has strictly lower entropy).
-      const firstProp = ev.indexOf('prop');
-      if (firstProp === -1) continue;
-      const rest = ev.slice(firstProp + 1);
-      const nextClp = rest.find((r) => r.startsWith('clp'));
-      if (nextClp !== undefined) {
-        assert.notEqual(nextClp, 'clp7',
-          `seed ${seed}: full-domain cell collapsed before the shrunk neighbor (${ev.join(',')})`);
+  it('propagation shows in the posteriors: bias-pruned draws (total 3) occur across seeds', () => {
+    // bias-free wave total = 2+1+2 = 5; a pruned neighbor totals 3
+    let sawPruned = false;
+    for (let seed = 0; seed < 12 && !sawPruned; seed++) {
+      const r = calc.collapse(initial(), { seed });
+      if (r.collapses.some((c) => c.total[0] === 3n && c.total[1] === 1n)) sawPruned = true;
+    }
+    assert.ok(sawPruned, 'no sampled run ever drew from a pruned posterior');
+  });
+
+  it('stepwise (shell face): forcing c0 = sea prunes land from c1', () => {
+    const session = { state: initial(), waveMap: new Map(), skolemSet: new Set() };
+    let waves = calc.collapseView(session);
+    assert.equal(waves.length, 4);
+    const cellOf = (w) => {
+      for (const k of Object.keys(session.state.linear)) {
+        let h = Number(k);
+        if (Store.tag(h) === 'at') h = Store.child(h, 0);
+        if (Store.tag(h) === 'tile' && Store.child(h, 1) === w.e) {
+          return Store.child(Store.child(h, 0), 0);
+        }
+      }
+      return null;
+    };
+    const w0 = waves.find((w) => cellOf(w) === 'c0');
+    const rec = calc.collapseDraw(session, w0, { member: 'sea' });
+    assert.equal(rec.member, 'sea');
+    assert.deepEqual(rec.weight, [2n, 1n]);
+    waves = calc.collapseView(session);                  // re-settles: constrain fires
+    const w1 = waves.find((w) => cellOf(w) === 'c1');
+    const { members, weights, total } = w1.posterior;
+    assert.equal(weights[members.indexOf('land')][0], 0n, 'land must be bias-pruned');
+    assert.deepEqual(total, [3n, 1n]);
+    // the pruned wave now sorts FIRST (min entropy — the driver's pick)
+    assert.equal(cellOf(waves[0]), 'c1');
+  });
+
+  it('exact mode realizes the constrained measure: no forbidden beach has mass', () => {
+    const r = calc.collapse(initial(), { mode: 'exact' });
+    for (const o of r.outcomes) {
+      const byCell = {};
+      for (const f of facts(o.state)) if (f.pred === 'tile') byCell[f.args[0]] = f.args[1];
+      for (let i = 0; i < 3; i++) {
+        const pair = [byCell[CELLS[i]], byCell[CELLS[i + 1]]].sort().join('-');
+        assert.notEqual(pair, 'land-sea', 'forbidden beach carries mass');
       }
     }
+    // T1 sanity: some mass survives and less than the unconstrained 5⁴
+    assert.ok(r.total[0] > 0n);
+    assert.ok(r.total[0] < 625n * r.total[1]);
   });
 });
 
@@ -152,9 +193,21 @@ describe('D16 strict-measure refinement (TODO_0298) — measured self-loops are 
     return mde.load(f, { calculusConfig: willConfig, cache: false });
   };
 
-  it("WFC's prop (bit-test + qsub) loads with no self-cycle advisory", () => {
+  it('the bit-test idiom (div/mod/eq + qsub of the set bit) silences the advisory', () => {
+    // the old WFC propagation shape, kept as the D16 bit-test pin
+    const calc = load('bittest.will', `
+dm: (m: q) -> type.
+bt: (b: q) -> type.
+prop: dm M * $bt B * !div M B Q * !mod Q 2 R * !eq R 1 * !qsub M B M' -o { dm M' }.
+`);
+    assert.deepEqual(calc.timedLint, []);
+  });
+
+  it('the modernized WFC loads with no advisory', () => {
     const calc = mde.load(WFC, { calculusConfig: willConfig, cache: false });
     assert.deepEqual(calc.timedLint, []);
+    assert.ok(!calc.timedAdvice.some((a) => a.kind === 'persistent-conclusion'),
+      'the bias machinery predicate must be Hypothesis-S exempt');
   });
 
   it('a ground positive decrement silences the advisory; an identity re-produce still flags', () => {
