@@ -39,13 +39,15 @@ Compiles clean (only the benign `scit` font-shape warning).
    not public at submission time, T1–T3 must be inlined or the mass
    corollary weakened.
 
-4. **Cor. 5.3's example is the &-left form** and is executable
-   (tests/will-prover.test.js pins both proofs, including the
-   synthetic-atom id). The ⊕-right form mentioned in passing is NOT in
-   the implemented gill fragment (bare ⊕ is not even in gill's surface —
-   only woplus `+[q]`); THY_0027 §5's ⊕ example lives in ill.rules. If a
-   referee asks for ⊕, adding it to the gill surface is a small design
-   task (parser + 3 rules), tracked but not required by any claim.
+4. **Cor. 5.3: both forms are executable** (tests/will-prover.test.js).
+   The &-left form pins both proofs including the synthetic-atom id; the
+   ⊕-right form landed 2026-09-01 (surface ⊕ added to gill.calc +
+   oplus_r1/r2/oplus_l in gill.rules — commit 94c3abae; till keeps
+   "oplus/zero stay absent"). The paper's FORMAL counting fragment still
+   states ⊕ as a routine extension (the focalization proof's case table
+   doesn't enumerate it) — if a referee asks, the ⊕ permutation cases
+   are the standard MALL ones plus nothing token-specific (⊕R touches
+   no token; ⊕L shares Δ like &R).
 
 5. **Conflict-freedom as an adequacy hypothesis** may read as dodging
    concurrency. The honest framing (in the paper): a genuine scheduling

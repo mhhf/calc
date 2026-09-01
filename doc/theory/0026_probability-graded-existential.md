@@ -429,9 +429,23 @@ is precisely what the grade discipline must detect.
    machinery is TODO_0011 rung 2; §8's T1 fixpoint argument supplies existence
    and uniqueness (least solution, subcritical case), the derived rule and its
    metatheory remain.
-4. Policy-independence (T4 as an order-invariance theorem relative to §8's Σ),
-   positioning per §7, and the Markov-categories check.
-5. Operational adequacy narrative against the shipped implementation
-   (TODO_0297 P0–P3: bitmask WFC encoding, @w priors + entropy chooser +
-   subcriticality lint, suspended-∃ waves + substituteEvar decimation driver,
-   rung-2 lazy recursion) — the test pins are the adequacy witnesses.
+4. ~~Policy-independence, positioning per §7, Markov-categories check~~
+   DISCHARGED (2026-09-01, doc/paper/will/): policy independence is the
+   paper's Cor. 7.2 — a corollary of driver adequacy (each focused
+   derivation has exactly one linearization per policy; the derivation
+   tree is the org chart, not a schedule); the positioning section (paper
+   §9) carries §7's audit results incl. the Markov-categories resolution.
+5. ~~Operational adequacy narrative~~ DISCHARGED (2026-09-01): the paper's
+   §7 (driver adequacy theorem, elaboration as the constructive
+   direction) + §8 (certifyCollapse — every sample run a kernel-checked
+   certificate whose endsequent carries ⟨Θ⟩; WFC exact mode 41/81
+   beaches, mass 217/625 = brute force) IS the narrative; the test pins
+   are the witnesses. Cross-mode accounting closed same day: sample-mode
+   mass now includes woplus branch weights (importance does not — the
+   factors cancel in the T3 estimator), matching exact mode's
+   settleExplore enumeration.
+
+REMAINING (items 1 + 3): T4-d in full and inside-mass conditioning — the
+research core of the NEXT phase (grade-certificate theorem, mass-splitting
+graded contraction, quantitative DIBI/good-labelling; datasort domains via
+TODO_0011 rung 2 + the derived conditioning rule's metatheory).

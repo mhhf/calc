@@ -249,6 +249,20 @@ flipr: flip -o { woplus 1/4 heads tails }.
     assert.deepEqual(landTails.mass, [3n, 2n]);    // 2 · 3/4
   });
 
+  it("'sample': mass includes the woplus factor; importance stays Π wave totals (T3)", () => {
+    const calc = loadProg('woplus-sample.will', PROG);
+    const tw = { sea: [2n, 1n], coast: [1n, 1n], land: [2n, 1n] };
+    for (let seed = 0; seed < 10; seed++) {
+      const r = calc.collapse(initFlip(), { seed });
+      assert.ok(r.ground, `seed ${seed}`);
+      assert.deepEqual(r.importance, [5n, 1n], 'woplus factors cancel in the estimator');
+      const [tn, td] = tw[tileOf(r.state, 'a0')];
+      const [fn, fd] = hasAtom(r.state, 'heads') ? [1n, 4n] : [3n, 4n];
+      assert.equal(r.mass[0] * td * fd, tn * fn * r.mass[1],
+        `seed ${seed}: mass ${r.mass} ≠ ${tn * fn}/${td * fd}`);
+    }
+  });
+
   it("settleBranching: 'seed' restores the chooser-resolved reading (one settle world)", () => {
     const calc = loadProg('woplus-seed.will', PROG);
     const r = calc.collapse(initFlip(), { mode: 'exact', settleBranching: 'seed' });
