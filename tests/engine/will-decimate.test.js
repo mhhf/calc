@@ -197,7 +197,7 @@ kill2: watch2 * $tile a1 sea * $tile a0 X -o { !bias X sea 0 * !bias X coast 0 *
   });
 });
 
-describe('clause-derived bias (prover probe)', () => {
+describe('clause-derived bias (all-solutions query)', () => {
   const PROG = HEADER + `
 bias/nocoast: bias X coast 0.
 `;
@@ -206,6 +206,21 @@ bias/nocoast: bias X coast 0.
     const r = calc.collapse(init2(), { mode: 'exact' });
     assert.deepEqual(r.total, [16n, 1n]);          // (2+2)²
     assert.ok(!r.outcomes.some((o) => tileOf(o.state, 'a0') === 'coast' || tileOf(o.state, 'a1') === 'coast'));
+  });
+
+  it('independent clauses on one (wave, member) ALL multiply; same-value derivations dedup', () => {
+    // sea: 2 · 1/2 · 1/4 = 1/4 (two INDEPENDENT biases — committed
+    // choice would keep only the first); coast: 1 · 1/2 (the same value
+    // derived twice dedups to ONE factor — set semantics); land: 2.
+    // Per-wave total 1/4 + 1/2 + 2 = 11/4; two waves → (11/4)².
+    const calc = loadProg('multibias.will', HEADER + `
+bias/seahalf: bias X sea 1/2.
+bias/seaquarter: bias X sea 1/4.
+bias/coasthalf: bias X coast 1/2.
+bias/coasthalf2: bias X coast 1/2.
+`);
+    const r = calc.collapse(init2(), { mode: 'exact' });
+    assert.deepEqual(r.total, [121n, 16n]);
   });
 });
 
