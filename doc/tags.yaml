@@ -1,21 +1,21 @@
 tags:
-  linear-logic: 28
+  linear-logic: 29
   ill: 27
   forward-chaining: 24
   inference-rule: 24
+  proof-theory: 16
   architecture: 15
-  proof-theory: 15
   chr: 13
-  graded-types: 10
+  graded-types: 11
   implementation: 10
   left-rule: 10
   positive-connective: 10
+  cut-elimination: 9
   lax-monad: 9
   negative-connective: 9
   optimization: 9
   right-rule: 9
   till: 9
-  cut-elimination: 8
   engine: 8
   soundness: 8
   oplus: 7
@@ -25,6 +25,8 @@ tags:
   structural-rule: 5
   verification: 5
   with: 5
+  existential: 4
+  exists: 4
   ffi: 4
   partial-evaluation: 4
   performance: 4
@@ -33,10 +35,9 @@ tags:
   authorization: 3
   Curry-Howard: 3
   evm: 3
-  existential: 3
-  exists: 3
   loli: 3
   monad: 3
+  probabilistic: 3
   prover: 3
   QTT: 3
   staging: 3
@@ -57,7 +58,6 @@ tags:
   modal-logic: 2
   one: 2
   principals: 2
-  probabilistic: 2
   refinement-sorts: 2
   representation: 2
   resource-semantics: 2
@@ -166,6 +166,7 @@ tags:
   proof-search: 1
   proof-terms: 1
   proof-tree: 1
+  provenance: 1
   quantifiers: 1
   refinement-types: 1
   residuated-monoids: 1
@@ -194,5 +195,6 @@ tags:
   walkthrough: 1
   weighted-choice: 1
   wfc: 1
+  will: 1
   zero: 1
   zk: 1
