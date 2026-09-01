@@ -40,7 +40,7 @@ npm run test:will     # will executable specs (scaffold smoke; noFFI arm: test:n
 npm run test:noffi    # noFFI adversarial soundness (13 tests, ~1s) — only after engine/FFI changes
 npm run test:noffi:till  # till noFFI arm (also test:noffi:gill) — after engine/FFI changes
 npm run test:zk       # ZK witness tests (94 tests) — only after ZK changes
-npm run test:heavy    # Slow + drift tests (~a DAY) — never run inline; Denis schedules it overnight
+npm run test:heavy    # Slow + drift tests (~5 min, dominated by rule-analysis's exhaustive cross-check) — fine as an inline gate after engine/rules changes. (The old "~a day" claim was measured false 2026-09-01: even the commit that recorded it runs in ~11 min cold.)
 npm run test:all      # Everything combined (includes test:ill)
 npm run debug:ill     # Debug runner — observation directives + verbose judgment output
 npm run bench:diff    # Cross-commit benchmark comparison (use this when asked to benchmark)
