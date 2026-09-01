@@ -61,6 +61,23 @@ superpose_l: G ; D, superpose S (exists X. A) |- B
   @binding eigenvariable
   @pretty "∃ρL".
 
+% Plain ∃ (token-free — THY_0027 §4's erasure target, in will's binder
+% syntax; ill.rules' exists_r/exists_l with the binder made explicit).
+% Operationally this is the M1 SKOLEM: the driver opens a plain ∃ with an
+% evar it never collapses — exists_l is that opening's sequent reading.
+exists_r: G ; D |- exists X. A
+  <- G ; D |- A
+  @template true
+  @binding metavar
+  @pretty "∃R"
+  @invertible false.
+
+exists_l: G ; D, exists X. A |- B
+  <- G ; D, A |- B
+  @template true
+  @binding eigenvariable
+  @pretty "∃L".
+
 % @draw (TODO_0298 item 1b): one collapse event as a first-class step —
 % consume the wave fact and one matching token, produce the body opened
 % with the drawn witness. The witness record and its verification against
