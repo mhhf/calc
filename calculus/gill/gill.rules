@@ -55,6 +55,25 @@ one_l: G ; D, I |- C
   <- G ; D |- C
   @pretty "1L".
 
+% ── plain additive disjunction (gill/will only — till stays frozen).
+%    Cut cases per THY_0027 §3(f): ⊕L shares Δ like with_r (lockstep
+%    derived), so trace conservation extends verbatim. Needed for the
+%    ghost-free ⊋ ⊆-minimal ⊕-form (will paper Cor. 5.3).
+oplus_r1: G ; D |- A + B
+  <- G ; D |- A
+  @pretty "+R₁"
+  @invertible false.
+
+oplus_r2: G ; D |- A + B
+  <- G ; D |- B
+  @pretty "+R₂"
+  @invertible false.
+
+oplus_l: G ; D, A + B |- C
+  <- G ; D, A |- C
+  <- G ; D, B |- C
+  @pretty "+L".
+
 % ── ω exponential (template-matched: `!A` = bang(ω, A) is the pattern) ──
 
 bang_r: G ; |- !A

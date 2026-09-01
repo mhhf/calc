@@ -83,6 +83,21 @@ woplus: weight -> formula -> formula -> formula
   @category additive
   @polarity positive.
 
+% Plain internal choice (TODO_0298 follow-up): the unweighted ⊕, absent
+% from till by design ("oplus/zero stay absent" — woplus is till's only
+% internal choice), added HERE for the backward fragment: the ghost-free
+% ⊋ ⊆-minimal counting class needs both ⊕-R rules (will paper Cor. 5.3),
+% and THY_0027 §3(f) already covers its cut cases (⊕L shares Δ like
+% with_r). Backward-only in practice: an unweighted ⊕ consequent is
+% rejected by the timed scheduler (use woplus there). Lexes beside `+[`
+% by longest-match; polarity explicit like ill's (auto-inference fails
+% for multi-right-rule connectives).
+oplus: formula -> formula -> formula
+  @ascii "_ + _"
+  @prec 65 left
+  @category additive
+  @polarity positive.
+
 % Graded transport comonad (TODO_0284 P3): `!!_d A` — "A reachable within
 % haul-cost d". The spatial dual of the delay monad (0270): {A}@d =
 % achievable WITHIN duration d, !!_d A = reachable WITHIN cost budget d —

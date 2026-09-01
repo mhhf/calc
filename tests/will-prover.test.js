@@ -51,6 +51,7 @@ describe('will sequent calculus — ∃_ρ by draw-token internalization', () =>
   const drawn = (c, s) => Store.put('drawn', [atom(c), atom(s)]);
   const tensor = (a, b) => Store.put('tensor', [a, b]);
   const withc = (a, b) => Store.put('with', [a, b]);
+  const oplus = (a, b) => Store.put('oplus', [a, b]);
   const one = () => Store.put('one', []);
 
   const prove = (linear, succ, cart = []) =>
@@ -135,6 +136,15 @@ describe('will sequent calculus — ∃_ρ by draw-token internalization', () =>
         sup('s', p(bound0()))]);
     refuted('the &L₁ branch alone needs the token: p c ⊬ ∃ρX.pX',
       () => [[p(atom('c'))], sup('s', p(bound0()))]);
+    // the ⊕-right form (surface ⊕ is gill/will-only; till keeps woplus)
+    provable('⊕-form at the empty trace: q ⊢ (∃ρX.pX) + q (+R₂)',
+      () => [[atom('q')], oplus(sup('s', p(bound0())), atom('q'))]);
+    provable('⊕-form at trace {c}: p c, drawn c s ⊢ (∃ρX.pX) + q (+R₁, ∃ρR)',
+      () => [[p(atom('c')), drawn('c', 's')], oplus(sup('s', p(bound0())), atom('q'))]);
+    provable('⊕L elim: a + a ⊢ a (both branches close)',
+      () => [[oplus(atom('a'), atom('a'))], atom('a')]);
+    refuted('⊕L needs both branches: a + b ⊬ a',
+      () => [[oplus(atom('a'), atom('b'))], atom('a')]);
   });
 
   describe('∃-L (superpose_l): the eigenvariable rule', () => {
