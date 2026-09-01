@@ -167,7 +167,7 @@ calculus/will/           # will — weighted ILL (TODO_0292/0297): the measure-c
 ├── will.rules           # will-OWN sequent rules (THY_0027 §2, TODO_0298): drawn_l = ∃_ρ-R (consumes a drawn token; @binding witness C opens the binder with the token's member), drawn_l2 = ghost (@affine trace weakening), superpose_l = ∃-L (eigenvariable), draw = checker-bound oracle. Loaded AFTER gill.rules — calculus.load takes a rules-file LIST (shared fragment by reference, never copied)
 ├── calculus-config.js   # Composes gill's exported layer pieces (M2); scheduler chooser 'entropy' (M5); binderSorts grammar opt-in (∃_ρ); backward fragment = [gill.rules, will.rules]; sequent parser gains binders; @draw checker bound via kit.js
 ├── prelude/measure.will # Imports gill's num.gill (tower + sorts machinery transitively; import labels are basenames — hence not num.will)
-├── game/WFC.will        # Wave function collapse demo: bitmask dom facts + propagation rules + woplus collapse under the entropy chooser (npm run shell:will -- calculus/will/game/WFC.will)
+├── game/WFC.will        # Wave function collapse demo on the ∃_ρ + bias surface: one wave per cell, propagation = bias derivation, driven by calc.collapse / the shell's collapse mode (npm run shell:will -- calculus/will/game/WFC.will)
 └── tests/               # will executable specs (npm run test:will / test:noffi:will); fast-suite guards: tests/engine/will-{scaffold,wfc,priors,draw-check}.test.js + tests/will-prover.test.js
 
 tests/                   # Test suite (core: *.test.js, engine: engine/)
@@ -266,7 +266,7 @@ FFI is optimization, theory is semantics. Every FFI predicate MUST have backward
 - `tools/explore-inspect.js` — `node tools/explore-inspect.js [--leaf N] [--all] <files...>`
 - `tools/fuzz-ffi.js` — FFI correctness fuzzer (FFI vs clause comparison)
 - `tools/fuzz-till.js` — till fuzzer: q-ops FFI∥clause∥BigInt reference + activation spec (`node tools/fuzz-till.js [--count N] [--seed N]`)
-- `tools/till-shell.js` — live TTY for till programs (`npm run shell:till -- <file> [--init <directive>] [--speed x] [--demo "t:i,..."]`): wall-clock settle loop, menus from the state, digits = with-projection clicks, menuStatus greying
+- `tools/till-shell.js` — live TTY for till programs (`npm run shell:till -- <file> [--init <directive>] [--speed x] [--demo "t:i,..."]`): wall-clock settle loop, menus from the state, digits = with-projection clicks, menuStatus greying. COLLAPSE MODE (auto on suspended ∃_ρ facts, or `--collapse`): stepwise decimation via `calc.collapseView`/`collapseDraw` — entropy-sorted wave menu (facts with the evar as `?`), digits draw, `a` auto, `R` restart (M9 attempt counter); demo grammar `--demo "a,a,1,a" --seed N`
 - `tools/precompile.js` — binary cache precompiler for .ill files
 - `tools/test-timing.js` — per-file test execution time profiler
 - `tools/debug-ill.js` — `npm run debug:ill -- <file.ill> [--only trace]` (observation directives + verbose judgments). Directives: `#trace`, `#dump_state`, `#debug`, `#benchmark`, `#compare`, `#inspect`, `#profile`

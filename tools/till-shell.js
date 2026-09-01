@@ -27,11 +27,28 @@
  *
  * Usage:
  *   node tools/till-shell.js <file> [--init <directive>] [--speed <x>]
- *                                   [--demo "t:i,t:i,..."]
+ *                                   [--demo "t:i,t:i,..."] [--seed <n>]
  *   --demo: non-interactive scripted clicks (game-time t, GLOBAL option
  *   number i), printing a frame per event — the testable core.
  *
  * Keys: 1-9 choose · r rules · p pause · +/- speed · q quit
+ *
+ * COLLAPSE MODE (TODO_0298 — will programs with ∃_ρ waves): entered via
+ * --collapse, or automatically when the initial settle leaves suspended
+ * superpose/exists facts (which plain settle can never fire — D4). The
+ * loop becomes the stepwise decimation face:
+ *
+ *     collapseView(session) → render wave menu → draw → …
+ *
+ * The wave menu is the with-projection analogue: each still-open wave is
+ * one numbered line (its facts with the evar as `?`, live members with
+ * posterior weights, entropy), entropy-sorted — [1] is the driver's own
+ * next pick. Digits draw that wave (PRF over the posterior, M9 attempt
+ * counter in the inputs); each draw is a frame. Demo grammar in collapse
+ * mode: --demo "a,a,1,a" — 'a' draws the min-entropy wave, a digit the
+ * n-th menu line.
+ *
+ * Collapse keys: 1-9 draw wave · a auto-draw · R restart · r rules · q quit
  */
 
 import path from 'path';
@@ -43,6 +60,8 @@ import willConfig from '../calculus/will/calculus-config.js';
 import Store from '../lib/kernel/store.js';
 import { show } from '../lib/engine/show.js';
 import { ratParts } from '../lib/engine/theories/ratlit-theory.js';
+import { substEvarInTerm } from '../lib/engine/decimate.js';
+import { mix32 } from '../lib/engine/prf.js';
 
 // ─── args ───────────────────────────────────────────────────────────
 
@@ -302,10 +321,157 @@ function click(T, globalIdx) {
 
 let showRules = false;
 
+// ─── collapse mode (TODO_0298): the stepwise decimation face ────────
+// Entered explicitly (--collapse) or automatically when the initial
+// settle leaves suspended superpose/exists facts — plain settle can
+// never fire those (D4), so the settle loop would show a frozen frame.
+
+const seedOpt = Number(opt('seed', '0')) >>> 0;
+const demo = opt('demo', null);
+
+const _hasSuspended = (st) => Object.keys(st.linear || {}).some((k) => {
+  let h = Number(k);
+  if (Store.tag(h) === 'at') h = Store.child(h, 0);
+  const t = Store.tag(h);
+  return t === 'superpose' || t === 'exists';
+});
+const collapseMode = typeof calc.collapseView === 'function' &&
+  (args.includes('--collapse') ||
+   _hasSuspended(calc.settle(state, '0', { maxSteps: 10000 }).state));
+
+function _containsEvar(h, e) {
+  if (h === e) return true;
+  if (Store.tag(h) === 'evar') return false;
+  for (let i = 0; i < Store.arity(h); i++) {
+    const c = Store.child(h, i);
+    if (Store.isTermChild(c) && _containsEvar(c, e)) return true;
+  }
+  return false;
+}
+
+if (collapseMode) {
+  const initialState = state;
+  let session = { state, waveMap: new Map(), skolemSet: new Set() };
+  let attempt = 0;
+  let stepN = 0;
+  let drawLog = [];
+  let lastMsg = null;
+
+  // M9 attempt counter in every PRF input, like the driver's restarts
+  const aSeed = () => mix32(seedOpt ^ mix32(attempt >>> 0));
+  const view = () => calc.collapseView(session, { seed: aSeed() });
+
+  // a wave's display: its facts with the evar as `?` (value-derived,
+  // like the driver's wave keys — never the evar id)
+  const evarFacts = (e) => {
+    const out = [];
+    for (const k of Object.keys(session.state.linear)) {
+      const h = Number(k);
+      if (_containsEvar(h, e)) out.push(show(substEvarInTerm(h, e, Store.put('atom', ['?']))));
+    }
+    return out.sort();
+  };
+  const waveLine = (w) => {
+    const { members, weights } = w.posterior;
+    const live = members
+      .map((m, i) => (weights[i][0] === 0n ? null
+        : `${m} ${weights[i][0]}${weights[i][1] === 1n ? '' : `/${weights[i][1]}`}`))
+      .filter(Boolean);
+    return `${evarFacts(w.e).join(' · ') || w.sort}  —  ${live.join(' · ') || '∅ CONTRADICTION'}   H=${w.entropy.toFixed(2)}`;
+  };
+
+  const collapseFrame = (waves) => {
+    const lines = [];
+    lines.push(`collapse   seed ${seedOpt}${attempt ? `   attempt ${attempt + 1}` : ''}   draws ${drawLog.length}   1-9 draw · a auto · R restart · r rules · q quit`);
+    lines.push('─'.repeat(74));
+    // ground stock: everything not holding a wave evar
+    const stock = new Map();
+    for (const k of Object.keys(session.state.linear)) {
+      const h = Number(k);
+      if (waves.some((w) => _containsEvar(h, w.e))) continue;   // shown in the menu
+      const key = show(innerOf(h));
+      stock.set(key, (stock.get(key) || 0) + session.state.linear[k]);
+    }
+    lines.push('state:');
+    for (const [key, c] of [...stock.entries()].sort()) {
+      lines.push(`  ${c > 1 ? `${c} ` : ''}${key}`);
+    }
+    lines.push('');
+    if (waves.length) {
+      lines.push('waves (entropy-sorted — [1] is the driver\'s pick):');
+      waves.forEach((w, i) => lines.push(`  [${i + 1}] ${waveLine(w)}`));
+    } else {
+      lines.push('waves: none — GROUND');
+    }
+    if (drawLog.length) {
+      lines.push('');
+      lines.push('log: ' + drawLog.map((d) => `${d.member} ${d.weight[0]}/${d.weight[1]}`).join(' → '));
+    }
+    if (showRules) {
+      lines.push('');
+      lines.push('rules:');
+      for (const r of calc.forwardRules) lines.push(`  ${ruleLabel(r)}`);
+    }
+    return lines.join('\n');
+  };
+
+  const draw = (waves, i) => {
+    const w = waves[i];
+    if (!w) return `no wave [${i + 1}]`;
+    const rec = calc.collapseDraw(session, w, { seed: aSeed(), step: stepN++ });
+    if (rec.contradiction) return 'contradiction (zero posterior mass) — R to restart';
+    drawLog.push(rec);
+    return null;
+  };
+  const restart = () => {
+    session = { state: initialState, waveMap: new Map(), skolemSet: new Set() };
+    attempt++;
+    stepN = 0;
+    drawLog = [];
+  };
+
+  if (demo) {
+    // collapse demo grammar: "a,a,1,a" — 'a' = min-entropy wave, digit =
+    // menu line n; a frame per draw (the testable core)
+    for (const tok0 of demo.split(',')) {
+      const tok = tok0.trim();
+      const waves = view();
+      const idx = tok === 'a' ? 0 : Number(tok) - 1;
+      const err = draw(waves, idx);
+      const last = drawLog[drawLog.length - 1];
+      console.log(`\n══ draw ${tok === 'a' ? '[auto]' : `[${idx + 1}]`}${err ? ` → ${err}` : ` → ${last.member}`}`);
+      console.log(collapseFrame(view()));
+    }
+    process.exit(0);
+  }
+
+  if (!process.stdin.isTTY) {
+    console.error('interactive mode needs a TTY (use --demo "a,a,..." for scripted collapse runs)');
+    process.exit(1);
+  }
+  const render = () => {
+    const waves = view();
+    const extra = lastMsg ? `\n  ⚠ ${lastMsg}\n` : '\n';
+    process.stdout.write('\x1b[2J\x1b[H' + collapseFrame(waves) + extra);
+  };
+  process.stdin.setRawMode(true);
+  process.stdin.resume();
+  process.stdin.on('data', (b) => {
+    const k = b.toString();
+    lastMsg = null;
+    if (k === 'q' || k === '\x03') { process.stdout.write('\n'); process.exit(0); }
+    else if (k === 'r') showRules = !showRules;
+    else if (k === 'R') restart();
+    else if (k === 'a') lastMsg = draw(view(), 0);
+    else if (k >= '1' && k <= '9') lastMsg = draw(view(), Number(k) - 1);
+    render();
+  });
+  render();
+}
+
 // ─── demo mode (scripted, non-interactive — the testable core) ──────
 
-const demo = opt('demo', null);
-if (demo) {
+if (demo && !collapseMode) {
   const events = demo.split(',').map(s => {
     const [t, i] = s.split(':');
     return { t: Number(t), idx: Number(i) - 1 };
@@ -323,41 +489,43 @@ if (demo) {
   process.exit(0);
 }
 
-// ─── interactive loop ───────────────────────────────────────────────
+// ─── interactive loop (settle mode) ─────────────────────────────────
 
-let start = Date.now();
-let pausedAt = null;
-let lastMsg = null;
-const gameNow = () => (((pausedAt ?? Date.now()) - start) / 1000) * speed;
+if (!collapseMode) {
+  let start = Date.now();
+  let pausedAt = null;
+  let lastMsg = null;
+  const gameNow = () => (((pausedAt ?? Date.now()) - start) / 1000) * speed;
 
-function tick() {
-  const T = gameNow();
-  state = calc.settle(state, horizonOf(T), { coalesce: true }).state;
-  const extra = lastMsg ? `\n  ⚠ ${lastMsg}\n` : '\n';
-  process.stdout.write('\x1b[2J\x1b[H' + frame(state, T) + extra);
-}
-
-if (!process.stdin.isTTY) {
-  console.error('interactive mode needs a TTY (use --demo "t:i,..." for scripted runs)');
-  process.exit(1);
-}
-process.stdin.setRawMode(true);
-process.stdin.resume();
-process.stdin.on('data', (b) => {
-  const k = b.toString();
-  if (k === 'q' || k === '\x03') { process.stdout.write('\n'); process.exit(0); }
-  else if (k === 'p') {
-    if (pausedAt === null) pausedAt = Date.now();
-    else { start += Date.now() - pausedAt; pausedAt = null; }
-  } else if (k === 'r') showRules = !showRules;
-  else if (k === '+') speed *= 2;
-  else if (k === '-') speed /= 2;
-  else if (k >= '1' && k <= '9') {
+  const tick = () => {
     const T = gameNow();
     state = calc.settle(state, horizonOf(T), { coalesce: true }).state;
-    lastMsg = click(T, Number(k) - 1);
+    const extra = lastMsg ? `\n  ⚠ ${lastMsg}\n` : '\n';
+    process.stdout.write('\x1b[2J\x1b[H' + frame(state, T) + extra);
+  };
+
+  if (!process.stdin.isTTY) {
+    console.error('interactive mode needs a TTY (use --demo "t:i,..." for scripted runs)');
+    process.exit(1);
   }
+  process.stdin.setRawMode(true);
+  process.stdin.resume();
+  process.stdin.on('data', (b) => {
+    const k = b.toString();
+    if (k === 'q' || k === '\x03') { process.stdout.write('\n'); process.exit(0); }
+    else if (k === 'p') {
+      if (pausedAt === null) pausedAt = Date.now();
+      else { start += Date.now() - pausedAt; pausedAt = null; }
+    } else if (k === 'r') showRules = !showRules;
+    else if (k === '+') speed *= 2;
+    else if (k === '-') speed /= 2;
+    else if (k >= '1' && k <= '9') {
+      const T = gameNow();
+      state = calc.settle(state, horizonOf(T), { coalesce: true }).state;
+      lastMsg = click(T, Number(k) - 1);
+    }
+    tick();
+  });
+  setInterval(tick, 200);
   tick();
-});
-setInterval(tick, 200);
-tick();
+}
