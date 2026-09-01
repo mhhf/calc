@@ -143,3 +143,39 @@ describe('WFC.will — the collapse loop assembles a valid beach', () => {
     }
   });
 });
+
+describe('D16 strict-measure refinement (TODO_0298) — measured self-loops are not Zeno', () => {
+  const MEASURE = path.join(import.meta.dirname, '../../calculus/will/prelude/measure.will');
+  const load = (name, src) => {
+    const f = path.join(tmp, name);
+    fs.writeFileSync(f, `#import(${MEASURE})\n` + src);
+    return mde.load(f, { calculusConfig: willConfig, cache: false });
+  };
+
+  it("WFC's prop (bit-test + qsub) loads with no self-cycle advisory", () => {
+    const calc = mde.load(WFC, { calculusConfig: willConfig, cache: false });
+    assert.deepEqual(calc.timedLint, []);
+  });
+
+  it('a ground positive decrement silences the advisory; an identity re-produce still flags', () => {
+    const measured = load('measured.will', `
+ctr: (n: q) -> type.
+dec: ctr N * !qsub N 1 N' -o { ctr N' }.
+`);
+    assert.deepEqual(measured.timedLint, []);
+    const zeno = load('zeno.will', `
+ctr: (n: q) -> type.
+spin: ctr N -o { ctr N }.
+`);
+    assert.deepEqual(zeno.timedLint, [{ kind: 'self-cycle', rule: 'spin' }]);
+  });
+
+  it('a qsub by an UNEVIDENCED amount still flags (B could be 0)', () => {
+    const calc = load('unevidenced.will', `
+ctr: (n: q) -> type.
+amt: (b: q) -> type.
+dec: ctr N * $amt B * !qsub N B N' -o { ctr N' }.
+`);
+    assert.deepEqual(calc.timedLint, [{ kind: 'self-cycle', rule: 'dec' }]);
+  });
+});

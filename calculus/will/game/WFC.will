@@ -23,10 +23,10 @@
 %                 (this 1D constraint set is arc-consistent, no dead end)
 %
 % Priors 2:1:2 (sea:coast:land). Committed-choice caveat: `!forbid T T'`
-% must be single-valued per T (it is — sea↔land only). The D16 Zeno
-% advisory on `prop` is a shape-level false positive: it keys on the
-% dom→dom predicate identity, but the mask strictly shrinks (qsub of a
-% set bit), so the zero-delay cycle is finite.
+% must be single-valued per T (it is — sea↔land only). `prop` re-produces
+% dom at zero delay, but the D16 lint recognizes the strict-measure shape
+% (qsub of a tested bit — the mask strictly shrinks, bounded below by 0)
+% and stays quiet: the zero-delay cycle is finite, not Zeno (TODO_0298).
 
 % ── sorts and members ──
 pos: sort.
