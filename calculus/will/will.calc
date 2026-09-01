@@ -27,4 +27,29 @@
 % machinery untouched). A suspended superpose-fact IS the wave — plain
 % settle leaves it inert; the decimation driver collapses it (D4: plain
 % `exists X. A` stays a skolem even under the driver).
-superpose: sort -> formula -> formula.
+% The spelled @ascii form exists for will.rules PATTERNS (`superpose S
+% (exists X. A)` — sequent rules match on it, TODO_0298 item 1); writing
+% it directly in a program is legal and identical to the binder sugar.
+% NO @polarity annotation: like `at`, superpose stays unpolarized at the
+% SEARCH level — its right rule (∃_ρ-R = will.rules drawn_l) is
+% mechanically a left rule on the token, which strict right-focus could
+% never reach. The focused system's assignment (∃_ρ positive, THY_0027
+% §8) is the paper's canonical COUNTING discipline, not this engine's
+% search heuristic.
+superpose: sort -> formula -> formula
+  @ascii "superpose #1 #2".
+
+% Draw token (THY_0027 §1) — the kernel-reserved trace hypothesis:
+% `drawn c s` is the linear record "a draw of member c at sort s
+% occurred". The member slot is dependently (c : s) — checked by the
+% @draw checker and the drawn_l theory, never by the grammar; `member`
+% is its honest grammar-level label. Tokens are GROUND (rung-2 draws
+% record the head constructor only). Kernel-reserved fence: no program
+% rule may mention drawn (convert.js validates, like at/fire) — tokens
+% enter judgments only at the boundary, minted by the @draw checker.
+% Positive left-passive in the paper's focused system (THY_0027 §8);
+% unpolarized here like superpose (see above). Its left rules (will.rules
+% drawn_l = ∃_ρ-R, drawn_l2 = ghost) are non-invertible.
+member: type.
+drawn: member -> sort -> formula
+  @ascii "drawn #1 #2".

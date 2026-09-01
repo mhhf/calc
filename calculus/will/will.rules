@@ -1,0 +1,74 @@
+% =============================================================================
+% will sequent rules — the ∃_ρ fragment (TODO_0298 item 1; THY_0027)
+% =============================================================================
+%
+% will's backward judgment = gill.rules (loaded FIRST — calculus.load takes
+% a rules-file list; the shared fragment is inherited by reference, never
+% copied) plus the will-OWN rules below: the weight-graded existential by
+% draw-token internalization (THY_0027 §2). Rule NAMES encode the mechanical
+% key (connective_side — the kernel and the prover derive the principal's
+% tag and side from the name); @pretty carries the proof-theoretic reading:
+%
+%   drawn_l      ∃_ρ-R(c) — consume the token, witness the existential
+%   drawn_l2     ghost     — weakening restricted to the token class
+%   superpose_l  ∃-L       — the standard eigenvariable rule
+%   draw         @draw     — one collapse event as a checked step (oracle,
+%                            checker-bound like @fire; not enumerated in
+%                            search — no principal, keyed by name)
+%
+% Weight is a FUNCTION OF THE ENDSEQUENT: w = Π ρ(c) over the drawn
+% hypotheses present (THY_0027 §1) — no rule below carries a weight; the
+% priors live in program data (`@w`, materialized as `prior s c ρ` facts)
+% and are consulted only by the @draw checker and boundary readers.
+
+@formulas A, B, C
+
+% ∃_ρ-R (THY_0027 §2), implemented as a left rule on the token: given
+% that a draw of C at sort S occurred, assert the superposed existential
+% via C. The premise opens the binder body with the TOKEN'S member
+% (@binding witness C — template binder opening, rule-interpreter); the
+% succedent pattern forces token sort = wave sort. Non-invertible:
+% choosing which token to spend commits the witness. Rung-2 note: the
+% rule substitutes C as given, so a structured witness needs a ground
+% member term in the token — lazy head-only tokens are the @draw/driver
+% discipline, iterated ∃_ρ is its sequent reading (THY_0027 §8).
+drawn_l: G ; D, drawn C S |- superpose S (exists X. A)
+  <- G ; D |- A
+  @side l
+  @template true
+  @binding witness C
+  @pretty "∃ρR"
+  @invertible false.
+
+% ghost (trace weakening, THY_0027 §2/§5): tokens are affine — Δ proper
+% stays linear. Forced by closure under cut reduction (§3a); excluded
+% from the canonical counting class exactly like ordinary weakening
+% under focusing. Non-invertible: discarding a token loses a ∃_ρ-R.
+% @affine lets the prover insert this rule at the search boundaries
+% (root leftovers, additive-branch balancing — §3h's "a branch that
+% draws less discharges the surplus by ghost") where committed premise
+% search cannot decide token consumption locally.
+drawn_l2: G ; D, drawn C S |- B
+  <- G ; D |- B
+  @pretty "ghost"
+  @affine true
+  @invertible false.
+
+% ∃-L (THY_0027 §2): the standard eigenvariable rule, token-neutral.
+superpose_l: G ; D, superpose S (exists X. A) |- B
+  <- G ; D, A |- B
+  @template true
+  @binding eigenvariable
+  @pretty "∃ρL".
+
+% @draw (TODO_0298 item 1b): one collapse event as a first-class step —
+% consume the wave fact and one matching token, produce the body opened
+% with the drawn witness. The witness record and its verification against
+% the program's sort system and declared priors live in the config-bound
+% checker (lib/prover/draw-check.js — calculus.stepCheckers via kit.js);
+% the kernel stays draw-blind (P1 slot routing). The step is DERIVABLE
+% (cut of drawn_l against superpose_l — THY_0026 §5: collapse is a
+% principal cut; the minted token is the record the reduct keeps).
+draw: G ; D |- C
+  @pretty "@draw"
+  @invertible false.
