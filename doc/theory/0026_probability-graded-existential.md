@@ -1,12 +1,13 @@
 ---
 title: "The Probability-Graded Existential: Superposition, Collapse, and Observation in Graded ILL"
 created: 2026-08-28
-modified: 2026-08-29
-summary: "One new primitive — a weight-graded existential ∃_ρ x:s. A whose right rule multiplies the derivation grade by ρ(c) for the chosen witness constructor c — turns graded ILL into a probabilistic generation calculus. Grades live in the UNNORMALIZED measure semiring (ℚ≥0,·,1); normalization is a meta-operation, so priors, biases, and evidence are all just weights and conditioning is multiplication (knowledge-monotone by construction). woplus (THY_0021) becomes the derived Boolean instance. Datasort refinements (THY_0020) are the events one conditions on; conditioning is a derived rule via inside-mass renormalization. Observation is intralogical: collapse IS the principal cut ∃_ρ-R vs ∃-L — sampling is a cut-reduction step, performed by the settle PRF; persistent knowledge conditions a superposition without collapsing it, linear consumption forces actuality. Four theorem statements (adequacy, a.s. groundness ⟺ subcriticality, importance-weighted sampler unbiasedness, compositional-conditioning boundary) give the sound-and-complete story; the WFC decimation loop for map generation is the operational reading."
+modified: 2026-09-01
+summary: "One new primitive — a weight-graded existential ∃_ρ x:s. A whose right rule consumes a linear draw-token drawn(c,s) for the chosen witness constructor c (THY_0027; the original grade-multiplying form fails cut admissibility) — turns graded ILL into a probabilistic generation calculus. Grades live in the UNNORMALIZED measure semiring (ℚ≥0,·,1); normalization is a meta-operation, so priors, biases, and evidence are all just weights and conditioning is multiplication (knowledge-monotone by construction). woplus (THY_0021) becomes the derived Boolean instance. Datasort refinements (THY_0020) are the events one conditions on; conditioning is a derived rule via inside-mass renormalization. Observation is intralogical: collapse IS the principal cut ∃_ρ-R vs ∃-L — sampling is a cut-reduction step, performed by the settle PRF; persistent knowledge conditions a superposition without collapsing it, linear consumption forces actuality. Four theorem statements (adequacy, a.s. groundness ⟺ subcriticality, importance-weighted sampler unbiasedness, compositional-conditioning boundary) give the sound-and-complete story; the WFC decimation loop for map generation is the operational reading."
 tags: [linear-logic, proof-theory, graded-types, till, lax-monad, existential, exists, probabilistic, forward-chaining, cut-elimination, refinement-sorts, wfc, procedural-generation, superposition]
 category: "Probabilistic Generation"
 unique_contribution: "Four claims not found in the literature (novelty audit 2026-08-28): (1) an existential whose RIGHT RULE carries a semiring weight on the witness CHOICE — ∃ = semiring sum over witnesses is established denotationally (Droste–Gastin weighted MSO; Grädel–Tannen FO semiring provenance) but in no prior system is it a sequent rule that grades the derivation; graded type theories (QTT, Granule) grade binder USAGE, not witness choice; Das–Wang–Hoffmann's probabilistic session types weight a flat finite label set, not a quantifier over a (possibly recursive) constructor sort. (2) Sampling as cut elimination in ILL: collapse of a superposed existential IS the principal cut ∃_ρ-R/∃-L, so the operational PRF draw is a cut-reduction step — Yoshimizu et al. reduce quantum measurement to additive cuts in proof nets, but without grades and without an existential. (3) The observation boundary mapped onto the Term/Resource/Proposition discipline: persistent (knowledge) derivations condition a superposition monotonically WITHOUT collapse; linear (possession) consumption forces collapse — a resource-sensitive Copenhagen reading with a proof-theoretic justification. (4) The WFC/decimation loop derived as a theorem package: any sound pruning + importance weighting yields an UNBIASED sampler of the conditioned measure (greedy WFC bias becomes a variance statement), with compositional conditioning characterized exactly by decomposable dependency (= where belief propagation is exact)."
 references:
+  - "THY_0027 — trace-judgment cut admissibility (2026-09-01; supersedes §2's graded-judgment sketch, discharges §9 item 2)"
   - "TODO_0292 — probabilistic collapse calculus (design + phases; this document is its theory core; implementation: calculus `will` extending `gill`)"
   - "Faggian, Galal & Paquet (2022). Curry and Howard Meet Borel. LICS (closest near-miss: proof normalization ≈ probabilistic computation — non-linear ND, normalized counting modality C^q, not a witness-graded ∃; cite and contrast)."
   - "Crubillé (2026). De Finetti's Theorem in Integrable Cones. LICS (exchangeability ↔ free exponential !; semantic only)."
@@ -83,26 +84,48 @@ The clean factorization puts probability at exactly one proof-theoretic point:
 ## 2. The connective
 
 Let `s` be a sort with constructors `c₁ … cₙ` and let `ρ : s → ℚ≥0` assign each
-constructor a weight (the *prior*). The judgment carries a grade `⟨w⟩` from the
-commutative semiring `(ℚ≥0, +, ·, 0, 1)` — the **unnormalized measure
-semiring** — orthogonal to THY_0018's tropical delay grade (the judgment is
-graded over the product of the two semirings; the weighted cut of THY_0021 §7
-extends unchanged: delays add, weights multiply).
+constructor a weight (the *prior*), drawn from the **unnormalized measure
+semiring** `(ℚ≥0, +, ·, 0, 1)`.
+
+The judgment form is settled by THY_0027 (2026-09-01), which supersedes this
+section's original sketch. The first design put the weight on the judgment as
+a grade — ∃_ρ-R concluding `⟨w · ρ(c)⟩` — and that design FAILS cut
+admissibility: the principal reduction substitutes the witness and deletes the
+∃_ρ-R node, and the ρ(c) factor goes with it (the frame-by-frame is RES_0140
+Ch. 5; the 2026-09 literature round confirmed no system anywhere makes the
+grade form work). The correct form internalizes the *draw record* instead of
+the weight, as a kernel-reserved ground linear atom:
 
 ```
-  Δ ⊢ A[c/x] ⟨w⟩        c a constructor of s
-  ------------------------------------------ ∃_ρ-R(c)
-  Δ ⊢ ∃_ρ x:s. A ⟨w · ρ(c)⟩
+  Δ ⊢ A[c/x]              c a constructor of s
+  ------------------------------------------- ∃_ρ-R(c)
+  Δ, drawn c s ⊢ ∃_ρ x:s. A
 
-  Δ, A[a/x] ⊢ C ⟨w⟩     a fresh (eigenvariable)
-  --------------------------------------------- ∃-L
-  Δ, ∃_ρ x:s. A ⊢ C ⟨w⟩
+  Δ, A[a/x] ⊢ C           a fresh (eigenvariable)
+  ------------------------------------------- ∃-L
+  Δ, ∃_ρ x:s. A ⊢ C
+
+  Δ ⊢ C
+  ------------------------------------------- ghost (weakening on tokens only)
+  Δ, drawn c s ⊢ C
 ```
 
-The right rule is a PCFG production as a sequent rule: each derivation of
-`∃_ρ x:s. A` chooses a witness and pays its mass. The left rule is the standard
-existential left rule, weight-neutral — the consumer does not see the prior
-(exactly as `woplus` has no left rule in THY_0021: weights are producer-side).
+The weight is a function of the ENDSEQUENT — `w = Π ρ(c)` over the `drawn`
+hypotheses present — so cut elimination, which preserves endsequents by
+construction, conserves weights definitionally; the proof burden moves to the
+existence of the reductions, discharged in THY_0027 §3. The right rule is
+still a PCFG production as a sequent rule ("given that a draw of c occurred,
+assert the existential via c" — the @draw checker mints the token from the
+collapse event, checking ρ(c) against the declared prior). The left rule is
+the standard existential left rule, token-neutral — the consumer does not see
+the prior (exactly as `woplus` has no left rule in THY_0021: weights are
+producer-side). Delay grades and weight tokens never share a slot — the
+original "product of the two semirings on one judgment" dissolves: grades on
+formulas (THY_0018), draws in the linear zone. Two structural consequences
+(THY_0027 §3e, §4): no promotion through a draw (probabilistic conclusions
+are not bangable knowledge — !R's empty linear zone now covers tokens), and
+identity expansion fails at ∃_ρ (id primitive there: a committed draw is
+passed along whole, never re-derived — proof-theoretic no-cloning).
 
 **woplus is derived.** `A +[q] B ≅ ∃_ρ x:bool. ((x = tt) ⊸ A) & ((x = ff) ⊸ B)`
 with `ρ(tt) = q, ρ(ff) = 1−q` — THY_0021's two weighted right rules are the two
@@ -394,8 +417,14 @@ is precisely what the grade discipline must detect.
    detectable weight violation); (ii) soundness of the mass-splitting graded
    contraction; (iii) the graded, dynamic extension of Di Guardia's
    good-labelling to forward derivation forests (= quantitative DIBI Thm V.1).
-2. Cut admissibility for the two-semiring graded judgment including ∃_ρ
-   (extend THY_0023; the principal ∃_ρ case IS §5's collapse).
+2. ~~Cut admissibility for the two-semiring graded judgment including ∃_ρ~~
+   DISCHARGED (2026-09-01, THY_0027): cut admissibility holds with EXACT
+   weight conservation via draw-token internalization — the two-semiring
+   judgment itself dissolved (delay grades on formulas, weight tokens in the
+   linear zone). The principal ∃_ρ case IS §5's collapse, as conjectured;
+   the reduction requires the ghost rule (token weakening). Remaining shadow:
+   the focused system spelled out (THY_0027 §8), needed for the bridge's
+   proof COUNT, not for cut admissibility.
 3. Inside-mass CONDITIONING on regular tree sorts (datasort domains) — the
    machinery is TODO_0011 rung 2; §8's T1 fixpoint argument supplies existence
    and uniqueness (least solution, subcritical case), the derived rule and its
