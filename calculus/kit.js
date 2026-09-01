@@ -15,6 +15,7 @@
 
 import Store from '../lib/kernel/store.js';
 import { fireChecker } from '../lib/prover/timed/fire-check.js';
+import { drawChecker } from '../lib/prover/draw-check.js';
 import calculus from '../lib/calculus/index.js';
 import { buildParser } from '../lib/calculus/builders.js';
 import { defaultTheories } from '../lib/kernel/eq-theory.js';
@@ -196,22 +197,33 @@ function makeForwardParserBuilder(calcFile, gradeUnit, extraOpts = {}) {
   });
 }
 
-/** Sequent-level loader: .calc + .rules with the theory engine. */
-function makeSequentLoader({ calcFile, rulesFile, gradeUnit, theory, fire = null }) {
+/** Sequent-level loader: .calc + .rules (a path or a LIST of paths —
+ *  later files extend earlier ones, TODO_0298) with the theory engine.
+ *  `parser` adds per-calculus parser opt-ins (will: binders — the ∃_ρ
+ *  rules pattern-match binder bodies); `draw` binds the @draw checker. */
+function makeSequentLoader({ calcFile, rulesFile, gradeUnit, theory, fire = null, draw = null, parser = null }) {
   return () => {
     const calc = calculus.load(calcFile, rulesFile, {
-      parser: { multiCharFreevars: true, numbers: true, gradeUnit },
+      parser: { multiCharFreevars: true, numbers: true, gradeUnit, ...(parser || {}) },
       theory,
     });
-    // fire-step wiring (TODO_0294): predicate/tag names for the @fire
-    // checker plus the rule-name → checker binding — both declared here
-    // at the assembly point, never defaulted engine-side (the kernel
-    // only routes calculus.stepCheckers; `unit` is the grade-unit thunk)
+    // step-checker wiring (TODO_0294/0298): predicate/tag names for the
+    // @fire/@draw checkers plus the rule-name → checker bindings — all
+    // declared here at the assembly point, never defaulted engine-side
+    // (the kernel only routes calculus.stepCheckers; `unit` is the
+    // grade-unit thunk)
+    const checkers = {};
     if (fire) {
       const { ruleName = 'fire', ...names } = fire;
       calc.fire = Object.freeze({ unit: gradeUnit, ...names });
-      calc.stepCheckers = Object.freeze({ [ruleName]: fireChecker });
+      checkers[ruleName] = fireChecker;
     }
+    if (draw) {
+      const { ruleName = 'draw', ...names } = draw;
+      calc.draw = Object.freeze({ ...names });
+      checkers[ruleName] = drawChecker;
+    }
+    if (Object.keys(checkers).length) calc.stepCheckers = Object.freeze(checkers);
     return calc;
   };
 }

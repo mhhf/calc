@@ -33,10 +33,11 @@ import { makeCalcTables, makeTheory, makeForwardParserBuilder, makeSequentLoader
 const WILL_CALC = path.join(import.meta.dirname, 'will.calc');
 const WILL_PRELUDE = path.join(import.meta.dirname, 'prelude/measure.will');
 // The backward fragment is inherited BY REFERENCE: .rules files have no
-// @extends mechanism, and a zero-delta copy is worse than a pointer (the
-// gill←till rules copy predates cross-calculus @extends). will.rules is
-// created the day will declares a will-own rule (∃_ρ, P3).
+// @extends mechanism, so calculus.load takes the LIST [gill.rules,
+// will.rules] — gill's fragment verbatim plus the will-own ∃_ρ rules
+// (drawn_l/drawn_l2/superpose_l/draw — TODO_0298 item 1, THY_0027).
 const GILL_RULES = path.join(import.meta.dirname, '../gill/gill.rules');
+const WILL_RULES = path.join(import.meta.dirname, 'will.rules');
 
 // Tables derived from will.calc's OWN chain (= gill's surface via
 // @extends); the literal fences are gill's, referenced (weight stays
@@ -120,12 +121,16 @@ const willCalculusConfig = {
 };
 
 /** Sequent-level will calculus: will.calc + the inherited backward
- *  fragment, with will's theory engine and the shared @fire wiring
- *  (delay/dist stamp axes — the additive ⊕/⊖ residual shape). */
+ *  fragment + the ∃_ρ rules, with will's theory engine, the shared
+ *  @fire wiring (delay/dist stamp axes — the additive ⊕/⊖ residual
+ *  shape), and the @draw checker (TODO_0298 item 1b). The parser gains
+ *  binders: the ∃_ρ rule patterns match binder bodies (`exists X. A`). */
 const loadWillSequent = makeSequentLoader({
-  calcFile: WILL_CALC, rulesFile: GILL_RULES,
+  calcFile: WILL_CALC, rulesFile: [GILL_RULES, WILL_RULES],
   gradeUnit: tillGradeUnit, theory: willTheory,
+  parser: { binders: { exists: 'exists', forall: 'forall' } },
   fire: { stampTag: 'at', le: 'le', lt: 'lt', sub: 'qsub' },
+  draw: { stampTag: 'at' },
 });
 
 export { willCalculusConfig, willConnectives, willTheory, loadWillSequent, gradeAlgebraFor };
