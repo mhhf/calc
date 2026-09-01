@@ -119,7 +119,10 @@ bang_r2: G ; D, D' |- !_K A
   @pretty "!Rpeel"
   @invertible false.
 
-bang_r3: G ; D |- !_K A
+% Empty linear context REQUIRED (like one_r): !_0 A ⊣⊢ I. The earlier
+% `G ; D |- !_K A` form was an affine leak (a ⊢ !_0 b derivable, discarding
+% D silently) — caught by the THY_0027 cut-case audit (bang_r3/bang_l4).
+bang_r3: G ; |- !_K A
   <- !eq K 0
   @pretty "!R0"
   @invertible false.

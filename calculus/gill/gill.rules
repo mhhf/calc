@@ -98,7 +98,9 @@ bang_r2: G ; D, D' |- !_K A
   @pretty "!Rpeel"
   @invertible false.
 
-bang_r3: G ; D |- !_K A
+% Empty linear context REQUIRED (like one_r): !_0 A ⊣⊢ I — see till.rules
+% (affine-leak fix, THY_0027 audit).
+bang_r3: G ; |- !_K A
   <- !eq K 0
   @pretty "!R0"
   @invertible false.
