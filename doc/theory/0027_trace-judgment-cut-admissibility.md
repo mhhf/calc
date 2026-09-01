@@ -25,11 +25,15 @@ references:
 
 # Trace-Judgment Cut Admissibility
 
-**Status.** Proved (hand derivation, 2026-09-01): internalization (§1), cut
-admissibility with exact trace conservation (§3), identity-expansion exception
-(§4), stripping/ghost discipline (§5). Assembled on top of THY_0026 §8: the
-universality bridge (§6). Residual for the paper: the focused system spelled
-out (§8). Implementation target: `will.rules` (TODO_0298 item 1).
+**Status.** Proved (hand derivation 2026-09-01; adversarially audited and
+repaired same day — the audit found one load-bearing case, §3f′, whose root
+cause was an affine leak in the base calculus, fixed in till.rules/gill.rules
+with all suites green): internalization (§1), cut admissibility with exact
+trace conservation (§3, scoped per the theorem statement), identity-expansion
+exception (§4), stripping/ghost discipline (§5). ASSEMBLED (not proved) on
+top of THY_0026 §8: the universality bridge (§6) — its proof-count N(A,Θ) is
+well-defined only once the focused system is spelled out (§8 residual).
+Implementation target: `will.rules` (TODO_0298 item 1).
 
 ## 1. The internalization theorem
 
@@ -98,8 +102,12 @@ w = Π ρ(c) over the `drawn` hypotheses present.
 ## 3. Cut admissibility (main theorem)
 
 **Theorem.** The three cuts of THY_0023 (linear, lax, persistent) remain
-admissible in gill + §2's rules, and every reduction step preserves the
-endsequent — hence the trace and its weight are conserved *exactly*, with raw
+admissible in gill + §2's rules — with the SAME scope as the base theorem:
+the cut-free calculus EXCLUDES the oracle rules (`monad_r2` @modeShift and
+`fire`, both premise-free; the till paper's cut theorem excludes them
+identically, and TODO_0294's elaboration removes them from certificates
+before the kernel ever verifies) — and every reduction step preserves the
+endsequent, hence the trace and its weight are conserved *exactly*, with raw
 ℚ≥0 priors.
 
 **Proof.** By the same lexicographic induction (cut-formula weight with
@@ -164,13 +172,47 @@ gill fragment has no ⊕/0 left rules; when added, ⊕L shares Δ like with_r
 (lockstep inherited) and 0L erases into an arbitrary endsequent (vacuously
 safe). **No draw is ever erased.**
 
+**(f′) The bang_r3/bang_l4 case — found FATAL-as-stated by the 2026-09-01
+adversarial audit, repaired at the root.** As originally written,
+`bang_r3: G ; D ⊢ !_K A ⇐ !eq K 0` concluded with an ARBITRARY linear
+context D — an affine leak in the base calculus (it derives `a ⊢ !_0 b`,
+discarding D silently, contradicting the till paper's own `!_0 A ⊣⊢ I`).
+Harmless in the base system (a plain linear atom stranded in that D leaves
+the derivation incompletable elsewhere), it becomes reachable exactly when
+affine tokens exist: with D = ⟨Θ⟩, the principal cut against bang_l4 reduces
+to bang_l4's premise and ERASES the drawn atoms — trace conservation
+violated. Two sound repairs: (a) ghost-pad the reduct by |Θ| (legal, since
+only drawn atoms can inhabit that D in a completable derivation); (b) fix
+the rule to require an empty linear zone, like one_r. We took (b) — the root
+cause: till.rules and gill.rules now read `bang_r3: G ; ⊢ !_K A`, restoring
+`!_0 A ⊣⊢ I` exactly; the elaborator already emitted bang_r3 only with an
+empty linear zone (elaborate-trace.js), and all suites pass unchanged. With
+the fix, the case is vacuous (bang_r3's zone is empty, nothing to erase),
+and (f)'s conclusion stands.
+
 **(g) Lax and haul cuts.** monad_l/monad_r and haul_l/haul_r are
-single-premise rules with persistent theory premises (!qsub/!le/!eq). Theory
-premises are persistent-zone derivations — clause resolution, no linear zone,
-hence no tokens. Grades compose exactly as in THY_0023's cut_lax (d+e via the
+single-premise rules with persistent theory premises (!qsub/!le/!eq); the
+premise-free monad_r2 is outside the theorem's scope (oracle rule — see the
+statement). Theory premises are persistent-zone derivations — clause
+resolution, no linear zone, hence no tokens; witness substitution [c/a]
+reaches them only as ground-for-ground replacement in already-ground
+arithmetic goals (tokens and grade terms are ground, §1 fences), preserving
+derivability. Grades compose exactly as in THY_0023's cut_lax (d+e via the
 ⊖ residual); tokens ride the linear contexts orthogonally. Delay grades and
 weight tokens never share a slot — THY_0026 §2's "product of two semirings on
-one judgment" dissolves: **grades on formulas, draws in the zone.** ∎
+one judgment" dissolves: **grades on formulas, draws in the zone.**
+
+**(i) Commutative cases.** Cut formula non-principal on one side: push the
+cut past the last rule, standard for every gill rule. The only checks worth
+naming: context-splitting rules (tensor_r, loli_l, haul_l, bang_r2) — the
+cut lands in the branch holding the cut formula, tokens follow their
+contexts; at_l — its theory premise `!le T1 T2` is ground under witness
+substitution as in (g); copy — duplicates from Γ only (persistent,
+token-free by (e)). The induction measure is the till paper's (weight with
+w(!_K A) = (K+1)(w(A)+1), first-order convention: witnesses are terms —
+sort members or constructor heads, never formulas — so substitution
+preserves formula weight; `ghost` commutation strictly decreases premise
+height). ∎
 
 **(h) Additive lockstep, derived.** with_r gives both premises the same Δ,
 hence the same tokens; a branch that draws less discharges the surplus by
@@ -195,17 +237,27 @@ classical calculus, for free.
 
 `ghost`-free derivations are those where every token is consumed by ∃_ρ-R.
 
+- **Ghost commutation (lemma).** `ghost` permutes below every rule of the
+  calculus: for single-premise rules verbatim; for context-splitting rules
+  (tensor_r, loli_l, haul_l, bang_r2) the parent's split is adjusted — the
+  branch that held the ghosted token proceeds with the smaller context, which
+  its subderivation proves by induction; for ∃_ρ-R the interaction is a MERGE,
+  not a permutation: `ghost` introducing `drawn c s` immediately consumed by
+  ∃_ρ-R(c) cancels against it (the pair rewrites to the premise re-tokened
+  from the ambient context). Standard weakening-commutation, one merge case.
 - **Stripping.** Every derivation of Γ; Δ, ⟨Θ⟩ ⊢ A contains a ghost-free
-  derivation of Γ; Δ, ⟨Θ₀⟩ ⊢ A for some Θ₀ ⊆ Θ (induction: remove `ghost`
-  instances top-down).
+  derivation of Γ; Δ, ⟨Θ₀⟩ ⊢ A for some Θ₀ ⊆ Θ: permute each `ghost` to the
+  root by the commutation lemma, then delete it there (each deletion shrinks
+  the endsequent's token zone by one; induction on `ghost` count).
 - **Padding.** Γ; Δ, ⟨Θ₀⟩ ⊢ A implies Γ; Δ, ⟨Θ⟩ ⊢ A for every Θ ⊇ Θ₀
   (apply `ghost`).
 - So **provable traces = the upward closure of ghost-free traces**;
   ⊆-minimal provable traces are ghost-free. The converse fails — ghost-free
-  is *strictly* larger than minimal (e.g. A = (∃_ρx.P) ⊕ Q: the empty trace
-  proves A via Q, the singleton trace proves it via P, both ghost-free) — and
-  ghost-free, not minimal, is the correct counting class (both proofs above
-  carry mass).
+  is *strictly* larger than minimal (e.g. A = (∃_ρx.P) ⊕ Q, using ill.rules'
+  ⊕ right rules — ⊕ is in the surface, its backward rules not yet in the
+  gill fragment: the empty trace proves A via Q, the singleton trace proves
+  it via P, both ghost-free) — and ghost-free, not minimal, is the correct
+  counting class (both proofs above carry mass).
 - **Divergence audit.** Counting all derivations would attach the factor
   Σ_k (Σ_c ρ(c))^k = ∞ to each proof via its padded variants (the Lew et al.
   objection). Counting ghost-free derivations excludes every padded variant.
@@ -216,11 +268,20 @@ classical calculus, for free.
 - **Conservativity.** Erasing tokens and mapping ∃_ρ-R/∃-L to ill.rules'
   exists_r/exists_l sends will-derivations to standard ILL derivations;
   conversely any such derivation lifts with Θ = the multiset of ∃-R witnesses
-  at the ∃_ρ positions (with_r branches balanced by `ghost`). Hence
+  at the ∃_ρ positions: each subderivation's tokens are the witnesses of its
+  own ∃_ρ-R occurrences, so context-splitting rules (tensor_r, loli_l) split
+  Θ canonically (Θ = Θ_left ⊎ Θ_right, disjoint because the branches are
+  separate subtrees), and context-sharing rules (with_r) are balanced by
+  `ghost`-padding each branch with the other's tokens. Hence
   `Γ; Δ ⊢ A [Θ]` for some Θ iff the plain judgment is derivable: the trace
   judgment is a conservative extension.
 
 ## 6. The bridge is universality
+
+*Status: assembled on THY_0026 §8 (T1–T3), NOT independently proved — the
+count N below is well-defined proof-theoretically only once §8's focused
+system is spelled out; until then the decimation driver's collapse-tree
+enumeration is the operational stand-in (T1).*
 
 For a boundary judgment (Δ, A token-free), define the **proof-counting
 provenance polynomial** and the mass:
