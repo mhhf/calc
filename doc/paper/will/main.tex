@@ -1,0 +1,1252 @@
+% acmart conversion deferred until venue choice — swap documentclass + \cite style then.
+\documentclass[11pt]{article}
+
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{lmodern}
+\usepackage{amsmath,amssymb,amsthm}
+\usepackage{mathtools}
+\usepackage{mathpartir}
+\usepackage{booktabs}
+\usepackage{graphicx}
+\usepackage{geometry}
+\usepackage{xcolor}
+\usepackage[activate=false]{microtype}
+\usepackage[hidelinks]{hyperref}
+\usepackage{listings}
+
+\geometry{margin=1.25in}
+
+\lstset{
+  basicstyle=\small\ttfamily,
+  breaklines=true,
+  columns=flexible,
+  mathescape=true,
+  keepspaces=true,
+}
+
+%% ============================================================
+%%  Notation (shared with the till paper where the fragments overlap)
+%% ============================================================
+\newcommand{\lax}[2]{\{#1\}\mathbin{@}#2}       % graded lax monad {S}@d
+\newcommand{\laxb}[1]{\{#1\}}                   % bare lax monad {S}
+\newcommand{\gbang}[1]{{!}_{#1}}                 % counted bang  !_k
+\newcommand{\loli}{\multimap}                    % linear implication ⊸
+\newcommand{\tensor}{\otimes}                    % tensor ⊗
+\newcommand{\addconj}{\mathbin{\&}}              % additive conjunction &
+\newcommand{\adddisj}{\oplus}                    % additive disjunction ⊕
+\newcommand{\bang}{{!}}                          % bang !
+\newcommand{\QQ}{\mathbb{Q}}                     % rationals
+\newcommand{\NN}{\mathbb{N}}                     % naturals
+\newcommand{\CC}{\mathbb{C}}                     % complex numbers
+\newcommand{\stmp}[2]{#1\mathbin{@}#2}           % stamp  a@t
+\newcommand{\enc}[1]{\lceil #1 \rceil}          % state encoding bracket
+\newcommand{\till}{\textsc{till}}                % the time instance
+\newcommand{\gill}{\textsc{gill}}                % the graded family
+\newcommand{\will}{\textsc{will}}                % the measure instance (this paper)
+\newcommand{\calc}{\textsc{calc}}                % sandbox name
+
+%% will-specific
+\newcommand{\erho}[2]{\exists_{\rho}\, #1{:}#2.\;} % weighted existential ∃_ρ x:s.
+\newcommand{\dtok}[2]{\mathsf{drawn}\;#1\;#2}      % draw token  drawn c s
+\newcommand{\trz}[1]{\langle #1\rangle}            % token zone ⟨Θ⟩
+\newcommand{\Tr}{\Theta}                           % a trace
+\newcommand{\ghost}{\mathsf{ghost}}
+\newcommand{\focR}{\mathrel{\gg}}                  % right focus  Δ ≫ P
+\newcommand{\invR}{\mathrel{\Uparrow}}             % inversion
+\newcommand{\seq}[3]{#1;\;#2\vdash #3}             % Γ; Δ ⊢ A
+\newcommand{\seqt}[4]{#1;\;#2\vdash #3\;[#4]}      % Γ; Δ ⊢ A [Θ]
+\newcommand{\wt}[1]{w(#1)}
+
+%% Theorem environments — numbered per section
+\newtheorem{theorem}{Theorem}[section]
+\newtheorem{lemma}[theorem]{Lemma}
+\newtheorem{corollary}[theorem]{Corollary}
+\newtheorem{proposition}[theorem]{Proposition}
+\theoremstyle{definition}
+\newtheorem{definition}[theorem]{Definition}
+\theoremstyle{remark}
+\newtheorem{remark}[theorem]{Remark}
+
+\title{Weight in the Endsequent:\\
+  Cut Admissibility for a Measure-Weighted Existential\\
+  by Draw-Token Internalization}
+\author{Denis Erfurt}
+\date{Draft (TODO\_0283)}
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+We present \will{}, an intuitionistic linear sequent calculus with a
+\emph{measure-weighted existential quantifier} $\erho{x}{s} A$: the
+binder ranges over a closed classifier sort $s$ whose constructors carry
+declared prior weights $\rho : s \to \QQ_{\geq 0}$, and a derivation's
+weight is the product of the priors of the witnesses it draws.  The
+central difficulty is that weight, treated as a judgment grade, is
+\emph{not preserved by cut elimination}: the principal reduction of the
+weighted existential substitutes the witness and deletes the
+introduction step, losing its factor.  Our resolution is to stop
+annotating: the run trace is \emph{internalized} as a multiset of
+linear \emph{draw-token} hypotheses $\dtok{c}{s}$ in the ordinary
+linear zone.  The weighted right rule \emph{consumes} a token; weight
+becomes a function of the \emph{endsequent}; and since cut elimination
+preserves endsequents by construction, exact weight conservation is
+definitional.  We prove cut admissibility for the extended calculus
+(with no relaxation order, no expectation, no threshold --- raw
+$\QQ_{\geq0}$ priors conserved on the nose), and derive three
+structural consequences: \emph{ghost} weakening restricted to the token
+class is forced by closure under cut reduction; \emph{no promotion
+through a draw} (the $\bang$R empty-zone condition makes duplication
+and erasure trace-safe); and \emph{identity expansion fails} at
+$\exists_\rho$ --- a proof-theoretic no-cloning property, which forces
+the focused system to treat $\exists_\rho$ as a synthetic atom.  We
+give the focused system and the permutation argument for its
+completeness, define the \emph{proof-counting provenance polynomial}
+$P_A \in \NN[X]$ whose evaluation homomorphisms recover the
+probabilistic mass ($\QQ_{\geq0}$), the tropical optimum
+($\min,+$), and a reserved amplitude face ($\CC$), and prove that the
+operational \emph{decimation driver} is adequate: its collapse paths
+are in bijection with the focused ghost-free derivations the
+polynomial counts.  The calculus is implemented: every theorem in the
+paper is either executable or checked by an LF-style kernel, and
+complete runs of the stochastic engine ship as kernel-verified
+certificates whose endsequents carry their traces.
+\end{abstract}
+
+\tableofcontents
+\bigskip\hrule\bigskip
+
+%%====================================================================
+\section{Introduction}
+\label{sec:intro}
+%%====================================================================
+
+\subsection{The problem}
+
+Linear logic is the natural home for stochastic \emph{generation}: a
+wave-function-collapse tiler, a PCFG sampler, and a probabilistic
+multiset rewriting engine all manipulate resources that are produced,
+consumed, and --- crucially --- \emph{drawn}.  The quantitative
+refinements of linear logic, however, live almost entirely on the
+\emph{necessity} side: graded exponentials
+$\gbang{r}A$~\cite{GirardScedrovScott1992,Atkey2018,OrchardLiepeltEades2019},
+graded monads as categorical
+structure~\cite{Katsumata2014,FujiiKatsumataMillies2016}, and (in the
+predecessor to this paper) a delay-graded lax modality with cut
+admissibility~\cite{TillPaper}.  What generation needs is different: a
+\emph{weighted existential}.  ``There exists a tile for this cell,
+distributed by the priors $\rho$'' is a quantifier, not a modality; its
+witness is chosen by a draw; and the weight of a run is the product of
+the priors of its draws.
+
+The na\"ive design annotates the judgment:
+$\seq{\Gamma}{\Delta}{A\,\langle w\rangle}$, with the weighted right
+rule multiplying $\rho(c)$ into $w$.  This design is broken, and the
+break is instructive.  The principal cut of the weighted existential
+against its left rule reduces by \emph{substituting the witness and
+deleting the introduction step} --- and the deleted step is the only
+place the factor $\rho(c)$ entered.  On a two-constructor sort the
+annotated calculus rewrites a weight-$2$ derivation to a weight-$1$
+derivation of the same sequent: cut elimination is not
+weight-preserving, so the annotation does not denote anything stable
+under the equational theory of proofs.  The same wall --- a sum- or
+measure-valued judgment without syntactic cut elimination --- appears
+independently in counting propositional logic~\cite{AntonelliDLP2022},
+whose semantics is exact but whose cut rule is only semantically
+admissible, and in the algebraic $\lambda$-calculus~\cite{Vaux2009},
+where scalar sums survive reduction only under positivity constraints.
+The only syntactic success we know of, cut elimination for Riesz modal
+logic~\cite{LucasMio2022}, pays with hypersequents, a scalar-weighted
+context calculus, and a fifty-page proof --- and its interaction with
+linear multiplicatives is open.
+
+\subsection{The resolution: internalize the trace}
+
+Our resolution is to stop annotating.  A stochastic run already has a
+canonical record: its \emph{trace}, the multiset of draws it made.  We
+internalize the trace into the sequent itself as ordinary linear
+hypotheses.  One kernel-reserved atom family
+\[
+  \dtok{c}{s} \qquad (c \text{ a constructor of the classifier sort } s)
+\]
+is added, and the trace judgment is \emph{defined}, not axiomatized:
+\[
+  \seqt{\Gamma}{\Delta}{A}{\Tr} \;\;:=\;\;
+  \seq{\Gamma}{\Delta,\trz{\Tr}}{A},
+\]
+where $\trz{\Tr}$ is the multiset of tokens $\dtok{c}{s}$ for the
+records in $\Tr$.  The weighted right rule \emph{consumes} a token ---
+``given that a draw of $c$ occurred, assert the existential via $c$''
+--- and the weight of a sequent is a \emph{function of its endsequent}:
+$\wt{\Tr} = \prod_{(c:s)\in\Tr}\rho(c)$.  Cut elimination preserves
+endsequents by construction; conservation of the trace, and hence of
+the weight, is \emph{definitional}.  The proof burden moves to where it
+belongs: showing that the required reduction steps \emph{exist} in the
+extended calculus.  They do (\S\ref{sec:cut}), and the three places
+where existence is subtle each yield a structural theorem rather than a
+patch:
+
+\begin{itemize}
+\item The principal reduction turns a \emph{used} draw into an
+  \emph{unused} one, so the calculus needs \emph{ghost}: weakening
+  restricted to the token class.  Tape-linear systems --- where tokens
+  must be consumed exactly --- are \emph{not closed under cut
+  reduction} (\S\ref{sec:cut}, case (a)).  Ghost is then excluded from
+  the canonical counting class exactly the way ordinary weakening is
+  excluded under focusing (\S\ref{sec:ghost}).
+\item Duplication and erasure of subderivations, the classical dangers
+  for any resource-counting discipline, are governed by one existing
+  condition: promotion ($\bang$R) requires an \emph{empty linear zone}
+  --- which now includes tokens.  \textbf{No promotion through a draw}:
+  a derivation that draws is not promotable, no draw is ever duplicated
+  or erased (\S\ref{sec:cut}, cases (e), (f)).  Probabilistic
+  conclusions are not bangable knowledge; one may bang the
+  \emph{consequences of an outcome}, never the luck itself.
+\item Identity expansion \emph{fails} at $\exists_\rho$: eta-expanding
+  $\erho{x}{s}B \vdash \erho{x}{s}B$ would need a token the sequent
+  does not have.  A committed draw can be passed along whole but not
+  deconstructed and re-derived --- re-derivation would be a second
+  draw, a different endsequent (\S\ref{sec:nocloning}).  A
+  no-cloning-flavored theorem appears at exactly the connective that
+  carries randomness, in a classical calculus, for free; its design
+  consequence is that the focused system must treat $\exists_\rho$ as a
+  \emph{synthetic atom} on the identity dimension (\S\ref{sec:focused}).
+\end{itemize}
+
+\subsection{From counting to measure: provenance}
+
+With cut admissibility in hand, the quantitative story is a
+\emph{counting} story.  For a token-free boundary judgment we define
+$N(A,\Tr)$, the number of focused, cut-free, ghost-free derivations of
+$\seq{\Gamma}{\Delta,\trz{\Tr}}{A}$, and package the counts as a
+\emph{proof-counting provenance polynomial}
+$P_A = \sum_\Tr N(A,\Tr)\cdot X^{\Tr} \in \NN[X]$.  Because tokens are
+linear, each derivation carries exactly \emph{one} monomial --- its
+endsequent's token multiset --- sharpening the provenance-semiring
+picture~\cite{GreenKT2007,GradelTannen2024} in which monomials annotate
+proof trees.  By $\NN[X]$-initiality every semiring-valued reading is
+an evaluation homomorphism out of $P_A$: at
+$K=(\QQ_{\geq0},+,\cdot)$, $X_c \mapsto \rho(c)$, one obtains \will{}'s
+probabilistic mass; at $K = (\min,+)$ the sum collapses onto the
+single best derivation --- which is exactly why the
+cost-graded sibling calculus (\gill{}) needs no trace and a per-proof
+grade suffices; $K=\CC$ is reserved: evaluation is still a
+homomorphism, but interference is forgetting-by-cancellation that no
+trace-level statement can undo.  Cut admissibility is proved once; each
+quantitative face inherits invariance through its homomorphism
+(\S\ref{sec:bridge}).
+
+\subsection{The engine, certified}
+
+\will{} is not a paper calculus.  Its operational face is a
+\emph{decimation driver} over committed-choice multiset rewriting: the
+weighted existential in a rule consequent suspends as a \emph{wave};
+the driver opens waves with fresh existential variables, re-settles so
+that derived \emph{bias} facts condition the posterior, draws
+minimum-entropy-first, and substitutes witnesses.  We prove the driver
+\emph{adequate}: its collapse paths are in bijection with the focused
+ghost-free derivations counted by $N$ (\S\ref{sec:adequacy}).  The
+adequacy is not just stated but \emph{shipped}: a complete stochastic
+run elaborates --- post-hoc grounded --- into a single derivation tree
+checked by an LF-style kernel, whose endsequent
+$\Gamma;\Delta_0,\trz{\Tr}\vdash\laxb{\bigotimes\text{residual}}$
+carries the trace, so the run's prior mass is readable off the
+certificate's endsequent alone, and a doctored weight or a truncated
+token zone fails verification (\S\ref{sec:impl}).
+
+\subsection{Contributions}
+
+\begin{enumerate}
+\item \textbf{The trace judgment by internalization}
+  (\S\ref{sec:calculus}): the first cut-admissibility result for a
+  measure-weighted existential in a linear sequent calculus, with
+  \emph{exact} weight conservation.  The mechanism --- weight as a
+  function of which hypotheses remain in the endsequent --- is new at
+  the theorem level; \S\ref{sec:related} distinguishes the idea-level
+  relatives.
+\item \textbf{Three structural theorems} (\S\ref{sec:cut}--\ref{sec:ghost}):
+  ghost forced by closure under reduction; no promotion through a draw;
+  no-cloning as identity-expansion failure.
+\item \textbf{The focused counting system} (\S\ref{sec:focused}): a
+  focused calculus in which ghost-freeness is structural, $\exists_\rho$
+  is a synthetic atom, and the completeness argument's new permutation
+  cases are worked in full.
+\item \textbf{Universality} (\S\ref{sec:bridge}): the proof-counting
+  provenance polynomial and its evaluation faces; one cut theorem, all
+  faces inherit.
+\item \textbf{Driver adequacy and a certified engine}
+  (\S\ref{sec:adequacy}--\ref{sec:impl}): collapse paths $\cong$
+  counted derivations; complete stochastic runs as kernel-checked
+  certificates whose endsequents carry their traces; a
+  wave-function-collapse case study whose exact-mode measure matches
+  brute-force enumeration.
+\end{enumerate}
+
+\subsection{Non-claims}
+
+All proofs are on paper, none machine-checked; the kernel that checks
+\emph{derivations} is an implementation artifact, not a proof
+assistant, and mechanizing \S\ref{sec:cut} is future work.  The
+focalization theorem's base cases (MALL focusing) are standard and
+cited, not re-proved; \S\ref{sec:focused} works the cases our
+connectives add.  Driver adequacy is scoped: boundary judgments,
+conflict-free settle segments, and a fixed draw policy (the
+policy-independence of the resulting measure follows, but scheduling
+fairness for non-confluent programs is out of scope).  Convergence for
+recursive sorts (subcritical priors), the unbiasedness of the
+importance-weighted sampler, and the exactness of the underlying timed
+engine are imported from the companion theory
+documents~\cite{THY0026,TillPaper} and used as black boxes.  The
+$\CC$-valued face is reserved, not developed.  A mass \emph{judgment}
+(sequents proving ``the total mass of $A$ is $m$'') is deliberately
+absent: the literature's price tags for syntactic cut elimination at
+that level~\cite{LucasMio2022,AntonelliDLP2022} are the reason this
+paper counts proofs instead.
+
+%%====================================================================
+\section{The calculus}
+\label{sec:calculus}
+%%====================================================================
+
+\subsection{Base: a graded linear sequent calculus}
+
+\will{} extends \gill{}, the graded intuitionistic linear sequent
+calculus of the companion paper~\cite{TillPaper}: two-zone judgments
+$\seq{\Gamma}{\Delta}{A}$ (persistent; linear), multiplicatives
+$\tensor, 1, \loli$, additive $\addconj$, the exponential $\bang A$
+with an explicit promotion rule requiring an empty linear zone, counted
+parcels $\gbang{k}A$, a delay-graded lax monad $\lax{S}{d}$ whose side
+conditions are theory premises over decidable arithmetic, and stamped
+atoms $\stmp{a}{t}$.  Everything in this paper is orthogonal to the
+grading of the monad: delay grades live on formulas, weight will live
+in the zone, and the two never share a slot (\S\ref{sec:cut}, case
+(g)).  We write the fragment's rules only as needed; the full rule set
+is in the artifact.
+
+Two base-calculus facts are load-bearing and worth stating now:
+
+\begin{itemize}
+\item \textbf{Promotion has an empty linear zone.}
+  $\bang$R (and its counted variant at count $0$) concludes from
+  $\seq{\Gamma}{\cdot}{A}$.  During this work an adversarial audit of
+  the counted rule found it as originally written with an
+  \emph{arbitrary} linear context --- an affine leak deriving
+  $a \vdash \gbang{0}b$, harmless in the base calculus but fatal for
+  trace conservation once affine tokens exist.  The repair (empty zone,
+  like $1$R) restores $\gbang 0 A \dashv\vdash 1$ and is assumed
+  throughout (\S\ref{sec:cut}, case (f$'$)).
+\item \textbf{Identity is primitive at every formula.}  The base
+  calculus takes $A \vdash A$ as a rule for all $A$; identity
+  \emph{expansion} (deriving compound id from atomic id) is a theorem
+  there.  In \will{} that theorem acquires an exception
+  (\S\ref{sec:nocloning}), which is why primitivity matters.
+\end{itemize}
+
+\subsection{Sorts, priors, and tokens}
+
+A \emph{classifier sort} $s$ is a closed-world sort whose members are
+declared constructors; each member $c$ may carry a declared prior
+weight $\rho(c) \in \QQ_{\geq0}$ (unannotated members default to $1$;
+weights are unnormalized --- normalization is a boundary operation, as
+in~\cite{Staton2017}).  Members may be nullary (\emph{rung~1}) or
+constructors with classifier-sorted arguments (\emph{rung~2}), in which
+case draws instantiate one head at a time and argument positions become
+new draws --- ancestral PCFG generation; convergence is governed by
+Chi--Geman subcriticality~\cite{ChiGeman1998} and imported
+from~\cite{THY0026}.
+
+The one new atom family is the \textbf{draw token}:
+\[
+  \dtok{c}{s}\colon \text{linear, ground, kernel-reserved.}
+\]
+\emph{Fences:} (i) no program rule may produce or match a token, no
+right rule exists for it, and the forward-engine checker never
+concludes one --- tokens enter judgments only at the boundary, minted
+by the draw checker of \S\ref{sec:impl}, one per collapse event,
+with $\rho(c)$ checked against the declared prior; (ii) tokens are
+ground --- a draw records a constructor \emph{head}, so substitution
+never touches tokens (rung-2 lazy draws record the head only, matching
+priors being per-constructor).
+
+\begin{definition}[Trace judgment]\label{def:trace}
+For a multiset $\Tr$ of draw records $(c:s)$,
+\[
+  \seqt{\Gamma}{\Delta}{A}{\Tr} \;:=\;
+  \seq{\Gamma}{\Delta,\trz{\Tr}}{A},
+  \qquad
+  \wt{\Tr} := \textstyle\prod_{(c:s)\in\Tr}\rho(c).
+\]
+\end{definition}
+
+Every piece of trace bookkeeping reduces to context bookkeeping already
+present in the base calculus:
+
+\begin{center}
+\begin{tabular}{ll}
+\toprule
+trace-zone behavior & context behavior it reduces to\\
+\midrule
+cut concatenates traces & cut merges linear contexts\\
+additive lockstep ($\addconj$R shares $\Tr$) & $\addconj$R shares $\Delta$ (verbatim)\\
+promotion is trace-empty & $\bang$R requires an empty linear zone (verbatim)\\
+ghost pads $\Tr$ & weakening, restricted to tokens\\
+weight multiplies along cut & $\wt{\Tr_1\uplus\Tr_2}=\wt{\Tr_1}\cdot \wt{\Tr_2}$\\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\subsection{The rules}
+\label{subsec:rules}
+
+Three rules are added to the base calculus:
+
+\begin{mathpar}
+\inferrule*[right=$\exists_\rho$R$(c)$]
+  {\seq{\Gamma}{\Delta}{A[c/x]}}
+  {\seq{\Gamma}{\Delta,\dtok{c}{s}}{\erho{x}{s}A}}
+\and
+\inferrule*[right=$\exists$L]
+  {\seq{\Gamma}{\Delta, A[a/x]}{C} \\ (a\ \text{fresh})}
+  {\seq{\Gamma}{\Delta, \erho{x}{s}A}{C}}
+\and
+\inferrule*[right=ghost]
+  {\seq{\Gamma}{\Delta}{C}}
+  {\seq{\Gamma}{\Delta,\dtok{c}{s}}{C}}
+\end{mathpar}
+
+$\exists_\rho$R \emph{consumes} a token: given that a draw of $c$ at
+sort $s$ occurred, assert the weighted existential via $c$.
+$\exists$L is the standard eigenvariable rule, token-neutral.
+$\ghost$ is weakening restricted to the token class: $\Delta$ proper
+stays linear, the token sub-zone is affine (mixed-discipline zones are
+standard).  No rule contracts a token; no rule proves one.
+
+\begin{remark}[Why weight is not a grade]\label{rem:notagrade}
+In the annotated design the principal reduction of
+$\exists_\rho$R$(c)$ against $\exists$L substitutes $c$ for the
+eigenvariable and deletes the $\exists_\rho$R node --- the only place
+$\rho(c)$ was multiplied in.  On a two-member sort with
+$\rho \equiv 1$ per member this rewrites $\langle 2\rangle$ to
+$\langle 1\rangle$: annotated weight is not a proof invariant.  In
+\will{} the same reduction \emph{keeps the token} (case (a) below); the
+factor never lived on the deleted node, it lives in the endsequent.
+\end{remark}
+
+%%====================================================================
+\section{Cut admissibility}
+\label{sec:cut}
+%%====================================================================
+
+\begin{theorem}[Cut admissibility with exact trace conservation]
+\label{thm:cut}
+The three cuts of the base calculus (linear, lax, persistent) remain
+admissible in \gill{} extended by the rules of \S\ref{subsec:rules},
+with the same scope as the base theorem (the cut-free calculus excludes
+the two premise-free oracle rules, which certificate elaboration
+removes before verification).  Every reduction step preserves the
+endsequent; hence the trace, and its weight, are conserved
+\emph{exactly}, with raw $\QQ_{\geq0}$ priors.
+\end{theorem}
+
+\begin{proof}
+By the base calculus's lexicographic induction: cut-formula weight
+(with the first-order convention --- witnesses are terms, sort members
+or constructor heads, never formulas, so witness substitution preserves
+formula weight), then cut kind, then premise heights.  Endsequent
+preservation holds by construction in every case; since the trace is
+part of the endsequent, conservation is definitional.  The burden is
+that the required reductions \emph{exist}.  We list the new or
+newly-audited cases; all commutative cases not mentioned are those of
+the base proof with tokens following their contexts.
+
+\medskip\noindent\textbf{(a) Principal $\exists_\rho$R / $\exists$L.}
+The crash site of the annotated design, resolved:
+\[
+\begin{array}{ll}
+\pi' : \seq{\Gamma}{\Delta_1}{A[c/x]}
+& \sigma' : \seq{\Gamma}{\Delta_2, A[a/x]}{C} \quad (a\ \text{fresh})\\[2pt]
+\pi : \seq{\Gamma}{\Delta_1, \dtok{c}{s}}{\erho{x}{s}A}
+& \sigma : \seq{\Gamma}{\Delta_2, \erho{x}{s}A}{C}\\[4pt]
+\multicolumn{2}{l}{\mathrm{cut}(\pi,\sigma) :
+  \seq{\Gamma}{\Delta_1, \dtok{c}{s}, \Delta_2}{C}}
+\end{array}
+\]
+Reduct: substitute ($\sigma'[c/a]$ --- legal: $a$ fresh, $c$ ground,
+tokens in $\Delta_2$ untouched by the fences), cut on the smaller
+formula, and restore the token by one $\ghost$:
+\[
+  \mathrm{cut}(\pi', \sigma'[c/a]) :
+  \seq{\Gamma}{\Delta_1,\Delta_2}{C}
+  \;\;\leadsto\;\;
+  \ghost :
+  \seq{\Gamma}{\Delta_1,\Delta_2,\dtok{c}{s}}{C},
+\]
+the same endsequent.  The reduction \emph{needs} $\ghost$: it converts
+a used draw into an unused one.  A system whose tokens must be exactly
+consumed is not closed under cut reduction --- that is the annotated
+design's crash restated as a general law, and why $\ghost$ is a rule,
+not a leak.
+
+\medskip\noindent\textbf{(b) Ghost commutation.}  $\ghost$ as the last
+rule of either cut premise commutes below the cut (standard weakening
+commutation; premise height strictly decreases).  $\ghost$ never
+introduces the cut formula --- tokens are never cut formulas by (d) ---
+so no principal case arises.
+
+\medskip\noindent\textbf{(c) Identity cuts.}  id exists at all
+formulas, in particular at $\erho{x}{s}A$ and at $\dtok{c}{s}$; a cut
+against id reduces by deletion on either side, as always.
+
+\medskip\noindent\textbf{(d) Cuts on tokens.}  The only derivations of
+$\seq{\Gamma}{\Delta}{\dtok{c}{s}}$ end in id --- no right rule, no
+checker conclusion (\S\ref{sec:calculus} fences).  Case (c) covers
+them; no other principal case on tokens exists.
+
+\medskip\noindent\textbf{(e) Duplication audit.}  The one duplication
+mechanism is the persistent cut: $\mathrm{cut}^{\bang}$ substitutes a
+promoted derivation at each copy.  Promotion requires the linear zone
+empty --- which now includes tokens.  The duplicated derivation
+therefore contains no draws: \textbf{no draw is ever duplicated}.  (The
+counted exponential $\gbang{k}$ peels by \emph{splitting} context,
+never by duplicating; harmless.)  The consequence deserves its name:
+\textbf{no promotion through a draw} --- a derivation that draws is not
+promotable.  Operationally: draws are linear, event-world phenomena;
+the persistent world is deterministically re-derivable knowledge.  One
+may bang the consequences of an outcome, never the luck itself.
+
+\medskip\noindent\textbf{(f) Erasure audit.}  Reductions that delete a
+subderivation: (i) principal $\addconj$ ---
+$\mathrm{cut}(\addconj\text{R}(\pi_1,\pi_2), \addconj\text{L}_i(\sigma))$
+keeps $\pi_i$ and erases the other; $\addconj$R's premises share one
+$\Delta$, tokens included, so the endsequent loses nothing.
+(ii) persistent weakening --- an unused persistent hypothesis erases
+its promotion $\pi$; $\pi$'s linear zone is empty by (e), so no token
+is lost.  (When $\adddisj$/$0$ left rules are added to the fragment,
+$\adddisj$L shares $\Delta$ like $\addconj$R and $0$L erases into an
+arbitrary endsequent, vacuously safe.)  \textbf{No draw is ever
+erased.}
+
+\medskip\noindent\textbf{(f$'$) The counted-promotion case.}  Found
+fatal-as-stated by an adversarial audit of this proof.  As originally
+written, the count-zero rule concluded $\gbang{K}A$ (with
+$K\!=\!0$) from an \emph{arbitrary} linear context $D$ --- an affine
+leak in the base calculus (it derives $a \vdash \gbang{0}b$,
+contradicting $\gbang0 A \dashv\vdash 1$), harmless there because a
+stranded linear atom leaves the derivation incompletable elsewhere,
+but \emph{reachable} exactly when affine tokens exist: with
+$D = \trz{\Tr}$, the principal cut against the count-zero left rule
+reduces to that rule's premise and erases the tokens --- trace
+conservation violated.  Two sound repairs exist: ghost-pad the reduct
+by $|\Tr|$ (legal, since only tokens can inhabit that $D$ in a
+completable derivation), or fix the rule to require an empty linear
+zone like $1$R.  We took the root fix; with it the case is vacuous and
+(f) stands.  The audit trail matters: the flaw was in the \emph{base}
+calculus and invisible there; the affine token discipline is what made
+it observable.
+
+\medskip\noindent\textbf{(g) Lax and transport cuts.}  The graded
+monad and transport rules are single-premise rules with persistent
+theory premises (arithmetic side conditions).  Theory premises are
+persistent-zone derivations --- clause resolution, no linear zone,
+hence no tokens; witness substitution $[c/a]$ reaches them only as
+ground-for-ground replacement in already-ground arithmetic goals
+(tokens and grade terms are ground), preserving derivability.  Grades
+compose exactly as in the base cut proof; tokens ride the linear
+contexts orthogonally.  Delay grades and weight tokens never share a
+slot: the ``product of two semirings on one judgment'' question
+dissolves --- \textbf{grades on formulas, draws in the zone}.
+
+\medskip\noindent\textbf{(h) Additive lockstep, derived.}
+$\addconj$R gives both premises the same $\Delta$, hence the same
+tokens; a branch that draws less discharges its surplus by $\ghost$.
+The lockstep discipline that a standalone trace zone would have to
+stipulate is here a consequence of context sharing.
+
+\medskip\noindent\textbf{(i) Remaining commutative cases.}  Cut
+formula non-principal on one side: push the cut past the last rule,
+standard for every rule of the fragment.  The checks worth naming:
+context-splitting rules ($\tensor$R, $\loli$L, the counted-peel and
+transport rules) --- the cut lands in the branch holding the cut
+formula, tokens follow their contexts; the stamp-retiming axiom ---
+its theory premise is ground under witness substitution as in (g);
+copy --- duplicates from $\Gamma$ only, token-free by (e).  The
+induction measure is the base paper's, with $\ghost$ commutation
+strictly decreasing premise height.
+\end{proof}
+
+%%====================================================================
+\section{No-cloning: identity expansion fails at \texorpdfstring{$\exists_\rho$}{the weighted existential}}
+\label{sec:nocloning}
+%%====================================================================
+
+\begin{theorem}[Identity-expansion failure]\label{thm:nocloning}
+Identity expansion --- the derivation of $A \vdash A$ at compound $A$
+from identities at atoms --- fails at $\exists_\rho$: there is no
+token-free eta-expansion of
+$\erho{x}{s}B \vdash \erho{x}{s}B$.
+\end{theorem}
+
+\begin{proof}
+Expanding by $\exists$L opens a fresh eigenvariable $a$; concluding the
+right side needs $\exists_\rho$R$(c)$ for some member $c$ --- which
+consumes a token the sequent does not have.  By the fences no rule
+proves a token, and $\ghost$ only discards.  With
+Theorem~\ref{thm:cut}(d), every derivation of the sequent ends in id.
+\end{proof}
+
+Identity stays \emph{primitive} at $\exists_\rho$ (as it already is in
+the base calculus, where id is general).  The physical reading: a
+committed draw can be passed along whole, but not deconstructed and
+re-derived --- re-derivation would be a second draw, visible as a
+different endsequent with one more token.  A no-cloning-flavored
+theorem at exactly the connective that carries randomness, in a
+classical calculus, for free.  Its design consequence surfaces in the
+focused system (\S\ref{sec:focused}): where standard focalization
+arguments eta-expand identities at compound formulas, $\exists_\rho$
+has no expansion, so the focused system must admit id at
+$\exists_\rho$ as at an atom --- $\exists_\rho$ is a \emph{synthetic
+atom on the identity dimension}.
+
+%%====================================================================
+\section{The ghost discipline}
+\label{sec:ghost}
+%%====================================================================
+
+Call a derivation \emph{ghost-free} if every token in its endsequent is
+consumed by an $\exists_\rho$R instance.
+
+\begin{lemma}[Ghost commutation]\label{lem:ghostcomm}
+$\ghost$ permutes below every rule of the calculus.  For
+single-premise rules the permutation is verbatim.  For
+context-splitting rules ($\tensor$R, $\loli$L, counted peel) the
+parent's split is adjusted: the branch that held the ghosted token
+proceeds with the smaller context, which its subderivation proves by
+the induction hypothesis.  For $\addconj$R the token is ghosted in both
+branches (shared context).  For $\exists_\rho$R the interaction is a
+\emph{merge}, not a permutation: a $\ghost$ introducing $\dtok{c}{s}$
+immediately consumed by $\exists_\rho$R$(c)$ cancels against it --- the
+pair rewrites to the premise re-tokened from the ambient context.
+\end{lemma}
+
+\begin{proof}
+Standard weakening commutation, by cases on the rule below the
+$\ghost$; the merge case is immediate from the rule shapes.  Each move
+either preserves the number of $\ghost$ occurrences or (merge)
+decreases it; premise heights strictly decrease under each
+permutation.
+\end{proof}
+
+\begin{lemma}[Stripping and padding]\label{lem:strip}
+(i) Every derivation of $\seq{\Gamma}{\Delta,\trz\Tr}{A}$ contains a
+ghost-free derivation of $\seq{\Gamma}{\Delta,\trz{\Tr_0}}{A}$ for some
+$\Tr_0 \subseteq \Tr$: permute each $\ghost$ to the root
+(Lemma~\ref{lem:ghostcomm}) and delete it there; induction on the
+$\ghost$ count.
+(ii) Conversely $\seq{\Gamma}{\Delta,\trz{\Tr_0}}{A}$ implies
+$\seq{\Gamma}{\Delta,\trz{\Tr}}{A}$ for every $\Tr \supseteq \Tr_0$,
+by applying $\ghost$.
+\end{lemma}
+
+\begin{corollary}[The counting class]\label{cor:countingclass}
+Provable traces form the upward closure of ghost-free traces;
+$\subseteq$-minimal provable traces are ghost-free.  The converse
+fails: ghost-free is \emph{strictly} larger than minimal.  For
+internal choice on the left,
+\[
+  (p\,c) \addconj (\erho{x}{s}\,p\,x) \;\vdash\; \erho{x}{s}\,p\,x
+\]
+is provable ghost-free at trace $\{c\}$ (project left, then
+$\exists_\rho$R$(c)$) \emph{and} at the empty trace (project right,
+then id --- the synthetic-atom identity of
+Theorem~\ref{thm:nocloning}); the same separation arises from
+$\adddisj$ on the right.  Ghost-free, not minimal, is the correct
+counting class: both proofs carry mass.
+\end{corollary}
+
+\begin{remark}[Divergence audit]
+Counting \emph{all} derivations would attach the factor
+$\sum_k \big(\sum_c \rho(c)\big)^k = \infty$ to each proof through its
+padded variants --- the trace-faithfulness objection of trace
+types~\cite{LewPOPL2020} in proof-theoretic form.  Counting ghost-free
+derivations excludes every padded variant.  Note that ghost marks live
+on \emph{rule occurrences}, not in the trace: marked trace entries
+would break Theorem~\ref{thm:cut}'s endsequent-on-the-nose
+conservation, since reduction (a) creates a $\ghost$ occurrence while
+preserving the endsequent.  This is exactly weakening's profile:
+present in derivations, absent from canonical forms.
+\end{remark}
+
+\begin{proposition}[Conservativity]\label{prop:conserv}
+Erasing tokens and mapping $\exists_\rho$R/$\exists$L to the standard
+$\exists$R/$\exists$L sends \will{}-derivations to ILL derivations.
+Conversely any ILL derivation lifts: take $\Tr$ = the multiset of
+$\exists$R witnesses at the $\exists_\rho$ positions; each
+subderivation's tokens are the witnesses of its own $\exists_\rho$R
+occurrences, so context-splitting rules split $\Tr$ canonically
+(disjoint subtrees) and context-sharing rules are balanced by
+$\ghost$-padding each branch with the other's tokens.  Hence
+$\seqt{\Gamma}{\Delta}{A}{\Tr}$ holds for some $\Tr$ iff the plain
+judgment is derivable: the trace judgment is a conservative extension.
+\end{proposition}
+
+%%====================================================================
+\section{The focused system}
+\label{sec:focused}
+%%====================================================================
+
+The counting fragment is the multiplicative-additive core plus
+$\exists_\rho$ and tokens:
+\[
+  P ::= a \mid \dtok{c}{s} \mid 1 \mid A \tensor B \mid \erho{x}{s}A
+  \qquad
+  N ::= A \loli B \mid A \addconj B
+\]
+with atoms positive.  ($\adddisj$ extends the fragment routinely; the
+graded template rules --- monad, exponentials, transport, stamps ---
+and the oracle rules stay outside: the boundary judgments of
+\S\ref{sec:bridge} live in the collapse fragment, matching the
+driver.)  The persistent zone is passive throughout (copy + id;
+token-free by Theorem~\ref{thm:cut}(e)).
+
+\subsection{Polarities and phases}
+
+We use a standard two-phase focused presentation for intuitionistic
+linear logic~\cite{Andreoli1992,ChaudhuriPfenningPrice2008}:
+\emph{inversion} eagerly decomposes negatives on the right and
+positives on the left; at a \emph{stable} sequent a focus is chosen
+(right focus on a positive goal, left focus on a negative hypothesis);
+focus persists through the chosen formula's spine.  The additions:
+
+\begin{itemize}
+\item \textbf{$\dtok{c}{s}$ is a left-passive positive atom.}  It has
+  no left decomposition; during left inversion it moves to the stable
+  context like an atom.  It is consumed only as the side condition of
+  the focused $\exists_\rho$R:
+  \[
+  \inferrule*[right={$\exists_\rho$R$(c)$, focused}]
+    {\Gamma;\;\Delta \focR A[c/x]}
+    {\Gamma;\;\Delta, \dtok{c}{s} \focR \erho{x}{s}A}
+  \]
+  The token is consumed \emph{in phase} and focus continues on
+  $A[c/x]$.  Choosing $c$ is choosing which token to spend --- exactly
+  the non-invertible choice focusing isolates into the focus phase.
+\item \textbf{$\exists$L in inversion, or suspension.}  Left inversion
+  on $\erho{x}{s}A$ either applies the (token-neutral, eigenvariable)
+  $\exists$L, or \emph{suspends} the formula to the stable context as a
+  synthetic atom, to be consumed later only by id against a
+  right-focus occurrence of the same formula.  Suspension is forced by
+  Theorem~\ref{thm:nocloning}: id at $\exists_\rho$ has no expansion,
+  so a derivation that passes a wave along whole cannot be represented
+  by decompose-and-rebuild.  (For the boundary judgments of
+  \S\ref{sec:bridge} the goal contains no $\exists_\rho$, id at a
+  suspended wave can never fire, and suspension is vacuous ---
+  decomposition is then exhaustive and the phase discipline fully
+  canonical.)
+\item \textbf{No ghost.}  The focused system has no $\ghost$ rule:
+  ghost-freeness is not a side condition on the count but a structural
+  property of the system --- weakening's profile under focusing,
+  exactly (\S\ref{sec:ghost}).
+\item \textbf{Identity.}  id closes a right focus on an atom, a token,
+  or a (suspended) $\exists_\rho$ formula against an identical stable
+  hypothesis.
+\end{itemize}
+
+\subsection{Completeness}
+
+\begin{theorem}[Focalization]\label{thm:focal}
+Every ghost-free cut-free derivation of a counting-fragment sequent
+has a focused derivation of the same endsequent, and conversely
+(soundness) every focused derivation erases to a ghost-free cut-free
+derivation.
+\end{theorem}
+
+Soundness is immediate: erase phase markers; each focused rule is an
+instance of an unfocused rule; no rule erases to $\ghost$.  For
+completeness we follow the standard permutation
+strategy~\cite{Andreoli1992,Laurent2004,MillerSaurin2007,Simmons2014}:
+(1) invertible rules permute with each other and can be applied
+eagerly; (2) each non-invertible rule permutes downward until it either
+meets its phase or reaches a stable sequent, and chains of positive
+rules on one formula's spine can be made contiguous (focus
+persistence).  The base MALL cases are textbook; we work every case our
+additions create.  Throughout, ``preserves ghost-freeness'' is
+immediate for each move because no permutation square below introduces
+a $\ghost$ occurrence.
+
+\begin{lemma}[Token passivity]\label{lem:passivity}
+In the counting fragment, the only rules that mention tokens are
+$\exists_\rho$R (consumes one) and id (at a token).  In particular no
+invertible rule consumes, produces, or decomposes a token, and a token
+in $\Delta$ commutes inertly with every inversion step.
+\end{lemma}
+
+\begin{proof}
+By inspection of the rule set; $\ghost$ is absent from ghost-free
+derivations by definition, and the fences exclude tokens from every
+program-defined rule.
+\end{proof}
+
+\begin{lemma}[Principal occurrences of a left wave]\label{lem:leftwave}
+In a cut-free derivation, each occurrence of $\erho{x}{s}A$ in a linear
+context is principal at exactly one rule: $\exists$L or id.
+\end{lemma}
+
+\begin{proof}
+Linearity: the occurrence is consumed exactly once; the only rules
+that can consume a left $\exists_\rho$ are $\exists$L and id (no other
+left rule matches it, and $\ghost$ only consumes tokens).
+\end{proof}
+
+Lemma~\ref{lem:leftwave} is what justifies the suspension discipline:
+trace the occurrence upward; if it is principal at $\exists$L, permute
+that instance down into the inversion phase (the standard invertible
+permutations, token-inert by Lemma~\ref{lem:passivity}); if principal
+at id, suspend it --- it behaves as an atom along its entire path.
+
+\begin{lemma}[$\exists_\rho$R permutations]\label{lem:erhoperm}
+Let a ghost-free cut-free derivation contain an $\exists_\rho$R$(c)$
+instance immediately above a rule $R$ that is not part of its focus
+phase.  Then the two permute (the $\exists_\rho$R moves below $R$, or
+$R$ moves above it) with the same endsequent, no new $\ghost$, and all
+token threading determined by the contexts.  The cases:
+
+\emph{(i) $R$ invertible on the right} ($\loli$R, $\addconj$R): the
+goal of $\exists_\rho$R is the whole succedent, so $R$'s principal
+formula is the same $\erho{x}{s}A$ --- impossible ($\exists_\rho$ is
+not negative); no interaction.
+
+\emph{(ii) $R$ invertible on the left} ($\tensor$L, $1$L,
+$\exists$L on a different formula): $R$ does not touch the token
+(Lemma~\ref{lem:passivity}) nor the succedent; permute $R$ below:
+\[
+\inferrule*{\inferrule*{\seq{\Gamma}{\Delta', A[c/x]}{G}}
+            {\seq{\Gamma}{\Delta, A[c/x]}{G}}}
+           {\seq{\Gamma}{\Delta, \dtok{c}{s}}{\erho{x}{s}G'}}
+\;\;\leadsto\;\;
+\inferrule*{\inferrule*{\seq{\Gamma}{\Delta', A[c/x]}{G}}
+            {\seq{\Gamma}{\Delta', \dtok{c}{s}}{\erho{x}{s}G'}}}
+           {\seq{\Gamma}{\Delta, \dtok{c}{s}}{\erho{x}{s}G'}}
+\]
+(eigenvariable side conditions unaffected: $c$ is ground).
+
+\emph{(iii) $R = \tensor$R or $\loli$L (context split), with the
+$\exists_\rho$R in one branch}: the token lives in that branch's
+context; moving the boundary between phase and stable sequent
+re-associates the split so that the token stays with its branch ---
+the standard multiplicative permutation with one extra formula tracked,
+possible because the token is not decomposed by any rule the split
+could force (Lemma~\ref{lem:passivity}).
+
+\emph{(iv) $R = \addconj$R below}: both branches share
+$\Delta, \dtok{c}{s}$.  In a ghost-free derivation \emph{each} branch
+consumes the token by its own $\exists_\rho$R (there is no other
+consumer), so the permutation squares apply branchwise; no
+$\ghost$-balancing is ever needed --- this is
+Theorem~\ref{thm:cut}(h) restricted to the ghost-free class.
+
+\emph{(v) $R = $ id}: id has no premises; vacuous.
+\end{lemma}
+
+\begin{proof}
+Each square is checked by writing out both composites; the contexts
+match multiset-theoretically because the token is a formula like any
+other, and no square introduces $\ghost$.
+\end{proof}
+
+\begin{proof}[Proof of Theorem~\ref{thm:focal} (completeness)]
+Induction on the derivation with the standard measure (number of rule
+instances not in phase position).  Apply invertible permutations to
+make the inversion phase maximal at the root --- possible by the base
+invertibility lemmas extended to $\exists$L via
+Lemma~\ref{lem:leftwave}: each left wave is decomposed eagerly, or
+suspended if its principal rule is id (then it is atom-like for the
+rest of the argument).  At the resulting stable sequent, pick the rule
+that begins the derivation's next non-invertible cluster; by
+Lemmas~\ref{lem:passivity} and~\ref{lem:erhoperm} (and the base
+permutations for the MALL connectives) its entire positive spine can
+be made contiguous --- in particular an $\exists_\rho$R$(c)$ instance
+permutes down to join the right-focus phase of its goal formula, its
+token consumed in phase.  Where the standard argument eta-expands an
+identity at a compound formula, id at $\exists_\rho$ (and at tokens) is
+instead kept as a focused leaf --- legitimate because $\exists_\rho$ is
+synthetic (Theorem~\ref{thm:nocloning} means no expansion exists to
+normalize it away, and none is needed).  Each step reduces the
+measure; the process terminates in a focused derivation of the same
+endsequent, ghost-free at every intermediate stage since no move
+introduced a $\ghost$.
+\end{proof}
+
+\begin{definition}[The count]\label{def:count}
+For a counting-fragment sequent whose goal contains no
+$\exists_\rho$,
+\[
+  N(A,\Tr) \;:=\;
+  \#\{\text{focused, cut-free, ghost-free derivations of }
+  \seq{\Gamma}{\Delta,\trz\Tr}{A}\}.
+\]
+By the scope condition suspension is vacuous
+(\S\ref{sec:focused}), so the focused system is fully canonical and
+$N$ is well-defined.  Theorem~\ref{thm:focal} makes $N$ count exactly
+the ghost-free cut-free proofs up to phase-permutation.
+\end{definition}
+
+%%====================================================================
+\section{Universality: the proof-counting provenance polynomial}
+\label{sec:bridge}
+%%====================================================================
+
+\begin{definition}\label{def:poly}
+For a boundary judgment ($\Delta$, $A$ token-free), the
+\emph{proof-counting provenance polynomial} and the $K$-mass are
+\[
+  P_A(X) := \sum_{\Tr} N(A,\Tr)\cdot X^{\Tr} \;\in\; \NN[X],
+  \qquad
+  \mu_K(A) := \mathrm{eval}_K(P_A)\ \text{at}\ X_c \mapsto \rho(c),
+\]
+for any commutative semiring $K$; a trace \emph{is} a monomial.
+\end{definition}
+
+By $\NN[X]$-initiality~\cite{GreenKT2007} every semiring-valued reading
+factors through $P_A$.  Because tokens are linear, each derivation
+contributes exactly one monomial --- its endsequent's token multiset:
+where the provenance-semiring literature sums monomials over proof
+trees, \will{} reads the monomial off the sequent.  The instances:
+
+\begin{itemize}
+\item $K = (\QQ_{\geq0},+,\cdot)$ is \will{}'s probabilistic mass.
+  The identification of $\mu_{\QQ_{\geq0}}$ with the measure computed
+  by the engine's exact mode, and the convergence (least-fixpoint
+  masses for recursive sorts under Chi--Geman
+  subcriticality~\cite{ChiGeman1998,EtessamiYannakakis2009}) and
+  sampler-unbiasedness statements, are the companion theory's
+  T1--T3~\cite{THY0026}; \S\ref{sec:adequacy} supplies the missing
+  proof-theoretic leg.
+\item $K = (\min,+)$ is the cost optimum of the graded sibling
+  calculus: idempotence collapses the sum onto the single best
+  derivation, which is exactly why \gill{} needs no trace and a
+  per-proof grade suffices.  The gap between the two calculi is the
+  ambiguity hierarchy of weighted automata in proof-theoretic form.
+\item $K = \CC$ is reserved.  Evaluation is still a homomorphism, but
+  interference (cancellation) is forgetting that no trace-level
+  statement can undo: the trace level is the initial object, each
+  quantitative face a quotient of it.
+\end{itemize}
+
+Cut admissibility is proved once (Theorem~\ref{thm:cut}); each face
+inherits invariance through its homomorphism.
+
+%%====================================================================
+\section{Driver adequacy}
+\label{sec:adequacy}
+%%====================================================================
+
+\subsection{The decimation driver}
+
+The operational semantics extends the timed committed-choice engine of
+the companion paper~\cite{TillPaper}.  A rule consequent may contain
+$\erho{x}{s}A$; firing such a rule \emph{suspends} the existential as a
+linear \emph{wave} fact.  Plain execution never touches a wave (the
+opt-in principle: unresolved choice is inert).  The \emph{decimation
+driver} runs the loop
+\[
+  \text{settle} \to \text{open} \to \text{settle} \to \text{draw} \to
+  \text{substitute} \to \cdots
+\]
+\emph{Open} replaces each suspended wave by its body instantiated with
+a fresh existential variable (an $\exists$L instance, operationally);
+\emph{settle} runs ordinary committed-choice firing to quiescence, so
+that program rules may derive persistent \emph{bias} facts mentioning
+the wave variable --- monotone conditioning; the \emph{posterior} of a
+wave is $\rho(\cdot)$ times the product of its distinct bias factors;
+\emph{draw} picks a wave (minimum posterior entropy first, a
+semantics-free policy) and a member (pseudorandomly by exact rational
+weights, or exhaustively in exact mode), substitutes the witness ---
+for a constructor member, the head only, with argument positions
+becoming new waves (lazy PCFG) --- and repeats until no waves remain.
+A run's \emph{trace} is its multiset of drawn heads; its mass the
+product of drawn posterior weights.
+
+\subsection{Adequacy}
+
+Fix a program whose settle segments are \emph{conflict-free}: between
+draws, committed-choice firing is deterministic up to the enumerated
+weighted-choice forks (the engine enforces this loudly in exact mode
+--- a genuine scheduling conflict is adversarial nondeterminism,
+outside the measure).  Fix a draw policy (a deterministic choice of
+which wave to draw next; the implementation's entropy policy is one).
+A \emph{collapse path} is a maximal driver run; its \emph{trace} the
+multiset of drawn heads with their sorts.
+
+\begin{theorem}[Adequacy]\label{thm:adequacy}
+Let $S_0$ be an initial boundary state and consider the boundary
+judgments $\Gamma;\enc{S_0},\trz{\Tr} \vdash \laxb{\enc{F}}$ for final
+ground states $F$ (where $\enc{\cdot}$ is the standard state encoding
+and the persistent zone $\Gamma$ holds the program's derived
+knowledge).  The map that elaborates a collapse path to a derivation
+--- each settle segment to its (cited) exact fire chain, each wave's
+open+draw pair to the derived inference
+$\mathrm{cut}(\exists_\rho\text{R}(c), \exists\text{L})$ at the
+opening position --- is a bijection between fixed-policy collapse
+paths from $S_0$ with trace $\Tr$ and final state $F$, and the focused
+cut-free ghost-free derivations counted by $N(\laxb{\enc F},\Tr)$
+over the collapse fragment.
+\end{theorem}
+
+\begin{proof}
+\emph{Well-defined.}  The elaboration is total on driver runs: settle
+segments elaborate exactly (the base engine's trace-elaboration
+theorem~\cite{TillPaper}); the open+draw pair is the principal-cut
+reduct of Theorem~\ref{thm:cut}(a) read backwards --- the driver's
+substitution of the drawn witness is the reduct's substitution, and
+the token the certificate keeps is the endsequent record of the
+consumed $\exists_\rho$R.  Post-hoc grounding (substituting each final
+witness through the whole recorded run) is sound because bias
+derivation is monotone --- facts derivable between an opening and its
+draw remain derivable after --- and existential variables are opaque
+constants to matching, so a grounded instance of a legal firing is a
+legal firing.  Ghost-freeness: every minted token is consumed by its
+own draw; unopened or unobserved waves mint no token and contribute no
+factor.
+
+\emph{Injective.}  Two distinct fixed-policy paths first differ at a
+draw (segments are deterministic by conflict-freedom; the policy
+determines which wave is drawn next).  A differing member gives a
+different token/witness at the corresponding $\exists_\rho$R; a
+differing outcome of the same member changes nothing (draws are
+member-level).  Hence the elaborated derivations differ.
+
+\emph{Surjective.}  Given a focused ghost-free derivation $\pi$ of the
+boundary judgment, read off its $\exists_\rho$R instances.  Because
+the goal contains no $\exists_\rho$, every left wave in $\pi$ is
+decomposed (suspension is vacuous, Definition~\ref{def:count}), and
+the derivation tree's structure is the org chart, not a schedule: the
+draws are partially ordered by subterm dependency only.  The policy
+linearizes this partial order in exactly one way compatible with the
+driver's segments (which are determined by quiescence), yielding a
+path whose elaboration is $\pi$: the fire chains match by the base
+adequacy theorem, the draws by construction.
+
+The two directions compose to identities because elaboration forgets
+only the linearization the policy reconstructs.
+\end{proof}
+
+\begin{corollary}[Policy independence and the mass identity]
+\label{cor:mass}
+$N(\cdot)$, and hence the mass
+$\mu_{\QQ_{\geq0}}(\laxb{\enc F}) = \sum_\Tr N\cdot\rho^\Tr$, is
+independent of the draw policy: each derivation has exactly one
+linearization per policy.  Exact mode's enumeration computes this mass
+(it enumerates fixed-policy paths); the importance-weighted sampler
+targets it (unbiasedness per attempt is~\cite{THY0026}'s T3).
+\end{corollary}
+
+\begin{remark}
+The scope conditions earn their keep operationally.  Conflict-freedom
+is checked, not assumed: the exact-mode engine enumerates weighted
+forks and \emph{fails loudly} on a genuine scheduling conflict.  The
+boundary-judgment restriction (goal without $\exists_\rho$) is the
+statement that runs end ground; suspended waves surviving to the
+boundary are precisely the case the certificate handles by
+$\exists$-closing the goal (\S\ref{sec:impl}).
+\end{remark}
+
+%%====================================================================
+\section{Implementation: certificates that carry their trace}
+\label{sec:impl}
+%%====================================================================
+
+\will{} is implemented in the \calc{} sandbox on top of the engine of
+the companion paper.  We describe what is new, and what the theorems
+of this paper buy operationally.
+
+\subsection{The rules as data, the checker as judge}
+
+The calculus definition is declarative (a \texttt{.rules} file); the
+three rules of \S\ref{subsec:rules} are template rules with binder
+opening --- $\exists_\rho$R is mechanically a \emph{left} rule on the
+token whose succedent pattern forces the token's sort to match the
+wave's, with the witness bound from the token; $\ghost$ is marked
+affine and realized in proof search as a last-resort focus choice plus
+boundary discharge (root leftovers and additive-branch balancing ---
+Theorem~\ref{thm:cut}(h) operationalized); a greedy searched ghost
+steals tokens under committed premise search and a lazy one starves
+additive branches, so the boundaries are the only sound insertion
+points.  Search-found derivations are re-verified by an LF-style
+kernel that re-derives every step from the rule data.
+
+One step is checker-bound rather than searched: \texttt{@draw}, the
+derived rule $\mathrm{cut}(\exists_\rho\text{R},\exists\text{L})$ that
+records one collapse event.  Its checker re-derives everything from
+program data --- classifier membership, witness-head discipline, the
+declared prior against the recorded weight, and the opened-body
+context arithmetic --- and is the \emph{only} place tokens are minted:
+programs can neither produce nor match \textsf{drawn} (a load-time
+fence), so the fences of \S\ref{sec:calculus} are enforced, not
+conventions.
+
+\subsection{Certified runs}
+
+The central artifact is \texttt{certifyCollapse}: a complete
+stochastic run elaborates into \emph{one} kernel-checked derivation
+\[
+  \Gamma;\;\Delta_0, \trz{\Tr} \;\vdash\; \laxb{\textstyle\bigotimes
+  \text{residual}}
+\]
+with one \texttt{@fire} node per firing (fully re-derived; the base
+paper's certified-execution pipeline), one \texttt{@draw} node per
+wave at its \emph{opening} position with the post-hoc-grounded witness
+--- a rung-2 witness tree certifies as the composite of its per-head
+draws, one token consumed per drawn head; an existential variable in
+the witness is a wave dropped unobserved: no choice, no token, no
+factor --- and token-free \emph{open} nodes ($\exists$L with
+syntactically-checked eigenvariable freshness) for suspensions that
+were never drawn.  Skolems surviving to the residual are
+$\exists$-closed in the goal.  The endsequent carries $\trz\Tr$:
+\textbf{the run's prior mass is $\prod_{\Tr}\rho(c)$, computable from
+the certificate's endsequent alone} --- Definition~\ref{def:trace}
+made executable.  Tampering is caught: a doctored draw weight fails
+the checker against the declared prior; removing a token from the
+endsequent makes the draw nodes unverifiable.
+
+\subsection{Case study: wave function collapse}
+
+The demo program is a four-cell, three-tile (\textsf{sea},
+\textsf{coast}, \textsf{land}; priors $2{:}1{:}2$) strip with the
+constraint that sea and land are never adjacent.  Each cell's wave is
+one $\exists_\rho$; the constraint is two \textsf{forbid} facts and
+\emph{one} bias rule (a collapsed cell biases its neighbour's wave
+variable to zero) --- no domain bitmasks, no hand-compiled per-mask
+weighted choices, which is what the same demo required before the
+weighted existential existed.  The propagate-then-collapse order of
+classical WFC is not programmed: it \emph{is} the minimum-entropy draw
+policy, since a biased wave has lower posterior entropy than an open
+one.  Exact mode enumerates the constrained measure: 41 of $3^4=81$
+beaches carry mass, total $217$ of the unconstrained $5^4 = 625$ ---
+matching brute-force enumeration exactly.  Every sampled run
+certifies; the certificates' token products equal the reported masses
+(bias factors are conditioning, derived inside the certificates' fire
+segments; the endsequent weight is the prior product, per
+Definition~\ref{def:trace}).
+
+\subsection{Executable metatheory}
+
+The theorems of this paper are pinned by the test suite: the
+provability and refutation patterns of
+\S\S\ref{sec:cut}--\ref{sec:ghost} (token discipline, ghost boundaries,
+additive balancing, no-promotion-through-a-draw, the count-zero audit
+repair, eigenvariable soundness) run as kernel-verified derivations;
+the driver, the checker, and the certificates are exercised across
+unbiased, biased, recursive (PCFG), skolem, and correlated-wave
+programs, with adversarial no-fast-path arms re-running the suites
+with all arithmetic acceleration disabled.  The full fast suite is
+$\sim$3.5k tests; the will-specific additions of this work are
+$\sim$90.
+
+%%====================================================================
+\section{Related work}
+\label{sec:related}
+%%====================================================================
+
+\paragraph{Weighted quantifiers and probabilistic proof theory.}
+Riesz modal logic~\cite{LucasMio2022} is, to our knowledge, the only
+prior \emph{syntactic} cut-elimination result for a quantitatively
+valued judgment; it works over hypersequents with scalar-multiplied
+contexts, and its combination with linear multiplicatives is open.
+Counting propositional logic~\cite{AntonelliDLP2022} interprets
+counting quantifiers by measure but establishes cut admissibility
+semantically, not syntactically.  The algebraic
+$\lambda$-calculus~\cite{Vaux2009} shows where scalar sums survive
+reduction (positive coefficients) and where they collapse.  \will{}
+sidesteps the sum-valued judgment entirely: sequents count, semirings
+evaluate.  Bayesian proof-nets~\cite{DiGuardiaEF2024} put probability
+tables inside proof-net boxes with structure-preserving cut
+elimination --- probabilities in \emph{boxes}, not hypotheses in the
+\emph{context}, and no weighted quantifier.
+
+\paragraph{Randomness as a resource.}  Dahlqvist and
+Kozen~\cite{DahlqvistKozen2020} treat random sources as linear
+resources --- denotationally, in a semantics of higher-order
+probabilistic programs, with no proof system, no token hypotheses, no
+cut theorem.  Time credits~\cite{CharguerraudPottier2017} and error
+credits~\cite{Eris2024} are the closest proof-\emph{system} mechanism:
+consumable hypotheses whose presence bounds cost or error.  Credits
+are anonymous and additive (spend $n$ of a homogeneous budget);
+draw tokens are \emph{named} witnesses with \emph{multiplicative}
+per-constructor priors, consumed by a quantifier rule --- the
+endsequent does not bound the weight, it \emph{is} the weight.
+Nominal logic's fresh names~\cite{Pitts2003,MillerTiu2005} are
+non-duplicable for scope hygiene; they carry no weight and no
+quantifier consumes them.
+
+\paragraph{Probabilistic logic programming.}  Sato's distribution
+semantics~\cite{Sato1995} and PRISM's \texttt{msw} switches are the
+operational ancestors: a run is a deterministic derivation conditional
+on a random record.  The record there is a persistent, memoized fact
+table with no proof theory; here it is a linear zone with a cut
+theorem, and the difference is what makes weight a proof invariant.
+Trace types~\cite{LewPOPL2020} type the shape of a probabilistic
+program's trace and are the source of the faithfulness objection that
+forced the ghost discipline (\S\ref{sec:ghost}): a counting class that
+admits padded traces diverges.
+
+\paragraph{Provenance.}  Provenance
+semirings~\cite{GreenKT2007,GradelTannen2024} sum $\NN[X]$-monomials
+over derivation trees, with $\exists$ interpreted as semiring sum.
+\will{} sharpens the connection at the object level: linearity of
+tokens means each derivation \emph{is} one monomial, read off its
+endsequent, and cut elimination --- absent from the database setting
+--- preserves it.
+
+\paragraph{Focusing.}  The focused system and its completeness
+argument ride on the standard
+line~\cite{Andreoli1992,Laurent2004,MillerSaurin2007,ChaudhuriPfenningPrice2008,Simmons2014}.
+The additions --- a left-passive resource consumed as a focus side
+condition, and a compound connective that must be treated as a
+synthetic atom because identity expansion \emph{provably} fails at it
+--- appear to be new as a package; synthetic atoms per se are
+folklore~\cite{Zeilberger2008}.
+
+\paragraph{Graded modalities.}  The graded-necessity line
+(bounded linear logic~\cite{GirardScedrovScott1992}, graded
+sequent calculi, Granule~\cite{OrchardLiepeltEades2019}) and the
+graded-monad line~\cite{Katsumata2014} grade \emph{formulas}.  The
+companion paper~\cite{TillPaper} put a delay grade on the lax modality
+with cut admissibility; this paper's point is precisely that weight
+should \emph{not} be another grade: grades on formulas, draws in the
+zone (Theorem~\ref{thm:cut}(g)).
+
+\paragraph{Quantum analogies.}  The identity-expansion failure
+(\S\ref{sec:nocloning}) is a no-cloning statement at the proof level;
+we use it as a design constraint, not a quantum claim.  The reserved
+$\CC$ face of \S\ref{sec:bridge} records why a trace-level calculus
+cannot see interference: evaluation homomorphisms only forget.
+
+%%====================================================================
+\section{Conclusion}
+\label{sec:conclusion}
+%%====================================================================
+
+A measure-weighted existential fits linear logic once the weight stops
+being an annotation and becomes a hypothesis.  The internalized trace
+turns every hard question into an old one: trace conservation is
+endsequent preservation; additive lockstep is context sharing; the
+duplication and erasure dangers are the promotion condition; the
+counting class is weakening's focusing story.  The three structural
+theorems --- ghost forced by reduction, no promotion through a draw,
+no-cloning at the weighted quantifier --- are not costs of the design
+but its content, each matching an operational invariant of the
+stochastic engine the calculus certifies.
+
+Future work: mechanizing Theorem~\ref{thm:cut} (the internalization
+makes the calculus small --- standard ILL plus three rules --- so the
+graded base is the larger mechanization burden); the mass-judgment
+stretch face (sequents proving total mass, with the Riesz-style price
+tag); inside-mass conditioning and datasort-constrained domains for
+the driver; and the $\CC$ face, which requires leaving the trace
+quotient altogether.
+
+\bibliographystyle{alpha}
+\bibliography{refs}
+
+\end{document}

@@ -40,7 +40,10 @@ well-defined by §8's focused system (spelled out 2026-09-01: polarities,
 phases, synthetic-atom identity at ∃_ρ); the bridge's remaining proof burden
 is §8's focalization-completeness and driver-adequacy arguments, stated
 there at proof-sketch grain. IMPLEMENTED: `will.rules` + the @draw checker
-(TODO_0298 item 1, landed 2026-09-01 — §8's implementation note).
+(TODO_0298 item 1, landed 2026-09-01 — §8's implementation note); run
+certification (`certifyCollapse` — the endsequent carries ⟨Θ⟩, TODO_0298
+item 2). PAPER: doc/paper/will/ (draft 2026-09-01) — THY_0027 as core
+theorem, §8's two sketches expanded to lemma-cased arguments there.
 
 ## 1. The internalization theorem
 
@@ -405,6 +408,18 @@ trees checked by the same kernel. `@w` priors materialize at load as
 ground `prior s c ρ` facts (per touched classifier, default 1), so weight
 evidence is a total fact lookup.
 
-**Residual for the paper.** The full permutation argument behind the two
-sketches above, and THY_0026 §9's untouched items (T4-d, inside-mass
-conditioning, policy independence).
+**Residual for the paper — drafted (2026-09-01, doc/paper/will/).** The
+paper expands both sketches to lemma-cased arguments: focalization
+completeness via token passivity + left-wave principality (each left
+∃_ρ occurrence principal at exactly one of ∃-L/id — the SUSPENSION
+discipline the synthetic atom forces, vacuous on boundary judgments) +
+the ∃_ρ-R permutation table; driver adequacy as a fixed-policy
+bijection (post-hoc grounding sound by bias monotonicity; injectivity
+by first-divergent-draw; surjectivity because the derivation tree is
+the org chart, not a schedule — whence POLICY INDEPENDENCE of N and the
+mass as a corollary, discharging that §9 item). Cor. 5.3's
+ghost-free ⊋ minimal example is now the &-LEFT form
+`(p c) & (∃ρX.pX) ⊢ ∃ρX.pX` (executable — will-prover pins both
+proofs incl. the synthetic-atom id; the ⊕ form needs surface ⊕, which
+gill lacks). Still open from THY_0026 §9: T4-d, inside-mass
+conditioning.

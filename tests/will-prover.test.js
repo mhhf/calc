@@ -123,6 +123,20 @@ describe('will sequent calculus — ∃_ρ by draw-token internalization', () =>
       () => [[atom('a'), atom('b')], withc(atom('a'), atom('a'))]);
   });
 
+  describe('ghost-free ⊋ ⊆-minimal (paper Cor. 5.3, &-left form)', () => {
+    // (p c) & (∃ρX.pX) ⊢ ∃ρX.pX has TWO ghost-free proofs at different
+    // traces: Θ={c} via &L₁ + ∃ρR(c), and Θ=∅ via &L₂ + id — the id at
+    // ∃_ρ is the SYNTHETIC-ATOM identity (§4: no expansion exists)
+    provable('with token: (p c) & (∃ρX.pX), drawn c s ⊢ ∃ρX.pX',
+      () => [[withc(p(atom('c')), sup('s', p(bound0()))), drawn('c', 's')],
+        sup('s', p(bound0()))]);
+    provable('without token: (p c) & (∃ρX.pX) ⊢ ∃ρX.pX (id at the synthetic atom)',
+      () => [[withc(p(atom('c')), sup('s', p(bound0())))],
+        sup('s', p(bound0()))]);
+    refuted('the &L₁ branch alone needs the token: p c ⊬ ∃ρX.pX',
+      () => [[p(atom('c'))], sup('s', p(bound0()))]);
+  });
+
   describe('∃-L (superpose_l): the eigenvariable rule', () => {
     provable('binder-free body: superpose(s, ∃X. a) ⊢ a',
       () => [[sup('s', atom('a'))], atom('a')]);
