@@ -34,10 +34,13 @@ repaired same day — the audit found one load-bearing case, §3f′, whose root
 cause was an affine leak in the base calculus, fixed in till.rules/gill.rules
 with all suites green): internalization (§1), cut admissibility with exact
 trace conservation (§3, scoped per the theorem statement), identity-expansion
-exception (§4), stripping/ghost discipline (§5). ASSEMBLED (not proved) on
-top of THY_0026 §8: the universality bridge (§6) — its proof-count N(A,Θ) is
-well-defined only once the focused system is spelled out (§8 residual).
-Implementation target: `will.rules` (TODO_0298 item 1).
+exception (§4), stripping/ghost discipline (§5). ASSEMBLED on top of
+THY_0026 §8: the universality bridge (§6) — its proof-count N(A,Θ) is now
+well-defined by §8's focused system (spelled out 2026-09-01: polarities,
+phases, synthetic-atom identity at ∃_ρ); the bridge's remaining proof burden
+is §8's focalization-completeness and driver-adequacy arguments, stated
+there at proof-sketch grain. IMPLEMENTED: `will.rules` + the @draw checker
+(TODO_0298 item 1, landed 2026-09-01 — §8's implementation note).
 
 ## 1. The internalization theorem
 
@@ -282,10 +285,11 @@ classical calculus, for free.
 
 ## 6. The bridge is universality
 
-*Status: assembled on THY_0026 §8 (T1–T3), NOT independently proved — the
-count N below is well-defined proof-theoretically only once §8's focused
-system is spelled out; until then the decimation driver's collapse-tree
-enumeration is the operational stand-in (T1).*
+*Status: assembled on THY_0026 §8 (T1–T3), NOT independently proved. The
+count N below is well-defined via §8's focused system; the remaining proof
+burden is §8's focalization-completeness and driver-adequacy arguments
+(sketch grain there) — operationally, exact mode's collapse-tree
+enumeration realizes N's weighted sum today (T1).*
 
 For a boundary judgment (Δ, A token-free), define the **proof-counting
 provenance polynomial** and the mass:
@@ -324,12 +328,83 @@ each face inherits invariance through its homomorphism.
    notation is superseded: marked trace entries would break §3's
    endsequent-on-the-nose conservation.
 
-## 8. Residual for the paper (not blocking)
+## 8. The focused system — the counting fragment made canonical
 
-The focused system spelled out: ∃_ρ positive (right rule fires in the
-positive phase, consuming a token; `drawn` a positive left-passive atom), so
-that N(A,Θ) counts one derivation per genuinely-distinct run — the decimation
-driver is operationally this focused prover already (each collapse-tree path
-= one focused ghost-free derivation), which is THY_0026 §8 T1's enumeration
-in proof-theoretic clothing. Plus THY_0026 §9's untouched items (T4-d,
-inside-mass conditioning, policy independence).
+*Status: spelled out (2026-09-01) — polarities, phases, and the two new
+focalization cases checked; completeness and driver adequacy are stated at
+proof-sketch grain, NOT at §3's audited standard (the paper's job is the
+full permutation argument). This section defines §6's N.*
+
+**Polarities.** ∃_ρ is POSITIVE. `drawn` is a positive atom that is
+LEFT-PASSIVE: it has no left decomposition — it is consumed only as the
+side condition of the focused ∃_ρ-R. All other connectives keep their ILL
+polarities.
+
+**Phases.**
+
+- *Inversion.* ∃-L is invertible (the eigenvariable rule of a positive
+  connective) — applied eagerly, token-neutral.
+- *Right focus on ∃_ρ.*
+
+  ```
+  Γ ; Δ ⊳ A[c/x]
+  ─────────────────────────────  ∃_ρ-R(c), positive phase
+  Γ ; Δ, drawn c s ⊳ ∃_ρ x:s. A
+  ```
+
+  The token is consumed IN PHASE and focus continues on A[c/x]. Choosing c
+  is choosing which token to spend — exactly the non-invertible choice
+  focusing isolates into the focus phase.
+- *No ghost.* The focused system HAS no ghost rule: ghost-freeness is not a
+  side condition on the count but a structural property of the system —
+  weakening's profile under focusing, exactly (§5).
+- *Identity.* id is allowed at ∃_ρ (and at `drawn`) as at atoms. This is
+  FORCED, not a convenience: identity expansion fails at ∃_ρ (§4), so ∃_ρ
+  is a **synthetic atom on the identity dimension** — the no-cloning
+  theorem reappearing as a design constraint of the focused system.
+
+**Completeness (focalization) — sketch.** Every ghost-free cut-free
+derivation of the counting fragment permutes to a focused one. The argument
+is Andreoli's, riding on §3's cut admissibility; the two new checks:
+(i) ∃_ρ-R permutes below invertible rules into a positive phase — its side
+condition consumes only a `drawn` atom, and no invertible rule of the
+fragment consumes, produces, or decomposes `drawn` atoms (left-passivity),
+so the permutations never block on the token; (ii) the permutations
+preserve ghost-freeness — they are §5's commutation moves, none of which
+introduces a `ghost` occurrence into a ghost-free derivation. Where
+standard focalization proofs use identity expansion at compound formulas,
+∃_ρ has none (§4) — sound regardless, because focused id at a synthetic
+atom is a legitimate leaf of either phase. Scope: the counting fragment =
+the multiplicative-additive core + ∃_ρ + `drawn`; the graded template
+rules (monad/bang/haul/at) and the oracle rules stay outside — §6's
+boundary judgments live in the collapse fragment, matching the driver.
+
+**Driver adequacy (proposition — sketch).** For a boundary judgment of the
+collapse fragment, the decimation driver's collapse paths realizing trace Θ
+are in bijection with the focused cut-free ghost-free derivations counted
+by N(A,Θ): one collapse event = one focused ∃_ρ-R(c) (THY_0026 §5's
+collapse-as-principal-cut, token-refined by §7.1), and the settle segments
+between draws are deterministic with respect to the focused decomposition —
+the driver IS the operational focused prover. With adequacy, §6's
+μ_{ℚ≥0}(A) is exact mode's mass and T2/T3 transfer unchanged; this is
+THY_0026 §8 T1's enumeration in proof-theoretic clothing.
+
+**Implementation (TODO_0298 item 1 — landed 2026-09-01).** `will.rules`
+implements the unfocused rules: `drawn_l` = ∃_ρ-R as a mechanical left rule
+on the token (@binding witness opens the binder with the token's member),
+`drawn_l2` = ghost (@affine), `superpose_l` = ∃-L, `draw` = the
+checker-bound oracle step (the derived rule cut(∃_ρ-R, ∃-L); the @draw
+checker re-derives one collapse event from the program's sort system and
+declared priors — tokens enter judgments only through it, and `drawn` is
+fenced out of programs). The engine's SEARCH keeps superpose/drawn
+unpolarized (like `at`) and realizes ghost as a last-resort focus choice
+plus boundary discharge (root leftovers and additive-branch balancing —
+§3h operationalized); that discipline is heuristic search, THIS section's
+focused system is the canonical counting discipline, and both produce
+trees checked by the same kernel. `@w` priors materialize at load as
+ground `prior s c ρ` facts (per touched classifier, default 1), so weight
+evidence is a total fact lookup.
+
+**Residual for the paper.** The full permutation argument behind the two
+sketches above, and THY_0026 §9's untouched items (T4-d, inside-mass
+conditioning, policy independence).
