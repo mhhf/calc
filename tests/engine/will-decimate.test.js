@@ -224,6 +224,52 @@ bias/coasthalf2: bias X coast 1/2.
   });
 });
 
+describe('exact × woplus (settleExplore composition, TODO_0298)', () => {
+  const PROG = HEADER + `
+flip: type.
+heads: type.
+tails: type.
+flipr: flip -o { woplus 1/4 heads tails }.
+`;
+  const initFlip = () => ({
+    linear: { [Store.put('mk', [atom('a0')])]: 1, [atom('flip')]: 1 },
+    persistent: {},
+  });
+  const hasAtom = (state, name) => Object.keys(state.linear).map(Number)
+    .some((h) => (Store.tag(h) === 'at' ? Store.child(h, 0) : h) === atom(name));
+
+  it("'exact' enumerates woplus branches with exact weights; T1 total unchanged", () => {
+    const calc = loadProg('woplus.will', PROG);
+    const r = calc.collapse(initFlip(), { mode: 'exact' });
+    assert.equal(r.outcomes.length, 6);            // 3 members × 2 coin sides
+    assert.deepEqual(r.total, [5n, 1n]);           // woplus weights sum to 1
+    const seaHeads = r.outcomes.find((o) => tileOf(o.state, 'a0') === 'sea' && hasAtom(o.state, 'heads'));
+    assert.deepEqual(seaHeads.mass, [1n, 2n]);     // 2 · 1/4
+    const landTails = r.outcomes.find((o) => tileOf(o.state, 'a0') === 'land' && hasAtom(o.state, 'tails'));
+    assert.deepEqual(landTails.mass, [3n, 2n]);    // 2 · 3/4
+  });
+
+  it("settleBranching: 'seed' restores the chooser-resolved reading (one settle world)", () => {
+    const calc = loadProg('woplus-seed.will', PROG);
+    const r = calc.collapse(initFlip(), { mode: 'exact', settleBranching: 'seed' });
+    assert.equal(r.outcomes.length, 3);
+  });
+
+  it('a genuine conflict is a loud error (adversarial worlds, not ⊕)', () => {
+    const calc = loadProg('conflict.will', HEADER + `
+coin: type.
+g1: type.
+g2: type.
+grab1: coin -o { g1 }.
+grab2: coin -o { g2 }.
+`);
+    const init = { linear: { [Store.put('mk', [atom('a0')])]: 1, [atom('coin')]: 1 }, persistent: {} };
+    assert.throws(() => calc.collapse(init, { mode: 'exact' }), /conflict/);
+    const ok = calc.collapse(init, { mode: 'exact', settleBranching: 'seed' });
+    assert.equal(ok.outcomes.length, 3);
+  });
+});
+
 describe('correlation — one binder over a tensor body', () => {
   const PROG = HEADER + `
 mark: (t: tile_t) -> type.
