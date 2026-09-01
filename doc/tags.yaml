@@ -1,12 +1,12 @@
 tags:
-  linear-logic: 29
+  linear-logic: 30
   ill: 27
   forward-chaining: 24
   inference-rule: 24
   proof-theory: 16
   architecture: 15
   chr: 13
-  graded-types: 11
+  graded-types: 12
   implementation: 10
   left-rule: 10
   positive-connective: 10
@@ -30,6 +30,7 @@ tags:
   ffi: 4
   partial-evaluation: 4
   performance: 4
+  probabilistic: 4
   subexponentials: 4
   symexec: 4
   authorization: 3
@@ -37,7 +38,6 @@ tags:
   evm: 3
   loli: 3
   monad: 3
-  probabilistic: 3
   prover: 3
   QTT: 3
   staging: 3
@@ -58,6 +58,7 @@ tags:
   modal-logic: 2
   one: 2
   principals: 2
+  provenance: 2
   refinement-sorts: 2
   representation: 2
   resource-semantics: 2
@@ -69,6 +70,7 @@ tags:
   tensor: 2
   timed: 2
   tropical: 2
+  will: 2
   additive: 1
   adequacy: 1
   adjoint-logic: 1
@@ -92,6 +94,7 @@ tags:
   compilation: 1
   completeness: 1
   complexity: 1
+  conditioning: 1
   connectives: 1
   consensus: 1
   correspondence: 1
@@ -125,6 +128,7 @@ tags:
   HVM: 1
   hybrid-logic: 1
   hypersequents: 1
+  independence: 1
   insights: 1
   interaction-nets: 1
   judgment: 1
@@ -166,7 +170,6 @@ tags:
   proof-search: 1
   proof-terms: 1
   proof-tree: 1
-  provenance: 1
   quantifiers: 1
   refinement-types: 1
   residuated-monoids: 1
@@ -195,6 +198,5 @@ tags:
   walkthrough: 1
   weighted-choice: 1
   wfc: 1
-  will: 1
   zero: 1
   zk: 1
