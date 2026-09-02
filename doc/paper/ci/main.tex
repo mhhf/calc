@@ -1,0 +1,766 @@
+% acmart conversion deferred until venue choice — swap documentclass + \cite style then.
+% Companion to doc/paper/will/main.tex ("Weight in the Endsequent"); this
+% paper assembles THY_0028 + THY_0029 + THY_0030 + THY_0031 (TODO_0302 M7).
+\documentclass[11pt]{article}
+
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{lmodern}
+\usepackage{amsmath,amssymb,amsthm}
+\usepackage{mathtools}
+\usepackage{mathpartir}
+\usepackage{booktabs}
+\usepackage{geometry}
+\usepackage{xcolor}
+\usepackage[activate=false]{microtype}
+\usepackage[hidelinks]{hyperref}
+\usepackage{listings}
+
+\geometry{margin=1.25in}
+
+\lstset{
+  basicstyle=\small\ttfamily,
+  breaklines=true,
+  columns=flexible,
+  mathescape=true,
+  keepspaces=true,
+}
+
+%% Notation (shared with the companion papers)
+\newcommand{\loli}{\multimap}
+\newcommand{\tensor}{\otimes}
+\newcommand{\QQ}{\mathbb{Q}}
+\newcommand{\NN}{\mathbb{N}}
+\newcommand{\RR}{\mathbb{R}}
+\newcommand{\erho}[2]{\exists_{\rho}\, #1{:}#2.\;}
+\newcommand{\dtok}[2]{\mathsf{drawn}\;#1\;#2}
+\newcommand{\trz}[1]{\langle #1\rangle}
+\newcommand{\Tr}{\Theta}
+\newcommand{\seq}[3]{#1;\;#2\vdash #3}
+\newcommand{\till}{\textsc{till}}
+\newcommand{\gill}{\textsc{gill}}
+\newcommand{\will}{\textsc{will}}
+\newcommand{\calc}{\textsc{calc}}
+\newcommand{\dsep}{\perp_{\mathrm{sep}}}
+\newcommand{\CI}{\perp}
+\newcommand{\An}{\mathrm{An}}
+\newcommand{\pa}{\mathrm{pa}}
+
+\newtheorem{theorem}{Theorem}[section]
+\newtheorem{lemma}[theorem]{Lemma}
+\newtheorem{corollary}[theorem]{Corollary}
+\newtheorem{proposition}[theorem]{Proposition}
+\theoremstyle{definition}
+\newtheorem{definition}[theorem]{Definition}
+\newtheorem{example}[theorem]{Example}
+\theoremstyle{remark}
+\newtheorem{remark}[theorem]{Remark}
+
+\title{Runs Certify Their Independence:\\
+  Conditional Independence on Dynamic Derivation Forests}
+\author{Denis Erfurt}
+\date{Draft (TODO\_0302 M7) --- assembled 2026-09-02, pending author audit}
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+Existing conditional-independence theory proves separation theorems
+about \emph{models}: fixed Bayesian networks, proof nets, string
+diagrams, type-annotated programs.  We prove one about \emph{runs}.
+In \will{} --- an intuitionistic linear sequent calculus whose weighted
+existential draws witnesses against declared rational priors, and whose
+complete executions elaborate into kernel-checked certificates carrying
+their random choices as linear \emph{draw-token} hypotheses --- every
+run certificate carries a dependency graph: draw and fire events,
+connected by resource flow.  We define wave-valued random variables
+under \emph{random existence} (a wave may exist in only some runs,
+identified across runs by ungrounded provenance), a separation
+criterion on the dependency graph of a \emph{conditioning class}, and
+prove soundness: separation implies that the unnormalized conditioned
+mass factorizes exactly, $\mu(x,y,z) = c\cdot f(x)\cdot g(y)$, with the
+factors readable as sub-forest masses and the split \emph{exhibited} by
+the certificate's token partition.  Three structural discoveries shape
+the criterion.  First, under unnormalized \emph{restriction} semantics
+(conditioning never renormalizes), textbook d-separation is
+\emph{unsound}: a wave whose total posterior weight is not constant
+across the class --- through bias, or through a sort of total mass
+$\neq 1$ whose draw happens in only some runs, by contingent existence,
+by \emph{drop}, or by a reachable contradiction --- acts as observed
+soft evidence and must enter the criterion as a conditioned virtual
+child of its draw node.  Second, per-run actual-edge graphs are
+unsound in principle: a run in which a context-specific rule never
+fired carries no trace of it, so separation is a property of the
+class, decided on a static cover and only exhibited per run.  Third,
+the natural genericity converse is refuted \emph{structurally}:
+deterministic fires that erase the values they consume are channels no
+parameter perturbs; we prove the converse for directed value-faithful
+chains by a zero-concentration witness construction and leave general
+active paths conjectured.  The criterion is executable
+(\texttt{certifyCI}): a decision by graph reachability over the run's
+certificate and the program, verdict-tested against exact engine-computed
+masses on all the counterexample programs that forced the design.
+\end{abstract}
+
+\tableofcontents
+\bigskip\hrule\bigskip
+
+%%====================================================================
+\section{Introduction}
+\label{sec:intro}
+%%====================================================================
+
+\subsection{The problem}
+
+Probabilistic computation is, today, trust-based at the level of its
+runs.  Statically verified probabilistic programs
+prove distributional facts once, about the program; probabilistic
+program logics~\cite{BarthePSL2020,BaoDIBI2021,LilacPLDI2023} prove
+independence judgments about program text; verifiable randomness
+certifies seeds; traces emitted by probabilistic programming systems
+are unchecked outputs of the very runtimes one would want to audit.
+None of these produces a per-run artifact in which a probability claim
+--- \emph{this} execution had \emph{this} mass, and \emph{these} parts
+of it were independent --- is itself the checked object.
+
+The companion paper~\cite{WillPaper} built the missing substrate:
+\will{}, a linear sequent calculus whose weighted existential
+$\erho{x}{s}A$ consumes a linear draw token $\dtok{c}{s}$, so that a
+derivation's weight is a function of its \emph{endsequent} (the product
+of the declared priors $\rho(c)$ over the tokens present), conserved
+exactly by cut elimination; and a stochastic engine whose complete runs
+elaborate into kernel-checked certificates
+$\seq{\Gamma}{\Delta_0,\trz{\Tr}}{\{\exists \vec{sk}.\;\tensor\,
+\mathit{residual}\}}$ whose endsequents carry their traces.  What the
+certificates could not yet say is when a conditioned mass
+\emph{factorizes} --- the conditional-independence question, and with
+it the question of what certificates \emph{compose}.
+
+This paper answers it.  The object is new: not a separation theorem
+about a model, but about the runs of an engine whose dependency
+structure is generated \emph{by} execution --- which draws exist
+depends on earlier draws --- with exact rational weights, unnormalized
+restriction conditioning, and a kernel-checkable artifact per run.
+
+\subsection{Contributions}
+
+\begin{enumerate}
+\item \textbf{Wave variables under random existence}
+  (\S\ref{sec:defs}).  Random variables are \emph{waves}, identified
+  across runs by \emph{ungrounded provenance keys} --- computed on the
+  recorded trace with existential variables in place, so that the
+  draw-dependent positions are exactly the widened ones --- and defined
+  on their existence events.  This is the contingent-variable reading
+  of BLOG and contingent Bayesian networks~\cite{MilchCBN2005,MilchBLOG2005}
+  done proof-theoretically.
+\item \textbf{The class dependency graph} (\S\ref{sec:defs}).  Events
+  (initial, fire, draw) connected by resource flow, where the draw
+  event operationally \emph{rewrites} every fact carrying its variable
+  --- so value flow is fact flow and no second edge sort exists ---
+  plus latent allocation forks for linear contests and directed
+  drop-decider edges.  Per-run actual-edge graphs are refuted by
+  counterexample; the criterion quantifies over the conditioning class
+  and is decided on a finite static cover.
+\item \textbf{Mass-observed draws} (\S\ref{sec:defs},
+  \S\ref{sec:criterion}).  Under restriction semantics a wave's total
+  posterior weight is soft evidence; naive d-separation is unsound,
+  refuted by three exact counterexamples (existence, drop,
+  survival), and repaired by conditioned virtual \emph{mass-children}
+  hung off draw nodes.
+\item \textbf{The soundness theorem} (\S\ref{sec:soundness}):
+  separation implies exact factorization of the conditioned mass, with
+  the factors sub-forest masses and the split exhibited by the token
+  partition.  The proof isolates the genuinely dynamic content ---
+  a locality lemma, barren-subforest marginalization, and a
+  recombination (exchange) argument over event configurations --- and
+  cites standard moral-graph theory for the rest.
+\item \textbf{Genericity, three ways} (\S\ref{sec:genericity}): the
+  naive faithfulness converse is refuted structurally; a directed
+  faithful-chain converse is proved by zero-concentration witnesses;
+  general active paths are conjectured with a route.
+\item \textbf{An executable criterion} (\S\ref{sec:impl}):
+  \texttt{certifyCI} decides separation on the cover by Bayes-ball
+  reachability over the certificate and the program; its verdicts are
+  tested against exact engine-computed masses on every program that
+  forced a design decision.
+\item \textbf{The evidence-discipline substrate}
+  (\S\ref{sec:evidence}--\S\ref{sec:conditioning}): single-counting
+  (linearity of evidence tokens makes the posterior the correctly
+  factored Bayesian product), certificate visibility (double-counting
+  is invisible in the numbers, always visible in the fire
+  provenances), structural splitting laws (mass factorizes over
+  $\tensor$ in every derivation; no primitive weight box can say
+  more), and conditioning by restriction (datasort events as checker
+  premises, zero-variance importance).
+\end{enumerate}
+
+\subsection{Non-claims}
+
+Completeness is not claimed and fails for three independent reasons:
+parameter cancellation (as in Bayesian networks), the static cover's
+conservatism, and context structure finer than the pruning predicate
+--- the criterion refuses, it never asserts dependence
+(context-specific separation is sound-not-complete already in the
+static LDAG setting~\cite{Pensar2015}).  Statements are about the
+measure, never about the pseudorandom sampler.  Modelling honesty is
+out of scope by design: the theorems certify that factor structure
+matches token structure; whether two tokens model independent worldly
+events remains the modeller's assertion, made inspectable.
+
+%%====================================================================
+\section{Background: \will{} in brief}
+\label{sec:background}
+%%====================================================================
+
+We restate the facts this paper stands on; proofs are in the companion
+papers~\cite{WillPaper,TillPaper}.
+
+\paragraph{The calculus.}  \will{} extends a graded intuitionistic
+linear base with one connective and one hypothesis class:
+%
+\begin{mathpar}
+\inferrule*[right=$\exists_\rho$-R$(c)$]
+  {\seq{\Gamma}{\Delta}{A[c/x]}}
+  {\seq{\Gamma}{\Delta,\,\dtok{c}{s}}{\erho{x}{s}A}}
+\and
+\inferrule*[right=$\exists$-L]
+  {\seq{\Gamma}{\Delta,\,A[a/x]}{C}}
+  {\seq{\Gamma}{\Delta,\,\erho{x}{s}A}{C}}
+\and
+\inferrule*[right=ghost]
+  {\seq{\Gamma}{\Delta}{C}}
+  {\seq{\Gamma}{\Delta,\,\dtok{c}{s}}{C}}
+\end{mathpar}
+%
+Tokens are kernel-reserved ground linear atoms, minted only at the
+draw-checker boundary; the run weight is $\prod\rho(c)$ over the
+tokens in the endsequent; cut admissibility holds with exact weight
+conservation~\cite{WillPaper}.
+
+\paragraph{The engine and the measure.}  Programs are multiset rewrite
+rules over linear and persistent facts; suspended existentials are
+\emph{waves}; the decimation driver alternates settle-to-quiescence
+segments with draws, resolving posteriors
+$w(e,c) = \rho(c)\cdot\prod\{q \mid \mathsf{bias}(e,c,q,\ldots)
+\text{ distinct}\}$ and, in \texttt{exact} mode, enumerating the
+collapse tree.  The denoted measure $\mu$ assigns each leaf the product
+of its draw weights (and \texttt{woplus} branch weights); it is
+policy-independent.  \emph{Conditioning is restriction}: excluded runs
+go to zero, surviving masses are untouched; renormalization exists only
+in the sampler's draw probabilities.
+
+\paragraph{Certificates.}  A sample run elaborates post-hoc-grounded
+into one kernel-checked tree: \texttt{@fire} nodes re-derived from
+program rule data, \texttt{@draw} nodes re-derived from the sort system
+and declared priors, endsequent
+$\Delta_0,\trz{\Tr} \vdash \{\exists\vec{sk}.\;\tensor\,residual\}$.
+The certificate records, per fire, the consumed, produced and reserved
+instances, and per draw the wave, sort/state, member and weight; the
+recorded trace is \emph{ungrounded} (existential variables in place),
+with the grounding substitution applied post hoc.
+
+%%====================================================================
+\section{The evidence discipline: single-counting and certificate
+  visibility}
+\label{sec:evidence}
+%%====================================================================
+
+The Bayesian reading of the posterior demands that conditionally
+independent observations each contribute exactly one likelihood factor.
+What does the \emph{syntax} guarantee?
+
+\begin{definition}[linear-evidence discipline]
+A program satisfies S1--S3 for a set $O$ of observation predicates
+when: (S1) every rule antecedent mentioning an $O$-predicate is a plain
+linear pattern (not \$-preserved, not promoted, not whole-bound); (S2)
+no rule concludes two bias facts with the same (wave, member) pair;
+(S3) bias conclusions are source-tagged per rule.
+\end{definition}
+
+\begin{theorem}[single-counting]
+\label{thm:single}
+Under S1--S3, in every run and for every wave $e$ and member $c$, the
+bias factors multiplied into $w(e,c)$ are in bijection with pairwise
+distinct consumed observation tokens, via the fire that consumed the
+observation and produced the fact:
+$w(e,c) = \rho(c)\cdot\prod_{o\in O_{\mathrm{used}}(e,c)} \ell_o(c)$.
+\end{theorem}
+
+The proof is multiset accounting: S1 makes each token reach exactly one
+fire, S2 bounds each fire to one factor per $(e,c)$, S3 makes the
+content-addressed dedup respect fire identity.  Content-addressed set
+semantics \emph{under}-identifies value-only evidence (two independent
+equal-likelihood observations collapse to one factor), which is why S3
+is forced: provenance is part of fact identity.
+
+\begin{theorem}[certificate visibility]
+\label{thm:visibility}
+Double-counting is numerically invisible: there are program pairs ---
+one honest, one sharing a \$-read observation between two bias rules
+--- with \emph{identical} posteriors on the same domain.  It is always
+certificate-visible: overlapping provenance requires the explicit
+sharing markers (\$, promotion, whole-bind), and the certificate's
+per-fire consumed/reserved records exhibit disjoint provenances for the
+honest program and overlapping ones for the smuggled program, decidable
+by inspection.
+\end{theorem}
+
+Independence of the evidence entering a posterior is not a property of
+the posterior; it is a structural property of the derivation, and the
+derivation is what ships.
+
+%%====================================================================
+\section{Splitting laws are structural}
+\label{sec:splitting}
+%%====================================================================
+
+A conjectured weight-graded contraction
+$\Box_{r+s}A \vdash \Box_r A \tensor \Box_s A$ (``mass splits over
+independent channels'') dissolves: its three faces are already present,
+in three different semirings.
+
+\begin{theorem}
+\label{thm:splitting}
+(i)~Counts split additively and exactly: $!_{k+m}A \dashv\vdash
+{!_k}A \tensor {!_m}A$, with both the leak and the mint refuted.
+(ii)~Masses split multiplicatively and \emph{structurally}: in every
+derivation ending in $\tensor$R the token zone partitions with the
+context, $\Tr = \Tr_A \uplus \Tr_B$, hence
+$\mathrm{mass}(D)=\mathrm{mass}(D_A)\cdot \mathrm{mass}(D_B)$ --- a
+corollary of linearity, with no side condition.  (iii)~Masses sum
+where derivations fork: at $\exists_\rho$ and at the weighted additive
+disjunction.  Moreover any primitive box is either token-backed ---
+then definable as $\trz{\Tr}\tensor A$ with derivable laws --- or a
+weight-conservation leak; and the contraction shape would clone a
+draw, which identity-expansion failure at $\exists_\rho$
+forbids~\cite{WillPaper} and the prover refutes (one token cannot
+serve two $\tensor$-channels).
+\end{theorem}
+
+Leg (ii) is the per-derivation face of everything that follows: the
+$\tensor$-partition of the endsequent \emph{exhibits} the factorization
+the independence theorem will produce.
+
+%%====================================================================
+\section{Conditioning by restriction}
+\label{sec:conditioning}
+%%====================================================================
+
+Hard conditioning on a datasort event $S \sqsubseteq s$ (a regular tree
+language declared by membership clauses) needs no new connective and no
+new metatheory:
+
+\begin{theorem}
+\label{thm:restriction}
+The conditioned existential $\erho{x}{S}B$ \emph{is} $\exists_\rho$
+with the datasort name in its sort slot: a conditioned draw is
+admissible iff the base draw is and the witness head is admitted by
+$S$ --- a membership side-derivation checked at the draw oracle, never
+a sequent rule.  Cut admissibility with exact weight conservation is
+inherited verbatim; run mass stays $\prod\rho$ over $\trz{\Tr}$
+because restriction never rescales a surviving mass.
+\end{theorem}
+
+\begin{proposition}[zero-variance importance]
+\label{prop:zerovar}
+On a bias-free conditioned run in which every opened wave is drawn,
+the importance weight equals the inside mass $m(\mathit{root\ state})$
+for every seed; in general it is $m(\mathit{root})/\prod
+m(\mathit{dropped})$.  The per-draw factors telescope.
+\end{proposition}
+
+The inside masses are the sampler's normalizing constants --- solved at
+load by rational Gaussian elimination, \emph{verified} inside
+certificates by substitution into their own equations.  The
+zero-variance identity is, in the language of the next section, the
+one-wave shadow of the mass-child discipline: totals are importance
+factors, and over a class they are evidence.
+
+%%====================================================================
+\section{Wave variables, the class graph, and the criterion}
+\label{sec:defs}
+%%====================================================================
+
+Fix a program, initial state $\sigma_0$, and the driver's policy (the
+measure is policy-independent).  Scope hypotheses: (H1) runs are
+almost-surely finite under the normalized process; (H2) no settle
+conflict is reachable in the class (the exact-mode discipline;
+certifiable structurally); (H3) contexts are finite conjunctions of
+wave-value assignments and leaf-observations of ground facts; (H4)
+premises are positive, and bias rules carry no timed windows that
+could delay them past their target draw.
+
+\subsection{Events and the run graph}
+
+A run's events are the initial event, one fire event per rule firing,
+and one draw event $d_e$ per opened wave, with outcome space
+$\mathrm{members}(s)\cup\{\mathsf{dropped}\}$.  The draw event is
+operationally a rewrite: it consumes its suspension and every fact
+instance carrying its variable and re-emits their grounded images ---
+so \emph{value flow is fact flow} and d-separation's directional
+discipline is literally the certificate's resource-flow discipline.
+Edges: producer $\to$ consumer/reserver/reader (including persistent
+premises through their recorded clause derivations), spawner $\to$
+$d_e$ (existence), bias/within producer $\to$ $d_e$ (posterior reads),
+$d_e \to$ consumers of grounded facts, and --- because drop-vs-draw is
+decided by whoever consumes a carrier first --- a \emph{directed} edge
+from every carrier consumer into $d_e$.
+
+\subsection{Wave identity under random existence}
+
+Certificates exist in two views: the recorded trace (existential
+variables in place) and its post-hoc grounding.  \emph{Identity lives
+in the ungrounded view}: provenance keys are computed recursively over
+ungrounded facts, variables mapped to the keys of their waves; cohort
+firings are expanded to their sequential multiset.  A \textbf{wave
+variable} is a key of a draw event, defined on its existence event
+$E_X$ (the runs containing an event so keyed), with value the drawn
+member.  Downstream waves are genuinely contingent: a wave spawned
+only in the $X{=}a$ worlds exists only there.  All statements are
+division-free:
+
+\begin{definition}[CI]
+$X \CI Y \mid z$ iff for all values,
+$\mu([X{=}x][Y{=}y]C_z)\cdot\mu([X{=}x'][Y{=}y']C_z)
+= \mu([X{=}x][Y{=}y']C_z)\cdot\mu([X{=}x'][Y{=}y]C_z)$.
+\end{definition}
+
+\subsection{Conditioning sites}
+\label{sec:sites}
+
+Three kinds, uniformly ``nodes observed at fixed outcomes'':
+Z-draws; \emph{observation colliders} $O_F$ (a virtual node with an
+edge from every class-run event producing or consuming an $F$-instance
+--- leaf presence is intrinsically disjunctive across the class, and
+the collider modelling is what keeps the disjunction sound); and
+\emph{mass-children}: for each wave $e$ let $\lambda_e(r) = T_e(r)$ if
+$e$ is drawn (the total posterior weight, inside masses included) and
+$1$ otherwise, non-constancy judged over the class-consistent collapse
+tree \emph{including dead branches}.  If $\lambda_e$ is non-constant,
+add a virtual observed node $V_e$ with edges from $d_e$ itself and
+from $e$'s bias/within parents.
+
+\begin{example}[the three leaks]
+\label{ex:leaks}
+Take two waves $X, Y$ over a two-member sort with priors $1, 2$.
+(a)~\emph{Existence}: a wave $W$ over a sort of total prior mass $2$,
+spawned exactly when $X{=}Y$, drawn and never used, gives joint masses
+$2/2/2/8$: $16 \neq 4$, dependent --- though the spawn fire is an
+unobserved collider textbook d-separation calls blocked.  The
+normalized twin (total $1$) gives $1/2/2/4$: independent.
+(b)~\emph{Drop}: a $W$ that always exists but whose carrier is
+consumed before its draw exactly when $X{=}Y{=}a$ gives $1/4/4/8$:
+$8 \neq 16$.  (c)~\emph{Survival}: a rule zeroing every member of $W$
+exactly when $X{=}Y{=}a$ kills those runs: $0/4/4/8$, dependent
+through the survival factor alone --- and on surviving leaves
+$\lambda_W$ \emph{looks} constant, which is why non-constancy must see
+dead branches.  All three are engine-exact test pins.
+\end{example}
+
+\subsection{The class graph and its computable cover}
+
+The class graph $\mathcal{G}[\sigma_0 \mid z]$ is the key-identified
+union of run graphs over the class, plus sites, plus latent
+\emph{allocation forks} (an unobserved node into each pair of events
+that can consume the same instance --- contested linear supply is an
+influence channel invisible to pure fact flow).  It is a DAG on keys.
+
+It quantifies over the class, and must:
+
+\begin{example}[per-run graphs are unsound]
+\label{ex:ctx}
+A bias rule enabled only in the $X{=}a$ world makes $Y$ depend on $X$
+(exact masses $3/2/2/4$; $12\neq4$), yet every $X{=}b$ certificate
+contains no bias fire at all --- the connecting edge is absent from
+the very runs it endangers.
+\end{example}
+
+The theorem is therefore stated for any DAG \emph{covering}
+$\mathcal{G}$ (edge- and site-preserving image), and decidability comes
+from a finite static cover: rule and binder nodes, edges by
+template unifiability over the \emph{ungrounded} patterns (the
+program's own ground constants supply argument sensitivity), context
+pruning only where $z$ alone falsifies a rule.
+
+\begin{definition}[separation]
+$X \dsep Y \mid z$ iff every path between $d_X$ and $d_Y$ in the cover
+is blocked given the site set $M$: a non-collider node in $M$ blocks;
+a collider blocks unless it or a descendant is in $M$.
+\end{definition}
+
+\label{sec:criterion}
+
+%%====================================================================
+\section{The soundness theorem}
+\label{sec:soundness}
+%%====================================================================
+
+\begin{theorem}[soundness]
+\label{thm:main}
+Under H1--H4, if $X \dsep Y \mid z$ then there are $f, g$ and a
+constant $c_M$ with
+$\mu([X{=}x][Y{=}y]C_z) = c_M\cdot f(x)\cdot g(y)$ for all $x,y$ ---
+hence $X \CI Y \mid z$.  Moreover $f$ is the conditioned mass of the
+$X$-side sub-forest, $g$ of the $Y$-side, and every class certificate
+exhibits the split: events, token zone
+($\Tr = \Tr_A \uplus \Tr_B$), and fire provenances partition along
+the criterion's sides.
+\end{theorem}
+
+Work in the ancestral closure $\An$ of $\{d_X, d_Y\}\cup M$.
+
+\begin{lemma}[locality]
+\label{lem:locality}
+Class runs are exactly the maximal conflict-free causally-closed
+configurations of the class's event structure satisfying $z$, one run
+per (policy, seed) per configuration, with policy-independent measure.
+Injectivity is by first divergent draw; surjectivity because the
+derivation tree is an org chart, not a schedule; the weight product is
+linearization-invariant because each draw's posterior reads only its
+parents' outcomes.
+\end{lemma}
+
+\begin{lemma}[normalization decomposition]
+\label{lem:decomp}
+Per class run,
+$\mathrm{mass}(r) = \prod_{d\in r}\hat{p}_d(\mathrm{outcome}\mid\pa)
+\cdot \prod_e \lambda_e(r) \cdot \prod_{f} w_f \cdot \prod \mathbf{1}_O(r)$,
+where $\hat{p}_d = w_d/T_d$ is the normalized posterior (defined on
+positive-$T$ configurations), $\lambda_e$ the mass-child factors
+(class-constant ones absorbed into $c_M$), $w_f$ the \texttt{woplus}
+branch constants, and the indicators enforce $z$.  Every factor is a
+function of one node and its parents.
+\end{lemma}
+
+\begin{lemma}[barren marginalization]
+\label{lem:barren}
+Nodes outside $\An$ carry $\hat{p}$-factors only (anything else would
+put them in $\An$ --- in particular a wave with a reachable $T=0$ has
+non-constant $\lambda$ and is not barren).  Each $\An$-projection's
+fiber contributes exactly the $\An$-part's mass: zero-$T$ extensions
+vanish, and over positive-$T$ extensions the normalized draws
+telescope to $1$ wave by wave, using H1.
+\end{lemma}
+
+\begin{lemma}[side split; cited]
+\label{lem:moral}
+$X \dsep Y \mid M$ in the cover iff $M$ separates $d_X$ from $d_Y$ in
+the moral graph of $\An$~\cite{Lauritzen1996,VermaPearl1988}.  Let $A$
+be $d_X$'s side, $B$ the rest.
+\end{lemma}
+
+\begin{lemma}[mono-sidedness]
+\label{lem:mono}
+Each factor of Lemma~\ref{lem:decomp} is a function of a moral-graph
+clique $\{v\}\cup\pa(v)$, hence lies wholly in $A\cup M$ or $B\cup M$.
+Z-draw and $O_F$ outcomes are fixed by $z$; a $V_e$ outcome is
+determined by its clique, hence by its side's projection.
+\end{lemma}
+
+\begin{lemma}[recombination]
+\label{lem:exchange}
+Restricted to $\An$-projections, $r \mapsto (\pi_{A\cup M}(r),
+\pi_{B\cup M}(r))$ is a bijection between class projections and pairs
+agreeing on the ($z$-fixed) $M$-part.  Injectivity and
+well-definedness are the clique argument; surjectivity is the
+exchange: the merge of two sides is causally closed, satisfies $z$,
+and is conflict-free --- a cross-side contest would be an allocation
+fork with edges into both sides, an active fork path contradicting
+separation --- and creates no phantom enablements: an event enabled in
+the merge either occurs in some class run (then its parent clique is
+mono-sided and one side's maximality accounts for it) or occurs in
+none (then either its premise pattern is jointly satisfiable from
+both sides, putting cross-side edges on its cover node and
+contradicting separation in the cover, or context pruning removed it
+because $z$ falsifies it --- in every run satisfying $z$, hence in
+the merge).
+\end{lemma}
+
+\begin{proof}[Proof of Theorem~\ref{thm:main}]
+By Lemmas~\ref{lem:decomp}--\ref{lem:mono} the mass of a class
+$\An$-projection is an $A$-side product times a $B$-side product with
+$M$-factors assigned to $A$; by Lemma~\ref{lem:exchange} the sum over
+the class splits into the product of the two side sums.  The CI form
+follows by direct computation; the exhibition corollary from
+Theorem~\ref{thm:splitting}(ii) (tokens are linear hypotheses of their
+draw events and follow their contexts) and
+Theorem~\ref{thm:visibility} (side-pure fire provenances).
+\end{proof}
+
+%%====================================================================
+\section{Genericity: a refutation, a converse, a conjecture}
+\label{sec:genericity}
+%%====================================================================
+
+\begin{theorem}[naive faithfulness fails structurally]
+\label{thm:refute}
+There is a five-rule program with a fully active directed path
+$d_X \to \mathit{fire} \to \mathit{bias} \to d_Y$ in whose parameter
+ring $\mu(x,y) = \rho_X(x)\cdot g(y)$ \emph{identically}: two
+member-discriminating rules emit the same fact $m$, which biases $Y$
+equally in every world.  Deterministic fires that erase the values
+they consume are channels no parameter perturbs; completeness against
+the fact-flow graph is unattainable even generically.
+\end{theorem}
+
+\begin{lemma}[genericity from one witness]
+\label{lem:generic}
+For parameters in weight-generic positions (matching reads terms,
+never weights), each mass cell is a polynomial over $\QQ_{\geq0}$
+whose value at any boundary point is the true mass; a single non-zero
+evaluation of the CI defect makes it a non-zero polynomial, whose
+zero set generic parameters miss.
+\end{lemma}
+
+\begin{theorem}[faithful-chain converse]
+\label{thm:chains}
+If the class graph contains a directed bias-chain
+$X = W_0 \to \cdots \to W_n = Y$ whose hops fire before their target
+draws, discriminate two designated members of the upstream wave, and
+carry dedicated free bias parameters never excluding the designated
+continuations --- and the two designated paths have positive class
+mass somewhere --- then for generic parameters $X \not\CI Y \mid z$.
+\end{theorem}
+
+\begin{proof}[Proof sketch]
+Zero-concentration: set the bias parameter of every non-designated
+continuation to $0$ on each side of each hop.  By induction the chain
+becomes a copy channel ($W_i = a_i$ iff $W_0 = a_0$), the cross cells
+have mass $0$ and the diagonal cells positive mass, so the defect is
+positive at this point; Lemma~\ref{lem:generic} concludes.
+\end{proof}
+
+Collider-activated segments, existence/drop hops, allocation-fork
+hops, and infinite classes remain conjectural; the counterexample
+programs of Example~\ref{ex:leaks} are single-hop witness families for
+each shape.
+
+%%====================================================================
+\section{Implementation: the criterion, executable}
+\label{sec:impl}
+%%====================================================================
+
+\texttt{certifyCI} decides $X \dsep Y \mid z$ from a loaded program
+and one recorded run: run waves from the ungrounded trace (existential
+variables are exactly the auto-widened positions); \emph{phantom}
+waves for class-only existence (a spawner bounded by an init-only
+trigger it already exhausted spawns nothing new; unsaturated spawn
+templates get static wave nodes); static nodes for every rule, fired
+or not (Example~\ref{ex:ctx}'s unfired bias rule is an edge);
+premise-aligned bias targeting; allocation forks only between
+mutually-unifiable consuming premises; directed drop-decider edges;
+constant pruning (a node with no wave ancestor transmits nothing);
+context pruning from Z-wave existence (rules starved by the
+conditioned wave's spawner's single-copy trigger); and Bayes-ball
+reachability~\cite{Shachter1998} with collider-descendant sites.
+Refusals carry a witness walk.  Soundness is by construction --- every
+approximation adds edges or sites; \texttt{separated} certifies, a
+refusal never asserts dependence.
+
+The verdicts are tested against exact engine-computed masses on all
+seven programs that forced the design: the criterion certifies exactly
+the four true independences (collider marginal; normalized existence
+and drop twins; chain given its mediator --- the last via context
+pruning) and refuses the seven dependences plus the value-erasing
+chain (Theorem~\ref{thm:refute}'s program: independent, refused ---
+the documented incompleteness).  Two implementation notes fed back
+into the theory: the drop-decider needs a \emph{directed} edge into
+the draw node (an allocation fork alone leaves the consumer a blocked
+collider), and \$-read pass-throughs re-emit the identical instance
+and must not count as producers.
+
+Every mass in this paper is an executable pin
+(\texttt{tests/engine/will-ci.test.js}); the evidence-discipline,
+splitting-law and conditioning results are pinned in the companion
+suites; complete runs ship as kernel-verified certificates
+(\texttt{certifyCollapse}), with the WFC case study matching
+brute-force enumeration ($41/81$ constrained maps, mass $217/625$).
+
+%%====================================================================
+\section{Related work}
+\label{sec:related}
+%%====================================================================
+
+\paragraph{Program logics.}  PSL~\cite{BarthePSL2020} made
+$\ast$/$\tensor$ probabilistic independence; DIBI~\cite{BaoDIBI2021}
+gives qualitative \emph{conditional} independence as a bunched
+judgment; Lilac~\cite{LilacPLDI2023} expresses CI as separation under
+a disintegration modality.  All reason about program text over a fixed
+sample space; none produces a per-run artifact, handles random
+existence of variables, or works unnormalized.  Our
+Theorem~\ref{thm:single} is the engine-level operational counterpart
+of their $\ast$-reading; Theorem~\ref{thm:main} is the quantitative,
+dynamic, certified transfer of DIBI's Thm~V.1.
+
+\paragraph{Proof nets.}  The Bayesian proof-net
+line~\cite{DiGuardiaEEF2026} proves disconnection $\Rightarrow$ CI on
+a fixed BN-as-proof-net (their Thm~7.1) --- the sharpest static
+cousin.  The net is the input; our dependency structure is generated
+by execution, weights are exact and unnormalized, and the theorem's
+object is the run certificate.
+
+\paragraph{Categorical probability.}  The d-separation criterion holds
+in Markov categories \emph{with conditionals} over fixed string
+diagrams~\cite{FritzKlingler2023}.  \will{}'s unnormalized restriction
+semantics lives where conditionals are partial
+(cf.~\cite{DiLavoreRoman2023}); no separation theorem exists there,
+and per-run normalized unfoldings support only a cross-check.
+
+\paragraph{Stochastic support.}  BLOG and contingent
+BNs~\cite{MilchBLOG2005,MilchCBN2005} define per-world contingent
+variables but no existence-event CI calculus;
+context-specific independence and
+LDAGs~\cite{Boutilier1996,Pensar2015} supply the sound-not-complete
+precedent and the context-pruning architecture; PLP
+d-separation~\cite{RueckschlossWeitkaemper2023} works on the fixed
+ground Herbrand base.  Our mass-children have no analogue in any of
+these: normalized settings cannot see them.
+
+\paragraph{Circuits and provenance.}  Decomposability --- factors with
+disjoint variables --- is the d-DNNF/circuit
+notion~\cite{DarwicheMarquis2002}; the conditioned trace polynomial's
+indeterminate-disjoint factorization (Theorem~\ref{thm:splitting},
+Theorem~\ref{thm:main}) is its proof-theoretic realization, with the
+certificate exhibiting the partition
+(cf.~provenance semirings~\cite{GreenKT2007}).
+
+\paragraph{Distribution semantics.}  Sato's runs-as-derivations
+conditional on a random record~\cite{Sato1995} is the operational
+ancestor; the record here is a linear zone with a cut theorem and the
+factorization is a theorem about it.
+
+%%====================================================================
+\section{Conclusion}
+\label{sec:conclusion}
+%%====================================================================
+
+The certificate a run elaborates to carries a dependency graph;
+separation on it --- read at the class, with the mass-children
+restriction semantics forces --- implies exact factorization of the
+conditioned mass, and the certificate exhibits the factorization it
+implies.  Independence claims about probabilistic executions thereby
+join the run itself in the class of things a third party can check:
+the graph is decidable from the artifact and the program, the factors
+are sub-certificates, and every counterexample that shaped the
+criterion is an executable program with exact rational masses.  What
+normalized theory could not see --- that a wave's bare existence, its
+drop, or its survival is evidence whenever its total weight is not
+one --- is, we think, the clearest sign that the run-level object was
+worth building.
+
+Future work: the general-path genericity converse
+(\S\ref{sec:genericity}); instance-refined covers (the static
+quotient over-connects multi-instance rules); timed-window evidence
+(the temporal sibling of order-sensitive bias); and mechanization,
+shared with the companion papers' graded base.
+
+\paragraph{Acknowledgments.}  The soundness proof was twice
+adversarially audited the day it was drafted; both audits' findings
+(the drop leak, the woplus factors, phantom events, cohort keys, the
+$T{=}0$ fiber, clique-determined mass-children, the timed fence) are
+repaired in the text and pinned in the test suite.
+
+\bibliographystyle{alpha}
+\bibliography{refs}
+
+\end{document}
