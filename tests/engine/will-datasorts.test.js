@@ -418,6 +418,71 @@ r: chk * !mass even M -o { got M }.
   });
 });
 
+describe('datasorts — certification of conditioning states + mass claims (slice 4)', () => {
+  let calc, seqCalc, kernel;
+  const SRC = LSTHDR + EVENODD + `nilonly <: lst.
+nilonly/n: nilonly nil.
+within: (x: lst) -> (s: sort) -> type.
+go: type.
+spawn: mk -o { exists X: lst @w. box X }.
+cond: go * $box X -o { !within X ne }.
+`;
+  const init = () => ({ linear: { [atom('mk')]: 1, [atom('go')]: 1 }, persistent: {} });
+  before(() => {
+    calc = loadProg('s4.will', SRC);
+    seqCalc = loadWillSequent();
+    kernel = createKernel(seqCalc);
+  });
+  const certify = (seed) => certifyCollapse({
+    engineCalc: calc, calculus: seqCalc, kernel,
+    state: init(), collapseOpts: { seed, settle: { seed } },
+  });
+
+  it('a within-conditioned run certifies; the @draw node carries the effective state', () => {
+    const r = certify(0);
+    assert.equal(r.verdict, 'certified', r.reason || (r.errors || []).join('; '));
+    let found = false;
+    (function walk(n) {
+      if (n.rule === 'draw' && n.state && n.state.draw && n.state.draw.state === 'ne') found = true;
+      for (const p of n.premises || []) walk(p);
+    })(r.tree);
+    assert.ok(found, 'no draw node records the within-derived state');
+  });
+
+  it('a doctored mass table is rejected (verification by substitution, B7)', () => {
+    const saved = calc.masses.get('ne');
+    calc.masses.set('ne', [7n, 1n]);
+    try {
+      const r = certify(0);
+      assert.equal(r.verdict, 'invalid');
+      assert.ok(r.errors.some((e) => /mass.*'ne'.*equation/.test(e)), r.errors.join('; '));
+    } finally {
+      calc.masses.set('ne', saved);
+    }
+  });
+
+  it('a doctored conditioning state on a draw node fails kernel verification', () => {
+    const r = certify(0);
+    assert.equal(r.verdict, 'certified');
+    // claim the root cons-draw was conditioned to 'nilonly' — cons is
+    // not admitted there (child draws fold into the composite witness,
+    // so the root node is the one carrying the state)
+    let doctored = false;
+    (function walk(n) {
+      if (!doctored && n.rule === 'draw' && n.state && n.state.draw &&
+          n.state.draw.member === 'cons') {
+        n.state.draw.state = 'nilonly';
+        doctored = true;
+      }
+      for (const p of n.premises || []) walk(p);
+    })(r.tree);
+    assert.ok(doctored, 'no cons draw found to doctor');
+    const v = kernel.verifyTree(r.tree, { program: programFromCalc(calc) });
+    assert.ok(!v.valid, 'doctored conditioning state must not verify');
+    assert.ok(v.errors.some((e) => /not admitted/.test(e)), v.errors.join('; '));
+  });
+});
+
 describe('datasorts — certification (conditioned draws, m4 tokens)', () => {
   it('a static-conditioned sample run certifies; tokens carry the datasort name', () => {
     const calc = loadProg('cert.will', HEADER + WARM +
