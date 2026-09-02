@@ -1,6 +1,6 @@
 ---
 title: Prover Architecture (Lasagne)
-modified: 2026-08-19
+modified: 2026-09-02
 summary: Five-layer prover architecture separating verification, search, focusing, and strategy.
 tags: [architecture, prover, focusing, polarity, layers]
 ---
@@ -73,10 +73,15 @@ lib/prover/                      # Backward proof search
 │                                #   timed bridge ELABORATES traces (TODO_0294)
 ├── sld-check.js                 # SLD certificate checker — clause derivations
 │                                #   checked by slot-matching, never trusted (0295)
-├── timed/                       # timed verification face (generic over till/gill)
+├── draw-check.js                # @draw step checker — one collapse event re-derived
+│                                #   from the program's sort system + declared priors
+│                                #   (TODO_0298; drawn tokens minted here only)
+├── timed/                       # timed verification face (generic over till/gill/will)
 │   ├── fire-check.js            # @fire step checker (config-bound via stepCheckers)
-│   └── elaborate-trace.js       # settle events → kernel-checked @fire trees;
-│                                #   programFromCalc, certifyRun
+│   ├── elaborate-trace.js       # settle events → kernel-checked @fire trees;
+│   │                            #   programFromCalc, certifyRun
+│   └── elaborate-collapse.js    # decimation runs → kernel-checked trees;
+│                                #   certifyCollapse — endsequent carries ⟨Θ⟩ (0298)
 ├── generic-term.js              # proof term extraction from backward proof trees
 ├── ill/guided-term.js           # forward trace → complete ILL proof terms
 │                                #   (self-registers as the bridge's guided builder)
@@ -89,6 +94,15 @@ lib/engine/                      # Forward execution engine (L4c/L4d)
 ├── strategy.js                  # rule selection: strategy stack builder
 ├── forward.js                   # committed-choice main loop
 ├── explore.js                   # exhaustive DFS exploration + mutation/undo
+├── sorts.js                     # refinement sorts: subsort DAG + datasort automata
+│                                #   (presence-gated on cc.sorts — TODO_0011)
+├── priors.js                    # @w constructor-prior validation + Chi–Geman lint
+├── decimate.js                  # decimation driver: ∃_ρ waves, bias posteriors,
+│                                #   sample/exact/solve (calc.collapse; DECIMATE_PREDS
+│                                #   is the machinery-name contract — 0297/0298)
+│                                #   (the inside-mass SOLVER is will-bound, not here:
+│                                #   calculus/will/lib/datasort-mass.js via
+│                                #   cc.datasortMasses)
 ├── timed/                       # timed layer (wall-clock scheduler over stamps)
 │   ├── timed.js                 # settle, tryTimedMatch (B&B), settleExplore (POR)
 │   ├── timed-game.js            # external choice: withProject (choose), menuStatus

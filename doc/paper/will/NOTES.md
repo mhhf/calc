@@ -59,14 +59,12 @@ Compiles clean (only the benign `scit` font-shape warning).
    any expansion invites a quantum-logic referee fight the paper does not
    need.
 
-7a. **Future-work section is now stale-in-our-favor (THY_0030,
-   2026-09-02).** The draft lists inside-mass conditioning as future
-   work; it is now proved+shipped (datasorts, exact inside masses,
-   zero-variance importance identity, certified conditioning states —
-   "grades on formulas, draws in the zone, conditioning in the sort
-   slot"). Before submission either update the future-work paragraph
-   to cite the result or fold a one-paragraph summary into the
-   discussion; it strengthens the sequel-paper trailer either way.
+7a. **RESOLVED (2026-09-02 audit): future-work paragraph updated.**
+   The .tex now summarizes the shipped result (restriction semantics,
+   automaton inside-masses, zero-variance importance, certified
+   conditioning) in one paragraph before the trimmed future-work list.
+   Expand into a full discussion subsection at submission time if page
+   budget allows.
 
 7. **Remark candidate (THY_0029, 2026-09-02): the mass-splitting box
    dissolves.** Companion to the paper's §3g-style dissolution remark:

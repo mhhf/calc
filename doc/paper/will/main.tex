@@ -1238,12 +1238,21 @@ no-cloning at the weighted quantifier --- are not costs of the design
 but its content, each matching an operational invariant of the
 stochastic engine the calculus certifies.
 
+Since this draft was first circulated, inside-mass conditioning and
+datasort-constrained domains have been implemented and proved: hard
+conditioning is \emph{restriction} (surviving worlds keep their masses;
+only the sampler's draw probabilities renormalize), datasort states
+compile to deterministic tree automata whose exact inside masses solve
+by rational Gaussian elimination at load, and the conditioned sampler's
+importance weight telescopes to the conditioned mass on bias-free runs
+--- a zero-variance estimator, with the claimed masses re-verified by
+substitution inside the run certificate.
+
 Future work: mechanizing Theorem~\ref{thm:cut} (the internalization
 makes the calculus small --- standard ILL plus three rules --- so the
 graded base is the larger mechanization burden); the mass-judgment
 stretch face (sequents proving total mass, with the Riesz-style price
-tag); inside-mass conditioning and datasort-constrained domains for
-the driver; and the $\CC$ face, which requires leaving the trace
+tag); and the $\CC$ face, which requires leaving the trace
 quotient altogether.
 
 \bibliographystyle{alpha}

@@ -9,8 +9,8 @@ unique_contribution: "Four claims not found in the literature (novelty audit 202
 references:
   - "THY_0027 — trace-judgment cut admissibility (2026-09-01; supersedes §2's graded-judgment sketch, discharges §9 item 2)"
   - "TODO_0292 — probabilistic collapse calculus (design + phases; this document is its theory core; implementation: calculus `will` extending `gill`)"
-  - "Faggian, Galal & Paquet (2022). Curry and Howard Meet Borel. LICS (closest near-miss: proof normalization ≈ probabilistic computation — non-linear ND, normalized counting modality C^q, not a witness-graded ∃; cite and contrast)."
-  - "Crubillé (2026). De Finetti's Theorem in Integrable Cones. LICS (exchangeability ↔ free exponential !; semantic only)."
+  - "Antonelli, Dal Lago & Pistone (2022). Curry and Howard Meet Borel. LICS. doi:10.1145/3531130.3533361 (closest near-miss: proof normalization ≈ probabilistic computation — non-linear ND, normalized counting modality C^q, not a witness-graded ∃; cite and contrast)."
+  - "Crubillé (2026). Interpreting De Finetti's Theorem in the Category of Integrable Cones. LICS (exchangeability ↔ free exponential !; semantic only)."
   - "Bacci & Møgelberg (2026). Higher-Order Quantitative Logic for Probability. LICS (quantitative judgments/distances; no graded quantifier, no sampling-as-cut)."
   - "Barthe, Hsu & Liao (2020). A Probabilistic Separation Logic. POPL (∗ = independence; the reading T4-d builds on)."
   - "Li, Ahmed & Holtzen (2023). Lilac: A Modal Separation Logic for Conditional Probability. PLDI (conditioning modality, C-Indep frame rule)."
@@ -39,7 +39,8 @@ references:
   - "Green, Karvounarakis & Tannen (2007). Provenance Semirings. PODS."
   - "Atkey (2018). Syntax and Semantics of Quantitative Type Theory. LICS (usage-graded binders — orthogonal)."
   - "Das, Wang & Hoffmann (2023). Probabilistic Session Types. POPL (weighted flat label choice — closest typed system)."
-  - "Lucas & Mio (2021). Cut Elimination for Modal Riesz Spaces. LMCS (only prior cut-elim in a probabilistic logic)."
+  - "Fu, Das & Gaboardi (2025). Probabilistic Refinement Session Types. PLDI. doi:10.1145/3729317 (ILL-based session types with probability VARIABLES as index refinements for resource bounds — orthogonal: probability as an arithmetic unknown, not a grade on witness choice at ∃-R)."
+  - "Lucas & Mio (2022). Proof Theory of Riesz Spaces and Modal Riesz Spaces. LMCS 18(1) (only prior cut-elim in a probabilistic logic)."
   - "Yoshimizu, Hasuo, Faggian & Dal Lago (2014). Measurement as additive cut in quantum MALL proof nets. ESOP."
   - "Danos & Ehrhard (2011). Probabilistic Coherence Spaces. Inf. & Comp. (denotational LL model)."
   - "Sato (1995). A Statistical Learning Method for Logic Programs (distribution semantics; PRISM switches)."
@@ -47,7 +48,7 @@ references:
   - "Murray, Lundén, Kudlicka, Broman & Schön (2018). Delayed Sampling and Automatic Rao-Blackwellization. AISTATS."
   - "Chi & Geman (1998). Estimation of Probabilistic Context-Free Grammars (subcriticality/consistency)."
   - "Harris (1963). The Theory of Branching Processes. Springer (multitype extinction — T2)."
-  - "Etessami & Yannakakis (2009). Recursive Markov Chains and Monotone Systems of Nonlinear Equations. JACM (least-fixpoint inside masses — T1)."
+  - "Etessami & Yannakakis (2009). Recursive Markov Chains and Monotone Systems of Nonlinear Equations. JACM (least-fixpoint inside masses, general polynomial case — T1; the f4 fence reduces our mass systems to the affine subcase where Gaussian elimination is exact, matching the Lari–Young 1990 inside computation)."
   - "Freeman & Pfenning (1991). Refinement Types for ML (datasorts = regular tree sorts)."
   - "Gumin (2016/2022). WaveFunctionCollapse; MarkovJunior. github.com/mxgmn."
   - "Karth & Smith (2017). WaveFunctionCollapse is Constraint Solving in the Wild. FDG."
@@ -282,7 +283,10 @@ MSO `[[∃x.φ]] = ⊕ᵢ [[φ]][x↦i]`; Grädel–Tannen FO semiring provenanc
 (Atkey QTT; Moon–Eades–Orchard; Granule) — same shape, different content:
 usage, not choice. Probabilistic finite label choice in session types
 (Das–Wang–Hoffmann POPL 2023) — genuine weight on choice, flat finite labels
-only. Cut elimination in a probabilistic logic (Lucas–Mio hypersequents for
+only; its refinement successor (Fu–Das–Gaboardi PLDI 2025, PReST) adds
+probability VARIABLES as arithmetic index refinements for expected resource
+bounds — probability as an unknown in a constraint, still not a grade
+multiplied onto the derivation at ∃-R over a constructor sort. Cut elimination in a probabilistic logic (Lucas–Mio hypersequents for
 Riesz modal logic) — probability in the ◇ semantics, not a graded quantifier.
 Measurement as principal (additive) cut in quantum MALL proof nets (Yoshimizu
 et al. ESOP 2014) — no grades, no existential. Denotational LL probability
@@ -296,8 +300,8 @@ Markov-categories check RESOLVED (2026-08-28, dedicated sweep): the categorical
 probability literature (Fritz; Cho–Jacobs; Stein–Staton exact conditioning;
 Perrone; Crubillé's De Finetti ↔ free-! at LICS 2026) is purely semantic — no
 internal sequent calculus, no quantifier rules, no sampling-as-normalization.
-The closest near-miss overall, to cite and contrast explicitly: Faggian–Galal–
-Paquet, "Curry and Howard Meet Borel" (LICS 2022) — proof normalization does
+The closest near-miss overall, to cite and contrast explicitly: Antonelli–Dal
+Lago–Pistone, "Curry and Howard Meet Borel" (LICS 2022) — proof normalization does
 correspond to probabilistic computation there, but in a NON-linear natural
 deduction whose counting quantifier `C^q` is a normalized-[0,1] modality over
 random events, not a witness-choice existential; the probability is a meta-level
@@ -353,14 +357,23 @@ of depth-k truncation form a monotone sequence M_k(σ₀) whose limit is the
 least solution of the polynomial system m_s = Σ_c ρ(c)·Π_i m_{s_i} over the
 member signatures (Kleene iteration of a monotone ω-continuous map; the system
 is the weighted-grammar inside computation, cf. Etessami–Yannakakis monotone
-polynomial systems). The driver's `truncated` totals ARE M_k — a monotone
+polynomial systems — the general polynomial case; f4-fenced datasorts are the
+affine subcase, where the least fixpoint is the unique solution of a linear
+system and Gaussian elimination is exact, i.e. the Lari–Young 1990 inside
+algorithm). The driver's `truncated` totals ARE M_k — a monotone
 lower approximant (test-pinned: 1, 3/2, 15/8 → 2 for the geometric list
 grammar). M(σ₀) < ∞ iff the least fixpoint is finite; for normalized-
 subcritical priors scaled by total ≤ 1 this is the Chi–Geman condition. ∎
 
 **T2 (almost-sure groundness).** *Claim:* for a bias-free program, the
-'sample' loop terminates with a ground state w.p. 1 iff every reachable wave
-sort's normalized prior is (sub)critical: m_s = Σ_c ρ̂(c)·arity(c) ≤ 1.
+'sample' loop terminates with a ground state w.p. 1 iff the offspring mean
+matrix M (M_{s,t} = Σ_c ρ̂_s(c)·#{t-sorted args of c}) has spectral radius
+≤ 1. The per-sort row bound m_s = Σ_c ρ̂(c)·arity(c) ≤ 1 for every reachable
+sort is the SUFFICIENT conservative form (row sums bound the spectral radius,
+Perron–Frobenius) — it is what the load-time lint checks, exact in the
+single-sort case (Chi–Geman) and possibly a false-positive warning for
+multi-sort programs whose cross-sort structure keeps ρ(M) below the worst
+row.
 *Proof.* The live-wave multiset is a multitype Galton–Watson process: a draw
 at sort s removes one s-object and adds, with probability ρ̂(c), the argument
 multiset of c; extinction w.p. 1 iff the mean matrix has spectral radius ≤ 1
