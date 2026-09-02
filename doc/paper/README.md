@@ -1,6 +1,6 @@
 # Paper
 
-Two papers:
+Four papers (the till → will → ci arc, plus a stub):
 
 **"Settle Optimality: Semiring Shortest-Distance under Linear Consumption"**
 — `settle-optimality.md` (markdown stub, TODO_0284 Phase T). The
@@ -33,3 +33,15 @@ pdflatex -interaction=nonstopmode main.tex && bibtex main \
   && pdflatex -interaction=nonstopmode main.tex \
   && pdflatex -interaction=nonstopmode main.tex
 ```
+
+**"Weight in the Endsequent: Cut Admissibility for a Measure-Weighted
+Existential by Draw-Token Internalization"** — `will/main.tex`
+(THY_0026/0027 at referee grain + certifyCollapse evaluation; tracked in
+TODO_0283 via TODO_0279 §2). Same build recipe, in `will/`.
+
+**"Runs Certify Their Independence: Conditional Independence on Dynamic
+Derivation Forests"** — `ci/main.tex` (the sequel: THY_0028 + 0029 +
+0030 + 0031 as its four movements; TODO_0302 M7). DRAFT ASSEMBLED
+AUTONOMOUSLY 2026-09-02 — see `ci/NOTES.md` §0 for the gate order
+(Denis's reads of THY_0031 and the will paper come first). Same build
+recipe, in `ci/`.
