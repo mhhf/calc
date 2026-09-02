@@ -13,7 +13,7 @@
 import { describe, it, before } from 'node:test';
 import assert from 'node:assert';
 import path from 'path';
-import mde from '../../lib/engine/index.js';
+import mde from '../../calculus/ill/index.js';
 import { explore, stateHashStr } from '../../lib/engine/explore.js';
 import { countNodes, countLeaves, maxDepth, toDot } from '../../lib/engine/tree-utils.js';
 import Store from '../../lib/kernel/store.js';

@@ -8,7 +8,7 @@ import fs from 'fs';
 import path from 'path';
 import os from 'os';
 import Store from '../../lib/kernel/store.js';
-import mde from '../../lib/engine/index.js';
+import mde from '../../calculus/ill/index.js';
 // Hoisted by tools/esm-hoist.js:
 import { loadBytecode, bytecodeArrGetGuard } from '../../calculus/ill/lib/bytecode-loader.js';
 import { intToBin } from '../../calculus/ill/lib/ffi/convert.js';

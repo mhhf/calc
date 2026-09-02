@@ -13,7 +13,7 @@ import Store from '../lib/kernel/store.js';
 import Seq from '../lib/kernel/sequent.js';
 import { generateFlatWitness, generateChunkedFlatWitness } from '../calculus/ill/lib/zk/flat-witness.js';
 // Hoisted by tools/esm-hoist.js:
-import mde from '../lib/engine/index.js';
+import mde from '../calculus/ill/index.js';
 import calculus from '../lib/calculus/index.js';
 import { rwTrace } from '../lib/prover/rewrite-trace.js';
 import { monadUnit as U } from '../lib/engine/grades.js';

@@ -9,7 +9,7 @@ import assert from 'node:assert';
 import path from 'path';
 import fs from 'fs';
 import Store from '../../lib/kernel/store.js';
-import mde from '../../lib/engine/index.js';
+import mde from '../../calculus/ill/index.js';
 // Hoisted by tools/esm-hoist.js:
 import { stripNamedArgsFromArrowChain } from '../../lib/engine/convert.js';
 import { resolveNamedArgSentinels } from '../../lib/engine/convert.js';

@@ -10,7 +10,7 @@ import path from 'path';
 import Store from '../../lib/kernel/store.js';
 import { compileExChain, execExStep } from '../../lib/engine/opt/existential-compile.js';
 // Hoisted by tools/esm-hoist.js:
-import mde from '../../lib/engine/index.js';
+import mde from '../../calculus/ill/index.js';
 
 describe('opt/existential-compile', () => {
   let calc, ffiContext;

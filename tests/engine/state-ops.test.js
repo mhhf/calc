@@ -12,7 +12,7 @@ import { FactSet, Arena } from '../../lib/engine/fact-set.js';
 import { consume, produce, producePers } from '../../lib/engine/state-ops.js';
 import { deltaBypass } from '../../lib/engine/delta-bypass.js';
 // Hoisted by tools/esm-hoist.js:
-import mde from '../../lib/engine/index.js';
+import mde from '../../calculus/ill/index.js';
 
 describe('state-ops', () => {
   // Load ILL to register predicate tags

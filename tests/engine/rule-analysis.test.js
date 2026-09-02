@@ -10,7 +10,7 @@ import path from 'path';
 import forward from '../../lib/engine/forward.js';
 import { predHead } from '../../lib/kernel/ast.js';
 import { analyzeRule, deltaAnalysis } from '../../lib/engine/rule-analysis.js';
-import mde from '../../lib/engine/index.js';
+import mde from '../../calculus/ill/index.js';
 import Store from '../../lib/kernel/store.js';
 import { illConnectives } from '../../calculus/ill/lib/connectives.js';
 // Helper: parse a lollipop rule string and compile it

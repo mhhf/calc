@@ -4,7 +4,7 @@
 import { describe, it, before } from 'node:test';
 import assert from 'node:assert';
 import path from 'path';
-import mde from '../../lib/engine/index.js';
+import mde from '../../calculus/ill/index.js';
 const Store = mde.Store;
 
 describe('MDE End-to-End', { timeout: 10000 }, () => {

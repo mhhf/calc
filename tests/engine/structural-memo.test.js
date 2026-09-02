@@ -10,7 +10,7 @@ import Store from '../../lib/kernel/store.js';
 import { FactSet } from '../../lib/engine/fact-set.js';
 import { controlHash, createMemoCtx, recordMemo } from '../../lib/engine/opt/structural-memo.js';
 // Hoisted by tools/esm-hoist.js:
-import mde from '../../lib/engine/index.js';
+import mde from '../../calculus/ill/index.js';
 
 describe('structural-memo', () => {
   // Load ILL once to register predicate tags (pc, gas, etc.)

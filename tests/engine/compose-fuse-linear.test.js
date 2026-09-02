@@ -10,7 +10,7 @@ import Store from '../../lib/kernel/store.js';
 import { fusePair } from '../../lib/engine/compose.js';
 import { resolveConn } from '../../lib/engine/compile.js';
 // Hoisted by tools/esm-hoist.js:
-import mde from '../../lib/engine/index.js';
+import mde from '../../calculus/ill/index.js';
 import ccfg from '../../calculus/ill/calculus-config.js';
 import { monadUnit as U } from '../../lib/engine/grades.js';
 

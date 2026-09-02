@@ -5,7 +5,7 @@
 import { describe, it, before, beforeEach } from 'node:test';
 import assert from 'node:assert';
 import path from 'path';
-import mde from '../../lib/engine/index.js';
+import mde from '../../calculus/ill/index.js';
 import { explore, stateHashStr } from '../../lib/engine/explore.js';
 import { illConnectives } from '../../calculus/ill/lib/connectives.js';
 import { resolveConn, expandChoice, expandConsqChoices } from '../../lib/engine/formula-utils.js';

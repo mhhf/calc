@@ -30,7 +30,7 @@ import fs from 'fs';
 import path from 'path';
 import Store from '../../lib/kernel/store.js';
 import { serialize, deserialize, compact } from '../../lib/engine/store-binary.js';
-import mde from '../../lib/engine/index.js';
+import mde from '../../calculus/ill/index.js';
 import fresh from '../../lib/kernel/fresh.js';
 // Hoisted by tools/esm-hoist.js:
 import { spawnSync } from 'child_process';
@@ -90,7 +90,7 @@ describe('TODO_0218 Phase 0 — compose cache determinism', () => {
 
     const script = `
       const Store = (await import('file://${path.resolve(import.meta.dirname, '../../lib/kernel/store.js')}')).default;
-      const mde = (await import('file://${path.resolve(import.meta.dirname, '../../lib/engine/index.js')}')).default;
+      const mde = (await import('file://${path.resolve(import.meta.dirname, '../../calculus/ill/index.js')}')).default;
       Store.clear();
       const c = mde.load(${JSON.stringify(SYMEX_PATH)}, { cache: false });
       process.stdout.write(JSON.stringify({

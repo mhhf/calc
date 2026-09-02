@@ -19,6 +19,7 @@ import path from 'path';
 import mde from '../../lib/engine/index.js';
 import Store from '../../lib/kernel/store.js';
 import tillConfig from '../../calculus/till/calculus-config.js';
+import illConfig from '../../calculus/ill/calculus-config.js';
 import { stamped } from './till-helpers.js';
 
 const PRELUDE = path.join(import.meta.dirname, '../../calculus/till/prelude');
@@ -281,7 +282,7 @@ a2 <: ghost.
 bin2: type.
 bin2 <: q.
 `);
-    assert.throws(() => mde.load(p, { cache: false }), /sortless/);
+    assert.throws(() => mde.load(p, { calculusConfig: illConfig, cache: false }), /sortless/);
   });
 
   it('a sortless till program still loads through the string checker', () => {

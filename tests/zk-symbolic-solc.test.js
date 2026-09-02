@@ -14,7 +14,7 @@ import { describe, it, before } from 'node:test';
 import assert from 'node:assert';
 import path from 'path';
 import fs from 'fs';
-import mde from '../lib/engine/index.js';
+import mde from '../calculus/ill/index.js';
 import { getAllLeaves } from '../lib/engine/tree-utils.js';
 import { classifyLeaf } from '../lib/engine/show.js';
 import Store from '../lib/kernel/store.js';

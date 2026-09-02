@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // Hoisted by tools/esm-hoist.js:
-import mde from '../lib/engine/index.js';
+import mde from '../calculus/ill/index.js';
 import Store from '../lib/kernel/store.js';
 import { loadBytecode, bytecodeArrGetGuard } from '../calculus/ill/lib/bytecode-loader.js';
 

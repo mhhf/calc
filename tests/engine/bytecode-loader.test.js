@@ -14,7 +14,7 @@ import { compose0 } from '../../lib/engine/compose.js';
 import { getModes } from '../../calculus/ill/lib/ffi/index.js';
 // Hoisted by tools/esm-hoist.js:
 import path from 'path';
-import mde from '../../lib/engine/index.js';
+import mde from '../../calculus/ill/index.js';
 import fs from 'fs';
 import os from 'os';
 import { monadUnit as U } from '../../lib/engine/grades.js';

@@ -9,7 +9,7 @@ import { describe, it, before } from 'node:test';
 import assert from 'node:assert/strict';
 import path from 'path';
 import fs from 'fs';
-import mde from '../../../lib/engine/index.js';
+import mde from '../../../calculus/ill/index.js';
 import { fixtureToState, hexToBigInt } from './translate.js';
 import { extractResult, parseExpectedStorage } from './extract.js';
 const FIXTURES_DIR = path.join(import.meta.dirname, '../../fixtures/VMTests');

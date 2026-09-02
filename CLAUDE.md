@@ -135,6 +135,7 @@ calculus/ill/            # ILL calculus definition + ILL-bound machinery
 ├── ill.calc             # Connective definitions
 ├── ill.rules            # Inference rules (sequent notation)
 ├── lnl.family           # Family infrastructure (LNL structural framework)
+├── index.js             # ILL engine facade: mde with calculusConfig pre-bound (+ normalizeQuery) — what ILL-implicit callers import
 ├── calculus-config.js   # Single assembly point: layered config (L0-L6) — the generic engine receives it via opts.calculusConfig
 ├── lib/                 # ILL-bound machinery (calculus/<name>/lib pattern — imported only via the config/plugins, never by the generic engine)
 │   ├── backchain-ill.js # ILL defaults for backchainer (explicit initILL())
@@ -245,6 +246,7 @@ FFI is optimization, theory is semantics. Every FFI predicate MUST have backward
 
 ## Common Gotchas
 
+- `mde.load`/`precompile`/`loadPrecompiled` REQUIRE `opts.calculusConfig` — the engine holds no default and lib/ never imports calculus/ (layer-dag enforced). ILL-implicit code imports `calculus/ill/index.js` (the facade: mde with the ILL config pre-bound, plus `normalizeQuery`, which is EVM domain machinery — not generic engine API)
 - `Store.tagId()` returns 0 for both invalid IDs and `atom` tag — use `isTerm()` first
 - Atoms share tag 0, predicates have tag >= `PRED_BOUNDARY` (36) — use `hasPredicate`/`groupForPred`. Appending kernel tags shifts the boundary and invalidates every serialized Store — batch into one commit and bump the store-binary VERSION
 - Nullary constructors (e.g. `empty_mem`) are `atom('empty_mem')` not tag — use helpers

@@ -41,7 +41,7 @@ import { sequentParser } from '../../../lib/parser/sequent-parser.js';
 import { serializeTree, FORMAT_VERSION, elideBelowDepth as elideJson, findSubtreeById } from '../../../lib/prover/serialize-tree.js';
 import { serializeExploreTree, extractLeafTrace, FORMAT_VERSION as TRACE_FORMAT_VERSION } from '../../../lib/prover/serialize-trace.js';
 import { backchainWithTree } from '../../../lib/prover/backchain-tree.js';
-import mde from '../../../lib/engine/index.js';
+import mde from '../index.js';
 import convert from '../../../lib/engine/convert.js';
 import { makeILLBackchainOpts } from './backchain-ill.js';
 // Sandbox root — path containment is checked against this prefix. All

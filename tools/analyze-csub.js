@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 import path from 'path';
 import Store from '../lib/kernel/store.js';
-import mde from '../lib/engine/index.js';
+import mde from '../calculus/ill/index.js';
 import { loadBytecode, bytecodeArrGetGuard } from '../calculus/ill/lib/bytecode-loader.js';
 import { intToBin, binToInt } from '../calculus/ill/lib/ffi/convert.js';
 const EVM_PATH = path.join(import.meta.dirname, "../calculus/ill/programs/evm.ill");

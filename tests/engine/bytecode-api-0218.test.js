@@ -13,7 +13,7 @@ import assert from 'node:assert/strict';
 import fs from 'fs';
 import path from 'path';
 import Store from '../../lib/kernel/store.js';
-import mde from '../../lib/engine/index.js';
+import mde from '../../calculus/ill/index.js';
 // Hoisted by tools/esm-hoist.js:
 import { loadBytecode, bytecodeArrGetGuard } from '../../calculus/ill/lib/bytecode-loader.js';
 

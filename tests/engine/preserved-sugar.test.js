@@ -8,7 +8,7 @@ import { describe, it } from 'node:test';
 import assert from 'node:assert';
 import path from 'path';
 import Store from '../../lib/kernel/store.js';
-import mde from '../../lib/engine/index.js';
+import mde from '../../calculus/ill/index.js';
 import { parseExpr, desugarPreserved } from '../../lib/engine/convert.js';
 import forward from '../../lib/engine/forward.js';
 import { illConnectives } from '../../calculus/ill/lib/connectives.js';

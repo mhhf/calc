@@ -15,7 +15,7 @@ import { getModes } from '../../calculus/ill/lib/ffi/index.js';
 import fs from 'fs';
 import os from 'os';
 import path from 'path';
-import mde from '../../lib/engine/index.js';
+import mde from '../../calculus/ill/index.js';
 import { monadUnit as U } from '../../lib/engine/grades.js';
 
 const COMPILE_OPTS = { connectives: illConnectives(), getModes };

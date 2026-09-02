@@ -5,7 +5,7 @@
 import { describe, it, before } from 'node:test';
 import assert from 'node:assert/strict';
 import path from 'path';
-import mde from '../../lib/engine/index.js';
+import mde from '../../calculus/ill/index.js';
 import { show } from '../../lib/engine/show.js';
 import { PROVE_METHODS } from '../../lib/engine/match.js';
 const PROGRAM = path.join(import.meta.dirname, '..', '..', 'calculus', 'ill', 'programs', 'evm.ill');

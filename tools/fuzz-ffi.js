@@ -31,6 +31,7 @@ import path from 'path';
 import sha3 from 'js-sha3';
 import Store from '../lib/kernel/store.js';
 import mde from '../lib/engine/index.js';
+import illConfig from '../calculus/ill/calculus-config.js';
 import backward from '../lib/engine/backchain.js';
 import { makeILLBackchainOpts } from '../calculus/ill/lib/backchain-ill.js';
 import ffi from '../calculus/ill/lib/ffi/index.js';
@@ -378,7 +379,8 @@ if (LIST_ONLY) {
 }
 
 Store.clear();
-const ec = mde.load(path.join(import.meta.dirname, '../calculus/ill/programs/multisig_nocall_solc.ill'));
+const ec = mde.load(path.join(import.meta.dirname, '../calculus/ill/programs/multisig_nocall_solc.ill'),
+  { calculusConfig: illConfig });
 
 let totalTests = 0, totalPass = 0, totalFail = 0, totalSkip = 0;
 const clusterStats = {};   // cluster → { pass, fail, skip, predicates: [{pred, status, summary}] }

@@ -9,7 +9,7 @@ import { describe, it, beforeEach } from 'node:test';
 import assert from 'node:assert';
 import path from 'path';
 import Store from '../../lib/kernel/store.js';
-import mde from '../../lib/engine/index.js';
+import mde from '../../calculus/ill/index.js';
 import forward from '../../lib/engine/forward.js';
 import { compilePM, execPM } from '../../lib/engine/compile.js';
 import { tryMatch } from '../../lib/engine/match.js';

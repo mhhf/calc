@@ -25,9 +25,13 @@ async function loadDefault(spec) {
   return m.default ?? m;
 }
 
-const mde = await loadDefault(path.join(CALC_ROOT, 'lib/engine/index.js'));
+// Facade first (post-audit-2026-09-02 commits), generic entry as the
+// cross-commit fallback (its load() defaults to ILL on older commits).
+const mde = await loadDefault(path.join(CALC_ROOT, 'calculus/ill/index.js'))
+  .catch(() => loadDefault(path.join(CALC_ROOT, 'lib/engine/index.js')));
 const { loadBytecode, bytecodeArrGetGuard } =
-  await import(path.join(CALC_ROOT, 'calculus/ill/lib/bytecode-loader.js'));
+  await import(path.join(CALC_ROOT, 'calculus/ill/lib/bytecode-loader.js'))
+    .catch(() => import(path.join(CALC_ROOT, 'lib/engine/ill/bytecode-loader.js')));
 
 const codePath = path.join(CALC_ROOT, 'calculus/ill/programs/multisig_nocall_solc_code.ill');
 const srcPath  = path.join(CALC_ROOT, 'calculus/ill/programs/multisig_nocall_solc_symbolic.ill');

@@ -32,6 +32,7 @@ import { parserTables, parserFromTables } from '../lib/calculus/builders.js';
 import { earleyGrammarFromTables, parserFromGrammar } from '../lib/parser/earley-grammar.js';
 import { setStrictAmbiguity } from '../lib/parser/earley.js';
 import tillConfig from '../calculus/till/calculus-config.js';
+import illConfig from '../calculus/ill/calculus-config.js';
 import { putRat } from '../lib/kernel/rat-term.js';
 
 const ROOT = path.join(import.meta.dirname, '..');
@@ -73,7 +74,7 @@ describe('corpus sweep: strict ambiguity across every .ill/.till (§5b)', () => 
     for (const p of files) {
       const isTill = p.includes('till');
       try {
-        mde.load(p, { cache: false, ...(isTill ? { calculusConfig: tillConfig } : {}) });
+        mde.load(p, { cache: false, calculusConfig: isTill ? tillConfig : illConfig });
         ok++;
       } catch (e) {
         assert.ok(!/Ambiguous parse/.test(e.message),

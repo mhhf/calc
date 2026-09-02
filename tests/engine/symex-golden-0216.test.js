@@ -22,7 +22,7 @@ import assert from 'node:assert';
 import path from 'path';
 import fs from 'fs';
 import crypto from 'crypto';
-import mde from '../../lib/engine/index.js';
+import mde from '../../calculus/ill/index.js';
 import Store from '../../lib/kernel/store.js';
 import { getAllLeaves, countNodes } from '../../lib/engine/tree-utils.js';
 import { classifyLeaf, showInteresting } from '../../lib/engine/show.js';

@@ -6,7 +6,7 @@ import assert from 'node:assert/strict';
 import Store from '../../lib/kernel/store.js';
 import { _parseSignature, sortTable, inferSort, _checkTerm, checkForwardRule, checkClause, checkAll } from '../../lib/engine/type-check.js';
 // Hoisted by tools/esm-hoist.js:
-import mde from '../../lib/engine/index.js';
+import mde from '../../calculus/ill/index.js';
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
 

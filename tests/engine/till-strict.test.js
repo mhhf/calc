@@ -22,6 +22,7 @@ import os from 'os';
 import path from 'path';
 import mde from '../../lib/engine/index.js';
 import tillConfig from '../../calculus/till/calculus-config.js';
+import illConfig from '../../calculus/ill/calculus-config.js';
 
 describe('closed-world sort checking (till strict mode)', () => {
   let dir;
@@ -75,8 +76,8 @@ describe('closed-world sort checking (till strict mode)', () => {
 
   it('ILL is strict too (corpus audited clean); strictTypes: false opts out', () => {
     const p = write('permissive.ill', 'r: src -o { wat }.\n');
-    assert.throws(() => mde.load(p, { cache: false }), /unknown atom/);   // ILL default: strict
-    assert.ok(mde.load(p, { cache: false, strictTypes: false }));
+    assert.throws(() => mde.load(p, { calculusConfig: illConfig, cache: false }), /unknown atom/);   // ILL: strict
+    assert.ok(mde.load(p, { calculusConfig: illConfig, cache: false, strictTypes: false }));
     assert.ok(mde.load(p, { calculusConfig: tillConfig, cache: false, strictTypes: false }));
     assert.throws(() => loadStrict(p), /unknown atom/);
   });

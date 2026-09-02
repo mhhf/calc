@@ -19,7 +19,7 @@
  */
 
 import path from 'path';
-import mde from '../lib/engine/index.js';
+import mde from '../calculus/ill/index.js';
 import { decomposeQuery, getAllLeaves, countNodes, maxDepth, classifyLeaf, showInteresting } from './directive-loader.js';
 const args = process.argv.slice(2);
 const opts = { query: 'symex', depth: 200, leaf: null, exclude: 'code,calldata', all: false };

@@ -17,7 +17,7 @@ import path from 'path';
 import { execFileSync } from 'child_process';
 import Store from '../../lib/kernel/store.js';
 // Hoisted by tools/esm-hoist.js:
-import mde from '../../lib/engine/index.js';
+import mde from '../../calculus/ill/index.js';
 import ccfg from '../../calculus/ill/calculus-config.js';
 import { resolveConn } from '../../lib/engine/compile.js';
 import { fusePair as _fusePair } from '../../lib/engine/compose.js';

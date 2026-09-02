@@ -23,7 +23,7 @@ import fs from 'fs';
 import os from 'os';
 import path from 'path';
 import Store from '../../lib/kernel/store.js';
-import mde from '../../lib/engine/index.js';
+import mde from '../../calculus/ill/index.js';
 import { getAllLeaves } from '../../lib/engine/tree-utils.js';
 import { toObject } from '../../lib/engine/fact-set.js';
 // bagStr is calculus-agnostic (inner-head multiset string) — shared with till
