@@ -6,7 +6,7 @@
 
 import { BenchmarkRunner } from '../lib/runner.js';
 // v2 imports
-import calcV2 from '../../lib/calculus/index.js';
+import { loadILL } from '../../calculus/ill/index.js';
 import proverV2 from '../../lib/prover/strategy/auto.js';
 import SeqV2 from '../../lib/kernel/sequent.js';
 // Cached calculus and prover (initialized lazily)
@@ -15,7 +15,7 @@ let _prover = null;
 
 async function getProver() {
   if (!_prover) {
-    _calc = await calcV2.loadILL();
+    _calc = loadILL();
     _prover = proverV2.create(_calc);
   }
   return { calc: _calc, prover: _prover };
