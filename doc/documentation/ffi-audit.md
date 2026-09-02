@@ -11,7 +11,7 @@ tags:
 
 # FFI Audit
 
-Complete inventory of FFI predicates under `lib/engine/ill/ffi/`, classified by
+Complete inventory of FFI predicates under `calculus/ill/lib/ffi/`, classified by
 representation cluster, clause-backup status, groundness mode, and linearity
 classification. Input audit for TODO_0223 (Layer C — representation framework).
 Updated 2026-04-29 after TODO_0228 Group A closure (sdiv256, smod256,
@@ -35,7 +35,7 @@ signextend256, byte_size256 now have full inductive clause backup).
 ## 2. Current FFI architecture (one glance)
 
 ```
-lib/engine/ill/ffi/
+calculus/ill/lib/ffi/
 ├── index.js          # registry + defaultMeta (mode + multiModal flags)
 ├── mode.js           # parseMode("+ + -") + checkMode — groundness dispatch
 ├── convert.js        # φ / φ⁻¹: binToInt, intToBin, strToHash, hashToStr, isGround
@@ -49,9 +49,9 @@ lib/engine/ill/ffi/
 Complementary representation machinery outside `ffi/`:
 
 - **`lib/kernel/eq-theory.js`** — 102 LOC: per-tag rewrite API. Built-in: strlit ↔ cons/atom.
-- **`lib/engine/ill/binlit-theory.js`** — 139 LOC: binlit ↔ `i/o/e` rewrite + canonicalize.
-- **`lib/engine/ill/bytecode-normalize.js`** — 234 LOC: one-shot `code PC V` → arrlit → trie state transform at load.
-- **`lib/engine/ill/residual-resolver.js`** — shares `arith-core.js` with FFI; compiles ground residual goals at rule-specialisation time.
+- **`calculus/ill/lib/binlit-theory.js`** — 139 LOC: binlit ↔ `i/o/e` rewrite + canonicalize.
+- **`calculus/ill/lib/bytecode-normalize.js`** — 234 LOC: one-shot `code PC V` → arrlit → trie state transform at load.
+- **`calculus/ill/lib/residual-resolver.js`** — shares `arith-core.js` with FFI; compiles ground residual goals at rule-specialisation time.
 
 These are hand-coded Hoare abstraction functions with the same `φ / φ⁻¹ + native op`
 shape as the FFI predicates — they are the non-registry half of today's manual
@@ -265,7 +265,7 @@ shaped expansion in `D`), defeating the FFI's optimization purpose.
 - **Witness**: BigInt arithmetic at scale `10^D` — closed-form expressions
   above. Property-tested by `tools/fuzz-ffi.js` (Group B `compareMode: 'spec'`,
   trial generator `randBigInt(64)` over `D ∈ {1..18}`).
-- **FFI**: `lib/engine/ill/ffi/arithmetic.js:230, 260`.
+- **FFI**: `calculus/ill/lib/ffi/arithmetic.js:230, 260`.
 - **Surface aliases**: `fixed8_mul`, `fixed18_mul`, `fixed8_div`, `fixed18_div`
   in `calculus/ill/prelude/types.ill:71-75`. The aliases are sugar for the
   4-ary `fixed_mul`/`fixed_div`; they do **not** constitute an inductive
@@ -296,7 +296,7 @@ clause that would always be slower than the FFI.
 - **Layer-C kind**: `'symbolic-interpretation'`.
 - **Witness**: JS `String.prototype` (`+` for concat, `.length` for length).
   Property-tested by `tools/fuzz-ffi.js` against random ASCII strings.
-- **FFI**: `lib/engine/ill/ffi/arithmetic.js:294, 317`.
+- **FFI**: `calculus/ill/lib/ffi/arithmetic.js:294, 317`.
 
 ### 4.1.3 sha3_compute — §3.10 (interpreted symbolic constructor)
 
@@ -322,7 +322,7 @@ soundness properties.
 - **Witness**: `keccak256` from the `js-sha3` package (`memory.js:13`).
   Property-tested by `tools/fuzz-ffi.js` over random 1..4 32-byte words
   assembled into a write-log memory.
-- **FFI**: `lib/engine/ill/ffi/memory.js:179`.
+- **FFI**: `calculus/ill/lib/ffi/memory.js:179`.
 - **Backward clause**: `calculus/ill/programs/evm.ill:355`.
 
 Layer-C registration must surface this classification; it is currently implicit.

@@ -11,7 +11,7 @@ import { tryBWCache, clearBWCache, getCacheProfile, resetCacheProfile } from '..
 // Hoisted by tools/esm-hoist.js:
 import path from 'path';
 import mde from '../../lib/engine/index.js';
-import { parsedModes as _ffiParsedModes } from '../../lib/engine/ill/ffi/index.js';
+import { parsedModes as _ffiParsedModes } from '../../calculus/ill/lib/ffi/index.js';
 
 describe('backward-cache', () => {
   beforeEach(() => {

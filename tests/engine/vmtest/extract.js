@@ -6,9 +6,9 @@
  */
 
 import Store from '../../../lib/kernel/store.js';
-import { binToInt, intToBin } from '../../../lib/engine/ill/ffi/convert.js';
+import { binToInt, intToBin } from '../../../calculus/ill/lib/ffi/convert.js';
 // Hoisted by tools/esm-hoist.js:
-import { arr_get } from '../../../lib/engine/ill/ffi/array.js';
+import { arr_get } from '../../../calculus/ill/lib/ffi/array.js';
 
 /**
  * Extract all facts of a given tag from state.linear.

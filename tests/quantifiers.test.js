@@ -13,7 +13,7 @@ import { buildRuleSpecs } from '../lib/prover/rule-interpreter.js';
 import Seq from '../lib/kernel/sequent.js';
 import { parseExpr } from '../lib/engine/convert.js';
 import { resolveConn, compileRule, expandChoice } from '../lib/engine/compile.js';
-import { illConnectives } from '../lib/engine/ill/connectives.js';
+import { illConnectives } from '../calculus/ill/lib/connectives.js';
 // Hoisted by tools/esm-hoist.js:
 import { createGenericProver } from '../lib/prover/generic.js';
 
@@ -22,7 +22,7 @@ import { createState } from '../lib/engine/forward.js';
 import { tryMatch } from '../lib/engine/match.js';
 import { resolveEx } from '../lib/engine/lnl/existential.js';
 import { proveWithFFI as provePersistent } from '../lib/engine/opt/ffi.js';
-import illFfi from '../lib/engine/ill/ffi/index.js';
+import illFfi from '../calculus/ill/lib/ffi/index.js';
 import { monadUnit as U } from '../lib/engine/grades.js';
 describe('Quantifier Store operations', () => {
   it('exists(body) creates arity-1 node', () => {

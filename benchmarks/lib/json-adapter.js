@@ -7,7 +7,7 @@ import { performance } from 'perf_hooks';
 import path from 'path';
 import mde from '../../lib/engine/index.js';
 import fs from 'fs';
-import { loadBytecode, bytecodeArrGetGuard } from '../../lib/engine/ill/bytecode-loader.js';
+import { loadBytecode, bytecodeArrGetGuard } from '../../calculus/ill/lib/bytecode-loader.js';
 
 /**
  * JSON Benchmark Adapter

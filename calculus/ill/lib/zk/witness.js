@@ -18,11 +18,11 @@
  * enforced by the framework's LogUp bus accumulators.
  */
 
-import Store from '../kernel/store.js';
-import Seq from '../kernel/sequent.js';
-import { rTensor } from '../kernel/ast.js';
-import { binToInt } from '../engine/ill/ffi/convert.js';
-import { monadUnit } from '../engine/grades.js';
+import Store from '../../../../lib/kernel/store.js';
+import Seq from '../../../../lib/kernel/sequent.js';
+import { rTensor } from '../../../../lib/kernel/ast.js';
+import { binToInt } from '../ffi/convert.js';
+import { monadUnit } from '../../../../lib/engine/grades.js';
 // --- Phase 6-6b: 256-bit arithmetic helpers (module-level for testability) ---
 
 const BABY_BEAR_P = 2013265921n;

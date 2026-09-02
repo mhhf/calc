@@ -19,8 +19,8 @@ import path from 'path';
 import { performance } from 'perf_hooks';
 import Store from '../../lib/kernel/store.js';
 import mde from '../../lib/engine/index.js';
-import { loadBytecode, bytecodeArrGetGuard } from '../../lib/engine/ill/bytecode-loader.js';
-import { intToBin } from '../../lib/engine/ill/ffi/convert.js';
+import { loadBytecode, bytecodeArrGetGuard } from '../../calculus/ill/lib/bytecode-loader.js';
+import { intToBin } from '../../calculus/ill/lib/ffi/convert.js';
 const EVM_PATH = path.join(import.meta.dirname, '../../calculus/ill/programs/evm.ill');
 
 // ── Benchmark bytecodes ─────────────────────────────────────────────────────

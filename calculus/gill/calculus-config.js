@@ -24,12 +24,12 @@
 import path from 'path';
 import { setTheories } from '../../lib/kernel/unify.js';
 import { defaultTheories } from '../../lib/kernel/eq-theory.js';
-import { binlitTheory } from '../../lib/engine/ill/binlit-theory.js';
+import { binlitTheory } from '../ill/lib/binlit-theory.js';
 import { ratlitTheory, ratParts, installRatlitTheory } from '../../lib/engine/theories/ratlit-theory.js';
 import { grade0 } from '../../lib/engine/grades.js';
 import { connTagsFrom } from '../../lib/engine/formula-utils.js';
-import backchainIll from '../../lib/engine/ill/backchain-ill.js';
-import * as ffi from '../../lib/engine/ill/ffi/index.js';
+import backchainIll from '../ill/lib/backchain-ill.js';
+import * as ffi from '../ill/lib/ffi/index.js';
 import { mul as ratMul, div as ratDiv, cmp as ratCmp } from '../../lib/rat.js';
 import { tillGrades, tillFactSetPolicy, tillGradeUnit } from '../till/calculus-config.js';
 import { makeCalcTables, makeFFIFace, makeTheory, makeForwardParserBuilder, makeSequentLoader, ratCanon } from '../kit.js';

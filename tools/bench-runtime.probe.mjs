@@ -27,7 +27,7 @@ async function loadDefault(spec) {
 
 const mde = await loadDefault(path.join(CALC_ROOT, 'lib/engine/index.js'));
 const { loadBytecode, bytecodeArrGetGuard } =
-  await import(path.join(CALC_ROOT, 'lib/engine/ill/bytecode-loader.js'));
+  await import(path.join(CALC_ROOT, 'calculus/ill/lib/bytecode-loader.js'));
 
 const codePath = path.join(CALC_ROOT, 'calculus/ill/programs/multisig_nocall_solc_code.ill');
 const srcPath  = path.join(CALC_ROOT, 'calculus/ill/programs/multisig_nocall_solc_symbolic.ill');

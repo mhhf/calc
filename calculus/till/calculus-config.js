@@ -6,7 +6,7 @@
  * index policy (D5 — the FIFO cohort order), and the scheduler policies
  * (D12: fifo cohort sampler, PRF conflict chooser; D17 seed).
  *
- * Mirrors lib/engine/ill/calculus-config.js layer-for-layer; this file is
+ * Mirrors calculus/ill/calculus-config.js layer-for-layer; this file is
  * the ONLY place till-specific choices live — the engine (timed.js) reads
  * everything through the config record (D13).
  */
@@ -18,13 +18,13 @@ import Store from '../../lib/kernel/store.js';
 import { putRat } from '../../lib/kernel/rat-term.js';
 import { setTheories } from '../../lib/kernel/unify.js';
 import { defaultTheories } from '../../lib/kernel/eq-theory.js';
-import { binlitTheory } from '../../lib/engine/ill/binlit-theory.js';
+import { binlitTheory } from '../ill/lib/binlit-theory.js';
 import { ratlitTheory, ratParts, installRatlitTheory } from '../../lib/engine/theories/ratlit-theory.js';
 import { grade0 } from '../../lib/engine/grades.js';
 import { connTagsFrom } from '../../lib/engine/formula-utils.js';
 import { cmp as ratCmp, add as ratAdd, sub as ratSub, norm as ratNorm } from '../../lib/rat.js';
-import backchainIll from '../../lib/engine/ill/backchain-ill.js';
-import * as ffi from '../../lib/engine/ill/ffi/index.js';
+import backchainIll from '../ill/lib/backchain-ill.js';
+import * as ffi from '../ill/lib/ffi/index.js';
 import { ratCanon, makeCalcTables, makeFFIFace, makeTheory, makeForwardParserBuilder, makeSequentLoader } from '../kit.js';
 
 const TILL_CALC = path.join(import.meta.dirname, 'till.calc');

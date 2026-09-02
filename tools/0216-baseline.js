@@ -2,7 +2,7 @@
 // Hoisted by tools/esm-hoist.js:
 import mde from '../lib/engine/index.js';
 import Store from '../lib/kernel/store.js';
-import { loadBytecode, bytecodeArrGetGuard } from '../lib/engine/ill/bytecode-loader.js';
+import { loadBytecode, bytecodeArrGetGuard } from '../calculus/ill/lib/bytecode-loader.js';
 
 /**
  * TODO_0216 Phase 0 H9 — baseline snapshot

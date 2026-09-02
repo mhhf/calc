@@ -12,12 +12,12 @@
  * Moved from engine/index.js to break ILL coupling from the generic engine.
  */
 
-import Store from '../../kernel/store.js';
+import Store from '../../../lib/kernel/store.js';
 // Hoisted by tools/esm-hoist.js:
 import { binToInt } from './ffi/convert.js';
 import { intToBin } from './ffi/convert.js';
 import { arrToTrie } from './ffi/array.js';
-import convert from '../convert.js';
+import convert from '../../../lib/engine/convert.js';
 
 /**
  * Convert `code PC V` linear facts into a single `bytecode` arrlit fact.

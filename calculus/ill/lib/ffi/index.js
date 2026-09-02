@@ -11,7 +11,7 @@ import calldata from './calldata.js';
 import array from './array.js';
 import mode from './mode.js';
 import convert from './convert.js';
-import ratFFI from '../../theories/rat-ffi.js';
+import ratFFI from '../../../../lib/engine/theories/rat-ffi.js';
 // ============================================================================
 // REGISTRY
 // ============================================================================

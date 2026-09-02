@@ -133,6 +133,6 @@ Note: `check-term.js` is currently test-only (not invoked in production paths).
 |---|---|
 | `lib/prover/generic-term.js` | `extractTerm` — backward proof tree → generic term, `monadicTerm` — opaque forward term |
 | `lib/prover/bridge.js` | `modeSwitch` — profile dispatch, `rightFocus`/`rightFocusTerm` — succedent decomposition |
-| `lib/prover/ill/guided-term.js` | `guidedTerm` — forward trace → complete ILL term |
+| `calculus/ill/lib/guided-term.js` | `guidedTerm` — forward trace → complete ILL term |
 | `lib/prover/check-term.js` | `createChecker` → `{ check, expand }` — type checker |
 | `doc/documentation/proof-terms.md` | Constructor catalog and typing rules |

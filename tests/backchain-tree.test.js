@@ -6,7 +6,7 @@ import path from 'path';
 import { backchainWithTree } from '../lib/prover/backchain-tree.js';
 import mde from '../lib/engine/index.js';
 import Store from '../lib/kernel/store.js';
-import { initILL, makeILLBackchainOpts } from '../lib/engine/ill/backchain-ill.js';
+import { initILL, makeILLBackchainOpts } from '../calculus/ill/lib/backchain-ill.js';
 import { FORMAT_VERSION } from '../lib/prover/serialize-tree.js';
 test('backchain-tree — plus (i e) (i e) R: default is opaque FFI leaf', () => {
   Store.clear();

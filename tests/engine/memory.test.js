@@ -3,17 +3,17 @@
  */
 
 import { describe, it, before, beforeEach } from 'node:test';
-import { bytesToSemantic } from '../../lib/engine/ill/bytecode-normalize.js';
+import { bytesToSemantic } from '../../calculus/ill/lib/bytecode-normalize.js';
 import assert from 'node:assert';
 import path from 'path';
 import mde from '../../lib/engine/index.js';
 import backward from '../../lib/engine/backchain.js';
-import { makeILLBackchainOpts } from '../../lib/engine/ill/backchain-ill.js';
+import { makeILLBackchainOpts } from '../../calculus/ill/lib/backchain-ill.js';
 import { getAllLeaves, countNodes } from '../../lib/engine/tree-utils.js';
 import Store from '../../lib/kernel/store.js';
 import { apply as subApply } from '../../lib/kernel/substitute.js';
-import { intToBin, binToInt } from '../../lib/engine/ill/ffi/convert.js';
-import memory from '../../lib/engine/ill/ffi/memory.js';
+import { intToBin, binToInt } from '../../calculus/ill/lib/ffi/convert.js';
+import memory from '../../calculus/ill/lib/ffi/memory.js';
 // Hoisted by tools/esm-hoist.js:
 import { classifyLeaf } from '../../lib/engine/show.js';
 

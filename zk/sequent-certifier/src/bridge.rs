@@ -56,7 +56,7 @@ use crate::chips::{
 };
 use crate::rule::{RuleChip, RuleSpec};
 
-/// JSON witness format produced by `lib/zk/witness.js`.
+/// JSON witness format produced by `calculus/ill/lib/zk/witness.js`.
 #[derive(Deserialize, Debug)]
 pub struct WitnessJson {
     pub tags: HashMap<String, u32>,
@@ -942,7 +942,7 @@ pub fn prove_witnesses_shared_keygen(
     results
 }
 
-/// Flat witness format produced by `lib/zk/flat-witness.js`.
+/// Flat witness format produced by `calculus/ill/lib/zk/flat-witness.js`.
 ///
 /// Phase 3b.7: uses CONTEXT_BUS + GAMMA_BUS + FORMULA_BUS + SUBST_TREE_BUS + FREEVAR_BUS.
 /// Chips: FlatInitChip + FlatStepChip + FlatFinalChip + FormulaRomAir + GammaRomAir

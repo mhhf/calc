@@ -32,9 +32,9 @@ import sha3 from 'js-sha3';
 import Store from '../lib/kernel/store.js';
 import mde from '../lib/engine/index.js';
 import backward from '../lib/engine/backchain.js';
-import { makeILLBackchainOpts } from '../lib/engine/ill/backchain-ill.js';
-import ffi from '../lib/engine/ill/ffi/index.js';
-import convert from '../lib/engine/ill/ffi/convert.js';
+import { makeILLBackchainOpts } from '../calculus/ill/lib/backchain-ill.js';
+import ffi from '../calculus/ill/lib/ffi/index.js';
+import convert from '../calculus/ill/lib/ffi/convert.js';
 import { apply } from '../lib/kernel/substitute.js';
 
 const { keccak256 } = sha3;
@@ -587,7 +587,7 @@ for (const pred of predList) {
 // proving bin behavior is untouched). qsub/qdiv remain q-specific.
 
 {
-  const { binlitTheory } = await import('../lib/engine/ill/binlit-theory.js');
+  const { binlitTheory } = await import('../calculus/ill/lib/binlit-theory.js');
   const { ratlitTheory, putRat, installRatlitTheory, ratParts } =
     await import('../lib/engine/theories/ratlit-theory.js');
   const { defaultTheories, buildCanonicalizer } = await import('../lib/kernel/eq-theory.js');

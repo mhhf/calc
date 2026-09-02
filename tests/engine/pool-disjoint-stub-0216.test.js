@@ -18,7 +18,7 @@ import { execFileSync } from 'child_process';
 import Store from '../../lib/kernel/store.js';
 // Hoisted by tools/esm-hoist.js:
 import mde from '../../lib/engine/index.js';
-import ccfg from '../../lib/engine/ill/calculus-config.js';
+import ccfg from '../../calculus/ill/calculus-config.js';
 import { resolveConn } from '../../lib/engine/compile.js';
 import { fusePair as _fusePair } from '../../lib/engine/compose.js';
 import { monadUnit as U } from '../../lib/engine/grades.js';
@@ -69,7 +69,7 @@ describe('TODO_0216 H3 — pool-disjoint assertion stub', () => {
       const Store = (await import('file://${path.resolve(import.meta.dirname, '../../lib/kernel/store.js').replace(/\\\\/g, '/')}')).default;
       const calculus = (await import('file://${path.resolve(import.meta.dirname, '../../lib/calculus/index.js').replace(/\\\\/g, '/')}')).default;
       await calculus.loadILL();
-      const ccfg = (await import('file://${path.resolve(import.meta.dirname, '../../lib/engine/ill/calculus-config.js').replace(/\\\\/g, '/')}')).default;
+      const ccfg = (await import('file://${path.resolve(import.meta.dirname, '../../calculus/ill/calculus-config.js').replace(/\\\\/g, '/')}')).default;
       const { resolveConn } = await import('file://${path.resolve(import.meta.dirname, '../../lib/engine/compile.js').replace(/\\\\/g, '/')}');
       const { fusePair } = await import('file://${path.resolve(import.meta.dirname, '../../lib/engine/compose.js').replace(/\\\\/g, '/')}');
       const rc = resolveConn(ccfg.connectives);
@@ -112,7 +112,7 @@ describe('TODO_0216 H3 — pool-disjoint assertion stub', () => {
       const Store = (await import('file://${path.resolve(import.meta.dirname, '../../lib/kernel/store.js').replace(/\\\\/g, '/')}')).default;
       const calculus = (await import('file://${path.resolve(import.meta.dirname, '../../lib/calculus/index.js').replace(/\\\\/g, '/')}')).default;
       await calculus.loadILL();
-      const ccfg = (await import('file://${path.resolve(import.meta.dirname, '../../lib/engine/ill/calculus-config.js').replace(/\\\\/g, '/')}')).default;
+      const ccfg = (await import('file://${path.resolve(import.meta.dirname, '../../calculus/ill/calculus-config.js').replace(/\\\\/g, '/')}')).default;
       const { resolveConn } = await import('file://${path.resolve(import.meta.dirname, '../../lib/engine/compile.js').replace(/\\\\/g, '/')}');
       const { fusePair } = await import('file://${path.resolve(import.meta.dirname, '../../lib/engine/compose.js').replace(/\\\\/g, '/')}');
       const rc = resolveConn(ccfg.connectives);

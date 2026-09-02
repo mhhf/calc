@@ -17,18 +17,18 @@
 
 'use strict';
 
-import { illConnectives } from './connectives.js';
-import { binlitTheory } from './binlit-theory.js';
-import backchainIll from './backchain-ill.js';
-import { ILL_CHAIN_CONFIGS, ILL_SROA_CONFIG } from './compose-config.js';
-import { bytecodeToTrie, codeToArrlit, bytesToSemantic, normalizeQuery } from './bytecode-normalize.js';
-import { binToInt, isGround as _binIsGround } from './ffi/convert.js';
-import { trieNav } from './ffi/array.js';
-import { DEFAULT_LEAF_POLICY, DEFAULT_SHOW_EXCLUDE } from '../show.js';
-import { monadUnit } from '../grades.js';
-import Store from '../../kernel/store.js';
-import * as _ffiMod from './ffi/index.js';
-import { residualResolver as _residualResolverFn } from './residual-resolver.js';
+import { illConnectives } from './lib/connectives.js';
+import { binlitTheory } from './lib/binlit-theory.js';
+import backchainIll from './lib/backchain-ill.js';
+import { ILL_CHAIN_CONFIGS, ILL_SROA_CONFIG } from './lib/compose-config.js';
+import { bytecodeToTrie, codeToArrlit, bytesToSemantic, normalizeQuery } from './lib/bytecode-normalize.js';
+import { binToInt, isGround as _binIsGround } from './lib/ffi/convert.js';
+import { trieNav } from './lib/ffi/array.js';
+import { DEFAULT_LEAF_POLICY, DEFAULT_SHOW_EXCLUDE } from '../../lib/engine/show.js';
+import { monadUnit } from '../../lib/engine/grades.js';
+import Store from '../../lib/kernel/store.js';
+import * as _ffiMod from './lib/ffi/index.js';
+import { residualResolver as _residualResolverFn } from './lib/residual-resolver.js';
 
 function _getFfi() { return _ffiMod; }
 function _getResidualResolver() { return _residualResolverFn; }

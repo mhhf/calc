@@ -16,7 +16,7 @@ import rat from '../../lib/rat.js';
 import { ratlitTheory, putRat, ratParts, isRatTerm, installRatlitTheory }
   from '../../lib/engine/theories/ratlit-theory.js';
 import { classifyFirstArg } from '../../lib/kernel/eq-theory.js';
-import arithmetic from '../../lib/engine/ill/ffi/arithmetic.js';
+import arithmetic from '../../calculus/ill/lib/ffi/arithmetic.js';
 import ratFFI from '../../lib/engine/theories/rat-ffi.js';
 import { serialize, deserialize, compact } from '../../lib/engine/store-binary.js';
 

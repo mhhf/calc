@@ -49,9 +49,9 @@ try {
 
   let bytecodeMs = 0;
   try {
-    const loaderFile = path.join(import.meta.dirname, 'lib/engine/ill/bytecode-loader.js');
+    const loaderFile = path.join(import.meta.dirname, 'calculus/ill/lib/bytecode-loader.js');
     if (fs.existsSync(loaderFile) && fs.existsSync(codePath)) {
-      const { loadBytecode, bytecodeArrGetGuard } = await loadDefault('./lib/engine/ill/bytecode-loader.js');
+      const { loadBytecode, bytecodeArrGetGuard } = await loadDefault('./calculus/ill/lib/bytecode-loader.js');
       const tBc0 = performance.now();
       const hex = fs.readFileSync(codePath, 'utf8').match(/bytecode\s+0x([0-9a-fA-F]+)/)[1];
       const bc = loadBytecode(hex);

@@ -6,13 +6,13 @@
  */
 
 import { describe, it, before } from 'node:test';
-import { bytesToSemantic } from '../../lib/engine/ill/bytecode-normalize.js';
+import { bytesToSemantic } from '../../calculus/ill/lib/bytecode-normalize.js';
 import assert from 'node:assert/strict';
 import path from 'path';
 import mde from '../../lib/engine/index.js';
 import Store from '../../lib/kernel/store.js';
-import { intToBin, binToInt } from '../../lib/engine/ill/ffi/convert.js';
-import { arrToTrie } from '../../lib/engine/ill/ffi/array.js';
+import { intToBin, binToInt } from '../../calculus/ill/lib/ffi/convert.js';
+import { arrToTrie } from '../../calculus/ill/lib/ffi/array.js';
 /**
  * Build initial EVM state from hex bytecode + calldata options.
  */

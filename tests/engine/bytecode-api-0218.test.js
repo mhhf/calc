@@ -15,7 +15,7 @@ import path from 'path';
 import Store from '../../lib/kernel/store.js';
 import mde from '../../lib/engine/index.js';
 // Hoisted by tools/esm-hoist.js:
-import { loadBytecode, bytecodeArrGetGuard } from '../../lib/engine/ill/bytecode-loader.js';
+import { loadBytecode, bytecodeArrGetGuard } from '../../calculus/ill/lib/bytecode-loader.js';
 
 const SYMEX_PATH = path.join(import.meta.dirname, '../../calculus/ill/programs/multisig_nocall_solc_symbolic.ill');
 const CODE_PATH = path.join(import.meta.dirname, '../../calculus/ill/programs/multisig_nocall_solc_code.ill');

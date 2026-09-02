@@ -16,7 +16,7 @@ import { createProver } from '../lib/prover/focused.js';
 import { buildRuleSpecs } from '../lib/prover/rule-interpreter.js';
 import { rightFocusTerm, modeSwitch } from '../lib/prover/bridge.js';
 import { compileRule } from '../lib/engine/compile.js';
-import { illConnectives } from '../lib/engine/ill/connectives.js';
+import { illConnectives } from '../calculus/ill/lib/connectives.js';
 import { createChecker, expand } from '../lib/prover/check-term.js';
 import { createKernel } from '../lib/prover/kernel.js';
 import Seq from '../lib/kernel/sequent.js';

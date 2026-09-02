@@ -4,14 +4,14 @@
 import { describe, it, beforeEach } from 'node:test';
 import assert from 'node:assert/strict';
 import Store from '../../lib/kernel/store.js';
-import { loadBytecode, bytecodeArrGetGuard } from '../../lib/engine/ill/bytecode-loader.js';
-import { intToBin, binToInt } from '../../lib/engine/ill/ffi/convert.js';
+import { loadBytecode, bytecodeArrGetGuard } from '../../calculus/ill/lib/bytecode-loader.js';
+import { intToBin, binToInt } from '../../calculus/ill/lib/ffi/convert.js';
 import { gradeW } from '../../lib/engine/grades.js';
-import { illConnectives } from '../../lib/engine/ill/connectives.js';
+import { illConnectives } from '../../calculus/ill/lib/connectives.js';
 import { resolveConn, compileRule, flattenAnte } from '../../lib/engine/compile.js';
 import { predHead } from '../../lib/kernel/ast.js';
 import { compose0 } from '../../lib/engine/compose.js';
-import { getModes } from '../../lib/engine/ill/ffi/index.js';
+import { getModes } from '../../calculus/ill/lib/ffi/index.js';
 // Hoisted by tools/esm-hoist.js:
 import path from 'path';
 import mde from '../../lib/engine/index.js';

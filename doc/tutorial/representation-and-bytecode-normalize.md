@@ -138,7 +138,7 @@ plus/z: plus e B B.
 plus/o: plus (o A) B C <- ...
 ```
 
-The background says (in `lib/engine/ill/ffi/arithmetic.js`):
+The background says (in `calculus/ill/lib/ffi/arithmetic.js`):
 
 ```js
 function plus([a, b, c]) {
@@ -169,15 +169,15 @@ they hit:
 | File | What it swaps | When it runs |
 |---|---|---|
 | `lib/kernel/eq-theory.js` | one term ↔ another (`binlit(5n)` ↔ `i(o(i(e)))`) | at unification time, every step |
-| `lib/engine/ill/ffi/index.js` | a predicate goal → a JS function (`plus`, `mul`, ...) | at goal-proving time, every step |
-| `lib/engine/ill/ffi/arith-core.js` | shared BigInt core used by FFI + residual resolver | runtime + compile-time |
+| `calculus/ill/lib/ffi/index.js` | a predicate goal → a JS function (`plus`, `mul`, ...) | at goal-proving time, every step |
+| `calculus/ill/lib/ffi/arith-core.js` | shared BigInt core used by FFI + residual resolver | runtime + compile-time |
 
 They share φ/φ⁻¹ logic (in `convert.js`), but each registers itself
 separately, with its own API. Adding a new representation means touching all
 three. **TODO_0223 (Layer C)** is the project to turn them into a single
 registration: declare the representation once, all three subsystems use it.
 
-One note on layering. The path `lib/engine/ill/ffi/` is slightly misleading.
+One note on layering. The path `calculus/ill/lib/ffi/` is slightly misleading.
 Conceptually the FFI for binary arithmetic optimises EVM/program-layer
 predicates (`plus`, `mul`, etc. defined in `bin.ill`), not ILL primitives. So
 the FFI is **EVM-layer optimization** even though the directory is named
@@ -474,7 +474,7 @@ state-level worry collapses to a deprecation question.
   soundly: φ, φ⁻¹, and a homomorphism law. Every FFI predicate is one of
   these.
 - **FFI** — the registered background optimizations for EVM-layer predicates
-  (binary arithmetic, memory, opcodes, ...). Lives in `lib/engine/ill/ffi/`,
+  (binary arithmetic, memory, opcodes, ...). Lives in `calculus/ill/lib/ffi/`,
   even though conceptually it belongs to the EVM layer.
 - **Term-level refinement** — preserves the cardinality of the linear /
   persistent context; rewrites the data inside one fact.

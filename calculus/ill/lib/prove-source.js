@@ -35,15 +35,15 @@
 import path from 'path';
 import fs from 'fs';
 import crypto from 'crypto';
-import calculusLoader from '../../calculus/index.js';
-import proverAuto from '../strategy/auto.js';
-import { sequentParser } from '../../parser/sequent-parser.js';
-import { serializeTree, FORMAT_VERSION, elideBelowDepth as elideJson, findSubtreeById } from '../serialize-tree.js';
-import { serializeExploreTree, extractLeafTrace, FORMAT_VERSION as TRACE_FORMAT_VERSION } from '../serialize-trace.js';
-import { backchainWithTree } from '../backchain-tree.js';
-import mde from '../../engine/index.js';
-import convert from '../../engine/convert.js';
-import { makeILLBackchainOpts } from '../../engine/ill/backchain-ill.js';
+import calculusLoader from '../../../lib/calculus/index.js';
+import proverAuto from '../../../lib/prover/strategy/auto.js';
+import { sequentParser } from '../../../lib/parser/sequent-parser.js';
+import { serializeTree, FORMAT_VERSION, elideBelowDepth as elideJson, findSubtreeById } from '../../../lib/prover/serialize-tree.js';
+import { serializeExploreTree, extractLeafTrace, FORMAT_VERSION as TRACE_FORMAT_VERSION } from '../../../lib/prover/serialize-trace.js';
+import { backchainWithTree } from '../../../lib/prover/backchain-tree.js';
+import mde from '../../../lib/engine/index.js';
+import convert from '../../../lib/engine/convert.js';
+import { makeILLBackchainOpts } from './backchain-ill.js';
 // Sandbox root — path containment is checked against this prefix. All
 // imports must resolve inside. Covers both `programs/` and `prelude/`.
 const SANDBOX_ROOT = path.resolve(import.meta.dirname, '..', '..', '..', 'calculus', 'ill');

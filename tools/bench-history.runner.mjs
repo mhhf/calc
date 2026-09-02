@@ -241,9 +241,9 @@ async function main() {
     const loadOpts = { cache: false };
     try {
       const codeExists = fs.existsSync(codePath);
-      const loaderJs = path.join(import.meta.dirname, 'lib/engine/ill/bytecode-loader.js');
+      const loaderJs = path.join(import.meta.dirname, 'calculus/ill/lib/bytecode-loader.js');
       if (codeExists && fs.existsSync(loaderJs)) {
-        const { loadBytecode, bytecodeArrGetGuard } = await loadDefault('./lib/engine/ill/bytecode-loader.js');
+        const { loadBytecode, bytecodeArrGetGuard } = await loadDefault('./calculus/ill/lib/bytecode-loader.js');
         const hex = fs.readFileSync(codePath, 'utf8').match(/bytecode\s+0x([0-9a-fA-F]+)/)[1];
         const bc = loadBytecode(hex);
         loadOpts.extraGrade0Facts = bc.facts;

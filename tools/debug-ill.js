@@ -4,7 +4,7 @@ import { predHead } from '../lib/kernel/ast.js';
 import ffiProfile from '../lib/engine/opt/ffi.js';
 import { getCacheProfile, resetCacheProfile } from '../lib/engine/backward-cache.js';
 import fs from 'fs';
-import { loadBytecode, bytecodeArrGetGuard } from '../lib/engine/ill/bytecode-loader.js';
+import { loadBytecode, bytecodeArrGetGuard } from '../calculus/ill/lib/bytecode-loader.js';
 
 /**
  * ILL-native debug runner — observation directives + verbose judgment output.

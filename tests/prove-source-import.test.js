@@ -13,7 +13,7 @@ import assert from 'node:assert';
 import fs from 'fs';
 import os from 'os';
 import path from 'path';
-import { proveSource, parseHeader, resolveImport, SANDBOX_ROOT, _resetCache } from '../lib/prover/ill/prove-source.js';
+import { proveSource, parseHeader, resolveImport, SANDBOX_ROOT, _resetCache } from '../calculus/ill/lib/prove-source.js';
 describe('parseHeader', () => {
   it('extracts leading #import lines', () => {
     const src = '#import(programs/bin.ill)\n\nplus (i e) (i e) R';

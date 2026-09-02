@@ -14,7 +14,7 @@ import Store from '../../lib/kernel/store.js';
 import forward from '../../lib/engine/forward.js';
 import { explore } from '../../lib/engine/explore.js';
 import { compileRule } from '../../lib/engine/compile.js';
-import { illConnectives } from '../../lib/engine/ill/connectives.js';
+import { illConnectives } from '../../calculus/ill/lib/connectives.js';
 import { putRat } from '../../lib/kernel/rat-term.js';
 import { makeMatchOpts } from './_match-opts.js';
 import { gradeW } from '../../lib/engine/grades.js';

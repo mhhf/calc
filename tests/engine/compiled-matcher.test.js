@@ -15,7 +15,7 @@ import { compilePM, execPM } from '../../lib/engine/compile.js';
 import { tryMatch } from '../../lib/engine/match.js';
 import { makeMatchOpts } from './_match-opts.js';
 import { execPS, compilePS } from '../../lib/engine/opt/ffi.js';
-import illFfi from '../../lib/engine/ill/ffi/index.js';
+import illFfi from '../../calculus/ill/lib/ffi/index.js';
 // Hoisted by tools/esm-hoist.js:
 import { proveWithFFI } from '../../lib/engine/opt/ffi.js';
 

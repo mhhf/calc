@@ -12,8 +12,8 @@
 
 'use strict';
 
-import Store from '../../kernel/store.js';
-import { predHead } from '../../kernel/ast.js';
+import Store from '../../../lib/kernel/store.js';
+import { predHead } from '../../../lib/kernel/ast.js';
 import { binToInt, intToBin } from './ffi/convert.js';
 import { computeArith } from './ffi/arith-core.js';
 // Predicate → { arity, inputs } for arith-core delegation.

@@ -5,10 +5,10 @@ import { show } from '../../lib/engine/show.js';
 import { isGround, collectMetavars, collectFreevars } from '../../lib/engine/pattern-utils.js';
 import { serialize, deserialize } from '../../lib/engine/store-binary.js';
 import { match, matchIndexed, undoSave, undoRestore, unify } from '../../lib/kernel/unify.js';
-import { arr_get, arr_set, alen, read_bytes, arrToTrie, trieNav } from '../../lib/engine/ill/ffi/array.js';
+import { arr_get, arr_set, alen, read_bytes, arrToTrie, trieNav } from '../../calculus/ill/lib/ffi/array.js';
 import { parserFromTables, parserTables } from '../../lib/calculus/builders.js';
 // Hoisted by tools/esm-hoist.js:
-import { bytesToSemantic } from '../../lib/engine/ill/bytecode-normalize.js';
+import { bytesToSemantic } from '../../calculus/ill/lib/bytecode-normalize.js';
 
 describe('arrlit - Stage 1: Store Infrastructure', () => {
   beforeEach(() => Store.clear());

@@ -18,7 +18,7 @@ import path from 'path';
 import Store from '../../lib/kernel/store.js';
 import mde from '../../lib/engine/index.js';
 import convert from '../../lib/engine/convert.js';
-import * as ffi from '../../lib/engine/ill/ffi/index.js';
+import * as ffi from '../../calculus/ill/lib/ffi/index.js';
 import { putRat } from '../../lib/engine/theories/ratlit-theory.js';
 import { timedSubset } from '../../lib/engine/timed/timed-views.js';
 import gillConfig, { gillTheory, loadGillSequent } from '../../calculus/gill/calculus-config.js';
