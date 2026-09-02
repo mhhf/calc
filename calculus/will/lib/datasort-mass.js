@@ -29,8 +29,8 @@
 
 'use strict';
 
-import { _parseSignature } from './type-check.js';
-import { add as ratAdd, sub as ratSub, mul as ratMul, div as ratDiv } from '../rat.js';
+import { _parseSignature } from '../../../lib/engine/type-check.js';
+import { add as ratAdd, sub as ratSub, mul as ratMul, div as ratDiv } from '../../../lib/rat.js';
 
 const R0 = [0n, 1n];
 const R1 = [1n, 1n];
