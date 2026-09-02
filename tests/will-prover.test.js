@@ -207,4 +207,39 @@ describe('will sequent calculus — ∃_ρ by draw-token internalization', () =>
       () => [[atom('a')],
         tensor(Store.put('bang', [Store.put('binlit', [0n]), atom('b')]), atom('a'))]);
   });
+
+  describe('synthetic-atom id — root gate + committed-search corner (audit 2026-09-02)', () => {
+    // The 44f39215 path: a predicate-headed formula with no sequent rule
+    // closes by general id WITH leftovers; the root Context.isEmpty gate
+    // is the only thing preventing silent resource discard. These pin
+    // the gate NEGATIVELY for that specific path (the analogous ILL pins
+    // use freevars, which take the atomic id path instead).
+    provable('sanity: p c ⊢ p c (synthetic id, no leftovers)',
+      () => [[p(atom('c'))], p(atom('c'))]);
+    refuted('root gate: q, p c ⊬ p c (ordinary leftover not discarded)',
+      () => [[atom('q'), p(atom('c'))], p(atom('c'))]);
+    refuted('root gate: p d, p c ⊬ p c (predicate-headed leftover not discarded)',
+      () => [[p(atom('d')), p(atom('c'))], p(atom('c'))]);
+    refuted('root gate under ⊗: p c, p d, a ⊬ p c ⊗ a (p d survives the split)',
+      () => [[p(atom('c')), p(atom('d')), atom('a')], tensor(p(atom('c')), atom('a'))]);
+
+    it('KNOWN LIMITATION (round-15 F6.i, ∃_ρ setting): committed branch search misses a valid consumption', () => {
+      // p c, p d ⊢ ((p c ⊕ p d) & p d) ⊗ p c IS derivable: the & consumes
+      // p d in BOTH branches (branch 1 via oplus_r2, branch 2 via id),
+      // then ⊗ takes p c. Committed search finds oplus_r1 first in branch
+      // 1 (consumes p c, leftover {p d}), branch 2 leaves {p c}, the
+      // with_r delta-agreement check fails, and the branch is never
+      // re-derived — the same order-sensitivity corner pinned for ILL
+      // (tests/focused-prover.test.js), reproduced here with SYNTHETIC
+      // atoms so the will/∃_ρ system documents it too. The @affine ghost
+      // machinery must NOT mask it (p c/p d are not drawn tokens). When
+      // the committed search is fixed, this test FAILS and must flip.
+      const pc = p(atom('c')), pd = p(atom('d'));
+      const r = prove([pc, pd], tensor(withc(oplus(pc, pd), pd), pc));
+      assert.ok(!r.success, 'committed-search corner was fixed — flip this pin');
+      // the swapped ⊕ order, where the first-found consumption agrees, proves:
+      const r2 = prove([pc, pd], tensor(withc(oplus(pd, pc), pd), pc));
+      assert.ok(r2.success, 'order-agreeing variant must prove');
+    });
+  });
 });
