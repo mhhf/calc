@@ -93,10 +93,12 @@ lib/
 │   ├── backchain.js     # Generic: backward chaining (SLD-style, renamed from prove.js)
 │   ├── fact-set.js      # Generic: FactSet (sorted typed-array groups) + Arena (undo log)
 │   ├── sorts.js         # Generic: refinement-sort system (subsort DAG index + certified proofs, TODO_0011)
+│   ├── materialize.js   # Generic: load-time clause materialization (sort system + subsort-closure/mass/prior fact riders)
 │   ├── convert.js       # .ill → content-addressed hashes
 │   ├── priors.js        # Generic: @w constructor-prior validation + Chi–Geman subcriticality (presence-gated)
 │   ├── decimate.js      # Generic: decimation driver — ∃_ρ waves, lazy recursion, datasort conditioning, sample/exact/solve (calc.collapse; TODO_0297 P2/P3, TODO_0011 fence B)
 │   ├── compose.js       # Generic: grade-0 cut-elimination pipeline (cutPair/predMap/compose0) + chain fusion + SROA + SLD tabling (THY_0015/0016); runs on every non-cached load
+│   ├── compose-profile.js # Generic: compose profiling emission (onPhase-gated, pure — fuse/tabling rollups + leaves)
 │   ├── lnl/             # LNL layer: linear/persistent distinction
 │   │   ├── persistent.js  # Persistent goal proving (state → cache → backchain)
 │   │   ├── loli.js        # Dynamic rule matching (linear implications)
@@ -104,6 +106,7 @@ lib/
 │   │   └── existential.js # ∃-variable resolution
 │   ├── timed/           # Timed layer: wall-clock scheduler over the stamp algebra (generic over cc.grades/cc.stampTag; TODO_0265)
 │   │   ├── timed.js       # buildTimedConfig, settle loop, stamp-aware matching (tryTimedMatch/fire)
+│   │   ├── timed-api.js   # grades-gated API construction (settle/views/game + D16/C1-C3 lints) — index.js delegates here
 │   │   ├── timed-game.js  # Interactive with-projection menus over timed state
 │   │   ├── timed-render.js # #trace/#timeline/#why debug renderings
 │   │   ├── timed-lint.js  # D16 Zeno warning + timedAdvice: C1 chain-collapse, C2 Hypothesis-S (menu-exempt + cc.lintExempt machinery predicates), C3 whole-bind arrivals
