@@ -97,6 +97,7 @@ lib/
 │   ├── convert.js       # .ill → content-addressed hashes
 │   ├── priors.js        # Generic: @w constructor-prior validation + Chi–Geman subcriticality (presence-gated)
 │   ├── decimate.js      # Generic: decimation driver — ∃_ρ waves, lazy recursion, datasort conditioning, sample/exact/solve (calc.collapse; TODO_0297 P2/P3, TODO_0011 fence B)
+│   ├── ci.js            # Generic: calc.certifyCI — THY_0031 separation criterion on the class-graph cover (run waves + phantoms + static rules; sites Z-draws/O_F/mass-children; soundness-only: `separated` certifies X ⊥ Y | Z, refusal carries a witness walk; TODO_0302 M5)
 │   ├── compose.js       # Generic: grade-0 cut-elimination pipeline (cutPair/predMap/compose0) + chain fusion + SROA + SLD tabling (THY_0015/0016); runs on every non-cached load
 │   ├── compose-profile.js # Generic: compose profiling emission (onPhase-gated, pure — fuse/tabling rollups + leaves)
 │   ├── lnl/             # LNL layer: linear/persistent distinction

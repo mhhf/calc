@@ -226,10 +226,13 @@ outcome", so that all M-outcomes are determined by z (used in L5):
    pays T on the three other cells only; masses 1/4/4/8, dependence
    again, and the normalized twin is clean). The drop half is why V_e
    hangs off d_e rather than off e's spawner: drop-vs-draw is decided
-   by whoever consumes the carrier first, which is a CONTEST between
-   the consuming fire and d_e (a consumer of the same instances under
-   §2a's rewrite reading) — covered by the allocation forks of §2e, so
-   the deciding events are d-connected to d_e and the moral clique
+   by whoever consumes the carrier first. The deciding consumer needs a
+   DIRECTED edge into d_e (it forces the outcome `dropped`): an
+   allocation fork alone leaves the consumer a blocked collider on the
+   path from its own parents to d_e, and the M5 implementation's walk
+   analysis showed the fork-only reading fails pin 2b — the directed
+   consumer → d_e edge is what activates X → dr ← Y through the
+   observed descendant V_e. With it, the moral clique
    {V_e, d_e, bias-parents} carries the factor. Naive d-separation is
    unsound for unnormalized measures; the mass-child discipline repairs
    it. (THY_0030's zero-variance identity is the telescoped one-wave
