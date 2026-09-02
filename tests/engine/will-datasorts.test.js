@@ -319,15 +319,77 @@ inf/c: inf (cons H T) <- inf T.
     }
   });
 
-  it('within over a recursive domain is a slice-3 fence error', () => {
+  it('within over a recursive domain (slice 3): nonempty lists only, total 3/2', () => {
     const calc2 = loadProg('recwithin.will', LSTHDR + EVENODD + `within: (x: lst) -> (s: sort) -> type.
 go: type.
 spawn: mk -o { exists X: lst @w. box X }.
 cond: go * $box X -o { !within X ne }.
 `);
     const init = { linear: { [atom('mk')]: 1, [atom('go')]: 1 }, persistent: {} };
-    assert.throws(() => calc2.collapse(init, { mode: 'exact', maxCollapses: 6, settleBranching: 'seed' }),
-      /product states|slice 3/);
+    const r = calc2.collapse(init, { mode: 'exact', maxCollapses: 6, settleBranching: 'seed' });
+    assert.equal(r.outcomes.length, 6);       // 2 one-lists + 4 two-lists
+    assert.deepEqual(r.total, [3n, 2n]);
+    assert.ok(r.truncated);
+    for (const o of r.outcomes) assert.ok(listLen(boxOf(o.state)) >= 1, 'nil excluded');
+    // sample: importance ≡ m(ne) = 2 every seed
+    for (let seed = 0; seed < 10; seed++) {
+      const s = calc2.collapse(init, { seed, settleBranching: 'seed' });
+      assert.ok(listLen(boxOf(s.state)) >= 1);
+      assert.deepEqual(s.importance, [2n, 1n], `seed ${seed}: importance ≠ m(ne)`);
+    }
+  });
+
+  it('entangled product states (slice 3): even ∧ allb0 — lazy product masses, importance ≡ 32/15', () => {
+    const calc2 = loadProg('prod.will', LSTHDR + EVENODD + `b0s <: bit.
+b0s/z: b0s b0.
+allb0 <: lst.
+allb0/n: allb0 nil.
+allb0/c: allb0 (cons H T) <- b0s H <- allb0 T.
+within: (x: lst) -> (s: sort) -> type.
+go: type.
+go2: type.
+spawn: mk -o { exists X: lst @w. box X }.
+cond: go * $box X -o { !within X even }.
+cond2: go2 * $box X -o { !within X allb0 }.
+`);
+    const init = { linear: {
+      [atom('mk')]: 1, [atom('go')]: 1, [atom('go2')]: 1,
+    }, persistent: {} };
+    // declared-state masses from load; product m(even&allb0) = 32/15 solved lazily
+    assert.deepEqual(calc2.masses.get('allb0'), [8n, 3n]);
+    const r = calc2.collapse(init, { mode: 'exact', maxCollapses: 6, settleBranching: 'seed' });
+    assert.equal(r.outcomes.length, 2);       // nil + the single all-b0 2-list
+    assert.deepEqual(r.total, [17n, 8n]);
+    assert.ok(r.truncated);
+    for (let seed = 0; seed < 10; seed++) {
+      const s = calc2.collapse(init, { seed, settleBranching: 'seed' });
+      const lst = boxOf(s.state);
+      const len = listLen(lst);
+      assert.ok(len >= 0 && len % 2 === 0, `seed ${seed}: not even-length`);
+      let h = lst;   // all heads b0
+      while (Store.tag(h) === 'cons') {
+        assert.equal(Store.child(Store.child(h, 0), 0), 'b0', `seed ${seed}: non-b0 element`);
+        h = Store.child(h, 1);
+      }
+      assert.deepEqual(s.importance, [32n, 15n], `seed ${seed}: importance ≠ m(even∧allb0)`);
+    }
+  });
+
+  it('mass facts materialize when the program declares the predicate (intra-logical rider)', () => {
+    const calc2 = loadProg('massfacts.will', LSTHDR + EVENODD + `mass: (s: sort) -> (m: q) -> type.
+chk: type.
+got: (m: q) -> type.
+r: chk * !mass even M -o { got M }.
+`);
+    const res = calc2.settle({ linear: { [atom('chk')]: 1 }, persistent: {} }, 0, { maxSteps: 10 });
+    assert.ok(res.quiescent);
+    let gotVal = null;
+    for (const k of Object.keys(res.state.linear)) {
+      let h = Number(k);
+      if (Store.tag(h) === 'at') h = Store.child(h, 0);
+      if (Store.tag(h) === 'got') gotVal = Store.child(h, 0);
+    }
+    assert.ok(gotVal !== null, 'rule bound !mass even M');
   });
 
   it('a conditioned recursive run certifies: one token per draw, Π ρ = mass, states on tokens', () => {
