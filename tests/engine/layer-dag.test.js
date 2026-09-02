@@ -139,14 +139,21 @@ function findLayerViolations(baseDir, classify, layerOrder, resolve, opts = {}) 
 function classifyEngineModule(relPath) {
   if (relPath === 'index.js') return 'root';
   if (relPath.startsWith('lnl/')) return 'lnl';
+  if (relPath.startsWith('timed/')) return 'timed';
   if (relPath.startsWith('opt/')) return 'opt';
   if (relPath.startsWith('ill/')) return 'ill';
+  // theories/ stays 'generic' by decision (audit 2026-09-02): the
+  // numeric-literal theories (ratlit/strlit representation decoders) are
+  // the generic engine's numeric substrate — formula-utils/decimate use
+  // ratParts on declaration-derived weighted-choice, which is
+  // presence-gated behavior, not calculus coupling.
   return 'generic';
 }
 
 const ENGINE_LAYER_ORDER = {
   generic: 0,
   lnl: 1,
+  timed: 1,   // scheduler layer beside lnl: may import generic, never ill/
   opt: 2,
   ill: 3,
   root: 4,  // index.js can import anything

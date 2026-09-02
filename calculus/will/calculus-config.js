@@ -29,7 +29,8 @@ import { connTagsFrom } from '../../lib/engine/formula-utils.js';
 import { tillGrades, tillFactSetPolicy, tillGradeUnit } from '../till/calculus-config.js';
 import { gillCalculusConfig, gillGradeRegistry, gillFences, gillFFIFace } from '../gill/calculus-config.js';
 import { makeCalcTables, makeTheory, makeForwardParserBuilder, makeSequentLoader } from '../kit.js';
-import datasortMass from '../../lib/engine/datasort-mass.js';
+import datasortMass from './lib/datasort-mass.js';
+import { DECIMATE_PREDS } from '../../lib/engine/decimate.js';
 
 const WILL_CALC = path.join(import.meta.dirname, 'will.calc');
 const WILL_PRELUDE = path.join(import.meta.dirname, 'prelude/measure.will');
@@ -87,6 +88,9 @@ const willCalculusConfig = {
   // through the calc; calculi without the binding structurally lack the
   // concept, and recursive datasorts under them are a load error).
   datasortMasses: datasortMass,
+  // C2/Hypothesis-S lint exemption: bias facts are the decimation
+  // driver's machinery — persistent conclusions are their purpose.
+  lintExempt: [DECIMATE_PREDS.BIAS],
   factSetPolicy: tillFactSetPolicy,
   stampTag: 'at',
   shiftOps: gillCalculusConfig.shiftOps,
