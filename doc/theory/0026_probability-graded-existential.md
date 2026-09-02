@@ -1,7 +1,7 @@
 ---
 title: "The Probability-Graded Existential: Superposition, Collapse, and Observation in Graded ILL"
 created: 2026-08-28
-modified: 2026-09-01
+modified: 2026-09-02
 summary: "One new primitive — a weight-graded existential ∃_ρ x:s. A whose right rule consumes a linear draw-token drawn(c,s) for the chosen witness constructor c (THY_0027; the original grade-multiplying form fails cut admissibility) — turns graded ILL into a probabilistic generation calculus. Grades live in the UNNORMALIZED measure semiring (ℚ≥0,·,1); normalization is a meta-operation, so priors, biases, and evidence are all just weights and conditioning is multiplication (knowledge-monotone by construction). woplus (THY_0021) becomes the derived Boolean instance. Datasort refinements (THY_0020) are the events one conditions on; conditioning is a derived rule via inside-mass renormalization. Observation is intralogical: collapse IS the principal cut ∃_ρ-R vs ∃-L — sampling is a cut-reduction step, performed by the settle PRF; persistent knowledge conditions a superposition without collapsing it, linear consumption forces actuality. Four theorem statements (adequacy, a.s. groundness ⟺ subcriticality, importance-weighted sampler unbiasedness, compositional-conditioning boundary) give the sound-and-complete story; the WFC decimation loop for map generation is the operational reading."
 tags: [linear-logic, proof-theory, graded-types, till, lax-monad, existential, exists, probabilistic, forward-chaining, cut-elimination, refinement-sorts, wfc, procedural-generation, superposition]
 category: "Probabilistic Generation"
@@ -413,10 +413,22 @@ is precisely what the grade discipline must detect.
 
 ## 9. What the paper still must discharge
 
-1. T4-d in full: (i) the grade-certificate theorem (double-counted evidence ⟹
-   detectable weight violation); (ii) soundness of the mass-splitting graded
-   contraction; (iii) the graded, dynamic extension of Di Guardia's
-   good-labelling to forward derivation forests (= quantitative DIBI Thm V.1).
+1. T4-d in full: (i) ~~the grade-certificate theorem~~ DISCHARGED
+   (2026-09-01, THY_0028): single-counting is a theorem under the
+   linear-evidence discipline S1–S3, but the sketch's "detectable weight
+   violation" was REFUTED — honest and smuggled programs produce identical
+   posteriors; independence is certificate-visible (fire provenances), never
+   numerically visible, and value-only bias facts under-identify (the
+   source-tag discipline is forced). (ii) ~~soundness of the mass-splitting
+   graded contraction~~ DISCHARGED (2026-09-02, THY_0029) by DISSOLUTION:
+   counts split via the counted bang (derivable, exact conservation), masses
+   factorize via ⊗-context splitting of the token zone (multiplicative — the
+   additive reading was the budget semiring), sums live at the forking
+   connectives; a primitive box is definable (token-backed) or a
+   conservation leak, and its contraction shape would clone a draw.
+   (iii) the graded, dynamic extension of Di Guardia's good-labelling to
+   forward derivation forests (= quantitative DIBI Thm V.1) — OPEN, the
+   sequel paper's core.
 2. ~~Cut admissibility for the two-semiring graded judgment including ∃_ρ~~
    DISCHARGED (2026-09-01, THY_0027): cut admissibility holds with EXACT
    weight conservation via draw-token internalization — the two-semiring
@@ -445,7 +457,8 @@ is precisely what the grade discipline must detect.
    factors cancel in the T3 estimator), matching exact mode's
    settleExplore enumeration.
 
-REMAINING (items 1 + 3): T4-d in full and inside-mass conditioning — the
-research core of the NEXT phase (grade-certificate theorem, mass-splitting
-graded contraction, quantitative DIBI/good-labelling; datasort domains via
-TODO_0011 rung 2 + the derived conditioning rule's metatheory).
+REMAINING (item 1(iii) + item 3): the quantitative DIBI/good-labelling
+theorem (the sequel paper's spine — THY_0028 Thm 1 is its base case,
+THY_0029 leg (ii) shows every derivation already exhibits the partition it
+must grade) and inside-mass conditioning (datasort domains via TODO_0011
+rung 2 + the derived conditioning rule's metatheory). Tracked in TODO_0300.

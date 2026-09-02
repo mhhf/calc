@@ -59,6 +59,19 @@ Compiles clean (only the benign `scit` font-shape warning).
    any expansion invites a quantum-logic referee fight the paper does not
    need.
 
+7. **Remark candidate (THY_0029, 2026-09-02): the mass-splitting box
+   dissolves.** Companion to the paper's §3g-style dissolution remark:
+   the conjectured weight-graded contraction □_{r+s}A ⊢ □_rA ⊗ □_sA
+   adds no content — counts split via the counted bang (derivable, exact
+   conservation), masses factorize via ⊗-context splitting of the token
+   zone (multiplicative), sums live at ∃_ρ/⊕; token-backed boxes are
+   definable as ⟨Θ⟩ ⊗ A, unbacked ones violate weight conservation, and
+   the contraction shape would clone a draw (no-cloning, refuted
+   executably: one token cannot serve two ⊗-channels). One paragraph in
+   the discussion/positioning section; strengthens the "weight in the
+   endsequent" thesis — two independently conjectured connectives (the
+   two-semiring judgment, the weight box) both dissolved into it.
+
 ## 2. Claim boundaries (novelty audit 2026-09-01, from THY_0027)
 
 Theorem-level priority believed INTACT: endsequent-weight mechanism, exact
@@ -78,7 +91,8 @@ monomial per endsequent).
 - certifyCollapse: 8 pins (unbiased, bias-interleaved, rung-2 PCFG,
   skolem ∃-closure, correlation, doctored-weight + truncated-⟨Θ⟩ tamper
   rejection) — tests/engine/will-certify-collapse.test.js.
-- will-prover: 25 kernel-verified derivations pinning §3–§5 patterns.
+- will-prover: 26 kernel-verified derivations + 14 refutations pinning
+  §3–§5 patterns (incl. the THY_0029 splitting-law block, 2026-09-02).
 - Full fast suite ≈3.5k tests at the time of writing; "~90 will-specific"
   in §8.4 counts will-prover + draw-check + certify-collapse + decimate +
   wfc + priors + scaffold additions.

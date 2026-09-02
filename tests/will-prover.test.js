@@ -158,6 +158,40 @@ describe('will sequent calculus — ∃_ρ by draw-token internalization', () =>
       () => [[sup('s', p(bound0()))], p(atom('c'))]);
   });
 
+  describe('splitting laws are structural (THY_0029 — T4-d(ii) dissolution)', () => {
+    const bin = (n) => Store.put('binlit', [BigInt(n)]);
+    const bangK = (k, a) => Store.put('bang', [bin(k), a]);
+    // Leg (i): counts split additively via the counted bang — with exact
+    // conservation (leak and mint both refuted)
+    provable('!_5 a ⊢ !_2 a ⊗ !_3 a (count splitting)',
+      () => [[bangK(5, atom('a'))], tensor(bangK(2, atom('a')), bangK(3, atom('a')))]);
+    provable('!_2 a ⊗ !_3 a ⊢ !_5 a (merge converse)',
+      () => [[tensor(bangK(2, atom('a')), bangK(3, atom('a')))], bangK(5, atom('a'))]);
+    refuted('no count leak: !_5 a ⊬ !_2 a ⊗ !_2 a',
+      () => [[bangK(5, atom('a'))], tensor(bangK(2, atom('a')), bangK(2, atom('a')))]);
+    refuted('no count mint: !_4 a ⊬ !_2 a ⊗ !_3 a',
+      () => [[bangK(4, atom('a'))], tensor(bangK(2, atom('a')), bangK(3, atom('a')))]);
+    // Leg (ii): masses factorize multiplicatively — the token multiset
+    // partitions across ⊗-premises; one token cannot serve two channels
+    provable('token partition: p c, p d, drawn c s, drawn d s ⊢ (∃ρX.pX) ⊗ (∃ρX.pX)',
+      () => [[p(atom('c')), p(atom('d')), drawn('c', 's'), drawn('d', 's')],
+        tensor(sup('s', p(bound0())), sup('s', p(bound0())))]);
+    refuted('no cloning: p c, p c, drawn c s ⊬ (∃ρX.pX) ⊗ (∃ρX.pX)',
+      () => [[p(atom('c')), p(atom('c')), drawn('c', 's')],
+        tensor(sup('s', p(bound0())), sup('s', p(bound0())))]);
+    // §3: the box is the endsequent in disguise — tokens reassociate
+    // freely over ⊗
+    provable('token reassociation: t_c ⊗ (t_d ⊗ a) ⊢ (t_c ⊗ t_d) ⊗ a',
+      () => [[tensor(drawn('c', 's'), tensor(drawn('d', 's'), atom('a')))],
+        tensor(tensor(drawn('c', 's'), drawn('d', 's')), atom('a'))]);
+    // §5: the synthetic-atom id repair the mass leg forced — provability
+    // must not depend on ⊗-premise order
+    provable('synthetic-atom id with leftovers: p c, a ⊢ p c ⊗ a',
+      () => [[p(atom('c')), atom('a')], tensor(p(atom('c')), atom('a'))]);
+    provable('token id in premise 1: drawn c s, a ⊢ drawn c s ⊗ a',
+      () => [[drawn('c', 's'), atom('a')], tensor(drawn('c', 's'), atom('a'))]);
+  });
+
   describe('structural theorems of THY_0027', () => {
     refuted('no promotion through a draw: drawn c s ⊬ !(drawn c s)',
       () => [[drawn('c', 's')], P('!(drawn c s)')]);
