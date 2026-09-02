@@ -483,8 +483,12 @@ is precisely what the grade discipline must detect.
    factors cancel in the T3 estimator), matching exact mode's
    settleExplore enumeration.
 
-REMAINING (item 1(iii) ONLY): the quantitative DIBI/good-labelling
-theorem — the sequel paper's spine. THY_0028 Thm 1 is its base case,
-THY_0029 leg (ii) shows every derivation already exhibits the partition
-it must grade, THY_0030 supplies its conditioning face (membership
-side-derivations as the labelling's guard sites). Tracked in TODO_0300.
+Item 1(iii) — the quantitative DIBI/good-labelling theorem —
+DISCHARGED AT DRAFT GRAIN (2026-09-02, THY_0031): certified
+conditional independence on dynamic derivation forests — separation on
+the class dependency graph ⟹ exact factorization of the conditioned
+mass, certificate-exhibited; twice adversarially audited, seven pins
+(tests/engine/will-ci.test.js). Denis's read is the remaining gate
+before the sequel paper (TODO_0302 M7). THY_0028 Thm 1 is its base
+case, THY_0029 leg (ii) its per-derivation partition, THY_0030 its
+conditioning face.
