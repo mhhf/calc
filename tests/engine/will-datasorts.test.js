@@ -35,6 +35,7 @@ import mde from '../../lib/engine/index.js';
 import willConfig, { loadWillSequent } from '../../calculus/will/calculus-config.js';
 import { createKernel } from '../../lib/prover/kernel.js';
 import { programFromCalc } from '../../lib/prover/timed/elaborate-trace.js';
+import { _parseSignature } from '../../lib/engine/type-check.js';
 import { certifyCollapse } from '../../lib/prover/timed/elaborate-collapse.js';
 
 const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'will-datasorts-'));
@@ -547,5 +548,81 @@ describe('datasorts — certification (conditioned draws, m4 tokens)', () => {
     assert.ok(doctor(r.tree), 'no draw node found');
     const v = kernel.verifyTree(r.tree, { program: programFromCalc(calc) });
     assert.ok(!v.valid, 'doctored weight must be rejected');
+  });
+});
+
+describe('datasorts — automaton ≡ clause semantics (differential, audit 2026-09-02)', () => {
+  // The compiled automaton (datasortInfo members/trans) is the SOLE
+  // decision procedure at draw/check time; the membership clauses are the
+  // semantics. This pins their agreement: a test-local acceptance walk
+  // over the automaton must match calc.proveAll on the clause predicate,
+  // over every ground term up to depth 3.
+  const provable = (calc, ds, term) =>
+    calc.proveAll([Store.put(ds, [term])], { maxSolutions: 1 }).length > 0;
+
+  /** Test-local automaton acceptance: atom → member set; constructor →
+   *  transition, children at the child states (datasort → recurse,
+   *  classifier → member check). */
+  const accepts = (calc, state, term) => {
+    if (calc.sorts.isDatasort(state)) {
+      const info = calc.sorts.datasortInfo(state);
+      if (Store.tag(term) === 'atom') return info.members.has(Store.child(term, 0));
+      const head = Store.tag(term);
+      if (!info.trans.has(head)) return false;
+      const childStates = info.trans.get(head);
+      for (let i = 0; i < Store.arity(term); i++) {
+        if (!accepts(calc, childStates[i], Store.child(term, i))) return false;
+      }
+      return true;
+    }
+    // classifier state (⊤ at sort): atom members, or rung-2 constructor
+    // members with children at their declared arg sorts
+    if (Store.tag(term) === 'atom') return calc.sorts.membersOf(state).has(Store.child(term, 0));
+    const head = Store.tag(term);
+    if (!calc.sorts.membersOf(state).has(head)) return false;
+    const sig = _parseSignature(calc.definitions.get(head));
+    for (let i = 0; i < Store.arity(term); i++) {
+      if (!accepts(calc, sig.argSorts[i], Store.child(term, i))) return false;
+    }
+    return true;
+  };
+
+  it('finite: warm/tile_t — every tile_t member agrees', () => {
+    const calc = loadProg('diff-fin.will', HEADER + WARM +
+      'spawn: mk C -o { exists T: warm @w. tile C T }.\n');
+    for (const m of ['sea', 'coast', 'land']) {
+      assert.equal(accepts(calc, 'warm', atom(m)), provable(calc, 'warm', atom(m)),
+        `warm disagreement on '${m}'`);
+    }
+    assert.ok(provable(calc, 'warm', atom('sea')) && !provable(calc, 'warm', atom('land')));
+  });
+
+  it('recursive: even/odd/ne — all 15 bit-lists up to length 3 agree', () => {
+    const calc = loadProg('diff-rec.will', LSTHDR + EVENODD +
+      'spawn: mk -o { exists X: even @w. box X }.\n');
+    const lists = [atom('nil')];
+    for (let len = 1; len <= 3; len++) {
+      const prev = lists.filter((h) => {
+        let n = 0, t = h;
+        while (Store.tag(t) === 'cons') { n++; t = Store.child(t, 1); }
+        return n === len - 1;
+      });
+      for (const t of prev) for (const b of ['b0', 'b1']) {
+        lists.push(Store.put('cons', [atom(b), t]));
+      }
+    }
+    assert.equal(lists.length, 15);
+    let checked = 0;
+    for (const ds of ['even', 'odd', 'ne']) {
+      for (const l of lists) {
+        assert.equal(accepts(calc, ds, l), provable(calc, ds, l),
+          `${ds} disagreement on list #${checked}`);
+        checked++;
+      }
+    }
+    assert.equal(checked, 45);
+    // spot semantics: nil is even, [b] is odd, [b,b] is even
+    assert.ok(provable(calc, 'even', atom('nil')));
+    assert.ok(provable(calc, 'odd', Store.put('cons', [atom('b0'), atom('nil')])));
   });
 });
