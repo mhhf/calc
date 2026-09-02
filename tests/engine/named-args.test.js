@@ -16,6 +16,7 @@ import { resolveNamedArgSentinels } from '../../lib/engine/convert.js';
 import convert from '../../lib/engine/convert.js';
 import { show } from '../../lib/engine/show.js';
 import { _checkTerm, sortTable } from '../../lib/engine/type-check.js';
+import { illConfig } from '../../calculus/ill/index.js';
 
 // ─── Parser: named_arg production ────────────────────────────────────────────
 
@@ -221,7 +222,7 @@ describe('Named args — loadFile integration', () => {
     const filePath = path.join(tmpDir, `test-${Date.now()}-${Math.random().toString(36).slice(2)}.ill`);
     fs.writeFileSync(filePath, source);
 
-    return convert.load(filePath);
+    return convert.load(filePath, { loaderConfig: illConfig.loader });
   }
 
   it('extracts argNamesTable from declarations', () => {

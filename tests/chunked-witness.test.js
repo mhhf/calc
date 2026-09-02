@@ -17,6 +17,7 @@ import mde from '../calculus/ill/index.js';
 import calculus from '../lib/calculus/index.js';
 import { rwTrace } from '../lib/prover/rewrite-trace.js';
 import { monadUnit as U } from '../lib/engine/grades.js';
+import { loadILL } from '../calculus/ill/index.js';
 
 // ---------------------------------------------------------------------------
 // Unit tests with mock traces
@@ -322,7 +323,7 @@ describe('chunked flat witness: solc integration', { timeout: 60000 }, () => {
     const engineCalc = await mde.load(
       path.join(import.meta.dirname, '../calculus/ill/programs/multisig_nocall_solc.ill')
     );
-    illCalc = await calculus.loadILL();
+    illCalc = await loadILL();
     const state = mde.normalizeQuery(engineCalc.queries.get('symex'));
 
     const forwardResult = engineCalc.exec(state, {

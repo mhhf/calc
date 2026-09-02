@@ -14,13 +14,14 @@ import Store from '../lib/kernel/store.js';
 import { gradeW } from '../lib/engine/grades.js';
 // Hoisted by tools/esm-hoist.js:
 import { createProver } from '../lib/prover/focused.js';
+import { loadILL } from '../calculus/ill/index.js';
 
 describe('Rule Interpreter', () => {
   let calc, AST, result, specs;
   let p, q, r, s;
 
   before(async () => {
-    calc = await calculus.loadILL();
+    calc = await loadILL();
     AST = calc.AST;
     result = buildRuleSpecs(calc);
     specs = result.specs;

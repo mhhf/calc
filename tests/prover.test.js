@@ -8,11 +8,12 @@ import { ProofTree, fromGoal, leaf } from '../lib/prover/pt.js';
 import { inversion, focus } from '../lib/prover/state.js';
 import Seq from '../lib/kernel/sequent.js';
 import calculus from '../lib/calculus/index.js';
+import { loadILL } from '../calculus/ill/index.js';
 describe('v2 ProofTree', () => {
   let AST;
 
   before(async () => {
-    const ill = await calculus.loadILL();
+    const ill = await loadILL();
     AST = ill.AST;
   });
 

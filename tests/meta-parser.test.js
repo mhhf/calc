@@ -16,7 +16,7 @@ describe('meta-parser/loader', () => {
   });
 
   describe('loadChain — lnl.family', () => {
-    const familyPath = path.join(import.meta.dirname, '..', 'calculus', 'ill', 'lnl.family');
+    const familyPath = path.join(import.meta.dirname, '..', 'family', 'lnl', 'lnl.family');
 
     it('loads family file and extracts base types', () => {
       const result = loadChain(familyPath);
@@ -56,7 +56,7 @@ describe('meta-parser/loader', () => {
       const constructorCount = Object.keys(result.constructors).length;
       // Should be more constructors than lnl.family alone
       const parentResult = loadChain(
-        path.join(import.meta.dirname, '..', 'calculus', 'ill', 'lnl.family')
+        path.join(import.meta.dirname, '..', 'family', 'lnl', 'lnl.family')
       );
       assert.ok(constructorCount >= Object.keys(parentResult.constructors).length,
         'child should have at least as many constructors as parent');
@@ -66,7 +66,7 @@ describe('meta-parser/loader', () => {
       const result = loadChain(calcPath);
       assert.ok(Array.isArray(result.directives.metavars));
       const parentResult = loadChain(
-        path.join(import.meta.dirname, '..', 'calculus', 'ill', 'lnl.family')
+        path.join(import.meta.dirname, '..', 'family', 'lnl', 'lnl.family')
       );
       // Merged metavars should be >= parent's
       assert.ok(result.directives.metavars.length >= parentResult.directives.metavars.length);

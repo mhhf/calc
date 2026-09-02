@@ -17,6 +17,9 @@
 
 'use strict';
 
+import { lnlFamily } from '../../family/lnl/family-config.js';
+import { buildForwardParser } from './lib/forward-parser.js';
+import { DEFAULT_LOADER_CONFIG } from '../../lib/engine/convert.js';
 import { illConnectives } from './lib/connectives.js';
 import { binlitTheory } from './lib/binlit-theory.js';
 import backchainIll from './lib/backchain-ill.js';
@@ -35,6 +38,9 @@ function _getFfi() { return _ffiMod; }
 function _getResidualResolver() { return _residualResolverFn; }
 
 const illCalculusConfig = {
+  // ── Structural family: LNL (two zones, cartesian ! + linear) ──
+  family: lnlFamily,
+
   // ── L0: Kernel Init ──────────────────────────────────────────
   // Called once at calc build time. Registers ILL-specific atoms
   // and installs equational theories into the global unifier.
@@ -64,8 +70,16 @@ const illCalculusConfig = {
   //       supplies the tropical instance (⊕ = max on availability,
   //       ⊗ = + on duration), and its availability.cmp doubles as the
   //       FactSet index policy comparator (D5).
-  //   loader: convert.js loaderConfig ({ buildParser, connTags, grade0,
-  //       timed }) — ILL uses the baked-in default parser.
+  // ── L2: Loader ───────────────────────────────────────────────
+  // convert.js loaderConfig — buildParser is ILL-own machinery
+  // (forward-parser.js); connTags/grade0/timed are the shared defaults
+  // spelled explicitly (the engine holds no calculus default, TODO_0086).
+  loader: {
+    buildParser: buildForwardParser,
+    connTags: DEFAULT_LOADER_CONFIG.connTags,
+    grade0: DEFAULT_LOADER_CONFIG.grade0,
+    timed: false,
+  },
 
   // ── L2: Compile ──────────────────────────────────────────────
   compile: {

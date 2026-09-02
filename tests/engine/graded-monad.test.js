@@ -32,7 +32,7 @@ import { createKernel } from '../../lib/prover/kernel.js';
 import { createChecker } from '../../lib/prover/check-term.js';
 import { illConnectives } from '../../calculus/ill/lib/connectives.js';
 import { FactSet } from '../../lib/engine/fact-set.js';
-import { matchLoli } from '../../lib/engine/lnl/loli.js';
+import { matchLoli } from '../../family/lnl/lib/loli.js';
 import { makeMatchOpts } from './_match-opts.js';
 
 const FIXTURE = path.join(import.meta.dirname, '../fixtures/graded-comp.calc');

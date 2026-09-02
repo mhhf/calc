@@ -7,12 +7,13 @@ import calculus from '../lib/calculus/index.js';
 import { createManualProofAPI } from '../lib/prover/strategy/manual.js';
 import Seq from '../lib/kernel/sequent.js';
 import Store from '../lib/kernel/store.js';
+import { loadILL } from '../calculus/ill/index.js';
 describe('ManualProofAPI', () => {
   let calc;
   let api;
 
   before(async () => {
-    calc = await calculus.loadILL();
+    calc = await loadILL();
     api = createManualProofAPI(calc);
   });
 

@@ -22,9 +22,9 @@ import fs from 'fs';
 import path from 'path';
 
 const {
-  buildGenericProtocol, buildLnlProtocol, buildOptProtocol,
+  buildGenericProtocol, buildFamilyProtocol, buildOptProtocol,
   buildFfiProtocol, buildMatchOpts,
-  GENERIC_FIELDS, LNL_FIELDS, OPT_FIELDS, FFI_FIELDS,
+  GENERIC_FIELDS, FAMILY_FIELDS, OPT_FIELDS, FFI_FIELDS,
   EMPTY_MATCH_OPTS,
 } = match;
 
@@ -47,14 +47,14 @@ describe('protocol factory shape stability', () => {
     assert.deepStrictEqual(empty, [...GENERIC_FIELDS].sort());
   });
 
-  it('buildLnlProtocol has stable shape regardless of input', () => {
-    const empty = shape(buildLnlProtocol());
-    const full = shape(buildLnlProtocol({
-      matchLoli: () => {}, resolveEx: () => {}, drainLolis: () => {},
+  it('buildFamilyProtocol has stable shape regardless of input', () => {
+    const empty = shape(buildFamilyProtocol());
+    const full = shape(buildFamilyProtocol({
+      matchDynamicRule: () => {}, resolveEx: () => {}, drainDynamicRules: () => {},
       rc: { implication: 'loli' }, backchainUseFFI: true,
     }));
     assert.deepStrictEqual(empty, full);
-    assert.deepStrictEqual(empty, [...LNL_FIELDS].sort());
+    assert.deepStrictEqual(empty, [...FAMILY_FIELDS].sort());
   });
 
   it('buildOptProtocol has stable shape regardless of input', () => {
@@ -99,11 +99,11 @@ describe('protocol factory default semantics', () => {
     assert.strictEqual(g.provePersistent, prove);
   });
 
-  it('buildLnlProtocol defaults callbacks to null, rc to null', () => {
-    const l = buildLnlProtocol();
+  it('buildFamilyProtocol defaults callbacks to null, rc to null', () => {
+    const l = buildFamilyProtocol();
     assert.strictEqual(l.matchDynamicRule, null);
     assert.strictEqual(l.resolveEx, null);
-    assert.strictEqual(l.drainLolis, null);
+    assert.strictEqual(l.drainDynamicRules, null);
     assert.strictEqual(l.connectives, null);
     assert.strictEqual(l.dynamicRuleTag, null);
     // Factory default is false — the platonic empty record supplies no FFI
@@ -112,13 +112,13 @@ describe('protocol factory default semantics', () => {
     assert.strictEqual(l.backchainUseFFI, false);
   });
 
-  it('buildLnlProtocol accepts explicit backchainUseFFI=true (production mode)', () => {
-    const l = buildLnlProtocol({ backchainUseFFI: true });
+  it('buildFamilyProtocol accepts explicit backchainUseFFI=true (production mode)', () => {
+    const l = buildFamilyProtocol({ backchainUseFFI: true });
     assert.strictEqual(l.backchainUseFFI, true);
   });
 
-  it('buildLnlProtocol maps rc.implication → dynamicRuleTag', () => {
-    const l = buildLnlProtocol({ rc: { implication: 'loli' } });
+  it('buildFamilyProtocol maps rc.implication → dynamicRuleTag', () => {
+    const l = buildFamilyProtocol({ rc: { implication: 'loli' } });
     assert.strictEqual(l.dynamicRuleTag, 'loli');
     assert.deepStrictEqual(l.connectives, { implication: 'loli' });
   });
@@ -154,7 +154,7 @@ describe('protocol factory default semantics', () => {
     assert.strictEqual(g.optimizePreserved, false);
     assert.strictEqual(g.evidence, false);
 
-    const l = buildLnlProtocol({ backchainUseFFI: false });
+    const l = buildFamilyProtocol({ backchainUseFFI: false });
     assert.strictEqual(l.backchainUseFFI, false);
 
     const o = buildOptProtocol({ useCompiledSteps: false });
@@ -181,7 +181,7 @@ describe('buildMatchOpts and EMPTY_MATCH_OPTS', () => {
 
   it('EMPTY_MATCH_OPTS has full shape (all factory fields present)', () => {
     const expected = [
-      ...GENERIC_FIELDS, ...LNL_FIELDS, ...OPT_FIELDS, ...FFI_FIELDS,
+      ...GENERIC_FIELDS, ...FAMILY_FIELDS, ...OPT_FIELDS, ...FFI_FIELDS,
     ].sort();
     assert.deepStrictEqual(shape(EMPTY_MATCH_OPTS), expected);
   });
@@ -193,8 +193,8 @@ describe('buildMatchOpts and EMPTY_MATCH_OPTS', () => {
         canonicalize: x => x, onProveFail: () => {}, onProveSuccess: () => {},
         provePersistent: () => {},
       }),
-      ...buildLnlProtocol({
-        matchLoli: () => {}, resolveEx: () => {}, drainLolis: () => {},
+      ...buildFamilyProtocol({
+        matchDynamicRule: () => {}, resolveEx: () => {}, drainDynamicRules: () => {},
         rc: { implication: 'loli' }, backchainUseFFI: true,
       }),
       ...buildOptProtocol({
@@ -209,7 +209,7 @@ describe('buildMatchOpts and EMPTY_MATCH_OPTS', () => {
 
 describe('FIELD constants (single source of truth)', () => {
   it('all FIELD constants are disjoint (no field owned by two factories)', () => {
-    const all = [GENERIC_FIELDS, LNL_FIELDS, OPT_FIELDS, FFI_FIELDS];
+    const all = [GENERIC_FIELDS, FAMILY_FIELDS, OPT_FIELDS, FFI_FIELDS];
     const seen = new Map();
     for (let i = 0; i < all.length; i++) {
       for (const f of all[i]) {
@@ -223,7 +223,7 @@ describe('FIELD constants (single source of truth)', () => {
 
   it('FIELD constants are frozen', () => {
     assert.ok(Object.isFrozen(GENERIC_FIELDS));
-    assert.ok(Object.isFrozen(LNL_FIELDS));
+    assert.ok(Object.isFrozen(FAMILY_FIELDS));
     assert.ok(Object.isFrozen(OPT_FIELDS));
     assert.ok(Object.isFrozen(FFI_FIELDS));
   });
@@ -242,8 +242,8 @@ describe('S7 — iteration order (V8 hidden-class stability)', () => {
     // GENERIC_FIELDS (in buildGenericProtocol order)
     'optimizePreserved', 'evidence', 'canonicalize',
     'onProveFail', 'onProveSuccess', 'provePersistent',
-    // LNL_FIELDS (in buildLnlProtocol order)
-    'matchDynamicRule', 'resolveEx', 'drainLolis',
+    // FAMILY_FIELDS (in buildFamilyProtocol order)
+    'matchDynamicRule', 'resolveEx', 'drainDynamicRules',
     'connectives', 'dynamicRuleTag', 'backchainUseFFI',
     // OPT_FIELDS (in buildOptProtocol order)
     'execPS', 'execExStep', 'tryCCDispatch', 'useCompiledSteps',
@@ -254,7 +254,7 @@ describe('S7 — iteration order (V8 hidden-class stability)', () => {
   it('buildMatchOpts preserves canonical field order (empty)', () => {
     const m = buildMatchOpts({
       ...buildGenericProtocol(),
-      ...buildLnlProtocol(),
+      ...buildFamilyProtocol(),
       ...buildOptProtocol(),
       ...buildFfiProtocol(null),
     });
@@ -268,8 +268,8 @@ describe('S7 — iteration order (V8 hidden-class stability)', () => {
         canonicalize: x => x, onProveFail: () => {}, onProveSuccess: () => {},
         provePersistent: () => {},
       }),
-      ...buildLnlProtocol({
-        matchLoli: () => {}, resolveEx: () => {}, drainLolis: () => {},
+      ...buildFamilyProtocol({
+        matchDynamicRule: () => {}, resolveEx: () => {}, drainDynamicRules: () => {},
         rc: { implication: 'loli' }, backchainUseFFI: true,
       }),
       ...buildOptProtocol({
@@ -288,7 +288,7 @@ describe('S7 — iteration order (V8 hidden-class stability)', () => {
   it('expected order totals exactly 20 fields (20-field shape contract)', () => {
     assert.strictEqual(EXPECTED_ORDER.length, 20);
     assert.strictEqual(
-      GENERIC_FIELDS.length + LNL_FIELDS.length + OPT_FIELDS.length + FFI_FIELDS.length,
+      GENERIC_FIELDS.length + FAMILY_FIELDS.length + OPT_FIELDS.length + FFI_FIELDS.length,
       20
     );
   });
@@ -318,11 +318,14 @@ describe('U — usage coverage (every field has a consumer)', () => {
   }
 
   const ENGINE_DIR = path.resolve(import.meta.dirname, '..', '..', 'lib', 'engine');
-  const engineFiles = walkJs(ENGINE_DIR);
+  // The family layer (family/<name>/lib/) consumes matchOpts fields too —
+  // its files are part of the engine corpus for coverage purposes (TODO_0086).
+  const FAMILY_DIR = path.resolve(import.meta.dirname, '..', '..', 'family');
+  const engineFiles = [...walkJs(ENGINE_DIR), ...walkJs(FAMILY_DIR)];
   const corpus = engineFiles.map(f => fs.readFileSync(f, 'utf8')).join('\n');
 
   const ALL_FIELDS = [
-    ...GENERIC_FIELDS, ...LNL_FIELDS, ...OPT_FIELDS, ...FFI_FIELDS,
+    ...GENERIC_FIELDS, ...FAMILY_FIELDS, ...OPT_FIELDS, ...FFI_FIELDS,
   ];
 
   for (const field of ALL_FIELDS) {

@@ -17,6 +17,7 @@ import path from 'path';
 import calculus from '../lib/calculus/index.js';
 import { buildParser } from '../lib/calculus/builders.js';
 import Store from '../lib/kernel/store.js';
+import { loadILL } from '../calculus/ill/index.js';
 
 const TILL_CALC = path.join(import.meta.dirname, '../calculus/till/till.calc');
 
@@ -81,7 +82,7 @@ function fuzz(label, parse, corpus, seed) {
 describe('TODO_0272 M7 — parser negative-case fuzz', () => {
   let illParse, tillParse;
   before(() => {
-    const ill = calculus.loadILL();
+    const ill = loadILL();
     illParse = buildParser(ill.constructors, {
       binders: { exists: 'exists', forall: 'forall' },
       multiCharFreevars: true, numbers: true, application: true,

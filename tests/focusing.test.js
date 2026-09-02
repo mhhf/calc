@@ -9,12 +9,13 @@ import { describe, it, before } from 'node:test';
 import assert from 'node:assert';
 import calculus from '../lib/calculus/index.js';
 import { buildFocusingMeta } from '../lib/meta/focusing.js';
+import { loadILL } from '../calculus/ill/index.js';
 describe('v2 Focusing Metadata', () => {
   let ill;
   let meta;
 
   before(async () => {
-    ill = await calculus.loadILL();
+    ill = await loadILL();
     meta = buildFocusingMeta(ill);
   });
 

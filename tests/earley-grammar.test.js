@@ -18,6 +18,7 @@ import { parserTables, parserFromTables } from '../lib/calculus/builders.js';
 import { earleyGrammar, parserFromGrammar } from '../lib/parser/earley-grammar.js';
 // Hoisted by tools/esm-hoist.js:
 import calculus from '../lib/calculus/index.js';
+import { loadILL } from '../calculus/ill/index.js';
 
 // ─── Test fixtures ───────────────────────────────────────────────────────────
 
@@ -45,7 +46,7 @@ const BOOTSTRAP_OPTS = {
 
 before(async () => {
 
-  ill = await calculus.loadILL();
+  ill = await loadILL();
 });
 
 // ─── Hash equality helper ────────────────────────────────────────────────────

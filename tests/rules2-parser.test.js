@@ -11,13 +11,14 @@ import { gradeW } from '../lib/engine/grades.js';
 // Hoisted by tools/esm-hoist.js:
 import { createProver } from '../lib/prover/focused.js';
 import { parseRules2 as _parseRules2 } from '../lib/rules/rules2-parser.js';
+import { loadILL } from '../calculus/ill/index.js';
 
 describe('.rules2 parser', () => {
   describe('Proof search integration', () => {
     let AST, specs, alternatives, prover;
 
     before(async () => {
-      const calc = await calculus.loadILL();
+      const calc = await loadILL();
       AST = calc.AST;
       const result = buildRuleSpecs(calc);
       specs = result.specs;
@@ -71,7 +72,7 @@ describe('.rules2 parser', () => {
     let parseRules2, parse;
 
     before(async () => {
-      const calc = await calculus.loadILL();
+      const calc = await loadILL();
       parse = (s) => calc.parse(s);
       parseRules2 = _parseRules2;
     });

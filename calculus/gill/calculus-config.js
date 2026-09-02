@@ -24,6 +24,7 @@
 import path from 'path';
 import { setTheories } from '../../lib/kernel/unify.js';
 import { defaultTheories } from '../../lib/kernel/eq-theory.js';
+import { lnlFamily } from '../../family/lnl/family-config.js';
 import { binlitTheory } from '../ill/lib/binlit-theory.js';
 import { ratlitTheory, ratParts, installRatlitTheory } from '../../lib/engine/theories/ratlit-theory.js';
 import { grade0 } from '../../lib/engine/grades.js';
@@ -166,6 +167,9 @@ const gillTheory = makeTheory({
 const gillBuildParser = makeForwardParserBuilder(GILL_CALC, tillGradeUnit);
 
 const gillCalculusConfig = {
+  // ── Structural family: LNL (shared with ILL/till) ────────────
+  family: lnlFamily,
+
   // ── L0: Kernel init (same Store tags + theories as till) ─────
   init() {
     backchainIll.initILL();

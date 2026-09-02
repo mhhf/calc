@@ -16,13 +16,13 @@
  * from matchOpts, set by the composition layer (forward.js/explore.js).
  */
 
-import Store from '../../kernel/store.js';
-import { predHead, extFV, boundExt } from '../../kernel/ast.js';
-import { applyIndexed } from '../../kernel/substitute.js';
-import { tryBWCache, clearBWCache } from '../backward-cache.js';
-import { isGround } from '../pattern-utils.js';
-import backward from '../backchain.js';
-import { EMPTY_MATCH_OPTS, tryStateLookup, PROVE_METHOD } from '../match.js';
+import Store from '../../../lib/kernel/store.js';
+import { predHead, extFV, boundExt } from '../../../lib/kernel/ast.js';
+import { applyIndexed } from '../../../lib/kernel/substitute.js';
+import { tryBWCache, clearBWCache } from '../../../lib/engine/backward-cache.js';
+import { isGround } from '../../../lib/engine/pattern-utils.js';
+import backward from '../../../lib/engine/backchain.js';
+import { EMPTY_MATCH_OPTS, tryStateLookup, PROVE_METHOD } from '../../../lib/engine/match.js';
 // ── Persistent proving ──────────────────────────────────────────────
 
 /**

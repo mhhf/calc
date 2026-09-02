@@ -18,6 +18,7 @@ import Store from '../../lib/kernel/store.js';
 import { putRat } from '../../lib/kernel/rat-term.js';
 import { setTheories } from '../../lib/kernel/unify.js';
 import { defaultTheories } from '../../lib/kernel/eq-theory.js';
+import { lnlFamily } from '../../family/lnl/family-config.js';
 import { binlitTheory } from '../ill/lib/binlit-theory.js';
 import { ratlitTheory, ratParts, installRatlitTheory } from '../../lib/engine/theories/ratlit-theory.js';
 import { grade0 } from '../../lib/engine/grades.js';
@@ -245,6 +246,9 @@ const tillTheory = makeTheory({
 const tillBuildParser = makeForwardParserBuilder(TILL_CALC, tillGradeUnit);
 
 const tillCalculusConfig = {
+  // ── Structural family: LNL (shared with ILL) ─────────────────
+  family: lnlFamily,
+
   // ── L0: Kernel init ──────────────────────────────────────────
   // initILL registers the bin atoms/tags (the numeric prelude is shared);
   // till additionally needs the ratlit theory in the GLOBAL unifier or the

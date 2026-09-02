@@ -35,6 +35,7 @@ import calc from '../lib/index.js';
 
 import fs from 'fs';
 import path from 'path';
+import { loadILL } from '../calculus/ill/index.js';
 const DEF_DIR = path.resolve(import.meta.dirname, '../doc/def');
 const META_PATH = path.join(DEF_DIR, 'meta.yaml');
 const RULES_SRC = path.resolve(import.meta.dirname, '../calculus/ill/ill.rules');
@@ -326,7 +327,7 @@ async function loadCalculusMeta() {
   // post-processing. We prefer the calculus loader's view where it disagrees
   // with the raw file, since that's what the prover actually uses.
 
-  const ill = await calc.loadILL();
+  const ill = await loadILL();
   return ill.rules || {};
 }
 

@@ -8,7 +8,7 @@
  *   calc parse --latex "A * B" # Output LaTeX
  */
 
-import v2 from '../lib/index.js';
+import v2 from '../calculus/ill/index.js';
 async function main() {
   let args = process.argv.slice(2);
 

@@ -10,13 +10,14 @@ import Store from '../lib/kernel/store.js';
 import { illConnectives } from '../calculus/ill/lib/connectives.js';
 // Hoisted by tools/esm-hoist.js:
 import { rightFocus } from '../lib/prover/bridge.js';
+import { loadILL } from '../calculus/ill/index.js';
 
 describe('deriveRoles', () => {
   let ill;
 
   before(() => {
     calculus.clearCache();
-    ill = calculus.loadILL();
+    ill = loadILL();
   });
 
   it('should derive all ILL roles', () => {
@@ -82,7 +83,7 @@ describe('two calculi coexist', () => {
   before(() => {
     calculus.clearCache();
     // Load both — they share the same Store
-    ill = calculus.loadILL();
+    ill = loadILL();
     prop = calculus.load(
       path.join(import.meta.dirname, 'fixtures/minimal-prop.calc')
     );
@@ -112,7 +113,7 @@ describe('two calculi coexist', () => {
 describe('rightFocus with roles', () => {
 
   it('should decompose product with ILL roles', () => {
-    const ill = calculus.loadILL();
+    const ill = loadILL();
     const a = Store.put('atom', ['p']);
     const b = Store.put('atom', ['q']);
     const t = Store.put('tensor', [a, b]);
@@ -122,14 +123,14 @@ describe('rightFocus with roles', () => {
   });
 
   it('should decompose unit with ILL roles', () => {
-    const ill = calculus.loadILL();
+    const ill = loadILL();
     const one = Store.put('one', []);
     const result = rightFocus({}, {}, one, ill.roles);
     assert.ok(result !== null);
   });
 
   it('should reject known connectives in async position', () => {
-    const ill = calculus.loadILL();
+    const ill = loadILL();
     const a = Store.put('atom', ['p']);
     const l = Store.put('loli', [a, a]);
     const result = rightFocus({ [a]: 1 }, {}, l, ill.roles);

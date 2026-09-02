@@ -9,7 +9,7 @@ import assert from 'node:assert/strict';
 import path from 'path';
 import Store from '../../lib/kernel/store.js';
 import { FactSet } from '../../lib/engine/fact-set.js';
-import { proveNaive } from '../../lib/engine/lnl/persistent.js';
+import { proveNaive } from '../../family/lnl/lib/persistent.js';
 import { makeMatchOpts } from './_match-opts.js';
 // Hoisted by tools/esm-hoist.js:
 import mde from '../../calculus/ill/index.js';

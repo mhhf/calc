@@ -19,11 +19,12 @@ import { compileRule } from '../lib/engine/compile.js';
 import { illConnectives } from '../calculus/ill/lib/connectives.js';
 import { gradeW } from '../lib/engine/grades.js';
 import { monadUnit as U } from '../lib/engine/grades.js';
+import { loadILL } from '../calculus/ill/index.js';
 let ill, AST, parse, render;
 
 before(async () => {
   Store.clear();
-  ill = await calculus.loadILL();
+  ill = await loadILL();
   AST = ill.AST;
   parse = ill.parse;
   render = ill.render;

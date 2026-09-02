@@ -461,8 +461,9 @@ state-level worry collapses to a deprecation question.
   `lib/engine/` (the generic parts). Sequent calculus toolbox. Doesn't know
   about ILL.
 - **Family** — declares the structural framework of a calculus (e.g.
-  `lnl.family` for ILL's linear/persistent split). Family files live next to
-  `.calc` files.
+  `lnl.family` for ILL's linear/persistent split, at `family/lnl/`). Family
+  files live in a top-level `family/` directory alongside the calculus configs
+  that compose them.
 - **Calculus** — `.calc` (connectives, types) + `.rules` (inference rules).
   ILL is one calculus.
 - **Program** — `.ill` files in `calculus/ill/programs/`. EVM is a program.

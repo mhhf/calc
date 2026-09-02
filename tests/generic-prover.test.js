@@ -10,11 +10,12 @@ import Seq from '../lib/kernel/sequent.js';
 import calculus from '../lib/calculus/index.js';
 import Context from '../lib/prover/context.js';
 import { gradeW } from '../lib/engine/grades.js';
+import { loadILL } from '../calculus/ill/index.js';
 describe('L2 Generic Prover', () => {
   let calc, AST, generic, specs, alternatives;
 
   before(async () => {
-    calc = await calculus.loadILL();
+    calc = await loadILL();
     AST = calc.AST;
     const built = buildRuleSpecs(calc);
     specs = built.specs;

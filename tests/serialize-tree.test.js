@@ -14,11 +14,12 @@ import { FORMAT_VERSION, serializeTree, serializeFormula, serializeSequent, comp
 import calculus from '../lib/calculus/index.js';
 import { gradeW } from '../lib/engine/grades.js';
 import { monadUnit as U } from '../lib/engine/grades.js';
+import { loadILL } from '../calculus/ill/index.js';
 describe('serialize-tree / proof-tree/v1', () => {
   let AST;
 
   before(async () => {
-    const ill = await calculus.loadILL();
+    const ill = await loadILL();
     AST = ill.AST;
   });
 

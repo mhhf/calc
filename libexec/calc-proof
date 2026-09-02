@@ -8,7 +8,7 @@
  *   calc proof --profile "complex formula"
  */
 
-import v2 from '../lib/index.js';
+import v2 from '../calculus/ill/index.js';
 import clc from 'cli-color';
 async function main() {
   let args = process.argv.slice(2);

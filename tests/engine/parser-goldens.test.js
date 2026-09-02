@@ -13,8 +13,10 @@ import assert from 'node:assert';
 import Store from '../../lib/kernel/store.js';
 import calculus from '../../lib/calculus/index.js';
 import convert from '../../lib/engine/convert.js';
+import { parseExpr as illParseExpr } from '../../calculus/ill/index.js';
 import { grade0, gradeW } from '../../lib/engine/grades.js';
 import { monadUnit as U } from '../../lib/engine/grades.js';
+import { loadILL } from '../../calculus/ill/index.js';
 
 const fv = (n) => Store.put('freevar', [n]);
 const mv = (n) => Store.put('metavar', [n]);
@@ -22,7 +24,7 @@ const atom = (n) => Store.put('atom', [n]);
 const bin = (n) => Store.put('binlit', [n]);
 
 test('calculus parser goldens (ILL formula parser)', () => {
-  const ill = calculus.loadILL();
+  const ill = loadILL();
   const A = ill.AST;
   const cases = [
     ['{ A }', () => A.monad(U(), fv('A'))],
@@ -49,14 +51,14 @@ test('calculus parser goldens (ILL formula parser)', () => {
 
 test('ILL parserTables structural golden (circumfix + gradedPrefix)', async () => {
   const { parserTables } = await import('../../lib/calculus/builders.js');
-  const tables = parserTables(calculus.loadILL().constructors);
+  const tables = parserTables(loadILL().constructors);
   assert.deepStrictEqual(tables.circumfix,
     [{ open: '{', close: '}', name: 'monad', arity: 2 }]);
   assert.deepStrictEqual(tables.gradedPrefix, { op: '!', name: 'bang' });
 });
 
 test('expr parser goldens (.ill expression parser)', () => {
-  const p = convert.parseExpr;
+  const p = illParseExpr;
   const cases = [
     ['{ A }', () => Store.put('monad', [U(), mv('A')])],
     ['a * b -o { c }', () => Store.put('loli', [

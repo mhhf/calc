@@ -86,7 +86,8 @@ function loadProgram(programPath, fileDirectives, loadOpts) {
   for (const file of fileDirectives.keys()) {
     convert.loadFile(file, new Map(), new Map(), [], calc.queries, {
       argNamesTable: new Map(), querySettings: calc.querySettings,
-      splitQueries: calc.splitQueries, moduleDecls: [], alreadyImported
+      splitQueries: calc.splitQueries, moduleDecls: [], alreadyImported,
+      loaderConfig: mde.illConfig.loader
     });
   }
   return calc;

@@ -20,6 +20,7 @@ import { guidedTerm } from '../calculus/ill/lib/guided-term.js';
 import { rightFocusTerm } from '../lib/prover/bridge.js';
 import { generateWitness } from '../calculus/ill/lib/zk/witness.js';
 import { monadUnit as U } from '../lib/engine/grades.js';
+import { loadILL } from '../calculus/ill/index.js';
 const FIXTURE_DIR = path.join(import.meta.dirname, '..', 'zk', 'sequent-certifier', 'tests', 'fixtures');
 
 function ensureFixtureDir() {
@@ -63,7 +64,7 @@ describe('ZK custom chip: solc with all predicates', { timeout: 600000 }, () => 
     engineCalc = await mde.load(
       path.join(import.meta.dirname, '../calculus/ill/programs/multisig_nocall_solc.ill')
     );
-    illCalc = await calculus.loadILL();
+    illCalc = await loadILL();
     state = mde.normalizeQuery(engineCalc.queries.get('symex'));
   });
 

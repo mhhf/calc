@@ -25,6 +25,7 @@ import { rightFocusTerm } from '../lib/prover/bridge.js';
 import { generateWitness } from '../calculus/ill/lib/zk/witness.js';
 import { toObject } from '../lib/engine/fact-set.js';
 import { monadUnit as U } from '../lib/engine/grades.js';
+import { loadILL } from '../calculus/ill/index.js';
 const FIXTURE_DIR = path.join(import.meta.dirname, '..', 'zk', 'sequent-certifier', 'tests', 'fixtures');
 
 function ensureFixtureDir() {
@@ -67,7 +68,7 @@ describe('ZK symbolic solc: 31-path witness generation', { timeout: 1800000 }, (
     engineCalc = await mde.load(
       path.join(import.meta.dirname, '../calculus/ill/programs/multisig_nocall_solc_symbolic.ill')
     );
-    illCalc = await calculus.loadILL();
+    illCalc = await loadILL();
     initialState = mde.normalizeQuery(engineCalc.queries.get('symex'));
   });
 

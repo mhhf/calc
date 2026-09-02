@@ -12,6 +12,7 @@ import { createChecker } from '../../lib/prover/check-term.js';
 // Hoisted by tools/esm-hoist.js:
 import calculus from '../../lib/calculus/index.js';
 import { monadUnit as U } from '../../lib/engine/grades.js';
+import { loadILL } from '../../calculus/ill/index.js';
 
 describe('check-term loli_match (C2)', () => {
   let checker;
@@ -19,7 +20,7 @@ describe('check-term loli_match (C2)', () => {
   before(async () => {
     Store.clear();
 
-    const calc = await calculus.loadILL();
+    const calc = await loadILL();
     checker = createChecker(calc);
   });
 

@@ -13,7 +13,7 @@
 
 import Store from '../../../lib/kernel/store.js';
 import { isPredTag, predHead as getHead, rTensor } from '../../../lib/kernel/ast.js';
-import { ILL_COMPUTATION } from '../../../lib/engine/formula-utils.js';
+import { DEFAULT_COMPUTATION } from '../../../lib/engine/formula-utils.js';
 import { defaultTheories } from '../../../lib/kernel/eq-theory.js';
 import { binlitTheory, installBinlitClassifier } from './binlit-theory.js';
 import { setTheories } from '../../../lib/kernel/unify.js';
@@ -87,7 +87,7 @@ function _tensorRSpine(terms) {
  * monad, ω-graded premises — bit-identical to before.
  */
 function makeClauseTermBuilder(opts = {}) {
-  const computation = opts.computation || ILL_COMPUTATION;
+  const computation = opts.computation || DEFAULT_COMPUTATION;
   const gradeUnit = opts.gradeUnit || null;
   const gradeOmega = opts.gradeOmega || gradeW;
 

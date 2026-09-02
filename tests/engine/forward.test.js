@@ -8,14 +8,14 @@ import forward from '../../lib/engine/forward.js';
 import mde from '../../calculus/ill/index.js';
 import Store from '../../lib/kernel/store.js';
 import ffi from '../../calculus/ill/lib/ffi/index.js';
-import { tryMatch, buildMatchOpts, buildGenericProtocol, buildLnlProtocol, buildOptProtocol, buildFfiProtocol } from '../../lib/engine/match.js';
+import { tryMatch, buildMatchOpts, buildGenericProtocol, buildFamilyProtocol, buildOptProtocol, buildFfiProtocol } from '../../lib/engine/match.js';
 import { illConnectives } from '../../calculus/ill/lib/connectives.js';
 import { resolveConn, flattenAnte } from '../../lib/engine/formula-utils.js';
 // Hoisted by tools/esm-hoist.js:
-import { buildMatchOpts as bmo, buildGenericProtocol as bgp, buildLnlProtocol as blp, buildOptProtocol as bop, buildFfiProtocol as bfp } from '../../lib/engine/match.js';
+import { buildMatchOpts as bmo, buildGenericProtocol as bgp, buildFamilyProtocol as blp, buildOptProtocol as bop, buildFfiProtocol as bfp } from '../../lib/engine/match.js';
 
 const ILL_RC = resolveConn(illConnectives());
-import { proveNaive } from '../../lib/engine/lnl/persistent.js';
+import { proveNaive } from '../../family/lnl/lib/persistent.js';
 describe('Forward Chaining', { timeout: 10000 }, () => {
   describe('flattenAnte', () => {
     it('flattens simple tensor', async () => {
@@ -123,7 +123,7 @@ describe('Forward Chaining', { timeout: 10000 }, () => {
 
       const matchOpts = buildMatchOpts({
         ...buildGenericProtocol({}),
-        ...buildLnlProtocol({ rc: ILL_RC }),
+        ...buildFamilyProtocol({ rc: ILL_RC }),
         ...buildOptProtocol({}),
         ...buildFfiProtocol(null),
         provePersistent: proveNaive,

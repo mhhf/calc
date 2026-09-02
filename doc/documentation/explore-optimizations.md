@@ -91,4 +91,4 @@ Optimizations called in the `go()` hot loop live in `lib/engine/opt/` (generic) 
 
 - **Arena ordering**: `state.persistent.undo()` must be called before `state.linear.undo()` to match the mutation order in `mutateState`. The solver must also be restored.
 
-- **Importing in opt/ modules**: Never pass core functions as parameters to opt/ modules — import them directly. V8 polymorphic call sites from function-as-parameter cause measurable regression (70% observed with `mutateState` passed to `drainLolis`).
+- **Importing in opt/ modules**: Never pass core functions as parameters to opt/ modules — import them directly. V8 polymorphic call sites from function-as-parameter cause measurable regression (70% observed with `mutateState` passed to `drainDynamicRules`).

@@ -4,9 +4,11 @@
  * Enforces three sets of layering rules by scanning require() calls:
  *
  * 1. Forward engine DAG:
- *      kernel/ <- generic core <- lnl/ <- opt/ <- index.js
+ *      kernel/ <- generic core <- opt/ <- index.js
  *    Inner layers must NEVER import from outer layers. The only wiring
  *    point is the composition root (index.js), which sees all layers.
+ *    (The former lnl/ layer lives in family/lnl/lib/ and reaches the
+ *    engine only through cc.family — TODO_0086.)
  *
  * 2. Backward prover DAG:
  *      kernel.js <- generic.js <- focused.js <- strategy/
@@ -20,6 +22,11 @@
  *      generic engine ONLY through opts.calculusConfig (audit 2026-09-02:
  *      the former lib/engine/ill/ layer moved out; the engine holds no
  *      calculus default).
+ *      lib/ must not import from family/ — structural-family machinery
+ *      lives in family/<name>/{family-config.js,lib/} and reaches the
+ *      engine ONLY through cc.family (TODO_0086).
+ *      family/ must not import from calculus/ — a family is shared BY
+ *      calculi, it may not depend on any one of them.
  */
 
 import { describe, it } from 'node:test';
@@ -30,6 +37,7 @@ const ENGINE_DIR = path.join(import.meta.dirname, '../../lib/engine');
 const PROVER_DIR = path.join(import.meta.dirname, '../../lib/prover');
 const LIB_DIR = path.join(import.meta.dirname, '../../lib');
 const UI_DIR = path.resolve(import.meta.dirname, '../../src/ui');
+const FAMILY_DIR = path.resolve(import.meta.dirname, '../../family');
 
 // ─── Shared helpers ─────────────────────────────────────────────────
 
@@ -143,7 +151,6 @@ function findLayerViolations(baseDir, classify, layerOrder, resolve, opts = {}) 
 
 function classifyEngineModule(relPath) {
   if (relPath === 'index.js') return 'root';
-  if (relPath.startsWith('lnl/')) return 'lnl';
   if (relPath.startsWith('timed/')) return 'timed';
   if (relPath.startsWith('opt/')) return 'opt';
   // theories/ stays 'generic' by decision (audit 2026-09-02): the
@@ -156,8 +163,7 @@ function classifyEngineModule(relPath) {
 
 const ENGINE_LAYER_ORDER = {
   generic: 0,
-  lnl: 1,
-  timed: 1,   // scheduler layer beside lnl: may import generic only
+  timed: 1,   // scheduler layer above generic: may import generic only
   opt: 2,
   root: 3,  // index.js can import anything
 };
@@ -241,48 +247,48 @@ describe('prover layer DAG enforcement', () => {
 // The allowed-field sets encode the dependency inversion contracts:
 // - generic defines interface contracts (provePersistent, matchDynamicRule, etc.)
 //   and consumes them — it doesn't need to know which layer implements them.
-// - lnl consumes generic interfaces + its own context + opt fast-path callbacks.
+// - the family layer (family/<name>/lib/) consumes generic interfaces + its
+//   own context + opt fast-path callbacks.
 // - opt consumes everything above + FFI context data.
 //
 // Field shapes come from match.js factory exports (single source of truth).
 // Per-layer consumption extras are explicitly documented below.
 
 import _match from '../../lib/engine/match.js';
-const { GENERIC_FIELDS, LNL_FIELDS, OPT_FIELDS, FFI_FIELDS } = _match;
+const { GENERIC_FIELDS, FAMILY_FIELDS, OPT_FIELDS, FFI_FIELDS } = _match;
 
 // Generic layer access: generic fields (includes provePersistent — the interface
 // generic consumes, implemented by outer layers) + interface callbacks it
 // defined (provided by outer layers) + opt fast-path (intentional exception).
 const GENERIC_ACCESS = new Set([
   ...GENERIC_FIELDS,
-  // Interface callbacks defined in generic, implemented by lnl
-  'matchDynamicRule', 'resolveEx', 'drainLolis', 'dynamicRuleTag',
+  // Interface callbacks defined in generic, implemented by the family layer
+  'matchDynamicRule', 'resolveEx', 'drainDynamicRules', 'dynamicRuleTag',
   // Opt fast-path inline in hot loop (match.js:354-368) — intentional exception:
   // avoids function call overhead per compiled step in hottest loop
   'execPS', 'useCompiledSteps',
 ]);
 
-// LNL layer access: generic's access + LNL-owned fields + opt callbacks it uses
-// + ffiParsedModes (design debt: backward cache mode detection).
-const LNL_ACCESS = new Set([
+// Family layer access: generic's access + family-owned fields + opt callbacks
+// it uses + ffiParsedModes (design debt: backward cache mode detection).
+const FAMILY_ACCESS = new Set([
   ...GENERIC_ACCESS,
-  ...LNL_FIELDS,
-  // Opt callbacks consumed by lnl (lnl calls opt for compiled dispatch)
+  ...FAMILY_FIELDS,
+  // Opt callbacks consumed by the family layer (compiled dispatch)
   'tryCCDispatch', 'execExStep',
-  // Design debt: lnl reads FFI context for backward cache mode detection
+  // Design debt: family reads FFI context for backward cache mode detection
   'ffiParsedModes',
 ]);
 
-// Opt layer access: lnl's access + all FFI context data.
+// Opt layer access: family's access + all FFI context data.
 const OPT_ACCESS = new Set([
-  ...LNL_ACCESS,
+  ...FAMILY_ACCESS,
   ...OPT_FIELDS,
   ...FFI_FIELDS,
 ]);
 
 const MATCHOPTS_FIELDS = {
   generic: GENERIC_ACCESS,
-  lnl: LNL_ACCESS,
   opt: OPT_ACCESS,
 };
 
@@ -370,6 +376,17 @@ describe('matchOpts field-access enforcement', () => {
       }
     }
 
+    // Family layer files (family/<name>/lib/) get the family access set.
+    for (const filePath of collectJSFiles(FAMILY_DIR)) {
+      const relPath = path.relative(FAMILY_DIR, filePath);
+      const accessed = extractMatchOptsFields(filePath);
+      for (const field of accessed) {
+        if (!FAMILY_ACCESS.has(field)) {
+          violations.push(`family/${relPath} (family) accesses matchOpts.${field}`);
+        }
+      }
+    }
+
     if (violations.length > 0) {
       assert.fail(
         `matchOpts field-access violations (layer accesses disallowed field):\n` +
@@ -383,7 +400,7 @@ describe('matchOpts field-access enforcement', () => {
     // `{ FIELD } = matchOpts` being the only ways fields are read.
     // Aliasing (`const opts = matchOpts; opts.FIELD`) bypasses detection.
     // Prohibit it to keep the boundary enforceable.
-    const allFiles = collectJSFiles(ENGINE_DIR);
+    const allFiles = [...collectJSFiles(ENGINE_DIR), ...collectJSFiles(FAMILY_DIR)];
     const violations = [];
 
     for (const filePath of allFiles) {
@@ -408,17 +425,17 @@ describe('matchOpts field-access enforcement', () => {
     // frozen shape, causing runtime errors or IC polymorphism.
     const allFactoryFields = new Set([
       ..._match.GENERIC_FIELDS,
-      ..._match.LNL_FIELDS,
+      ..._match.FAMILY_FIELDS,
       ..._match.OPT_FIELDS,
       ..._match.FFI_FIELDS,
     ]);
 
-    const allFiles = collectJSFiles(ENGINE_DIR);
+    const allFiles = [...collectJSFiles(ENGINE_DIR), ...collectJSFiles(FAMILY_DIR)];
     const unknownFields = new Set();
 
     for (const filePath of allFiles) {
       const relPath = path.relative(ENGINE_DIR, filePath);
-      const layer = classifyEngineModule(relPath);
+      const layer = filePath.startsWith(FAMILY_DIR) ? 'family' : classifyEngineModule(relPath);
       if (layer === 'root') continue;  // composition root
       const accessed = extractMatchOptsFields(filePath);
       for (const field of accessed) {
@@ -487,6 +504,58 @@ describe('global boundary enforcement', () => {
     if (violations.length > 0) {
       assert.fail(
         `lib/ \u2192 calculus/ boundary violations (pass a calculusConfig instead):\n` +
+        violations.map(v => `  ${v}`).join('\n')
+      );
+    }
+  });
+
+  it('lib/ must not import from family/ (family arrives via cc.family)', () => {
+    // Structural-family machinery (family/<name>/lib/) plugs into the
+    // engine as DATA on the calculus config — the generic core may never
+    // import it directly (TODO_0086).
+    const allFiles = collectJSFiles(LIB_DIR);
+    const violations = [];
+
+    for (const filePath of allFiles) {
+      const requires = extractRequires(filePath);
+      for (const req of requires) {
+        const resolved = path.resolve(path.dirname(filePath), req);
+        if (resolved.startsWith(FAMILY_DIR + path.sep)) {
+          violations.push(
+            `${path.relative(LIB_DIR, filePath)} \u2192 ${req}`
+          );
+        }
+      }
+    }
+
+    if (violations.length > 0) {
+      assert.fail(
+        `lib/ \u2192 family/ boundary violations (pass cc.family instead):\n` +
+        violations.map(v => `  ${v}`).join('\n')
+      );
+    }
+  });
+
+  it('family/ must not import from calculus/ (a family is shared by calculi)', () => {
+    const CALCULUS_DIR = path.resolve(import.meta.dirname, '../../calculus');
+    const allFiles = collectJSFiles(FAMILY_DIR);
+    const violations = [];
+
+    for (const filePath of allFiles) {
+      const requires = extractRequires(filePath);
+      for (const req of requires) {
+        const resolved = path.resolve(path.dirname(filePath), req);
+        if (resolved.startsWith(CALCULUS_DIR + path.sep)) {
+          violations.push(
+            `${path.relative(FAMILY_DIR, filePath)} \u2192 ${req}`
+          );
+        }
+      }
+    }
+
+    if (violations.length > 0) {
+      assert.fail(
+        `family/ \u2192 calculus/ boundary violations:\n` +
         violations.map(v => `  ${v}`).join('\n')
       );
     }

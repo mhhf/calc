@@ -19,6 +19,7 @@ import calculus from '../../lib/calculus/index.js';
 import { buildParser } from '../../lib/calculus/builders.js';
 import { extractParserTables } from '../../lib/parser/earley-grammar.js';
 import { putRat } from '../../lib/kernel/rat-term.js';
+import { loadILL } from '../../calculus/ill/index.js';
 
 const TILL_CALC = path.join(import.meta.dirname, '../../calculus/till/till.calc');
 
@@ -229,7 +230,7 @@ describe('parcel sugar `4wood` (§5d, D4 counted parcels)', () => {
   });
 
   it('no parcels without a graded prefix + grade chain: ILL lexes `4wood` apart', () => {
-    const ill = calculus.loadILL();
+    const ill = loadILL();
     const p = buildParser(ill.constructors, {
       multiCharFreevars: true, numbers: true, application: true,
     });

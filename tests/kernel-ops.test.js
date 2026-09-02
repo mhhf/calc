@@ -8,11 +8,12 @@ import calculus from '../lib/calculus/index.js';
 import Store from '../lib/kernel/store.js';
 import { sub, apply, eq, copy, occurs } from '../lib/kernel/substitute.js';
 import { unify, match, isMetavar } from '../lib/kernel/unify.js';
+import { loadILL } from '../calculus/ill/index.js';
 describe('v2 Kernel', () => {
   let AST;
 
   before(async () => {
-    const ill = await calculus.loadILL();
+    const ill = await loadILL();
     AST = ill.AST;
   });
 
