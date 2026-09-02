@@ -57,6 +57,7 @@ async function main() {
     sourceHash,
     name: ill.name,
     baseTypes: ill.baseTypes,
+    contextStructure: ill.contextStructure,
     constructors: ill.constructors,
     directives: ill.directives,
     rules: ill.rules,
