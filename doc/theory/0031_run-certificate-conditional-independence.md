@@ -2,7 +2,7 @@
 title: "Certified Conditional Independence: Separation on Dynamic Derivation Forests"
 created: 2026-09-02
 modified: 2026-09-02
-summary: "T4-d(iii), the will track's last open theorem, proved at draft grain: wave variables are defined on existence events via ungrounded provenance keys (D1); the dependency graph of a conditioning class is the key-identified union of run graphs, where a draw event operationally consumes and re-emits every evar-carrying fact (value flow IS fact flow), linear contests contribute latent allocation forks, and conditioning enters as three kinds of sites — Z-draws, observed-fact colliders, and MASS-CHILDREN: in restriction semantics a wave whose total posterior weight is not constant across the class (bias, or an unnormalized sort whose draw HAPPENS in only some runs — by contingent existence or by drop) acts as observed soft evidence hung off the draw node itself, and naive d-separation without this discipline is UNSOUND (pinned twice: a contingent wave of total prior mass 2 leaks dependence through its mere existence, and an always-existing wave leaks it through being DROPPED on the diagonal — the same-day adversarial pass's finding, repaired at the root). Separation ⟹ the conditioned mass factorizes exactly, μ(x,y,z) = c·f(x)·g(y), the factors readable as sub-forest (sub-certificate) masses and the split exhibited by the certificate's token partition. The proof runs induction-free through five lemmas: normalization decomposition (mass = normalized ancestral probability × per-node evidence factors), barren-subforest marginalization (needs a.s. finiteness), the moral-graph side split (standard graph theory, cited), factor mono-sidedness, and the recombination bijection (the genuinely dynamic core: separated sides of a class merge freely into class runs — where fixed-variable BN proofs have a product space, will has an exchange argument over event configurations). Soundness only: per-run actual-edge graphs are refuted by a pinned counterexample (a context-specific bias edge absent from every X=vb certificate), so separation is read on the class graph, decided on a static cover — the LDAG/CSI lesson, inherited deliberately."
+summary: "T4-d(iii), the will track's last open theorem, proved at draft grain: wave variables are defined on existence events via ungrounded provenance keys (D1); the dependency graph of a conditioning class is the key-identified union of run graphs, where a draw event operationally consumes and re-emits every evar-carrying fact (value flow IS fact flow), linear contests contribute latent allocation forks, and conditioning enters as three kinds of sites — Z-draws, observed-fact colliders, and MASS-CHILDREN: in restriction semantics a wave whose total posterior weight is not constant across the class (bias, or an unnormalized sort whose draw HAPPENS in only some runs — by contingent existence or by drop) acts as observed soft evidence hung off the draw node itself, and naive d-separation without this discipline is UNSOUND (pinned twice: a contingent wave of total prior mass 2 leaks dependence through its mere existence, and an always-existing wave leaks it through being DROPPED on the diagonal — the same-day adversarial pass's finding, repaired at the root). Separation ⟹ the conditioned mass factorizes exactly, μ(x,y,z) = c·f(x)·g(y), the factors readable as sub-forest (sub-certificate) masses and the split exhibited by the certificate's token partition. The proof runs induction-free through five lemmas: normalization decomposition (mass = normalized ancestral probability × per-node evidence factors), barren-subforest marginalization (needs a.s. finiteness), the moral-graph side split (standard graph theory, cited), factor mono-sidedness, and the recombination bijection (the genuinely dynamic core: separated sides of a class merge freely into class runs — where fixed-variable BN proofs have a product space, will has an exchange argument over event configurations). Soundness only: per-run actual-edge graphs are refuted by a pinned counterexample (a context-specific bias edge absent from every X=vb certificate), so separation is read on the class graph, decided on a static cover — the LDAG/CSI lesson, inherited deliberately. The criterion is EXECUTABLE (calc.certifyCI, lib/engine/ci.js — M5): run waves + phantom waves for class-only existence + static rules, premise-aligned bias targeting, constant pruning, Z-existence context pruning, Bayes-ball; verdict-pinned against all seven programs. And the genericity converse is settled in three parts: naive form refuted (value-erasing fires are unparameterized channels), the directed faithful-chain converse proved by zero-concentration witnesses (Theorem M6.2), general active paths conjectured with the witness-family route."
 tags: [linear-logic, probabilistic, will, provenance, conditioning, independence, certificates, proof-theory, graded-types, soundness]
 category: "Probabilistic Generation"
 unique_contribution: "The first conditional-independence theorem at the level of RUNS of a probabilistic forward-chaining calculus: separation on the dependency graph carried by run certificates of execution-generated (dynamic, possibly unbounded) derivation forests implies exact ℚ factorization of the unnormalized conditioned mass, with the factors exhibited by the certificate's token partition (existing CI theory proves separation theorems about MODELS — fixed BNs, proof nets, string diagrams, type-annotated programs; RES_0142 verified all five axes open). Three structural discoveries en route: (1) MASS-OBSERVED DRAWS — under unnormalized restriction semantics, a wave's total posterior weight is soft evidence on whether its draw happens, so any wave whose total varies across the conditioning class (bias, or a total ≠ 1 with existence OR drop varying) must enter d-separation as a conditioned virtual child of the draw node itself; without this the classic collider rules are unsound (pinned counterexamples: dependence through bare existence, and through a drop — a wave that always exists but loses its evar-carrier on the diagonal). (2) Value flow needs no edge sort of its own: modeling the draw event as consuming and re-emitting every evar-carrying fact (which is operationally exact — substituteEvar) makes d-separation's directional collider discipline literally the resource-flow discipline of the certificate. (3) Linear-resource contests are an influence channel invisible to fact-flow DAGs; latent allocation forks restore soundness and vanish exactly in certifyContention's conflict-free regime. Plus the counterexample making the object-level design forced: certificates of runs where a context-specific rule never fired carry no trace of it, so per-run actual-edge separation is unsound and the criterion must quantify over the class (computably: a statically pruned cover)."
@@ -46,12 +46,18 @@ too, since survival is evidence, pin 2c), L4's "fixed by z" was wrong
 for V_e outcomes (finding 5, corrected to clique-determined), and the
 timed-window bias fence was missing (finding 6, §7). Independently,
 the naive M6 genericity converse was REFUTED structurally (§6, pin
-4b: value-erasing fires are unparameterized channels) and replaced by
-the value-faithful form. Remaining before the sequel paper leans on
-§5: Denis's read (the human gate); the cited spots are flagged inline
-(L1's driver-adequacy legs now inline; L3's graph theory cited). All
-design decisions pinned: `tests/engine/will-ci.test.js` — seven
-programs, exact engine-computed masses, every one hand-verified first.
+4b: value-erasing fires are unparameterized channels); the directed
+faithful-chain converse is PROVED in its place (Lemmas M6.G/M6.C +
+Theorem M6.2, witness by zero-concentration; general paths remain
+conjectured). M5 shipped same day: `calc.certifyCI` (lib/engine/ci.js)
+decides §4's criterion on the computable cover — verdict-pinned
+against all seven programs; building it fed one precision back into
+§2d (the directed drop-decider edge). Remaining before the sequel
+paper leans on §5: Denis's read (the human gate); the cited spots are
+flagged inline (L1's driver-adequacy legs now inline; L3's graph
+theory cited). All design decisions pinned:
+`tests/engine/will-ci.test.js` — seven programs, exact engine-computed
+masses, every one hand-verified first, plus certifyCI verdict pins.
 
 ## 1. Setting and scope
 
@@ -483,8 +489,8 @@ Thm 2b). Under S1–S3 the split is moreover in bijection with the
 factor structure of the posterior products (Thm 1 there): the
 certificate does not just permit the factorization, it displays it. ∎
 
-## 6. The genericity converse (M6 — naive form REFUTED, corrected
-conjecture)
+## 6. The genericity converse (M6 — naive form REFUTED; faithful-chain
+converse PROVED; general paths conjectured)
 
 **The naive converse is false structurally, not merely by
 cancellation.** Conjecturing "active path ⟹ generically dependent"
@@ -500,26 +506,68 @@ parameter ring (masses 2/2/4/4, engine-exact): independent for every
 θ. Completeness against the fact-flow graph is therefore unattainable
 even generically.
 
-**Corrected conjecture.** For generic parameters, an active path ALL
-of whose fire-mediated hops are value-faithful (each fire's output
-distinguishes the consumed draw outcomes that the path is meant to
-transmit — the parameterized hops, draw weights and bias factors, are
-faithful by genericity) implies X ⊥̸ Y | z for some value pair.
-Route (Meek 1995): on finite classes the CI defect
-μ(x,y,z)μ(x′,y′,z) − μ(x,y′,z)μ(x′,y,z) is a polynomial in the
-parameters (class structure is θ-independent: matching reads values,
-never weights, and at generic θ no posterior vanishes); a
-value-faithful active path yields a witness parameterization making it
-non-zero (pins 1, 2, 2b, 2c, 3, 4 are six witness families:
-conditioned collider, existence mass, drop mass, survival factor,
-context-specific edge, unblocked chain), so the defect polynomial is
-not identically zero and generic parameters miss its zero set. Dynamic
-obligations: (i) a witness construction per value-faithful path SHAPE,
-including existence edges and allocation forks; (ii) on infinite
-classes the defect is a limit and non-vanishing needs a truncation
-argument (monotone lower approximants, T1). Left open;
-theorem-or-remark per TODO_0302 — the refutation half is now a
-theorem (pin 4b), the converse half a conjecture.
+**The partial converse, proved (directed value-faithful chains).**
+Setting: finite class; a designated parameter tuple θ ranging over
+ℚ≥0, occurring only in @w annotations and in bias-weight positions
+that no rule premise pattern constrains (weight-generic positions —
+matching reads terms, never weights, so the class's run set is
+θ-invariant on θ > 0 and zeroing a weight never creates runs, it only
+zeroes masses).
+
+> **Lemma M6.G (genericity from one witness).** Each cell
+> μ(x, y, z)(θ) is a polynomial in θ with coefficients in ℚ≥0, and its
+> value at any θ* ∈ ℚ≥0 (boundary zeros included) is the true mass at
+> θ* (zero-weight runs contribute 0 on both sides). Hence if the CI
+> defect D(θ) = μ_{aā}μ_{bb̄} − μ_{ab̄}μ_{bā} is non-zero at ONE θ*,
+> D ≢ 0 as a polynomial with ℚ coefficients, its zero set is a proper
+> algebraic subset (Lebesgue-null), and for generic θ — in particular
+> any algebraically independent tuple — X ⊥̸ Y | z. ∎
+
+> **Lemma M6.C (witness by copy channel).** If some θ* makes
+> μ(X=a₀, Y=a_n) > 0, μ(X=b₀, Y=b_n) > 0 and
+> μ(X=a₀, Y=b_n) = μ(X=b₀, Y=a_n) = 0, then D(θ*) > 0. ∎ (Immediate.)
+
+> **Theorem M6.2 (faithful-chain converse).** Suppose the class graph
+> contains a directed bias-chain X = W₀ → W₁ → ⋯ → W_n = Y: for each
+> i < n, hop fires that (i) fire before W_{i+1}'s draw in every class
+> run whose prefix draws are the designated ones (the driver's
+> settle-before-draw discipline supplies the timing), (ii) DISCRIMINATE
+> two designated members aᵢ ≠ bᵢ of Wᵢ (distinct rules or bindings per
+> member), and (iii) emit bias facts on W_{i+1} whose weight positions
+> carry dedicated free parameters per (hop, upstream member,
+> continuation member), never excluding the designated continuations
+> a_{i+1}, b_{i+1}; and suppose the two fully-designated paths carry
+> positive class mass at some parameter point. Then for generic θ,
+> X ⊥̸ Y | z.
+>
+> *Proof.* Choose θ*: on the a-side of each hop set the bias parameter
+> of every continuation member except a_{i+1} to 0 (exclusion is a
+> legal weight), symmetrically on the b-side; leave designated-path
+> weights positive. By induction on i, every positive-mass class run
+> has Wᵢ = aᵢ iff W₀ = a₀ and Wᵢ = bᵢ iff W₀ = b₀: the hop fires by
+> (i)+(ii) exactly per the upstream designation, and its exclusions
+> zero every non-designated continuation of W_{i+1}, while the
+> designated continuation keeps positive posterior by (iii). The chain
+> is a copy channel; Lemma M6.C gives D(θ*) > 0 (the two designated
+> paths have positive mass, the cross cells mass 0), and Lemma M6.G
+> concludes. ∎
+
+Pin 4's program is the canonical two-hop instance (its fixed weights
+4 and 5 sit in weight-generic positions; the numeric defect
+168 ≠ 264 doubles as a direct evaluation witness). The refutation and
+the theorem meet exactly where they should: an erasing hop violates
+(ii) — no per-member discrimination survives the merge at m — which
+is why pin 4b is outside the hypothesis and inside the refutation.
+
+**Remaining conjecture (general active paths).** Collider-activated
+segments (through observed sites), existence/drop hops, and
+allocation-fork hops plausibly admit the same witness-by-concentration
+technique — pins 1, 2, 2b and 2c are single-hop witness families for
+each shape — but the general composition (arbitrary alternation of
+shapes) and the infinite-class extension (the defect as a limit of
+monotone truncations, T1) are open. Per TODO_0302, M6 is discharged
+as theorem-or-remark: refutation = theorem (pin 4b), directed faithful
+chains = theorem (M6.2), general paths = conjecture with a route.
 
 ## 7. What this does not claim
 
