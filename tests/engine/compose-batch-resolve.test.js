@@ -1,5 +1,5 @@
 /**
- * Tests for batch residual resolution (_resolveOnce / _resolveBatch).
+ * Tests for batch residual resolution (_resolveOnce, mapped over a pool).
  *
  * Resolves ground persistent goals at compile time in a single pass per rule,
  * with running theta composition for transitive dependencies.
@@ -11,7 +11,7 @@ import { gradeW } from '../../lib/engine/grades.js';
 import { illConnectives } from '../../lib/engine/ill/connectives.js';
 import { resolveConn, flattenAnte } from '../../lib/engine/compile.js';
 import { predHead } from '../../lib/kernel/ast.js';
-import { _resolveOnce, _resolveBatch } from '../../lib/engine/compose.js';
+import { _resolveOnce } from '../../lib/engine/compose.js';
 import { getModeMeta as _illGetModeMeta } from '../../lib/engine/ill/ffi/index.js';
 import { intToBin, binToInt } from '../../lib/engine/ill/ffi/convert.js';
 import { monadUnit as U } from '../../lib/engine/grades.js';
@@ -170,7 +170,7 @@ describe('_resolveOnce', () => {
   });
 });
 
-describe('_resolveBatch', () => {
+describe('pool-mapped _resolveOnce (the former _resolveBatch)', () => {
   let rc;
 
   beforeEach(() => {
@@ -190,7 +190,7 @@ describe('_resolveBatch', () => {
       rules.push(makeRule(`rule-${i}`, ante, conseq));
     }
 
-    const results = _resolveBatch(rules, rc, _illGetModeMeta, testResolver);
+    const results = rules.map(r => _resolveOnce(r, rc, _illGetModeMeta, testResolver));
     assert.equal(results.length, 3);
 
     for (let i = 0; i < 3; i++) {
