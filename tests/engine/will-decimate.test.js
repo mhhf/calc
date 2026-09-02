@@ -114,6 +114,40 @@ describe('decimation driver — unbiased two-wave program', () => {
       `marginals off: ${JSON.stringify(tally)}`);
   });
 
+  it("'sample': same seed ⇒ trace-identical run (PRF determinism)", () => {
+    for (const seed of [7, 23]) {
+      const a = calc.collapse(init2(), { seed });
+      const b = calc.collapse(init2(), { seed });
+      assert.equal(tileOf(a.state, 'a0'), tileOf(b.state, 'a0'), `seed ${seed}: a0 differs`);
+      assert.equal(tileOf(a.state, 'a1'), tileOf(b.state, 'a1'), `seed ${seed}: a1 differs`);
+      assert.deepEqual(a.importance, b.importance);
+      assert.deepEqual(a.mass, b.mass);
+    }
+  });
+
+  it("'sample' frequencies converge to 'exact' masses (3σ, 1000 seeds)", () => {
+    // exact-mode per-cell marginal for a0 (restriction masses, renormalized)
+    const ex = calc.collapse(init2(), { mode: 'exact' });
+    const [tn, td] = ex.total;
+    const marg = { sea: 0, coast: 0, land: 0 };
+    for (const o of ex.outcomes) {
+      const t = tileOf(o.state, 'a0');
+      marg[t] += Number(o.mass[0]) / Number(o.mass[1]);
+    }
+    const total = Number(tn) / Number(td);
+    const N = 1000;
+    const tally = { sea: 0, coast: 0, land: 0 };
+    for (let seed = 1000; seed < 1000 + N; seed++) {
+      tally[tileOf(calc.collapse(init2(), { seed }).state, 'a0')]++;
+    }
+    for (const t of ['sea', 'coast', 'land']) {
+      const p = marg[t] / total;
+      const sigma = Math.sqrt(N * p * (1 - p));
+      assert.ok(Math.abs(tally[t] - N * p) <= 3 * sigma,
+        `${t}: ${tally[t]} vs expected ${(N * p).toFixed(1)} ± ${(3 * sigma).toFixed(1)}`);
+    }
+  });
+
   it("'solve': deterministic ground state", () => {
     const a = calc.collapse(init2(), { mode: 'solve' });
     const b = calc.collapse(init2(), { mode: 'solve' });
