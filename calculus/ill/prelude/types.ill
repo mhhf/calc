@@ -68,7 +68,7 @@ u256c_mul A B C :- u256_bound M, checked_mul M A B C.
 % === Fixed-Point Types ===
 
 % extralogical: scale-factor BigInt arithmetic. The 4-ary `fixed_mul`/`fixed_div`
-% are FFI-only (lib/engine/ill/ffi/arithmetic.js). No inductive ILL clause
+% are FFI-only (calculus/ill/lib/ffi/arithmetic.js). No inductive ILL clause
 % definition exists or is intended — a clause body would require materializing
 % 10^D via repeated `mul`, an Ackermann-shaped expansion in D. The aliases below
 % are pure sugar; spec witness is the BigInt closed-form ⌊(A·B)/10^D⌋ /

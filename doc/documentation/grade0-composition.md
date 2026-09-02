@@ -8,7 +8,7 @@ tags: [cut-elimination, forward-chaining, graded-types, SELL, implementation, ar
 
 # Grade-0 Cut Elimination
 
-`lib/engine/compose.js` is a calculus-agnostic compile-time optimization pipeline. Rules connected through grade-0 predicates (`!_0`) are composed, specialized, fused, and scalarized before runtime. All domain-specific knowledge (predicate names, number representations) is injected via configuration objects — see `lib/engine/ill/compose-config.js` for the ILL-specific defaults.
+`lib/engine/compose.js` is a calculus-agnostic compile-time optimization pipeline. Rules connected through grade-0 predicates (`!_0`) are composed, specialized, fused, and scalarized before runtime. All domain-specific knowledge (predicate names, number representations) is injected via configuration objects — see `calculus/ill/lib/compose-config.js` for the ILL-specific defaults.
 
 ## Three-Layer API
 
@@ -109,7 +109,7 @@ All domain-specific behavior is injected via `opts`:
 | `sroaConfig` | `SROAConfig` | Array/resource config for SROA |
 | `canonicalize` | `(hash) → hash` | Normalize terms after tabling resolution |
 
-ILL defaults are injected in `lib/engine/index.js` from `lib/engine/ill/compose-config.js`.
+ILL defaults are injected in `lib/engine/index.js` from `calculus/ill/lib/compose-config.js`.
 
 ## Caching
 
@@ -158,8 +158,8 @@ Each `composePair`/`fuseLinearPair` call is one cut step on the SELL calculus (N
 |------|------|
 | `lib/engine/compose.js` | Calculus-agnostic pipeline: L1 + L2 + L3 (7 passes) |
 | `lib/engine/resolve-all.js` | Compile-time backward proof search (tabling), lazy-loaded |
-| `lib/engine/ill/compose-config.js` | ILL-specific configs: chain fusion, SROA |
-| `lib/engine/ill/residual-resolver.js` | ILL-specific residual resolver (FFI + clause fallback) |
+| `calculus/ill/lib/compose-config.js` | ILL-specific configs: chain fusion, SROA |
+| `calculus/ill/lib/residual-resolver.js` | ILL-specific residual resolver (FFI + clause fallback) |
 | `lib/engine/index.js` | Integration: compose pass in `_buildCalc()`, ILL defaults |
 | `lib/engine/grades.js` | Grade constants (GRADE_0, GRADE_W) |
 | `lib/engine/compile.js` | flattenAntecedent, hasGrade0, discriminator detection |

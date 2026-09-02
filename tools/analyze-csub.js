@@ -2,8 +2,8 @@
 import path from 'path';
 import Store from '../lib/kernel/store.js';
 import mde from '../lib/engine/index.js';
-import { loadBytecode, bytecodeArrGetGuard } from '../lib/engine/ill/bytecode-loader.js';
-import { intToBin, binToInt } from '../lib/engine/ill/ffi/convert.js';
+import { loadBytecode, bytecodeArrGetGuard } from '../calculus/ill/lib/bytecode-loader.js';
+import { intToBin, binToInt } from '../calculus/ill/lib/ffi/convert.js';
 const EVM_PATH = path.join(import.meta.dirname, "../calculus/ill/programs/evm.ill");
 const fixturePath = path.join(import.meta.dirname, "../tests/fixtures/VMTests/vmPerformance/loop-add-10M.json");
 const data = JSON.parse(require("fs").readFileSync(fixturePath, "utf8"));

@@ -28,11 +28,11 @@
  * from matchLoli have no hash since they aren't persistent clauses in gamma.
  */
 
-import Store from '../../kernel/store.js';
-import { applyIndexed as subApplyIdx } from '../../kernel/substitute.js';
-import { loliOf, rTensor } from '../../kernel/ast.js';
-import { monadUnit } from '../../engine/grades.js';
-import { registerGuidedTerm } from '../bridge.js';
+import Store from '../../../lib/kernel/store.js';
+import { applyIndexed as subApplyIdx } from '../../../lib/kernel/substitute.js';
+import { loliOf, rTensor } from '../../../lib/kernel/ast.js';
+import { monadUnit } from '../../../lib/engine/grades.js';
+import { registerGuidedTerm } from '../../../lib/prover/bridge.js';
 /**
  * Build a complete ILL proof term from an enriched forward trace.
  *

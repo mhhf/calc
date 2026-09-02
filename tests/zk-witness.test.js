@@ -17,7 +17,7 @@ import { createProver } from '../lib/prover/focused.js';
 import { buildRuleSpecs } from '../lib/prover/rule-interpreter.js';
 import { extractTerm } from '../lib/prover/generic-term.js';
 import { createChecker } from '../lib/prover/check-term.js';
-import { generateWitness, deriveZkTags } from '../lib/zk/witness.js';
+import { generateWitness, deriveZkTags } from '../calculus/ill/lib/zk/witness.js';
 let calc;
 let seqParser;
 let prover;

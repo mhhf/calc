@@ -13,7 +13,7 @@
 
 'use strict';
 
-import Store from '../../kernel/store.js';
+import Store from '../../../lib/kernel/store.js';
 import { intToBin } from './ffi/convert.js';
 /**
  * Load bytecode hex string into grade-0 arr_get facts.

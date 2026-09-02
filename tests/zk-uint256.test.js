@@ -11,7 +11,7 @@ import assert from 'node:assert';
 import path from 'path';
 import fs from 'fs';
 import Store from '../lib/kernel/store.js';
-import { extractUint256PredMeta, bigintToLimbs, computeAdditionCarries, computeIncrementCarries, computeMultiplicationCarries } from '../lib/zk/witness.js';
+import { extractUint256PredMeta, bigintToLimbs, computeAdditionCarries, computeIncrementCarries, computeMultiplicationCarries } from '../calculus/ill/lib/zk/witness.js';
 const FIXTURE_DIR = path.join(import.meta.dirname, '..', 'zk', 'sequent-certifier', 'tests', 'fixtures');
 
 function ensureFixtureDir() {

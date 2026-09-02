@@ -7,7 +7,7 @@ import assert from 'node:assert';
 import path from 'path';
 import calculus from '../lib/calculus/index.js';
 import Store from '../lib/kernel/store.js';
-import { illConnectives } from '../lib/engine/ill/connectives.js';
+import { illConnectives } from '../calculus/ill/lib/connectives.js';
 // Hoisted by tools/esm-hoist.js:
 import { rightFocus } from '../lib/prover/bridge.js';
 

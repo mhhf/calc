@@ -11,7 +11,7 @@ import Store from '../../lib/kernel/store.js';
 import mde from '../../lib/engine/index.js';
 import { parseExpr, desugarPreserved } from '../../lib/engine/convert.js';
 import forward from '../../lib/engine/forward.js';
-import { illConnectives } from '../../lib/engine/ill/connectives.js';
+import { illConnectives } from '../../calculus/ill/lib/connectives.js';
 import { resolveConn, flattenAnte, compileRule } from '../../lib/engine/compile.js';
 import { monadUnit as U } from '../../lib/engine/grades.js';
 const ILL_RC = resolveConn(illConnectives());

@@ -52,7 +52,7 @@ npm run bench:diff    # Cross-commit benchmark comparison (use this when asked t
 **Forward engine** (L4): Three-layer lego architecture:
 - **Generic core**: match.js → strategy.js → forward.js / explore.js — pattern matching, rule selection, committed-choice/exhaustive execution. Configurable via `matchOpts` callbacks.
 - **LNL layer** (`lnl/`): persistent goal proving, loli (dynamic rule) matching, existential resolution. Adds the linear/persistent distinction.
-- **ILL layer** (`ill/`): binary arithmetic theories, ILL-specific backchainer defaults, loli drain. Plugged in via equational theories and `matchOpts` composition.
+- **ILL layer** (`calculus/ill/`): binary arithmetic theories, ILL-specific backchainer defaults. Lives OUTSIDE lib/ — plugged in via equational theories and `matchOpts` composition through the calculus config (calculus/ill/calculus-config.js + calculus/ill/lib/).
 **Lax monad** `{A}`: polarity shift (async→sync) at `lib/prover/bridge.js`. Three execution profiles: `'full'` (default, opaque), `'guided'` (oracle + verified ILL terms), `'off'` (pure backward)
 **Content-addressed store**: formulas are hashes (numbers), O(1) equality via `lib/kernel/store.js`
 **Equational theories** (`kernel/eq-theory.js`): pluggable cross-tag matching. O(1) dispatch via `_rewriteFromTag[tagId]` lookup. Built-in: strlit. Calculus-registered: binlit (ILL).
@@ -113,16 +113,6 @@ lib/
 │   │   ├── coalesce.js    # cohort merging
 │   │   ├── covariance.js  # shift-degree analysis (rebase safety)
 │   │   └── dirty-sched.js # dirty-tracking scheduler
-│   ├── ill/             # ILL layer: ILL-specific logic (single assembly point: calculus-config.js)
-│   │   ├── calculus-config.js # Layered config (L0-L6) — ONLY ILL import in generic engine
-│   │   ├── backchain-ill.js # ILL defaults for backchainer (explicit initILL())
-│   │   ├── binlit-theory.js # Equational theory: binlit ↔ i/o/e
-│   │   ├── bytecode-loader.js # EVM bytecode loader (lazily required by index.js)
-│   │   ├── bytecode-normalize.js # EVM bytecode → trie/arrlit/semantic (moved from index.js)
-│   │   ├── compose-config.js  # ILL bindings for the generic compose pipeline (chain/SROA predicates)
-│   │   ├── residual-resolver.js # compile-time persistent-goal resolver for grade-0 specialized rules
-│   │   ├── connectives.js   # ILL connective configuration
-│   │   └── ffi/             # Foreign function interface (arithmetic, memory)
 │   └── opt/             # Toggleable optimization modules
 │       ├── compiled-clauses.js # Tier 1 compiled clause dispatch (zero-subgoal → direct lookup)
 │       ├── existential-compile.js # Compiled ∃-chain (per-goal FFI fast path for existential resolution)
@@ -141,10 +131,23 @@ lib/
 ├── browser.js           # Browser-compatible API (loads from ill.json bundle)
 └── index.js             # Node.js API entry point
 
-calculus/ill/            # ILL calculus definition
+calculus/ill/            # ILL calculus definition + ILL-bound machinery
 ├── ill.calc             # Connective definitions
 ├── ill.rules            # Inference rules (sequent notation)
 ├── lnl.family           # Family infrastructure (LNL structural framework)
+├── calculus-config.js   # Single assembly point: layered config (L0-L6) — the generic engine receives it via opts.calculusConfig
+├── lib/                 # ILL-bound machinery (calculus/<name>/lib pattern — imported only via the config/plugins, never by the generic engine)
+│   ├── backchain-ill.js # ILL defaults for backchainer (explicit initILL())
+│   ├── binlit-theory.js # Equational theory: binlit ↔ i/o/e
+│   ├── bytecode-loader.js # EVM bytecode loader
+│   ├── bytecode-normalize.js # EVM bytecode → trie/arrlit/semantic
+│   ├── compose-config.js  # ILL bindings for the generic compose pipeline (chain/SROA predicates)
+│   ├── residual-resolver.js # compile-time persistent-goal resolver for grade-0 specialized rules
+│   ├── connectives.js   # ILL connective table (derived from ill.calc)
+│   ├── guided-term.js   # ILL guided-profile term builder (self-registers with prover/bridge)
+│   ├── prove-source.js  # proof-from-source API (server.js backend)
+│   ├── ffi/             # Foreign function interface (arithmetic, memory, calldata, arrays)
+│   └── zk/              # ZK witness extraction (witness.js, flat-witness.js — EVM/STARK domain)
 ├── prelude/             # Type bounds, booleans, arrays
 ├── programs/            # EVM model, binary arithmetic, multisig contracts
 └── tests/               # ILL-native tests (provability judgments, run via test:ill)

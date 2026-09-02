@@ -21,7 +21,7 @@ const DOC_ROOT = path.resolve(__dirname, '../../../doc');
 const PROOF_CACHE_DIR = path.resolve(__dirname, '../../../out/doc-cache');
 
 // @ts-expect-error - CJS module shared with production server.js
-import proveSourceMod from '../../../lib/prover/ill/prove-source.js';
+import proveSourceMod from '../../../calculus/ill/lib/prove-source.js';
 const { proveSource, proveSubtree, extractSymexLeafTrace } = proveSourceMod as {
   proveSource: (opts: {
     source: string;

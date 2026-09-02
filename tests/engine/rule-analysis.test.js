@@ -12,7 +12,7 @@ import { predHead } from '../../lib/kernel/ast.js';
 import { analyzeRule, deltaAnalysis } from '../../lib/engine/rule-analysis.js';
 import mde from '../../lib/engine/index.js';
 import Store from '../../lib/kernel/store.js';
-import { illConnectives } from '../../lib/engine/ill/connectives.js';
+import { illConnectives } from '../../calculus/ill/lib/connectives.js';
 // Helper: parse a lollipop rule string and compile it
 async function makeRule(name, expr) {
   const h = await mde.parseExpr(expr);

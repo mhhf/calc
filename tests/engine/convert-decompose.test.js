@@ -6,7 +6,7 @@
 import { describe, it, before } from 'node:test';
 import assert from 'node:assert/strict';
 import Store from '../../lib/kernel/store.js';
-import backchainIll from '../../lib/engine/ill/backchain-ill.js';
+import backchainIll from '../../calculus/ill/lib/backchain-ill.js';
 import { decomposeQuery } from '../../lib/engine/convert.js';
 
 describe('decomposeQuery — nested quantifiers (B9)', () => {

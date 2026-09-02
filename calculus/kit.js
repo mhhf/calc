@@ -19,15 +19,15 @@ import { drawChecker } from '../lib/prover/draw-check.js';
 import calculus from '../lib/calculus/index.js';
 import { buildParser } from '../lib/calculus/builders.js';
 import { defaultTheories } from '../lib/kernel/eq-theory.js';
-import { binlitTheory } from '../lib/engine/ill/binlit-theory.js';
+import { binlitTheory } from './ill/lib/binlit-theory.js';
 import { ratlitTheory } from '../lib/engine/theories/ratlit-theory.js';
 import { apply } from '../lib/kernel/substitute.js';
 import { predHead } from '../lib/kernel/ast.js';
 import { collectMetavars } from '../lib/engine/pattern-utils.js';
 import mde from '../lib/engine/index.js';
 import backward from '../lib/engine/backchain.js';
-import backchainIll from '../lib/engine/ill/backchain-ill.js';
-import * as ffi from '../lib/engine/ill/ffi/index.js';
+import backchainIll from './ill/lib/backchain-ill.js';
+import * as ffi from './ill/lib/ffi/index.js';
 
 /** The one numeric canonicalizer (folds structural i/o/e chains and
  *  rat(N,D) forms onto canonical literals) — shared by stamp algebras,

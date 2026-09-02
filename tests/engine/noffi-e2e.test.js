@@ -15,7 +15,7 @@ import mde from '../../lib/engine/index.js';
 import { countNodes, getAllLeaves } from '../../lib/engine/tree-utils.js';
 import { classifyLeaf } from '../../lib/engine/show.js';
 import { toObject } from '../../lib/engine/fact-set.js';
-import { guidedTerm } from '../../lib/prover/ill/guided-term.js';
+import { guidedTerm } from '../../calculus/ill/lib/guided-term.js';
 import { rightFocusTerm } from '../../lib/prover/bridge.js';
 import { rTensor } from '../../lib/kernel/ast.js';
 describe('noFFI e2e: solc multisig (clause-only resolution)', { timeout: 120000 }, () => {

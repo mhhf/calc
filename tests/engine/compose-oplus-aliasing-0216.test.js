@@ -19,7 +19,7 @@ import { resolveConn } from '../../lib/engine/compile.js';
 import { collectMetavars } from '../../lib/engine/pattern-utils.js';
 // Hoisted by tools/esm-hoist.js:
 import mde from '../../lib/engine/index.js';
-import ccfg from '../../lib/engine/ill/calculus-config.js';
+import ccfg from '../../calculus/ill/calculus-config.js';
 import { monadUnit as U } from '../../lib/engine/grades.js';
 
 describe('TODO_0216 H2 — fusePairEx oplus branch metavar disjointness', () => {

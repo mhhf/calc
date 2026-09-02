@@ -6,11 +6,11 @@ import { describe, it, beforeEach } from 'node:test';
 import assert from 'node:assert/strict';
 import Store from '../../lib/kernel/store.js';
 import { grade0, gradeW } from '../../lib/engine/grades.js';
-import { illConnectives } from '../../lib/engine/ill/connectives.js';
+import { illConnectives } from '../../calculus/ill/lib/connectives.js';
 import { resolveConn, compileRule, flattenAnte, unwrapComp } from '../../lib/engine/compile.js';
 import { predHead } from '../../lib/kernel/ast.js';
 import { cutPair, specialize, predMap, elimOrder, compose0, _tablingCacheKey, _composeFullKey } from '../../lib/engine/compose.js';
-import { getModes } from '../../lib/engine/ill/ffi/index.js';
+import { getModes } from '../../calculus/ill/lib/ffi/index.js';
 // Hoisted by tools/esm-hoist.js:
 import fs from 'fs';
 import os from 'os';

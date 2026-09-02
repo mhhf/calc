@@ -3,7 +3,7 @@
  * suite can require it wholesale (module-level serve()). What CAN break
  * silently is its require graph: a lib/ file moves, tests get updated,
  * server.js doesn't, and the server crashes on startup (audit 2026-09-02:
- * prove-source.js moved to lib/prover/ill/ and took the server down).
+ * prove-source.js moved directories and took the server down).
  * This pins every relative require/import in server.js to an existing
  * file on disk.
  */

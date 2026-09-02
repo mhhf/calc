@@ -11,14 +11,14 @@
  * Store-level structural concern, not ILL-specific.
  */
 
-import Store from '../../kernel/store.js';
-import { isPredTag, predHead as getHead, rTensor } from '../../kernel/ast.js';
-import { ILL_COMPUTATION } from '../formula-utils.js';
-import { defaultTheories } from '../../kernel/eq-theory.js';
+import Store from '../../../lib/kernel/store.js';
+import { isPredTag, predHead as getHead, rTensor } from '../../../lib/kernel/ast.js';
+import { ILL_COMPUTATION } from '../../../lib/engine/formula-utils.js';
+import { defaultTheories } from '../../../lib/kernel/eq-theory.js';
 import { binlitTheory, installBinlitClassifier } from './binlit-theory.js';
-import { setTheories } from '../../kernel/unify.js';
+import { setTheories } from '../../../lib/kernel/unify.js';
 // Hoisted by tools/esm-hoist.js:
-import { gradeW, monadUnit } from '../../engine/grades.js';
+import { gradeW, monadUnit } from '../../../lib/engine/grades.js';
 
 // ── Tag registration ────────────────────────────────────────────────
 // Moved to initILL() — explicit initialization replaces import-time side effects.

@@ -6,11 +6,11 @@ import assert from 'node:assert';
 import Store from '../../lib/kernel/store.js';
 import { unify, setTheories } from '../../lib/kernel/unify.js';
 import { defaultTheories } from '../../lib/kernel/eq-theory.js';
-import { binlitTheory } from '../../lib/engine/ill/binlit-theory.js';
+import { binlitTheory } from '../../calculus/ill/lib/binlit-theory.js';
 // Register binlitTheory so unify() can handle binlit ↔ i/o/e cross-tag matching
 setTheories([...defaultTheories, binlitTheory]);
-import { binToInt, intToBin, strToHash, hashToStr, charToHash, hashToChar } from '../../lib/engine/ill/ffi/convert.js';
-import arithmetic from '../../lib/engine/ill/ffi/arithmetic.js';
+import { binToInt, intToBin, strToHash, hashToStr, charToHash, hashToChar } from '../../calculus/ill/lib/ffi/convert.js';
+import arithmetic from '../../calculus/ill/lib/ffi/arithmetic.js';
 describe('Primitive Storage', { timeout: 10000 }, () => {
   beforeEach(() => {
     Store.clear();

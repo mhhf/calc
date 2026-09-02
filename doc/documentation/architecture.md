@@ -294,9 +294,9 @@ graph TB
         EXIS["<b>lnl/existential.js</b><br/>∃-variable resolution"]
     end
 
-    subgraph ILLLayer["ILL Layer"]
-        CONN["<b>ill/connectives.js</b>"]
-        FFIL["<b>ill/ffi/</b>"]
+    subgraph ILLLayer["ILL Layer (calculus/ill/)"]
+        CONN["<b>lib/connectives.js</b>"]
+        FFIL["<b>lib/ffi/</b>"]
     end
 
     subgraph OptLayer["Toggleable Optimizations"]

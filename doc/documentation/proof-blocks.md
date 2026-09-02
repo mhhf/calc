@@ -241,7 +241,7 @@ The pipeline is:
 {proof <cal> <profile>}   ──►  POST /api/proof   ──►  proof-tree/v1 JSON
                                       │
                                       ▼
-                              lib/prover/ill/prove-source.js
+                              calculus/ill/lib/prove-source.js
                                       │   reads cache out/doc-cache/<hash>.json
                                       │   miss → calculus.parseSequent → prover.prove
                                       │        → serialize-tree → write cache

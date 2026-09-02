@@ -11,12 +11,12 @@
  * body form. Uses 5 buses (CONTEXT + GAMMA + FORMULA + SUBST_TREE + FREEVAR).
  */
 
-import Store from '../kernel/store.js';
-import Seq from '../kernel/sequent.js';
-import { rTensor } from '../kernel/ast.js';
+import Store from '../../../../lib/kernel/store.js';
+import Seq from '../../../../lib/kernel/sequent.js';
+import { rTensor } from '../../../../lib/kernel/ast.js';
 // Hoisted by tools/esm-hoist.js:
 import { deriveZkTags } from './witness.js';
-import { monadUnit } from '../engine/grades.js';
+import { monadUnit } from '../../../../lib/engine/grades.js';
 
 /** Max arities — must match Rust FlatStepChip constants. */
 const MAX_CONSUMED = 6;

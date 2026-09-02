@@ -9,12 +9,12 @@ import { resolve } from '../../lib/engine/resolve-all.js';
 import { load, parseExpr } from '../../lib/engine/convert.js';
 import { apply } from '../../lib/kernel/substitute.js';
 import { unify } from '../../lib/kernel/unify.js';
-import { binlitTheory } from '../../lib/engine/ill/binlit-theory.js';
+import { binlitTheory } from '../../calculus/ill/lib/binlit-theory.js';
 import { show } from '../../lib/engine/show.js';
-import illFfi from '../../lib/engine/ill/ffi/index.js';
+import illFfi from '../../calculus/ill/lib/ffi/index.js';
 import { ffiDirect } from '../../lib/engine/opt/ffi.js';
-import { makeILLBackchainOpts } from '../../lib/engine/ill/backchain-ill.js';
-import { binToInt, intToBin } from '../../lib/engine/ill/ffi/convert.js';
+import { makeILLBackchainOpts } from '../../calculus/ill/lib/backchain-ill.js';
+import { binToInt, intToBin } from '../../calculus/ill/lib/ffi/convert.js';
 import Store from '../../lib/kernel/store.js';
 // Hoisted by tools/esm-hoist.js:
 import { apply as subApply } from '../../lib/kernel/substitute.js';

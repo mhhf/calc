@@ -14,7 +14,7 @@ import forward from '../../lib/engine/forward.js';
 import { modeSwitch } from '../../lib/prover/bridge.js';
 import { setTheories } from '../../lib/kernel/unify.js';
 import { defaultTheories } from '../../lib/kernel/eq-theory.js';
-import { binlitTheory } from '../../lib/engine/ill/binlit-theory.js';
+import { binlitTheory } from '../../calculus/ill/lib/binlit-theory.js';
 import { putRat } from '../../lib/kernel/rat-term.js';
 import { gtoyConfig, gtoyGradeUnit } from '../fixtures/gtoy-config.js';
 

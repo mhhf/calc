@@ -14,7 +14,7 @@ import { resolveConn } from '../../lib/engine/compile.js';
 import { makeMatchOpts } from './_match-opts.js';
 // Hoisted by tools/esm-hoist.js:
 import mde from '../../lib/engine/index.js';
-import ccfg from '../../lib/engine/ill/calculus-config.js';
+import ccfg from '../../calculus/ill/calculus-config.js';
 import { gradeW } from '../../lib/engine/grades.js';
 import { proveNaive } from '../../lib/engine/lnl/persistent.js';
 import { monadUnit as U } from '../../lib/engine/grades.js';

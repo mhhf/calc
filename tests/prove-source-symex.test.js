@@ -12,7 +12,7 @@ import assert from 'node:assert';
 import fs from 'fs';
 import os from 'os';
 import path from 'path';
-import { proveSource, extractSymexLeafTrace, _resetCache } from '../lib/prover/ill/prove-source.js';
+import { proveSource, extractSymexLeafTrace, _resetCache } from '../calculus/ill/lib/prove-source.js';
 describe('proveSource — symex mode (tiny)', () => {
   let cacheDir;
   before(() => {

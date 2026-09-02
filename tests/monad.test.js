@@ -16,7 +16,7 @@ import { createProver } from '../lib/prover/focused.js';
 import { initRuleSpecs } from '../lib/prover/rule-interpreter.js';
 import { sequentToState, stateToContext, rightFocus, modeSwitch } from '../lib/prover/bridge.js';
 import { compileRule } from '../lib/engine/compile.js';
-import { illConnectives } from '../lib/engine/ill/connectives.js';
+import { illConnectives } from '../calculus/ill/lib/connectives.js';
 import { gradeW } from '../lib/engine/grades.js';
 import { monadUnit as U } from '../lib/engine/grades.js';
 let ill, AST, parse, render;

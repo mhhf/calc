@@ -6,8 +6,8 @@
 import { describe, it, before } from 'node:test';
 import assert from 'node:assert/strict';
 import Store from '../../lib/kernel/store.js';
-import backchainIll from '../../lib/engine/ill/backchain-ill.js';
-import { parseMode, checkMode } from '../../lib/engine/ill/ffi/mode.js';
+import backchainIll from '../../calculus/ill/lib/backchain-ill.js';
+import { parseMode, checkMode } from '../../calculus/ill/lib/ffi/mode.js';
 // mode.js uses isGround from ill/ffi/convert — needs ILL atoms registered
 
 describe('ffi/mode', () => {

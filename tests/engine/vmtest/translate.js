@@ -6,9 +6,9 @@
  */
 
 import Store from '../../../lib/kernel/store.js';
-import { intToBin } from '../../../lib/engine/ill/ffi/convert.js';
-import { bytesToSemantic } from '../../../lib/engine/ill/bytecode-normalize.js';
-import { arrToTrie } from '../../../lib/engine/ill/ffi/array.js';
+import { intToBin } from '../../../calculus/ill/lib/ffi/convert.js';
+import { bytesToSemantic } from '../../../calculus/ill/lib/bytecode-normalize.js';
+import { arrToTrie } from '../../../calculus/ill/lib/ffi/array.js';
 /**
  * Convert a hex string (with or without 0x prefix) to a BigInt.
  */

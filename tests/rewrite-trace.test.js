@@ -15,7 +15,7 @@ import Store from '../lib/kernel/store.js';
 import Seq from '../lib/kernel/sequent.js';
 import calculus from '../lib/calculus/index.js';
 import { rwTrace, checkRW } from '../lib/prover/rewrite-trace.js';
-import { generateFlatWitness, MAX_CONSUMED, MAX_PRODUCED } from '../lib/zk/flat-witness.js';
+import { generateFlatWitness, MAX_CONSUMED, MAX_PRODUCED } from '../calculus/ill/lib/zk/flat-witness.js';
 import { monadUnit as U } from '../lib/engine/grades.js';
 const FIXTURE_DIR = path.join(import.meta.dirname, '..', 'zk', 'sequent-certifier', 'tests', 'fixtures');
 

@@ -19,9 +19,9 @@
  */
 
 import path from 'path';
-import calculus from '../../calculus/index.js';
+import calculus from '../../../lib/calculus/index.js';
 
-const ILL_CALC = path.join(import.meta.dirname, '../../../calculus/ill/ill.calc');
+const ILL_CALC = path.join(import.meta.dirname, '../ill.calc');
 
 let _table = null;
 

@@ -52,8 +52,8 @@ All three calldata opcodes use `$calldata CD` (preserved sugar — consumed and 
 | File | Role |
 |------|------|
 | `calculus/ill/programs/evm.ill` | Declarations, forward rules, backward clauses |
-| `lib/engine/ill/ffi/calldata.js` | cd_read FFI for ground binlit |
-| `lib/engine/ill/residual-resolver.js` | Compile-time cd_read resolution |
+| `calculus/ill/lib/ffi/calldata.js` | cd_read FFI for ground binlit |
+| `calculus/ill/lib/residual-resolver.js` | Compile-time cd_read resolution |
 | `tests/engine/calldata.test.js` | Unit tests (aligned, cross-boundary, preserved, symbolic) |
 
 See TODO_0141 for full design rationale and coverage matrix.

@@ -9,11 +9,11 @@ import mde from '../../lib/engine/index.js';
 import Store from '../../lib/kernel/store.js';
 import { clauseDispatch, tryCCDispatch } from '../../lib/engine/opt/compiled-clauses.js';
 import { buildTheoryLookup, defaultTheories } from '../../lib/kernel/eq-theory.js';
-import { binlitTheory } from '../../lib/engine/ill/binlit-theory.js';
+import { binlitTheory } from '../../calculus/ill/lib/binlit-theory.js';
 import { show } from '../../lib/engine/show.js';
 // Hoisted by tools/esm-hoist.js:
-import { parsedModes as ffiParsedModes } from '../../lib/engine/ill/ffi/index.js';
-import { intToBin } from '../../lib/engine/ill/ffi/convert.js';
+import { parsedModes as ffiParsedModes } from '../../calculus/ill/lib/ffi/index.js';
+import { intToBin } from '../../calculus/ill/lib/ffi/convert.js';
 import { collectMetavars } from '../../lib/engine/pattern-utils.js';
 import { buildIndex } from '../../lib/engine/backchain.js';
 

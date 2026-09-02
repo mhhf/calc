@@ -339,9 +339,9 @@ describe('SELL: QuerySettings Threading (T10)', () => {
 // =============================================================================
 
 import { grade0, gradeW } from '../../lib/engine/grades.js';
-import { illConnectives } from '../../lib/engine/ill/connectives.js';
+import { illConnectives } from '../../calculus/ill/lib/connectives.js';
 import { resolveConn, flattenAnte, compileRule } from '../../lib/engine/compile.js';
-import { getModes } from '../../lib/engine/ill/ffi/index.js';
+import { getModes } from '../../calculus/ill/lib/ffi/index.js';
 import { monadUnit as U } from '../../lib/engine/grades.js';
 describe('SELL: Graded modality parsing (TODO 155)', () => {
   beforeEach(() => Store.clear());

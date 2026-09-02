@@ -7,7 +7,7 @@
  */
 
 import { binToInt, intToBin } from './convert.js';
-import Store from '../../../kernel/store.js';
+import Store from '../../../../lib/kernel/store.js';
 // Hoisted by tools/esm-hoist.js:
 import sha3 from 'js-sha3';
 const { keccak256 } = sha3;

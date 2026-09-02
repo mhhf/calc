@@ -30,7 +30,7 @@ grade : type.
 bang: grade -> formula -> formula
 ```
 
-And `lib/engine/ill/connectives.js`: `bang: { category: 'exponential', arity: 2 }`.
+And `calculus/ill/lib/connectives.js`: `bang: { category: 'exponential', arity: 2 }`.
 
 ## Parser
 
@@ -115,8 +115,8 @@ See THY_0015 for the grade-0 staging interpretation and stratified cut eliminati
 | `lib/engine/index.js` | filterRules grade-0 exclusion, compose integration, CACHE_VERSION |
 | `lib/engine/show.js` | Grade-aware bang display |
 | `lib/engine/convert.js` | desugarPreserved child(1), decomposeQuery child(1) |
-| `lib/engine/ill/connectives.js` | bang arity: 2 |
-| `lib/engine/ill/backchain-ill.js` | GRADE_W in buildClauseTerm |
+| `calculus/ill/lib/connectives.js` | bang arity: 2 |
+| `calculus/ill/lib/backchain-ill.js` | GRADE_W in buildClauseTerm |
 | `lib/engine/lnl/loli-drain.js` | GRADE_W in isAllPersistentAntecedent |
 | `lib/parser/earley-grammar.js` | Hardcoded !, !_0, !_ω grammar rules |
 | `lib/calculus/builders.js` | deriveRoles arity === 2 detection |

@@ -11,7 +11,7 @@ import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import Store from '../../lib/kernel/store.js';
 import { prove } from '../../lib/engine/backchain.js';
-import { binlitTheory } from '../../lib/engine/ill/binlit-theory.js';
+import { binlitTheory } from '../../calculus/ill/lib/binlit-theory.js';
 // Hoisted by tools/esm-hoist.js:
 import { defaultTheories } from '../../lib/kernel/eq-theory.js';
 

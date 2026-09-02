@@ -27,7 +27,7 @@ Has the CALC codebase maintained clean separation of concerns, optimization soun
 |---|---|---|
 | lib/engine/ | 15,639 | ~50 |
 | lib/prover/ | 3,820 | ~15 |
-| lib/zk/ | 2,376 | ~3 |
+| calculus/ill/lib/zk/ | 2,376 | ~3 |
 | lib/kernel/ | 2,253 | ~8 |
 | lib/parser/ | 1,759 | ~6 |
 | lib/calculus/ | 494 | ~3 |
@@ -1064,7 +1064,7 @@ matchAllLinear (match.js)
 - `existential.js` (82 LOC) — resolveExistentials: compiled chain → provePersistent → freshEvar
 - `loli.js` (135 LOC) — matchLoli: trigger decomposition → linear match → persistent prove → body expand
 
-**ILL layer (lib/engine/ill/, 801 LOC):**
+**ILL layer (calculus/ill/lib/, 801 LOC):**
 - `backchain-ill.js` (115 LOC) — ILL-specific backchainer defaults (normalize, FFI, proof terms)
 - `binlit-theory.js` (141 LOC) — Equational theory: binlit ↔ i/o/e structural form
 - `connectives.js` (30 LOC) — ILL connective table (tag → category/arity/polarity)
@@ -1073,7 +1073,7 @@ matchAllLinear (match.js)
 - `compose-config.js` (60 LOC) — ILL chain fusion + SROA config for compose pipeline
 - `residual-resolver.js` (214 LOC) — Compile-time persistent goal resolution
 
-**FFI layer (lib/engine/ill/ffi/, 2,085 LOC):**
+**FFI layer (calculus/ill/lib/ffi/, 2,085 LOC):**
 - `arithmetic.js` (1129 LOC) — 36+ FFI functions: pure arithmetic + EVM 256-bit modular/signed
 - `array.js` (312 LOC) — arrlit O(1) + trie O(log N) operations, arrToTrie conversion
 - `memory.js` (207 LOC) — Write-log memory model: mem_read, mem_expand, sha3_compute

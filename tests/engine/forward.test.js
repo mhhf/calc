@@ -7,9 +7,9 @@ import path from 'path';
 import forward from '../../lib/engine/forward.js';
 import mde from '../../lib/engine/index.js';
 import Store from '../../lib/kernel/store.js';
-import ffi from '../../lib/engine/ill/ffi/index.js';
+import ffi from '../../calculus/ill/lib/ffi/index.js';
 import { tryMatch, buildMatchOpts, buildGenericProtocol, buildLnlProtocol, buildOptProtocol, buildFfiProtocol } from '../../lib/engine/match.js';
-import { illConnectives } from '../../lib/engine/ill/connectives.js';
+import { illConnectives } from '../../calculus/ill/lib/connectives.js';
 import { resolveConn, flattenAnte } from '../../lib/engine/formula-utils.js';
 // Hoisted by tools/esm-hoist.js:
 import { buildMatchOpts as bmo, buildGenericProtocol as bgp, buildLnlProtocol as blp, buildOptProtocol as bop, buildFfiProtocol as bfp } from '../../lib/engine/match.js';

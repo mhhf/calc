@@ -11,7 +11,7 @@ import path from 'path';
 import fs from 'fs';
 import Store from '../lib/kernel/store.js';
 import Seq from '../lib/kernel/sequent.js';
-import { generateFlatWitness, generateChunkedFlatWitness } from '../lib/zk/flat-witness.js';
+import { generateFlatWitness, generateChunkedFlatWitness } from '../calculus/ill/lib/zk/flat-witness.js';
 // Hoisted by tools/esm-hoist.js:
 import mde from '../lib/engine/index.js';
 import calculus from '../lib/calculus/index.js';

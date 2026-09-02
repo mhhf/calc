@@ -8,7 +8,7 @@ import assert from 'node:assert';
 import fs from 'fs';
 import os from 'os';
 import path from 'path';
-import { proveSource, hashKey } from '../lib/prover/ill/prove-source.js';
+import { proveSource, hashKey } from '../calculus/ill/lib/prove-source.js';
 import { FORMAT_VERSION } from '../lib/prover/serialize-tree.js';
 describe('prove-source', () => {
   let cacheDir;

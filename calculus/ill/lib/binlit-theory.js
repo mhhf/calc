@@ -16,8 +16,8 @@
  * appears in rule patterns and clause heads.
  */
 
-import Store from '../../kernel/store.js';
-import { registerFirstArgClassifier } from '../../kernel/eq-theory.js';
+import Store from '../../../lib/kernel/store.js';
+import { registerFirstArgClassifier } from '../../../lib/kernel/eq-theory.js';
 // Tag IDs — built-in tags are stable.
 // Predicate tags (i, o) are registered dynamically, resolved lazily.
 const _TAG_BINLIT = Store.TAG.binlit;

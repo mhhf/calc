@@ -190,7 +190,7 @@ Example instances (widths vary 2–9): `id` (4), `tensor_r`/`with_r` (8), `tenso
 ### Tree Path
 
 ```javascript
-const { generateWitness, deriveZkTags, deriveZkRuleSpecs } = require('./lib/zk/witness');
+const { generateWitness, deriveZkTags, deriveZkRuleSpecs } = require('./calculus/ill/lib/zk/witness');
 
 const tags = deriveZkTags(calculus);        // connective → integer from .calc definition order
 const ruleSpecs = deriveZkRuleSpecs(calculus, tags);  // .rules descriptors → RuleSpec structs
@@ -206,7 +206,7 @@ const witness = generateWitness(proofTerm, sequent, {
 ### Flat Path
 
 ```javascript
-const { generateFlatWitness, generateChunkedFlatWitness } = require('./lib/zk/flat-witness');
+const { generateFlatWitness, generateChunkedFlatWitness } = require('./calculus/ill/lib/zk/flat-witness');
 
 const witness = generateFlatWitness(trace, sequent, { calculus });
 // → { format: 'flat', chips: { flat_init, flat_step, flat_final, subst }, formula_rom, gamma_rom, ... }
@@ -346,7 +346,7 @@ Production FRI estimate: 3–5x slowdown → ~10–15 min total.
 ### JS (witness generation)
 
 ```
-lib/zk/
+calculus/ill/lib/zk/
 ├── witness.js           # Tree: generateWitness, deriveZkTags, deriveZkRuleSpecs,
 │                        #   generateChunkedTreeWitness, extractUint256PredMeta
 └── flat-witness.js      # Flat: generateFlatWitness, generateChunkedFlatWitness

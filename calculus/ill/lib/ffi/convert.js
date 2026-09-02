@@ -7,7 +7,7 @@
  * FFI always produces binlit for O(1) storage.
  */
 
-import Store from '../../../kernel/store.js';
+import Store from '../../../../lib/kernel/store.js';
 /**
  * Convert binary term to BigInt
  * Handles both binlit (compact) and legacy recursive form

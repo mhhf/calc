@@ -5,7 +5,7 @@
  *   (args: number[]) → { success: boolean, theta?: [var, val][], reason?: string }
  */
 
-import Store from '../../../kernel/store.js';
+import Store from '../../../../lib/kernel/store.js';
 import { binToInt, intToBin, isGround } from './convert.js';
 // ── Trie tag cache (lazy-init after calculus load) ──────────────────────────
 

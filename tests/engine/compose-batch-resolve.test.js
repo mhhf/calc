@@ -8,12 +8,12 @@ import { describe, it, beforeEach } from 'node:test';
 import assert from 'node:assert/strict';
 import Store from '../../lib/kernel/store.js';
 import { gradeW } from '../../lib/engine/grades.js';
-import { illConnectives } from '../../lib/engine/ill/connectives.js';
+import { illConnectives } from '../../calculus/ill/lib/connectives.js';
 import { resolveConn, flattenAnte } from '../../lib/engine/compile.js';
 import { predHead } from '../../lib/kernel/ast.js';
 import { _resolveOnce } from '../../lib/engine/compose.js';
-import { getModeMeta as _illGetModeMeta } from '../../lib/engine/ill/ffi/index.js';
-import { intToBin, binToInt } from '../../lib/engine/ill/ffi/convert.js';
+import { getModeMeta as _illGetModeMeta } from '../../calculus/ill/lib/ffi/index.js';
+import { intToBin, binToInt } from '../../calculus/ill/lib/ffi/convert.js';
 import { monadUnit as U } from '../../lib/engine/grades.js';
 function makeRule(name, anteHash, conseqBodyHash) {
   const conseqHash = Store.put('monad', [U(), conseqBodyHash]);
