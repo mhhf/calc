@@ -1216,6 +1216,28 @@ with cut admissibility; this paper's point is precisely that weight
 should \emph{not} be another grade: grades on formulas, draws in the
 zone (Theorem~\ref{thm:cut}(g)).
 
+\paragraph{The dissolution pattern.}  Two connectives conjectured
+independently during the design both dissolved into the endsequent
+reading.  The two-semiring product judgment (delay and weight on one
+grade slot) dissolved into ``grades on formulas, draws in the zone''
+(Theorem~\ref{thm:cut}(g)).  The weight-graded contraction
+$\Box_{r+s}A \vdash \Box_r A \otimes \Box_s A$ (``mass splits over
+independent channels'', a factor-graph reading) dissolves the same
+way: its count face is the counted bang's derivable splitting law with
+exact conservation; its mass face is $\otimes$-context splitting of
+the token zone itself --- the linear context splits, tokens follow
+their contexts, so run mass factorizes multiplicatively in
+\emph{every} derivation, with no side condition (and the sketch's
+additive $r{+}s$ was the budget semiring, not the likelihood monoid);
+its sum face lives at the forking connectives.  Any primitive box is
+either token-backed --- then definable as
+$\langle\Theta\rangle \otimes A$ and its laws derivable --- or an
+exact-weight-conservation leak; and the contraction shape specifically
+would clone a draw, which \S\ref{sec:nocloning} forbids and the
+prover refutes executably (one token cannot serve two
+$\otimes$-channels).  ``Independent channels'' reduces to disjoint
+token provenance, exhibited by the endsequent's $\otimes$-partition.
+
 \paragraph{Quantum analogies.}  The identity-expansion failure
 (\S\ref{sec:nocloning}) is a no-cloning statement at the proof level;
 we use it as a design constraint, not a quantum claim.  The reserved
@@ -1247,6 +1269,23 @@ by rational Gaussian elimination at load, and the conditioned sampler's
 importance weight telescopes to the conditioned mass on bias-free runs
 --- a zero-variance estimator, with the claimed masses re-verified by
 substitution inside the run certificate.
+
+The independence question the certificates raise --- when does a
+conditioned mass \emph{factorize}, and can the certificate exhibit the
+factorization? --- has since been answered in a sequel development (a
+companion paper in preparation): separation on the dependency graph of
+the conditioning class implies exact factorization of the conditioned
+mass, with the factors readable as sub-forest masses and the split
+exhibited by the certificate's token partition.  Two of its findings
+bear on this paper's semantics directly: under unnormalized
+restriction semantics, textbook d-separation is \emph{unsound} unless
+every wave whose total posterior weight can vary across the
+conditioning class --- through bias, or through an unnormalized sort
+whose draw happens in only some runs --- is treated as observed soft
+evidence; and per-run dependency graphs are unsound in principle (a
+run in which a context-specific rule never fired carries no trace of
+it), so separation is a property of the class, decided on a static
+cover and only \emph{exhibited} per run.
 
 Future work: mechanizing Theorem~\ref{thm:cut} (the internalization
 makes the calculus small --- standard ILL plus three rules --- so the
