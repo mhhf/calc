@@ -7,7 +7,7 @@ import { describe, it, beforeEach } from 'node:test';
 import assert from 'node:assert/strict';
 import Store from '../../lib/kernel/store.js';
 import { FactSet, Arena } from '../../lib/engine/fact-set.js';
-import { feedPers, satFilter } from '../../lib/engine/constraint-feed.js';
+import { feedPers, satFilter } from '../../lib/engine/constraint.js';
 // Minimal EqNeqSolver stub — tracks constraints + SAT state
 function makeSolver(satResult = true) {
   const constraints = [];

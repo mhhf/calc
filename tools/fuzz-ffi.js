@@ -132,6 +132,12 @@ const PRED_CONFIGS = {
              // gt(A,B,Carry,Z): Z = A>B ? 1 : (A<B ? 0 : Carry).
              // Carry constrained to {0,1} to match how callers use it.
              gen: () => [randBigInt(12), randBigInt(12), rand() > 0.5 ? 1n : 0n] },
+  // min/max clauses (bin.ill) dispatch on a gt result bit via
+  // min_pick/max_pick — a carry mismatch between the FFI's BigInt compare
+  // and the clause's recursive gt walk would diverge silently on padded
+  // binlits (audit 2026-09-02).
+  min:     { cluster: '§3.2', inputs: ['+', '+'], outputs: ['-'], gen: () => [randBigInt(16), randBigInt(16)] },
+  max:     { cluster: '§3.2', inputs: ['+', '+'], outputs: ['-'], gen: () => [randBigInt(16), randBigInt(16)] },
 
   // ── §3.3 Bitwise ───────────────────────────────────────────────────────
   and:    { cluster: '§3.3', inputs: ['+', '+'], outputs: ['-'], gen: () => [randBigInt(16), randBigInt(16)] },

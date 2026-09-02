@@ -209,9 +209,11 @@ function bytecodeToTrie(state) {
       newLinear[hStr] = count;
     }
   }
-  // Cache original elements for O(1) prediction (trie is O(log N) per lookup)
+  // Cache original elements for O(1) prediction (trie is O(log N) per
+  // lookup) — populates the engine's generic _fpArrayElems hook
+  // (lib/engine/opt/prediction.js).
   const result = { linear: newLinear, persistent: state.persistent };
-  result._bytecodeElems = elems;
+  result._fpArrayElems = elems;
   return result;
 }
 
