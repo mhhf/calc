@@ -241,6 +241,9 @@ const decomposeQuery = mde.normalizeQuery;
 
 export {
   ROOT,
+  // Live binding (ESM named exports track reassignment) — debug-ill.js
+  // imports PROGRAM by name; the default export keeps its getter form.
+  PROGRAM,
   setProgram,
   DEFAULT_PROGRAM,
   MAX_STEPS,
