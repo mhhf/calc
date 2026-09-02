@@ -41,6 +41,7 @@
     "profile:engine": "bun benchmarks/mde/run.js --profile",
     "bench:multisig": "bun benchmarks/engine/multisig-bench.js",
     "bench:till": "bun benchmarks/engine/till-bench.js",
+    "bench:will": "bun benchmarks/engine/will-decimate-bench.js",
     "bench:explore": "bun benchmarks/engine/explore-bench.js",
     "bench:explore:save": "bun benchmarks/engine/explore-bench.js --save",
     "bench:explore:compare": "bun benchmarks/engine/explore-bench.js --compare",
