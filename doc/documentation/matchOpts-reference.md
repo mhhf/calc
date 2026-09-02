@@ -49,11 +49,11 @@ Layer ownership is enforced by `tests/engine/layer-dag.test.js` at both the `req
 
 | Field | Type | Set by | Used by |
 |---|---|---|---|
-| `provePersistent` | `(patterns, startIdx, theta, slots, state, calc, evidenceOut, matchOpts) → idx` | `buildGenericProtocol` (composition root routes FFI vs naive) | `match.js`, `lnl/existential.js`, `lnl/loli.js` |
+| `provePersistent` | `(patterns, startIdx, theta, slots, state, calc, evidenceOut, matchOpts) → idx` | `buildGenericProtocol` (composition root routes FFI vs naive) | `match.js`, `family/lnl/lib/existential.js`, `family/lnl/lib/loli.js` |
 | `matchDynamicRule` | `(factHash, state, calc, matchOpts) → match \| null` | `buildFamilyProtocol` (→ `matchLoli`) | `strategy.js` (loli scan) |
 | `dynamicRuleTag` | `string \| null` | `buildFamilyProtocol` (→ `rc.implication`) | `strategy.js` (filter state for loli candidates) |
 
-`provePersistent` is the most critical callback. It is declared as a generic-layer interface (the generic engine consumes it), but routed at the composition root: with FFI enabled it wires to `opt/ffi.js:proveWithFFI` (state → FFI → compiled clause → full clause pipeline); without FFI it wires to `lnl/persistent.js:proveNaive` (state → clause resolution only).
+`provePersistent` is the most critical callback. It is declared as a generic-layer interface (the generic engine consumes it), but routed at the composition root: with FFI enabled it wires to `opt/ffi.js:proveWithFFI` (state → FFI → compiled clause → full clause pipeline); without FFI it wires to `family/lnl/lib/persistent.js:proveNaive` (state → clause resolution only).
 
 ### Connective Resolution
 
@@ -67,11 +67,11 @@ The resolved connective table maps structural roles to tag names. Created once v
 
 | Field | Type | Set by | Used by |
 |---|---|---|---|
-| `ffiParsedModes` | `Object \| null` (`{ pred: ['+','-',...] }`) | `buildFfiProtocol` (from `ffiCtx`) | `lnl/persistent.js`, `opt/ffi.js` |
+| `ffiParsedModes` | `Object \| null` (`{ pred: ['+','-',...] }`) | `buildFfiProtocol` (from `ffiCtx`) | `family/lnl/lib/persistent.js`, `opt/ffi.js` |
 | `ffiMeta` | `Object \| null` | `buildFfiProtocol` (from `ffiCtx`) | `opt/ffi.js` |
 | `ffiGet` | `Function \| null` | `buildFfiProtocol` (from `ffiCtx`) | `opt/ffi.js` |
 | `ffiIsGround` | `Function \| null` | `buildFfiProtocol` (from `ffiCtx`) | `opt/ffi.js` |
-| `useCompiledSteps` | `boolean` | `buildOptProtocol` (= `useFFI`) | `match.js`, `lnl/existential.js` |
+| `useCompiledSteps` | `boolean` | `buildOptProtocol` (= `useFFI`) | `match.js`, `family/lnl/lib/existential.js` |
 | `backchainUseFFI` | `boolean` | `buildFamilyProtocol` | `family/lnl/lib/persistent.js` |
 
 When `ffiCtx` is null (bare profile or non-ILL calculus), all FFI fields are null and the engine falls back to clause resolution everywhere.
@@ -81,13 +81,13 @@ When `ffiCtx` is null (bare profile or non-ILL calculus), all FFI fields are nul
 | Field | Type | Set by | Used by |
 |---|---|---|---|
 | `optimizePreserved` | `boolean` | `buildGenericProtocol` | `match.js` (skip re-producing preserved facts) |
-| `canonicalize` | `Function \| null` (`hash → hash`) | `buildGenericProtocol` | `lnl/persistent.js`, `opt/ffi.js` (equational theory normalization) |
+| `canonicalize` | `Function \| null` (`hash → hash`) | `buildGenericProtocol` | `family/lnl/lib/persistent.js`, `opt/ffi.js` (equational theory normalization) |
 
 ### Instrumentation Hooks
 
 | Field | Type | Set by | Used by |
 |---|---|---|---|
-| `evidence` | `boolean` | `buildGenericProtocol` | `match.js`, `lnl/loli.js`, `lnl/existential.js` |
+| `evidence` | `boolean` | `buildGenericProtocol` | `match.js`, `family/lnl/lib/loli.js`, `family/lnl/lib/existential.js` |
 | `onProveSuccess` | `Function \| null` | `buildGenericProtocol` | `family/lnl/lib/persistent.js`, `opt/ffi.js` |
 | `onProveFail` | `Function \| null` | `buildGenericProtocol` | `family/lnl/lib/persistent.js`, `opt/ffi.js` |
 

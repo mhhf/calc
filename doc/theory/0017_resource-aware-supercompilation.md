@@ -36,7 +36,7 @@ In CALC: `composeGrade0` is PE, `explore()` is driving, and the structural memo 
 | Configuration | `state` (linear FactSet + persistent FactSet) | `fact-set.js` |
 | Driving step | `mutateState()` — apply one forward rule | `explore.js` |
 | Driving machine | `go(depth, predicted)` DFS loop | `explore.js` |
-| Positive info propagation | `proveNaive()` — known facts flow forward | `lnl/persistent.js` |
+| Positive info propagation | `proveNaive()` — known facts flow forward | `family/lnl/lib/persistent.js` |
 | Negative info propagation | `EqNeqSolver` — eq/neq constraints accumulate | `constraint.js` |
 | Branch pruning | `satFilter()` — kill UNSAT alternatives | `opt/constraint.js` |
 | Generalization | `controlHash()` — abstract to (PC, stack depth) | `opt/structural-memo.js` |

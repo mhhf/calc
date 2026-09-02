@@ -1,11 +1,11 @@
 tags:
-  linear-logic: 33
+  linear-logic: 34
   ill: 27
   forward-chaining: 24
   inference-rule: 24
-  proof-theory: 18
-  architecture: 15
-  graded-types: 15
+  proof-theory: 19
+  architecture: 16
+  graded-types: 16
   chr: 13
   implementation: 10
   left-rule: 10
@@ -22,9 +22,9 @@ tags:
   probabilistic: 7
   symbolic-execution: 7
   ownership: 6
+  structural-rule: 6
   clf: 5
   provenance: 5
-  structural-rule: 5
   verification: 5
   will: 5
   with: 5
@@ -49,6 +49,7 @@ tags:
   time: 3
   type-checking: 3
   accounting: 2
+  adjoint-logic: 2
   backward: 2
   bridge: 2
   certificates: 2
@@ -60,6 +61,7 @@ tags:
   Futamura: 2
   independence: 2
   layers: 2
+  lnl: 2
   modal-logic: 2
   one: 2
   principals: 2
@@ -77,7 +79,6 @@ tags:
   tropical: 2
   additive: 1
   adequacy: 1
-  adjoint-logic: 1
   anki: 1
   atomic-swaps: 1
   batching: 1
@@ -139,7 +140,6 @@ tags:
   labels: 1
   layering: 1
   learning: 1
-  lnl: 1
   location: 1
   logical-framework: 1
   markets: 1

@@ -16,6 +16,8 @@
 %   - Position 3 (A): succedent (single formula)
 %
 % The F ⊣ G adjunction connects the modes. For ILL, this gives ! = G ∘ F.
+%
+% "family" ≈ structural discipline / mode theory in the literature (Benton LNL; Reed–Pfenning modes); the repo term names the reusable bundle: declarations + engine bindings.
 
 @family lnl.
 

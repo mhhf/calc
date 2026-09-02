@@ -256,6 +256,11 @@ or/sio: or (i X) (o Y) (i Z)
 or/soo: or (o X) (o Y) (o Z)
   <- or X Y Z.
 
+% WARNING: `not` is the STRUCTURAL complement (flips only the bits
+% present, no 256-bit padding: not(1) = 0). The FFI maps both `not` and
+% `not256` to 256-bit bitwiseNot, so under FFI not(1) = 2^256-2 — a
+% documented mismatch (fuzz-ffi skips it). Forward rules modelling the
+% EVM NOT opcode must use !not256, never !not.
 not: (value: bin) -> (result: bin) -> type.
 not/z: not e e.
 not/si: not (i X) (o Y)

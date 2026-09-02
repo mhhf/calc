@@ -259,7 +259,7 @@ Multiple strategies coexist, all built on L3/L2:
 
 **L4c/L4d — Forward Engine:** `lib/engine/`
 
-The forward engine has its own internal three-layer architecture (Generic → LNL → ILL), separate from the backward proof search (L1–L3). It implements committed-choice forward chaining (multiset rewriting) with a compilation pipeline:
+The forward engine has its own internal three-layer architecture (Generic → Family → ILL), separate from the backward proof search (L1–L3). It implements committed-choice forward chaining (multiset rewriting) with a compilation pipeline:
 
 ```mermaid
 graph TB
@@ -298,7 +298,7 @@ graph TB
     OPT --> MAT
 
     style GenericCore fill:#f0f8ff,stroke:#004085
-    style LNLLayer fill:#f0fff0,stroke:#155724
+    style FamilyLayer fill:#f0fff0,stroke:#155724
     style ILLLayer fill:#fff8f0,stroke:#856404
     style OptLayer fill:#fce4ec,stroke:#880e4f
 ```
@@ -370,7 +370,7 @@ See `doc/documentation/forward-optimization-roadmap.md` for profiling history (1
 
 The monadic type `{S}` marks an **optimization boundary** in `lib/prover/bridge.js`. When L3's inversion phase encounters `{S}` as succedent, `monad_r` fires. By default (`opts.forward = 'full'`), all linear resources transfer to the forward engine, which runs to quiescence as a committed-choice strategy. `rightFocus` then decomposes the succedent against the residual state.
 
-The monad itself is a genuine logical connective (CLF, Watkins et al. 2004) — a polarity shift from negative (async) to positive (sync). But the decision to hand execution to a separate engine at this boundary is a strategy choice, not a logical necessity. With `opts.forward = 'guided'`, the forward engine runs as an oracle and the proof term decomposes into standard ILL inference steps. With `opts.forward = 'off'`, the backward prover handles the monadic fragment directly (intractable for large programs, but theoretically equivalent).
+The monad itself is a genuine logical connective (CLF, Watkins et al. 2004) — a polarity shift from negative (async) to positive (sync). LolliMon [López–Pfenning–Polakow–Watkins, PPDP 2005] establishes committed-choice forward execution to quiescence as the operational interpretation of the lax monad intro — the mode switch in bridge.js is that semantics, not an engineering approximation. But the decision to hand execution to a separate engine at this boundary is a strategy choice, not a logical necessity. With `opts.forward = 'guided'`, the forward engine runs as an oracle and the proof term decomposes into standard ILL inference steps. With `opts.forward = 'off'`, the backward prover handles the monadic fragment directly (intractable for large programs, but theoretically equivalent).
 
 Connective table (`ill/connectives.js`) maps tag → `{ category, arity, polarity }`, mirroring `.calc` annotations (`@category`, `@polarity`). `compile.js:resolveConnectives()` inverts this for O(1) role→tag dispatch. The generic engine queries structural categories (`multiplicative`, `exponential`, `monad`, etc.), never connective names. See `doc/documentation/lax-monad.md` for full details.
 

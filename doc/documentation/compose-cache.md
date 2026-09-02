@@ -48,8 +48,6 @@ sha256(
 
 Key-affecting env flags (registry in `lib/engine/cache-flags.js`):
 - `CALC_POOL_DISJOINT` ('0' disables the pool-disjoint invariant for A/B; 'strict' adds rename-site asserts)
-- `CALC_0217_FFI_OFF`
-- `CALC_0217_MEMO_OFF`
 
 Key-affecting options: `fuseBasicBlocks`, `cacheVersion`.
 

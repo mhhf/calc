@@ -114,7 +114,7 @@ In `full` profile, the entire monadic fragment is unverified (kernel returns `un
 
 ## Known Gap: loli_match (C2)
 
-The `loli_match` handler in check-term.js (line 232) handles dynamic loli rules — linear implications matched from state during forward execution. This is the proof-term analogue of `lnl/loli.js:matchLoli`. The handler exists but coverage of complex guard structures (tensor of bang + linear, nested exists) is limited. Tracked as C2 in audit findings.
+The `loli_match` handler in check-term.js (line 232) handles dynamic loli rules — linear implications matched from state during forward execution. This is the proof-term analogue of `family/lnl/lib/loli.js:matchLoli`. The handler exists but coverage of complex guard structures (tensor of bang + linear, nested exists) is limited. Tracked as C2 in audit findings.
 
 ## Dual Verification Paths
 
