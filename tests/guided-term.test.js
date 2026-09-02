@@ -21,6 +21,7 @@ import Seq from '../lib/kernel/sequent.js';
 import calcMain from '../lib/index.js';
 import { createChecker } from '../lib/prover/check-term.js';
 import { monadUnit as U } from '../lib/engine/grades.js';
+import { loadILL } from '../calculus/ill/index.js';
 
 describe('Guided Proof Terms (TODO_0068 §10.5)', () => {
 
@@ -416,7 +417,7 @@ describe('Guided Proof Terms (TODO_0068 §10.5)', () => {
   describe('check-term focused loli_l', () => {
     it('verifies 2-subterm loli_l with sequential context split', () => {
 
-      const calculus = calcMain.loadILL();
+      const calculus = loadILL();
       const { check } = createChecker(calculus);
 
       // Build: x:A⊸B in delta, a in delta, prove b
@@ -445,7 +446,7 @@ describe('Guided Proof Terms (TODO_0068 §10.5)', () => {
 
     it('verifies 1-subterm loli_l (backward compat)', () => {
 
-      const calculus = calcMain.loadILL();
+      const calculus = loadILL();
       const { check } = createChecker(calculus);
 
       // Build: x:A⊸B in delta, prove B (invertible: adds A and B to delta)

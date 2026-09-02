@@ -11,11 +11,12 @@ import Seq from '../lib/kernel/sequent.js';
 import calculus from '../lib/calculus/index.js';
 import { ProofTree, leaf } from '../lib/prover/pt.js';
 import { gradeW } from '../lib/engine/grades.js';
+import { loadILL } from '../calculus/ill/index.js';
 describe('L1 Kernel - Proof Verification', () => {
   let calc, AST, kernel, prover, ruleSpecs, alternatives;
 
   before(async () => {
-    calc = await calculus.loadILL();
+    calc = await loadILL();
     AST = calc.AST;
     const built = buildRuleSpecs(calc);
     ruleSpecs = built.specs;

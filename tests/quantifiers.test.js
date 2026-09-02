@@ -11,7 +11,7 @@ import calculus from '../lib/calculus/index.js';
 import { createProver } from '../lib/prover/focused.js';
 import { buildRuleSpecs } from '../lib/prover/rule-interpreter.js';
 import Seq from '../lib/kernel/sequent.js';
-import { parseExpr } from '../lib/engine/convert.js';
+import { parseExpr } from '../calculus/ill/index.js';
 import { resolveConn, compileRule, expandChoice } from '../lib/engine/compile.js';
 import { illConnectives } from '../calculus/ill/lib/connectives.js';
 // Hoisted by tools/esm-hoist.js:
@@ -24,6 +24,7 @@ import { resolveEx } from '../family/lnl/lib/existential.js';
 import { proveWithFFI as provePersistent } from '../lib/engine/opt/ffi.js';
 import illFfi from '../calculus/ill/lib/ffi/index.js';
 import { monadUnit as U } from '../lib/engine/grades.js';
+import { loadILL } from '../calculus/ill/index.js';
 describe('Quantifier Store operations', () => {
   it('exists(body) creates arity-1 node', () => {
     const p = Store.put('atom', ['p']);
@@ -164,7 +165,7 @@ describe('Backward prover with quantifiers', () => {
 
   before(async () => {
     resetFresh();
-    calc = await calculus.loadILL();
+    calc = await loadILL();
     prover = createProver(calc);
     const built = buildRuleSpecs(calc);
     specs = built.specs;
@@ -375,7 +376,7 @@ describe('Polarity', () => {
   let calc;
 
   before(async () => {
-    calc = await calculus.loadILL();
+    calc = await loadILL();
   });
 
   it('exists is positive', () => {

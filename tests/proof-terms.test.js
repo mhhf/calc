@@ -27,12 +27,13 @@ import { DEFAULT_COMPUTATION } from '../lib/engine/formula-utils.js';
 import { ProofTree } from '../lib/prover/pt.js';
 import { fromGoal } from '../lib/prover/pt.js';
 import { monadUnit as U } from '../lib/engine/grades.js';
+import { loadILL } from '../calculus/ill/index.js';
 
 describe('Generic Term Signatures', () => {
   let calc, sigs;
 
   before(async () => {
-    calc = await calculus.loadILL();
+    calc = await loadILL();
     sigs = sigMap(calc.rules);
   });
 
@@ -99,7 +100,7 @@ describe('Backward Term Extraction', () => {
   let calc, AST, prover, ruleSpecs, alternatives;
 
   before(async () => {
-    calc = await calculus.loadILL();
+    calc = await loadILL();
     AST = calc.AST;
     const built = buildRuleSpecs(calc);
     ruleSpecs = built.specs;
@@ -393,7 +394,7 @@ describe('Forward Term Builders', () => {
   let calc, AST, roles;
 
   before(async () => {
-    calc = await calculus.loadILL();
+    calc = await loadILL();
     AST = calc.AST;
     roles = calc.roles;
   });
@@ -558,7 +559,7 @@ describe('Type Checker', () => {
   let calc, AST, prover, ruleSpecs, alternatives, checker;
 
   before(async () => {
-    calc = await calculus.loadILL();
+    calc = await loadILL();
     AST = calc.AST;
     const built = buildRuleSpecs(calc);
     ruleSpecs = built.specs;
@@ -867,7 +868,7 @@ describe('Bridge Integration', () => {
   let calc, AST, kernel;
 
   before(async () => {
-    calc = await calculus.loadILL();
+    calc = await loadILL();
     AST = calc.AST;
     kernel = createKernel(calc);
   });
@@ -952,7 +953,7 @@ describe('End-to-end bridge term construction', () => {
   let calc, AST;
 
   before(async () => {
-    calc = await calculus.loadILL();
+    calc = await loadILL();
     AST = calc.AST;
   });
 
@@ -1052,7 +1053,7 @@ describe('Zero-overhead (terms: false)', () => {
   let calc, AST;
 
   before(async () => {
-    calc = await calculus.loadILL();
+    calc = await loadILL();
     AST = calc.AST;
   });
 

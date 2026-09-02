@@ -21,6 +21,7 @@ import { compilePM, execPM } from '../../lib/engine/compile.js';
 import { matchIndexed, undoSave, undoRestore, undoDiscard } from '../../lib/kernel/unify.js';
 import { apply } from '../../lib/kernel/substitute.js';
 import { collectMetavars } from '../../lib/engine/pattern-utils.js';
+import { loadILL } from '../../calculus/ill/index.js';
 
 function rng(seed) {
   let a = seed >>> 0;
@@ -37,7 +38,7 @@ const pick = (r, arr) => arr[Math.floor(r() * arr.length)];
 describe('TODO_0272 M7 — compiled vs interpreted match differential', () => {
   let AST, ground, metavars;
   before(async () => {
-    const ill = await calculus.loadILL();
+    const ill = await loadILL();
     AST = ill.AST;
     Store.registerTag('p1'); Store.registerTag('p2'); Store.registerTag('s');
     ground = ['a', 'b', 'c', 'd', 'stop'].map(n => AST.atom(n));

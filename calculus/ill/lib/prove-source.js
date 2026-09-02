@@ -36,6 +36,8 @@ import path from 'path';
 import fs from 'fs';
 import crypto from 'crypto';
 import calculusLoader from '../../../lib/calculus/index.js';
+import { loadILL } from './forward-parser.js';
+import illConfig from '../calculus-config.js';
 import proverAuto from '../../../lib/prover/strategy/auto.js';
 import { sequentParser } from '../../../lib/parser/sequent-parser.js';
 import { serializeTree, FORMAT_VERSION, elideBelowDepth as elideJson, findSubtreeById } from '../../../lib/prover/serialize-tree.js';
@@ -58,7 +60,7 @@ async function getCalculus(name) {
   if (_calcCache.has(name)) return _calcCache.get(name);
   let cal;
   if (name === 'ill') {
-    cal = await calculusLoader.loadILL();
+    cal = loadILL();
   } else {
     throw new Error(`unknown calculus: ${name}`);
   }
@@ -484,7 +486,7 @@ function proveBackchain({ body, absImports, calcName, profile, key, cacheDir, op
   // user-defined predicates from the imported program parse naturally.
   let goalHash;
   try {
-    goalHash = convert.parseExpr(body);
+    goalHash = convert.parseExpr(body, illConfig.loader);
   } catch (e) {
     return { ok: false, error: `parse error: ${e.message}`, key, cacheHit: false };
   }

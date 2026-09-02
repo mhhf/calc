@@ -17,11 +17,12 @@ import crypto from 'crypto';
 import calculus from '../lib/calculus/index.js';
 import { parserTables as computeParserTables, rendererFormats as computeRendererFormats, connByType as computeConnectivesByType } from '../lib/calculus/builders.js';
 import { specMeta as computeRuleSpecMeta } from '../lib/prover/rule-interpreter.js';
+import { loadILL } from '../calculus/ill/index.js';
 async function main() {
   const outputPath = process.argv[2] || path.join(import.meta.dirname, '../out/ill.json');
 
   console.log('Loading ILL calculus...');
-  const ill = await calculus.loadILL();
+  const ill = await loadILL();
 
   // Precompute derived tables (pure data, serializable)
   const parserTables = computeParserTables(ill.constructors);

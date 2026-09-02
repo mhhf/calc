@@ -30,6 +30,7 @@ import calculus from '../lib/calculus/index.js';
 import Store from '../lib/kernel/store.js';
 import { apply } from '../lib/kernel/substitute.js';
 import { unify } from '../lib/kernel/unify.js';
+import { loadILL } from '../calculus/ill/index.js';
 
 // Apply θ to a fixed point (substitution closure). Terminates because the
 // occurs check forbids cyclic bindings.
@@ -86,7 +87,7 @@ function genTerm(r, vocab, AST, depth) {
 describe('TODO_0272 M7 — unification property fuzzer', { concurrency: 1 }, () => {
   let AST, vocab;
   before(async () => {
-    const ill = await calculus.loadILL();
+    const ill = await loadILL();
     AST = ill.AST;
     vocab = makeVocab(AST);
   });

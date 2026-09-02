@@ -9,6 +9,7 @@
 // import so default-vs-named export shape doesn't matter.
 
 import path from 'node:path';
+import { loadILL } from '../calculus/ill/index.js';
 
 const ROOT = path.resolve(import.meta.dirname, '..');
 
@@ -23,7 +24,7 @@ async function loadDefault(spec) {
   const subst    = await loadDefault(path.join(ROOT, 'lib/kernel/substitute.js'));
   const apply    = subst.apply;
 
-  const ill = await calculus.loadILL();
+  const ill = await loadILL();
   const AST = ill.AST;
 
   function rng(seed) {

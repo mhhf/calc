@@ -13,12 +13,13 @@ import { gradeW } from '../lib/engine/grades.js';
 import { parserFromTables, parserTables } from '../lib/calculus/builders.js';
 import Store from '../lib/kernel/store.js';
 import { parseDecls } from '../lib/parser/declarations.js';
+import { loadILL } from '../calculus/ill/index.js';
 
 describe('v2 Calculus (generated from spec)', () => {
   let ill;
 
   before(async () => {
-    ill = await calculus.loadILL();
+    ill = await loadILL();
   });
 
   describe('loading', () => {

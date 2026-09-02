@@ -7,11 +7,12 @@ import assert from 'node:assert';
 import ast from '../lib/kernel/ast.js';
 import calculus from '../lib/calculus/index.js';
 import { gradeW } from '../lib/engine/grades.js';
+import { loadILL } from '../calculus/ill/index.js';
 describe('v2 AST utilities', () => {
   let AST;
 
   before(async () => {
-    const ill = await calculus.loadILL();
+    const ill = await loadILL();
     AST = ill.AST;
   });
 
