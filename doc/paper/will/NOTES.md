@@ -66,18 +66,18 @@ Compiles clean (only the benign `scit` font-shape warning).
    Expand into a full discussion subsection at submission time if page
    budget allows.
 
-7. **Remark candidate (THY_0029, 2026-09-02): the mass-splitting box
-   dissolves.** Companion to the paper's §3g-style dissolution remark:
-   the conjectured weight-graded contraction □_{r+s}A ⊢ □_rA ⊗ □_sA
-   adds no content — counts split via the counted bang (derivable, exact
-   conservation), masses factorize via ⊗-context splitting of the token
-   zone (multiplicative), sums live at ∃_ρ/⊕; token-backed boxes are
-   definable as ⟨Θ⟩ ⊗ A, unbacked ones violate weight conservation, and
-   the contraction shape would clone a draw (no-cloning, refuted
-   executably: one token cannot serve two ⊗-channels). One paragraph in
-   the discussion/positioning section; strengthens the "weight in the
-   endsequent" thesis — two independently conjectured connectives (the
-   two-semiring judgment, the weight box) both dissolved into it.
+7. **RESOLVED (2026-09-02): both remark candidates are in the .tex.**
+   (a) THY_0029's dissolution is the "The dissolution pattern" paragraph
+   in Related Work — the weight box's three faces, the token-backed/
+   unbacked dichotomy, the no-cloning refutation of the contraction
+   shape, all folded onto the two-semiring dissolution as one thesis
+   statement. (b) The conclusion's "since circulated" passage now also
+   summarizes the sequel CI development (THY_0031: separation on the
+   class graph ⟹ exact factorization; the two findings that touch THIS
+   paper's semantics — mass-observed draws under restriction semantics,
+   and class-not-run graphs — stated in one paragraph, cited as
+   "companion paper in preparation", no new bib entry). When the sequel
+   paper exists, swap the textual pointer for a \cite.
 
 ## 2. Claim boundaries (novelty audit 2026-09-01, from THY_0027)
 
