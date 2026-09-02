@@ -2,10 +2,10 @@
 title: "Certified Conditional Independence: Separation on Dynamic Derivation Forests"
 created: 2026-09-02
 modified: 2026-09-02
-summary: "T4-d(iii), the will track's last open theorem, proved at draft grain: wave variables are defined on existence events via ungrounded provenance keys (D1); the dependency graph of a conditioning class is the key-identified union of run graphs, where a draw event operationally consumes and re-emits every evar-carrying fact (value flow IS fact flow), linear contests contribute latent allocation forks, and conditioning enters as three kinds of sites — Z-draws, observed-fact colliders, and MASS-CHILDREN: in restriction semantics a wave whose total posterior weight is not constant across the class (bias, or bare existence at an unnormalized sort) acts as observed soft evidence, and naive d-separation without this discipline is UNSOUND (pinned: a contingent wave of total prior mass 2 leaks dependence through its mere existence). Separation ⟹ the conditioned mass factorizes exactly, μ(x,y,z) = c·f(x)·g(y), the factors readable as sub-forest (sub-certificate) masses and the split exhibited by the certificate's token partition. The proof runs induction-free through five lemmas: normalization decomposition (mass = normalized ancestral probability × per-node evidence factors), barren-subforest marginalization (needs a.s. finiteness), the moral-graph side split (standard graph theory, cited), factor mono-sidedness, and the recombination bijection (the genuinely dynamic core: separated sides of a class merge freely into class runs — where fixed-variable BN proofs have a product space, will has an exchange argument over event configurations). Soundness only: per-run actual-edge graphs are refuted by a pinned counterexample (a context-specific bias edge absent from every X=vb certificate), so separation is read on the class graph, decided on a static cover — the LDAG/CSI lesson, inherited deliberately."
+summary: "T4-d(iii), the will track's last open theorem, proved at draft grain: wave variables are defined on existence events via ungrounded provenance keys (D1); the dependency graph of a conditioning class is the key-identified union of run graphs, where a draw event operationally consumes and re-emits every evar-carrying fact (value flow IS fact flow), linear contests contribute latent allocation forks, and conditioning enters as three kinds of sites — Z-draws, observed-fact colliders, and MASS-CHILDREN: in restriction semantics a wave whose total posterior weight is not constant across the class (bias, or an unnormalized sort whose draw HAPPENS in only some runs — by contingent existence or by drop) acts as observed soft evidence hung off the draw node itself, and naive d-separation without this discipline is UNSOUND (pinned twice: a contingent wave of total prior mass 2 leaks dependence through its mere existence, and an always-existing wave leaks it through being DROPPED on the diagonal — the same-day adversarial pass's finding, repaired at the root). Separation ⟹ the conditioned mass factorizes exactly, μ(x,y,z) = c·f(x)·g(y), the factors readable as sub-forest (sub-certificate) masses and the split exhibited by the certificate's token partition. The proof runs induction-free through five lemmas: normalization decomposition (mass = normalized ancestral probability × per-node evidence factors), barren-subforest marginalization (needs a.s. finiteness), the moral-graph side split (standard graph theory, cited), factor mono-sidedness, and the recombination bijection (the genuinely dynamic core: separated sides of a class merge freely into class runs — where fixed-variable BN proofs have a product space, will has an exchange argument over event configurations). Soundness only: per-run actual-edge graphs are refuted by a pinned counterexample (a context-specific bias edge absent from every X=vb certificate), so separation is read on the class graph, decided on a static cover — the LDAG/CSI lesson, inherited deliberately."
 tags: [linear-logic, probabilistic, will, provenance, conditioning, independence, certificates, proof-theory, graded-types, soundness]
 category: "Probabilistic Generation"
-unique_contribution: "The first conditional-independence theorem at the level of RUNS of a probabilistic forward-chaining calculus: separation on the dependency graph carried by run certificates of execution-generated (dynamic, possibly unbounded) derivation forests implies exact ℚ factorization of the unnormalized conditioned mass, with the factors exhibited by the certificate's token partition (existing CI theory proves separation theorems about MODELS — fixed BNs, proof nets, string diagrams, type-annotated programs; RES_0142 verified all five axes open). Three structural discoveries en route: (1) MASS-OBSERVED EXISTENCE — under unnormalized restriction semantics, a wave's total posterior weight is soft evidence, so any wave whose total varies across the conditioning class (bias, or existence at a sort of total mass ≠ 1) must enter d-separation as a conditioned virtual child; without this the classic collider rules are unsound (pinned counterexample: dependence through bare existence). (2) Value flow needs no edge sort of its own: modeling the draw event as consuming and re-emitting every evar-carrying fact (which is operationally exact — substituteEvar) makes d-separation's directional collider discipline literally the resource-flow discipline of the certificate. (3) Linear-resource contests are an influence channel invisible to fact-flow DAGs; latent allocation forks restore soundness and vanish exactly in certifyContention's conflict-free regime. Plus the counterexample making the object-level design forced: certificates of runs where a context-specific rule never fired carry no trace of it, so per-run actual-edge separation is unsound and the criterion must quantify over the class (computably: a statically pruned cover)."
+unique_contribution: "The first conditional-independence theorem at the level of RUNS of a probabilistic forward-chaining calculus: separation on the dependency graph carried by run certificates of execution-generated (dynamic, possibly unbounded) derivation forests implies exact ℚ factorization of the unnormalized conditioned mass, with the factors exhibited by the certificate's token partition (existing CI theory proves separation theorems about MODELS — fixed BNs, proof nets, string diagrams, type-annotated programs; RES_0142 verified all five axes open). Three structural discoveries en route: (1) MASS-OBSERVED DRAWS — under unnormalized restriction semantics, a wave's total posterior weight is soft evidence on whether its draw happens, so any wave whose total varies across the conditioning class (bias, or a total ≠ 1 with existence OR drop varying) must enter d-separation as a conditioned virtual child of the draw node itself; without this the classic collider rules are unsound (pinned counterexamples: dependence through bare existence, and through a drop — a wave that always exists but loses its evar-carrier on the diagonal). (2) Value flow needs no edge sort of its own: modeling the draw event as consuming and re-emitting every evar-carrying fact (which is operationally exact — substituteEvar) makes d-separation's directional collider discipline literally the resource-flow discipline of the certificate. (3) Linear-resource contests are an influence channel invisible to fact-flow DAGs; latent allocation forks restore soundness and vanish exactly in certifyContention's conflict-free regime. Plus the counterexample making the object-level design forced: certificates of runs where a context-specific rule never fired carry no trace of it, so per-run actual-edge separation is unsound and the criterion must quantify over the class (computably: a statically pruned cover)."
 references:
   - "TODO_0302 — the plan this discharges (M1 definitions, M2 factorization, M3 criterion, M4 soundness; M0's sweep = RES_0142)"
   - "THY_0026 §8 — T1 (the measure), T2 (subcriticality = H1), T3 (importance); §6 T4-d, the conjecture family"
@@ -33,14 +33,19 @@ references:
 **Status.** Proved at draft grain (2026-09-02, one session): definitions
 (§2, M1), factorization lemma (§3, M2), separation criterion (§4, M3),
 soundness theorem with a five-lemma proof (§5, M4); genericity converse
-left as a conjecture with a route (§6, M6). NOT yet adversarially
-audited — the will-track discipline (THY_0027's same-day audit) requires
-a dedicated audit pass before the sequel paper leans on §5; the two
-places relying on cited or previously-sketched material are flagged
-inline (L1's driver-adequacy extension, L3's graph theory). The design
-decisions are pinned numerically: `tests/engine/will-ci.test.js` — four
-programs whose exact conditioned masses (engine-computed, hand-verified)
-refute the naive criteria and witness the sound one.
+left as a conjecture with a route (§6, M6). FIRST adversarial pass done
+same day (the THY_0027 discipline), two findings, both repaired at the
+root: (1) the mass-child V_e must hang off the DRAW NODE itself — the
+drop half of "the draw happens" leaks dependence exactly like the
+existence half, pinned as pin 2b before the repair was written; (2) the
+policy-order-sensitive-bias scope boundary is T1's, inherited and now
+stated (§7). A FRESH-EYES audit (Denis / a later session) is still
+required before the sequel paper leans on §5; the two places relying on
+cited or previously-sketched material are flagged inline (L1's
+driver-adequacy extension, L3's graph theory). The design decisions are
+pinned numerically: `tests/engine/will-ci.test.js` — five programs whose
+exact conditioned masses (engine-computed, hand-verified) refute the
+naive criteria and witness the sound one.
 
 ## 1. Setting and scope
 
@@ -94,8 +99,10 @@ certificate.
 
 A run r has three kinds of **events**: the initial event ⊥ (emitting
 σ₀'s facts), one **fire event** per rule firing in its settle segments,
-and one **draw event** d_e per wave e opened in r (drawn or dropped;
-plain-∃ skolems are token-free open events and carry no weight). The
+and one **draw event** d_e per wave e opened in r, with OUTCOME SPACE
+members(sort) ∪ {dropped} — a wave whose evar-carrier is consumed
+before its draw resolves to `dropped` with factor 1 (plain-∃ skolems
+are token-free open events and carry no weight). The
 run's certificate (certifyCollapse, elaborate-collapse.js) records
 exactly these as @fire and @draw nodes with their consumed / produced /
 reserved multisets, bias and alt factors, SLD support for clause-derived
@@ -180,22 +187,32 @@ outcome", so that all M-outcomes are determined by z (used in L5):
    the disjunction sound.
 3. **Mass-children**: for each wave e let λ_e(r) = T_e(r) if e is drawn
    in r (T_e the total posterior weight at e's draw, = Σ_c w(e,c),
-   including inside masses for conditioned sorts) and λ_e(r) = 1
-   otherwise. If λ_e is constant across C_z it is a harmless global
-   factor. Otherwise add a virtual node V_e with edges from d_e's
-   existence and bias/within parents, observed. **This is forced by
-   restriction semantics**: T_e is exactly a soft-evidence likelihood on
-   e's parents — with bias present, T_e varies with the bias context;
-   with T_e ≠ 1, the bare EXISTENCE of e multiplies the run mass. Pin 2
-   realizes the second, purest form: a wave spawned only when X = Y,
-   drawn and never used, at a sort of total prior mass 2 — μ(x,y) gains
-   a factor 2 exactly on the diagonal and X ⊥̸ Y, though the spawn fire
-   is an unobserved collider and textbook d-separation calls the path
-   blocked. The normalized twin (total 1) restores independence,
-   engine-exact. Naive d-separation is unsound for unnormalized
-   measures; the mass-child discipline repairs it. (THY_0030's
-   zero-variance identity is the telescoped one-wave shadow of this:
-   totals are importance factors.)
+   including inside masses for conditioned sorts) and λ_e(r) = 1 if e
+   is absent or dropped. If λ_e is constant across C_z it is a harmless
+   global factor. Otherwise add a virtual node V_e, observed, with
+   edges from **d_e ITSELF** and from e's bias/within parents: λ_e is a
+   function of d_e's outcome (member vs `dropped` — §2a) and the bias
+   context, and nothing less. **This is forced by restriction
+   semantics**: T_e is exactly a soft-evidence likelihood — with bias
+   present, T_e varies with the bias context; with T_e ≠ 1, whether e's
+   draw HAPPENS multiplies the run mass. Both halves of "happens" leak,
+   and both are pinned: pin 2 (existence — a wave spawned only when
+   X = Y, drawn and never used, at total prior mass 2: μ gains the
+   factor 2 exactly on the diagonal, X ⊥̸ Y, though the spawn fire is an
+   unobserved collider textbook d-separation calls blocked) and pin 2b
+   (drop — the audit's finding 1: a wave that ALWAYS exists but whose
+   evar-carrier is consumed before its draw exactly when X = Y = va
+   pays T on the three other cells only; masses 1/4/4/8, dependence
+   again, and the normalized twin is clean). The drop half is why V_e
+   hangs off d_e rather than off e's spawner: drop-vs-draw is decided
+   by whoever consumes the carrier first, which is a CONTEST between
+   the consuming fire and d_e (a consumer of the same instances under
+   §2a's rewrite reading) — covered by the allocation forks of §2e, so
+   the deciding events are d-connected to d_e and the moral clique
+   {V_e, d_e, bias-parents} carries the factor. Naive d-separation is
+   unsound for unnormalized measures; the mass-child discipline repairs
+   it. (THY_0030's zero-variance identity is the telescoped one-wave
+   shadow: totals are importance factors.)
 
 The site set M = {d_Z} ∪ {O_F} ∪ {V_e : λ_e non-constant}.
 
@@ -276,8 +293,10 @@ Design decisions, each validated:
   the fire's output breaks it (1·4 ≠ 0, explaining away). The
   directional discipline is available precisely because §2a makes every
   edge a resource edge with the draw event as rewriter.
-- **Mass-children (the restriction-semantics repair).** Pin 2, §2d.
-  Without V_e-sites the criterion is UNSOUND, not merely incomplete.
+- **Mass-children (the restriction-semantics repair).** Pins 2 and 2b,
+  §2d — existence and drop are the two halves of "the draw happens",
+  and both leak when T ≠ 1. Without V_e-sites (hung off the draw node
+  itself) the criterion is UNSOUND, not merely incomplete.
 - **Chains and forks block at conditioned nodes.** Pin 4: a spawn-order
   chain X → M → Y (context-specific spawning rules + bias) has
   X ⊥ Y | M = m exactly (80 = 80 and 16 = 16) and X ⊥̸ Y marginally
@@ -377,10 +396,15 @@ An-projections and pairs (α, β) that agree on the (z-fixed) M-part:
   both sides — an unobserved source, i.e. an active fork path between
   the sides — contradicting separation (paths within one side ∪ M
   cannot contest: they ride in a single run's projection, conflict-free
-  by H2). By L1, the merged configuration extends (via L2′'s fibers) to
-  class runs realizing exactly (α, β); maximality on each side gives
-  exactly one An-projection. Draw-outcome consistency at M is the
-  agreement hypothesis.
+  by H2). No phantom events: an event enabled in the merge has its
+  premises in one side ∪ M (its parent clique is mono-sided, since if
+  it occurs in any class run it is a 𝒢-node under L4's argument), so
+  it was enabled in that side's originating run and is already
+  accounted for by that run's maximality — merges create no enablements
+  neither side saw. By L1, the merged configuration extends (via L2′'s
+  fibers) to class runs realizing exactly (α, β); maximality on each
+  side gives exactly one An-projection. Draw-outcome consistency at M
+  is the agreement hypothesis.
 
 Assembling: by L2/L2′/L4, the mass of a class An-projection is
 (Π A-side factors)(Π B-side factors); by L5 the sum over the class
@@ -440,6 +464,15 @@ theorem-or-remark per TODO_0302.
   factor structure matches token structure; whether two tokens model
   independent worldly events remains the modeller's assertion, made
   inspectable.
+- **Policy-order-sensitive bias.** A bias rule that needs another
+  wave's GROUND value fires only after that wave's draw, so a policy
+  that draws the biased wave first erases the factor — programs in
+  this shape make the measure itself policy-sensitive. That is T1's
+  standing scope boundary (the fixed-policy clause of §1, flagged at
+  load by the C2 Hypothesis-S lint), inherited here, not created here:
+  all statements are relative to the driver's policy, whose
+  settle-to-quiescence-before-each-draw discipline is also what L2
+  relies on for "every enabled bias fire has fired".
 - **Normalized-conditional readings.** μ-CI is the restriction-
   semantics statement; the normalized conditional P(· | C_z) inherits
   it whenever 0 < μ(C_z) < ∞ (divide the cross-product identity), but
@@ -456,5 +489,6 @@ division-free identities):
 |---|---|---|
 | 1 | two waves → one fire | marginal ⊥ (4 = 4); conditioning on the output breaks it (explaining away) |
 | 2 | contingent wave, total 2 vs total 1 | bare existence leaks dependence iff total ≠ 1 (16 ≠ 4 vs 4 = 4) — mass-children forced |
+| 2b | always-existing wave, dropped on the diagonal | drop leaks the same way (1·8 ≠ 4·4; normalized twin clean) — V_e hangs off the draw node (audit finding 1) |
 | 3 | context-specific bias edge | dependence (12 ≠ 4) while every X=vb certificate shows no bias fire — class graph forced |
 | 4 | spawn-order chain X → M → Y | blocked given M = m (80 = 80, 16 = 16); active marginally (168 ≠ 264) |

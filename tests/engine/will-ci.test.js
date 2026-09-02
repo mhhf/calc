@@ -16,6 +16,12 @@
  *      the normalized twin (total = 1) is independent. Naive
  *      d-separation (blocked collider) is UNSOUND for will's measure
  *      without the mass-child discipline (THY_0031 §4).
+ *   2b. MASS-OBSERVED DROP (audit finding 1): the dual leak — a wave
+ *      that always EXISTS but is DROPPED (evar-carrier consumed before
+ *      its draw) exactly when X = Y = va pays its total T only on the
+ *      non-dropped runs; T ≠ 1 leaks dependence through the drop, so
+ *      V_e must be a child of the draw node itself (outcome space
+ *      includes 'dropped'), not only of its spawn/bias parents.
  *   3. CONTEXT-SPECIFIC EDGE (D1): a bias rule enabled only in the
  *      X=va world makes Y dependent on X, while the X=vb run's
  *      certificate contains NO bias fire — separation must be read on
@@ -161,6 +167,53 @@ spw: chk * $tile x0 T * $tile x1 T -o { exists W: w2 @w. probe W }.
   it('normalized twin (total 1): independence restored', () => {
     const r = loadProg('ci-exist1.will', SPAWNW('1/2', '1/2')).collapse(init(), { mode: 'exact' });
     assert.deepEqual(r.total, [9n, 1n]);
+    assert.ok(factorizes(joint(r, 'x0', 'x1')));
+  });
+});
+
+describe('CI pin 2b — mass-observed drop (audit finding 1): T ≠ 1 leaks through a drop', () => {
+  // W always spawns; its 3-member sort (higher entropy than the binary
+  // waves) draws LAST under the entropy chooser, so the dropper — armed
+  // only in the (va,va) world — consumes W's evar carrier during the
+  // settle segment before W's draw. λ_W = T^[drawn]: with T = 2 the
+  // three non-diagonal cells pay the factor and the diagonal does not.
+  const SPAWNW = (w) => HEADER + `
+w3: sort.
+wc: w3 @w ${w}.
+wd: w3 @w ${w}.
+we: w3 @w ${w}.
+probe: (t: w3) -> type.
+mkw: type.
+flag: type.
+sw: mkw -o { exists W: w3 @w. probe W }.
+dr: flag * $tile x0 va * $tile x1 va * probe E -o { gone }.
+gone: type.
+`;
+  const init = () => ({
+    linear: {
+      [Store.put('mk', [atom('x0')])]: 1,
+      [Store.put('mk', [atom('x1')])]: 1,
+      [atom('mkw')]: 1,
+      [atom('flag')]: 1,
+    },
+    persistent: {},
+  });
+
+  it('unnormalized (total 2): dropping leaks dependence (masses 1/4/4/8)', () => {
+    const r = loadProg('ci-drop2.will', SPAWNW('2/3')).collapse(init(), { mode: 'exact' });
+    assert.ok(eqF(r.total, [17n, 1n]), `total ${r.total}`);
+    const m = joint(r, 'x0', 'x1');
+    for (const [k, v] of [['aa', 1n], ['ab', 4n], ['ba', 4n], ['bb', 8n]]) {
+      assert.ok(eqF(m[k], [v, 1n]), `${k}: ${m[k]} ≠ ${v}`);
+    }
+    assert.ok(eqF(massOf(r, (s) => hasAtom(s, 'gone')), m.aa),
+      'the dropped-W runs are exactly the diagonal');
+    assert.ok(!factorizes(m), 'total 2 leaks X ⊥̸ Y through the drop');
+  });
+
+  it('normalized twin (total 1): independence restored', () => {
+    const r = loadProg('ci-drop1.will', SPAWNW('1/3')).collapse(init(), { mode: 'exact' });
+    assert.ok(eqF(r.total, [9n, 1n]), `total ${r.total}`);
     assert.ok(factorizes(joint(r, 'x0', 'x1')));
   });
 });
