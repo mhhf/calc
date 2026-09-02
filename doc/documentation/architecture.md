@@ -83,8 +83,6 @@ lib/prover/                      # Backward proof search
 │   └── elaborate-collapse.js    # decimation runs → kernel-checked trees;
 │                                #   certifyCollapse — endsequent carries ⟨Θ⟩ (0298)
 ├── generic-term.js              # proof term extraction from backward proof trees
-├── ill/guided-term.js           # forward trace → complete ILL proof terms
-│                                #   (self-registers as the bridge's guided builder)
 ├── check-term.js                # proof term type checker (trusted kernel extension)
 └── index.js                     # convenience re-exports
 
@@ -124,20 +122,7 @@ lib/engine/                      # Forward execution engine (L4c/L4d)
 ├── rule-analysis.js             # pattern roles, compiled substitution recipes
 ├── constraint.js                # EqNeqSolver (union-find with forbid list)
 ├── disc-tree.js                 # discrimination tree indexing
-├── lnl/                         # Linear-Non-Linear framework
-│   ├── persistent.js            # persistent goal proving
-│   ├── loli.js                  # dynamic rule matching
-│   ├── loli-drain.js            # persistent-trigger loli drain
-│   └── existential.js           # existential resolution
 ├── theories/                    # shared equational theories (ratlit ↔ rat(N,D))
-├── ill/                         # ILL-specific
-│   ├── calculus-config.js       # THE per-logic plug point (see CalculusConfig
-│   │                            #   @typedef in engine/index.js); till's twin is
-│   │                            #   calculus/till/calculus-config.js
-│   ├── backchain-ill.js         # ILL backward prover defaults
-│   ├── binlit-theory.js         # binary number equational theory
-│   ├── connectives.js           # ILL connective configuration
-│   └── ffi/                     # foreign function interface (arithmetic, etc.)
 ├── backward-cache.js            # backward proof cache (toggleable)
 ├── constraint-feed.js           # solver integration: feedPers, satFilter
 ├── delta-bypass.js              # direct child extraction for flat patterns
@@ -287,16 +272,16 @@ graph TB
         EXP["<b>explore.js</b><br/>DFS, mutation+undo"]
     end
 
-    subgraph LNLLayer["LNL Layer (zero opt/ill imports)"]
-        PERS["<b>lnl/persistent.js</b><br/>Persistent goal proving"]
-        LOLI["<b>lnl/loli.js</b><br/>Dynamic rule matching"]
-        DRAIN["<b>lnl/loli-drain.js</b><br/>Persistent-trigger loli drain"]
-        EXIS["<b>lnl/existential.js</b><br/>∃-variable resolution"]
+    subgraph FamilyLayer["Family Layer (family/lnl/lib/, injected via cc.family.engine)"]
+        PERS["<b>persistent.js</b><br/>Persistent goal proving"]
+        LOLI["<b>loli.js</b><br/>Dynamic rule matching"]
+        DRAIN["<b>loli-drain.js</b><br/>Persistent-trigger loli drain"]
+        EXIS["<b>existential.js</b><br/>∃-variable resolution"]
     end
 
-    subgraph ILLLayer["ILL Layer (calculus/ill/)"]
-        CONN["<b>lib/connectives.js</b>"]
-        FFIL["<b>lib/ffi/</b>"]
+    subgraph ILLLayer["ILL Layer (calculus/ill/lib/)"]
+        CONN["<b>connectives.js</b>"]
+        FFIL["<b>ffi/</b>"]
     end
 
     subgraph OptLayer["Toggleable Optimizations"]
@@ -318,7 +303,7 @@ graph TB
     style OptLayer fill:#fce4ec,stroke:#880e4f
 ```
 
-**Layer discipline:** The generic core (`compile.js`, `match.js`, `strategy.js`, `forward.js`, `explore.js`, `backchain.js`) and `lnl/` have zero `ill/` or `opt/` imports. All cross-layer behavior is injected via `matchOpts` callbacks by the composition root (`index.js`). Enforced by `tests/engine/layer-dag.test.js` (also covers the backward prover DAG and `lib/`↛`src/ui/` boundary). See `doc/documentation/forward-chaining-engine.md` for full details.
+**Layer discipline:** The generic core (`compile.js`, `match.js`, `strategy.js`, `forward.js`, `explore.js`, `backchain.js`) has zero family, opt, or ill imports. The four engine hooks (`proveNaive`, `matchDynamicRule`, `drainDynamicRules`, `resolveEx`) arrive as data on `cc.family.engine` from `family/lnl/family-config.js`, injected via `matchOpts`. Layer DAG: `lib/` ↛ `family/` ↛ `calculus/`; `family/` may import `lib/`. Enforced by `tests/engine/layer-dag.test.js` (also covers the backward prover DAG and `lib/`↛`src/ui/` boundary). See `doc/documentation/forward-chaining-engine.md` for full details.
 
 **Profile-driven optimization.** Engine optimizations live in `lib/engine/opt/` (generic) or alongside their consumers at the engine root (`backward-cache.js`, `constraint-feed.js`, `delta-bypass.js`, `preserved.js`). The `optimizer.js` resolves a profile (`bare`/`fast`/`evm`) into an engine context with the appropriate strategy stack at startup — no runtime branching in hot loops. The `bare` profile disables all optimizations and serves as the correctness baseline. See `doc/documentation/optimization-architecture.md`.
 

@@ -39,7 +39,6 @@ lib/engine/
 ├── delta-bypass.js         # Direct child extraction for flat patterns
 ├── preserved.js            # Skip re-producing unchanged facts
 ├── disc-tree.js            # Discrimination tree indexing
-├── lnl/loli-drain.js       # Persistent-trigger loli fusion (LNL-generic)
 └── opt/                    # Extracted optimization modules
     ├── ffi.js              # FFI-accelerated persistent proving + compiled steps
     ├── compiled-clauses.js # Compiled clause dispatch (zero-subgoal → direct lookup)
@@ -82,7 +81,7 @@ const PROFILES = {
 | `preserved` | `preserved.js` | Skip consuming and re-producing facts that appear unchanged in consequent. |
 | `compiledSub` | `rule-analysis.js` | Precompiled `Store.put` recipes for consequent instantiation. Bypasses recursive `applyIndexed`. |
 | `fingerprint` | `opt/fingerprint.js` | O(1) fingerprint layer in strategy stack. Auto-detects discriminating predicates from rule structure. |
-| `loliDrain` | `lnl/loli-drain.js` | Eagerly fires persistent-trigger lolis before DFS continuation. Safe because they consume only themselves. |
+| `loliDrain` | `family/lnl/lib/loli-drain.js` | Eagerly fires persistent-trigger lolis before DFS continuation. Safe because they consume only themselves. |
 | `structuralMemo` | `opt/structural-memo.js` | Control-hash memoization: `hash(PC, SH)` detects isomorphic subtrees. |
 | `prediction` | `opt/prediction.js` | Threaded code dispatch. Predicts next rule from substitution, skips `findAllMatches`. |
 | `solver` | `constraint.js` + `constraint-feed.js` | EqNeq constraint solver for branch pruning. Feeds persistent facts to solver, filters UNSAT alternatives. |
@@ -106,7 +105,7 @@ graph TB
         PREDICT --> GO["go(depth)"]
         GO --> MATCH["findAllMatches<br/>(uses engine.strategyStack)"]
         GO --> MUTATE["mutateState()"]
-        GO --> DRAIN["drainLolis()"]
+        GO --> DRAIN["drainDynamicRules()"]
         GO --> FEED["feedPers()"]
         GO --> MEMO["checkMemo / recordMemo"]
         GO --> SAT["satFilter()"]
@@ -143,7 +142,7 @@ Zero measurable regression from the module reorganization. V8 inlines across Com
 
 Two patterns caused regression during extraction and had to be fixed:
 
-1. **Function-as-parameter.** Passing `mutateState` to `drainLolis` as a parameter created a polymorphic call site. Fix: import directly.
+1. **Function-as-parameter.** Passing `mutateState` to `drainDynamicRules` as a parameter created a polymorphic call site. Fix: import directly.
 
 2. **Context object in hot loop.** `predictNext(m, ctx)` with `ctx.discIndex[...]` lookups was slower than a closure capturing `discIndex` directly. Fix: `createPredictNext()` returns a closure.
 
@@ -154,7 +153,7 @@ Three caching mechanisms with different invalidation strategies:
 | Cache | Location | Key | Invalidation | Soundness |
 |---|---|---|---|---|
 | **Backward cache** | `backward-cache.js` | `(pred, input_args...)` | Cleared at start of each `run()`/`explore()` call | Sound iff cleared per-run. Persistent context is monotonically growing within a DFS path. Cached successes remain valid on all paths (persistent facts never retract). Cached failures are conservative — re-proving on miss is correct, never false positive. Arena undo retracts persistent facts on backtrack, but cache is keyed on inputs not persistent state. |
-| **Tabling cache** | `lnl/persistent.js` | `(goal_hash)` | Cleared with backward cache (same `lnlClearCache()` call) | Same invariant as backward cache — cleared per run |
+| **Tabling cache** | `family/lnl/lib/persistent.js` | `(goal_hash)` | Cleared with backward cache (same `clearBWCache()` call) | Same invariant as backward cache — cleared per run |
 | **Compose disk cache** | `compose.js` | `(rule_hash_pair)` | Stable across runs (content-addressed, deterministic) | Sound because input rules are immutable content-addressed hashes — same inputs always produce same composed output |
 
 ## Constraint Feed (`constraint-feed.js`)

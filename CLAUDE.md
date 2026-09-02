@@ -48,11 +48,12 @@ npm run bench:diff    # Cross-commit benchmark comparison (use this when asked t
 
 ## Architecture
 
-**Backward prover** (L1-L4): kernel.js → generic.js → focused.js → strategy/ (manual, auto)
+**Backward prover** (L1-L4): kernel.js → generic.js → focused.js → strategy/ (manual, auto). Zone names come from `calculus.contextStructure`, DERIVED from the family's `@position_modes` + `@structural` declarations (consumableZone/copySource + per-zone exchange/contraction/weakening; two-zone default `DEFAULT_CONTEXT_STRUCTURE` in `lib/kernel/sequent.js` for bare calculi) — no `'linear'`/`'cartesian'` literals in lib/ logic (TODO_0086).
 **Forward engine** (L4): Three-layer lego architecture:
 - **Generic core**: match.js → strategy.js → forward.js / explore.js — pattern matching, rule selection, committed-choice/exhaustive execution. Configurable via `matchOpts` callbacks.
-- **LNL layer** (`lnl/`): persistent goal proving, loli (dynamic rule) matching, existential resolution. Adds the linear/persistent distinction.
+- **Family layer** (`family/lnl/`): persistent goal proving, loli (dynamic rule) matching, existential resolution — the linear/persistent distinction. A top-level family directory (declarative `lnl.family` + executable `family-config.js` + `lib/`); the engine receives its hooks as DATA via `cc.family.engine` and imports no family module. Absent family → state-lookup-only persistent proving.
 - **ILL layer** (`calculus/ill/`): binary arithmetic theories, ILL-specific backchainer defaults. Lives OUTSIDE lib/ — plugged in via equational theories and `matchOpts` composition through the calculus config (calculus/ill/calculus-config.js + calculus/ill/lib/).
+Layer DAG (enforced by tests/engine/layer-dag.test.js): `lib/` ↛ `family/` ↛ `calculus/`; family imports lib; calculus imports both. `lib/` also holds no calculus path or parser: `loadILL`, `proveString`/`parseFormula`/`parseSequent`/`render`, and the bound `parseExpr` live on the ILL facade `calculus/ill/index.js`.
 **Lax monad** `{A}`: polarity shift (async→sync) at `lib/prover/bridge.js`. Three execution profiles: `'full'` (default, opaque), `'guided'` (oracle + verified ILL terms), `'off'` (pure backward)
 **Content-addressed store**: formulas are hashes (numbers), O(1) equality via `lib/kernel/store.js`
 **Equational theories** (`kernel/eq-theory.js`): pluggable cross-tag matching. O(1) dispatch via `_rewriteFromTag[tagId]` lookup. Built-in: strlit. Calculus-registered: binlit (ILL).
@@ -100,11 +101,6 @@ lib/
 │   ├── ci.js            # Generic: calc.certifyCI — THY_0031 separation criterion on the class-graph cover (run waves + phantoms + static rules; sites Z-draws/O_F/mass-children; soundness-only: `separated` certifies X ⊥ Y | Z, refusal carries a witness walk; TODO_0302 M5)
 │   ├── compose.js       # Generic: grade-0 cut-elimination pipeline (cutPair/predMap/compose0) + chain fusion + SROA + SLD tabling (THY_0015/0016); runs on every non-cached load
 │   ├── compose-profile.js # Generic: compose profiling emission (onPhase-gated, pure — fuse/tabling rollups + leaves)
-│   ├── lnl/             # LNL layer: linear/persistent distinction
-│   │   ├── persistent.js  # Persistent goal proving (state → cache → backchain)
-│   │   ├── loli.js        # Dynamic rule matching (linear implications)
-│   │   ├── loli-drain.js  # Persistent-trigger loli drain (generic, moved from ill/)
-│   │   └── existential.js # ∃-variable resolution
 │   ├── timed/           # Timed layer: wall-clock scheduler over the stamp algebra (generic over cc.grades/cc.stampTag; TODO_0265)
 │   │   ├── timed.js       # buildTimedConfig, settle loop, stamp-aware matching (tryTimedMatch/fire)
 │   │   ├── timed-api.js   # grades-gated API construction (settle/views/game + D16/C1-C3 lints) — index.js delegates here
@@ -133,16 +129,21 @@ lib/
 │   └── balanced-split.js # Bracket-aware string splitting for sequent components
 ├── rules/               # .rules file parser (sequent notation → descriptors)
 ├── browser.js           # Browser-compatible API (loads from ill.json bundle)
-└── index.js             # Node.js API entry point
+└── index.js             # Node.js API entry point (calculus-generic — ILL-implicit API lives on the facade)
+
+family/lnl/              # LNL structural family (TODO_0086) — shared BY calculi, imports lib/, never calculus/
+├── lnl.family           # Declarative source: base types, sequent constructor (@position_modes), structural rules (@structural/@position) — contextStructure is DERIVED from these
+├── family-config.js     # Executable bindings: cc.family = { name, engine: { proveNaive, matchDynamicRule, drainDynamicRules, resolveEx } } — composed by reference into every calculus config
+└── lib/                 # Engine machinery (persistent.js, loli.js, loli-drain.js, existential.js)
 
 calculus/ill/            # ILL calculus definition + ILL-bound machinery
-├── ill.calc             # Connective definitions
+├── ill.calc             # Connective definitions (@extends lnl → family/lnl/lnl.family)
 ├── ill.rules            # Inference rules (sequent notation)
-├── lnl.family           # Family infrastructure (LNL structural framework)
-├── index.js             # ILL engine facade: mde with calculusConfig pre-bound (+ normalizeQuery) — what ILL-implicit callers import
+├── index.js             # ILL facade: mde with calculusConfig pre-bound + loadILL, proveString/parseFormula/parseSequent/render, bound parseExpr, normalizeQuery — what ILL-implicit callers import
 ├── calculus-config.js   # Single assembly point: layered config (L0-L6) — the generic engine receives it via opts.calculusConfig
 ├── lib/                 # ILL-bound machinery (calculus/<name>/lib pattern — imported only via the config/plugins, never by the generic engine)
 │   ├── backchain-ill.js # ILL defaults for backchainer (explicit initILL())
+│   ├── forward-parser.js # .ill expression parser (cc.loader.buildParser) + loadILL — the engine holds no default parser
 │   ├── binlit-theory.js # Equational theory: binlit ↔ i/o/e
 │   ├── bytecode-loader.js # EVM bytecode loader
 │   ├── bytecode-normalize.js # EVM bytecode → trie/arrlit/semantic
