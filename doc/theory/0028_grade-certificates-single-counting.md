@@ -11,8 +11,8 @@ references:
   - "THY_0027 — trace-judgment cut admissibility (the token discipline; no-promotion-through-a-draw is why observations under ! are the marked case)"
   - "TODO_0300 — the phase plan (task 1)"
   - "Barthe, Hsu & Liao (2020). A Probabilistic Separation Logic. POPL (∗ = independence — the reading Theorem 1 operationalizes; cite, don't claim)"
-  - "Li, Ahmed & Holtzen (2023). Lilac. PLDI (conditioning modality + C-Indep frame rule — program-logic-level; ours is engine-level over all runs)"
-  - "Bao, Docherty, Hsu & Pym (2021). DIBI. LICS (qualitative conditional-independence logic — Thm V.1 is the qualitative ancestor of the T4-d(iii) residual)"
+  - "Li, Ahmed & Holtzen (2023). Lilac. PLDI (CI = ∗ under the disintegration modality □_Z, standard SL frame rule — program-logic-level; ours is engine-level over all runs. Description corrected 2026-09-02, RES_0142: no standalone C-Indep judgment)"
+  - "Bao, Docherty, Hsu & Silva (2021). DIBI. LICS (qualitative conditional-independence logic — Thm V.1 is the qualitative ancestor of the T4-d(iii) residual; author corrected Pym→Silva 2026-09-02, RES_0142)"
   - "Green, Karvounarakis & Tannen (2007). Provenance Semirings. PODS (provenance as the identity criterion — here at the FACT level, inside the posterior product)"
   - "Sato (1995). Distribution semantics (independent switch draws — the msw analogue of source tags)"
 ---

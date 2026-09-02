@@ -24,7 +24,7 @@ references:
   - "Dahlqvist & Kozen (2020). Semantics of Higher-Order Probabilistic Programs with Conditioning. POPL (randomness as a linear resource — DENOTATIONALLY; no proof system, no token hypotheses, no cut theorem. Cite and distinguish.)"
   - "Charguéraud & Pottier (2017). Time Credits in Separation Logic. JAR — and Lepigre et al. (2024), Error Credits/Eris, ICFP (cost/error as consumable resources — the closest proof-system mechanism; anonymous, additive/unit-cost. drawn-tokens upgrade: NAMED witnesses with multiplicative per-constructor priors. Cite and distinguish.)"
   - "Pitts (2003) Nominal Logic; Miller & Tiu (2005) ∇ (fresh names as non-duplicable — scope hygiene, no prior, no weight; drawn-tokens are sorted, weighted, and consumed by a quantifier rule. Cite and distinguish.)"
-  - "Di Guardia, Ehrhard & Faggian (2024). Bayesian Networks and Proof-Nets. arXiv:2412.20540 (probabilities in proof-net BOXES with structure-preserving cut elimination; not in the sequent context, no weighted ∃. Cite and distinguish.)"
+  - "Ehrhard, Faggian & Pagani (2024). Bayesian Networks and Proof-Nets. arXiv:2412.20540, workshop version — the full paper is arXiv:2602.04045 (Di Guardia, Ehrhard, Evrard & Faggian, 2026; authors corrected 2026-09-02, RES_0142). Probabilities in proof-net BOXES with structure-preserving cut elimination; not in the sequent context, no weighted ∃. Cite and distinguish."
 ---
 
 # Trace-Judgment Cut Admissibility
