@@ -80,18 +80,38 @@ function _solveCore(sortSystem, priorsTable, definitions, seeds, masses, errors)
   const idx = new Map(); const low = new Map(); const onStk = new Set();
   const stk = []; const sccOf = new Map(); const sccs = [];
   let counter = 0;
-  const strong = (v) => {
-    idx.set(v, counter); low.set(v, counter); counter++;
-    stk.push(v); onStk.add(v);
-    for (const h of heads(v)) for (const w of h.children) {
-      if (masses.has(w)) continue;   // already-solved constant
-      if (!idx.has(w)) { strong(w); low.set(v, Math.min(low.get(v), low.get(w))); }
-      else if (onStk.has(w)) low.set(v, Math.min(low.get(v), idx.get(w)));
-    }
-    if (low.get(v) === idx.get(v)) {
-      const comp = [];
-      for (;;) { const w = stk.pop(); onStk.delete(w); comp.push(w); sccOf.set(w, sccs.length); if (w === v) break; }
-      sccs.push(comp);
+  // Iterative (explicit frame stack, audit 2026-09-02): depth equals the
+  // longest dependency chain, which is program-controlled — JS recursion
+  // would stack-overflow on adversarially deep sort graphs.
+  const strong = (root) => {
+    const frames = [{ v: root, kids: null, i: 0 }];
+    while (frames.length > 0) {
+      const f = frames[frames.length - 1];
+      const v = f.v;
+      if (f.kids === null) {
+        idx.set(v, counter); low.set(v, counter); counter++;
+        stk.push(v); onStk.add(v);
+        f.kids = [];
+        for (const h of heads(v)) for (const w of h.children) {
+          if (!masses.has(w)) f.kids.push(w);   // solved constants excluded
+        }
+      }
+      if (f.i < f.kids.length) {
+        const w = f.kids[f.i++];
+        if (!idx.has(w)) frames.push({ v: w, kids: null, i: 0 });
+        else if (onStk.has(w)) low.set(v, Math.min(low.get(v), idx.get(w)));
+        continue;
+      }
+      if (low.get(v) === idx.get(v)) {
+        const comp = [];
+        for (;;) { const w = stk.pop(); onStk.delete(w); comp.push(w); sccOf.set(w, sccs.length); if (w === v) break; }
+        sccs.push(comp);
+      }
+      frames.pop();
+      if (frames.length > 0) {
+        const p = frames[frames.length - 1];
+        low.set(p.v, Math.min(low.get(p.v), low.get(v)));
+      }
     }
   };
   for (const s of reach) if (!idx.has(s)) strong(s);

@@ -102,6 +102,17 @@ token-neutral. `ghost` is weakening restricted to the token class (Δ proper
 stays linear; the token sub-zone is affine — mixed-discipline zones are
 standard). No rule contracts a token; no rule proves one.
 
+**Scope caveat (oracle-minted tokens).** The sequent rules do not check
+c ∈ s: `drawn c s` with a non-member c would let ∃_ρ-R witness the binder
+outside its sort, so the system with *arbitrary hypothetical* tokens is NOT
+a conservative extension of ILL-with-sorts. Soundness is an invariant of
+token *provenance*: `drawn` is kernel-reserved (programs may neither produce
+nor match it — the convert fence), tokens are minted only at the @draw
+checker boundary, and the checker re-derives membership against the sort
+system (draw-check.js walkWitness). The conservativity statement in §5
+quantifies over derivations whose tokens all arise this way — i.e. over
+⟨Θ⟩ zones the @draw oracle can certify — not over free token hypotheses.
+
 The graded-⟨w⟩ rules of THY_0026 §2 are superseded: there the weight was a
 judgment grade multiplied in at ∃_ρ-R, and the principal cut reduction —
 which substitutes the witness and deletes the ∃_ρ-R node — loses the ρ(c)
