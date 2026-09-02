@@ -36,27 +36,30 @@ const parseExpr = (src) => mde.parseExpr(src, illConfig.loader);
 // ── ILL-implicit backward-prover API (moved from lib/index.js,
 // TODO_0086: lib/ holds no calculus paths). loadILL loads the sequent
 // calculus (ill.calc + ill.rules); the string helpers lazily build the
-// shared CalcAPI over it.
+// shared CalcAPI over it. Everything here is SYNCHRONOUS — loadILL does
+// no I/O beyond sync reads — matching lib/browser.js's contract (audit
+// 2026-09-02: the previous async wrappers forced callers to await
+// logically-sync operations).
 let _api = null;
-async function _ensureInit() {
+function _ensureInit() {
   if (!_api) _api = createCalcAPI(loadILL());
   return _api;
 }
 /** Prove a sequent string using ILL */
-async function proveString(sequentStr, opts = {}) {
-  return (await _ensureInit()).proveString(sequentStr, opts);
+function proveString(sequentStr, opts = {}) {
+  return _ensureInit().proveString(sequentStr, opts);
 }
 /** Parse a formula string using ILL */
-async function parseFormula(formulaStr) {
-  return (await _ensureInit()).parseFormula(formulaStr);
+function parseFormula(formulaStr) {
+  return _ensureInit().parseFormula(formulaStr);
 }
 /** Parse a sequent string using ILL */
-async function parseSequent(sequentStr) {
-  return (await _ensureInit()).parseSequent(sequentStr);
+function parseSequent(sequentStr) {
+  return _ensureInit().parseSequent(sequentStr);
 }
 /** Render a formula/sequent as string */
-async function render(ast, format = 'ascii') {
-  return (await _ensureInit()).render(ast, format);
+function render(ast, format = 'ascii') {
+  return _ensureInit().render(ast, format);
 }
 
 export {

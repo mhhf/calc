@@ -70,6 +70,9 @@ function extractRequires(filePath) {
     /require\(\s*['"]([^'"]+)['"]\s*\)/g,
     /import\s+(?:[^'"`;]+?\s+from\s+)?['"]([^'"]+)['"]/g,
     /import\(\s*['"]([^'"]+)['"]\s*\)/g,
+    // Re-export barrels are imports too (audit 2026-09-02: this pattern
+    // previously evaded the scanner entirely).
+    /export\s+(?:\{[^}]*\}|\*(?:\s+as\s+\w+)?)\s+from\s+['"]([^'"]+)['"]/g,
   ];
   for (const re of patterns) {
     let m;
@@ -534,6 +537,56 @@ describe('global boundary enforcement', () => {
         violations.map(v => `  ${v}`).join('\n')
       );
     }
+  });
+
+  it('lib/ and family/ use only string-literal dynamic imports (scanner evasion)', () => {
+    // extractRequires can only see literal module paths. A dynamic import
+    // with a variable or template-literal path would evade every boundary
+    // test above — prohibited by convention (audit 2026-09-02: confirmed
+    // evasion vector). Comments are stripped first (convert.js documents
+    // the unrelated `#import(path)` .ill directive in comments).
+    const allFiles = [...collectJSFiles(LIB_DIR), ...collectJSFiles(FAMILY_DIR)];
+    const violations = [];
+    for (const filePath of allFiles) {
+      const src = fs.readFileSync(filePath, 'utf8')
+        .replace(/\/\*[\s\S]*?\*\//g, '')
+        .replace(/\/\/.*$/gm, '');
+      if (/\bimport\(\s*(?!['"])/.test(src)) {
+        violations.push(path.relative(LIB_DIR, filePath));
+      }
+    }
+    assert.deepStrictEqual(violations, [],
+      'non-literal dynamic import() in lib/ or family/ — boundary scans cannot see it');
+  });
+
+  it('connective-name fallback inventory is frozen (no new ILL-name defaults)', () => {
+    // lib/ code may not grow new `|| '<connective>'` fallbacks: the
+    // existing ones are acknowledged residue (compose's rule-hash builder,
+    // role lookups documented in lib/engine/index.js) that never fire when
+    // calculus.roles is populated by deriveRoles(). New instances are
+    // smuggled ILL knowledge — thread the name from calculus.roles or the
+    // config instead. Removing a fallback: update the count down here.
+    const ALLOWED = {
+      'engine/compose.js': 7,
+      'engine/convert.js': 3,
+      'engine/decimate.js': 3,
+      'prover/check-term.js': 1,
+      'prover/generic-term.js': 1,
+      'prover/kernel.js': 2,
+      'prover/timed/elaborate-collapse.js': 4,
+      'prover/timed/elaborate-trace.js': 7,
+      'prover/timed/fire-check.js': 6,
+    };
+    const RE = /\|\|\s*'(loli|bang|tensor|monad|with|oplus|one|zero|exists|forall)'/g;
+    const counts = {};
+    for (const filePath of [...collectJSFiles(LIB_DIR), ...collectJSFiles(FAMILY_DIR)]) {
+      const src = fs.readFileSync(filePath, 'utf8');
+      const n = (src.match(RE) || []).length;
+      if (n > 0) counts[path.relative(LIB_DIR, filePath)] = n;
+    }
+    assert.deepStrictEqual(counts, ALLOWED,
+      'connective-name fallback inventory drifted — new `|| \'<conn>\'` in lib/ ' +
+      'is smuggled calculus knowledge (or a removed one needs the allowlist updated)');
   });
 
   it('family/ must not import from calculus/ (a family is shared by calculi)', () => {
