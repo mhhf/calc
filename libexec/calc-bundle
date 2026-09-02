@@ -45,7 +45,7 @@ async function main() {
   // recomputes it — editing any source without `npm run build:bundle`
   // fails the fast suite instead of silently serving a stale bundle.
   const ROOT = path.join(import.meta.dirname, '..');
-  const sources = ['calculus/ill/ill.calc', 'calculus/ill/ill.rules', 'calculus/ill/lnl.family'];
+  const sources = ['calculus/ill/ill.calc', 'calculus/ill/ill.rules', 'family/lnl/lnl.family'];
   const sh = crypto.createHash('sha256');
   for (const rel of sources) sh.update(rel).update('\0').update(fs.readFileSync(path.join(ROOT, rel)));
   const sourceHash = sh.digest('hex');

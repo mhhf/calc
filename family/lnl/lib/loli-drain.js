@@ -15,11 +15,11 @@
  * evidence is collected here but not yet wired into explore tree proof terms.
  */
 
-import Store from '../../kernel/store.js';
-import { defaultGradeConfig } from '../grades.js';
+import Store from '../../../lib/kernel/store.js';
+import { defaultGradeConfig } from '../../../lib/engine/grades.js';
 import { matchLoli } from './loli.js';
-import { mutateState } from '../state-ops.js';
-import { EMPTY_MATCH_OPTS } from '../match.js';
+import { mutateState } from '../../../lib/engine/state-ops.js';
+import { EMPTY_MATCH_OPTS } from '../../../lib/engine/match.js';
 /**
  * Check if a loli hash has an all-bang (persistent-only) trigger.
  * These lolis consume only themselves and can be fired eagerly.

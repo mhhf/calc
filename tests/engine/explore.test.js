@@ -13,10 +13,10 @@ import { gradeW } from '../../lib/engine/grades.js';
 const ILL_RC = resolveConn(illConnectives());
 import { countLeaves, getAllLeaves, maxDepth, countNodes, toDot } from '../../lib/engine/tree-utils.js';
 import forward from '../../lib/engine/forward.js';
-import { matchLoli } from '../../lib/engine/lnl/loli.js';
-import { drainLolis } from '../../lib/engine/lnl/loli-drain.js';
-import { proveNaive } from '../../lib/engine/lnl/persistent.js';
-import { buildMatchOpts, buildGenericProtocol, buildLnlProtocol, buildOptProtocol, buildFfiProtocol } from '../../lib/engine/match.js';
+import { matchLoli } from '../../family/lnl/lib/loli.js';
+import { drainLolis } from '../../family/lnl/lib/loli-drain.js';
+import { proveNaive } from '../../family/lnl/lib/persistent.js';
+import { buildMatchOpts, buildGenericProtocol, buildFamilyProtocol, buildOptProtocol, buildFfiProtocol } from '../../lib/engine/match.js';
 import { makeMatchOpts } from './_match-opts.js';
 import Store from '../../lib/kernel/store.js';
 import { monadUnit as U } from '../../lib/engine/grades.js';
@@ -566,7 +566,7 @@ describe('explore', { timeout: 10000 }, () => {
 
       const matchOpts = buildMatchOpts({
         ...buildGenericProtocol({}),
-        ...buildLnlProtocol({ rc: ILL_RC, matchLoli, drainLolis }),
+        ...buildFamilyProtocol({ rc: ILL_RC, matchDynamicRule: matchLoli, drainDynamicRules: drainLolis }),
         ...buildOptProtocol({}),
         ...buildFfiProtocol(null),
         provePersistent: proveNaive,

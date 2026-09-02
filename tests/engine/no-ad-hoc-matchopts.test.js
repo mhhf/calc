@@ -55,7 +55,7 @@ const UNIQUE_OBJECT_LITERAL = new RegExp(
 /** Names of functions that legitimately accept matchOpts-field literals as arguments. */
 const FACTORY_NAMES = [
   'buildMatchOpts', 'makeMatchOpts',
-  'buildGenericProtocol', 'buildLnlProtocol', 'buildOptProtocol', 'buildFfiProtocol',
+  'buildGenericProtocol', 'buildFamilyProtocol', 'buildOptProtocol', 'buildFfiProtocol',
   // Common short aliases used in tests
   'bmo', 'bgp', 'blp', 'bop', 'bfp',
 ];
@@ -118,7 +118,12 @@ describe('no ad-hoc matchOpts (rubric S5, S6)', () => {
       path.join(REPO, 'lib/engine/index.js'),   // composition root
     ]);
 
-    const files = walkJs(path.join(REPO, 'lib/engine'));
+    const files = [
+      ...walkJs(path.join(REPO, 'lib/engine')),
+      // Family layer (family/<name>/lib/) is production matchOpts-consuming
+      // code too (TODO_0086) — same discipline.
+      ...walkJs(path.join(REPO, 'family')),
+    ];
 
     for (const file of files) {
       if (ALLOWED.has(file)) continue;

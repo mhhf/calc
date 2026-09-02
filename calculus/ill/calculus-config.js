@@ -17,6 +17,7 @@
 
 'use strict';
 
+import { lnlFamily } from '../../family/lnl/family-config.js';
 import { illConnectives } from './lib/connectives.js';
 import { binlitTheory } from './lib/binlit-theory.js';
 import backchainIll from './lib/backchain-ill.js';
@@ -35,6 +36,9 @@ function _getFfi() { return _ffiMod; }
 function _getResidualResolver() { return _residualResolverFn; }
 
 const illCalculusConfig = {
+  // ── Structural family: LNL (two zones, cartesian ! + linear) ──
+  family: lnlFamily,
+
   // ── L0: Kernel Init ──────────────────────────────────────────
   // Called once at calc build time. Registers ILL-specific atoms
   // and installs equational theories into the global unifier.

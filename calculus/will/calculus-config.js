@@ -69,6 +69,9 @@ const willTheory = makeTheory({
 const willBuildParser = makeForwardParserBuilder(WILL_CALC, tillGradeUnit, { binderSorts: true });
 
 const willCalculusConfig = {
+  // ── Structural family: LNL (via gill's layer table) ──────────
+  family: gillCalculusConfig.family,
+
   // ── L0: Kernel init — shared with gill (same Store tags + theories) ──
   init: gillCalculusConfig.init,
 

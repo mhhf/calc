@@ -20,7 +20,7 @@ import { createGenericProver } from '../lib/prover/generic.js';
 const ILL_RC = resolveConn(illConnectives());
 import { createState } from '../lib/engine/forward.js';
 import { tryMatch } from '../lib/engine/match.js';
-import { resolveEx } from '../lib/engine/lnl/existential.js';
+import { resolveEx } from '../family/lnl/lib/existential.js';
 import { proveWithFFI as provePersistent } from '../lib/engine/opt/ffi.js';
 import illFfi from '../calculus/ill/lib/ffi/index.js';
 import { monadUnit as U } from '../lib/engine/grades.js';

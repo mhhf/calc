@@ -15,13 +15,13 @@
  * set by forward.js/explore.js at run start. No ILL-specific imports.
  */
 
-import Store from '../../kernel/store.js';
-import { predHead } from '../../kernel/ast.js';
-import { matchIndexed, undoSave, undoRestore, undoDiscard } from '../../kernel/unify.js';
-import { applyIndexed } from '../../kernel/substitute.js';
-import { flattenAnte, expandConsqChoices } from '../formula-utils.js';
-import { collectMetavars } from '../pattern-utils.js';
-import { EMPTY_MATCH_OPTS } from '../match.js';
+import Store from '../../../lib/kernel/store.js';
+import { predHead } from '../../../lib/kernel/ast.js';
+import { matchIndexed, undoSave, undoRestore, undoDiscard } from '../../../lib/kernel/unify.js';
+import { applyIndexed } from '../../../lib/kernel/substitute.js';
+import { flattenAnte, expandConsqChoices } from '../../../lib/engine/formula-utils.js';
+import { collectMetavars } from '../../../lib/engine/pattern-utils.js';
+import { EMPTY_MATCH_OPTS } from '../../../lib/engine/match.js';
 /**
  * Try to fire a loli(trigger, {body}) fact from linear state.
  *

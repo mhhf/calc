@@ -10,7 +10,7 @@
  * the composition root (lib/engine/index.js).
  */
 
-import { buildGenericProtocol, buildLnlProtocol, buildOptProtocol, buildFfiProtocol, buildMatchOpts } from '../../lib/engine/match.js';
+import { buildGenericProtocol, buildFamilyProtocol, buildOptProtocol, buildFfiProtocol, buildMatchOpts } from '../../lib/engine/match.js';
 /**
  * @param {Object} [opts]
  * @param {Object} [opts.rc]               - Resolved connective table
@@ -19,9 +19,9 @@ import { buildGenericProtocol, buildLnlProtocol, buildOptProtocol, buildFfiProto
  * @param {Function} [opts.onProveFail]
  * @param {Function} [opts.canonicalize]
  * @param {Function} [opts.provePersistent] - Override prover
- * @param {Function} [opts.matchLoli]
+ * @param {Function} [opts.matchDynamicRule]
  * @param {Function} [opts.resolveEx]
- * @param {Function} [opts.drainLolis]
+ * @param {Function} [opts.drainDynamicRules]
  * @param {boolean} [opts.backchainUseFFI]
  * @param {boolean} [opts.useCompiledSteps]
  * @param {Function} [opts.execPS]
@@ -39,10 +39,10 @@ function makeMatchOpts(opts = {}) {
       onProveSuccess: opts.onProveSuccess,
       provePersistent: opts.provePersistent,
     }),
-    ...buildLnlProtocol({
-      matchLoli: opts.matchLoli,
+    ...buildFamilyProtocol({
+      matchDynamicRule: opts.matchDynamicRule,
       resolveEx: opts.resolveEx,
-      drainLolis: opts.drainLolis,
+      drainDynamicRules: opts.drainDynamicRules,
       rc: opts.rc,
       backchainUseFFI: opts.backchainUseFFI,
     }),

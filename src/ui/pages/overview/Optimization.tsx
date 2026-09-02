@@ -247,7 +247,7 @@ const RUNTIME_CACHES: RuntimeCacheRow[] = [
   },
   {
     name: 'Tabling cache',
-    file: 'lib/engine/lnl/persistent.js',
+    file: 'family/lnl/lib/persistent.js',
     key: 'goal hash',
     cleared: 'same lnlClearCache() call',
     soundness: 'Same invariant as backward cache — clause DB path-independence within a run.',

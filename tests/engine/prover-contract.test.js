@@ -22,7 +22,7 @@ import assert from 'node:assert/strict';
 import Store from '../../lib/kernel/store.js';
 import forward from '../../lib/engine/forward.js';
 import { stateProvePersistent, PROVE_METHOD, PROVE_METHODS } from '../../lib/engine/match.js';
-import { proveNaive } from '../../lib/engine/lnl/persistent.js';
+import { proveNaive } from '../../family/lnl/lib/persistent.js';
 import { proveWithFFI } from '../../lib/engine/opt/ffi.js';
 import { makeMatchOpts } from './_match-opts.js';
 /** Build a minimal state with one persistent fact + one matching pattern. */

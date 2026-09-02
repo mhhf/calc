@@ -6,7 +6,7 @@
 import { describe, it, beforeEach } from 'node:test';
 import assert from 'node:assert/strict';
 import Store from '../../lib/kernel/store.js';
-import { resolveEx } from '../../lib/engine/lnl/existential.js';
+import { resolveEx } from '../../family/lnl/lib/existential.js';
 import { execExStep } from '../../lib/engine/opt/existential-compile.js';
 import { makeMatchOpts } from './_match-opts.js';
 describe('lnl/existential — resolveEx', () => {
