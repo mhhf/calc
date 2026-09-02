@@ -375,6 +375,30 @@ cond2: go2 * $box X -o { !within X allb0 }.
     }
   });
 
+  it('stepwise API: collapseView/collapseDraw walk a conditioned recursive wave', () => {
+    const calc2 = loadProg('stepwise.will', LSTHDR + EVENODD +
+      'spawn: mk -o { exists X: even @w. box X }.\n');
+    const session = { state: { linear: { [atom('mk')]: 1 }, persistent: {} }, waveMap: new Map(), skolemSet: new Set() };
+    let waves = calc2.collapseView(session);
+    assert.equal(waves.length, 1);
+    assert.equal(waves[0].sort, 'even');
+    // drawWeights carry the mass-proportional distribution: total = m(even)
+    assert.deepEqual(waves[0].posterior.drawTotal, [8n, 3n]);
+    // force cons: child waves register at the automaton child states
+    const rec = calc2.collapseDraw(session, waves[0], { member: 'cons' });
+    assert.equal(rec.member, 'cons');
+    assert.deepEqual([...session.waveMap.values()].sort(), ['bit', 'odd']);
+    // draw to ground with the PRF; the final list must be even-length
+    for (let step = 0; step < 50; step++) {
+      waves = calc2.collapseView(session);
+      if (waves.length === 0) break;
+      const r = calc2.collapseDraw(session, waves[0], { seed: 5, step });
+      assert.ok(!r.contradiction && !r.refused);
+    }
+    const len = listLen(boxOf(session.state));
+    assert.ok(len >= 2 && len % 2 === 0, `stepwise result not even-length (${len})`);
+  });
+
   it('mass facts materialize when the program declares the predicate (intra-logical rider)', () => {
     const calc2 = loadProg('massfacts.will', LSTHDR + EVENODD + `mass: (s: sort) -> (m: q) -> type.
 chk: type.
