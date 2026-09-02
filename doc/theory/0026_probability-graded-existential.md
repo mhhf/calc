@@ -14,7 +14,7 @@ references:
   - "Bacci & Møgelberg (2026). Higher-Order Quantitative Logic for Probability. LICS (quantitative judgments/distances; no graded quantifier, no sampling-as-cut)."
   - "Barthe, Hsu & Liao (2020). A Probabilistic Separation Logic. POPL (∗ = independence; the reading T4-d builds on)."
   - "Li, Ahmed & Holtzen (2023). Lilac: A Modal Separation Logic for Conditional Probability. PLDI (conditioning modality, C-Indep frame rule)."
-  - "Bao, Docherty, Hsu & Pym (2021). A Bunched Logic for Conditional Independence (DIBI). LICS (CI as [Z]⨟([X]∗[Y]), Thm V.1 — T4-d's qualitative ancestor)."
+  - "Bao, Docherty, Hsu & Silva (2021). A Bunched Logic for Conditional Independence (DIBI). LICS (CI as [Z]⨟([X]∗[Y]), Thm V.1 — T4-d's qualitative ancestor; author corrected Pym→Silva 2026-09-02, RES_0142)."
   - "Di Guardia, Ehrhard & Faggian (2025). Bayesian Networks and Proof-Nets. arXiv:2412.20540 (BN ↔ MLL boxes, cut = variable elimination, CI = good labelling — closest structural prior art; ungraded, static)."
   - "Fritz (2020). A Synthetic Approach to Markov Kernels. Adv. Math. 370 (Markov categories; Bayesian inversion as dagger functor, Rem. 13.10 — T4's categorical backbone)."
   - "Cho & Jacobs (2019). Disintegration and Bayesian Inversion via String Diagrams. MSCS."
@@ -313,15 +313,22 @@ witness choice as a sequent rule and (b) sampling as principal cut both stand.
 
 T4 positioning sweep (2026-08-28, second two-track audit): PSL (Barthe–Hsu–
 Liao, POPL 2020) and Lilac (Li–Ahmed–Holtzen, PLDI 2023) establish ∗/⊗ =
-probabilistic independence — cite, don't claim; Lilac's conditioning modality
-gives the program-logic frame rule (C-Indep) but no propositional/graded
-commutation law. DIBI (Bao–Docherty–Hsu–Pym, LICS 2021) encodes conditional
-independence QUALITATIVELY as [Z]⨟([X]∗[Y]) (Thm V.1). Closest structural
-prior art overall: Di Guardia–Ehrhard–Faggian 2025 (arXiv:2412.20540) —
-Bayesian networks ↔ MLL proof-net box structure, CUT = VARIABLE ELIMINATION,
-conditional independence = a good-labelling condition, message passing = PCoh
-evaluation at clique-tree cost — but UNGRADED and static (no forward
-rewriting, no sequent grades). Surviving novel axes for T4-d: (1) grades as
+probabilistic independence — cite, don't claim; Lilac expresses CI as ∗
+nested under its disintegration modality □_Z (no standalone C-Indep
+judgment — description corrected 2026-09-02, RES_0142) with the standard
+SL frame rule, but no propositional/graded commutation law. DIBI
+(Bao–Docherty–Hsu–SILVA, LICS 2021 — author corrected from Pym,
+RES_0142) encodes conditional independence QUALITATIVELY as
+[Z]⨟([X]∗[Y]) (Thm V.1). Closest structural prior art overall — UPDATED
+2026-09-02 (RES_0142): the workshop version arXiv:2412.20540 is
+Ehrhard–Faggian–Pagani (Di Guardia is not on it) — BNs ↔ MLL proof-net
+box structure, CUT = VARIABLE ELIMINATION, good labelling, message
+passing = PCoh evaluation at clique-tree cost; the FULL paper
+arXiv:2602.04045 (Di Guardia–Ehrhard–Evrard–Faggian, Feb 2026) proves
+the disconnection criterion SOUND (Thm 7.1 — a d-separation analogue,
+X ⊥ Y | Z from disconnection in the bpn) — but still UNGRADED and
+static (the BN is the input; no forward rewriting, no sequent grades,
+no per-run certificates, no random existence). Surviving novel axes for T4-d: (1) grades as
 computable independence CERTIFICATES (double-count ⟹ squared weight — a
 syntactic refutation of independence); (2) the mass-splitting graded
 contraction as message splitting; (3) the quantitative sequent-calculus

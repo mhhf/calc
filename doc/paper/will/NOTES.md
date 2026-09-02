@@ -86,8 +86,11 @@ cut conservation for a measure-weighted existential, no-promotion for
 draws, identity-expansion failure. Idea-level relatives all cited and
 distinguished in §9: PRISM msw (persistent/memoized, no proof theory),
 Dahlqvist–Kozen (denotational only), time/error credits (anonymous,
-additive), nominal freshness (no weight), Di Guardia–Ehrhard–Faggian
-(probabilities in boxes), Green–Tannen (monomials over trees vs. one
+additive), nominal freshness (no weight), the Bayesian proof-net line
+(probabilities in boxes; 2412.20540 is Ehrhard–Faggian–Pagani's workshop
+version — the full paper 2602.04045 adds Di Guardia and Evrard and
+proves disconnection ⟹ CI on the fixed net, Thm 7.1; verified in
+RES_0142), Green–Tannen (monomials over trees vs. one
 monomial per endsequent).
 
 ## 3. Evaluation numbers (pinned by the artifact, 2026-09-01)
@@ -107,8 +110,7 @@ monomial per endsequent).
 ## 4. TODO-verify citations
 
 refs.bib entries marked TODO-verify: OrchardLiepeltEades2019 (article
-no.), FujiiKatsumataMillies2016 (volume/pages), DiGuardiaEF2024 (author
-list), CharguerraudPottier2017 (year), Eris2024 (SPLIT into Eris error
+no.), FujiiKatsumataMillies2016 (volume/pages), CharguerraudPottier2017 (year), Eris2024 (SPLIT into Eris error
 credits [Aguirre et al.] and Tachis expected cost [Haselwarter et al.] —
 currently one merged entry, must be fixed before submission),
 GradelTannen2024 (version), Laurent2004 (citation form).
