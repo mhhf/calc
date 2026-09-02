@@ -22,7 +22,7 @@ import { createKernel } from '../lib/prover/kernel.js';
 import Seq from '../lib/kernel/sequent.js';
 import Store from '../lib/kernel/store.js';
 import { gradeW } from '../lib/engine/grades.js';
-import { ILL_COMPUTATION } from '../lib/engine/formula-utils.js';
+import { DEFAULT_COMPUTATION } from '../lib/engine/formula-utils.js';
 // Hoisted by tools/esm-hoist.js:
 import { ProofTree } from '../lib/prover/pt.js';
 import { fromGoal } from '../lib/prover/pt.js';
@@ -970,7 +970,7 @@ describe('End-to-end bridge term construction', () => {
     const compiled = makeRule(a, b);
     const seq = Seq.fromArrays([a], [], AST.monad(U(), b));
 
-    const result = modeSwitch(seq, { forwardRules: [compiled], roles: { computation: ILL_COMPUTATION } }, { terms: true });
+    const result = modeSwitch(seq, { forwardRules: [compiled], roles: { computation: DEFAULT_COMPUTATION } }, { terms: true });
     assert.ok(result, 'should produce a result');
     const st = result.proofNode.state;
     assert.ok(st.monadicTerm, 'should have monadicTerm');
@@ -983,7 +983,7 @@ describe('End-to-end bridge term construction', () => {
     const compiled = makeRule(a, b);
     const seq = Seq.fromArrays([a], [], AST.monad(U(), b));
 
-    const result = modeSwitch(seq, { forwardRules: [compiled], roles: { computation: ILL_COMPUTATION } }, { terms: true });
+    const result = modeSwitch(seq, { forwardRules: [compiled], roles: { computation: DEFAULT_COMPUTATION } }, { terms: true });
     const mt = result.proofNode.state.monadicTerm;
     // Single forward step → one let-binding wrapping the rightFocus term
     assert.strictEqual(mt.rule, 'test_fwd');
@@ -999,7 +999,7 @@ describe('End-to-end bridge term construction', () => {
     const compiled = makeRule(a, b);
     const seq = Seq.fromArrays([a], [], AST.monad(U(), b));
 
-    const result = modeSwitch(seq, { forwardRules: [compiled], roles: { computation: ILL_COMPUTATION } }, { terms: true });
+    const result = modeSwitch(seq, { forwardRules: [compiled], roles: { computation: DEFAULT_COMPUTATION } }, { terms: true });
     const term = extractTerm(result.proofNode, calc);
     assert.ok(term);
     assert.strictEqual(term.rule, 'monad_r');
@@ -1012,7 +1012,7 @@ describe('End-to-end bridge term construction', () => {
     const compiled = makeRule(a, b);
     const seq = Seq.fromArrays([a], [], AST.monad(U(), b));
 
-    const result = modeSwitch(seq, { forwardRules: [compiled], roles: { computation: ILL_COMPUTATION } }, { terms: true });
+    const result = modeSwitch(seq, { forwardRules: [compiled], roles: { computation: DEFAULT_COMPUTATION } }, { terms: true });
     const kernel = createKernel(calc);
     const vr = kernel.verifyStep(
       result.proofNode.conclusion, 'monad_r', [],
@@ -1034,7 +1034,7 @@ describe('End-to-end bridge term construction', () => {
 
     // Succedent only wants {a} — b will be leftover after rightFocus
     const seq = Seq.fromArrays([a], [], AST.monad(U(), a));
-    const result = modeSwitch(seq, { forwardRules: [compiled], roles: { computation: ILL_COMPUTATION } }, { terms: true });
+    const result = modeSwitch(seq, { forwardRules: [compiled], roles: { computation: DEFAULT_COMPUTATION } }, { terms: true });
     assert.strictEqual(result, null, 'should fail: leftover b after rightFocus');
   });
 
@@ -1043,7 +1043,7 @@ describe('End-to-end bridge term construction', () => {
     const compiled = makeRule(a, b);
     // Forward produces b, but succedent wants {a} — rightFocus can't find a
     const seq = Seq.fromArrays([a], [], AST.monad(U(), a));
-    const result = modeSwitch(seq, { forwardRules: [compiled], roles: { computation: ILL_COMPUTATION } });
+    const result = modeSwitch(seq, { forwardRules: [compiled], roles: { computation: DEFAULT_COMPUTATION } });
     assert.strictEqual(result, null, 'should fail: residual b does not match succedent a');
   });
 });
@@ -1069,7 +1069,7 @@ describe('Zero-overhead (terms: false)', () => {
     const compiled = makeRule(a, b);
     const seq = Seq.fromArrays([a], [], AST.monad(U(), b));
 
-    const result = modeSwitch(seq, { forwardRules: [compiled], roles: { computation: ILL_COMPUTATION } });
+    const result = modeSwitch(seq, { forwardRules: [compiled], roles: { computation: DEFAULT_COMPUTATION } });
     assert.ok(result, 'proof still succeeds');
     const st = result.proofNode.state;
     assert.strictEqual(st.rightFocusTerm, null, 'no rightFocusTerm');
@@ -1082,7 +1082,7 @@ describe('Zero-overhead (terms: false)', () => {
     const compiled = makeRule(a, b);
     const seq = Seq.fromArrays([a], [], AST.monad(U(), b));
 
-    const result = modeSwitch(seq, { forwardRules: [compiled], roles: { computation: ILL_COMPUTATION } }, { terms: false });
+    const result = modeSwitch(seq, { forwardRules: [compiled], roles: { computation: DEFAULT_COMPUTATION } }, { terms: false });
     assert.ok(result, 'proof still succeeds');
     const st = result.proofNode.state;
     assert.strictEqual(st.rightFocusTerm, null);
