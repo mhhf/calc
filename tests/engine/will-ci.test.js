@@ -22,11 +22,26 @@
  *      non-dropped runs; T ≠ 1 leaks dependence through the drop, so
  *      V_e must be a child of the draw node itself (outcome space
  *      includes 'dropped'), not only of its spawn/bias parents.
+ *   2c. CONTRADICTION IS EVIDENCE (audit finding 4, deepened): a rule
+ *      that zeroes EVERY member of an always-existing wave exactly when
+ *      X = Y = va kills those runs (M9 / dead branch in exact mode) —
+ *      the wave's survival is a likelihood factor on its parents, so
+ *      λ-non-constancy must be read over the class-consistent collapse
+ *      tree INCLUDING dead branches (a reachable T = 0 forces V_e);
+ *      on surviving leaves λ is constant and the naive reading would
+ *      drop the site and call the collider blocked — unsoundly.
  *   3. CONTEXT-SPECIFIC EDGE (D1): a bias rule enabled only in the
  *      X=va world makes Y dependent on X, while the X=vb run's
  *      certificate contains NO bias fire — separation must be read on
  *      the CLASS graph (static cover), never on one run's actual
  *      edges (THY_0031 §5, the LDAG lesson).
+ *   4b. VALUE-ERASING CHAIN (M6 refutation): two member-discriminating
+ *      rules emit the SAME fact m, which biases Y identically in every
+ *      world — a fully active directed path d_X → fire → bias → d_Y,
+ *      yet μ factorizes for ALL parameter values: deterministic
+ *      erasing fires are unparameterized channels, so the naive
+ *      genericity converse (active ⟹ generically dependent) is false
+ *      STRUCTURALLY, not merely by cancellation (THY_0031 §6).
  *   4. CHAIN BLOCKING: X → M → Y through spawn-order + bias;
  *      conditioning on the mediator's value restores exact
  *      factorization in every context, marginal dependence without.
@@ -218,6 +233,48 @@ gone: type.
   });
 });
 
+describe('CI pin 2c — contradiction is evidence: a zeroed wave kills the diagonal', () => {
+  const PROG = `#import(${MEASURE})
+v: sort.
+va: v @w 1.
+vb: v @w 2.
+pos: sort.
+x0: pos.
+x1: pos.
+mk: (c: pos) -> type.
+tile: (c: pos) -> (t: v) -> type.
+spawn: mk C -o { exists T: v @w. tile C T }.
+w2: sort.
+wc: w2 @w 1.
+wd: w2 @w 1.
+bias: (x: w2) -> (c: w2) -> (w: q) -> type.
+probe: (t: w2) -> type.
+mkw: type.
+gk: type.
+sw: mkw -o { exists W: w2 @w. probe W }.
+z1: gk * $tile x0 va * $tile x1 va * $probe E -o { !bias E wc 0 * !bias E wd 0 }.
+`;
+  const init = () => ({
+    linear: {
+      [Store.put('mk', [atom('x0')])]: 1,
+      [Store.put('mk', [atom('x1')])]: 1,
+      [atom('mkw')]: 1,
+      [atom('gk')]: 1,
+    },
+    persistent: {},
+  });
+
+  it('exact: the (va,va) branch is dead — masses 0/4/4/8, dependent', () => {
+    const r = loadProg('ci-zero.will', PROG).collapse(init(), { mode: 'exact', settleBranching: 'seed' });
+    assert.ok(eqF(r.total, [16n, 1n]), `total ${r.total}`);
+    const m = joint(r, 'x0', 'x1');
+    for (const [key, v] of [['aa', 0n], ['ab', 4n], ['ba', 4n], ['bb', 8n]]) {
+      assert.ok(eqF(m[key], [v, 1n]), `${key}: ${m[key]} ≠ ${v}`);
+    }
+    assert.ok(!factorizes(m), 'X ⊥̸ Y through the survival factor alone');
+  });
+});
+
 describe('CI pin 3 — context-specific edge (D1): one run’s certificate shows no edge', () => {
   // Y spawns only after X grounds (per-member rules); the bias fire
   // exists only in the X=va world. Dependence is real, yet every X=vb
@@ -265,6 +322,56 @@ ba: gb * $tile x0 va * $tile x1 E -o { !bias E va 3 }.
         assert.ok(!fires.some((n) => /^ba/.test(n)), `seed ${seed}: vb world must not bias`);
         sawVb = true;
       }
+    }
+    assert.ok(sawVa && sawVb, 'both worlds sampled');
+  });
+});
+
+describe('CI pin 4b — value-erasing chain (M6): active path, independent for all θ', () => {
+  // Y spawns after X grounds; ra/rb DISCRIMINATE X's value but emit the
+  // same fact m; b2 biases Y from m identically in every world. Graph:
+  // d_X → ra/rb → b2 → d_Y is an unblocked directed path, yet the
+  // erasure at m makes the transmitted variation zero.
+  const PROG = HEADER + `
+k: type.
+m: type.
+mky: type.
+sya: mky * $tile x0 va -o { exists U: v @w. tile x1 U }.
+syb: mky * $tile x0 vb -o { exists U: v @w. tile x1 U }.
+ra: k * $tile x0 va -o { m }.
+rb: k * $tile x0 vb -o { m }.
+b2: m * $tile x1 E -o { !bias E va 2 }.
+`;
+  const init = () => ({
+    linear: {
+      [Store.put('mk', [atom('x0')])]: 1,
+      [atom('mky')]: 1,
+      [atom('k')]: 1,
+    },
+    persistent: {},
+  });
+  let calc;
+  before(() => { calc = loadProg('ci-erase.will', PROG); });
+
+  it('exact masses 2/2/4/4 (bias lands in EVERY world): factorizes', () => {
+    const r = calc.collapse(init(), { mode: 'exact', settleBranching: 'seed' });
+    assert.ok(eqF(r.total, [12n, 1n]), `total ${r.total}`);
+    const m = joint(r, 'x0', 'x1');
+    for (const [key, v] of [['aa', 2n], ['ab', 2n], ['ba', 4n], ['bb', 4n]]) {
+      assert.ok(eqF(m[key], [v, 1n]), `${key}: ${m[key]} ≠ ${v}`);
+    }
+    assert.ok(factorizes(m), 'X ⊥ Y despite the active erasing chain');
+  });
+
+  it('the bias fire happens in both worlds (the path is genuinely active)', () => {
+    let sawVa = false;
+    let sawVb = false;
+    for (let seed = 0; seed < 40 && !(sawVa && sawVb); seed++) {
+      const run = calc.collapse(init(), { seed, trace: true });
+      const fires = run.trace.filter((t) => t.settle)
+        .flatMap((t) => t.settle.map((ev) => ev.rule));
+      assert.ok(fires.some((n) => /^b2/.test(n)), `seed ${seed}: bias must fire`);
+      if (tileOf(run.state, 'x0') === 'va') sawVa = true; else sawVb = true;
     }
     assert.ok(sawVa && sawVb, 'both worlds sampled');
   });

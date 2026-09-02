@@ -30,22 +30,28 @@ references:
 
 # Certified Conditional Independence on Dynamic Derivation Forests
 
-**Status.** Proved at draft grain (2026-09-02, one session): definitions
-(§2, M1), factorization lemma (§3, M2), separation criterion (§4, M3),
-soundness theorem with a five-lemma proof (§5, M4); genericity converse
-left as a conjecture with a route (§6, M6). FIRST adversarial pass done
-same day (the THY_0027 discipline), two findings, both repaired at the
-root: (1) the mass-child V_e must hang off the DRAW NODE itself — the
-drop half of "the draw happens" leaks dependence exactly like the
-existence half, pinned as pin 2b before the repair was written; (2) the
-policy-order-sensitive-bias scope boundary is T1's, inherited and now
-stated (§7). A FRESH-EYES audit (Denis / a later session) is still
-required before the sequel paper leans on §5; the two places relying on
-cited or previously-sketched material are flagged inline (L1's
-driver-adequacy extension, L3's graph theory). The design decisions are
-pinned numerically: `tests/engine/will-ci.test.js` — five programs whose
-exact conditioned masses (engine-computed, hand-verified) refute the
-naive criteria and witness the sound one.
+**Status.** Proved at draft grain and TWICE adversarially audited
+(2026-09-02, one session; the THY_0027 discipline). First pass
+(same-context): the mass-child V_e must hang off the DRAW NODE (the
+drop leak, pin 2b); the policy-order scope boundary is T1's (§7).
+Second pass (fresh-context auditor, verdict REPAIRABLE, zero
+counterexamples in three attempts): L2 was missing the woplus branch
+weights (finding 1, repaired — mono-sided constants), L5's no-phantom
+step did not cover events absent from EVERY class run (finding 2,
+repaired via the cover), provenance keys needed the cohort-multiplicity
+expansion (finding 3, §2b), L2′'s properness claim mis-stated the
+T = 0 case (finding 4, restated per-fiber — and deepened into a
+soundness refinement: λ-non-constancy is judged over dead branches
+too, since survival is evidence, pin 2c), L4's "fixed by z" was wrong
+for V_e outcomes (finding 5, corrected to clique-determined), and the
+timed-window bias fence was missing (finding 6, §7). Independently,
+the naive M6 genericity converse was REFUTED structurally (§6, pin
+4b: value-erasing fires are unparameterized channels) and replaced by
+the value-faithful form. Remaining before the sequel paper leans on
+§5: Denis's read (the human gate); the cited spots are flagged inline
+(L1's driver-adequacy legs now inline; L3's graph theory cited). All
+design decisions pinned: `tests/engine/will-ci.test.js` — seven
+programs, exact engine-computed masses, every one hand-verified first.
 
 ## 1. Setting and scope
 
@@ -146,6 +152,12 @@ waves. Keys are well-founded (a key contains only keys of causal
 ancestors), and two runs assign the same key to events with the same
 ungrounded causal history.
 
+Cohort firings (TODO_0278 B1: one candidate fired once at multiplicity
+k) are expanded to their sequential multiset for keying — k fire events
+with copy indices, matching the event records' RLE reading — so
+instances of equal content keep distinct keys and the allocation
+structure among their consumers stays visible (audit finding 3).
+
 A **wave variable** X is a provenance key of a draw event. Its
 **existence event** E_X ⊆ Ω is the set of runs containing an event
 keyed κ(X); on E_X its **value** X(r) is the drawn member (head
@@ -188,8 +200,17 @@ outcome", so that all M-outcomes are determined by z (used in L5):
 3. **Mass-children**: for each wave e let λ_e(r) = T_e(r) if e is drawn
    in r (T_e the total posterior weight at e's draw, = Σ_c w(e,c),
    including inside masses for conditioned sorts) and λ_e(r) = 1 if e
-   is absent or dropped. If λ_e is constant across C_z it is a harmless
-   global factor. Otherwise add a virtual node V_e, observed, with
+   is absent or dropped. Non-constancy is judged over the
+   CLASS-CONSISTENT COLLAPSE TREE, dead branches included: a reachable
+   T_e = 0 (an M9 contradiction — every member zeroed) is the extreme
+   evidence value, even though on surviving leaves λ_e may look
+   constant. Pin 2c is the trap this dodges: a wave whose members are
+   all zeroed exactly when X = Y = va kills those runs (masses 0/4/4/8,
+   dependent through the SURVIVAL factor alone), while the
+   leaves-only reading would drop the site and call the collider at
+   the zeroing fire blocked — unsoundly. If λ_e is constant in this
+   strong sense it is a harmless global factor. Otherwise add a
+   virtual node V_e, observed, with
    edges from **d_e ITSELF** and from e's bias/within parents: λ_e is a
    function of d_e's outcome (member vs `dropped` — §2a) and the bias
    context, and nothing less. **This is forced by restriction
@@ -337,35 +358,54 @@ conflict-free, causally-closed configurations of the class's event
 structure (events = keys, causality = edges, conflict = contested
 instances and alternative outcomes of one draw) that satisfy z, each
 weighted by the product of its draw weights; every configuration is
-realized by exactly one run per policy, and the measure is
+realized by exactly one run per (policy, seed), and the measure is
 policy-independent. *Grain:* this is the will paper's driver-adequacy
-bijection (Cor. 7.2's machinery: post-hoc grounding sound by bias
-monotonicity, injectivity by first divergent draw, surjectivity because
-the derivation tree is the org chart) restated over configurations; the
-restatement is verbatim once events are keyed as in §2b, and is flagged
-for the audit pass rather than re-derived here.
+bijection (Cor. 7.2's machinery) restated over configurations — the
+three legs inline: INJECTIVITY, two distinct runs differ at a first
+divergent draw, and the shared prefix keys the diverging event
+identically with different outcomes, so their configurations differ;
+SURJECTIVITY, a maximal consistent configuration's events admit a
+linearization respecting causality (the derivation tree is the org
+chart, not a schedule), and the driver under the fixed policy realizes
+one such linearization — post-hoc grounding is sound by bias
+monotonicity; MEASURE, the weight product is linearization-invariant
+because each draw's posterior reads only its parents' outcomes (L2),
+not the schedule. The restatement is verbatim once events are keyed as
+in §2b INCLUDING the cohort expansion (audit finding 3) — without it
+the key map is not injective on multiplicity-k outputs. Flagged for
+the fresh-eyes audit; audited 2026-09-02 (finding 7: the legs now
+inline).
 
 **L2 (normalization decomposition).** Per class run,
-mass(r) = Π_{d∈r} p̂_d(outcome | parents) · Π_{e} λ_e(r) · Π 1_{O}(r),
+mass(r) = Π_{d∈r} p̂_d(outcome | parents) · Π_{e} λ_e(r)
+        · Π_{f∈woplus(r)} w_f · Π 1_{O}(r),
 where p̂_d = w_d / T_d is the normalized posterior (a probability
-kernel in the parents' outcomes), λ_e the mass-child factors (§2d,
-constant λ's absorbed into c_M), and the indicators enforce z. Each
-factor is a function of one node and its parents in 𝒢⁺ — for p̂_d
-because the posterior reads exactly the suspension, bias, and within
-parents (T1/M8); for λ and 1_O by construction of the virtual sites;
-allocation outcomes are determined inside the configuration. The first
-product defines the normalized ancestral process P̂, a probability
-measure on configurations (proper by H1).
+kernel in the parents' outcomes, defined on the positive-T
+configurations — the T_d = 0 case never contributes below), λ_e the
+mass-child factors (§2d, constant λ's absorbed into c_M), w_f the
+branch weight of each woplus fire (audit finding 1: a compile-time
+constant of the branch node f, hence a function of the clique
+{f} ∪ pa(f) like any fire — mono-sided under L4 with no further
+argument), and the indicators enforce z. Each factor is a function of
+one node and its parents in 𝒢⁺ — for p̂_d because the posterior reads
+exactly the suspension, bias, and within parents (T1/M8); for λ and
+1_O by construction of the virtual sites; allocation outcomes are
+determined inside the configuration. The first product defines the
+normalized ancestral process P̂ on positive-mass configurations.
 
 **L2′ (barren marginalization).** Nodes outside An carry factor p̂ only
-(a λ ≠ 1 or an indicator would put them in An as ancestors of M). Fix
-an An-projection; its fiber (all ways the barren part can extend it)
-has P̂-total 1: the barren part is a subforest generated below the
-projection, its draws are normalized, and H1 makes the generation
-a.s. finite — the sum telescopes to 1 by monotone convergence, wave by
-wave (this is the irrelevant-subforest integration; it is FALSE for
-raw masses, which is again why the mass-children exist). Hence all
-sums below range over An-projections with the An-restricted factors.
+(a λ ≠ 1 or an indicator would put them in An as ancestors of M — in
+particular a barren wave with T = 0 somewhere in the class has
+non-constant λ and is NOT barren). Fix an An-projection; its fiber
+(all ways the barren part can extend it) contributes exactly the
+An-part's mass: barren configurations with some T = 0 contribute mass
+0 and vanish from the sum; over the positive-T fiber the barren draws
+are normalized and H1 makes the generation a.s. finite, so the p̂-sum
+telescopes to 1 by monotone convergence, wave by wave (audit finding
+4: the properness claim is per-fiber on positive-mass extensions, not
+a global property of P̂; the raw-mass version is FALSE, which is again
+why the mass-children exist). Hence all sums below range over
+An-projections with the An-restricted factors.
 
 **L3 (side split — cited graph theory).** d-separation of d_X and d_Y
 by M in the DAG 𝒢⁺ is equivalent to separation of d_X and d_Y by M in
@@ -376,9 +416,12 @@ minus M), B = the rest of An minus M; d_Y ∈ B.
 **L4 (mono-sidedness).** Each factor of L2 is a function of a clique
 {v} ∪ pa(v) of the moral graph (parents are pairwise married), and a
 clique cannot straddle a separator: every factor lies wholly in A ∪ M
-or wholly in B ∪ M. Assign M-only factors to the A side. Site outcomes
-are fixed by z (§2d), so the A-side factor product is a function of the
-A∪M-projection alone, evaluated at the fixed site outcomes; likewise B.
+or wholly in B ∪ M. Assign M-only factors to the A side. Z-draw and
+O_F outcomes are fixed by z; a V_e outcome is NOT in z (audit finding
+5) but is a deterministic function of d_e's outcome and the bias/within
+parents — its clique — so it too is determined by the side projection
+that clique lies in. Hence the A-side factor product is a function of
+the A∪M-projection alone; likewise B.
 
 **L5 (recombination — the dynamic core).** The map r ↦ (π_{A∪M}(r),
 π_{B∪M}(r)) restricted to An-projections is a bijection between class
@@ -396,12 +439,18 @@ An-projections and pairs (α, β) that agree on the (z-fixed) M-part:
   both sides — an unobserved source, i.e. an active fork path between
   the sides — contradicting separation (paths within one side ∪ M
   cannot contest: they ride in a single run's projection, conflict-free
-  by H2). No phantom events: an event enabled in the merge has its
-  premises in one side ∪ M (its parent clique is mono-sided, since if
-  it occurs in any class run it is a 𝒢-node under L4's argument), so
-  it was enabled in that side's originating run and is already
-  accounted for by that run's maximality — merges create no enablements
-  neither side saw. By L1, the merged configuration extends (via L2′'s
+  by H2). No phantom events (audit finding 2): an event enabled in the
+  merge either (i) occurs in some class run — then it is a 𝒢-node,
+  its parent clique is mono-sided by L4, so it was enabled in that
+  side's originating run and is accounted for by that run's
+  maximality; or (ii) occurs in NO class run — then either its premise
+  pattern is jointly satisfiable by facts from both sides, in which
+  case its rule node in the cover 𝒢⁺ carries cross-side edges whose
+  moralization connects A to B outside M, contradicting separation IN
+  THE COVER (which is where the criterion is checked); or it is
+  context-pruned from 𝒢⁺, meaning z alone falsifies its premises — in
+  every run satisfying z, hence in the merge, which satisfies z.
+  Merges create no enablements neither side saw. By L1, the merged configuration extends (via L2′'s
   fibers) to class runs realizing exactly (α, β); maximality on each
   side gives exactly one An-projection. Draw-outcome consistency at M
   is the agreement hypothesis.
@@ -431,25 +480,43 @@ Thm 2b). Under S1–S3 the split is moreover in bijection with the
 factor structure of the posterior products (Thm 1 there): the
 certificate does not just permit the factorization, it displays it. ∎
 
-## 6. The genericity converse (M6 — conjecture)
+## 6. The genericity converse (M6 — naive form REFUTED, corrected
+conjecture)
 
-**Conjecture.** For generic parameters (priors and bias constants
-algebraically independent over ℚ), an ACTIVE path between d_X and d_Y
-given M implies X ⊥̸ Y | z, for some value pair — i.e. separation-
-in-the-class-graph is complete up to a measure-zero parameter set.
+**The naive converse is false structurally, not merely by
+cancellation.** Conjecturing "active path ⟹ generically dependent"
+transplants Meek's BN faithfulness, but BN edges point into CPDs with
+free parameters, while will's fires are DETERMINISTIC and
+unparameterized — a fire that erases the value it consumed is a null
+channel no parameter perturbs. Pin 4b realizes it minimally: two
+member-discriminating rules (`ra`/`rb`) emit the SAME fact m, which
+biases Y identically in every world; the path d_X → ra/rb → b2 → d_Y
+is directed, unblocked, and genuinely active (the bias fires in every
+world — trace-checked), yet μ(x,y) = ρ_X(x)·g(y) IDENTICALLY in the
+parameter ring (masses 2/2/4/4, engine-exact): independent for every
+θ. Completeness against the fact-flow graph is therefore unattainable
+even generically.
 
-Route (Meek 1995 transplanted): the CI defect
-μ(x,y,z)μ(x′,y′,z) − μ(x,y′,z)μ(x′,y,z) is, on finite classes, a
-polynomial in the parameters; an active path yields a witness
-parameterization making it non-zero (pins 1–4 are four such witness
-families: collider-conditioned, existence-mass, context-specific edge,
-unblocked chain), so the defect polynomial is not identically zero and
-generic parameters miss its zero set. The dynamic obligations: (i) a
-witness construction per active-path SHAPE, including existence edges
-and allocation forks (the pins cover the first three shapes); (ii) on
-infinite classes the defect is a limit, and non-vanishing needs a
-truncation argument (monotone lower approximants, T1). Left open;
-theorem-or-remark per TODO_0302.
+**Corrected conjecture.** For generic parameters, an active path ALL
+of whose fire-mediated hops are value-faithful (each fire's output
+distinguishes the consumed draw outcomes that the path is meant to
+transmit — the parameterized hops, draw weights and bias factors, are
+faithful by genericity) implies X ⊥̸ Y | z for some value pair.
+Route (Meek 1995): on finite classes the CI defect
+μ(x,y,z)μ(x′,y′,z) − μ(x,y′,z)μ(x′,y,z) is a polynomial in the
+parameters (class structure is θ-independent: matching reads values,
+never weights, and at generic θ no posterior vanishes); a
+value-faithful active path yields a witness parameterization making it
+non-zero (pins 1, 2, 2b, 2c, 3, 4 are six witness families:
+conditioned collider, existence mass, drop mass, survival factor,
+context-specific edge, unblocked chain), so the defect polynomial is
+not identically zero and generic parameters miss its zero set. Dynamic
+obligations: (i) a witness construction per value-faithful path SHAPE,
+including existence edges and allocation forks; (ii) on infinite
+classes the defect is a limit and non-vanishing needs a truncation
+argument (monotone lower approximants, T1). Left open;
+theorem-or-remark per TODO_0302 — the refutation half is now a
+theorem (pin 4b), the converse half a conjecture.
 
 ## 7. What this does not claim
 
@@ -472,7 +539,14 @@ theorem-or-remark per TODO_0302.
   load by the C2 Hypothesis-S lint), inherited here, not created here:
   all statements are relative to the driver's policy, whose
   settle-to-quiescence-before-each-draw discipline is also what L2
-  relies on for "every enabled bias fire has fired".
+  relies on for "every enabled bias fire has fired". The TEMPORAL
+  sibling (audit finding 6): will inherits the timed layer, and a bias
+  rule behind an `after`-style window can be premise-satisfied yet
+  unfired at a draw the clock has not yet reached — the same
+  order-sensitivity through the clock instead of a value. Bias rules
+  with timed-window premises targeting a wave that can draw inside
+  the window are out of scope for the same T1 reason (a fence the C2
+  lint's temporal extension should eventually catch at load).
 - **Normalized-conditional readings.** μ-CI is the restriction-
   semantics statement; the normalized conditional P(· | C_z) inherits
   it whenever 0 < μ(C_z) < ∞ (divide the cross-product identity), but
@@ -490,5 +564,7 @@ division-free identities):
 | 1 | two waves → one fire | marginal ⊥ (4 = 4); conditioning on the output breaks it (explaining away) |
 | 2 | contingent wave, total 2 vs total 1 | bare existence leaks dependence iff total ≠ 1 (16 ≠ 4 vs 4 = 4) — mass-children forced |
 | 2b | always-existing wave, dropped on the diagonal | drop leaks the same way (1·8 ≠ 4·4; normalized twin clean) — V_e hangs off the draw node (audit finding 1) |
+| 2c | wave zeroed (M9) on the diagonal | survival is evidence (0/4/4/8, dependent) — λ-non-constancy read over dead branches too |
 | 3 | context-specific bias edge | dependence (12 ≠ 4) while every X=vb certificate shows no bias fire — class graph forced |
 | 4 | spawn-order chain X → M → Y | blocked given M = m (80 = 80, 16 = 16); active marginally (168 ≠ 264) |
+| 4b | value-erasing chain | active path, independent for ALL θ (2/2/4/4 factorizes; bias fires in every world) — naive genericity converse refuted |
