@@ -1,12 +1,12 @@
 tags:
-  linear-logic: 31
+  linear-logic: 32
   ill: 27
   forward-chaining: 24
   inference-rule: 24
   proof-theory: 17
   architecture: 15
+  graded-types: 14
   chr: 13
-  graded-types: 13
   implementation: 10
   left-rule: 10
   positive-connective: 10
@@ -21,8 +21,8 @@ tags:
   oplus: 7
   symbolic-execution: 7
   ownership: 6
+  probabilistic: 6
   clf: 5
-  probabilistic: 5
   structural-rule: 5
   verification: 5
   with: 5
@@ -31,25 +31,26 @@ tags:
   ffi: 4
   partial-evaluation: 4
   performance: 4
+  provenance: 4
   subexponentials: 4
   symexec: 4
+  will: 4
   authorization: 3
   Curry-Howard: 3
   evm: 3
   focusing: 3
   loli: 3
   monad: 3
-  provenance: 3
   prover: 3
   QTT: 3
   staging: 3
   testing: 3
   time: 3
   type-checking: 3
-  will: 3
   accounting: 2
   backward: 2
   bridge: 2
+  conditioning: 2
   confluence: 2
   content-addressing: 2
   determinism: 2
@@ -61,6 +62,7 @@ tags:
   one: 2
   principals: 2
   refinement-sorts: 2
+  refinement-types: 2
   representation: 2
   resource-semantics: 2
   scheduling: 2
@@ -84,6 +86,7 @@ tags:
   calldata: 1
   case-analysis: 1
   category-theory: 1
+  certificates: 1
   CHR: 1
   classifiers: 1
   CLP: 1
@@ -94,7 +97,6 @@ tags:
   compilation: 1
   completeness: 1
   complexity: 1
-  conditioning: 1
   connectives: 1
   consensus: 1
   correspondence: 1
@@ -171,7 +173,6 @@ tags:
   proof-terms: 1
   proof-tree: 1
   quantifiers: 1
-  refinement-types: 1
   residuated-monoids: 1
   roadmap: 1
   run-length: 1

@@ -437,10 +437,16 @@ is precisely what the grade discipline must detect.
    the reduction requires the ghost rule (token weakening). Remaining shadow:
    the focused system spelled out (THY_0027 §8), needed for the bridge's
    proof COUNT, not for cut admissibility.
-3. Inside-mass CONDITIONING on regular tree sorts (datasort domains) — the
-   machinery is TODO_0011 rung 2; §8's T1 fixpoint argument supplies existence
-   and uniqueness (least solution, subcritical case), the derived rule and its
-   metatheory remain.
+3. ~~Inside-mass CONDITIONING on regular tree sorts~~ DISCHARGED
+   (2026-09-02, THY_0030 + TODO_0011 fence B slices 1–4): datasorts as
+   regular tree events, exact inside masses (linear systems, §8 T1's
+   least solution), the conditioned mass-proportional sampler with the
+   zero-variance importance identity, and certification (states on @draw
+   records, masses verified by substitution). The conjectured derived
+   rule DISSOLVED into the sort slot — conditioning is a checker-side
+   membership premise on the draw oracle; restriction semantics keeps
+   THY_0027's conservation verbatim ("grades on formulas, draws in the
+   zone, conditioning in the sort slot").
 4. ~~Policy-independence, positioning per §7, Markov-categories check~~
    DISCHARGED (2026-09-01, doc/paper/will/): policy independence is the
    paper's Cor. 7.2 — a corollary of driver adequacy (each focused
@@ -457,8 +463,8 @@ is precisely what the grade discipline must detect.
    factors cancel in the T3 estimator), matching exact mode's
    settleExplore enumeration.
 
-REMAINING (item 1(iii) + item 3): the quantitative DIBI/good-labelling
-theorem (the sequel paper's spine — THY_0028 Thm 1 is its base case,
-THY_0029 leg (ii) shows every derivation already exhibits the partition it
-must grade) and inside-mass conditioning (datasort domains via TODO_0011
-rung 2 + the derived conditioning rule's metatheory). Tracked in TODO_0300.
+REMAINING (item 1(iii) ONLY): the quantitative DIBI/good-labelling
+theorem — the sequel paper's spine. THY_0028 Thm 1 is its base case,
+THY_0029 leg (ii) shows every derivation already exhibits the partition
+it must grade, THY_0030 supplies its conditioning face (membership
+side-derivations as the labelling's guard sites). Tracked in TODO_0300.
