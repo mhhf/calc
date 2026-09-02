@@ -186,10 +186,11 @@ implementation.
 ## 6. Residual
 
 T4-d(iii) — the quantitative good-labelling / conditional-independence
-theorem for dynamic derivation forests — is the only part of T4-d still
-open (TODO_0300's final task). This document supplies its
-unconditional base case one step beyond THY_0028: not only do disjoint
-provenances multiply (Theorem 1 there), but the ⊗-structure of the
-endsequent already exhibits the partition (leg (ii) here), so the
-labelling the residual theorem must grade is present in every
-derivation, not attached to it.
+theorem for dynamic derivation forests — is DISCHARGED AT DRAFT GRAIN
+by THY_0031 (2026-09-02; Denis's read pending). This document supplied
+its unconditional base case one step beyond THY_0028: not only do
+disjoint provenances multiply (Theorem 1 there), but the ⊗-structure
+of the endsequent already exhibits the partition (leg (ii) here) —
+which is exactly THY_0031's exhibition corollary (Cor. 3): under
+separation, the token zone splits Θ = Θ_A ⊎ Θ_B along the criterion's
+sides in every class derivation.

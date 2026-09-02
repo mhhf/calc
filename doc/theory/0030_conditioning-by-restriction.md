@@ -190,8 +190,9 @@ without adding anything to the endsequent.
   event models the intended real-world event stays the modeller's
   assertion, made inspectable.
 - **T4-d(iii)** — the quantitative good-labelling theorem for
-  derivation forests — is the one remaining open item of the will
-  track (TODO_0300's final task). This document supplies its
-  conditioning face: THY_0028's disjoint-provenance base case now has
-  the conditioned analogue (membership side-derivations as the
-  labelling's guard sites).
+  derivation forests — DISCHARGED AT DRAFT GRAIN by THY_0031
+  (2026-09-02; Denis's read pending). This document supplied its
+  conditioning face; in THY_0031's terms, inside masses enter the
+  per-draw totals T_e, and the zero-variance identity of Prop. 2 is
+  the telescoped one-wave shadow of its mass-child discipline (totals
+  are importance factors — and, over the class, soft evidence).

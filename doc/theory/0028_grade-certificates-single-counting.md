@@ -220,8 +220,10 @@ bang's own discipline. See THY_0029 for the theorem and pins.
 ## 7. Residual
 
 T4-d(iii) — the quantitative conditional-independence theorem for
-derivation forests (graded good-labelling / quantitative DIBI Thm V.1)
-— is untouched by this document and remains TODO_0300's final task;
-Theorem 1 here is its base case (unconditional independence = disjoint
-provenance), and the certificate projection of Theorem 2(b) is the
-object its labelling would grade.
+derivation forests — is DISCHARGED AT DRAFT GRAIN by THY_0031
+(2026-09-02; Denis's read pending): Theorem 1 here is its base case
+(unconditional independence = disjoint provenance), the certificate
+projection of Theorem 2(b) is the graph its separation criterion reads,
+and the smuggling programs of §4 became stress tests of its edge
+completeness ($-read reservations are edges, so smuggling densifies
+the graph rather than hiding from it).
