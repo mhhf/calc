@@ -226,6 +226,7 @@ spoil: (r: resource) r@Q * after (Q+20) -o { I }.   % schema: expands per member
 - Bounded vars solve s := lub(arg sorts) and need a clause INSTANCE at s (inferred from head patterns); mixed-sort goals are legal iff a bound-level instance exists (strictness = instance absence).
 - Grade sorts: `delay`/`count`/`weight <: grade` in till.calc; the grammar folds them onto the one GRADE chain, the checker keeps them distinct.
 - The q-namespace collapse (qplus→plus) is the deferred dispatch rider — prelude names stay split, now with honest q sorts.
+- Datasorts (fence B slice 1, TODO_0011 round-2 spec): `warm <: tile_t.` with an UNDECLARED lhs introduces a subset event over a finite classifier, defined by premise-free membership clauses (`warm/s: warm sea.`) — the name gets a loader-synthesized dual role (sort atom + unary membership predicate, sound post-f7ec930a; `!warm T` backward goals just work). Conditioning a wave: static `exists T: warm @w.` at the binder, or dynamic `!within E warm` facts (program declares `within: (x: base) -> (s: sort) -> type.`; driver reads by name and intersects; non-datasort arg = loud error). Semantics is RESTRICTION, not renormalization (B4): surviving worlds keep their masses, importance ≡ m(warm) per seed, tokens carry the BINDER's sort name (`drawn sea warm`, m4). Fences: one clause per (datasort, head) (f3), no premises on nullary-member clauses (f2), constructor heads / non-classifier bases = fence B2 (linear-recursive masses, not yet landed). Pins: tests/engine/will-datasorts.test.js.
 
 ## FFI Principle
 
