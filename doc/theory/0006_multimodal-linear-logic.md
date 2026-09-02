@@ -636,7 +636,7 @@ rules mmll {
 
 ### 8.5 Architecture Transition from LNL
 
-**Current LNL implementation (lnl.family):**
+**Pre-refactor LNL implementation (superseded by the family layer, TODO_0086):**
 ```javascript
 // lib/sequent.js
 class Sequent {

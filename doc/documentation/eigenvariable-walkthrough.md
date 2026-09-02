@@ -380,7 +380,7 @@ Not needed for eigenvariables. Confluence is a Skolem concern (ground folding). 
 Becomes constraint propagation instead of term rewriting. Different techniques (CLP vs Knuth-Bendix) but same structural role. Could be done via CHR-style propagation rules.
 
 ### TODO_0006 (Lax Monad Integration)
-∃ in the monad (CLF-style) IS the eigenvariable mechanism made explicit. ∃ is now a connective in CALC (`exists` tag, positive polarity), and `lnl/existential.js` implements existential resolution in forward chaining: per-goal compiled FFI step → fallback `provePersistent` → `freshEvar` as symbolic witness. This is exactly CLF ∃R in the monadic decomposition.
+∃ in the monad (CLF-style) IS the eigenvariable mechanism made explicit. ∃ is now a connective in CALC (`exists` tag, positive polarity), and `family/lnl/lib/existential.js` implements existential resolution in forward chaining: per-goal compiled FFI step → fallback `provePersistent` → `freshEvar` as symbolic witness. This is exactly CLF ∃R in the monadic decomposition.
 
 ### TODO_0029-0032 (Verification: properties, invariants, reachability, counterexamples)
 Eigenvariable constraint stores export DIRECTLY to SMT:
@@ -400,7 +400,7 @@ Eigenvariable generation is O(1) per step — a counter increment + Store.put + 
 
 ## 10. The ∃ Connective and Its Relationship to Eigenvariables
 
-> **Status:** ∃ is now implemented in CALC. The `exists` connective (positive polarity, category `quantifier`) is handled by the backward prover (∃R/∃L in focused.js), the forward engine (`lnl/existential.js` for resolution, `opt/existential-compile.js` for compiled fast path), and the rule compiler (`compile.js` tracks existential slots and goals). The discussion below describes the theory and how the implementation maps to it.
+> **Status:** ∃ is now implemented in CALC. The `exists` connective (positive polarity, category `quantifier`) is handled by the backward prover (∃R/∃L in focused.js), the forward engine (`family/lnl/lib/existential.js` for resolution, `opt/existential-compile.js` for compiled fast path), and the rule compiler (`compile.js` tracks existential slots and goals). The discussion below describes the theory and how the implementation maps to it.
 
 ### What ∃ means
 
@@ -445,7 +445,7 @@ The monadic decomposition encounters `∃C` and:
 
 ### How CALC implements ∃
 
-The forward engine resolves existential variables in `lnl/existential.js:resolveEx()` after linear matching succeeds. The resolution strategy per goal:
+The forward engine resolves existential variables in `family/lnl/lib/existential.js:resolveEx()` after linear matching succeeds. The resolution strategy per goal:
 
 1. **Compiled FFI step** (`opt/existential-compile.js`) — O(1), slot-to-slot dataflow
 2. **provePersistent fallback** — state lookup → FFI → clause resolution
@@ -471,7 +471,7 @@ C is fresh (∃R). The constraint !plus(A, B, C) is part of the consequent. The 
 
 ### Antecedent vs consequent placement
 
-Both forms are supported. The current EVM rules use the antecedent style (persistent goals prove C before production). The engine's existential resolution (`lnl/existential.js`) handles both: antecedent-bound variables that couldn't be resolved are detected as existential slots by `compile.js`, and consequent-style ∃ are handled by `expandChoiceItem` in the monadic decomposition.
+Both forms are supported. The current EVM rules use the antecedent style (persistent goals prove C before production). The engine's existential resolution (`family/lnl/lib/existential.js`) handles both: antecedent-bound variables that couldn't be resolved are detected as existential slots by `compile.js`, and consequent-style ∃ are handled by `expandChoiceItem` in the monadic decomposition.
 
 **The key architectural insight:** whether the obligation `!plus(A, B, C)` lives in the antecedent or consequent, the resolution path is the same: compiled FFI → provePersistent → freshEvar. The difference is cosmetic in the rule file, not semantic in the engine.
 
@@ -547,9 +547,9 @@ CALC's `{...}` in rule consequents IS the CLF monad, implemented implicitly:
 | CLF monad operation | CALC implementation |
 |---|---|
 | ⊗ decomposition | `expandChoiceItem` splits into individual facts |
-| ∃ introduction | `lnl/existential.js:resolveEx` — compiled FFI → provePersistent → freshEvar |
+| ∃ introduction | `family/lnl/lib/existential.js:resolveEx` — compiled FFI → provePersistent → freshEvar |
 | ⊕ branching | `expandChoiceItem` forks into children |
-| ⊸ suspension | Loli stays in state, `matchLoli` fires when guard provable |
+| ⊸ suspension | Loli stays in state, `family/lnl/lib/loli.js:matchLoli` fires when guard provable |
 | ! annotation | Fact added to `state.persistent` |
 
 The monadic decomposition is now complete (all five CLF operations implemented). Type-level tracking of the monadic boundary is not needed for symbolic execution.

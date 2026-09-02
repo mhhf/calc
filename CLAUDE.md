@@ -31,7 +31,7 @@ CALC is a proof calculus system for experimenting with sequent-calculi with an i
 npm run dev           # Development server (http://localhost:3000)
 npm run build:ui      # Production build to out/ui/
 npm run build:bundle  # Regenerate out/ill.json from calculus specs
-npm test              # All fast tests (3565 tests, ~40s) — RUN THIS DURING DEVELOPMENT
+npm test              # All fast tests (3584 tests, ~40s) — RUN THIS DURING DEVELOPMENT
 npm run test:bun      # Same suite under bun (per-file isolation via tools/test-bun.sh)
 npm run test:ill      # ILL-native tests (98 tests, ~0.2s) — .ill files as provability judgments
 npm run test:till     # till executable specs (forward/debug directives)
@@ -81,8 +81,11 @@ lib/
 │   │   ├── elaborate-trace.js # settle events → kernel-checked @fire proof trees; certifyRun (any-run certificates)
 │   │   └── elaborate-collapse.js # decimation runs → kernel-checked trees (post-hoc grounding); certifyCollapse — endsequent carries ⟨Θ⟩ (TODO_0298)
 │   └── rule-interpreter.js  # descriptor → premise computation
-├── calculus/            # Calculus loader (from .calc/.rules files)
-│   └── builders.js      # Parser factory (Earley delegation), deriveRoles()
+├── calculus/            # Calculus LOADER (from .calc/.rules files) — instances live in top-level calculus/
+│   ├── index.js         # load/buildCalculus + deriveContextStructure (zones from @position_modes + @structural)
+│   ├── builders.js      # Parser factory (Earley delegation), deriveRoles()
+│   └── modes.js         # Default monad_r/monad_l descriptor injection (category 'monad')
+├── meta/                # Polarity/invertibility inference from rule descriptors (focusing.js)
 ├── engine/              # Forward/backward execution engine (3-layer lego)
 │   ├── formula-utils.js # Generic: connective-aware formula decomposition (shared across pipeline)
 │   ├── labels.js        # Generic: StampTable — per-State label interning over a calculus value algebra (THY_0024)
@@ -248,6 +251,7 @@ FFI is optimization, theory is semantics. Every FFI predicate MUST have backward
 - `provePersistent` (match.js → ffi.js): state lookup → FFI → compiled clause → full clause resolution
 - FFI failure is advisory: `{ success: false }` falls through to clause resolution
 - All FFI predicates have backward clause definitions (FFI is optimization only)
+- Documented axiom class (the ONE carve-out): a small Group-B set (`string_concat`, `string_length`, `fixed_mul`, `fixed_div`, `sha3_compute`) is extralogical-with-explicit-spec — no inductive clause exists or is intended; each has a mathematical spec property-tested by fuzz-ffi (`compareMode: 'spec'`). See `doc/documentation/ffi-audit.md` §4.1. `sha3_compute`'s clause is the correct SYMBOLIC approximation (uninterpreted `sha3(Bytes)`); concrete digests come from the FFI only.
 
 ## Common Gotchas
 

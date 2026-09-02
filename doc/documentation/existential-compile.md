@@ -54,7 +54,7 @@ Key: metavar chain dereferencing handles fused rules where `A→B→concrete` cr
 
 ## Interaction with Other Modules
 
-- **evidence/hook mode** — bypassed when `onProveSuccess` or `onProveFail` hooks are set, or when `evidence` mode is active. The compiled fast path skips individual goal observation. `lnl/existential.js` checks: `!matchOpts.onProveSuccess && !matchOpts.onProveFail && !matchOpts.evidence`
+- **evidence/hook mode** — bypassed when `onProveSuccess` or `onProveFail` hooks are set, or when `evidence` mode is active. The compiled fast path skips individual goal observation. `family/lnl/lib/existential.js` checks: `!matchOpts.onProveSuccess && !matchOpts.onProveFail && !matchOpts.evidence`
 - **FFI fallback** — per-step, not all-or-nothing. If step `i` fails, only that goal falls back to `provePersistent`. Other compiled steps still run.
 - **Rule compilation** — chain is cached on `rule._existentialGoalOrder` to avoid Set+Array allocation per resolve call.
 

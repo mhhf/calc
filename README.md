@@ -11,7 +11,7 @@ Inspired by the [calculus toolbox](https://goodlyrottenapple.github.io/calculus-
 ```bash
 npm install
 npm run dev           # Development server (http://localhost:3000)
-npm test              # Fast suite (~2490 tests, ~7s)
+npm test              # Fast suite (~3584 tests, ~40s)
 npm run test:ill      # ILL-native provability tests (98)
 npm run test:noffi    # noFFI adversarial soundness (13)
 npm run test:all      # Everything (fast + ill + till + noffi + zk + heavy)
@@ -47,14 +47,17 @@ lib/
 │   ├── compose.js   # Grade-0 cut-elimination pipeline + chain fusion + SROA
 │   ├── convert.js   # .ill → content-addressed hashes
 │   ├── sorts.js     # Refinement-sort system (subsort DAG, till-only)
-│   ├── lnl/         # LNL layer: linear/persistent distinction
 │   ├── timed/       # Timed layer: wall-clock scheduler over the stamp algebra
-│   ├── ill/         # ILL layer: FFI, binlit theory, connective config
 │   └── opt/         # Toggleable optimization modules
 ├── calculus/        # Calculus loader from .calc/.rules definitions
 ├── parser/          # Earley parser + grammar generation
 ├── meta-parser/     # Meta-level parser (@extends chain resolution)
 └── rules/           # .rules file parser (sequent notation → descriptors)
+
+family/lnl/          # LNL structural family (shared by calculi, imports lib/ only)
+├── lnl.family       # Declarative: sequent constructor, structural rules
+├── family-config.js # Executable: cc.family engine hooks
+└── lib/             # persistent.js, loli.js, loli-drain.js, existential.js
 
 calculus/ill/        # ILL calculus definition
 ├── ill.calc         # Connective definitions (tensor, loli, with, oplus, bang, monad, ...)
