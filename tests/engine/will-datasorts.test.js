@@ -213,6 +213,149 @@ cond2: go2 * $tile C X -o { !within X dry }.
   });
 });
 
+// ── slice 2: linear-recursive datasorts + exact inside masses ──
+
+const LSTHDR = `#import(${MEASURE})
+bit: sort.
+b0: bit @w 1.
+b1: bit @w 1.
+lst: sort.
+nil: lst @w 2.
+cons: (h: bit) -> (t: lst) -> lst @w 1/4.
+mk: type.
+box: (x: lst) -> type.
+`;
+const EVENODD = `even <: lst.
+odd <: lst.
+even/n: even nil.
+even/c: even (cons H T) <- odd T.
+odd/c: odd (cons H T) <- even T.
+ne <: lst.
+ne/c: ne (cons H T).
+`;
+const initMk = () => ({ linear: { [atom('mk')]: 1 }, persistent: {} });
+const boxOf = (state) => {
+  for (const k of Object.keys(state.linear)) {
+    let h = Number(k);
+    if (Store.tag(h) === 'at') h = Store.child(h, 0);
+    if (Store.tag(h) === 'box') return Store.child(h, 0);
+  }
+  return null;
+};
+const listLen = (h) => {
+  let n = 0;
+  while (Store.tag(h) === 'cons') { n++; h = Store.child(h, 1); }
+  return Store.tag(h) === 'atom' && Store.child(h, 0) === 'nil' ? n : -1;
+};
+
+describe('datasorts — recursive (slice 2): exact inside masses', () => {
+  let calc;
+  before(() => {
+    calc = loadProg('rec.will', LSTHDR + EVENODD +
+      'spawn: mk -o { exists X: even @w. box X }.\n');
+  });
+
+  it('the B8 worked example solves exactly: m(lst)=4, m(even)=8/3, m(odd)=4/3, m(ne)=2', () => {
+    assert.ok(calc.masses, 'masses solved at load');
+    assert.deepEqual(calc.masses.get('lst'), [4n, 1n]);
+    assert.deepEqual(calc.masses.get('bit'), [2n, 1n]);
+    assert.deepEqual(calc.masses.get('even'), [8n, 3n]);
+    assert.deepEqual(calc.masses.get('odd'), [4n, 3n]);
+    assert.deepEqual(calc.masses.get('ne'), [2n, 1n]);
+    // partition identity: even/odd partition lst — the solver's self-check
+    const [en, ed] = calc.masses.get('even');
+    const [on, od] = calc.masses.get('odd');
+    assert.equal(en * od + on * ed, 4n * ed * od, 'm(even) + m(odd) = m(lst)');
+  });
+
+  it('f4: a tree-shaped datasort is a load error (nonlinear mass system, B″)', () => {
+    assert.throws(() => loadProg('tree.will', `#import(${MEASURE})
+tree: sort.
+leaf: tree @w 1.
+node: (l: tree) -> (r: tree) -> tree @w 1/8.
+full <: tree.
+full/l: full leaf.
+full/n: full (node L R) <- full L <- full R.
+`), /nonlinear|B″/);
+  });
+
+  it('emptiness: a base-case-free datasort is a load error', () => {
+    assert.throws(() => loadProg('inf.will', LSTHDR + `inf <: lst.
+inf/c: inf (cons H T) <- inf T.
+`), /empty language/);
+  });
+
+  it('f1/f2 extended fences fire with named errors', () => {
+    const bad = (name, clause, re) =>
+      assert.throws(() => loadProg(name, LSTHDR + 'bad <: lst.\nbad/n: bad nil.\n' + clause), re, clause);
+    bad('b1.will', 'bad/c: bad (cons H T) <- bad X.\n', /not a head argument/);
+    bad('b2.will', 'even2 <: lst.\neven2/n: even2 nil.\nbad/c: bad (cons H T) <- even2 T <- bad T.\n', /constrained twice/);
+    bad('b3.will', 'bad/c: bad (cons H T) <- box T.\n', /unary datasort goal/);
+    bad('b4.will', 'bad/c: bad (cons H T) <- bad H.\n', /refines 'lst' but the argument's sort is 'bit'/);
+    bad('b5.will', 'bad/c: bad (cons H (cons H2 T)).\n', /distinct variables/);
+  });
+
+  it("'sample': every drawn list has even length; importance ≡ m(even) = 8/3 every seed (B6)", () => {
+    const lens = new Set();
+    for (let seed = 0; seed < 25; seed++) {
+      const r = calc.collapse(initMk(), { seed });
+      assert.ok(r.ground);
+      const len = listLen(boxOf(r.state));
+      assert.ok(len >= 0 && len % 2 === 0, `seed ${seed}: drew an odd/malformed list (len ${len})`);
+      assert.deepEqual(r.importance, [8n, 3n], `seed ${seed}: importance ≠ m(even)`);
+      lens.add(len);
+    }
+    assert.ok(lens.size > 1, 'multiple lengths reachable');
+  });
+
+  it("'exact' with maxCollapses 6: nil + the four 2-lists — total 5/2, truncated", () => {
+    const r = calc.collapse(initMk(), { mode: 'exact', maxCollapses: 6 });
+    assert.equal(r.outcomes.length, 5);
+    assert.deepEqual(r.total, [5n, 2n]);
+    assert.ok(r.truncated);
+    for (const o of r.outcomes) {
+      const len = listLen(boxOf(o.state));
+      assert.ok(len === 0 || len === 2);
+    }
+  });
+
+  it('within over a recursive domain is a slice-3 fence error', () => {
+    const calc2 = loadProg('recwithin.will', LSTHDR + EVENODD + `within: (x: lst) -> (s: sort) -> type.
+go: type.
+spawn: mk -o { exists X: lst @w. box X }.
+cond: go * $box X -o { !within X ne }.
+`);
+    const init = { linear: { [atom('mk')]: 1, [atom('go')]: 1 }, persistent: {} };
+    assert.throws(() => calc2.collapse(init, { mode: 'exact', maxCollapses: 6, settleBranching: 'seed' }),
+      /product states|slice 3/);
+  });
+
+  it('a conditioned recursive run certifies: one token per draw, Π ρ = mass, states on tokens', () => {
+    const seqCalc = loadWillSequent();
+    const kernel = createKernel(seqCalc);
+    for (const seed of [0, 1, 2]) {
+      const r = certifyCollapse({
+        engineCalc: calc, calculus: seqCalc, kernel,
+        state: initMk(), collapseOpts: { seed },
+      });
+      assert.equal(r.verdict, 'certified', `seed ${seed}: ${r.reason || (r.errors || []).join('; ')}`);
+      assert.equal(r.tokens.length, r.run.collapses.length, 'one token per draw');
+      let prod = [1n, 1n];
+      const sorts = new Set();
+      for (const tok of r.tokens) {
+        const member = Store.child(Store.child(tok, 0), 0);
+        sorts.add(Store.child(Store.child(tok, 1), 0));
+        const [pn, pd] = calc.priors.get(member) || [1n, 1n];
+        prod = [prod[0] * pn, prod[1] * pd];
+      }
+      assert.equal(prod[0] * r.run.mass[1], r.run.mass[0] * prod[1],
+        `seed ${seed}: Π ρ over ⟨Θ⟩ ≠ run mass`);
+      assert.ok(sorts.has('even'), 'root token at the binder sort');
+      for (const s of sorts) assert.ok(['even', 'odd', 'bit'].includes(s), `unexpected token sort ${s}`);
+    }
+  });
+});
+
 describe('datasorts — certification (conditioned draws, m4 tokens)', () => {
   it('a static-conditioned sample run certifies; tokens carry the datasort name', () => {
     const calc = loadProg('cert.will', HEADER + WARM +
