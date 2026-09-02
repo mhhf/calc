@@ -1,0 +1,30 @@
+#import(../../prelude/measure.will)
+
+% datasort.will — will executable spec: fence-B datasort membership as a
+% backward gate under forward execution (audit 2026-09-02). The `!warm T`
+% premise resolves through the membership CLAUSES (the semantics; the
+% tree automaton is draw-time machinery only), so this spec is a real
+% smoke test for the will-specific engine path under CALC_NOFFI=1 —
+% datasort membership must be FFI-free by construction.
+
+tile_t: sort.
+sea: tile_t @w 2.
+coast: tile_t @w 1.
+land: tile_t @w 2.
+
+warm <: tile_t.
+warm/s: warm sea.
+warm/c: warm coast.
+
+tile: (t: tile_t) -> type.
+nice: (t: tile_t) -> type.
+
+grade: (t: tile_t) tile t * !warm t -o { nice t }.
+
+% warm tiles become nice (the membership clause proves !warm sea);
+% land's tile stays untouched — !warm land has no derivation, so the
+% rule never fires on it (chooser-independent: one rule, no race)
+#expect_warm_gates (settle: 0)
+  tile sea * tile land
+  =>
+  nice sea * tile land .
