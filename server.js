@@ -97,7 +97,7 @@ app.get('/api/docs/:folder/:slug', (c) => {
 
 // Proof block API — run the prover on a sequent string and return
 // proof-tree/v1 JSON. Cached on disk under out/doc-cache/.
-const { proveSource, proveSubtree, extractSymexLeafTrace } = require('./lib/prover/prove-source');
+const { proveSource, proveSubtree, extractSymexLeafTrace } = require('./lib/prover/ill/prove-source');
 const PROOF_CACHE_DIR = path.join(__dirname, 'out/doc-cache');
 app.post('/api/proof', async (c) => {
   let body;
