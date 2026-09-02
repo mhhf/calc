@@ -54,6 +54,7 @@ import os from 'os';
 import path from 'path';
 import Store from '../../lib/kernel/store.js';
 import mde from '../../lib/engine/index.js';
+import ciMod from '../../lib/engine/ci.js';
 import willConfig from '../../calculus/will/calculus-config.js';
 
 const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'will-ci-'));
@@ -114,22 +115,25 @@ const joint = (r, cellX, cellY, cond = () => true) => ({
   bb: massOf(r, (s) => cond(s) && tileOf(s, cellX) === 'vb' && tileOf(s, cellY) === 'vb'),
 });
 
-describe('CI pin 1 — collider: marginal independence, explaining away (D4)', () => {
-  const PROG = HEADER + `
+// ── program sources (shared with the certifyCI block below) ─────────
+const SRC_COLLIDER = HEADER + `
 chk: type.
 matched: type.
 req: chk * $tile x0 T * $tile x1 T -o { matched }.
 `;
-  const init = () => ({
-    linear: {
-      [Store.put('mk', [atom('x0')])]: 1,
-      [Store.put('mk', [atom('x1')])]: 1,
-      [atom('chk')]: 1,
-    },
-    persistent: {},
-  });
+const INIT_COLLIDER = () => ({
+  linear: {
+    [Store.put('mk', [atom('x0')])]: 1,
+    [Store.put('mk', [atom('x1')])]: 1,
+    [atom('chk')]: 1,
+  },
+  persistent: {},
+});
+
+describe('CI pin 1 — collider: marginal independence, explaining away (D4)', () => {
+  const init = INIT_COLLIDER;
   let r;
-  before(() => { r = loadProg('ci-collider.will', PROG).collapse(init(), { mode: 'exact' }); });
+  before(() => { r = loadProg('ci-collider.will', SRC_COLLIDER).collapse(init(), { mode: 'exact' }); });
 
   it('exact masses: 1/2/2/4, total 9', () => {
     assert.deepEqual(r.total, [9n, 1n]);
@@ -149,12 +153,7 @@ req: chk * $tile x0 T * $tile x1 T -o { matched }.
   });
 });
 
-describe('CI pin 2 — mass-observed existence (A2×A4): totals ≠ 1 leak dependence', () => {
-  // W spawns only when X = Y; W is drawn and never used. With total
-  // prior mass 2 on W's sort, the mere EXISTENCE of W multiplies the
-  // run mass by 2 — X ⊥̸ Y although the collider (the spawn fire) is
-  // unobserved and naive d-separation would call the path blocked.
-  const SPAWNW = (wa, wb) => HEADER + `
+const SRC_EXIST = (wa, wb) => HEADER + `
 w2: sort.
 wc: w2 @w ${wa}.
 wd: w2 @w ${wb}.
@@ -162,17 +161,24 @@ probe: (t: w2) -> type.
 chk: type.
 spw: chk * $tile x0 T * $tile x1 T -o { exists W: w2 @w. probe W }.
 `;
-  const init = () => ({
-    linear: {
-      [Store.put('mk', [atom('x0')])]: 1,
-      [Store.put('mk', [atom('x1')])]: 1,
-      [atom('chk')]: 1,
-    },
-    persistent: {},
-  });
+const INIT_EXIST = () => ({
+  linear: {
+    [Store.put('mk', [atom('x0')])]: 1,
+    [Store.put('mk', [atom('x1')])]: 1,
+    [atom('chk')]: 1,
+  },
+  persistent: {},
+});
+
+describe('CI pin 2 — mass-observed existence (A2×A4): totals ≠ 1 leak dependence', () => {
+  // W spawns only when X = Y; W is drawn and never used. With total
+  // prior mass 2 on W's sort, the mere EXISTENCE of W multiplies the
+  // run mass by 2 — X ⊥̸ Y although the collider (the spawn fire) is
+  // unobserved and naive d-separation would call the path blocked.
+  const init = INIT_EXIST;
 
   it('unnormalized (total 2): dependence through existence alone', () => {
-    const r = loadProg('ci-exist2.will', SPAWNW('1', '1')).collapse(init(), { mode: 'exact' });
+    const r = loadProg('ci-exist2.will', SRC_EXIST('1', '1')).collapse(init(), { mode: 'exact' });
     assert.deepEqual(r.total, [14n, 1n]);
     const m = joint(r, 'x0', 'x1');
     assert.deepEqual([m.aa, m.ab, m.ba, m.bb], [[2n, 1n], [2n, 1n], [2n, 1n], [8n, 1n]]);
@@ -180,19 +186,13 @@ spw: chk * $tile x0 T * $tile x1 T -o { exists W: w2 @w. probe W }.
   });
 
   it('normalized twin (total 1): independence restored', () => {
-    const r = loadProg('ci-exist1.will', SPAWNW('1/2', '1/2')).collapse(init(), { mode: 'exact' });
+    const r = loadProg('ci-exist1.will', SRC_EXIST('1/2', '1/2')).collapse(init(), { mode: 'exact' });
     assert.deepEqual(r.total, [9n, 1n]);
     assert.ok(factorizes(joint(r, 'x0', 'x1')));
   });
 });
 
-describe('CI pin 2b — mass-observed drop (audit finding 1): T ≠ 1 leaks through a drop', () => {
-  // W always spawns; its 3-member sort (higher entropy than the binary
-  // waves) draws LAST under the entropy chooser, so the dropper — armed
-  // only in the (va,va) world — consumes W's evar carrier during the
-  // settle segment before W's draw. λ_W = T^[drawn]: with T = 2 the
-  // three non-diagonal cells pay the factor and the diagonal does not.
-  const SPAWNW = (w) => HEADER + `
+const SRC_DROP = (w) => HEADER + `
 w3: sort.
 wc: w3 @w ${w}.
 wd: w3 @w ${w}.
@@ -204,18 +204,26 @@ sw: mkw -o { exists W: w3 @w. probe W }.
 dr: flag * $tile x0 va * $tile x1 va * probe E -o { gone }.
 gone: type.
 `;
-  const init = () => ({
-    linear: {
-      [Store.put('mk', [atom('x0')])]: 1,
-      [Store.put('mk', [atom('x1')])]: 1,
-      [atom('mkw')]: 1,
-      [atom('flag')]: 1,
-    },
-    persistent: {},
-  });
+const INIT_DROP = () => ({
+  linear: {
+    [Store.put('mk', [atom('x0')])]: 1,
+    [Store.put('mk', [atom('x1')])]: 1,
+    [atom('mkw')]: 1,
+    [atom('flag')]: 1,
+  },
+  persistent: {},
+});
+
+describe('CI pin 2b — mass-observed drop (audit finding 1): T ≠ 1 leaks through a drop', () => {
+  // W always spawns; its 3-member sort (higher entropy than the binary
+  // waves) draws LAST under the entropy chooser, so the dropper — armed
+  // only in the (va,va) world — consumes W's evar carrier during the
+  // settle segment before W's draw. λ_W = T^[drawn]: with T = 2 the
+  // three non-diagonal cells pay the factor and the diagonal does not.
+  const init = INIT_DROP;
 
   it('unnormalized (total 2): dropping leaks dependence (masses 1/4/4/8)', () => {
-    const r = loadProg('ci-drop2.will', SPAWNW('2/3')).collapse(init(), { mode: 'exact' });
+    const r = loadProg('ci-drop2.will', SRC_DROP('2/3')).collapse(init(), { mode: 'exact' });
     assert.ok(eqF(r.total, [17n, 1n]), `total ${r.total}`);
     const m = joint(r, 'x0', 'x1');
     for (const [k, v] of [['aa', 1n], ['ab', 4n], ['ba', 4n], ['bb', 8n]]) {
@@ -227,14 +235,13 @@ gone: type.
   });
 
   it('normalized twin (total 1): independence restored', () => {
-    const r = loadProg('ci-drop1.will', SPAWNW('1/3')).collapse(init(), { mode: 'exact' });
+    const r = loadProg('ci-drop1.will', SRC_DROP('1/3')).collapse(init(), { mode: 'exact' });
     assert.ok(eqF(r.total, [9n, 1n]), `total ${r.total}`);
     assert.ok(factorizes(joint(r, 'x0', 'x1')));
   });
 });
 
-describe('CI pin 2c — contradiction is evidence: a zeroed wave kills the diagonal', () => {
-  const PROG = `#import(${MEASURE})
+const SRC_ZERO = `#import(${MEASURE})
 v: sort.
 va: v @w 1.
 vb: v @w 2.
@@ -254,18 +261,21 @@ gk: type.
 sw: mkw -o { exists W: w2 @w. probe W }.
 z1: gk * $tile x0 va * $tile x1 va * $probe E -o { !bias E wc 0 * !bias E wd 0 }.
 `;
-  const init = () => ({
-    linear: {
-      [Store.put('mk', [atom('x0')])]: 1,
-      [Store.put('mk', [atom('x1')])]: 1,
-      [atom('mkw')]: 1,
-      [atom('gk')]: 1,
-    },
-    persistent: {},
-  });
+const INIT_ZERO = () => ({
+  linear: {
+    [Store.put('mk', [atom('x0')])]: 1,
+    [Store.put('mk', [atom('x1')])]: 1,
+    [atom('mkw')]: 1,
+    [atom('gk')]: 1,
+  },
+  persistent: {},
+});
+
+describe('CI pin 2c — contradiction is evidence: a zeroed wave kills the diagonal', () => {
+  const init = INIT_ZERO;
 
   it('exact: the (va,va) branch is dead — masses 0/4/4/8, dependent', () => {
-    const r = loadProg('ci-zero.will', PROG).collapse(init(), { mode: 'exact', settleBranching: 'seed' });
+    const r = loadProg('ci-zero.will', SRC_ZERO).collapse(init(), { mode: 'exact', settleBranching: 'seed' });
     assert.ok(eqF(r.total, [16n, 1n]), `total ${r.total}`);
     const m = joint(r, 'x0', 'x1');
     for (const [key, v] of [['aa', 0n], ['ab', 4n], ['ba', 4n], ['bb', 8n]]) {
@@ -275,28 +285,30 @@ z1: gk * $tile x0 va * $tile x1 va * $probe E -o { !bias E wc 0 * !bias E wd 0 }
   });
 });
 
-describe('CI pin 3 — context-specific edge (D1): one run’s certificate shows no edge', () => {
-  // Y spawns only after X grounds (per-member rules); the bias fire
-  // exists only in the X=va world. Dependence is real, yet every X=vb
-  // run's certificate contains no bias fire — separation must be read
-  // on the class graph, not on one run's actual edges.
-  const PROG = HEADER + `
+const SRC_CTX = HEADER + `
 mky: type.
 gb: type.
 sya: mky * $tile x0 va -o { exists U: v @w. tile x1 U }.
 syb: mky * $tile x0 vb -o { exists U: v @w. tile x1 U }.
 ba: gb * $tile x0 va * $tile x1 E -o { !bias E va 3 }.
 `;
-  const init = () => ({
-    linear: {
-      [Store.put('mk', [atom('x0')])]: 1,
-      [atom('mky')]: 1,
-      [atom('gb')]: 1,
-    },
-    persistent: {},
-  });
+const INIT_CTX = () => ({
+  linear: {
+    [Store.put('mk', [atom('x0')])]: 1,
+    [atom('mky')]: 1,
+    [atom('gb')]: 1,
+  },
+  persistent: {},
+});
+
+describe('CI pin 3 — context-specific edge (D1): one run’s certificate shows no edge', () => {
+  // Y spawns only after X grounds (per-member rules); the bias fire
+  // exists only in the X=va world. Dependence is real, yet every X=vb
+  // run's certificate contains no bias fire — separation must be read
+  // on the class graph, not on one run's actual edges.
+  const init = INIT_CTX;
   let calc;
-  before(() => { calc = loadProg('ci-ctx.will', PROG); });
+  before(() => { calc = loadProg('ci-ctx.will', SRC_CTX); });
 
   it('exact masses 3/2/2/4 (bias 3 lands only in the va world): dependent', () => {
     const r = calc.collapse(init(), { mode: 'exact', settleBranching: 'seed' });
@@ -327,12 +339,7 @@ ba: gb * $tile x0 va * $tile x1 E -o { !bias E va 3 }.
   });
 });
 
-describe('CI pin 4b — value-erasing chain (M6): active path, independent for all θ', () => {
-  // Y spawns after X grounds; ra/rb DISCRIMINATE X's value but emit the
-  // same fact m; b2 biases Y from m identically in every world. Graph:
-  // d_X → ra/rb → b2 → d_Y is an unblocked directed path, yet the
-  // erasure at m makes the transmitted variation zero.
-  const PROG = HEADER + `
+const SRC_ERASE = HEADER + `
 k: type.
 m: type.
 mky: type.
@@ -342,16 +349,23 @@ ra: k * $tile x0 va -o { m }.
 rb: k * $tile x0 vb -o { m }.
 b2: m * $tile x1 E -o { !bias E va 2 }.
 `;
-  const init = () => ({
-    linear: {
-      [Store.put('mk', [atom('x0')])]: 1,
-      [atom('mky')]: 1,
-      [atom('k')]: 1,
-    },
-    persistent: {},
-  });
+const INIT_ERASE = () => ({
+  linear: {
+    [Store.put('mk', [atom('x0')])]: 1,
+    [atom('mky')]: 1,
+    [atom('k')]: 1,
+  },
+  persistent: {},
+});
+
+describe('CI pin 4b — value-erasing chain (M6): active path, independent for all θ', () => {
+  // Y spawns after X grounds; ra/rb DISCRIMINATE X's value but emit the
+  // same fact m; b2 biases Y from m identically in every world. Graph:
+  // d_X → ra/rb → b2 → d_Y is an unblocked directed path, yet the
+  // erasure at m makes the transmitted variation zero.
+  const init = INIT_ERASE;
   let calc;
-  before(() => { calc = loadProg('ci-erase.will', PROG); });
+  before(() => { calc = loadProg('ci-erase.will', SRC_ERASE); });
 
   it('exact masses 2/2/4/4 (bias lands in EVERY world): factorizes', () => {
     const r = calc.collapse(init(), { mode: 'exact', settleBranching: 'seed' });
@@ -377,8 +391,7 @@ b2: m * $tile x1 E -o { !bias E va 2 }.
   });
 });
 
-describe('CI pin 4 — chain X → M → Y: mediator conditioning blocks', () => {
-  const PROG = HEADER + `
+const SRC_CHAIN = HEADER + `
 mkm: type.
 mky: type.
 t1: type.
@@ -390,19 +403,22 @@ sya: mky * $tile x1 va -o { exists W: v @w. tile x2 W }.
 syb: mky * $tile x1 vb -o { exists W: v @w. tile x2 W }.
 by: t2 * $tile x1 va * $tile x2 E -o { !bias E vb 5 }.
 `;
-  const init = () => ({
-    linear: {
-      [Store.put('mk', [atom('x0')])]: 1,
-      [atom('mkm')]: 1,
-      [atom('mky')]: 1,
-      [atom('t1')]: 1,
-      [atom('t2')]: 1,
-    },
-    persistent: {},
-  });
+const INIT_CHAIN = () => ({
+  linear: {
+    [Store.put('mk', [atom('x0')])]: 1,
+    [atom('mkm')]: 1,
+    [atom('mky')]: 1,
+    [atom('t1')]: 1,
+    [atom('t2')]: 1,
+  },
+  persistent: {},
+});
+
+describe('CI pin 4 — chain X → M → Y: mediator conditioning blocks', () => {
+  const init = INIT_CHAIN;
   let r;
   before(() => {
-    r = loadProg('ci-chain.will', PROG).collapse(init(), { mode: 'exact', settleBranching: 'seed' });
+    r = loadProg('ci-chain.will', SRC_CHAIN).collapse(init(), { mode: 'exact', settleBranching: 'seed' });
   });
 
   it('exact joint over (X, M, Y): total 84, hand-verified masses', () => {
@@ -422,5 +438,120 @@ by: t2 * $tile x1 va * $tile x2 E -o { !bias E vb 5 }.
 
   it('X ⊥̸ Y marginally (active chain through the unobserved mediator)', () => {
     assert.ok(!factorizes(joint(r, 'x0', 'x2')));
+  });
+});
+
+// ─── certifyCI (M5, THY_0031 §4): the criterion decided on the cover ─
+
+describe('certifyCI — sound verdicts on all seven pinned programs', () => {
+  const { wavesOf } = ciMod;
+  const hasAtomIn = (h, name) => {
+    const a = atom(name);
+    const walk = (x) => {
+      if (x === a) return true;
+      for (let i = 0; i < Store.arity(x); i++) {
+        const c = Store.child(x, i);
+        if (Store.isTermChild(c) && walk(c)) return true;
+      }
+      return false;
+    };
+    return walk(h);
+  };
+  const waveAt = (trace, cell) => {
+    const w = wavesOf(trace).find((x) => hasAtomIn(x.fact, cell));
+    assert.ok(w, `no wave at ${cell} in trace`);
+    return w.evar;
+  };
+  const run = (calc, init, seed = 0) => calc.collapse(init, { seed, trace: true });
+
+  it('collider: separated marginally, refused given the collider output', () => {
+    const calc = loadProg('cci-collider.will', SRC_COLLIDER);
+    const r = run(calc, INIT_COLLIDER());
+    const q = { trace: r.trace, init: INIT_COLLIDER(), X: waveAt(r.trace, 'x0'), Y: waveAt(r.trace, 'x1') };
+    assert.equal(calc.certifyCI(q).separated, true, 'X ⊥ Y marginally');
+    const cond = calc.certifyCI({ ...q, Z: { observed: [atom('matched')] } });
+    assert.equal(cond.separated, false, 'explaining away refused');
+    assert.ok(cond.path && cond.path.length >= 3, 'refusal carries a witness walk');
+  });
+
+  it('existence: refused at total 2, separated at total 1 — phantoms cover class-only waves', () => {
+    const c2 = loadProg('cci-exist2.will', SRC_EXIST('1', '1'));
+    // pick a seed whose run does NOT spawn W (x ≠ y): the leak must be
+    // seen through the PHANTOM wave, not the trace
+    let r = null;
+    for (let seed = 0; seed < 40 && !r; seed++) {
+      const cand = run(c2, INIT_EXIST(), seed);
+      if (wavesOf(cand.trace).length === 2) r = cand;
+    }
+    assert.ok(r, 'found an x ≠ y run');
+    const q = { trace: r.trace, init: INIT_EXIST(), X: waveAt(r.trace, 'x0'), Y: waveAt(r.trace, 'x1') };
+    assert.equal(c2.certifyCI(q).separated, false, 'existence leak seen via phantom wave');
+
+    const c1 = loadProg('cci-exist1.will', SRC_EXIST('1/2', '1/2'));
+    const r1 = run(c1, INIT_EXIST());
+    assert.equal(c1.certifyCI({
+      trace: r1.trace, init: INIT_EXIST(),
+      X: waveAt(r1.trace, 'x0'), Y: waveAt(r1.trace, 'x1'),
+    }).separated, true, 'normalized twin certified');
+  });
+
+  it('drop: refused at total 2, separated at total 1', () => {
+    const c2 = loadProg('cci-drop2.will', SRC_DROP('2/3'));
+    const r2 = run(c2, INIT_DROP());
+    assert.equal(c2.certifyCI({
+      trace: r2.trace, init: INIT_DROP(),
+      X: waveAt(r2.trace, 'x0'), Y: waveAt(r2.trace, 'x1'),
+    }).separated, false, 'drop leak refused');
+
+    const c1 = loadProg('cci-drop1.will', SRC_DROP('1/3'));
+    const r1 = run(c1, INIT_DROP());
+    assert.equal(c1.certifyCI({
+      trace: r1.trace, init: INIT_DROP(),
+      X: waveAt(r1.trace, 'x0'), Y: waveAt(r1.trace, 'x1'),
+    }).separated, true, 'normalized twin certified');
+  });
+
+  it('zeroed wave: refused (survival is evidence)', () => {
+    const calc = loadProg('cci-zero.will', SRC_ZERO);
+    const r = run(calc, INIT_ZERO());
+    assert.equal(calc.certifyCI({
+      trace: r.trace, init: INIT_ZERO(),
+      X: waveAt(r.trace, 'x0'), Y: waveAt(r.trace, 'x1'),
+    }).separated, false);
+  });
+
+  it('context-specific edge: refused even on an X=vb trace (class graph, not run edges)', () => {
+    const calc = loadProg('cci-ctx.will', SRC_CTX);
+    let r = null;
+    for (let seed = 0; seed < 40 && !r; seed++) {
+      const cand = run(calc, INIT_CTX(), seed);
+      if (tileOf(cand.state, 'x0') === 'vb') r = cand;
+    }
+    assert.ok(r, 'found an X=vb run');
+    assert.equal(calc.certifyCI({
+      trace: r.trace, init: INIT_CTX(),
+      X: waveAt(r.trace, 'x0'), Y: waveAt(r.trace, 'x1'),
+    }).separated, false, 'the unfired bias rule is a class edge');
+  });
+
+  it('value-erasing chain: refused — the criterion is sound, not complete', () => {
+    const calc = loadProg('cci-erase.will', SRC_ERASE);
+    const r = run(calc, INIT_ERASE());
+    assert.equal(calc.certifyCI({
+      trace: r.trace, init: INIT_ERASE(),
+      X: waveAt(r.trace, 'x0'), Y: waveAt(r.trace, 'x1'),
+    }).separated, false, 'independence holds (pin 4b) but no sound structural criterion can see erasure');
+  });
+
+  it('chain: separated given the mediator, refused marginally', () => {
+    const calc = loadProg('cci-chain.will', SRC_CHAIN);
+    const r = run(calc, INIT_CHAIN());
+    const q = {
+      trace: r.trace, init: INIT_CHAIN(),
+      X: waveAt(r.trace, 'x0'), Y: waveAt(r.trace, 'x2'),
+    };
+    assert.equal(calc.certifyCI({ ...q, Z: { waves: [waveAt(r.trace, 'x1')] } }).separated, true,
+      'X ⊥ Y | M certified');
+    assert.equal(calc.certifyCI(q).separated, false, 'marginal chain refused');
   });
 });
