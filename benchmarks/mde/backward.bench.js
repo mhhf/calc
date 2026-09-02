@@ -8,7 +8,7 @@
  * Profile: npm run profile:mde
  */
 
-import mde from '../../lib/engine/index.js';
+import mde from '../../calculus/ill/index.js';
 import prove from '../../lib/engine/backchain.js';
 import Store from '../../lib/kernel/store.js';
 import { performance } from 'perf_hooks';

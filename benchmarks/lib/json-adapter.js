@@ -5,7 +5,7 @@ import { runV2ProofBenchmarks } from '../proof/proofs-v2.bench.js';
 import { runBenchmarks } from '../mde/backward.bench.js';
 import { performance } from 'perf_hooks';
 import path from 'path';
-import mde from '../../lib/engine/index.js';
+import mde from '../../calculus/ill/index.js';
 import fs from 'fs';
 import { loadBytecode, bytecodeArrGetGuard } from '../../calculus/ill/lib/bytecode-loader.js';
 

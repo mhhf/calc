@@ -18,7 +18,7 @@
 import path from 'path';
 import { performance } from 'perf_hooks';
 import Store from '../../lib/kernel/store.js';
-import mde from '../../lib/engine/index.js';
+import mde from '../../calculus/ill/index.js';
 import { loadBytecode, bytecodeArrGetGuard } from '../../calculus/ill/lib/bytecode-loader.js';
 import { intToBin } from '../../calculus/ill/lib/ffi/convert.js';
 const EVM_PATH = path.join(import.meta.dirname, '../../calculus/ill/programs/evm.ill');

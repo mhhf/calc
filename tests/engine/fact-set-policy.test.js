@@ -21,7 +21,7 @@ import { putRat } from '../../lib/kernel/rat-term.js';
 import { ratParts } from '../../lib/engine/theories/ratlit-theory.js';
 import { cmp as ratCmp } from '../../lib/rat.js';
 import path from 'path';
-import mde from '../../lib/engine/index.js';
+import mde from '../../calculus/ill/index.js';
 import illCalculusConfig from '../../calculus/ill/calculus-config.js';
 import { show } from '../../lib/engine/show.js';
 import { buildStack, detectStrategy, findAllMatches } from '../../lib/engine/strategy.js';

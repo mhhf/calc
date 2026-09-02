@@ -5,7 +5,7 @@
 import { describe, it, before } from 'node:test';
 import assert from 'node:assert/strict';
 import path from 'path';
-import mde from '../../lib/engine/index.js';
+import mde from '../../calculus/ill/index.js';
 import Store from '../../lib/kernel/store.js';
 import { clauseDispatch, tryCCDispatch } from '../../lib/engine/opt/compiled-clauses.js';
 import { buildTheoryLookup, defaultTheories } from '../../lib/kernel/eq-theory.js';

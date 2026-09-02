@@ -22,6 +22,7 @@ import { binlitTheory } from './lib/binlit-theory.js';
 import backchainIll from './lib/backchain-ill.js';
 import { ILL_CHAIN_CONFIGS, ILL_SROA_CONFIG } from './lib/compose-config.js';
 import { bytecodeToTrie, codeToArrlit, bytesToSemantic, normalizeQuery } from './lib/bytecode-normalize.js';
+import { loadBytecode, bytecodeArrGetGuard } from './lib/bytecode-loader.js';
 import { binToInt, isGround as _binIsGround } from './lib/ffi/convert.js';
 import { trieNav } from './lib/ffi/array.js';
 import { DEFAULT_LEAF_POLICY, DEFAULT_SHOW_EXCLUDE } from '../../lib/engine/show.js';
@@ -116,6 +117,10 @@ const illCalculusConfig = {
     // in its own config instead of patching show.js (TODO_0265 Phase 2b).
     classifyLeafPolicy: DEFAULT_LEAF_POLICY,
     showExclude: DEFAULT_SHOW_EXCLUDE,
+    // Bytecode API bindings (mde.load opts.bytecode routes through these;
+    // a calculus without them structurally lacks the bytecode API).
+    loadBytecode,
+    bytecodeArrGetGuard,
     bytecodeToTrie,
     codeToArrlit,
     bytesToSemantic,

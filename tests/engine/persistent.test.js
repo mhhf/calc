@@ -12,7 +12,7 @@ import { FactSet } from '../../lib/engine/fact-set.js';
 import { proveNaive } from '../../lib/engine/lnl/persistent.js';
 import { makeMatchOpts } from './_match-opts.js';
 // Hoisted by tools/esm-hoist.js:
-import mde from '../../lib/engine/index.js';
+import mde from '../../calculus/ill/index.js';
 import { clearBWCache } from '../../lib/engine/backward-cache.js';
 
 describe('lnl/persistent — proveNaive', () => {

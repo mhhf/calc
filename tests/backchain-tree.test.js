@@ -4,7 +4,7 @@ import test from 'node:test';
 import assert from 'node:assert';
 import path from 'path';
 import { backchainWithTree } from '../lib/prover/backchain-tree.js';
-import mde from '../lib/engine/index.js';
+import mde from '../calculus/ill/index.js';
 import Store from '../lib/kernel/store.js';
 import { initILL, makeILLBackchainOpts } from '../calculus/ill/lib/backchain-ill.js';
 import { FORMAT_VERSION } from '../lib/prover/serialize-tree.js';

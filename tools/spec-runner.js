@@ -14,7 +14,7 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 import path from 'path';
-import mde from '../lib/engine/index.js';
+import mde from '../calculus/ill/index.js';
 import convert from '../lib/engine/convert.js';
 import { timedSubset, timedExact } from '../lib/engine/timed/timed-views.js';
 import dl from './directive-loader.js';

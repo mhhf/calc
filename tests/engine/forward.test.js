@@ -5,7 +5,7 @@ import { describe, it } from 'node:test';
 import assert from 'node:assert';
 import path from 'path';
 import forward from '../../lib/engine/forward.js';
-import mde from '../../lib/engine/index.js';
+import mde from '../../calculus/ill/index.js';
 import Store from '../../lib/kernel/store.js';
 import ffi from '../../calculus/ill/lib/ffi/index.js';
 import { tryMatch, buildMatchOpts, buildGenericProtocol, buildLnlProtocol, buildOptProtocol, buildFfiProtocol } from '../../lib/engine/match.js';

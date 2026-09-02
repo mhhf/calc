@@ -11,7 +11,7 @@ import path from 'path';
 import fs from 'fs';
 import os from 'os';
 import Store from '../../lib/kernel/store.js';
-import mde from '../../lib/engine/index.js';
+import mde from '../../calculus/ill/index.js';
 import { countNodes, getAllLeaves } from '../../lib/engine/tree-utils.js';
 import { classifyLeaf } from '../../lib/engine/show.js';
 import { toObject } from '../../lib/engine/fact-set.js';

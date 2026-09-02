@@ -19,7 +19,7 @@ import { fromObject, toObject, Arena } from '../../lib/engine/fact-set.js';
 import path from 'path';
 import fs from 'fs';
 import { performance } from 'perf_hooks';
-import mde from '../../lib/engine/index.js';
+import mde from '../../calculus/ill/index.js';
 import { findAllMatches } from '../../lib/engine/strategy.js';
 import { mutateState } from '../../lib/engine/state-ops.js';
 import match from '../../lib/engine/match.js';

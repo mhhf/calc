@@ -9,7 +9,7 @@ import os from 'os';
 import Store from '../../lib/kernel/store.js';
 import { serialize, deserialize, crc32, compact } from '../../lib/engine/store-binary.js';
 import { grade0, gradeW } from '../../lib/engine/grades.js';
-import mde from '../../lib/engine/index.js';
+import mde from '../../calculus/ill/index.js';
 // Hoisted by tools/esm-hoist.js:
 import treeUtils from '../../lib/engine/tree-utils.js';
 

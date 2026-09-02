@@ -6,7 +6,7 @@ import { describe, it, beforeEach } from 'node:test';
 import assert from 'node:assert/strict';
 import path from 'path';
 import Store from '../../lib/kernel/store.js';
-import mde from '../../lib/engine/index.js';
+import mde from '../../calculus/ill/index.js';
 import { parseDecls } from '../../lib/parser/declarations.js';
 // Hoisted by tools/esm-hoist.js:
 import convert from '../../lib/engine/convert.js';

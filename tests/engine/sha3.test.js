@@ -9,7 +9,7 @@ import { describe, it, before } from 'node:test';
 import { bytesToSemantic } from '../../calculus/ill/lib/bytecode-normalize.js';
 import assert from 'node:assert/strict';
 import path from 'path';
-import mde from '../../lib/engine/index.js';
+import mde from '../../calculus/ill/index.js';
 import Store from '../../lib/kernel/store.js';
 import { intToBin, binToInt } from '../../calculus/ill/lib/ffi/convert.js';
 import { arrToTrie } from '../../calculus/ill/lib/ffi/array.js';

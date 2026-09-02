@@ -7,7 +7,7 @@
 
 import path from 'path';
 import fs from 'fs';
-import mde from '../lib/engine/index.js';
+import mde from '../calculus/ill/index.js';
 import convert from '../lib/engine/convert.js';
 import Store from '../lib/kernel/store.js';
 import { toObject } from '../lib/engine/fact-set.js';

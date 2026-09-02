@@ -8,7 +8,7 @@
 import { describe, it, before } from 'node:test';
 import assert from 'node:assert';
 import path from 'path';
-import mde from '../../lib/engine/index.js';
+import mde from '../../calculus/ill/index.js';
 import { countNodes, getAllLeaves } from '../../lib/engine/tree-utils.js';
 import { classifyLeaf } from '../../lib/engine/show.js';
 import { detectStrategy } from '../../lib/engine/strategy.js';

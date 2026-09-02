@@ -4,7 +4,7 @@
  * Enforces three sets of layering rules by scanning require() calls:
  *
  * 1. Forward engine DAG:
- *      kernel/ <- generic core <- lnl/ <- opt/ <- ill/ <- index.js
+ *      kernel/ <- generic core <- lnl/ <- opt/ <- index.js
  *    Inner layers must NEVER import from outer layers. The only wiring
  *    point is the composition root (index.js), which sees all layers.
  *
@@ -13,8 +13,13 @@
  *    Utility modules (pt, context, state, bridge, etc.) sit below
  *    all layers and can be imported by any layer.
  *
- * 3. Global boundary:
+ * 3. Global boundaries:
  *      lib/ must not import from src/ui/
+ *      lib/ must not import from calculus/ — calculus-bound machinery
+ *      lives in calculus/<name>/{calculus-config.js,lib/} and reaches the
+ *      generic engine ONLY through opts.calculusConfig (audit 2026-09-02:
+ *      the former lib/engine/ill/ layer moved out; the engine holds no
+ *      calculus default).
  */
 
 import { describe, it } from 'node:test';
@@ -141,7 +146,6 @@ function classifyEngineModule(relPath) {
   if (relPath.startsWith('lnl/')) return 'lnl';
   if (relPath.startsWith('timed/')) return 'timed';
   if (relPath.startsWith('opt/')) return 'opt';
-  if (relPath.startsWith('ill/')) return 'ill';
   // theories/ stays 'generic' by decision (audit 2026-09-02): the
   // numeric-literal theories (ratlit/strlit representation decoders) are
   // the generic engine's numeric substrate — formula-utils/decimate use
@@ -153,10 +157,9 @@ function classifyEngineModule(relPath) {
 const ENGINE_LAYER_ORDER = {
   generic: 0,
   lnl: 1,
-  timed: 1,   // scheduler layer beside lnl: may import generic, never ill/
+  timed: 1,   // scheduler layer beside lnl: may import generic only
   opt: 2,
-  ill: 3,
-  root: 4,  // index.js can import anything
+  root: 3,  // index.js can import anything
 };
 
 // ─── Prover layer classification ────────────────────────────────────
@@ -353,8 +356,8 @@ describe('matchOpts field-access enforcement', () => {
       const relPath = path.relative(ENGINE_DIR, filePath);
       const layer = classifyEngineModule(relPath);
 
-      // root (index.js) and ill/ can access any field — they're above all layers
-      if (layer === 'root' || layer === 'ill') continue;
+      // root (index.js) can access any field — it's above all layers
+      if (layer === 'root') continue;
 
       const allowed = MATCHOPTS_FIELDS[layer];
       if (!allowed) continue;
@@ -454,6 +457,36 @@ describe('global boundary enforcement', () => {
     if (violations.length > 0) {
       assert.fail(
         `lib/ \u2192 src/ui/ boundary violations:\n` +
+        violations.map(v => `  ${v}`).join('\n')
+      );
+    }
+  });
+
+  it('lib/ must not import from calculus/ (engine holds no calculus default)', () => {
+    // The inverse of the plug-in contract: calculus/<name>/ imports lib/
+    // freely, but the generic core may never reach into a calculus \u2014 all
+    // calculus-specific behavior arrives via opts.calculusConfig. This is
+    // what makes the former lib/engine/ill/ smuggle structurally
+    // impossible to reintroduce (audit 2026-09-02).
+    const CALCULUS_DIR = path.resolve(import.meta.dirname, '../../calculus');
+    const allFiles = collectJSFiles(LIB_DIR);
+    const violations = [];
+
+    for (const filePath of allFiles) {
+      const requires = extractRequires(filePath);
+      for (const req of requires) {
+        const resolved = path.resolve(path.dirname(filePath), req);
+        if (resolved.startsWith(CALCULUS_DIR + path.sep)) {
+          violations.push(
+            `${path.relative(LIB_DIR, filePath)} \u2192 ${req}`
+          );
+        }
+      }
+    }
+
+    if (violations.length > 0) {
+      assert.fail(
+        `lib/ \u2192 calculus/ boundary violations (pass a calculusConfig instead):\n` +
         violations.map(v => `  ${v}`).join('\n')
       );
     }

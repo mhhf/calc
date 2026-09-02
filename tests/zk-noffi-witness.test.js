@@ -10,7 +10,7 @@ import { describe, it, before } from 'node:test';
 import assert from 'node:assert';
 import path from 'path';
 import fs from 'fs';
-import mde from '../lib/engine/index.js';
+import mde from '../calculus/ill/index.js';
 import Store from '../lib/kernel/store.js';
 import Seq from '../lib/kernel/sequent.js';
 import calculus from '../lib/calculus/index.js';

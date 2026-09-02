@@ -5,7 +5,7 @@
  * Profiles where time is spent: loading, parsing, matching, proving.
  */
 
-import mde from '../../lib/engine/index.js';
+import mde from '../../calculus/ill/index.js';
 import Store from '../../lib/kernel/store.js';
 import fs from 'fs';
 import path from 'path';

@@ -31,7 +31,12 @@ try {
   const cacheMode = process.env.BENCH_CACHE_MODE || 'nocache';
 
   const tReq0 = performance.now();
-  const mde = await loadDefault('./lib/engine/index.js');
+  // Newer commits: calculus/ill/index.js is the ILL facade (mde.load
+  // requires an explicit calculusConfig since audit 2026-09-02). Older
+  // commits predate it — fall back to the generic entry, whose load()
+  // still defaults to ILL there.
+  const mde = await loadDefault('./calculus/ill/index.js')
+    .catch(() => loadDefault('./lib/engine/index.js'));
   const requireMs = performance.now() - tReq0;
 
   const codePath = path.join(import.meta.dirname, 'calculus/ill/programs/multisig_nocall_solc_code.ill');

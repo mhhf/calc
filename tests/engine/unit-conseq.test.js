@@ -9,7 +9,7 @@
 
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import mde from '../../lib/engine/index.js';
+import mde from '../../calculus/ill/index.js';
 import { FIX, loadTill, atom, stampedStr, bagStr } from './till-helpers.js';
 
 const S = (facts) => ({

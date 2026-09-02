@@ -9,7 +9,7 @@
  */
 
 import path from 'path';
-import mde from '../lib/engine/index.js';
+import mde from '../calculus/ill/index.js';
 async function main() {
   const args = process.argv.slice(2);
   if (args.length === 0) {

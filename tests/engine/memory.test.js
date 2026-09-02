@@ -6,7 +6,7 @@ import { describe, it, before, beforeEach } from 'node:test';
 import { bytesToSemantic } from '../../calculus/ill/lib/bytecode-normalize.js';
 import assert from 'node:assert';
 import path from 'path';
-import mde from '../../lib/engine/index.js';
+import mde from '../../calculus/ill/index.js';
 import backward from '../../lib/engine/backchain.js';
 import { makeILLBackchainOpts } from '../../calculus/ill/lib/backchain-ill.js';
 import { getAllLeaves, countNodes } from '../../lib/engine/tree-utils.js';

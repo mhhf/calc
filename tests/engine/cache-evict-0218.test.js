@@ -14,7 +14,7 @@ import path from 'path';
 import os from 'os';
 import { ensureVersionTag, lruEvict, DEFAULT_MAX_BYTES, _resetVersionTagMemo } from '../../lib/engine/cache-evict.js';
 import Store from '../../lib/kernel/store.js';
-import mde from '../../lib/engine/index.js';
+import mde from '../../calculus/ill/index.js';
 const SYMEX_PATH = path.join(import.meta.dirname, '../../calculus/ill/programs/multisig_nocall_solc_symbolic.ill');
 
 let tmpDir;

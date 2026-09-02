@@ -9,7 +9,7 @@ import Store from '../../lib/kernel/store.js';
 import { createNode, insert, flattenPattern, flattenFact, subtreeSize, queryFlat, collectAll, makeDiscTreeLayer } from '../../lib/engine/disc-tree.js';
 import { countNodes, countLeaves, maxDepth, getAllLeaves } from '../../lib/engine/tree-utils.js';
 import { fromObject } from '../../lib/engine/fact-set.js';
-import mde from '../../lib/engine/index.js';
+import mde from '../../calculus/ill/index.js';
 describe('disc-tree', () => {
   beforeEach(() => Store.clear());
 

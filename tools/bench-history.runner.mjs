@@ -230,7 +230,7 @@ async function main() {
   const result = {};
 
   try {
-    const mde = await loadDefault('./lib/engine/index.js');
+    const mde = await loadDefault('./calculus/ill/index.js');
 
     let treeUtils = null;
     try { treeUtils = await loadDefault('./lib/engine/tree-utils.js'); } catch {}
