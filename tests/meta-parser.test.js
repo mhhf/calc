@@ -7,6 +7,7 @@
 import { describe, it, before } from 'node:test';
 import assert from 'node:assert/strict';
 import path from 'path';
+import fs from 'fs';
 import Store from '../lib/kernel/store.js';
 import { loadChain } from '../lib/meta-parser/loader.js';
 
@@ -75,6 +76,34 @@ describe('meta-parser/loader', () => {
     it('child family directive overrides parent', () => {
       const result = loadChain(calcPath);
       assert.ok(result.directives.family);
+    });
+  });
+
+  describe('resolveExtends probe tiers (TODO_0086)', () => {
+    it('resolves @extends via the family/<name>/ tier from a non-calculus dir', () => {
+      // A .calc two directory levels below the repo root with no same-dir
+      // lnl.family and no sibling lnl/ calculus dir can ONLY resolve
+      // @extends lnl through the third probe tier (dir/../../family/lnl/).
+      const fixture = path.join(import.meta.dirname, 'fixtures', 'extends-family-tier.calc');
+      fs.writeFileSync(fixture, '@extends lnl.\n@family famtier.\n');
+      try {
+        const result = loadChain(fixture);
+        // Inheriting the lnl sequent constructor proves the family file loaded.
+        assert.ok(result.constructors.seq, 'lnl seq constructor inherited');
+        assert.equal(result.directives.family, 'famtier');
+      } finally {
+        fs.unlinkSync(fixture);
+      }
+    });
+
+    it('throws loudly when all three probe tiers miss', () => {
+      const fixture = path.join(import.meta.dirname, 'fixtures', 'extends-missing.calc');
+      fs.writeFileSync(fixture, '@extends truly_nonexistent_xyz.\n@family broken.\n');
+      try {
+        assert.throws(() => loadChain(fixture), /no such family\/calculus/);
+      } finally {
+        fs.unlinkSync(fixture);
+      }
     });
   });
 });
