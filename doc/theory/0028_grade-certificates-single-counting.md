@@ -1,13 +1,13 @@
 ---
 title: "Grade Certificates: Single-Counting and the Syntactic Independence Discipline"
 created: 2026-09-01
-modified: 2026-09-01
+modified: 2026-09-02
 summary: "T4-d(i) discharged: in will's bias discipline, evidence identity IS fact identity — value-only bias facts under-identify (two independent equal-likelihood observations collapse to one factor), so the correct encoding is SOURCE-TAGGED bias facts (arity ≥ 3; extra arguments enter the content-addressed identity, which the driver already supports). Under the linear-evidence discipline (observations consumed linearly, one bias conclusion per (wave, member) per rule), single-counting is a theorem: posterior factors are in bijection with consumed observations, each likelihood entering exactly once. Double-counting requires a syntactic marker ($ or ! on the observation) and is CERTIFICATE-VISIBLE, never numerically visible: the honest and smuggled programs produce identical posteriors, and only the run certificate's fire provenances (disjoint vs overlapping) tell them apart — independence is a structural property of the derivation, exhibited by the certificate, not a property of the number."
 tags: [linear-logic, probabilistic, provenance, will, graded-types, conditioning, independence]
 category: "Probabilistic Generation"
 unique_contribution: "The syntactic independence discipline for a probabilistic forward-chaining calculus, with both directions made precise and executable: (1) the single-counting theorem — linearity of evidence tokens + per-rule bias-uniqueness implies the posterior is the correctly-factored Bayesian product with each observation contributing exactly once (the PSL/Lilac '⊗ = independence' reading as a theorem about ALL runs of an engine, not a program-logic judgment); (2) the certificate half — double-counting cannot be detected from the posterior (an explicit honest/smuggled program pair produces IDENTICAL totals) but is always exhibited by the run certificate's fire provenances, and its only syntactic entry points are the $/! markers on observation predicates. A third finding not in the T4-d sketch: content-addressed set semantics UNDER-identifies value-only evidence (independent equal-likelihood observations dedup to one factor) — the source-tag discipline (provenance as part of fact identity) is forced, and the existing arity-open bias reader already implements it."
 references:
-  - "THY_0026 §4/§6 T4-d/§9 item 1 — the conjecture this discharges (part (i); parts (ii)/(iii) remain, see §6)"
+  - "THY_0026 §4/§6 T4-d/§9 item 1 — the conjecture this discharges (part (i); part (ii) discharged by THY_0029's dissolution, part (iii) remains)"
   - "THY_0027 — trace-judgment cut admissibility (the token discipline; no-promotion-through-a-draw is why observations under ! are the marked case)"
   - "TODO_0300 — the phase plan (task 1)"
   - "Barthe, Hsu & Liao (2020). A Probabilistic Separation Logic. POPL (∗ = independence — the reading Theorem 1 operationalizes; cite, don't claim)"
@@ -20,10 +20,11 @@ references:
 # Grade Certificates: Single-Counting and the Syntactic Independence Discipline
 
 **Status.** Proved and pinned (2026-09-01). Discharges THY_0026 §9 item 1
-part (i) — the grade-certificate theorem. Parts (ii) (mass-splitting
-graded contraction) and (iii) (quantitative good-labelling for derivation
-forests) remain open; §6 records the design probe for (ii). Executable
-pins: `tests/engine/will-decimate.test.js` ("evidence discipline").
+part (i) — the grade-certificate theorem. Part (ii) (mass-splitting
+graded contraction) closed by dissolution 2026-09-02 — §6's probe
+resolved affirmatively in THY_0029. Part (iii) (quantitative
+good-labelling for derivation forests) remains open. Executable pins:
+`tests/engine/will-decimate.test.js` ("evidence discipline").
 
 ## 1. Setting
 
@@ -204,9 +205,17 @@ already exhausted by S1–S3 + Theorem 2(b). To refute: exhibit a use of
 □_r that is not a provenance partition — the natural candidate is
 *budgeted* evidence (spend r of a likelihood budget across branches),
 which smells like the credits literature, i.e. a different modality
-with a different discipline, not will's. Decision deferred to
-TODO_0300's probe task; if the conjecture holds, T4-d(ii) closes by
-dissolution (itself a result worth a paper remark, as §3g was).
+with a different discipline, not will's.
+
+**RESOLVED (2026-09-02, THY_0029): the conjecture holds — T4-d(ii)
+closes by dissolution.** The box's count face is the counted bang's
+derivable splitting law, its mass face is ⊗-context splitting of the
+token zone (multiplicative — the sketch's r+s was the budget semiring),
+its sum face is the forking connectives; token-backed boxes are
+definable as ⟨Θ⟩ ⊗ A, unbacked ones are weight-conservation leaks, and
+the contraction shape would clone a draw (refuted executably). The
+budgeted-evidence candidate is not a counterexample but the counted
+bang's own discipline. See THY_0029 for the theorem and pins.
 
 ## 7. Residual
 
