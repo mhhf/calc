@@ -6,7 +6,8 @@ import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import path from 'path';
 import { resolve } from '../../lib/engine/resolve-all.js';
-import { load, parseExpr } from '../../lib/engine/convert.js';
+import { load } from '../../lib/engine/convert.js';
+import { parseExpr, illConfig } from '../../calculus/ill/index.js';
 import { apply } from '../../lib/kernel/substitute.js';
 import { unify } from '../../lib/kernel/unify.js';
 import { binlitTheory } from '../../calculus/ill/lib/binlit-theory.js';
@@ -71,7 +72,7 @@ const illResolveOpts = {
 
 function setup() {
   if (!clauses) {
-    const result = load([EVM_PATH]);
+    const result = load([EVM_PATH], { loaderConfig: illConfig.loader });
     clauses = result.clauses;
     definitions = result.definitions;
   }

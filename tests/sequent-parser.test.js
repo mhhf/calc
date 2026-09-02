@@ -9,11 +9,12 @@ import assert from 'node:assert/strict';
 import calculus from '../lib/calculus/index.js';
 import { sequentParser } from '../lib/parser/sequent-parser.js';
 import Seq from '../lib/kernel/sequent.js';
+import { loadILL } from '../calculus/ill/index.js';
 describe('sequent-parser', () => {
   let calc, sp;
 
   before(async () => {
-    calc = await calculus.loadILL();
+    calc = await loadILL();
     sp = sequentParser(calc);
   });
 

@@ -22,7 +22,7 @@ beforeEach(() => {
   // Lazy-init the real expression parser from the engine
   if (!_exprParser) {
 
-    _exprParser = convert.parseExpr;
+    _exprParser = illParseExpr;
   }
 });
 
@@ -343,6 +343,7 @@ import { illConnectives } from '../../calculus/ill/lib/connectives.js';
 import { resolveConn, flattenAnte, compileRule } from '../../lib/engine/compile.js';
 import { getModes } from '../../calculus/ill/lib/ffi/index.js';
 import { monadUnit as U } from '../../lib/engine/grades.js';
+import { parseExpr as illParseExpr } from '../../calculus/ill/index.js';
 describe('SELL: Graded modality parsing (TODO 155)', () => {
   beforeEach(() => Store.clear());
 

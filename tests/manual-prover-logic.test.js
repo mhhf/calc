@@ -11,11 +11,12 @@ import { createManualProofAPI } from '../lib/prover/strategy/manual.js';
 import Seq from '../lib/kernel/sequent.js';
 import Store from '../lib/kernel/store.js';
 import { gradeW } from '../lib/engine/grades.js';
+import { loadILL } from '../calculus/ill/index.js';
 describe('ManualProofAPI - Rule Suggestions', () => {
   let calc, AST, api;
 
   before(async () => {
-    calc = await calculus.loadILL();
+    calc = await loadILL();
     AST = calc.AST;
     api = createManualProofAPI(calc);
   });

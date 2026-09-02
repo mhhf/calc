@@ -6,11 +6,12 @@ import { describe, it, before } from 'node:test';
 import assert from 'node:assert';
 import { seq, hash, eq } from '../lib/kernel/sequent.js';
 import calculus from '../lib/calculus/index.js';
+import { loadILL } from '../calculus/ill/index.js';
 describe('v2 Sequent', () => {
   let AST;
 
   before(async () => {
-    const ill = await calculus.loadILL();
+    const ill = await loadILL();
     AST = ill.AST;
   });
 

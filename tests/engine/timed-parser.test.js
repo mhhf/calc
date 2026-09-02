@@ -17,6 +17,7 @@ import Store from '../../lib/kernel/store.js';
 import calculus from '../../lib/calculus/index.js';
 import { buildParser } from '../../lib/calculus/builders.js';
 import { putRat } from '../../lib/kernel/rat-term.js';
+import { loadILL } from '../../calculus/ill/index.js';
 
 const FIXTURE = path.join(import.meta.dirname, '../fixtures/graded-comp.calc');
 
@@ -148,7 +149,7 @@ describe('show.js renders timed forms exactly (no floats, no hex stamps)', () =>
 
 describe('timed syntax absent without the declarations', () => {
   it('ILL parser rejects @, after, read', () => {
-    const ill = calculus.loadILL();
+    const ill = loadILL();
     assert.throws(() => ill.parse('A@3'), /Parse error/);
     assert.throws(() => ill.parse('after (Q+2)'), /Parse error/);
     assert.throws(() => ill.parse('read A'), /Parse error/);

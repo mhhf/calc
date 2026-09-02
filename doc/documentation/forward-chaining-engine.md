@@ -26,18 +26,18 @@ graph TB
         BACKCHAIN["<b>backchain.js</b><br/>SLD-style backward chaining"]
     end
 
-    subgraph LNL["LNL Layer (linear/persistent distinction)"]
-        PERSISTENT["<b>lnl/persistent.js</b><br/>Persistent goal proving:<br/>state → cache → clause"]
-        LOLI["<b>lnl/loli.js</b><br/>Dynamic rule matching<br/>(linear implications)"]
-        DRAIN["<b>lnl/loli-drain.js</b><br/>Persistent-trigger loli drain"]
-        EXIST["<b>lnl/existential.js</b><br/>∃-variable resolution"]
+    subgraph LNL["Family Layer (family/lnl/lib/, injected via cc.family.engine)"]
+        PERSISTENT["<b>persistent.js</b><br/>Persistent goal proving:<br/>state → cache → clause"]
+        LOLI["<b>loli.js</b><br/>Dynamic rule matching<br/>(linear implications)"]
+        DRAIN["<b>loli-drain.js</b><br/>Persistent-trigger loli drain"]
+        EXIST["<b>existential.js</b><br/>∃-variable resolution"]
     end
 
-    subgraph ILL["ILL Layer (calculus-specific)"]
-        CONN["<b>ill/connectives.js</b><br/>ILL connective table"]
-        BINLIT["<b>ill/binlit-theory.js</b><br/>Binary number eq theory"]
-        FFI["<b>ill/ffi/</b><br/>Arithmetic, memory, bitwise"]
-        BCILL["<b>ill/backchain-ill.js</b><br/>ILL backward defaults"]
+    subgraph ILL["ILL Layer (calculus/ill/lib/)"]
+        CONN["<b>connectives.js</b><br/>ILL connective table"]
+        BINLIT["<b>binlit-theory.js</b><br/>Binary number eq theory"]
+        FFI["<b>ffi/</b><br/>Arithmetic, memory, bitwise"]
+        BCILL["<b>backchain-ill.js</b><br/>ILL backward defaults"]
     end
 
     subgraph Opt["Toggleable Optimizations"]
@@ -78,10 +78,10 @@ graph TB
 ```
 
 **Layer discipline:**
-- **Generic core** (`formula-utils.js`, `compile.js`, `match.js`, `strategy.js`, `forward.js`, `explore.js`, `backchain.js`, `state-ops.js`, `fact-set.js`): zero `lnl/`, `opt/`, or `ill/` imports. Parameterized by connective table and `matchOpts` callbacks. `formula-utils.js` provides connective-aware formula decomposition (`resolveConn`, `flattenAnte`, `unwrapComp`, `expandChoice`, `expandConsqChoices`) shared across pipeline stages. `forward.js` and `explore.js` have zero `backchain.js` imports — backward index building is guaranteed by the assembler (`index.js`).
-- **LNL layer** (`lnl/`): zero `opt/` or `ill/` imports. Receives configuration via `matchOpts`.
+- **Generic core** (`formula-utils.js`, `compile.js`, `match.js`, `strategy.js`, `forward.js`, `explore.js`, `backchain.js`, `state-ops.js`, `fact-set.js`): zero family, `opt/`, or `ill/` imports. Parameterized by connective table and `matchOpts` callbacks. `formula-utils.js` provides connective-aware formula decomposition (`resolveConn`, `flattenAnte`, `unwrapComp`, `expandChoice`, `expandConsqChoices`) shared across pipeline stages. `forward.js` and `explore.js` have zero `backchain.js` imports — backward index building is guaranteed by the assembler (`index.js`).
+- **Family layer** (`family/lnl/lib/`): sits outside `lib/`; may import `lib/` but not vice versa. The four engine hooks (`proveNaive`, `matchDynamicRule`, `drainDynamicRules`, `resolveEx`) arrive on `cc.family.engine` from `family/lnl/family-config.js`, composed by the calculus configs and injected via `matchOpts`.
 - **opt layer** (`opt/`): zero `ill/` imports. Receives configuration via injection.
-- **ILL layer** (`ill/`): calculus-specific logic. Only imported by the orchestrator (`index.js`).
+- **ILL layer** (`calculus/ill/lib/`): calculus-specific logic. Only imported by the orchestrator (`index.js`) and the calculus configs.
 - **Orchestrator** (`index.js`): single composition root. Imports all layers, builds `matchOpts`, injects into `exec()`/`explore()`.
 - Enforced by `tests/engine/layer-dag.test.js` (static require() analysis, zero exceptions). Same test also enforces the backward prover DAG (kernel←generic←focused←strategy) and `lib/`↛`src/ui/` global boundary.
 
@@ -119,12 +119,12 @@ matchOpts = {
   canonicalize,        // hash → hash (equational theory normalization)
   onProveFail,         // hook: (goal, reason) => void
   onProveSuccess,      // hook: (goal, method) => void
-  // LNL layer (injected by orchestrator)
-  provePersistent,     // (patterns, idx, theta, slots, state, calc, evidence) → idx
-  matchDynamicRule,    // (factHash, state, calc, matchOpts) → match | null
-  resolveEx,           // (state, calc, matchOpts) → bindings
-  drainLolis,          // (state, calc, matchOpts) → void
-  dynamicRuleTag,      // tag name for state-resident rules (e.g., 'loli')
+  // Family layer (injected via cc.family.engine)
+  provePersistent,      // (patterns, idx, theta, slots, state, calc, evidence) → idx
+  matchDynamicRule,     // (factHash, state, calc, matchOpts) → match | null
+  resolveEx,            // (state, calc, matchOpts) → bindings
+  drainDynamicRules,    // (state, calc, matchOpts) → void
+  dynamicRuleTag,       // tag name for state-resident rules (e.g., 'loli')
   // Opt layer (injected by orchestrator)
   execExStep,          // compiled ∃-chain fast path
   execPS,              // compiled persistent step fast path
@@ -315,7 +315,7 @@ flowchart TB
         subgraph FOREACH["For each match"]
             CHECKPOINT["Arena checkpoint<br/>(linArena, perArena, solver)"]
             MUTATE["mutateState()"]
-            DRAIN["drainLolis()"]
+            DRAIN["drainDynamicRules()"]
             FEED["feedPers(solver)"]
             PREDICT["predictNext(m)"]
             RECURSE["go(depth+1, pred)"]
@@ -330,7 +330,7 @@ flowchart TB
 
 **Core invariant:** When `go()` returns, state (FactSet) and solver are in their original state via Arena undo.
 
-Optimization modules called in the hot loop (`go`): `drainLolis` (lnl/loli-drain.js), `feedPers` + `satFilter` (constraint-feed.js), `predictNext` (opt/prediction.js), `controlHash` + `recordMemo` (opt/structural-memo.js). Cross-layer callbacks (`drainLolis`, `matchLoli`, etc.) are injected via `matchOpts` by the orchestrator; generic optimization modules at the engine root are imported directly. See `doc/documentation/optimization-architecture.md`.
+Optimization modules called in the hot loop (`go`): `drainDynamicRules` (family/lnl/lib/loli-drain.js), `feedPers` + `satFilter` (constraint-feed.js), `predictNext` (opt/prediction.js), `controlHash` + `recordMemo` (opt/structural-memo.js). Cross-layer callbacks (`drainDynamicRules`, `matchDynamicRule`, etc.) are injected via `matchOpts` by the orchestrator; generic optimization modules at the engine root are imported directly. See `doc/documentation/optimization-architecture.md`.
 
 ## Rule Compilation Pipeline
 
@@ -377,7 +377,7 @@ Optimizations live in `lib/engine/opt/` (generic) or alongside their consumers a
 | Disc-tree | Catch-all rule selection | ~0% at 44 rules | `disc-tree.js` |
 | EqNeq solver | Branch pruning | ~10% (symbolic) | `constraint.js` + `constraint-feed.js` |
 | Structural memo | Isomorphic subtree reuse | 4.4x (symmetric) | `opt/structural-memo.js` |
-| Loli drain | Eager persistent-loli fusion | ~2% | `lnl/loli-drain.js` |
+| Loli drain | Eager persistent-loli fusion | ~2% | `family/lnl/lib/loli-drain.js` |
 | Prediction (Opt_H) | Skip findAllMatches | ~3% | `opt/prediction.js` |
 | Compiled clauses | Zero-subgoal dispatch | ~5% | `opt/compiled-clauses.js` |
 | Compiled ∃-chain | Existential fast path | ~3% | `opt/existential-compile.js` |
@@ -416,7 +416,7 @@ Soundness: Betz & Fruhwirth (2013) — every CHR derivation corresponds to a val
 
 **FFI as backward prove optimization.** FFI (arithmetic) is conceptually a fast path within backward proving, not a separate proving mechanism.
 
-**Optimizations as toggleable modules.** Optimizations live in `lib/engine/opt/` (generic), at the engine root (delta-bypass, preserved, backward-cache, constraint-feed), or in `lib/engine/lnl/` (loli-drain). All are controlled by profile flags resolved at engine creation. The `bare` profile (all off) serves as the correctness baseline. No runtime branching in hot loops — function pointers are resolved once. See `doc/documentation/optimization-architecture.md`.
+**Optimizations as toggleable modules.** Optimizations live in `lib/engine/opt/` (generic) or at the engine root (delta-bypass, preserved, backward-cache, constraint-feed); loli-drain lives in `family/lnl/lib/` and is injected via cc.family.engine. All are controlled by profile flags resolved at engine creation. The `bare` profile (all off) serves as the correctness baseline. No runtime branching in hot loops — function pointers are resolved once. See `doc/documentation/optimization-architecture.md`.
 
 **Connective table, not hardcoded names.** The generic engine queries structural categories (`multiplicative`, `additive`, `exponential`, `monad`, `quantifier`) and structural properties (`arity`, `polarity`) — never connective names. `resolveConnectives(ct)` inverts the table once at startup for O(1) role→tag dispatch.
 

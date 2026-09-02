@@ -12,7 +12,7 @@ tags: [architecture, forward-chaining, implementation, engine, layering]
 
 ## Assembly
 
-Each layer exports a protocol factory (`buildGenericProtocol`, `buildLnlProtocol`, `buildOptProtocol`, `buildFfiProtocol`) returning its field contributions. The composition root (`index.js:_buildMatchOpts`) spreads them flat and freezes:
+Each layer exports a protocol factory (`buildGenericProtocol`, `buildFamilyProtocol`, `buildOptProtocol`, `buildFfiProtocol`) returning its field contributions. The composition root (`index.js:_buildMatchOpts`) spreads them flat and freezes:
 
 ```js
 // index.js — composition root (row-polymorphic record extension)
@@ -24,7 +24,7 @@ function _buildMatchOpts(execOpts) {
       // Route persistent-proving impl: FFI-accelerated vs naive clause prover.
       provePersistent: useFFI ? proveWithFFI : proveNaive,
     }),
-    ...match.buildLnlProtocol({ matchLoli, resolveEx, drainLolis, rc, ... }),
+    ...match.buildFamilyProtocol({ matchDynamicRule, resolveEx, drainDynamicRules, rc, ... }),
     ...match.buildOptProtocol({ execPS, execExStep, tryCCDispatch, ... }),
     ...match.buildFfiProtocol(ffiContext),
   });
@@ -35,7 +35,7 @@ function _buildMatchOpts(execOpts) {
 
 ## Canonical Empty Default Invariant
 
-`EMPTY_MATCH_OPTS` is the **canonical empty default** for matchOpts — the full 20-field frozen record with every callback null and every flag at its factory default. It is a no-op baseline: shape-identical to populated instances (preserving V8 monomorphic IC), but semantically inert (no FFI, no compiled dispatch, no hooks). Consumer code may assume matchOpts is always present: entry functions (`tryMatch`, `findMatch`, `findAllMatches`, `proveNaive`, `proveWithFFI`, `resolveEx`, `matchLoli`, `drainLolis`) declare `matchOpts = EMPTY_MATCH_OPTS` as a default parameter. This eliminates ~20 defensive `matchOpts && matchOpts.foo` guards throughout consumer code — field access is direct and V8 IC-friendly.
+`EMPTY_MATCH_OPTS` is the **canonical empty default** for matchOpts — the full 20-field frozen record with every callback null and every flag at its factory default. It is a no-op baseline: shape-identical to populated instances (preserving V8 monomorphic IC), but semantically inert (no FFI, no compiled dispatch, no hooks). Consumer code may assume matchOpts is always present: entry functions (`tryMatch`, `findMatch`, `findAllMatches`, `proveNaive`, `proveWithFFI`, `resolveEx`, `matchLoli`, `drainDynamicRules`) declare `matchOpts = EMPTY_MATCH_OPTS` as a default parameter. This eliminates ~20 defensive `matchOpts && matchOpts.foo` guards throughout consumer code — field access is direct and V8 IC-friendly.
 
 Note: this is not a mathematical monoid identity — there is no binary combining operation on matchOpts. It is simply the distinguished empty record that fills the default-parameter slot.
 
@@ -50,8 +50,8 @@ Layer ownership is enforced by `tests/engine/layer-dag.test.js` at both the `req
 | Field | Type | Set by | Used by |
 |---|---|---|---|
 | `provePersistent` | `(patterns, startIdx, theta, slots, state, calc, evidenceOut, matchOpts) → idx` | `buildGenericProtocol` (composition root routes FFI vs naive) | `match.js`, `lnl/existential.js`, `lnl/loli.js` |
-| `matchDynamicRule` | `(factHash, state, calc, matchOpts) → match \| null` | `buildLnlProtocol` (→ `matchLoli`) | `strategy.js` (loli scan) |
-| `dynamicRuleTag` | `string \| null` | `buildLnlProtocol` (→ `rc.implication`) | `strategy.js` (filter state for loli candidates) |
+| `matchDynamicRule` | `(factHash, state, calc, matchOpts) → match \| null` | `buildFamilyProtocol` (→ `matchLoli`) | `strategy.js` (loli scan) |
+| `dynamicRuleTag` | `string \| null` | `buildFamilyProtocol` (→ `rc.implication`) | `strategy.js` (filter state for loli candidates) |
 
 `provePersistent` is the most critical callback. It is declared as a generic-layer interface (the generic engine consumes it), but routed at the composition root: with FFI enabled it wires to `opt/ffi.js:proveWithFFI` (state → FFI → compiled clause → full clause pipeline); without FFI it wires to `lnl/persistent.js:proveNaive` (state → clause resolution only).
 
@@ -59,7 +59,7 @@ Layer ownership is enforced by `tests/engine/layer-dag.test.js` at both the `req
 
 | Field | Type | Set by | Used by |
 |---|---|---|---|
-| `connectives` | `Object` (resolved roles: `{ product, implication, exponential, computation, ... }`) | `buildLnlProtocol` (from `rc`) | `lnl/loli.js`, `compile.js` |
+| `connectives` | `Object` (resolved roles: `{ product, implication, exponential, computation, ... }`) | `buildFamilyProtocol` (from `rc`) | `family/lnl/lib/loli.js`, `compile.js` |
 
 The resolved connective table maps structural roles to tag names. Created once via `compile.js:resolveConnectives(ct)` from the connective table in `ill/connectives.js`.
 
@@ -72,7 +72,7 @@ The resolved connective table maps structural roles to tag names. Created once v
 | `ffiGet` | `Function \| null` | `buildFfiProtocol` (from `ffiCtx`) | `opt/ffi.js` |
 | `ffiIsGround` | `Function \| null` | `buildFfiProtocol` (from `ffiCtx`) | `opt/ffi.js` |
 | `useCompiledSteps` | `boolean` | `buildOptProtocol` (= `useFFI`) | `match.js`, `lnl/existential.js` |
-| `backchainUseFFI` | `boolean` | `buildLnlProtocol` | `lnl/persistent.js` |
+| `backchainUseFFI` | `boolean` | `buildFamilyProtocol` | `family/lnl/lib/persistent.js` |
 
 When `ffiCtx` is null (bare profile or non-ILL calculus), all FFI fields are null and the engine falls back to clause resolution everywhere.
 
@@ -88,8 +88,8 @@ When `ffiCtx` is null (bare profile or non-ILL calculus), all FFI fields are nul
 | Field | Type | Set by | Used by |
 |---|---|---|---|
 | `evidence` | `boolean` | `buildGenericProtocol` | `match.js`, `lnl/loli.js`, `lnl/existential.js` |
-| `onProveSuccess` | `Function \| null` | `buildGenericProtocol` | `lnl/persistent.js`, `opt/ffi.js` |
-| `onProveFail` | `Function \| null` | `buildGenericProtocol` | `lnl/persistent.js`, `opt/ffi.js` |
+| `onProveSuccess` | `Function \| null` | `buildGenericProtocol` | `family/lnl/lib/persistent.js`, `opt/ffi.js` |
+| `onProveFail` | `Function \| null` | `buildGenericProtocol` | `family/lnl/lib/persistent.js`, `opt/ffi.js` |
 
 When hooks are set, the compiled persistent step fast path and compiled existential chain are bypassed to ensure all goals are observable.
 
@@ -120,5 +120,5 @@ These engine behaviors are configured elsewhere:
 | `lib/engine/forward.js` | Caller — receives matchOpts via `opts.matchOpts` |
 | `lib/engine/explore.js` | Caller — receives matchOpts via `opts.matchOpts` |
 | `lib/engine/opt/ffi.js` | Consumer — reads FFI fields for accelerated proving |
-| `lib/engine/lnl/persistent.js` | Consumer — reads canonicalize, modes, hooks |
+| `family/lnl/lib/persistent.js` | Consumer — reads canonicalize, modes, hooks |
 | `tests/engine/layer-dag.test.js` | Enforces field-access boundaries per layer |

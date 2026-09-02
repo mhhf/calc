@@ -11,8 +11,8 @@
  * Existentials never block a rule from firing — freshEvar is the fallback.
  */
 
-import { freshEvar } from '../../kernel/fresh.js';
-import { EMPTY_MATCH_OPTS } from '../match.js';
+import { freshEvar } from '../../../lib/kernel/fresh.js';
+import { EMPTY_MATCH_OPTS } from '../../../lib/engine/match.js';
 // Reusable 1-element array for single-goal provePersistent calls
 const _singleGoal = [0];
 

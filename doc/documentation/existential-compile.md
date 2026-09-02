@@ -74,6 +74,6 @@ The compiled chain eliminates per-goal overhead: no `subApplyIdx` (substitution 
 | File | Role |
 |---|---|
 | `lib/engine/opt/existential-compile.js` | Compile-time chain builder + runtime step executor |
-| `lib/engine/lnl/existential.js` | Caller — tries compiled steps, falls back to provePersistent |
+| `family/lnl/lib/existential.js` | Caller — tries compiled steps, falls back to provePersistent |
 | `lib/engine/compile.js` | Populates `rule.existentialSlots` and `rule.existentialGoals` |
 | `lib/engine/opt/ffi.js` | FFI handler registry (shared with compiled steps) |

@@ -12,13 +12,15 @@ import convert from '../../lib/engine/convert.js';
 import fs from 'fs';
 import os from 'os';
 import pathMod from 'path';
+import { parseExpr as illParseExpr } from '../../calculus/ill/index.js';
+import { illConfig } from '../../calculus/ill/index.js';
 
 let _exprParser;
 beforeEach(() => {
   Store.clear();
   if (!_exprParser) {
 
-    _exprParser = convert.parseExpr;
+    _exprParser = illParseExpr;
   }
 });
 
@@ -225,7 +227,7 @@ describe('convert.load: splitQueries integration', () => {
 
     try {
 
-      const result = convert.load(tmpFile);
+      const result = convert.load(tmpFile, { loaderConfig: illConfig.loader });
       // #prove with |- → splitQueries
       assert.ok(result.splitQueries.has('prove'), 'splitQueries should have prove');
       const prove = result.splitQueries.get('prove');

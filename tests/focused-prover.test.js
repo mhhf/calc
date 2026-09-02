@@ -10,11 +10,12 @@ import { buildRuleSpecs } from '../lib/prover/rule-interpreter.js';
 import Seq from '../lib/kernel/sequent.js';
 import calculus from '../lib/calculus/index.js';
 import { gradeW } from '../lib/engine/grades.js';
+import { loadILL } from '../calculus/ill/index.js';
 describe('v2 FocusedProver', () => {
   let calc, AST, prover, ruleSpecs, alternatives;
 
   before(async () => {
-    calc = await calculus.loadILL();
+    calc = await loadILL();
     AST = calc.AST;
     const built = buildRuleSpecs(calc);
     ruleSpecs = built.specs;

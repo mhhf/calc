@@ -18,6 +18,7 @@ import { buildRuleSpecs } from '../lib/prover/rule-interpreter.js';
 import { extractTerm } from '../lib/prover/generic-term.js';
 import { createChecker } from '../lib/prover/check-term.js';
 import { generateWitness, deriveZkTags } from '../calculus/ill/lib/zk/witness.js';
+import { loadILL } from '../calculus/ill/index.js';
 let calc;
 let seqParser;
 let prover;
@@ -82,7 +83,7 @@ function proveAndWitnessCart(linear, cartesian, succ, name) {
 }
 
 before(async () => {
-  calc = await calculus.loadILL();
+  calc = await loadILL();
   seqParser = sequentParser(calc);
   prover = createProver(calc);
   checker = createChecker(calc);

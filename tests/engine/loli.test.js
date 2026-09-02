@@ -9,14 +9,14 @@ import assert from 'node:assert/strict';
 import path from 'path';
 import Store from '../../lib/kernel/store.js';
 import { FactSet } from '../../lib/engine/fact-set.js';
-import { matchLoli } from '../../lib/engine/lnl/loli.js';
+import { matchLoli } from '../../family/lnl/lib/loli.js';
 import { resolveConn } from '../../lib/engine/compile.js';
 import { makeMatchOpts } from './_match-opts.js';
 // Hoisted by tools/esm-hoist.js:
 import mde from '../../calculus/ill/index.js';
 import ccfg from '../../calculus/ill/calculus-config.js';
 import { gradeW } from '../../lib/engine/grades.js';
-import { proveNaive } from '../../lib/engine/lnl/persistent.js';
+import { proveNaive } from '../../family/lnl/lib/persistent.js';
 import { monadUnit as U } from '../../lib/engine/grades.js';
 
 describe('lnl/loli — matchLoli', () => {

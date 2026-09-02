@@ -20,6 +20,7 @@ import { guidedTerm } from '../calculus/ill/lib/guided-term.js';
 import { rightFocusTerm } from '../lib/prover/bridge.js';
 import { generateWitness } from '../calculus/ill/lib/zk/witness.js';
 import { monadUnit as U } from '../lib/engine/grades.js';
+import { loadILL } from '../calculus/ill/index.js';
 const FIXTURE_DIR = path.join(import.meta.dirname, '..', 'zk', 'sequent-certifier', 'tests', 'fixtures');
 
 function ensureFixtureDir() {
@@ -72,7 +73,7 @@ describe('ZK custom chip: fact_axiom replaces clause proofs', { timeout: 30000 }
     calc = await mde.load(
       path.join(import.meta.dirname, '../calculus/ill/programs/noffi_tiny.ill')
     );
-    illCalc = await calculus.loadILL();
+    illCalc = await loadILL();
     state = mde.normalizeQuery(calc.queries.get('symex'));
   });
 

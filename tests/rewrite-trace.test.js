@@ -17,6 +17,7 @@ import calculus from '../lib/calculus/index.js';
 import { rwTrace, checkRW } from '../lib/prover/rewrite-trace.js';
 import { generateFlatWitness, MAX_CONSUMED, MAX_PRODUCED } from '../calculus/ill/lib/zk/flat-witness.js';
 import { monadUnit as U } from '../lib/engine/grades.js';
+import { loadILL } from '../calculus/ill/index.js';
 const FIXTURE_DIR = path.join(import.meta.dirname, '..', 'zk', 'sequent-certifier', 'tests', 'fixtures');
 
 function saveFixture(name, data) {
@@ -135,7 +136,7 @@ describe('rewrite-trace: solc forward integration', { timeout: 60000 }, () => {
     engineCalc = await mde.load(
       path.join(import.meta.dirname, '../calculus/ill/programs/multisig_nocall_solc.ill')
     );
-    illCalc = await calculus.loadILL();
+    illCalc = await loadILL();
     state = mde.normalizeQuery(engineCalc.queries.get('symex'));
 
     forwardResult = engineCalc.exec(state, {

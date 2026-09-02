@@ -27,6 +27,7 @@ import assert from 'node:assert';
 import calculus from '../lib/calculus/index.js';
 import Store from '../lib/kernel/store.js';
 import { apply } from '../lib/kernel/substitute.js';
+import { loadILL } from '../calculus/ill/index.js';
 // ── Frozen reference apply — DO NOT EDIT ────────────────────────────────────
 //
 // Literal copy of lib/kernel/substitute.js::apply at commit 92dd11e. Used as
@@ -160,7 +161,7 @@ describe('TODO_0216 H1 — apply() property fuzzer vs frozen reference', { concu
   let AST, vocab;
 
   before(async () => {
-    const ill = await calculus.loadILL();
+    const ill = await loadILL();
     AST = ill.AST;
     vocab = makeVocab(AST);
   });

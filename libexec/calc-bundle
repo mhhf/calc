@@ -17,11 +17,12 @@ import crypto from 'crypto';
 import calculus from '../lib/calculus/index.js';
 import { parserTables as computeParserTables, rendererFormats as computeRendererFormats, connByType as computeConnectivesByType } from '../lib/calculus/builders.js';
 import { specMeta as computeRuleSpecMeta } from '../lib/prover/rule-interpreter.js';
+import { loadILL } from '../calculus/ill/index.js';
 async function main() {
   const outputPath = process.argv[2] || path.join(import.meta.dirname, '../out/ill.json');
 
   console.log('Loading ILL calculus...');
-  const ill = await calculus.loadILL();
+  const ill = await loadILL();
 
   // Precompute derived tables (pure data, serializable)
   const parserTables = computeParserTables(ill.constructors);
@@ -45,7 +46,7 @@ async function main() {
   // recomputes it — editing any source without `npm run build:bundle`
   // fails the fast suite instead of silently serving a stale bundle.
   const ROOT = path.join(import.meta.dirname, '..');
-  const sources = ['calculus/ill/ill.calc', 'calculus/ill/ill.rules', 'calculus/ill/lnl.family'];
+  const sources = ['calculus/ill/ill.calc', 'calculus/ill/ill.rules', 'family/lnl/lnl.family'];
   const sh = crypto.createHash('sha256');
   for (const rel of sources) sh.update(rel).update('\0').update(fs.readFileSync(path.join(ROOT, rel)));
   const sourceHash = sh.digest('hex');
@@ -57,6 +58,7 @@ async function main() {
     sourceHash,
     name: ill.name,
     baseTypes: ill.baseTypes,
+    contextStructure: ill.contextStructure,
     constructors: ill.constructors,
     directives: ill.directives,
     rules: ill.rules,

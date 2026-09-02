@@ -5,11 +5,12 @@
 import { describe, it, before } from 'node:test';
 import assert from 'node:assert';
 import calc from '../lib/index.js';
+import { loadILL } from '../calculus/ill/index.js';
 describe('v2 API', () => {
   let ill;
 
   before(async () => {
-    ill = await calc.loadILL();
+    ill = await loadILL();
   });
 
   describe('loadILL', () => {

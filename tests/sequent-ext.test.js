@@ -8,11 +8,12 @@ import Seq from '../lib/kernel/sequent.js';
 import Context from '../lib/prover/context.js';
 import calculus from '../lib/calculus/index.js';
 import Store from '../lib/kernel/store.js';
+import { loadILL } from '../calculus/ill/index.js';
 describe('v2 Sequent (generic arrays)', () => {
   let AST;
 
   before(async () => {
-    const ill = await calculus.loadILL();
+    const ill = await loadILL();
     AST = ill.AST;
   });
 
@@ -133,7 +134,7 @@ describe('v2 focused/context (multiset)', () => {
   let AST;
 
   before(async () => {
-    const ill = await calculus.loadILL();
+    const ill = await loadILL();
     AST = ill.AST;
   });
 

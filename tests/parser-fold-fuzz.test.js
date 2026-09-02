@@ -34,6 +34,7 @@ import { setStrictAmbiguity } from '../lib/parser/earley.js';
 import tillConfig from '../calculus/till/calculus-config.js';
 import illConfig from '../calculus/ill/calculus-config.js';
 import { putRat } from '../lib/kernel/rat-term.js';
+import { loadILL } from '../calculus/ill/index.js';
 
 const ROOT = path.join(import.meta.dirname, '..');
 const TILL_CALC = path.join(ROOT, 'calculus/till/till.calc');
@@ -159,7 +160,7 @@ function makeSampler(spec) {
 /** The real rule-body grammar tables, per calculus (mirrors convert.js /
  *  till calculus-config: structural-op filter for ILL, gradeUnit for till). */
 function grammarConfigs() {
-  const ill = calculus.loadILL();
+  const ill = loadILL();
   const illTables = parserTables(ill.constructors);
   illTables.operators = illTables.operators
     .filter(o => ill.constructors[o.name]?.returnType === 'formula' && o.name !== 'loli');
