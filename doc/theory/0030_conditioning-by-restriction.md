@@ -121,7 +121,7 @@ states) — while recording ρ(c) as the mass factor (restriction!). The
 normalizing constants are then not silent: they are pinned to an exact
 run invariant.
 
-**Proposition 2 (zero-variance importance).** On a bias-free
+**Proposition 2 (zero-variance importance; the "B6" invariant pinned in will-datasorts tests and CLAUDE.md).** On a bias-free
 conditioned run in which every opened wave is drawn (none dropped),
 the T3 importance weight equals m(root state) — for EVERY seed. In
 general, importance = m(root) / Π m(states of waves dropped
