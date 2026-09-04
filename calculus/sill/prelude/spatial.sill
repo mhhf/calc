@@ -4,7 +4,7 @@
 % the PRODUCT-STAMP clause face.
 %
 % The import chain as calculus layering: bin.ill <- rat.ill <- num.gill
-% <- spatial.sill. Place is a TORSOR — no arithmetic surface exists or
+% <- spatial.sill. Place is an OPAQUE index sort — no arithmetic exists or
 % arrives here; adjacency (`adj`), terrain and edge distances (`dist`)
 % are PROGRAM-declared persistent facts (the subsort/prior discipline:
 % in-logic premises are total fact lookups), never prelude machinery.
@@ -44,6 +44,10 @@ lt/st_eq: lt S (tpair T2 D2) <- eq S T2 <- lt 0 D2.
 qsub/tt0: qsub (tpair U1 U2) (tpair D1 D2) H1 <- qsub U1 D1 H1 <- qsub U2 D2 0.
 qsub/tt: qsub (tpair U1 U2) (tpair D1 D2) (tpair H1 H2) <- qsub U1 D1 H1 <- qsub U2 D2 H2 <- neq H2 0.
 qsub/ts: qsub (tpair U1 U2) D (tpair H1 U2) <- qsub U1 D H1 <- neq U2 0.
+% No clause for a dist-0 pair minuend (tpair U1 0): canonical pairs have
+% dist ≠ 0 (reify collapses dist-0 to the scalar term), and canonStamp
+% normalizes before the checker proves — the shape is unreachable, and a
+% scalar-minus-pair goal must refuse (its dist residual would be negative).
 
 % sjoin — the stamp JOIN as a theory predicate (fire-check config.join):
 % the checker derives activation = ⊔ inputs instead of the total-order
@@ -56,6 +60,9 @@ qsub/ts: qsub (tpair U1 U2) D (tpair H1 U2) <- qsub U1 D H1 <- neq U2 0.
 sjoin: (a: q) -> (b: q) -> (c: q) -> type.
 sjoin/ge: sjoin A B A <- qsub A B H.
 sjoin/le: sjoin A B B <- qsub B A H.
+% sjoin/tt0 fires only for NON-canonical dist-0 pairs on both sides
+% (canonical tpairs have dist ≠ 0) — defensive completeness, dead for
+% canonical inputs.
 sjoin/tt0: sjoin (tpair A1 A2) (tpair B1 B2) C1 <- sjoin A1 B1 C1 <- sjoin A2 B2 0.
 sjoin/tt: sjoin (tpair A1 A2) (tpair B1 B2) (tpair C1 C2) <- sjoin A1 B1 C1 <- sjoin A2 B2 C2 <- neq C2 0.
 sjoin/ts: sjoin (tpair A1 A2) B (tpair C1 A2) <- sjoin A1 B C1 <- neq A2 0.

@@ -66,6 +66,16 @@ describe('productValues (pure algebra)', () => {
     assert.deepEqual([val[0], val[1]], q(5));
     assert.equal(val[3], 0n, 'dist half is ∞');
   });
+
+  it('∞ (tinf) is a dist-only sentinel — an infinite TIME half is fenced', () => {
+    const tinf = Store.put('atom', ['tinf']);
+    const badTime = tpair(tinf, putRat(3n, 1n));
+    const okDist = tpair(putRat(3n, 1n), tinf);
+    assert.equal(productGrades.isStamp(badTime), false, 'tinf in the time half is not a stamp');
+    assert.throws(() => v.parse(badTime), /time half.*finite/);
+    assert.equal(productGrades.isStamp(okDist), true, 'tinf in the dist half is a stamp');
+    assert.deepEqual(v.parse(okDist), [3n, 1n, 1n, 0n]);
+  });
 });
 
 describe('sill settle — product scheduling', () => {
@@ -173,8 +183,57 @@ r1: $g1 -o { g1 }@(1 ~ 1).
 `, sillConfig);
     assert.throws(
       () => calc.settle({ linear: { [atom('g1')]: 1 }, persistent: {} }, '100', { accelerate: true }),
-      /scale\/floorDiv|acceleration is unavailable/
+      /coalesce-safe|scale\/floorDiv|acceleration is unavailable/
     );
+  });
+
+  it('coalesce rejects the product algebra loudly (join ≠ order max)', () => {
+    // Coalescing rewrites past-of-bound stamps; under a componentwise
+    // (function-valued) merge a past fact's dist can exceed every future
+    // dist, so the rewrite would silently change activation joins.
+    const calc = loadTmp(`
+g1: type.
+g2: type.
+r1: g1 -o { g2 }@(1 ~ 1).
+`, sillConfig);
+    assert.throws(
+      () => calc.settle({ linear: { [atom('g1')]: 1 }, persistent: {} }, '10', { coalesce: true }),
+      /not coalesce-safe/
+    );
+  });
+
+  it('place values are fenced to bare atoms (no numerals)', () => {
+    const prelude = path.resolve(import.meta.dirname, '../../calculus/sill/prelude/spatial.sill');
+    assert.throws(
+      () => loadTmp(`#import(${prelude})
+xx: type.
+bad: (xx @@ 3) -o { xx }.
+`, sillConfig),
+      /expected sort 'place'/
+    );
+  });
+
+  it('cohort batching survives compound (T ~ D) delays (_feedsInstant resolves the term)', () => {
+    // hop's delay is a { term } — _feedsInstant must θ-substitute it to
+    // see the strictly-future output; an unresolved delay would fall to
+    // the head scan (dst is consumed by land → conservatively instant-
+    // feeding) and break the 3-cohort into per-item firings (steps 4).
+    const prelude = path.resolve(import.meta.dirname, '../../calculus/sill/prelude/spatial.sill');
+    const calc = loadTmp(`#import(${prelude})
+src: type.
+dst: type.
+sink_t: type.
+edge: (t: delay) -> (d: dist) -> type.
+hop: src * !edge T D -o { dst }@(T ~ D).
+land: dst -o { sink_t }.
+`, sillConfig);
+    const r = calc.settle({
+      linear: { [atom('src')]: 3 },
+      persistent: { [Store.put('edge', [Store.put('binlit', [2n]), Store.put('binlit', [3n])])]: true },
+    }, '10');
+    assert.equal(r.steps, 2, 'two batched firing steps (hop ×3, land ×3)');
+    assert.deepEqual(r.events.map((e) => e.multiplicity), [3, 3]);
+    assert.equal(r.state.linear[at(atom('sink_t'), tpair(putRat(2n, 1n), putRat(3n, 1n)))], 3);
   });
 });
 

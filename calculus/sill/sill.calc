@@ -8,7 +8,7 @@
 % gill (the will precedent — loadChain merges the constructor and
 % sort-edge tables), so sill declares only what is sill-OWN:
 %
-%   - the `place` index sort — a TORSOR: no +, no 0, no arithmetic; place
+%   - the `place` index sort — OPAQUE: no +, no 0, no arithmetic; place
 %     values are bare identifiers (the sort checker owns discrimination,
 %     the grammar's one auxiliary chain carries them like any cross-sort
 %     hole).
@@ -37,7 +37,7 @@
 @family sill.
 @extends gill.
 
-% ── The place index sort (torsor) ────────────────────────────────────
+% ── The place index sort (opaque — no arithmetic) ────────────────────
 
 place: type.
 

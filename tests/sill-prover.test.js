@@ -26,6 +26,7 @@ import Seq from '../lib/kernel/sequent.js';
 import { buildRuleSpecs } from '../lib/prover/rule-interpreter.js';
 import { createProver } from '../lib/prover/focused.js';
 import { createKernel } from '../lib/prover/kernel.js';
+import { createManualProofAPI } from '../lib/prover/strategy/manual.js';
 import { loadSillSequent } from '../calculus/sill/calculus-config.js';
 
 describe('sill sequent calculus — located zone (TODO_0285)', () => {
@@ -118,5 +119,37 @@ describe('sill sequent calculus — located zone (TODO_0285)', () => {
     const root = r.proofTree.conclusion;
     assert.equal(Seq.getContext(root, 'located').length, 2);
     assert.equal(Seq.getContext(root, 'linear').length, 0);
+  });
+
+  it('with_r shares the located column across branches (Λ additive sharing)', () => {
+    // Both branches consume the SAME located resource — provable.
+    const c = loc(atom('crop'), 'l00');
+    const withT = (a, b) => Store.put('with', [a, b]);
+    assert.ok(proveVerified([c], withT(c, c)).success);
+    // Branches cannot SPLIT located resources (each branch must consume
+    // its full context; no weakening in Λ) — unprovable.
+    const g = loc(atom('gold'), 'l01');
+    assert.ok(!prove([c, g], withT(c, g)).success);
+  });
+
+  it('manual proof API premises keep the located column (routing, not CZ reads)', () => {
+    // Pins the c623227f review fix: fullPremises reads the POOL and
+    // rebuilds columns by routing — a CZ-only read drops located
+    // formulas from the returned premise sequents.
+    const manual = createManualProofAPI(calc);
+    const c = loc(atom('crop'), 'l00');
+    const withT = (a, b) => Store.put('with', [a, b]);
+    const seq = Seq.seq(
+      { ...Seq.routeContexts(cs, [c]), [cs.copySource]: [] },
+      withT(c, c)
+    );
+    const state = manual.createProofState(seq);
+    const actions = manual.getApplicableActions(state, { mode: 'unfocused' });
+    const withR = actions.find((a) => a.name === 'with_r');
+    assert.ok(withR, `with_r applicable (got: ${actions.map((a) => a.name).join(', ')})`);
+    for (const p of withR.premises) {
+      assert.equal(Seq.getContext(p, 'located').length, 1, 'located column survives');
+      assert.equal(Seq.getContext(p, 'linear').length, 0);
+    }
   });
 });

@@ -12,7 +12,7 @@
  * sill-OWN: the connective/sort tables derived from sill.calc (place
  * index sort + loc), the theory over prelude/spatial.sill (gill's tower
  * verbatim), and the `place` fence — a place is a bare identifier
- * (torsor: no numerals; the grammar's one auxiliary chain would happily
+ * (opaque index sort: no numerals; the grammar's one auxiliary chain would happily
  * parse `A @@ 3/2`, the sort checker must not).
  *
  * The active scheduling axis at P5 is TIME (D1 — one algebra schedules
@@ -43,7 +43,7 @@ const GILL_RULES = path.join(import.meta.dirname, '../gill/gill.rules');
 
 // Tables derived from sill.calc's OWN chain (= gill's surface via
 // @extends). The place fence: a place value is a non-numeric identifier
-// (atom) — torsor discipline at the value level.
+// (atom) — the opaque-index discipline at the value level.
 const sillFences = {
   ...gillFences,
   place: (h) => Store.tag(h) === 'atom',
@@ -51,15 +51,6 @@ const sillFences = {
 const { connectives: sillConnectives, sorts: sillSorts } = makeCalcTables(SILL_CALC, {
   fences: sillFences,
 });
-
-/** Grade-algebra routing over sill's sort tables; delay routes to the
- *  product axis (sill's registry override, defined with productGrades). */
-function gradeAlgebraFor(conn) {
-  const argSorts = sillSorts().connArgSorts[conn];
-  const gs = argSorts && argSorts.find((s) => s !== 'formula');
-  const reg = sillCalculusConfig.gradeRegistry;
-  return (gs && reg.bySort[gs]) || reg.default;
-}
 
 // ── productGrades — the (time × dist) product axis (TODO_0285 P6a) ──
 //
@@ -86,8 +77,13 @@ function gradeAlgebraFor(conn) {
 // axis. Zeno note: lex progress includes dist-only progress at a fixed
 // instant — a 0-time dist-accumulating loop advances the frontier and
 // evades maxInstantSteps; maxSteps is the bound that catches it.
-const _half = (h) => {
-  if (Store.tag(h) === 'atom' && Store.child(h, 0) === 'tinf') return [1n, 0n];
+const _half = (h, allowInf) => {
+  if (Store.tag(h) === 'atom' && Store.child(h, 0) === 'tinf') {
+    // ∞ is a DIST-axis sentinel (horizons); an infinite time half has no
+    // reading in the lex order or the tropical ops — fence at the boundary.
+    if (allowInf) return [1n, 0n];
+    throw new Error('sill: tinf is a dist-axis sentinel — the time half of a stamp must be finite');
+  }
   const p = ratParts(ratCanon(h));
   if (p === null) throw new Error(`sill: not a rational stamp half: ${Store.tag(h)}`);
   return p;
@@ -104,7 +100,7 @@ const productValues = Object.freeze({
   parse: (h) => {
     if (Store.tag(h) === 'tpair') {
       const t = _half(Store.child(h, 0));
-      const d = _half(Store.child(h, 1));
+      const d = _half(Store.child(h, 1), true);
       return [t[0], t[1], d[0], d[1]];
     }
     const t = _half(h);
@@ -172,16 +168,22 @@ const productGrades = Object.freeze({
     const t = Store.tag(h);
     if (t === 'ratlit' || t === 'binlit') return true;
     if (t !== 'tpair') return false;
-    const half = (c) => {
+    // Positional: ∞ (tinf) is admitted on the DIST half only — an
+    // infinite time half is rejected here (and _half throws on the
+    // strict parse path with the descriptive fence).
+    const half = (c, allowInf) => {
       const ct = Store.tag(c);
       return ct === 'ratlit' || ct === 'binlit' ||
-        (ct === 'atom' && Store.child(c, 0) === 'tinf');
+        (allowInf && ct === 'atom' && Store.child(c, 0) === 'tinf');
     };
-    return half(Store.child(h, 0)) && half(Store.child(h, 1));
+    return half(Store.child(h, 0), false) && half(Store.child(h, 1), true);
   },
-  // Tolerant like till's ratCanon: a NON-GROUND stamp term (metavar
+  // Tolerant by try/catch (unlike till's ratCanon, which returns
+  // non-matching forms unchanged and never throws, productValues.parse
+  // THROWS on non-rational halves): a NON-GROUND stamp term (metavar
   // children in a rule's delay — resolved at fire time) passes through
-  // unchanged; the StampTable's values.parse stays strict.
+  // unchanged for isStamp to reject; the StampTable's values.parse
+  // stays strict.
   canonStamp: (h) => {
     try { return productValues.reify(productValues.parse(h)); }
     catch { return h; }
@@ -211,6 +213,21 @@ const productGrades = Object.freeze({
   aggregate: Object.freeze({ class: 'order', realizations: ['prune'] }),
 });
 
+// By-sort grade registry (the will/gill named-const pattern — no forward
+// self-reference through the config object): delay routes to the product
+// axis; the rest inherit gill's.
+const sillGradeRegistry = Object.freeze({
+  bySort: Object.freeze({ ...gillGradeRegistry.bySort, delay: productGrades }),
+  default: productGrades,
+});
+
+/** Grade-algebra routing over sill's sort tables. */
+function gradeAlgebraFor(conn) {
+  const argSorts = sillSorts().connArgSorts[conn];
+  const gs = argSorts && argSorts.find((s) => s !== 'formula');
+  return (gs && sillGradeRegistry.bySort[gs]) || sillGradeRegistry.default;
+}
+
 // Theory engine over sill's prelude chain (spatial.sill → num.gill →
 // rat.ill → bin.ill).
 const sillTheory = makeTheory({
@@ -238,10 +255,7 @@ const sillCalculusConfig = {
   // Active axis = the PRODUCT (time × dist) — P6a: one stamp carries
   // both; scalar grades embed as time-only (dist 0).
   grades: productGrades,
-  gradeRegistry: Object.freeze({
-    bySort: Object.freeze({ ...gillGradeRegistry.bySort, delay: productGrades }),
-    default: productGrades,
-  }),
+  gradeRegistry: sillGradeRegistry,
   gradeAlgebraFor,
   // till's policy with the label-column algebra swapped to the product
   // values — the StampTable interns (time, dist) pairs as single ids.

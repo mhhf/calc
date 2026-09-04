@@ -113,6 +113,22 @@ describe('deriveContextStructure', () => {
     assert.deepEqual(cs.zones, ['zoneB', 'zoneA', 'zoneC']);
   });
 
+  it('throws when an aux zone name shadows a reserved @category', () => {
+    // A zone named 'monad' would make its wrapper the computation
+    // connective too (buildCalculus finds it by the same @category scan)
+    // — spurious monad_r/monad_l injection on a wrapper. Fenced loudly.
+    const spec = specWith([
+      { name: 'a_contr', property: 'contraction', position: 1 },
+      { name: 'b_ex', property: 'exchange', position: 2 },
+      { name: 'c_ex', property: 'exchange', position: 3 },
+    ], 'zoneA zoneB monad zoneB');
+    spec.constructors.wrap = {
+      annotations: { category: 'monad' },
+      argTypes: ['formula', 'formula'],
+    };
+    assert.throws(() => deriveContextStructure(spec), /reserved @category/);
+  });
+
   it('throws on a structural @position outside the context zones', () => {
     // Position 3 is the succedent slot; in lnl-style modes it shares the
     // consumable zone's NAME, so silently applying it would pollute that
