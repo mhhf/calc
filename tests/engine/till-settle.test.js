@@ -196,6 +196,22 @@ describe('till cohort samplers (D12)', () => {
       { 'eaten@0': 1, 'food@1': 1 });
   });
 
+  it('!_W binds the TOTAL under lifo (suffix anchors are not partial takes)', () => {
+    // Regression (suffix-anchor bug, 2026-09-04): the counted spread
+    // anchored at every cohort; under lifo the suffix dropping the newest
+    // cohort has strictly lower activation, so minimization preferred a
+    // partial take and !_W fired per-cohort with W=1 — a D4 violation
+    // (same mechanism as the product-stamp case, sill-product.test.js).
+    const calc = load(FIX('till-wbind-lifo.ill'));
+    const g = Store.put('atom', ['g']);
+    const g1 = Store.put('at', [g, Store.put1('binlit', 1n)]);
+    const S = { linear: { [g]: 1, [g1]: 1 }, persistent: {} };
+    const r = calc.settle(S, '5', { cohort: 'lifo' });
+    assert.equal(r.events.length, 1, 'one whole-bind firing, not per-cohort');
+    assert.equal(r.events[0].theta[0], Store.put1('binlit', 2n), 'W = total');
+    assert.deepEqual(stamped(r.state), { 'outw@2': 1 });
+  });
+
   it('fifo vs lifo differ exactly on equal-activation ties (selection is policy)', () => {
     // meal_order@2 lifts both candidates to a=2 — now the cohort sampler
     // is the tie-break: fifo takes food@0, lifo takes food@1.

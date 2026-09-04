@@ -1,0 +1,130 @@
+% =============================================================================
+% sill — Spatial Intuitionistic Linear Logic (TODO_0285)
+% =============================================================================
+%
+% gill's graded surface plus the LOCATED modality `A @@ L` ("A holds at
+% place L") — the indexed-modality instance of the zones-as-data
+% machinery (0285 P4/P5). The surface is INHERITED, not copied: @extends
+% gill (the will precedent — loadChain merges the constructor and
+% sort-edge tables), so sill declares only what is sill-OWN:
+%
+%   - the `place` index sort — OPAQUE: no +, no 0, no arithmetic; place
+%     values are bare identifiers (the sort checker owns discrimination,
+%     the grammar's one auxiliary chain carries them like any cross-sort
+%     hole).
+%   - the `loc` wrapper connective (@category located) — the located
+%     zone's WRAPPER: zone membership is wrapper-routed (a loc-tagged
+%     formula lives in the located column; columns are the
+%     router-materialized view of one threaded pool, P4).
+%   - the three-zone sequent discipline Γ ; Δ ; Λ ⊢ C, declared as DATA:
+%     the 4-ary sequent constructor's @position_modes plus per-position
+%     @structural rules. This is 0285 P4's acceptance artifact — a third
+%     zone lands as declarations alone (the union-pool plumbing in the
+%     prover/kernel is one-time and zone-count-agnostic — TODO_0285 P4).
+%
+% Ownership [P] A is the SAME construction over base `principal` instead
+% of `place` (hq 0276 — the fibration made operational); one indexed zone
+% demonstrates the machinery, so sill ships only `loc`.
+%
+% loc has NO sequent rules and no @polarity: like at/superpose/drawn it
+% is UNPOLARIZED at search level — a synthetic atom, handled by identity;
+% per-fiber linearity is automatic (the place is part of the fact's
+% hash). Forward rules consume/produce located facts like any linear
+% fact; transport (P6) is a program RULE, never a grade coercion (the
+% t+d matched pair double-counts d over chained hops — see the theory
+% doc).
+
+@family sill.
+@extends gill.
+
+% ── The place index sort (opaque — no arithmetic) ────────────────────
+
+place: type.
+
+% ── The located wrapper: A @@ L ──────────────────────────────────────
+%
+% `@@` lexes as its own operator (longest-match before `@`), so stamp
+% positions `food@3` and binder tails `@w` are untouched. Postfix
+% template at prec 85 — BELOW at's 90, so `crop @@ l00 @ 3` needs
+% parens, and distinct from at's level (one associativity per level).
+loc: formula -> place -> formula
+  @ascii "#1 @@ #2"
+  @prec 85 left
+  @category located.
+
+% ── The product grade: T ~ D (time, dist) ────────────────────────────
+%
+% sill's scheduler axis is the PRODUCT of till's time and gill's dist —
+% one stamp carries both (P6a). The pair is declared surface (@grammar
+% grade routes the template into the parenthesized grade position):
+% `{ A @@ L' }@(T ~ D)` delays by time T and accumulates haul cost D;
+% a scalar grade stays time-only (dist 0 — the embedding till/gill
+% programs ride in unchanged). Componentwise tropical: ⊗ adds both
+% axes, ⊔ joins both (availability: the conclusion waits for the last
+% input in time AND carries the dearest accumulated cost), and the
+% scheduler's total order is LEXICOGRAPHIC (time primary, dist
+% tie-break) — the committed run realizes the lex-least completion;
+% Pareto lives in the exploration layer (settleFrontier).
+% Return sort is DELAY: the pair sits where delays sit (the monad's
+% grade position — sill's scheduler axis IS the product), so the sort
+% checker's monad-grade discipline admits it unchanged.
+tpair: delay -> dist -> delay
+  @ascii "#1 ~ #2"
+  @grammar grade.
+
+% ── Three-zone sequent discipline (P4 acceptance: zones from data) ───
+%
+% Γ (cartesian) ; Δ (linear) ; Λ (located) ⊢ C. Only the annotations
+% feed the engine: @position_modes names the zones (last position =
+% succedent), the @structural rules' @position tags derive each zone's
+% policy (contraction ⇒ copy source; first no-contraction zone in
+% position order ⇒ primary consumable; further ones ⇒ aux, wrapper-
+% routed). No @ascii on these constructors — the term-level display
+% calculus is not part of sill's surface (record sequents only).
+
+structure: type.
+sequent: type.
+
+scomma: structure -> structure -> structure.
+
+seq: structure -> structure -> structure -> structure -> sequent
+  @role sequent
+  @position_modes "cartesian linear located linear".
+
+deriv: sequent -> type
+  @role judgment.
+
+% Cartesian zone (position 1): exchange + contraction + weakening.
+sill_cart_exchange: deriv (seq (scomma G H) D L C)
+  <- deriv (seq (scomma H G) D L C)
+  @structural exchange
+  @invertible true
+  @position 1.
+
+sill_cart_contraction: deriv (seq (scomma G X) D L C)
+  <- deriv (seq (scomma (scomma G X) X) D L C)
+  @structural contraction
+  @invertible false
+  @position 1.
+
+sill_cart_weakening: deriv (seq (scomma G X) D L C)
+  <- deriv (seq G D L C)
+  @structural weakening
+  @invertible false
+  @position 1.
+
+% Linear zone (position 2): exchange only — the primary consumable zone.
+sill_lin_exchange: deriv (seq G (scomma X Y) L C)
+  <- deriv (seq G (scomma Y X) L C)
+  @structural exchange
+  @invertible true
+  @position 2.
+
+% Located zone (position 3): exchange only — the aux consumable zone,
+% wrapper-routed via loc. Linear discipline per fiber: no contraction,
+% no weakening (occupancy is a resource).
+sill_loc_exchange: deriv (seq G D (scomma X Y) C)
+  <- deriv (seq G D (scomma Y X) C)
+  @structural exchange
+  @invertible true
+  @position 3.

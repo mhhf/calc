@@ -1,0 +1,8 @@
+% Whole-bind under the lifo sampler (D4: W binds the TOTAL).
+% Regression fixture for the suffix-anchor bug (2026-09-04): the counted
+% spread anchored at every cohort, and under lifo the suffix dropping the
+% newest cohort had strictly lower activation — so minimization preferred
+% a partial take and !_W fired per-cohort with W=1.
+g: type.
+outw: bin -> type.
+allg: !_W g -o { outw W }@1.

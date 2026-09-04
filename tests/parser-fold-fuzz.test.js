@@ -33,6 +33,9 @@ import { earleyGrammarFromTables, parserFromGrammar } from '../lib/parser/earley
 import { setStrictAmbiguity } from '../lib/parser/earley.js';
 import tillConfig from '../calculus/till/calculus-config.js';
 import illConfig from '../calculus/ill/calculus-config.js';
+import gillConfig from '../calculus/gill/calculus-config.js';
+import willConfig from '../calculus/will/calculus-config.js';
+import sillConfig from '../calculus/sill/calculus-config.js';
 import { putRat } from '../lib/kernel/rat-term.js';
 import { loadILL } from '../calculus/ill/index.js';
 
@@ -59,7 +62,7 @@ function listCorpus() {
     for (const e of fs.readdirSync(dir, { withFileTypes: true })) {
       const p = path.join(dir, e.name);
       if (e.isDirectory()) walk(p);
-      else if (/\.(ill|till)$/.test(e.name)) out.push(p);
+      else if (/\.(ill|till|gill|will|sill)$/.test(e.name)) out.push(p);
     }
   };
   walk(path.join(ROOT, 'calculus'));
@@ -67,15 +70,24 @@ function listCorpus() {
   return out.sort();
 }
 
-describe('corpus sweep: strict ambiguity across every .ill/.till (§5b)', () => {
+/** Config by extension; .ill files under calculus/till keep the till
+ *  config (rat.ill etc. are till-prelude fragments). */
+function configFor(p) {
+  if (p.endsWith('.sill')) return sillConfig;
+  if (p.endsWith('.gill')) return gillConfig;
+  if (p.endsWith('.will')) return willConfig;
+  if (p.endsWith('.till') || p.includes('till')) return tillConfig;
+  return illConfig;
+}
+
+describe('corpus sweep: strict ambiguity across every calculus file (§5b)', () => {
   it('zero ambiguous parses in the whole corpus', () => {
     const files = listCorpus();
     let ok = 0;
     const skipped = [];
     for (const p of files) {
-      const isTill = p.includes('till');
       try {
-        mde.load(p, { cache: false, calculusConfig: isTill ? tillConfig : illConfig });
+        mde.load(p, { cache: false, calculusConfig: configFor(p) });
         ok++;
       } catch (e) {
         assert.ok(!/Ambiguous parse/.test(e.message),
@@ -84,7 +96,7 @@ describe('corpus sweep: strict ambiguity across every .ill/.till (§5b)', () => 
       }
     }
     // Tolerated skips are fragments/broken fixtures — surfaced, not silent.
-    assert.ok(ok >= 60, `only ${ok}/${files.length} files loaded (skipped: ${skipped.join(', ')})`);
+    assert.ok(ok >= 70, `only ${ok}/${files.length} files loaded (skipped: ${skipped.join(', ')})`);
   });
 });
 
@@ -171,9 +183,17 @@ function grammarConfigs() {
     arrows: true, forwardRules: true, binaryNormalization: true,
   };
   const tillTables = parserTables(calculus.load(TILL_CALC).constructors);
+  // gill/sill surfaces (TODO_0285): the @(T ~ D) pair-grade template
+  // (@grammar grade) and A @@ L ride the same sampled-grammar check.
+  // will is corpus-only here: its ∃_ρ binder surface needs the
+  // binderSorts opt-in that lives in its config's parser builder.
+  const gillTables = parserTables(calculus.load(path.join(ROOT, 'calculus/gill/gill.calc')).constructors);
+  const sillTables = parserTables(calculus.load(path.join(ROOT, 'calculus/sill/sill.calc')).constructors);
   return [
     { label: 'ill-expr', tables: { ...illTables, ...shared } },
     { label: 'till', tables: { ...tillTables, ...shared, gradeUnit: () => putRat(0n, 1n) } },
+    { label: 'gill', tables: { ...gillTables, ...shared, gradeUnit: () => putRat(0n, 1n) } },
+    { label: 'sill', tables: { ...sillTables, ...shared, gradeUnit: () => putRat(0n, 1n) } },
   ];
 }
 

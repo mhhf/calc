@@ -3,11 +3,16 @@
 Four papers (the till → will → ci arc, plus a stub):
 
 **"Settle Optimality: Semiring Shortest-Distance under Linear Consumption"**
-— `settle-optimality.md` (markdown stub, TODO_0284 Phase T). The
+— `settle-optimality.md` (markdown master, TODO_0284 Phase T). The
 choice-freedom/contention-freedom split, T1 confluence + T2 σ*-optimality,
 the E1 separation witness (`calculus/gill/tests/forward/contention.gill`),
-and the termination proposition. Prior-art positioning: hq research 0138
-Part A.
+the termination proposition, and §8.4 the product instance (TODO_0285 P6:
+the C4 split, lex transfer, materialized per-fact Pareto frontier,
+frontier adequacy for `settleFrontier` — discharging the former ⟨open⟩
+Pareto obligation). Prior-art positioning: hq research 0138 Part A.
+THY_0033 §1's routed-column equivalence is deliberately NOT in any paper
+yet — held for the eventual toolbox/systems paper (see THY_0033
+frontmatter `paper:`).
 
 ONE unified till paper (merge of the former proof-theory and systems drafts,
 2026-08-23 — the split drafts live in git history):

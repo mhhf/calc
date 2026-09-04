@@ -194,6 +194,30 @@ mk: c -o { (a -o {b}@2) }@1.
     fullVerify(elab.tree, program);
   });
 
+  it('possessed loli: a forged record NAME is rejected (name binds the token)', () => {
+    // Regression (fuzz-till forgery arm, 2026-09-04): checkFireData's
+    // possessed branch derived the rule from ANY consumed implication
+    // token, so a record named 'ghost_rule' still verified — the name
+    // must equal 'loli:' + the consumed token's inner hash.
+    const calc = loadProgram('loli-forge.till', `
+a: type.  b: type.  c: type.
+mk: c -o { (a -o {b}@2) }@1.
+`);
+    const res = calc.settle({ linear: { [atom('a')]: 1, [atom('c')]: 1 }, persistent: {} }, '10');
+    const program = programFromCalc(calc);
+    const sequent = Seq.fromArrays([atom('a'), atom('c')], [], P('{b@3}@10'));
+    const forged = res.events.map((e) =>
+      String(e.rule).startsWith('loli:') ? { ...e, rule: 'ghost_rule' } : e);
+    const ef = elaborateTrace({ sequent, events: forged, program, calculus: seqCalc });
+    if (ef.tree) {
+      const v = kernel.verifyTree(ef.tree, { program });
+      assert.ok(!v.valid, 'forged loli record name must not verify');
+      assert.match(v.errors.join(';'), /unknown program rule/);
+    } else {
+      assert.ok(ef.unsupported, 'forge must fail elaboration if not kernel-rejected');
+    }
+  });
+
   it('bang succedent: persistent conclusion closes via bang_r + copy', () => {
     const calc = loadProgram('bangsucc.till', `
 a: type.  b: type.  g: type.

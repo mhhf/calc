@@ -57,6 +57,7 @@ import convert from '../lib/engine/convert.js';
 import tillConfig from '../calculus/till/calculus-config.js';
 import gillConfig from '../calculus/gill/calculus-config.js';
 import willConfig from '../calculus/will/calculus-config.js';
+import sillConfig from '../calculus/sill/calculus-config.js';
 import Store from '../lib/kernel/store.js';
 import { show } from '../lib/engine/show.js';
 import { ratParts } from '../lib/engine/theories/ratlit-theory.js';
@@ -77,8 +78,8 @@ if (!file) {
 }
 
 // Config by extension: the shell serves every timed calculus in the
-// family (.till/.ill → till, .gill → gill, .will → will).
-const _cfgByExt = { '.gill': gillConfig, '.will': willConfig };
+// family (.till/.ill → till, .gill → gill, .will → will, .sill → sill).
+const _cfgByExt = { '.gill': gillConfig, '.will': willConfig, '.sill': sillConfig };
 const calc = mde.load(path.resolve(file), {
   calculusConfig: _cfgByExt[path.extname(file)] || tillConfig, cache: false,
 });

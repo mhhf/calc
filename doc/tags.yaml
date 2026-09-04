@@ -1,11 +1,11 @@
 tags:
-  linear-logic: 34
+  linear-logic: 35
   ill: 27
   forward-chaining: 24
   inference-rule: 24
-  proof-theory: 19
-  architecture: 16
-  graded-types: 16
+  proof-theory: 20
+  architecture: 17
+  graded-types: 17
   chr: 13
   implementation: 10
   left-rule: 10
@@ -20,9 +20,9 @@ tags:
   engine: 8
   oplus: 7
   probabilistic: 7
+  structural-rule: 7
   symbolic-execution: 7
   ownership: 6
-  structural-rule: 6
   clf: 5
   provenance: 5
   verification: 5
@@ -35,21 +35,24 @@ tags:
   performance: 4
   subexponentials: 4
   symexec: 4
+  adjoint-logic: 3
   authorization: 3
   conditioning: 3
   Curry-Howard: 3
   evm: 3
   focusing: 3
+  lnl: 3
   loli: 3
   monad: 3
   prover: 3
   QTT: 3
+  scheduling: 3
   staging: 3
   testing: 3
   time: 3
+  timed: 3
   type-checking: 3
   accounting: 2
-  adjoint-logic: 2
   backward: 2
   bridge: 2
   certificates: 2
@@ -61,7 +64,6 @@ tags:
   Futamura: 2
   independence: 2
   layers: 2
-  lnl: 2
   modal-logic: 2
   one: 2
   principals: 2
@@ -69,13 +71,11 @@ tags:
   refinement-types: 2
   representation: 2
   resource-semantics: 2
-  scheduling: 2
   SELL: 2
   sequent-calculus: 2
   session-types: 2
   supercompilation: 2
   tensor: 2
-  timed: 2
   tropical: 2
   additive: 1
   adequacy: 1

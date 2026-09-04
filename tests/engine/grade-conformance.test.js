@@ -33,6 +33,7 @@ import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import { tillGrades, tillCalculusConfig } from '../../calculus/till/calculus-config.js';
 import { distGrades, weightGrades as gillWeightGrades } from '../../calculus/gill/calculus-config.js';
+import { productGrades } from '../../calculus/sill/calculus-config.js';
 import { add, sub, mul, div, cmp as ratCmp, norm } from '../../lib/rat.js';
 import { ratParts } from '../../lib/engine/theories/ratlit-theory.js';
 import { sampleIndex } from '../../lib/engine/prf.js';
@@ -293,6 +294,100 @@ const distView = {
 assert.equal(dvals.merge, 'join');            // R2 pin: ⊔ stays the join
 assert.deepEqual(distGrades.aggregate, { class: 'order', realizations: ['prune'] });
 conformOrder(distView, { seed: 137 });
+
+// ── product instance (sill, TODO_0285 P6): the C4 SPLIT ──
+//
+// The (time × dist) product runs cmp as the LEX order but merge as the
+// COMPONENTWISE join — merge is the join of the PRODUCT order ⊑ₚ, not of
+// cmp's total order ⊑ₗ. The scalar contract's C4 therefore factors
+// (settle-optimality §8.4): C4a (merge is an ⊑ₗ-upper bound — all the
+// scheduler lemmas need) HOLDS; C4b (merge selects one argument = the
+// ⊑ₗ-max — only the whole-bind rescue and coalesce/acceleration need)
+// FAILS, with pinned witnesses. C1ₗ/C3ₗ hold outright; C2ₗ (compose
+// lex-isotone) holds because the TIME axis ⊗ = + is STRICTLY isotone —
+// the transfer theorem's one extra hypothesis.
+
+const pvals = productGrades.values;
+const PV = (tn, td, dn, dd) => [BigInt(tn), BigInt(td), BigInt(dn), BigInt(dd)];
+const randPair = (rnd) => {
+  const [tn, tdn] = randRat(rnd);
+  if (rnd() < 0.1) return [tn, tdn, 1n, 0n];              // ∞ dist arm
+  const [dn, ddn] = randRat(rnd);
+  return [tn, tdn, dn, ddn];
+};
+
+describe('order-class conformance: productGrades(time×dist) — the C4 split', () => {
+  const rnd = prng(0x5111);
+  const draws = Array.from({ length: 300 }, () => randPair(rnd));
+  const finite = draws.filter((v) => v[3] !== 0n);
+  it('C1ₗ: lex cmp is a total order', () => {
+    for (let i = 0; i < draws.length; i++) {
+      const a = draws[i], b = draws[(i + 1) % draws.length], c = draws[(i + 2) % draws.length];
+      assert.equal(pvals.cmp(a, a), 0);
+      assert.ok([-1, 0, 1].includes(pvals.cmp(a, b)));
+      assert.equal(pvals.cmp(a, b), -pvals.cmp(b, a));
+      if (pvals.cmp(a, b) <= 0 && pvals.cmp(b, c) <= 0) assert.ok(pvals.cmp(a, c) <= 0);
+    }
+  });
+  it('C2ₗ: compose is lex-isotone (strict primary ⊗ carries it)', () => {
+    for (let i = 0; i < draws.length; i++) {
+      const a = draws[i], b = draws[(i + 1) % draws.length], d = draws[(i + 2) % draws.length];
+      const aUp = pvals.add(a, d);
+      assert.ok(pvals.cmp(a, aUp) <= 0);
+      assert.ok(pvals.cmp(pvals.add(a, b), pvals.add(aUp, b)) <= 0);
+      assert.ok(pvals.cmp(pvals.add(b, a), pvals.add(b, aUp)) <= 0);
+      // strictness of the primary axis: time strictly below stays strictly
+      // below after composing — what makes the lex order survive ⊗
+      if (ratCmp([a[0], a[1]], [aUp[0], aUp[1]]) < 0) {
+        assert.ok(pvals.cmp(pvals.add(a, b), pvals.add(aUp, b)) < 0);
+      }
+    }
+  });
+  it('C3ₗ: compose is inflationary; unit is least', () => {
+    for (let i = 0; i < draws.length; i++) {
+      const a = draws[i], b = draws[(i + 1) % draws.length];
+      assert.ok(pvals.cmp(pvals.unit, a) <= 0);
+      assert.ok(pvals.cmp(a, pvals.add(a, b)) <= 0);
+      assert.deepEqual(pvals.canon(pvals.add(a, pvals.unit)), pvals.canon(a));
+    }
+  });
+  it('C4a: merge is an ⊑ₗ-upper bound and the ⊑ₚ-join (componentwise max)', () => {
+    for (let i = 0; i < draws.length; i++) {
+      const a = draws[i], b = draws[(i + 1) % draws.length];
+      const m = pvals.merge(a, b);
+      assert.ok(pvals.cmp(a, m) <= 0 && pvals.cmp(b, m) <= 0);   // upper bound in ⊑ₗ
+      // ⊑ₚ-join: per-axis max (∞ absorbs on dist)
+      assert.equal(ratCmp([m[0], m[1]], ratCmp([a[0], a[1]], [b[0], b[1]]) >= 0 ? [a[0], a[1]] : [b[0], b[1]]), 0);
+    }
+  });
+  it('C4b FAILS: merge is not selective — the join is neither argument', () => {
+    // (3,5) ⊔ (4,2) = (4,5): the scalar theory's join-is-the-max reading
+    // breaks; exactly the property coalesce/acceleration (and the scalar
+    // whole-bind rescue) need — hence the engine's coalesce fence.
+    const m = pvals.merge(PV(3, 1, 5, 1), PV(4, 1, 2, 1));
+    assert.deepEqual(m, PV(4, 1, 5, 1));
+    assert.notEqual(pvals.cmp(m, PV(3, 1, 5, 1)), 0);
+    assert.notEqual(pvals.cmp(m, PV(4, 1, 2, 1)), 0);
+  });
+  it('merge is NOT lex-monotone (no Kleene on ⊑ₗ — adequacy is operational)', () => {
+    // x ⊑ₗ x' but x⊔y ⊐ₗ x'⊔y: fixed-point arguments over ⊑ₗ are out;
+    // settle-optimality §8.4 proves T2× through relaxation adequacy instead.
+    const x = PV(1, 1, 9, 1), x2 = PV(2, 1, 0, 1), y = PV(5, 1, 0, 1);
+    assert.ok(pvals.cmp(x, x2) < 0);
+    assert.ok(pvals.cmp(pvals.merge(x, y), pvals.merge(x2, y)) > 0);
+  });
+  it('residual round-trips compose (finite dist)', () => {
+    for (let i = 0; i < finite.length; i++) {
+      const b = finite[i], d = finite[(i + 1) % finite.length];
+      const a = pvals.add(b, d);
+      assert.deepEqual(pvals.canon(pvals.sub(a, b)), pvals.canon(d));
+    }
+  });
+  it('⊕ realization is [prune] (order class)', () => {
+    assert.deepEqual(productGrades.aggregate, { class: 'order', realizations: ['prune'] });
+    assert.equal(typeof pvals.merge, 'function');   // the C4b discriminator the coalesce fence keys on
+  });
+});
 
 // ── derived hash faces (0284 audit): buildTimedConfig synthesizes
 // availability/effect from the value algebra — coherence is BY
