@@ -16,9 +16,19 @@ references:
 
 # Mode Preorders and Context Structure
 
-**Scope.** Design-disposition record for TODO_0285 Phase 4. Decision:
-do not implement mode preorders now; maintain the load-time fence and
-this site map as the enforced discipline.
+**Scope.** Design-disposition record for TODO_0285 Phase 4. Original
+decision: do not implement mode preorders; maintain the load-time fence
+and this site map as the enforced discipline.
+
+**Disposition executed (2026-09-04, TODO_0285).** The third-zone need
+arrived (sill's located zone) and Phase 4 relaxed the fence: aux
+consumable zones are admitted, wrapper-routed, and threaded as ONE
+union pool — see THY_0033 (the routed-column equivalence) for why the
+site map below required routing at construction boundaries rather than
+per-zone resource management. The two-zone site map remains accurate as
+the inventory of where routing was installed; the mode-preorder
+generalization (arbitrary β per zone) remains unimplemented — aux zones
+are fenced to linear policy, which is the point of §2's table.
 
 ## 1. The derived mechanism
 

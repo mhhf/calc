@@ -21,6 +21,7 @@
     "debug:ill": "bun tools/debug-ill.js",
     "shell:till": "node tools/till-shell.js",
     "shell:will": "node tools/till-shell.js",
+    "shell:sill": "node tools/till-shell.js",
     "test:all": "npm test && npm run test:ill && npm run test:till && npm run test:gill && npm run test:will && npm run test:sill && npm run test:noffi && npm run test:noffi:till && npm run test:noffi:gill && npm run test:noffi:will && npm run test:noffi:sill && npm run test:zk && npm run test:heavy",
     "test:bun": "bash tools/test-bun.sh",
     "fuzz:ffi": "node tools/fuzz-ffi.js",

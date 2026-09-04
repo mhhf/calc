@@ -68,7 +68,12 @@ absent/ambient stamp) and `⊗ = +` (unit 0). Its two fragments play the two rol
 - **The action** `⊳ : T × D → T`, `t ⊳ d = t + d` — a duration translates a time point.
   Laws: `t ⊳ 0 = t`, `(t ⊳ d) ⊳ e = t ⊳ (d + e)`, and the distributivity
   `max(t, t') ⊳ d = max(t ⊳ d, t' ⊳ d)`, which is exactly the semiring law
-  "`+` distributes over `max`" of `𝕋`.
+  "`+` distributes over `max`" of `𝕋`. Translation is the only non-trivial
+  lawful action: a dilation `κ(d, t) = c(d)·t` satisfies law 1 only when
+  `c ≡ 1`, and on a PRODUCT stamp space (time × dist, TODO_0285) a
+  cross-axis additive coercion `κ(d, t) = t + d` fails law 2 over chained
+  composites (double-counts `d`) — the cocycle argument, THY_0033 §3;
+  hence transport-takes-time is a rule, never a grade coercion.
 
 Every proof and every theorem below uses ONLY these laws. Consequently the calculus is
 parametric: any (ordered commutative monoid `D`, join-semilattice `T`, monotone
