@@ -61,20 +61,56 @@ describe('deriveContextStructure', () => {
     assert.deepEqual(prop.contextStructure, Seq.DEFAULT_CONTEXT_STRUCTURE);
   });
 
-  it('throws when no zone lacks contraction (no unique consumable zone)', () => {
+  it('throws when no zone lacks contraction (no consumable zone)', () => {
     const spec = specWith([
       { name: 'a_contr', property: 'contraction', position: 1 },
       { name: 'b_contr', property: 'contraction', position: 2 },
     ]);
-    assert.throws(() => deriveContextStructure(spec), /no unique consumable zone/);
+    assert.throws(() => deriveContextStructure(spec), /no consumable zone/);
   });
 
-  it('throws when two zones lack contraction', () => {
+  it('throws when a second no-contraction zone has no wrapper constructor', () => {
+    // TODO_0285: further no-contraction zones are AUX consumable zones;
+    // membership is wrapper-routed, so a wrapperless aux zone is dead.
     const spec = specWith([
       { name: 'a_ex', property: 'exchange', position: 1 },
       { name: 'b_ex', property: 'exchange', position: 2 },
     ]);
-    assert.throws(() => deriveContextStructure(spec), /no unique consumable zone/);
+    assert.throws(() => deriveContextStructure(spec), /no wrapper constructor/);
+  });
+
+  it('throws when an aux zone declares weakening (unsupported aux policy)', () => {
+    const spec = specWith([
+      { name: 'a_ex', property: 'exchange', position: 1 },
+      { name: 'b_ex', property: 'exchange', position: 2 },
+      { name: 'b_weak', property: 'weakening', position: 2 },
+    ]);
+    spec.constructors.wrap = {
+      annotations: { category: 'zoneB' },
+      argTypes: ['formula', 'formula'],
+    };
+    assert.throws(() => deriveContextStructure(spec), /declares weakening/);
+  });
+
+  it('derives an aux consumable zone with its wrapper (TODO_0285)', () => {
+    // Three-zone family: cartesian-style zoneA, primary zoneB, aux zoneC
+    // whose wrapper is the `wrap` connective (@category zoneC).
+    const spec = specWith([
+      { name: 'a_contr', property: 'contraction', position: 1 },
+      { name: 'b_ex', property: 'exchange', position: 2 },
+      { name: 'c_ex', property: 'exchange', position: 3 },
+    ], 'zoneA zoneB zoneC zoneB');
+    spec.constructors.wrap = {
+      annotations: { category: 'zoneC' },
+      argTypes: ['formula', 'formula'],
+    };
+    const cs = deriveContextStructure(spec);
+    assert.equal(cs.consumableZone, 'zoneB',
+      'primary consumable = FIRST no-contraction zone in position order');
+    assert.deepEqual(cs.consumableZones, ['zoneB', 'zoneC']);
+    assert.equal(cs.copySource, 'zoneA');
+    assert.deepEqual(cs.wrapperZoneByTag, { wrap: 'zoneC' });
+    assert.deepEqual(cs.zones, ['zoneB', 'zoneA', 'zoneC']);
   });
 
   it('throws on a structural @position outside the context zones', () => {
