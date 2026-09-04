@@ -242,6 +242,29 @@ deliver: (good @@ l01) -o { delivered }.
   });
 });
 
+describe('certifyContention with product delays', () => {
+  it('the relaxation certifier substitutes compound (T ~ D) delays (no silent skip)', () => {
+    // Contention-free chain with a variable pair delay: the relaxation
+    // pass must compute done = activation ⊕ (T ~ D) via metavarSlots
+    // substitution — a silent skip would refuse or mis-certify.
+    const prelude = path.resolve(import.meta.dirname, '../../calculus/sill/prelude/spatial.sill');
+    const calc = loadTmp(`#import(${prelude})
+src: type.
+dst: type.
+sink_t: type.
+edge: (t: delay) -> (d: dist) -> type.
+hop: src * !edge T D -o { dst }@(T ~ D).
+land: dst -o { sink_t }.
+`, sillConfig);
+    const init = {
+      linear: { [atom('src')]: 1 },
+      persistent: { [Store.put('edge', [Store.put('binlit', [2n]), Store.put('binlit', [3n])])]: true },
+    };
+    const r = calc.certifyContention(init, '10');
+    assert.equal(r.certified, true, JSON.stringify(r));
+  });
+});
+
 describe('settleFrontier — Pareto-minimal completions', () => {
   it('returns the frontier (incomparable routes) and drops dominated ones', () => {
     const calc = loadTmp(`

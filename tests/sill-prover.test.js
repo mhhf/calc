@@ -6,8 +6,9 @@
  * per-position @structural rules. The engine derives the structure
  * (deriveContextStructure), routes membership by the zone's wrapper
  * connective (loc, @category located), and threads ONE union pool
- * through search and kernel — no kernel edits were needed to add the
- * zone (the 0285 P4 acceptance, pinned here).
+ * through search and kernel — the pool plumbing is zone-count-agnostic,
+ * so ADDING the zone took declarations alone (the 0285 P4 acceptance,
+ * pinned here).
  *
  * Pins:
  *   - the derived contextStructure (zones, consumableZones, wrapper map)

@@ -46,10 +46,11 @@ Operationally this means the prover's leftover-threading discipline
 (`Context` deltas), the kernel's pool accounting, focusing, and the
 affine boundary discharge all run **unchanged** on the union pool
 (`Seq.consumablePool`); zone columns are materialized views — the mode
-discipline made visible, not a second resource manager. This is why
-"adding a third declared zone requires no kernel edits" holds: the zone
-is data (position mode + structural rules + wrapper), the engine is
-routing.
+discipline made visible, not a second resource manager. This is why the
+acceptance criterion "adding a third declared zone requires no kernel
+edits" holds in its honest reading: the union-pool plumbing was a
+ONE-TIME, zone-count-agnostic change; each further zone is data
+(position mode + structural rules + wrapper), and the engine is routing.
 
 Boundaries that route: sequent parsing, rule-interpreter premise
 construction, `addDelta`, the copy axiom, `stripToken`, the bridge

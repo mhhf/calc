@@ -19,7 +19,8 @@
 %   - the three-zone sequent discipline Γ ; Δ ; Λ ⊢ C, declared as DATA:
 %     the 4-ary sequent constructor's @position_modes plus per-position
 %     @structural rules. This is 0285 P4's acceptance artifact — a third
-%     zone lands with NO kernel edits, only these declarations.
+%     zone lands as declarations alone (the union-pool plumbing in the
+%     prover/kernel is one-time and zone-count-agnostic — TODO_0285 P4).
 %
 % Ownership [P] A is the SAME construction over base `principal` instead
 % of `place` (hq 0276 — the fibration made operational); one indexed zone
