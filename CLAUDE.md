@@ -186,6 +186,12 @@ calculus/will/           # will — weighted ILL (TODO_0292/0297): the measure-c
 ├── game/WFC.will        # Wave function collapse demo on the ∃_ρ + bias surface: one wave per cell, propagation = bias derivation, driven by calc.collapse / the shell's collapse mode (npm run shell:will -- calculus/will/game/WFC.will)
 └── tests/               # will executable specs (npm run test:will / test:noffi:will); fast-suite guards: tests/engine/will-{scaffold,wfc,priors,draw-check}.test.js + tests/will-prover.test.js
 
+calculus/sill/           # sill — spatial ILL (TODO_0285): located modality `A @@ L` + the three-zone sequent Γ;Δ;Λ⊢C as calculus DATA
+├── sill.calc            # @extends gill (surface inherited); place index sort (torsor — no arithmetic), loc `#1 @@ #2` @category located (= the located zone's wrapper), 4-ary seq @position_modes "cartesian linear located linear" + per-position @structural rules — the zones-as-data acceptance artifact: a third zone with NO kernel edits. loc is UNPOLARIZED (synthetic atom, like at/drawn); per-fiber linearity is automatic (place is part of the fact hash)
+├── calculus-config.js   # Composes gill's exported layer pieces (the will pattern); place value fence (bare atoms only); backward fragment = gill.rules by reference (loc has no sequent rules)
+├── prelude/spatial.sill # Imports gill's num.gill (tower verbatim); adj/terrain/dist are PROGRAM-declared persistent facts, never FFI
+└── tests/               # sill executable specs incl. the 2x2 grid (npm run test:sill / test:noffi:sill); fast-suite guard: tests/sill-prover.test.js
+
 tests/                   # Test suite (core: *.test.js, engine: engine/)
 benchmarks/              # Performance benchmarks (engine/, proof/, micro/)
 tools/                   # CLI utilities + shared tool infrastructure

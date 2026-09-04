@@ -1,0 +1,9 @@
+#import(../../gill/prelude/num.gill)
+
+% sill spatial prelude (TODO_0285 P5) — gill's tower, verbatim.
+%
+% The import chain as calculus layering: bin.ill <- rat.ill <- num.gill
+% <- spatial.sill. Place is a TORSOR — no arithmetic surface exists or
+% arrives here; adjacency (`adj`), terrain and edge distances (`dist`)
+% are PROGRAM-declared persistent facts (the subsort/prior discipline:
+% in-logic premises are total fact lookups), never prelude machinery.
