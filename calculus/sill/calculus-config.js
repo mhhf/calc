@@ -133,10 +133,12 @@ const productValues = Object.freeze({
   // ⊖ residual: componentwise − (signed, like the scalar face; the
   // derived effect.residual guards negativity by cmp against unit —
   // lex catches negative time; negative dist under nonnegative time
-  // cannot arise from fenced nonneg grades).
+  // cannot arise from fenced nonneg grades). ∞ absorbs on the left;
+  // subtracting ∞ from a finite dist has no lawful reading — loud.
   sub: (a, b) => {
     const t = ratSub([a[0], a[1]], [b[0], b[1]]);
     if (_isInf(a, 2)) return [t[0], t[1], 1n, 0n];
+    if (_isInf(b, 2)) throw new Error('sill: ⊖ with an infinite dist subtrahend');
     const d = ratSub([a[2], a[3]], [b[2], b[3]]);
     return [t[0], t[1], d[0], d[1]];
   },
@@ -184,9 +186,10 @@ const productGrades = Object.freeze({
     try { return productValues.reify(productValues.parse(h)); }
     catch { return h; }
   },
-  /** Horizon input: scalar forms delegate to till's parser, then widen
-   *  to the down-set (T, ∞) — a time horizon admits any accumulated
-   *  dist at time ≤ T. A pair hash passes through { stamp: h }. */
+  /** Threshold input (horizon, view bounds): scalar forms delegate to
+   *  till's parser, then WIDEN to the down-set (T, ∞) — a time horizon
+   *  admits any accumulated dist at time ≤ T. A pair hash passes
+   *  through { stamp: h }. */
   parseStamp(x) {
     if (x && typeof x === 'object' && typeof x.stamp === 'number' && productGrades.isStamp(x.stamp)) {
       return x.stamp;
@@ -194,6 +197,15 @@ const productGrades = Object.freeze({
     const t = tillGrades.parseStamp(x);
     const p = ratParts(t);
     return productValues.reify([p[0], p[1], 1n, 0n]);
+  },
+  /** Extent input (chunk widths — durations, never thresholds): the
+   *  scalar embedding (c, 0), NO widening — a widened width would
+   *  absorb ∞ into fact stamps through settleChunked's accumulator. */
+  parseExtent(x) {
+    if (x && typeof x === 'object' && typeof x.stamp === 'number' && productGrades.isStamp(x.stamp)) {
+      return x.stamp;
+    }
+    return tillGrades.parseStamp(x);
   },
   values: productValues,
   aggregate: Object.freeze({ class: 'order', realizations: ['prune'] }),

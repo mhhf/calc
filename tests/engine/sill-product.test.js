@@ -152,6 +152,20 @@ r1: g1 -o { g2 }@(5 ~ 99).
     assert.equal(r.state.linear[key], 1);
   });
 
+  it('settleChunked keeps fact stamps finite (chunk is an extent, not a threshold)', () => {
+    // parseStamp widens thresholds to (T, ∞); a chunk is a WIDTH and
+    // must not widen — a widened chunk would absorb ∞ into every fact
+    // stamp through the chunk accumulator (parseExtent, TODO_0285).
+    const calc = loadTmp(`
+g1: type.
+g2: type.
+r1: g1 -o { g2 }@(3 ~ 2).
+`, sillConfig);
+    const r = calc.settleChunked({ linear: { [atom('g1')]: 1 }, persistent: {} }, '4', { chunk: '2' });
+    const key = at(atom('g2'), tpair(putRat(3n, 1n), putRat(2n, 1n)));
+    assert.equal(r.state.linear[key], 1, 'g2 at (3 ~ 2), dist finite');
+  });
+
   it('accelerate rejects the product algebra loudly', () => {
     const calc = loadTmp(`
 g1: type.
