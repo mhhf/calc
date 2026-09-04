@@ -1,0 +1,64 @@
+#import(../../prelude/spatial.sill)
+
+% grid.sill — TODO_0285 P5 acceptance: a 2x2 grid where building and
+% gathering happen AT cells. Located facts `X @@ L` are ordinary linear
+% facts wrapped by the located zone's wrapper (loc) — per-fiber
+% linearity is automatic (the place is part of the fact identity), and
+% the frame property (an action at l00 leaves l01 untouched) is the
+% multiset semantics, not extra machinery.
+%
+% Terrain is a PROGRAM-declared persistent fact (in-logic total lookup —
+% the subsort/prior discipline), never FFI.
+
+free: type.
+farm: type.
+crop: type.
+good: type.
+
+l00: place.
+l01: place.
+l10: place.
+l11: place.
+
+land: (p: place) -> type.
+
+% Build a farm on free land — consumes the cell's occupancy token.
+build: (free @@ L) * !land L -o { farm @@ L }.
+
+% Gather a crop at a farmed cell — the farm is preserved ($), the crop
+% is consumed, a good appears at the same cell.
+gather: $(farm @@ L) * (crop @@ L) -o { good @@ L }.
+
+% Build works at a cell with free occupancy + land terrain.
+#expect_build (settle: 5)
+  (free @@ l00) * !land l00
+  =>
+  farm @@ l00 .
+
+% FRAME: building at l00 leaves l01's occupancy untouched.
+#expect_frame (settle: 5, exact: true)
+  (free @@ l00) * (free @@ l01) * !land l00
+  =>
+  (farm @@ l00) * (free @@ l01) .
+
+% Per-fiber discrimination: free occupancy at l00 cannot build at l01
+% (no free token in l01's fiber).
+#expect_not_cross_build (settle: 5)
+  (free @@ l00) * !land l01
+  =>
+  farm @@ l01 .
+
+% Gather at the right cell only: two farms, crop at l00 — the good
+% appears at l00, the l01 farm is inert, the l00 farm survives ($).
+#expect_gather (settle: 5, exact: true)
+  (farm @@ l00) * (farm @@ l01) * (crop @@ l00)
+  =>
+  (good @@ l00) * (farm @@ l00) * (farm @@ l01) .
+
+% Full 2x2 flow: build at l00 and l10, then gather the crop at l10.
+#expect_grid (settle: 5, exact: true)
+  (free @@ l00) * (free @@ l01) * (free @@ l10) * (free @@ l11) *
+  !land l00 * !land l10 *
+  (crop @@ l10)
+  =>
+  (farm @@ l00) * (free @@ l01) * (good @@ l10) * (farm @@ l10) * (free @@ l11) .

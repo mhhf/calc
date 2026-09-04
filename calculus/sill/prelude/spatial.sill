@@ -1,0 +1,69 @@
+#import(../../gill/prelude/num.gill)
+
+% sill spatial prelude (TODO_0285 P5/P6) — gill's tower, verbatim, plus
+% the PRODUCT-STAMP clause face.
+%
+% The import chain as calculus layering: bin.ill <- rat.ill <- num.gill
+% <- spatial.sill. Place is an OPAQUE index sort — no arithmetic exists or
+% arrives here; adjacency (`adj`), terrain and edge distances (`dist`)
+% are PROGRAM-declared persistent facts (the subsort/prior discipline:
+% in-logic premises are total fact lookups), never prelude machinery.
+%
+% ── Product-stamp order/residual/join clauses (P6a certification) ──
+%
+% The clause-only checker (fire-check, useFFI: false) proves its stamp
+% judgments over PAIR terms with these. tpair returns delay (<: q via
+% rat.ill), so the tower's sorted signatures admit pairs unchanged.
+% Order = LEX (time first, dist tie-break) — exactly the scheduler's
+% total order; a scalar S is the embedding (S ~ 0), and CANONICAL pairs
+% have dist ≠ 0 (dist-0 collapses to the scalar term), so the mixed
+% clauses lean on canonicity only where noted.
+
+% tpair's clause-face declaration: sill.calc declares the grammar
+% template (`T ~ D`); the closed-world checker needs the CONSTRUCTOR in
+% program scope for the clause heads below to mention it.
+tpair: (t: delay) -> (d: dist) -> delay.
+
+% le — lex ≤ over pairs and scalar/pair mixes.
+le/tt_lt: le (tpair T1 D1) (tpair T2 D2) <- lt T1 T2.
+le/tt_eq: le (tpair T1 D1) (tpair T2 D2) <- eq T1 T2 <- le D1 D2.
+le/ts_lt: le (tpair T1 D1) S <- lt T1 S.
+le/ts_eq: le (tpair T1 D1) S <- eq T1 S <- eq D1 0.
+le/st: le S (tpair T2 D2) <- le S T2.
+
+% lt — strict lex < (the eq-branch of scalar-below-pair needs D2 > 0,
+% which canonical pairs guarantee; stated explicitly, not assumed).
+lt/tt_lt: lt (tpair T1 D1) (tpair T2 D2) <- lt T1 T2.
+lt/tt_eq: lt (tpair T1 D1) (tpair T2 D2) <- eq T1 T2 <- lt D1 D2.
+lt/ts: lt (tpair T1 D1) S <- lt T1 S.
+lt/st_lt: lt S (tpair T2 D2) <- lt S T2.
+lt/st_eq: lt S (tpair T2 D2) <- eq S T2 <- lt 0 D2.
+
+% qsub — componentwise checked residual; the OUTPUT is canonical (a
+% dist-0 residual collapses to the scalar term).
+qsub/tt0: qsub (tpair U1 U2) (tpair D1 D2) H1 <- qsub U1 D1 H1 <- qsub U2 D2 0.
+qsub/tt: qsub (tpair U1 U2) (tpair D1 D2) (tpair H1 H2) <- qsub U1 D1 H1 <- qsub U2 D2 H2 <- neq H2 0.
+qsub/ts: qsub (tpair U1 U2) D (tpair H1 U2) <- qsub U1 D H1 <- neq U2 0.
+% No clause for a dist-0 pair minuend (tpair U1 0): canonical pairs have
+% dist ≠ 0 (reify collapses dist-0 to the scalar term), and canonStamp
+% normalizes before the checker proves — the shape is unreachable, and a
+% scalar-minus-pair goal must refuse (its dist residual would be negative).
+
+% sjoin — the stamp JOIN as a theory predicate (fire-check config.join):
+% the checker derives activation = ⊔ inputs instead of the total-order
+% attainment shortcut. Comparable operands resolve by the CHECKED qsub
+% (a ⊒ b iff a ⊖ b exists) — on pairs qsub succeeds only under
+% componentwise dominance, so these two clauses are pair-safe (never
+% derive a lex-max for incomparable pairs); incomparable pairs fall to
+% the componentwise clauses. All derivations agree on the value (the
+% join is unique) — clause overlap is harmless.
+sjoin: (a: q) -> (b: q) -> (c: q) -> type.
+sjoin/ge: sjoin A B A <- qsub A B H.
+sjoin/le: sjoin A B B <- qsub B A H.
+% sjoin/tt0 fires only for NON-canonical dist-0 pairs on both sides
+% (canonical tpairs have dist ≠ 0) — defensive completeness, dead for
+% canonical inputs.
+sjoin/tt0: sjoin (tpair A1 A2) (tpair B1 B2) C1 <- sjoin A1 B1 C1 <- sjoin A2 B2 0.
+sjoin/tt: sjoin (tpair A1 A2) (tpair B1 B2) (tpair C1 C2) <- sjoin A1 B1 C1 <- sjoin A2 B2 C2 <- neq C2 0.
+sjoin/ts: sjoin (tpair A1 A2) B (tpair C1 A2) <- sjoin A1 B C1 <- neq A2 0.
+sjoin/st: sjoin A (tpair B1 B2) (tpair C1 B2) <- sjoin A B1 C1 <- neq B2 0.

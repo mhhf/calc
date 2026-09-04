@@ -16,9 +16,19 @@ references:
 
 # Mode Preorders and Context Structure
 
-**Scope.** Design-disposition record for TODO_0285 Phase 4. Decision:
-do not implement mode preorders now; maintain the load-time fence and
-this site map as the enforced discipline.
+**Scope.** Design-disposition record for TODO_0285 Phase 4. Original
+decision: do not implement mode preorders; maintain the load-time fence
+and this site map as the enforced discipline.
+
+**Disposition executed (2026-09-04, TODO_0285).** The third-zone need
+arrived (sill's located zone) and Phase 4 relaxed the fence: aux
+consumable zones are admitted, wrapper-routed, and threaded as ONE
+union pool — see THY_0033 (the routed-column equivalence) for why the
+site map below required routing at construction boundaries rather than
+per-zone resource management. The two-zone site map remains accurate as
+the inventory of where routing was installed; the mode-preorder
+generalization (arbitrary β per zone) remains unimplemented — aux zones
+are fenced to linear policy, which is the point of §2's table.
 
 ## 1. The derived mechanism
 
@@ -67,9 +77,13 @@ load-bearing for simplicity.
 
 ## 3. Two-zone site map (atomic-change set for TODO_0285 Phase 4)
 
-| Site | Lines | Hardcoded two-zone assumption |
+Column 3 records the PRE-P4 assumption at each site — P4 replaced every
+one of them with pool/routing reads (the table is the inventory of where
+routing was installed, not of live assumptions).
+
+| Site | Lines | Pre-P4 two-zone assumption (routing installed here) |
 |------|-------|-------------------------------|
-| lib/calculus/index.js fence | 152–158 | throws if consumable zone not unique or >1 copy source |
+| lib/calculus/index.js fence | ~161 | threw if consumable zone not unique; P4 relaxed to ≥1 (aux zones admitted), >1 copy source still throws |
 | lib/prover/rule-interpreter.js | 144–148 | loli/monad premises: `{consumableZone: lin, copySource: cart}` |
 | lib/prover/rule-interpreter.js | 159–162 | structural premise: same two-key `Seq.seq` |
 | lib/prover/rule-interpreter.js | 187–190 | connective premises: same |
@@ -78,8 +92,9 @@ load-bearing for simplicity.
 | lib/prover/bridge.js | 49–57 | `sequentToState`: consumableZone → `linear`, copySource → `persistent` (engine-constant keys in fact-set.js `State`) |
 
 The `Seq.seq({[cs.consumableZone]: …, [cs.copySource]: …})` pattern at the
-three rule-interpreter sites silently drops any third zone — wrong sequent,
-no error. The fence prevents this from being reachable.
+three rule-interpreter sites would have silently dropped any third zone —
+wrong sequent, no error; pre-P4 the fence kept that unreachable, post-P4
+those sites read the pool and rebuild columns by routing.
 
 ## 4. Disposition
 

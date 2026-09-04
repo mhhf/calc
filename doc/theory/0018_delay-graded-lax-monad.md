@@ -68,7 +68,17 @@ absent/ambient stamp) and `⊗ = +` (unit 0). Its two fragments play the two rol
 - **The action** `⊳ : T × D → T`, `t ⊳ d = t + d` — a duration translates a time point.
   Laws: `t ⊳ 0 = t`, `(t ⊳ d) ⊳ e = t ⊳ (d + e)`, and the distributivity
   `max(t, t') ⊳ d = max(t ⊳ d, t' ⊳ d)`, which is exactly the semiring law
-  "`+` distributes over `max`" of `𝕋`.
+  "`+` distributes over `max`" of `𝕋`. On the PRODUCT stamp space
+  (time × dist, TODO_0285) the componentwise translation
+  `(t, δ) ⊳ (T, D) = (t + T, δ + D)` satisfies all three laws per axis.
+  A cross-axis coercion "dist counts as delay" (embedding `D` into the
+  time axis) is ALSO algebraically lawful — `d ↦ d` is a monoid
+  homomorphism, no action law refutes it. The refutation is semantic:
+  under the coercion each hop's `D` enters the time axis while still
+  riding the dist axis, so the time component reads `t + Σ(Tᵢ + Dᵢ)` —
+  the availability time of nothing — and the two objectives the product
+  keeps apart collapse (THY_0033 §3). Hence transport-takes-time is a
+  rule (each axis's cost enters once, as data), never a grade coercion.
 
 Every proof and every theorem below uses ONLY these laws. Consequently the calculus is
 parametric: any (ordered commutative monoid `D`, join-semilattice `T`, monotone

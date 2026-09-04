@@ -6,7 +6,8 @@ tags: [linear-logic, forward-chaining, till, graded-types, scheduling, confluenc
 # Settle Optimality — semiring shortest-distance under linear consumption
 
 **Status:** complete draft (markdown master; LaTeX at venue choice). Deliverable
-of TODO_0284 Phase T; focused presentation §5.3 per TODO_0293. Supersedes the scoping note in hq research **0138 Part B**
+of TODO_0284 Phase T; focused presentation §5.3 per TODO_0293; product
+instance §8.4 per TODO_0285 P6. Supersedes the scoping note in hq research **0138 Part B**
 (2026-08-24), which conflated the two side-conditions split in §3. §10 is the
 contribution statement of record (TODO_0284 R3); the prior-art evidence base
 is **0138 Part A**. The companion till paper is `till/main.tex` (TODO_0270).
@@ -45,7 +46,8 @@ Obligations not yet discharged are marked ⟨open⟩ (§11).
 A **scheduling dioid** is `(V, ⊔, ⊗, 1̄, ⊑)` where
 
 - `(V, ⊔)` is an idempotent commutative monoid (the *synchronization merge*),
-  inducing `a ⊑ b :⇔ a ⊔ b = b`; we assume `⊑` total (so `⊔` = max by `⊑`);
+  inducing `a ⊑ b :⇔ a ⊔ b = b`; we assume `⊑` total (so `⊔` = max by `⊑`) —
+  §8.4 relaxes exactly this coincidence for the product instance;
 - `(V, ⊗, 1̄)` is a commutative monoid (*sequential composition* — delay/cost),
   `1̄` the `⊑`-least element;
 - **(C-infl)** `a ⊑ a ⊗ b` (inflationary — the *delay fence* `δ ⊒ 1̄`);
@@ -452,8 +454,10 @@ shares demand. Then the relaxation's `σ*` need not be realized
 (Pareto-incomparable under a product grade). `settle` realizes exactly one —
 the PRF-committed, locally-greedy world (still chooser-independent if the
 program is choice-free, E1) — and `settleExplore` enumerates the reachable
-set. A precise Pareto-frontier characterization is ⟨open⟩ (product
-scheduler, 0285 P6).
+set. The Pareto-frontier characterization is discharged in §8.4
+(frontier adequacy: `settleFrontier` = the `⊑ₚ`-minimal completion
+vectors of the committed worlds); the residual ⟨open⟩ is the
+focused-frontier gap.
 
 **The reframing** (the paper's central claim): monotone semiring
 forward-chaining solves a *fixed point*; linear forward-chaining solves a
@@ -564,6 +568,9 @@ and serializes conflicting hops through committed choice.
 | run-state quantification too weak (deferred producer, `E(s)` always a singleton, still starved) | `contention.gill` (E2) |
 | read-relaxation recovers `σ*` (Dyna corollary) | `contention.gill` twin program |
 | the measure-class fence (§8.3) | `tests/engine/gill-weight.test.js` |
+| the C4 split (C1ₗ–C3ₗ + C4a hold; C4b + lex-monotone `⊔` fail, witnesses pinned) | `tests/engine/grade-conformance.test.js` (product arm) |
+| L1× lex tie-break; cw-join activation; the L2× whole-bind regression witness; coalesce/accel fences | `tests/engine/sill-product.test.js` |
+| product algebra ∥ BigInt reference ∥ clause face ∥ engine ∥ certifyRun (differential) | `tests/engine/sill-fuzz.test.js` |
 
 ### 8.3 Where the conditions fail (each failure has a shipped fence or witness)
 
@@ -580,7 +587,11 @@ and serializes conflicting hops through committed choice.
   (merge is no longer the order's join), so L1's "activation nondecreasing
   along completions" argument needs re-proving; the StampTable executes such
   slots correctly (value-level function slots, running even at equal ids),
-  but *scheduling* over a usage axis is unproven — ⟨open⟩.
+  but *scheduling* over a usage axis is unproven — ⟨open⟩. §8.4's C4a is
+  the candidate replacement (`⊔ = +` is still a `≤`-upper bound), but
+  losing idempotency breaks the induced-order framing itself
+  (`a ⊔ a ≠ a`), so the dioid definition, not just the lemma, needs
+  reworking.
 - **Contention (independence clause 1).** E1 — and E2 for why the condition
   must be read off the relaxation, not the run. The general dichotomy (§6).
 - **Read-starvation (clause 2).** A whole-bind `!_W A` binds the total, so
@@ -594,6 +605,148 @@ and serializes conflicting hops through committed choice.
 - **Hypothesis S.** A timed rule with a `!`-conclusion can backdate
   enablement (§1.3): frontier regression, outside L2. Shipped as the C2
   advisory (§11).
+
+### 8.4 The product instance: the C4 split and the materialized frontier
+
+sill's scheduler axis is the product `(time, dist)` — one stamp value,
+`⊗` and `⊔` componentwise, both axes the scalar dioid of §8.1 (TODO_0285
+P6; the theory record is THY_0033 §2). Two orders now live on the
+carrier: the **product order** `⊑ₚ` induced by the merge (`a ⊑ₚ b :⇔
+a ⊔ b = b`, partial — the order every dioid axiom speaks about) and the
+**lexicographic order** `⊑ₗ` (time primary, dist tie-break; `∞` above
+every finite dist) that the engine runs as `cmp`. `⊑ₗ` refines `⊑ₚ`
+(per-axis dominance implies lex dominance), and the two agree exactly on
+the scalar embedding (dist 0). The scheduling-dioid definition of §1.1
+assumed they coincide; the product is the instance where they don't, and
+the honest question is which theorems needed the coincidence.
+
+**The C4 split.** C4 ("merge is the join for `⊑`") factors into two
+strictly weaker halves:
+
+- **(C4a)** `⊔` is a `⊑ₗ`-**upper bound**: `a ⊑ₗ a ⊔ b`. Holds — the
+  `⊑ₚ`-join dominates both inputs per axis, and `⊑ₗ` refines `⊑ₚ`.
+- **(C4b)** `⊔` is **selective**: `a ⊔ b ∈ {a, b}` (the `⊑ₗ`-max).
+  Fails: `(3,5) ⊔ (4,2) = (4,5)`, neither argument — the join of
+  co-consumed stamps waits for the last input in time AND carries the
+  dearest accumulated cost, which no single input witnesses.
+
+Both halves, and every claim of the transfer lemma below, are
+machine-checked on the shipped instance
+(`tests/engine/grade-conformance.test.js`, product arm). C4b is exactly
+**coalesce-safety**: coalescing rewrites past-of-bound stamps to a
+normal form, which is sound only when the activation join is the
+scheduling-order max — so the engine fences coalesce (and acceleration,
+which requires it) on the function-valued-merge discriminator. The fence
+and the split are the same line, stated operationally and algebraically.
+
+**Lemma L6 (lex transfer).** Let `V₁` (primary) and `V₂` be scheduling
+dioids with `⊗₁` *strictly* isotone (`a ⊏₁ b ⟹ a ⊗₁ c ⊏₁ b ⊗₁ c`).
+Equip `V₁ × V₂` with componentwise `⊗`/`⊔` and the lex order for `cmp`.
+Then C1 (totality), C-iso, C-infl hold for `⊑ₗ`, and C4 weakens to C4a.
+*Proof.* Totality and inflation are immediate per axis (a tie on the
+first axis falls through to the second). Isotonicity: if `a₁ ⊏₁ b₁`
+then `a₁ ⊗ c₁ ⊏₁ b₁ ⊗ c₁` by strictness — the first axis still decides;
+if `a₁ = b₁` both first components stay equal and the second axis is
+isotone. C4a as above. ∎ Strictness is load-bearing: with `⊗₁ = max`
+(not strict), `(1,9) ⊑ₗ (2,0)` but composing both with `(3, 0)` gives
+`(3,9) ⊐ₗ (3,0)` — the lex order does not survive a non-strict primary
+compose. Time's `⊗ = +` on ℚ≥0 is strict, so the shipped instance
+qualifies. One further loss is worth pinning: `⊔` is **not
+`⊑ₗ`-monotone** (`x ⊑ₗ x'` does not give `x ⊔ y ⊑ₗ x' ⊔ y`), so
+Kleene-style fixed-point arguments over `⊑ₗ` are unavailable — the
+optimality proof below goes through relaxation adequacy (operational),
+not through (★) as a `⊑ₗ`-least fixed point.
+
+**What survives, by inspection of the proofs.** L1 and L2 used C4 only
+through "activation is nondecreasing along completions" and "a join with
+one input `⊒ t` is `⊒ t`" — both are C4a. The single C4b-dependent step
+in the entire development is L2's **whole-bind rescue**: the argument
+that a re-formed `!_W` instance below the frontier must have been *tied*
+before the firing concluded "every joined stamp `⊑ t`, hence the join
+`⊑ t`" — join-below-bound from inputs-below-bound, which is C4b. Under
+C4a only, the join of lex-bounded stamps can lex-exceed the bound, and
+the rescue fails *executably*: a choice-free product program with
+`!_W g` and cohorts `g@(1~5), g@(2~3)` fires a competing rule at
+`(2,3)`, after which the whole-bind's forced join drops from `(2,5)` to
+`(1,5)` — the frontier regresses with no tie ever occurring
+(`tests/engine/sill-product.test.js`, the L2× witness). Hence:
+
+- **L1× (per-firing optimality)** — verbatim under L6's conditions
+  (B&B prune, FIFO invariant pair; the lex tie-break test pins the
+  dist-cheaper cohort winning at equal time).
+- **L2× (frontier monotonicity)** — under S, for **whole-bind-free**
+  programs; the choice-freedom disjunct of L2 does not lift.
+- **T1× (confluence)** — choice-free, whole-bind-free, `H`-terminating,
+  S: chooser-independent final state. Same Newman/L3 skeleton (L3 and
+  L4 are order-free).
+- **T2× (lex optimality + materialized frontier)** — contention-free
+  (on the relaxation), whole-bind-free, `H`-terminating, S: `settle`
+  performs exactly the relaxation's firings with activation `⊑ₗ H`,
+  with identical stamps (L5's double induction runs on `⊑ₗ`, which is
+  total and, below `H`, well-founded on the firing set). Note
+  `certifyContention` already *refuses* whole-bind shapes
+  conservatively, so the analyzer's certified fragment sits inside the
+  theorem's hypotheses.
+
+**Corollary (the materialized frontier).** Under T2×'s hypotheses, the
+run *produces* one token per relaxation instance below `H` — so for
+every fact `p`, *every* achievable `(time, dist)` value of `p` is
+realized as a concrete token of the run, and in particular the entire
+per-fact **Pareto frontier** (the `⊑ₚ`-minimal achievable values) is
+materialized in one committed run — persisting to quiescence for any
+predicate no rule consumes, and consumed by at most one firing
+otherwise (contention-freedom makes the consumer unique). The scalar
+shadow is already visible in `depot.gill`: both route derivations
+coexist as `depot_reached` tokens (stamps 6 and 7) and the harvest step
+takes the least. On the contention-free fragment,
+multi-objective optimality needs no exploration: all Pareto-optimal
+derivations coexist because nothing competes for their tokens. The
+frontier *problem* — choosing among incomparable completions — is
+created by consumption, precisely the paper's central reframing (§6)
+restated in two dimensions.
+
+**Proposition (frontier adequacy, the contended case).**
+`settleFrontier(s, H)` returns the `⊑ₚ`-minimal **completion vectors**
+(a leaf's cost = `⊔` over its final tokens' stamps) over the leaves of
+`settleExplore` — dominance derived from the join, `a ⊑ₚ b :⇔ a ⊔ b =
+b`, no second order ever declared. Soundness: every leaf is the final
+state of some committed (temporally focused, §5.3) run — explore
+branches only on genuine conflicts and commits independent tied sets,
+whose members commute (the ample-set argument; fuzzed by the
+containment arm of `tools/fuzz-till.js`). Completeness over the focused
+set: every chooser-reachable final state appears among the leaves. So
+the output is exactly the Pareto frontier *of the committed worlds*;
+for a scalar algebra it degenerates to the singleton T1 already forces.
+What remains ⟨open⟩ is the **focused-frontier gap**: under contention,
+an *unfocused* forward derivation (one that delays a cheap firing to
+spare a token) may realize a completion vector `⊑ₚ`-below every
+committed world's — E1's lesson, that greed in time is not global
+optimality, lifted to the vector objective. Under contention-freedom
+the gap is void (T1× + the materialized frontier).
+
+**Termination lifts per-axis, asymmetrically.** §7's proposition holds
+with "instant" read on the *time* axis only: (1) lattice delays on the
+time components, (2) the zero-*time*-delay feed graph acyclic, (3)
+every zero-*time*-delay rule consumes. The dist axis needs no lattice
+condition — the per-instant Dershowitz–Manna measure counts firings
+regardless of their dist values, and the instant count below `H` is
+bounded by the time axis alone. The engine asymmetry mirrors §7's:
+a `(0, d>0)` self-feeding loop violates (2)/(3) analytically, but
+*evades* `maxInstantSteps` (lex progress includes dist-only progress at
+a fixed time), so the operational catch is the opt-in `maxSteps` — the
+same guard-shape as accumulation Zeno under division.
+
+**Transport stays a rule.** The lawful axis coupling is per-hop rule
+structure (`!dist L L' T D` feeding `@(T ~ D)`), never a grade coercion
+of dist into time — algebraically lawful coercions exist in abundance
+(graded-monad morphisms), and the refutation is semantic: a coercion
+feeds each hop's cost into both axes and collapses the two objectives
+the product exists to keep apart. THY_0033 §3 (the axis-confounding
+argument) is the record; the certified face stays clause-only (the
+componentwise join is re-derived through the declared `join` predicate,
+since under C4a it may equal no single input —
+`tests/engine/sill-product.test.js`, certification block, and the
+four-leg differential fuzzer `tests/engine/sill-fuzz.test.js`).
 
 ---
 
@@ -666,6 +819,26 @@ Distinguish three uses of a grade; only the third is claimed:
    (conformance harness; C5 characterized analytically in §7 and enforced
    operationally) and every out-of-scope algebra loudly fenced rather than
    silently mis-run.
+4. **The C4 split and the multi-objective transfer** (§8.4). The scalar
+   theory's C4 (merge = order max) factors into C4a (merge is an
+   upper bound in the scheduling order — all the core lemmas need) and
+   C4b (merge is selective — needed only by the whole-bind rescue and
+   by coalesce/acceleration, making C4b *exactly* coalesce-safety). The
+   time×dist product satisfies C4a under the lex order (the transfer
+   lemma, with strict primary isotonicity as the one extra hypothesis),
+   so T1×/T2× survive with whole-bind excluded — the exclusion witnessed
+   by an executable choice-free frontier regression. Two payoffs: on the
+   contention-free fragment one committed run **materializes the entire
+   per-fact Pareto frontier** (multi-objective optimality without
+   exploration — the frontier *problem* is created by consumption,
+   claim 2 in two dimensions); beyond it, `settleFrontier` returns
+   exactly the `⊑ₚ`-minimal completion vectors of the committed worlds,
+   with dominance derived from the join rather than a second declared
+   order. Multi-priced timed automata compute Pareto curves by model
+   search over clock valuations; graded type systems carry product
+   grades statically; neither runs a committed scheduler whose total
+   order provably survives the product, nor locates the C4a/C4b
+   boundary.
    The aggregation `⊕` is **routed as a policy** `(⊕, realization)`: order
    class realized by min-frontier + B&B prune (this paper), measure class
    (`⊕ = +`) realized by exact mass-sum or unbiased PRF sampling — the
@@ -750,8 +923,13 @@ realized condition families.
 - ⟨open⟩ **Mechanization.** L3 + T1 (Newman) are small and POR-shaped; L5's
   double induction is the real target. Machine-checked clause split = the
   paper's spine.
-- ⟨open⟩ **Pareto characterization** of the contended case (P1) — needs the
-  product-scheduler / stamp-vector model (0285 P6).
+- ✔ **Pareto characterization** — discharged as §8.4 (0285 P6): the C4
+  split, the lex transfer lemma, T1×/T2× with the whole-bind exclusion
+  (executable witness), the materialized per-fact frontier on the
+  contention-free fragment, and frontier adequacy for `settleFrontier`.
+  Residual ⟨open⟩: the **focused-frontier gap** — under contention, can
+  an unfocused derivation realize a completion vector `⊑ₚ`-below every
+  committed world's, and when is the focused frontier full?
 - ✔ **Static analyzers** — discharged (TODO_0293 a/b/c):
   (a) `certifyContention` (`lib/engine/timed/certify.js`) — structural
   conflict-freedom (the one-shot-edge discipline, state-independent),
@@ -816,7 +994,13 @@ Systems," FORMATS 2016 (arXiv:1606.07886). De Koninck–Schrijvers–Demoen,
 Orchard–Liepelt–Eades, "Granule," ICFP 2019. Atkey,
 "Syntax and Semantics of Quantitative Type Theory," LICS 2018. Ghica–Smith,
 "Bounded Linear Types in a Resource Semiring," ESOP 2014. Hughes–Orchard,
-"Program Synthesis from Graded Types," ESOP 2024. Goodman, "Semiring
+"Program Synthesis from Graded Types," ESOP 2024. Gurney–Griffin,
+"Lexicographic Products in Metarouting," ICNP 2007 (strict primary
+isotonicity for lex-product routing algebras — the transfer lemma's
+hypothesis in its native habitat). Bouyer–Brinksma–Larsen, "Optimal
+Infinite Scheduling for Multi-Priced Timed Automata," FMSD 32, 2008
+(Pareto reachability by model search over clock valuations — the §8.4
+contrast). Goodman, "Semiring
 Parsing," Computational Linguistics 25(4), 1999. Eisner, "Parameter
 Estimation for Probabilistic Finite-State Transducers," ACL 2002
 (expectation semirings; also Li–Eisner, EMNLP 2009). Huang, "Advanced

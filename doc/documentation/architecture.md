@@ -355,7 +355,7 @@ This follows from Chaudhuri & Pfenning (2006): forward and backward chaining are
 
 | | Backward (L1–L3) | Forward (L4c/L4d) |
 |---|---|---|
-| **State** | Sequent `{ contexts, succedent }` | Flat multiset `{ linear: {h: count}, persistent: {h: true} }` |
+| **State** | Sequent `{ contexts, succedent }` — one named column per declared zone; aux consumable zones (TODO_0285) are wrapper-routed views of one threaded pool (`Seq.consumablePool`, THY_0033) | Flat multiset `{ linear: {h: count}, persistent: {h: true} }` — the engine's two canonical pools (`STATE_ZONES`); ALL consumable sequent zones feed `linear` at the bridge (wrapped facts keep their own tag group) |
 | **Matching** | Unification (bidirectional) | Pattern matching (one-way, matchIndexed) |
 | **Execution** | Proof tree construction | Multiset rewriting (consume/produce facts) |
 | **Indexing** | Rule enumeration from sequent | Strategy stack (fingerprint → disc-tree → predicate) |
