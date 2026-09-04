@@ -1,0 +1,54 @@
+#import(../../prelude/spatial.sill)
+
+% transport.sill — TODO_0285 P6b acceptance: transport takes time AND
+% accumulates distance, as ONE program rule over the product stamp.
+%
+% The rule shape IS the theorem: travel cost enters ONCE per hop, from
+% the edge's declared !dist fact, into the product grade (T ~ D) — time
+% and dist then track as an independent product along the causal chain.
+% The naive alternative (a matched-pair type coercion κ(d,t) = t + d)
+% is ILLEGAL: chained hops would double-count d (the cocycle argument,
+% doc/theory) — which is WHY transport is a rule, never a grade
+% coercion.
+%
+% Discipline (the depot shape): roads are one-shot linear tokens (each
+% edge relaxes once — termination), edge data are persistent facts
+% (in-logic total lookups, never FFI).
+
+good: type.
+delivered: type.
+
+l00: place.
+l01: place.
+l11: place.
+
+road: (a: place) -> (b: place) -> type.
+dist: (a: place) -> (b: place) -> (t: delay) -> (d: dist) -> type.
+
+transport: (good @@ L1) * road L1 L2 * !dist L1 L2 T D
+  -o { (good @@ L2) }@(T ~ D).
+deliver: (good @@ l11) -o { delivered }.
+
+% Two-hop haul l00 → l01 → l11: times 2+3, dists 5+1 — the good arrives
+% delayed by 5 with accumulated cost 6; both axes ride one stamp.
+#expect_transport (settle: 10)
+  (good @@ l00) * road l00 l01 * road l01 l11 *
+  !dist l00 l01 2 5 * !dist l01 l11 3 1
+  =>
+  delivered@(5 ~ 6) .
+
+% The axes are independent: the same delivery does NOT carry the
+% additive conflation t+d (the illegal matched pair would stamp 11).
+#expect_not_conflated (settle: 20)
+  (good @@ l00) * road l00 l01 * road l01 l11 *
+  !dist l00 l01 2 5 * !dist l01 l11 3 1
+  =>
+  delivered@11 .
+
+% Time horizon as budget: settling to 4 leaves the good in flight — the
+% second hop lands at time 5.
+#expect_not_budget (settle: 4)
+  (good @@ l00) * road l00 l01 * road l01 l11 *
+  !dist l00 l01 2 5 * !dist l01 l11 3 1
+  =>
+  delivered .

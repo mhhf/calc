@@ -51,6 +51,26 @@ loc: formula -> place -> formula
   @prec 85 left
   @category located.
 
+% ── The product grade: T ~ D (time, dist) ────────────────────────────
+%
+% sill's scheduler axis is the PRODUCT of till's time and gill's dist —
+% one stamp carries both (P6a). The pair is declared surface (@grammar
+% grade routes the template into the parenthesized grade position):
+% `{ A @@ L' }@(T ~ D)` delays by time T and accumulates haul cost D;
+% a scalar grade stays time-only (dist 0 — the embedding till/gill
+% programs ride in unchanged). Componentwise tropical: ⊗ adds both
+% axes, ⊔ joins both (availability: the conclusion waits for the last
+% input in time AND carries the dearest accumulated cost), and the
+% scheduler's total order is LEXICOGRAPHIC (time primary, dist
+% tie-break) — the committed run realizes the lex-least completion;
+% Pareto lives in the exploration layer (settleFrontier).
+% Return sort is DELAY: the pair sits where delays sit (the monad's
+% grade position — sill's scheduler axis IS the product), so the sort
+% checker's monad-grade discipline admits it unchanged.
+tpair: delay -> dist -> delay
+  @ascii "#1 ~ #2"
+  @grammar grade.
+
 % ── Three-zone sequent discipline (P4 acceptance: zones from data) ───
 %
 % Γ (cartesian) ; Δ (linear) ; Λ (located) ⊢ C. Only the annotations
