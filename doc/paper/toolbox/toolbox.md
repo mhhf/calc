@@ -11,7 +11,8 @@ and Checkers as Calculus Data"; "The Data/Engine Boundary in a
 Certifying Linear-Logic Engine" (if a theory venue wants the boundary
 theorems foregrounded).
 
-**Status: SCAFFOLD** (markdown master; assembled 2026-09-08). This is
+**Status: SCAFFOLD → PARTIAL DRAFT** (markdown master; assembled
+2026-09-08; §4 compiled and §6 drafted same day). This is
 the TRUNK paper of the CALC arc — the architecture and its boundary
 metatheorems; the till, gill (settle-optimality), will, and ci papers
 are instance papers that cash out individual extension points. Sections
@@ -55,9 +56,9 @@ this paper; standalone workshop note considered and declined).
 |---|---|---|
 | §2 engine & four faces | `doc/documentation/architecture.md` (L0–L5), `lib/` docstrings, layer-DAG test | ⟨compile⟩ |
 | §3 declaring a calculus | THY_0032 (mode preorders → contextStructure), `lib/meta/focusing.js` (polarity inference), `earley-grammar.js` (sorted templates, TODO_0268 §5c) | ⟨compile⟩ + ⟨write⟩ (the inference story is under-documented) |
-| §4 zones as data | **THY_0033 §1** (referee-grain proofs: Defs 1–3, Lemmas A/B, U/R theorem, one-pool corollary) | ⟨compile⟩ — the centerpiece |
+| §4 zones as data | **THY_0033 §1** (referee-grain proofs: Defs 1–3, Lemmas A/B, U/R theorem, one-pool corollary) | COMPILED 2026-09-08 — proofs moved here (§4 is the single source of truth; THY_0033 §1 is the pointer stub), sill walkthrough added |
 | §5 grades as data | settle-optimality §1.1/§8 (dioid contract, C4 split), THY_0022 (fences), `grade-conformance.test.js`, gill's by-sort registry | ⟨compile⟩; deep theorems stay in the gill paper, cited as parametric |
-| §6 certificates | TODO_0294/0295/0298 landings: `fire-check.js`, `draw-check.js`, `sld-check.js`, elaborators; forgery arms in `fuzz-till.js` | ⟨write⟩ (no single prose source yet — the TCB statement exists only in CLAUDE.md compressed form) |
+| §6 certificates | TODO_0294/0295/0298 landings: `fire-check.js`, `draw-check.js`, `sld-check.js`, elaborators; forgery arms in `fuzz-till.js` | DRAFTED 2026-09-08 (writing it produced the TCB import-fence test in `layer-dag.test.js` — the §6.3 boundary is now machine-checked); polish pass pending |
 | §7 boundary theorems | THY_0034 (broadcast no-go), THY_0033 §3 (axis-confounding), fence inventory | ⟨compile⟩ |
 | §8 instance family | CLAUDE.md directory tree + git history (diff shapes) | ⟨write⟩ (the money table below is the draft) |
 | §9 related work | THY_0033/0034 reference blocks, settle-optimality §12, hq research 0138 Part A | ⟨write⟩ + [verify] flags |
@@ -65,11 +66,12 @@ this paper; standalone workshop note considered and declined).
 
 **Gates, in order:**
 1. Denis reads this scaffold and confirms the trunk framing + title
-   direction (⟨decide⟩ items inline).
-2. Compile passes §4 (move THY_0033 §1 in, leave a pointer stub there —
-   the frontmatter `paper:` field then flips from HELD to COMPILED).
-3. ⟨write⟩ sections (§6 first — it is the most novel and least
-   documented).
+   direction (⟨decide⟩ items inline). ← THE OPEN GATE
+2. ~~Compile pass §4~~ DONE 2026-09-08 (THY_0033 §1 moved in, stub +
+   COMPILED frontmatter there).
+3. ~~§6 write~~ DRAFTED 2026-09-08 (+ the TCB import-fence test).
+   Remaining ⟨write⟩: §1 intro prose, §3 inference story, §8 per-
+   instance paragraphs, §9 expansion.
 4. The other papers' venue outcomes inform this one's (a systems venue
    wants §8 fat; a theory venue wants §4/§7 fat).
 
@@ -171,26 +173,143 @@ Refinement sorts and datasorts as declaration-layer machinery
 errors) — one compressed subsection, pointing to the will paper for
 the measure-theoretic use.
 
-## 4. Zones as data — the routed-column equivalence ⟨compile: THY_0033 §1⟩
+## 4. Zones as data — the routed-column equivalence
 
-The formal centerpiece. Statement shape (full referee-grain proofs in
-THY_0033 §1, to be moved here in the compile pass):
+**Status: COMPILED** from THY_0033 §1 (2026-09-08); this section is now
+the single source of truth for the proofs (THY_0033 §1 is a pointer
+stub).
 
-- **Routed zone structure**: aux consumable zones with hash-disjoint
-  wrapper connectives; routing function total and deterministic.
-- **Theorem**: U (forget columns) / R (rebuild by routing) are inverse
-  bijections on derivations; provability and per-zone linearity
-  coincide between the N-zone and one-pool presentations.
-- **Implementation corollary**: the engine threads ONE union pool;
-  columns are router-materialized views. DECLARING a zone is calculus
-  data; the pool plumbing is one-time and zone-count-agnostic.
-- **Instance**: sill's `loc` zone (`Γ;Δ;Λ ⊢ C` as 4-ary
-  `@position_modes` + per-position `@structural` in `sill.calc`) — the
-  demonstration that the next zone costs zero engine edits.
-- **Fences**: aux zones are linear-policy only (exchange, no
-  contraction/weakening); a policy the engine would not honor is a
-  loud load error. Affine (weakening-only) zones: future work, with
-  rule-level `@affine` (THY_0027) as the existing mechanism.
+A calculus may declare consumable zones beyond the primary one
+(`deriveContextStructure`: the first no-contraction zone in position
+order is primary; the rest are AUX). An aux zone's membership is
+decided by its **wrapper connective** — the constructor whose
+`@category` names the zone (sill: `loc`/`located`). The theorem of
+this section is why declaring such a zone is sound *without any
+per-zone resource management in the engine*.
+
+**Definition 1 (routed zone structure).** A *routed zone structure*
+over a calculus C is a set of consumable zones Z = {z₀, z₁, …, z_k},
+all linear-policy (exchange only — no contraction, no weakening),
+together with, for each aux zone zᵢ (i ≥ 1), a unary *wrapper*
+connective wᵢ such that the wᵢ are pairwise distinct constructors and
+no wᵢ-headed formula is well-formed content of any other zone. The
+**routing function** r maps a formula A to zᵢ if head(A) = wᵢ for some
+i ≥ 1, and to z₀ otherwise. r is total and deterministic by
+construction (*hash-disjointness*: head tags are disjoint, so the
+preimages r⁻¹(zᵢ) partition the formula language; operationally
+`Seq.routeZone` is a tag lookup).
+
+**Definition 2 (the two calculi; U and R).** S_N is the N-zone sequent
+calculus: sequents Γ; Δ₀; …; Δ_k ⊢ C with one column per consumable
+zone, and per-zone linearity (each occurrence in Δᵢ consumed exactly
+once, within its column). A sequent is **routed** if every A ∈ Δᵢ has
+r(A) = zᵢ. S_1 is the calculus over sequents Γ; P ⊢ C with ONE
+consumable pool P, the same rules read pool-wise, and per-pool
+linearity. Define U(Γ; Δ₀; …; Δ_k ⊢ C) = Γ; Δ₀ ⊎ … ⊎ Δ_k ⊢ C
+(forget columns) and R(Γ; P ⊢ C) = Γ; P↾r⁻¹(z₀); …; P↾r⁻¹(z_k) ⊢ C
+(rebuild columns by routing).
+
+**Lemma A (routing is a ⊎-homomorphism; U, R are inverse).** For
+multisets P, Q: (P ⊎ Q)↾r⁻¹(z) = P↾r⁻¹(z) ⊎ Q↾r⁻¹(z), since routing is
+per-element. Consequently R ∘ U = id on routed sequents (each column's
+elements route back to it, by routedness) and U ∘ R = id on pooled
+sequents (the restrictions partition P, by totality of r). Moreover the
+pool splits P = P₁ ⊎ P₂ of U(s) correspond bijectively to the column-
+wise splits Δᵢ = Δᵢ¹ ⊎ Δᵢ² of a routed s — restriction in one
+direction, union in the other, inverse by the homomorphism equation. ∎
+
+**Definition 3 (zone-correct rule).** A rule instance of S_N is
+*zone-correct* if (i) every formula it introduces into a consumable
+column Δᵢ satisfies r(A) = zᵢ, and (ii) every formula it consumes from
+Δᵢ satisfies r(A) = zᵢ. A calculus is zone-correct if all its rule
+instances over routed premises are.
+
+**Lemma B (routing invariance).** In a zone-correct calculus, every
+sequent in an S_N derivation whose endsequent is routed is routed.
+*Proof.* Induction on the derivation, root upward. Rules touch columns
+in three ways: splitting a column across premises (routedness is
+inherited — a sub-multiset of a routed column is routed), moving a
+formula between sequents unchanged (routed by (ii) at the source and
+(i) at the target), and introducing/eliminating a principal formula
+(routed by (i)). Structural exchange permutes within a column. ∎
+
+**Discharging zone-correctness.** Clause (i) holds for every boundary
+the implementation constructs — parsing, rule-interpreter premise
+construction, `addDelta`, the copy axiom, `stripToken` — because each
+PLACES formulas by calling the router (this is what "routing at
+construction boundaries" means; the sites are THY_0032 §3's inventory).
+Clause (ii) is the load-bearing one and is discharged by the focusing
+discipline, not by routing alone: an aux wrapper must either (a) have
+NO sequent rules, so the identity axiom is its only consumer and
+identity is zone-correct by tag-routing (`stripToken` routes the
+token's own zone), or (b) have explicit rules whose focused hypothesis
+position only ever matches wᵢ-headed formulas. sill's `loc` satisfies
+(a): it is unpolarized (the at/drawn precedent), so no gill rule's
+focused hypothesis can be loc-headed, and rules with bare metavariable
+hypotheses do not exist in the focused fragment. A future wrapper WITH
+sequent rules must re-establish (b) explicitly.
+
+**Theorem (routed-column equivalence).** For a zone-correct calculus
+with a routed zone structure, U induces a bijection between S_N
+derivations of a routed endsequent s and S_1 derivations of U(s), with
+R inducing its inverse; corresponding derivations use the same rule
+instances at the same positions. Consequently provability coincides,
+and per-zone linearity is equivalent to per-pool linearity (zone
+membership of every consumed occurrence is recoverable by r, so a
+per-pool-linear derivation is per-zone-linear under R and vice versa).
+*Proof.* Both directions by induction on the derivation. (⇒) Apply U to
+every sequent. Each S_N rule instance becomes an S_1 instance of the
+same rule: column splits map to pool splits (Lemma A), consumed and
+introduced formulas are the same occurrences, side conditions are
+formula-level and untouched. (⇐) Apply R to every sequent. The
+endsequent R(U(s)) = s is routed; by Lemma B every rebuilt sequent is
+routed, so each pool split maps to the unique corresponding column
+split (Lemma A's bijection), and each S_1 instance becomes the S_N
+instance over the routed columns — zone-correctness (ii) guarantees the
+consumed formula sits in the column the S_N rule consumes from. The two
+constructions are inverse because U and R are inverse on the sequents
+and the rule-instance correspondence is the identity on rule names,
+principal formulas, and splits. ∎
+
+**Corollary (implementation).** The search may thread ONE union pool
+(leftover threading, kernel pool accounting, focusing, affine boundary
+discharge all run pool-wise, unchanged) and materialize zone columns by
+routing only at construction boundaries — columns are views of the
+pool, the mode discipline made visible, not a second resource manager.
+Pool-splitting rules (⊗R distributing Δ ⊎ Λ) need no side condition
+because aux zones are linear-policy like the primary: Lemma A's split
+bijection is the whole story. This is why the acceptance criterion
+"adding a third declared zone requires no kernel edits" holds in its
+honest reading: the union-pool plumbing was a ONE-TIME,
+zone-count-agnostic change; each further zone is data (position mode +
+structural rules + wrapper), and the engine is routing.
+
+Boundaries that route: sequent parsing, rule-interpreter premise
+construction, `addDelta`, the copy axiom, `stripToken`, the bridge
+(`sequentToState` feeds ALL consumable zones into the forward linear
+pool — wrapped facts are ordinary linear facts in their own tag group,
+so the forward engine needs no third FactSet; per-fiber linearity of
+`A @@ L` is automatic because the place is part of the fact identity).
+
+**The instance.** sill declares the third zone in its entirety with:
+
+```
+seq: ... @position_modes "cartesian linear located linear" ...
+loc: #1 @@ #2.   % @category located — the zone's wrapper
+```
+
+plus per-position `@structural` rules — the whole of "adding a zone"
+is these declarations. `loc` is unpolarized and has no sequent rules
+(clause (a) above), per-fiber linearity of `A @@ L` falls out of fact
+identity, and the engine diff for the zone itself is empty.
+
+**Which β are admitted.** Aux zones must be linear-policy (no
+contraction, no weakening) — a policy the engine would not honor is a
+loud load error, not a silent annotation. Weakening-only (affine)
+zones remain future work; the rule-level `@affine` discharge
+(THY_0027) is the existing mechanism for affine behavior, and Lemma
+B's induction gains only a weakening case — the open engineering is
+the end-of-derivation discharge story, not the equivalence.
 
 ## 5. Grades as data ⟨compile⟩
 
@@ -209,31 +328,116 @@ parametricity and the contract, not the scheduling theory.
 
 ## 6. Execution as certificates — checkers as calculus data ⟨write⟩
 
-The most novel under-documented material; needs fresh prose. Content:
+**Status: DRAFTED** (2026-09-08; polish pass pending).
 
-- Forward runs ELABORATE into kernel-checked proof trees (`@fire` /
-  `@draw` step judgments); elaboration failure with a bound checker is
-  an engine/elaborator disagreement and THROWS — no `unverified`
-  escape hatch.
-- The checkers are BOUND BY THE CALCULUS (`calculus.stepCheckers` via
-  the loader kit) — a calculus without a draw checker structurally
-  lacks the judgment. The checker never imports the engine's oracles
-  (mass solver, FFI): fire-check re-derives from PROGRAM RULE DATA +
-  clause-only theory; draw-check walks the declared sort system.
-- TCB statement: kernel + eq-theory canon + numeric prelude CLAUSES
-  under the clause-only backchainer. FFI is never on the verification
-  path (FFI-is-optimization principle, with the Group-B axiom-class
-  carve-out stated honestly).
-- SLD certificates for clause-derived persistent goals (checked, not
-  trusted).
-- Adversarial evidence: fuzz forgery arms (mutated records must be
-  rejected — the loli-name forgery fix 2026-09-04 is an honest war
-  story: the fuzzer FOUND a forgery hole; one-line fix; pinned).
-- Run-level certificates: `certifyRun` (any settle run),
-  `certifyCollapse` (decimation runs, mass factors on the
-  endsequent), `certifyContention`/`tiedContention` (scheduler
-  hypotheses as verdicts), `certifyCI` (conditional independence — the
-  ci paper's face).
+### 6.1 Step judgments are declared, not built in
+
+A committed forward run is not a trusted log. Every settle run
+ELABORATES into a proof tree in the calculus's own sequent judgment,
+and the kernel verifies that tree — full verification, no `unverified`
+escape hatch: an elaboration failure with a bound checker is an
+engine/elaborator disagreement and THROWS. The bridge between the two
+worlds is a pair of *step judgments*: `@fire` (one timed firing) and
+`@draw` (one collapse event). Their checkers are **part of the
+declaration package**: the calculus assembly point binds them by rule
+name (`calculus.stepCheckers`, wired in the loader kit's
+`makeSequentLoader` via `fire:`/`draw:` options, together with frozen
+configs naming the theory predicates the checker may use — `le`, `lt`,
+`sub`, the stamp tag). The kernel routes tree nodes to these checkers
+and *knows nothing about firings or draws*; a calculus that binds no
+draw checker structurally lacks the judgment — presence-gating, not an
+unsound default.
+
+### 6.2 Non-circularity: re-derive, never replay
+
+The checkers never run the engine. A fire node carries only the
+event-record witness; `fire-check` re-derives the entire step from the
+program's *declarative rule record* plus the declared theory:
+
+- consumed/read multisets = the rule's antecedent patterns under the
+  recorded θ (bag equality, ground after substitution);
+- the activation `a` obeys the forced-join discipline (THY_0018 §5):
+  every input/read stamp and after-bound is `⊑ a` (theory `le`) AND `a`
+  is *attained* — a member of that stamp set (the join is never a free
+  choice);
+- the done stamp `u` is checked by `sub(u, d, a)` — the same partial
+  residual `⊖` that the monad-left rule uses. There is no signed
+  subtraction in the theory, so an illegal step is *underivable*, not
+  merely rejected (THY_0022's fence philosophy at the judgment level);
+- produced = consequent patterns stamped at `u` (bag equality);
+  persistent goals are membership in the cartesian zone or theory
+  derivations.
+
+Worked example (the referee's two minutes): rule `job: a * b -o {c}@3`,
+inputs `a@0`, `b@2`. The record claims activation 2, done 5, produced
+`c@5`. The checker bag-matches `{a@0, b@2}` against the antecedent
+under θ; proves `le(0,2)`, `le(2,2)` and attainment (2 is `b`'s stamp);
+derives `sub(5,3,2)` from the numeric prelude clauses; bag-matches
+`{c@5}`. Every theory call is CLAUSE-ONLY (`useFFI: false` at each call
+site) — the numeric FFI is never on the verification path, so the
+checker takes the *semantics* (the clauses) rather than the
+*optimization* (the FFI), the toolbox's FFI principle applied to its
+own trust story.
+
+`draw-check` is the same shape for the measure class: sort and member
+against `program.sorts`; the witness tree determines the minted
+`drawn` tokens (one per ground head, at the head's declared sort —
+composite iterated ∃_ρ checked as one node; an evar subterm is a
+dropped wave: no choice, no token, no factor); the recorded weight,
+when present, must equal `Π ρ` over contributing heads re-derived from
+`program.priors` — **weight is data re-derived from the program, never
+trusted**. Token-free OPEN records certify ∃-L with *syntactic*
+eigenvariable freshness (the evar occurs nowhere else in the
+conclusion) — no `unverified: ['binding']` degradation. Clause-derived
+persistent goals carry SLD certificates: the emitted clause derivation
+is *checked* against the program's clauses (`sld-check`), not trusted.
+
+### 6.3 The TCB, stated and fenced
+
+Trusted: the kernel, its rule interpreter and context discipline, the
+two step checkers, the SLD checker, the equational-theory canon, and
+the numeric prelude CLAUSES under the clause-only backchainer.
+Excluded: the forward engine, its optimization layer, its oracles (the
+datasort mass solver, acceleration, coalescing), and all FFI. The
+elaborators are *also* excluded — they only construct candidate trees;
+the kernel's verdict is the authority.
+
+This boundary is now machine-checked like everything else in the
+toolbox: the layer-DAG test suite carries a **certificate-checker
+import fence** (`tests/engine/layer-dag.test.js`) pinning that the six
+TCB modules directly import only `lib/kernel/*`, `lib/prover/*`, and
+exactly four *named* engine-side modules used for pure helpers —
+deliberate definition-sharing (`splitBody` is the SAME body-splitting
+function the decimation driver uses; duplicating it in the checker
+would reintroduce the definition-drift bug class that checkers exist
+to catch). The honest grain: at those four points the boundary is
+function-granular (only pure decomposition is called), and the fence
+makes any new engine-side import a loud test failure.
+
+One carve-out stated plainly: the Group-B axiom class (`sha3_compute`
+etc.) is extralogical-with-explicit-spec — no inductive clause exists
+or is intended; property-tested against its spec, and outside the
+certified fragment by construction.
+
+### 6.4 Run-level certificates, and the adversary
+
+The step judgments compose into run-level certificates, each a verdict
+with a soundness direction: `certifyRun` (any settle run → one
+kernel-checked tree), `certifyCollapse` (a decimation run,
+post-hoc-grounded; the drawn tokens ride the endsequent and `Π ρ` over
+them is the run mass on bias-free programs), `certifyContention` /
+`tiedContention` (the scheduler theorems' hypotheses as machine
+verdicts — T2-applicability and frontier adequacy respectively), and
+`certifyCI` (conditional independence on the run's derivation forest —
+the ci paper's face; soundness-only: `separated` certifies, refusal
+carries a witness).
+
+The discipline is tested adversarially: the fuzzers carry *forgery
+arms* that mutate emitted records (rule names, stamps, weights,
+witnesses) and require rejection. This is not decoration — the arm
+FOUND a real forgery hole (a possessed-loli fire record accepted under
+any name; 2026-09-04), which is simultaneously the honest war story
+and the evidence that the adversarial harness pays for itself.
 
 ## 7. The boundary theorems — what cannot be data ⟨compile⟩
 

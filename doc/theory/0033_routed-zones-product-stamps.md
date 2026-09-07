@@ -1,11 +1,11 @@
 ---
 title: "Routed Zones and the Product-Stamp Scheduler"
 created: 2026-09-04
-modified: 2026-09-04
+modified: 2026-09-08
 summary: "Aux consumable zones are wrapper-routed views of one threaded pool (the routed-column equivalence, proved at referee grain: U/R inverse bijections on derivations under the zone-correctness invariant), and the time×dist product stamp schedules committed runs by the lexicographic total order — the scalar theory transfers along the C4 split (C4a upper-bound survives, C4b selectivity fails, whole-bind excluded by an executable witness) while the Pareto frontier of completions lives in the exploration layer; transport is a rule, never a cross-axis grade coercion (the axis-confounding argument)."
 tags: [linear-logic, proof-theory, adjoint-logic, structural-rule, lnl, graded-types, scheduling, timed, architecture]
 category: "Proof Theory"
-paper: "SPLIT disposition (2026-09-04). §2 (product scheduler) is compiled into doc/paper/settle-optimality.md §8.4 — the C4 split, lex transfer lemma, T1×/T2× with the whole-bind exclusion, materialized frontier, frontier adequacy; that paper discharges its former ⟨open⟩ P1 obligation with it. §1 (routed-column equivalence) is HELD for the toolbox paper — now SCAFFOLDED (2026-09-08) as doc/paper/toolbox/toolbox.md, where §1 is slotted as the formal centerpiece (its §4); this document remains the single source of truth for the proofs until that paper's compile pass moves them (then this field flips to COMPILED and §1 here becomes a pointer stub). Standalone workshop note was considered and declined (2026-09-04). §3 (axis-confounding) is positioning material, summarized in §8.4's transport paragraph."
+paper: "SPLIT disposition (2026-09-04). §2 (product scheduler) is compiled into doc/paper/settle-optimality.md §8.4 — the C4 split, lex transfer lemma, T1×/T2× with the whole-bind exclusion, materialized frontier, frontier adequacy; that paper discharges its former ⟨open⟩ P1 obligation with it. §1 (routed-column equivalence) is COMPILED (2026-09-08) into doc/paper/toolbox/toolbox.md §4 — the toolbox paper's formal centerpiece and now the single source of truth for the proofs; §1 here is a pointer stub with the summary-grain statement. Standalone workshop note was considered and declined (2026-09-04). §3 (axis-confounding) is positioning material, summarized in §8.4's transport paragraph."
 unique_contribution: "Three results not in the literature or prior CALC docs: (1) the routed-column equivalence — for zones whose membership is decided by a wrapper connective (hash-disjoint columns), the N-zone sequent calculus is equivalent to the one-pool calculus with routing at construction boundaries (proved: U/R inverse bijections on derivations, with zone-correctness as the discharged invariant), so resource management needs no per-zone generalization; (2) the lex/Pareto factorization of multi-objective settle via the C4 split — merge-as-upper-bound (C4a) carries L1/L2/T1/T2 to the lex order, merge-selectivity (C4b) fails and takes exactly the whole-bind rescue and coalesce-safety with it (executable witness), while the Pareto frontier is the exploration layer's job (dominance derived from the join: a ⊑ b iff a ⊔ b = b) and the contention-free fragment materializes the per-fact frontier in one committed run; (3) the axis-confounding argument for why transport-takes-time must be a rule, never a grade coercion — cross-axis coercions are algebraically lawful monoid homomorphisms; the refutation is semantic (they collapse the product's two objectives)."
 references:
   - "Licata, Shulman & Riley (2017). A Fibrational Framework for Substructural and Modal Logics. FSCD 2017."
@@ -31,122 +31,25 @@ relaxed, and this document records why the relaxation is cheap.
 
 ## 1. The routed-column equivalence
 
-A calculus may declare consumable zones beyond the primary one
-(`deriveContextStructure`: the first no-contraction zone in position
-order is primary; the rest are AUX). An aux zone's membership is decided
-by its **wrapper connective** — the constructor whose `@category` names
-the zone (sill: `loc`/`located`). This section states and proves the
-equivalence at referee grain.
+**COMPILED (2026-09-08): the referee-grain content of this section —
+Definitions 1–3 (routed zone structure, U/R, zone-correctness), Lemmas
+A/B, the equivalence theorem, and the implementation corollary — now
+lives in `doc/paper/toolbox/toolbox.md` §4, which is the single source
+of truth for the proofs.** Statement, for this document's
+self-containedness:
 
-**Definition 1 (routed zone structure).** A *routed zone structure* over
-a calculus C is a set of consumable zones Z = {z₀, z₁, …, z_k}, all
-linear-policy (exchange only — no contraction, no weakening), together
-with, for each aux zone zᵢ (i ≥ 1), a unary *wrapper* connective wᵢ
-such that the wᵢ are pairwise distinct constructors and no wᵢ-headed
-formula is well-formed content of any other zone. The **routing
-function** r maps a formula A to zᵢ if head(A) = wᵢ for some i ≥ 1, and
-to z₀ otherwise. r is total and deterministic by construction
-(*hash-disjointness*: head tags are disjoint, so the preimages r⁻¹(zᵢ)
-partition the formula language; operationally `Seq.routeZone` is a tag
-lookup).
-
-**Definition 2 (the two calculi; U and R).** S_N is the N-zone sequent
-calculus: sequents Γ; Δ₀; …; Δ_k ⊢ C with one column per consumable
-zone, and per-zone linearity (each occurrence in Δᵢ consumed exactly
-once, within its column). A sequent is **routed** if every A ∈ Δᵢ has
-r(A) = zᵢ. S_1 is the calculus over sequents Γ; P ⊢ C with ONE
-consumable pool P, the same rules read pool-wise, and per-pool
-linearity. Define U(Γ; Δ₀; …; Δ_k ⊢ C) = Γ; Δ₀ ⊎ … ⊎ Δ_k ⊢ C
-(forget columns) and R(Γ; P ⊢ C) = Γ; P↾r⁻¹(z₀); …; P↾r⁻¹(z_k) ⊢ C
-(rebuild columns by routing).
-
-**Lemma A (routing is a ⊎-homomorphism; U, R are inverse).** For
-multisets P, Q: (P ⊎ Q)↾r⁻¹(z) = P↾r⁻¹(z) ⊎ Q↾r⁻¹(z), since routing is
-per-element. Consequently R ∘ U = id on routed sequents (each column's
-elements route back to it, by routedness) and U ∘ R = id on pooled
-sequents (the restrictions partition P, by totality of r). Moreover the
-pool splits P = P₁ ⊎ P₂ of U(s) correspond bijectively to the column-
-wise splits Δᵢ = Δᵢ¹ ⊎ Δᵢ² of a routed s — restriction in one
-direction, union in the other, inverse by the homomorphism equation. ∎
-
-**Definition 3 (zone-correct rule).** A rule instance of S_N is
-*zone-correct* if (i) every formula it introduces into a consumable
-column Δᵢ satisfies r(A) = zᵢ, and (ii) every formula it consumes from
-Δᵢ satisfies r(A) = zᵢ. A calculus is zone-correct if all its rule
-instances over routed premises are.
-
-**Lemma B (routing invariance).** In a zone-correct calculus, every
-sequent in an S_N derivation whose endsequent is routed is routed.
-*Proof.* Induction on the derivation, root upward. Rules touch columns
-in three ways: splitting a column across premises (routedness is
-inherited — a sub-multiset of a routed column is routed), moving a
-formula between sequents unchanged (routed by (ii) at the source and
-(i) at the target), and introducing/eliminating a principal formula
-(routed by (i)). Structural exchange permutes within a column. ∎
-
-**Discharging zone-correctness.** Clause (i) holds for every boundary
-the implementation constructs — parsing, rule-interpreter premise
-construction, `addDelta`, the copy axiom, `stripToken` — because each
-PLACES formulas by calling the router (this is what "routing at
-construction boundaries" means; the sites are THY_0032 §3's inventory).
-Clause (ii) is the load-bearing one and is discharged by the focusing
-discipline, not by routing alone: an aux wrapper must either (a) have
-NO sequent rules, so the identity axiom is its only consumer and
-identity is zone-correct by tag-routing (`stripToken` routes the
-token's own zone), or (b) have explicit rules whose focused hypothesis
-position only ever matches wᵢ-headed formulas. sill's `loc` satisfies
-(a): it is unpolarized (the at/drawn precedent), so no gill rule's
-focused hypothesis can be loc-headed, and rules with bare metavariable
-hypotheses do not exist in the focused fragment. A future wrapper WITH
-sequent rules must re-establish (b) explicitly.
-
-**Theorem (routed-column equivalence).** For a zone-correct calculus
-with a routed zone structure, U induces a bijection between S_N
-derivations of a routed endsequent s and S_1 derivations of U(s), with
-R inducing its inverse; corresponding derivations use the same rule
-instances at the same positions. Consequently provability coincides,
-and per-zone linearity is equivalent to per-pool linearity (zone
-membership of every consumed occurrence is recoverable by r, so a
-per-pool-linear derivation is per-zone-linear under R and vice versa).
-*Proof.* Both directions by induction on the derivation. (⇒) Apply U to
-every sequent. Each S_N rule instance becomes an S_1 instance of the
-same rule: column splits map to pool splits (Lemma A), consumed and
-introduced formulas are the same occurrences, side conditions are
-formula-level and untouched. (⇐) Apply R to every sequent. The
-endsequent R(U(s)) = s is routed; by Lemma B every rebuilt sequent is
-routed, so each pool split maps to the unique corresponding column
-split (Lemma A's bijection), and each S_1 instance becomes the S_N
-instance over the routed columns — zone-correctness (ii) guarantees the
-consumed formula sits in the column the S_N rule consumes from. The two
-constructions are inverse because U and R are inverse on the sequents
-and the rule-instance correspondence is the identity on rule names,
-principal formulas, and splits. ∎
-
-**Corollary (implementation).** The search may thread ONE union pool
-(leftover threading, kernel pool accounting, focusing, affine boundary
-discharge all run pool-wise, unchanged) and materialize zone columns by
-routing only at construction boundaries — columns are views of the
-pool, the mode discipline made visible, not a second resource manager.
-Pool-splitting rules (⊗R distributing Δ ⊎ Λ) need no side condition
-because aux zones are linear-policy like the primary: Lemma A's split
-bijection is the whole story. This is why the acceptance criterion
-"adding a third declared zone requires no kernel edits" holds in its
-honest reading: the union-pool plumbing was a ONE-TIME,
-zone-count-agnostic change; each further zone is data (position mode +
-structural rules + wrapper), and the engine is routing.
-
-Boundaries that route: sequent parsing, rule-interpreter premise
-construction, `addDelta`, the copy axiom, `stripToken`, the bridge
-(`sequentToState` feeds ALL consumable zones into the forward linear
-pool — wrapped facts are ordinary linear facts in their own tag group,
-so the forward engine needs no third FactSet; per-fiber linearity of
-`A @@ L` is automatic because the place is part of the fact identity).
-
-**Which β are admitted.** Aux zones must be linear-policy (no
-contraction, no weakening) — a policy the engine would not honor is a
-loud load error, not a silent annotation. Weakening-only (affine) zones
-remain future work; the rule-level `@affine` discharge (THY_0027) is the
-existing mechanism for affine behavior.
+For a zone-correct calculus whose aux consumable zones are decided by
+hash-disjoint wrapper connectives (routing r is a total tag lookup),
+U (forget columns) and R (rebuild columns by routing) are inverse
+bijections between N-zone derivations of routed endsequents and
+one-pool derivations — same rule instances, same positions; provability
+and per-zone linearity coincide with the pooled reading. Corollary: the
+engine threads ONE union pool and materializes zone columns as
+router-views at construction boundaries; the pool plumbing is one-time
+and zone-count-agnostic, so DECLARING a zone is calculus data. sill's
+`loc` (`Γ;Δ;Λ ⊢ C`) is the instance; aux zones are fenced to
+linear-policy (affine zones = future work, rule-level `@affine` is the
+existing mechanism).
 
 ## 2. The product stamp: lex-committed, Pareto-explored
 
