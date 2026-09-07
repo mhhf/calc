@@ -1,6 +1,18 @@
 # Paper
 
-Four papers (the till → will → ci arc, plus a stub):
+Five papers — one trunk, four instance papers (till → will → ci arc +
+the gill/settle-optimality paper):
+
+**"A Calculus Is Data"** — `toolbox/toolbox.md` (SCAFFOLD, 2026-09-08;
+markdown master). The TRUNK paper: the architecture (one engine, four
+faces over one declared rule set; the enforced layer DAG) and the
+theorem-guarded data/engine boundary — every extension point ships a
+metatheorem (zones: the routed-column equivalence, compiled from
+THY_0033 §1 at draft time), a machine-checked conformance contract
+(grade algebras, sorts), or a proven impossibility (THY_0034 broadcast
+no-go, axis-confounding). Instance family ILL → till → gill → will →
+sill as the evidence table. The four papers below each prove the deep
+theory of ONE extension point of this architecture.
 
 **"Settle Optimality: Semiring Shortest-Distance under Linear Consumption"**
 — `settle-optimality.md` (markdown master, TODO_0284 Phase T). The
