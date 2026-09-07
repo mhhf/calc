@@ -40,6 +40,15 @@ if (!CHILD_SCRIPT) throw new Error('bench-history.runner: BENCH_CHILD_PATH env v
 
 const EXPLORE_OPTS = { maxDepth: 400, structuralMemo: true, dangerouslyUseFFI: true };
 
+// Real-workload scenario: evidence-mode exploration WITHOUT grade-0 bytecode
+// facts. Since b1588c6e (compiled ∃-chain + deterministic EQ/ISZERO) the
+// non-evidence FFI symex collapses to 2 leaves (1 with extraGrade0Facts) —
+// evidence mode bypasses the compiled fast paths and still explores the full
+// 31-path symbolic tree (513n/11l with memo), so this series measures real
+// symbolic execution at every commit. The legacy symex above is kept as a
+// workload-shape canary (its nodes/branches expose the collapse).
+const REAL_OPTS = { maxDepth: 500, evidence: true, structuralMemo: true, dangerouslyUseFFI: true };
+
 // Bun exposes Bun.gc; node uses --expose-gc to wire global.gc. The bench
 // only calls gc opportunistically, so polyfill best-effort.
 if (typeof globalThis.gc !== 'function' && typeof Bun !== 'undefined') {
@@ -68,15 +77,15 @@ function stats(times) {
   };
 }
 
-function benchSymex(state, calc, treeUtils) {
-  for (let i = 0; i < WARMUP; i++) calc.explore(state, EXPLORE_OPTS);
+function benchSymex(state, calc, treeUtils, exploreOpts = EXPLORE_OPTS) {
+  for (let i = 0; i < WARMUP; i++) calc.explore(state, exploreOpts);
   if (globalThis.gc) globalThis.gc();
 
   let nodes = 0, branches = 0;
   const times = [];
   for (let i = 0; i < RUNS; i++) {
     const t0 = performance.now();
-    const tree = calc.explore(state, EXPLORE_OPTS);
+    const tree = calc.explore(state, exploreOpts);
     times.push(performance.now() - t0);
     if (i === 0 && treeUtils) {
       nodes = treeUtils.countNodes(tree);
@@ -230,7 +239,11 @@ async function main() {
   const result = {};
 
   try {
-    const mde = await loadDefault('./calculus/ill/index.js');
+    // Newer commits: calculus/ill/index.js is the ILL facade. Older commits
+    // predate it — fall back to the generic entry, whose load() still
+    // defaults to ILL there (same fallback as bench-history.child.mjs).
+    const mde = await loadDefault('./calculus/ill/index.js')
+      .catch(() => loadDefault('./lib/engine/index.js'));
 
     let treeUtils = null;
     try { treeUtils = await loadDefault('./lib/engine/tree-utils.js'); } catch {}
@@ -241,9 +254,12 @@ async function main() {
     const loadOpts = { cache: false };
     try {
       const codeExists = fs.existsSync(codePath);
-      const loaderJs = path.join(import.meta.dirname, 'calculus/ill/lib/bytecode-loader.js');
-      if (codeExists && fs.existsSync(loaderJs)) {
-        const { loadBytecode, bytecodeArrGetGuard } = await loadDefault('./calculus/ill/lib/bytecode-loader.js');
+      // Loader moved lib/engine/ill/ → calculus/ill/lib/ (e1f05633); probe both
+      // so pre-move commits keep the bytecode facts (identical workload).
+      const loaderRel = ['./calculus/ill/lib/bytecode-loader.js', './lib/engine/ill/bytecode-loader.js']
+        .find(p => fs.existsSync(path.join(import.meta.dirname, p)));
+      if (codeExists && loaderRel) {
+        const { loadBytecode, bytecodeArrGetGuard } = await loadDefault(loaderRel);
         const hex = fs.readFileSync(codePath, 'utf8').match(/bytecode\s+0x([0-9a-fA-F]+)/)[1];
         const bc = loadBytecode(hex);
         loadOpts.extraGrade0Facts = bc.facts;
@@ -261,6 +277,17 @@ async function main() {
     };
     result.nodes = symex.nodes;
     result.branches = symex.branches;
+
+    try {
+      const calcReal = mde.load(sourcePath, { cache: false });
+      const stateReal = (mde.normalizeQuery || mde.decomposeQuery)(calcReal.queries.get('symex'));
+      const real = benchSymex(stateReal, calcReal, treeUtils, REAL_OPTS);
+      result.symexReal = {
+        mean: real.mean, median: real.median, min: real.min, max: real.max,
+        p95: real.p95, stddev: real.stddev, runs: real.runs,
+        nodes: real.nodes, branches: real.branches,
+      };
+    } catch (err) { result.symexRealError = err.message; }
 
     if (E2E_ENABLED) {
       try {
