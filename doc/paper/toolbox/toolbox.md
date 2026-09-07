@@ -11,17 +11,18 @@ and Checkers as Calculus Data"; "The Data/Engine Boundary in a
 Certifying Linear-Logic Engine" (if a theory venue wants the boundary
 theorems foregrounded).
 
-**Status: SCAFFOLD → PARTIAL DRAFT** (markdown master; assembled
-2026-09-08; §4 compiled and §6 drafted same day). This is
+**Status: COMPLETE DRAFT** (markdown master; scaffolded and drafted
+2026-09-08 — every section is draft-grade prose; pending Denis's
+framing/title gate, the [verify] citation pass, and polish; LaTeX at
+venue choice). This is
 the TRUNK paper of the CALC arc — the architecture and its boundary
 metatheorems; the till, gill (settle-optimality), will, and ci papers
-are instance papers that cash out individual extension points. Sections
-marked ⟨compile⟩ have their content already written elsewhere in the
-repo and need editorial compilation, not research; ⟨write⟩ needs fresh
-prose; ⟨decide⟩ needs a decision recorded here first. The formal
-centerpiece (routed-column equivalence) is deliberately NOT duplicated
-here yet — THY_0033 §1 is its single source of truth until the compile
-pass (avoiding divergence; see §4).
+are instance papers that cash out individual extension points. Marker
+conventions: ⟨decide⟩ needs a decision recorded here first;
+⟨could-add⟩ is optional draft material. The formal centerpiece
+(routed-column equivalence) lives in §4, COMPILED from THY_0033 §1
+(2026-09-08) — §4 is now the proofs' single source of truth and
+THY_0033 §1 the pointer stub.
 
 **One-line thesis.** In CALC, a proof calculus is a *declaration
 package* — connectives, inference rules, zone structure, grade
@@ -42,7 +43,7 @@ not patching the engine.
 
 ## 0. Internal ledger — provenance, sources, gates
 
-NOT for the eventual PDF. This section is the scaffold's control panel.
+NOT for the eventual PDF. This section is the draft's control panel.
 
 **Provenance.** Scaffolded autonomously 2026-09-08 on Denis's
 direction ("the core paper about calc — everything else builds on top").
@@ -54,14 +55,14 @@ this paper; standalone workshop note considered and declined).
 
 | paper section | source | status |
 |---|---|---|
-| §2 engine & four faces | `doc/documentation/architecture.md` (L0–L5), `lib/` docstrings, layer-DAG test | ⟨compile⟩ |
-| §3 declaring a calculus | THY_0032 (mode preorders → contextStructure), `lib/meta/focusing.js` (polarity inference), `earley-grammar.js` (sorted templates, TODO_0268 §5c) | ⟨compile⟩ + ⟨write⟩ (the inference story is under-documented) |
+| §2 engine & four faces | `doc/documentation/architecture.md` (L0–L5), `lib/` docstrings, layer-DAG test | DRAFTED 2026-09-08 |
+| §3 declaring a calculus | THY_0032 (mode preorders → contextStructure), `lib/meta/focusing.js` (polarity inference), `earley-grammar.js` (sorted templates, TODO_0268 §5c) | DRAFTED 2026-09-08 — incl. the focusing-inference story (§3.3), written from the focusing.js mechanism (context flow → polarity; polarity × side → invertibility) |
 | §4 zones as data | **THY_0033 §1** (referee-grain proofs: Defs 1–3, Lemmas A/B, U/R theorem, one-pool corollary) | COMPILED 2026-09-08 — proofs moved here (§4 is the single source of truth; THY_0033 §1 is the pointer stub), sill walkthrough added |
-| §5 grades as data | settle-optimality §1.1/§8 (dioid contract, C4 split), THY_0022 (fences), `grade-conformance.test.js`, gill's by-sort registry | ⟨compile⟩; deep theorems stay in the gill paper, cited as parametric |
+| §5 grades as data | settle-optimality §1.1/§8 (dioid contract, C4 split), THY_0022 (fences), `grade-conformance.test.js`, gill's by-sort registry | DRAFTED 2026-09-08; deep theorems stay in the gill paper, cited as parametric |
 | §6 certificates | TODO_0294/0295/0298 landings: `fire-check.js`, `draw-check.js`, `sld-check.js`, elaborators; forgery arms in `fuzz-till.js` | DRAFTED 2026-09-08 (writing it produced the TCB import-fence test in `layer-dag.test.js` — the §6.3 boundary is now machine-checked); polish pass pending |
-| §7 boundary theorems | THY_0034 (broadcast no-go), THY_0033 §3 (axis-confounding), fence inventory | ⟨compile⟩ |
-| §8 instance family | CLAUDE.md directory tree + git history (diff shapes) | ⟨write⟩ (the money table below is the draft) |
-| §9 related work | THY_0033/0034 reference blocks, settle-optimality §12, hq research 0138 Part A | ⟨write⟩ + [verify] flags |
+| §7 boundary theorems | THY_0034 (broadcast no-go), THY_0033 §3 (axis-confounding), fence inventory | DRAFTED 2026-09-08 (fence-inventory table ⟨could-add⟩) |
+| §8 instance family | CLAUDE.md directory tree + git history (diff shapes) | DRAFTED 2026-09-08 — table + five instance paragraphs + composition mechanisms |
+| §9 related work | THY_0033/0034 reference blocks, settle-optimality §12, hq research 0138 Part A | DRAFTED 2026-09-08 — six groups, [verify] flags standing |
 | §10 claims | this scaffold §10 | drafted below |
 
 **Gates, in order:**
@@ -70,8 +71,10 @@ this paper; standalone workshop note considered and declined).
 2. ~~Compile pass §4~~ DONE 2026-09-08 (THY_0033 §1 moved in, stub +
    COMPILED frontmatter there).
 3. ~~§6 write~~ DRAFTED 2026-09-08 (+ the TCB import-fence test).
-   Remaining ⟨write⟩: §1 intro prose, §3 inference story, §8 per-
-   instance paragraphs, §9 expansion.
+   ~~Remaining ⟨write⟩s~~ ALL DRAFTED 2026-09-08 (§1 intro, §2 faces,
+   §3 incl. the inference story, §5, §7, §8 instance paragraphs, §9).
+   Remaining before venue: Denis gate (1), [verify] citations, the
+   ⟨could-add⟩ fence table, polish pass, LaTeX.
 4. The other papers' venue outcomes inform this one's (a systems venue
    wants §8 fat; a theory venue wants §4/§7 fat).
 
@@ -95,11 +98,31 @@ this paper; standalone workshop note considered and declined).
 
 ---
 
-## 1. Introduction ⟨write⟩
+## 1. Introduction
 
-Opening move: the reader has seen configurable rewriting engines
-(Maude, K) and logical frameworks (LF/Twelf, λProlog, Celf). The pitch
-is NOT "another one" — it is the boundary discipline:
+**Status: DRAFTED** (2026-09-08).
+
+Every substantial extension of a proof-theoretic engine tends to
+become an engine fork. Add a modality and the focusing discipline
+needs new cases; add a context zone and the resource manager grows a
+second bookkeeper; add a grade algebra and the scheduler learns its
+arithmetic; add a probabilistic construct and the trusted checker
+learns to sample. The promise that "the logic is data" is as old as
+logical frameworks — but it is usually kept only for the *formula*
+layer. The layers that make substructural logics interesting to
+execute — linear context management, temporal scheduling, measure
+aggregation, certification — are exactly the layers that resist being
+data, because their soundness arguments seem to depend on the specific
+logic.
+
+CALC is a linear-logic toolbox built on the opposite bet: that the
+resource, scheduling, and certification layers can be generic if — and
+only if — the **data/engine boundary is guarded by theorems**. The
+reader has seen configurable rewriting engines (Maude, K) and logical
+frameworks (LF/Twelf, λProlog, Celf); the claim here is NOT "another
+one." Configurability without a boundary discipline yields engines
+where a new declaration can be accepted and silently mis-run.
+The discipline is this paper's subject:
 
 **The adequacy schema (the paper's spine).** Let `D` be a declaration
 package (family + `.calc` + `.rules` + preludes) passing all load
@@ -131,47 +154,154 @@ one of three instruments, and the paper is organized by them:
    grade coercion, §7) — negative results are part of the toolbox: the
    engine refuses loudly at load rather than mis-running.
 
-Contributions list = §10, compressed.
+**Contributions** (statement of record in §10): (1) the architecture —
+one generic engine, four faces over one declared rule set, with the
+layering itself a tested invariant; (2) the boundary discipline —
+metatheorem / conformance contract / impossibility per extension
+point, as a methodology; (3) the routed-column equivalence (§4) — the
+theorem that makes sequent zones declarations; (4) checkers as
+calculus data (§6) — the certification judgment is part of the
+declaration, with a machine-fenced TCB; (5) the instance family (§8) —
+five calculi, each new capability a set of files, the claim checkable
+against version history. Evidence discipline throughout: every claim
+names its test.
 
-## 2. One engine, four faces ⟨compile⟩
+## 2. One engine, four faces
 
-From `architecture.md`: the layer cake L1 (kernel/checker) → L2 (search
-primitives) → L3 (Andreoli focusing) → L4 (strategies; forward engine)
-→ L5 (UI), and the *horizontal* layer DAG `lib/ ↛ family/ ↛ calculus/`
-— the engine imports no family, the family imports no calculus,
-enforced by `tests/engine/layer-dag.test.js` (architecture as a tested
-invariant, not a convention). The four faces (prove / settle / explore
-/ certify) share one declared rule set and one content-addressed store
-(formulas are hashes; O(1) equality). The family layer (`family/lnl/`)
-is the reusable structural middle: persistent-goal proving, loli
-matching, existential resolution — shared BY calculi, received by the
-engine as data (`cc.family.engine`).
+**Status: DRAFTED** (2026-09-08).
 
-Key under-sold point to foreground: the SAME `.rules` file drives all
-four faces. Ceptre-family systems run forward only; framework provers
-run backward only; CALC's forward runs are *elaborated back into* the
-backward kernel's judgment (§6). That loop is the architecture's
-signature.
+The engine is layered twice — vertically by proof-search role,
+horizontally by genericity — and both layerings are enforced by tests,
+not convention.
 
-## 3. Declaring a calculus ⟨compile⟩ + ⟨write⟩
+**Vertically**, the backward prover is the classical cake: L1 is the
+kernel (a proof *checker*: tree verification with rule matching
+generated from the declared rule descriptors), L2 the search
+primitives (backtracking, Hodas–Miller resource threading), L3 the
+Andreoli focusing discipline (phase alternation and the focus
+protocol, with polarities supplied by the calculus object — inferred,
+§3.3), L4 the strategies (manual proof UI protocol, automatic search)
+and, beside them, the forward engine (matching, committed-choice
+loop, exhaustive exploration, the timed scheduler), L5 the UI. The
+logic-specific column of every layer is *empty or injected*: adding a
+connective touches `.calc`/`.rules` only, and all backward layers pick
+it up from the calculus object; the forward strategy stack detects
+applicable optimizations from rule structure.
 
-Anatomy of `D`: `@extends` chains (meta-parser; will extends gill
-ACROSS calculus directories — surface inherited by reference, never
-copied), connective declarations with `@ascii` templates (ONE grammar
-emission mechanism — sorted templates; per-input ambiguity detection),
-`@position_modes` + `@structural` per zone from which
-`contextStructure` is DERIVED (THY_0032 — no 'linear'/'cartesian'
-literals in engine logic), and rules in sequent notation compiled to
-descriptors. Polarity and invertibility are *inferred* from rule
-descriptors (`lib/meta/focusing.js`) — the focusing discipline is
-computed from the declared rules, not annotated. ⟨write⟩: this
-inference story deserves two pages; it is currently documented nowhere
-prose-grade.
+**Horizontally**, the layer DAG `lib/ ↛ family/ ↛ calculus/`: the
+generic engine imports no structural family, the family imports no
+calculus. Family machinery (the LNL family: persistent-goal proving,
+loli matching, existential resolution — the linear/persistent
+distinction itself) reaches the engine only as data
+(`cc.family.engine`); calculus machinery reaches it only through the
+assembly-point config. `tests/engine/layer-dag.test.js` scans every
+import and fails loudly on a violation — the architecture is a tested
+invariant. (The same file carries the TCB import fence of §6.3: the
+fence idiom pays twice.)
 
-Refinement sorts and datasorts as declaration-layer machinery
-(presence-gated twice; materialized closures; fences as named load
-errors) — one compressed subsection, pointing to the will paper for
-the measure-theoretic use.
+All faces share one **content-addressed store**: formulas are hashes,
+structural equality is pointer equality, and every artifact — rule,
+state, certificate — is a value in the same store. On top of this sit
+the four faces, driven by ONE declared rule set:
+
+1. **prove** — backward focused search for the sequent judgment;
+2. **settle** — forward committed execution under the declared grade
+   algebra (the timed scheduler);
+3. **explore / frontier** — exhaustive branching on genuine conflicts,
+   Pareto frontier and trace measures over the leaves;
+4. **certify** — elaboration of forward runs into kernel-checked proof
+   trees (§6).
+
+The signature of the architecture is the loop between faces 2 and 4:
+Ceptre-family systems run forward only, framework provers run
+backward only — here a forward run is *elaborated back into* the
+backward kernel's judgment and verified against the same declared
+rules that produced it. A discrepancy between the two faces is
+therefore a loud error, not a philosophical gap.
+
+## 3. Declaring a calculus
+
+**Status: DRAFTED** (2026-09-08).
+
+### 3.1 The declaration package
+
+A calculus is a directory: a `.calc` file (connectives, types,
+surface syntax, zone structure), one or more `.rules` files (inference
+rules in sequent notation), preludes (theories as logic programs), and
+one executable assembly point (the config that composes declared
+pieces with family bindings and — where the calculus wants them —
+step checkers and oracles). Inheritance is by reference, never by
+copy: `@extends` chains resolve across calculus directories (will
+extends gill extends till's surface; the meta-parser resolves sibling
+dirs), and a calculus loads a *list* of rules files, so a shared
+fragment is shared, not duplicated. Surface syntax is declared per
+connective as `@ascii` templates and compiled by ONE grammar-emission
+mechanism (operator/prefix/circumfix/graded forms normalize into
+sorted template records for the Earley parser), with per-input
+ambiguity detection available as a strict mode — new syntax is a
+declared template, never a new parser family.
+
+### 3.2 Context structure is derived
+
+The sequent's zone structure is not configured — it is *computed* from
+the sequent constructor's `@position_modes` (one mode per position)
+and the per-zone `@structural` rules (exchange, contraction,
+weakening). `deriveContextStructure` reads these and produces the
+engine's entire zone discipline: which zone is the copy source, which
+are consumable, which is primary (the first no-contraction zone in
+position order), which are wrapper-routed aux zones (§4). The engine
+contains no `'linear'`/`'cartesian'` literals in its logic — a
+grep-clean claim, and the reason a two-zone, three-zone, or four-zone
+calculus is the same engine. A declared structural policy the engine
+cannot honor is a load error, not an annotation silently ignored.
+
+### 3.3 Focusing is inferred, not annotated
+
+The most compact instance of the paper's thesis. Andreoli's focusing
+discipline needs every connective classified by polarity, and every
+rule by invertibility. In CALC neither is declared: both are *computed
+from the declared rules themselves* (`lib/meta/focusing.js`).
+
+The inference reads each connective's right-introduction rule and
+classifies its **context flow** — how the conclusion's linear context
+relates to the premises':
+
+- context **empty** (the rule demands an empty linear zone — units) or
+  **split** across premises (multiplicative combination) → the
+  connective is **positive**;
+- context **preserved** into a single premise or **copied** to all
+  premises (additive combination) → **negative**.
+
+Invertibility then follows from polarity and side by the focusing
+discipline itself: positive-left and negative-right rules are
+invertible (asynchronous), positive-right and negative-left are not
+(synchronous). The classical polarity table of linear logic —
+`tensor`/`oplus`/`one`/`bang` positive, `loli`/`with`/`monad` negative
+— is *recovered as a computation* over the declared rules rather than
+transcribed from the literature. The payoff is twofold. First, a new
+connective (a graded modality, a located wrapper, a drawn-token
+binder) receives a correct focused search discipline the moment its
+rules are declared — no engine case analysis. Second, the inference
+doubles as a lint: rules whose context flow contradicts their
+connective's inferred polarity surface at load, when the mistake is a
+mis-declared rule rather than a search-time incompleteness. Unpolarized
+synthetic atoms (`at`, `drawn`, sill's `loc`) are the deliberate
+escape: no right rule, no polarity, never focused on — which is
+exactly the zone-correctness clause (a) that §4's equivalence needs.
+
+### 3.4 Sorts and datasorts
+
+Refinement sorts are declaration-layer machinery twice over:
+presence-gated by the calculus (`cc.sorts` — ILL stays sortless) and
+by the program (no declarations, no discipline). Subsort edges are
+persistent facts; the loader materializes the reflexive-transitive
+closure at load, so in-logic sort premises are total fact lookups.
+Datasorts extend the same discipline to recursive structural
+refinements, compiled to deterministic tree automata with exact
+load-time mass solving — every ill-formed shape a *named* load error
+(the fences f1–f4). The measure-theoretic payload is the will paper's;
+here the point is the placement: all of it is prelude + declaration
+machinery, none of it engine cases.
 
 ## 4. Zones as data — the routed-column equivalence
 
@@ -311,22 +441,49 @@ zones remain future work; the rule-level `@affine` discharge
 B's induction gains only a weakening case — the open engineering is
 the end-of-derivation discharge story, not the equivalence.
 
-## 5. Grades as data ⟨compile⟩
+## 5. Grades as data
 
-The scheduling-dioid contract (C1–C4, with the C4a/C4b split) as the
-conformance boundary; algebras registered BY SORT (gill:
-delay→tillGrades, dist→distGrades, weight→weightGrades) with
-per-algebra machine-checked conformance
-(`tests/engine/grade-conformance.test.js`) and class routing as policy
-(`(⊕, realization)`: order class → committed scheduler + B&B; measure
-class → will's execution modes; a scheduler face the algebra cannot
-carry is fenced at load). Product stamps (sill's time×dist) ride the
-lex order via the transfer lemma. The DEEP theorems (T1/T2, focusing,
-frontier adequacy) live in the settle-optimality paper and are cited
-here as *parametric in the declared algebra* — this paper claims the
-parametricity and the contract, not the scheduling theory.
+**Status: DRAFTED** (2026-09-08).
 
-## 6. Execution as certificates — checkers as calculus data ⟨write⟩
+Where zones get a metatheorem, grade algebras get the second
+instrument: a **machine-checked conformance contract**, because here
+the instances genuinely vary. The timed scheduler is generic over a
+declared *scheduling dioid* — values with composition `⊗` (delay
+accumulation), merge `⊔` (activation join), and a comparison — and its
+correctness theorems are parametric in four conditions checked PER
+ALGEBRA by a conformance harness
+(`tests/engine/grade-conformance.test.js`): C1 the order is total, C2
+composition is isotone, C3 composition is inflationary, C4 merge is
+the order's join — refined by the C4 split into C4a (merge is an
+upper bound; all core lemmas need it) and C4b (merge is selective;
+needed only by whole-bind rescue and by the coalesce/acceleration
+optimizations, making C4b exactly coalesce-safety). An algebra is not
+believed; it is tested at its registration.
+
+Algebras are registered **by grade sort** (gill: `delay` → the time
+dioid, `dist` → the distance dioid, `weight` → the mass semiring), and
+aggregation is routed as a *policy pair* `(⊕, realization)`: the order
+class realizes `⊕ = min` by the committed frontier scheduler with its
+branch-and-bound prune; the measure class realizes `⊕ = +` by will's
+execution modes (exact enumeration or unbiased sampling). A scheduler
+face an algebra cannot carry is fenced at load — `weightGrades` never
+reaches the timed layer, because summing alternatives under pruning
+would silently discard mass. Product stamps (sill's time × dist) ride
+the same machinery through the lexicographic completion of the
+componentwise order, sound by the transfer lemma under strict primary
+isotonicity — with the Pareto frontier of the *partial* product order
+recovered in the exploration face, dominance derived from the join
+rather than declared.
+
+The deep theorems — per-firing optimality, confluence, σ*-optimality,
+the temporally-focused presentation, frontier adequacy under
+tied-contention — live in the settle-optimality paper and are cited
+here as *parametric in the declared algebra*. This paper claims the
+parametricity and the contract, not the scheduling theory: the point
+is that till's time, gill's distance, and sill's product are three
+REGISTRATIONS, not three schedulers.
+
+## 6. Execution as certificates — checkers as calculus data
 
 **Status: DRAFTED** (2026-09-08; polish pass pending).
 
@@ -439,29 +596,63 @@ FOUND a real forgery hole (a possessed-loli fire record accepted under
 any name; 2026-09-04), which is simultaneously the honest war story
 and the evidence that the adversarial harness pays for itself.
 
-## 7. The boundary theorems — what cannot be data ⟨compile⟩
+## 7. The boundary theorems — what cannot be data
 
-The negative space that makes the positive claims sharp:
+**Status: DRAFTED** (2026-09-08).
 
-- **The broadcast no-go** (THY_0034): stamp values are cartesian
-  (broadcast to outputs, joined over reads, re-emitted by catalysts);
-  conserved quantities are linear; no nontrivial conserved measure
-  survives the stamp slot. Idempotent merge is the *definition* of the
-  slot's boundary. The factorization routes usage to trace measures /
-  linear tokens / chooser / term-computed delays.
-- **Axis-confounding** (THY_0033 §3): transport-takes-time is a rule,
-  never a grade coercion — lawful coercions exist and are semantically
-  wrong (they collapse the objectives the product keeps apart).
-- **The fence inventory as design philosophy**: presence-gating
-  (calculus without the binding structurally lacks the concept), named
-  load errors over silent degradation, conservative certifiers
-  (refusal ≠ refutation). One table: fence → what it protects → test.
+A toolbox that only reports successes invites the suspicion that its
+extension points are wide open and its soundness informal. The
+opposite is the case: two of the sharpest results in the arc are
+*impossibilities*, and they are load-bearing — they say precisely why
+certain tempting declarations are refused rather than accepted and
+mis-run.
 
-## 8. The instance family ⟨write; table drafted⟩
+**The broadcast no-go** (THY_0034; settle-optimality §8.5). May a
+declared grade algebra carry a conservation quantity — fuel, cost,
+usage — with additive merge? The algebraic contract barely objects
+(C1–C3 and C4a all hold on `(ℚ≥0, +, +, ≤)`); the refutation is
+semantic. The timed semantics *duplicates* stamp values at four sites:
+one done-stamp broadcast to every output, reads joining the activation
+without consuming, preserved catalysts re-emitting their stamp,
+persistent contraction. Duplication is sound for readiness — an upper
+bound is freely copyable — and fatal for any conserved measure: two
+outputs book the summed input cost twice, n readers pay n times from
+zero consumption. **Stamp values are cartesian; conserved values are
+linear.** Idempotent merge is thereby the *definition* of the stamp
+slot's boundary, and every role of a usage quantity factors into
+existing machinery: accounting → trace measures over the event
+multiset, gating → linear tokens (conservation is what the multiset
+was already for), preference → the chooser, timing feedback →
+term-computed delays.
 
-The money table (each row checkable against git history — keep it
-honest; the engine columns name the ONE-TIME generalizations and the
-per-instance count):
+**Axis-confounding** (THY_0033 §3). May a grade morphism coerce the
+distance axis into the time axis, so that transport "takes time"
+algebraically? Lawful coercions exist in abundance (graded-monad
+morphisms) — and are semantically wrong: a coercion feeds each hop's
+cost into both axes and collapses the two objectives the product
+exists to keep apart. Transport is a *rule* (`!dist L L' T D` feeding
+a `@(T ~ D)` delay), never a coercion. The boundary here is not
+algebraic legality but the separation of concerns the declarations
+encode.
+
+**Fences as philosophy.** The impossibilities generalize to a design
+rule visible at every extension point: *presence-gating* (a calculus
+that does not bind the mass solver structurally lacks recursive
+datasorts; no draw checker, no draw judgment), *named load errors*
+over silent degradation (an unhonorable structural policy, an
+ill-fenced sort system, a weight algebra at the scheduler — all refuse
+with their names), and *conservative certifiers* (refusal is never
+refutation; every certificate is sound, every refusal carries its
+reason). ⟨could-add at draft: the one-page fence inventory table —
+fence → what it protects → its test.⟩
+
+## 8. The instance family
+
+**Status: DRAFTED** (2026-09-08).
+
+The evidence table (each row checkable against version history; the
+engine columns name the ONE-TIME generalizations and the per-instance
+count):
 
 | instance | adds | declared as data | one-time generic-engine work | per-instance engine edits |
 |---|---|---|---|---|
@@ -471,41 +662,121 @@ per-instance count):
 | **will** | measure class: ∃_ρ, priors, datasorts, decimation | `@w` priors, binder sorts, drawn-token rules, draw-checker binding; mass solver as calculus-BOUND oracle (`cc.datasortMasses`) | decimate driver (generic, opt-in D4) | 0 in `lib/` (will-bound machinery in `calculus/will/lib/`) |
 | **sill** | third zone `A @@ L`, product stamps | 4-ary `@position_modes` + `@structural`, loc wrapper, place fence, product algebra | P4: one union pool, zone-count-agnostic (TODO_0285) | 0 per-zone |
 
-Per instance: one paragraph + its two-line signature declaration +
-what its instance paper proves. Cross-calculus `@extends` (will ⊃ gill
-⊃ till surface) and rules-file LISTS (shared fragments by reference)
-close the section.
+**ILL** is the baseline: intuitionistic linear logic with the standard
+connective set, polarities inferred (§3.3), plus the domain layer that
+stress-tested the architecture from the start — EVM bytecode symbolic
+execution over binary-arithmetic theories, with ZK witness extraction
+riding the certified traces. The lesson ILL taught the toolbox is the
+FFI principle (every foreign function is an optimization over declared
+clauses, never a semantics) and the equational-theory plug (pluggable
+cross-tag matching), both of which every later instance inherits.
 
-## 9. Related work ⟨write⟩
+**till** adds time. Its signature declaration is the graded lax monad
+`{A}@d` — a delay-graded computation type whose forward reading is
+scheduling: rules fire at the join of their inputs' stamps plus a
+declared delay. The whole timed layer entered the engine ONCE, generic
+over the declared algebra (`cc.grades`); till itself is the time
+*registration* plus rules, windows, cohort discipline, and the
+numeric prelude. Its paper proves the delay-graded monad
+proof-theoretically exact (cut admissibility, adequacy).
 
-Positioning one-liners (expand at draft; [verify] = confirm citation
-details at venue time):
+**gill** generalizes the grade: algebras registered by sort (§5) and
+the transport comonad `!!_d A` — the monad's spatial dual, same
+residual premise `⊖`, giving shortest-path computation as logic
+(the depot benchmark certifies its runs). Engine delta: none — the
+registry is config composition. Its paper is the settle-optimality
+paper: the scheduling theory parametric in the declared dioid.
 
-- **Ceptre** (Martens) — forward linear multiset rewriting + stage
-  discipline as a language; no backward prover, no certificates, fixed
-  structural regime. The nearest ancestor in spirit; the precedent
-  track for venue.
-- **CLF / Celf** (Watkins–Cervesato–Pfenning–Walker;
-  Schack-Nielsen–Schürmann) — the type-theoretic ancestor: forward
-  chaining inside a dependent framework's monad. CALC trades
-  HOAS/dependency for first-order content-addressed terms + certified
-  execution + declared algebras/zones.
-- **Calculus Toolbox** (Balco–Kurz [verify]) — the naming inspiration:
-  display calculi compiled to Isabelle + UI from a calculus
-  description; generation-time tooling, not a certifying runtime
-  engine.
-- **Maude / K** — rewriting-logic engines, deeply configurable, but
-  the structural regime (AC multiset) is framework-level, there is no
-  focused backward search over the same rules, and certification goes
-  through external provers.
-- **Twelf / Beluga / Abella, λProlog** — judgments-as-data with
-  binding metatheory; no committed timed execution, no resource
-  scheduling. CALC does not compete on metatheory (§10 not-claimed).
-- **Belnap's display calculi** — the classical "calculus as data"
-  theory ancestor for §4's zone genericity.
-- **Dyna / provenance semirings / semiring DP** — aggregation-as-data
-  on the monotone side; the gill paper's §12 lineage, cited here for
-  the grade-registry parallel.
+**will** adds the measure class: the `∃_ρ` binder (`exists X: s @w.
+A`), constructor priors, recursive datasorts with exact load-time
+masses, and the decimation driver (wave-function-collapse execution:
+propagate, then draw min-entropy-first). The mass solver is
+calculus-BOUND oracle machinery (`cc.datasortMasses`) — a calculus
+without the binding structurally lacks recursive datasorts — and the
+draw checker re-derives every draw from the declared sort system
+(§6.2). Its paper proves exactness and unbiasedness of the execution
+modes; the ci paper builds conditional-independence certification on
+its run forests.
+
+**sill** adds space: the located modality `A @@ L` as a third
+consumable zone (`Γ; Δ; Λ ⊢ C`), declared in two lines (§4), and the
+time × dist product stamp scheduled lex-committed / Pareto-explored.
+It is the acceptance artifact for both §4 (a zone is a declaration)
+and §5 (a product is a registration): the per-zone engine diff is
+empty, and the per-fiber linearity of located facts falls out of fact
+identity rather than new bookkeeping.
+
+Two composition mechanisms close the loop: cross-calculus `@extends`
+(will inherits gill's surface, gill till's — resolved by the
+meta-parser across directories, never copied) and rules-file lists
+(will loads `[gill.rules, will.rules]` — the shared fragment is shared
+by reference). The family layer (`family/lnl/`) sits below all five:
+one structural regime, declared once, composed into every config.
+
+## 9. Related work
+
+**Status: DRAFTED** (2026-09-08; [verify] = confirm citation details
+at venue time).
+
+**Executable linear logic.** The nearest ancestors run our forward
+face. Ceptre (Martens, AIIDE 2015) made linear multiset rewriting a
+*language*, with a stage discipline for interactive systems — but no
+backward prover shares its rules, runs are not certificates, and the
+structural regime is fixed. CLF (Watkins–Cervesato–Pfenning–Walker,
+2002 [verify]) and its implementation Celf
+(Schack-Nielsen–Schürmann, IJCAR 2008) are the type-theoretic
+lineage: concurrent computation inside a dependent framework's lax
+monad — LolliMon (López–Pfenning–Polakow–Watkins, PPDP 2005 [verify])
+already combined backward search with monadic forward chaining, and
+CALC's lax-monad bridge is that idea made operational policy. What
+none of this line has: declared grade algebras and zones, committed
+timed scheduling with optimality theorems, and execution that
+elaborates into kernel-checked derivations. CALC trades the
+HOAS/dependency axis for first-order content-addressed terms and
+spends the savings on those three.
+
+**Calculus-description tooling.** The Calculus Toolbox (Balco–Kurz
+[verify]) — this paper's naming inspiration — compiles display-calculus
+descriptions to Isabelle scaffolding and a UI: generation-time
+tooling, where CALC is a certifying *runtime*. Belnap's display logic
+(JPL 1982) is the classical theory ancestor of "the calculus is a
+parameter," and the display-calculus tradition achieves generality we
+do not attempt (§10); our §4 equivalence is the narrower, engine-shaped
+statement that wrapper-routed zones cost nothing.
+
+**Generic rewriting engines.** Maude (Clavel et al.) and K (Roşu et
+al.) are deeply configurable rewriting-logic platforms — but the
+structural regime (AC multiset, evaluation strategies) is
+framework-level rather than a declared, theorem-guarded parameter; no
+focused backward search runs over the same rules; certification
+routes through external provers rather than an in-system kernel whose
+checkers the object logic itself binds.
+
+**Metatheory frameworks.** Twelf (Pfenning–Schürmann), Beluga
+(Pientka–Dunfield), Abella (Gacek), λProlog (Miller–Nadathur) put
+judgments-as-data on firm ground with binding metatheory — the axis we
+deliberately do not compete on. None runs committed resource-aware
+execution, and their adequacy statements are about representation,
+where ours (§1) is about the four executable faces.
+
+**Zone and mode relatives.** Benton's LNL (CSL 1994) is the family
+our structural layer declares; adjoint logic
+(Reed; Pruiksma–Pfenning) and the fibrational treatment of
+Licata–Shulman–Riley (FSCD 2017) give general mode theories;
+subexponentials (Nigam–Miller, PPDP 2011) and HyLL
+(Despeyroux–Chaudhuri) parameterize the exponential and hybridize
+worlds. These generalize *logics*; §4's contribution is orthogonal —
+an implementation metatheorem saying when the *engine* needs no
+per-zone generalization at all.
+
+**Semiring lineage.** Dyna (Eisner et al.), provenance semirings
+(Green–Karvounarakis–Tannen), and semiring dynamic programming
+(Goodman; Huang) made aggregation-as-data standard on the monotone
+side; the gill paper's related-work section is the record. Cited here
+for the parallel: grade registration (§5) is to scheduling what
+semiring parameterization is to monotone inference — with the
+linear-consumption boundary (where that parallel breaks) being
+precisely the settle-optimality paper's subject.
 
 ## 10. Claims (statement of record, draft)
 
