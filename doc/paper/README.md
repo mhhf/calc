@@ -9,7 +9,13 @@ the E1 separation witness (`calculus/gill/tests/forward/contention.gill`),
 the termination proposition, and §8.4 the product instance (TODO_0285 P6:
 the C4 split, lex transfer, materialized per-fact Pareto frontier,
 frontier adequacy for `settleFrontier` — discharging the former ⟨open⟩
-Pareto obligation). Prior-art positioning: hq research 0138 Part A.
+Pareto obligation; the focused-frontier gap resolved 2026-09-07:
+witness W-gap + tied-contention adequacy, machine-checked by
+`certifyContention`'s `tiedContention` level), and §8.5 the usage-axis
+factorization (THY_0034: conservation axes never ride stamps — the
+broadcast no-go; trace measures / linear tokens / chooser /
+term-computed delays as the complete slot routing). Prior-art
+positioning: hq research 0138 Part A.
 THY_0033 §1's routed-column equivalence is deliberately NOT in any paper
 yet — held for the eventual toolbox/systems paper (see THY_0033
 frontmatter `paper:`).
