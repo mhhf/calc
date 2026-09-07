@@ -472,12 +472,14 @@ async function main() {
       const hit = data.e2eCacheHit;
       const noopt = data.e2eNoOpts;
       const symexStr = s ? `${fmtMs(s.mean)} ±${fmtMs(s.stddev)}` : 'n/a';
+      const real = data.symexReal;
+      const realStr = real ? ` · real ${fmtMs(real.mean)} [${real.nodes}n,${real.branches}l]` : '';
       const loadStr = (e && e.load) ? ` · load ${fmtMs(e.load.mean)}` : '';
       const e2eStr  = e ? ` · e2e ${fmtMs(e.mean)}` : (data.e2eError ? ' · e2e ERROR' : '');
       const missStr = miss ? ` · miss ${fmtMs(miss.mean)}` : '';
       const hitStr  = hit ? ` · hit ${fmtMs(hit.mean)}` : '';
       const noStr   = noopt ? ` · noopt ${fmtMs(noopt.mean)}` : '';
-      process.stdout.write(`${symexStr}${loadStr}${e2eStr}${missStr}${hitStr}${noStr} [${data.nodes}n,${data.branches}l] (${elapsed}s)\n`);
+      process.stdout.write(`${symexStr}${realStr}${loadStr}${e2eStr}${missStr}${hitStr}${noStr} [${data.nodes}n,${data.branches}l] (${elapsed}s)\n`);
     }
 
     results.push({ ...c, data });

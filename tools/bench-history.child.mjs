@@ -54,9 +54,12 @@ try {
 
   let bytecodeMs = 0;
   try {
-    const loaderFile = path.join(import.meta.dirname, 'calculus/ill/lib/bytecode-loader.js');
-    if (fs.existsSync(loaderFile) && fs.existsSync(codePath)) {
-      const { loadBytecode, bytecodeArrGetGuard } = await loadDefault('./calculus/ill/lib/bytecode-loader.js');
+    // Loader moved lib/engine/ill/ → calculus/ill/lib/ (e1f05633); probe both
+    // so pre-move commits keep the bytecode facts (identical workload).
+    const loaderRel = ['./calculus/ill/lib/bytecode-loader.js', './lib/engine/ill/bytecode-loader.js']
+      .find(p => fs.existsSync(path.join(import.meta.dirname, p)));
+    if (loaderRel && fs.existsSync(codePath)) {
+      const { loadBytecode, bytecodeArrGetGuard } = await loadDefault(loaderRel);
       const tBc0 = performance.now();
       const hex = fs.readFileSync(codePath, 'utf8').match(/bytecode\s+0x([0-9a-fA-F]+)/)[1];
       const bc = loadBytecode(hex);
