@@ -179,7 +179,13 @@ needs decisions. The factorization:
   a ⊔ b = b. No new algebra slot, and for a total order the frontier
   degenerates to the unique least completion — the scalar case is the
   degenerate instance, not a special case. A leaf's cost is ⊔ over its
-  final facts' stamps (the completion vector).
+  final facts' stamps (the completion vector). This is the frontier *of
+  the committed worlds*, and that qualification is load-bearing: an
+  unfocused derivation can strictly `⊑ₚ`-dominate every committed leaf
+  (witness W-gap, kernel-certified — choice-free, contended at distinct
+  activations, disjoint frontiers), and the committed frontier is the
+  true frontier exactly under *tied-contention* (every dependent
+  relaxation pair co-activated) — the adequacy proposition, paper §8.4.
 
 The two lemmas of the settle-optimality paper that break under a raw
 product order (L1 per-firing optimality needs comparability for the

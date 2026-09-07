@@ -18,7 +18,8 @@ import Store from '../../lib/kernel/store.js';
 import { putRat } from '../../lib/kernel/rat-term.js';
 import engine from '../../lib/engine/index.js';
 import { createKernel } from '../../lib/prover/kernel.js';
-import { certifyRun } from '../../lib/prover/timed/elaborate-trace.js';
+import { certifyRun, programFromCalc, elaborateTrace } from '../../lib/prover/timed/elaborate-trace.js';
+import * as Seq from '../../lib/kernel/sequent.js';
 import sillConfig, { productGrades, loadSillSequent } from '../../calculus/sill/calculus-config.js';
 import { tillCalculusConfig } from '../../calculus/till/calculus-config.js';
 
@@ -405,5 +406,103 @@ quick: tok -o { goal }@1.
     assert.equal(r.leaves.length, 2);
     assert.equal(r.frontier.length, 1, 'total order: unique least completion');
     assert.equal(r.frontier[0].cost, putRat(1n, 1n));
+  });
+});
+
+describe('the focused-frontier gap is STRICT (settle-optimality §8.4)', () => {
+  // W-gap: E1's shape (contended pair, distinct activations — never tied,
+  // chooser never consulted, choice-FREE) with the greedy winner made slow.
+  // Explore branches only on tied conflicts, so the committed-world set has
+  // exactly ONE leaf; the unfocused derivation that spares `a` for r2 is a
+  // genuine (kernel-certifiable) derivation of the same program whose
+  // completion vector strictly dominates the sole committed leaf on BOTH
+  // axes. The true frontier {(6,1)} and the committed frontier {(100,9)}
+  // are disjoint — frontier adequacy needs contention control, not just
+  // choice-freedom (the E1 separation, lifted to the frontier face).
+  const GAP_FULL = `
+a: type.
+b: type.
+c: type.
+r1: a -o { c }@(100 ~ 9).
+r2: a * b -o { c }@(1 ~ 1).
+`;
+  const GAP_SUB = `
+a: type.
+b: type.
+c: type.
+r2: a * b -o { c }@(1 ~ 1).
+`;
+  const gapInit = () => ({
+    linear: { [atom('a')]: 1, [at(atom('b'), putRat(5n, 1n))]: 1 },
+    persistent: {},
+  });
+
+  it('one committed leaf at (100,9); the unfocused world reaches (6,1) — strict on both axes', () => {
+    const calc = loadTmp(GAP_FULL, sillConfig);
+    const r = calc.settleFrontier(gapInit(), '200');
+    assert.equal(r.leaves.length, 1, 'r1/r2 are never tied — no branch point exists');
+    assert.equal(r.frontier.length, 1);
+    const committed = v.parse(r.frontier[0].cost);
+    assert.deepEqual(committed, pv(100, 1, 9, 1));
+
+    // The unfocused derivation: never fire r1, fire r2 when b arrives.
+    // Exhibited by settling the sub-program (r1 removed) — the event
+    // sequence is verbatim a derivation of the FULL program.
+    const calcSub = loadTmp(GAP_SUB, sillConfig);
+    const su = calcSub.settle(gapInit(), '200');
+    assert.deepEqual(su.events.map((e) => e.rule), ['r2']);
+    const key = at(atom('c'), tpair(putRat(6n, 1n), putRat(1n, 1n)));
+    assert.deepEqual(su.state.linear, { [key]: 1 }, 'c at (6 ~ 1), nothing else');
+    const unfocused = pv(6, 1, 1, 1);
+    // strict ⊑ₚ-domination: join(unfocused, committed) = committed, values differ
+    assert.deepEqual(v.merge(unfocused, committed), committed);
+    assert.notDeepEqual(unfocused, committed);
+  });
+
+  it('the unfocused world is a KERNEL-CERTIFIED derivation of the full program', () => {
+    const calcFull = loadTmp(GAP_FULL, sillConfig);
+    const calcSub = loadTmp(GAP_SUB, sillConfig);
+    const su = calcSub.settle(gapInit(), '200');
+    const seqCalc = loadSillSequent();
+    const kernel = createKernel(seqCalc);
+    const program = programFromCalc(calcFull);   // FULL rule set — r1 present
+    const ctx = seqCalc.contextStructure;
+    const st0 = gapInit();
+    const linear = [];
+    for (const k in st0.linear) for (let i = 0; i < st0.linear[k]; i++) linear.push(Number(k));
+    const residual = Object.keys(su.state.linear).map(Number);
+    assert.equal(residual.length, 1);
+    const succ = Store.put('monad', [putRat(200n, 1n), residual[0]]);
+    const sequent = Seq.seq({ [ctx.consumableZone]: linear, [ctx.copySource]: [] }, succ);
+    const elab = elaborateTrace({ sequent, events: su.events, program, calculus: seqCalc });
+    assert.ok(!elab.unsupported, elab.unsupported);
+    const vr = kernel.verifyTree(elab.tree, { program });
+    assert.ok(vr.valid && !vr.unverified, JSON.stringify(vr.errors || []));
+  });
+
+  it('scalar shadow (till): committed completion 100, unfocused 6 — E1 sharpened to strict domination', () => {
+    const mk = (src) => loadTmp(src, tillCalculusConfig);
+    const full = mk(`
+a: type.
+b: type.
+c: type.
+r1: a -o { c }@100.
+r2: a * b -o { c }@1.
+`);
+    const init = () => ({
+      linear: { [atom('a')]: 1, [at(atom('b'), putRat(5n, 1n))]: 1 },
+      persistent: {},
+    });
+    const r = full.settleFrontier(init(), '200');
+    assert.equal(r.leaves.length, 1, 'never tied — one committed world');
+    assert.equal(r.frontier[0].cost, putRat(100n, 1n));
+    const sub = mk(`
+a: type.
+b: type.
+c: type.
+r2: a * b -o { c }@1.
+`);
+    const su = sub.settle(init(), '200');
+    assert.deepEqual(su.state.linear, { [at(atom('c'), putRat(6n, 1n))]: 1 });
   });
 });
