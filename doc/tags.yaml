@@ -1,11 +1,11 @@
 tags:
-  linear-logic: 35
+  linear-logic: 36
   ill: 27
-  forward-chaining: 24
+  forward-chaining: 25
   inference-rule: 24
   proof-theory: 20
+  graded-types: 18
   architecture: 17
-  graded-types: 17
   chr: 13
   implementation: 10
   left-rule: 10
@@ -33,6 +33,7 @@ tags:
   ffi: 4
   partial-evaluation: 4
   performance: 4
+  scheduling: 4
   subexponentials: 4
   symexec: 4
   adjoint-logic: 3
@@ -46,7 +47,6 @@ tags:
   monad: 3
   prover: 3
   QTT: 3
-  scheduling: 3
   staging: 3
   testing: 3
   time: 3
@@ -76,6 +76,7 @@ tags:
   session-types: 2
   supercompilation: 2
   tensor: 2
+  timed-rewriting: 2
   tropical: 2
   additive: 1
   adequacy: 1
@@ -190,7 +191,7 @@ tags:
   termination: 1
   theorem: 1
   theory: 1
-  timed-rewriting: 1
+  trace-measures: 1
   transfers: 1
   translation: 1
   ui: 1
