@@ -8,7 +8,8 @@ tags: [linear-logic, forward-chaining, till, graded-types, scheduling, confluenc
 **Status:** complete draft (markdown master; LaTeX at venue choice). Deliverable
 of TODO_0284 Phase T; focused presentation §5.3 per TODO_0293; product
 instance §8.4 per TODO_0285 P6; focused-frontier gap resolved (§8.4:
-witness W-gap + tied-contention adequacy, 2026-09-07). Supersedes the scoping note in hq research **0138 Part B**
+witness W-gap + tied-contention adequacy, 2026-09-07); usage axis
+resolved (§8.5: the factorization theorem, THY_0034, 2026-09-07). Supersedes the scoping note in hq research **0138 Part B**
 (2026-08-24), which conflated the two side-conditions split in §3. §10 is the
 contribution statement of record (TODO_0284 R3); the prior-art evidence base
 is **0138 Part A**. The companion till paper is `till/main.tex` (TODO_0270).
@@ -584,15 +585,16 @@ and serializes conflicting hops through committed choice.
 - **Non-inflationary ⊗.** Masses `< 1` shrink under composition, so C-infl
   fails and the B&B cut of L1 would be unsound — same fence, same reason
   stated differently.
-- **Non-idempotent ⊔ (usage).** A consumption merge `⊔ = +` breaks C4
-  (merge is no longer the order's join), so L1's "activation nondecreasing
-  along completions" argument needs re-proving; the StampTable executes such
-  slots correctly (value-level function slots, running even at equal ids),
-  but *scheduling* over a usage axis is unproven — ⟨open⟩. §8.4's C4a is
-  the candidate replacement (`⊔ = +` is still a `≤`-upper bound), but
-  losing idempotency breaks the induced-order framing itself
-  (`a ⊔ a ≠ a`), so the dioid definition, not just the lemma, needs
-  reworking.
+- **Non-idempotent ⊔ (usage).** A consumption merge `⊔ = +` keeps C4a
+  (`a + b` is still a `≤`-upper bound) but loses idempotency — and the
+  resolution (§8.5) is that no repair is needed because the axis does
+  not belong in the stamp slot at all: stamp values are broadcast,
+  joined over reads, and re-emitted by catalysts (cartesian), so no
+  nontrivial conserved measure survives (the broadcast no-go), and
+  every role of a usage quantity factors into existing machinery
+  (trace measures, linear tokens, chooser, term-computed delays).
+  Idempotent merge is the *definition* of the stamp slot's cartesian
+  boundary. Resolved — THY_0034.
 - **Contention (independence clause 1).** E1 — and E2 for why the condition
   must be read off the relaxation, not the run. The general dichotomy (§6).
 - **Read-starvation (clause 2).** A whole-bind `!_W A` binds the total, so
@@ -832,6 +834,65 @@ since under C4a it may equal no single input —
 `tests/engine/sill-product.test.js`, certification block, and the
 four-leg differential fuzzer `tests/engine/sill-fuzz.test.js`).
 
+### 8.5 The usage axis: the factorization theorem (conservation is not synchronization)
+
+§8.3 left the non-idempotent-⊔ (usage/conservation) axis ⟨open⟩. It is
+now closed — negatively for the stamp slot, constructively everywhere
+else (THY_0034 is the full record).
+
+**The refutation cannot be algebraic.** On `(ℚ≥0, ⊗ = +, ⊔ = +, ≤)` the
+conditions C1–C3 and C4a all *hold* (`a + b ≥ max(a,b)`); sum-merge
+activation is Knuth's classical generalization of Dijkstra to superior
+functions, and on the monotone side it is a perfectly good semiring
+computation. What fails is semantic, and specific to linear consumption
+plus stamp broadcast:
+
+**Lemma (broadcast no-go).** The timed semantics duplicates stamp
+values at four sites — one `done` broadcast to every output, reads
+joining the activation without consuming, `$`-catalysts re-emitting
+their stamp unchanged, persistent contraction. Duplication is sound for
+readiness (a stamp is an upper bound, freely copyable) but no
+nontrivial *conserved* measure survives it: two outputs book the
+summed input cost twice; n readers contribute n·μ against zero
+consumption. **Stamp values are cartesian; conserved values are
+linear** — a usage axis in the stamp slot is a value-level linearity
+violation. Repairing it needs consumption-context-sensitive merge and
+splitting (not broadcasting) outputs — i.e., exactly the resource
+discipline the multiset already implements. Idempotent merge is thus
+the *definition* of the stamp slot's cartesian boundary, not a
+limitation of the dioid.
+
+**The factorization.** Every role a usage quantity can play acts at one
+of five loci, each already served: accounting → **trace measure**
+(`μ(world) = Σ_fires w(rule, θ)`, a fold over the event multiset —
+`settleExplore`'s `opts.leafMeasure`; well-defined per world because L3
+swaps preserve the firing multiset, chooser-invariant on choice-free
+programs by the Keller permutation argument); optimization → **leaf
+Pareto** ((stamp order) × (ℚ, ≤) over explore leaves — the measure
+brings its own order, never derived from the stamp join); gating →
+**linear tokens** (fuel as a resource — conservation enforced by
+linearity itself, where it always lived); preference → the **chooser**
+slot; timing feedback (heavier = slower) → **term-computed delays**
+(quantities in matched facts feeding `@(T ~ D)`). A firing is fully
+determined by enabledness, match selection, activation order, and
+outputs, plus reporting — one locus each; there is nowhere else for a
+quantity to act.
+
+**Where §8.4 becomes load-bearing:** under tied-contention the explore
+leaves are outcome-complete, so the leaf measures are the measure
+spectrum of *all* maximal derivations and the (stamp × measure) Pareto
+set over leaves is the TRUE (time, cost) frontier. Executable end to
+end (`tests/engine/timed-measure.test.js`, fuel-transport): fast
+(2 time, 5 fuel) vs cheap (9 time, 1 fuel), tied contention *certified*
+(`tiedContention: true`), measure answer ≡ fuel-tokens-burned answer
+leaf by leaf — the factorization's translation, executed — and the
+stamp-only frontier demonstrably drops the measure-better leaf, which
+is exactly why measures live on leaves, never in stamp dominance.
+`pathWeight` (multiplicative, woplus) and will's run mass `Π ρ`
+(THY_0026) are prior instances of the same shape, now classified:
+**measures are functions of the certified trace; stamps are functions
+of readiness.**
+
 ---
 
 ## 9. The `(max,+)` clarification (a referee will ask)
@@ -937,6 +998,23 @@ Distinguish three uses of a grade; only the third is claimed:
    programming), executed by the companion calculus `will` (THY_0026
    T1/T3; TODO_0292). One scheduler-correctness story, two condition
    families.
+5. **The usage-axis factorization** (§8.5, THY_0034). Conservation
+   axes (non-idempotent ⊔ — cost, fuel, usage) provably cannot ride
+   stamps: the timed semantics duplicates stamp values (output
+   broadcast, reads, catalysts), which is sound for readiness (upper
+   bounds are freely copyable) and fatal for any conserved measure —
+   **stamp values are cartesian, conserved values are linear**, so
+   idempotent merge is the *definition* of the stamp slot's boundary,
+   not a limitation of the dioid. Constructively, all five roles of a
+   usage quantity factor into existing slots (trace measure, leaf
+   Pareto, linear tokens, chooser, term-computed delays), with the
+   leaf-measure frontier certified true under tied-contention and the
+   measure ≡ tokens translation executable. Semiring DP aggregates
+   over derivations at forest level (Goodman/Eisner/Huang) and graded
+   type systems carry usage in exponent grades — neither locates the
+   operational boundary (what may ride a timestamp under linear
+   consumption) nor proves the factorization against a committed
+   scheduler.
 
 Companion (claimed in the till paper, not here): the delay-graded lax monad
 `{A}@d` as an *operational* `(max,+)` scheduler, with the `(min,+)`
@@ -1052,8 +1130,15 @@ realized condition families.
   external-choice-menu exemption, including `!`-conclusions inside
   MINTED possessed rules; PP2's menu-only corpus status is now
   machine-checked, not by-inspection.
-- ⟨open⟩ **Usage-axis scheduling** (non-idempotent ⊔) — C4 fails; what
-  replaces L1's monotone-completion argument?
+- ✔ **Usage-axis scheduling** (non-idempotent ⊔) — resolved as §8.5's
+  factorization theorem (THY_0034): nothing replaces L1's argument
+  because nothing needs to — the broadcast no-go proves conservation
+  axes cannot ride stamps (cartesian/linear value split), and all five
+  roles of a usage quantity factor into existing slots (trace measure /
+  leaf Pareto / linear tokens / chooser / term-computed delays), with
+  the leaf-measure frontier certified TRUE under tied-contention.
+  Executable: `tests/engine/timed-measure.test.js` (measure ≡ tokens,
+  the translation).
 - ✔ **Termination** — discharged as §7's proposition (lattice delays +
   instant acyclicity + instant consumption); remaining only necessity /
   decidability refinements.
@@ -1103,4 +1188,7 @@ Parsing," Computational Linguistics 25(4), 1999. Eisner, "Parameter
 Estimation for Probabilistic Finite-State Transducers," ACL 2002
 (expectation semirings; also Li–Eisner, EMNLP 2009). Huang, "Advanced
 Dynamic Programming in Semiring and Hypergraph Frameworks," COLING 2008
-(tutorial notes).
+(tutorial notes). Knuth, "A Generalization of Dijkstra's Algorithm,"
+IPL 6(1), 1977 (superior functions — sum-aggregation activation on the
+monotone side is classical; the §8.5 no-go is specific to linear
+consumption plus stamp broadcast).
