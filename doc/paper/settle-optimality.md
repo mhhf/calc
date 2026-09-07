@@ -7,7 +7,8 @@ tags: [linear-logic, forward-chaining, till, graded-types, scheduling, confluenc
 
 **Status:** complete draft (markdown master; LaTeX at venue choice). Deliverable
 of TODO_0284 Phase T; focused presentation §5.3 per TODO_0293; product
-instance §8.4 per TODO_0285 P6. Supersedes the scoping note in hq research **0138 Part B**
+instance §8.4 per TODO_0285 P6; focused-frontier gap resolved (§8.4:
+witness W-gap + tied-contention adequacy, 2026-09-07). Supersedes the scoping note in hq research **0138 Part B**
 (2026-08-24), which conflated the two side-conditions split in §3. §10 is the
 contribution statement of record (TODO_0284 R3); the prior-art evidence base
 is **0138 Part A**. The companion till paper is `till/main.tex` (TODO_0270).
@@ -717,12 +718,90 @@ containment arm of `tools/fuzz-till.js`). Completeness over the focused
 set: every chooser-reachable final state appears among the leaves. So
 the output is exactly the Pareto frontier *of the committed worlds*;
 for a scalar algebra it degenerates to the singleton T1 already forces.
-What remains ⟨open⟩ is the **focused-frontier gap**: under contention,
-an *unfocused* forward derivation (one that delays a cheap firing to
-spare a token) may realize a completion vector `⊑ₚ`-below every
-committed world's — E1's lesson, that greed in time is not global
-optimality, lifted to the vector objective. Under contention-freedom
-the gap is void (T1× + the materialized frontier).
+
+**The focused-frontier gap is real, and strict.** Witness **W-gap**
+(`tests/engine/sill-product.test.js`, "the focused-frontier gap is
+STRICT"): E1's shape with the greedy winner made slow —
+
+```
+r1: a -o { c }@(100 ~ 9).
+r2: a * b -o { c }@(1 ~ 1).      % initial: a@(0,0), b@(5,0)
+```
+
+`r1` activates at `(0,0)`, `r2` at `(5,0)` — never tied, so the program
+is *choice-free* (the chooser is never consulted, T1 holds) and
+`settleExplore` has exactly one leaf: `settle` fires `r1`, and the
+committed frontier is `{(100, 9)}`. The *unfocused* derivation that
+spares `a` fires `r2` at `(5,0)` and completes at `{(6, 1)}` — strictly
+`⊑ₚ`-below on **both** axes. And it is a genuine derivation of the full
+program: the witness elaborates its trace against the full rule set and
+the kernel verifies the resulting `@fire` tree — a certified derivation
+the exploration cannot reach. Here the true frontier `{(6,1)}` and the
+committed frontier `{(100,9)}` are *disjoint*. So frontier adequacy
+under choice-freedom alone is irreparably partial: the E1 separation
+between the two side-conditions (§3) recurs verbatim at the frontier
+face — and sharpened, since E1's own missed world was cost-*equal*
+(both completions 5), while W-gap's scalar shadow (`r1 … @100`,
+`r2 … @1`, same test file) turns T2's failure into a strictly worse
+completion, `100` against the achievable `6`.
+
+What voids the gap is contention control — and strictly less than full
+contention-freedom suffices:
+
+**Proposition (tied-contention adequacy).** Let the program satisfy S,
+be `H`-terminating, whole-bind-free below `H`, and **tied-contended**:
+every *dependent* pair of relaxation firings with activations `⊑ H` is
+co-activated (equal activation). Then the final state of every maximal
+spec-conformant derivation below `H` is the state of some
+`settleExplore` leaf — the committed worlds are *outcome-complete* —
+and `settleFrontier` returns the true Pareto frontier over all such
+derivations. ("Spec-conformant": within-rule equal-activation match
+selection follows the Matching spec's FIFO break — the same scope as
+explore's own enumeration guarantee, whose docstring flags the broader
+assignment-level branching criterion as open.)
+Contention-freedom is the degenerate case with *no* dependent pairs —
+then there is one leaf, and the proposition collapses to T1× plus the
+materialized frontier.
+
+*Proof.* Two steps. (i) *Every maximal derivation reorders to
+activation order.* Take an adjacent inversion: `m'` fired immediately
+before `m` with `a(m) <ₗ a(m')`. `m` cannot consume an output of `m'`:
+outputs of `m'` carry stamps `⊒ₚ a(m')` (per-axis inflationarity,
+C-infl), and `a(m)` joins over `m`'s consumed stamps, so it would be
+`⊒ₗ a(m')`. If `m ⌣̸ m'` (dependent — clauses (1)–(3), read on the
+relaxation via L5 (⊆): every run-enabled instance is a relaxation
+firing with the same activation), tied-contention forces
+`a(m) = a(m')`, contradicting strictness. So the pair is independent,
+and L3 (proved from C1–C3 + C4a, so it holds for the product) swaps
+them with identical stamps and final state. `H`-termination makes the
+derivation finite; the bubble sort terminates. (ii) *An
+activation-ordered maximal derivation is an explore path.* Suppose at
+state `s` the sorted derivation next fires `m` with `a(m) >ₗ aMin(s)`,
+and let `m₀` realize `aMin`. All later firings have activation
+`≥ₗ a(m) >ₗ aMin`, so any firing that disables `m₀` or disturbs a
+quantity it binds is dependent with it at unequal activation —
+excluded. Hence `m₀` remains enabled forever and is never fired:
+maximality is violated. So the sorted derivation always fires inside
+`Tied(s)`; within an instant, explore either branches over every
+tied-first order (conflict or instant-feeding present — covering the
+derivation's choice) or commits one order of an independent,
+non-feeding tied set, all of whose orders reach the same state (L3).
+Induction along the derivation (well-founded by `H`-termination) lands
+its final state on a leaf. ∎
+
+Tied-contention is statically analyzable in the same sense as
+contention-freedom: the relaxation's firing set and activations are a
+scheduling-independent least fixed point, and `certifyContention`'s
+pairwise pass extends by *comparing activations* of dependent pairs
+(refuse only the unequal ones) — recorded as engineering follow-up, not
+shipped; today's analyzer certifies the stronger condition, which sits
+strictly inside the hypotheses. The hierarchy, at the frontier face:
+
+```
+contention-freedom  ⟹  tied-contention  ⟹  frontier adequacy
+```
+
+and W-gap pins that choice-freedom implies none of it.
 
 **Termination lifts per-axis, asymmetrically.** §7's proposition holds
 with "instant" read on the *time* axis only: (1) lattice delays on the
@@ -834,7 +913,13 @@ Distinguish three uses of a grade; only the third is claimed:
    claim 2 in two dimensions); beyond it, `settleFrontier` returns
    exactly the `⊑ₚ`-minimal completion vectors of the committed worlds,
    with dominance derived from the join rather than a second declared
-   order. Multi-priced timed automata compute Pareto curves by model
+   order — and that committed frontier is the *true* frontier exactly
+   under **tied-contention** (every dependent relaxation pair
+   co-activated: the adequacy proposition, strictly weaker than
+   contention-freedom), while dropping the condition is strict
+   (witness W-gap: choice-free, one committed leaf, a kernel-certified
+   unfocused derivation strictly below it on both axes).
+   Multi-priced timed automata compute Pareto curves by model
    search over clock valuations; graded type systems carry product
    grades statically; neither runs a committed scheduler whose total
    order provably survives the product, nor locates the C4a/C4b
@@ -927,9 +1012,17 @@ realized condition families.
   split, the lex transfer lemma, T1×/T2× with the whole-bind exclusion
   (executable witness), the materialized per-fact frontier on the
   contention-free fragment, and frontier adequacy for `settleFrontier`.
-  Residual ⟨open⟩: the **focused-frontier gap** — under contention, can
-  an unfocused derivation realize a completion vector `⊑ₚ`-below every
-  committed world's, and when is the focused frontier full?
+  Residual — the **focused-frontier gap** — resolved both ways (§8.4):
+  YES, strictly (witness W-gap: choice-free, one committed leaf at
+  `(100,9)`, a kernel-certified unfocused derivation at `(6,1)` —
+  disjoint frontiers); and the focused frontier is full under
+  **tied-contention** (every dependent relaxation pair co-activated) —
+  the tied-contention adequacy proposition, sitting strictly between
+  contention-freedom and adequacy. Remaining engineering: the
+  `certifyContention` extension that compares activations of dependent
+  pairs; remaining theory: the assignment-level branching scope
+  (shared with explore's own enumeration guarantee — its docstring's
+  open criterion).
 - ✔ **Static analyzers** — discharged (TODO_0293 a/b/c):
   (a) `certifyContention` (`lib/engine/timed/certify.js`) — structural
   conflict-freedom (the one-shot-edge discipline, state-independent),
