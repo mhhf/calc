@@ -614,3 +614,67 @@ describe('global boundary enforcement', () => {
     }
   });
 });
+
+describe('certificate-checker import fence (toolbox paper §6: the TCB surface)', () => {
+  // The trusted checking code — the kernel, its rule interpreter, the
+  // step checkers (@fire/@draw), and the SLD certificate checker — must
+  // stay on the verification side of the data/engine boundary: a checker
+  // that imports an engine oracle (mass solver, FFI, timed scheduler,
+  // opt/) could silently trust what it is supposed to re-derive.
+  //
+  // DIRECT imports are fenced to lib/kernel/* and lib/prover/*, plus
+  // exactly four NAMED engine-side modules imported for pure helpers —
+  // deliberate definition-sharing so checker and engine cannot drift on
+  // the same decomposition:
+  //   engine/pattern-utils.js       (collectMetavars — pure AST util)
+  //   engine/theories/ratlit-theory.js (ratParts — numeral codec)
+  //   engine/decimate.js            (splitBody/DECIMATE_PREDS — the SAME
+  //                                  body-splitting definition the driver
+  //                                  uses; sharing it is the anti-drift
+  //                                  choice, and only pure decomposition
+  //                                  is called)
+  //   engine/type-check.js          (_parseSignature — declaration parse)
+  // Anything else — engine/timed/, engine/opt/, engine ffi, family/,
+  // calculus/ — is a loud failure here.
+  const TCB_MODULES = [
+    'prover/kernel.js',
+    'prover/context.js',
+    'prover/rule-interpreter.js',
+    'prover/sld-check.js',
+    'prover/draw-check.js',
+    'prover/timed/fire-check.js',
+  ];
+  const PURE_EXCEPTIONS = new Set([
+    'engine/pattern-utils.js',
+    'engine/theories/ratlit-theory.js',
+    'engine/decimate.js',
+    'engine/type-check.js',
+  ]);
+  const resolveToLib = makeResolver(LIB_DIR);
+
+  it('checker modules import only kernel/prover code plus the named pure exceptions', () => {
+    const violations = [];
+    for (const mod of TCB_MODULES) {
+      const filePath = path.join(LIB_DIR, mod);
+      assert.ok(fs.existsSync(filePath), `TCB module missing: ${mod} (update the fence list)`);
+      for (const req of extractRequires(filePath)) {
+        const rel = resolveToLib(filePath, req);
+        if (rel === null) {
+          violations.push(`${mod} imports outside lib/: ${req}`);
+          continue;
+        }
+        const relUnix = rel.split(path.sep).join('/');
+        const ok = relUnix.startsWith('kernel/') ||
+          relUnix.startsWith('prover/') ||
+          PURE_EXCEPTIONS.has(relUnix);
+        if (!ok) violations.push(`${mod} -> ${relUnix}`);
+      }
+    }
+    if (violations.length > 0) {
+      assert.fail(
+        `TCB import-fence violations (checker imports engine-side code):\n` +
+        violations.map(v => `  ${v}`).join('\n')
+      );
+    }
+  });
+});
