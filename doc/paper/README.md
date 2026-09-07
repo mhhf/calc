@@ -7,8 +7,9 @@ the gill/settle-optimality paper):
 markdown master). The TRUNK paper: the architecture (one engine, four
 faces over one declared rule set; the enforced layer DAG) and the
 theorem-guarded data/engine boundary — every extension point ships a
-metatheorem (zones: the routed-column equivalence, compiled from
-THY_0033 §1 at draft time), a machine-checked conformance contract
+metatheorem (zones: the routed-column equivalence — COMPILED into its
+§4, now the proofs' single source of truth; THY_0033 §1 is the pointer
+stub), a machine-checked conformance contract
 (grade algebras, sorts), or a proven impossibility (THY_0034 broadcast
 no-go, axis-confounding). Instance family ILL → till → gill → will →
 sill as the evidence table. The four papers below each prove the deep
@@ -28,9 +29,8 @@ factorization (THY_0034: conservation axes never ride stamps — the
 broadcast no-go; trace measures / linear tokens / chooser /
 term-computed delays as the complete slot routing). Prior-art
 positioning: hq research 0138 Part A.
-THY_0033 §1's routed-column equivalence is deliberately NOT in any paper
-yet — held for the eventual toolbox/systems paper (see THY_0033
-frontmatter `paper:`).
+THY_0033 §1's routed-column equivalence lives in the toolbox paper §4
+(compiled 2026-09-08; see THY_0033 frontmatter `paper:`).
 
 ONE unified till paper (merge of the former proof-theory and systems drafts,
 2026-08-23 — the split drafts live in git history):
