@@ -60,18 +60,28 @@ function resolveEx(theta, slots, rule, state, calc, matchOpts = EMPTY_MATCH_OPTS
       && !matchOpts.onProveSuccess && !matchOpts.onProveFail && !matchOpts.evidence;
     const provePersistent = matchOpts.provePersistent;
 
-    if (useCompiled) {
-      // Per-step: try compiled FFI, fall back to provePersistent for that goal
-      for (let i = 0; i < goals.length; i++) {
-        const step = i < chain.length ? chain[i] : null;
-        if (step && _execExStep(step, theta, slots)) continue;
-        if (provePersistent) {
-          _singleGoal[0] = goals[i];
-          provePersistent(_singleGoal, 0, theta, slots, state, calc, null, matchOpts);
+    // One loop for every mode (compiled fast path differs only in trying the
+    // compiled FFI step first) — modes must not diverge semantically.
+    for (let i = 0; i < goals.length; i++) {
+      let proved = false;
+      const step = useCompiled && i < chain.length ? chain[i] : null;
+      if (step && _execExStep(step, theta, slots)) {
+        proved = true;
+      } else if (provePersistent) {
+        _singleGoal[0] = goals[i];
+        proved = provePersistent(_singleGoal, 0, theta, slots, state, calc, null, matchOpts) === 1;
+      }
+      if (!proved) {
+        // Eager eigenvariable introduction (TODO_0307): a goal that failed to
+        // determine its ∃-outputs freshens them NOW. Later goals then see an
+        // opaque evar — never an open pattern slot, which every tier would
+        // treat as a wildcard and resolve against an arbitrary stored fact.
+        for (const slot of rule.existentialSlots) {
+          if (theta[slot] !== undefined) continue;
+          const sg = rule.existentialGoals[slot];
+          if (sg && sg.includes(goals[i])) theta[slot] = freshEvar();
         }
       }
-    } else if (provePersistent) {
-      provePersistent(goals, 0, theta, slots, state, calc, null, matchOpts);
     }
   }
 
