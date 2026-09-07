@@ -792,10 +792,15 @@ its final state on a leaf. ∎
 Tied-contention is statically analyzable in the same sense as
 contention-freedom: the relaxation's firing set and activations are a
 scheduling-independent least fixed point, and `certifyContention`'s
-pairwise pass extends by *comparing activations* of dependent pairs
-(refuse only the unequal ones) — recorded as engineering follow-up, not
-shipped; today's analyzer certifies the stronger condition, which sits
-strictly inside the hypotheses. The hierarchy, at the frontier face:
+pairwise pass grades its refusals by *comparing activations* of
+dependent pairs — the result's `tiedContention` field is true iff every
+dependent pair is co-activated (the verdict is computed over *all*
+pairs, never the capped witness list). Executable:
+`tests/engine/timed-certify.test.js` — E1 with everything initial at 0
+is refused for T2 yet *tied* (the conflict is a genuine explore branch
+point), while E2's deferred producer and W-gap are refused at both
+levels with the unequal pair named. The hierarchy, at the frontier
+face:
 
 ```
 contention-freedom  ⟹  tied-contention  ⟹  frontier adequacy
@@ -1018,11 +1023,11 @@ realized condition families.
   disjoint frontiers); and the focused frontier is full under
   **tied-contention** (every dependent relaxation pair co-activated) —
   the tied-contention adequacy proposition, sitting strictly between
-  contention-freedom and adequacy. Remaining engineering: the
-  `certifyContention` extension that compares activations of dependent
-  pairs; remaining theory: the assignment-level branching scope
-  (shared with explore's own enumeration guarantee — its docstring's
-  open criterion).
+  contention-freedom and adequacy — machine-checked: `certifyContention`
+  grades its refusals (`tiedContention`, activation comparison over all
+  dependent pairs). Remaining theory: the assignment-level branching
+  scope (shared with explore's own enumeration guarantee — its
+  docstring's open criterion).
 - ✔ **Static analyzers** — discharged (TODO_0293 a/b/c):
   (a) `certifyContention` (`lib/engine/timed/certify.js`) — structural
   conflict-freedom (the one-shot-edge discipline, state-independent),

@@ -40,7 +40,7 @@ hop0: read n0 * e0 -o { n1 }@3.
 hop1: read n1 * e1 -o { n2 }@4.
 `);
     const r = calc.certifyContention(S({ n0: 1, e0: 1, e1: 1 }), '10');
-    assert.deepEqual(r, { certified: true, method: 'structural' });
+    assert.deepEqual(r, { certified: true, tiedContention: true, method: 'structural' });
   });
 
   it('E1 (choice-free, contended): refused — demand overlap on the token', () => {
@@ -54,6 +54,10 @@ r2: b * tok -o { won_b }@1.
     assert.equal(r.method, 'relaxation');
     assert.ok(r.contended.some(c => /tok/.test(c.why) || (c.a !== c.b)),
       JSON.stringify(r.contended));
+    // with everything initial at 0 the contenders are CO-ACTIVATED:
+    // T2 is refused but the frontier-adequacy hypothesis holds — the
+    // conflict is a genuine explore branch point (§8.4)
+    assert.equal(r.tiedContention, true);
   });
 
   it('E2 (deferred producer): the relaxation sees what no run state shows', () => {
@@ -70,6 +74,30 @@ mk: c -o { b }@5.
     const pair = r.contended.find(c =>
       (c.a === 'r1' && c.b === 'r2') || (c.a === 'r2' && c.b === 'r1'));
     assert.ok(pair, `expected the (r1,r2) pair: ${JSON.stringify(r.contended)}`);
+    // r1 fires at 0, r2 only at 5 (b deferred) — NOT co-activated: the
+    // W-gap shape, refused for frontier adequacy too
+    assert.equal(r.tiedContention, false);
+    assert.equal(pair.coActivated, false);
+  });
+
+  it('W-gap (settle-optimality §8.4): contended at distinct activations — tiedContention false', () => {
+    const calc = load('wgap.till', `
+a: type.  b: type.  c: type.
+r1: a -o { c }@100.
+r2: a * b -o { c }@1.
+`);
+    // a at 0, b at 5: r1 activates at 0, r2 at 5 — never tied, one
+    // committed world, and the unfocused r2-world strictly dominates it.
+    // The certifier must refuse BOTH levels and name the unequal pair.
+    const at5 = Store.put('at', [atom('b'), Store.put('binlit', [5n])]);
+    const r = calc.certifyContention(
+      { linear: { [atom('a')]: 1, [at5]: 1 }, persistent: {} }, '200');
+    assert.equal(r.certified, false);
+    assert.equal(r.tiedContention, false);
+    const pair = r.contended.find(c =>
+      (c.a === 'r1' && c.b === 'r2') || (c.a === 'r2' && c.b === 'r1'));
+    assert.ok(pair, JSON.stringify(r.contended));
+    assert.equal(pair.coActivated, false);
   });
 
   it('read twin: measuring instead of consuming certifies', () => {
