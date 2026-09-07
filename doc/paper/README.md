@@ -3,8 +3,9 @@
 Five papers — one trunk, four instance papers (till → will → ci arc +
 the gill/settle-optimality paper):
 
-**"A Calculus Is Data"** — `toolbox/toolbox.md` (SCAFFOLD, 2026-09-08;
-markdown master). The TRUNK paper: the architecture (one engine, four
+**"A Calculus Is Data"** — `toolbox/toolbox.md` (COMPLETE DRAFT,
+2026-09-08; markdown master; pending Denis's framing/title gate +
+[verify] citation pass). The TRUNK paper: the architecture (one engine, four
 faces over one declared rule set; the enforced layer DAG) and the
 theorem-guarded data/engine boundary — every extension point ships a
 metatheorem (zones: the routed-column equivalence — COMPILED into its
