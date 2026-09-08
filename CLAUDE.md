@@ -86,6 +86,7 @@ lib/
 │   └── rule-interpreter.js  # descriptor → premise computation
 ├── calculus/            # Calculus LOADER (from .calc/.rules files) — instances live in top-level calculus/
 │   ├── index.js         # load/buildCalculus + deriveContextStructure (zones from @position_modes + @structural)
+│   ├── meta-parser.js   # @extends chain resolution (.family/.calc merge) — was lib/meta-parser/ (audit item 7)
 │   ├── builders.js      # Parser factory (Earley delegation), deriveRoles()
 │   └── modes.js         # Default monad_r/monad_l descriptor injection (category 'monad')
 ├── meta/                # Polarity/invertibility inference from rule descriptors (focusing.js)
@@ -110,6 +111,7 @@ lib/
 │   ├── compose-profile.js # Generic: compose profiling emission (onPhase-gated, pure — fuse/tabling rollups + leaves)
 │   ├── cache/           # Persistence/versioning infrastructure
 │   │   ├── compose-cache.js  # Compose disk cache (key derivation, snapshot save/load, cold-vs-cached verify; calc builder injected)
+│   │   ├── load-cache.js     # Two-tier file-hash load cache (full-program + imports-only snapshots, epoch-qualified keys; builder/loader/compiler injected — the compose-cache pattern)
 │   │   ├── store-binary.js   # Binary serialize/deserialize for precompiled SDK loading
 │   │   ├── engine-version.js # Content-hash of lib/ + family/ + calculus/ JS (H1: config-bound machinery busts caches too)
 │   │   ├── cache-flags.js    # Compose-affecting flag registry (cache-key fingerprint)
@@ -144,7 +146,6 @@ lib/
 │   ├── ci.js            # calc.certifyCI — THY_0031 separation criterion on the class-graph cover (soundness-only: `separated` certifies X ⊥ Y | Z, refusal carries a witness walk; TODO_0302 M5); eq-theory value classes from kernel theoryClassTags()
 │   ├── priors.js        # @w constructor-prior validation + Chi–Geman subcriticality (presence-gated; injected into materialize by the root)
 │   └── collapse-api.js  # buildCollapseApi — the buildTimedApi registration pattern (self-gated on settle + sort system)
-├── meta-parser/         # Meta-level parser (@extends chain resolution)
 ├── parser/              # Earley parser + grammar generation + sequent parser
 │   ├── earley.js        # Core Earley engine (recognizer, chart, extraction)
 │   ├── earley-grammar.js # Grammar generation from .calc annotations

@@ -105,7 +105,7 @@ describe('minimal-essence ratchet (RES_0143)', () => {
       // ── cache ──
       'cache/store-binary.js': 'cache', 'cache/engine-version.js': 'cache',
       'cache/cache-flags.js': 'cache', 'cache/cache-evict.js': 'cache',
-      'cache/compose-cache.js': 'cache',
+      'cache/compose-cache.js': 'cache', 'cache/load-cache.js': 'cache',
       // ── root / debug ──
       'index.js': 'root',
       'show.js': 'debug', 'tree-utils.js': 'debug',

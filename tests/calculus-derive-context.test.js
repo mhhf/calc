@@ -13,7 +13,7 @@ import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import path from 'path';
 import calculus, { deriveContextStructure } from '../lib/calculus/index.js';
-import generator from '../lib/meta-parser/loader.js';
+import generator from '../lib/calculus/meta-parser.js';
 import Seq from '../lib/kernel/sequent.js';
 
 const ILL_CALC = path.join(import.meta.dirname, '../calculus/ill/ill.calc');

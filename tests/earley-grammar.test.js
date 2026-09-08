@@ -37,7 +37,7 @@ const ILL_OPTS = {
   binaryNormalization: true,
 };
 
-// Minimal opts (same as meta-parser/loader.js bootstrap)
+// Minimal opts (same as lib/calculus/meta-parser.js bootstrap)
 const BOOTSTRAP_OPTS = {
   arrows: true,
   application: true,
