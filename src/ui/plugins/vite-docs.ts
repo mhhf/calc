@@ -51,6 +51,7 @@ const ALLOWED_FOLDERS: Record<string, string> = {
   theory: 'theory',
   def: 'def',
   docs: 'documentation',
+  book: 'book',
 };
 
 function extractFrontmatter(content: string) {
@@ -258,6 +259,34 @@ export default function viteDocs(): Plugin {
           return;
         }
 
+        // POST /api/run/* — interactive execution widgets (book, TODO_0308).
+        // Mirrors server.js; one shared implementation in src/server/run-api.js.
+        const runMatch = url.match(/^\/api\/run\/(.+)$/);
+        if (runMatch && reqAny.method === 'POST') {
+          let raw = '';
+          reqAny.on('data', (chunk) => { raw += String(chunk); });
+          reqAny.on('end', async () => {
+            let body: Record<string, unknown>;
+            try {
+              body = JSON.parse(raw || '{}');
+            } catch {
+              res.statusCode = 400;
+              res.end(JSON.stringify({ ok: false, error: 'invalid JSON body' }));
+              return;
+            }
+            try {
+              const runApi = await import('../../server/run-api.js');
+              const r = await runApi.handleRun(runMatch[1], body);
+              res.setHeader('Content-Type', 'application/json');
+              res.end(JSON.stringify(r));
+            } catch (e) {
+              res.statusCode = 500;
+              res.end(JSON.stringify({ ok: false, error: (e as Error).message }));
+            }
+          });
+          return;
+        }
+
         // /api/doc-manifest — slug lists by folder for wiki-link resolution
         if (url === '/api/doc-manifest') {
           try {
@@ -301,6 +330,9 @@ export default function viteDocs(): Plugin {
                 status: fm.status || '',
                 modified: fm.modified || '',
                 category: fm.category || '',
+                part: fm.part !== undefined ? Number(fm.part) : undefined,
+                partTitle: fm.partTitle || undefined,
+                chapter: fm.chapter !== undefined ? Number(fm.chapter) : undefined,
               };
             });
             res.setHeader('Content-Type', 'application/json');

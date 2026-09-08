@@ -22,7 +22,7 @@ app.get('/api/health', (c) => c.json({ status: 'ok' }));
 
 // Documentation API
 const DOC_ROOT = path.resolve(__dirname, 'doc');
-const ALLOWED_FOLDERS = { theory: 'theory', def: 'def', docs: 'documentation' };
+const ALLOWED_FOLDERS = { theory: 'theory', def: 'def', docs: 'documentation', book: 'book' };
 
 function extractFrontmatter(content) {
   const m = content.match(/^---\n([\s\S]*?)\n---\n/);
@@ -55,7 +55,7 @@ app.get('/api/docs/:folder', (c) => {
     const docs = files.map(f => {
       const content = fs.readFileSync(path.join(folderPath, f), 'utf-8');
       const fm = extractFrontmatter(content);
-      return { slug: f.replace(/\.md$/, ''), title: fm.title || fm.term || f.replace(/\.md$/, ''), summary: fm.summary || '', tags: fm.tags || [], status: fm.status || '', priority: fm.priority ? Number(fm.priority) : undefined, type: fm.type || undefined, depends_on: fm.depends_on || [], required_by: fm.required_by || [], cluster: fm.cluster || undefined };
+      return { slug: f.replace(/\.md$/, ''), title: fm.title || fm.term || f.replace(/\.md$/, ''), summary: fm.summary || '', tags: fm.tags || [], status: fm.status || '', priority: fm.priority ? Number(fm.priority) : undefined, type: fm.type || undefined, depends_on: fm.depends_on || [], required_by: fm.required_by || [], cluster: fm.cluster || undefined, part: fm.part !== undefined ? Number(fm.part) : undefined, partTitle: fm.partTitle || undefined, chapter: fm.chapter !== undefined ? Number(fm.chapter) : undefined };
     });
     return c.json(docs);
   } catch (e) {
@@ -199,6 +199,25 @@ app.post('/api/proof/leaf-trace', async (c) => {
       profile: profile || 'default',
     });
     return c.json(r);
+  } catch (e) {
+    return c.json({ ok: false, error: e.message }, 500);
+  }
+});
+
+// Run API — interactive execution widgets (book, TODO_0308). Lazy import:
+// loading the engine + calculus configs happens on first widget request.
+let _runApi = null;
+app.post('/api/run/*', async (c) => {
+  const route = c.req.path.replace(/^\/api\/run\//, '');
+  let body;
+  try {
+    body = await c.req.json();
+  } catch {
+    return c.json({ ok: false, error: 'invalid JSON body' }, 400);
+  }
+  try {
+    if (!_runApi) _runApi = await import('./src/server/run-api.js');
+    return c.json(await _runApi.handleRun(route, body));
   } catch (e) {
     return c.json({ ok: false, error: e.message }, 500);
   }

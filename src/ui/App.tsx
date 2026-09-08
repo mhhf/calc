@@ -12,6 +12,10 @@ const ManualProof = lazy(() => import('./pages/ManualProof'));
 const DocIndex = lazy(() => import('./pages/DocIndex'));
 const DocPage = lazy(() => import('./pages/DocPage'));
 
+// Interactive book / course (TODO_0308)
+const BookIndex = lazy(() => import('./pages/book/BookIndex'));
+const BookChapter = lazy(() => import('./pages/book/BookChapter'));
+
 // Architecture Overview (TODO_0205)
 const OverviewLayout = lazy(() => import('./pages/overview/OverviewLayout'));
 const OverviewLanding = lazy(() => import('./pages/overview/Landing'));
@@ -44,6 +48,8 @@ export function RootLayout(props: ParentProps) {
 // Route definitions exported for use in index.tsx
 export const routes = [
   { path: '/', component: Sandbox },
+  { path: '/book', component: BookIndex },
+  { path: '/book/:slug', component: BookChapter },
   { path: '/prove', component: ManualProof },
   { path: '/calculus', component: CalculusOverview },
   { path: '/health', component: CalculusHealth },

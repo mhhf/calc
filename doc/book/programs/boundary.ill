@@ -1,0 +1,18 @@
+% boundary.ill — Two-step chain for Chapter 8 "The Boundary: {A}".
+%
+% Three token types and two rules.  Each rule fires once.
+% The forward engine starts with one 'coin', produces 'grounds'
+% via 'grind', then 'coffee' via 'brew'.
+
+coin:    type.
+grounds: type.
+coffee:  type.
+
+% grind: consuming a coin produces grounds (behind the boundary)
+grind: coin -o { grounds }.
+
+% brew: consuming grounds produces coffee
+brew: grounds -o { coffee }.
+
+% Seed: one coin.  Expect: one coffee after two steps.
+#expect_go coin => coffee .
