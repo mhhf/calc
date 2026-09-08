@@ -42,7 +42,10 @@ calculus vocabulary.
   declared dispatch predicate. For any two rules, same-destination
   coexistence is impossible: their dispatch patterns fail to unify, OR
   the unifier forces two declared single-writer cells to hold distinct
-  ground values at the same key.
+  ground values at the same key — distinct MODULO the registered
+  equational theories (hash-level inequality would mistake two
+  representations of ONE value, binlit 3 vs i(i e), for a
+  contradiction and grant a false certificate).
 - **D3 determined instances.** A rule's variables are fixed by its
   linear patterns plus single-writer goals whose keys are already
   determined (a closure computation). No witness-choice
@@ -54,11 +57,18 @@ calculus vocabulary.
   consuming their declared linear guard at the same key; guards are
   never produced.
 - **D5 no engine-level branching.** No ⊕ alternatives, no existential
-  consequents (fresh-name nondeterminism), no dynamic-rule
-  (implication) production or state, no timed features.
+  consequents (fresh-name nondeterminism — detected on the COMPILED
+  marker, existentialSlots, since compilation strips ∃ from the
+  consequent; the tag-level scan remains as defense for uncompiled
+  rule data), no dynamic-rule (implication) production or state, no
+  timed features.
 - **D6 initial-state invariants.** Per (consumed predicate,
   destination) at most one fact; per single-writer key at most one
-  value; no unwritten guard coexisting with its written cell.
+  cell; no unwritten guard coexisting with its written cell. Equality
+  is MODULO the registered theories: hash-keyed uniqueness would admit
+  two theory-equal representations of one destination — one
+  destination to the matcher, two to the map — and either a write
+  conflict or θ-nondeterminism follows.
 
 ## 3. The diamond argument
 
@@ -87,6 +97,15 @@ value is the same whenever it exists at all). Both orders produce the
 same state; D5 removed every source of non-literal equality. Strong
 diamond gives Church–Rosser directly — no termination obligation
 (Newman's lemma is not needed).
+
+*Preconditions (documented in the certifier, not checked):* backward
+proving of persistent goals is MONOTONE — proved against the
+persistent component only, with no linear side effects (holds for
+every shipped family by construction; a family whose hooks consume
+linear resources during backward proofs is outside the discipline).
+And theory-awareness is evaluated against the theories registered at
+certification time; the digests pin rules and state, not the kernel's
+theory table — certify and explore under the same loaded calculus.
 
 ## 4. What the SAX instance teaches
 
@@ -119,14 +138,24 @@ what explore samples.
 
 ## 6. Refusal taxonomy (pinned)
 
-`timed-feature`, `internal-choice`, `dynamic-rule-production`,
-`existential-consequent`, `unkeyed-pattern`, `multi-destination`,
-`dispatch-arity`, `guard-production`, `unkeyed-production`,
-`non-slot-reuse-production`, `unguarded-cell-production`,
-`underdetermined-instance`, `overlapping-dispatch`,
-`dynamic-rule-in-state`, `unkeyed-state-fact`, `duplicate-destination`,
-`duplicate-persistent-value`, `guard-cell-coexistence` — each an
-adversarial test (tests/engine/certify-confluence.test.js).
+Twenty reasons, each with an adversarial test asserting exactly its
+witness (tests/engine/certify-confluence.test.js):
+
+- *Preconditions:* `no-connective-info` (D5 must never silently no-op
+  for want of rc), `no-dispatch-declared`.
+- *Per-rule (D1/D4/D5):* `timed-feature`, `internal-choice`,
+  `existential-consequent`, `dynamic-rule-production`,
+  `unkeyed-pattern`, `multi-destination`, `dispatch-arity`,
+  `guard-production`, `unkeyed-production`,
+  `non-slot-reuse-production`, `unguarded-cell-production`,
+  `underdetermined-instance`.
+- *Pairwise (D2):* `overlapping-dispatch`.
+- *Initial state (D6):* `dynamic-rule-in-state`, `unkeyed-state-fact`,
+  `duplicate-destination`, `duplicate-persistent-value`,
+  `guard-cell-coexistence` — the D6 duplicates additionally pinned
+  MODULO THEORY (hash-distinct binlit/i-o-e representations of one
+  destination refuse), at the Store level, since program text
+  canonicalizes before the certifier ever sees it.
 
 ## 7. Honest limits (the completeness frontier)
 
