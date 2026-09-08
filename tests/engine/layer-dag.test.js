@@ -156,11 +156,11 @@ function classifyEngineModule(relPath) {
   if (relPath === 'index.js') return 'root';
   if (relPath.startsWith('timed/')) return 'timed';
   if (relPath.startsWith('opt/')) return 'opt';
-  // theories/ stays 'generic' by decision (audit 2026-09-02): the
-  // numeric-literal theories (ratlit/strlit representation decoders) are
-  // the generic engine's numeric substrate — formula-utils/decimate use
-  // ratParts on declaration-derived weighted-choice, which is
-  // presence-gated behavior, not calculus coupling.
+  // engine/theories/ no longer exists (RES_0143 L10): representation
+  // READING (ratParts) moved to lib/kernel/rat-term.js; the ratlit
+  // equational theory + registration moved beside binlit's to
+  // calculus/till/lib/ratlit-theory.js; rat FFI implementations joined
+  // calculus/ill/lib/ffi/.
   return 'generic';
 }
 
@@ -628,7 +628,6 @@ describe('certificate-checker import fence (toolbox paper §6: the TCB surface)'
   // deliberate definition-sharing so checker and engine cannot drift on
   // the same decomposition:
   //   engine/pattern-utils.js       (collectMetavars — pure AST util)
-  //   engine/theories/ratlit-theory.js (ratParts — numeral codec)
   //   engine/decimate.js            (splitBody/DECIMATE_PREDS — the SAME
   //                                  body-splitting definition the driver
   //                                  uses; sharing it is the anti-drift
@@ -645,9 +644,11 @@ describe('certificate-checker import fence (toolbox paper §6: the TCB surface)'
     'prover/draw-check.js',
     'prover/timed/fire-check.js',
   ];
+  // (ratlit-theory left this list — RES_0143 L10 moved the ratParts
+  // codec into lib/kernel/rat-term.js, which checkers may import freely;
+  // the exception set only shrinks.)
   const PURE_EXCEPTIONS = new Set([
     'engine/pattern-utils.js',
-    'engine/theories/ratlit-theory.js',
     'engine/decimate.js',
     'engine/type-check.js',
   ]);

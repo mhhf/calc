@@ -23,7 +23,7 @@ import { FactSet, Arena, fromObject, toObject } from '../../lib/engine/fact-set.
 import { packRef, refInner, refStamp, INNER_CAP } from '../../lib/engine/labels.js';
 import tillConfig, { tillGrades } from '../../calculus/till/calculus-config.js';
 import { putRat } from '../../lib/kernel/rat-term.js';
-import { ratParts } from '../../lib/engine/theories/ratlit-theory.js';
+import { ratParts } from '../../lib/kernel/rat-term.js';
 
 const policy = { ...tillConfig.factSetPolicy, labels: tillGrades.values };
 const atom = (n) => Store.put('atom', [n]);

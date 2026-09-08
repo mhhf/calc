@@ -27,7 +27,7 @@ import { grade0 } from '../../lib/engine/grades.js';
 import { connTagsFrom } from '../../lib/engine/formula-utils.js';
 import Store from '../../lib/kernel/store.js';
 import { putRat } from '../../lib/kernel/rat-term.js';
-import { ratParts } from '../../lib/engine/theories/ratlit-theory.js';
+import { ratParts } from '../../lib/kernel/rat-term.js';
 import { cmp as ratCmp, add as ratAdd, sub as ratSub } from '../../lib/rat.js';
 import { tillGrades, tillFactSetPolicy, tillGradeUnit } from '../till/calculus-config.js';
 import { gillCalculusConfig, gillGradeRegistry, gillFences, gillFFIFace } from '../gill/calculus-config.js';

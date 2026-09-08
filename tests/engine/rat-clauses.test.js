@@ -22,7 +22,7 @@ import mde from '../../lib/engine/index.js';
 import backward from '../../lib/engine/backchain.js';
 import { makeILLBackchainOpts } from '../../calculus/ill/lib/backchain-ill.js';
 import { binlitTheory } from '../../calculus/ill/lib/binlit-theory.js';
-import { ratlitTheory, putRat, installRatlitTheory } from '../../lib/engine/theories/ratlit-theory.js';
+import { ratlitTheory, putRat, installRatlitTheory } from '../../calculus/till/lib/ratlit-theory.js';
 import { defaultTheories, buildCanonicalizer } from '../../lib/kernel/eq-theory.js';
 import { apply } from '../../lib/kernel/substitute.js';
 import tillConfig from '../../calculus/till/calculus-config.js';

@@ -21,8 +21,8 @@
  * the FFI-principle agreement the fuzzer checks (§3.12).
  */
 
-import * as rat from '../../rat.js';
-import { ratParts, putRat } from './ratlit-theory.js';
+import * as rat from '../../../../lib/rat.js';
+import { ratParts, putRat } from '../../../../lib/kernel/rat-term.js';
 
 const EMPTY_THETA = [];
 const _FAIL_CONV = { success: false, reason: 'conversion_failed' };

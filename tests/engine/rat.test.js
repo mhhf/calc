@@ -4,8 +4,8 @@
  * Covers the two-representation design (rat(N,D) term + ratlit storage):
  *   lib/rat.js                              pure ℚ arithmetic
  *   lib/kernel/store.js                     ratlit leaf + till tag commit
- *   lib/engine/theories/ratlit-theory.js    codec + eq-theory + classifier
- *   lib/engine/theories/rat-ffi.js          FFI overloads (via arithmetic.js)
+ *   calculus/till/lib/ratlit-theory.js      eq-theory + classifier (codec: lib/kernel/rat-term.js)
+ *   calculus/ill/lib/ffi/rat-ffi.js         FFI overloads (via arithmetic.js)
  *   lib/engine/store-binary.js              serialize/compact with 2-bigint leaf
  */
 
@@ -14,10 +14,10 @@ import assert from 'node:assert/strict';
 import Store from '../../lib/kernel/store.js';
 import rat from '../../lib/rat.js';
 import { ratlitTheory, putRat, ratParts, isRatTerm, installRatlitTheory }
-  from '../../lib/engine/theories/ratlit-theory.js';
+  from '../../calculus/till/lib/ratlit-theory.js';
 import { classifyFirstArg } from '../../lib/kernel/eq-theory.js';
 import arithmetic from '../../calculus/ill/lib/ffi/arithmetic.js';
-import ratFFI from '../../lib/engine/theories/rat-ffi.js';
+import ratFFI from '../../calculus/ill/lib/ffi/rat-ffi.js';
 import { serialize, deserialize, compact } from '../../lib/engine/store-binary.js';
 
 const bin = (n) => Store.put1('binlit', n);

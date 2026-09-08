@@ -19,7 +19,7 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import path from 'path';
-import { ratParts } from '../../lib/engine/theories/ratlit-theory.js';
+import { ratParts } from '../../lib/kernel/rat-term.js';
 import { FIX, loadTill as load, atom, initQuery, stampedStr, bagStr, traceKey } from './till-helpers.js';
 
 const PP2 = path.join(import.meta.dirname, '../../calculus/till/game/PP2.till');

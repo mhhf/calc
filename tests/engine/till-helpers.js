@@ -11,7 +11,7 @@ import Store from '../../lib/kernel/store.js';
 import mde from '../../lib/engine/index.js';
 import convert from '../../lib/engine/convert.js';
 import tillConfig from '../../calculus/till/calculus-config.js';
-import { ratParts } from '../../lib/engine/theories/ratlit-theory.js';
+import { ratParts } from '../../lib/kernel/rat-term.js';
 
 export const SPEC = (f) => path.join(import.meta.dirname, '../../calculus/till/tests/forward', f);
 export const FIX = (f) => path.join(import.meta.dirname, '../fixtures', f);
