@@ -1668,7 +1668,7 @@ This would reduce compose.js from 2085 to ~535 LOC. Each sub-module has clean bo
 - `lib/engine/directive-loader.js` (266 LOC) — Shared ILL-native test/debug infrastructure
 
 **Serialization:**
-- `lib/engine/store-binary.js` (463 LOC) — Binary Store serialization + compact GC
+- `lib/engine/cache/store-binary.js` (463 LOC) — Binary Store serialization + compact GC
 
 **Support:**
 - `lib/engine/optimizer.js` (133 LOC) — Profile-driven engine configuration

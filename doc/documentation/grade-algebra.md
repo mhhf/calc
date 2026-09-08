@@ -1,6 +1,6 @@
 # Grade Algebra — the pluggable-grade engine contract
 
-What a grade algebra must provide so the timed engine (`lib/engine/timed/`) can be
+What a grade algebra must provide so the timed engine (`lib/timed/`) can be
 scheduled by it, and which algebraic laws license which engine behaviors. This is the
 contract TODO_0284 P1 refactors *toward*; the executable form is
 `tests/engine/grade-conformance.test.js`. Calculus-agnostic: instances live in calculus
@@ -147,7 +147,7 @@ residual = fenced values.sub      cmp     = values.cmp
 ```
 
 Slots operate on VALUES; the match loop operates on stamp IDS. The StampTable
-(`lib/engine/labels.js`) is the id-level face: `stamps.merge` lifts the ⊔ slot to
+(`lib/timed/labels.js`) is the id-level face: `stamps.merge` lifts the ⊔ slot to
 ids and `stamps.prunes` is the contract-fixed ⊕ cut (cmp ≥ 0 — `>=` keeps the
 FIRST match at equal grade, the FIFO half of timed.js's invariant pair); timed.js
 routes the audited sites through both. The symbolic `merge: 'join'` names the

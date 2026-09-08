@@ -32,7 +32,7 @@ fragment — and there settle's stamps are the *principal grades* of the timed
 sequent judgment, so the scheduler is a canonical-form normalizer, not an
 extra-logical policy.
 Everything is executable: the engine is `settle`
-(`lib/engine/timed/timed.js`), the algebraic conditions C1–C4 and M1–M3 are
+(`lib/timed/timed.js`), the algebraic conditions C1–C4 and M1–M3 are
 machine-checked per algebra (`tests/engine/grade-conformance.test.js`; C5 is
 operational — §7), and each theorem, boundary, and failure mode below names
 its test.
@@ -1107,7 +1107,7 @@ realized condition families.
   scope (shared with explore's own enumeration guarantee — its
   docstring's open criterion).
 - ✔ **Static analyzers** — discharged (TODO_0293 a/b/c):
-  (a) `certifyContention` (`lib/engine/timed/certify.js`) — structural
+  (a) `certifyContention` (`lib/timed/certify.js`) — structural
   conflict-freedom (the one-shot-edge discipline, state-independent),
   else the relaxation-level check: the monotone relaxation's firing set
   as a fixpoint over the declared rule data (never settle), with

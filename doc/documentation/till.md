@@ -2,7 +2,7 @@
 
 Timed graded rewriting: ILL's multiplicative core + time as a tropical grade.
 Calculus package: `calculus/till/` (till.calc, calculus-config.js, prelude/rat.ill,
-tests/forward/*.ill). Engine: `lib/engine/timed{,-game,-views,-lint}.js` (generic, config-driven).
+tests/forward/*.ill). Engine: `lib/timed/timed{,-game,-views,-lint}.js` (generic, config-driven).
 Design/decisions: hq todo 0265; reference semantics: `tools/till-oracle.mjs`.
 
 ## Model
@@ -41,7 +41,7 @@ Design/decisions: hq todo 0265; reference semantics: `tools/till-oracle.mjs`.
   the edge — the tree IS the exact outcome distribution (leaves carry
   `weight`, exact `[num, den]` path products).
 
-## Scheduler (lib/engine/timed.js)
+## Scheduler (lib/timed/timed.js)
 
 Semantics is earliest-activation-first (D12 — not a knob): `settle(state, T)`
 repeatedly fires an enabled match with globally minimal `a(m)` while
@@ -114,7 +114,7 @@ each takes `(settle: T)` and optionally `query: <kind>` pointing at a shared
   missing input pattern (best failed candidate, from the matcher's
   diagnostic mode)
 
-The renderers are pure functions in `lib/engine/timed-render.js` (golden
+The renderers are pure functions in `lib/timed/timed-render.js` (golden
 tests exercise them verbatim). `settle` events carry `produced` facts and
 serialize as `forward-trace/v2` steps with `activation`/`delay` pool refs
 (`lib/prover/serialize-trace.js`). Graded monads render faithfully —

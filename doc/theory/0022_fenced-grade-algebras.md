@@ -30,7 +30,7 @@ references:
 
 **Status.** Definition + on-paper proofs; the algebra and its consequences ARE
 implemented and fuzzed (`calculus/till/calculus-config.js` residual,
-`lib/prover/rule-interpreter.js` partial defs, `lib/engine/timed/timed.js`
+`lib/prover/rule-interpreter.js` partial defs, `lib/timed/timed.js`
 fire-time fence, `tools/fuzz-till.js` residual legs). The adequacy bridge (§6)
 is a statement, not yet a proof — same honesty boundary as THY_0018 §8.
 

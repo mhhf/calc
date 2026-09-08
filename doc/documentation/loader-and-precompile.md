@@ -63,7 +63,7 @@ graph LR
 4. **`_deserializeCompiledRules`** — convert Array fields back to Set (freevars, persistentDeps)
 5. **`_buildCalc`** — build backward index, return calc context
 
-## Binary Format (`lib/engine/store-binary.js`)
+## Binary Format (`lib/engine/cache/store-binary.js`)
 
 Little-endian, CRC32-checked. ~65 KB for multisig program.
 

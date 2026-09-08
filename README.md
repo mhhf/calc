@@ -39,18 +39,23 @@ lib/
 │   ├── generic.js   # L2: search primitives (Hodas-Miller lazy splitting)
 │   ├── focused.js   # L3: Andreoli focusing
 │   └── strategy/    # L4: manual, auto
-├── engine/          # Forward/backward execution engine (3-layer lego)
+├── engine/          # Forward/backward execution engine — minimal-essence core
 │   ├── compile.js   # Rule compilation (de Bruijn slots, discriminators)
 │   ├── match.js     # Pattern matching + persistent proving
-│   ├── strategy.js  # Rule selection (fingerprint → disc-tree → predicate)
+│   ├── strategy.js  # Rule selection stack (default layers installed by the root)
 │   ├── forward.js   # Main loop (committed-choice execution)
 │   ├── explore.js   # Exhaustive DFS exploration + backtracking
 │   ├── backchain.js # Backward chaining for persistent antecedents
-│   ├── compose.js   # Grade-0 cut-elimination pipeline + chain fusion + SROA
+│   ├── compose.js   # Grade-0 cut-elimination pipeline + SLD tabling (semantic passes)
 │   ├── convert.js   # .ill → content-addressed hashes
 │   ├── sorts.js     # Refinement-sort system (subsort DAG, till-only)
-│   ├── timed/       # Timed layer: wall-clock scheduler over the stamp algebra
-│   └── opt/         # Toggleable optimization modules
+│   ├── cache/       # Persistence: store-binary, compose disk cache, engine version
+│   └── opt/         # Toggleable optimizations (fingerprint, disc-tree, FFI dispatch,
+│                    #   compose fusion/SROA, prediction, memo) — semantics-free, gated
+├── timed/           # Timed layer ABOVE the engine: wall-clock scheduler over the
+│                    #   stamp algebra (settle, StampTable, accel/coalesce, lints)
+├── measure/         # Measure layer ABOVE the engine: decimation driver (collapse),
+│                    #   CI-criterion certifier, constructor priors
 ├── calculus/        # Calculus loader from .calc/.rules definitions
 ├── parser/          # Earley parser + grammar generation
 ├── meta-parser/     # Meta-level parser (@extends chain resolution)

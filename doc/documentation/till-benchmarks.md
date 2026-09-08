@@ -1,6 +1,6 @@
 # till Benchmarks and Cross-System Comparison
 
-The till scheduler (`lib/engine/timed/`) has an internal benchmark harness and a
+The till scheduler (`lib/timed/`) has an internal benchmark harness and a
 *planned* comparison against the three systems a POPL/LICS reviewer will expect
 (THY_0018 novelty ledger names them). This document records the internal
 baseline and specifies the comparison protocol; the cross-system numbers are
