@@ -42,7 +42,7 @@ lib/
 ├── engine/          # Forward/backward execution engine — minimal-essence core
 │   ├── compile.js   # Rule compilation (de Bruijn slots, discriminators)
 │   ├── match.js     # Pattern matching + persistent proving
-│   ├── strategy.js  # Rule selection stack (default layers installed by the root)
+│   ├── strategy.js  # Rule selection stack (one channel: engine.buildStrategy)
 │   ├── forward.js   # Main loop (committed-choice execution)
 │   ├── explore.js   # Exhaustive DFS exploration + backtracking
 │   ├── backchain.js # Backward chaining for persistent antecedents
