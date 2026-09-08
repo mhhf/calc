@@ -274,6 +274,11 @@ const GENERIC_ACCESS = new Set([
   // Opt fast-path inline in hot loop (match.js:354-368) — intentional exception:
   // avoids function call overhead per compiled step in hottest loop
   'execPS', 'useCompiledSteps',
+  // Strategy A matcher fast path (RES_0143 F4): generic THREADS the
+  // injected opt callback (matchOpts.deltaBypass) into matchLinear1 and
+  // guards on its presence — the implementation lives in opt/, generic
+  // holds only the null-checked call.
+  'deltaBypass',
 ]);
 
 // Family layer access: generic's access + family-owned fields + opt callbacks
