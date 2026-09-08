@@ -110,9 +110,10 @@ export default function CollapseView(props: WidgetProps) {
               Draw next
             </button>
             <button
-              onClick={start}
+              onClick={() => (sessionId ? act('restart') : start())}
               disabled={busy()}
               class="px-2 py-0.5 text-xs rounded bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 disabled:opacity-40"
+              title="Reset all waves; the next draws use a fresh attempt counter"
             >
               Restart
             </button>

@@ -204,6 +204,25 @@ app.post('/api/proof/leaf-trace', async (c) => {
   }
 });
 
+// Run API — interactive execution widgets (book, TODO_0308). Lazy import:
+// loading the engine + calculus configs happens on first widget request.
+let _runApi = null;
+app.post('/api/run/*', async (c) => {
+  const route = c.req.path.replace(/^\/api\/run\//, '');
+  let body;
+  try {
+    body = await c.req.json();
+  } catch {
+    return c.json({ ok: false, error: 'invalid JSON body' }, 400);
+  }
+  try {
+    if (!_runApi) _runApi = await import('./src/server/run-api.js');
+    return c.json(await _runApi.handleRun(route, body));
+  } catch (e) {
+    return c.json({ ok: false, error: e.message }, 500);
+  }
+});
+
 // Serve static UI build
 app.use('/*', serveStatic({ root: './out/ui' }));
 
