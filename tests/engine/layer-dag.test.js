@@ -543,6 +543,25 @@ describe('global boundary enforcement', () => {
     }
   });
 
+  it('lib/engine imports neither lib/timed nor lib/measure (composition root excepted)', () => {
+    // The timed and measure layers sit ABOVE the engine (RES_0143 M1/M2):
+    // they import engine code; the engine reaches them only at the
+    // composition root (index.js) — anywhere else is an inverted layer.
+    const ENGINE_DIR = path.join(LIB_DIR, 'engine');
+    const violations = [];
+    for (const filePath of collectJSFiles(ENGINE_DIR)) {
+      const rel = path.relative(ENGINE_DIR, filePath);
+      if (rel === 'index.js') continue; // composition root wires the layers
+      for (const req of extractRequires(filePath)) {
+        if (/\/(timed|measure)\//.test(req) || /^\.\.\/(timed|measure)\b/.test(req)) {
+          violations.push(`engine/${rel} → ${req}`);
+        }
+      }
+    }
+    assert.deepStrictEqual(violations, [],
+      'lib/engine must not import the timed/measure layers (they sit above it)');
+  });
+
   it('lib/ and family/ use only string-literal dynamic imports (scanner evasion)', () => {
     // extractRequires can only see literal module paths. A dynamic import
     // with a variable or template-literal path would evade every boundary

@@ -15,7 +15,7 @@ import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import Store from '../../lib/kernel/store.js';
 import { toObject } from '../../lib/engine/fact-set.js';
-import { packRef, refInner } from '../../lib/engine/labels.js';
+import { packRef, refInner } from '../../lib/engine/fact-set.js';
 import { ratParts } from '../../lib/kernel/rat-term.js';
 import { SPEC, loadTill as load, initQuery as init, bagStr, stampedStr, traceKey } from './till-helpers.js';
 

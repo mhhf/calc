@@ -24,7 +24,7 @@ import os from 'os';
 import path from 'path';
 import Store from '../../lib/kernel/store.js';
 import mde from '../../lib/engine/index.js';
-import { buildTimedConfig } from '../../lib/engine/timed/timed.js';
+import { buildTimedConfig } from '../../lib/timed/timed.js';
 import { ratParts } from '../../lib/kernel/rat-term.js';
 import { add as ratAdd, cmp as ratCmp } from '../../lib/rat.js';
 import { tillGrades } from '../../calculus/till/calculus-config.js';

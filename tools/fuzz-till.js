@@ -55,7 +55,7 @@ import { buildRuleSpecs } from '../lib/prover/rule-interpreter.js';
 import { createProver } from '../lib/prover/focused.js';
 import { createKernel } from '../lib/prover/kernel.js';
 import tillConfig, { loadTillSequent } from '../calculus/till/calculus-config.js';
-import { buildTimedConfig } from '../lib/engine/timed/timed.js';
+import { buildTimedConfig } from '../lib/timed/timed.js';
 import { certifyRun, programFromCalc } from '../lib/prover/timed/elaborate-trace.js';
 
 const args = process.argv.slice(2);
