@@ -47,8 +47,10 @@ tags:
   lnl: 3
   loli: 3
   monad: 3
+  multiset-rewriting: 3
   prover: 3
   QTT: 3
+  sax: 3
   staging: 3
   testing: 3
   time: 3
@@ -58,21 +60,21 @@ tags:
   backward: 2
   bridge: 2
   content-addressing: 2
+  destination-passing: 2
   determinism: 2
   eigenvariable: 2
+  engine-metatheory: 2
   forall: 2
   Futamura: 2
   independence: 2
   layers: 2
   modal-logic: 2
-  multiset-rewriting: 2
   one: 2
   principals: 2
   refinement-sorts: 2
   refinement-types: 2
   representation: 2
   resource-semantics: 2
-  sax: 2
   SELL: 2
   sequent-calculus: 2
   session-types: 2
@@ -104,19 +106,19 @@ tags:
   complexity: 1
   connectives: 1
   consensus: 1
+  content-addressed-store: 1
   correspondence: 1
   cost-semantics: 1
   cut: 1
+  data-layout: 1
   debugging: 1
   definitions: 1
   delegation: 1
   derivatives: 1
   design: 1
-  destination-passing: 1
   digital-assets: 1
   disjunction: 1
   documentation: 1
-  engine-metatheory: 1
   entailment: 1
   execution-tree: 1
   existentials: 1
@@ -185,6 +187,7 @@ tags:
   run-length: 1
   Skolem: 1
   smt: 1
+  snax: 1
   sorts: 1
   specialization: 1
   stark: 1

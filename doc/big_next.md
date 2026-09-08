@@ -61,7 +61,12 @@ the destination-discipline confluence certificate (THY_0036), with explore's
 single-interleaving commit. P3 LANDED (2026-09-08): THY_0035 — ⊢_fwd parametric
 over the family record (CS, P, D, X), axioms A1-A4 + match-completeness C1-C3,
 discharged for lnl AND sax; the four-hooks-are-the-LNL-part finding is now a
-specialization theorem.
+specialization theorem. P4 LANDED (2026-09-08): THY_0037 — the store-as-SNAX
+conjecture PARTIALLY FALSIFIED against the MFPS 2022 laws (L2 projection-
+distinctness fails on equal subtrees; the temporal no-go: content addresses
+cannot name futures) with the factorization theorem as the repair: machine.sax's
+destination terms are the legal SNAX address algebra, the store concretizes
+storables, !cell is the graph between them.
 
 The backward prover is kernel-checked; the forward engine's search semantics is still
 folklore. Queued theorems:
