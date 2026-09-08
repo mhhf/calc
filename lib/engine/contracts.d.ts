@@ -157,6 +157,43 @@ export interface CalculusConfig {
   gradeAlgebraFor?: Function;
 }
 
+/**
+ * The frozen 21-field matcher protocol (match.js — the four protocol
+ * factories buildGenericProtocol / buildFamilyProtocol /
+ * buildOptProtocol / buildFfiProtocol are the single source of field
+ * truth; every matchOpts has identical shape for V8 monomorphism).
+ * Which layer may READ which field is enforced separately by the
+ * layer-dag matchOpts field-access test.
+ */
+export interface MatchOpts {
+  // ── generic layer (buildGenericProtocol) ──
+  optimizePreserved: boolean;
+  evidence: boolean;
+  canonicalize: Function | null;
+  onProveFail: Function | null;
+  onProveSuccess: Function | null;
+  /** Interface contract — never null (generic baseline: state lookup only). */
+  provePersistent: Function;
+  // ── family layer (buildFamilyProtocol) ──
+  matchDynamicRule: Function | null;
+  resolveEx: Function | null;
+  drainDynamicRules: Function | null;
+  connectives: object | null;
+  dynamicRuleTag: string | null;
+  backchainUseFFI: boolean;
+  // ── opt layer (buildOptProtocol) ──
+  execPS: Function | null;
+  execExStep: Function | null;
+  tryCCDispatch: Function | null;
+  deltaBypass: Function | null;
+  useCompiledSteps: boolean;
+  // ── FFI context (buildFfiProtocol) ──
+  ffiParsedModes: object | null;
+  ffiMeta: object | null;
+  ffiGet: Function | null;
+  ffiIsGround: Function | null;
+}
+
 /** A compose pool-pipeline pass (F3). The driver owns gating, empty-
  *  pool skip, and phase profiling; a pass holds its transformation. */
 export interface ComposePass {
