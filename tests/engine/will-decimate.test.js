@@ -33,7 +33,7 @@ import os from 'os';
 import path from 'path';
 import Store from '../../lib/kernel/store.js';
 import mde from '../../lib/engine/index.js';
-import { collapse, substituteEvar } from '../../lib/engine/decimate.js';
+import { collapse, substituteEvar } from '../../lib/measure/decimate.js';
 import { freshEvar } from '../../lib/kernel/fresh.js';
 import willConfig from '../../calculus/will/calculus-config.js';
 

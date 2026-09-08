@@ -574,7 +574,7 @@ describe('global boundary enforcement', () => {
       // engine/compose.js reached 0 (RES_0143 L7): rc fields are required,
       // loud throw on absence — the ratchet only shrinks.
       'engine/convert.js': 3,
-      'engine/decimate.js': 3,
+      'measure/decimate.js': 3,
       'prover/check-term.js': 1,
       'prover/generic-term.js': 1,
       'prover/kernel.js': 2,
@@ -632,7 +632,7 @@ describe('certificate-checker import fence (toolbox paper §6: the TCB surface)'
   // deliberate definition-sharing so checker and engine cannot drift on
   // the same decomposition:
   //   engine/pattern-utils.js       (collectMetavars — pure AST util)
-  //   engine/decimate.js            (splitBody/DECIMATE_PREDS — the SAME
+  //   measure/decimate.js           (splitBody/DECIMATE_PREDS — the SAME
   //                                  body-splitting definition the driver
   //                                  uses; sharing it is the anti-drift
   //                                  choice, and only pure decomposition
@@ -653,7 +653,7 @@ describe('certificate-checker import fence (toolbox paper §6: the TCB surface)'
   // the exception set only shrinks.)
   const PURE_EXCEPTIONS = new Set([
     'engine/pattern-utils.js',
-    'engine/decimate.js',
+    'measure/decimate.js',
     'engine/type-check.js',
   ]);
   const resolveToLib = makeResolver(LIB_DIR);
