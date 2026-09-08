@@ -86,6 +86,7 @@ describe('minimal-essence ratchet (RES_0143)', () => {
       'rule-analysis.js': 'core', 'resolve-all.js': 'core',
       'constraint.js': 'core', 'grades.js': 'core', 'prf.js': 'core',
       'reserved-preds.js': 'core', 'materialize.js': 'core',
+      'cc-schema.js': 'core',       // the declared cc port contract (F1)
       'sorts.js': 'core', 'type-check.js': 'core',
       'compose.js': 'core',            // P1-P4 = grade-0 erasure (SEMANTIC)
       'compose-profile.js': 'debug',
