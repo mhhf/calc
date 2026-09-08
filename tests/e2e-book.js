@@ -105,6 +105,33 @@ async function run() {
     // 5. Prev/next + mark complete present
     check('mark-complete button', (await page.locator('button:has-text("Mark complete")').count()) >= 1);
 
+    // 6. Full sweep: every chapter renders without console errors or
+    //    error blocks ({rule}/{calc}/KaTeX failures render as pre.error).
+    const list = await (await fetch(`http://localhost:${PORT}/api/docs/book`)).json();
+    const slugs = list
+      .filter(d => d.chapter !== undefined)
+      .sort((a, b) => (a.part - b.part) || (a.chapter - b.chapter))
+      .map(d => d.slug);
+    let sweepFailures = 0;
+    for (const slug of slugs) {
+      const before = errors.length;
+      await page.goto(`http://localhost:${PORT}/book/${slug}`, { waitUntil: 'networkidle', timeout: 60000 });
+      await page.waitForTimeout(2500);
+      const article = await page.locator('article').count();
+      const errorBlocks = await page.locator('article pre.error').count();
+      const newErrors = errors.length - before;
+      const ok = article === 1 && errorBlocks === 0 && newErrors === 0;
+      if (!ok) {
+        sweepFailures++;
+        console.log(`  ✗ ${slug}: article=${article} errorBlocks=${errorBlocks} consoleErrors=${newErrors}`);
+        if (errorBlocks > 0) {
+          const texts = await page.locator('article pre.error').allTextContents();
+          for (const t of texts.slice(0, 3)) console.log(`      ${t.slice(0, 120)}`);
+        }
+      }
+    }
+    check(`chapter sweep (${slugs.length} chapters)`, sweepFailures === 0, `${sweepFailures} failing`);
+
     const failed = results.filter(r => !r.pass);
     if (errors.length) {
       console.log('\nConsole errors:');

@@ -1,14 +1,22 @@
 /**
  * BookIndex — course table of contents: parts, chapters, progress.
  */
-import { createResource, createMemo, For, Show } from 'solid-js';
+import { createResource, createMemo, createSignal, For, Show } from 'solid-js';
 import { A } from '@solidjs/router';
 import { fetchBook, groupParts, romanPart } from '../../lib/book';
 import { progress, isChapterComplete, completedCount } from '../../state/progress';
 
 export default function BookIndex() {
   const [chapters] = createResource(fetchBook);
-  const parts = createMemo(() => groupParts(chapters() || []));
+  const [filter, setFilter] = createSignal('');
+  const parts = createMemo(() => {
+    const q = filter().trim().toLowerCase();
+    const all = chapters() || [];
+    const filtered = q
+      ? all.filter(c => `${c.title} ${c.summary}`.toLowerCase().includes(q))
+      : all;
+    return groupParts(filtered);
+  });
 
   const total = createMemo(() => (chapters() || []).length);
   const done = createMemo(() => {
@@ -29,6 +37,13 @@ export default function BookIndex() {
           run programs, play the games.
         </p>
         <Show when={total() > 0}>
+          <input
+            type="search"
+            value={filter()}
+            onInput={(e) => setFilter(e.currentTarget.value)}
+            placeholder="Filter chapters…"
+            class="mt-4 w-full max-w-xs px-3 py-1.5 text-sm rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+          />
           <div class="mt-4 flex items-center gap-3">
             <div class="flex-1 max-w-xs h-2 rounded-full bg-gray-200 dark:bg-gray-700 overflow-hidden">
               <div
