@@ -22,7 +22,7 @@ app.get('/api/health', (c) => c.json({ status: 'ok' }));
 
 // Documentation API
 const DOC_ROOT = path.resolve(__dirname, 'doc');
-const ALLOWED_FOLDERS = { theory: 'theory', def: 'def', docs: 'documentation' };
+const ALLOWED_FOLDERS = { theory: 'theory', def: 'def', docs: 'documentation', book: 'book' };
 
 function extractFrontmatter(content) {
   const m = content.match(/^---\n([\s\S]*?)\n---\n/);
@@ -55,7 +55,7 @@ app.get('/api/docs/:folder', (c) => {
     const docs = files.map(f => {
       const content = fs.readFileSync(path.join(folderPath, f), 'utf-8');
       const fm = extractFrontmatter(content);
-      return { slug: f.replace(/\.md$/, ''), title: fm.title || fm.term || f.replace(/\.md$/, ''), summary: fm.summary || '', tags: fm.tags || [], status: fm.status || '', priority: fm.priority ? Number(fm.priority) : undefined, type: fm.type || undefined, depends_on: fm.depends_on || [], required_by: fm.required_by || [], cluster: fm.cluster || undefined };
+      return { slug: f.replace(/\.md$/, ''), title: fm.title || fm.term || f.replace(/\.md$/, ''), summary: fm.summary || '', tags: fm.tags || [], status: fm.status || '', priority: fm.priority ? Number(fm.priority) : undefined, type: fm.type || undefined, depends_on: fm.depends_on || [], required_by: fm.required_by || [], cluster: fm.cluster || undefined, part: fm.part !== undefined ? Number(fm.part) : undefined, partTitle: fm.partTitle || undefined, chapter: fm.chapter !== undefined ? Number(fm.chapter) : undefined };
     });
     return c.json(docs);
   } catch (e) {

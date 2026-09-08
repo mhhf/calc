@@ -111,8 +111,14 @@ function buildToc(headings: { depth: number; text: string; id: string }[]): stri
   return html;
 }
 
+// Context threaded through block processors (recursive markdown, wiki-links)
+interface BlockCtx {
+  basePath: string;
+  manifest?: Record<string, string[]>;
+}
+
 // Server-side processors for special code blocks
-const serverProcessors: Record<string, (code: string, options?: Record<string, string>) => Promise<string> | string> = {
+const serverProcessors: Record<string, (code: string, options?: Record<string, string>, positional?: string[], ctx?: BlockCtx) => Promise<string> | string> = {
   katex: (code: string) => {
     try {
       return `<div class="math-block">${katex.renderToString(code.trim(), {
@@ -150,9 +156,65 @@ const serverProcessors: Record<string, (code: string, options?: Record<string, s
       return `<pre class="error">CALC parse error: ${(e as Error).message}</pre>`;
     }
   },
+
+  // ```{rule tensor_r}``` (or names in the body, one per line) — renders the
+  // abstract inference rule(s) as \cfrac cards from the loaded calculus.
+  rule: async (code: string, _options, positional = []) => {
+    try {
+      const { getManualProofAPI } = await import('./calculus');
+      const api = getManualProofAPI();
+      const names = [...positional, ...code.split('\n').map(s => s.trim()).filter(Boolean)];
+      if (names.length === 0) return `<pre class="error">rule block: no rule name given</pre>`;
+      const cards = names.map((name) => {
+        let schema: { conclusion: string; premises?: string[] } | null = null;
+        try {
+          schema = api.getAbstractRule(name);
+        } catch {
+          schema = null;
+        }
+        if (!schema || !schema.conclusion) {
+          return `<pre class="error">unknown rule: ${escapeHtml(name)}</pre>`;
+        }
+        const simplify = (s: string) =>
+          s.replace(/\?\s*X/g, '\\Gamma').replace(/\?\s*Y/g, '\\Delta').replace(/\?\s*Z/g, '\\Sigma')
+            .replace(/F\?\s*([A-Z])/g, '$1').replace(/S\?\s*([A-Z])/g, '$1')
+            .replace(/--\s*:/g, '').replace(/\s+/g, ' ').trim();
+        const toLatex = (s: string) =>
+          s.includes('\\vdash') ? s : s.replace(/\|-/g, '\\vdash').replace(/-o/g, '\\multimap').replace(/\*/g, '\\otimes').replace(/\+/g, '\\oplus');
+        const conclusion = simplify(toLatex(schema.conclusion));
+        const premises = (schema.premises || []).map(p => simplify(toLatex(p)));
+        const frac = premises.length === 0
+          ? `\\cfrac{\\vphantom{X}}{${conclusion}}`
+          : `\\cfrac{${premises.join(' \\quad ')}}{${conclusion}}`;
+        const rendered = katex.renderToString(frac, { displayMode: true, throwOnError: false });
+        return `<div class="rule-block"><div class="rule-block-name">${escapeHtml(name)}</div>${rendered}</div>`;
+      });
+      return `<div class="rule-block-row">${cards.join('')}</div>`;
+    } catch (e) {
+      return `<pre class="error">rule block error: ${(e as Error).message}</pre>`;
+    }
+  },
+
+  // ```{exercise, title=...}``` — styled callout; body is markdown.
+  exercise: async (code: string, options = {}, _positional, ctx) => {
+    const inner = await markdownToHtml(code, { basePath: ctx?.basePath || '/book', manifest: ctx?.manifest, noToc: true });
+    const title = options.title ? escapeHtml(options.title) : 'Exercise';
+    return `<div class="book-exercise"><div class="book-exercise-title">${title}</div><div class="book-exercise-body">${inner}</div></div>`;
+  },
+
+  // ```{solution}``` — collapsed by default; body is markdown.
+  solution: async (code: string, options = {}, _positional, ctx) => {
+    const inner = await markdownToHtml(code, { basePath: ctx?.basePath || '/book', manifest: ctx?.manifest, noToc: true });
+    const label = options.label ? escapeHtml(options.label) : 'Show solution';
+    return `<details class="book-solution"><summary>${label}</summary><div class="book-solution-body">${inner}</div></details>`;
+  },
 };
 
 const clientBlocks = ['mermaid', 'proof'];
+
+// Interactive course widgets — hydrated client-side by hydrateWidgets.ts.
+// Body travels raw in a hidden <pre>; each widget parses its own spec.
+const widgetBlocks = ['prove', 'formula', 'quiz', 'exec', 'game', 'collapse'];
 
 /**
  * Parse YAML frontmatter from markdown content
@@ -182,14 +244,14 @@ export function parseFrontmatter(content: string): { frontmatter: Frontmatter; b
 }
 
 function escapeHtml(text: string): string {
-  return text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  return text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 }
 
 /**
  * Extract special code blocks (katex, graphviz, mermaid, calc) and replace
  * with placeholders. Returns the modified markdown + a map of processed blocks.
  */
-async function extractSpecialBlocks(md: string): Promise<{ md: string; blocks: Map<string, string> }> {
+async function extractSpecialBlocks(md: string, ctx?: BlockCtx): Promise<{ md: string; blocks: Map<string, string> }> {
   const blocks = new Map<string, string>();
   // Match both ```{mermaid} (legacy) and ```mermaid (standard fenced)
   // Also supports positional args inside braces: ```{proof ill default}
@@ -223,7 +285,18 @@ async function extractSpecialBlocks(md: string): Promise<{ md: string; blocks: M
 
     let html: string;
     if (serverProcessors[processor]) {
-      html = await Promise.resolve(serverProcessors[processor](code, options));
+      html = await Promise.resolve(serverProcessors[processor](code, options, positional, ctx));
+    } else if (widgetBlocks.includes(processor)) {
+      // Course widget — hydrated client-side. Positional args + k=v options
+      // ride data attributes; the body rides a hidden <pre> (entity-decoded
+      // via .textContent, same reasoning as the proof block below).
+      html =
+        `<div class="client-render widget-block" data-processor="widget-${processor}" ` +
+        `data-args="${escapeHtml(positional.join(' '))}" ` +
+        `data-options='${escapeHtml(JSON.stringify(options))}'>` +
+        `<pre class="client-source" style="display:none">${escapeHtml(code)}</pre>` +
+        `<div class="widget-loading">Loading widget…</div>` +
+        `</div>`;
     } else if (processor === 'proof') {
       // `{proof <calculus> [mode] [profile]}` — client-rendered. The tree
       // itself is fetched from POST /api/proof on mount; the client renders
@@ -381,12 +454,12 @@ function processInlineMath(html: string): string {
  */
 export async function markdownToHtml(
   markdown: string,
-  options: { basePath?: string; slug?: string; manifest?: Record<string, string[]> } = {}
+  options: { basePath?: string; slug?: string; manifest?: Record<string, string[]>; noToc?: boolean } = {}
 ): Promise<string> {
   const { basePath = '/docs', manifest } = options;
 
   // 1. Extract special code blocks before marked sees them
-  const { md, blocks } = await extractSpecialBlocks(markdown);
+  const { md, blocks } = await extractSpecialBlocks(markdown, { basePath, manifest });
 
   // 2. Process wiki-links in the raw markdown (before marked converts []() links)
   let processed = processWikiLinks(md, basePath, manifest);
@@ -397,8 +470,10 @@ export async function markdownToHtml(
   let html = await markedInstance.parse(processed);
 
   // 4. Prepend TOC if enough headings
-  const toc = buildToc(headings);
-  if (toc) html = toc + html;
+  if (!options.noToc) {
+    const toc = buildToc(headings);
+    if (toc) html = toc + html;
+  }
 
   // 5. Process inline math on the HTML
   html = processInlineMath(html);

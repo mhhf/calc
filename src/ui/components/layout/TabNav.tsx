@@ -13,6 +13,7 @@ interface Tab {
 
 const mainTabs: Tab[] = [
   { path: '/', label: 'Sandbox' },
+  { path: '/book', label: 'Book' },
   { path: '/prove', label: 'Prove' },
   { path: '/calculus', label: 'Calculus' },
   { path: '/health', label: 'Health' },

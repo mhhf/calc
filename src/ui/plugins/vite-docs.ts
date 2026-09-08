@@ -51,6 +51,7 @@ const ALLOWED_FOLDERS: Record<string, string> = {
   theory: 'theory',
   def: 'def',
   docs: 'documentation',
+  book: 'book',
 };
 
 function extractFrontmatter(content: string) {
@@ -301,6 +302,9 @@ export default function viteDocs(): Plugin {
                 status: fm.status || '',
                 modified: fm.modified || '',
                 category: fm.category || '',
+                part: fm.part !== undefined ? Number(fm.part) : undefined,
+                partTitle: fm.partTitle || undefined,
+                chapter: fm.chapter !== undefined ? Number(fm.chapter) : undefined,
               };
             });
             res.setHeader('Content-Type', 'application/json');
