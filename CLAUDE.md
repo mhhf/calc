@@ -90,6 +90,7 @@ lib/
 │   └── modes.js         # Default monad_r/monad_l descriptor injection (category 'monad')
 ├── meta/                # Polarity/invertibility inference from rule descriptors (focusing.js)
 ├── engine/              # Forward/backward execution engine — minimal-essence core (RES_0143: tier manifest pinned by tests/engine/minimal-essence.test.js; no instance vocabulary, no silent calculus defaults — cc supplies everything through the DECLARED port)
+│   ├── certify-confluence.js # calc.certifyConfluence (TODO_0309 P2, THY_0036): the destination-discipline (write-once) confluence certificate — soundness-only, refusals carry witnesses; a valid certificate lets explore() commit to ONE interleaving (opts.confluence, digest-pinned)
 │   ├── cc-schema.js     # The cc PORT contract (F1): every engine-read key declared (type/required/consumer/absence semantics), validated fail-fast at the composition root — unknown or typo'd cc keys are load errors
 │   ├── contracts.d.ts   # Typed twin of the seams (F5): CalculusConfig/MatchOpts/ComposePass/EngineContext/FactSetPolicy — `npm run check:types` (scoped // @ts-check pragmas, tsc as no-emit linter)
 │   ├── formula-utils.js # Generic: connective-aware formula decomposition (shared across pipeline)
