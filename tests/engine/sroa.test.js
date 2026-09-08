@@ -16,7 +16,7 @@ import { gradeW } from '../../lib/engine/grades.js';
 import { illConnectives } from '../../calculus/ill/lib/connectives.js';
 import { resolveConn, flattenAnte, unwrapComp } from '../../lib/engine/compile.js';
 import { predHead } from '../../lib/kernel/ast.js';
-import { _sroa } from '../../lib/engine/compose.js';
+import { sroa as _sroa } from '../../lib/engine/opt/compose-sroa.js';
 import { getModeMeta as _illGetModeMeta } from '../../calculus/ill/lib/ffi/index.js';
 import { ILL_SROA_CONFIG } from '../../calculus/ill/lib/compose-config.js';
 import { monadUnit as U } from '../../lib/engine/grades.js';

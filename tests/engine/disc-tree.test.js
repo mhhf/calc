@@ -6,7 +6,7 @@ import { describe, it, beforeEach } from 'node:test';
 import assert from 'node:assert';
 import path from 'path';
 import Store from '../../lib/kernel/store.js';
-import { createNode, insert, flattenPattern, flattenFact, subtreeSize, queryFlat, collectAll, makeDiscTreeLayer } from '../../lib/engine/disc-tree.js';
+import { createNode, insert, flattenPattern, flattenFact, subtreeSize, queryFlat, collectAll, makeDiscTreeLayer } from '../../lib/engine/opt/disc-tree.js';
 import { countNodes, countLeaves, maxDepth, getAllLeaves } from '../../lib/engine/tree-utils.js';
 import { fromObject } from '../../lib/engine/fact-set.js';
 import mde from '../../calculus/ill/index.js';

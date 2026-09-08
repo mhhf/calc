@@ -120,4 +120,4 @@ After S1 (TODO_0193) all `npm test`, `test:heavy`, `test:noffi`, and `test:ill` 
 
 `node tools/test-timing.js [options]` — runs each test file individually and reports per-file timing.
 
-Options: `--timeout=<ms>`, `--skip=<regex>`, `--only=<regex>`, `--category=core|engine|all`, `--save`, `--json`, `--profile=bare|fast|evm`
+Options: `--timeout=<ms>`, `--skip=<regex>`, `--only=<regex>`, `--category=core|engine|all`, `--save`, `--json`, `--profile=bare|fast|full`

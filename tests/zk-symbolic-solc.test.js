@@ -16,7 +16,7 @@ import path from 'path';
 import fs from 'fs';
 import mde from '../calculus/ill/index.js';
 import { getAllLeaves } from '../lib/engine/tree-utils.js';
-import { classifyLeaf } from '../lib/engine/show.js';
+import { classifyLeaf } from '../calculus/ill/index.js';
 import Store from '../lib/kernel/store.js';
 import Seq from '../lib/kernel/sequent.js';
 import calculus from '../lib/calculus/index.js';

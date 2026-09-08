@@ -20,7 +20,7 @@ import calculus from '../lib/calculus/index.js';
 import { buildParser } from '../lib/calculus/builders.js';
 import { defaultTheories } from '../lib/kernel/eq-theory.js';
 import { binlitTheory } from './ill/lib/binlit-theory.js';
-import { ratlitTheory } from '../lib/engine/theories/ratlit-theory.js';
+import { ratlitTheory } from './till/lib/ratlit-theory.js';
 import { apply } from '../lib/kernel/substitute.js';
 import { predHead } from '../lib/kernel/ast.js';
 import { collectMetavars } from '../lib/engine/pattern-utils.js';

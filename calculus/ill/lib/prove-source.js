@@ -425,6 +425,7 @@ function proveSymex({ body, absImports, calcName, profile, key, cacheDir, opts }
       mode: queryName === 'exec' ? 'exec' : 'symex',
       initialState,
       queryVars,
+      leafPolicy: illConfig.domain.classifyLeafPolicy,
     });
   } catch (e) {
     return { ok: false, error: `serialize error: ${e.message}`, key, cacheHit: false };
@@ -457,6 +458,7 @@ function extractSymexLeafTrace(key, leafIndex, opts = {}) {
   const out = extractLeafTrace(entry.tree, leafIndex, {
     calculus: entry.calcName,
     profile: entry.profile,
+    leafPolicy: illConfig.domain.classifyLeafPolicy,
     ...opts,
   });
   if (!out) return { ok: false, error: `leafIndex ${leafIndex} out of range`, key };

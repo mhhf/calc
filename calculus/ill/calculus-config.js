@@ -19,7 +19,7 @@
 
 import { lnlFamily } from '../../family/lnl/family-config.js';
 import { buildForwardParser } from './lib/forward-parser.js';
-import { DEFAULT_LOADER_CONFIG } from '../../lib/engine/convert.js';
+import { connTagsFrom } from '../../lib/engine/formula-utils.js';
 import { illConnectives } from './lib/connectives.js';
 import { binlitTheory } from './lib/binlit-theory.js';
 import backchainIll from './lib/backchain-ill.js';
@@ -28,8 +28,16 @@ import { bytecodeToTrie, codeToArrlit, bytesToSemantic, normalizeQuery } from '.
 import { loadBytecode, bytecodeArrGetGuard } from './lib/bytecode-loader.js';
 import { binToInt, isGround as _binIsGround } from './lib/ffi/convert.js';
 import { trieNav } from './lib/ffi/array.js';
-import { DEFAULT_LEAF_POLICY, DEFAULT_SHOW_EXCLUDE } from '../../lib/engine/show.js';
-import { monadUnit } from '../../lib/engine/grades.js';
+// EVM debug/inspection policy (RES_0143 L2): the terminal atoms, control
+// predicate, and noisy-predicate exclusions ARE calculus data — they live
+// here, not as show.js defaults. The generic classifyLeaf/showInteresting
+// take these via cc.domain; the facade exports pre-bound versions.
+const EVM_LEAF_POLICY = Object.freeze({
+  terminals: Object.freeze({ stop: 'STOP', revert: 'REVERT', invalid: 'INVALID' }),
+  runningPred: 'pc',
+});
+const EVM_SHOW_EXCLUDE = Object.freeze(['bytecode', 'calldata']);
+import { monadUnit, grade0 } from '../../lib/engine/grades.js';
 import Store from '../../lib/kernel/store.js';
 import * as _ffiMod from './lib/ffi/index.js';
 import { residualResolver as _residualResolverFn } from './lib/residual-resolver.js';
@@ -72,12 +80,16 @@ const illCalculusConfig = {
   //       FactSet index policy comparator (D5).
   // ── L2: Loader ───────────────────────────────────────────────
   // convert.js loaderConfig — buildParser is ILL-own machinery
-  // (forward-parser.js); connTags/grade0/timed are the shared defaults
-  // spelled explicitly (the engine holds no calculus default, TODO_0086).
+  // (forward-parser.js); connTags DERIVED from ill.calc's connective
+  // table like every other calculus (RES_0143 L7 — this used to import
+  // the lib-side default record, an inverted dependency).
   loader: {
     buildParser: buildForwardParser,
-    connTags: DEFAULT_LOADER_CONFIG.connTags,
-    grade0: DEFAULT_LOADER_CONFIG.grade0,
+    get connTags() {
+      if (!this._ct) this._ct = connTagsFrom(illConnectives());
+      return this._ct;
+    },
+    grade0,
     timed: false,
   },
 
@@ -124,13 +136,18 @@ const illCalculusConfig = {
   // ── L6: Domain (EVM) ────────────────────────────────────────
   domain: {
     evalNumeric(h) { return _binIsGround(h) ? binToInt(h) : null; },
+    // Which persistent predicates carry equality/disequality semantics for
+    // the branch-pruning solver (RES_0143 L3): declared in bin.ill with
+    // backward clauses; the solver treats them as constraints, everything
+    // else is opaque.
+    constraintPreds: { eq: 'eq', neq: 'neq' },
     memoControlTags: ['pc', 'stack'],
     // Debug/inspection policy (show.js): EVM terminal atoms + control pred,
-    // and the noisy predicates excluded from showInteresting. These ARE the
-    // show.js compat defaults — named here so a second logic overrides them
-    // in its own config instead of patching show.js (TODO_0265 Phase 2b).
-    classifyLeafPolicy: DEFAULT_LEAF_POLICY,
-    showExclude: DEFAULT_SHOW_EXCLUDE,
+    // and the noisy predicates excluded from showInteresting. Defined at the
+    // top of this file — a second logic declares its own in its config
+    // (TODO_0265 Phase 2b; RES_0143 L2 removed the show.js copies).
+    classifyLeafPolicy: EVM_LEAF_POLICY,
+    showExclude: EVM_SHOW_EXCLUDE,
     // Bytecode API bindings (mde.load opts.bytecode routes through these;
     // a calculus without them structurally lacks the bytecode API).
     loadBytecode,

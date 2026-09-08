@@ -15,7 +15,7 @@ import { putRat } from '../../lib/kernel/rat-term.js';
 import { setTheories } from '../../lib/kernel/unify.js';
 import { defaultTheories } from '../../lib/kernel/eq-theory.js';
 import { binlitTheory, installBinlitClassifier } from '../../calculus/ill/lib/binlit-theory.js';
-import { ratlitTheory, installRatlitTheory } from '../../lib/engine/theories/ratlit-theory.js';
+import { ratlitTheory, installRatlitTheory } from '../../calculus/till/lib/ratlit-theory.js';
 import { grade0 } from '../../lib/engine/grades.js';
 import { connTagsFrom } from '../../lib/engine/formula-utils.js';
 

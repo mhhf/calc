@@ -14,7 +14,7 @@ import { describe, it, before } from 'node:test';
 import assert from 'node:assert';
 import path from 'path';
 import Store from '../../lib/kernel/store.js';
-import { fusePairEx } from '../../lib/engine/compose.js';
+import { fusePairEx } from '../../lib/engine/opt/compose-fuse.js';
 import { resolveConn } from '../../lib/engine/compile.js';
 import { collectMetavars } from '../../lib/engine/pattern-utils.js';
 // Hoisted by tools/esm-hoist.js:

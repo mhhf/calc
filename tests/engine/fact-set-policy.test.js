@@ -18,7 +18,7 @@ import { explore } from '../../lib/engine/explore.js';
 import { compileRule } from '../../lib/engine/compile.js';
 import { illConnectives } from '../../calculus/ill/lib/connectives.js';
 import { putRat } from '../../lib/kernel/rat-term.js';
-import { ratParts } from '../../lib/engine/theories/ratlit-theory.js';
+import { ratParts } from '../../lib/kernel/rat-term.js';
 import { cmp as ratCmp } from '../../lib/rat.js';
 import path from 'path';
 import mde from '../../calculus/ill/index.js';
@@ -28,7 +28,7 @@ import { buildStack, detectStrategy, findAllMatches } from '../../lib/engine/str
 import { setTheories } from '../../lib/kernel/unify.js';
 import { defaultTheories } from '../../lib/kernel/eq-theory.js';
 import { binlitTheory } from '../../calculus/ill/lib/binlit-theory.js';
-import { ratlitTheory } from '../../lib/engine/theories/ratlit-theory.js';
+import { ratlitTheory } from '../../calculus/till/lib/ratlit-theory.js';
 import { monadUnit as U } from '../../lib/engine/grades.js';
 
 const atom = (n) => Store.put('atom', [n]);

@@ -26,7 +26,7 @@ import { setTheories } from '../../lib/kernel/unify.js';
 import { defaultTheories } from '../../lib/kernel/eq-theory.js';
 import { lnlFamily } from '../../family/lnl/family-config.js';
 import { binlitTheory } from '../ill/lib/binlit-theory.js';
-import { ratlitTheory, ratParts, installRatlitTheory } from '../../lib/engine/theories/ratlit-theory.js';
+import { ratlitTheory, ratParts, installRatlitTheory } from '../till/lib/ratlit-theory.js';
 import { grade0 } from '../../lib/engine/grades.js';
 import { connTagsFrom } from '../../lib/engine/formula-utils.js';
 import backchainIll from '../ill/lib/backchain-ill.js';

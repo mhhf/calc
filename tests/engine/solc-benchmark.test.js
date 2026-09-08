@@ -8,7 +8,7 @@ import assert from 'node:assert';
 import path from 'path';
 import mde from '../../calculus/ill/index.js';
 import { getAllLeaves, countNodes } from '../../lib/engine/tree-utils.js';
-import { classifyLeaf } from '../../lib/engine/show.js';
+import { classifyLeaf } from '../../calculus/ill/index.js';
 import Store from '../../lib/kernel/store.js';
 describe('Solc multisig explore', { timeout: 30000, concurrency: 1 }, () => {
   let tree, allLeaves, classes;

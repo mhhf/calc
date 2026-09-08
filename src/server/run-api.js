@@ -26,7 +26,7 @@ import convert from '../../lib/engine/convert.js';
 import Store from '../../lib/kernel/store.js';
 import { show } from '../../lib/engine/show.js';
 import { toObject } from '../../lib/engine/fact-set.js';
-import { substEvarInTerm } from '../../lib/engine/decimate.js';
+import { substEvarInTerm } from '../../lib/measure/decimate.js';
 import { mix32 } from '../../lib/engine/prf.js';
 import { horizonOf, innerOf, stampOf, menuLabel, menuOptions } from '../../tools/timed-view.js';
 

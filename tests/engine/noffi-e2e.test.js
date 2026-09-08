@@ -13,7 +13,7 @@ import os from 'os';
 import Store from '../../lib/kernel/store.js';
 import mde from '../../calculus/ill/index.js';
 import { countNodes, getAllLeaves } from '../../lib/engine/tree-utils.js';
-import { classifyLeaf } from '../../lib/engine/show.js';
+import { classifyLeaf } from '../../calculus/ill/index.js';
 import { toObject } from '../../lib/engine/fact-set.js';
 import { guidedTerm } from '../../calculus/ill/lib/guided-term.js';
 import { rightFocusTerm } from '../../lib/prover/bridge.js';

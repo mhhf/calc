@@ -26,7 +26,7 @@ import Store from '../../lib/kernel/store.js';
 import mde from '../../lib/engine/index.js';
 import convert from '../../lib/engine/convert.js';
 import tillConfig from '../../calculus/till/calculus-config.js';
-import { ratParts } from '../../lib/engine/theories/ratlit-theory.js';
+import { ratParts } from '../../lib/kernel/rat-term.js';
 import { toObject } from '../../lib/engine/fact-set.js';
 
 const ROOT = path.join(import.meta.dirname, '../../');

@@ -13,7 +13,7 @@ import { gradeW } from '../../lib/engine/grades.js';
 import { illConnectives } from '../../calculus/ill/lib/connectives.js';
 import { resolveConn, flattenAnte } from '../../lib/engine/compile.js';
 import { predHead } from '../../lib/kernel/ast.js';
-import { _fuseChains } from '../../lib/engine/compose.js';
+import { fuseChains as _fuseChains } from '../../lib/engine/opt/compose-fuse.js';
 import { _resolveOnce } from '../../lib/engine/compose.js';
 import { getModeMeta as _illGetModeMeta } from '../../calculus/ill/lib/ffi/index.js';
 import { ILL_CHAIN_CONFIGS } from '../../calculus/ill/lib/compose-config.js';

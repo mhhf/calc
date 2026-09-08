@@ -18,9 +18,9 @@ import Store from '../../lib/kernel/store.js';
 import mde from '../../lib/engine/index.js';
 import convert from '../../lib/engine/convert.js';
 import tillConfig from '../../calculus/till/calculus-config.js';
-import { normalizeTimedState } from '../../lib/engine/timed/timed.js';
+import { normalizeTimedState } from '../../lib/timed/timed.js';
 import { toObject } from '../../lib/engine/fact-set.js';
-import { traceLines, timelineLines, whyLines, whyNotLines } from '../../lib/engine/timed/timed-render.js';
+import { traceLines, timelineLines, whyLines, whyNotLines } from '../../lib/timed/timed-render.js';
 
 const DEBUG_ILL = path.join(import.meta.dirname, '../../calculus/till/tests/debug/chopbuild.ill');
 const SPEC = (f) => path.join(import.meta.dirname, '../../calculus/till/tests/forward', f);

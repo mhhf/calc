@@ -20,12 +20,13 @@ import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import Store from '../../lib/kernel/store.js';
 import { FactSet, Arena, fromObject, toObject } from '../../lib/engine/fact-set.js';
-import { packRef, refInner, refStamp, INNER_CAP } from '../../lib/engine/labels.js';
+import { packRef, refInner, refStamp, INNER_CAP } from '../../lib/engine/fact-set.js';
+import { StampTable } from '../../lib/timed/labels.js';
 import tillConfig, { tillGrades } from '../../calculus/till/calculus-config.js';
 import { putRat } from '../../lib/kernel/rat-term.js';
-import { ratParts } from '../../lib/engine/theories/ratlit-theory.js';
+import { ratParts } from '../../lib/kernel/rat-term.js';
 
-const policy = { ...tillConfig.factSetPolicy, labels: tillGrades.values };
+const policy = { ...tillConfig.factSetPolicy, labels: tillGrades.values, stampTable: StampTable };
 const atom = (n) => Store.put('atom', [n]);
 const mk = () => new FactSet(Store.TAG_NAMES.length, policy);
 const T = (fs, n, d = 1n) => fs.stamps.intern([BigInt(n), d]);

@@ -16,8 +16,8 @@
 
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import { StampTable } from '../../lib/engine/labels.js';
-import { buildTimedConfig } from '../../lib/engine/timed/timed.js';
+import { StampTable } from '../../lib/timed/labels.js';
+import { buildTimedConfig } from '../../lib/timed/timed.js';
 import { tillGrades } from '../../calculus/till/calculus-config.js';
 import gillConfig, { weightGrades, distGrades, gillGradeRegistry, gradeAlgebraFor } from '../../calculus/gill/calculus-config.js';
 

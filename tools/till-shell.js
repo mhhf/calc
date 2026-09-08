@@ -60,7 +60,7 @@ import willConfig from '../calculus/will/calculus-config.js';
 import sillConfig from '../calculus/sill/calculus-config.js';
 import Store from '../lib/kernel/store.js';
 import { show } from '../lib/engine/show.js';
-import { substEvarInTerm } from '../lib/engine/decimate.js';
+import { substEvarInTerm } from '../lib/measure/decimate.js';
 import { mix32 } from '../lib/engine/prf.js';
 import {
   secs, horizonOf, innerOf, stampOf, nameOf, SKIP,

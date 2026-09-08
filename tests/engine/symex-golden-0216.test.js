@@ -25,7 +25,7 @@ import crypto from 'crypto';
 import mde from '../../calculus/ill/index.js';
 import Store from '../../lib/kernel/store.js';
 import { getAllLeaves, countNodes } from '../../lib/engine/tree-utils.js';
-import { classifyLeaf, showInteresting } from '../../lib/engine/show.js';
+import { classifyLeaf, showInteresting } from '../../calculus/ill/index.js';
 const FIXTURE_PATH = path.join(import.meta.dirname, '../fixtures/0216-multisig-golden.json');
 const PROGRAM = path.join(import.meta.dirname, '../../calculus/ill/programs/multisig_nocall_solc_symbolic.ill');
 

@@ -29,7 +29,7 @@ good-labelling for derivation forests) remains open. Executable pins:
 ## 1. Setting
 
 The bias discipline (THY_0026 §4, M8; implemented in
-`lib/engine/decimate.js _posterior`): a wave `e` over classifier `s` has
+`lib/measure/decimate.js _posterior`): a wave `e` over classifier `s` has
 posterior weights
 
 ```

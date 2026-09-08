@@ -14,7 +14,7 @@
 import { describe, it, before } from 'node:test';
 import assert from 'node:assert';
 import Store from '../lib/kernel/store.js';
-import StoreBinary from '../lib/engine/store-binary.js';
+import StoreBinary from '../lib/engine/cache/store-binary.js';
 const HAS_GROUND = typeof Store.isGround === 'function';
 const skip = !HAS_GROUND;
 

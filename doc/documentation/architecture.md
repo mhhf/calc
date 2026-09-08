@@ -87,7 +87,7 @@ lib/prover/                      # Backward proof search
 └── index.js                     # convenience re-exports
 
 lib/engine/                      # Forward execution engine (L4c/L4d)
-├── optimizer.js                 # profile-driven engine config (bare/fast/evm)
+├── optimizer.js                 # profile-driven engine config (bare/fast/full)
 ├── match.js                     # pattern matching + persistent proving
 ├── strategy.js                  # rule selection: strategy stack builder
 ├── forward.js                   # committed-choice main loop
@@ -305,7 +305,7 @@ graph TB
 
 **Layer discipline:** The generic core (`compile.js`, `match.js`, `strategy.js`, `forward.js`, `explore.js`, `backchain.js`) has zero family, opt, or ill imports. The four engine hooks (`proveNaive`, `matchDynamicRule`, `drainDynamicRules`, `resolveEx`) arrive as data on `cc.family.engine` from `family/lnl/family-config.js`, injected via `matchOpts`. Layer DAG: `lib/` ↛ `family/` ↛ `calculus/`; `family/` may import `lib/`. Enforced by `tests/engine/layer-dag.test.js` (also covers the backward prover DAG and `lib/`↛`src/ui/` boundary). See `doc/documentation/forward-chaining-engine.md` for full details.
 
-**Profile-driven optimization.** Engine optimizations live in `lib/engine/opt/` (generic) or alongside their consumers at the engine root (`backward-cache.js`, `constraint-feed.js`, `delta-bypass.js`, `preserved.js`). The `optimizer.js` resolves a profile (`bare`/`fast`/`evm`) into an engine context with the appropriate strategy stack at startup — no runtime branching in hot loops. The `bare` profile disables all optimizations and serves as the correctness baseline. See `doc/documentation/optimization-architecture.md`.
+**Profile-driven optimization.** Engine optimizations live in `lib/engine/opt/` (generic) or alongside their consumers at the engine root (`backward-cache.js`, `constraint-feed.js`, `delta-bypass.js`, `preserved.js`). The `optimizer.js` resolves a profile (`bare`/`fast`/`full`) into an engine context with the appropriate strategy stack at startup — no runtime branching in hot loops. The `bare` profile disables all optimizations and serves as the correctness baseline. See `doc/documentation/optimization-architecture.md`.
 
 **Program-aware indexing (auto-detected).** The strategy stack includes a fingerprint layer that detects dominant discriminating predicates from rule structure. For EVM, `code(PC, OPCODE)` is the discriminator — 40 of 44 rules have a ground opcode child. The fingerprint layer resolves these in O(1). This is auto-detected by `detectFingerprintConfig()` from rule patterns; no program-specific code exists. The disc-tree layer (general-purpose trie) handles all remaining rules. See `doc/documentation/strategy-layers.md`.
 

@@ -24,7 +24,7 @@ import assert from 'node:assert/strict';
 import fs from 'fs';
 import os from 'os';
 import path from 'path';
-import { ratParts } from '../../lib/engine/theories/ratlit-theory.js';
+import { ratParts } from '../../lib/kernel/rat-term.js';
 import { loadTill as load, atom, initQuery, stampedStr, bagStr } from './till-helpers.js';
 
 const PP2 = path.join(import.meta.dirname, '../../calculus/till/game/PP2.till');

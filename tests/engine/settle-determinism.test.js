@@ -19,7 +19,7 @@ import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import Store from '../../lib/kernel/store.js';
 import tillConfig from '../../calculus/till/calculus-config.js';
-import { ratParts } from '../../lib/engine/theories/ratlit-theory.js';
+import { ratParts } from '../../lib/kernel/rat-term.js';
 import { SPEC, FIX, loadTill as load, loadTillPermissive, initQuery as init, atom, stampedStr, traceKey } from './till-helpers.js';
 
 describe('till determinism: same seed ⇒ trace-identical', () => {

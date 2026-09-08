@@ -11,7 +11,7 @@ import { gradeW } from '../../lib/engine/grades.js';
 import { illConnectives } from '../../calculus/ill/lib/connectives.js';
 import { resolveConn, compileRule, flattenAnte } from '../../lib/engine/compile.js';
 import { predHead } from '../../lib/kernel/ast.js';
-import { _fuseChains } from '../../lib/engine/compose.js';
+import { fuseChains as _fuseChains } from '../../lib/engine/opt/compose-fuse.js';
 import { ILL_CHAIN_CONFIGS } from '../../calculus/ill/lib/compose-config.js';
 import { getModes, getModeMeta as _illGetModeMeta } from '../../calculus/ill/lib/ffi/index.js';
 import { show } from '../../lib/engine/show.js';

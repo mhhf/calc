@@ -156,11 +156,15 @@ function classifyEngineModule(relPath) {
   if (relPath === 'index.js') return 'root';
   if (relPath.startsWith('timed/')) return 'timed';
   if (relPath.startsWith('opt/')) return 'opt';
-  // theories/ stays 'generic' by decision (audit 2026-09-02): the
-  // numeric-literal theories (ratlit/strlit representation decoders) are
-  // the generic engine's numeric substrate — formula-utils/decimate use
-  // ratParts on declaration-derived weighted-choice, which is
-  // presence-gated behavior, not calculus coupling.
+  // optimizer.js IS the optimization-profile wiring (builds opt-layer
+  // stacks; imported only by the composition root) — opt tier, so it may
+  // import opt/ modules (RES_0143 M5).
+  if (relPath === 'optimizer.js') return 'opt';
+  // engine/theories/ no longer exists (RES_0143 L10): representation
+  // READING (ratParts) moved to lib/kernel/rat-term.js; the ratlit
+  // equational theory + registration moved beside binlit's to
+  // calculus/till/lib/ratlit-theory.js; rat FFI implementations joined
+  // calculus/ill/lib/ffi/.
   return 'generic';
 }
 
@@ -539,6 +543,25 @@ describe('global boundary enforcement', () => {
     }
   });
 
+  it('lib/engine imports neither lib/timed nor lib/measure (composition root excepted)', () => {
+    // The timed and measure layers sit ABOVE the engine (RES_0143 M1/M2):
+    // they import engine code; the engine reaches them only at the
+    // composition root (index.js) — anywhere else is an inverted layer.
+    const ENGINE_DIR = path.join(LIB_DIR, 'engine');
+    const violations = [];
+    for (const filePath of collectJSFiles(ENGINE_DIR)) {
+      const rel = path.relative(ENGINE_DIR, filePath);
+      if (rel === 'index.js') continue; // composition root wires the layers
+      for (const req of extractRequires(filePath)) {
+        if (/\/(timed|measure)\//.test(req) || /^\.\.\/(timed|measure)\b/.test(req)) {
+          violations.push(`engine/${rel} → ${req}`);
+        }
+      }
+    }
+    assert.deepStrictEqual(violations, [],
+      'lib/engine must not import the timed/measure layers (they sit above it)');
+  });
+
   it('lib/ and family/ use only string-literal dynamic imports (scanner evasion)', () => {
     // extractRequires can only see literal module paths. A dynamic import
     // with a variable or template-literal path would evade every boundary
@@ -567,9 +590,10 @@ describe('global boundary enforcement', () => {
     // smuggled ILL knowledge — thread the name from calculus.roles or the
     // config instead. Removing a fallback: update the count down here.
     const ALLOWED = {
-      'engine/compose.js': 7,
+      // engine/compose.js reached 0 (RES_0143 L7): rc fields are required,
+      // loud throw on absence — the ratchet only shrinks.
       'engine/convert.js': 3,
-      'engine/decimate.js': 3,
+      'measure/decimate.js': 3,
       'prover/check-term.js': 1,
       'prover/generic-term.js': 1,
       'prover/kernel.js': 2,
@@ -627,8 +651,7 @@ describe('certificate-checker import fence (toolbox paper §6: the TCB surface)'
   // deliberate definition-sharing so checker and engine cannot drift on
   // the same decomposition:
   //   engine/pattern-utils.js       (collectMetavars — pure AST util)
-  //   engine/theories/ratlit-theory.js (ratParts — numeral codec)
-  //   engine/decimate.js            (splitBody/DECIMATE_PREDS — the SAME
+  //   measure/decimate.js           (splitBody/DECIMATE_PREDS — the SAME
   //                                  body-splitting definition the driver
   //                                  uses; sharing it is the anti-drift
   //                                  choice, and only pure decomposition
@@ -644,10 +667,12 @@ describe('certificate-checker import fence (toolbox paper §6: the TCB surface)'
     'prover/draw-check.js',
     'prover/timed/fire-check.js',
   ];
+  // (ratlit-theory left this list — RES_0143 L10 moved the ratParts
+  // codec into lib/kernel/rat-term.js, which checkers may import freely;
+  // the exception set only shrinks.)
   const PURE_EXCEPTIONS = new Set([
     'engine/pattern-utils.js',
-    'engine/theories/ratlit-theory.js',
-    'engine/decimate.js',
+    'measure/decimate.js',
     'engine/type-check.js',
   ]);
   const resolveToLib = makeResolver(LIB_DIR);

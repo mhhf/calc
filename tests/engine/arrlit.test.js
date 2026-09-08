@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import Store from '../../lib/kernel/store.js';
 import { show } from '../../lib/engine/show.js';
 import { isGround, collectMetavars, collectFreevars } from '../../lib/engine/pattern-utils.js';
-import { serialize, deserialize } from '../../lib/engine/store-binary.js';
+import { serialize, deserialize } from '../../lib/engine/cache/store-binary.js';
 import { match, matchIndexed, undoSave, undoRestore, unify } from '../../lib/kernel/unify.js';
 import { arr_get, arr_set, alen, read_bytes, arrToTrie, trieNav } from '../../calculus/ill/lib/ffi/array.js';
 import { parserFromTables, parserTables } from '../../lib/calculus/builders.js';
