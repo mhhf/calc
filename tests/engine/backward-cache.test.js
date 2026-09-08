@@ -7,7 +7,7 @@
 import { describe, it, before, beforeEach } from 'node:test';
 import assert from 'node:assert/strict';
 import Store from '../../lib/kernel/store.js';
-import { tryBWCache, clearBWCache, getCacheProfile, resetCacheProfile } from '../../lib/engine/backward-cache.js';
+import { tryBWCache, clearBWCache, getCacheProfile, resetCacheProfile } from '../../lib/engine/opt/backward-cache.js';
 // Hoisted by tools/esm-hoist.js:
 import path from 'path';
 import mde from '../../calculus/ill/index.js';

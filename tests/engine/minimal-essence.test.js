@@ -90,11 +90,12 @@ describe('minimal-essence ratchet (RES_0143)', () => {
       'sorts.js': 'core', 'type-check.js': 'core',
       'compose.js': 'core',            // P1-P4 = grade-0 erasure (SEMANTIC)
       'compose-profile.js': 'debug',
-      // Hot-path opt helpers imported by generic code stay at root by the
-      // backward-cache precedent (generic may not import opt/):
-      'backward-cache.js': 'opt-at-root', 'delta-bypass.js': 'opt-at-root',
       // ── opt: deletable, profile-gated ──
+      // (the opt-at-root tier dissolved in RES_0143 F4: deltaBypass rides
+      // the matchOpts opt protocol, backward-cache's lifecycle lives at
+      // the composition root — no generic file imports opt/ anymore)
       'optimizer.js': 'opt',
+      'opt/backward-cache.js': 'opt', 'opt/delta-bypass.js': 'opt',
       'opt/fingerprint.js': 'opt', 'opt/disc-tree.js': 'opt',
       'opt/ffi.js': 'opt', 'opt/compiled-clauses.js': 'opt',
       'opt/existential-compile.js': 'opt', 'opt/prediction.js': 'opt',

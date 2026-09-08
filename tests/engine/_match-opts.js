@@ -4,7 +4,7 @@
  * Purpose: enforce the "no ad-hoc matchOpts" invariant (S8) in tests.
  * Instead of writing `matchLoli(h, state, null, { connectives: rc })` with
  * a bare object, tests use `matchLoli(h, state, null, makeMatchOpts({ rc }))`.
- * This guarantees the frozen 20-field shape via buildMatchOpts.
+ * This guarantees the frozen 21-field shape via buildMatchOpts.
  *
  * Not exported from lib/ — tests only. Production code wires matchOpts at
  * the composition root (lib/engine/index.js).

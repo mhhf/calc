@@ -13,7 +13,7 @@ import { proveNaive } from '../../family/lnl/lib/persistent.js';
 import { makeMatchOpts } from './_match-opts.js';
 // Hoisted by tools/esm-hoist.js:
 import mde from '../../calculus/ill/index.js';
-import { clearBWCache } from '../../lib/engine/backward-cache.js';
+import { clearBWCache } from '../../lib/engine/opt/backward-cache.js';
 
 describe('lnl/persistent — proveNaive', () => {
   let calc;

@@ -7,7 +7,7 @@
  *     file may construct a matchOpts-shaped object literal.
  *   - In tests (tests/engine/), matchOpts must be produced via the
  *     makeMatchOpts helper (tests/engine/_match-opts.js), not as a bare
- *     object literal — this preserves the frozen 20-field shape the engine
+ *     object literal — this preserves the frozen 21-field shape the engine
  *     relies on.
  *
  * The scan searches for specific field names that are UNIQUE to the matchOpts
