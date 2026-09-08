@@ -19,7 +19,7 @@
 
 import { lnlFamily } from '../../family/lnl/family-config.js';
 import { buildForwardParser } from './lib/forward-parser.js';
-import { DEFAULT_LOADER_CONFIG } from '../../lib/engine/convert.js';
+import { connTagsFrom } from '../../lib/engine/formula-utils.js';
 import { illConnectives } from './lib/connectives.js';
 import { binlitTheory } from './lib/binlit-theory.js';
 import backchainIll from './lib/backchain-ill.js';
@@ -37,7 +37,7 @@ const EVM_LEAF_POLICY = Object.freeze({
   runningPred: 'pc',
 });
 const EVM_SHOW_EXCLUDE = Object.freeze(['bytecode', 'calldata']);
-import { monadUnit } from '../../lib/engine/grades.js';
+import { monadUnit, grade0 } from '../../lib/engine/grades.js';
 import Store from '../../lib/kernel/store.js';
 import * as _ffiMod from './lib/ffi/index.js';
 import { residualResolver as _residualResolverFn } from './lib/residual-resolver.js';
@@ -80,12 +80,16 @@ const illCalculusConfig = {
   //       FactSet index policy comparator (D5).
   // ── L2: Loader ───────────────────────────────────────────────
   // convert.js loaderConfig — buildParser is ILL-own machinery
-  // (forward-parser.js); connTags/grade0/timed are the shared defaults
-  // spelled explicitly (the engine holds no calculus default, TODO_0086).
+  // (forward-parser.js); connTags DERIVED from ill.calc's connective
+  // table like every other calculus (RES_0143 L7 — this used to import
+  // the lib-side default record, an inverted dependency).
   loader: {
     buildParser: buildForwardParser,
-    connTags: DEFAULT_LOADER_CONFIG.connTags,
-    grade0: DEFAULT_LOADER_CONFIG.grade0,
+    get connTags() {
+      if (!this._ct) this._ct = connTagsFrom(illConnectives());
+      return this._ct;
+    },
+    grade0,
     timed: false,
   },
 

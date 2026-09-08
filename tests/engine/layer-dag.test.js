@@ -567,7 +567,8 @@ describe('global boundary enforcement', () => {
     // smuggled ILL knowledge — thread the name from calculus.roles or the
     // config instead. Removing a fallback: update the count down here.
     const ALLOWED = {
-      'engine/compose.js': 7,
+      // engine/compose.js reached 0 (RES_0143 L7): rc fields are required,
+      // loud throw on absence — the ratchet only shrinks.
       'engine/convert.js': 3,
       'engine/decimate.js': 3,
       'prover/check-term.js': 1,
