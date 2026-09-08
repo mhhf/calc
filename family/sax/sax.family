@@ -1,0 +1,130 @@
+% =============================================================================
+% SAX (Semi-Axiomatic Sequent Calculus) Family Infrastructure
+% =============================================================================
+%
+% The SECOND structural family (TODO_0309) — the single-zone, purely
+% linear sequent discipline of the semi-axiomatic sequent calculus
+% (DeYoung–Pfenning–Pruiksma, FSCD 2020).
+%
+%   - ONE context zone (Δ), linear: exchange only — no contraction, no
+%     weakening, and consequently NO copy source (`copySource: null` is
+%     the derived structure; lnl-shaped code that assumes a cartesian
+%     zone exists is exactly what this family flushes out).
+%   - Position 2 is the succedent (single formula).
+%
+% The rule REGIME that makes SAX sax — non-invertible rules as
+% zero-premise axioms, explicit cut/snip — lives at the calculus level
+% (calculus/sax/sax.rules); the family only fixes the judgment shape
+% Δ ⊢ C and the engine protocol bindings (family-config.js).
+%
+% "family" ≈ structural discipline / mode theory (see family/lnl/): the
+% declarations here are DERIVED into contextStructure by buildCalculus;
+% a calculus opts in via `@extends sax` in its .calc.
+
+@family sax.
+
+% =============================================================================
+% Structures (contexts)
+% =============================================================================
+
+structure: type
+  @layer structure.
+
+% Context concatenation (comma of structures)
+comma: structure -> structure -> structure
+  @ascii "_ , _"
+  @prec 30 left
+  @role context_concat.
+
+% Empty context
+empty: structure
+  @ascii "I"
+  @role unit.
+
+% =============================================================================
+% Sequent (Δ ⊢ C) — single linear zone
+% =============================================================================
+
+sequent: type
+  @layer sequent.
+
+seq: structure -> structure -> sequent
+  @ascii "_ |- _"
+  @latex "#1 \\vdash #2"
+  @prec 10
+  @role sequent
+  @position_modes "linear linear".
+
+% =============================================================================
+% Derivability Judgment
+% =============================================================================
+
+deriv: sequent -> type
+  @role judgment.
+
+% =============================================================================
+% Metavariable Conventions
+% =============================================================================
+
+@metavar formula prefix="F?" examples="A B C".
+@metavar structure prefix="?" examples="X Y Z D".
+@metavar atom prefix="A?" examples="p q r".
+
+% =============================================================================
+% Structural Rules — Linear Zone (Position 1)
+% =============================================================================
+%
+% Exchange, associativity, and unit laws only. No contraction, no
+% weakening: deriveContextStructure reads the ABSENCE of a contraction
+% rule as "consumable zone" and the absence of any second zone as
+% "no copy source".
+
+%      Ω, Δ |- A
+%    ─────────────
+%      Δ, Ω |- A
+sax_exchange: deriv (seq (comma X Y) C)
+  <- deriv (seq (comma Y X) C)
+  @pretty "X"
+  @structural exchange
+  @invertible true
+  @position 1.
+
+%     Δ, (Ω, Σ) |- A
+%    ─────────────────
+%     (Δ, Ω), Σ |- A
+sax_assoc_l: deriv (seq (comma (comma X Y) Z) C)
+  <- deriv (seq (comma X (comma Y Z)) C)
+  @pretty "A→"
+  @structural associativity
+  @invertible true
+  @position 1.
+
+%     (Δ, Ω), Σ |- A
+%    ─────────────────
+%     Δ, (Ω, Σ) |- A
+sax_assoc_r: deriv (seq (comma X (comma Y Z)) C)
+  <- deriv (seq (comma (comma X Y) Z) C)
+  @pretty "A←"
+  @structural associativity
+  @invertible true
+  @position 1.
+
+%       Δ |- A
+%    ─────────────
+%     I, Δ |- A
+sax_unit_l: deriv (seq (comma empty X) C)
+  <- deriv (seq X C)
+  @pretty "U"
+  @structural unit
+  @invertible true
+  @position 1.
+
+%       Δ |- A
+%    ─────────────
+%     Δ, I |- A
+sax_unit_r: deriv (seq (comma X empty) C)
+  <- deriv (seq X C)
+  @pretty "U'"
+  @structural unit
+  @invertible true
+  @position 1.

@@ -1,0 +1,55 @@
+% =============================================================================
+% machine.sax specs — SAX configurations on the sax-native machine
+% =============================================================================
+%
+% Executable specs for the SAX operational semantics under the sax
+% calculus (untimed `=>` dispatch: committed-choice exec to quiescence,
+% pattern check on the final state). The empirical CONFLUENCE check
+% (all interleavings, one final state) lives in the fast suite
+% (tests/engine/sax-forward.test.js) — explore is not a spec directive.
+
+#import(../../programs/machine.sax)
+
+% destinations used by the configurations (closed world: declared)
+c: dest.
+d: dest.
+m: dest.
+s: dest.
+
+% Negation: case selects the branch matching the sum cell's tag.
+#expect_sax_negation (exact: true)
+  !cell c vin1 * hole d * proc d (pcase c win2 win1)
+  =>
+  !cell c vin1 * !cell d vin2 .
+
+% Identity/forward: copies a value whose shape the rule does not know —
+% the unbound-W persistent lookup under state-lookup-only proving (the
+% sax family's null proveNaive exercises the generic baseline).
+#expect_sax_forward (exact: true)
+  !cell s vin1 * hole d * proc d (fwd s)
+  =>
+  !cell d vin1 .
+
+% Pipeline: the second stage BLOCKS until the first writes its cell —
+% write-once synchronization.
+#expect_sax_pipeline (exact: true)
+  !cell c vin1 * hole m * proc m (pcase c win2 win1) *
+  hole d * proc d (pcase m win2 win1)
+  =>
+  !cell m vin2 * !cell d vin1 .
+
+% Swap: three concurrent processes over SNAX projections — the output
+% pair's components are the input's, crossed.
+#expect_sax_swap (exact: true)
+  !cell (p1 c) vin1 * !cell (p2 c) vin2 * !cell c vpair *
+  hole d * hole (p1 d) * hole (p2 d) *
+  proc d wpr * proc (p1 d) (fwd (p2 c)) * proc (p2 d) (fwd (p1 c))
+  =>
+  !cell d vpair * !cell (p1 d) vin2 * !cell (p2 d) vin1 .
+
+% A stuck reader stays stuck: no cell s, so the case process survives
+% and the hole is never written.
+#expect_not_sax_stuck
+  hole d * proc d (pcase s win2 win1)
+  =>
+  !cell d vin2 .

@@ -1,0 +1,109 @@
+% =============================================================================
+% sax — Semi-Axiomatic Intuitionistic Linear Logic (TODO_0309)
+% =============================================================================
+%
+% The propositional linear fragment of the semi-axiomatic sequent
+% calculus (DeYoung–Pfenning–Pruiksma, FSCD 2020) over the SAX family's
+% single-zone judgment Δ ⊢ C (@extends sax → family/sax/sax.family).
+%
+% The connective TABLE is ILL's propositional core (same tags, same
+% surface syntax — programs port between the calculi); what differs is
+% the RULE REGIME in sax.rules: every non-invertible rule is a
+% zero-premise AXIOM, cut is explicit (the computation rule), and proof
+% search snips through the subformula closure.
+%
+% Polarities are all EXPLICIT here: SAX's axiom rules carry contextFlow
+% 'axiom', which the polarity inference deliberately ignores (recorded
+% gap, TODO_0309 P0 — the inference reads premise-bearing right rules
+% only). The annotation is the declarative fix; the assignments are the
+% standard ones and agree with ILL's.
+
+@extends sax.
+
+% =============================================================================
+% Base Type
+% =============================================================================
+
+formula: type.
+
+% =============================================================================
+% Multiplicatives
+% =============================================================================
+
+% Tensor: A ⊗ B — right rule is the SAX axiom  A, B ⊢ A ⊗ B
+tensor: formula -> formula -> formula
+  @ascii "_ * _"
+  @latex "#1 \\otimes #2"
+  @prec 60 left
+  @category multiplicative
+  @polarity positive.
+
+% Linear implication: A ⊸ B — left rule is the SAX axiom  A, A ⊸ B ⊢ B
+loli: formula -> formula -> formula
+  @ascii "_ -o _"
+  @latex "#1 \\multimap #2"
+  @prec 50 right
+  @category multiplicative
+  @polarity negative.
+
+% Multiplicative unit: 1 — right rule is the SAX axiom  · ⊢ 1
+one: formula
+  @ascii "I"
+  @latex "\\mathbf{1}"
+  @category multiplicative
+  @polarity positive.
+
+% =============================================================================
+% Additives
+% =============================================================================
+
+% With: A & B — left rules are the SAX axioms  A & B ⊢ A  and  A & B ⊢ B
+with: formula -> formula -> formula
+  @ascii "_ & _"
+  @latex "#1 \\& #2"
+  @prec 70 left
+  @category additive
+  @polarity negative.
+
+% Oplus: A ⊕ B — right rules are the SAX axioms  A ⊢ A ⊕ B  and  B ⊢ A ⊕ B
+oplus: formula -> formula -> formula
+  @ascii "_ + _"
+  @latex "#1 \\oplus #2"
+  @prec 65 left
+  @category additive
+  @polarity positive.
+
+% =============================================================================
+% Exponential + Monad (forward-program surface only)
+% =============================================================================
+%
+% The backward SAX fragment (sax.rules) has NO bang and NO monad rules —
+% these two connectives exist for the FORWARD engine's program surface:
+% `!fact` marks persistent facts (write-once cells) and `A -o { B }` is
+% the forward-rule form. Same shapes as ILL's (grade slot with trivial
+% grade) so shared program syntax parses identically.
+
+grade : type.
+
+bang: grade -> formula -> formula
+  @ascii "! #2"
+  @latex "!#2"
+  @prec 80
+  @category exponential
+  @polarity positive.
+
+monad: grade -> formula -> formula
+  @ascii "{ #2 }"
+  @latex "\\{#2\\}"
+  @prec 90
+  @category monad
+  @polarity negative.
+
+% =============================================================================
+% Atoms
+% =============================================================================
+
+atom: string -> formula
+  @ascii "_"
+  @latex "#1"
+  @prec 100.

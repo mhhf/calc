@@ -61,6 +61,9 @@ family/lnl/          # LNL structural family (shared by calculi, imports lib/ on
 ├── family-config.js # Executable: cc.family engine hooks
 └── lib/             # persistent.js, loli.js, loli-drain.js, existential.js
 
+family/sax/          # SAX structural family — semi-axiomatic sequent calculus
+                     # (single-zone Δ ⊢ C, no cartesian zone, null engine hooks)
+
 calculus/ill/        # ILL calculus definition
 ├── ill.calc         # Connective definitions (tensor, loli, with, oplus, bang, monad, ...)
 ├── ill.rules        # Inference rules (sequent notation)
@@ -68,6 +71,8 @@ calculus/ill/        # ILL calculus definition
 └── programs/        # EVM model, binary arithmetic, multisig contracts
 
 calculus/till/       # till — timed ILL (delay-graded lax monad, refinement sorts)
+calculus/sax/        # sax — semi-axiomatic ILL: non-invertible rules as axioms,
+                     # explicit cut/snip search, write-once-cell machine (SNAX addressing)
 
 src/ui/              # SolidJS web frontend
 doc/                 # Documentation (theory/, documentation/, def/)
