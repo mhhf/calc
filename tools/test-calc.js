@@ -19,7 +19,7 @@ import path from 'path';
 import { defineSpecSuite } from './spec-runner.js';
 
 const NAME = process.env.CALC_SPEC;
-const KNOWN = ['till', 'gill', 'will', 'sill'];
+const KNOWN = ['till', 'gill', 'will', 'sill', 'sax'];
 if (!KNOWN.includes(NAME)) {
   throw new Error(`test-calc: set CALC_SPEC to one of ${KNOWN.join('|')} (got '${NAME}')`);
 }

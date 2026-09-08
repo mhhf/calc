@@ -50,6 +50,43 @@ function dispatchSettle(calc, entry, modality, settings) {
   }
 }
 
+/**
+ * Untimed `=>` dispatch (TODO_0309): calculi without a grade algebra
+ * have no calc.settle — run committed-choice exec to quiescence and
+ * check the pattern against the final state. Subset by default; (exact:
+ * true) demands the linear zone be covered exactly (persistent facts
+ * accumulate monotonically and stay a subset check in both modes).
+ */
+function dispatchExec(calc, entry, modality, settings) {
+  const initial = convert.decomposeQuery(entry.lhsHash);
+  const pattern = convert.decomposeQuery(entry.rhsHash);
+  const opts = { maxSteps: MAX_STEPS };
+  if (settings.maxSteps) opts.maxSteps = parseInt(settings.maxSteps, 10);
+  if (settings.useFFI !== undefined) opts.useFFI = settings.useFFI === 'true';
+  if (NOFFI) opts.useFFI = false;
+  const res = calc.exec(initial, opts);
+  const final = res.state;
+  let matches = true;
+  for (const [h, c] of Object.entries(pattern.linear || {})) {
+    if ((final.linear[h] || 0) < c) { matches = false; break; }
+  }
+  if (matches) {
+    for (const h of Object.keys(pattern.persistent || {})) {
+      if (!final.persistent[h]) { matches = false; break; }
+    }
+  }
+  if (matches && settings.exact === 'true') {
+    for (const [h, c] of Object.entries(final.linear)) {
+      if ((pattern.linear?.[h] || 0) !== c) { matches = false; break; }
+    }
+  }
+  if (modality === 'not') {
+    assert.ok(!matches, `Pattern should NOT be reachable.\n${formatTimedState(final)}`);
+  } else {
+    assert.ok(matches, `Pattern not ${settings.exact === 'true' ? 'an exact cover of' : 'found in'} final state.\n${formatTimedState(final)}`);
+  }
+}
+
 function dispatchBackward(calc, entry, modality, settings) {
   assert.equal(entry.lhsHash, null, 'empty LHS only for |-');
   const goals = extractGoals(entry.rhsHash);
@@ -86,9 +123,14 @@ function defineSpecSuite({ config, testDir }) {
         it(kind, () => {
           if (entry.separator === '|-') dispatchBackward(calc, entry, modality, settings);
           else if (entry.separator === '=>') {
-            assert.ok(settings.settle != null,   // null = unparseable value, e.g. (settle: -1)
-              `#${kind}: timed => directives need a (settle: T) setting`);
-            dispatchSettle(calc, entry, modality, settings);
+            if (calc.settle) {
+              assert.ok(settings.settle != null,   // null = unparseable value, e.g. (settle: -1)
+                `#${kind}: timed => directives need a (settle: T) setting`);
+              dispatchSettle(calc, entry, modality, settings);
+            } else {
+              // Untimed calculus (no grade algebra): exec to quiescence
+              dispatchExec(calc, entry, modality, settings);
+            }
           } else assert.fail(`Unknown separator: ${entry.separator}`);
         });
       }

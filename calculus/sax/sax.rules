@@ -1,0 +1,87 @@
+@formulas A, B, C
+
+% =============================================================================
+% sax.rules — the semi-axiomatic rule regime (TODO_0309, FSCD 2020 Fig. 1)
+% =============================================================================
+%
+% Single-zone notation (Δ ⊢ C — no `G ;` prefix; the sax family has no
+% cartesian zone). The SAX move: every NON-INVERTIBLE rule of G3-ILL
+% becomes a zero-premise AXIOM (the X-rules); invertible rules are
+% unchanged; cut is EXPLICIT — proof search snips through the subformula
+% closure (focused.js cut choices), so cut-free-with-snips completeness
+% (FSCD Thm. 5-7) is the search discipline, not an afterthought.
+%
+% Axioms with companion formulas (`A, B |- A * B`) compile to template
+% descriptors with `companions` — the prover consumes the companions
+% from the linear pool at apply time (rule data, not JS).
+
+% ── Identity ─────────────────────────────────────────────────────────
+
+id: A |- A
+  @pretty "Id"
+  @invertible true.
+
+% ── Multiplicatives ──────────────────────────────────────────────────
+
+% ⊗X: the tensor-right AXIOM — consumes exactly A and B
+tensor_r: A, B |- A * B
+  @pretty "⊗X".
+
+tensor_l: D, A * B |- C
+  <- D, A, B |- C
+  @pretty "⊗L".
+
+% 1X: the unit AXIOM — empty context
+one_r: |- I
+  @pretty "1X".
+
+one_l: D, I |- C
+  <- D |- C
+  @pretty "1L".
+
+% ⊸X: the loli-left AXIOM — consumes the argument and the implication
+loli_l: A, A -o B |- B
+  @pretty "⊸X".
+
+loli_r: D |- A -o B
+  <- D, A |- B
+  @pretty "⊸R".
+
+% ── Additives ────────────────────────────────────────────────────────
+
+% &X: the with-left AXIOMS — project a component
+with_l1: A & B |- A
+  @pretty "&X₁".
+
+with_l2: A & B |- B
+  @pretty "&X₂".
+
+with_r: D |- A & B
+  <- D |- A
+  <- D |- B
+  @pretty "&R".
+
+% ⊕X: the oplus-right AXIOMS — inject a component
+oplus_r1: A |- A + B
+  @pretty "⊕X₁".
+
+oplus_r2: B |- A + B
+  @pretty "⊕X₂".
+
+oplus_l: D, A + B |- C
+  <- D, A |- C
+  <- D, B |- C
+  @pretty "⊕L".
+
+% ── Cut ──────────────────────────────────────────────────────────────
+%
+% Explicit and NOT admissible-in-search: SAX needs snips for
+% completeness (A ⊗ (B ⊗ C) ⊢ (A ⊗ B) ⊗ C has no snip-free proof).
+% Search instantiates the cut formula from the sequent's proper
+% subformula closure — the subformula property (FSCD Thm. 7) is what
+% keeps this finite.
+
+cut: D, D' |- C
+  <- D |- A
+  <- D', A |- C
+  @pretty "Cut".

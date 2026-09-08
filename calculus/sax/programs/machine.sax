@@ -1,0 +1,55 @@
+% =============================================================================
+% machine.sax — the SAX operational semantics, sax-native (TODO_0309 P1)
+% =============================================================================
+%
+% The multiset-rewriting machine of the semi-axiomatic sequent calculus
+% (DeYoung–Pfenning–Pruiksma FSCD 2020, Fig. 6), with SNAX (MFPS 2022
+% §3.2) addressing: a pair's components live at the locally calculable
+% projections `p1 D` / `p2 D`, so continuations never bind — every
+% machine step is first-order.
+%
+%   proc D P     ephemeral process writing to destination D   (linear)
+%   hole D       allocated, unwritten cell                    (linear)
+%   !cell D V    filled cell — write-once, read-many          (persistent)
+%
+% Confluence (FSCD Thm. 10) is a consequence of the write-once
+% discipline: writes race on the hole, reads never conflict. The
+% executable specs check it empirically via explore.
+
+% ── Types ────────────────────────────────────────────────────────────
+
+dest: type.
+pterm: type.
+
+p1: dest -> dest.
+p2: dest -> dest.
+
+% values (markers; pair components live at the projections)
+vpair: pterm.
+vunit: pterm.
+vin1: pterm.
+vin2: pterm.
+
+% process terms
+wpr: pterm.                              % write a pair marker
+wun: pterm.                              % write the unit marker
+win1: pterm.                             % write left injection
+win2: pterm.                             % write right injection
+fwd: dest -> pterm.                      % identity: copy value from source
+pcase: dest -> pterm -> pterm -> pterm.  % case on a sum cell
+
+% configuration facts
+proc: dest -> pterm -> type.
+hole: dest -> type.
+cell: dest -> pterm -> type.
+
+% ── Machine steps (FSCD Fig. 6 shape) ────────────────────────────────
+% writes consume the hole (write-once); reads are persistent lookups
+
+sax/write_pair: proc D wpr * hole D -o { !cell D vpair }.
+sax/write_unit: proc D wun * hole D -o { !cell D vunit }.
+sax/write_in1:  proc D win1 * hole D -o { !cell D vin1 }.
+sax/write_in2:  proc D win2 * hole D -o { !cell D vin2 }.
+sax/forward:    proc D (fwd S) * !cell S W * hole D -o { !cell D W }.
+sax/case_in1:   proc D (pcase S P1 P2) * !cell S vin1 -o { proc D P1 }.
+sax/case_in2:   proc D (pcase S P1 P2) * !cell S vin2 -o { proc D P2 }.

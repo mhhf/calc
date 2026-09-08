@@ -53,6 +53,10 @@ Consolidated 2026-09-08 into TODO_0309: sax.family as the second structural fami
 (first milestone), certifyConfluence for the destination-passing fragment, the ⊢_fwd
 judgment restated PARAMETRICALLY over family axioms (discharged for lnl AND sax —
 the LNL-shaped statement below is superseded), and the store-as-SNAX theorem.
+P0+P1 LANDED (2026-09-08): family/sax + calculus/sax ship with the snip-searching
+prover and the sax-native machine; five generic engine/loader completeness findings
+fixed; the interface-extension list (P3's raw material) is recorded in the todo and
+doc/documentation/sax-family.md.
 
 The backward prover is kernel-checked; the forward engine's search semantics is still
 folklore. Queued theorems:

@@ -38,6 +38,7 @@ npm run test:till     # till executable specs (forward/debug directives)
 npm run test:gill     # gill executable specs (incl. depot shortest-path)
 npm run test:will     # will executable specs (scaffold smoke; noFFI arm: test:noffi:will)
 npm run test:sill     # sill executable specs (grid + transport; noFFI arm: test:noffi:sill)
+npm run test:sax      # sax executable specs (SAX machine configs; untimed => dispatch — no FFI, no noFFI arm)
 npm run test:noffi    # noFFI adversarial soundness (13 tests, ~1s) — only after engine/FFI changes
 npm run test:noffi:till  # till noFFI arm (also test:noffi:gill) — after engine/FFI changes
 npm run test:zk       # ZK witness tests (94 tests) — only after ZK changes
@@ -140,6 +141,10 @@ family/lnl/              # LNL structural family (TODO_0086) — shared BY calcu
 ├── family-config.js     # Executable bindings: cc.family = { name, engine: { proveNaive, matchDynamicRule, drainDynamicRules, resolveEx } } — composed by reference into every calculus config
 └── lib/                 # Engine machinery (persistent.js, loli.js, loli-drain.js, existential.js)
 
+family/sax/              # SAX structural family (TODO_0309) — the SECOND family: semi-axiomatic sequent calculus (DeYoung–Pfenning–Pruiksma FSCD 2020)
+├── sax.family           # Single-zone linear judgment Δ ⊢ C as data (@position_modes "linear linear", exchange only) — first derived contextStructure with copySource: null
+└── family-config.js     # cc.family with ALL FOUR engine hooks null (a finding: SAX's forward regime needs only the generic baseline — the four slots are the LNL-shaped part of the protocol). See doc/documentation/sax-family.md
+
 calculus/ill/            # ILL calculus definition + ILL-bound machinery
 ├── ill.calc             # Connective definitions (@extends lnl → family/lnl/lnl.family)
 ├── ill.rules            # Inference rules (sequent notation)
@@ -192,6 +197,13 @@ calculus/sill/           # sill — spatial ILL (TODO_0285): located modality `A
 ├── calculus-config.js   # Composes gill's exported layer pieces (the will pattern); place value fence (bare atoms only); backward fragment = gill.rules by reference (loc has no sequent rules)
 ├── prelude/spatial.sill # Imports gill's num.gill (tower verbatim); adj/terrain/dist are PROGRAM-declared persistent facts, never FFI
 └── tests/               # sill executable specs incl. the 2x2 grid (npm run test:sill / test:noffi:sill); fast-suite guards: tests/sill-prover.test.js + tests/engine/sill-{product,fuzz}.test.js
+
+calculus/sax/            # sax — semi-axiomatic ILL (TODO_0309): the SECOND-family instance over family/sax (single-zone Δ⊢C, copySource null)
+├── sax.calc             # @extends sax; ILL's propositional connective table with EXPLICIT @polarity everywhere (axiom-flow rules yield no polarity inference — recorded gap)
+├── sax.rules            # The semi-axiomatic regime: non-invertible rules as zero-premise AXIOMS with companion formulas (`A, B |- A * B` compiles to a template + companions, consumed at apply), invertible rules unchanged, cut EXPLICIT (canonical no-principal shape → descriptor.cut; search snips through the proper subformula closure as the LAST focus alternative; kernel re-derives the split — see doc/documentation/sax-family.md)
+├── calculus-config.js   # Minimal assembly: family + connectives + loader; NO grades/theories/FFI/sorts (absent keys exercise the documented fallbacks)
+├── programs/machine.sax # The FSCD Fig. 6 machine sax-native: proc/hole/!cell over SNAX projections (p1/p2 — binder-free)
+└── tests/               # sax executable specs (npm run test:sax — untimed => dispatch); fast-suite guards: tests/sax-prover.test.js (snips + adversarial kernel rejections) + tests/engine/sax-{encoding,forward}.test.js (empirical confluence, ILL-encoded AND sax-native)
 
 tests/                   # Test suite (core: *.test.js, engine: engine/)
 benchmarks/              # Performance benchmarks (engine/, proof/, micro/)
