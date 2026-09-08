@@ -6,7 +6,7 @@
  *   lib/kernel/store.js                     ratlit leaf + till tag commit
  *   calculus/till/lib/ratlit-theory.js      eq-theory + classifier (codec: lib/kernel/rat-term.js)
  *   calculus/ill/lib/ffi/rat-ffi.js         FFI overloads (via arithmetic.js)
- *   lib/engine/store-binary.js              serialize/compact with 2-bigint leaf
+ *   lib/engine/cache/store-binary.js              serialize/compact with 2-bigint leaf
  */
 
 import { describe, it } from 'node:test';
@@ -18,7 +18,7 @@ import { ratlitTheory, putRat, ratParts, isRatTerm, installRatlitTheory }
 import { classifyFirstArg } from '../../lib/kernel/eq-theory.js';
 import arithmetic from '../../calculus/ill/lib/ffi/arithmetic.js';
 import ratFFI from '../../calculus/ill/lib/ffi/rat-ffi.js';
-import { serialize, deserialize, compact } from '../../lib/engine/store-binary.js';
+import { serialize, deserialize, compact } from '../../lib/engine/cache/store-binary.js';
 
 const bin = (n) => Store.put1('binlit', n);
 const mv = (name) => Store.put('metavar', [name]);
