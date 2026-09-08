@@ -1,7 +1,7 @@
 /**
  * Direct tests for optimizer.js
  *
- * Covers: profile (bare/fast/evm), env var override, custom profiles.
+ * Covers: profile (bare/fast/full), env var override, custom profiles.
  */
 import { describe, it, beforeEach, afterEach } from 'node:test';
 import assert from 'node:assert/strict';
@@ -19,9 +19,9 @@ describe('profile', () => {
     else delete process.env.CALC_PROFILE;
   });
 
-  it('defaults to evm profile', () => {
+  it('defaults to the all-on full profile', () => {
     const p = profile();
-    assert.equal(p.name, 'evm');
+    assert.equal(p.name, 'full');
     assert.equal(p.ffi, true);
     assert.equal(p.discTree, true);
     assert.equal(p.fingerprint, true);
@@ -62,7 +62,7 @@ describe('profile', () => {
 
   it('CALC_PROFILE env var overrides argument', () => {
     process.env.CALC_PROFILE = 'bare';
-    const p = profile('evm');
+    const p = profile('full');
     assert.equal(p.name, 'bare');
     assert.equal(p.ffi, false);
   });

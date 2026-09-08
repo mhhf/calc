@@ -20,10 +20,14 @@ describe('structural-memo', () => {
     mde.load(path.join(import.meta.dirname, '../../calculus/ill/programs/evm.ill'), { cache: true });
   });
 
-  describe('controlHash', () => {
+  // Control predicates are calculus data (RES_0143 L5) — tests pass the
+// EVM instance explicitly; the engine holds no default names.
+const EVM_CTL = { pcPred: 'pc', stackPred: 'stack' };
+
+describe('controlHash', () => {
     it('returns a 32-bit unsigned number', () => {
       const state = { linear: new FactSet(Store.TAG_NAMES.length), persistent: new FactSet(Store.TAG_NAMES.length) };
-      const hash = controlHash(state, {});
+      const hash = controlHash(state, { pcPred: 'pc', stackPred: 'stack' });
       assert.equal(typeof hash, 'number');
       assert.ok(hash >= 0);
       assert.ok(hash <= 0xFFFFFFFF);
@@ -43,7 +47,7 @@ describe('structural-memo', () => {
       fs2.insert(tagId, pc2, null);
       const state2 = { linear: fs2, persistent: new FactSet(Store.TAG_NAMES.length) };
 
-      assert.equal(controlHash(state1, {}), controlHash(state2, {}));
+      assert.equal(controlHash(state1, EVM_CTL), controlHash(state2, EVM_CTL));
     });
 
     it('different PC values → different hash', () => {
@@ -60,13 +64,21 @@ describe('structural-memo', () => {
       fs2.insert(Store.tagId(pc2), pc2, null);
       const state2 = { linear: fs2, persistent: new FactSet(Store.TAG_NAMES.length) };
 
-      const h1 = controlHash(state1, {});
-      const h2 = controlHash(state2, {});
+      const h1 = controlHash(state1, EVM_CTL);
+      const h2 = controlHash(state2, EVM_CTL);
       assert.notEqual(h1, h2);
     });
   });
 
-  describe('createMemoCtx', () => {
+  describe('controlHash without control tags (RES_0143 L5)', () => {
+  it('returns null — memo disabled, not a constant hash', () => {
+    const state = { linear: { group: () => new Int32Array(0) } };
+    assert.equal(controlHash(state, null), null);
+    assert.equal(controlHash(state, {}), null);
+  });
+});
+
+describe('createMemoCtx', () => {
     it('creates fresh context with empty map and zero boundCount', () => {
       const ctx = createMemoCtx();
       assert.equal(ctx.globalControl.size, 0);

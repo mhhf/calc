@@ -10,7 +10,7 @@ import assert from 'node:assert';
 import path from 'path';
 import mde from '../../calculus/ill/index.js';
 import { countNodes, getAllLeaves } from '../../lib/engine/tree-utils.js';
-import { classifyLeaf } from '../../lib/engine/show.js';
+import { classifyLeaf } from '../../calculus/ill/index.js';
 import { detectStrategy } from '../../lib/engine/strategy.js';
 import { discIndex, fpDetect } from '../../lib/engine/match.js';
 import Store from '../../lib/kernel/store.js';

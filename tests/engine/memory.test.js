@@ -15,7 +15,7 @@ import { apply as subApply } from '../../lib/kernel/substitute.js';
 import { intToBin, binToInt } from '../../calculus/ill/lib/ffi/convert.js';
 import memory from '../../calculus/ill/lib/ffi/memory.js';
 // Hoisted by tools/esm-hoist.js:
-import { classifyLeaf } from '../../lib/engine/show.js';
+import { classifyLeaf } from '../../calculus/ill/index.js';
 
 // ============================================================================
 // FFI Unit Tests
