@@ -36,12 +36,17 @@ describe('cc port contract (RES_0143 F1)', () => {
       /buildParser must be a function/);
   });
   it('family.engine hook slots are checked by exact name (nested typo defense)', () => {
-    // a typo'd hook key silently lost the family's machinery pre-check
+    // a typo'd hook key silently lost the family's machinery pre-check.
+    // Hook records assembled non-literally: the slots share names with
+    // matchOpts fields and would trip the ad-hoc-matchOpts lint.
+    const hooks = (omit) => Object.fromEntries(
+      ['proveNaive', 'matchDynamicRule', 'drainDynamicRules', 'resolveEx']
+        .filter(h => h !== omit).map(h => [h, null]));
     assert.throws(() => validateCalculusConfig({ ...saxcc,
-      family: { name: 't', engine: { provNaive: null, matchDynamicRule: null, drainDynamicRules: null, resolveEx: null } } }, 't'),
+      family: { name: 't', engine: { ...hooks('proveNaive'), provNaive: null } } }, 't'),
       /provNaive is not a hook slot/);
     assert.throws(() => validateCalculusConfig({ ...saxcc,
-      family: { name: 't', engine: { matchDynamicRule: null, drainDynamicRules: null, resolveEx: null } } }, 't'),
+      family: { name: 't', engine: hooks('proveNaive') } }, 't'),
       /family\.engine\.proveNaive is missing/);
     assert.throws(() => validateCalculusConfig({ ...saxcc,
       family: { name: 't' } }, 't'),
