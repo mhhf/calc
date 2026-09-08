@@ -157,6 +157,16 @@ witness (tests/engine/certify-confluence.test.js):
   destination refuse), at the Store level, since program text
   canonicalizes before the certifier ever sees it.
 
+Beyond the per-reason pins, tools/fuzz-confluence.js fuzzes the
+certificate itself (seeded random keyed programs, terminating by a
+marker-measure): certified ⇒ exhaustive explore converges AND
+committed exec is invariant under rule-order permutation AND the
+certificate-pruned explore reaches the common state; every refusal
+reason must come from this taxonomy; injected duplicate destinations
+must flip certified trials to refusal. A 25-trial slice runs in the
+fast suite, 200 trials in test:heavy; the harness is
+mutation-verified (a neutered D6 fails 34/60 trials).
+
 ## 7. Honest limits (the completeness frontier)
 
 The discipline is sufficient, far from necessary: multi-destination

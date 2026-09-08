@@ -324,6 +324,7 @@ FFI is optimization, theory is semantics. Every FFI predicate MUST have backward
 - `tools/bytecode-to-ill.js` — EVM hex bytecode → CALC facts converter
 - `tools/collect-tags.js` — regenerate `doc/tags.yaml` tag index (`npm run tags`)
 - `tools/explore-inspect.js` — `node tools/explore-inspect.js [--leaf N] [--all] <files...>`
+- `tools/fuzz-confluence.js` — certifyConfluence fuzzer: certified ⇒ interleaving-invariance (explore + rule-order-permuted exec), taxonomy totality, D6 perturbation (`node tools/fuzz-confluence.js [--count N] [--seed N]`; 25-trial smoke in fast suite, 200 in test:heavy)
 - `tools/fuzz-ffi.js` — FFI correctness fuzzer (FFI vs clause comparison)
 - `tools/fuzz-till.js` — till fuzzer: q-ops FFI∥clause∥BigInt reference + activation spec (`node tools/fuzz-till.js [--count N] [--seed N]`)
 - `tools/till-shell.js` — live TTY for till programs (`npm run shell:till -- <file> [--init <directive>] [--speed x] [--demo "t:i,..."]`): wall-clock settle loop, menus from the state, digits = with-projection clicks, menuStatus greying. COLLAPSE MODE (auto on suspended ∃_ρ facts, or `--collapse`): stepwise decimation via `calc.collapseView`/`collapseDraw` — entropy-sorted wave menu (facts with the evar as `?`), digits draw, `a` auto, `R` restart (M9 attempt counter); demo grammar `--demo "a,a,1,a" --seed N`
