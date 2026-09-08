@@ -41,3 +41,29 @@ describe('cc port contract (RES_0143 F1)', () => {
     }
   });
 });
+
+describe('cc.apiExtensions (RES_0143 F6)', () => {
+  it('a calculus-supplied attacher extends the calc api', async () => {
+    const fs = await import('fs');
+    const os = await import('os');
+    const path = await import('path');
+    const mde = (await import('../../lib/engine/index.js')).default;
+    const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'apiext-'));
+    const file = path.join(tmpDir, 'p.ill');
+    fs.writeFileSync(file, 'ax_tok : type.\nr1: ax_tok -o { ax_tok }.\n');
+    try {
+      const cc = {
+        ...illcc,
+        apiExtensions: [({ api, cc }) => ({
+          myExtension: () => ({ ok: true, epoch: cc.compile.cacheEpoch, hasExec: typeof api.exec === 'function' }),
+        })],
+      };
+      const calc = mde.load(file, { calculusConfig: cc, cache: false });
+      const out = calc.myExtension();
+      assert.deepEqual(out, { ok: true, epoch: 'ill', hasExec: true });
+    } finally {
+      for (const f of fs.readdirSync(tmpDir)) fs.unlinkSync(path.join(tmpDir, f));
+      fs.rmdirSync(tmpDir);
+    }
+  });
+});
