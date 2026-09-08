@@ -31,14 +31,14 @@ CALC is a proof calculus system for experimenting with sequent-calculi with an i
 npm run dev           # Development server (http://localhost:3000)
 npm run build:ui      # Production build to out/ui/
 npm run build:bundle  # Regenerate out/ill.json from calculus specs
-npm test              # All fast tests (3584 tests, ~40s) — RUN THIS DURING DEVELOPMENT
+npm test              # All fast tests (~3770 tests, ~40s) — RUN THIS DURING DEVELOPMENT
 npm run test:bun      # Same suite under bun (per-file isolation via tools/test-bun.sh)
 npm run test:ill      # ILL-native tests (98 tests, ~0.2s) — .ill files as provability judgments
 npm run test:till     # till executable specs (forward/debug directives)
 npm run test:gill     # gill executable specs (incl. depot shortest-path)
 npm run test:will     # will executable specs (scaffold smoke; noFFI arm: test:noffi:will)
 npm run test:sill     # sill executable specs (grid + transport; noFFI arm: test:noffi:sill)
-npm run test:sax      # sax executable specs (SAX machine configs; untimed => dispatch — no FFI, no noFFI arm)
+npm run test:sax      # sax executable specs (SAX machine configs incl. unit-wait; untimed => dispatch — no FFI, no noFFI arm)
 npm run test:noffi    # noFFI adversarial soundness (13 tests, ~1s) — only after engine/FFI changes
 npm run test:noffi:till  # till noFFI arm (also test:noffi:gill) — after engine/FFI changes
 npm run test:zk       # ZK witness tests (94 tests) — only after ZK changes
