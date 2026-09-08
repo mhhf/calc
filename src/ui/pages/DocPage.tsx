@@ -55,26 +55,10 @@ export default function DocPage() {
   });
 
   function hydrateBlocks(el: HTMLElement) {
-    const mermaidBlocks = el.querySelectorAll('.client-render[data-processor="mermaid"]');
-    if (mermaidBlocks.length > 0) {
-      import('https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs' as any).then(({ default: mermaid }: any) => {
-        mermaid.initialize({ startOnLoad: false, theme: 'neutral' });
-        mermaidBlocks.forEach(async (block: Element, i: number) => {
-          const source = block.querySelector('.client-source')?.textContent || '';
-          try {
-            const { svg } = await mermaid.render(`mermaid-${i}`, source);
-            block.innerHTML = svg;
-          } catch {}
-        });
-      }).catch(() => {});
-    }
-
-    const proofBlocks = el.querySelectorAll('.client-render[data-processor="proof-tree"]');
-    if (proofBlocks.length > 0) {
-      import('../components/proof-block/ProofBlock')
-        .then(({ hydrateProofBlocks }) => hydrateProofBlocks(el))
-        .catch((e) => console.error('proof-block hydration failed', e));
-    }
+    // One shared hydrator: mermaid, proof trees, and course widgets.
+    import('../lib/hydrateWidgets')
+      .then(({ hydrateWidgets }) => hydrateWidgets(el, { slug: `${folder()}/${params.slug}` }))
+      .catch((e) => console.error('widget hydration failed', e));
   }
 
   return (

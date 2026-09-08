@@ -24,8 +24,8 @@
 import fs from 'fs';
 import path from 'path';
 
-const ROUTE_TO_DISK = { theory: 'theory', def: 'def', docs: 'documentation' };
-const RESOLVE_ROUTE = { theory: 'theory', def: 'def', docs: 'docs', documentation: 'docs' };
+const ROUTE_TO_DISK = { theory: 'theory', def: 'def', docs: 'documentation', book: 'book' };
+const RESOLVE_ROUTE = { theory: 'theory', def: 'def', docs: 'docs', documentation: 'docs', book: 'book' };
 
 function extractFrontmatter(content) {
   const m = content.match(/^---\n([\s\S]*?)\n---\n/);

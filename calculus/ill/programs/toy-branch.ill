@@ -1,0 +1,20 @@
+% toy-branch.ill — tiny branching machine for the CALC book chapter 10.
+%
+% A coin-flip machine: toss a flip token and handle both outcomes.
+% The toss rule produces (heads + tails) — oplus: the system commits to
+% one branch. explore (symex) follows BOTH; exec follows ONE (committed choice).
+
+flip: type.
+heads: type.
+tails: type.
+prize: type.
+bust: type.
+
+% toss: consume flip, produce EITHER heads OR tails (system decides).
+toss: flip -o { heads + tails }.
+
+% Two continuations, one per branch.
+win:  heads -o { prize }.
+lose: tails -o { bust }.
+
+#symex flip .

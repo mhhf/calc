@@ -1,0 +1,22 @@
+% flip.till — weighted coin flip (chapter 15 teaching example).
+%
+% `flip` consumes a `coin` token and produces `heads` OR `tails`.
+% The weight 1/2 means both outcomes have equal probability.
+% settle samples ONE outcome (per seed, reproducibly).
+% settleExplore expands BOTH branches with exact rational weights.
+
+% ---- atom declarations (sort-checked at load) ----------------------------
+heads: type.
+tails: type.
+coin:  type.
+
+% ---- the rule: spend a coin, get a weighted outcome ----------------------
+% woplus W A B   — produce A with weight W, B with weight (1 - W)
+% The delay @1 means the outcome arrives 1 time unit after the coin is spent.
+% At horizon 0 you still hold the coin; at horizon 1 you see the result.
+flip: coin -o { woplus 1/2 heads tails }@1.
+
+% ---- initial state for the game widget -----------------------------------
+% One coin in the pocket.
+#flip_start (settle: 0)
+  coin => heads.

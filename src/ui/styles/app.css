@@ -614,3 +614,91 @@
 .hljs-meta { color: #75715e; }
 .hljs-strong { font-weight: bold; }
 .hljs-emphasis { font-style: italic; }
+
+/* ===== Book / course widgets (TODO_0308) ===== */
+
+.book-exercise {
+  margin: 1.5rem 0;
+  border: 1px solid var(--color-blue-200, #bfdbfe);
+  border-left-width: 4px;
+  border-radius: 0.5rem;
+  background: color-mix(in srgb, #3b82f6 4%, transparent);
+  overflow: hidden;
+}
+.dark .book-exercise { border-color: #1e3a5f; }
+.book-exercise-title {
+  padding: 0.4rem 1rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #2563eb;
+  background: color-mix(in srgb, #3b82f6 8%, transparent);
+}
+.dark .book-exercise-title { color: #60a5fa; }
+.book-exercise-body { padding: 0.75rem 1rem; }
+.book-exercise-body > *:first-child { margin-top: 0; }
+.book-exercise-body > *:last-child { margin-bottom: 0; }
+
+.book-solution {
+  margin: 1rem 0 1.5rem;
+  border: 1px solid #e5e7eb;
+  border-radius: 0.5rem;
+  overflow: hidden;
+}
+.dark .book-solution { border-color: #374151; }
+.book-solution > summary {
+  padding: 0.5rem 1rem;
+  font-size: 0.85rem;
+  font-weight: 500;
+  cursor: pointer;
+  color: #6b7280;
+  background: color-mix(in srgb, #6b7280 6%, transparent);
+  user-select: none;
+}
+.book-solution > summary:hover { color: #374151; }
+.dark .book-solution > summary:hover { color: #d1d5db; }
+.book-solution-body { padding: 0.75rem 1rem; }
+.book-solution-body > *:first-child { margin-top: 0; }
+.book-solution-body > *:last-child { margin-bottom: 0; }
+
+.rule-block-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  justify-content: center;
+  margin: 1.5rem 0;
+}
+.rule-block {
+  padding: 0.75rem 1.25rem;
+  border: 1px solid #e5e7eb;
+  border-radius: 0.5rem;
+  background: #fff;
+  text-align: center;
+  min-width: 10rem;
+}
+.dark .rule-block { border-color: #374151; background: #1f2937; }
+.rule-block-name {
+  font-family: var(--font-mono, monospace);
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #2563eb;
+  margin-bottom: 0.25rem;
+}
+.dark .rule-block-name { color: #60a5fa; }
+.rule-block .katex-display { margin: 0.25rem 0; }
+
+.widget-block { margin: 1.5rem 0; }
+.widget-loading {
+  padding: 1rem;
+  font-size: 0.85rem;
+  color: #9ca3af;
+  border: 1px dashed #e5e7eb;
+  border-radius: 0.5rem;
+  text-align: center;
+}
+.dark .widget-loading { border-color: #374151; }
+
+/* Book content: keep embedded widget text from inheriting prose styles */
+.book-content .not-prose,
+.book-content .not-prose * { line-height: 1.4; }

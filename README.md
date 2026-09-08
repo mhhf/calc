@@ -6,6 +6,8 @@ The driving insight: double-entry bookkeeping is applied linear logic. Resources
 
 Inspired by the [calculus toolbox](https://goodlyrottenapple.github.io/calculus-toolbox/doc/introduction.html).
 
+**New here? Take the course.** The web UI ships an interactive book (`/book` after `npm run dev`) — 21 chapters from "what is a sequent" to the research frontier, with clickable proof exercises, live forward-execution steppers, a playable timed game, and a wave-function-collapse demo. Content lives in `doc/book/` (authoring guide: `doc/book/AUTHORING.md`).
+
 ## Quick Start
 
 ```bash
