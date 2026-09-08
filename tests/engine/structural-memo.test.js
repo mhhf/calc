@@ -21,10 +21,10 @@ describe('structural-memo', () => {
   });
 
   // Control predicates are calculus data (RES_0143 L5) — tests pass the
-// EVM instance explicitly; the engine holds no default names.
-const EVM_CTL = { pcPred: 'pc', stackPred: 'stack' };
+  // EVM instance explicitly; the engine holds no default names.
+  const EVM_CTL = { pcPred: 'pc', stackPred: 'stack' };
 
-describe('controlHash', () => {
+  describe('controlHash', () => {
     it('returns a 32-bit unsigned number', () => {
       const state = { linear: new FactSet(Store.TAG_NAMES.length), persistent: new FactSet(Store.TAG_NAMES.length) };
       const hash = controlHash(state, { pcPred: 'pc', stackPred: 'stack' });
@@ -71,14 +71,14 @@ describe('controlHash', () => {
   });
 
   describe('controlHash without control tags (RES_0143 L5)', () => {
-  it('returns null — memo disabled, not a constant hash', () => {
-    const state = { linear: { group: () => new Int32Array(0) } };
-    assert.equal(controlHash(state, null), null);
-    assert.equal(controlHash(state, {}), null);
+    it('returns null — memo disabled, not a constant hash', () => {
+      const state = { linear: { group: () => new Int32Array(0) } };
+      assert.equal(controlHash(state, null), null);
+      assert.equal(controlHash(state, {}), null);
+    });
   });
-});
 
-describe('createMemoCtx', () => {
+  describe('createMemoCtx', () => {
     it('creates fresh context with empty map and zero boundCount', () => {
       const ctx = createMemoCtx();
       assert.equal(ctx.globalControl.size, 0);

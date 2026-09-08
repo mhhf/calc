@@ -35,6 +35,18 @@ describe('cc port contract (RES_0143 F1)', () => {
     assert.throws(() => validateCalculusConfig({ ...saxcc, loader: { connTags: {} } }, 't'),
       /buildParser must be a function/);
   });
+  it('family.engine hook slots are checked by exact name (nested typo defense)', () => {
+    // a typo'd hook key silently lost the family's machinery pre-check
+    assert.throws(() => validateCalculusConfig({ ...saxcc,
+      family: { name: 't', engine: { provNaive: null, matchDynamicRule: null, drainDynamicRules: null, resolveEx: null } } }, 't'),
+      /provNaive is not a hook slot/);
+    assert.throws(() => validateCalculusConfig({ ...saxcc,
+      family: { name: 't', engine: { matchDynamicRule: null, drainDynamicRules: null, resolveEx: null } } }, 't'),
+      /family\.engine\.proveNaive is missing/);
+    assert.throws(() => validateCalculusConfig({ ...saxcc,
+      family: { name: 't' } }, 't'),
+      /family\.engine must be an object/);
+  });
   it('the schema documents every engine-read key (no undocumented sockets)', () => {
     for (const [key, spec] of Object.entries(CC_SCHEMA)) {
       assert.ok(spec.consumer || spec.private, `'${key}' must name its consumer or be private`);
