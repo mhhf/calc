@@ -1,0 +1,29 @@
+{
+  // Engine seam type checking (RES_0143 F5) — the Svelte route: plain JS
+  // source, JSDoc annotations, tsc as a LINTER (no emit, no build step).
+  // Scoping is per-file `// @ts-check` pragmas (checkJs off — tsc follows
+  // imports transitively, so a global flag would drag the whole dynamic
+  // core in); adding a pragma is the F5 adoption path. The include list
+  // roots resolution at the seam producers. Run: npm run check:types
+  "compilerOptions": {
+    "allowJs": true,
+    "checkJs": false,
+    "noEmit": true,
+    "strict": false,
+    "target": "es2022",
+    "module": "nodenext",
+    "moduleResolution": "nodenext",
+    "skipLibCheck": true
+  },
+  "include": [
+    "lib/engine/contracts.d.ts",
+    "lib/engine/cc-schema.js",
+    "lib/engine/reserved-preds.js",
+    "lib/engine/optimizer.js",
+    "lib/engine/opt/compose-fuse.js",
+    "lib/engine/opt/compose-sroa.js",
+    "lib/engine/opt/delta-bypass.js",
+    "lib/measure/collapse-api.js",
+    "lib/timed/labels.js"
+  ]
+}

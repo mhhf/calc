@@ -10,7 +10,7 @@ import path from 'path';
 import Store from '../../lib/kernel/store.js';
 import { FactSet, Arena } from '../../lib/engine/fact-set.js';
 import { consume, produce, producePers } from '../../lib/engine/state-ops.js';
-import { deltaBypass } from '../../lib/engine/delta-bypass.js';
+import { deltaBypass } from '../../lib/engine/opt/delta-bypass.js';
 // Hoisted by tools/esm-hoist.js:
 import mde from '../../calculus/ill/index.js';
 

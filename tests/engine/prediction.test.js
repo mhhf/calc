@@ -11,7 +11,7 @@ import path from 'path';
 import mde from '../../calculus/ill/index.js';
 import { countNodes, getAllLeaves } from '../../lib/engine/tree-utils.js';
 import { classifyLeaf } from '../../calculus/ill/index.js';
-import { detectStrategy } from '../../lib/engine/strategy.js';
+import { detectStrategy } from '../../lib/engine/opt/fingerprint.js';
 import { discIndex, fpDetect } from '../../lib/engine/opt/fingerprint.js';
 import Store from '../../lib/kernel/store.js';
 describe('fingerprint prediction (Opt_H)', { timeout: 30000 }, () => {

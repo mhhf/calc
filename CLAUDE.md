@@ -46,6 +46,7 @@ npm run test:heavy    # Slow + drift tests (~5 min, dominated by rule-analysis's
 npm run test:all      # Everything combined (includes test:ill)
 npm run debug:ill     # Debug runner — observation directives + verbose judgment output
 npm run bench:diff    # Cross-commit benchmark comparison (use this when asked to benchmark)
+npm run check:types   # tsc as no-emit linter over the engine seam contracts (RES_0143 F5)
 ```
 
 ## Architecture
@@ -88,10 +89,12 @@ lib/
 │   ├── builders.js      # Parser factory (Earley delegation), deriveRoles()
 │   └── modes.js         # Default monad_r/monad_l descriptor injection (category 'monad')
 ├── meta/                # Polarity/invertibility inference from rule descriptors (focusing.js)
-├── engine/              # Forward/backward execution engine — minimal-essence core (RES_0143: tier manifest pinned by tests/engine/minimal-essence.test.js; no instance vocabulary, no silent calculus defaults — cc supplies everything)
+├── engine/              # Forward/backward execution engine — minimal-essence core (RES_0143: tier manifest pinned by tests/engine/minimal-essence.test.js; no instance vocabulary, no silent calculus defaults — cc supplies everything through the DECLARED port)
+│   ├── cc-schema.js     # The cc PORT contract (F1): every engine-read key declared (type/required/consumer/absence semantics), validated fail-fast at the composition root — unknown or typo'd cc keys are load errors
+│   ├── contracts.d.ts   # Typed twin of the seams (F5): CalculusConfig/MatchOpts/ComposePass/EngineContext/FactSetPolicy — `npm run check:types` (scoped // @ts-check pragmas, tsc as no-emit linter)
 │   ├── formula-utils.js # Generic: connective-aware formula decomposition (shared across pipeline)
 │   ├── match.js         # Generic: pattern matching + tryMatch pipeline (matching judgment + matchOpts protocol only — indexing lives in opt/fingerprint)
-│   ├── strategy.js      # Generic: rule selection stack (buildStack/findMatch/findAllMatches); the DEFAULT layer detection is INSTALLED by the composition root (installAutoLayers ← opt/fingerprint.autoLayers) — uninstalled degrades to the predicate catch-all, same semantics
+│   ├── strategy.js      # Generic: rule selection stack (buildStack/findMatch/findAllMatches/bareStrategy); strategy reaches the loops through ONE channel (F2): engine.buildStrategy — the profile-honoring, per-rule-list-memoized factory on the engine context (optimizer.js) — or explicit opts.strategy; direct callers fall back to the predicate catch-all
 │   ├── forward.js       # Generic: committed-choice main loop (rejects rules flagged requiresScheduler — the timed feature vocabulary lives in compile.js)
 │   ├── explore.js       # Generic: exhaustive DFS exploration + mutation/undo (no domain state conversion — that happens at the composition root via cc.domain)
 │   ├── compile.js       # Generic: rule compilation (de Bruijn slots, metavar analysis; sets requiresScheduler on timed-feature rules)
@@ -102,7 +105,7 @@ lib/
 │   ├── convert.js       # .ill → content-addressed hashes
 │   ├── reserved-preds.js # Machinery-reserved names (superpose/drawn/bias/within) — shared by the convert fence and lib/measure without importing the driver
 │   ├── constraint.js    # Generic union-find branch pruning; WHICH predicates are constraints = cc.domain.constraintPreds (absent → no-op)
-│   ├── compose.js       # Generic: grade-0 cut-elimination pipeline (cutPair/predMap/compose0) + SLD tabling (THY_0015/0016) — SEMANTIC passes only; fusion/SROA are injected opt passes
+│   ├── compose.js       # Generic: grade-0 cut-elimination pipeline (cutPair/predMap/compose0) + SLD tabling (THY_0015/0016) — SEMANTIC passes only; the post-specialization pool is a PASS PIPELINE (F3: { name, phase, enabled, run, resolveAfter } records, one driver owns gating+profiling; opt passes injected as composeOpts.optPasses)
 │   ├── compose-profile.js # Generic: compose profiling emission (onPhase-gated, pure — fuse/tabling rollups + leaves)
 │   ├── cache/           # Persistence/versioning infrastructure
 │   │   ├── compose-cache.js  # Compose disk cache (key derivation, snapshot save/load, cold-vs-cached verify; calc builder injected)
@@ -110,8 +113,10 @@ lib/
 │   │   ├── engine-version.js # Content-hash of lib/ + family/ + calculus/ JS (H1: config-bound machinery busts caches too)
 │   │   ├── cache-flags.js    # Compose-affecting flag registry (cache-key fingerprint)
 │   │   └── cache-evict.js    # LRU eviction + format-migration stamp
-│   └── opt/             # Toggleable optimization modules (semantics-free — gated by profile-differential.test.js bare-vs-full)
-│       ├── fingerprint.js     # The WHOLE fingerprint stack: fpDetect/fpValue/fpLayer/attachPred/buildFingerprintIndex + autoLayers (default strategy detection, installed by the root)
+│   └── opt/             # Toggleable optimization modules (semantics-free — gated by profile-differential.test.js bare-vs-full; NO generic engine file imports opt/ — F4 dissolved the opt-at-root tier)
+│       ├── fingerprint.js     # The WHOLE fingerprint stack: fpDetect/fpValue/fpLayer/attachPred/buildFingerprintIndex + detectStrategy (all-layers stack for direct callers)
+│       ├── delta-bypass.js    # Matcher Strategy A fast path — rides the matchOpts opt protocol, profile-gated at the root (F4: the flag used to gate nothing)
+│       ├── backward-cache.js  # Backward proof cache — per-run lifecycle owned by the composition root (index exec/explore clear before delegating)
 │       ├── disc-tree.js       # Discrimination-tree candidate lookup (catch-all layer)
 │       ├── compose-fuse.js    # Compose P5 basic-block fusion + P5.5 chain fusion (injected via composeOpts.fusePasses)
 │       ├── compose-sroa.js    # Compose P6 McCarthy + SROA (injected via composeOpts.fusePasses)
@@ -287,7 +292,7 @@ FFI is optimization, theory is semantics. Every FFI predicate MUST have backward
 
 ## Common Gotchas
 
-- `mde.load`/`precompile`/`loadPrecompiled` REQUIRE `opts.calculusConfig` — the engine holds no default and lib/ never imports calculus/ (layer-dag enforced). ILL-implicit code imports `calculus/ill/index.js` (the facade: mde with the ILL config pre-bound, plus `normalizeQuery`, which is EVM domain machinery — not generic engine API)
+- `mde.load`/`precompile`/`loadPrecompiled` REQUIRE `opts.calculusConfig` — the engine holds no default and lib/ never imports calculus/ (layer-dag enforced). The config is VALIDATED against the declared port (`lib/engine/cc-schema.js`, RES_0143 F1): unknown/typo'd top-level keys, missing requireds, and wrong types are load errors; calculus-private composition keys must be declared in the schema. ILL-implicit code imports `calculus/ill/index.js` (the facade: mde with the ILL config pre-bound, plus `normalizeQuery`, which is EVM domain machinery — not generic engine API)
 - `Store.tagId()` returns 0 for both invalid IDs and `atom` tag — use `isTerm()` first
 - Atoms share tag 0, predicates have tag >= `PRED_BOUNDARY` (36) — use `hasPredicate`/`groupForPred`. Appending kernel tags shifts the boundary and invalidates every serialized Store — batch into one commit and bump the store-binary VERSION
 - Nullary constructors (e.g. `empty_mem`) are `atom('empty_mem')` not tag — use helpers

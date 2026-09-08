@@ -128,6 +128,7 @@ describe('protocol factory default semantics', () => {
     assert.strictEqual(o.execPS, null);
     assert.strictEqual(o.execExStep, null);
     assert.strictEqual(o.tryCCDispatch, null);
+    assert.strictEqual(o.deltaBypass, null);
     assert.strictEqual(o.useCompiledSteps, false);
   });
 
@@ -245,8 +246,9 @@ describe('S7 — iteration order (V8 hidden-class stability)', () => {
     // FAMILY_FIELDS (in buildFamilyProtocol order)
     'matchDynamicRule', 'resolveEx', 'drainDynamicRules',
     'connectives', 'dynamicRuleTag', 'backchainUseFFI',
-    // OPT_FIELDS (in buildOptProtocol order)
-    'execPS', 'execExStep', 'tryCCDispatch', 'useCompiledSteps',
+    // OPT_FIELDS (in buildOptProtocol order; deltaBypass = Strategy A
+    // fast path, RES_0143 F4)
+    'execPS', 'execExStep', 'tryCCDispatch', 'deltaBypass', 'useCompiledSteps',
     // FFI_FIELDS (in buildFfiProtocol order)
     'ffiParsedModes', 'ffiMeta', 'ffiGet', 'ffiIsGround',
   ];
@@ -285,11 +287,11 @@ describe('S7 — iteration order (V8 hidden-class stability)', () => {
     assert.deepStrictEqual(Object.keys(EMPTY_MATCH_OPTS), EXPECTED_ORDER);
   });
 
-  it('expected order totals exactly 20 fields (20-field shape contract)', () => {
-    assert.strictEqual(EXPECTED_ORDER.length, 20);
+  it('expected order totals exactly 21 fields (21-field shape contract)', () => {
+    assert.strictEqual(EXPECTED_ORDER.length, 21);
     assert.strictEqual(
       GENERIC_FIELDS.length + FAMILY_FIELDS.length + OPT_FIELDS.length + FFI_FIELDS.length,
-      20
+      21
     );
   });
 });
