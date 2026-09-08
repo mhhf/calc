@@ -48,7 +48,7 @@ const CONFIGS = {
 const EXT = { ill: '.ill', till: '.till', gill: '.gill', will: '.will', sill: '.sill' };
 
 // Programs may only be loaded from these repo subtrees.
-const ALLOWED_DIRS = ['calculus/', 'tests/fixtures/'];
+const ALLOWED_DIRS = ['calculus/', 'tests/fixtures/', 'doc/book/programs/'];
 
 const MAX_SOURCE = 16384;
 const MAX_STEPS = 200;
@@ -231,15 +231,28 @@ function gameView(s) {
   };
 }
 
+/** settle with coalesce when the calculus admits it (sill fences it off). */
+function settleTo(s, T) {
+  if (s.coalesce) {
+    try {
+      return s.calc.settle(s.state, horizonOf(T), { coalesce: true }).state;
+    } catch (e) {
+      if (!/coalesce/.test(e.message)) throw e;
+      s.coalesce = false;
+    }
+  }
+  return s.calc.settle(s.state, horizonOf(T)).state;
+}
+
 function gameStart({ calculus = 'till', file, init }) {
   const { calc } = loadProgram({ calculus, file });
   if (typeof calc.settle !== 'function') throw new Error(`${calculus} program has no timed API (settle)`);
   const entry = initialEntry(calc, init);
-  let state = convert.decomposeQuery(entry.lhsHash);
-  state = calc.settle(state, horizonOf(0), { coalesce: true }).state;
-  const id = newSession({ kind: 'game', calc, state, t: 0 });
+  const state = convert.decomposeQuery(entry.lhsHash);
+  const id = newSession({ kind: 'game', calc, state, t: 0, coalesce: true });
   const s = getSession(id);
   s.id = id;
+  s.state = settleTo(s, 0);
   return gameView(s);
 }
 
@@ -253,18 +266,18 @@ function gameAct({ id, action, t, menuIndex, altIndex }) {
   const T = Math.max(s.t, Number(t) || 0);
 
   if (action === 'settle') {
-    s.state = s.calc.settle(s.state, horizonOf(T), { coalesce: true }).state;
+    s.state = settleTo(s, T);
     s.t = T;
     return gameView(s);
   }
   if (action === 'choose') {
-    s.state = s.calc.settle(s.state, horizonOf(T), { coalesce: true }).state;
+    s.state = settleTo(s, T);
     s.t = T;
     const { menus } = menuOptions(s.calc, s.state, T);
     const menu = menus[Number(menuIndex)];
     if (!menu) throw new Error(`no menu ${menuIndex}`);
     s.state = s.calc.choose(s.state, menu.fact, Number(altIndex), { at: horizonOf(T) });
-    s.state = s.calc.settle(s.state, horizonOf(T), { coalesce: true }).state;
+    s.state = settleTo(s, T);
     return gameView(s);
   }
   throw new Error(`unknown game action: ${action}`);

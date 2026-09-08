@@ -1,0 +1,14 @@
+% counting.ill — Binary counter demo for Chapter 9 "Data as Terms".
+% Imports the binary arithmetic library.
+
+#import(../../../calculus/ill/programs/bin.ill)
+
+% num_res N is a linear resource: you possess the counter value N.
+num_res: (n: bin) -> type.
+
+% tick: consume the current counter N, produce the successor M.
+% !inc N M is a persistent PROPOSITION proved by backward chaining into bin.ill.
+tick: num_res N -o { exists M. !inc N M * num_res M }.
+
+% Seed the machine at zero and run — expect to reach 1 = i(e).
+#expect_go_count num_res e => num_res (i e) .
