@@ -20,7 +20,7 @@ import Store from '../../lib/kernel/store.js';
 import mde from '../../calculus/ill/index.js';
 import ccfg from '../../calculus/ill/calculus-config.js';
 import { resolveConn } from '../../lib/engine/compile.js';
-import { fusePair as _fusePair } from '../../lib/engine/compose.js';
+import { fusePair as _fusePair } from '../../lib/engine/opt/compose-fuse.js';
 import { monadUnit as U } from '../../lib/engine/grades.js';
 import { loadILL } from '../../calculus/ill/index.js';
 
@@ -72,7 +72,7 @@ describe('TODO_0216 H3 — pool-disjoint assertion stub', () => {
       loadILL();
       const ccfg = (await import('file://${path.resolve(import.meta.dirname, '../../calculus/ill/calculus-config.js').replace(/\\\\/g, '/')}')).default;
       const { resolveConn } = await import('file://${path.resolve(import.meta.dirname, '../../lib/engine/compile.js').replace(/\\\\/g, '/')}');
-      const { fusePair } = await import('file://${path.resolve(import.meta.dirname, '../../lib/engine/compose.js').replace(/\\\\/g, '/')}');
+      const { fusePair } = await import('file://${path.resolve(import.meta.dirname, '../../lib/engine/opt/compose-fuse.js').replace(/\\\\/g, '/')}');
       const rc = resolveConn(ccfg.connectives);
       const a = Store.put('atom', ['a']);
       const mvX = Store.put('metavar', ['X']);
@@ -115,7 +115,7 @@ describe('TODO_0216 H3 — pool-disjoint assertion stub', () => {
       loadILL();
       const ccfg = (await import('file://${path.resolve(import.meta.dirname, '../../calculus/ill/calculus-config.js').replace(/\\\\/g, '/')}')).default;
       const { resolveConn } = await import('file://${path.resolve(import.meta.dirname, '../../lib/engine/compile.js').replace(/\\\\/g, '/')}');
-      const { fusePair } = await import('file://${path.resolve(import.meta.dirname, '../../lib/engine/compose.js').replace(/\\\\/g, '/')}');
+      const { fusePair } = await import('file://${path.resolve(import.meta.dirname, '../../lib/engine/opt/compose-fuse.js').replace(/\\\\/g, '/')}');
       const rc = resolveConn(ccfg.connectives);
       const a = Store.put('atom', ['a']);
       const mvX = Store.put('metavar', ['X']);

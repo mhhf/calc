@@ -156,6 +156,10 @@ function classifyEngineModule(relPath) {
   if (relPath === 'index.js') return 'root';
   if (relPath.startsWith('timed/')) return 'timed';
   if (relPath.startsWith('opt/')) return 'opt';
+  // optimizer.js IS the optimization-profile wiring (builds opt-layer
+  // stacks; imported only by the composition root) — opt tier, so it may
+  // import opt/ modules (RES_0143 M5).
+  if (relPath === 'optimizer.js') return 'opt';
   // engine/theories/ no longer exists (RES_0143 L10): representation
   // READING (ratParts) moved to lib/kernel/rat-term.js; the ratlit
   // equational theory + registration moved beside binlit's to

@@ -7,7 +7,7 @@ import { describe, it, before } from 'node:test';
 import assert from 'node:assert/strict';
 import path from 'path';
 import Store from '../../lib/kernel/store.js';
-import { fusePair } from '../../lib/engine/compose.js';
+import { fusePair } from '../../lib/engine/opt/compose-fuse.js';
 import { resolveConn } from '../../lib/engine/compile.js';
 // Hoisted by tools/esm-hoist.js:
 import mde from '../../calculus/ill/index.js';
