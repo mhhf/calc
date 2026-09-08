@@ -47,6 +47,14 @@ s: dest.
   =>
   !cell d vpair * !cell (p1 d) vin2 * !cell (p2 d) vin1 .
 
+% Unit synchronization: wait blocks until the unit cell is written,
+% then continues as its continuation — Fig. 6's 1-elimination step.
+#expect_sax_wait (exact: true)
+  hole c * proc c wun *
+  hole d * proc d (wait c win1)
+  =>
+  !cell c vunit * !cell d vin1 .
+
 % A stuck reader stays stuck: no cell s, so the case process survives
 % and the hole is never written.
 #expect_not_sax_stuck

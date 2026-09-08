@@ -32,8 +32,11 @@ semi-axiomatic rule regime (`sax.rules`):
 The polarity table makes the SAX/focusing correspondence exact: the axiom
 side of each connective is precisely its non-invertible (focus-phase) side.
 
-**Operational semantics** (`programs/machine.sax`): the FSCD Fig. 6
-multiset-rewriting machine, sax-native. `proc D P` (linear process),
+**Operational semantics** (`programs/machine.sax`): the propositional
+core of the FSCD Fig. 6 multiset-rewriting machine, sax-native —
+writes (pair/unit/injection markers), forward, case, and unit-wait;
+allocation/cut (fresh-cell spawning) and the negative connectives are
+deferred. `proc D P` (linear process),
 `hole D` (linear allocated-unwritten cell), `!cell D V` (persistent
 write-once cell). Addressing is SNAX-style (MFPS 2022 §3.2): pair
 components live at calculable projections `p1 D` / `p2 D`, so every machine
