@@ -66,7 +66,13 @@ conjecture PARTIALLY FALSIFIED against the MFPS 2022 laws (L2 projection-
 distinctness fails on equal subtrees; the temporal no-go: content addresses
 cannot name futures) with the factorization theorem as the repair: machine.sax's
 destination terms are the legal SNAX address algebra, the store concretizes
-storables, !cell is the graph between them.
+storables, !cell is the graph between them. P5 LANDED (2026-09-08): THY_0038 —
+the adjoint-bridge ROI re-evaluated (supersedes THY_0032 §4): negative →
+STAGED-POSITIVE; frontier = three gaps (G1 affine zone policy, G2 multi-
+cartesian, G3 succedent modes) with executable pins; will's drawn_l2 ghost
+identified as a hand-rolled affine mode (Stage A's deletion payoff); the
+adjoint-sax instance specified. TODO_0309 is COMPLETE (P0-P5); branch 2's
+Stage A/B now start from designs.
 
 The backward prover is kernel-checked; the forward engine's search semantics is still
 folklore. Queued theorems:
