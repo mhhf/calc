@@ -30,6 +30,14 @@ the inventory of where routing was installed; the mode-preorder
 generalization (arbitrary β per zone) remains unimplemented — aux zones
 are fenced to linear policy, which is the point of §2's table.
 
+**Disposition superseded (2026-09-08, TODO_0309 P5).** The "negative
+ROI" verdict of §4 is re-evaluated in THY_0038 (staged-positive: the
+seven-site cost is paid, the frontier is three named gaps with
+executable pins in tests/engine/adjoint-frontier.test.js, and will's
+drawn_l2 ghost is a hand-rolled affine mode that Stage A would
+delete). This document remains the site-map record; the live decision
+is THY_0038's.
+
 ## 1. The derived mechanism
 
 `deriveContextStructure` (lib/calculus/index.js:125–169) reads the family's
