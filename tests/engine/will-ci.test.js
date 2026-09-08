@@ -54,7 +54,7 @@ import os from 'os';
 import path from 'path';
 import Store from '../../lib/kernel/store.js';
 import mde from '../../lib/engine/index.js';
-import ciMod from '../../lib/engine/ci.js';
+import ciMod from '../../lib/measure/ci.js';
 import willConfig from '../../calculus/will/calculus-config.js';
 
 const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'will-ci-'));

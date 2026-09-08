@@ -21,7 +21,7 @@ import os from 'os';
 import path from 'path';
 import Store from '../../lib/kernel/store.js';
 import mde from '../../lib/engine/index.js';
-import { checkPriors } from '../../lib/engine/priors.js';
+import { checkPriors } from '../../lib/measure/priors.js';
 import willConfig from '../../calculus/will/calculus-config.js';
 
 const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'will-priors-'));

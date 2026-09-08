@@ -597,7 +597,7 @@ for (const pred of predList) {
 {
   const { binlitTheory } = await import('../calculus/ill/lib/binlit-theory.js');
   const { ratlitTheory, putRat, installRatlitTheory, ratParts } =
-    await import('../lib/engine/theories/ratlit-theory.js');
+    await import('../calculus/till/lib/ratlit-theory.js');
   const { defaultTheories, buildCanonicalizer } = await import('../lib/kernel/eq-theory.js');
 
   installRatlitTheory();

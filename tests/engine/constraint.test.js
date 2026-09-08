@@ -34,25 +34,25 @@ describe('EqNeqSolver', () => {
 
   describe('ground constraints', () => {
     it('ground eq with equal values → SAT', () => {
-      const solver = new EqNeqSolver({ evalNumeric });
+      const solver = new EqNeqSolver({ evalNumeric, predNames: { eq: 'eq', neq: 'neq' } });
       solver.addConstraint(mkEq(mkBinlit(5), mkBinlit(5)));
       assert.strictEqual(solver.checkSAT(), true);
     });
 
     it('ground eq with unequal values → UNSAT', () => {
-      const solver = new EqNeqSolver({ evalNumeric });
+      const solver = new EqNeqSolver({ evalNumeric, predNames: { eq: 'eq', neq: 'neq' } });
       solver.addConstraint(mkEq(mkBinlit(5), mkBinlit(0)));
       assert.strictEqual(solver.checkSAT(), false);
     });
 
     it('ground neq with unequal values → SAT', () => {
-      const solver = new EqNeqSolver({ evalNumeric });
+      const solver = new EqNeqSolver({ evalNumeric, predNames: { eq: 'eq', neq: 'neq' } });
       solver.addConstraint(mkNeq(mkBinlit(5), mkBinlit(0)));
       assert.strictEqual(solver.checkSAT(), true);
     });
 
     it('ground neq with equal values → UNSAT', () => {
-      const solver = new EqNeqSolver({ evalNumeric });
+      const solver = new EqNeqSolver({ evalNumeric, predNames: { eq: 'eq', neq: 'neq' } });
       solver.addConstraint(mkNeq(mkBinlit(5), mkBinlit(5)));
       assert.strictEqual(solver.checkSAT(), false);
     });
@@ -60,7 +60,7 @@ describe('EqNeqSolver', () => {
 
   describe('symbolic constraints', () => {
     it('eq X Y then neq X Y → UNSAT', () => {
-      const solver = new EqNeqSolver({ evalNumeric });
+      const solver = new EqNeqSolver({ evalNumeric, predNames: { eq: 'eq', neq: 'neq' } });
       const X = mkFreevar('X');
       const Y = mkFreevar('Y');
       solver.addConstraint(mkEq(X, Y));
@@ -69,7 +69,7 @@ describe('EqNeqSolver', () => {
     });
 
     it('transitive: eq X Y, eq Y Z, neq X Z → UNSAT', () => {
-      const solver = new EqNeqSolver({ evalNumeric });
+      const solver = new EqNeqSolver({ evalNumeric, predNames: { eq: 'eq', neq: 'neq' } });
       const X = mkFreevar('X');
       const Y = mkFreevar('Y');
       const Z = mkFreevar('Z');
@@ -80,7 +80,7 @@ describe('EqNeqSolver', () => {
     });
 
     it('SAT: neq X 0, neq Y 0, eq X Y', () => {
-      const solver = new EqNeqSolver({ evalNumeric });
+      const solver = new EqNeqSolver({ evalNumeric, predNames: { eq: 'eq', neq: 'neq' } });
       const X = mkFreevar('X');
       const Y = mkFreevar('Y');
       const zero = mkBinlit(0);
@@ -91,7 +91,7 @@ describe('EqNeqSolver', () => {
     });
 
     it('SAT: independent neq constraints', () => {
-      const solver = new EqNeqSolver({ evalNumeric });
+      const solver = new EqNeqSolver({ evalNumeric, predNames: { eq: 'eq', neq: 'neq' } });
       const X = mkFreevar('X');
       const Y = mkFreevar('Y');
       solver.addConstraint(mkNeq(X, Y));
@@ -101,7 +101,7 @@ describe('EqNeqSolver', () => {
 
   describe('checkpoint/restore', () => {
     it('restore undoes union', () => {
-      const solver = new EqNeqSolver({ evalNumeric });
+      const solver = new EqNeqSolver({ evalNumeric, predNames: { eq: 'eq', neq: 'neq' } });
       const X = mkFreevar('X');
       const Y = mkFreevar('Y');
       const cp = solver.checkpoint();
@@ -113,7 +113,7 @@ describe('EqNeqSolver', () => {
     });
 
     it('restore undoes forbid', () => {
-      const solver = new EqNeqSolver({ evalNumeric });
+      const solver = new EqNeqSolver({ evalNumeric, predNames: { eq: 'eq', neq: 'neq' } });
       const X = mkFreevar('X');
       const Y = mkFreevar('Y');
       solver.addConstraint(mkEq(X, Y));
@@ -125,7 +125,7 @@ describe('EqNeqSolver', () => {
     });
 
     it('nested checkpoints', () => {
-      const solver = new EqNeqSolver({ evalNumeric });
+      const solver = new EqNeqSolver({ evalNumeric, predNames: { eq: 'eq', neq: 'neq' } });
       const X = mkFreevar('X');
       const Y = mkFreevar('Y');
       const Z = mkFreevar('Z');
@@ -150,7 +150,7 @@ describe('EqNeqSolver', () => {
 
   describe('mixed ground/symbolic', () => {
     it('eq X 5, neq X 5 → UNSAT (symbolic meets ground via union)', () => {
-      const solver = new EqNeqSolver({ evalNumeric });
+      const solver = new EqNeqSolver({ evalNumeric, predNames: { eq: 'eq', neq: 'neq' } });
       const X = mkFreevar('X');
       const five = mkBinlit(5);
       solver.addConstraint(mkEq(X, five));
@@ -159,7 +159,7 @@ describe('EqNeqSolver', () => {
     });
 
     it('non-eq/neq predicates are ignored', () => {
-      const solver = new EqNeqSolver({ evalNumeric });
+      const solver = new EqNeqSolver({ evalNumeric, predNames: { eq: 'eq', neq: 'neq' } });
       const h = Store.put('plus', [mkBinlit(1), mkBinlit(2), mkBinlit(3)]);
       assert.strictEqual(solver.addConstraint(h), false);
       assert.strictEqual(solver.checkSAT(), true);

@@ -30,7 +30,7 @@ import { tillGrades, tillFactSetPolicy, tillGradeUnit } from '../till/calculus-c
 import { gillCalculusConfig, gillGradeRegistry, gillFences, gillFFIFace } from '../gill/calculus-config.js';
 import { makeCalcTables, makeTheory, makeForwardParserBuilder, makeSequentLoader } from '../kit.js';
 import datasortMass from './lib/datasort-mass.js';
-import { DECIMATE_PREDS } from '../../lib/engine/decimate.js';
+import { DECIMATE_PREDS } from '../../lib/engine/reserved-preds.js';
 
 const WILL_CALC = path.join(import.meta.dirname, 'will.calc');
 const WILL_PRELUDE = path.join(import.meta.dirname, 'prelude/measure.will');

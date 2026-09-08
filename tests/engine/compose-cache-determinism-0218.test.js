@@ -29,7 +29,7 @@ import assert from 'node:assert/strict';
 import fs from 'fs';
 import path from 'path';
 import Store from '../../lib/kernel/store.js';
-import { serialize, deserialize, compact } from '../../lib/engine/store-binary.js';
+import { serialize, deserialize, compact } from '../../lib/engine/cache/store-binary.js';
 import mde from '../../calculus/ill/index.js';
 import fresh from '../../lib/kernel/fresh.js';
 // Hoisted by tools/esm-hoist.js:

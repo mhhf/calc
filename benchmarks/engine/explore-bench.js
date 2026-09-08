@@ -24,7 +24,9 @@ import { findAllMatches } from '../../lib/engine/strategy.js';
 import { mutateState } from '../../lib/engine/state-ops.js';
 import match from '../../lib/engine/match.js';
 import { detectStrategy } from '../../lib/engine/strategy.js';
-import { buildFingerprintIndex } from '../../lib/engine/forward.js';
+import { buildFingerprintIndex, autoLayers } from '../../lib/engine/opt/fingerprint.js';
+import { installAutoLayers } from '../../lib/engine/strategy.js';
+installAutoLayers(autoLayers); // bench measures the installed opt layers
 import treeUtils from '../../lib/engine/tree-utils.js';
 const BASELINE_PATH = path.join(import.meta.dirname, 'explore-baseline.json');
 const WARMUP = 3;

@@ -12,7 +12,10 @@ import convert from '../lib/engine/convert.js';
 import Store from '../lib/kernel/store.js';
 import { toObject } from '../lib/engine/fact-set.js';
 import { getAllLeaves, countLeaves, maxDepth, countNodes } from '../lib/engine/tree-utils.js';
-import { showInteresting, classifyLeaf, show } from '../lib/engine/show.js';
+import { show } from '../lib/engine/show.js';
+// classifyLeaf/showInteresting pre-bound to the EVM domain policy —
+// this loader is the ILL-native tool layer (RES_0143 L2).
+import { classifyLeaf, showInteresting } from '../calculus/ill/index.js';
 import { predHead } from '../lib/kernel/ast.js';
 const ROOT = path.join(import.meta.dirname, '..');
 const DEFAULT_PROGRAM = path.join(ROOT, 'calculus', 'ill', 'programs', 'evm.ill');

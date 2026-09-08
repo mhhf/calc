@@ -18,6 +18,15 @@ import illConfig from './calculus-config.js';
 import { normalizeQuery } from './lib/bytecode-normalize.js';
 import { loadILL } from './lib/forward-parser.js';
 import { createCalcAPI } from '../../lib/api.js';
+import { classifyLeaf as _classifyLeaf, showInteresting as _showInteresting } from '../../lib/engine/show.js';
+
+// Debug/inspection helpers pre-bound to the EVM domain policy (RES_0143
+// L2: the generic show.js is policy-neutral; the EVM terminal atoms and
+// exclusion list are calculus data on illConfig.domain).
+const classifyLeaf = (state) =>
+  _classifyLeaf(state, illConfig.domain.classifyLeafPolicy);
+const showInteresting = (state, opts = {}) =>
+  _showInteresting(state, { exclude: illConfig.domain.showExclude, ...opts });
 
 const load = (filePath, opts = {}) =>
   mde.load(filePath, { calculusConfig: illConfig, ...opts });
@@ -82,6 +91,8 @@ export {
   compileRule,
   Store,
   _composeCacheKey,
+  classifyLeaf,
+  showInteresting,
 };
 export default {
   ...mde,
@@ -96,4 +107,6 @@ export default {
   parseFormula,
   parseSequent,
   render,
+  classifyLeaf,
+  showInteresting,
 };

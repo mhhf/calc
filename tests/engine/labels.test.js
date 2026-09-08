@@ -15,10 +15,11 @@
 
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import { StampTable, packRef, refInner, refStamp, STAMP_CAP } from '../../lib/engine/labels.js';
+import { StampTable } from '../../lib/timed/labels.js';
+import { packRef, refInner, refStamp, STAMP_CAP } from '../../lib/engine/fact-set.js';
 import { tillGrades } from '../../calculus/till/calculus-config.js';
 import Store from '../../lib/kernel/store.js';
-import { ratParts } from '../../lib/engine/theories/ratlit-theory.js';
+import { ratParts } from '../../lib/kernel/rat-term.js';
 
 const alg = tillGrades.values;
 const V = (n, d = 1n) => [BigInt(n), BigInt(d)];

@@ -56,9 +56,9 @@ Three built-in profiles in `optimizer.js`:
 |---------|-------|----------|
 | `bare` | All off | Correctness baseline. Tests that the engine works without any optimization. |
 | `fast` | `ffi`, `compiledSub`, `preserved` | Default for general use. Enables the highest-impact, lowest-risk optimizations. |
-| `evm` | All on | Full optimization stack. Default when `CALC_PROFILE` is unset. |
+| `full` | All on | Full optimization stack. Default when `CALC_PROFILE` is unset (renamed from `evm`, RES_0143 L1). |
 
-Selection: `CALC_PROFILE` env var > explicit argument > default (`evm`).
+Selection: `CALC_PROFILE` env var > explicit argument > `cc.compile.profile` > default (`full`).
 
 ```javascript
 // optimizer.js
@@ -125,7 +125,7 @@ CALC_PROFILE=bare npm run test:all -- --timeout 120000    # bare (no opts)
 CALC_PROFILE=fast npm run test:all                        # fast (partial opts)
 ```
 
-The `bare` profile is the correctness baseline. If a test passes on `bare` but fails on `evm`, the bug is in an optimization module. If it fails on `bare`, the bug is in core logic.
+The `bare` profile is the correctness baseline. If a test passes on `bare` but fails on `full`, the bug is in an optimization module. If it fails on `bare`, the bug is in core logic.
 
 ## Performance
 

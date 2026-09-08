@@ -25,7 +25,7 @@ import fs from 'fs';
 import os from 'os';
 import path from 'path';
 import { loadTill as load, atom, initQuery, stampedStr, traceKey } from './till-helpers.js';
-import { ratParts } from '../../lib/engine/theories/ratlit-theory.js';
+import { ratParts } from '../../lib/kernel/rat-term.js';
 
 const PP2 = path.join(import.meta.dirname, '../../calculus/till/game/PP2.till');
 const PRELUDE = path.join(import.meta.dirname, '../../calculus/till/prelude/rat.ill');

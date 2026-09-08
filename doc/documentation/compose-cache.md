@@ -112,7 +112,7 @@ A cache hit on a file-that-was-cached skips parser + converter + composer entire
 | `lib/engine/engine-version.js` | Content hash of `lib/**/*.js` |
 | `lib/engine/cache-flags.js` | Registry of cache-affecting env + opt flags |
 | `lib/engine/cache-evict.js` | `ensureVersionTag`, `lruEvict` |
-| `lib/engine/store-binary.js` | `serialize`/`deserialize`/`compact` of Store arena |
+| `lib/engine/cache/store-binary.js` | `serialize`/`deserialize`/`compact` of Store arena |
 
 ## Related
 

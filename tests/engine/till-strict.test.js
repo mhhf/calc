@@ -108,8 +108,12 @@ describe('grade positions have their own closed grammar', () => {
     const wood = Store.put('atom', ['wood']);
     const bad = Store.put('bang', [wood, wood]);       // grade = a token atom
     const defs = new Map([['wood', Store.put('type', [])]]);
+    // Grade-position vocabulary is calculus data since RES_0143 L6 —
+    // direct checkAll callers thread it explicitly (deriveGradeMeta in
+    // engine loads).
     const { errors } = checkAll(defs, [], new Map(), {
       closedWorld: true,
+      gradeMeta: { gradeTags: new Set(['bang', 'monad']), gradeAtoms: new Set(['g0', 'gw']) },
       queries: new Map([['expect_x', { lhsHash: bad, rhsHash: wood }]]),
     });
     assert.ok(errors.some(e => /invalid grade 'wood'/.test(e)), errors.join('; '));

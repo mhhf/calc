@@ -120,6 +120,10 @@ describe('no ad-hoc matchOpts (rubric S5, S6)', () => {
 
     const files = [
       ...walkJs(path.join(REPO, 'lib/engine')),
+      // sibling layers moved out of lib/engine keep the same discipline
+      // (RES_0143 M1/M2)
+      ...walkJs(path.join(REPO, 'lib/timed')),
+      ...walkJs(path.join(REPO, 'lib/measure')),
       // Family layer (family/<name>/lib/) is production matchOpts-consuming
       // code too (TODO_0086) — same discipline.
       ...walkJs(path.join(REPO, 'family')),

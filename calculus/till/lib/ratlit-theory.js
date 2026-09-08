@@ -1,5 +1,6 @@
 /**
- * Ratlit Equational Theory — shared module (calculus-agnostic).
+ * Ratlit Equational Theory — the ℚ theory of the till numeric tower,
+ * shared by the calculi that import rat.ill (till, gill, sill, will).
  *
  * Two representations of one object, the rationals ℚ (TODO_0265 Phase 1, D14):
  *
@@ -8,25 +9,27 @@
  *   ratlit     — compact kernel leaf, 2 bigint children (num, den);
  *                storage + FFI fast path
  *
- * Exact analogy to i/o/e ↔ binlit via binlitTheory. Canonical form (the only
- * form putRat produces, so equal rationals are hash-equal):
- *   gcd-reduced, den > 0, zero = (0, 1), den = 1 collapses to binlit
- *   (ℚ ⊇ ℕ: an integer rational IS the integer — one hash per value,
- *   which is what keeps timed cohorts from splitting on representation).
+ * Exact analogy to i/o/e ↔ binlit via binlitTheory — and since RES_0143
+ * L10 the same LAYERING: binlit's theory lives in calculus/ill/lib/,
+ * this one lives here. Registered per-calculus via
+ * calculusConfig.theories; representation READING (putRat/ratParts/
+ * isRatTerm) is kernel infrastructure (lib/kernel/rat-term.js) because
+ * the certificate checkers consume it.
  *
- * Registered per-calculus via calculusConfig.theories (till registers it;
- * ILL does not — ILL states never contain rationals). Direct backchain
- * callers extend opts.theories; see makeRatTheories() below.
+ * Canonical form (the only form putRat produces, so equal rationals are
+ * hash-equal): gcd-reduced, den > 0, zero = (0, 1), den = 1 collapses
+ * to binlit (ℚ ⊇ ℕ: an integer rational IS the integer — one hash per
+ * value, which is what keeps timed cohorts from splitting on
+ * representation).
  */
 
-import Store from '../../kernel/store.js';
-import { putRat } from '../../kernel/rat-term.js';
-import { registerFirstArgClassifier } from '../../kernel/eq-theory.js';
-import { registerLeafTag } from '../backchain.js';
+import Store from '../../../lib/kernel/store.js';
+import { putRat, ratParts, isRatTerm, binVal as _binVal } from '../../../lib/kernel/rat-term.js';
+import { registerFirstArgClassifier } from '../../../lib/kernel/eq-theory.js';
+import { registerLeafTag } from '../../../lib/engine/backchain.js';
 
 const _TAG_RATLIT = Store.TAG.ratlit;
 const _TAG_BINLIT = Store.TAG.binlit;
-const _TAG_ATOM = Store.TAG.atom;
 const _TAG_STRLIT = Store.TAG.strlit;
 const _TAG_CHARLIT = Store.TAG.charlit;
 const _TAG_FREEVAR = Store.TAG.freevar;
@@ -36,56 +39,13 @@ const _TAG_ARRLIT = Store.TAG.arrlit;
 // 'rat' is a dynamic predicate tag (registered by rat.ill) — resolve lazily.
 function _tagRat() { return Store.TAG.rat; }
 
-// Minimal bin decoder (binlit + i/o/e chains). Local rather than imported:
-// ill/ffi/convert.js is ILL-layer and this module is shared — the shared
-// layer must not import from ill/.
-function _binVal(h) {
-  const tid = Store.tagId(h);
-  if (tid === _TAG_BINLIT) return Store.child(h, 0);
-  if (tid === _TAG_ATOM) return Store.child(h, 0) === 'e' ? 0n : null;
-  const t = Store.tag(h);
-  if ((t === 'i' || t === 'o') && Store.arity(h) === 1) {
-    const rest = _binVal(Store.child(h, 0));
-    if (rest === null) return null;
-    return t === 'i' ? rest * 2n + 1n : rest * 2n;
-  }
-  return null;
-}
-
-// putRat now lives in kernel/rat-term.js (Phase 3: the parser builds the
-// same canonical form for exact `@` literals) — re-exported below unchanged.
-
-/**
- * Decode a hash as a rational pair [num, den], or null.
- * Accepts ratlit, bin forms (coerced to n/1), and structural rat(N, D)
- * with decodable bin children. Does NOT require canonical input.
- */
-function ratParts(h) {
-  const tid = Store.tagId(h);
-  if (tid === _TAG_RATLIT) return [Store.child(h, 0), Store.child(h, 1)];
-  const tr = _tagRat();
-  if (tr !== undefined && tid === tr && Store.arity(h) === 2) {
-    const n = _binVal(Store.child(h, 0));
-    const d = _binVal(Store.child(h, 1));
-    if (n === null || d === null || d === 0n) return null;
-    return [n, d];
-  }
-  const n = _binVal(h);
-  return n === null ? null : [n, 1n];
-}
-
-/** True iff the hash is a genuinely rational representation (ratlit or rat(·,·)) —
- *  the FFI dispatch gate: bin×bin must keep bin semantics (integer div!). */
-function isRatTerm(h) {
-  const tid = Store.tagId(h);
-  if (tid === _TAG_RATLIT) return true;
-  const tr = _tagRat();
-  return tr !== undefined && tid === tr;
-}
-
 const ratlitTheory = {
   name: 'ratlit',
   sourceTagIds: [_TAG_RATLIT],
+  // Value class (tag names): the ℚ forms — compact ratlit, structural
+  // rat(N,D), and the q-tower's frac constructor. Consumed by
+  // over-approximation clients via kernel theoryClassTags() (RES_0143 L4).
+  classTags: ['ratlit', 'rat', 'frac'],
 
   canRewrite(srcTid, dstTid) {
     if (srcTid !== _TAG_RATLIT) return false;

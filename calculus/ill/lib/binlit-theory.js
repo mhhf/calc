@@ -38,6 +38,10 @@ function _getConvert() { return _convert; }
 const binlitTheory = {
   name: 'binlit',
   sourceTagIds: [_TAG_BINLIT],
+  // Value class (tag names): the compact form plus the structural
+  // binary-numeral constructors it rewrites through. Consumed by
+  // over-approximation clients via kernel theoryClassTags() (RES_0143 L4).
+  classTags: ['binlit', 'i', 'o', 'e'],
 
   canRewrite(srcTid, dstTid) {
     if (srcTid === _TAG_BINLIT) {

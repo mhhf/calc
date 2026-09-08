@@ -95,7 +95,11 @@ describe('serializeExploreTree — hand-built tree', () => {
   });
 
   it('classifies leaves: stop atom → STOP status', () => {
-    const out = serializeExploreTree(tree);
+    // Leaf classification policy is calculus data (RES_0143 L2) — the
+    // EVM policy must be threaded explicitly now.
+    const out = serializeExploreTree(tree, {
+      leafPolicy: { terminals: { stop: 'STOP' }, runningPred: 'pc' },
+    });
     assert.strictEqual(out.leaves[0].status, 'STOP');
     // second leaf has pc → RUNNING
     assert.strictEqual(out.leaves[1].status, 'RUNNING');

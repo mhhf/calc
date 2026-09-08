@@ -35,9 +35,9 @@ import { tillGrades, tillCalculusConfig } from '../../calculus/till/calculus-con
 import { distGrades, weightGrades as gillWeightGrades } from '../../calculus/gill/calculus-config.js';
 import { productGrades } from '../../calculus/sill/calculus-config.js';
 import { add, sub, mul, div, cmp as ratCmp, norm } from '../../lib/rat.js';
-import { ratParts } from '../../lib/engine/theories/ratlit-theory.js';
+import { ratParts } from '../../lib/kernel/rat-term.js';
 import { sampleIndex } from '../../lib/engine/prf.js';
-import { buildTimedConfig } from '../../lib/engine/timed/timed.js';
+import { buildTimedConfig } from '../../lib/timed/timed.js';
 
 // ── deterministic PRNG (mulberry32) — seeded, so no flakes ──
 function prng(seed) {

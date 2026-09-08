@@ -16,7 +16,7 @@
  *   --category=<name>   Only run category: core | engine | all  (default: all)
  *   --save              Write JSON report to tools/test-timing-report.json
  *   --json              Print JSON to stdout instead of table
- *   --profile=<name>    Set CALC_PROFILE env var (bare | fast | evm)
+ *   --profile=<name>    Set CALC_PROFILE env var (bare | fast | full)
  *   --concurrency=<n>   Max parallel files (default: 1, sequential)
  */
 

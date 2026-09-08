@@ -8,7 +8,7 @@
 
 import Store from '../lib/kernel/store.js';
 import { show } from '../lib/engine/show.js';
-import { ratParts } from '../lib/engine/theories/ratlit-theory.js';
+import { ratParts } from '../lib/kernel/rat-term.js';
 
 // ─── time and stamps ────────────────────────────────────────────────
 

@@ -19,7 +19,7 @@ import fs from 'fs';
 import os from 'os';
 import path from 'path';
 import { loadTill, bagStr, initQuery } from './till-helpers.js';
-import { ratParts } from '../../lib/engine/theories/ratlit-theory.js';
+import { ratParts } from '../../lib/kernel/rat-term.js';
 import Store from '../../lib/kernel/store.js';
 
 const RAT = path.resolve('calculus/till/prelude/rat.ill');

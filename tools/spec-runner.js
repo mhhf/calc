@@ -16,7 +16,7 @@ import { describe, it } from 'node:test';
 import path from 'path';
 import mde from '../calculus/ill/index.js';
 import convert from '../lib/engine/convert.js';
-import { timedSubset, timedExact } from '../lib/engine/timed/timed-views.js';
+import { timedSubset, timedExact } from '../lib/timed/timed-views.js';
 import dl from './directive-loader.js';
 
 const { ROOT, findIllFiles, scanDirectives, detectDuplicates, parseModality, extractGoals, buildProveOpts, show } = dl;

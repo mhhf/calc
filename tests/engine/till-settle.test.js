@@ -20,8 +20,8 @@ import path from 'path';
 import Store from '../../lib/kernel/store.js';
 import convert from '../../lib/engine/convert.js';
 import { tillGrades } from '../../calculus/till/calculus-config.js';
-import { timedSubset, timedExact } from '../../lib/engine/timed/timed-views.js';
-import { ratParts } from '../../lib/engine/theories/ratlit-theory.js';
+import { timedSubset, timedExact } from '../../lib/timed/timed-views.js';
+import { ratParts } from '../../lib/kernel/rat-term.js';
 import { SPEC, FIX, loadTill as load, initQuery as init, stamped, bagStr } from './till-helpers.js';
 import { prfPin } from './_prf-pin.js';
 

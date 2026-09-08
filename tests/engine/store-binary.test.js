@@ -7,7 +7,7 @@ import path from 'path';
 import fs from 'fs';
 import os from 'os';
 import Store from '../../lib/kernel/store.js';
-import { serialize, deserialize, crc32, compact } from '../../lib/engine/store-binary.js';
+import { serialize, deserialize, crc32, compact } from '../../lib/engine/cache/store-binary.js';
 import { grade0, gradeW } from '../../lib/engine/grades.js';
 import mde from '../../calculus/ill/index.js';
 // Hoisted by tools/esm-hoist.js:

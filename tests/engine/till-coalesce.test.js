@@ -15,9 +15,9 @@
 import { describe, it, before } from 'node:test';
 import assert from 'node:assert/strict';
 import Store from '../../lib/kernel/store.js';
-import { stampObservers } from '../../lib/engine/timed/coalesce.js';
-import { buildTimedConfig } from '../../lib/engine/timed/timed.js';
-import { ratParts } from '../../lib/engine/theories/ratlit-theory.js';
+import { stampObservers } from '../../lib/timed/coalesce.js';
+import { buildTimedConfig } from '../../lib/timed/timed.js';
+import { ratParts } from '../../lib/kernel/rat-term.js';
 import { tillCalculusConfig } from '../../calculus/till/calculus-config.js';
 import { SPEC, FIX, loadTill as load, initQuery as init, bagStr, stamped, traceKey } from './till-helpers.js';
 

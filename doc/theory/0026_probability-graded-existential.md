@@ -61,7 +61,7 @@ references:
 (§8, 2026-08-29), and the remaining paper obligations (§9). IMPLEMENTED as the
 calculus `will` (TODO_0297 P0–P3): ∃_ρ surface (`exists X: s @w. A` →
 `superpose(s, exists A)` — a suspended superpose-fact IS the wave of §5),
-decimation driver (lib/engine/decimate.js — sample/exact/solve realizations,
+decimation driver (lib/measure/decimate.js — sample/exact/solve realizations,
 bias posteriors, lazy head-constructor collapse over rung-2 constructor
 members), @w priors + Chi–Geman load lint. The exact-rational test pins in
 tests/engine/will-decimate.test.js are the operational shadow of §8's claims.

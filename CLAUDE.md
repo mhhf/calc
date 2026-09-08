@@ -58,7 +58,7 @@ npm run bench:diff    # Cross-commit benchmark comparison (use this when asked t
 Layer DAG (enforced by tests/engine/layer-dag.test.js): `lib/` ↛ `family/` ↛ `calculus/`; family imports lib; calculus imports both. `lib/` also holds no calculus path or parser: `loadILL`, `proveString`/`parseFormula`/`parseSequent`/`render`, and the bound `parseExpr` live on the ILL facade `calculus/ill/index.js`.
 **Lax monad** `{A}`: polarity shift (async→sync) at `lib/prover/bridge.js`. Three execution profiles: `'full'` (default, opaque), `'guided'` (oracle + verified ILL terms), `'off'` (pure backward)
 **Content-addressed store**: formulas are hashes (numbers), O(1) equality via `lib/kernel/store.js`
-**Equational theories** (`kernel/eq-theory.js`): pluggable cross-tag matching. O(1) dispatch via `_rewriteFromTag[tagId]` lookup. Built-in: strlit. Calculus-registered: binlit (ILL).
+**Equational theories** (`kernel/eq-theory.js`): pluggable cross-tag matching. O(1) dispatch via `_rewriteFromTag[tagId]` lookup. Built-in: strlit. Calculus-registered: binlit (calculus/ill/lib/binlit-theory.js), ratlit (calculus/till/lib/ratlit-theory.js — RES_0143 L10; the ℚ codec ratParts/putRat is kernel: lib/kernel/rat-term.js). Theories may declare `classTags` (their value class) — consumed by over-approximation clients via kernel theoryClassTags().
 
 See `doc/documentation/architecture.md` for the full prover lasagne (L1-L5).
 See `doc/documentation/parser-pipeline.md` for the three parser paths (one shared Earley parser).
@@ -88,43 +88,56 @@ lib/
 │   ├── builders.js      # Parser factory (Earley delegation), deriveRoles()
 │   └── modes.js         # Default monad_r/monad_l descriptor injection (category 'monad')
 ├── meta/                # Polarity/invertibility inference from rule descriptors (focusing.js)
-├── engine/              # Forward/backward execution engine (3-layer lego)
+├── engine/              # Forward/backward execution engine — minimal-essence core (RES_0143: tier manifest pinned by tests/engine/minimal-essence.test.js; no instance vocabulary, no silent calculus defaults — cc supplies everything)
 │   ├── formula-utils.js # Generic: connective-aware formula decomposition (shared across pipeline)
-│   ├── labels.js        # Generic: StampTable — per-State label interning over a calculus value algebra (THY_0024)
-│   ├── match.js         # Generic: pattern matching + tryMatch pipeline
-│   ├── strategy.js      # Generic: rule selection (fingerprint, disc-tree, dynamic rules)
-│   ├── forward.js       # Generic: committed-choice main loop
-│   ├── explore.js       # Generic: exhaustive DFS exploration + mutation/undo
-│   ├── compile.js       # Generic: rule compilation (de Bruijn slots, metavar analysis)
-│   ├── backchain.js     # Generic: backward chaining (SLD-style, renamed from prove.js)
-│   ├── fact-set.js      # Generic: FactSet (sorted typed-array groups) + Arena (undo log)
+│   ├── match.js         # Generic: pattern matching + tryMatch pipeline (matching judgment + matchOpts protocol only — indexing lives in opt/fingerprint)
+│   ├── strategy.js      # Generic: rule selection stack (buildStack/findMatch/findAllMatches); the DEFAULT layer detection is INSTALLED by the composition root (installAutoLayers ← opt/fingerprint.autoLayers) — uninstalled degrades to the predicate catch-all, same semantics
+│   ├── forward.js       # Generic: committed-choice main loop (rejects rules flagged requiresScheduler — the timed feature vocabulary lives in compile.js)
+│   ├── explore.js       # Generic: exhaustive DFS exploration + mutation/undo (no domain state conversion — that happens at the composition root via cc.domain)
+│   ├── compile.js       # Generic: rule compilation (de Bruijn slots, metavar analysis; sets requiresScheduler on timed-feature rules)
+│   ├── backchain.js     # Generic: backward chaining (SLD-style, renamed from prove.js) — TCB
+│   ├── fact-set.js      # Generic: FactSet (sorted typed-array groups) + Arena (undo log) + the packed-ref encoding (packRef/refInner/refStamp); label mode via policy.stampTable (supplied by lib/timed — fact-set imports no timed code)
 │   ├── sorts.js         # Generic: refinement-sort system (subsort DAG index + certified proofs, TODO_0011)
-│   ├── materialize.js   # Generic: load-time clause materialization (sort system + subsort-closure/mass/prior fact riders)
+│   ├── materialize.js   # Generic: load-time clause materialization (sort system + subsort-closure/mass/prior fact riders; checkPriors injected from the root)
 │   ├── convert.js       # .ill → content-addressed hashes
-│   ├── priors.js        # Generic: @w constructor-prior validation + Chi–Geman subcriticality (presence-gated)
-│   ├── decimate.js      # Generic: decimation driver — ∃_ρ waves, lazy recursion, datasort conditioning, sample/exact/solve (calc.collapse; TODO_0297 P2/P3, TODO_0011 fence B)
-│   ├── ci.js            # Generic: calc.certifyCI — THY_0031 separation criterion on the class-graph cover (run waves + phantoms + static rules; sites Z-draws/O_F/mass-children; soundness-only: `separated` certifies X ⊥ Y | Z, refusal carries a witness walk; TODO_0302 M5)
-│   ├── compose.js       # Generic: grade-0 cut-elimination pipeline (cutPair/predMap/compose0) + chain fusion + SROA + SLD tabling (THY_0015/0016); runs on every non-cached load
+│   ├── reserved-preds.js # Machinery-reserved names (superpose/drawn/bias/within) — shared by the convert fence and lib/measure without importing the driver
+│   ├── constraint.js    # Generic union-find branch pruning; WHICH predicates are constraints = cc.domain.constraintPreds (absent → no-op)
+│   ├── compose.js       # Generic: grade-0 cut-elimination pipeline (cutPair/predMap/compose0) + SLD tabling (THY_0015/0016) — SEMANTIC passes only; fusion/SROA are injected opt passes
 │   ├── compose-profile.js # Generic: compose profiling emission (onPhase-gated, pure — fuse/tabling rollups + leaves)
-│   ├── timed/           # Timed layer: wall-clock scheduler over the stamp algebra (generic over cc.grades/cc.stampTag; TODO_0265)
-│   │   ├── timed.js       # buildTimedConfig, settle loop, stamp-aware matching (tryTimedMatch/fire)
-│   │   ├── timed-api.js   # grades-gated API construction (settle/views/game + D16/C1-C3 lints) — index.js delegates here
-│   │   ├── timed-game.js  # Interactive with-projection menus over timed state
-│   │   ├── timed-render.js # #trace/#timeline/#why debug renderings
-│   │   ├── timed-lint.js  # D16 Zeno warning + timedAdvice: C1 chain-collapse, C2 Hypothesis-S (menu-exempt + cc.lintExempt machinery predicates), C3 whole-bind arrivals
-│   │   ├── certify.js     # T2-applicability certifier: structural / monotone-relaxation pairwise check (calc.certifyContention)
-│   │   ├── timed-views.js # timedSubset/timedExact state projections
-│   │   ├── accel.js       # orbit detection + state jumping (accelerate opt)
-│   │   ├── coalesce.js    # cohort merging
-│   │   ├── covariance.js  # shift-degree analysis (rebase safety)
-│   │   └── dirty-sched.js # dirty-tracking scheduler
-│   └── opt/             # Toggleable optimization modules
+│   ├── cache/           # Persistence/versioning infrastructure
+│   │   ├── compose-cache.js  # Compose disk cache (key derivation, snapshot save/load, cold-vs-cached verify; calc builder injected)
+│   │   ├── store-binary.js   # Binary serialize/deserialize for precompiled SDK loading
+│   │   ├── engine-version.js # Content-hash of lib/ + family/ + calculus/ JS (H1: config-bound machinery busts caches too)
+│   │   ├── cache-flags.js    # Compose-affecting flag registry (cache-key fingerprint)
+│   │   └── cache-evict.js    # LRU eviction + format-migration stamp
+│   └── opt/             # Toggleable optimization modules (semantics-free — gated by profile-differential.test.js bare-vs-full)
+│       ├── fingerprint.js     # The WHOLE fingerprint stack: fpDetect/fpValue/fpLayer/attachPred/buildFingerprintIndex + autoLayers (default strategy detection, installed by the root)
+│       ├── disc-tree.js       # Discrimination-tree candidate lookup (catch-all layer)
+│       ├── compose-fuse.js    # Compose P5 basic-block fusion + P5.5 chain fusion (injected via composeOpts.fusePasses)
+│       ├── compose-sroa.js    # Compose P6 McCarthy + SROA (injected via composeOpts.fusePasses)
 │       ├── compiled-clauses.js # Tier 1 compiled clause dispatch (zero-subgoal → direct lookup)
 │       ├── existential-compile.js # Compiled ∃-chain (per-goal FFI fast path for existential resolution)
 │       ├── ffi.js             # FFI-first persistent goal proving (state → FFI → compiled → clause)
-│       ├── fingerprint.js     # First-argument fingerprint indexing for rule selection
 │       ├── prediction.js      # Rule applicability prediction (pre-filter before full match)
-│       └── structural-memo.js # Structural memoization for explore (control hash → subtree skip)
+│       └── structural-memo.js # Structural memoization for explore (control tags from cc.domain.memoControlTags; none → memo off)
+├── timed/               # Timed LAYER above the engine (RES_0143 M1): wall-clock scheduler over the stamp algebra (generic over cc.grades/cc.stampTag; TODO_0265) — imports engine code; the engine reaches it only at the composition root (layer-dag-pinned)
+│   ├── timed.js         # buildTimedConfig, settle loop, stamp-aware matching (tryTimedMatch/fire); the effective FactSet policy carries stampTable
+│   ├── timed-api.js     # grades-gated API construction (settle/views/game + D16/C1-C3 lints) — index.js delegates here
+│   ├── labels.js        # StampTable — per-State label interning over a calculus value algebra (THY_0024); reaches the FactSet via policy.stampTable
+│   ├── timed-game.js    # Interactive with-projection menus over timed state
+│   ├── timed-render.js  # #trace/#timeline/#why debug renderings
+│   ├── timed-lint.js    # D16 Zeno warning + timedAdvice: C1 chain-collapse, C2 Hypothesis-S (menu-exempt + cc.lintExempt machinery predicates), C3 whole-bind arrivals
+│   ├── certify.js       # T2-applicability certifier: structural / monotone-relaxation pairwise check (calc.certifyContention)
+│   ├── timed-views.js   # timedSubset/timedExact state projections
+│   ├── accel.js         # orbit detection + state jumping (accelerate opt)
+│   ├── coalesce.js      # cohort merging
+│   ├── covariance.js    # shift-degree analysis (rebase safety)
+│   └── dirty-sched.js   # dirty-tracking scheduler
+├── measure/             # Measure-class LAYER above the engine (RES_0143 M2) — same direction discipline as lib/timed
+│   ├── decimate.js      # Decimation driver — ∃_ρ waves, lazy recursion, datasort conditioning, sample/exact/solve (calc.collapse; TODO_0297 P2/P3, TODO_0011 fence B)
+│   ├── ci.js            # calc.certifyCI — THY_0031 separation criterion on the class-graph cover (soundness-only: `separated` certifies X ⊥ Y | Z, refusal carries a witness walk; TODO_0302 M5); eq-theory value classes from kernel theoryClassTags()
+│   ├── priors.js        # @w constructor-prior validation + Chi–Geman subcriticality (presence-gated; injected into materialize by the root)
+│   └── collapse-api.js  # buildCollapseApi — the buildTimedApi registration pattern (self-gated on settle + sort system)
 ├── meta-parser/         # Meta-level parser (@extends chain resolution)
 ├── parser/              # Earley parser + grammar generation + sequent parser
 │   ├── earley.js        # Core Earley engine (recognizer, chart, extraction)
@@ -286,7 +299,7 @@ FFI is optimization, theory is semantics. Every FFI predicate MUST have backward
 - Counted parcels (D4 revised): binding discipline decides cohort discipline. `!_k A` = k copies of ANY ages (spreads across cohorts oldest-first; activation = newest taken stamp); `!_k A@T` = k copies at ONE stamp T; `!_W A` = ALL copies (W binds the total); `!_W A@T` = one whole cohort (W its size, T its stamp). Fused sugar `4wood` ≡ `!_4 wood` (till only, one lexer token); spaced `4 wood` stays application juxtaposition, `4wood@3` is a loud error (write `!_4 wood@3`)
 - Whole-bind chases arrivals: `!_W A` includes in-flight cohorts a producer just scheduled, so a rule like `!_W g * !lt CAP W` re-activates at every arrival and a deterministic chooser can starve it FOREVER (the PRF chooser merely hides it). Trim/cap rules must use a counted take — `!_201 g -o { !_200 g }` pins activation oldest-first and is starvation-free under any chooser (PP2 §3b)
 - Grammar emission is ONE mechanism (sorted templates, TODO_0268 §5c): operator/prefix/nullary/circumfix/gradedPrefix tables are normalized into synthetic template records in `earley-grammar.js` — new surface syntax should be a declared `@ascii` template, not a new family. Per-input ambiguity detection: `setStrictAmbiguity(true)` in `earley.js` (corpus sweep: `tests/parser-fold-fuzz.test.js`)
-- Labelled timed state (THY_0024): `at(A, t)` exists only at BOUNDARIES (plain objects, store-binary, event records, rule patterns). Live timed states are rows (innerHash, stampId, count) — the runtime fact handle is a packed 52-bit ref (`labels.js` packRef/refInner/refStamp); stamp ids index the per-State StampTable (`state.linear.stamps`), whose ids are history-dependent — hash/PRF inputs must derive from VALUES, never ids
+- Labelled timed state (THY_0024): `at(A, t)` exists only at BOUNDARIES (plain objects, store-binary, event records, rule patterns). Live timed states are rows (innerHash, stampId, count) — the runtime fact handle is a packed 52-bit ref (fact-set.js packRef/refInner/refStamp — the ROW ENCODING lives with the FactSet); stamp ids index the per-State StampTable (lib/timed/labels.js, reaching the FactSet as `policy.stampTable` — RES_0143 M1), whose ids are history-dependent — hash/PRF inputs must derive from VALUES, never ids
 - Certified execution (TODO_0294/0295): the timed bridge returns ELABORATED @fire proof trees — FULL kernel verification (`verifyTree(tree, { program: programFromCalc(engineCalc) })`), no `unverified: 'modeSwitch'`; elaboration failure with a bound checker THROWS (engine/elaborator disagreement). The kernel routes calculus-declared step checkers via `calculus.stepCheckers` (bound in kit.js makeSequentLoader's `fire:`/`draw:` options — no rule annotations); clause-derived persistent goals carry SLD certificates (sld-check.js, emitted clause-only `useFFI: false`); the checker also PROVES clause-only (fire-check stamp judgments + scope-guarded theory goals — the numeric FFI is never on the verification path). TCB = kernel + eq-theory canon + numeric prelude CLAUSES under the clause-only backchainer. `certifyRun` certifies arbitrary settle runs; fuzz-till §7 fuzzes it
 - Constructor priors: `sea: tile_t @w 2.` is the ONE annotation program files admit (regex-narrow parse — exactly `ident @w numeral[/numeral]` as the whole body, so stamp positions `food@Q`/`{...}@3` can never match). Lands on `calc.priors` as exact [n,d] ℚ≥0 ratios (DATA, never facts — D5; in-logic evidence is bias facts, P2); unannotated member = weight 1 at the consumer. Chi–Geman subcriticality (T2) warns at load (`calc.priorLint`)
 - Chooser `'entropy'` (M5, will's default): among tied candidates, least Shannon entropy of the consequent distribution fires first (H=0 deterministic rules → propagation before collapse); residual ties → PRF. Semantics-free tuning (D6) — override per run via settle `opts.chooser`
@@ -313,7 +326,7 @@ FFI is optimization, theory is semantics. Every FFI predicate MUST have backward
 - `tools/analyze-csub.js` — compiled substitution analysis (recipe coverage stats)
 - `lib/engine/show.js` — `show(hash)`, `classifyLeaf(state)`, `showInteresting(state)`
 - `out/ill.json` precomputes: parserTables, rendererFormats, ruleSpecMeta, connectivesByType
-- `lib/engine/store-binary.js` — binary serialize/deserialize for precompiled SDK loading
+- `lib/engine/cache/store-binary.js` — binary serialize/deserialize for precompiled SDK loading
 
 ## Engine Hooks API
 

@@ -12,7 +12,7 @@ import assert from 'node:assert/strict';
 import fs from 'fs';
 import path from 'path';
 import os from 'os';
-import { ensureVersionTag, lruEvict, DEFAULT_MAX_BYTES, _resetVersionTagMemo } from '../../lib/engine/cache-evict.js';
+import { ensureVersionTag, lruEvict, DEFAULT_MAX_BYTES, _resetVersionTagMemo } from '../../lib/engine/cache/cache-evict.js';
 import Store from '../../lib/kernel/store.js';
 import mde from '../../calculus/ill/index.js';
 const SYMEX_PATH = path.join(import.meta.dirname, '../../calculus/ill/programs/multisig_nocall_solc_symbolic.ill');

@@ -10,8 +10,8 @@
 
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import { ENV_FLAGS, OPT_FLAGS, cacheFlagFingerprint } from '../../lib/engine/cache-flags.js';
-import { engineVersion, _resetEngineVersionCache } from '../../lib/engine/engine-version.js';
+import { ENV_FLAGS, OPT_FLAGS, cacheFlagFingerprint } from '../../lib/engine/cache/cache-flags.js';
+import { engineVersion, _resetEngineVersionCache } from '../../lib/engine/cache/engine-version.js';
 describe('TODO_0218 Phase 3 — cache-flag registry', () => {
   it('baseline fingerprint is deterministic', () => {
     const a = cacheFlagFingerprint({});
