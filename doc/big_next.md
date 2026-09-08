@@ -56,7 +56,12 @@ the LNL-shaped statement below is superseded), and the store-as-SNAX theorem.
 P0+P1 LANDED (2026-09-08): family/sax + calculus/sax ship with the snip-searching
 prover and the sax-native machine; five generic engine/loader completeness findings
 fixed; the interface-extension list (P3's raw material) is recorded in the todo and
-doc/documentation/sax-family.md.
+doc/documentation/sax-family.md. P2 LANDED (2026-09-08): calc.certifyConfluence —
+the destination-discipline confluence certificate (THY_0036), with explore's
+single-interleaving commit. P3 LANDED (2026-09-08): THY_0035 — ⊢_fwd parametric
+over the family record (CS, P, D, X), axioms A1-A4 + match-completeness C1-C3,
+discharged for lnl AND sax; the four-hooks-are-the-LNL-part finding is now a
+specialization theorem.
 
 The backward prover is kernel-checked; the forward engine's search semantics is still
 folklore. Queued theorems:
