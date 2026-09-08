@@ -47,7 +47,12 @@ fenced-grade-algebra framework independent of the governance application.
 
 ## 3. Metatheory of the forward engine itself
 
-**TODO_0045, TODO_0042, TODO_0261, TODO_0307 (P7), TODO_0007, TODO_0005**
+**TODO_0309 (subsumes 0045, 0261), TODO_0042, TODO_0307 (P7), TODO_0007, TODO_0005**
+
+Consolidated 2026-09-08 into TODO_0309: sax.family as the second structural family
+(first milestone), certifyConfluence for the destination-passing fragment, the ⊢_fwd
+judgment restated PARAMETRICALLY over family axioms (discharged for lnl AND sax —
+the LNL-shaped statement below is superseded), and the store-as-SNAX theorem.
 
 The backward prover is kernel-checked; the forward engine's search semantics is still
 folklore. Queued theorems:
