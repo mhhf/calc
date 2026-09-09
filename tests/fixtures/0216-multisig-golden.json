@@ -1,12 +1,12 @@
 {
   "schema": "0216-multisig-golden/v1",
-  "seeded": "2026-04-17T15:32:13.482Z",
+  "seeded": "2026-09-07T20:54:21.878Z",
   "note": "TODO_0216 Phase 0 H8. Delete and re-run to regenerate.",
-  "nodeCount": 214,
-  "leafCount": 2,
+  "nodeCount": 1987,
+  "leafCount": 31,
   "classMultiset": {
-    "REVERT": 1,
-    "STOP": 1
+    "REVERT": 13,
+    "STOP": 18
   },
-  "sha": "dfde0d8f087aa3a3bf66105341746775e718e1cab0bb1a306e1895ae337134b5"
+  "sha": "2a17f1a519368cc49c95a7dbc620fba840bc7d73995525ab9f1c288dc6fc266d"
 }

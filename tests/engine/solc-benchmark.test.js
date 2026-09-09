@@ -99,25 +99,25 @@ describe('Solc multisig symbolic (structural memo)', { timeout: 30000, concurren
     treeMemo = calc.explore(state, { maxDepth: 500, dangerouslyUseFFI: true, structuralMemo: true });
   });
 
-  it('full exploration has 214 nodes and 2 leaves', () => {
-    assert.strictEqual(countNodes(treeFull), 214, 'Expected 214 nodes');
-    assert.strictEqual(getAllLeaves(treeFull).length, 2, 'Expected 2 leaves');
+  it('full exploration has 1987 nodes and 31 leaves', () => {
+    assert.strictEqual(countNodes(treeFull), 1987, 'Expected 1987 nodes');
+    assert.strictEqual(getAllLeaves(treeFull).length, 31, 'Expected 31 leaves');
   });
 
-  it('structural memo has same tree (no redundant branches to memo)', () => {
+  it('structural memo skips isomorphic member subtrees (513 nodes)', () => {
     const n = countNodes(treeMemo);
-    assert.strictEqual(n, 214, `Expected 214 nodes with memo, got ${n}`);
+    assert.strictEqual(n, 513, `Expected 513 nodes with memo, got ${n}`);
   });
 
-  it('leaves are STOP + REVERT (all infeasible branches pruned)', () => {
+  it('leaves are the 31 feasible paths (18 STOP + 13 REVERT)', () => {
     const leaves = getAllLeaves(treeFull);
     const classes = {};
     for (const l of leaves) {
       const cl = classifyLeaf(l.state);
       classes[cl] = (classes[cl] || 0) + 1;
     }
-    assert.strictEqual(classes.STOP, 1, 'Expected 1 STOP leaf');
-    assert.strictEqual(classes.REVERT, 1, 'Expected 1 REVERT leaf');
+    assert.strictEqual(classes.STOP, 18, 'Expected 18 STOP leaves');
+    assert.strictEqual(classes.REVERT, 13, 'Expected 13 REVERT leaves');
   });
 
   it('no bound or cycle nodes (full exploration achieved)', () => {

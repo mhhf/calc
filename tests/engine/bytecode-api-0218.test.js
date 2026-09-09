@@ -33,6 +33,10 @@ describe('TODO_0218 Phase 3 — bytecode API', () => {
     const cManual = mde.load(SYMEX_PATH, {
       cache: false, extraGrade0Facts: bc.facts,
       scopeGuard: bytecodeArrGetGuard, fuseBasicBlocks: true,
+      // {bytecode} auto-wires JUMPDEST fusion barriers (TODO_0307 Bug A); the
+      // manual equivalent must pass them too, or fusion swallows jump targets
+      // and the rule sets diverge.
+      fusionBarriers: bc.barrierRefs,
     });
     const namesManual = cManual.forwardRules.map(r => r.name).sort();
 

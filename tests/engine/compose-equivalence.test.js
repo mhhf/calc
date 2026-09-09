@@ -98,6 +98,11 @@ describe('compose SROA equivalence — P6 isolated (audit item 3)', () => {
         cache: false,
         extraGrade0Facts: bc.facts,
         scopeGuard: bytecodeArrGetGuard,
+        // JUMPDEST fusion barriers (TODO_0307 Bug A): the raw extraGrade0Facts
+        // path does not auto-wire them (only the {bytecode} API does), so pass
+        // them explicitly — without them fusion swallows jump targets and both
+        // arms leave 6 states RUNNING at pc 0x225 with SROA-vs-fusion diffs.
+        fusionBarriers: bc.barrierRefs,
         fuseBasicBlocks: true,
         sroaConfig,
         onPhase: (name, ms, meta) => { if (name === 'load/compose') diag = meta; },
@@ -106,8 +111,21 @@ describe('compose SROA equivalence — P6 isolated (audit item 3)', () => {
       const tree = calc.explore(state, { maxDepth: 500, dangerouslyUseFFI: true });
       const leaves = getAllLeaves(tree).filter(l => l.type === 'leaf');
       // Value-level leaf states (Store ids differ across the two loads).
+      // Eigenvariables are compared MODULO RENAMING: SROA and fusion mint
+      // different numbers of evars (SROA scalarizes, so it defers at different
+      // points), so two alpha-equivalent symbolic states carry different
+      // evar(N) ids. Canonicalize each state's evar ids to first-appearance
+      // rank — the sound equivalence for symbolic execution with fresh
+      // eigenvariables (TODO_0307 P3).
+      const canonEvars = (s) => {
+        const seen = new Map();
+        return s.replace(/evar\((\d+)\)/g, (_, n) => {
+          if (!seen.has(n)) seen.set(n, seen.size);
+          return `evar(${seen.get(n)})`;
+        });
+      };
       const states = leaves.map(l =>
-        Object.keys(toObject(l.state).linear).map(h => show(Number(h))).sort().join(' | ')
+        canonEvars(Object.keys(toObject(l.state).linear).map(h => show(Number(h))).sort().join(' | '))
       ).sort();
       return { diag, states };
     }
