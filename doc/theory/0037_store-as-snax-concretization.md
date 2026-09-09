@@ -101,9 +101,11 @@ content-addressed value. Check the laws against the TERM algebra:
   dereference, no type info needed).
 - **L2**: `p1 D · p⃗ ≠ p2 D · p⃗′` — free-algebra constructor
   injectivity; distinctness holds ON THE NOSE, for all extensions.
-- `hole D` IS `cell(a, □)`: symbolic addresses exist before their
-  values — the futures protocol concretizes, reads block (in the
-  committed engine: rules wait for the cell fact).
+- `hole D` REALIZES `cell(a, □)` (the machine's fact playing the
+  paper's allocated-unwritten role under the factorization map):
+  symbolic addresses exist before their values — the futures protocol
+  concretizes, reads block (in the committed engine: rules wait for
+  the cell fact).
 
 So the correct statement is a factorization:
 
