@@ -1,7 +1,7 @@
 ---
 title: "Parametric Forward Chaining: the Eigenvariable Semantics of Existentials"
 created: 2026-09-08
-modified: 2026-09-08
+modified: 2026-09-09
 summary: "Existentials in forward-rule consequents have exactly one semantics — eigenvariable opening (CLF let-binding) — and eager witness computation is a separate, admissible rule (forced elimination) whose side condition is uniqueness: ground inputs × functional predicate, the forward-fragment transplant of Twelf's uniqueness modes. States denote their satisfiable groundings; the b1588c6e collapse is the violation class 'witness capture' (eliminating an unforced parameter from one conjunct's isolated instance), which fabricates leaves outside the denotation while dropping leaves inside it. The framework-level prize is parametric adequacy: for well-moded, guard-covering programs, parametric exploration is a sound and complete abstraction of ground execution — symbolic-execution correctness proved once at the logic level, not per language. The theory exposes two unmanifested engine gaps no test on the current corpus can reach: uniqueness is unchecked at the lookup/clause tiers (G1) and tell-consistency of ground theory-atoms is unchecked (G2)."
 tags: [linear-logic, forward-chaining, proof-theory, symbolic-execution, existential, modes, clf, engine-theory]
 category: "Proof Theory"
@@ -153,6 +153,25 @@ kills the branch (the sound reading of an inconsistent tell). Parametric
 tells accumulate; their consistency is the province of propagation
 (TODO_0005: substitute on binding, re-check touched constraints, prune on
 derived contradiction — sound refinement of the denotation, never loss).
+
+*Discharged for the declared-decidable fragment (task #80).* The
+EqNeqSolver's own class — the calculus-declared constraint predicates
+(`cc.domain.constraintPreds` = {eq, neq}), for which the solver is a
+complete decision procedure — is now checked at exploration's single-alt
+tell path (the multi-alt ⊕ path already SAT-filtered its guards). An
+inconsistent ground eq/neq tell prunes the branch to a `dead` node; the
+solver already accumulates these tells, so the check is a consult of state
+it was already maintaining. Two pieces of the obligation remain, each the
+mode system's (§5): (i) *predicates beyond eq/neq* — extending the checked
+fragment needs the per-predicate totality/uniqueness certification of G1
+(fail-to-prove = false only for a certified-closed-world predicate); (ii)
+*the exec committed-choice path* — explore's leaf-set carries the
+reachable-world semantics a zombie violates, whereas exec runs one path and
+a single-alt false tell there is ill-formed input, caught properly by
+load-time well-modedness rather than a runtime prune. Impl:
+`lib/engine/explore.js` single-alt block + `lib/engine/constraint.js`
+(`feedPers` returns the recognized-constraint count); pins:
+`tests/engine/g2-tell-consistency.test.js`.
 
 ## 5. Parametric adequacy: the framework-level theorem
 
