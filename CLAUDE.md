@@ -99,7 +99,7 @@ lib/
 │   ├── strategy.js      # Generic: rule selection stack (buildStack/findMatch/findAllMatches/bareStrategy); strategy reaches the loops through ONE channel (F2): engine.buildStrategy — the profile-honoring, per-rule-list-memoized factory on the engine context (optimizer.js) — or explicit opts.strategy; direct callers fall back to the predicate catch-all
 │   ├── forward.js       # Generic: committed-choice main loop (rejects rules flagged requiresScheduler — the timed feature vocabulary lives in compile.js)
 │   ├── explore.js       # Generic: exhaustive DFS exploration + mutation/undo (no domain state conversion — that happens at the composition root via cc.domain)
-│   ├── compile.js       # Generic: rule compilation (de Bruijn slots, metavar analysis; sets requiresScheduler on timed-feature rules)
+│   ├── compile.js       # Generic: rule compilation (de Bruijn slots, metavar analysis; sets requiresScheduler on timed-feature rules; canonPatterns = the state-canonicity gate)
 │   ├── backchain.js     # Generic: backward chaining (SLD-style, renamed from prove.js) — TCB
 │   ├── fact-set.js      # Generic: FactSet (sorted typed-array groups) + Arena (undo log) + the packed-ref encoding (packRef/refInner/refStamp); label mode via policy.stampTable (supplied by lib/timed — fact-set imports no timed code)
 │   ├── sorts.js         # Generic: refinement-sort system (subsort DAG index + certified proofs, TODO_0011)
