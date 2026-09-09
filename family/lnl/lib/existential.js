@@ -22,9 +22,18 @@
 import { freshEvar } from '../../../lib/kernel/fresh.js';
 import { applyIndexed } from '../../../lib/kernel/substitute.js';
 import { EMPTY_MATCH_OPTS } from '../../../lib/engine/match.js';
+import { predHead } from '../../../lib/kernel/ast.js';
 import Store from '../../../lib/kernel/store.js';
 // Reusable 1-element array for single-goal provePersistent calls
 const _singleGoal = [0];
+// Loud precision fence (TODO_0307 P3, Track 1): CALC_CHECK_FORCE=1 verifies the
+// body pass achieved MAXIMAL FORCING — no goal was deferred to an eigenvariable
+// when it was actually forceable (concrete inputs, computable output). The
+// arbiter is the prover itself: a goal with fully-concrete inputs but a still-
+// symbolic output that RE-FORCES on a scratch θ was a silent over-
+// approximation (a wrong resolution order, an incomplete prove). Off ⇒ zero
+// cost; on ⇒ a diagnostic for fuzzing/heavy runs.
+const _CHECK_FORCE = typeof process !== 'undefined' && process.env.CALC_CHECK_FORCE === '1';
 
 /**
  * Collect existential goals in consequent-persistent order.
@@ -73,6 +82,17 @@ function _hasSymbolic(h) {
 function _resolveBody(theta, slots, rule, state, calc, matchOpts) {
   const steps = rule.resolutionBody.steps;
   const provePersistent = matchOpts.provePersistent;
+  // Loud precision check: the set of slots that some step genuinely PRODUCES
+  // (a fixed-direction '-' output). If a step's input is unbound when it runs
+  // yet lives in this set, its producer is ordered LATER — a wrong resolution
+  // order that would silently freshen the input to an eigenvariable and lose
+  // precision. (Symmetric predicates like `plus` have no fixed output, so they
+  // are excluded; the EVM ordering hazards are all fixed-direction.)
+  let _producedSlots = null;
+  if (_CHECK_FORCE) {
+    _producedSlots = new Set();
+    for (const e of steps) if (!e.symmetric) for (const s of e.outSlots) _producedSlots.add(s);
+  }
   for (let i = 0; i < steps.length; i++) {
     const entry = steps[i];
     const goal = entry.goal;
@@ -83,7 +103,12 @@ function _resolveBody(theta, slots, rule, state, calc, matchOpts) {
     // genuinely-undetermined inputs can leave a slot blank — freshen those
     // input slots to opaque eigenvariables first (evars never wildcard).
     if (!entry.symmetric) {
-      for (const s of entry.inSlots) if (theta[s] === undefined) theta[s] = freshEvar();
+      for (const s of entry.inSlots) if (theta[s] === undefined) {
+        if (_producedSlots && _producedSlots.has(s)) {
+          throw new Error(`CALC_CHECK_FORCE: rule=${rule.name} goal=${predHead(goal)} runs with input slot ${s} unbound, but a LATER goal produces it — wrong resolution order / precision loss`);
+        }
+        theta[s] = freshEvar();
+      }
     }
 
     let proved = false;
@@ -121,6 +146,7 @@ function _resolveBody(theta, slots, rule, state, calc, matchOpts) {
       else theta[slot] = dv;
     }
   }
+
   return true;
 }
 

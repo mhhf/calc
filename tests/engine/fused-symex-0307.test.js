@@ -21,6 +21,7 @@ import { describe, it } from 'node:test';
 import assert from 'node:assert';
 import path from 'path';
 import fs from 'fs';
+import { execFileSync } from 'child_process';
 import Store from '../../lib/kernel/store.js';
 import mde from '../../calculus/ill/index.js';
 import { loadBytecode, bytecodeArrGetGuard } from '../../calculus/ill/lib/bytecode-loader.js';
@@ -90,6 +91,33 @@ describe('TODO_0307 P3 — fused symex matches the unfused golden', { timeout: 6
       assert.strictEqual(fallback.length, 0,
         `${sroa ? 'fuse+SROA' : 'fuse'}: ${fallback.length} rules fell back to order reconstruction`);
     }
+  });
+
+  it('the fused symex achieves MAXIMAL FORCING (CALC_CHECK_FORCE fence is silent)', () => {
+    // The loud precision fence re-checks, on every fire, that no goal ran with
+    // an input a later goal produces (a wrong order that would silently defer a
+    // computable value to an eigenvariable). It is read at module load, so run
+    // it in a child process with the env set. Exit 0 = the carried order forces
+    // everything it can.
+    const script = `
+      import mde from ${JSON.stringify(path.join(DIR, '../../calculus/ill/index.js'))};
+      import { loadBytecode, bytecodeArrGetGuard } from ${JSON.stringify(path.join(DIR, '../../calculus/ill/lib/bytecode-loader.js'))};
+      import { getAllLeaves } from ${JSON.stringify(path.join(DIR, '../../lib/engine/tree-utils.js'))};
+      import fs from 'fs';
+      const hex = fs.readFileSync(${JSON.stringify(CODE)}, 'utf8').match(/bytecode\\s+0x([0-9a-fA-F]+)/)[1];
+      const bc = loadBytecode(hex);
+      const calc = mde.load(${JSON.stringify(SYMEX)}, { cache: false, extraGrade0Facts: bc.facts, scopeGuard: bytecodeArrGetGuard, fusionBarriers: bc.barrierRefs, fuseBasicBlocks: true });
+      const state = mde.normalizeQuery(calc.queries.get('symex'));
+      const n = getAllLeaves(calc.explore(state, { maxDepth: 500, dangerouslyUseFFI: true })).length;
+      if (n !== 31) { console.error('leaves=' + n); process.exit(2); }
+    `;
+    let ok = true, msg = '';
+    try {
+      execFileSync(process.execPath, ['--input-type=module', '-e', script], {
+        env: { ...process.env, CALC_CHECK_FORCE: '1' }, stdio: 'pipe', timeout: 60000,
+      });
+    } catch (e) { ok = false; msg = (e.stderr ? e.stderr.toString() : '') || e.message; }
+    assert.ok(ok, `CALC_CHECK_FORCE fence fired or run failed: ${msg.slice(0, 300)}`);
   });
 
   it('fast ≡ evidence under the full fused config (observation does not change the run)', () => {
