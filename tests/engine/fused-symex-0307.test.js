@@ -69,6 +69,29 @@ describe('TODO_0307 P3 — fused symex matches the unfused golden', { timeout: 6
       GOLDEN);
   });
 
+  it('every fused rule CARRIES its bind order (fusion is concatenation, not reconstruction)', () => {
+    // Track 1: the resolution order is carried through fusion by concatenation,
+    // not re-derived by scheduleGoals at compile time. Every fused rule's
+    // resolutionBody must be built from the carried bodyOrder — a pass that
+    // transforms goals without maintaining bodyOrder would drop to the
+    // reconstruction fallback and trip this.
+    for (const sroa of [false, true]) {
+      Store.clear();
+      const bc = loadBytecode(HEX);
+      const opts = {
+        cache: false, extraGrade0Facts: bc.facts, scopeGuard: bytecodeArrGetGuard,
+        fusionBarriers: bc.barrierRefs, fuseBasicBlocks: true,
+      };
+      if (!sroa) opts.sroaConfig = { ...ILL_SROA_CONFIG, arrayPreds: [] };
+      const calc = mde.load(SYMEX, opts);
+      const bodied = calc.forwardRules.filter(r => r.resolutionBody);
+      assert.ok(bodied.length > 0, `${sroa ? 'fuse+SROA' : 'fuse'}: has fused rules with a body`);
+      const fallback = bodied.filter(r => !r.resolutionBody.carried);
+      assert.strictEqual(fallback.length, 0,
+        `${sroa ? 'fuse+SROA' : 'fuse'}: ${fallback.length} rules fell back to order reconstruction`);
+    }
+  });
+
   it('fast ≡ evidence under the full fused config (observation does not change the run)', () => {
     Store.clear();
     const bc = loadBytecode(HEX);
