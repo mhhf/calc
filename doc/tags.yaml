@@ -10,12 +10,12 @@ tags:
   implementation: 10
   left-rule: 10
   positive-connective: 10
+  soundness: 10
   cut-elimination: 9
   lax-monad: 9
   negative-connective: 9
   optimization: 9
   right-rule: 9
-  soundness: 9
   till: 9
   engine: 8
   structural-rule: 8
@@ -30,6 +30,7 @@ tags:
   with: 5
   adjoint-logic: 4
   certificates: 4
+  engine-metatheory: 4
   existential: 4
   exists: 4
   ffi: 4
@@ -44,7 +45,6 @@ tags:
   conditioning: 3
   confluence: 3
   Curry-Howard: 3
-  engine-metatheory: 3
   evm: 3
   focusing: 3
   loli: 3
@@ -60,12 +60,14 @@ tags:
   accounting: 2
   backward: 2
   bridge: 2
+  content-addressed-store: 2
   content-addressing: 2
   destination-passing: 2
   determinism: 2
   eigenvariable: 2
   forall: 2
   Futamura: 2
+  hash-consing: 2
   independence: 2
   layers: 2
   modal-logic: 2
@@ -106,7 +108,6 @@ tags:
   complexity: 1
   connectives: 1
   consensus: 1
-  content-addressed-store: 1
   correspondence: 1
   cost-semantics: 1
   cut: 1
@@ -120,6 +121,7 @@ tags:
   disjunction: 1
   documentation: 1
   entailment: 1
+  equational-theory: 1
   execution-tree: 1
   existentials: 1
   exploration: 1
@@ -133,7 +135,6 @@ tags:
   games: 1
   graded-monad: 1
   grothendieck-group: 1
-  hash-consing: 1
   HCP: 1
   hevm: 1
   hooks: 1

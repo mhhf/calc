@@ -1,7 +1,7 @@
 ---
 term: "Representation equality vs. value equality (state canonicity)"
 summary: "Hash identity (===) is representation equality; value equality is theory-relative. The engine keeps them interchangeable INSIDE live states via the state-canonicity invariant; certifiers compare modulo the theories instead of trusting it."
-tags: [content-addressed-store, eq-theory, canonicalization, invariant, soundness]
+tags: [content-addressed-store, hash-consing, soundness, engine-metatheory, equational-theory]
 see_also: []
 ---
 
