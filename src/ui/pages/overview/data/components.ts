@@ -405,7 +405,7 @@ export const COMPONENTS: Component[] = [
     id: 'parser.meta',
     name: 'Meta Parser',
     summary: '@extends chain resolution over .calc hierarchies',
-    files: ['lib/meta-parser/'],
+    files: ['lib/calculus/meta-parser.js'],
     trust: 'infrastructure', specificity: 'framework',
     stages: ['parse'], modes: ['backward', 'forward'],
     deepDive: 'parser', cluster: 'parser',

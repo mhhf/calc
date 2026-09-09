@@ -1,5 +1,5 @@
 /**
- * Direct tests for meta-parser/loader.js
+ * Direct tests for calculus/meta-parser.js
  *
  * Covers: @extends chain resolution, declaration extraction from Store hashes,
  * child-wins merge semantics.
@@ -9,7 +9,7 @@ import assert from 'node:assert/strict';
 import path from 'path';
 import fs from 'fs';
 import Store from '../lib/kernel/store.js';
-import { loadChain } from '../lib/meta-parser/loader.js';
+import { loadChain } from '../lib/calculus/meta-parser.js';
 
 describe('meta-parser/loader', () => {
   before(() => {

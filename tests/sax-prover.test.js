@@ -131,6 +131,17 @@ describe('sax prover (TODO_0309 P1)', () => {
     assert.ok(!v.valid, 'forged axiom must be rejected');
   });
 
+  it('kernel rejects a forged with projection: with_l1 claiming the right component', () => {
+    // with_l1 is the A-projection axiom (A & B ⊢ A); forging it to
+    // conclude b from a & b must fail the template succedent
+    // re-derivation (rule-interpreter's succ check) — the projection
+    // choice is data the kernel re-checks, not trusts.
+    const seq = Seq.seq({ linear: [P('a & b')] }, P('b'));
+    const tree = new ProofTree({ conclusion: seq, premises: [], rule: 'with_l1', proven: true, state: null });
+    const v = kernel.verifyTree(tree);
+    assert.ok(!v.valid, 'forged with projection must be rejected');
+  });
+
   it('kernel rejects a doctored cut: premise 2 without the cut formula', () => {
     // forged: a ⊢ b by cut on c where premise 2 never carries c
     const seq = Seq.seq({ linear: [P('a')] }, P('b'));

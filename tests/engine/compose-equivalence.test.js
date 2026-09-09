@@ -1,18 +1,16 @@
 /**
- * Compose fusion equivalence pin (RES_0143 E2b).
+ * Compose optimization-pass equivalence pins (RES_0143 E2b + audit item 3).
  *
- * The compose pipeline's optimization passes (P5 basic-block fusion,
- * P5.5 chain fusion, P6 SROA) must be semantics-preserving: a program
- * executed with fusion ON must reach the same final state as with
- * fusion OFF. Before this pin, compose determinism was tested but
- * on/off equivalence was not — a fusion bug would have silently
- * changed runtime semantics.
+ * The compose pipeline's optimization passes must be semantics-
+ * preserving. Two differentials, each with a non-vacuity guard:
  *
- * The program is the minimal shape on which P5 actually fires
- * (verified via onPhase diagnostics): grade-0 code facts specialized
- * per pc (P2), residual !plus resolved at compile time (P3+4, gives
- * ground pc producers), then the 1:1 pc-threaded producer→consumer
- * chain fuses into one mega-rule.
+ * - P5/P5.5 fusion: the toy pc-chain program below (minimal shape on
+ *   which P5 fires — verified via ruleCount) with fusion ON vs OFF.
+ * - P6 SROA, ISOLATED: the multisig symex program (the production
+ *   SROA driver) with fuse+SROA vs fuse+SROA-neutered — both arms
+ *   fused, so the diff is exactly P6; sroaTransformed from onPhase
+ *   diagnostics guards against a vacuous pin (the pre-audit version
+ *   claimed P6 coverage on a program where SROA fired zero times).
  */
 
 import { describe, it } from 'node:test';
@@ -24,6 +22,13 @@ import Store from '../../lib/kernel/store.js';
 import mde from '../../calculus/ill/index.js';
 import illcc from '../../calculus/ill/calculus-config.js';
 import { show } from '../../lib/engine/show.js';
+import { loadBytecode, bytecodeArrGetGuard } from '../../calculus/ill/lib/bytecode-loader.js';
+import { ILL_SROA_CONFIG } from '../../calculus/ill/lib/compose-config.js';
+import { getAllLeaves } from '../../lib/engine/tree-utils.js';
+import { toObject } from '../../lib/engine/fact-set.js';
+
+const SYMEX_PATH = path.join(import.meta.dirname, '../../calculus/ill/programs/multisig_nocall_solc_symbolic.ill');
+const CODE_PATH = path.join(import.meta.dirname, '../../calculus/ill/programs/multisig_nocall_solc_code.ill');
 
 const PROG =
   'pc : bin -> type.\n' +
@@ -78,5 +83,46 @@ describe('compose fusion equivalence (RES_0143 E2b)', () => {
     assert.deepEqual(on.finalLinear, off.finalLinear,
       'fused and unfused arms reach the same final state');
     assert.deepEqual(off.finalLinear, ['ceq_done(0x3)'], 'expected result');
+  });
+});
+
+describe('compose SROA equivalence — P6 isolated (audit item 3)', () => {
+  it('fuse+SROA explores to the same leaf states as fuse without SROA', () => {
+    const hex = fs.readFileSync(CODE_PATH, 'utf8').match(/bytecode\s+0x([0-9a-fA-F]+)/)[1];
+
+    function arm(sroaConfig) {
+      Store.clear();
+      const bc = loadBytecode(hex);
+      let diag = null;
+      const calc = mde.load(SYMEX_PATH, {
+        cache: false,
+        extraGrade0Facts: bc.facts,
+        scopeGuard: bytecodeArrGetGuard,
+        fuseBasicBlocks: true,
+        sroaConfig,
+        onPhase: (name, ms, meta) => { if (name === 'load/compose') diag = meta; },
+      });
+      const state = mde.normalizeQuery(calc.queries.get('symex'));
+      const tree = calc.explore(state, { maxDepth: 500, dangerouslyUseFFI: true });
+      const leaves = getAllLeaves(tree).filter(l => l.type === 'leaf');
+      // Value-level leaf states (Store ids differ across the two loads).
+      const states = leaves.map(l =>
+        Object.keys(toObject(l.state).linear).map(h => show(Number(h))).sort().join(' | ')
+      ).sort();
+      return { diag, states };
+    }
+
+    const on = arm(undefined); // default ILL_SROA_CONFIG via the calculus config
+    const off = arm({ ...ILL_SROA_CONFIG, arrayPreds: [] }); // P6 neutered, fusion intact
+
+    // Non-vacuity: SROA must actually have transformed rules in the ON
+    // arm — a program where it fires zero times pins nothing.
+    assert.ok(on.diag.sroaTransformed > 0,
+      `SROA fired in the ON arm (sroaTransformed=${on.diag.sroaTransformed})`);
+    assert.equal(off.diag.sroaTransformed, 0, 'OFF arm: SROA disabled');
+
+    assert.equal(on.states.length, off.states.length, 'same leaf count');
+    assert.deepEqual(on.states, off.states,
+      'SROA-transformed and untransformed rule sets reach identical leaf-state sets');
   });
 });

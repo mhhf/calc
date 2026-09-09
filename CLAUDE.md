@@ -31,14 +31,14 @@ CALC is a proof calculus system for experimenting with sequent-calculi with an i
 npm run dev           # Development server (http://localhost:3000)
 npm run build:ui      # Production build to out/ui/
 npm run build:bundle  # Regenerate out/ill.json from calculus specs
-npm test              # All fast tests (3584 tests, ~40s) — RUN THIS DURING DEVELOPMENT
+npm test              # All fast tests (~3770 tests, ~40s) — RUN THIS DURING DEVELOPMENT
 npm run test:bun      # Same suite under bun (per-file isolation via tools/test-bun.sh)
 npm run test:ill      # ILL-native tests (98 tests, ~0.2s) — .ill files as provability judgments
 npm run test:till     # till executable specs (forward/debug directives)
 npm run test:gill     # gill executable specs (incl. depot shortest-path)
 npm run test:will     # will executable specs (scaffold smoke; noFFI arm: test:noffi:will)
 npm run test:sill     # sill executable specs (grid + transport; noFFI arm: test:noffi:sill)
-npm run test:sax      # sax executable specs (SAX machine configs; untimed => dispatch — no FFI, no noFFI arm)
+npm run test:sax      # sax executable specs (SAX machine configs incl. unit-wait; untimed => dispatch — no FFI, no noFFI arm)
 npm run test:noffi    # noFFI adversarial soundness (13 tests, ~1s) — only after engine/FFI changes
 npm run test:noffi:till  # till noFFI arm (also test:noffi:gill) — after engine/FFI changes
 npm run test:zk       # ZK witness tests (94 tests) — only after ZK changes
@@ -86,6 +86,7 @@ lib/
 │   └── rule-interpreter.js  # descriptor → premise computation
 ├── calculus/            # Calculus LOADER (from .calc/.rules files) — instances live in top-level calculus/
 │   ├── index.js         # load/buildCalculus + deriveContextStructure (zones from @position_modes + @structural)
+│   ├── meta-parser.js   # @extends chain resolution (.family/.calc merge) — was lib/meta-parser/ (audit item 7)
 │   ├── builders.js      # Parser factory (Earley delegation), deriveRoles()
 │   └── modes.js         # Default monad_r/monad_l descriptor injection (category 'monad')
 ├── meta/                # Polarity/invertibility inference from rule descriptors (focusing.js)
@@ -110,6 +111,7 @@ lib/
 │   ├── compose-profile.js # Generic: compose profiling emission (onPhase-gated, pure — fuse/tabling rollups + leaves)
 │   ├── cache/           # Persistence/versioning infrastructure
 │   │   ├── compose-cache.js  # Compose disk cache (key derivation, snapshot save/load, cold-vs-cached verify; calc builder injected)
+│   │   ├── load-cache.js     # Two-tier file-hash load cache (full-program + imports-only snapshots, epoch-qualified keys; builder/loader/compiler injected — the compose-cache pattern)
 │   │   ├── store-binary.js   # Binary serialize/deserialize for precompiled SDK loading
 │   │   ├── engine-version.js # Content-hash of lib/ + family/ + calculus/ JS (H1: config-bound machinery busts caches too)
 │   │   ├── cache-flags.js    # Compose-affecting flag registry (cache-key fingerprint)
@@ -144,7 +146,6 @@ lib/
 │   ├── ci.js            # calc.certifyCI — THY_0031 separation criterion on the class-graph cover (soundness-only: `separated` certifies X ⊥ Y | Z, refusal carries a witness walk; TODO_0302 M5); eq-theory value classes from kernel theoryClassTags()
 │   ├── priors.js        # @w constructor-prior validation + Chi–Geman subcriticality (presence-gated; injected into materialize by the root)
 │   └── collapse-api.js  # buildCollapseApi — the buildTimedApi registration pattern (self-gated on settle + sort system)
-├── meta-parser/         # Meta-level parser (@extends chain resolution)
 ├── parser/              # Earley parser + grammar generation + sequent parser
 │   ├── earley.js        # Core Earley engine (recognizer, chart, extraction)
 │   ├── earley-grammar.js # Grammar generation from .calc annotations
@@ -323,6 +324,7 @@ FFI is optimization, theory is semantics. Every FFI predicate MUST have backward
 - `tools/bytecode-to-ill.js` — EVM hex bytecode → CALC facts converter
 - `tools/collect-tags.js` — regenerate `doc/tags.yaml` tag index (`npm run tags`)
 - `tools/explore-inspect.js` — `node tools/explore-inspect.js [--leaf N] [--all] <files...>`
+- `tools/fuzz-confluence.js` — certifyConfluence fuzzer: certified ⇒ interleaving-invariance (explore + rule-order-permuted exec), taxonomy totality, D6 perturbation (`node tools/fuzz-confluence.js [--count N] [--seed N]`; 25-trial smoke in fast suite, 200 in test:heavy)
 - `tools/fuzz-ffi.js` — FFI correctness fuzzer (FFI vs clause comparison)
 - `tools/fuzz-till.js` — till fuzzer: q-ops FFI∥clause∥BigInt reference + activation spec (`node tools/fuzz-till.js [--count N] [--seed N]`)
 - `tools/till-shell.js` — live TTY for till programs (`npm run shell:till -- <file> [--init <directive>] [--speed x] [--demo "t:i,..."]`): wall-clock settle loop, menus from the state, digits = with-projection clicks, menuStatus greying. COLLAPSE MODE (auto on suspended ∃_ρ facts, or `--collapse`): stepwise decimation via `calc.collapseView`/`collapseDraw` — entropy-sorted wave menu (facts with the evar as `?`), digits draw, `a` auto, `R` restart (M9 attempt counter); demo grammar `--demo "a,a,1,a" --seed N`

@@ -19,6 +19,7 @@
     "lib/engine/contracts.d.ts",
     "lib/engine/cc-schema.js",
     "lib/engine/certify-confluence.js",
+    "lib/engine/match.js",
     "lib/engine/reserved-preds.js",
     "lib/engine/optimizer.js",
     "lib/engine/opt/compose-fuse.js",

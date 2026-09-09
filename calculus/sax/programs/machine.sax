@@ -2,9 +2,11 @@
 % machine.sax — the SAX operational semantics, sax-native (TODO_0309 P1)
 % =============================================================================
 %
-% The multiset-rewriting machine of the semi-axiomatic sequent calculus
-% (DeYoung–Pfenning–Pruiksma FSCD 2020, Fig. 6), with SNAX (MFPS 2022
-% §3.2) addressing: a pair's components live at the locally calculable
+% The propositional core of the multiset-rewriting machine of the
+% semi-axiomatic sequent calculus (DeYoung–Pfenning–Pruiksma FSCD 2020,
+% Fig. 6) — writes, forward, case, unit-wait; allocation/cut and the
+% negative connectives are deferred — with SNAX (MFPS 2022 §3.2)
+% addressing: a pair's components live at the locally calculable
 % projections `p1 D` / `p2 D`, so continuations never bind — every
 % machine step is first-order.
 %
@@ -37,6 +39,7 @@ win1: pterm.                             % write left injection
 win2: pterm.                             % write right injection
 fwd: dest -> pterm.                      % identity: copy value from source
 pcase: dest -> pterm -> pterm -> pterm.  % case on a sum cell
+wait: dest -> pterm -> pterm.            % block on a unit cell, continue
 
 % configuration facts
 proc: dest -> pterm -> type.
@@ -53,3 +56,4 @@ sax/write_in2:  proc D win2 * hole D -o { !cell D vin2 }.
 sax/forward:    proc D (fwd S) * !cell S W * hole D -o { !cell D W }.
 sax/case_in1:   proc D (pcase S P1 P2) * !cell S vin1 -o { proc D P1 }.
 sax/case_in2:   proc D (pcase S P1 P2) * !cell S vin2 -o { proc D P2 }.
+sax/wait:       proc D (wait S P) * !cell S vunit -o { proc D P }.

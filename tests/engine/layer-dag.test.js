@@ -618,6 +618,44 @@ describe('global boundary enforcement', () => {
       'is smuggled calculus knowledge (or a removed one needs the allowlist updated)');
   });
 
+  it('connective-name equality inventory is frozen (no new `=== \'<conn>\'` guards)', () => {
+    // The fallback lint above only sees `|| '<conn>'` — a semantically
+    // load-bearing guard written as `tag === 'with'` was invisible to it
+    // (audit item 5: coalesce/isDead hardcoded ILL's external-choice
+    // name; a calculus naming it differently got silently wrong cohort
+    // merging). This second ratchet freezes DIRECT equality comparisons
+    // against connective names. The residue is acknowledged: category
+    // comparisons (`@category === 'monad'` — meta-vocabulary, not a
+    // connective tag), kernel walkers (ast.js — the rTensor coupling
+    // family), and checker/renderer surfaces. New instances: thread the
+    // tag from resolveConn / tcfg / calculus.roles instead. Shrink-only.
+    const ALLOWED = {
+      'calculus/builders.js': 1,           // @category === 'monad'
+      'calculus/index.js': 1,              // @category === 'monad'
+      'engine/convert.js': 3,
+      'engine/formula-utils.js': 1,        // @category === 'monad' (resolveConn itself)
+      'engine/type-check.js': 1,
+      'kernel/ast.js': 3,                  // clause-head walker (rTensor family)
+      'measure/ci.js': 4,
+      'measure/decimate.js': 2,
+      'parser/earley-grammar.js': 2,
+      'prover/draw-check.js': 1,
+      'prover/rule-interpreter.js': 1,
+      'prover/timed/elaborate-collapse.js': 4,
+      'rules/rules2-parser.js': 2,
+    };
+    const RE = /[=!]==?\s*'(loli|bang|tensor|monad|with|oplus|one|zero|exists|forall)'/g;
+    const counts = {};
+    for (const filePath of [...collectJSFiles(LIB_DIR), ...collectJSFiles(FAMILY_DIR)]) {
+      const src = fs.readFileSync(filePath, 'utf8');
+      const n = (src.match(RE) || []).length;
+      if (n > 0) counts[path.relative(LIB_DIR, filePath)] = n;
+    }
+    assert.deepStrictEqual(counts, ALLOWED,
+      'connective-name equality inventory drifted — new `=== \'<conn>\'` in lib/ ' +
+      'is smuggled calculus knowledge (or a removed one needs the allowlist updated)');
+  });
+
   it('family/ must not import from calculus/ (a family is shared by calculi)', () => {
     const CALCULUS_DIR = path.resolve(import.meta.dirname, '../../calculus');
     const allFiles = collectJSFiles(FAMILY_DIR);

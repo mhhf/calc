@@ -21,7 +21,10 @@ import path from 'path';
 import Store from '../../lib/kernel/store.js';
 import mde from '../../lib/engine/index.js';
 import saxConfig from '../../calculus/sax/calculus-config.js';
+import tillConfig from '../../calculus/till/calculus-config.js';
 import illmde from '../../calculus/ill/index.js';
+import { certifyConfluence as rawCertify } from '../../lib/engine/certify-confluence.js';
+import { freshMetavar as mv } from '../../lib/kernel/fresh.js';
 import { getAllLeaves } from '../../lib/engine/tree-utils.js';
 import { toObject } from '../../lib/engine/fact-set.js';
 import { stateHashStr } from '../../lib/engine/explore.js';
@@ -211,5 +214,230 @@ describe('certifyConfluence: adversarial refusals (ILL fragment)', () => {
     const cert = calc.certifyConfluence({ linear: {}, persistent: {} }, DISC);
     assert.equal(cert.confluent, false);
     assert.equal(cert.witness.reason, 'dynamic-rule-production');
+  });
+
+  it('an existential consequent (fresh-name nondeterminism) is refused', () => {
+    const calc = loadProg(HEADER +
+      'r1: cf_tok D 1 -o { exists X. cf_out D X }.\n');
+    const cert = calc.certifyConfluence({ linear: {}, persistent: {} }, DISC);
+    assert.equal(cert.confluent, false);
+    assert.equal(cert.witness.reason, 'existential-consequent');
+  });
+
+  it('a rule with no dispatch pattern is refused (dispatch-arity)', () => {
+    const calc = loadProg(HEADER +
+      'r1: cf_out D 1 -o { cf_out D 2 }.\n');
+    const cert = calc.certifyConfluence({ linear: {}, persistent: {} }, DISC);
+    assert.equal(cert.confluent, false);
+    assert.equal(cert.witness.reason, 'dispatch-arity');
+  });
+
+  it('two dispatch patterns in one rule are refused (dispatch-arity)', () => {
+    const calc = loadProg(HEADER +
+      'r1: cf_tok D 1 * cf_tok D 2 -o { cf_tok D 1 * cf_tok D 2 }.\n');
+    const cert = calc.certifyConfluence({ linear: {}, persistent: {} }, DISC);
+    assert.equal(cert.confluent, false);
+    assert.equal(cert.witness.reason, 'dispatch-arity');
+  });
+
+  it('production of a consumed-but-unkeyed predicate is refused', () => {
+    // cf_x is consumed by r2 (so it is no sink) but has no dest entry;
+    // r1 (first in rule order) trips the production-side check.
+    const calc = loadProg(HEADER + 'cf_x: (d: bin) -> type.\n' +
+      'r1: cf_tok D 1 -o { cf_tok D 2 * cf_x D }.\n' +
+      'r2: cf_tok D 2 * cf_x D -o { cf_tok D 3 }.\n');
+    const cert = calc.certifyConfluence({ linear: {}, persistent: {} }, DISC);
+    assert.equal(cert.confluent, false);
+    assert.equal(cert.witness.reason, 'unkeyed-production');
+  });
+
+  const CELL_DISC = {
+    dest: { cf_tok: 0, cf_out: 0, cf_gd: 0 },
+    dispatch: 'cf_tok',
+    persistentUnique: { cf_cell: { keys: [0], values: [1] } },
+  };
+  const CELL_HEADER = HEADER +
+    'cf_gd: (d: bin) -> type.\n' +
+    'cf_cell: (a: bin) -> (b: bin) -> type.\n';
+
+  it('producing a guard predicate is refused', () => {
+    const calc = loadProg(CELL_HEADER +
+      'r1: cf_tok D 1 * cf_gd D -o { cf_tok D 2 * cf_gd D }.\n');
+    const cert = calc.certifyConfluence({ linear: {}, persistent: {} },
+      { ...CELL_DISC, guards: { cf_cell: 'cf_gd' } });
+    assert.equal(cert.confluent, false);
+    assert.equal(cert.witness.reason, 'guard-production');
+  });
+
+  it('a cell produced with no guard mapping is refused', () => {
+    const calc = loadProg(CELL_HEADER +
+      'r1: cf_tok D 1 * cf_gd D -o { cf_tok D 2 * !cf_cell D 1 }.\n');
+    const cert = calc.certifyConfluence({ linear: {}, persistent: {} }, CELL_DISC);
+    assert.equal(cert.confluent, false);
+    assert.equal(cert.witness.reason, 'unguarded-cell-production');
+  });
+
+  it('a cell produced without consuming its guard at the key is refused', () => {
+    const calc = loadProg(CELL_HEADER +
+      'r1: cf_tok D 1 -o { cf_tok D 2 * !cf_cell D 1 }.\n');
+    const cert = calc.certifyConfluence({ linear: {}, persistent: {} },
+      { ...CELL_DISC, guards: { cf_cell: 'cf_gd' } });
+    assert.equal(cert.confluent, false);
+    assert.equal(cert.witness.reason, 'unguarded-cell-production');
+  });
+
+  it('a dynamic rule (loli fact) in the initial state is refused', () => {
+    const calc = loadProg(HEADER + 'r1: cf_tok D 1 -o { cf_tok D 2 }.\n');
+    const st = illmde.decomposeQuery(
+      illmde.parseExpr('(cf_tok 7 1 -o cf_out 7 1)', illmde.illConfig.loader));
+    const cert = calc.certifyConfluence(st, DISC);
+    assert.equal(cert.confluent, false);
+    assert.equal(cert.witness.reason, 'dynamic-rule-in-state');
+  });
+
+  it('an unkeyed (non-predicate) state fact is refused', () => {
+    // A bare unconsumed atom is an inert sink (predHead treats atoms as
+    // nullary predicates) — the non-predicate case is a CONNECTIVE-tagged
+    // fact, e.g. an external-choice formula sitting in the linear state.
+    const calc = loadProg(HEADER +
+      'r1: cf_tok D 1 -o { cf_tok D 2 }.\n');
+    const st = illmde.decomposeQuery(
+      illmde.parseExpr('(cf_out 7 1 & cf_out 7 2) * cf_tok 7 1', illmde.illConfig.loader));
+    const cert = calc.certifyConfluence(st, DISC);
+    assert.equal(cert.confluent, false);
+    assert.equal(cert.witness.reason, 'unkeyed-state-fact');
+  });
+
+  it('two cells at one key with distinct values are refused', () => {
+    const calc = loadProg(CELL_HEADER + 'r1: cf_tok D 1 -o { cf_tok D 2 }.\n');
+    const st = illmde.decomposeQuery(
+      illmde.parseExpr('!cf_cell 7 1 * !cf_cell 7 2', illmde.illConfig.loader));
+    const cert = calc.certifyConfluence(st, CELL_DISC);
+    assert.equal(cert.confluent, false);
+    assert.equal(cert.witness.reason, 'duplicate-persistent-value');
+  });
+});
+
+describe('certifyConfluence: equality is modulo the equational theories', () => {
+  // The kernel matcher unifies cross-tag (binlit 3 ~ i(i e)); the
+  // certificate must reason at that level — hash-level equality would
+  // grant false certificates (D2 values) or miss duplicate
+  // destinations/keys (D6). ILL's loader CANONICALIZES i/o/e trees to
+  // binlits at parse time, so program TEXT cannot exhibit the mixed
+  // representations — but runtime states can (clause-derived i/o/e
+  // trees meeting binlit facts), and calculi without canonicalization
+  // feed the certifier directly. These pins therefore build rule data
+  // and states at the STORE level, with the binlit theory registered
+  // (any ILL load registers it), and call the raw certifier.
+  let toy;
+  before(() => {
+    Store.clear();
+    const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'confl-th-'));
+    const file = path.join(tmpDir, 'p.ill');
+    fs.writeFileSync(file, 'cf_tok: (d: bin) -> (v: bin) -> type.\nr1: cf_tok D 1 -o { cf_tok D 2 }.\n');
+    try {
+      toy = illmde.load(file, { cache: false }); // registers the binlit theory
+    } finally {
+      for (const f of fs.readdirSync(tmpDir)) fs.unlinkSync(path.join(tmpDir, f));
+      fs.rmdirSync(tmpDir);
+    }
+  });
+
+  const bl = (n) => Store.put1('binlit', BigInt(n));
+  const tree3 = () => Store.put('i', [Store.put('i', [Store.put('atom', ['e'])])]);
+  const rule = (name, lin, goals, outLin) => ({
+    name, hash: 0,
+    antecedent: { linear: lin, persistent: goals },
+    consequentAlts: [{ linear: outLin, persistent: [] }],
+  });
+  const OPTS = {
+    rc: {}, dest: { cfs_tok: 0 }, dispatch: 'cfs_tok',
+    persistentUnique: { cfs_cell: { keys: [0], values: [1] } },
+  };
+  const EMPTY = { linear: {}, persistent: {} };
+
+  it('D2: theory-equal cell values are NOT a contradiction (binlit 3 ~ i(i e))', () => {
+    // Identical dispatch patterns; the two rules demand the cell at the
+    // same key with values i(i e) and binlit 3 — THE SAME value modulo
+    // binlit. Hash-level 'distinct grounds ⇒ excluded' would grant a
+    // false certificate here; the theory-aware check must refuse.
+    const D1 = mv(), D2 = mv();
+    const r1 = rule('r1', [Store.put('cfs_tok', [D1, bl(1)])],
+      [Store.put('cfs_cell', [D1, tree3()])], [Store.put('cfs_tok', [D1, bl(2)])]);
+    const r2 = rule('r2', [Store.put('cfs_tok', [D2, bl(1)])],
+      [Store.put('cfs_cell', [D2, bl(3)])], [Store.put('cfs_tok', [D2, bl(3)])]);
+    const cert = rawCertify([r1, r2], EMPTY, OPTS);
+    assert.equal(cert.confluent, false);
+    assert.equal(cert.witness.reason, 'overlapping-dispatch');
+  });
+
+  it('D2: genuinely distinct cell values still exclude (the SAX pattern survives)', () => {
+    const D1 = mv(), D2 = mv();
+    const r1 = rule('r1', [Store.put('cfs_tok', [D1, bl(1)])],
+      [Store.put('cfs_cell', [D1, bl(3)])], [Store.put('cfs_tok', [D1, bl(2)])]);
+    const r2 = rule('r2', [Store.put('cfs_tok', [D2, bl(1)])],
+      [Store.put('cfs_cell', [D2, bl(4)])], [Store.put('cfs_tok', [D2, bl(3)])]);
+    const cert = rawCertify([r1, r2], EMPTY, OPTS);
+    assert.equal(cert.confluent, true, JSON.stringify(cert.witness || {}));
+  });
+
+  it('D6: theory-equal duplicate destinations are refused', () => {
+    const D1 = mv();
+    const r1 = rule('r1', [Store.put('cfs_tok', [D1, bl(1)])], [],
+      [Store.put('cfs_tok', [D1, bl(2)])]);
+    const f1 = Store.put('cfs_tok', [bl(3), bl(1)]);
+    const f2 = Store.put('cfs_tok', [tree3(), bl(1)]);
+    assert.notEqual(f1, f2, 'the two representations are hash-distinct');
+    const cert = rawCertify([r1], { linear: { [f1]: 1, [f2]: 1 }, persistent: {} }, OPTS);
+    assert.equal(cert.confluent, false);
+    assert.equal(cert.witness.reason, 'duplicate-destination');
+  });
+
+  it('D6: theory-equal duplicate cell keys are refused', () => {
+    const D1 = mv();
+    const r1 = rule('r1', [Store.put('cfs_tok', [D1, bl(1)])], [],
+      [Store.put('cfs_tok', [D1, bl(2)])]);
+    const c1 = Store.put('cfs_cell', [bl(3), bl(1)]);
+    const c2 = Store.put('cfs_cell', [tree3(), bl(1)]);
+    assert.notEqual(c1, c2, 'the two representations are hash-distinct');
+    const cert = rawCertify([r1],
+      { linear: {}, persistent: { [c1]: true, [c2]: true } }, OPTS);
+    assert.equal(cert.confluent, false);
+    assert.equal(cert.witness.reason, 'duplicate-persistent-value');
+  });
+});
+
+describe('certifyConfluence: precondition refusals (direct-call surface)', () => {
+  it('a missing rc refuses (no-connective-info) — D5 must never silently no-op', () => {
+    const r = rawCertify([], { linear: {}, persistent: {} }, { dispatch: 'x', dest: {} });
+    assert.equal(r.confluent, false);
+    assert.equal(r.witness.reason, 'no-connective-info');
+  });
+
+  it('a missing dispatch declaration refuses (no-dispatch-declared)', () => {
+    const r = rawCertify([], { linear: {}, persistent: {} }, { rc: {} });
+    assert.equal(r.confluent, false);
+    assert.equal(r.witness.reason, 'no-dispatch-declared');
+  });
+});
+
+describe('certifyConfluence: timed features are refused', () => {
+  it('a delayed-consequent till rule is refused (timed-feature)', () => {
+    Store.clear();
+    const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'confl-td-'));
+    const file = path.join(tmpDir, 'p.till');
+    fs.writeFileSync(file,
+      't_tok: (d: bin) -> (v: bin) -> type.\n' +
+      'r1: t_tok D 1 -o { t_tok D 2 }@(1).\n');
+    try {
+      const calc = mde.load(file, { calculusConfig: tillConfig, cache: false });
+      const cert = calc.certifyConfluence({ linear: {}, persistent: {} },
+        { dest: { t_tok: 0 }, dispatch: 't_tok' });
+      assert.equal(cert.confluent, false);
+      assert.equal(cert.witness.reason, 'timed-feature');
+    } finally {
+      for (const f of fs.readdirSync(tmpDir)) fs.unlinkSync(path.join(tmpDir, f));
+      fs.rmdirSync(tmpDir);
+    }
   });
 });
