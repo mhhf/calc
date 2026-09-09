@@ -61,6 +61,10 @@ solver.restore(scp)
 
 The EqNeqSolver (union-find with forbid list) tracks eq/neq constraints from persistent facts. Checkpoint/restore wraps each subtree for backtracking. Multi-alt branches use `satFilter()` to prune UNSAT alternatives before exploring.
 
+**Tell-consistency, single-alt (THY_0039 §4, "G2").** A rule consequent may *tell* a ground constraint atom the theory refutes (e.g. `!eq 1 0`). Such a state's denotation is ∅ — an infeasible "zombie" leaf, and its false fact corrupts later `!eq 1 0` asks via state-lookup. `feedPers` already feeds every step's tells into the accumulated solver, but only the multi-alt path consulted it; the single-alt path skipped the check. It now consults `solver.checkSAT()` after feeding and, when UNSAT, prunes the branch to a `dead` node — a sound refinement of the denotation (never loss). `feedPers` returns the number of recognized constraints so `checkSAT` runs only when an eq/neq was actually told; unflagged steps (the entire hot path) pay nothing. Pins: `tests/engine/g2-tell-consistency.test.js`.
+
+*Scope.* The decidable fragment is the calculus's declared constraint predicates (`cc.domain.constraintPreds` = `{eq, neq}` for ILL) — the solver IS their decision procedure. Undeclared predicates are opaque assertions and are never pruned (a false prune would be a completeness loss). Extending the fragment to certified-total predicates (`lt`/`gt`/…) and covering the exec committed-choice path belong to the mode system (well-modedness / uniqueness certification, THY_0039 §5).
+
 ## 5. De Bruijn indexed theta (Stage 6)
 
 Each metavar in a rule gets a compile-time slot index (`metavarSlots`). Theta becomes
