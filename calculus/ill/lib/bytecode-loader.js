@@ -125,7 +125,19 @@ function loadBytecode(hex, arrayName = 'contract') {
     }
   }
 
-  return { arrayHash, facts: factsMap, entryPoints };
+  // Fusion barriers (TODO_0307 Bug A): every JUMPDEST is a potential dynamic
+  // jump target (JUMP/JUMPI can compute any of them), so block fusion must not
+  // fuse it away as an interior op — a jump landing there needs a standalone
+  // entry rule. Barriers are matched against the fusion predicate's ARGUMENT
+  // HASH (the pc value is `pc(binlit N)`; _fuseBasicBlocks keys producers/
+  // consumers by that arg hash), NOT the numeric pc — so encode each target as
+  // its binlit hash here. PC 0 is the start, never a jump target.
+  const barrierRefs = new Set();
+  for (const p of entryPoints) {
+    if (p !== 0) barrierRefs.add(Store.put1('binlit', BigInt(p)));
+  }
+
+  return { arrayHash, facts: factsMap, entryPoints, barrierRefs };
 }
 
 /**

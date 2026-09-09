@@ -10,7 +10,7 @@ references:
   - "TODO_0309 P3 (this deliverable); P1's interface-extension list (the empirical measure of the old judgment's LNL-shape — each P0 fix generalizes a rule here, none adds a sax case)"
   - "TODO_0045 (subsumed: the typed tree constructors are this judgment's term language)"
   - "TODO_0042 (follow-on: explore() soundness/completeness against ⊢_fwd via the QCHR ω^{∃∀} game-tree correspondence; the per-rule match enumeration gap is the known deficit)"
-  - "TODO_0307 (the A3 falsification episode: forced-or-deferred, eigenvariables-at-introduction, witness capture; the mode discipline is standard theory — Mercury modes, Curry residuation — deliberately cited, not claimed)"
+  - "TODO_0307 (the A3 falsification episode: forced-or-deferred, eigenvariables-at-introduction, witness capture; the mode discipline is standard theory — Mercury modes, Curry residuation — deliberately cited, not claimed); THY_0039 (A3's full theory: forced elimination, witness capture, parametric adequacy)"
   - "THY_0032 (contextStructure derived from @position_modes/@structural — CS's provenance), THY_0033 (zone-count-agnostic pool routing — why CS needs no per-zone engine axioms)"
   - "THY_0036 (the confluence certificate is a derived property of ⊢_fwd trees), TODO_0294/0295 (A4's checker: elaborated @fire trees, SLD certificates)"
   - "RES_0143 F1 (the cc port schema — the code-side signature of 𝔉)"

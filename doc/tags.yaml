@@ -1,9 +1,9 @@
 tags:
-  linear-logic: 39
-  forward-chaining: 27
+  linear-logic: 40
+  forward-chaining: 28
   ill: 27
   inference-rule: 24
-  proof-theory: 21
+  proof-theory: 22
   architecture: 18
   graded-types: 18
   chr: 13
@@ -19,11 +19,12 @@ tags:
   till: 9
   engine: 8
   structural-rule: 8
+  symbolic-execution: 8
   oplus: 7
   probabilistic: 7
-  symbolic-execution: 7
+  clf: 6
   ownership: 6
-  clf: 5
+  existential: 5
   provenance: 5
   verification: 5
   will: 5
@@ -31,7 +32,6 @@ tags:
   adjoint-logic: 4
   certificates: 4
   engine-metatheory: 4
-  existential: 4
   exists: 4
   ffi: 4
   lnl: 4
@@ -71,6 +71,7 @@ tags:
   independence: 2
   layers: 2
   modal-logic: 2
+  modes: 2
   one: 2
   principals: 2
   refinement-sorts: 2
@@ -120,6 +121,7 @@ tags:
   digital-assets: 1
   disjunction: 1
   documentation: 1
+  engine-theory: 1
   entailment: 1
   equational-theory: 1
   execution-tree: 1
@@ -157,7 +159,6 @@ tags:
   memoization: 1
   metalogic: 1
   modalities: 1
-  modes: 1
   MPST: 1
   multicategory: 1
   multimodal: 1
