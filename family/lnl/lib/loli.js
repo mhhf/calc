@@ -112,8 +112,13 @@ function matchLoli(h, state, calc, matchOpts = EMPTY_MATCH_OPTS) {
     }
   }
 
-  // Instantiate body with matched bindings
-  const instantiated = applyIndexed(bodyInner, theta, slots);
+  // Instantiate body with matched bindings. Dynamic-rule consequents are
+  // ground at materialization (no compile-time canonPatterns gate exists
+  // for them), so the state-canonicity invariant is enforced here: one
+  // canonicalize pass over the instantiated body (identity on canonical
+  // terms and metavar-containing subterms of nested lolis).
+  let instantiated = applyIndexed(bodyInner, theta, slots);
+  if (matchOpts.canonicalize) instantiated = matchOpts.canonicalize(instantiated);
   undoDiscard(topUndo);
 
   // Expand choices in body (handles additive choice in loli body)
