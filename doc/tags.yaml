@@ -1,5 +1,5 @@
 tags:
-  linear-logic: 40
+  linear-logic: 41
   forward-chaining: 28
   ill: 27
   inference-rule: 24
@@ -7,33 +7,33 @@ tags:
   architecture: 18
   graded-types: 18
   chr: 13
+  soundness: 11
   implementation: 10
   left-rule: 10
+  optimization: 10
   positive-connective: 10
-  soundness: 10
   cut-elimination: 9
   lax-monad: 9
   negative-connective: 9
-  optimization: 9
   right-rule: 9
+  symbolic-execution: 9
   till: 9
   engine: 8
   structural-rule: 8
-  symbolic-execution: 8
   oplus: 7
   probabilistic: 7
   clf: 6
   ownership: 6
+  engine-metatheory: 5
   existential: 5
+  ffi: 5
   provenance: 5
   verification: 5
   will: 5
   with: 5
   adjoint-logic: 4
   certificates: 4
-  engine-metatheory: 4
   exists: 4
-  ffi: 4
   lnl: 4
   partial-evaluation: 4
   performance: 4
@@ -58,6 +58,7 @@ tags:
   timed: 3
   type-checking: 3
   accounting: 2
+  adequacy: 2
   backward: 2
   bridge: 2
   content-addressed-store: 2
@@ -86,7 +87,6 @@ tags:
   timed-rewriting: 2
   tropical: 2
   additive: 1
-  adequacy: 1
   anki: 1
   atomic-swaps: 1
   batching: 1
@@ -184,6 +184,7 @@ tags:
   proof-terms: 1
   proof-tree: 1
   quantifiers: 1
+  representation-independence: 1
   residuated-monoids: 1
   roadmap: 1
   run-length: 1
