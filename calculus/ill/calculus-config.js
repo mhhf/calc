@@ -64,6 +64,12 @@ const illCalculusConfig = {
   // symbols FAIL; strictTypes: false opts out per load (deliberately
   // ill-sorted engine fixtures).
   typeCheck: 'strict',
+  // Well-modedness enforcement (THY_0039 §6): the full ILL corpus (prelude,
+  // EVM incl. the le/lt-guarded copy loops, multisig) is confirmed inside the
+  // accepted set — the §6.1 guard-exclusivity certifier (task #85) discharged
+  // the last cd_copy/code_copy G1 residuals — so warnings are load ERRORS.
+  // opts.wellModed: 'warn' opts out per load (deliberately ill-moded fixtures).
+  wellModed: 'strict',
   theories: [binlitTheory],
   // Unit grade of the (binary, D6-merged) lax monad: `{B}` elides it in
   // the parser/renderer; compile.js skips it during delay extraction.
@@ -147,6 +153,16 @@ const illCalculusConfig = {
     // §6.1′ certification gates the runtime prune). gt/ge are the functional
     // carry forms (gt X Y A R), not 2-ary guards, so they are not listed.
     constraintPreds: { eq: 'eq', neq: 'neq', order: { lt: '<', le: '<=' } },
+    // Sum predicates for the §6.1 guard-exclusivity certifier (task #85,
+    // THY_0039 §6.1): predName → output position. Asserts that the named
+    // predicate is an UNBOUNDED (non-wrapping) natural sum — `plus A B C`
+    // proves C = A+B exactly (bin.ill ripple-carry, NOT the modular EVM ADD).
+    // The certifier reads this to inject the sound order facts C ≥ each
+    // summand (strict when another summand is a positive constant), which is
+    // what makes the le/lt-guarded copy loops (cd_copy/code_copy via
+    // code_read32) provably functional. A false declaration here would be a
+    // soundness bug, so only genuinely non-wrapping sums may be listed.
+    sumPreds: { plus: 2 },
     memoControlTags: ['pc', 'stack'],
     // Debug/inspection policy (show.js): EVM terminal atoms + control pred,
     // and the noisy predicates excluded from showInteresting. Defined at the

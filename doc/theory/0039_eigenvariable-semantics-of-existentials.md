@@ -245,7 +245,10 @@ implementation is a presence-gated fence beside the datasort/priors/sort
 validators (`lib/engine/well-moded.js`, built; see
 doc/documentation/mode-system.md), surfaced warn-first
 (`calc.wellModedLint`) then as a hard load error once the corpus is
-confirmed inside the accepted set. The hypothesis has two independent
+confirmed inside the accepted set — which ILL now is (`cc.wellModed:
+'strict'`, task #85; strict is scoped to a fresh unspecialized SOURCE load,
+since a fused/specialized artifact is read imprecisely by the source-level
+taint analysis and stays warn-first). The hypothesis has two independent
 halves, checked separately.
 
 ### 6.1 Functionality certification (the "certified-functional forced steps" half)
@@ -271,6 +274,23 @@ Certification is either:
   (`string_concat`, `fixed_mul`, `sha3_compute`, …) have no inductive
   clauses by design; each is certified by its spec property (FFI-audit
   §4.1, `compareMode: 'spec'`), not by the lint.
+- **Guard-exclusive (the #85 generalisation).** Input-disjointness of *heads*
+  is sufficient but not necessary. When two clause heads unify on their
+  inputs, ≤ 1 firing still holds if their **bodies** are pairwise mutually
+  exclusive: the union of their region constraints — head-literal equalities
+  plus the order/eq/neq body guards, both lifted onto shared head-input
+  symbols — is 𝒯-UNSAT. A body variable fixed by a certified-functional
+  determiner (`sub End Offset Remaining`) is canonicalised to a shared symbol
+  so the same computed quantity aligns across clauses (sound because the
+  determiner's functionality makes the two occurrences denote one value); a
+  declared unbounded sum (`cc.domain.sumPreds`, e.g. `plus A B C` ⊢ C = A+B
+  exactly) injects its monotonicity facts C > A, C > B. The decision
+  procedure is the same order+eq theory G2 uses (`well-moded.js` `orderUnsat`:
+  eq-class union-find + transitive closure of the `<`/`≤` edges, a strict
+  self-cycle or a constant-edge violation ⇒ UNSAT). This certifies the EVM
+  copy loops `cd_copy`/`code_copy` (via `code_read32`), whose determinism is
+  exactly `le End Offset` vs `lt Offset End`, `le 32 R` vs `lt R 32`, and
+  `Size = 0` vs `neq Size 0` — none visible to head input-disjointness.
 
 A predicate that is neither is **not certified-functional**. The soundness
 lever (§4, G1) is that such a predicate must never be *forced*: the checker
@@ -334,12 +354,15 @@ declared constraint theory's procedure. For the declared fragment
 scrutinee-deciding guards fall outside the declared fragment is **not**
 certified-covering. Task #84 certified the order predicates as total decision
 procedures (`calc.decidablePreds`, §6.1′) and closed G2's *runtime* residual
-(i) for them (§4); extending this *load-time* coverage/exclusion decision to
+(i) for them (§4); extending this *load-time* V2 coverage/exclusion decision to
 order guards — an interval procedure over the total order, replacing the
-eq/neq region enumeration — is the remaining step and would consume the same
-certificate. (It is also what would certify the `cd_copy`/`code_copy` copy
-loops, whose §6.1 functionality rests on mutually-exclusive `le`/`lt` body
-guards, and let ILL flip `cc.wellModed: 'strict'`.)
+eq/neq region enumeration — is the remaining V2 step and would consume the same
+certificate. (The parallel *functionality* question for the `cd_copy`/
+`code_copy` copy loops — whose determinism rests on mutually-exclusive `le`/
+`lt` body guards — is now discharged by the §6.1 guard-exclusivity route, task
+#85, which let ILL flip `cc.wellModed: 'strict'`. Note the two are distinct
+axes: §6.1 asks whether ≤ 1 clause of a *backward* predicate fires per input;
+V2 asks whether a *forward* ⊕'s alternatives partition a scrutinee.)
 
 ### 6.4 Soundness of the check
 
