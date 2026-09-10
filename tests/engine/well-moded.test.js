@@ -172,3 +172,55 @@ describe('P7/P2 — parameter-flow + V1 structural match (THY_0039 §6.2)', () =
       'the only warnings are the copy-loop G1 residual');
   });
 });
+
+// A parameter reaching a ⊕ whose guards decide the branch on its value.
+const GUARD = `e : bin.
+i : bin -> bin.
+o : bin -> bin.
+eq : (a: bin) -> (b: bin) -> type.
+neq : (a: bin) -> (b: bin) -> type.
+box : (v: bin) -> type.
+box2 : (v: bin) -> type.
+trig : type.
+a : type.
+b : type.
+gen: trig -o { box V }.
+`;
+
+describe('P7/P3 — guard-coverage V2 (THY_0039 §6.3)', () => {
+  it('certifies the jumpi discipline (!neq C 0 ⊕ !eq C 0) — no V2', () => {
+    const calc = loadRaw('v2clean', GUARD +
+      `r: box C -o { (!neq C e * a) + (!eq C e * b) }.\n#symex trig .\n`);
+    const warns = (calc.wellModedLint && calc.wellModedLint.warnings) || [];
+    assert.ok(!warns.some((w) => w.includes('V2')), 'complementary eq/neq split covers and excludes');
+  });
+
+  it('flags a non-COVERING split (eq C 0 ⊕ eq C 1 — value 2 takes no branch)', () => {
+    const calc = loadRaw('v2cover', GUARD +
+      `r: box C -o { (!eq C e * a) + (!eq C (i e) * b) }.\n#symex trig .\n`);
+    const warns = (calc.wellModedLint && calc.wellModedLint.warnings) || [];
+    assert.ok(warns.some((w) => w.includes('V2 coverage')), 'two eq guards leave the generic value uncovered');
+  });
+
+  it('flags a non-EXCLUSIVE split (neq C 0 ⊕ neq C 1 — value 2 takes both)', () => {
+    const calc = loadRaw('v2excl', GUARD +
+      `r: box C -o { (!neq C e * a) + (!neq C (i e) * b) }.\n#symex trig .\n`);
+    const warns = (calc.wellModedLint && calc.wellModedLint.warnings) || [];
+    assert.ok(warns.some((w) => w.includes('V2 exclusion')), 'two neq guards overlap on the generic value');
+  });
+
+  it('does NOT flag a ⊕ that carries a parameter opaquely (no guard on it)', () => {
+    const calc = loadRaw('v2opaque', GUARD +
+      `r: box C -o { (box2 C * a) + (box2 C * b) }.\n#symex trig .\n`);
+    const warns = (calc.wellModedLint && calc.wellModedLint.warnings) || [];
+    assert.ok(!warns.some((w) => w.includes('V2')), 'a parameter carried into both branches is well-moded');
+  });
+
+  it('the EVM corpus certifies jumpi (no V2 findings)', () => {
+    Store.clear();
+    const calc = mde.load(path.join(import.meta.dirname, '../../calculus/ill/programs/evm.ill'),
+      { cache: false });
+    const warns = (calc.wellModedLint && calc.wellModedLint.warnings) || [];
+    assert.ok(!warns.some((w) => w.includes('V2')), 'jumpi covers+excludes on the branch condition');
+  });
+});
