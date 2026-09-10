@@ -227,6 +227,8 @@ i : bin -> bin.
 o : bin -> bin.
 eq : (a: bin) -> (b: bin) -> type.
 neq : (a: bin) -> (b: bin) -> type.
+lt : (a: bin) -> (b: bin) -> type.
+le : (a: bin) -> (b: bin) -> type.
 box : (v: bin) -> type.
 box2 : (v: bin) -> type.
 trig : type.
@@ -270,6 +272,38 @@ describe('P7/P3 — guard-coverage V2 (THY_0039 §6.3)', () => {
       { cache: false });
     const warns = (calc.wellModedLint && calc.wellModedLint.warnings) || [];
     assert.ok(!warns.some((w) => w.includes('V2')), 'jumpi covers+excludes on the branch condition');
+  });
+});
+
+// §6.3 V2 over ORDER guards (task #86): the coverage/exclusion decision now
+// spans the total order, not just eq/neq. C < 1 vs 1 ≤ C partitions ℕ≥0.
+describe('P7/§6.3 — V2 coverage over certified order guards (task #86)', () => {
+  it('certifies an order split (!lt C 1 ⊕ !le 1 C) — covers + excludes', () => {
+    const calc = loadRaw('v2ord', GUARD +
+      `r: box C -o { (!lt C (i e) * a) + (!le (i e) C * b) }.\n#symex trig .\n`);
+    const warns = (calc.wellModedLint && calc.wellModedLint.warnings) || [];
+    assert.ok(!warns.some((w) => w.includes('V2')), 'C<1 ∨ 1≤C covers ℕ and is exclusive');
+  });
+
+  it('flags a non-COVERING order split (!lt C 1 ⊕ !lt 1 C — value 1 takes no branch)', () => {
+    const calc = loadRaw('v2ordcov', GUARD +
+      `r: box C -o { (!lt C (i e) * a) + (!lt (i e) C * b) }.\n#symex trig .\n`);
+    const warns = (calc.wellModedLint && calc.wellModedLint.warnings) || [];
+    assert.ok(warns.some((w) => w.includes('V2 coverage')), 'C=1 satisfies neither C<1 nor 1<C');
+  });
+
+  it('flags a non-EXCLUSIVE order split (!le C 1 ⊕ !le 1 C — value 1 takes both)', () => {
+    const calc = loadRaw('v2ordexcl', GUARD +
+      `r: box C -o { (!le C (i e) * a) + (!le (i e) C * b) }.\n#symex trig .\n`);
+    const warns = (calc.wellModedLint && calc.wellModedLint.warnings) || [];
+    assert.ok(warns.some((w) => w.includes('V2 exclusion')), 'C=1 satisfies both C≤1 and 1≤C');
+  });
+
+  it('certifies a mixed three-way split (!lt C 1 ⊕ !eq C 1 ⊕ !lt 1 C)', () => {
+    const calc = loadRaw('v2mix', GUARD +
+      `r: box C -o { (!lt C (i e) * a) + ((!eq C (i e) * b) + (!lt (i e) C * a)) }.\n#symex trig .\n`);
+    const warns = (calc.wellModedLint && calc.wellModedLint.warnings) || [];
+    assert.ok(!warns.some((w) => w.includes('V2')), '<1, =1, >1 trichotomy covers + excludes');
   });
 });
 

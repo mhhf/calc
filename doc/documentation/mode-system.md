@@ -90,14 +90,17 @@ path against a finite pattern; a non-variable at the parameter leaf decomposes
 it (flag); a spine traversal or an ancestor variable is opaque.
 
 **§6.3 Guard-coverage + V2** (`checkGuardCoverage`). When a parameter is the
-scrutinee of a ⊕ (its value decides the branch via eq/neq guards), the
-alternatives must COVER the value space and be mutually EXCLUSIVE. Region
-enumeration — each distinct guard constant, plus the generic value distinct from
-all of them — evaluates each alternative's guards on the scrutinee by ground
-evaluation (exact for eq/neq over one scrutinee). Zero feasible alternatives in
-a region is a coverage failure; more than one is an exclusion failure. A guard
-comparing the scrutinee to a non-constant is undecidable in the `{eq,neq}`
-fragment (task #84).
+scrutinee of a ⊕ (its value decides the branch), the alternatives must COVER the
+value space and be mutually EXCLUSIVE. The fragment is eq/neq **plus the
+certified-total order guards** (`constraintPreds.order` ∩ `decidablePreds`, task
+#86). Decision is representative-point enumeration over ℕ≥0: the guards compare
+the scrutinee to constants `{cᵢ}`, whose arrangement partitions the domain into
+the points `{cᵢ}` and the gaps between them; each guard is constant on a cell,
+so testing one integer per non-empty cell — `0` and each `cᵢ, cᵢ ± 1` (clamped
+≥ 0) — is exact and complete (`guardHolds` evaluates `=`/`≠`/`<`/`≤`). Zero
+feasible alternatives in a cell is a coverage failure; more than one is an
+exclusion failure. A guard comparing the scrutinee to a non-constant, or via an
+uncertified predicate, stays undecidable and is flagged.
 
 ## Soundness direction
 
