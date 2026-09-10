@@ -152,6 +152,9 @@ export interface CalculusConfig {
   scheduler?: object;
   lintExempt?: object;
   apiExtensions?: ApiAttacher[];
+  /** well-modedness enforcement (task #81 / P7): 'strict' ⇒ load error on a
+   *  violation; absent ⇒ warn-first (calc.wellModedLint). */
+  wellModed?: 'strict';
   /** calculus-private composition helpers (never engine-read) */
   gradeRegistry?: object;
   gradeAlgebraFor?: Function;
