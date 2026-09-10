@@ -218,7 +218,8 @@ forced steps — is decidable by a load-time static analysis over the compiled
 rule set. This section specifies it (the artifact §5 names) and states its
 soundness (Theorem 4). It is the metatheory of task #81 / P7; the
 implementation is a presence-gated fence beside the datasort/priors/sort
-validators (`lib/engine/well-moded.js`), surfaced warn-first
+validators (`lib/engine/well-moded.js`, built; see
+doc/documentation/mode-system.md), surfaced warn-first
 (`calc.wellModedLint`) then as a hard load error once the corpus is
 confirmed inside the accepted set. The hypothesis has two independent
 halves, checked separately.
