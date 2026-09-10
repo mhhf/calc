@@ -19,7 +19,7 @@ import os from 'os';
 import path from 'path';
 import Store from '../../lib/kernel/store.js';
 import mde from '../../calculus/ill/index.js';
-import { checkWellModed, certifyDecidable, orderUnsat } from '../../lib/engine/well-moded.js';
+import { checkWellModed, certifyDecidable, orderUnsat, guardCoverageVerdict } from '../../lib/engine/well-moded.js';
 
 let tmpDir;
 before(() => { tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'wm-')); });
@@ -353,5 +353,125 @@ describe('P7/§6.1′ — certified decision procedures + order-guard declaratio
       'lt/le are certified total decision procedures');
     const warns = (calc.wellModedLint && calc.wellModedLint.warnings) || [];
     assert.ok(!warns.some((w) => w.includes('§6.1′')), 'ILL declares only certified order guards');
+  });
+});
+
+// §6.1 — the sumPreds non-negativity obligation is ENFORCED (not just documented):
+// a declared unbounded sum without a non-negative domain floor is flagged, because
+// the monotonicity injection (summand ≤ sum) is unsound on a signed/wrapping domain.
+describe('P7/§6.1 — sumPreds requires a non-negative domain floor (checkSumPreds)', () => {
+  const ffiWith = () => ({ parsedModes: {}, getModeMeta: () => null });
+  it('warns when sumPreds is declared but orderDomain.min is absent', () => {
+    const cc = { ffi: ffiWith(), domain: { sumPreds: { plus: 2 } } };
+    const wm = checkWellModed({ compiledRules: [], clauses: new Map(), cc });
+    assert.ok(wm.warnings.some((w) => w.includes('sumPreds') && w.includes('non-negative floor')),
+      'sumPreds without a floor is a mis-declaration');
+  });
+  it('warns when the declared floor is negative', () => {
+    const cc = { ffi: ffiWith(), domain: { sumPreds: { plus: 2 }, orderDomain: { min: -1n, discrete: true } } };
+    const wm = checkWellModed({ compiledRules: [], clauses: new Map(), cc });
+    assert.ok(wm.warnings.some((w) => w.includes('sumPreds') && w.includes('non-negative floor')));
+  });
+  it('is silent when orderDomain.min ≥ 0 (the ILL case)', () => {
+    const cc = { ffi: ffiWith(), domain: { sumPreds: { plus: 2 }, orderDomain: { min: 0n, discrete: true } } };
+    const wm = checkWellModed({ compiledRules: [], clauses: new Map(), cc });
+    assert.ok(!wm.warnings.some((w) => w.includes('sumPreds')), 'a non-negative floor discharges the obligation');
+  });
+});
+
+// §6.3 — guardCoverageVerdict: the rep-point coverage/exclusion decision core.
+describe('P7/§6.3 — guardCoverageVerdict rep-point decision (floor-aware)', () => {
+  const g = (op, c) => ({ op, c: BigInt(c) });
+  it('a covering+exclusive partition is ok', () => {
+    // V < 1  ⊕  1 ≤ V   over ℕ≥0
+    assert.equal(guardCoverageVerdict([[g('<c', 1)], [g('c≤', 1)]], 0n), 'ok');
+  });
+  it('adjacent-constant split ≤3 ⊕ ≥4 is COVERING on a discrete order (the density-sensitive case)', () => {
+    // sound only because the domain is discrete: (3,4) is empty in ℕ, so ≤3 ⊕ ≥4 covers.
+    assert.equal(guardCoverageVerdict([[g('≤c', 3)], [g('c≤', 4)]], 0n), 'ok');
+  });
+  it('a gap (< 1 ⊕ > 1, i.e. 1<V) leaves the point 1 uncovered', () => {
+    assert.equal(guardCoverageVerdict([[g('<c', 1)], [g('c<', 1)]], 0n), 'uncovered');
+  });
+  it('overlapping alts (V ≤ 1 ⊕ 1 ≤ V share the point 1) is overlap', () => {
+    assert.equal(guardCoverageVerdict([[g('≤c', 1)], [g('c≤', 1)]], 0n), 'overlap');
+  });
+  it('the floor clamps reps (no phantom negative representative)', () => {
+    // = 0 ⊕ ≠ 0 over ℕ≥0 with floor 0: partition is ok (rep -1 is not tested).
+    assert.equal(guardCoverageVerdict([[g('=', 0)], [g('#', 0)]], 0n), 'ok');
+  });
+});
+
+// §6 fuzz — the two load-time decision procedures against brute force over a
+// bounded window (their subtlety is the reason the repo fuzzes its decision
+// procedures). orderUnsat: SOUND (UNSAT ⇒ no model). guardCoverageVerdict:
+// EXACT (ok ⇔ every point has exactly one feasible alt) over the discrete floor-0
+// domain. A seeded RNG keeps it deterministic in the fast suite.
+describe('P7/§6 — decision-procedure fuzz vs brute force', () => {
+  const rng = (seed) => { let s = seed >>> 0; return () => { s = (s + 0x6D2B79F5) >>> 0; let t = s; t = Math.imul(t ^ (t >>> 15), t | 1); t ^= t + Math.imul(t ^ (t >>> 7), t | 61); return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }; };
+
+  it('orderUnsat is SOUND: never reports UNSAT for a system with a model in [0,10]', () => {
+    const r = rng(0xA17ED);
+    const SYMS = ['a', 'b', 'c'];
+    const OPS = ['=', '≠', '<', '<='];
+    const pick = (n) => Math.floor(r() * n);
+    const randOperand = () => (r() < 0.5 ? { s: SYMS[pick(SYMS.length)] } : { c: BigInt(pick(5)) });
+    const WIN = 11; // [0,10] ⊇ any model of ≤3 syms + consts ≤4 over ≤6 order atoms
+    const holds = (op, x, y) => op === '=' ? x === y : op === '≠' ? x !== y : op === '<' ? x < y : x <= y;
+    let checked = 0, soundnessViolations = 0;
+    for (let t = 0; t < 400; t++) {
+      const n = 1 + pick(6);
+      const atoms = [];
+      for (let i = 0; i < n; i++) atoms.push({ op: OPS[pick(OPS.length)], a: randOperand(), b: randOperand() });
+      if (!orderUnsat(atoms)) continue;
+      checked++;
+      // brute force: assign each symbol a value in [0,WIN)
+      const val = (o, asg) => (o.c !== undefined ? Number(o.c) : asg[o.s]);
+      const asg = {};
+      const search = (idx) => {
+        if (idx === SYMS.length) return atoms.every((at) => holds(at.op, val(at.a, asg), val(at.b, asg)));
+        for (let v = 0; v < WIN; v++) { asg[SYMS[idx]] = v; if (search(idx + 1)) return true; }
+        return false;
+      };
+      if (search(0)) soundnessViolations++;
+    }
+    assert.equal(soundnessViolations, 0, 'orderUnsat reported UNSAT for a satisfiable system (FALSE UNSAT)');
+    assert.ok(checked > 5, 'the fuzz actually exercised UNSAT verdicts');
+  });
+
+  it('guardCoverageVerdict is EXACT vs exhaustive [0,7] over the discrete floor-0 domain', () => {
+    const r = rng(0xC0FFEE);
+    const OPS = ['=', '#', '<c', 'c<', '≤c', 'c≤'];
+    const pick = (n) => Math.floor(r() * n);
+    const holds = (g, rv) => { switch (g.op) {
+      case '=': return rv === g.c; case '#': return rv !== g.c;
+      case '<c': return rv < g.c; case 'c<': return g.c < rv;
+      case '≤c': return rv <= g.c; default: return g.c <= rv; } };
+    const WIN = 8n;
+    let mismatches = 0;
+    for (let t = 0; t < 400; t++) {
+      const nAlts = 2 + pick(2);
+      const perAlt = [];
+      for (let a = 0; a < nAlts; a++) {
+        const nG = pick(3);
+        const gs = [];
+        for (let k = 0; k < nG; k++) gs.push({ op: OPS[pick(OPS.length)], c: BigInt(pick(5)) });
+        perAlt.push(gs);
+      }
+      const verdict = guardCoverageVerdict(perAlt, 0n);
+      // exhaustive truth over [0,7]
+      let anyUncovered = false, anyOverlap = false;
+      for (let rv = 0n; rv < WIN; rv++) {
+        let feas = 0;
+        for (const gs of perAlt) if (gs.every((g) => holds(g, rv))) feas++;
+        if (feas === 0) anyUncovered = true;
+        if (feas > 1) anyOverlap = true;
+      }
+      const ok = !anyUncovered && !anyOverlap;
+      if (verdict === 'ok' && !ok) mismatches++;             // rep-point missed a cell (INCOMPLETE)
+      if (verdict === 'uncovered' && !anyUncovered) mismatches++; // rep-point false coverage-fail
+      if (verdict === 'overlap' && !anyOverlap) mismatches++;     // rep-point false overlap
+    }
+    assert.equal(mismatches, 0, 'rep-point verdict disagreed with exhaustive [0,7] evaluation');
   });
 });

@@ -2,7 +2,7 @@
 title: "Parametric Forward Chaining: the Eigenvariable Semantics of Existentials"
 created: 2026-09-08
 modified: 2026-09-10
-summary: "Existentials in forward-rule consequents have exactly one semantics — eigenvariable opening (CLF let-binding) — and eager witness computation is a separate, admissible rule (forced elimination) whose side condition is uniqueness: ground inputs × functional predicate, the forward-fragment transplant of Twelf's uniqueness modes. States denote their satisfiable groundings; the b1588c6e collapse is the violation class 'witness capture' (eliminating an unforced parameter from one conjunct's isolated instance), which fabricates leaves outside the denotation while dropping leaves inside it. The framework-level prize is parametric adequacy: for well-moded, guard-covering programs, parametric exploration is a sound and complete abstraction of ground execution — symbolic-execution correctness proved once at the logic level, not per language. The theory exposes two unmanifested engine gaps no test on the current corpus can reach: uniqueness is unchecked at the lookup/clause tiers (G1) and tell-consistency of ground theory-atoms is unchecked (G2)."
+summary: "Existentials in forward-rule consequents have exactly one semantics — eigenvariable opening (CLF let-binding) — and eager witness computation is a separate, admissible rule (forced elimination) whose side condition is uniqueness: ground inputs × functional predicate, the forward-fragment transplant of Twelf's uniqueness modes. States denote their satisfiable groundings; the b1588c6e collapse is the violation class 'witness capture' (eliminating an unforced parameter from one conjunct's isolated instance), which fabricates leaves outside the denotation while dropping leaves inside it. The framework-level prize is parametric adequacy: for well-moded, guard-covering programs, parametric exploration is a sound and complete abstraction of ground execution — symbolic-execution correctness proved once at the logic level, not per language. The theory exposes two engine gaps no test on the original functional-only corpus could reach — uniqueness at the lookup/clause tiers (G1) and tell-consistency of ground theory-atoms (G2) — both now discharged by the load-time mode system (§6): a functionality/decidability certificate over the clause and FFI sets gates every forced step, and a runtime tell-consistency prune kills zombie branches for the declared-decidable fragment (eq/neq and the certified order guards). Symbolic (non-ground) tell propagation remains future work (TODO_0005)."
 tags: [linear-logic, forward-chaining, proof-theory, symbolic-execution, existential, modes, clf, engine-theory]
 category: "Proof Theory"
 paper: "Open disposition. Candidate homes: a standalone certified-symbolic-execution paper (theorem 3 as the spine, the EVM engine as evaluation, kernel-checkable path certificates as the differentiator vs hevm/KEVM), or the toolbox paper §7 boundary-theorem family (forced elimination as another certified fast path). The mode system that discharges Theorem 3's hypothesis is the open research artifact and would anchor the standalone paper."
@@ -130,14 +130,16 @@ repair — open at the moment determination fails, eliminate only under
 tests/engine/existential-eigenvariable.test.js pins it with a four-mode
 equivalence gate, the executable shadow of Theorems 1–2).
 
-## 4. Ask, tell, and the two unmanifested gaps
+## 4. Ask, tell, and the two gaps (now discharged)
 
 Premise theory-atoms are **asks** (backward-provable side conditions);
 consequent theory-atoms are **tells** (constraint assertions on parameters,
 or knowledge claims when ground). The ask/tell reading (Saraswat) makes two
-engine obligations visible that the current corpus — where every ∃-chained
-predicate happens to be functional and every ground tell true — cannot
-witness in any test:
+engine obligations visible that the original corpus — where every ∃-chained
+predicate happens to be functional and every ground tell true — could not
+witness in any test. Both are now discharged (the two *Discharged* notes
+below; G1 by §6.1's functionality certificate, G2 by the tell-consistency
+prune for the declared-decidable fragment):
 
 **G1 (uniqueness is unchecked).** The lookup and clause tiers implement
 (force) gated on groundness alone. On a relational predicate they commit to
@@ -190,14 +192,17 @@ original framing:
   order guard lacking the certificate is a warn-first mis-declaration and is
   refused at runtime (the explore-side intersection).
 
-One piece of the obligation remains (still the mode system's, §5): *the exec
+All three explore alt-paths — the genuine single-alt, the collapsed
+single-survivor, and the multi-survivor branch — now consult the accumulated
+solver after their mutation, so the explore-side prune is uniform across the
+fragment. One aspect is handled differently *by design*: *the exec
 committed-choice path* — explore's leaf-set carries the reachable-world
-semantics a zombie violates, whereas exec runs one path and a single-alt false
-tell there is ill-formed input, caught properly by load-time well-modedness
-rather than a runtime prune. Impl: `lib/engine/constraint.js` (order-guard
-ground evaluation) + `lib/engine/explore.js` (the certified-order intersection)
-+ `lib/engine/well-moded.js` (`certifyDecidable`, §6.1′); pins:
-`tests/engine/g2-tell-consistency.test.js`.
+semantics a zombie violates, whereas exec runs a single path, where a
+single-alt false tell is ill-formed input caught at load time by
+well-modedness rather than by a runtime prune. Impl: `lib/engine/constraint.js`
+(order-guard ground evaluation) + `lib/engine/explore.js` (the certified-order
+intersection and the three-path prune) + `lib/engine/well-moded.js`
+(`certifyDecidable`, §6.1′); pins: `tests/engine/g2-tell-consistency.test.js`.
 
 ## 5. Parametric adequacy: the framework-level theorem
 
@@ -284,7 +289,11 @@ Certification is either:
   so the same computed quantity aligns across clauses (sound because the
   determiner's functionality makes the two occurrences denote one value); a
   declared unbounded sum (`cc.domain.sumPreds`, e.g. `plus A B C` ⊢ C = A+B
-  exactly) injects its monotonicity facts C > A, C > B. The decision
+  exactly) injects its monotonicity facts C > A, C > B. The non-strict facts
+  (C ≥ summandᵢ) are sound **only for non-negative summands**: `sumPreds` may be
+  declared only over a domain with a non-negative floor (`cc.domain.orderDomain
+  .min ≥ 0`), enforced warn-first by `checkSumPreds` — a signed or wrapping sum
+  would make the injection false and fabricate a spurious `orderUnsat`. The decision
   procedure is the same order+eq theory G2 uses (`well-moded.js` `orderUnsat`:
   eq-class union-find + transitive closure of the `<`/`≤` edges, a strict
   self-cycle or a constant-edge violation ⇒ UNSAT). This certifies the EVM
@@ -356,14 +365,20 @@ certified-covering. Task #84 certified the order predicates as total decision
 procedures (`calc.decidablePreds`, §6.1′) and closed G2's *runtime* residual
 (i) for them (§4); **task #86** consumes that same certificate to extend the
 *load-time* V2 decision from {eq, neq} to the **total order**. The decision is
-representative-point enumeration over ℕ≥0 (`checkGuardCoverage`): guards compare
-the scrutinee to constants {cᵢ}, whose arrangement cuts the domain into the
-points {cᵢ} and the gaps between them; every guard is constant on each cell, so
-testing one integer per non-empty cell — `0` and each `cᵢ, cᵢ ± 1` (clamped
-≥ 0) — is *exact and complete* for the fragment (eq/neq/`<`/`≤`), and the eq/neq
-region enumeration is its degenerate case. Each cell must have exactly one
-feasible alternative. A guard comparing the scrutinee to a *non-constant*, or
-using an *uncertified* order predicate, stays undecidable and is flagged.
+representative-point enumeration over the **declared value domain**
+(`cc.domain.orderDomain` — a well-founded floor `min` and a `discrete` flag;
+`checkGuardCoverage`): guards compare the scrutinee to constants {cᵢ}, whose
+arrangement cuts the domain into the points {cᵢ} and the gaps between them;
+every guard is constant on each cell, so testing one integer per non-empty cell
+— the floor and each `cᵢ, cᵢ ± 1` (clamped ≥ floor) — is *exact and complete*
+for the fragment (eq/neq/`<`/`≤`) **on a discrete order**. Discreteness is the
+soundness gate: on a dense domain (e.g. ℚ) `≤ 3 ⊕ ≥ 4` is *not* covering yet has
+no integer witness of the gap (3,4), so an order guard over a non-`discrete`
+domain is refused, not certified (eq/neq are density-agnostic — their region
+enumeration is the degenerate case). Each cell must have exactly one feasible
+alternative. A guard comparing the scrutinee to a *non-constant*, using an
+*uncertified* order predicate, or over a non-discrete domain, stays undecidable
+and is flagged.
 
 (The parallel *functionality* question for the `cd_copy`/`code_copy` copy loops
 — whose determinism rests on mutually-exclusive `le`/`lt` body guards — is

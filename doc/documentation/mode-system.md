@@ -50,9 +50,12 @@ certified functional at output position `i` when either
   equalities + order/eq/neq body guards, lifted onto shared head-input symbols)
   is UNSAT in the order+eq theory. A body var fixed by a certified determiner is
   canonicalised to a shared symbol; a declared unbounded sum
-  (`cc.domain.sumPreds`, `plus A B C ⊢ C = A+B`) injects `C > A`, `C > B`. This
-  certifies the `cd_copy`/`code_copy`/`code_read32` copy loops (determinism =
-  `le End Offset` vs `lt Offset End`, `Size = 0` vs `neq Size 0`).
+  (`cc.domain.sumPreds`, `plus A B C ⊢ C = A+B`) injects `C > A`, `C > B`. The
+  non-strict `C ≥ summand` facts are sound only for non-negative summands, so
+  `sumPreds` may be declared only over a domain with a non-negative floor
+  (`cc.domain.orderDomain.min ≥ 0`, enforced warn-first by `checkSumPreds`).
+  This certifies the `cd_copy`/`code_copy`/`code_read32` copy loops (determinism
+  = `le End Offset` vs `lt Offset End`, `Size = 0` vs `neq Size 0`).
 
 `checkForcingGoals` then requires every FORCED slot — found by a dataflow
 saturation over the rule's existential goals (`existentialGoals`), mirroring the
@@ -93,14 +96,21 @@ it (flag); a spine traversal or an ancestor variable is opaque.
 scrutinee of a ⊕ (its value decides the branch), the alternatives must COVER the
 value space and be mutually EXCLUSIVE. The fragment is eq/neq **plus the
 certified-total order guards** (`constraintPreds.order` ∩ `decidablePreds`, task
-#86). Decision is representative-point enumeration over ℕ≥0: the guards compare
-the scrutinee to constants `{cᵢ}`, whose arrangement partitions the domain into
-the points `{cᵢ}` and the gaps between them; each guard is constant on a cell,
-so testing one integer per non-empty cell — `0` and each `cᵢ, cᵢ ± 1` (clamped
-≥ 0) — is exact and complete (`guardHolds` evaluates `=`/`≠`/`<`/`≤`). Zero
-feasible alternatives in a cell is a coverage failure; more than one is an
-exclusion failure. A guard comparing the scrutinee to a non-constant, or via an
-uncertified predicate, stays undecidable and is flagged.
+#86). Decision is representative-point enumeration over the declared value
+domain (`cc.domain.orderDomain`: a well-founded floor `min` and a `discrete`
+flag; `guardCoverageVerdict`): the guards compare the scrutinee to constants
+`{cᵢ}`, whose arrangement partitions the domain into the points `{cᵢ}` and the
+gaps between them; each guard is constant on a cell, so testing one integer per
+non-empty cell — the floor and each `cᵢ, cᵢ ± 1` (clamped ≥ floor) — is exact
+and complete (`guardHolds` evaluates `=`/`≠`/`<`/`≤`) **on a discrete order**.
+Discreteness is the soundness gate (on a dense domain `≤ 3 ⊕ ≥ 4` is not
+covering but has no integer witness of the gap), so an order guard over a
+non-`discrete` domain is refused; eq/neq are density-agnostic. Zero feasible
+alternatives in a cell is a coverage failure; more than one is an exclusion
+failure. A guard comparing the scrutinee to a non-constant, via an uncertified
+predicate, or over a non-discrete domain, stays undecidable and is flagged. The
+`orderUnsat` and `guardCoverageVerdict` decision procedures are fuzzed against
+brute force (`tools/fuzz-well-moded.js`).
 
 ## Soundness direction
 

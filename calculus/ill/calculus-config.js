@@ -163,6 +163,13 @@ const illCalculusConfig = {
     // code_read32) provably functional. A false declaration here would be a
     // soundness bug, so only genuinely non-wrapping sums may be listed.
     sumPreds: { plus: 2 },
+    // The scrutinee value domain for the §6.3 rep-point coverage decision and
+    // the §6.1 sumPreds obligation: bin is ℕ≥0 (well-founded floor 0) and
+    // DISCRETE (integer successor). `discrete` is the soundness gate — rep-point
+    // enumeration (cᵢ ± 1) is exact only on a discrete order, so a dense (ℚ)
+    // domain must OMIT it and order-guard coverage is refused, not mis-decided.
+    // `min: 0n` witnesses the sumPreds non-negativity obligation (checkSumPreds).
+    orderDomain: { min: 0n, discrete: true },
     memoControlTags: ['pc', 'stack'],
     // Debug/inspection policy (show.js): EVM terminal atoms + control pred,
     // and the noisy predicates excluded from showInteresting. Defined at the
