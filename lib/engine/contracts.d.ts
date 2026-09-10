@@ -73,8 +73,12 @@ export interface GradeConfig {
 
 export interface DomainConfig {
   evalNumeric?: (h: Hash) => bigint | null;
-  /** Which persistent predicates carry eq/neq constraint semantics (L3). */
-  constraintPreds?: { eq: string; neq: string };
+  /** Which persistent predicates carry eq/neq constraint semantics (L3), plus
+   * the order guards (predName → comparator) decided on ground tells (#84). */
+  constraintPreds?: { eq: string; neq: string; order?: Record<string, string> };
+  /** Unbounded-sum predicates (predName → output position) for the §6.1
+   * guard-exclusivity certifier: `plus A B C` proves C = A+B exactly (#85). */
+  sumPreds?: Record<string, number>;
   /** Structural-memo control predicates [pcPred, stackPred?] (L5). */
   memoControlTags?: string[];
   classifyLeafPolicy?: { terminals: Record<string, string>; runningPred: string | null };

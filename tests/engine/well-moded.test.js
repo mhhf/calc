@@ -19,7 +19,7 @@ import os from 'os';
 import path from 'path';
 import Store from '../../lib/kernel/store.js';
 import mde from '../../calculus/ill/index.js';
-import { checkWellModed, certifyDecidable } from '../../lib/engine/well-moded.js';
+import { checkWellModed, certifyDecidable, orderUnsat } from '../../lib/engine/well-moded.js';
 
 let tmpDir;
 before(() => { tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'wm-')); });
@@ -49,18 +49,21 @@ dup/2: dup e (i e).
 rel/1: rel X Y <- dup X Y.
 `;
 
+// ILL is wellModed:'strict' (task #85) — these unit fixtures are deliberately
+// ill-moded to exercise the warnings, so they load with wellModed:'warn' to
+// OBSERVE findings rather than fail the load.
 function load(name, body) {
   const f = path.join(tmpDir, `${name}.ill`);
   fs.writeFileSync(f, DECLS + body);
   Store.clear();
-  return mde.load(f, { cache: false });
+  return mde.load(f, { cache: false, wellModed: 'warn' });
 }
 
 function loadRaw(name, body) {
   const f = path.join(tmpDir, `${name}.ill`);
   fs.writeFileSync(f, body);
   Store.clear();
-  return mde.load(f, { cache: false });
+  return mde.load(f, { cache: false, wellModed: 'warn' });
 }
 
 describe('P7/P1 — functionality certification (THY_0039 §6.1)', () => {
@@ -162,15 +165,59 @@ describe('P7/P2 — parameter-flow + V1 structural match (THY_0039 §6.2)', () =
       'demanding a list value be (i X) decomposes a parameter');
   });
 
-  it('the EVM corpus has zero V1 findings (only the cd_copy/code_copy G1 residual)', () => {
+  it('the EVM corpus is fully well-moded — zero findings (task #85)', () => {
     Store.clear();
+    // No wellModed override: the real corpus must load under ILL's strict
+    // enforcement without throwing — the load itself is the assertion.
     const calc = mde.load(path.join(import.meta.dirname, '../../calculus/ill/programs/evm.ill'),
       { cache: false });
     const warns = (calc.wellModedLint && calc.wellModedLint.warnings) || [];
-    assert.ok(!warns.some((w) => w.includes('V1')), 'no structural match on any EVM parameter');
-    // The only residual is G1 on the le/lt-guarded copy loops (task #84).
-    assert.ok(warns.every((w) => w.includes('cd_copy') || w.includes('code_copy')),
-      'the only warnings are the copy-loop G1 residual');
+    assert.equal(warns.length, 0, 'the EVM corpus has no well-modedness findings');
+  });
+});
+
+describe('P7/§6.1 — guard-exclusivity certification (task #85)', () => {
+  it('certifies the le/lt-guarded copy loops (cd_copy, code_copy via code_read32)', () => {
+    Store.clear();
+    const calc = mde.load(path.join(import.meta.dirname, '../../calculus/ill/programs/evm.ill'),
+      { cache: false });
+    // All three were the P7 G1 residual — non-input-disjoint heads made
+    // functional by mutually-exclusive le/lt body guards.
+    assert.ok(calc.functionalPreds.has('cd_copy#5'), 'cd_copy functional at its result position');
+    assert.ok(calc.functionalPreds.has('code_read32#3'), 'code_read32 functional (plus monotonicity)');
+    assert.ok(calc.functionalPreds.has('code_copy#6'), 'code_copy functional at its result position');
+  });
+
+  it('orderUnsat decides the fragment soundly', () => {
+    const P = (k) => ({ s: 'p' + k });
+    const C = (n) => ({ c: BigInt(n) });
+    // le(p2,p1) ∧ lt(p1,p2)  — a strict cycle
+    assert.ok(orderUnsat([{ op: '<=', a: P(2), b: P(1) }, { op: '<', a: P(1), b: P(2) }]));
+    // le(32,R) ∧ lt(R,32)   — constant edge violation
+    const R = { s: 'R' };
+    assert.ok(orderUnsat([{ op: '<=', a: C(32), b: R }, { op: '<', a: R, b: C(32) }]));
+    // eq(p2,0) ∧ neq(p2,0)  — head literal vs guard
+    assert.ok(orderUnsat([{ op: '=', a: P(2), b: C(0) }, { op: '≠', a: P(2), b: C(0) }]));
+    // SAT: lt(p1,p2) alone, and le(N,p2) ∧ le(p2,p1) with N opaque (NOT unsat)
+    assert.ok(!orderUnsat([{ op: '<', a: P(1), b: P(2) }]));
+    assert.ok(!orderUnsat([{ op: '<=', a: { s: 'N' }, b: P(2) }, { op: '<=', a: P(2), b: P(1) }]));
+  });
+
+  it('ILL enforces wellModed:strict — an ill-moded program fails to load', () => {
+    const f = path.join(tmpDir, 'wm_strict.ill');
+    // A forced non-functional (relational) predicate: G1 warning → load error.
+    fs.writeFileSync(f, GUARD +
+      `edge : (a: bin) -> (b: bin) -> type.\n` +
+      `edge/1 : edge e e.\n` +
+      `edge/2 : edge e (i e).\n` +
+      `pick : trig -o { box V * !edge e V }.\n#symex trig .\n`);
+    Store.clear();
+    assert.throws(() => mde.load(f, { cache: false }), /Well-modedness/,
+      'strict ILL rejects a forced non-functional predicate at load');
+    // …and the same program loads (with findings) under the warn override.
+    Store.clear();
+    const calc = mde.load(f, { cache: false, wellModed: 'warn' });
+    assert.ok((calc.wellModedLint.warnings || []).length > 0, 'warn override surfaces the finding');
   });
 });
 

@@ -19,9 +19,16 @@ whenever there are clauses or forward rules. It attaches:
   modes (consumed by the forcing-goal check and task #84);
 - `calc.wellModedLint : { warnings, errors } | null` — the findings.
 
-**Warn-first.** Every finding is a warning. A calculus flips them to a hard
-load error by setting `cc.wellModed = 'strict'` (the `cc.typeCheck: 'strict'`
-pattern). ILL stays warn-first: its corpus has three residual findings (below).
+**Warn-first, then strict.** Every finding is a warning; a calculus flips them
+to a hard load error by setting `cc.wellModed = 'strict'` (the
+`cc.typeCheck: 'strict'` pattern). **ILL is now strict** (task #85): its corpus
+is confirmed inside the accepted set. Strict enforcement targets a *fresh,
+unspecialized SOURCE load* — a bytecode/fused artifact and a compose-cache
+snapshot restore (`skipCompose`) stay warn-first, because the source-level taint
+analysis reads their inlined rules imprecisely (an inlined `arr_get` matching a
+ground `pc`'s structure trips V1) and the source's well-modedness was already
+enforced at its own load. `opts.wellModed: 'warn'` opts out per load (used by
+the deliberately ill-moded unit fixtures).
 
 ## The three analyses
 
@@ -36,7 +43,16 @@ certified functional at output position `i` when either
   relational or EDB predicate); or
 - *FFI*: a non-`multiModal` FFI predicate's declared `-` positions
   (`cc.ffi.parsedModes`) — the spec-functional carve-out, sound because the
-  FFI≡clause invariant makes the clause resolution the same unique function.
+  FFI≡clause invariant makes the clause resolution the same unique function; or
+- *guard-exclusive* (task #85, `clausesSeparated`/`orderUnsat`): heads that
+  unify on their inputs are still ≤ 1-firing when their bodies are pairwise
+  mutually exclusive — the union of their region constraints (head-literal
+  equalities + order/eq/neq body guards, lifted onto shared head-input symbols)
+  is UNSAT in the order+eq theory. A body var fixed by a certified determiner is
+  canonicalised to a shared symbol; a declared unbounded sum
+  (`cc.domain.sumPreds`, `plus A B C ⊢ C = A+B`) injects `C > A`, `C > B`. This
+  certifies the `cd_copy`/`code_copy`/`code_read32` copy loops (determinism =
+  `le End Offset` vs `lt Offset End`, `Size = 0` vs `neq Size 0`).
 
 `checkForcingGoals` then requires every FORCED slot — found by a dataflow
 saturation over the rule's existential goals (`existentialGoals`), mirroring the
@@ -95,9 +111,13 @@ and deferring-more both cost completeness, never correctness.
 The corpus certifies its forced arithmetic (`plus#2`, `to256#1`, `mul#2`,
 `eq_bool#2`, …), has zero V1 (every stack/memory match binds values as variables
 and walks only the spine), and certifies jumpi's `!neq C 0 ⊕ !eq C 0` (V2). The
-three residual warnings are `cd_copy`/`code_copy`: clause-defined copy loops
-whose determinism rests on mutually-exclusive `le`/`lt` **body guards** — beyond
-the eq/neq decidable fragment, which is exactly task #84 (certified-total
-predicates). ILL therefore stays warn-first until #84 lands.
+`cd_copy`/`code_copy` copy loops — clause-defined loops whose determinism rests
+on mutually-exclusive `le`/`lt` **body guards** — are certified by the §6.1
+guard-exclusive route (task #85, via `code_read32` and `plus`'s declared
+monotonicity), so the corpus is **fully clean** and **ILL is `wellModed:
+'strict'`**. (A bytecode-specialized/fused load can still surface a V1
+false-positive on an inlined rule; those loads stay warn-first — see the
+strict-scope note above.)
 
-Pins: `tests/engine/well-moded.test.js`.
+Pins: `tests/engine/well-moded.test.js` (incl. the guard-exclusivity block +
+`orderUnsat` unit + the strict-enforcement throw).
