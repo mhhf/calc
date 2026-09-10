@@ -1,10 +1,10 @@
 tags:
   linear-logic: 41
-  forward-chaining: 28
+  forward-chaining: 29
   ill: 27
   inference-rule: 24
   proof-theory: 22
-  architecture: 18
+  architecture: 19
   graded-types: 18
   chr: 13
   soundness: 11
@@ -28,6 +28,7 @@ tags:
   existential: 5
   ffi: 5
   provenance: 5
+  symexec: 5
   verification: 5
   will: 5
   with: 5
@@ -40,7 +41,6 @@ tags:
   sax: 4
   scheduling: 4
   subexponentials: 4
-  symexec: 4
   authorization: 3
   conditioning: 3
   confluence: 3
@@ -48,6 +48,7 @@ tags:
   evm: 3
   focusing: 3
   loli: 3
+  modes: 3
   monad: 3
   multiset-rewriting: 3
   prover: 3
@@ -66,13 +67,13 @@ tags:
   destination-passing: 2
   determinism: 2
   eigenvariable: 2
+  engine-theory: 2
   forall: 2
   Futamura: 2
   hash-consing: 2
   independence: 2
   layers: 2
   modal-logic: 2
-  modes: 2
   one: 2
   principals: 2
   refinement-sorts: 2
@@ -121,7 +122,6 @@ tags:
   digital-assets: 1
   disjunction: 1
   documentation: 1
-  engine-theory: 1
   entailment: 1
   equational-theory: 1
   execution-tree: 1
