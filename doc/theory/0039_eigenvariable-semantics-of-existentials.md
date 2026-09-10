@@ -351,18 +351,26 @@ declared constraint theory's procedure. For the declared fragment
 `cc.domain.constraintPreds` = {eq, neq} the EqNeqSolver (G2's machinery,
 `constraint.js`) is complete: the jumpi split `!neq C 0 ⊕ !eq C 0` covers
 (∀C. C ≠ 0 ∨ C = 0) and excludes (C ≠ 0 ∧ C = 0 ⊢ ⊥). A ⊕ whose
-scrutinee-deciding guards fall outside the declared fragment is **not**
+scrutinee-deciding guards fall outside the certified fragment is **not**
 certified-covering. Task #84 certified the order predicates as total decision
 procedures (`calc.decidablePreds`, §6.1′) and closed G2's *runtime* residual
-(i) for them (§4); extending this *load-time* V2 coverage/exclusion decision to
-order guards — an interval procedure over the total order, replacing the
-eq/neq region enumeration — is the remaining V2 step and would consume the same
-certificate. (The parallel *functionality* question for the `cd_copy`/
-`code_copy` copy loops — whose determinism rests on mutually-exclusive `le`/
-`lt` body guards — is now discharged by the §6.1 guard-exclusivity route, task
-#85, which let ILL flip `cc.wellModed: 'strict'`. Note the two are distinct
-axes: §6.1 asks whether ≤ 1 clause of a *backward* predicate fires per input;
-V2 asks whether a *forward* ⊕'s alternatives partition a scrutinee.)
+(i) for them (§4); **task #86** consumes that same certificate to extend the
+*load-time* V2 decision from {eq, neq} to the **total order**. The decision is
+representative-point enumeration over ℕ≥0 (`checkGuardCoverage`): guards compare
+the scrutinee to constants {cᵢ}, whose arrangement cuts the domain into the
+points {cᵢ} and the gaps between them; every guard is constant on each cell, so
+testing one integer per non-empty cell — `0` and each `cᵢ, cᵢ ± 1` (clamped
+≥ 0) — is *exact and complete* for the fragment (eq/neq/`<`/`≤`), and the eq/neq
+region enumeration is its degenerate case. Each cell must have exactly one
+feasible alternative. A guard comparing the scrutinee to a *non-constant*, or
+using an *uncertified* order predicate, stays undecidable and is flagged.
+
+(The parallel *functionality* question for the `cd_copy`/`code_copy` copy loops
+— whose determinism rests on mutually-exclusive `le`/`lt` body guards — is
+discharged by the §6.1 guard-exclusivity route, task #85, which let ILL flip
+`cc.wellModed: 'strict'`. Note the two are distinct axes: §6.1 asks whether ≤ 1
+clause of a *backward* predicate fires per input; V2 asks whether a *forward*
+⊕'s alternatives partition a scrutinee.)
 
 ### 6.4 Soundness of the check
 
