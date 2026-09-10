@@ -1,9 +1,9 @@
 tags:
-  linear-logic: 41
+  linear-logic: 42
   forward-chaining: 30
   ill: 27
   inference-rule: 24
-  proof-theory: 23
+  proof-theory: 24
   architecture: 19
   graded-types: 18
   chr: 13
@@ -22,10 +22,10 @@ tags:
   structural-rule: 8
   oplus: 7
   probabilistic: 7
+  certificates: 6
   clf: 6
   engine-metatheory: 6
   ownership: 6
-  certificates: 5
   existential: 5
   ffi: 5
   provenance: 5
@@ -35,6 +35,7 @@ tags:
   with: 5
   adjoint-logic: 4
   exists: 4
+  focusing: 4
   lnl: 4
   multiset-rewriting: 4
   partial-evaluation: 4
@@ -47,7 +48,6 @@ tags:
   confluence: 3
   Curry-Howard: 3
   evm: 3
-  focusing: 3
   loli: 3
   modes: 3
   monad: 3
@@ -105,6 +105,7 @@ tags:
   code-quality: 1
   coeffects: 1
   cohort-firing: 1
+  coinduction: 1
   committed-choice: 1
   compilation: 1
   completeness: 1
@@ -114,6 +115,7 @@ tags:
   correspondence: 1
   cost-semantics: 1
   cut: 1
+  cyclic-proofs: 1
   data-layout: 1
   debugging: 1
   definitions: 1
@@ -133,6 +135,7 @@ tags:
   fibrations: 1
   financial: 1
   financial-primitives: 1
+  fixed-points: 1
   forward-engine: 1
   games: 1
   graded-monad: 1
@@ -162,6 +165,7 @@ tags:
   MPST: 1
   multicategory: 1
   multimodal: 1
+  muMALL: 1
   nondeterminism: 1
   novel-contributions: 1
   operational-semantics: 1

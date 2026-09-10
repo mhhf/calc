@@ -710,6 +710,7 @@ describe('certificate-checker import fence (toolbox paper §6: the TCB surface)'
     'prover/draw-check.js',
     'prover/timed/fire-check.js',
     'prover/forward-check.js',
+    'prover/gtc-check.js',
   ];
   // (ratlit-theory left this list — RES_0143 L10 moved the ratParts
   // codec into lib/kernel/rat-term.js, which checkers may import freely;
