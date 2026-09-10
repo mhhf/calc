@@ -89,6 +89,8 @@ describe('minimal-essence ratchet (RES_0143)', () => {
       'cc-schema.js': 'core',       // the declared cc port contract (F1)
       'certify-confluence.js': 'core', // destination-discipline confluence certificate (P2, THY_0036)
       'sorts.js': 'core', 'type-check.js': 'core',
+      'well-moded.js': 'core', // P7 well-modedness fence (THY_0039 §6), load-time
+
       'compose.js': 'core',            // P1-P4 = grade-0 erasure (SEMANTIC)
       'compose-profile.js': 'debug',
       // ── opt: deletable, profile-gated ──
