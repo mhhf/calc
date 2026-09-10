@@ -44,6 +44,21 @@ runtime resolver: a goal determines a slot at position `i` once its other
 positions are ground — to name a certified mode. A non-certified force is a G1
 warning.
 
+**§6.1′ Decision-procedure certification** (`certifyDecidable`). The
+decision-procedure twin of functionality. A predicate is a certified **total
+decision procedure** — every ground argument tuple decided true/false,
+terminating — when it is a non-`multiModal` FFI predicate whose *every* position
+is an input (`+`): a boolean judgment with no output slot (`lt : '+ +'`). The
+result is `calc.decidablePreds : Set<predName>`. This is a different axis from
+`functionalPreds`, which certifies a unique output at a `-` position; an order
+guard has no output position, so it is (correctly) never functional. The set is
+consumed by the runtime G2 order-tell prune (task #84, THY_0039 §4): a ground
+tell of a false order atom (`lt 7 5`) is pruned. `checkConstraintDecls` warns
+(warn-first) on any predicate the calculus declares an order guard
+(`cc.domain.constraintPreds.order`) that is not so certified — a mis-declaration
+whose ground prune would rest on an unbacked comparator; explore refuses it by
+intersecting the declared order guards with `decidablePreds`.
+
 **§6.2 Parameter-flow + V1** (`buildTaint`, `checkStructuralMatch`). An abstract
 interpretation over parameter-freeness of predicate-argument **leaf paths**.
 `taint(pred)` is the set of leaf paths that may hold a parameter; sources are

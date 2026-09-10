@@ -140,7 +140,13 @@ const illCalculusConfig = {
     // the branch-pruning solver (RES_0143 L3): declared in bin.ill with
     // backward clauses; the solver treats them as constraints, everything
     // else is opaque.
-    constraintPreds: { eq: 'eq', neq: 'neq' },
+    // eq/neq: union-find equality/disequality (task #80). order: certified
+    // total decision guards decided by direct value evaluation on ground tells
+    // (task #84, THY_0039 §4 G2 residual (i)) — the bin 2-ary decidable
+    // propositions lt/le (backed by the all-input FFI decision modes; the
+    // §6.1′ certification gates the runtime prune). gt/ge are the functional
+    // carry forms (gt X Y A R), not 2-ary guards, so they are not listed.
+    constraintPreds: { eq: 'eq', neq: 'neq', order: { lt: '<', le: '<=' } },
     memoControlTags: ['pc', 'stack'],
     // Debug/inspection policy (show.js): EVM terminal atoms + control pred,
     // and the noisy predicates excluded from showInteresting. Defined at the

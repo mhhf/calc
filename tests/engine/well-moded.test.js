@@ -19,6 +19,7 @@ import os from 'os';
 import path from 'path';
 import Store from '../../lib/kernel/store.js';
 import mde from '../../calculus/ill/index.js';
+import { checkWellModed, certifyDecidable } from '../../lib/engine/well-moded.js';
 
 let tmpDir;
 before(() => { tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'wm-')); });
@@ -222,5 +223,54 @@ describe('P7/P3 — guard-coverage V2 (THY_0039 §6.3)', () => {
       { cache: false });
     const warns = (calc.wellModedLint && calc.wellModedLint.warnings) || [];
     assert.ok(!warns.some((w) => w.includes('V2')), 'jumpi covers+excludes on the branch condition');
+  });
+});
+
+// §6.1′ — total DECISION PROCEDURES (certifyDecidable) + the order-guard
+// mis-declaration warning that gates the task-#84 tell prune.
+describe('P7/§6.1′ — certified decision procedures + order-guard declarations', () => {
+  it('certifies exactly the non-multiModal all-input FFI predicates', () => {
+    const cc = {
+      ffi: {
+        parsedModes: { lt: 1, le: 1, gt: 1, plus: 1, eq_bool: 1, alen: 1 },
+        getModeMeta: (n) => ({
+          lt: { modes: ['+', '+'], multiModal: false },
+          le: { modes: ['+', '+'], multiModal: false },
+          gt: { modes: ['+', '+', '+', '-'], multiModal: false }, // has output → NOT a decision proc
+          plus: { modes: ['+', '+', '+'], multiModal: true },     // multiModal → excluded
+          eq_bool: { modes: ['+', '+', '-'], multiModal: false }, // has output → excluded
+          alen: { modes: ['+', '-'], multiModal: false },         // has output → excluded
+        }[n]),
+      },
+    };
+    const dec = certifyDecidable(cc);
+    assert.deepEqual([...dec].sort(), ['le', 'lt'], 'only all-input non-multiModal FFI preds');
+  });
+
+  it('warns on a declared order guard that is NOT a certified decision procedure', () => {
+    const cc = {
+      ffi: {
+        parsedModes: { lt: 1 },
+        getModeMeta: (n) => ({ lt: { modes: ['+', '+'], multiModal: false } }[n]),
+      },
+      domain: { constraintPreds: { eq: 'eq', neq: 'neq', order: { lt: '<', bogus: '<' } } },
+    };
+    const wm = checkWellModed({ compiledRules: [], clauses: new Map(), cc });
+    assert.ok(wm.decidablePreds.has('lt'), 'lt is a certified decision procedure');
+    assert.ok(!wm.decidablePreds.has('bogus'), 'bogus has no FFI decision mode');
+    assert.ok(wm.warnings.some((w) => w.includes("'bogus'") && w.includes('§6.1′')),
+      'an uncertified order guard is flagged');
+    assert.ok(!wm.warnings.some((w) => w.includes("order guard 'lt'")),
+      'a certified order guard is silent');
+  });
+
+  it('the EVM corpus declares lt/le as certified order guards (no §6.1′ warning)', () => {
+    Store.clear();
+    const calc = mde.load(path.join(import.meta.dirname, '../../calculus/ill/programs/evm.ill'),
+      { cache: false });
+    assert.ok(calc.decidablePreds.has('lt') && calc.decidablePreds.has('le'),
+      'lt/le are certified total decision procedures');
+    const warns = (calc.wellModedLint && calc.wellModedLint.warnings) || [];
+    assert.ok(!warns.some((w) => w.includes('§6.1′')), 'ILL declares only certified order guards');
   });
 });
