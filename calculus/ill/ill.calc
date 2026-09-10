@@ -150,6 +150,32 @@ forall: formula -> formula
   @category quantifier.
 
 % =============================================================================
+% Fixed points (μMALL — TODO_0009 rung 3, Baelde 2012)
+% =============================================================================
+
+% Least fixed point: μX.B(X) — inductive data (Nat = μX. I + X, List, Tree).
+% Unary binder (body de-Bruijn-encoded, like ∃/∀); X is the recursion variable.
+% Polarity: positive (μL invertible / eager, μR needs focus) — must be declared
+% explicitly: the single-premise unfold rule's 'preserved' context flow would
+% otherwise infer negative.
+mu: formula -> formula
+  @ascii "mu _"
+  @latex "\\mu #1"
+  @prec 45 right
+  @category fixpoint
+  @polarity positive.
+
+% Greatest fixed point: νX.B(X) — coinductive data (Stream = νX. A * X,
+% Signal = νX. A & X = !A). Polarity: negative (νR invertible / eager, νL needs
+% focus). De Morgan dual of μ.
+nu: formula -> formula
+  @ascii "nu _"
+  @latex "\\nu #1"
+  @prec 45 right
+  @category fixpoint
+  @polarity negative.
+
+% =============================================================================
 % Atoms
 % =============================================================================
 
