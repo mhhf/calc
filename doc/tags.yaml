@@ -1,9 +1,9 @@
 tags:
   linear-logic: 41
-  forward-chaining: 29
+  forward-chaining: 30
   ill: 27
   inference-rule: 24
-  proof-theory: 22
+  proof-theory: 23
   architecture: 19
   graded-types: 18
   chr: 13
@@ -23,8 +23,9 @@ tags:
   oplus: 7
   probabilistic: 7
   clf: 6
+  engine-metatheory: 6
   ownership: 6
-  engine-metatheory: 5
+  certificates: 5
   existential: 5
   ffi: 5
   provenance: 5
@@ -33,9 +34,9 @@ tags:
   will: 5
   with: 5
   adjoint-logic: 4
-  certificates: 4
   exists: 4
   lnl: 4
+  multiset-rewriting: 4
   partial-evaluation: 4
   performance: 4
   sax: 4
@@ -50,7 +51,6 @@ tags:
   loli: 3
   modes: 3
   monad: 3
-  multiset-rewriting: 3
   prover: 3
   QTT: 3
   staging: 3
@@ -68,6 +68,7 @@ tags:
   determinism: 2
   eigenvariable: 2
   engine-theory: 2
+  execution-tree: 2
   forall: 2
   Futamura: 2
   hash-consing: 2
@@ -124,7 +125,6 @@ tags:
   documentation: 1
   entailment: 1
   equational-theory: 1
-  execution-tree: 1
   existentials: 1
   exploration: 1
   exponentials: 1

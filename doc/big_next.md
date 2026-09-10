@@ -47,7 +47,7 @@ fenced-grade-algebra framework independent of the governance application.
 
 ## 3. Metatheory of the forward engine itself
 
-**TODO_0309 (subsumes 0045, 0261), TODO_0042, TODO_0307 (P7), TODO_0007, TODO_0005**
+**TODO_0309 (subsumes 0045, 0261), TODO_0042, TODO_0307 (P7 — DONE), TODO_0007, TODO_0005**
 
 Consolidated 2026-09-08 into TODO_0309: sax.family as the second structural family
 (first milestone), certifyConfluence for the destination-passing fragment, the ⊢_fwd
@@ -72,20 +72,35 @@ STAGED-POSITIVE; frontier = three gaps (G1 affine zone policy, G2 multi-
 cartesian, G3 succedent modes) with executable pins; will's drawn_l2 ghost
 identified as a hand-rolled affine mode (Stage A's deletion payoff); the
 adjoint-sax instance specified. TODO_0309 is COMPLETE (P0-P5); branch 2's
-Stage A/B now start from designs.
+Stage A/B now start from designs. TODO_0307 is now DONE (2026-09-10), and its
+P7 follow-on — the THY_0039 §6 mode system (well-modedness + functionality/
+decidability certification, tasks #80–#86 + audit remediation) — is COMPLETE,
+with ILL `wellModed: 'strict'`. The branch's headline open-research item is
+closed; what remains is the execution-tree checker (below).
 
 The backward prover is kernel-checked; the forward engine's search semantics is still
 folklore. Queued theorems:
 
 - Execution-tree judgment `Σ; Δ ⊢_fwd T : A` with typed constructors (leaf, step,
-  fork, branch, cycle, bound, memo, dead) — TODO_0045.
+  fork, branch, cycle, bound, memo, dead) — TODO_0045 — **DONE**. Judgment + term
+  language: THY_0035 (parametric over the family record 𝔉). Checker: THY_0041 +
+  `lib/prover/forward-check.js` (`checkForwardTree`) — the forward twin of
+  `lib/prover/kernel.js`, generalizing the timed face's `elaborate-trace.js`/
+  `certifyRun` (settle runs → kernel-checked @fire trees) to the whole `explore()`
+  tree with all eight constructors, untimed. explore(evidence:true) emits a per-edge
+  step witness (θ only); `api.certifyExplore` runs explore + check end-to-end. Whole-
+  tree SOUNDNESS is machine-checked (θ the sole trusted witness); the three
+  COMPLETENESS claims (leaf quiescence, dead-node prune, branch all-rules-present)
+  are the stated oracle residue → TODO_0042.
 - Soundness/completeness of `explore()` against it, via the QCHR ω^{∃∀} game-tree
   correspondence (Barichard–Stéphan, TOCL 2025) — TODO_0042; the hypersequent reading
   (TODO_0007) is the coarser dual view.
-- THY_0035 parametric forward chaining (from the TODO_0307 bug): eigenvariable
-  semantics of existentials, forced elimination as an admissible rule under a
-  groundness × functionality mode discipline, "witness capture" as a named violation
-  class — the mode system (P7) is open research.
+- THY_0035 (the parametric ⊢_fwd judgment, LANDED) + THY_0039 (eigenvariable
+  semantics of existentials, from the TODO_0307 bug): forced elimination as an
+  admissible rule under a groundness × functionality mode discipline, "witness
+  capture" as a named violation class. The mode system (P7) that discharges it is now
+  COMPLETE (`well-moded.js`: §6.1 functionality + §6.1′ decidability + §6.2 taint/V1
+  + §6.3 guard-coverage/V2; tasks #80–#86 + audit); ILL is strict.
 - TODO_0261 SAX/SNAX: CALC = "SAX without addresses" (same logic, proof SEARCH
   instead of proof reduction); the destination-passing fragment inherits SAX
   confluence (prunable explore branches); the content-addressed store as a
@@ -160,8 +175,11 @@ Petri-net inheritance, made precise.
 
 ## Ranking
 
-Highest theory-per-effort: **branch 3** (engine metatheory — well-scoped, THY_0035's
-mode system half-designed, and it is the soundness story everything else stands on),
+Highest theory-per-effort: **branch 3** (engine metatheory — now the most-advanced
+branch: TODO_0309 complete, the mode system (P7)/THY_0039 complete, TODO_0307 done,
+the ⊢_fwd execution-tree CHECKER (TODO_0045/THY_0041) done; what remains is explore()
+adequacy — the completeness residue, TODO_0042. It is the soundness story everything
+else stands on),
 **branch 1** (fixed points — largest expressivity jump, cheap on-ramp via
 tabling/cyclic proofs), **branch 5** (graded residue — questions already sharply
 posed). **Branch 2** (adjoint logic) is the biggest unification payoff and the
