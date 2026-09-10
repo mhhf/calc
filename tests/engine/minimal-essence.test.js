@@ -110,6 +110,7 @@ describe('minimal-essence ratchet (RES_0143)', () => {
       'cache/compose-cache.js': 'cache', 'cache/load-cache.js': 'cache',
       // ── analysis: sound static analyses over the rules, deletable ──
       'termination.js': 'analysis', // ranking / dependency termination (TODO_0009 §6)
+      'bisim.js': 'analysis',       // structural execution-tree bisimulation (TODO_0009 §7)
       // ── root / debug ──
       'index.js': 'root',
       'show.js': 'debug', 'tree-utils.js': 'debug',
