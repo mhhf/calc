@@ -55,6 +55,13 @@ function load(name, body) {
   return mde.load(f, { cache: false });
 }
 
+function loadRaw(name, body) {
+  const f = path.join(tmpDir, `${name}.ill`);
+  fs.writeFileSync(f, body);
+  Store.clear();
+  return mde.load(f, { cache: false });
+}
+
 describe('P7/P1 — functionality certification (THY_0039 §6.1)', () => {
   it('certifies an input-disjoint, deterministic-body predicate (inc#1)', () => {
     const calc = load('cert', `r: trig -o { !inc (i e) C * out C }.\n#symex trig .\n`);
@@ -96,5 +103,72 @@ describe('P7/P1 — functionality certification (THY_0039 §6.1)', () => {
       { cache: false });
     assert.ok(calc.functionalPreds.has('plus#2'), 'plus is functional at its sum position');
     assert.ok(calc.functionalPreds.has('to256#1'), 'to256 is functional at its result position');
+  });
+});
+
+// A list surface: a producer pushes a parameter VALUE onto a cons list; a
+// consumer either matches the cons SPINE (opaque, well-moded) or demands the
+// value have structure (V1). This is the EVM-stack shape in miniature.
+const LIST = `e : bin.
+o : bin -> bin.
+nil : lst.
+cons : (h: bin) -> (t: lst) -> lst.
+box : (v: bin) -> type.
+lst : (l: lst) -> type.
+trig : type.
+out : (v: bin) -> type.
+`;
+
+describe('P7/P2 — parameter-flow + V1 structural match (THY_0039 §6.2)', () => {
+  it('flags a pattern that decomposes a parameter value (V1)', () => {
+    // gen produces box V with V an existential parameter; use demands (i X).
+    const calc = loadRaw('v1pos', LIST +
+      `i : bin -> bin.\n` +
+      `gen: trig -o { box V }.\n` +
+      `use: box (i X) -o { out X }.\n#symex trig .\n`);
+    const warns = (calc.wellModedLint && calc.wellModedLint.warnings) || [];
+    assert.ok(warns.some((w) => w.includes("'use'") && w.includes('V1')),
+      'decomposing a parameter (i X) is flagged');
+  });
+
+  it('does NOT flag opaque carry — a parameter bound to a bare variable', () => {
+    const calc = loadRaw('v1carry', LIST +
+      `gen: trig -o { box V }.\n` +
+      `use: box Y -o { out Y }.\n#symex trig .\n`);
+    const warns = (calc.wellModedLint && calc.wellModedLint.warnings) || [];
+    assert.ok(!warns.some((w) => w.includes('V1')), 'binding a parameter to a variable is well-moded');
+  });
+
+  it('does NOT flag matching a list SPINE while binding parameter values as variables', () => {
+    // push puts a parameter value at the list head; pop matches cons(H,T)
+    // binding H,T as variables. The spine is concrete; only values are
+    // parameters — so no rule decomposes a parameter (the EVM-stack shape).
+    const calc = loadRaw('v1spine', LIST +
+      `push: trig * lst L -o { lst (cons V L) }.\n` +
+      `pop: lst (cons H T) -o { lst T * out H }.\n#symex trig .\n`);
+    const warns = (calc.wellModedLint && calc.wellModedLint.warnings) || [];
+    assert.ok(!warns.some((w) => w.includes('V1')),
+      'matching the cons spine and binding values as variables is well-moded');
+  });
+
+  it('flags a pattern that decomposes a list VALUE (V1) — value structure demanded', () => {
+    const calc = loadRaw('v1val', LIST +
+      `i : bin -> bin.\n` +
+      `push: trig * lst L -o { lst (cons V L) }.\n` +
+      `bad: lst (cons (i X) T) -o { out X }.\n#symex trig .\n`);
+    const warns = (calc.wellModedLint && calc.wellModedLint.warnings) || [];
+    assert.ok(warns.some((w) => w.includes("'bad'") && w.includes('V1')),
+      'demanding a list value be (i X) decomposes a parameter');
+  });
+
+  it('the EVM corpus has zero V1 findings (only the cd_copy/code_copy G1 residual)', () => {
+    Store.clear();
+    const calc = mde.load(path.join(import.meta.dirname, '../../calculus/ill/programs/evm.ill'),
+      { cache: false });
+    const warns = (calc.wellModedLint && calc.wellModedLint.warnings) || [];
+    assert.ok(!warns.some((w) => w.includes('V1')), 'no structural match on any EVM parameter');
+    // The only residual is G1 on the le/lt-guarded copy loops (task #84).
+    assert.ok(warns.every((w) => w.includes('cd_copy') || w.includes('code_copy')),
+      'the only warnings are the copy-loop G1 residual');
   });
 });
