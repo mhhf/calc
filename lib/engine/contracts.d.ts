@@ -77,8 +77,18 @@ export interface DomainConfig {
    * the order guards (predName → comparator) decided on ground tells (#84). */
   constraintPreds?: { eq: string; neq: string; order?: Record<string, string> };
   /** Unbounded-sum predicates (predName → output position) for the §6.1
-   * guard-exclusivity certifier: `plus A B C` proves C = A+B exactly (#85). */
+   * guard-exclusivity certifier: `plus A B C` proves C = A+B exactly (#85).
+   * SOUNDNESS OBLIGATION: ALL summands must be non-negative (ℕ≥0) — the
+   * certifier injects `summandᵢ ≤ C`, which is FALSE on a signed or wrapping
+   * domain. Declaring sumPreds therefore requires a non-negative
+   * `orderDomain.min` (enforced warn-first by well-moded.js checkSumPreds). */
   sumPreds?: Record<string, number>;
+  /** The scrutinee value domain for the §6.3 rep-point coverage decision (#86)
+   * and the sumPreds obligation. `min` is the well-founded floor (BigInt;
+   * absent = no floor); `discrete` asserts an integer-successor order — the
+   * SOUNDNESS gate for order-guard coverage, which is exact only on a discrete
+   * order (a dense/ℚ domain must omit it, so order guards stay undecidable). */
+  orderDomain?: { min?: bigint; discrete?: boolean };
   /** Structural-memo control predicates [pcPred, stackPred?] (L5). */
   memoControlTags?: string[];
   classifyLeafPolicy?: { terminals: Record<string, string>; runningPred: string | null };
