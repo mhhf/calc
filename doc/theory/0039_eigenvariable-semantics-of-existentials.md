@@ -163,16 +163,40 @@ complete decision procedure — is now checked at exploration's single-alt
 tell path (the multi-alt ⊕ path already SAT-filtered its guards). An
 inconsistent ground eq/neq tell prunes the branch to a `dead` node; the
 solver already accumulates these tells, so the check is a consult of state
-it was already maintaining. Two pieces of the obligation remain, each the
-mode system's (§5): (i) *predicates beyond eq/neq* — extending the checked
-fragment needs the per-predicate totality/uniqueness certification of G1
-(fail-to-prove = false only for a certified-closed-world predicate); (ii)
-*the exec committed-choice path* — explore's leaf-set carries the
-reachable-world semantics a zombie violates, whereas exec runs one path and
-a single-alt false tell there is ill-formed input, caught properly by
-load-time well-modedness rather than a runtime prune. Impl:
-`lib/engine/explore.js` single-alt block + `lib/engine/constraint.js`
-(`feedPers` returns the recognized-constraint count); pins:
+it was already maintaining.
+
+*Residual (i) discharged for the order fragment (task #84).* The checked
+fragment now extends beyond eq/neq to the calculus's declared **order guards**
+(`cc.domain.constraintPreds.order`, `lt`/`le` for ILL) intersected with the
+**certified total decision procedures** (`calc.decidablePreds`). A ground order
+tell (`lt(7,5)`) is decided by the SAME evalNumeric ground short-circuit eq/neq
+already use — **direct value evaluation**, exact on BigInt at 256 bits — and a
+false one is marked UNSAT, pruning the zombie leaf. Two subtleties fix the
+original framing:
+
+- **Direct evaluation, not the resolver.** The obligation reads "fail-to-prove
+  = false only for a certified-closed-world predicate", suggesting a clause
+  query. That route is *unsound FFI-off*: a deep ground order query recurses
+  past the backchainer's depth cap and false-fails, which a prune would read as
+  a genuine false. Direct evaluation carries no closed-world assumption — it
+  computes the relation — so the prune is identical under FFI-off and FFI-on
+  (a property the pins assert in both modes).
+- **Decision-procedure certification, not functionality.** The certificate is
+  §6.1′ `certifyDecidable` — a *total decision procedure* is a non-multiModal
+  FFI predicate whose every position is an input (a boolean judgment, no output
+  slot: `lt : '+ +'`). This is a different axis from G1's `functionalPreds`,
+  which certifies a UNIQUE OUTPUT at a `-` position; an order guard has no
+  output position, so it is (correctly) never in `functionalPreds`. A declared
+  order guard lacking the certificate is a warn-first mis-declaration and is
+  refused at runtime (the explore-side intersection).
+
+One piece of the obligation remains (still the mode system's, §5): *the exec
+committed-choice path* — explore's leaf-set carries the reachable-world
+semantics a zombie violates, whereas exec runs one path and a single-alt false
+tell there is ill-formed input, caught properly by load-time well-modedness
+rather than a runtime prune. Impl: `lib/engine/constraint.js` (order-guard
+ground evaluation) + `lib/engine/explore.js` (the certified-order intersection)
++ `lib/engine/well-moded.js` (`certifyDecidable`, §6.1′); pins:
 `tests/engine/g2-tell-consistency.test.js`.
 
 ## 5. Parametric adequacy: the framework-level theorem
@@ -308,8 +332,14 @@ declared constraint theory's procedure. For the declared fragment
 `constraint.js`) is complete: the jumpi split `!neq C 0 ⊕ !eq C 0` covers
 (∀C. C ≠ 0 ∨ C = 0) and excludes (C ≠ 0 ∧ C = 0 ⊢ ⊥). A ⊕ whose
 scrutinee-deciding guards fall outside the declared fragment is **not**
-certified-covering — the same eq/neq boundary G2 stops at, and the reason
-task #84 (lt/gt totality) is filed separately.
+certified-covering. Task #84 certified the order predicates as total decision
+procedures (`calc.decidablePreds`, §6.1′) and closed G2's *runtime* residual
+(i) for them (§4); extending this *load-time* coverage/exclusion decision to
+order guards — an interval procedure over the total order, replacing the
+eq/neq region enumeration — is the remaining step and would consume the same
+certificate. (It is also what would certify the `cd_copy`/`code_copy` copy
+loops, whose §6.1 functionality rests on mutually-exclusive `le`/`lt` body
+guards, and let ILL flip `cc.wellModed: 'strict'`.)
 
 ### 6.4 Soundness of the check
 
