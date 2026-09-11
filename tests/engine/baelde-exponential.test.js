@@ -40,9 +40,9 @@ describe('Baelde exponential correspondence, ILL-corrected (Inc-5a)', () => {
     base = { rules: built.specs, alternatives: built.alternatives };
   });
   // returns { ok, kv, cycles }; tries finite then cyclic
-  const prove = (lin, succ, cart = []) => {
+  const prove = (lin, succ, cart = [], extra = {}) => {
     for (const cyclicProofs of [false, true]) {
-      const r = prover.prove(Seq.fromArrays(lin.map(fp), cart.map(fp), fp(succ)), { ...base, maxDepth: 400, cyclicProofs });
+      const r = prover.prove(Seq.fromArrays(lin.map(fp), cart.map(fp), fp(succ)), { ...base, maxDepth: 400, cyclicProofs, ...extra });
       if (r.success) return { ok: true, kv: kernel.verifyTree(r.proofTree).valid, cycles: countCycles(r.proofTree) };
     }
     return { ok: false };
@@ -89,12 +89,45 @@ describe('Baelde exponential correspondence, ILL-corrected (Inc-5a)', () => {
     assert.equal(kernel.verifyTree(cyc.proofTree).valid, true);
   });
 
-  it('KNOWN GAP: multiplicative weakening !a ⊢ I is not captured (with_l2/1 focus corner)', () => {
-    // Discarding the signal would need to project the `1` alternative, but the
-    // focused prover has a pre-existing with_l2 + I focus-completeness corner
-    // (a & I ⊢ I fails while I & a ⊢ I succeeds) — orthogonal to μ/ν. Pinned so a
-    // future focus fix surfaces here. ILL's primitive ! weakens via its cartesian
-    // zone; the fixed-point encoding does not recover that here.
-    assert.equal(prove([BANG('a')], 'I').ok, false);
+  it('WEAKENING RECOVERED  !a ⊢ I  under exhaustive search (THY_0042 §4 corner closed)', () => {
+    // Discarding the signal projects the `1` alternative: after ν-unfold, reach
+    // it via with_l2 (pick `I & (X⊗X)`) then with_l1 (pick `I`) then 1L/1R. The
+    // committed focused search cannot find it — it commits to with_l1 (`a ⊢ I`),
+    // whose one_r leaves `a` unspent, and never backtracks (the leftover only
+    // fails the emptiness check at the root). `exhaustive: true` threads that
+    // root constraint back as a success continuation, so with_l2 is tried. The
+    // recovered proof is kernel-verified. Committed mode is unchanged.
+    const committed = prover.prove(Seq.fromArrays([fp(BANG('a'))], [], fp('I')), { ...base, maxDepth: 400 });
+    assert.equal(committed.success, false, 'committed search still cannot (fast path unchanged)');
+    const r = prove([BANG('a')], 'I', [], { exhaustive: true });
+    assert.equal(r.ok, true, 'weakening proves under exhaustive search');
+    assert.equal(r.kv, true, 'kernel-verified');
+  });
+
+  it('the minimal focus corner  a & I ⊢ I  (fails committed, proves exhaustive, both kernel-honest)', () => {
+    const seq = Seq.fromArrays([fp('a & I')], [], fp('I'));
+    assert.equal(prover.prove(seq, { ...base, maxDepth: 50 }).success, false, 'committed: order-dependent gap');
+    const r = prover.prove(seq, { ...base, maxDepth: 50, exhaustive: true });
+    assert.equal(r.success, true, 'exhaustive backtracks to with_l2');
+    assert.equal(kernel.verifyTree(r.proofTree).valid, true);
+  });
+
+  it('SOUNDNESS: exhaustive search does not accept the unprovable', () => {
+    // Additive backtracking must not manufacture proofs. `a, b ⊢ a & b` needs
+    // both branches to consume the same context but each leaves the other's
+    // resource — genuinely unprovable; the naive νX.(a&X) still gives no
+    // contraction; and plain linear falsehoods stay false — all under exhaustive.
+    assert.equal(prove([`a`, `b`], 'a & b', [], { exhaustive: true }).ok, false);
+    assert.equal(prove([NAIVE('a')], 'a * a', [], { exhaustive: true }).ok, false);
+    assert.equal(prove([`a`], 'b', [], { exhaustive: true }).ok, false);
+    assert.equal(prove([`a`], 'a * a', [], { exhaustive: true }).ok, false);
+  });
+
+  it('REGRESSION: exhaustive still proves & kernel-verifies dereliction/reuse/contraction', () => {
+    for (const succ of ['a', 'a * a', `(${BANG('a')}) * (${BANG('a')})`]) {
+      const r = prove([BANG('a')], succ, [], { exhaustive: true });
+      assert.equal(r.ok, true, succ);
+      assert.equal(r.kv, true, `kernel-verified: ${succ}`);
+    }
   });
 });

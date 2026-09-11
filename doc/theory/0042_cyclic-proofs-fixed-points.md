@@ -1,7 +1,7 @@
 ---
 title: "Fixed Points and Cyclic Proofs, Machine-Checked"
 created: 2026-09-10
-modified: 2026-09-10
+modified: 2026-09-11
 summary: "Native least/greatest fixed points (μ/ν) added to CALC's ILL as declared connectives, with a cyclic-proof system whose soundness is a TRUSTED global-trace-condition checker (lib/prover/gtc-check.js) — the cyclic-proof twin of the per-step kernel and the forward-tree checker. A recurring ν-succedent closes coinductively as a back-edge (nu_cycle bud → companion); the untrusted search only guesses the back-edge, and checkGTC certifies context conservation + νR/μL progress over the whole tree. Coinduction is thereby machine-checked (`!a ⊢ νX.(a & X)` proves and kernel-verifies). A corollary corrects the folklore Baelde encoding for the intuitionistic linear setting."
 tags: [fixed-points, coinduction, cyclic-proofs, muMALL, proof-theory, certificates, focusing, linear-logic]
 category: "Proof theory"
@@ -97,13 +97,24 @@ whose `1` is the weakening alternative. Machine-checked (Inc-5a): dereliction
 `!a ⊢ a`, contraction `!a ⊢ !a ⊗ !a`, and reuse `!a ⊢ a ⊗ a` all hold and
 kernel-verify for this encoding and fail for the naive one. Contraction here is
 *finite* — the left ν unfolds on demand; the genuinely *cyclic* half is the dual
-construction of an unbounded signal from persistent resources. (Multiplicative
-weakening `!a ⊢ 1` is not recovered — it meets a pre-existing `with_l2`/`1`
-focus-completeness corner that the encoding's nested-`&` structure exposes: after
-ν-unfold, reaching `1` requires two nested `with_l` selections that hit this
-corner. The encoding is theoretically sound for weakening; the gap is entirely in
-the prover's focus completeness, and fixing that corner would recover weakening
-for this encoding. Pinned as a known gap.)
+construction of an unbounded signal from persistent resources.
+
+Multiplicative weakening `!a ⊢ 1` is now **recovered and machine-checked** (Inc-5b).
+It exposed a pre-existing focus-*completeness* corner (not a soundness gap, and
+orthogonal to μ/ν): after ν-unfold, reaching `1` needs `with_l2` then `with_l1`,
+ending at `1 ⊢ 1`, but the committed focused search commits to `with_l1` first —
+whose `one_r` leaves `a` unspent — and never reconsiders, because the leftover only
+fails the linear-emptiness check at the *root*. This is the additive don't-know
+nondeterminism under a linear-resource constraint that committed-choice search
+cannot see (the same phenomenon the prover already documented at its `copyContext`
+additive branch). The fix is an opt-in **exhaustive** search (`opts.exhaustive`,
+`lib/prover/focused.js`): a success continuation offers every candidate to the root
+constraint, so a non-dischargeable leftover drives backtracking into `with_l1`/
+`with_l2`. It is a separate driver — the committed path (and therefore ILL's EVM
+proof search) is byte-identical and pays nothing (measured), and soundness is
+untouched because the returned tree is still kernel- and GTC-verified. `!a ⊢ 1`,
+and the minimal witness `a & 1 ⊢ 1`, now prove and kernel-verify under it, while
+the genuinely unprovable (`a, b ⊢ a & b`; naive-encoding contraction) stay refused.
 
 ## 5. Scope
 
