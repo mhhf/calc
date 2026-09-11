@@ -39,7 +39,9 @@ rules (`ill.rules`) are **unfold** rules realizing σX.F = F[σX.F/X]
 *whole* principal σX.F, so the premise `debruijnSubst(body, 0, σX.F)` is a single
 deterministic substitution the kernel re-derives hash-identically. μ is positive
 (μL invertible, μR focus), ν negative (νR invertible, νL focus). No engine
-literal names them — checkers read them by role (`roles.lfp`/`roles.gfp`).
+literal names them in the progress check — the progress condition is read by
+role (`roles.lfp`/`roles.gfp`); the bud-closing marker is the literal
+`nu_cycle`.
 
 A subtlety this exposed and fixed in the kernel: `verifyTree` used to *degrade*
 any binding rule to a leftover-count check (it cannot reproduce a fresh
@@ -61,12 +63,19 @@ the back-edge and nothing more. Soundness is `checkGTC`:
 > carries a νR-on-ν or μL-on-μ unfold step.
 
 (A) is the ILL-specific clause with no classical analogue: without it a cycle
-could manufacture or destroy linear resources across the back-edge. (B) is the
-Baelde–Doumane–Saurin trace condition; under Andreoli focusing a bud closes
-against a *structurally identical* companion, so the formula-thread relation is
-the identity along the cycle and the condition collapses to the O(cycle-length)
-"has a progressing unfold" check — no Büchi automaton. νL and μR are the wrong
-side and never count. The checker is conservative (rejects more, never accepts
+could manufacture or destroy linear resources across the back-edge. In this
+prover's focused discipline, (A) is *structurally satisfied* by construction:
+companions are identified by `Seq.hash` equality, making bud and companion
+content-identical sequents, so (A) holds trivially; the `checkGTC` test for (A)
+is defense-in-depth for synthetic/external inputs (e.g. fuzz-generated trees),
+while progress (B) is the live discriminating condition. (B) is the
+Baelde–Doumane–Saurin trace condition; in this prover's design, a bud closes
+against a content-identical companion (hash-identity discipline), so the
+formula-thread relation is the identity along the cycle and the condition
+collapses to the O(cycle-length) "has a progressing unfold" check — no Büchi
+automaton. (This collapse follows from the hash-identity companion discipline —
+an observation about this prover's design, not a general property of Andreoli
+focusing.) νL and μR are the wrong side and never count. The checker is conservative (rejects more, never accepts
 more), imports only `kernel/`, and is adversarially fuzzed (`tools/fuzz-gtc.js`:
 every valid record accepted, every mutant across five unsoundness classes
 rejected). `checkCyclicProof` reconstructs each back-edge *from* the
@@ -90,8 +99,11 @@ kernel-verify for this encoding and fail for the naive one. Contraction here is
 *finite* — the left ν unfolds on demand; the genuinely *cyclic* half is the dual
 construction of an unbounded signal from persistent resources. (Multiplicative
 weakening `!a ⊢ 1` is not recovered — it meets a pre-existing `with_l2`/`1`
-focus-completeness corner, orthogonal to fixed points, and is pinned as a known
-gap.)
+focus-completeness corner that the encoding's nested-`&` structure exposes: after
+ν-unfold, reaching `1` requires two nested `with_l` selections that hit this
+corner. The encoding is theoretically sound for weakening; the gap is entirely in
+the prover's focus completeness, and fixing that corner would recover weakening
+for this encoding. Pinned as a known gap.)
 
 ## 5. Scope
 

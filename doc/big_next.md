@@ -17,8 +17,11 @@ coinduction, no liveness, no bisimulation. The ladder is scoped: tabling (~80 LO
 content-addressed hashing) → cyclic proofs with back-edges (~200 LOC; the store gives
 O(1) cycle detection) → native μ/ν connectives (~400 LOC). Metatheory prizes:
 
-- μMALL strictly subsumes the exponentials (Baelde 2012: `!A = νX. A & X`) — bang
-  becomes a derived connective.
+- μMALL strictly subsumes the exponentials: the corrected ILL encoding is
+  `!A = νX.(A & (1 & (X ⊗ X)))` — dereliction and contraction derived and
+  machine-checked (THY_0042); the naive Baelde shorthand `νX.(A & X)` fails
+  contraction in ILL (linear `&` cannot duplicate); weakening (`!a ⊢ I`) not yet
+  recovered due to a pre-existing `with_l2`/`1` focus-completeness corner.
 - With arithmetic, cyclic proofs ≡ explicit induction (Berardi–Tatsuta 2017) — the
   automation-friendly cyclic route loses nothing.
 - TODO_0203's target calculus: intuitionistic μMALL + ○ with the lax monad as the ○
