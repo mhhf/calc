@@ -2,10 +2,10 @@
 title: "A Next-Time Modality for Guarded Signals, by Promotion Shape"
 created: 2026-09-11
 modified: 2026-09-11
-summary: "A sound, non-collapsing next-time modality ○ added to intuitionistic linear μMALL as a forked calculus (rill @extends fill). ○ is given a single rule — ○R, PROMOTION-SHAPED (empty linear context, persistent context preserved) — and deliberately no left/elimination rule, so it does not collapse (○a ⊬ a and a ⊬ ○a) yet lets guarded signals νX.(A & ○X) be built from persistent resources. The key reuse: guarded coinduction over signals needs NO change to the cyclic-proof global trace condition — the ν-unfold is the trace progress and ○ is merely the syntactic guard whose ○R advances the persistent context across each tick. Every result is kernel- and GTC-verified."
+summary: "A sound, non-collapsing next-time modality ○ added to intuitionistic linear μMALL as a forked calculus (rill @extends fill). ○ is given a SINGLE rule — the whole-context TICK (G ; ○Δ ⊢ ○C ⟸ G ; Δ ⊢ C): it fires only when the succedent is ○C and every linear formula is ○-wrapped, strips one ○ from each, and passes the persistent context through. Its empty-Δ case is the promotion-shaped ○R (introduction); its non-empty case is ○-elimination / temporal cut. One rule gives BOTH introduction and elimination, and ○ still does not collapse (○a ⊬ a because the succedent is not ○; a ⊬ ○a because the context is not ○-wrapped) — yet signals are now CONSUMED, not only produced: the applicative ○(A⊸B),○A ⊢ ○B and the lax-monoidal ○A,○B ⊢ ○(A⊗B) hold. Guarded coinduction over signals νX.(A & ○X) still needs NO change to the cyclic-proof global trace condition (νR is the trace progress, ○ the syntactic guard). The tick is a whole-sequent transform, so it is fully RE-DERIVED in the kernel (a new soundness case, adversarially fenced), never a trusted step. Every result is kernel- and GTC-verified."
 tags: [temporal-modalities, next-modality, guarded-recursion, FRP, signals, streams, coinduction, cyclic-proofs, muMALL, linear-logic, focusing, proof-theory]
 category: "Proof theory"
-unique_contribution: "The observation that a genuine (non-collapsing) next-time modality ○ for intuitionistic LINEAR logic needs only ONE rule — a PROMOTION-SHAPED right rule ○R (empty linear context, persistent context passed through) and NO elimination rule — and that with this shape guarded coinductive signals νX.(A & ○X) are proved by the EXISTING μMALL cyclic-proof machinery with ZERO extension to the global trace condition: νR is the semantic progress step and ○ is only the syntactic guard, its ○R the operator that advances the persistent context one tick to reach the companion. The promotion shape is exactly the linear-temporal 'no-carry-forward' discipline (a linear resource consumed now cannot be re-offered next tick; only persistent resources, or a signal's tail, advance), which makes ○ sound and non-collapsing for free, distinct from the graded lax monad (with which TODO_0203 floated conflating it)."
+unique_contribution: "The observation that a genuine (non-collapsing) next-time modality ○ for intuitionistic LINEAR logic needs only ONE rule — a whole-context TICK (G ; ○Δ ⊢ ○C ⟸ G ; Δ ⊢ C) that fires only when the succedent is ○C and every linear formula is ○-wrapped — of which the promotion-shaped ○R (empty Δ) is the introduction base case and the non-empty case is ○-elimination / temporal cut (the applicative ○(A⊸B),○A ⊢ ○B and lax-monoidal ○A,○B ⊢ ○(A⊗B)). Two twists distinguish it: (1) a SINGLE whole-context rule supplies both introduction and elimination while STAYING non-collapsing — the two guards (○-succedent AND all-○ context) block ○a ⊢ a and a ⊢ ○a simultaneously, so no separate left rule (which would collapse) is needed; (2) guarded coinductive signals νX.(A & ○X) are proved by the EXISTING μMALL cyclic-proof machinery with ZERO extension to the global trace condition (νR is the semantic progress, ○ the syntactic guard). The tick's whole-sequent transform is bypassed in search and fully re-derived in the kernel (strip discipline: all-○ pool, premise = stripped context, no smuggled persistent fact), keeping it in the checked TCB rather than a trusted mode switch; the same generic cut is cut-admissible over ○-bearing sequents (THY_0044 §4). Distinct from the graded lax monad (with which TODO_0203 floated conflating ○)."
 references:
   - "TODO_0203 (Intuitionistic μMALL + ○ foundation for FRP) — this is its ○ layer"
   - "THY_0042 / lib/prover/gtc-check.js (the cyclic-proof GTC this reuses unchanged for guarded signals; §4's exhaustive-search weakening recovery landed alongside)"
@@ -36,25 +36,37 @@ negative and its `monad_l` is sticky (once in computation context, stay there),
 which blocks the ν-unfold that a signal proof must perform, and its verification
 runs the engine dynamically, whereas guardedness is a static, syntactic condition.
 
-So ○ is a **fresh positive primitive** with a single rule, **promotion-shaped**:
+So ○ is a **fresh positive primitive** with a **single rule** — the whole-context
+**tick**, which both introduces and eliminates ○ in one shape:
 
-$$\frac{\Gamma \;;\; \cdot \vdash A}{\Gamma \;;\; \cdot \vdash \bigcirc A}\ \ ○R
-\qquad(\Gamma\ \text{persistent; linear context empty})$$
+$$\frac{\Gamma \;;\; \Delta \vdash C}{\Gamma \;;\; \bigcirc\!\Delta \vdash \bigcirc C}\ \ ○\ \text{(tick)}
+\qquad(\Gamma\ \text{persistent, passed through};\ \ \bigcirc\!\Delta\ \text{= every linear formula is}\ \bigcirc\text{-wrapped})$$
 
-and **no left/elimination rule**. Two consequences, both essential:
+It fires only when the succedent is `○C` **and every linear formula is ○-wrapped**;
+it strips one ○ from each, advancing the whole sequent one tick. The empty-`Δ`
+case is exactly the promotion-shaped **○R** (`Γ ; · ⊢ ○A ⟸ Γ ; · ⊢ A`); the
+non-empty case is **○-elimination / temporal cut**. Three consequences:
 
-- **Non-collapse (soundness).** With no elimination, `○a ⊬ a`: an ○A cannot be
-  used in the present. With the empty-linear premise, `a ⊬ ○a` for *linear* `a`:
-  a resource consumed now cannot be re-offered next tick. ○ is therefore a genuine
-  modality, not an identity in disguise — both are machine-checked to FAIL, as are
-  their iterates and `○a, ○b ⊬ ○(a ⊗ b)` (○ is not monoidal here).
-- **The no-carry-forward discipline is exactly promotion.** Only what persists
-  across time may be promised for the next tick: persistent (`!`) resources, or —
-  crucially — the tail of a signal, reached across the ν back-edge. `○R` passes
-  the persistent context `Γ` through unchanged and requires the linear context
-  empty. This is `!R`/promotion's shape (empty linear + preserved persistent),
-  minus the exponential's left rules — a modality whose resource is available only
-  in the future, never now.
+- **Non-collapse (soundness).** The tick needs an ○-succedent, so `○a ⊬ a` (the
+  succedent `a` is not ○). It needs an *all-○* context, so `a ⊬ ○a` for *linear*
+  `a` (the context `a` is not ○-wrapped — a resource consumed now cannot be
+  re-offered next tick). ○ is a genuine modality, not an identity in disguise —
+  both directions and their iterates are machine-checked to FAIL.
+- **Elimination is the same rule, generalized (temporal cut).** Advancing the
+  *whole* context is what lets a signal be *consumed*: the applicative
+  `○(a⊸b), ○a ⊢ ○b` ticks to `a⊸b, a ⊢ b`, and ○ is **lax monoidal**,
+  `○a, ○b ⊢ ○(a⊗b)` ticking to `a, b ⊢ a⊗b`. No separate left rule is needed —
+  one whole-context rule gives introduction *and* elimination, and non-collapse
+  survives because both guards (○-succedent, all-○ context) must hold at once.
+  A non-○ linear resource riding the tick, a duplicated resource, or an invented
+  one all FAIL (machine-checked); the kernel **re-derives** the tick (succedent
+  ○C, all-○ pool, premise = the stripped context, no smuggled persistent fact) —
+  it is not a trusted mode switch.
+- **The no-carry-forward discipline is exactly promotion.** Only what persists —
+  the persistent (`!`) zone, passed through unchanged, or an ○-wrapped resource
+  advancing one step — reaches the next tick; a bare linear resource is stranded.
+  The empty-`Δ` base case is `!R`/promotion's shape (empty linear + preserved
+  persistent) minus the exponential's left rules.
 
 ## 3. Guarded signals reuse the GTC unchanged
 
@@ -81,13 +93,17 @@ Dually, `a ⊢ μX.(a ⊕ ○X)` — an event firing *now* — is a finite induc
 ## 4. Scope and frontier
 
 Sound and machine-checked for **construction and coinductive reasoning** about
-signals/streams. What is deliberately *not* here is ○-**elimination** — the
-"advance the whole world" rule `○Δ ⊢ ○C ⟸ Δ ⊢ C` that lets one *consume* a
-signal by ticking (temporal modus ponens / the applicative `○(A⊸B) ⊸ ○A ⊸ ○B`).
-That rule acts on the entire context at once rather than one principal formula and
-carries its own metatheory (a temporal cut-elimination); it is the honest next
-frontier, alongside ⊤ (the additive unit, listed in TODO_0203 but unused by the
-signal/stream encodings and blocked on the ⊤-vs-multiplicative-split search
-corner). The operational reading `{A} = ○A` (one settle = one tick) remains the
-right story for *running* reactive programs in the forward engine — a separate
-face from this backward proof theory, exactly as intended.
+signals/streams **and their consumption**: ○-**elimination / temporal cut** is now
+the whole-context tick above (`○Δ ⊢ ○C ⟸ Δ ⊢ C`), so the applicative
+`○(A⊸B), ○A ⊢ ○B` and the lax-monoidal `○A, ○B ⊢ ○(A⊗B)` hold — a signal can be
+ticked and consumed, not only produced. Because the tick is a whole-sequent
+transform (not a one-principal rule), it is bypassed in the search and **fully
+re-derived in the kernel** (a new soundness case, adversarially fenced), never a
+trusted step; cut-admissibility across the family (THY_0044 §4) exercises the same
+generic cut over ○-bearing sequents. What remains on the frontier is **⊤** (the
+additive unit, listed in TODO_0203 but unused by the signal/stream encodings and
+blocked on the ⊤-vs-multiplicative-split search corner) and the **graded ○** —
+folding the tick into gill's grade frame so `○` becomes a temporally-graded box
+(THY_0044 roadmap item 3). The operational reading `{A} = ○A` (one settle = one
+tick) remains the right story for *running* reactive programs in the forward engine
+— a separate face from this backward proof theory, exactly as intended.
