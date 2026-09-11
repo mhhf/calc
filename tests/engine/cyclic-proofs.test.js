@@ -21,8 +21,8 @@ import { buildRuleSpecs } from '../../lib/prover/rule-interpreter.js';
 import { createKernel } from '../../lib/prover/kernel.js';
 import { ProofTree } from '../../lib/prover/pt.js';
 import { checkCyclicProof } from '../../lib/prover/gtc-check.js';
-import { loadILL } from '../../calculus/ill/index.js';
-import { buildForwardParser } from '../../calculus/ill/lib/forward-parser.js';
+import { loadFill } from '../../calculus/fill/index.js';
+import { buildForwardParser } from '../../calculus/fill/lib/forward-parser.js';
 
 const countRule = (tree, name) => {
   let n = 0;
@@ -33,7 +33,7 @@ const countRule = (tree, name) => {
 describe('cyclic proofs — coinduction via GTC-certified back-edges (Inc-4)', () => {
   let calc, fp, prover, kernel, base, gtcOpts;
   before(async () => {
-    calc = await loadILL();
+    calc = await loadFill();
     fp = buildForwardParser();
     const built = buildRuleSpecs(calc);
     prover = createProver(calc);

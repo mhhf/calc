@@ -21,12 +21,42 @@ import { createProver } from '../../lib/prover/focused.js';
 import { buildRuleSpecs } from '../../lib/prover/rule-interpreter.js';
 import { createKernel } from '../../lib/prover/kernel.js';
 import { ProofTree } from '../../lib/prover/pt.js';
+import { loadFill } from '../../calculus/fill/index.js';
+import { buildForwardParser } from '../../calculus/fill/lib/forward-parser.js';
 import { loadILL } from '../../calculus/ill/index.js';
-import { buildForwardParser } from '../../calculus/ill/lib/forward-parser.js';
+
+describe('μMALL firewall — μ/ν live in fill, NOT in production ILL', () => {
+  // The whole point of the fill fork: ILL's EVM proof path must carry no
+  // fixpoint machinery. ILL declares no @category fixpoint, so deriveRoles()
+  // yields no lfp/gfp and the generic cyclic-proof engine (bridge/gtc/focused)
+  // stays dormant for ILL. A regression that re-adds μ/ν to ill.calc/ill.rules
+  // would flip these — that is the thing this test exists to catch.
+  it('ILL declares no μ/ν connectives and no fixpoint rules', () => {
+    const ill = loadILL();
+    assert.equal('mu' in ill.constructors, false, 'ILL must not declare μ');
+    assert.equal('nu' in ill.constructors, false, 'ILL must not declare ν');
+    assert.equal('mu_l' in (ill.rules || {}), false, 'ILL backward fragment must be fixpoint-free');
+    assert.equal('nu_r' in (ill.rules || {}), false);
+  });
+
+  it('ILL derives no lfp/gfp roles (cyclic-proof engine stays dormant)', () => {
+    const ill = loadILL();
+    assert.equal(ill.roles.lfp, undefined);
+    assert.equal(ill.roles.gfp, undefined);
+  });
+
+  it('fill (the fork) DOES arm them — the firewall is a partition, not a deletion', () => {
+    const fill = loadFill();
+    assert.equal(fill.roles.lfp, 'mu');
+    assert.equal(fill.roles.gfp, 'nu');
+    assert.equal('mu' in fill.constructors, true);
+    assert.equal('mu_l' in fill.rules, true);
+  });
+});
 
 describe('μ/ν connectives — store + parser plumbing (Inc-1)', () => {
   let calc, fp;
-  before(async () => { calc = await loadILL(); fp = buildForwardParser(); });
+  before(async () => { calc = await loadFill(); fp = buildForwardParser(); });
 
   it('appends exactly two tags, shifting PRED_BOUNDARY 35→37', () => {
     assert.equal(Store.PRED_BOUNDARY, 37);
@@ -79,7 +109,7 @@ describe('μ/ν connectives — store + parser plumbing (Inc-1)', () => {
 describe('μ/ν unfold — finite proofs prove and FULLY kernel-verify', () => {
   let calc, fp, prover, kernel, opts;
   before(async () => {
-    calc = await loadILL();
+    calc = await loadFill();
     fp = buildForwardParser();
     const built = buildRuleSpecs(calc);
     prover = createProver(calc);
@@ -112,7 +142,7 @@ describe('μ/ν unfold — finite proofs prove and FULLY kernel-verify', () => {
 
 describe('μ/ν unfold — the kernel rejects forged unfoldings (soundness gate)', () => {
   let calc, fp, kernel;
-  before(async () => { calc = await loadILL(); fp = buildForwardParser(); kernel = createKernel(calc); });
+  before(async () => { calc = await loadFill(); fp = buildForwardParser(); kernel = createKernel(calc); });
   const S = (lin, succ) => Seq.fromArrays(lin.map(fp), [], fp(succ));
   const leafId = (f) => new ProofTree({ conclusion: Seq.fromArrays([fp(f)], [], fp(f)), rule: 'id', proven: true, premises: [] });
 

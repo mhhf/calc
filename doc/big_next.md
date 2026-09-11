@@ -15,7 +15,22 @@ Todos live in hq (`hq todo show <id>`); THY_NNNN = `doc/theory/NNNN_*.md`.
 CALC cannot state or prove anything about unbounded behavior — no induction, no
 coinduction, no liveness, no bisimulation. The ladder is scoped: tabling (~80 LOC on
 content-addressed hashing) → cyclic proofs with back-edges (~200 LOC; the store gives
-O(1) cycle detection) → native μ/ν connectives (~400 LOC). Metatheory prizes:
+O(1) cycle detection) → native μ/ν connectives (~400 LOC).
+
+**Status (2026-09-11): the ladder is BUILT and lives in the `fill` calculus** (μMALL-
+ILL, `calculus/fill/` @extends ill) — NOT in production ILL. All three rungs shipped
+(tabling `opts.loopCheck`; cyclic proofs + GTC checker `lib/prover/gtc-check.js`;
+native μ/ν connectives + `mu_r/mu_l/nu_r/nu_l`), soundness audited and fuzzed
+(`fuzz-gtc`). The fork is a deliberate FIREWALL: ILL declares no `@category fixpoint`,
+so `deriveRoles()` yields no `roles.lfp/gfp` and the generic cyclic-proof engine
+(bridge/gtc/focused, all role-gated) stays dormant on the EVM proof path — no fixpoint
+rules in ILL's backward fragment, no μ/ν cost in the lax-monad bridge. The engine
+machinery is generic; only the ~40 lines of connective+rule declarations are
+calculus-specific and they live in `fill.calc`/`fill.rules`. Open frontier now: (a)
+recover multiplicative weakening for the μMALL exponential subsumption (the pre-
+existing `with_l2`/`1` focus corner, THY_0042); (b) the `+ ○` next-time modality
+(TODO_0203, FRP signals/streams) — untouched, effectively a new branch. Metatheory
+prizes:
 
 - μMALL strictly subsumes the exponentials: the corrected ILL encoding is
   `!A = νX.(A & (1 & (X ⊗ X)))` — dereliction and contraction derived and

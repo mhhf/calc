@@ -68,34 +68,10 @@ forall_l: G ; D, forall A |- C
   @pretty "∀L"
   @binding metavar.
 
-% Fixed points (μMALL, TODO_0009 rung 3). The four unfold rules realize the
-% fixed-point identity σX.F = F[σX.F/X] (Knaster–Tarski). @binding unfold opens
-% the de-Bruijn body with the WHOLE principal formula (μX.F / νX.F) as the
-% witness — a single deterministic substitution the kernel re-derives exactly
-% (no fresh variable, hence fully verified, unlike ∃/∀). Polarity from ill.calc:
-% μ positive → μL invertible, μR needs focus (@invertible false); ν negative →
-% νR invertible, νL needs focus (@invertible false).
-mu_r: G ; D |- mu A
-  <- G ; D |- A
-  @pretty "μR"
-  @invertible false
-  @binding unfold.
-
-mu_l: G ; D, mu A |- C
-  <- G ; D, A |- C
-  @pretty "μL"
-  @binding unfold.
-
-nu_r: G ; D |- nu A
-  <- G ; D |- A
-  @pretty "νR"
-  @binding unfold.
-
-nu_l: G ; D, nu A |- C
-  <- G ; D, A |- C
-  @pretty "νL"
-  @invertible false
-  @binding unfold.
+% Fixed-point unfold rules (μR/μL/νR/νL, μMALL) live in the fill calculus
+% (calculus/fill/fill.rules) — NOT here. fill loads [ill.rules, fill.rules];
+% ILL's backward fragment stays fixpoint-free so EVM proof search never
+% considers the four fixpoint rules.
 
 one_r: G ; |- I
   @pretty "1R".

@@ -225,6 +225,14 @@ calculus/sax/            # sax — semi-axiomatic ILL (TODO_0309): the SECOND-fa
 ├── programs/machine.sax # The FSCD Fig. 6 machine sax-native: proc/hole/!cell over SNAX projections (p1/p2 — binder-free)
 └── tests/               # sax executable specs (npm run test:sax — untimed => dispatch); fast-suite guards: tests/sax-prover.test.js (snips + adversarial kernel rejections) + tests/engine/sax-{encoding,forward}.test.js (empirical confluence, ILL-encoded AND sax-native)
 
+calculus/fill/           # fill — μMALL ILL (TODO_0009 rungs 2-3): ILL + least/greatest fixed points (μ/ν). The FORK that firewalls the experimental fixpoint + cyclic-proof frontier from production ILL — μMALL is here, NOT in ill.calc/ill.rules, so ILL's EVM proof path carries no fixpoint machinery. The engine machinery (bridge/gtc-check/focused cyclic search) is GENERIC and role-gated: ILL declares no @category fixpoint → deriveRoles yields no roles.lfp/gfp → the cyclic engine stays dormant for ILL
+├── fill.calc            # @extends ill (surface inherited by reference, loadChain merges ILL's table); declares ONLY the fill-OWN mu/nu connectives (@category fixpoint → arms roles.lfp/gfp)
+├── fill.rules           # The four μMALL unfold rules (mu_r/mu_l/nu_r/nu_l, Knaster–Tarski σX.F = F[σX.F/X]); loaded as the LIST [ill.rules, fill.rules] — ILL's fragment by reference plus these
+├── calculus-config.js   # Composes ILL's config field-by-field (family/init/theories/backward/ffi/compose/EVM domain referenced); fill-OWN: connectives (fill.calc chain), loader.buildParser (μ/ν binders), compile.cacheEpoch 'fill'
+├── lib/forward-parser.js # loadFill (fill.calc + [ill.rules, fill.rules]) + the .ill parser (ILL's operators + μ/ν binders)
+├── index.js             # fill facade (mirrors ill/index.js): load/precompile bound to fillConfig + loadFill/proveString/parseSequent
+└── (tested via)         # tests/engine/{cyclic-proofs,mu-nu-connective,munu-soundness-fence,gtc-check,focused-loop-detect,baelde-exponential}.test.js — all load via fill
+
 tests/                   # Test suite (core: *.test.js, engine: engine/)
 benchmarks/              # Performance benchmarks (engine/, proof/, micro/)
 tools/                   # CLI utilities + shared tool infrastructure

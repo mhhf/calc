@@ -23,8 +23,8 @@ import Seq from '../../lib/kernel/sequent.js';
 import { createProver } from '../../lib/prover/focused.js';
 import { buildRuleSpecs } from '../../lib/prover/rule-interpreter.js';
 import { createKernel } from '../../lib/prover/kernel.js';
-import { loadILL } from '../../calculus/ill/index.js';
-import { buildForwardParser } from '../../calculus/ill/lib/forward-parser.js';
+import { loadFill } from '../../calculus/fill/index.js';
+import { buildForwardParser } from '../../calculus/fill/lib/forward-parser.js';
 
 const BANG = (A) => `nu X. (${A} & (I & (X * X)))`;   // !A, corrected encoding
 const NAIVE = (A) => `nu X. (${A} & X)`;               // big_next.md's oversimplification
@@ -33,7 +33,7 @@ const countCycles = (t) => { let n = 0; const w = (x) => { if (!x) return; if (x
 describe('Baelde exponential correspondence, ILL-corrected (Inc-5a)', () => {
   let fp, prover, kernel, base;
   before(async () => {
-    const calc = await loadILL();
+    const calc = await loadFill();
     fp = buildForwardParser();
     const built = buildRuleSpecs(calc);
     prover = createProver(calc); kernel = createKernel(calc);
