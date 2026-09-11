@@ -9,6 +9,7 @@ import { describe, it, before } from 'node:test';
 import assert from 'node:assert';
 import path from 'path';
 import fs from 'fs';
+import { saveOrAssertFixture } from './helpers/zk-fixture.js';
 import Store from '../lib/kernel/store.js';
 import Seq from '../lib/kernel/sequent.js';
 import { generateFlatWitness, generateChunkedFlatWitness } from '../calculus/ill/lib/zk/flat-witness.js';
@@ -433,9 +434,7 @@ describe('chunked flat witness: solc integration', { timeout: 60000 }, () => {
     });
 
     const FIXTURE_DIR = path.join(import.meta.dirname, '..', 'zk', 'sequent-certifier', 'tests', 'fixtures');
-    if (!fs.existsSync(FIXTURE_DIR)) fs.mkdirSync(FIXTURE_DIR, { recursive: true });
-    const filepath = path.join(FIXTURE_DIR, 'multisig_chunked.json');
-    fs.writeFileSync(filepath, JSON.stringify(chunks));
+    const filepath = saveOrAssertFixture(FIXTURE_DIR, 'multisig_chunked', chunks);
     const size = fs.statSync(filepath).size;
     console.log(`  chunked fixture: ${chunks.length} chunks, ${(size / 1024).toFixed(0)}KB`);
     assert.ok(chunks.length >= 3);

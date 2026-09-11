@@ -19,6 +19,7 @@ import { extractTerm } from '../lib/prover/generic-term.js';
 import { createChecker } from '../lib/prover/check-term.js';
 import { generateWitness, deriveZkTags } from '../calculus/ill/lib/zk/witness.js';
 import { loadILL } from '../calculus/ill/index.js';
+import { saveOrAssertFixture } from './helpers/zk-fixture.js';
 let calc;
 let seqParser;
 let prover;
@@ -29,18 +30,8 @@ let ZK_TAGS;
 
 const FIXTURE_DIR = path.join(import.meta.dirname, '..', 'zk', 'sequent-certifier', 'tests', 'fixtures');
 
-function ensureFixtureDir() {
-  if (!fs.existsSync(FIXTURE_DIR)) {
-    fs.mkdirSync(FIXTURE_DIR, { recursive: true });
-  }
-}
-
 function saveFixture(name, data) {
-  ensureFixtureDir();
-  fs.writeFileSync(
-    path.join(FIXTURE_DIR, `${name}.json`),
-    JSON.stringify(data, null, 2),
-  );
+  saveOrAssertFixture(FIXTURE_DIR, name, data);
 }
 
 function proveAndWitness(sequentStr, name) {
@@ -311,7 +302,6 @@ describe('ZK Witness Generator', () => {
 
   describe('fixture generation', () => {
     it('saves all fixtures', () => {
-      ensureFixtureDir();
       const files = fs.readdirSync(FIXTURE_DIR).filter(f => f.endsWith('.json'));
       assert.ok(files.length >= 18, `should have >= 18 fixtures, got ${files.length}`);
     });
