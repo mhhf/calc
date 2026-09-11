@@ -23,6 +23,7 @@ import { createProver } from '../../lib/prover/focused.js';
 import { buildRuleSpecs } from '../../lib/prover/rule-interpreter.js';
 import { createKernel } from '../../lib/prover/kernel.js';
 import { ProofTree } from '../../lib/prover/pt.js';
+import { freshMetavar } from '../../lib/kernel/fresh.js';
 import { loadRill } from '../../calculus/rill/index.js';
 import { buildForwardParser } from '../../calculus/rill/lib/forward-parser.js';
 import { loadFill } from '../../calculus/fill/index.js';
@@ -118,6 +119,44 @@ describe('rill — the ○ next-time modality (TODO_0203)', () => {
     const v2 = kernel.verifyTree(nonCircle);
     assert.equal(v2.valid, false, 'kernel rejects a non-○ formula riding the tick');
     assert.ok(v2.errors.some(e => /circle|wrapped|advance|tick/i.test(e)));
+    // (iii) METAVAR forgery (audit 2026-09-11): a premise with a metavar succedent
+    // X — a real id leaf `a ⊢ X` unifies a=X, and the tick body check must NOT
+    // independently unify X=b (two fresh unions never reconciled). The tick body
+    // check is EXACT (ps === C), so this forged ○a ⊢ ○b is rejected.
+    const idMeta = new ProofTree({
+      conclusion: Seq.fromArrays([fp('a')], [], freshMetavar()), rule: 'id', proven: true, premises: [],
+    });
+    const metaForge = new ProofTree({
+      conclusion: seq(['O a'], [], 'O b'), premises: [idMeta], rule: 'circle_r', proven: true,
+    });
+    const v3 = kernel.verifyTree(metaForge);
+    assert.equal(v3.valid, false, 'kernel rejects a metavar-premise tick forging ○a ⊢ ○b');
+    assert.ok(v3.errors.some(e => /body|circle|succedent/i.test(e)));
+  });
+
+  it('○ is STRONG MONOIDAL over ⊗ (sound feature) — the tick distributes, without leaking', () => {
+    // With the whole-context tick, ○ is a STRONG monoidal functor for the
+    // time-shift reading: ○(A⊗B) and ○A⊗○B are the SAME resource multiset (A,B
+    // both at t+1), so both directions hold. The leftover re-wrap (wrapTick) is
+    // linear accounting — the part of ○Δ a branch does not consume passes on as ○
+    // of that part — NOT duplication. Audit 2026-09-11: two attackers read this as
+    // a soundness hole assuming lax-only monoidality; it is sound, pinned here.
+    for (const [lin, succ] of [
+      [['O (a * b)'], '(O a) * (O b)'],           // distribute (strong)
+      [['O a', 'O b'], 'O (a * b)'],               // gather (lax)
+      [['O (a * b)'], '(O b) * (O a)'],            // + commutativity
+      [['O (a * b)', 'O c'], '(O a) * ((O b) * (O c))'],
+    ]) {
+      const r = prove(lin, [], succ);
+      assert.equal(r.ok, true, `valid: ${JSON.stringify(lin)} ⊢ ${succ}`);
+      assert.equal(r.kv, true, 'kernel-verified');
+    }
+    // ...and the strong-monoidal machinery leaks NOTHING: no duplication, creation,
+    // over-extraction, or discard rides the leftover re-wrap.
+    assert.equal(prove(['O a'], [], '(O a) * (O a)').ok, false, 'no duplication ○a ⊬ ○a⊗○a');
+    assert.equal(prove([], [], '(O a) * (O b)').ok, false, 'no creation ⊬ ○a⊗○b');
+    assert.equal(prove(['O (a * b)'], [], '(O a) * ((O b) * (O b))').ok, false, 'no over-extraction');
+    assert.equal(prove(['O (a * b)'], [], 'O a').ok, false, 'no discard: b cannot be dropped (○b leftover fails root)');
   });
 
   it('○-ELIMINATION is SOUND: the tick manufactures nothing and never collapses', () => {

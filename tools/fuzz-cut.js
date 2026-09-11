@@ -65,14 +65,20 @@ const TEMPLATES = [
   // cut-admissibility, so templates here avoid them: every Cut below is robustly
   // cut-free provable, making any failure a genuine non-admissibility datapoint.
   // ── fixpoints: the hard case (cyclic cut-elimination) ──────────────────────
+  // coind-cut: the cut RESULT is itself coinductive — `;p ⊢ A` (A the signal),
+  // which REQUIRES a nu_cycle, not the trivial `;p ⊢ p`. R is the identity
+  // consumer A ⊢ A, so cut-elimination must reproduce the coinductive proof of the
+  // composed sequent (audit 2026-09-11: the earlier `;p ⊢ p` result was degenerate).
   { tag: 'coind-cut', calc: ['fill', 'grill'], cyclic: true,
     L: (p) => ({ lin: [], cart: [p], succ: `nu X. (${p} & X)` }),
-    R: (p) => ({ lin: [`nu X. (${p} & X)`], cart: [], succ: p }),
-    Cut: (p) => ({ lin: [], cart: [p], succ: p }) },
+    R: (p) => ({ lin: [`nu X. (${p} & X)`], cart: [], succ: `nu X. (${p} & X)` }),
+    Cut: (p) => ({ lin: [], cart: [p], succ: `nu X. (${p} & X)` }) },
+  // ind-cut: the cut RESULT still requires a μ intro over an unfold (p ⊢ p + A),
+  // not the identity `p ⊢ A` — R unfolds the fixpoint once.
   { tag: 'ind-cut', calc: ['fill', 'grill'], cyclic: false,
     L: (p) => ({ lin: [p], cart: [], succ: `mu X. (${p} + X)` }),
-    R: (p) => ({ lin: [`mu X. (${p} + X)`], cart: [], succ: `mu X. (${p} + X)` }),
-    Cut: (p) => ({ lin: [p], cart: [], succ: `mu X. (${p} + X)` }) },
+    R: (p) => ({ lin: [`mu X. (${p} + X)`], cart: [], succ: `${p} + (mu X. (${p} + X))` }),
+    Cut: (p) => ({ lin: [p], cart: [], succ: `${p} + (mu X. (${p} + X))` }) },
   // ── grades ─────────────────────────────────────────────────────────────────
   { tag: 'graded-haul', calc: ['gill', 'grill'], cyclic: false,
     L: (p) => ({ lin: [p], cart: [], succ: `!!_0 ${p}` }),
@@ -81,8 +87,8 @@ const TEMPLATES = [
   // ── the composition: graded coinductive cut (grill only) ────────────────────
   { tag: 'graded-coind-cut', calc: ['grill'], cyclic: true,
     L: (p) => ({ lin: [], cart: [p], succ: `nu X. (${p} & !!_0 X)` }),
-    R: (p) => ({ lin: [`nu X. (${p} & !!_0 X)`], cart: [], succ: p }),
-    Cut: (p) => ({ lin: [], cart: [p], succ: p }) },
+    R: (p) => ({ lin: [`nu X. (${p} & !!_0 X)`], cart: [], succ: `nu X. (${p} & !!_0 X)` }),
+    Cut: (p) => ({ lin: [], cart: [p], succ: `nu X. (${p} & !!_0 X)` }) },
 ];
 
 async function loadCalc(name) {
