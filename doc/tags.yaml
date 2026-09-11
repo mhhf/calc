@@ -1,9 +1,9 @@
 tags:
-  linear-logic: 42
+  linear-logic: 43
   forward-chaining: 30
   ill: 27
+  proof-theory: 25
   inference-rule: 24
-  proof-theory: 24
   architecture: 19
   graded-types: 18
   chr: 13
@@ -28,6 +28,7 @@ tags:
   ownership: 6
   existential: 5
   ffi: 5
+  focusing: 5
   provenance: 5
   symexec: 5
   verification: 5
@@ -35,7 +36,6 @@ tags:
   with: 5
   adjoint-logic: 4
   exists: 4
-  focusing: 4
   lnl: 4
   multiset-rewriting: 4
   partial-evaluation: 4
@@ -62,8 +62,10 @@ tags:
   adequacy: 2
   backward: 2
   bridge: 2
+  coinduction: 2
   content-addressed-store: 2
   content-addressing: 2
+  cyclic-proofs: 2
   destination-passing: 2
   determinism: 2
   eigenvariable: 2
@@ -75,6 +77,7 @@ tags:
   independence: 2
   layers: 2
   modal-logic: 2
+  muMALL: 2
   one: 2
   principals: 2
   refinement-sorts: 2
@@ -105,7 +108,6 @@ tags:
   code-quality: 1
   coeffects: 1
   cohort-firing: 1
-  coinduction: 1
   committed-choice: 1
   compilation: 1
   completeness: 1
@@ -115,7 +117,6 @@ tags:
   correspondence: 1
   cost-semantics: 1
   cut: 1
-  cyclic-proofs: 1
   data-layout: 1
   debugging: 1
   definitions: 1
@@ -137,9 +138,11 @@ tags:
   financial-primitives: 1
   fixed-points: 1
   forward-engine: 1
+  FRP: 1
   games: 1
   graded-monad: 1
   grothendieck-group: 1
+  guarded-recursion: 1
   HCP: 1
   hevm: 1
   hooks: 1
@@ -165,7 +168,7 @@ tags:
   MPST: 1
   multicategory: 1
   multimodal: 1
-  muMALL: 1
+  next-modality: 1
   nondeterminism: 1
   novel-contributions: 1
   operational-semantics: 1
@@ -192,6 +195,7 @@ tags:
   residuated-monoids: 1
   roadmap: 1
   run-length: 1
+  signals: 1
   Skolem: 1
   smt: 1
   snax: 1
@@ -200,11 +204,13 @@ tags:
   stark: 1
   storage: 1
   store: 1
+  streams: 1
   structural: 1
   structural-families: 1
   subformula-property: 1
   subsorting: 1
   superposition: 1
+  temporal-modalities: 1
   termination: 1
   theorem: 1
   theory: 1
