@@ -10,19 +10,24 @@
 
 @formulas A, B, C
 
-% Next-time introduction (○R). To promise A at the NEXT tick, prove A now using
-% only resources that PERSIST across the tick: the linear context must be empty.
-% A linear resource consumed now cannot be re-offered next tick — only persistent
-% (!) resources, or the tail of a signal, advance. Promotion-shaped
-% (G ; |- ○A <- G ; |- A): the empty-linear conclusion plus one premise sets
-% requiresEmptyDelta, so ○R fires ONLY when the linear pool is empty — exactly
-% the temporal no-carry-forward discipline. Positive ⇒ non-invertible (focus).
+% Next-time / whole-context TICK (○R + ○-elimination in one rule, THY_0043 §temporal-cut).
+% To reach `○C`, advance the WHOLE sequent one step: `G ; ○Δ |- ○C  <-  G ; Δ |- C`.
+% Every linear formula must be ○-wrapped; the rule strips one ○ from each (Δ becomes
+% available "now" in the premise) and the persistent G passes unchanged. A linear
+% resource that is NOT ○-wrapped cannot advance, so the rule is inapplicable then —
+% this is exactly what keeps ○ NON-COLLAPSING: `○a ⊬ a` (succedent a is not ○) and
+% `a ⊬ ○a` (context a is not ○-wrapped). The empty-context case `G ; |- ○A <- G ; |- A`
+% is the promotion-shaped base case (only persistent/signal resources advance).
 %
-% This is the single ○ rule. There is NO ○-left rule: an ○A is never usable in
-% the present (that is what makes ○ a genuine modality — non-collapse). Guarded
-% signals νX.(A & ○X) coinduct via the ν back-edge (GTC progress = the νR unfold);
-% ○R advances the persistent context across each tick to reach the companion.
+% This IS the ○-elimination / temporal cut: `○(A⊸B), ○A |- ○B` ticks to `A⊸B, A |- B`
+% (the applicative ⊛), and `○A, ○B |- ○(A⊗B)` ticks to `A, B |- A⊗B` (lax monoidal) —
+% signals are now CONSUMED, not only produced. @tick marks the whole-context transform
+% (bypassed premise computation in focused.js, fully re-derived in kernel.js). Guarded
+% signals νX.(A & ○X) still coinduct via the ν back-edge (GTC progress = the νR unfold).
+% Positive ⇒ non-invertible (focus). The rule shape below shows the base case; @tick
+% generalizes the empty linear context to an all-○ context.
 next_r: G ; |- O A
   <- G ; |- A
-  @pretty "○R"
-  @invertible false.
+  @pretty "○"
+  @invertible false
+  @tick true.

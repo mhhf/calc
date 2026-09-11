@@ -125,9 +125,17 @@ un-adjoint-ified). The sequenced remaining bricks, cheapest first:
    coinductive promotion), NOT a search gap (`exhaustive` does not recover it),
    correcting the earlier assumption that it was THY_0042 §4's corner. A
    coinductive-promotion rule is the one remaining brick to internalize it.
-3. **Graded ○ / temporal:** fold rill's ○ into the graded frame (`○ = a temporally
-   graded box`, no dereliction at tick > 0) and add ○-elimination (temporal cut) —
-   the FRP consumption side (TODO_0203).
+3. **Graded ○ / temporal:** **○-elimination / temporal cut is done** (THY_0043):
+   rill's ○ is now the whole-context **tick** `G ; ○Δ ⊢ ○C ⟸ G ; Δ ⊢ C`, one rule
+   giving introduction *and* elimination while staying non-collapsing — the
+   applicative `○(A⊸B),○A ⊢ ○B` and lax-monoidal `○A,○B ⊢ ○(A⊗B)` hold, so signals
+   are consumed, not only produced (the FRP consumption side, TODO_0203). It is a
+   whole-sequent transform re-derived in the kernel (adversarially fenced) and its
+   generic cut is cut-admissible (§4). Remaining: the **graded ○** proper — fold the
+   tick into gill's grade frame so `○` becomes a temporally-graded box (`○_n` = n
+   ticks, no dereliction at tick > 0), i.e. a combined graded-reactive calculus; the
+   tick machinery is already grade-agnostic (generic `@tick`), so this is a fork
+   composing the axes, not new engine work.
 4. **The metatheorem (the adjoint/MTDC prize, deferred):** a single parametric
    cut-elimination over `(modes × semiring × fixpoints)` via a display calculus
    (TODO_0012/0013), turning "calculi as specs" from an operational fact into a

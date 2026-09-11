@@ -19,13 +19,16 @@
 
 % Next-time: ○A — "A is available at the NEXT tick, not now."
 %
-% Polarity: positive (a delayed value; its right rule is a focusing constructor,
-% promotion-shaped). There is deliberately NO left/elimination rule — an ○A can
-% never be consumed in the present, so ○ does not collapse: ○a ⊬ a and a ⊬ ○a.
-% @category modality is a FRESH category (deriveRoles assigns it no engine role),
-% so the cyclic-proof engine is untouched: for a guarded signal νX.(A & ○X) the
-% ν-unfold already discharges the GTC progress condition, and ○ is the syntactic
-% guard, not a trace-participating step.
+% Polarity: positive (a delayed value; its rule is a focusing constructor). The
+% SINGLE rule is the whole-context TICK (rill.rules next_r @tick): G ; ○Δ |- ○C
+% <- G ; Δ |- C — fires only when the succedent is ○C AND every linear formula is
+% ○-wrapped. Its empty-Δ case is the promotion-shaped ○R (introduction); its
+% non-empty case is ○-elimination / temporal cut. One rule gives introduction AND
+% elimination, yet ○ does NOT collapse: ○a ⊬ a (succedent not ○) and a ⊬ ○a
+% (context not ○-wrapped). @category modality is a FRESH category (deriveRoles
+% assigns it no engine role), so the cyclic-proof engine is untouched: for a
+% guarded signal νX.(A & ○X) the ν-unfold discharges the GTC progress condition and
+% ○ is the syntactic guard, not a trace-participating step.
 circle: formula -> formula
   @ascii "O #1"
   @latex "\\bigcirc #1"

@@ -3,13 +3,17 @@
  * reactive/FRP layer forked out of fill to firewall the soundness-subtle temporal
  * machinery from the audited μMALL core (as fill firewalls μMALL from ILL).
  *
- * ○A = "A at the NEXT tick, not now." Its single rule ○R is promotion-shaped
- * (G ; |- ○A <- G ; |- A, empty linear context): a linear resource consumed now
- * cannot be re-offered next tick — only persistent (!) resources, or the tail of
- * a signal, advance. There is NO ○-left rule, so ○ does not collapse (○a ⊬ a,
- * a ⊬ ○a). Guarded signals νX.(A & ○X) coinduct via the ν back-edge (the GTC
- * needs no change — ○ is the syntactic guard, νR is the trace progress). All
- * proofs below are kernel- and GTC-verified.
+ * ○A = "A at the NEXT tick, not now." Its rule is the whole-context TICK
+ * (G ; ○Δ |- ○C <- G ; Δ |- C, THY_0043 §temporal-cut): it fires only when every
+ * consumable formula is ○-wrapped, strips one ○ from each, and advances the whole
+ * sequent one step. The empty-Δ case is the promotion-shaped base (only persistent
+ * resources / a signal tail advance). Because the tick needs an ○-succedent AND an
+ * all-○ context, ○ does NOT collapse (○a ⊬ a, a ⊬ ○a) — yet signals are now
+ * CONSUMED: the applicative ○(a⊸b),○a ⊢ ○b and lax-monoidal ○a,○b ⊢ ○(a⊗b) hold
+ * (○-elimination / temporal cut). Guarded signals νX.(A & ○X) coinduct via the ν
+ * back-edge (the GTC needs no change — ○ is the syntactic guard, νR is the trace
+ * progress). All proofs below are kernel- and GTC-verified (the kernel re-derives
+ * the tick — succedent ○C, all-○ pool, premise = stripped context — never trusts it).
  */
 import { describe, it, before } from 'node:test';
 import assert from 'node:assert/strict';
@@ -18,6 +22,7 @@ import Store from '../../lib/kernel/store.js';
 import { createProver } from '../../lib/prover/focused.js';
 import { buildRuleSpecs } from '../../lib/prover/rule-interpreter.js';
 import { createKernel } from '../../lib/prover/kernel.js';
+import { ProofTree } from '../../lib/prover/pt.js';
 import { loadRill } from '../../calculus/rill/index.js';
 import { buildForwardParser } from '../../calculus/rill/lib/forward-parser.js';
 import { loadFill } from '../../calculus/fill/index.js';
@@ -71,8 +76,58 @@ describe('rill — the ○ next-time modality (TODO_0203)', () => {
     assert.equal(prove(['O O a'], [], 'a').ok, false, '○○a ⊬ a (iterate: no elim)');
     assert.equal(prove(['O a'], [], 'O O a').ok, false, '○a ⊬ ○○a');
     assert.equal(prove([], [], 'O a').ok, false, '· ⊬ ○a');
-    // ○ is NOT monoidal here (no ○-left / whole-context advance): ○a,○b ⊬ ○(a⊗b)
-    assert.equal(prove(['O a', 'O b'], [], 'O (a * b)').ok, false);
+  });
+
+  it('○-ELIMINATION / temporal cut: the whole-context tick advances ○Δ ⊢ ○C to Δ ⊢ C', () => {
+    // The tick (○R generalized, THY_0043 §temporal-cut) consumes signals, not only
+    // produces them. It fires ONLY when every consumable formula is ○-wrapped, so
+    // non-collapse (above) is preserved while these become provable + kernel-valid:
+    const applicative = prove(['O (a -o b)', 'O a'], [], 'O b');   // the ⊛ combinator
+    assert.equal(applicative.ok, true, '○(a⊸b), ○a ⊢ ○b (applicative)');
+    assert.equal(applicative.kv, true, 'kernel-verified: the tick is re-derived, not trusted');
+    const monoidal = prove(['O a', 'O b'], [], 'O (a * b)');       // lax monoidal
+    assert.equal(monoidal.ok, true, '○a, ○b ⊢ ○(a⊗b) (lax monoidal)');
+    assert.equal(monoidal.kv, true);
+    for (const g of ['O a', 'O O a']) {                            // functoriality of ○
+      const r = prove([g], [], g);
+      assert.equal(r.ok, true, `${g} ⊢ ${g} (○ functorial)`); assert.equal(r.kv, true);
+    }
+    // temporal cut also works under exhaustive search (the CPS twin):
+    const exh = prove(['O (a -o b)', 'O a'], [], 'O b', { exhaustive: true });
+    assert.equal(exh.ok, true, 'applicative under exhaustive'); assert.equal(exh.kv, true);
+  });
+
+  it('TCB FENCE: the kernel REJECTS a forged tick (it re-derives, never trusts, the step)', () => {
+    // A genuine proof of a ⊢ a — a legitimately-proven subtree...
+    const inner = prover.prove(seq(['a'], [], 'a'), { ...base, maxDepth: 20 });
+    assert.equal(inner.success, true);
+    // (the tick's spec key is circle_r — specKey maps next_r → connective_side)
+    // (i) ...wrapped as a bogus tick claiming ○a ⊢ ○b: pool [○a] strips to [a], the
+    // premise a ⊢ a is real, but its succedent a ≠ the ○-body b. Kernel must reject.
+    const wrongBody = new ProofTree({
+      conclusion: seq(['O a'], [], 'O b'), premises: [inner.proofTree], rule: 'circle_r', proven: true,
+    });
+    const v1 = kernel.verifyTree(wrongBody);
+    assert.equal(v1.valid, false, 'kernel rejects premise-succedent ≠ ○-body');
+    assert.ok(v1.errors.some(e => /body|circle|tick|succedent/i.test(e)));
+    // (ii) a tick whose conclusion pool holds a NON-○ formula (c) must be rejected —
+    // the guard that keeps ○ non-collapsing lives in the TCB, not only in the search.
+    const nonCircle = new ProofTree({
+      conclusion: seq(['c'], [], 'O a'), premises: [inner.proofTree], rule: 'circle_r', proven: true,
+    });
+    const v2 = kernel.verifyTree(nonCircle);
+    assert.equal(v2.valid, false, 'kernel rejects a non-○ formula riding the tick');
+    assert.ok(v2.errors.some(e => /circle|wrapped|advance|tick/i.test(e)));
+  });
+
+  it('○-ELIMINATION is SOUND: the tick manufactures nothing and never collapses', () => {
+    // A non-○ linear resource cannot ride the tick (would silently advance it):
+    assert.equal(prove(['O a', 'b'], [], 'O b').ok, false, '○a, b ⊬ ○b (b is not ○-wrapped)');
+    // the tick cannot duplicate a linear resource across the step:
+    assert.equal(prove(['O a'], [], 'O (a * a)').ok, false, '○a ⊬ ○(a⊗a)');
+    // and cannot invent a resource:
+    assert.equal(prove(['O a'], [], 'O b').ok, false, '○a ⊬ ○b');
+    assert.equal(prove(['O a'], [], 'O (a * b)').ok, false, '○a ⊬ ○(a⊗b)');
   });
 
   it('ADDITIVE identical branches:  !a ⊢ ○a & ○a  and  !a ⊢ a & a  (committed AND exhaustive)', () => {
