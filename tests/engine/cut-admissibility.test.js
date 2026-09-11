@@ -69,12 +69,18 @@ describe('cut-admissibility — the grade × fixpoint composition (grill)', () =
     Seq.fromArrays(lin.map(fp), cart.map(fp), fp(succ)),
     { rules: specs, alternatives, maxDepth: 300, cyclicProofs: true, exhaustive: true });
 
-  it('graded coinductive cut:  (!a ⊢ νX.(a&!!_0 X))  cut  (νX.(a&!!_0 X) ⊢ a)  ⇒  !a ⊢ a', () => {
+  const countCycles = (t) => { let n = 0; const w = (x) => { if (!x) return; if (x.rule === 'nu_cycle') n++; (x.premises || []).forEach(w); }; w(t); return n; };
+
+  it('graded coinductive cut:  (!a ⊢ A)  cut  (A ⊢ A)  ⇒  !a ⊢ A  is cut-free AND still CYCLIC', () => {
+    // The cut RESULT is the graded signal A = νX.(a & !!_0 X) itself, so cut
+    // elimination must reproduce a genuinely COINDUCTIVE (nu_cycle) proof — not a
+    // trivial identity. This is the grade × fixpoint composition at the cut layer.
     const A = 'nu X. (a & !!_0 X)';
     assert.equal(prove([], ['a'], A).success, true, 'left: the graded signal is derivable');
-    assert.equal(prove([A], [], 'a').success, true, 'right: its head is extractable');
-    const cut = prove([], ['a'], 'a');
-    assert.equal(cut.success, true, 'the composed !a ⊢ a is cut-free provable');
-    assert.equal(kernel.verifyTree(cut.proofTree).valid, true);
+    assert.equal(prove([A], [], A).success, true, 'right: the identity consumer A ⊢ A');
+    const cut = prove([], ['a'], A);
+    assert.equal(cut.success, true, 'the composed !a ⊢ A is cut-free provable');
+    assert.equal(kernel.verifyTree(cut.proofTree).valid, true, 'kernel- + GTC-verified');
+    assert.ok(countCycles(cut.proofTree) >= 1, 'the composed proof is genuinely coinductive (carries a nu_cycle)');
   });
 });

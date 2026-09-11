@@ -7,8 +7,9 @@
  *
  * Behaviour:
  *   - ZK_REGEN=1  → write/overwrite the golden file and return.
- *   - default      → if the golden exists: deepStrictEqual against it (pins the fixture).
- *                    if the golden does NOT exist: write it (first-time creation) and log a notice.
+ *   - default      → if the golden exists: assert byte-equality against it (pins the fixture).
+ *                    if the golden is MISSING: FAIL (a deleted golden must not silently
+ *                    re-fulfil itself; create/regenerate deliberately under ZK_REGEN=1).
  *
  * On-disk format: JSON.stringify(data, null, 2) — 2-space indent, no trailing newline beyond
  * what JSON.stringify produces.
@@ -35,11 +36,11 @@ export function saveOrAssertFixture(fixtureDir, name, data) {
   }
 
   if (!fs.existsSync(filepath)) {
-    // First-time creation: write the golden so the next run can pin against it.
-    console.log(`  [zk-fixture] creating golden: ${filepath}`);
-    fs.mkdirSync(fixtureDir, { recursive: true });
-    fs.writeFileSync(filepath, JSON.stringify(data, null, 2));
-    return filepath;
+    // A MISSING golden in assert mode is a FAILURE, not a silent (re)creation
+    // (audit 2026-09-11): silently writing on absent-file would let a DELETED
+    // golden pass unnoticed and re-fulfil itself. Creating or regenerating a
+    // golden is deliberate — do it under ZK_REGEN=1.
+    assert.fail(`ZK golden missing: ${name}.json — run \`ZK_REGEN=1 npm run test:zk\` to create/regenerate it (deleted goldens are not silently recreated)`);
   }
 
   // Default: assert that freshly generated data matches the committed golden.

@@ -54,14 +54,21 @@ non-empty case is **○-elimination / temporal cut**. Three consequences:
   both directions and their iterates are machine-checked to FAIL.
 - **Elimination is the same rule, generalized (temporal cut).** Advancing the
   *whole* context is what lets a signal be *consumed*: the applicative
-  `○(a⊸b), ○a ⊢ ○b` ticks to `a⊸b, a ⊢ b`, and ○ is **lax monoidal**,
-  `○a, ○b ⊢ ○(a⊗b)` ticking to `a, b ⊢ a⊗b`. No separate left rule is needed —
-  one whole-context rule gives introduction *and* elimination, and non-collapse
-  survives because both guards (○-succedent, all-○ context) must hold at once.
-  A non-○ linear resource riding the tick, a duplicated resource, or an invented
-  one all FAIL (machine-checked); the kernel **re-derives** the tick (succedent
-  ○C, all-○ pool, premise = the stripped context, no smuggled persistent fact) —
-  it is not a trusted mode switch.
+  `○(a⊸b), ○a ⊢ ○b` ticks to `a⊸b, a ⊢ b`. And ○ is **strong monoidal** over ⊗ —
+  *both* `○a, ○b ⊢ ○(a⊗b)` and `○(a⊗b) ⊢ ○a ⊗ ○b` hold — because for the
+  time-shift reading `○(A⊗B)` and `○A⊗○B` are the *same* resource multiset (`A`
+  and `B` both at `t+1`). The re-wrap of a tick's leftover (`○` over the part of
+  `Δ` a branch does not consume) is what realizes distribution: it is linear
+  accounting through a multiplicative split, not duplication — machine-checked
+  that no duplication (`○a ⊬ ○a⊗○a`), creation (`⊬ ○a⊗○b`), over-extraction, or
+  discard (`○(a⊗b) ⊬ ○a`, the leftover `○b` fails root emptiness) rides it. No
+  separate left rule is needed — one whole-context rule gives introduction *and*
+  elimination, and non-collapse survives because both guards (○-succedent, all-○
+  context) must hold at once. The kernel **re-derives** the tick (succedent ○C,
+  all-○ pool, premise = the stripped context *by exact match*, leftover re-wrapped,
+  no smuggled persistent fact) — not a trusted mode switch. (An audit found and
+  fixed a subtlety: the premise-body check must be exact hash-equality, not
+  `unify` — a `unify` fallback let a metavar premise succedent forge `○a ⊢ ○b`.)
 - **The no-carry-forward discipline is exactly promotion.** Only what persists —
   the persistent (`!`) zone, passed through unchanged, or an ○-wrapped resource
   advancing one step — reaches the next tick; a bare linear resource is stranded.

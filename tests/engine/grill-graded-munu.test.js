@@ -93,11 +93,15 @@ describe('grill — graded μMALL (gill grades × fill μ/ν)', () => {
     assert.equal(r.ok, true); assert.equal(r.kv, true);
   });
 
-  it('BRIDGE — the ν-encoding validates the exponential laws (grades × fixpoint-!)', () => {
+  it('BRIDGE — the ν-encoding validates ALL FOUR exponential laws (grades × fixpoint-!)', () => {
     const B = 'nu X. (a & (I & (X * X)))';   // !a as a ν-encoding
-    assert.equal(prove(['! a'], [], B, { cyclicProofs: true }).kv, true, '!a ⊢ encoding');
+    // The four structural rules of `!`, machine-checked for the encoding:
+    assert.equal(prove(['! a'], [], B, { cyclicProofs: true }).kv, true, 'promotion: !a ⊢ enc');
     assert.equal(prove([B], [], 'a', { cyclicProofs: true }).kv, true, 'dereliction: enc ⊢ a');
-    assert.equal(prove([B], [], 'a * a', { cyclicProofs: true }).kv, true, 'contraction: enc ⊢ a⊗a');
+    assert.equal(prove([B], [], 'I', { cyclicProofs: true, exhaustive: true }).kv, true, 'weakening: enc ⊢ 1 (exhaustive corner)');
+    assert.equal(prove([B], [], `(${B}) * (${B})`, { cyclicProofs: true, maxDepth: 400 }).kv, true, 'contraction: enc ⊢ enc⊗enc');
+    // ...and resource reuse (dereliction twice), distinct from contraction:
+    assert.equal(prove([B], [], 'a * a', { cyclicProofs: true }).kv, true, 'reuse: enc ⊢ a⊗a');
   });
 
   it('SOUNDNESS — the composition manufactures no false proof', () => {
