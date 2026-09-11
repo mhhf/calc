@@ -1,8 +1,8 @@
 tags:
-  linear-logic: 43
+  linear-logic: 44
   forward-chaining: 30
   ill: 27
-  proof-theory: 25
+  proof-theory: 26
   inference-rule: 24
   architecture: 19
   graded-types: 18
@@ -26,6 +26,7 @@ tags:
   clf: 6
   engine-metatheory: 6
   ownership: 6
+  adjoint-logic: 5
   existential: 5
   ffi: 5
   focusing: 5
@@ -34,7 +35,6 @@ tags:
   verification: 5
   will: 5
   with: 5
-  adjoint-logic: 4
   exists: 4
   lnl: 4
   multiset-rewriting: 4
@@ -44,13 +44,16 @@ tags:
   scheduling: 4
   subexponentials: 4
   authorization: 3
+  coinduction: 3
   conditioning: 3
   confluence: 3
   Curry-Howard: 3
+  cyclic-proofs: 3
   evm: 3
   loli: 3
   modes: 3
   monad: 3
+  muMALL: 3
   prover: 3
   QTT: 3
   staging: 3
@@ -62,28 +65,27 @@ tags:
   adequacy: 2
   backward: 2
   bridge: 2
-  coinduction: 2
   content-addressed-store: 2
   content-addressing: 2
-  cyclic-proofs: 2
   destination-passing: 2
   determinism: 2
   eigenvariable: 2
   engine-theory: 2
   execution-tree: 2
+  fixed-points: 2
   forall: 2
   Futamura: 2
   hash-consing: 2
   independence: 2
   layers: 2
   modal-logic: 2
-  muMALL: 2
   one: 2
   principals: 2
   refinement-sorts: 2
   refinement-types: 2
   representation: 2
   resource-semantics: 2
+  roadmap: 2
   SELL: 2
   sequent-calculus: 2
   session-types: 2
@@ -91,6 +93,7 @@ tags:
   tensor: 2
   timed-rewriting: 2
   tropical: 2
+  unification: 2
   additive: 1
   anki: 1
   atomic-swaps: 1
@@ -136,10 +139,10 @@ tags:
   fibrations: 1
   financial: 1
   financial-primitives: 1
-  fixed-points: 1
   forward-engine: 1
   FRP: 1
   games: 1
+  graded-modality: 1
   graded-monad: 1
   grothendieck-group: 1
   guarded-recursion: 1
@@ -164,6 +167,7 @@ tags:
   membership: 1
   memoization: 1
   metalogic: 1
+  metatheory: 1
   modalities: 1
   MPST: 1
   multicategory: 1
@@ -193,7 +197,6 @@ tags:
   quantifiers: 1
   representation-independence: 1
   residuated-monoids: 1
-  roadmap: 1
   run-length: 1
   signals: 1
   Skolem: 1
@@ -218,7 +221,6 @@ tags:
   transfers: 1
   translation: 1
   ui: 1
-  unification: 1
   vision: 1
   walkthrough: 1
   weighted-choice: 1

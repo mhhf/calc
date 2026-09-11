@@ -8,6 +8,33 @@ extend the frontier, they do not re-tread it.
 
 Todos live in hq (`hq todo show <id>`); THY_NNNN = `doc/theory/NNNN_*.md`.
 
+## 0. The unification: graded μMALL (the goal these branches converge on)
+
+**THY_0044, TODO_0064.** The branches below are not independent — they are AXES of
+one target: a single **graded μMALL over the existing mode layer**, of which
+`ill/till/gill/will/sill/fill/rill/grill/sax` are INSTANCES. A calculus is a tuple
+`(mode preorder × resource semiring × μ/ν fixpoints × connective signature)`, and
+CALC already holds each axis AS DATA:
+
+- **modes** (structural) = the `family/` layer (lnl, sax) — branch 2;
+- **grades** (quantitative) = gill's grade-algebras-as-data — branch 5;
+- **fixpoints** (recursion) = fill/rill's μ/ν + the GTC — branch 1.
+
+Status: **two-and-a-half axes are DONE.** grades (gill), fixpoints (fill/rill), and
+modes (the family layer, un-adjoint-ified). The keystone — that grades and fixpoints
+COMPOSE — is now machine-checked in **`grill`** (graded μMALL = gill × fill μ/ν):
+graded coinductive signals `νX.(A & !!_d X)`, graded inductive streams
+`μX.(A ⊕ !!_d X)`, and grade arithmetic under fixpoints all prove and kernel-verify
+with the cyclic-proof GTC UNCHANGED, and the ν-encoding `!A = νX.(A&(1&(X⊗X)))`
+validates the exponential's laws (`ω` = the grade fixpoint `1 ⊕ ω⊗ω`). See THY_0044.
+
+**Adjoint logic is NOT a prerequisite** (it addresses only the mode axis and is
+orthogonal to fixpoints — `muMALL ⊥ MTDC`); it is the tool for a SEPARATE, deferred
+prize: one parametric cut-elimination-for-free (Belnap/MTDC, TODO_0012/0013). The
+sequenced bricks: grill (done) → deepen the `!_ω ≅ ν-encoding` bridge → graded ○ +
+○-elimination → the parametric metatheorem. End state: one declarative surface + one
+adequacy theorem, each calculus a row, paying (by role-gating) only for its axes.
+
 ## 1. Fixed points: μMALL + ○ — the biggest expressivity gap
 
 **TODO_0009, TODO_0203, TODO_0064 (Axis 3)**
