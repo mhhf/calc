@@ -130,4 +130,28 @@ describe('Baelde exponential correspondence, ILL-corrected (Inc-5a)', () => {
       assert.equal(r.kv, true, `kernel-verified: ${succ}`);
     }
   });
+
+  it('INVARIANT: every exhaustive success is kernel-valid (the driver never forges a tree)', () => {
+    // The exhaustive CPS driver may only find MORE proofs, never accept a tree the
+    // kernel rejects. Battery over bang/promotion/monad/additive/multiplicative
+    // shapes: whenever search succeeds, verifyTree must validate. (Guards against
+    // e.g. applying a @bridge rule through the generic path — a real trap found and
+    // rejected during development.)
+    const S = (lin, succ, cart = []) => Seq.fromArrays(lin.map(fp), cart.map(fp), fp(succ));
+    const battery = [
+      [['a'], 'a * a'], [['a & I'], 'I'], [[BANG('a')], 'a'], [[BANG('a')], BANG('a')],
+      [['! a'], 'a'], [['! a'], '! a'], [[], 'I'], [['a'], '{ a }'], [[], '{ I }'],
+      [['a -o b', 'a'], 'b'], [['a + b'], 'b + a'], [['a', 'b'], 'a * b'],
+    ];
+    for (const [lin, succ] of battery) {
+      for (const cyclicProofs of [false, true]) {
+        const r = prover.prove(S(lin, succ), { ...base, maxDepth: 250, exhaustive: true, cyclicProofs });
+        if (r.success) {
+          assert.equal(kernel.verifyTree(r.proofTree).valid, true,
+            `exhaustive success must be kernel-valid: ${JSON.stringify(lin)} ⊢ ${succ}`);
+          break;
+        }
+      }
+    }
+  });
 });

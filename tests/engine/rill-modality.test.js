@@ -66,11 +66,27 @@ describe('rill — the ○ next-time modality (TODO_0203)', () => {
     // A linear resource cannot advance to the next tick, and an ○A cannot be
     // used in the present. Both directions and their iterates must FAIL.
     assert.equal(prove(['a'], [], 'O a').ok, false, 'a ⊬ ○a (linear no-advance)');
+    assert.equal(prove(['a'], [], 'O O a').ok, false, 'a ⊬ ○○a (iterate: linear no-advance)');
     assert.equal(prove(['O a'], [], 'a').ok, false, '○a ⊬ a (no elim now)');
+    assert.equal(prove(['O O a'], [], 'a').ok, false, '○○a ⊬ a (iterate: no elim)');
     assert.equal(prove(['O a'], [], 'O O a').ok, false, '○a ⊬ ○○a');
     assert.equal(prove([], [], 'O a').ok, false, '· ⊬ ○a');
     // ○ is NOT monoidal here (no ○-left / whole-context advance): ○a,○b ⊬ ○(a⊗b)
     assert.equal(prove(['O a', 'O b'], [], 'O (a * b)').ok, false);
+  });
+
+  it('ADDITIVE identical branches:  !a ⊢ ○a & ○a  and  !a ⊢ a & a  (committed AND exhaustive)', () => {
+    // Two with_r branches with the SAME sequent hash. Exercises the CPS
+    // loop-detection scoping fix (audit 2026-09-11): without it the exhaustive
+    // driver spuriously self-detected a loop on the second branch and failed.
+    for (const succ of ['(O a) & (O a)', 'a & a']) {
+      const committed = prove([], ['a'], succ);
+      assert.equal(committed.ok, true, `committed: !a ⊢ ${succ}`);
+      assert.equal(committed.kv, true);
+      const exh = prove([], ['a'], succ, { exhaustive: true });
+      assert.equal(exh.ok, true, `exhaustive: !a ⊢ ${succ}`);
+      assert.equal(exh.kv, true, `exhaustive kernel-verified: ${succ}`);
+    }
   });
 
   it('PERSISTENT ADVANCE: !a ⊢ ○a and !a ⊢ ○○a (kernel-verified)', () => {
@@ -111,6 +127,7 @@ describe('rill — the ○ next-time modality (TODO_0203)', () => {
     // the genuinely unprovable ○ sequents.
     assert.equal(prove(['a'], [], 'O a', { exhaustive: true }).ok, false);
     assert.equal(prove(['O a'], [], 'a', { exhaustive: true }).ok, false);
+    assert.equal(prove(['O a'], [], 'O O a', { exhaustive: true }).ok, false, '○a ⊬ ○○a (exhaustive)');
     // but the real proofs still go through exhaustively + kernel-verify
     assert.equal(prove([], ['a'], 'O a', { exhaustive: true }).kv, true);
     assert.equal(prove([], ['a'], 'nu X. (a & O X)', { exhaustive: true }).kv, true);

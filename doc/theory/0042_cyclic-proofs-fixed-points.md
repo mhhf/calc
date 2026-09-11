@@ -111,9 +111,16 @@ additive branch). The fix is an opt-in **exhaustive** search (`opts.exhaustive`,
 `lib/prover/focused.js`): a success continuation offers every candidate to the root
 constraint, so a non-dischargeable leftover drives backtracking into `with_l1`/
 `with_l2`. It is a separate driver — the committed path (and therefore ILL's EVM
-proof search) is byte-identical and pays nothing (measured), and soundness is
-untouched because the returned tree is still kernel- and GTC-verified. `!a ⊢ 1`,
-and the minimal witness `a & 1 ⊢ 1`, now prove and kernel-verify under it, while
+proof search) is byte-identical: the CPS driver is structurally unreachable without
+`opts.exhaustive`, and a stash-comparison micro-benchmark on ILL proofs showed no
+difference. Soundness is untouched because the returned tree is still kernel- and
+GTC-verified (an invariant pinned by a battery test: every exhaustive success is
+kernel-valid). Because premises are searched as CPS continuations, the path-scoped
+loop-detection set must drop a node's key before its continuation searches a
+*sibling* (not a descendant) and restore it on backtrack — otherwise two
+identical-hash additive branches (`A & A`) self-detect a spurious loop; that scoping
+is handled in `searchK`, so the driver stays complete for additive backtracking.
+`!a ⊢ 1`, and the minimal witness `a & 1 ⊢ 1`, now prove and kernel-verify under it, while
 the genuinely unprovable (`a, b ⊢ a & b`; naive-encoding contraction) stay refused.
 
 ## 5. Scope
