@@ -5,7 +5,7 @@
 % ILL connectives with polarity and category annotations.
 %
 % Multiplicatives: ⊗ (tensor), ⊸ (loli), 1 (one)
-% Additives: & (with), ⊕ (plus)
+% Additives: & (with), ⊤ (top), ⊕ (plus), 0 (zero)
 % Exponentials: ! (bang) - derived from F ∘ G adjunction
 
 @extends lnl.
@@ -52,14 +52,21 @@ one: formula
 % Additives
 % =============================================================================
 
-% Zero (additive false): 0
+% Zero (additive false): 0 — unit of ⊕
 % "Impossible — no resource can satisfy this"
-% Polarity: positive (no right rule — dual of ⊤)
+% Polarity: positive (no right rule; the context-absorbing LEFT rule zero_l is
+% its whole story — dual of ⊤, which absorbs on the RIGHT and has no left rule)
 zero: formula
   @ascii "zero"
   @latex "\mathbf{0}"
   @category additive
   @polarity positive.
+
+% Top (additive true, ⊤ — unit of &) is declared at the END of the connective
+% list (after ∀), NOT here beside its dual 0, so that adding it does not shift
+% the positional tag IDs of the connectives after it (the content-addressed ZK
+% witnesses key on tag order). Declaration order is cosmetic for semantics —
+% roles/grammar/rendering all key by NAME.
 
 % With (additive conjunction): A & B
 % "I can choose to use this as A or as B (but not both)"
@@ -148,6 +155,23 @@ forall: formula -> formula
   @latex "\\forall #1"
   @prec 45 right
   @category quantifier.
+
+% =============================================================================
+% Additive unit ⊤ (declared last — see the note in the Additives section)
+% =============================================================================
+
+% Top (additive true): ⊤ — unit of & (with)
+% "Anything at all — the top element absorbs whatever resources you have"
+% The exact DUAL of 0: a context-absorbing RIGHT rule top_r (G ; Δ ⊢ ⊤, no
+% premises, Δ discarded into ⊤) and NO left rule, so ⊤ is inert on the left
+% (⊤ ⊬ a) — the additive fragment's last unit, completing MALL. Placed here so
+% its positional ZK tag does not shift the connectives declared above it.
+% Polarity: negative (unit of the negative &; 0, unit of the positive ⊕, is positive)
+top: formula
+  @ascii "top"
+  @latex "\\top"
+  @category additive
+  @polarity negative.
 
 % Fixed points (μ/ν, μMALL) live in the fill calculus (calculus/fill/fill.calc
 % @extends ill), NOT here — a deliberate firewall so ILL's EVM proof path

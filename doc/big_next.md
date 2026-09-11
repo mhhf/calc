@@ -63,12 +63,15 @@ an opt-in **exhaustive** continuation-passing driver in `focused.js` — the com
 ILL/EVM path is byte-identical (measured no regression). (b) The `+ ○` next-time
 modality now lives in a SECOND fork, **`rill` (reactive ILL, `calculus/rill/`
 @extends fill, THY_0043)** — signals `□A = νX.(A & ○X)`, streams `◇A = μX.(A ⊕ ○X)`.
-○ is a fresh positive primitive with a single PROMOTION-shaped `○R` (no elimination
-⇒ non-collapse); guarded signals coinduct through the EXISTING cyclic-proof GTC with
-no checker change (νR = progress, ○ = syntactic guard). Remaining frontier: ○-
-elimination (whole-context tick / temporal cut, the applicative `○(A⊸B)⊸○A⊸○B`),
-`⊤` (additive unit, unused by the encodings), and consuming signals by ticking.
-Metatheory prizes:
+○ is a fresh positive primitive; its single whole-context TICK rule is both
+introduction and (○-)elimination while staying non-collapsing (the applicative
+`○(A⊸B),○A ⊢ ○B` holds — signals are consumed, not only produced); guarded signals
+coinduct through the EXISTING cyclic-proof GTC with no checker change (νR = progress,
+○ = syntactic guard). **The connective-level frontier is now closed:** ○-elimination
+/ temporal cut is the tick (THY_0043); the **graded ○** is `trill` (THY_0044 item 3);
+and **`⊤`** (the additive unit, unit of &, the last MALL connective) is now in ILL —
+the exact dual of `0` (a context-absorbing right rule `top_r`, no left rule, so
+`⊤ ⊬ a`), completing MALL. Metatheory prizes:
 
 - μMALL strictly subsumes the exponentials: the corrected ILL encoding is
   `!A = νX.(A & (1 & (X ⊗ X)))` — dereliction, contraction, AND now weakening

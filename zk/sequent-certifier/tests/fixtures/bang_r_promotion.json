@@ -10,7 +10,8 @@
     "monad": 8,
     "exists": 9,
     "forall": 10,
-    "freevar": 11
+    "top": 11,
+    "freevar": 12
   },
   "rule_specs": {
     "id": {
@@ -375,6 +376,18 @@
       "gamma_lookup": false,
       "is_identity": false
     },
+    "top_r": {
+      "name": "top_r",
+      "tag": 11,
+      "arity": 0,
+      "oblig_receive": true,
+      "premises": [],
+      "ctx_receive": false,
+      "ctx_sends": [],
+      "formula_lookup": true,
+      "gamma_lookup": false,
+      "is_identity": false
+    },
     "bang_r": {
       "name": "bang_r",
       "tag": 7,
@@ -482,7 +495,7 @@
       [
         0,
         0,
-        95,
+        96,
         1,
         0,
         0,
@@ -495,8 +508,8 @@
     "bang_r": [
       [
         1,
+        96,
         95,
-        94,
         81,
         0,
         0,
@@ -520,9 +533,9 @@
   },
   "formula_rom": [
     [
-      95,
+      96,
       7,
-      94,
+      95,
       81,
       1,
       1

@@ -260,7 +260,8 @@ out/                     # Generated: ill.json (bundled calculus), ui/ (built ap
 | one | `I` | positive | multiplicative unit |
 | with | `&` | negative | additive conjunction (external choice) |
 | oplus | `+` | positive | additive disjunction (internal choice) — renamed from `plus` |
-| zero | `zero` | positive | additive false — `zero_l` discards linear context |
+| zero | `zero` | positive | additive false (unit of ⊕) — `zero_l` discards linear context |
+| top | `top` | negative | additive true (unit of &) — dual of 0: `top_r` (⊤R) absorbs the whole linear context, NO left rule (⊤ ⊬ a). Roles split `additiveUnit`(⊤)/`additiveZero`(0). The ⊤-vs-multiplicative-split completeness corner (⊤ absorbs an arbitrary subset) is discharged by `opts.exhaustive` |
 | bang | `!` | positive | exponential (reusable resource) — binary: `bang(grade, formula)`, `!A` is sugar for `bang(GRADE_W, A)` |
 | monad | `{ _ }` | negative | graded lax monad — binary: `monad(grade, body)`, `{A}` is sugar for `monad(unit, A)` with unit = binlit 0; till's `{A}@d` fills the grade |
 | exists | `exists` | positive | existential |
