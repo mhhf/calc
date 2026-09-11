@@ -1,0 +1,34 @@
+% =============================================================================
+% rill — reactive ILL: fill + the ○ next-time modality (TODO_0203, THY_0042)
+% =============================================================================
+%
+% rill = fill (ILL + μ/ν fixed points) + ○ (next tick). It is the FRP / temporal
+% layer — signals νX.(A & ○X), streams μX.(A ⊕ ○X) — forked out of fill so the
+% soundness-subtle temporal machinery is firewalled from fill's now-audited μMALL
+% core, exactly as fill firewalls μMALL from production ILL. fill declares no ○,
+% so nothing below reaches the μ/ν calculus or ILL's EVM proof path.
+%
+% @extends fill → the meta-parser merges fill's chain (ILL's connectives + mu/nu)
+% and rill adds ONLY the ○ modality below.
+
+@extends fill.
+
+% =============================================================================
+% Temporal modality
+% =============================================================================
+
+% Next-time: ○A — "A is available at the NEXT tick, not now."
+%
+% Polarity: positive (a delayed value; its right rule is a focusing constructor,
+% promotion-shaped). There is deliberately NO left/elimination rule — an ○A can
+% never be consumed in the present, so ○ does not collapse: ○a ⊬ a and a ⊬ ○a.
+% @category modality is a FRESH category (deriveRoles assigns it no engine role),
+% so the cyclic-proof engine is untouched: for a guarded signal νX.(A & ○X) the
+% ν-unfold already discharges the GTC progress condition, and ○ is the syntactic
+% guard, not a trace-participating step.
+circle: formula -> formula
+  @ascii "O #1"
+  @latex "\\bigcirc #1"
+  @prec 85
+  @category modality
+  @polarity positive.
