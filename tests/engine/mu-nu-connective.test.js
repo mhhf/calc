@@ -68,6 +68,11 @@ describe('μ/ν connectives — store + parser plumbing (Inc-1)', () => {
     // μ positive: μL invertible, μR needs focus. ν negative: νR invertible, νL needs focus.
     assert.equal(calc.invertible?.mu_r, false);
     assert.equal(calc.invertible?.nu_l, false);
+    // The POSITIVE cases matter for soundness+completeness of cyclic proofs: the
+    // νR back-edge (focused.js) is emitted DURING the invertible inversion phase,
+    // so nu_r must be invertible; mu_l invertible is the dual (audit 2026-09-11).
+    assert.equal(calc.invertible?.mu_l, true, 'μL invertible (μ positive)');
+    assert.equal(calc.invertible?.nu_r, true, 'νR invertible (ν negative)');
   });
 });
 
