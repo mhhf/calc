@@ -132,7 +132,15 @@ un-adjoint-ified). The sequenced remaining bricks, cheapest first:
    cut-elimination over `(modes × semiring × fixpoints)` via a display calculus
    (TODO_0012/0013), turning "calculi as specs" from an operational fact into a
    proof-theoretic one. This is where adjoint logic finally earns its cost — and it
-   is better-scoped once the axes are already combined.
+   is better-scoped once the axes are already combined. **First operational brick
+   (done):** the generic `cut` rule (kernel + `focused.js`) is shared verbatim by
+   `ill`/`fill`/`gill`/`grill`, and cut is empirically **admissible** across all
+   four — including the hard cases, **coinductive and graded-coinductive cut**
+   (cyclic cut-elimination is known-hard: Fortier–Santocanale, Baelde–Doumane–
+   Saurin) — pinned by `tests/engine/cut-admissibility.test.js` and swept by
+   `tools/fuzz-cut.js`. That is per-instance *evidence* for the parametric theorem,
+   not the theorem: the display-calculus proof (cut-elimination for the whole space
+   *by construction*) remains the deferred target.
 
 The end state: one declarative surface `(mode preorder × resource semiring × μ/ν ×
 connectives)` and one adequacy theorem, with today's calculi as rows in a table —
