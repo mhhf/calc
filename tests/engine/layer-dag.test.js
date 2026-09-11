@@ -534,6 +534,7 @@ describe('global boundary enforcement', () => {
       rill: ['fill', 'ill'],
       gill: ['till', 'ill'],
       grill: ['gill', 'till', 'ill'],
+      trill: ['grill', 'gill', 'till', 'ill'],
       will: ['gill', 'till', 'ill'],
       sill: ['gill', 'till', 'ill'],
       sax: [],

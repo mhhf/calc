@@ -22,7 +22,7 @@ references:
 CALC's calculi are not a heap of separate logics; they are **points in one parameter
 space**. The target of unification is a single **graded μMALL over the existing mode
 layer**, of which `ill`, `till`, `gill`, `will`, `sill`, `fill`, `rill`, `grill`,
-`sax` are **instances / specifications**. The space has three orthogonal axes, and
+`trill`, `sax` are **instances / specifications** (`trill` = all three axes at once). The space has three orthogonal axes, and
 CALC already represents each **as data**:
 
 | Axis | Governs | Parametrized by | Where it lives now |
@@ -135,15 +135,22 @@ un-adjoint-ified). The sequenced remaining bricks, cheapest first:
    tick into gill's grade frame so `○` becomes a temporally-graded box (`○_n` = n
    ticks, no dereliction at tick > 0), i.e. a combined graded-reactive calculus; the
    tick machinery is already grade-agnostic (generic `@tick`), so this is a fork
-   composing the axes, not new engine work.
+   composing the axes, not new engine work. **DONE — the `trill` calculus**
+   (`@extends grill` + ○, as `rill` @extends `fill`): all three axes coexist and
+   COMPOSE with zero engine change — graded ○-guarded signals `νX.(a & ○(!!_d X))`,
+   graded temporal streams `μX.(a ⊕ ○(!!_d X))`, and the grade commuting over a tick
+   (`○(!!_0 a) ⊢ !!_0(○a)`) all prove and kernel-verify, while ○ still does not
+   collapse and coinductive weakening / grade manufacture stay refused (cut is
+   admissible over `trill` too, §4). `○_n` = n nested ○ (n ticks). **This closes the
+   near-term unification: all three axes are now combined and machine-checked.**
 4. **The metatheorem (the adjoint/MTDC prize, deferred):** a single parametric
    cut-elimination over `(modes × semiring × fixpoints)` via a display calculus
    (TODO_0012/0013), turning "calculi as specs" from an operational fact into a
    proof-theoretic one. This is where adjoint logic finally earns its cost — and it
    is better-scoped once the axes are already combined. **First operational brick
    (done):** the generic `cut` rule (kernel + `focused.js`) is shared verbatim by
-   `ill`/`fill`/`gill`/`grill`, and cut is empirically **admissible** across all
-   four — including the hard cases, **coinductive and graded-coinductive cut**
+   `ill`/`fill`/`gill`/`grill`/`trill`, and cut is empirically **admissible** across
+   all five — including the hard cases, **coinductive and graded-coinductive cut**
    (cyclic cut-elimination is known-hard: Fortier–Santocanale, Baelde–Doumane–
    Saurin) — pinned by `tests/engine/cut-admissibility.test.js` and swept by
    `tools/fuzz-cut.js`. That is per-instance *evidence* for the parametric theorem,

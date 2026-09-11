@@ -1,0 +1,29 @@
+% =============================================================================
+% trill sequent rules — the ○ next-time modality over the graded-fixpoint surface
+% =============================================================================
+%
+% trill's backward judgment = [gill.rules, grill.rules] (inherited BY REFERENCE —
+% calculus.load takes a rules-file list; gill's whole graded fragment plus the four
+% μ/ν unfold rules) plus the single ○ tick rule below. The list
+% [gill.rules, grill.rules, trill.rules] is assembled in trill's loader.
+%
+% The ○ rule is VERBATIM rill's: the whole-context TICK. It is grade-agnostic —
+% the generic @tick machinery (focused.js bypass + kernel.js re-derivation) reads
+% the ○ connective from the descriptor and strips one ○ from every consumable
+% formula, whatever grade those resources carry. Grades ride the tick unchanged,
+% exactly as they ride the μ/ν body under grill's unfold rules.
+% =============================================================================
+
+@formulas A, B, C
+
+% Whole-context TICK (○R + ○-elimination, THY_0043 §temporal-cut): advance the
+% whole sequent one step — G ; ○Δ |- ○C <- G ; Δ |- C. Fires only when the
+% succedent is ○C AND every linear formula is ○-wrapped; strips one ○ from each,
+% persistent G passes through. Empty-Δ case = promotion-shaped ○R (introduction);
+% non-empty case = ○-elimination / temporal cut (applicative ○(A⊸B),○A ⊢ ○B).
+% NON-COLLAPSING: ○a ⊬ a (succedent not ○), a ⊬ ○a (context not ○-wrapped).
+next_r: G ; |- O A
+  <- G ; |- A
+  @pretty "○"
+  @invertible false
+  @tick true.

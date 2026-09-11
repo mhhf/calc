@@ -1,0 +1,43 @@
+% =============================================================================
+% trill — graded reactive μMALL: grill + the ○ next-time modality
+% =============================================================================
+%
+% trill is the calculus where ALL THREE unification axes coexist (THY_0044):
+%   - GRADES (gill): resource semiring as data — !_g, {B}@d, the haul comonad !!_d.
+%   - FIXPOINTS (fill/μMALL): least/greatest fixed points μ/ν, cyclic proofs.
+%   - TEMPORAL (rill): the ○ next-time modality via the whole-context tick.
+%
+% It is to grill (graded μMALL) exactly what rill is to fill: the ○ fork, added
+% on top so the temporal machinery is firewalled from grill's audited graded-
+% fixpoint core. The payoff is GRADED TEMPORAL reactivity — graded signals whose
+% tail is guarded by ○ and costs a semiring grade each tick, e.g.
+%   graded signal   νX.(a & ○(!!_0 X))   — reachable each tick at grade cost,
+%   graded stream   μX.(a ⊕ ○(!!_d X))    — an event carrying graded payload.
+% The ○ IS grade-agnostic (the generic whole-context @tick); grading rides the
+% resources inside the body, exactly as it rides the μ/ν body in grill. So this
+% fork COMPOSES existing axes with no new engine work.
+%
+% @extends grill → loadChain merges grill's whole chain (ILL + till's graded
+% monad/bang + gill's dist/haul/weight + μ/ν), and trill declares ONLY circle (○).
+
+@family trill.
+@extends grill.
+
+% =============================================================================
+% Temporal modality
+% =============================================================================
+
+% Next-time: ○A — "A is available at the NEXT tick, not now." Identical to rill's
+% ○: positive, @category modality (a FRESH category → deriveRoles assigns it no
+% engine role, so the cyclic-proof engine and grade roles are untouched). NON-a
+% binder → @ascii uses "#1" (a plain hole), not the binder "_". Its single rule is
+% the whole-context TICK (trill.rules next_r @tick): fires only when the succedent
+% is ○C AND every linear formula is ○-wrapped, so ○ does NOT collapse (○a ⊬ a,
+% a ⊬ ○a) while the applicative ○(A⊸B),○A ⊢ ○B holds. Grades ride the resources
+% across the tick unchanged.
+circle: formula -> formula
+  @ascii "O #1"
+  @latex "\\bigcirc #1"
+  @prec 85
+  @category modality
+  @polarity positive.
