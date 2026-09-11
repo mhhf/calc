@@ -83,6 +83,12 @@ one_l: G ; D, I |- C
 zero_l: G ; D, zero |- C
   @pretty "0L".
 
+% ⊤R (dual of 0L): ⊤ is the top element, so any linear context Δ is absorbed
+% into it. Zero-premise, non-empty linear pattern ⇒ discardsContext (leftover
+% empty). NO top_l — ⊤ is inert on the left (dual of 0 having no right rule).
+top_r: G ; D |- top
+  @pretty "⊤R".
+
 promotion: G ; |- !A
   <- G ; |- A
   @pretty "!R"

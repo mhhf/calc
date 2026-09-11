@@ -107,10 +107,24 @@ ticked and consumed, not only produced. Because the tick is a whole-sequent
 transform (not a one-principal rule), it is bypassed in the search and **fully
 re-derived in the kernel** (a new soundness case, adversarially fenced), never a
 trusted step; cut-admissibility across the family (THY_0044 §4) exercises the same
-generic cut over ○-bearing sequents. What remains on the frontier is **⊤** (the
-additive unit, listed in TODO_0203 but unused by the signal/stream encodings and
-blocked on the ⊤-vs-multiplicative-split search corner) and the **graded ○** —
-folding the tick into gill's grade frame so `○` becomes a temporally-graded box
-(THY_0044 roadmap item 3). The operational reading `{A} = ○A` (one settle = one
-tick) remains the right story for *running* reactive programs in the forward engine
-— a separate face from this backward proof theory, exactly as intended.
+generic cut over ○-bearing sequents.
+
+The two connective-level frontier items are now **closed**. The **graded ○** is
+the `trill` calculus (grill + ○, THY_0044 roadmap item 3): all three axes compose
+with zero engine change. And **⊤** (the additive unit, unit of &, the last MALL
+connective) is now present in ILL — a fresh nullary `top` (@category additive,
+@polarity negative), the exact DUAL of `0`: a whole-context-absorbing RIGHT rule
+`top_r` (`G ; Δ ⊢ ⊤`, no premises, Δ discarded into ⊤) and NO left rule, so ⊤ does
+not collapse (`⊤ ⊬ a`). It rides the kernel's `discardsContext` machinery (0L's
+dual) with a succedent-tag guard that closes a latent forgery hole a
+context-absorbing right rule would otherwise open (it also fixes the same latent
+hole for `one_r`). The additive fragment's completeness corner — ⊤ absorbs an
+arbitrary SUBSET of the pool, so `Δ ⊢ ⊤ ⊗ b` with ⊤ before a resource-consuming
+sibling — is discharged by the don't-know **exhaustive** driver (it offers each
+absorbed subset; the committed path absorbs all, complete for `Δ ⊢ ⊤` and the
+additive positions). ⊤ needed the `additiveUnit`/`additiveZero` role SPLIT (both
+nullary additives previously collapsed onto one role). MALL is complete.
+
+The operational reading `{A} = ○A` (one settle = one tick) remains the right story
+for *running* reactive programs in the forward engine — a separate face from this
+backward proof theory, exactly as intended.
