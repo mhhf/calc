@@ -1,0 +1,45 @@
+% =============================================================================
+% fill — μMALL Intuitionistic Linear Logic (TODO_0009 rungs 2-3, Baelde 2012)
+% =============================================================================
+%
+% ILL + least/greatest fixed points (μ/ν) — the inductive/coinductive frontier
+% (cyclic proofs, coinduction, the μMALL exponential subsumption THY_0042).
+%
+% The surface is INHERITED, not copied: @extends ill (the meta-parser's
+% loadChain merges ILL's connective table), so fill declares only the fill-OWN
+% fixpoint connectives below. Keeping μMALL out of production ILL is a
+% deliberate FIREWALL: ILL declares no @category fixpoint, so deriveRoles()
+% yields no roles.lfp/roles.gfp and the generic cyclic-proof engine
+% (bridge.js / gtc-check.js / focused.js) stays dormant on the EVM proof path
+% — no extra fixpoint rules in ILL's backward fragment, no μ/ν rejection cost
+% in the lax-monad bridge. A μMALL change cannot regress an EVM proof.
+%
+% The kernel mu/nu TAGS (store.js) stay global binder vocabulary, like
+% exists/forall — a tag existing in the kernel table is not "ILL using it";
+% only the @category declaration below binds them into a calculus's grammar
+% and roles. The four unfold rules live in fill.rules.
+% =============================================================================
+
+@extends ill.
+
+% Least fixed point: μX.B(X) — inductive data (Nat = μX. I + X, List, Tree).
+% Unary binder (body de-Bruijn-encoded, like ∃/∀); X is the recursion variable.
+% Polarity: positive (μL invertible / eager, μR needs focus) — must be declared
+% explicitly: the single-premise unfold rule's 'preserved' context flow would
+% otherwise infer negative.
+mu: formula -> formula
+  @ascii "mu _"
+  @latex "\\mu #1"
+  @prec 45 right
+  @category fixpoint
+  @polarity positive.
+
+% Greatest fixed point: νX.B(X) — coinductive data (Stream = νX. A * X,
+% Signal = νX. A & X = !A). Polarity: negative (νR invertible / eager, νL needs
+% focus). De Morgan dual of μ.
+nu: formula -> formula
+  @ascii "nu _"
+  @latex "\\nu #1"
+  @prec 45 right
+  @category fixpoint
+  @polarity negative.

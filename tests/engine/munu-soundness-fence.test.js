@@ -27,9 +27,13 @@ import { buildRuleSpecs } from '../../lib/prover/rule-interpreter.js';
 import { checkCyclicProof } from '../../lib/prover/gtc-check.js';
 import { RESERVED_RULE_NAMES } from '../../lib/engine/reserved-preds.js';
 import calcLoader from '../../lib/calculus/index.js';
-import { load as illLoad, loadILL } from '../../calculus/ill/index.js';
-import { buildForwardParser } from '../../calculus/ill/lib/forward-parser.js';
+import { load as fillLoad, loadFill } from '../../calculus/fill/index.js';
+import { buildForwardParser } from '../../calculus/fill/lib/forward-parser.js';
 
+// μ/ν live in fill now (fill.calc @extends ill), so fixpoint-bearing loads go
+// through fill. ILL's paths are kept for the reserved-name test below — it is
+// a calculus-agnostic loader fence, and exercising it on post-extraction ILL
+// doubles as a "plain ILL still loads clean" probe.
 const ILL_CALC = path.join(import.meta.dirname, '../../calculus/ill/ill.calc');
 const ILL_RULES = path.join(import.meta.dirname, '../../calculus/ill/ill.rules');
 
@@ -41,23 +45,23 @@ describe('μ/ν forward-rule soundness fence (audit 2026-09-11)', () => {
 
   it('rejects a fixpoint connective in a forward-rule CONSEQUENT at load', () => {
     const p = write('conseq.ill', 'a: type.\nbad: a -o { nu X. (a & X) }.\n');
-    assert.throws(() => illLoad(p), /fixpoint connective.*forward|forward rule.*fixpoint/i);
+    assert.throws(() => fillLoad(p), /fixpoint connective.*forward|forward rule.*fixpoint/i);
   });
 
   it('rejects a fixpoint connective in a forward-rule ANTECEDENT at load', () => {
     const p = write('ante.ill', 'a: type.\nbad2: (mu X. (a + X)) -o { a }.\n');
-    assert.throws(() => illLoad(p), /fixpoint connective|backward-proof/i);
+    assert.throws(() => fillLoad(p), /fixpoint connective|backward-proof/i);
   });
 
   it('a fixpoint-free forward rule still loads (fence does not over-reject)', () => {
     const p = write('ok.ill', 'a: type.\nok: a -o { a }.\n');
-    assert.doesNotThrow(() => illLoad(p));
+    assert.doesNotThrow(() => fillLoad(p));
   });
 });
 
 describe('lax-monad bridge refuses μ/ν succedents (TCB gate)', () => {
   let roles, fp;
-  before(async () => { const calc = await loadILL(); roles = calc.roles; fp = buildForwardParser(); });
+  before(async () => { const calc = await loadFill(); roles = calc.roles; fp = buildForwardParser(); });
 
   it('rightFocus/rightFocusTerm return null for a ν succedent even when the token is in linear state', () => {
     const nu = fp('nu X. (a & X)');
@@ -98,7 +102,7 @@ describe("'nu_cycle' is a machinery-reserved rule name", () => {
 describe('μ/ν × lax monad: {νX.A} is not provable via cyclic proof (sound, documented gap)', () => {
   let fp, prover, base;
   before(async () => {
-    const calc = await loadILL();
+    const calc = await loadFill();
     fp = buildForwardParser();
     const built = buildRuleSpecs(calc);
     prover = createProver(calc);
@@ -117,7 +121,7 @@ describe('μ/ν × lax monad: {νX.A} is not provable via cyclic proof (sound, d
 describe('checkCyclicProof reconstruction rejects a defaced REAL cyclic proof (whole-tree)', () => {
   let calc, fp, prover, gtcOpts;
   before(async () => {
-    calc = await loadILL();
+    calc = await loadFill();
     fp = buildForwardParser();
     prover = createProver(calc);
     const built = buildRuleSpecs(calc);

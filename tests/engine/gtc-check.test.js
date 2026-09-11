@@ -16,13 +16,13 @@ import { describe, it, before } from 'node:test';
 import assert from 'node:assert/strict';
 import Seq from '../../lib/kernel/sequent.js';
 import { checkGTC } from '../../lib/prover/gtc-check.js';
-import { loadILL } from '../../calculus/ill/index.js';
-import { buildForwardParser } from '../../calculus/ill/lib/forward-parser.js';
+import { loadFill } from '../../calculus/fill/index.js';
+import { buildForwardParser } from '../../calculus/fill/lib/forward-parser.js';
 
 describe('checkGTC — TCB cyclic-proof validity (Inc-3)', () => {
   let calc, fp, opts;
   before(async () => {
-    calc = await loadILL();
+    calc = await loadFill();
     fp = buildForwardParser();
     // roles.lfp/gfp identify μ/ν by tag; contextStructure locates the linear pool.
     opts = { roles: calc.roles, contextStructure: calc.contextStructure, canonicalize: calc.canonicalize };
