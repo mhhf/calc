@@ -11,8 +11,8 @@
  * cut-free search is incomplete on it.
  *
  * The deep case is FIXPOINTS: cut-elimination for cyclic (μ/ν) proofs is known-hard
- * (Fortier–Santocanale; Baelde–Doumane–Saurin). fill/grill exercise coinductive and
- * graded-coinductive cut templates through the SAME generic cut. This is evidence,
+ * (Fortier–Santocanale; Baelde–Doumane–Saurin). fill/grill/trill exercise coinductive,
+ * graded, and graded-coinductive cut templates through the SAME generic cut. This is evidence,
  * not the display-calculus metatheorem (deferred, THY_0044 §4 item 4).
  *
  * Usage: node tools/fuzz-cut.js [--count N] [--seed N] [--verbose]
@@ -38,23 +38,23 @@ const pick = (a) => a[Math.floor(rand() * a.length)];
 // `tags` lists which calculi it applies to. The cut FORMULA is the succedent of L
 // = the distinguished antecedent of R; the fuzzer never names it explicitly.
 const TEMPLATES = [
-  { tag: 'tensor', calc: ['ill', 'fill', 'gill', 'grill'], cyclic: false,
+  { tag: 'tensor', calc: ['ill', 'fill', 'gill', 'grill', 'trill'], cyclic: false,
     L: (p, q) => ({ lin: [p, q], cart: [], succ: `${p} * ${q}` }),
     R: (p, q) => ({ lin: [`${p} * ${q}`], cart: [], succ: `${q} * ${p}` }),
     Cut: (p, q) => ({ lin: [p, q], cart: [], succ: `${q} * ${p}` }) },
-  { tag: 'loli', calc: ['ill', 'fill', 'gill', 'grill'], cyclic: false,
+  { tag: 'loli', calc: ['ill', 'fill', 'gill', 'grill', 'trill'], cyclic: false,
     L: (p) => ({ lin: [], cart: [], succ: `${p} -o ${p}` }),
     R: (p) => ({ lin: [`${p} -o ${p}`, p], cart: [], succ: p }),
     Cut: (p) => ({ lin: [p], cart: [], succ: p }) },
-  { tag: 'oplus', calc: ['ill', 'fill', 'gill', 'grill'], cyclic: false,
+  { tag: 'oplus', calc: ['ill', 'fill', 'gill', 'grill', 'trill'], cyclic: false,
     L: (p, q) => ({ lin: [p], cart: [], succ: `${p} + ${q}` }),
     R: (p, q) => ({ lin: [`${p} + ${q}`], cart: [], succ: `${q} + ${p}` }),
     Cut: (p, q) => ({ lin: [p], cart: [], succ: `${q} + ${p}` }) },
-  { tag: 'with', calc: ['ill', 'fill', 'gill', 'grill'], cyclic: false,
+  { tag: 'with', calc: ['ill', 'fill', 'gill', 'grill', 'trill'], cyclic: false,
     L: (p) => ({ lin: [p], cart: [], succ: `${p} & ${p}` }),
     R: (p) => ({ lin: [`${p} & ${p}`], cart: [], succ: p }),
     Cut: (p) => ({ lin: [p], cart: [], succ: p }) },
-  { tag: 'exp-dereliction', calc: ['ill', 'fill', 'gill', 'grill'], cyclic: false,
+  { tag: 'exp-dereliction', calc: ['ill', 'fill', 'gill', 'grill', 'trill'], cyclic: false,
     L: (p) => ({ lin: [], cart: [p], succ: `! ${p}` }),
     R: (p) => ({ lin: [`! ${p}`], cart: [], succ: p }),
     Cut: (p) => ({ lin: [], cart: [p], succ: p }) },
@@ -69,23 +69,23 @@ const TEMPLATES = [
   // which REQUIRES a nu_cycle, not the trivial `;p ⊢ p`. R is the identity
   // consumer A ⊢ A, so cut-elimination must reproduce the coinductive proof of the
   // composed sequent (audit 2026-09-11: the earlier `;p ⊢ p` result was degenerate).
-  { tag: 'coind-cut', calc: ['fill', 'grill'], cyclic: true,
+  { tag: 'coind-cut', calc: ['fill', 'grill', 'trill'], cyclic: true,
     L: (p) => ({ lin: [], cart: [p], succ: `nu X. (${p} & X)` }),
     R: (p) => ({ lin: [`nu X. (${p} & X)`], cart: [], succ: `nu X. (${p} & X)` }),
     Cut: (p) => ({ lin: [], cart: [p], succ: `nu X. (${p} & X)` }) },
   // ind-cut: the cut RESULT still requires a μ intro over an unfold (p ⊢ p + A),
   // not the identity `p ⊢ A` — R unfolds the fixpoint once.
-  { tag: 'ind-cut', calc: ['fill', 'grill'], cyclic: false,
+  { tag: 'ind-cut', calc: ['fill', 'grill', 'trill'], cyclic: false,
     L: (p) => ({ lin: [p], cart: [], succ: `mu X. (${p} + X)` }),
     R: (p) => ({ lin: [`mu X. (${p} + X)`], cart: [], succ: `${p} + (mu X. (${p} + X))` }),
     Cut: (p) => ({ lin: [p], cart: [], succ: `${p} + (mu X. (${p} + X))` }) },
   // ── grades ─────────────────────────────────────────────────────────────────
-  { tag: 'graded-haul', calc: ['gill', 'grill'], cyclic: false,
+  { tag: 'graded-haul', calc: ['gill', 'grill', 'trill'], cyclic: false,
     L: (p) => ({ lin: [p], cart: [], succ: `!!_0 ${p}` }),
     R: (p) => ({ lin: [`!!_0 ${p}`], cart: [], succ: `!!_5 ${p}` }),
     Cut: (p) => ({ lin: [p], cart: [], succ: `!!_5 ${p}` }) },
   // ── the composition: graded coinductive cut (grill only) ────────────────────
-  { tag: 'graded-coind-cut', calc: ['grill'], cyclic: true,
+  { tag: 'graded-coind-cut', calc: ['grill', 'trill'], cyclic: true,
     L: (p) => ({ lin: [], cart: [p], succ: `nu X. (${p} & !!_0 X)` }),
     R: (p) => ({ lin: [`nu X. (${p} & !!_0 X)`], cart: [], succ: `nu X. (${p} & !!_0 X)` }),
     Cut: (p) => ({ lin: [], cart: [p], succ: `nu X. (${p} & !!_0 X)` }) },
@@ -110,13 +110,17 @@ async function loadCalc(name) {
     const { loadGrillSequent, grillCalculusConfig } = await import('../calculus/grill/calculus-config.js');
     return { calc: loadGrillSequent(), fp: grillCalculusConfig.loader.buildParser() };
   }
+  if (name === 'trill') {
+    const { loadTrillSequent, trillCalculusConfig } = await import('../calculus/trill/calculus-config.js');
+    return { calc: loadTrillSequent(), fp: trillCalculusConfig.loader.buildParser() };
+  }
   throw new Error(`unknown calculus ${name}`);
 }
 
 const ATOMS = ['a', 'b', 'c'];
 
 async function run() {
-  const CALCI = ['ill', 'fill', 'gill', 'grill'];
+  const CALCI = ['ill', 'fill', 'gill', 'grill', 'trill'];
   const failures = [];
   let exercised = 0, held = 0;
 
@@ -171,7 +175,7 @@ async function run() {
     for (const f of failures.slice(0, 25)) console.error('  ' + f);
     process.exit(1);
   }
-  console.log('all properties held — cut is admissible across ill/fill/gill/grill.');
+  console.log('all properties held — cut is admissible across ill/fill/gill/grill/trill.');
 }
 
 export { TEMPLATES, loadCalc, ATOMS };
