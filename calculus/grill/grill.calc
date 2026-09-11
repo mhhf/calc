@@ -1,0 +1,40 @@
+% =============================================================================
+% grill — graded μMALL: gill + least/greatest fixed points (μ/ν)
+% =============================================================================
+%
+% The first calculus combining BOTH unification axes in one place:
+%   - GRADES (gill): a grade algebra as DATA — the graded exponential !_g A,
+%     the graded lax monad {B}@d, the graded transport comonad !!_d A (haul),
+%     scheduled by whichever semiring the config plugs in.
+%   - FIXPOINTS (fill/μMALL): least/greatest fixed points μ/ν, cyclic proofs,
+%     coinduction.
+%
+% This is the concrete "graded μMALL" experiment (the grade×fixpoint bridge,
+% THY_0044-to-be): does the resource-semiring grade compose soundly with μ/ν?
+% The surface is INHERITED, not copied: @extends gill (loadChain merges gill's
+% whole graded surface — ILL's connectives + till's graded monad/bang + gill's
+% dist/haul/weight), and grill declares ONLY the fixpoint connectives below.
+% @category fixpoint arms deriveRoles' lfp/gfp exactly as in fill, so the
+% generic cyclic-proof engine (bridge/gtc-check/focused) activates over the
+% graded surface with no engine change — the grades ride the same rules.
+
+@family grill.
+@extends gill.
+
+% Least fixed point μX.B(X) — inductive data (verbatim from fill; @category
+% fixpoint → roles.lfp). Positive: μL invertible / eager, μR needs focus.
+mu: formula -> formula
+  @ascii "mu _"
+  @latex "\\mu #1"
+  @prec 45 right
+  @category fixpoint
+  @polarity positive.
+
+% Greatest fixed point νX.B(X) — coinductive data / signals (→ roles.gfp).
+% Negative: νR invertible / eager, νL needs focus.
+nu: formula -> formula
+  @ascii "nu _"
+  @latex "\\nu #1"
+  @prec 45 right
+  @category fixpoint
+  @polarity negative.

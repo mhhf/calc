@@ -1,0 +1,40 @@
+% =============================================================================
+% grill sequent rules — μMALL fixed points over the graded surface
+% =============================================================================
+%
+% grill's backward judgment = gill.rules (loaded FIRST — calculus.load takes a
+% rules-file list; gill's whole graded fragment inherited BY REFERENCE) plus the
+% four μ/ν unfold rules below (verbatim from fill.rules). The list
+% [gill.rules, grill.rules] is assembled in grill's loader.
+%
+% The unfold rules are grade-AGNOSTIC (Knaster–Tarski σX.F = F[σX.F/X]); the
+% grade algebra rides inside the body F, so a graded fixpoint like
+% νX.(A & !!_d X) unfolds by these rules and the graded modality is handled by
+% gill's own rules on the resulting body. @binding unfold opens the de-Bruijn
+% body with the WHOLE principal (μX.F / νX.F) — a single deterministic
+% substitution the kernel re-derives exactly. Polarity from grill.calc.
+% =============================================================================
+
+@formulas A, B, C
+
+mu_r: G ; D |- mu A
+  <- G ; D |- A
+  @pretty "μR"
+  @invertible false
+  @binding unfold.
+
+mu_l: G ; D, mu A |- C
+  <- G ; D, A |- C
+  @pretty "μL"
+  @binding unfold.
+
+nu_r: G ; D |- nu A
+  <- G ; D |- A
+  @pretty "νR"
+  @binding unfold.
+
+nu_l: G ; D, nu A |- C
+  <- G ; D, A |- C
+  @pretty "νL"
+  @invertible false
+  @binding unfold.
