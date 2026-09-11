@@ -86,11 +86,19 @@ the grade roles and **no engine change**. Machine-checked, kernel- and GTC-verif
 - the **cyclic-proof GTC is unchanged** — grades ride inside the fixpoint body,
   `νR`-on-`ν` remains the trace progress, and context conservation compares the
   graded pool modulo theory;
-- the ν-encoding **validates the exponential's laws** (`enc ⊢ a` dereliction,
-  `enc ⊢ a⊗a` contraction, `!a ⊢ enc`), confirming grades and the fixpoint-`!`
-  are the same object. (The reverse `enc ⊢` *primitive*-`!` meets the pre-existing
-  promotion-from-linear focus corner and is left open — a prover-completeness gap,
-  not a soundness one.)
+- the ν-encoding **validates the exponential's laws** (dereliction `enc ⊢ a`,
+  weakening `enc ⊢ 1`, contraction `enc ⊢ enc ⊗ enc`, promotion `!a ⊢ enc`),
+  confirming grades and the fixpoint-`!` are the same object — so the primitive
+  `!` is **eliminable** in favor of the encoding. The reverse internalization
+  `enc ⊢` *primitive*-`!` is **semantically valid** (both denote the free
+  commutative comonoid on `A`) **but not cut-free derivable**: it is a
+  **calculus-completeness gap** — fill has no rule promoting a linearly/type-held
+  comonoid into the persistent *zone* (primitive promotion reads persistence from
+  the zone, the encoding carries it as a *type*) — **not the search gap the
+  roadmap assumed**. It is categorically different from THY_0042 §4's weakening:
+  the *same* complete additive-backtracking search that recovers weakening does
+  **not** recover this direction (pinned in `baelde-exponential.test.js`).
+  Internalizing it would require a **coinductive-promotion rule**.
 
 Soundness is pinned: the composition manufactures no false proof (unprovables
 refused; a battery invariant asserts every `grill` success is kernel-valid).
@@ -110,9 +118,13 @@ un-adjoint-ified). The sequenced remaining bricks, cheapest first:
 
 1. **grill (done):** the first grade×fixpoint calculus; the composition is sound and
    machine-checked (§3).
-2. **Deepen the grade↔fixpoint bridge:** discharge more of `!_ω ≅ νX.(A&(1&(X⊗X)))`
-   (the encoding⊢primitive-! direction needs the promotion focus corner recovered —
-   the same class as THY_0042 §4's exhaustive fix); state it as a theorem.
+2. **Deepen the grade↔fixpoint bridge (done, §3):** the encoding is a sound derived
+   exponential (four laws machine-checked), so primitive `!` is eliminable. The
+   reverse internalization `enc ⊢ primitive-!` is now characterized — semantically
+   valid but not cut-free derivable, a **calculus-completeness gap** (missing
+   coinductive promotion), NOT a search gap (`exhaustive` does not recover it),
+   correcting the earlier assumption that it was THY_0042 §4's corner. A
+   coinductive-promotion rule is the one remaining brick to internalize it.
 3. **Graded ○ / temporal:** fold rill's ○ into the graded frame (`○ = a temporally
    graded box`, no dereliction at tick > 0) and add ○-elimination (temporal cut) —
    the FRP consumption side (TODO_0203).

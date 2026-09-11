@@ -14,13 +14,16 @@
  *   - The exponential-as-fixpoint bridge: the ν-encoding !A = νX.(A&(1&(X⊗X)))
  *     VALIDATES the exponential's laws (dereliction, contraction, and
  *     !a ⊢ encoding), demonstrating grades and the fixpoint-exponential coexist.
- *     The reverse direction (encoding ⊢ !a) is NOT asserted and must NEVER be
- *     added at the default maxDepth=300: nu_l is non-invertible, so the search
- *     branches through with_l's tensor arm (enc*enc → two copies), doubling
- *     the enc count at every level. bang_r fails at every leaf (linear context
- *     non-empty) but the leaf count is exponential in depth — measured ~2.25x
- *     per depth step (maxDepth=25: ~1.4s; maxDepth=30: ~85s). At maxDepth=300
- *     the search would not terminate in any practical timeframe.
+ *     The reverse direction (encoding ⊢ primitive-!a) is SEMANTICALLY valid (both
+ *     denote the free commutative comonoid on a) but NOT cut-free derivable in the
+ *     current rules — a calculus-completeness gap (fill has no rule promoting a
+ *     linearly/type-held comonoid into the persistent zone), NOT a search gap:
+ *     `exhaustive` does not recover it either (THY_0044 §3; the directionality is
+ *     pinned in baelde-exponential.test.js). So it is not merely UN-asserted — the
+ *     search is DOOMED (the rules cannot produce the proof), and it must NEVER be
+ *     added because the doomed search also BLOWS UP: nu_l is non-invertible, so it
+ *     branches through with_l's tensor arm (enc*enc → two copies), doubling the enc
+ *     count per level (~2.25x/depth; maxDepth=25: ~1.4s; maxDepth=30: ~85s).
  */
 import { describe, it, before } from 'node:test';
 import assert from 'node:assert/strict';

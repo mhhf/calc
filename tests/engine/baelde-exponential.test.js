@@ -104,6 +104,40 @@ describe('Baelde exponential correspondence, ILL-corrected (Inc-5a)', () => {
     assert.equal(r.kv, true, 'kernel-verified');
   });
 
+  it('DIRECTIONALITY  enc ⊣⊢? primitive-!  — the reverse is a RULE gap, NOT a search gap', () => {
+    // The encoding !A := νX.(A&(1&(X⊗X))) and the primitive `! A` denote the SAME
+    // object — both the free commutative comonoid on A — so `enc ⊢ ! A` is
+    // SEMANTICALLY valid. But it is not cut-free derivable in fill's rules:
+    // primitive promotion (`G ; · ⊢ !A <- G ; · ⊢ A`) reads persistence from the
+    // cartesian ZONE, whereas the encoding carries it as a coinductive TYPE, and
+    // fill has no rule promoting a linearly/type-held comonoid into the zone.
+    // This is a CALCULUS-completeness gap (a missing coinductive-promotion rule),
+    // categorically DIFFERENT from THY_0042 §4's weakening — which was a SEARCH
+    // gap (a cut-free proof existed and `exhaustive` finds it). The distinction is
+    // pinned behaviorally: the SAME complete additive-backtracking search that
+    // recovers weakening does NOT recover the reverse bridge (correcting the
+    // roadmap's claim that it is "the same class as §4's exhaustive fix").
+    const encB = BANG('a');
+    // (1) weakening IS a search gap — exhaustive recovers it at low depth:
+    assert.equal(prove([encB], 'I', [], { exhaustive: true, maxDepth: 30 }).ok, true,
+      'weakening: exhaustive recovers (a search gap — proof exists)');
+    // (2) the reverse bridge is NOT recovered by that same complete search:
+    assert.equal(prover.prove(Seq.fromArrays([fp(encB)], [], fp('! a')),
+      { ...base, cyclicProofs: true, exhaustive: true, maxDepth: 18 }).success, false,
+      'enc ⊢ !a: unfound by the complete search — a rule gap, not a depth/strategy gap');
+    // (3) persistence does not bridge the zone/type mismatch either:
+    assert.equal(prover.prove(Seq.fromArrays([], [fp(encB)], fp('! a')),
+      { ...base, cyclicProofs: true, maxDepth: 200 }).success, false,
+      'enc(cartesian) ⊢ !a — promotion still cannot read the coinductive type as a zone fact');
+    // (4) CONTROL: primitive promotion itself works — a zone-atom promotes:
+    assert.equal(prover.prove(Seq.fromArrays([], [fp('a')], fp('! a')),
+      { ...base, maxDepth: 40 }).success, true, 'a(cartesian) ⊢ !a (promotion fires on zone atoms)');
+    // The FORWARD bridge — the encoding used AS a derived ! — is fully available
+    // (dereliction/weakening/contraction/promotion above). That adequacy is what
+    // matters: primitive `!` is ELIMINABLE in favor of the encoding. The reverse
+    // internalization would need a coinductive-promotion rule (deferred).
+  });
+
   it('the minimal focus corner  a & I ⊢ I  (fails committed, proves exhaustive, both kernel-honest)', () => {
     const seq = Seq.fromArrays([fp('a & I')], [], fp('I'));
     assert.equal(prover.prove(seq, { ...base, maxDepth: 50 }).success, false, 'committed: order-dependent gap');
