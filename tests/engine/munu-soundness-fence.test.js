@@ -23,6 +23,7 @@ import Seq from '../../lib/kernel/sequent.js';
 import bridge from '../../lib/prover/bridge.js';
 import { ProofTree } from '../../lib/prover/pt.js';
 import { createProver } from '../../lib/prover/focused.js';
+import { createKernel } from '../../lib/prover/kernel.js';
 import { buildRuleSpecs } from '../../lib/prover/rule-interpreter.js';
 import { checkCyclicProof } from '../../lib/prover/gtc-check.js';
 import { RESERVED_RULE_NAMES } from '../../lib/engine/reserved-preds.js';
@@ -147,5 +148,45 @@ describe('checkCyclicProof reconstruction rejects a defaced REAL cyclic proof (w
     const v = checkCyclicProof(defaced, gtcOpts);
     assert.equal(v.valid, false, 'no progressing thread after defacing νR');
     assert.ok(v.errors.some(e => /progress/i.test(e)));
+  });
+});
+
+// ── Coinductive weakening fence (audit 2026-09-11) ──────────────────────────
+// A cyclic bud closes its branch like an axiom; the kernel treats it as
+// consuming its consumable pool. But a linear resource CONSERVED (unchanged)
+// around an infinite cycle is never actually consumed, so admitting a non-empty
+// conserved pool discharges it for free — coinductive WEAKENING. Only PERSISTENT
+// resources sustain a signal. checkGTC now requires the back-edge consumable
+// pool to be EMPTY. Fill-inherited bug found by the grill audit; fix in gtc-check.
+describe('coinduction does not discharge linear resources', () => {
+  let prover, kernel, base, fp;
+  before(async () => {
+    const calc = await loadFill();
+    fp = buildForwardParser();
+    const built = buildRuleSpecs(calc);
+    prover = createProver(calc); kernel = createKernel(calc);
+    base = { rules: built.specs, alternatives: built.alternatives, maxDepth: 200, cyclicProofs: true };
+  });
+  const prove = (lin, cart, succ) =>
+    prover.prove(Seq.fromArrays(lin.map(fp), cart.map(fp), fp(succ)), base);
+
+  it('REJECTS coinductive weakening: a ⊢ νX.X and a,b ⊢ νX.X (linear resources dropped)', () => {
+    const r1 = prove(['a'], [], 'nu X. X');
+    assert.equal(r1.success, false, 'a linear `a` cannot be discharged by a ν-cycle');
+    assert.equal(prove(['a', 'b'], [], 'nu X. X').success, false);
+    // and the same over a graded/guarded body:
+    assert.equal(prove(['a'], [], 'nu X. (b & X)').success, false, 'unused linear a dropped at bud');
+  });
+
+  it('ACCEPTS the degenerate ν from NO linear resource: · ⊢ νX.X (empty pool, nothing discarded)', () => {
+    const r = prove([], [], 'nu X. X');
+    assert.equal(r.success, true, 'νX.X ≈ ⊤ is derivable from the empty linear context');
+    assert.equal(kernel.verifyTree(r.proofTree).valid, true);
+  });
+
+  it('the canonical signal (PERSISTENT resource) is unaffected: !a ⊢ νX.(a & X)', () => {
+    const r = prove([], ['a'], 'nu X. (a & X)');
+    assert.equal(r.success, true, 'persistent a sustains the signal — empty consumable pool at bud');
+    assert.equal(kernel.verifyTree(r.proofTree).valid, true);
   });
 });

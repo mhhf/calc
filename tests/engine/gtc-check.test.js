@@ -40,7 +40,10 @@ describe('checkGTC — TCB cyclic-proof validity (Inc-3)', () => {
   });
 
   it('accepts a nested cycle carrying BOTH μL and νR progress steps', () => {
-    const C = S(['mu X. (a & X)'], 'nu X. (a & X)');
+    // The μ that μL unfolds is CONSUMED within the cycle, so the bud/companion
+    // consumable pool is empty (a conserved non-empty linear pool is unsound —
+    // see the empty-pool law below); the μL step still counts as progress.
+    const C = S([], 'nu X. (a & X)');
     const be = { bud: C, companion: C, ruleNames: ['mu_l', 'with_l1', 'nu_r'], principals: [muF(), 0, nuF()] };
     assert.equal(checkGTC([be], opts).valid, true);
   });
@@ -90,17 +93,23 @@ describe('checkGTC — TCB cyclic-proof validity (Inc-3)', () => {
     assert.match(r.errors.join(' '), /succedent differs/);
   });
 
-  it('compares contexts MODULO THEORY, not by raw hash (state-canonicity)', () => {
-    // Two distinct hashes the theory equates must NOT trip context conservation.
+  it('EMPTY-POOL LAW: a non-empty consumable pool at the back-edge is REJECTED', () => {
+    // Coinduction does not discharge linear resources (audit 2026-09-11): a linear
+    // resource CONSERVED (unchanged) around an infinite cycle is never consumed, so
+    // admitting a non-empty conserved pool is coinductive weakening (`a ⊢ νX.X`).
+    // Only persistent resources (excluded from consumablePool) sustain a signal, so
+    // the consumable pool must be EMPTY — even when bud==companion modulo theory.
     const h1 = fp('a'), h2 = fp('b');
     const canon = (h) => (h === h2 ? h1 : h);           // theory: b ≡ a (test stub)
     const companion = Seq.fromArrays([h1], [], nuF());
-    const bud = Seq.fromArrays([h2], [], nuF());          // b instead of a
+    const bud = Seq.fromArrays([h2], [], nuF());          // b ≡ a: pools "conserved"
     const be = { bud, companion, ruleNames: ['nu_r'], principals: [nuF()] };
-    assert.equal(checkGTC([be], { ...opts, canonicalize: canon }).valid, true,
-      'theory-equal contexts must be accepted');
-    // control: without the theory, raw hashes differ → rejected
-    assert.equal(checkGTC([be], { ...opts, canonicalize: null }).valid, false);
+    const r = checkGTC([be], { ...opts, canonicalize: canon });
+    assert.equal(r.valid, false, 'theory-equal but NON-EMPTY conserved pool is rejected');
+    assert.match(r.errors.join(' '), /non-empty consumable pool/);
+    // and the succedent comparison still runs modulo theory (empty-pool control):
+    const good = { bud: S([], 'nu X. (a & X)'), companion: S([], 'nu X. (a & X)'), ruleNames: ['nu_r'], principals: [nuF()] };
+    assert.equal(checkGTC([good], opts).valid, true, 'empty-pool valid ν-cycle still accepted');
   });
 
   it('validates ALL back-edges — one bad edge fails the whole certificate', () => {
