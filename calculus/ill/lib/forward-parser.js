@@ -37,7 +37,7 @@ function buildForwardParser() {
   tables.operators.push({ name: 'concat', op: '++', precedence: 55, assoc: 'left' });
   return parserFromTables({
     ...tables,
-    binders: { exists: 'exists', forall: 'forall', mu: 'mu', nu: 'nu' },
+    binders: { exists: 'exists', forall: 'forall' },
     multiCharFreevars: true,
     numbers: true,
     application: true,

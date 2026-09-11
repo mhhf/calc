@@ -23,8 +23,8 @@
 import Store from '../lib/kernel/store.js';
 import Seq from '../lib/kernel/sequent.js';
 import { checkGTC } from '../lib/prover/gtc-check.js';
-import { loadILL } from '../calculus/ill/index.js';
-import { buildForwardParser } from '../calculus/ill/lib/forward-parser.js';
+import { loadFill } from '../calculus/fill/index.js';
+import { buildForwardParser } from '../calculus/fill/lib/forward-parser.js';
 
 const args = process.argv.slice(2);
 const getArg = (f, d) => { const i = args.indexOf(f); return i >= 0 ? Number(args[i + 1]) : d; };
@@ -38,7 +38,7 @@ const ATOMS = ['a', 'b', 'c', 'd'];
 const CONN = ['&', '*', '+'];
 const FILLER = ['with_l1', 'with_r', 'tensor_l', 'tensor_r', 'oplus_r1', 'id', 'one_r'];
 
-const calc = await loadILL();
+const calc = await loadFill();
 const fp = buildForwardParser();
 const opts = { roles: calc.roles, contextStructure: calc.contextStructure, canonicalize: calc.canonicalize };
 

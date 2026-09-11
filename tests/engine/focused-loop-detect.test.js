@@ -20,13 +20,13 @@ import assert from 'node:assert/strict';
 import Seq from '../../lib/kernel/sequent.js';
 import { createProver } from '../../lib/prover/focused.js';
 import { buildRuleSpecs } from '../../lib/prover/rule-interpreter.js';
-import { loadILL } from '../../calculus/ill/index.js';
-import { buildForwardParser } from '../../calculus/ill/lib/forward-parser.js';
+import { loadFill } from '../../calculus/fill/index.js';
+import { buildForwardParser } from '../../calculus/fill/lib/forward-parser.js';
 
 describe('focused prover — path loop detection (Inc-2)', () => {
   let calc, fp, prover, base;
   before(async () => {
-    calc = await loadILL();
+    calc = await loadFill();
     fp = buildForwardParser();
     const built = buildRuleSpecs(calc);
     prover = createProver(calc);
