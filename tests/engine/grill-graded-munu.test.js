@@ -14,8 +14,13 @@
  *   - The exponential-as-fixpoint bridge: the ν-encoding !A = νX.(A&(1&(X⊗X)))
  *     VALIDATES the exponential's laws (dereliction, contraction, and
  *     !a ⊢ encoding), demonstrating grades and the fixpoint-exponential coexist.
- *     The reverse encoding ⊢ primitive-! meets the pre-existing promotion-from-
- *     linear focus corner (out of scope) and is NOT asserted.
+ *     The reverse direction (encoding ⊢ !a) is NOT asserted and must NEVER be
+ *     added at the default maxDepth=300: nu_l is non-invertible, so the search
+ *     branches through with_l's tensor arm (enc*enc → two copies), doubling
+ *     the enc count at every level. bang_r fails at every leaf (linear context
+ *     non-empty) but the leaf count is exponential in depth — measured ~2.25x
+ *     per depth step (maxDepth=25: ~1.4s; maxDepth=30: ~85s). At maxDepth=300
+ *     the search would not terminate in any practical timeframe.
  */
 import { describe, it, before } from 'node:test';
 import assert from 'node:assert/strict';
@@ -96,6 +101,12 @@ describe('grill — graded μMALL (gill grades × fill μ/ν)', () => {
     assert.equal(prove(['!!_1 a'], [], 'mu X. (a + X)', { cyclicProofs: true }).ok, false);
     assert.equal(prove([], [], 'nu X. (a & !!_0 X)', { cyclicProofs: true }).ok, false, 'no resource ⇒ no signal');
     assert.equal(prove(['a', 'b'], [], 'a & b').ok, false);
+    // coinductive weakening is rejected in the graded setting too (audit fix):
+    // a linear/graded resource conserved around a ν-cycle cannot be discharged.
+    assert.equal(prove(['a'], [], 'nu X. X', { cyclicProofs: true }).ok, false, 'linear a ⊬ νX.X');
+    assert.equal(prove(['!!_5 a'], [], 'nu X. (!!_2 X)', { cyclicProofs: true }).ok, false,
+      '!!_5 a ⊬ νX.(!!_2 X) — graded resource not discharged by the cycle');
+    assert.equal(prove([], [], 'nu X. X', { cyclicProofs: true }).ok, true, '· ⊢ νX.X (empty pool, nothing dropped)');
     // INVARIANT: every grill success across a battery is kernel-valid.
     const battery = [
       [['a'], [], '!!_0 a'], [['!!_2 a'], [], '!!_5 a'], [[], ['a'], 'nu X. (a & !!_0 X)'],

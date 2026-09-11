@@ -56,19 +56,27 @@ A cyclic pre-proof closes some leaves (**buds**) back to an ancestor
 emits a `nu_cycle` bud when a ν-succedent sequent recurs on its path; it guesses
 the back-edge and nothing more. Soundness is `checkGTC`:
 
-> A back-edge (bud B, companion C) is sound iff **(A) context conservation** —
-> the consumable (linear) pool of B equals that of C as a multiset *modulo
-> theory* (eq-theory canonicalization, never raw hash) and the succedents agree;
-> persistent formulas are unconstrained — and **(B) progress** — the cycle
-> carries a νR-on-ν or μL-on-μ unfold step.
+> A back-edge (bud B, companion C) is sound iff **(A) context conservation +
+> emptiness** — the consumable (linear) pool of B equals that of C as a multiset
+> *modulo theory* (eq-theory canonicalization, never raw hash) AND **is empty**,
+> and the succedents agree; persistent formulas are unconstrained — and **(B)
+> progress** — the cycle carries a νR-on-ν or μL-on-μ unfold step.
 
 (A) is the ILL-specific clause with no classical analogue: without it a cycle
-could manufacture or destroy linear resources across the back-edge. In this
-prover's focused discipline, (A) is *structurally satisfied* by construction:
-companions are identified by `Seq.hash` equality, making bud and companion
-content-identical sequents, so (A) holds trivially; the `checkGTC` test for (A)
-is defense-in-depth for synthetic/external inputs (e.g. fuzz-generated trees),
-while progress (B) is the live discriminating condition. (B) is the
+could manufacture or destroy linear resources across the back-edge. The
+**emptiness** half is essential, not cosmetic (audit 2026-09-11): mere
+conservation (bud pool = companion pool) is *insufficient*, because a linear
+resource CONSERVED (unchanged) around an *infinite* cycle is never actually
+consumed — admitting a non-empty conserved pool discharges it for free, i.e.
+coinductive **weakening**. Concretely, `a ⊢ νX.X` and `!!_E a ⊢ νX.(!!_F X)`
+were unsoundly accepted (the linear `a` / `!!_E a` silently dropped at the bud)
+until `checkGTC` required the pool empty. Only PERSISTENT resources (excluded
+from `consumablePool`) sustain a coinductive proof, so a genuine signal always
+carries its resource in the cartesian zone (`!a ⊢ νX.(a & X)`), leaving the
+consumable pool empty at the bud — the fix breaks no valid proof. This corrects
+the earlier claim that (A) was "structurally satisfied / defense-in-depth": the
+search DID emit non-empty-pool buds, so emptiness is a LIVE discriminating
+condition alongside progress (B). (B) is the
 Baelde–Doumane–Saurin trace condition; in this prover's design, a bud closes
 against a content-identical companion (hash-identity discipline), so the
 formula-thread relation is the identity along the cycle and the condition

@@ -55,12 +55,17 @@ function randomFixpoint() {
 // mu it sits in the linear context (with a fixed succedent).
 function validBackEdge() {
   const fx = randomFixpoint();
-  const otherLin = rand() < 0.5 ? [pick(ATOMS)] : [];   // arbitrary conserved linear ctx
+  // The consumable pool is EMPTY at a back-edge (audit 2026-09-11): a conserved
+  // linear resource around an infinite cycle is never consumed, so a non-empty
+  // pool is coinductive weakening — checkGTC now rejects it. For νR the fixpoint
+  // is the succedent (empty pool); for μL the μ is consumed WITHIN the cycle, so
+  // the pool is empty and the μL progress is carried by the principal alone.
+  const otherLin = [];
   let seqObj;
   if (fx.side === 'R') {
-    seqObj = Seq.fromArrays(otherLin.map(fp), [], fx.hash);
+    seqObj = Seq.fromArrays([], [], fx.hash);
   } else {
-    seqObj = Seq.fromArrays([fx.hash, ...otherLin.map(fp)], [], fp(pick(ATOMS)));
+    seqObj = Seq.fromArrays([], [], fp(pick(ATOMS)));
   }
   // rule/principal sequence with the progress step at a random position
   const n = 1 + Math.floor(rand() * 3);
@@ -81,16 +86,14 @@ const mutators = {
   'H-side': (be, src) => { be.ruleNames[src._progAt] = src._fx.binder === 'nu' ? 'nu_l' : 'mu_r'; },
   'H-principal': (be, src) => { be.principals[src._progAt] = fp(pick(ATOMS)); },
   'H-resource': (be, src) => {
-    // add a linear formula at the bud that the companion lacks
-    const extra = src._fx.side === 'R'
-      ? Seq.fromArrays([...src._otherLin.map(fp), fp('d')], [], src._fx.hash)
-      : Seq.fromArrays([src._fx.hash, ...src._otherLin.map(fp), fp('d')], [], src.bud.succedent);
-    be.bud = extra;
+    // add a linear formula at the bud that the companion lacks — this makes the
+    // pool non-empty AND non-conserved, both of which checkGTC rejects.
+    be.bud = Seq.fromArrays([fp('d')], [], src.bud.succedent);
   },
   'H-succ': (be, src) => {
     const s = src._fx.side === 'R'
-      ? Seq.fromArrays(src._otherLin.map(fp), [], fp('nu X. (d & X)'))
-      : Seq.fromArrays([src._fx.hash, ...src._otherLin.map(fp)], [], fp('d'));
+      ? Seq.fromArrays([], [], fp('nu X. (d & X)'))
+      : Seq.fromArrays([], [], fp('d'));
     // ensure the succ actually differs from companion's
     if (s.succedent !== be.companion.succedent) be.bud = s;
     else be.bud = Seq.fromArrays([], [], fp('c'));
