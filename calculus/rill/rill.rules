@@ -1,0 +1,28 @@
+% =============================================================================
+% rill sequent rules — the ○ next-time modality (TODO_0203, THY_0042)
+% =============================================================================
+%
+% rill's backward judgment = [ill.rules, fill.rules] (inherited BY REFERENCE —
+% calculus.load takes a rules-file list; ILL's fragment + the four μ/ν unfold
+% rules) plus the ○ rule below. .rules files have no @extends, so the list
+% [ill.rules, fill.rules, rill.rules] is assembled in rill's loader.
+% =============================================================================
+
+@formulas A, B, C
+
+% Next-time introduction (○R). To promise A at the NEXT tick, prove A now using
+% only resources that PERSIST across the tick: the linear context must be empty.
+% A linear resource consumed now cannot be re-offered next tick — only persistent
+% (!) resources, or the tail of a signal, advance. Promotion-shaped
+% (G ; |- ○A <- G ; |- A): the empty-linear conclusion plus one premise sets
+% requiresEmptyDelta, so ○R fires ONLY when the linear pool is empty — exactly
+% the temporal no-carry-forward discipline. Positive ⇒ non-invertible (focus).
+%
+% This is the single ○ rule. There is NO ○-left rule: an ○A is never usable in
+% the present (that is what makes ○ a genuine modality — non-collapse). Guarded
+% signals νX.(A & ○X) coinduct via the ν back-edge (GTC progress = the νR unfold);
+% ○R advances the persistent context across each tick to reach the companion.
+next_r: G ; |- O A
+  <- G ; |- A
+  @pretty "○R"
+  @invertible false.

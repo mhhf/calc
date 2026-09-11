@@ -521,6 +521,49 @@ describe('global boundary enforcement', () => {
     }
   });
 
+  it('calculus/ cross-imports follow the declared ancestor DAG', () => {
+    // A calculus may import lib/, family/, calculus/kit.js, itself, and its
+    // DECLARED ANCESTORS (the @extends chain, more-primitive only) \u2014 never a
+    // sibling or descendant. Adding an entry here is the explicit opt-in for a
+    // new fork; a new calculus dir with no entry fails, forcing the declaration.
+    const CALCULUS_DIR = path.resolve(import.meta.dirname, '../../calculus');
+    const ANCESTORS = {
+      ill: [],
+      till: ['ill'],
+      fill: ['ill'],
+      rill: ['fill', 'ill'],
+      gill: ['till', 'ill'],
+      will: ['gill', 'till', 'ill'],
+      sill: ['gill', 'till', 'ill'],
+      sax: [],
+    };
+    const seg0 = (p) => path.relative(CALCULUS_DIR, p).split(path.sep)[0];
+    // Every calculus directory (has a calculus-config.js) must be declared.
+    const undeclared = fs.readdirSync(CALCULUS_DIR)
+      .filter(d => fs.existsSync(path.join(CALCULUS_DIR, d, 'calculus-config.js')))
+      .filter(d => !(d in ANCESTORS));
+    assert.equal(undeclared.length, 0,
+      `undeclared calculus dirs (add to the ancestor DAG): ${undeclared.join(', ')}`);
+
+    const violations = [];
+    for (const filePath of collectJSFiles(CALCULUS_DIR)) {
+      const self = seg0(filePath);
+      if (!(self in ANCESTORS)) continue;   // kit.js and non-calculus files
+      const allowed = new Set([self, 'kit.js', ...ANCESTORS[self]]);
+      for (const req of extractRequires(filePath)) {
+        const resolved = path.resolve(path.dirname(filePath), req);
+        if (!resolved.startsWith(CALCULUS_DIR + path.sep)) continue;  // lib/family/etc
+        const target = seg0(resolved);
+        if (!allowed.has(target)) {
+          violations.push(`${path.relative(CALCULUS_DIR, filePath)} \u2192 ${req} (${self} may not import ${target})`);
+        }
+      }
+    }
+    if (violations.length > 0) {
+      assert.fail('calculus/ cross-import DAG violations:\n' + violations.map(v => `  ${v}`).join('\n'));
+    }
+  });
+
   it('lib/ must not import from family/ (family arrives via cc.family)', () => {
     // Structural-family machinery (family/<name>/lib/) plugs into the
     // engine as DATA on the calculus config — the generic core may never

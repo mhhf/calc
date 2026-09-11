@@ -26,17 +26,27 @@ so `deriveRoles()` yields no `roles.lfp/gfp` and the generic cyclic-proof engine
 (bridge/gtc/focused, all role-gated) stays dormant on the EVM proof path — no fixpoint
 rules in ILL's backward fragment, no μ/ν cost in the lax-monad bridge. The engine
 machinery is generic; only the ~40 lines of connective+rule declarations are
-calculus-specific and they live in `fill.calc`/`fill.rules`. Open frontier now: (a)
-recover multiplicative weakening for the μMALL exponential subsumption (the pre-
-existing `with_l2`/`1` focus corner, THY_0042); (b) the `+ ○` next-time modality
-(TODO_0203, FRP signals/streams) — untouched, effectively a new branch. Metatheory
-prizes:
+calculus-specific and they live in `fill.calc`/`fill.rules`.
+
+**Update (2026-09-11): both prior open items are CLOSED.** (a) Multiplicative
+weakening `!a ⊢ I` is recovered and kernel-verified (THY_0042 §4, Inc-5b): the
+`with_l2`/`1` corner was a focus-*completeness* gap (committed-choice search cannot
+see additive don't-know nondeterminism under a linear-resource constraint) fixed by
+an opt-in **exhaustive** continuation-passing driver in `focused.js` — the committed
+ILL/EVM path is byte-identical (measured no regression). (b) The `+ ○` next-time
+modality now lives in a SECOND fork, **`rill` (reactive ILL, `calculus/rill/`
+@extends fill, THY_0043)** — signals `□A = νX.(A & ○X)`, streams `◇A = μX.(A ⊕ ○X)`.
+○ is a fresh positive primitive with a single PROMOTION-shaped `○R` (no elimination
+⇒ non-collapse); guarded signals coinduct through the EXISTING cyclic-proof GTC with
+no checker change (νR = progress, ○ = syntactic guard). Remaining frontier: ○-
+elimination (whole-context tick / temporal cut, the applicative `○(A⊸B)⊸○A⊸○B`),
+`⊤` (additive unit, unused by the encodings), and consuming signals by ticking.
+Metatheory prizes:
 
 - μMALL strictly subsumes the exponentials: the corrected ILL encoding is
-  `!A = νX.(A & (1 & (X ⊗ X)))` — dereliction and contraction derived and
-  machine-checked (THY_0042); the naive Baelde shorthand `νX.(A & X)` fails
-  contraction in ILL (linear `&` cannot duplicate); weakening (`!a ⊢ I`) not yet
-  recovered due to a pre-existing `with_l2`/`1` focus-completeness corner.
+  `!A = νX.(A & (1 & (X ⊗ X)))` — dereliction, contraction, AND now weakening
+  derived and machine-checked (THY_0042); the naive Baelde shorthand `νX.(A & X)`
+  fails contraction in ILL (linear `&` cannot duplicate).
 - With arithmetic, cyclic proofs ≡ explicit induction (Berardi–Tatsuta 2017) — the
   automation-friendly cyclic route loses nothing.
 - TODO_0203's target calculus: intuitionistic μMALL + ○ with the lax monad as the ○
