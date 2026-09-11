@@ -642,7 +642,8 @@ describe('global boundary enforcement', () => {
       'prover/draw-check.js': 1,
       'prover/rule-interpreter.js': 1,
       'prover/timed/elaborate-collapse.js': 4,
-      'rules/rules2-parser.js': 2,
+      // rules2-parser.js reached 0 (TODO_0009 audit 2026-09-11): its binder scan
+      // now reads Store.BINDER_TAGS instead of `=== 'exists' || === 'forall'`.
     };
     const RE = /[=!]==?\s*'(loli|bang|tensor|monad|with|oplus|one|zero|exists|forall)'/g;
     const counts = {};
