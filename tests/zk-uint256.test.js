@@ -12,13 +12,8 @@ import path from 'path';
 import fs from 'fs';
 import Store from '../lib/kernel/store.js';
 import { extractUint256PredMeta, bigintToLimbs, computeAdditionCarries, computeIncrementCarries, computeMultiplicationCarries } from '../calculus/ill/lib/zk/witness.js';
+import { saveOrAssertFixture } from './helpers/zk-fixture.js';
 const FIXTURE_DIR = path.join(import.meta.dirname, '..', 'zk', 'sequent-certifier', 'tests', 'fixtures');
-
-function ensureFixtureDir() {
-  if (!fs.existsSync(FIXTURE_DIR)) {
-    fs.mkdirSync(FIXTURE_DIR, { recursive: true });
-  }
-}
 
 // ---------------------------------------------------------------------------
 // Unit tests: limb decomposition helpers
@@ -227,15 +222,12 @@ describe('uint256 fixture generation', { timeout: 30000 }, () => {
     base.uint256_arith = [row];
     base.byte_check_rom = byteCounts;
 
-    // Save fixture for Rust E2E test
-    ensureFixtureDir();
-    const outPath = path.join(FIXTURE_DIR, 'uint256_e2e.json');
-    fs.writeFileSync(outPath, JSON.stringify(base, null, 2));
+    // Save/assert fixture for Rust E2E test
+    saveOrAssertFixture(FIXTURE_DIR, 'uint256_e2e', base);
 
-    // Verify the saved fixture has the right structure
-    const saved = JSON.parse(fs.readFileSync(outPath, 'utf8'));
-    assert.strictEqual(saved.uint256_arith.length, 1);
-    assert.strictEqual(saved.uint256_arith[0].length, 166);
-    assert.strictEqual(saved.byte_check_rom.length, 256);
+    // Verify the fixture data has the right structure
+    assert.strictEqual(base.uint256_arith.length, 1);
+    assert.strictEqual(base.uint256_arith[0].length, 166);
+    assert.strictEqual(base.byte_check_rom.length, 256);
   });
 });

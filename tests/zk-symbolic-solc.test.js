@@ -26,19 +26,11 @@ import { generateWitness } from '../calculus/ill/lib/zk/witness.js';
 import { toObject } from '../lib/engine/fact-set.js';
 import { monadUnit as U } from '../lib/engine/grades.js';
 import { loadILL } from '../calculus/ill/index.js';
+import { saveOrAssertFixture } from './helpers/zk-fixture.js';
 const FIXTURE_DIR = path.join(import.meta.dirname, '..', 'zk', 'sequent-certifier', 'tests', 'fixtures');
 
-function ensureFixtureDir() {
-  if (!fs.existsSync(FIXTURE_DIR)) {
-    fs.mkdirSync(FIXTURE_DIR, { recursive: true });
-  }
-}
-
 function saveFixture(name, data) {
-  ensureFixtureDir();
-  const filepath = path.join(FIXTURE_DIR, `${name}.json`);
-  fs.writeFileSync(filepath, JSON.stringify(data, null, 2));
-  return filepath;
+  return saveOrAssertFixture(FIXTURE_DIR, name, data);
 }
 
 function buildSuccedentFromState(finalState) {

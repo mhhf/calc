@@ -18,13 +18,11 @@ import { rwTrace, checkRW } from '../lib/prover/rewrite-trace.js';
 import { generateFlatWitness, MAX_CONSUMED, MAX_PRODUCED } from '../calculus/ill/lib/zk/flat-witness.js';
 import { monadUnit as U } from '../lib/engine/grades.js';
 import { loadILL } from '../calculus/ill/index.js';
+import { saveOrAssertFixture } from './helpers/zk-fixture.js';
 const FIXTURE_DIR = path.join(import.meta.dirname, '..', 'zk', 'sequent-certifier', 'tests', 'fixtures');
 
 function saveFixture(name, data) {
-  if (!fs.existsSync(FIXTURE_DIR)) fs.mkdirSync(FIXTURE_DIR, { recursive: true });
-  const filepath = path.join(FIXTURE_DIR, `${name}.json`);
-  fs.writeFileSync(filepath, JSON.stringify(data));
-  return filepath;
+  return saveOrAssertFixture(FIXTURE_DIR, name, data);
 }
 
 describe('rewrite-trace: unit tests', () => {
