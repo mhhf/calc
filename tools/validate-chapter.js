@@ -30,7 +30,14 @@ browser.initFromBundle(bundle);
 const docScan = await import(path.join(ROOT, 'src/ui/plugins/doc-scan.js'));
 const manifest = docScan.getDocManifest(path.join(ROOT, 'doc'));
 
-const BLOCK_RE = /```(?:\{([^}]+)\}|(mermaid|katex|graphviz|viz|calc|proof))\n([\s\S]*?)```/g;
+// marked is used for the render-leak guard below (ground-truth reproduction of
+// the client pipeline in src/ui/lib/markdown.ts).
+const { marked } = await import(path.join(ROOT, 'node_modules/marked/lib/marked.esm.js'));
+
+// Variable-length fences (must mirror src/ui/lib/markdown.ts): the opening
+// fence length is captured and the closer is a backreference, so a widget body
+// may contain a shorter (```) fenced block when opened with four backticks.
+const BLOCK_RE = /(`{3,})(?:\{([^}]+)\}|(mermaid|katex|graphviz|viz|calc|proof))\n([\s\S]*?)\1/g;
 
 function parseHeader(optionsStr) {
   const commaParts = optionsStr.split(',').map(s => s.trim());
@@ -101,7 +108,7 @@ function validateFile(file) {
   BLOCK_RE.lastIndex = 0;
   const fences = [];
   while ((m = BLOCK_RE.exec(content)) !== null) {
-    fences.push({ header: m[1] || m[2], body: m[3], at: content.slice(0, m.index).split('\n').length });
+    fences.push({ header: m[2] || m[3], body: m[4], at: content.slice(0, m.index).split('\n').length });
   }
 
   for (const { header, body, at } of fences) {
@@ -165,6 +172,26 @@ function validateFile(file) {
       } else if (processor !== 'exec') {
         problems.push(`line ${at}: {${processor}} needs a file:`);
       }
+    }
+  }
+
+  // Render-leak guard: reproduce the client extract→placeholder→marked pipeline
+  // and assert no placeholder survives into the output. A widget body containing
+  // a nested ``` fence (opened with only three backticks) truncates the block and
+  // cascades, escaping later placeholders as literal `SPECIAL_BLOCK_N` text — the
+  // fix is to open that widget with four backticks. This catches it mechanically.
+  {
+    BLOCK_RE.lastIndex = 0;
+    const fulls = [];
+    let mm;
+    while ((mm = BLOCK_RE.exec(content)) !== null) fulls.push(mm[0]);
+    let staged = content;
+    fulls.forEach((full, i) => { staged = staged.replace(full, `<div data-placeholder="SPECIAL_BLOCK_${i}"></div>`); });
+    let rendered = marked.parse(staged);
+    fulls.forEach((_, i) => { rendered = rendered.replace(`<div data-placeholder="SPECIAL_BLOCK_${i}"></div>`, ''); });
+    const leaks = [...new Set([...rendered.matchAll(/SPECIAL_BLOCK_(\d+)/g)].map(x => x[1]))];
+    if (leaks.length) {
+      problems.push(`widget block(s) #${leaks.join(', #')} leak into output — a widget body likely contains a nested \`\`\` fence; open that widget with four backticks (\`\`\`\`{…})`);
     }
   }
 
