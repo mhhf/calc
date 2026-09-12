@@ -63,6 +63,9 @@
             cp -r lib $out/lib/lib
             cp -r src $out/lib/src
             cp -r calculus $out/lib/calculus
+            # calculus/*/calculus-config.js import ../../family/{lnl,sax}/family-config.js
+            # (the top-level structural-family dir, TODO_0086) — required at runtime.
+            cp -r family $out/lib/family
 
             # Copy documentation (served via /api/docs)
             cp -r doc $out/lib/doc
