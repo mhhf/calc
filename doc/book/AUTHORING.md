@@ -6,7 +6,27 @@ summary: How to write chapters — frontmatter, widget blocks, style, validation
 # Book Authoring Guide
 
 Chapters are plain markdown in `doc/book/`, named `NN_slug.md` (NN = global
-chapter number, 01–21). They render at `/book/<slug>` with hydrated widgets.
+chapter number, 01–26). They render at `/book/<slug>` with hydrated widgets.
+
+Parts I–V (ch 01–21) teach the ILL core through will/sill. Part VI (ch 22–25,
+"Induction and Coinduction") covers the μMALL family — `fill` (μ/ν), `rill`
+(○), `grill`/`trill` (graded/reactive fixpoints). Part VII (ch 26) covers the
+second structural family, `sax`.
+
+**New-calculus chapters (μ/ν, ○, grades beyond ILL) — widget rule.** The
+interactive `{prove}`, `{rule}`, `{formula}`, and `{calc}` widgets, and the
+validator, all run off the ILL-only browser bundle (`out/ill.json`). They can
+NOT parse or prove μ/ν/○/graded goals. So in Part VI–VII chapters:
+
+- render new-calculus rules and formulas with KaTeX (`$$…$$` / `$…$`), never
+  `{formula}`/`{calc}`/`{rule}`;
+- keep `{prove}` widgets for the ILL *fragment* that a step reduces to (e.g. a
+  μ/ν unfold lands on an ordinary ILL sequent — prove that);
+- use `{quiz}`, `{exercise}`/`{solution}`, and `{mermaid}` freely (bundle-
+  independent);
+- `{exec}` is server-backed and supports `ill, till, gill, will, sill, sax`
+  (see `src/server/run-api.js` CONFIGS). `fill`/`rill`/`grill`/`trill` are
+  backward-proof calculi with no forward-exec program and are not served.
 
 **Validate every chapter before you're done:**
 
