@@ -4,7 +4,7 @@
  */
 import { createSignal, createResource, createMemo, For, Show } from 'solid-js';
 import ErrorBoundary from '../common/ErrorBoundary';
-import { parseSpecBody, type WidgetProps } from '../../lib/hydrateWidgets';
+import { parseSpecBody, inlineProgram, type WidgetProps } from '../../lib/hydrateWidgets';
 
 interface ExecStep {
   step: number;
@@ -23,13 +23,14 @@ interface ExecResult {
   quiescent?: boolean;
 }
 
-const SPEC_KEYS = ['file', 'query', 'maxSteps', 'title'];
+const SPEC_KEYS = ['file', 'query', 'maxSteps', 'title', 'source'];
 
 export default function ForwardStepper(props: WidgetProps) {
   const spec = parseSpecBody(props.body, SPEC_KEYS);
-  // Either `file:` + `query:` reference a repo program, or the body (when it
-  // has no file:) is inline program source.
-  const inline = !spec.file ? props.body : null;
+  // Either `file:` + `query:` reference a repo program, or (no file:) the body
+  // is inline program source — an explicit `source: |` block, or the body with
+  // spec-key lines (maxSteps/title/…) stripped so only program text is sent.
+  const inline = !spec.file ? inlineProgram(props.body, SPEC_KEYS, spec) : null;
   const [cursor, setCursor] = createSignal(0);
 
   const [result] = createResource<ExecResult>(async () => {
