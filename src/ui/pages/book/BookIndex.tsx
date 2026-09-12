@@ -33,8 +33,9 @@ export default function BookIndex() {
         <p class="text-gray-600 dark:text-gray-400 max-w-2xl">
           An interactive course on linear logic and the CALC system — from your
           first sequent proof to timed, graded, probabilistic, and certified
-          execution. Every chapter has live widgets: build proofs by clicking,
-          run programs, play the games.
+          execution, and on to induction, coinduction, reactive time, and
+          message-passing processes. Every chapter has live widgets: build
+          proofs by clicking, run programs, play the games.
         </p>
         <Show when={total() > 0}>
           <input

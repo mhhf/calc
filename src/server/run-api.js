@@ -35,6 +35,7 @@ import tillConfig from '../../calculus/till/calculus-config.js';
 import gillConfig from '../../calculus/gill/calculus-config.js';
 import willConfig from '../../calculus/will/calculus-config.js';
 import sillConfig from '../../calculus/sill/calculus-config.js';
+import saxConfig from '../../calculus/sax/calculus-config.js';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
 
@@ -44,8 +45,9 @@ const CONFIGS = {
   gill: gillConfig,
   will: willConfig,
   sill: sillConfig,
+  sax: saxConfig,
 };
-const EXT = { ill: '.ill', till: '.till', gill: '.gill', will: '.will', sill: '.sill' };
+const EXT = { ill: '.ill', till: '.till', gill: '.gill', will: '.will', sill: '.sill', sax: '.sax' };
 
 // Programs may only be loaded from these repo subtrees.
 const ALLOWED_DIRS = ['calculus/', 'tests/fixtures/', 'doc/book/programs/'];
