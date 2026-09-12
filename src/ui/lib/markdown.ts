@@ -255,14 +255,21 @@ async function extractSpecialBlocks(md: string, ctx?: BlockCtx): Promise<{ md: s
   const blocks = new Map<string, string>();
   // Match both ```{mermaid} (legacy) and ```mermaid (standard fenced)
   // Also supports positional args inside braces: ```{proof ill default}
-  const regex = /```(?:\{([^}]+)\}|(mermaid|katex|graphviz|viz|calc|proof))\n([\s\S]*?)```/g;
+  //
+  // Variable-length fences (CommonMark rule): the opening fence length is
+  // captured (group 1) and the closing fence is a backreference to it, so a
+  // widget body may itself contain a shorter fenced code block. Author an
+  // exercise/solution whose body shows a ``` program by opening the widget
+  // with FOUR backticks (````{exercise}` … ````) — the inner ``` no longer
+  // terminates it. Plain 3-backtick widgets are unchanged (\1 = "```").
+  const regex = /(`{3,})(?:\{([^}]+)\}|(mermaid|katex|graphviz|viz|calc|proof))\n([\s\S]*?)\1/g;
   let idx = 0;
 
   // Collect all matches first
   const matches: { full: string; optionsStr: string; code: string }[] = [];
   let m;
   while ((m = regex.exec(md)) !== null) {
-    matches.push({ full: m[0], optionsStr: m[1] || m[2], code: m[3] });
+    matches.push({ full: m[0], optionsStr: m[2] || m[3], code: m[4] });
   }
 
   // Process and replace

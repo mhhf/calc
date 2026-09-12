@@ -125,7 +125,7 @@ This is called **committed choice**.
 It is the opposite of the backward prover in Chapter 6, which backtracks whenever a branch fails.
 The forward engine trades completeness for speed: one fixed execution path, no search tree.
 
-```{exercise, title=Two rules, two coins}
+````{exercise, title=Two rules, two coins}
 Suppose the state is `{ coin, coin }` and the program has two rules:
 
 ```
@@ -135,7 +135,7 @@ save: coin -o { piggy }.
 
 Which rule fires first?
 What is the final state?
-```
+````
 
 ```{solution}
 `vend` fires first — it matches both coins at once.

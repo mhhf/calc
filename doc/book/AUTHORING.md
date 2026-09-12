@@ -134,7 +134,24 @@ questions/options. More than one `[x]` → multi-select.
     then `tensor_r`, sending P to the right premise and Q to the left.
     ```
 
-Bodies are markdown (no nested fenced blocks).
+Bodies are markdown. To include a fenced code block (e.g. a small program) in
+a body, **open the widget with four backticks** so the inner ` ``` ` does not
+close it — widget fences are variable-length (CommonMark rule: the closer
+matches the opener's backtick count):
+
+    ````{exercise, title=Two rules}
+    The program has two rules:
+
+    ```
+    vend: coin * coin -o { coffee }.
+    ```
+
+    Which fires first?
+    ````
+
+A three-backtick widget whose body contains a ` ``` ` fence truncates and
+cascades — later widgets on the page leak as literal `SPECIAL_BLOCK_N` text.
+The validator's render-leak guard catches this.
 
 ### Static rendered formula
 

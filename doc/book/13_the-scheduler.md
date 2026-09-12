@@ -170,7 +170,7 @@ This is the **Dijkstra gap**: greedy earliest-first is optimal when resources
 are reusable (the relaxation), but linear consumption can permanently foreclose
 better options.
 
-```{exercise, title=The read twin}
+````{exercise, title=The read twin}
 The file `contention.gill` also defines a **read twin** of E1.
 Replace the consumed `tok` with a read arc `rtok`:
 
@@ -183,7 +183,7 @@ m2: b2 * read rtok -o { won_b2 }.
 In this version `rtok` is never consumed, so both rules can fire.
 Step through the depot widget above, or reason by hand: what stamps do
 `won_a2` and `won_b2` carry in the final state?
-```
+````
 
 ```{solution}
 `m1` fires at activation max(0,0) = 0, producing `won_a2@0`.
