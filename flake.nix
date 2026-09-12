@@ -66,6 +66,9 @@
             # calculus/*/calculus-config.js import ../../family/{lnl,sax}/family-config.js
             # (the top-level structural-family dir, TODO_0086) — required at runtime.
             cp -r family $out/lib/family
+            # src/server/run-api.js imports ../../tools/timed-view.js (game/exec view
+            # rendering); tools/timed-view.js in turn imports only ../lib (copied).
+            cp -r tools $out/lib/tools
 
             # Copy documentation (served via /api/docs)
             cp -r doc $out/lib/doc
