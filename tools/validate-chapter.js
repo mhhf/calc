@@ -34,6 +34,14 @@ const manifest = docScan.getDocManifest(path.join(ROOT, 'doc'));
 // the client pipeline in src/ui/lib/markdown.ts).
 const { marked } = await import(path.join(ROOT, 'node_modules/marked/lib/marked.esm.js'));
 
+// handleRun executes inline {exec} widgets exactly as the book does, so a broken
+// inline program (e.g. `source: |` framing reaching the parser) fails validation.
+const { handleRun } = await import(path.join(ROOT, 'src/server/run-api.js'));
+
+// parseSpecBody/inlineProgram are the SAME functions the widgets use — imported
+// from the client module (node strips the TS types), not re-implemented here.
+const { parseSpecBody, inlineProgram } = await import(path.join(ROOT, 'src/ui/lib/widget-spec.ts'));
+
 // Variable-length fences (must mirror src/ui/lib/markdown.ts): the opening
 // fence length is captured and the closer is a backreference, so a widget body
 // may contain a shorter (```) fenced block when opened with four backticks.
@@ -48,21 +56,6 @@ function parseHeader(optionsStr) {
     options[k.trim()] = v?.trim() || 'true';
   }
   return { processor: headTokens[0], positional: headTokens.slice(1), options };
-}
-
-function parseSpecBody(body, keys) {
-  const spec = {};
-  let current = null;
-  for (const line of body.split('\n')) {
-    const m = line.match(/^(\w+)\s*:\s*(.*)$/);
-    if (m && keys.includes(m[1])) {
-      current = m[1];
-      spec[current] = m[2];
-    } else if (current !== null && line.trim() !== '') {
-      spec[current] += '\n' + line;
-    }
-  }
-  return spec;
 }
 
 function knownRule(name) {
@@ -87,7 +80,7 @@ function resolveWiki(raw, sourceRoute) {
   return slugs.filter(s => /^\d{4}_/.test(s) && s.slice(5) === name).length === 1;
 }
 
-function validateFile(file) {
+async function validateFile(file) {
   const problems = [];
   const content = fs.readFileSync(file, 'utf8');
 
@@ -165,12 +158,28 @@ function validateFile(file) {
         }
       });
     } else if (processor === 'exec' || processor === 'game' || processor === 'collapse') {
-      const spec = parseSpecBody(body, ['file', 'query', 'init', 'seed', 'title', 'maxSteps', 'step']);
+      const EXEC_KEYS = ['file', 'query', 'init', 'seed', 'title', 'maxSteps', 'step', 'source'];
+      const spec = parseSpecBody(body, EXEC_KEYS);
       if (spec.file) {
         const p = path.join(ROOT, spec.file.trim());
         if (!fs.existsSync(p)) problems.push(`line ${at}: {${processor}} file not found: ${spec.file.trim()}`);
       } else if (processor !== 'exec') {
         problems.push(`line ${at}: {${processor}} needs a file:`);
+      } else {
+        // Inline exec: run it the way the widget does, so a broken program
+        // (unparseable, spec framing leaking to the parser) fails the gate.
+        const calculus = positional[0] || 'ill';
+        const source = inlineProgram(body, EXEC_KEYS, spec);
+        if (!source) {
+          problems.push(`line ${at}: {exec} has neither file: nor inline source`);
+        } else {
+          try {
+            const r = await handleRun('exec', { calculus, source, maxSteps: Number(spec.maxSteps) || 20 });
+            if (!r || !r.ok) problems.push(`line ${at}: {exec ${calculus}} inline program failed: ${(r && r.error || 'unknown').slice(0, 120)}`);
+          } catch (e) {
+            problems.push(`line ${at}: {exec ${calculus}} inline program threw: ${e.message.slice(0, 120)}`);
+          }
+        }
       }
     }
   }
@@ -212,7 +221,7 @@ if (files.length === 0) {
 
 let failed = 0;
 for (const file of files) {
-  const problems = validateFile(file);
+  const problems = await validateFile(file);
   if (problems.length === 0) {
     console.log(`✓ ${path.basename(file)}`);
   } else {

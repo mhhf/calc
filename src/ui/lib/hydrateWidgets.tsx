@@ -82,21 +82,5 @@ export function hydrateWidgets(root: HTMLElement, ctx: WidgetCtx) {
   }
 }
 
-/**
- * Parse a `key: value` widget body. Lines that don't start with a known key
- * continue the previous value (multi-line hints etc.).
- */
-export function parseSpecBody(body: string, keys: string[]): Record<string, string> {
-  const spec: Record<string, string> = {};
-  let current: string | null = null;
-  for (const line of body.split('\n')) {
-    const m = line.match(/^(\w+)\s*:\s*(.*)$/);
-    if (m && keys.includes(m[1])) {
-      current = m[1];
-      spec[current] = m[2];
-    } else if (current !== null && line.trim() !== '') {
-      spec[current] += '\n' + line;
-    }
-  }
-  return spec;
-}
+// Widget-body spec parsing lives in ./widget-spec (pure, JSX-free, unit-tested).
+export { parseSpecBody, inlineProgram } from './widget-spec';
