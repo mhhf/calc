@@ -1,0 +1,41 @@
+% =============================================================================
+% dill — Governance ILL (TODO_0276): principal-indexed possession over gill
+% =============================================================================
+%
+% Mechanization of THY_0045/THY_0046. The `poss` modality `says K A`
+% ("K affirms / holds A") carries a principal index K; its ELIMINATION rule
+% unifies the index (hypothesis principal = conclusion principal, dill.rules
+% poss_l), so distinct principals cannot fuse — the partial-⊕
+% no-cross-principal-collapse (THY_0045 Fact P1: "non-degeneracy is the shape of
+% ⊕") realized as index unification, needing no residual predicate and no
+% shared-engine change (a grade algebra's add/sub is only called in the forward
+% `settle` path, never in backward cut, so a partial ⊕ stays calculus-local).
+%
+% ENCODING NOTES.
+%  - This is the `says`/affirmation reading (monad(K,·), THY_0045 §5.4): no
+%    linear zone restriction, hence no engine change. The real dill (P1/P2) uses
+%    a dedicated `principal` sort with the partial-⊕ algebra and the Δ|_K
+%    possession restriction.
+%  - Principals are numeric identity tags carried on gill's `dist` grade sort:
+%    distinct numerals = distinct principals. The dist ALGEBRA is never invoked
+%    in backward cut; the only role of the index is UNIFICATION (poss_l) and the
+%    fence `!le 0 K` (poss_r/poss_l), which is THY_0045's fence V ("well-sorted
+%    principal terms") — it grounds K to a concrete principal so the rule cannot
+%    fire with a freely-synthesized index (without it the refutations collapse).
+%  - Surface is `says K A`, NOT `[K] A`: the `[...]` bracket collides with the
+%    forward parser's array-literal lexer, so `[1] a` parses as app(arrlit,a).
+%  - The inner weight-graded stake !_w A is modeled here by gill's graded comonad
+%    !!_d A (an orthogonal graded modality), so the combined `says K (!!_d A)`
+%    witnesses the orthogonal-composition cut (THY_0045 §5.3, Lemma O) through
+%    the UNCHANGED generic cut.
+
+@extends gill.
+
+% Principal-indexed possession / affirmation: `says K A` = "held / affirmed by K".
+% @category comonad = a graded modality with no special engine role (as gill's
+% haul); the sticky elimination and no-cross-collapse live entirely in the rules.
+poss: dist -> formula -> formula
+  @ascii "says #1 #2"
+  @prec 80
+  @category comonad
+  @polarity positive.

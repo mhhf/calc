@@ -21,7 +21,7 @@ import { createProver } from '../../lib/prover/focused.js';
 import { createKernel } from '../../lib/prover/kernel.js';
 import { TEMPLATES, loadCalc } from '../../tools/fuzz-cut.js';
 
-const CALCI = ['ill', 'fill', 'gill', 'grill', 'trill'];
+const CALCI = ['ill', 'fill', 'gill', 'grill', 'trill', 'dill'];
 
 for (const cname of CALCI) {
   describe(`cut-admissibility — ${cname}`, () => {

@@ -38,23 +38,23 @@ const pick = (a) => a[Math.floor(rand() * a.length)];
 // `tags` lists which calculi it applies to. The cut FORMULA is the succedent of L
 // = the distinguished antecedent of R; the fuzzer never names it explicitly.
 const TEMPLATES = [
-  { tag: 'tensor', calc: ['ill', 'fill', 'gill', 'grill', 'trill'], cyclic: false,
+  { tag: 'tensor', calc: ['ill', 'fill', 'gill', 'grill', 'trill', 'dill'], cyclic: false,
     L: (p, q) => ({ lin: [p, q], cart: [], succ: `${p} * ${q}` }),
     R: (p, q) => ({ lin: [`${p} * ${q}`], cart: [], succ: `${q} * ${p}` }),
     Cut: (p, q) => ({ lin: [p, q], cart: [], succ: `${q} * ${p}` }) },
-  { tag: 'loli', calc: ['ill', 'fill', 'gill', 'grill', 'trill'], cyclic: false,
+  { tag: 'loli', calc: ['ill', 'fill', 'gill', 'grill', 'trill', 'dill'], cyclic: false,
     L: (p) => ({ lin: [], cart: [], succ: `${p} -o ${p}` }),
     R: (p) => ({ lin: [`${p} -o ${p}`, p], cart: [], succ: p }),
     Cut: (p) => ({ lin: [p], cart: [], succ: p }) },
-  { tag: 'oplus', calc: ['ill', 'fill', 'gill', 'grill', 'trill'], cyclic: false,
+  { tag: 'oplus', calc: ['ill', 'fill', 'gill', 'grill', 'trill', 'dill'], cyclic: false,
     L: (p, q) => ({ lin: [p], cart: [], succ: `${p} + ${q}` }),
     R: (p, q) => ({ lin: [`${p} + ${q}`], cart: [], succ: `${q} + ${p}` }),
     Cut: (p, q) => ({ lin: [p], cart: [], succ: `${q} + ${p}` }) },
-  { tag: 'with', calc: ['ill', 'fill', 'gill', 'grill', 'trill'], cyclic: false,
+  { tag: 'with', calc: ['ill', 'fill', 'gill', 'grill', 'trill', 'dill'], cyclic: false,
     L: (p) => ({ lin: [p], cart: [], succ: `${p} & ${p}` }),
     R: (p) => ({ lin: [`${p} & ${p}`], cart: [], succ: p }),
     Cut: (p) => ({ lin: [p], cart: [], succ: p }) },
-  { tag: 'exp-dereliction', calc: ['ill', 'fill', 'gill', 'grill', 'trill'], cyclic: false,
+  { tag: 'exp-dereliction', calc: ['ill', 'fill', 'gill', 'grill', 'trill', 'dill'], cyclic: false,
     L: (p) => ({ lin: [], cart: [p], succ: `! ${p}` }),
     R: (p) => ({ lin: [`! ${p}`], cart: [], succ: p }),
     Cut: (p) => ({ lin: [], cart: [p], succ: p }) },
@@ -80,10 +80,23 @@ const TEMPLATES = [
     R: (p) => ({ lin: [`mu X. (${p} + X)`], cart: [], succ: `${p} + (mu X. (${p} + X))` }),
     Cut: (p) => ({ lin: [p], cart: [], succ: `${p} + (mu X. (${p} + X))` }) },
   // ── grades ─────────────────────────────────────────────────────────────────
-  { tag: 'graded-haul', calc: ['gill', 'grill', 'trill'], cyclic: false,
+  { tag: 'graded-haul', calc: ['gill', 'grill', 'trill', 'dill'], cyclic: false,
     L: (p) => ({ lin: [p], cart: [], succ: `!!_0 ${p}` }),
     R: (p) => ({ lin: [`!!_0 ${p}`], cart: [], succ: `!!_5 ${p}` }),
     Cut: (p) => ({ lin: [p], cart: [], succ: `!!_5 ${p}` }) },
+  // ── governance: principal-indexed possession `says K A` (dill; THY_0045) ────
+  // The cut FORMULA is `says 1 p`. Cut composes an affirmation intro with the
+  // identity consumer; the no-cross-principal REFUTATION is pinned separately in
+  // tests/engine/dill-possession.test.js (this suite only checks derivability).
+  { tag: 'poss', calc: ['dill'], cyclic: false,
+    L: (p) => ({ lin: [p], cart: [], succ: `says 1 ${p}` }),
+    R: (p) => ({ lin: [`says 1 ${p}`], cart: [], succ: `says 1 ${p}` }),
+    Cut: (p) => ({ lin: [p], cart: [], succ: `says 1 ${p}` }) },
+  // combined modality `says K (!!_d A)` — the orthogonal composition (Lemma O).
+  { tag: 'poss-haul', calc: ['dill'], cyclic: false,
+    L: (p) => ({ lin: [p], cart: [], succ: `says 1 (!!_0 ${p})` }),
+    R: (p) => ({ lin: [`says 1 (!!_0 ${p})`], cart: [], succ: `says 1 (!!_0 ${p})` }),
+    Cut: (p) => ({ lin: [p], cart: [], succ: `says 1 (!!_0 ${p})` }) },
   // ── the composition: graded coinductive cut (grill only) ────────────────────
   { tag: 'graded-coind-cut', calc: ['grill', 'trill'], cyclic: true,
     L: (p) => ({ lin: [], cart: [p], succ: `nu X. (${p} & !!_0 X)` }),
@@ -114,13 +127,17 @@ async function loadCalc(name) {
     const { loadTrillSequent, trillCalculusConfig } = await import('../calculus/trill/calculus-config.js');
     return { calc: loadTrillSequent(), fp: trillCalculusConfig.loader.buildParser() };
   }
+  if (name === 'dill') {
+    const { loadDillSequent, dillCalculusConfig } = await import('../calculus/dill/calculus-config.js');
+    return { calc: loadDillSequent(), fp: dillCalculusConfig.loader.buildParser() };
+  }
   throw new Error(`unknown calculus ${name}`);
 }
 
 const ATOMS = ['a', 'b', 'c'];
 
 async function run() {
-  const CALCI = ['ill', 'fill', 'gill', 'grill', 'trill'];
+  const CALCI = ['ill', 'fill', 'gill', 'grill', 'trill', 'dill'];
   const failures = [];
   let exercised = 0, held = 0;
 
@@ -175,7 +192,7 @@ async function run() {
     for (const f of failures.slice(0, 25)) console.error('  ' + f);
     process.exit(1);
   }
-  console.log('all properties held — cut is admissible across ill/fill/gill/grill/trill.');
+  console.log('all properties held — cut is admissible across ill/fill/gill/grill/trill/dill.');
 }
 
 export { TEMPLATES, loadCalc, ATOMS };
