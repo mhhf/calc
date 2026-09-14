@@ -537,6 +537,7 @@ describe('global boundary enforcement', () => {
       trill: ['grill', 'gill', 'till', 'ill'],
       will: ['gill', 'till', 'ill'],
       sill: ['gill', 'till', 'ill'],
+      dill: ['gill', 'till', 'ill'],
       sax: [],
     };
     const seg0 = (p) => path.relative(CALCULUS_DIR, p).split(path.sep)[0];

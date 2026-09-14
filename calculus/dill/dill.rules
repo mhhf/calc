@@ -1,0 +1,42 @@
+% =============================================================================
+% dill sequent rules — principal-indexed possession (TODO_0276; THY_0045/0046)
+% =============================================================================
+%
+% Loaded as [gill.rules, dill.rules]: gill's whole graded fragment inherited by
+% reference; dill adds only the `poss` modality (surface `says K A`). Two rules,
+% no residual predicate — no-cross-principal-collapse is enforced by INDEX
+% UNIFICATION (poss_l reuses the grade var E on hypothesis and conclusion), not
+% arithmetic. The `<- !le 0 E` premise is THY_0045's fence V ("well-sorted
+% principal"): it grounds E to the concrete principal of the conclusion, so the
+% rule never fires with a freely-synthesized index (drop it and the refutations
+% below collapse — E would unify with anything).
+%
+% poss_r (affirmation intro, says-I / RES_0003): K affirms any derivable A.
+% poss_l (sticky elimination): `says E A` is usable only toward a `says E`-goal —
+%   the SAME principal E on hypothesis and conclusion. This unification IS the
+%   partial-⊕ (THY_0045 Fact P1): `says k1 A` eliminates only toward `says k1 C`,
+%   never `says k2 C`. There is deliberately NO dereliction to a bare goal
+%   (`says K A` ⊬ A — says is non-degenerate, Garg et al. 2006), so principals
+%   never leak their content into the objective zone. Together (verified in
+%   tests/engine/dill-possession.test.js):
+%     derivable:  says k a            |- says k a       (identity)
+%                 says k (says k b)   |- says k b       ([μ] diagonal, K1=K2)
+%                 a                   |- says k (!!_0 a) (orthogonal comp., Lemma O)
+%     refuted:    says k1 a           |- says k2 a       (no cross-principal collapse)
+%                 says k1 (says k2 b) |- says k1 b       (nested, K1≠K2)
+%                 says k a            |- a               (non-degeneracy)
+
+@formulas A, B, C
+
+poss_r: G ; D |- says E A
+  <- G ; D |- A
+  <- !le 0 E
+  @pretty "saysR"
+  @invertible false.
+
+poss_l: G ; D, says E A |- says E C
+  <- G ; D, A |- says E C
+  <- !le 0 E
+  @side l
+  @pretty "saysL"
+  @invertible false.
