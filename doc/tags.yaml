@@ -1,14 +1,14 @@
 tags:
-  linear-logic: 45
+  linear-logic: 46
   forward-chaining: 30
+  proof-theory: 28
   ill: 27
-  proof-theory: 27
   inference-rule: 24
+  graded-types: 20
   architecture: 19
-  graded-types: 19
   chr: 13
-  soundness: 12
-  cut-elimination: 10
+  soundness: 13
+  cut-elimination: 11
   implementation: 10
   lax-monad: 10
   left-rule: 10
@@ -19,14 +19,15 @@ tags:
   symbolic-execution: 9
   till: 9
   engine: 8
+  ownership: 8
   structural-rule: 8
   oplus: 7
-  ownership: 7
   probabilistic: 7
   certificates: 6
   clf: 6
   engine-metatheory: 6
   adjoint-logic: 5
+  authorization: 5
   existential: 5
   ffi: 5
   focusing: 5
@@ -35,12 +36,12 @@ tags:
   verification: 5
   will: 5
   with: 5
-  authorization: 4
   exists: 4
   lnl: 4
   multiset-rewriting: 4
   partial-evaluation: 4
   performance: 4
+  principals: 4
   sax: 4
   scheduling: 4
   subexponentials: 4
@@ -50,11 +51,12 @@ tags:
   Curry-Howard: 3
   cyclic-proofs: 3
   evm: 3
+  graded-modality: 3
   loli: 3
+  modal-logic: 3
   modes: 3
   monad: 3
   muMALL: 3
-  principals: 3
   prover: 3
   QTT: 3
   SELL: 3
@@ -77,11 +79,10 @@ tags:
   fixed-points: 2
   forall: 2
   Futamura: 2
-  graded-modality: 2
+  governance: 2
   hash-consing: 2
   independence: 2
   layers: 2
-  modal-logic: 2
   one: 2
   refinement-sorts: 2
   refinement-types: 2
@@ -144,7 +145,6 @@ tags:
   forward-engine: 1
   FRP: 1
   games: 1
-  governance: 1
   graded-monad: 1
   grothendieck-group: 1
   guarded-recursion: 1
