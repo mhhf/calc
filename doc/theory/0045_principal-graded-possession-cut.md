@@ -339,16 +339,24 @@ there, not here.
   `till`) is *orthogonal* to this result: this is the pure calculus' cut theorem;
   P0's untimed-ILL demo needs only ground possessed rules, which already run.
 
-**Mechanization surface (when P1/P2 build the modalities).** The result becomes a
-`fuzz-cut.js` instance exactly as `grill` is today (THY_0044 §4;
-`tests/engine/cut-admissibility.test.js`): a `dill` calculus declaring the
-principal grade algebra as a gill-style *grade-algebra-as-data* instance (the
-partial-⊕ carrier is new data the grade registry must admit) plus the `[K]`/`!_w`
-rules, added to the `CALCI` list, with cut templates whose cut formula is
-`[K](!_w A)` and whose mismatched-principal template asserts **underivability**
-(the vacuity of §5.2 is a *refutation* the fuzzer can pin, the sharpest
-mechanized witness). Until then, the executable analogue is the existing
-weight/grade fuzzing (`tools/fuzz-till.js`) for the `!_w` axis in isolation.
+**Mechanized (2026-09-14).** A `dill` calculus (`calculus/dill/`, gill + the
+possession modality) now realizes this as a `fuzz-cut.js` instance exactly as
+`grill` (THY_0044 §4; `tests/engine/cut-admissibility.test.js`, dill the 6th
+calculus, and `tools/fuzz-cut.js`): cut is admissible over the combined
+`says K (!!_d A)` through the UNCHANGED generic cut (30/30 kernel-valid), and the
+headline §5.2 vacuity is pinned as a **refutation** — `tests/engine/dill-possession.test.js`
+asserts `says k1 a ⊬ says k2 a`, `says k1 (says k2 b) ⊬ says k1 b`, and the
+non-degeneracy `says k a ⊬ a`, alongside the derivable diagonal and combined
+cases (9/9). Two honest scope notes on the mechanization: (i) it realizes the
+`says`/affirmation reading (§5.4) — no-cross-principal-collapse via **index
+unification** in the elimination rule (the `!le 0 E` fence grounds the principal
+= fence V), which needs no residual predicate and no shared-engine change; the
+full possession-with-`Δ|_K` restriction (P2) and a first-class partial-⊕ grade
+algebra remain the P1 upgrade. (ii) The inner `!_w` is stood in by gill's graded
+comonad `!!_d A` (an orthogonal graded modality), which is what makes the
+combined case exercise Lemma O; the additive-share weight algebra of §2 is the
+P1 refinement. The refutations are the sharpest witness the family carries — the
+same search-completeness-relative reading as `!!_5 a ⊬ !!_3 a`.
 
 **Novelty ledger.** Authorization logic (Garg et al. 2006) eliminates cut for
 `says`/`knows` but ungraded; the graded neighbours (BLL, THY_0018/0023) grade one

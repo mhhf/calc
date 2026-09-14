@@ -201,12 +201,14 @@ judgment call). Delegation is treated as a single speaks-for level; transitive a
 contextual (per-subterm) delegation with veto (TODO_0276 memhub heritage) refine
 the `⪰` fact base but not the isolation argument.
 
-**Mechanization.** Rides the same `dill` fuzz-cut surface as THY_0045 §7. NI-1's
-isolation is a *refutation* the fuzzer pins directly: with an undelegated
-`[K'](!_w A)` (K'≠K) in the context, `[K]C` must be UNPROVABLE exactly when it is
-unprovable without that hypothesis — a differential (context-with vs
-context-without) underivability test. NI-2 pins as a derivability equivalence
-(`Γ, !_0 A ⊢ G  ⟺  Γ ⊢ G`). The `[⪰]` delegation rule and the `!(K'⪰K)` objective
-fact base are the additional calculus data the `dill` instance carries. Until the
-modalities are built (P1/P2), the executable analogue is the ambient/grade-0
-erasure already exercised by the ILL persistent-weakening tests.
+**Mechanization.** The `dill` calculus (THY_0045 §7, `calculus/dill/`) realizes the
+NI-1 core: `tests/engine/dill-possession.test.js` pins the isolation as a
+*refutation* — `says k1 a ⊬ says k2 a` (K1≠K2) and the non-degeneracy
+`says k a ⊬ a` are exactly "K's affirmation does not reach K'≠K and does not leak
+to the objective zone." The `[⪰]` delegation rule, the `!(K'⪰K)` fact base, and
+the full NI-2 zero-stake erasure on a first-class weight bang are the P1
+additions the `dill` instance does not yet carry (its inner grade is gill's
+`!!_d`, whose cost-0 dereliction `says k (!!_0 a) ⊢ says k a` is the NI-2 shadow
+already tested). The differential NI-1 test (context-with vs context-without an
+undelegated foreign holding) and the NI-2 equivalence (`Γ, !_0 A ⊢ G ⟺ Γ ⊢ G`)
+are the next fuzz targets once the weight bang and delegation land.
