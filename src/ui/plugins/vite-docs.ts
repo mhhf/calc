@@ -287,6 +287,34 @@ export default function viteDocs(): Plugin {
           return;
         }
 
+        // POST /api/gov/* — governance sandbox (TODO_0318). Mirrors server.js;
+        // one shared implementation in src/server/gov-api.js.
+        const govMatch = url.match(/^\/api\/gov\/(.+)$/);
+        if (govMatch && reqAny.method === 'POST') {
+          let raw = '';
+          reqAny.on('data', (chunk) => { raw += String(chunk); });
+          reqAny.on('end', async () => {
+            let body: Record<string, unknown>;
+            try {
+              body = JSON.parse(raw || '{}');
+            } catch {
+              res.statusCode = 400;
+              res.end(JSON.stringify({ ok: false, error: 'invalid JSON body' }));
+              return;
+            }
+            try {
+              const govApi = await import('../../server/gov-api.js');
+              const r = await govApi.handleGov(govMatch[1], body);
+              res.setHeader('Content-Type', 'application/json');
+              res.end(JSON.stringify(r));
+            } catch (e) {
+              res.statusCode = 500;
+              res.end(JSON.stringify({ ok: false, error: (e as Error).message }));
+            }
+          });
+          return;
+        }
+
         // /api/doc-manifest — slug lists by folder for wiki-link resolution
         if (url === '/api/doc-manifest') {
           try {

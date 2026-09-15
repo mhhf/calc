@@ -223,6 +223,25 @@ app.post('/api/run/*', async (c) => {
   }
 });
 
+// Governance sandbox API — live dill State + admin/actor verbs (TODO_0318).
+// Lazy import (like run-api) so an import error can never break boot/healthcheck.
+let _govApi = null;
+app.post('/api/gov/*', async (c) => {
+  const route = c.req.path.replace(/^\/api\/gov\//, '');
+  let body;
+  try {
+    body = await c.req.json();
+  } catch {
+    return c.json({ ok: false, error: 'invalid JSON body' }, 400);
+  }
+  try {
+    if (!_govApi) _govApi = await import('./src/server/gov-api.js');
+    return c.json(await _govApi.handleGov(route, body));
+  } catch (e) {
+    return c.json({ ok: false, error: e.message }, 500);
+  }
+});
+
 // Serve static UI build
 app.use('/*', serveStatic({ root: './out/ui' }));
 
