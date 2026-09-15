@@ -9,6 +9,7 @@ const CalculusOverview = lazy(() => import('./pages/CalculusOverview'));
 const CalculusHealth = lazy(() => import('./pages/CalculusHealth'));
 const MetaOverview = lazy(() => import('./pages/MetaOverview'));
 const ManualProof = lazy(() => import('./pages/ManualProof'));
+const Governance = lazy(() => import('./pages/Governance'));
 const DocIndex = lazy(() => import('./pages/DocIndex'));
 const DocPage = lazy(() => import('./pages/DocPage'));
 
@@ -51,6 +52,7 @@ export const routes = [
   { path: '/book', component: BookIndex },
   { path: '/book/:slug', component: BookChapter },
   { path: '/prove', component: ManualProof },
+  { path: '/governance', component: Governance },
   { path: '/calculus', component: CalculusOverview },
   { path: '/health', component: CalculusHealth },
   { path: '/meta', component: MetaOverview },
