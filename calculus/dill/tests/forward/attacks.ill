@@ -1,0 +1,46 @@
+#import(../../prelude/governance.ill)
+
+% attacks.ill — soundness intuition, live (use-case 5). Negative results that the
+% engine enforces structurally. (The entity-veil `says 1 a ⊬ says 3 a` is a
+% backward-prover property, tested in tests/engine/dill-governance.test.js.)
+
+money:     (m: q) -> type.
+cake:      (n: q) -> type.
+buy_price: (p: q) -> (price: q) -> type.
+
+open_proposal:
+  propose_seed P TH N
+  -o { vote_ticket 1 P * vote_ticket 2 P
+     * vote_open P TH * tally_init_token P * vote_sentinel P N }.
+
+buy_cake:
+  says 3 (authorized P) * says 3 (money M)
+  * !buy_price P PRICE * !le PRICE M * !qsub M PRICE R
+  -o { says 3 (cake 1) * says 3 (money R) }.
+
+% ── (a) FAILED QUORUM: the proposal needs 3 voters but only 2 shareholders exist.
+% The sentinel counts 3→2→1 and never reaches 0, so tally_close never fires — no
+% authorization is minted, so no cake is bought. Quorum is not a suggestion.
+#expect_not_underquorum (settle: 0)
+  says 1 (stake 3 (1/2)) * says 2 (stake 3 (1/2)) * says 3 (money 1000)
+    * propose_seed 100 (1/2) 3
+    * !buy_price 100 700 * !prop_company 100 3
+  =>
+  says 3 (cake 1) .
+
+% ── (b) NO GOVERNANCE, NO SPEND: with money but no proposal, nothing authorizes a
+% spend — C's assets are inert without a quorum decision (the mint discipline:
+% `says C (authorized P)` is minted only by tally_close).
+#expect_not_nospend (settle: 0)
+  says 3 (money 1000) * !buy_price 100 700 * !prop_company 100 3
+  =>
+  says 3 (cake 1) .
+
+% ── contrast: the SAME under-quorum genesis but with the correct N=2 DOES buy the
+% cake — the negative results above are about quorum, not a broken choreography.
+#expect_quorum_ok (settle: 0)
+  says 1 (stake 3 (1/2)) * says 2 (stake 3 (1/2)) * says 3 (money 1000)
+    * propose_seed 100 (1/2) 2
+    * !buy_price 100 700 * !prop_company 100 3
+  =>
+  says 3 (cake 1) .

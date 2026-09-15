@@ -1,78 +1,36 @@
-#import(../../../gill/prelude/num.gill)
+#import(../../prelude/governance.ill)
 
-% company_cake.ill — the composite-principal scenario (TODO_0276) run for real.
+% company_cake.ill — the composite-principal scenario (TODO_0276), on the shared
+% governance prelude. Alice(1)+Bob(2) hold 50/50 equity in company C(3); C holds
+% 1000; a shareholder quorum authorizes spending 700 on a cake; the cake lands at
+% C, not the shareholders, and the 50/50 cap table is untouched.
 %
-% Alice (principal 1) and Bob (principal 2) each hold 50% equity in company
-% C (principal 3). C holds 1000 money. A quorum of shareholders authorizes
-% spending 700 on a cake; the cake lands at C, not at the shareholders, and
-% the 50/50 cap table is untouched.
-%
-% The forward/backward split that resolves the partial-⊕-vs-quorum tension
-% (THY_0045/THY_0046): `cast_vote` STRIPS the `says K` wrapper to an OBJECTIVE
-% `ballot` fact — the single audited delegation [⪰] — after which the quorum
-% sums plain rational terms via `!plus`/`!le`; the grade index's partial-⊕ is
-% never invoked. `says K A` is an opaque structural wrapper under settle; the
-% entity-veil (`says 1 a ⊬ says 3 a`) lives in the backward prover (poss_l).
+% The prelude supplies the generic machinery (cast_vote/tally/close). The scenario
+% adds only: proposal opening (which shareholders get tickets), the asset vocab,
+% and the enactment (what the authorization buys).
 
-% ── Vocabulary ──
-stake:            (c: q) -> (w: q) -> type.   % says K (stake C W)
-money:            (m: q) -> type.             % says C (money M)
-cake:             (n: q) -> type.             % says C (cake N)
-authorized:       (p: q) -> type.             % says C (authorized P): one-shot license
-propose_seed:     (p: q) -> (th: q) -> (n: q) -> type.  % open P at threshold TH, N voters
-vote_open:        (p: q) -> (th: q) -> type.
-vote_ticket:      (k: q) -> (p: q) -> type.
-ballot:           (p: q) -> (k: q) -> (w: q) -> type.
-tally:            (p: q) -> (acc: q) -> (th: q) -> type.
-vote_sentinel:    (p: q) -> (n: q) -> type.
-tally_init_token: (p: q) -> type.
-buy_price:        (p: q) -> (price: q) -> type.   % persistent proposal detail
-
-% ── Rules ──
+money:     (m: q) -> type.
+cake:      (n: q) -> type.
+buy_price: (p: q) -> (price: q) -> type.   % persistent proposal detail
 
 % open_proposal: seed → one ticket per shareholder + session + tally scaffold.
-% (Ground for a two-shareholder company; parametric issuance is P1.)
+% (Ground for a two-shareholder company; parametric issuance from a cap table is P1.)
 open_proposal:
   propose_seed P TH N
   -o { vote_ticket 1 P * vote_ticket 2 P
      * vote_open P TH * tally_init_token P * vote_sentinel P N }.
 
-% cast_vote: the audited [⪰] bridge — stake preserved ($), ticket consumed,
-% objective ballot minted. This is the ONLY rule that produces `ballot`.
-cast_vote:
-  $says K (stake C W) * vote_ticket K P
-  -o { ballot P K W }.
-
-% tally_init: open the accumulator at 0.
-tally_init:
-  tally_init_token P * vote_open P TH
-  -o { tally P 0 TH }.
-
-% tally_step: absorb one ballot, sum weights over rational terms, count down.
-tally_step:
-  tally P ACC TH * ballot P K W * vote_sentinel P N
-  * !plus ACC W NEW * !qsub N 1 N1
-  -o { tally P NEW TH * vote_sentinel P N1 }.
-
-% tally_close: every ticket accounted for (sentinel 0) and threshold met →
-% mint C's one-shot spend authorization (linear: one quorum = one execution).
-tally_close:
-  tally P TOTAL TH * vote_sentinel P 0 * !le TH TOTAL
-  -o { says 3 (authorized P) }.
-
-% buy_cake: C-only asset transform. Arithmetic uses a pre-bound R (HOLE A fix).
+% buy_cake: C-only asset transform (pre-bound R for the arithmetic, HOLE A fix).
 buy_cake:
   says 3 (authorized P) * says 3 (money M)
   * !buy_price P PRICE * !le PRICE M * !qsub M PRICE R
   -o { says 3 (cake 1) * says 3 (money R) }.
 
-% ── Scenario ──
 % Genesis: Alice 50%, Bob 50%, C holds 1000; proposal 100 buys cake for 700.
 #expect_cake (settle: 0)
   says 1 (stake 3 (1/2)) * says 2 (stake 3 (1/2)) * says 3 (money 1000)
-    * propose_seed 100 (1/2) 2 * !buy_price 100 700
+    * propose_seed 100 (1/2) 2
+    * !buy_price 100 700 * !prop_company 100 3
   =>
   says 3 (cake 1) * says 3 (money 300)
     * says 1 (stake 3 (1/2)) * says 2 (stake 3 (1/2)) .
-
-% The cake and the change are C's; the cap table is untouched.

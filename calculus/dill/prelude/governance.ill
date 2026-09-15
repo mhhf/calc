@@ -1,0 +1,66 @@
+#import(../../gill/prelude/num.gill)
+
+% governance.ill — the reusable dill governance prelude (TODO_0276/0318, P0).
+%
+% The GENERIC voting machinery: the audited vote bridge + the incremental linear
+% tally + the threshold close + the enactment cell. A scenario #imports this and
+% adds only its own proposal-opening (which shareholders get tickets) and its own
+% enactment (what the authorization buys) — see tests/forward/company_cake.ill.
+%
+% Design invariants realized here:
+%  - cast_vote is the SINGLE audited [⪰] bridge: it strips `says K` to an
+%    objective `ballot` (THY_0046). It is the only producer of `ballot`.
+%  - the tally sums plain rational terms via !plus (the grade index's partial-⊕
+%    is never invoked — the forward/backward split, THY_0045).
+%  - authorization is LINEAR: one quorum = one execution (never `!authorized`).
+%  - ballots are linear (VoteID): double-voting is structurally impossible because
+%    a ticket is consumed on use.
+
+% ── Shared vocabulary ──
+stake:            (c: q) -> (w: q) -> type.   % says K (stake C W): K's equity in C
+authorized:       (p: q) -> type.             % says C (authorized P): one-shot license
+propose_seed:     (p: q) -> (th: q) -> (n: q) -> type.  % open P at threshold TH, N voters
+vote_open:        (p: q) -> (th: q) -> type.
+vote_ticket:      (k: q) -> (p: q) -> type.   % single-use ballot credential
+ballot:           (p: q) -> (k: q) -> (w: q) -> type.   % objective vote record
+tally:            (p: q) -> (acc: q) -> (th: q) -> type.
+vote_sentinel:    (p: q) -> (n: q) -> type.
+tally_init_token: (p: q) -> type.
+
+% Read-time-view vocabulary (consumed by calculus/dill/lib/govern.js kernels).
+share:     (k: q) -> (s: q) -> type.              % !share K S
+vote:      (k: q) -> (p: q) -> (x: q) -> (w: q) -> type.  % !vote K P X W
+candidate: (p: q) -> (x: q) -> (seq: q) -> type.  % !candidate P X SEQ (lower = older)
+current:   (n: q) -> (t: q) -> type.              % the governed cell (unique by linearity)
+winner:    (p: q) -> (x: q) -> type.              % kernel-computed decision (enactment)
+
+% ── Generic rules ──
+
+% cast_vote: the audited [⪰] bridge — stake preserved ($), ticket consumed,
+% objective ballot minted. THE ONLY rule that produces `ballot`.
+cast_vote:
+  $says K (stake C W) * vote_ticket K P
+  -o { ballot P K W }.
+
+% tally_init: open the accumulator at 0.
+tally_init:
+  tally_init_token P * vote_open P TH
+  -o { tally P 0 TH }.
+
+% tally_step: absorb one ballot, sum weights over rational terms, count down.
+tally_step:
+  tally P ACC TH * ballot P K W * vote_sentinel P N
+  * !plus ACC W NEW * !qsub N 1 N1
+  -o { tally P NEW TH * vote_sentinel P N1 }.
+
+% prop_company P C: proposal P governs company C (persistent, scenario-declared).
+prop_company: (p: q) -> (c: q) -> type.
+
+% tally_close: every ticket accounted for (sentinel 0) and threshold met → mint
+% the company's one-shot spend authorization (C bound from !prop_company).
+tally_close:
+  tally P TOTAL TH * vote_sentinel P 0 * !le TH TOTAL * !prop_company P C
+  -o { says C (authorized P) }.
+
+% enact: the eager bridge — a kernel-computed winner becomes the current binding.
+enact: winner P X -o { current P X }.
