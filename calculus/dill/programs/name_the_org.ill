@@ -1,0 +1,34 @@
+#import(../../gill/prelude/num.gill)
+
+% name_the_org.ill — the memhub canonical scenario (TODO_0276/0318 use-case 1).
+%
+% Shareholders propose candidate names and range-vote [0,1]; consensus =
+% argmax_X Σ_K share(K)·vote(K,X), oldest-wins tie-break. Candidate ids stand in
+% for names (a name is just a governed value); SEQ is the proposal age.
+%
+% Consensus here is a READ-TIME VIEW (calculus/dill/lib/govern.js consensus()),
+% NOT a forward rule: argmax needs a max/NAF the backchainer lacks, so — exactly
+% as memhub/redisc prescribe — it is a fold OUTSIDE the transition system. The
+% engine never searches the (infinite) name space; owners propose, the sort
+% filters, the kernel selects. ENACTMENT is the one-line bridge below: the server
+% computes the winner, injects `winner P X*`, and settle records it in `current`.
+
+candidate: (p: q) -> (x: q) -> (seq: q) -> type.  % !candidate P X SEQ (lower = older)
+share:     (k: q) -> (s: q) -> type.              % !share K S
+vote:      (k: q) -> (p: q) -> (x: q) -> (w: q) -> type.  % !vote K P X W, W in [0,1]
+winner:    (p: q) -> (x: q) -> type.              % minted by the kernel at enactment
+current:   (n: q) -> (x: q) -> type.              % the governed cell
+
+% enact: the eager bridge — a computed winner becomes the current binding.
+enact: winner P X -o { current P X }.
+
+% Genesis: proposal 100, two 50/50 shareholders, three candidates.
+%   value(10) = .5·.9 + .5·.1 = .50   (seq 1)
+%   value(20) = .5·.1 + .5·.8 = .45   (seq 2)
+%   value(30) = .5·.5 + .5·.5 = .50   (seq 3)
+% argmax = {10, 30} tied at .50 → oldest-wins → 10.
+#run (settle: 0)
+  !candidate 100 10 1 * !candidate 100 20 2 * !candidate 100 30 3
+    * !share 1 (1/2) * !share 2 (1/2)
+    * !vote 1 100 10 (9/10) * !vote 1 100 20 (1/10) * !vote 1 100 30 (1/2)
+    * !vote 2 100 10 (1/10) * !vote 2 100 20 (8/10) * !vote 2 100 30 (1/2) .
