@@ -1,0 +1,30 @@
+#import(../../../gill/prelude/num.gill)
+
+% smoke.ill — dill runs forward (mde.load + calc.settle). Confirms the two
+% mechanics the governance prelude rests on:
+%  (1) `says K A` is an opaque structural wrapper under forward settle — a rule
+%      may consume/produce it; poss_l/poss_r only bite in backward `prove`.
+%  (2) a principal in the `says` grade-slot and a weight in a term-slot both flow
+%      freely into term positions of a produced fact (the cast_vote mechanic).
+
+foo: (x: q) -> type.
+bar: (x: q) -> type.
+stake: (c: q) -> (w: q) -> type.
+ticket: (k: q) -> (p: q) -> type.
+ballot: (p: q) -> (k: q) -> (w: q) -> type.
+
+% (1) says-promote: K stays in the grade slot, X stays a term.
+promote: says K (foo X) -o { says K (bar X) }.
+
+#expect_promote (settle: 0)
+  says 1 (foo 5)
+  =>
+  says 1 (bar 5) .
+
+% (2) cast: principal K (grade slot) + weight W (term slot) → objective ballot.
+cast: says K (stake C W) * ticket K P -o { ballot P K W }.
+
+#expect_cast (settle: 0)
+  says 1 (stake 3 (1/2)) * ticket 1 100
+  =>
+  ballot 100 1 (1/2) .
