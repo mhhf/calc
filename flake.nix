@@ -241,8 +241,7 @@
             tree-sitter
             gcc
             emscripten
-            nodePackages.npm
-            nodePackages.typescript
+            typescript
             pandoc
           ];
 

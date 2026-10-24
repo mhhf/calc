@@ -64,12 +64,12 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "@hono/node-server": "^1.19.9",
+    "@hono/node-server": "^2.1.5",
     "@hpcc-js/wasm-graphviz": "^1.21.0",
     "@tailwindcss/typography": "^0.5.19",
     "cli-color": "^2.0.0",
     "highlight.js": "^11.11.1",
-    "hono": "^4.11.9",
+    "hono": "^4.13.13",
     "js-sha3": "^0.9.3",
     "marked": "^17.0.3",
     "marked-highlight": "^2.2.3"
